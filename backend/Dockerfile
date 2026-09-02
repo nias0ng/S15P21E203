@@ -6,6 +6,7 @@ COPY . .
 
 RUN set -eu; \
     test -f ./gradlew; \
+    sed -i 's/\r$//' ./gradlew; \
     chmod +x ./gradlew; \
     ./gradlew clean bootJar --no-daemon; \
     JAR_PATH="$(find build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*-plain.jar' -print -quit)"; \
