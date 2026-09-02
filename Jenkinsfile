@@ -106,6 +106,7 @@ pipeline {
                         --retry 12 \
                         --retry-delay 5 \
                         --retry-connrefused \
+                        --retry-all-errors \
                         --max-time 5 \
                         "$HEALTH_CHECK_URL"
                 '''
