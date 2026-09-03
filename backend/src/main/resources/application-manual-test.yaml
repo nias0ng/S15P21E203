@@ -1,0 +1,31 @@
+spring:
+  config:
+    activate:
+      on-profile: manual-test
+
+  datasource:
+    url: jdbc:postgresql://localhost:${MANUAL_TEST_POSTGRES_PORT:5432}/${MANUAL_TEST_POSTGRES_DB:hyanghae_test}
+    username: ${MANUAL_TEST_POSTGRES_USER:hyanghae}
+    password: ${MANUAL_TEST_POSTGRES_PASSWORD:hyanghae_test}
+    driver-class-name: org.postgresql.Driver
+
+  data:
+    redis:
+      host: localhost
+      port: ${MANUAL_TEST_REDIS_PORT:6379}
+
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+logging:
+  level:
+    org.hibernate.SQL: debug
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
