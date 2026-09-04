@@ -162,6 +162,7 @@ class ReviewIntegrationTest {
 ## 7. 추가 가이드
 
 - 성능 개선 작업이 필요한 경우 [k6 간이 성능 테스트 가이드](docs/performance-testing.md)를 참고합니다.
+- 운영 장애 및 요청 로그를 확인할 때는 [운영 로그 및 Grafana 사용 가이드](docs/operational-logging.md)를 참고합니다.
 
 ## 8. DB 및 Redis 직접 확인하기 (선택)
 
