@@ -36,6 +36,15 @@ public class RequestIdFilter extends OncePerRequestFilter {
         try {
             filterChain.doFilter(request, response);
             completed = true;
+        } catch (ServletException | IOException | RuntimeException exception) {
+            log.error(
+                    "Unhandled HTTP request exception: method={}, path={}, exceptionType={}",
+                    request.getMethod(),
+                    getPathPattern(request),
+                    exception.getClass().getName(),
+                    exception
+            );
+            throw exception;
         } finally {
             try {
                 int status = !completed && response.getStatus() < 400

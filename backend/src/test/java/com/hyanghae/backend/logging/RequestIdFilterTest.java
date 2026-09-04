@@ -44,7 +44,15 @@ class RequestIdFilterTest {
 
     @Test
     void removesRequestIdFromMdcAndLogsServerErrorWhenRequestFails(CapturedOutput output) {
-        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletRequest request = new MockHttpServletRequest(
+                "POST",
+                "/api/reviews/sensitive-review-id"
+        );
+        request.setQueryString("token=sensitive-token");
+        request.setAttribute(
+                HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE,
+                "/api/reviews/{reviewId}"
+        );
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         assertThatThrownBy(() -> requestIdFilter.doFilter(
@@ -56,7 +64,14 @@ class RequestIdFilterTest {
         )).isInstanceOf(ServletException.class);
 
         assertThat(MDC.get(RequestIdFilter.MDC_KEY)).isNull();
-        assertThat(output).contains("status=500");
+        assertThat(output)
+                .contains("ERROR")
+                .contains("path=/api/reviews/{reviewId}")
+                .contains("exceptionType=jakarta.servlet.ServletException")
+                .contains("request failed")
+                .contains("status=500")
+                .doesNotContain("sensitive-review-id")
+                .doesNotContain("sensitive-token");
     }
 
     @Test
