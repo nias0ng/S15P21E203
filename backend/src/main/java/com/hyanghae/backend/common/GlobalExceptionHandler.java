@@ -40,7 +40,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
      */
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiErrorResponse> handleBusinessException(BusinessException exception) {
-        ErrorCode errorCode = exception.getErrorCode();
+        ErrorCode errorCode = exception.errorCode();
 
         log.warn(
                 "Business exception handled: errorCode={}, status={}",

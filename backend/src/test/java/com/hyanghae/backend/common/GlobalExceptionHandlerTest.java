@@ -118,11 +118,6 @@ class GlobalExceptionHandlerTest {
         }
 
         @Override
-        public String code() {
-            return name();
-        }
-
-        @Override
         public String message() {
             return message;
         }
