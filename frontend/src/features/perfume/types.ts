@@ -42,6 +42,12 @@ export interface PerfumeSearchParams {
   // 필터가 걸리지 않은 전체 결과가 내려옵니다. 향 계열 필터는 백엔드에 아직 없습니다.
   scentFamily?: ScentFamily
 
+  // ⚠️ A33 의 필터 두 줄입니다. 백엔드에 아직 없어서 보내도 무시됩니다.
+  // 진열대 기준 필터는 로그인 사용자의 진열대와 조회 이력을 봐야 하므로
+  // 백엔드 작업이 함께 필요합니다.
+  shelf?: ShelfFilter
+  gender?: GenderFilter
+
   /** 0부터 시작합니다 (Spring Pageable 기준). 첫 페이지는 0 입니다. */
   page?: number
   /** 백엔드 기본값 20 */
@@ -59,4 +65,73 @@ export interface Page<T> {
   size: number
   totalElements: number
   totalPages: number
+}
+
+/** A33 위 줄 필터 — 내 진열대 기준. 로그인 상태에서만 의미가 있습니다. */
+export type ShelfFilter = 'OWNED' | 'WISH' | 'VIEWED'
+
+/** A33 아래 줄 필터 — 향의 성별 */
+export type GenderFilter = 'FEMALE' | 'MALE' | 'UNISEX'
+
+export const SHELF_FILTERS = [
+  { value: 'OWNED', label: '보유' },
+  { value: 'WISH', label: '희망' },
+  { value: 'VIEWED', label: '조회' },
+] as const satisfies readonly { value: ShelfFilter; label: string }[]
+
+export const GENDER_FILTERS = [
+  { value: 'FEMALE', label: '여성' },
+  { value: 'MALE', label: '남성' },
+  { value: 'UNISEX', label: '중성' },
+] as const satisfies readonly { value: GenderFilter; label: string }[]
+
+/* ── A10 향수 상세에서 쓰는 것들 ───────────────────────────── */
+
+/** 계절 (DTL-14 · DTL-16 · DTL-24) */
+export type Season = 'SPRING' | 'SUMMER' | 'AUTUMN' | 'WINTER'
+
+export const SEASONS = [
+  { value: 'SPRING', label: '봄' },
+  { value: 'SUMMER', label: '여름' },
+  { value: 'AUTUMN', label: '가을' },
+  { value: 'WINTER', label: '겨울' },
+] as const satisfies readonly { value: Season; label: string }[]
+
+/** 진열대 분류 (SHF-01 · SHF-03). 저장 시 필수입니다. */
+export type ShelfCategory = 'OWNED' | 'TRIED' | 'WISH'
+
+export const SHELF_CATEGORIES = [
+  { value: 'OWNED', label: '보유 중' },
+  { value: 'TRIED', label: '시향해 봄' },
+  { value: 'WISH', label: '보유 희망' },
+] as const satisfies readonly { value: ShelfCategory; label: string }[]
+
+/** DTL-14 계절별 평가 비율. 계절을 여러 개 고를 수 있어 합이 100이 아닐 수 있습니다. */
+export interface SeasonRating {
+  season: Season
+  /** 0~100 */
+  percentage: number
+}
+
+/**
+ * DTL-23 AI 후기 요약.
+ *
+ * 와이어프레임 주석: 후기를 AI가 요약해 문장으로 보여준다 — 퍼센트는 문장 안의
+ * 수치로만 쓰고 막대는 쓰지 않는다. 호평 · 혹평 섞어 4문장까지.
+ * 후기 수가 적으면 요약을 생성하지 않고 안내 문구를 보여줍니다.
+ */
+export interface ReviewSummary {
+  /** 최대 4문장. 비어 있으면 후기가 부족한 것으로 보고 안내 문구를 띄웁니다. */
+  sentences: string[]
+}
+
+/** DTL-03 후기 목록 항목 */
+export interface Review {
+  reviewId: number
+  nickname: string
+  content: string
+  /** ISO 8601 */
+  createdAt: string
+  /** 내가 쓴 후기면 수정 · 삭제 버튼을 보여줍니다 (DTL-05 · DTL-06) */
+  mine: boolean
 }
