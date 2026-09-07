@@ -103,8 +103,12 @@ features/<도메인>/
 
 ## API 연동
 
-개발 중에는 `VITE_API_BASE_URL=/api` 로 두면 Vite dev server 가 `VITE_API_PROXY_TARGET`(기본 `http://localhost:8080`)으로 프록시합니다.
+`VITE_API_BASE_URL` 은 API 명세서의 버전 prefix 를 포함해 `/api/v1` 입니다.
+개발 중에는 이 값으로 두면 Vite dev server 가 `/api` 로 시작하는 요청을 `VITE_API_PROXY_TARGET`(기본 `http://localhost:8080`)으로 프록시합니다.
 브라우저 기준으로는 same-origin 이라 **로컬 개발에서 CORS 설정이 필요 없습니다.**
+
+각 API 함수는 prefix 를 붙이지 않고 명세서의 리소스 경로만 씁니다. 예를 들어 명세서의
+`GET /api/v1/perfumes` 는 `http.get('/perfumes')` 로 호출하면 됩니다.
 
 호출은 항상 `shared/api/http.ts` 의 `http` 인스턴스를 통해서 합니다. 여기서:
 
@@ -112,8 +116,12 @@ features/<도메인>/
 - 응답 에러를 `ApiError { status, code, message }` 로 정규화
 - 401 이면 자동 로그아웃
 
-> ⚠️ `ApiErrorResponse` 의 `{ code, message }` 형태와 `Page<T>` 페이지네이션 형태는
-> 백엔드와 **아직 확정 전인 가정값**입니다. API 명세 나오면 이 두 타입부터 맞춰주세요.
+`ApiErrorResponse` 의 `{ code, message }` 와 `Page<T>` 페이지네이션 형태는 백엔드와 **확정되었습니다**
+(`common/ApiErrorResponse.java`, `common/PageResponse.java`). 두 타입은 그대로 두면 됩니다.
+단, **페이지 번호는 0부터 시작**합니다.
+
+에러 `code` 는 백엔드 enum 상수 이름이 그대로 내려옵니다 (예: `PERFUME_NOT_FOUND`).
+분기할 때 이 문자열을 쓰세요. 예상 못한 5xx 는 `INTERNAL_ERROR` 로 통일됩니다.
 
 ## 버전 관리
 
