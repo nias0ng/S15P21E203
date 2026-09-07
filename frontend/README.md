@@ -6,6 +6,24 @@ React + TypeScript + Vite 기반 프론트엔드입니다.
 > 이 문서는 **작업 중에 찾아보는 규약 요약**입니다.
 > 같은 규약을 Claude Code 도 참조하도록 `CLAUDE.md` 에 정리해 두었습니다 — 두 문서 내용은 같습니다.
 
+## ⚠️ 작업 범위는 `frontend/` 안으로 한정됩니다
+
+FE 팀이 수정하는 파일은 **`frontend/` 폴더 안에 있는 것뿐입니다.**
+저장소 루트, `backend/`, `ai/`, `docs/`, `Jenkinsfile`, `compose.*.yaml`, `.gitlab/`, `TIL/` 은
+다른 파트 담당이므로 건드리지 않습니다.
+
+`frontend/` 밖이 바뀌어야 하는 일이 생기면 **직접 고치지 말고 해당 파트에 요청해주세요.**
+예를 들어 Jenkins 파이프라인에 프론트엔드 검증 스테이지를 추가하는 작업은 `Jenkinsfile` 수정이
+필요하므로 infra 담당자의 작업입니다. 프론트엔드 MR 에는 `frontend/` 밖 변경이 섞이지 않도록 합니다.
+
+MR 올리기 전에 확인하는 방법:
+
+```bash
+git diff --name-only origin/develop...HEAD | grep -v "^frontend/"
+```
+
+아무것도 출력되지 않아야 정상입니다.
+
 ## 시작하기
 
 ```bash

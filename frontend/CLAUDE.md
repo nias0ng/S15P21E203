@@ -1,10 +1,50 @@
 # CLAUDE.md
 
-향수 추천 서비스 "향해(hyanghae)" 프론트엔드입니다. 저장소 전체 협업 규약은 루트 `../CLAUDE.md`,
-환경 구성과 배경 설명은 `docs/프론트엔드-초기-설정-가이드.md`에 있습니다.
+향수 추천 서비스 "향해(hyanghae)" 모노레포(`backend/`, `frontend/`, `ai/`)의 프론트엔드입니다.
+환경 구성과 배경 설명은 `docs/프론트엔드-초기-설정-가이드.md`, 작업 중 찾아보는 규약 요약은 `README.md`에 있습니다.
 
 React 19 · TypeScript · Vite · TanStack Query v5 · Zustand · Tailwind v4 · react-router v8.
 FE 작업자는 3명입니다.
+
+## 작업 범위: `frontend/` 밖은 건드리지 않습니다
+
+**FE 팀의 작업 범위는 `frontend/` 폴더 안으로 한정됩니다.** 저장소 루트, `backend/`, `ai/`,
+`docs/`, `Jenkinsfile`, `compose.*.yaml`, `.gitlab/`, `TIL/` 은 다른 파트 담당이라 수정하지 않습니다.
+
+`frontend/` 밖이 바뀌어야 하는 일이 생기면 **직접 고치지 말고 해당 파트에 요청합니다.**
+예를 들어 Jenkins 파이프라인에 프론트엔드 검증 스테이지를 넣는 작업은 `Jenkinsfile` 수정이
+필요하므로 infra 담당자의 작업입니다.
+
+`frontend/` 밖을 수정해야 한다고 판단되면, 파일을 고치기 전에 먼저 사용자에게 알리고
+어느 파트에 요청할 일인지 확인합니다.
+
+## 협업 규약 (Git · Jira)
+
+근거 문서는 `../docs/Git_컨벤션_규칙.pdf`, `../docs/git_branch_보호_조건.pdf`,
+`../docs/Jira_이슈_관리_규칙.pdf`, `../docs/Jira와_GitLab_연동.pdf` 입니다(읽기만 합니다).
+아래 규칙은 **사용자가 그 작업에 대해 명시적으로 예외를 허용하지 않는 한 무조건 지킵니다.**
+"빠르니까", "작은 변경이니까" 같은 이유로 우회하지 않습니다.
+
+Jira 프로젝트 키는 `S15P21E203`이고 브랜치·MR에 **전체 이슈 키**를 씁니다.
+
+```
+브랜치   {작업유형}/fe/S15P21E203-{이슈번호}-{기능명}
+        예: chore/fe/S15P21E203-116-frontend-ui-foundation
+커밋     {타입}: S15P21E203-{이슈번호} {작업 내용}     (문장 끝 마침표 없음)
+        예: feat: S15P21E203-42 자연어 기반 향수 추천 화면 구현
+MR      [S15P21E203-42][feat] 자연어 기반 향수 추천 기능 구현
+```
+
+- 커밋 타입: `feat` `fix` `refactor` `design` `docs` `test` `chore` `remove`
+- Jira Story 제목: `[FE][작업종류] 작업 내용` (작업종류는 `Feature` `Fix` `Refactor` `Test` `Docs` `Chore` — `Design` 은 없습니다)
+- 모든 작업 브랜치는 **최신 `develop`에서** 생성합니다. 1 Jira 이슈 = 1 브랜치 = 1 MR.
+- `master`·`develop`에 **직접 push 하지 않습니다.** 둘 다 Protected(push No one, force push 불가,
+  파이프라인 성공 후 병합 필수, MR 승인 1명 이상)입니다.
+- 관련 없는 작업을 한 브랜치에 함께 담지 않습니다. 1 커밋 = 1개의 의미 있는 작업.
+- `rebase` 대신 `merge`로 통일합니다. 작업 시작 전과 MR 생성 전에 최신 `develop`을 반영합니다.
+- **커밋은 사용자가 요청할 때만** 만듭니다.
+- MR 본문은 `../.gitlab/merge_request_templates/Default.md` 템플릿을 채웁니다(읽기만 합니다).
+  MR 올리기 전 `npm run verify` 통과가 조건입니다.
 
 ## 명령어
 
