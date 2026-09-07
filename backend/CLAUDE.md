@@ -126,6 +126,58 @@ class SomeTest {
 }
 ```
 
+## 메트릭
+
+메트릭은 `prod` 프로필에서만 켜집니다. `micrometer-registry-prometheus`가 `runtimeOnly` 의존성으로 들어가 있어 `/actuator/prometheus` 엔드포인트가 자동으로 생기고, 계측 코드는 직접 작성하지 않고 Spring Boot의 자동 계측만 사용합니다. 설정은 전부 `application-prod.yaml`의 `management` 블록에 있습니다.
+
+### Actuator 엔드포인트는 allowlist로만 엽니다
+
+```yaml
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - prometheus
+```
+
+`*`를 쓰지 않습니다. `env`·`heapdump`·`configprops`처럼 환경변수나 메모리 덤프를 그대로 내주는 엔드포인트가 함께 열리기 때문입니다. 새 엔드포인트가 필요하면 이 목록에 명시적으로 추가하고, 무엇이 노출되는지 확인한 뒤에 넣습니다.
+
+`/actuator/prometheus`에는 애플리케이션 레벨 인증이 없습니다. 외부에 노출되지 않는다는 전제는 인프라 쪽 네트워크 설정에 의존합니다.
+
+### 공통 태그
+
+모든 메트릭에 `application=backend`(`spring.application.name`), `environment=prod`가 붙습니다. 여러 서비스와 환경이 같은 Grafana로 들어와도 구분할 수 있게 하기 위한 라벨입니다.
+
+태그를 추가할 때는 **값의 가짓수가 유한한지** 먼저 따집니다. 사용자 ID나 요청 파라미터처럼 값이 계속 늘어나는 것을 태그로 넣으면 시계열이 폭발합니다.
+
+### 응답시간은 히스토그램으로 내보냅니다
+
+```yaml
+distribution:
+  percentiles-histogram:
+    http.server.requests: true
+  minimum-expected-value:
+    http.server.requests: 5ms
+  maximum-expected-value:
+    http.server.requests: 10s
+```
+
+`percentiles-histogram`은 `http_server_requests_seconds_bucket` 시계열을 만들고, 분위수는 Grafana에서 `histogram_quantile()`로 계산합니다. 앱에서 p95를 미리 계산해 내보내는 `percentiles` 옵션을 쓰지 않는 이유는, 분위수가 합산 불가능한 값이라 인스턴스를 여러 대로 늘리면 전체 p95를 구할 수 없기 때문입니다. 버킷은 카운터라서 인스턴스끼리 더할 수 있습니다.
+
+`minimum-expected-value`/`maximum-expected-value`는 버킷 생성 범위를 기본값보다 좁혀 시계열 개수를 줄입니다. **범위 밖 요청이 버려지는 것은 아닙니다.** 12초 걸린 요청도 `_count`와 `_sum`에 반영되고 `+Inf` 버킷에 잡히며, 해당 구간의 분위수 해상도만 낮아집니다.
+
+새 히스토그램 메트릭을 추가할 때도 기대 범위를 함께 지정합니다.
+
+### 스크레이프 경로는 요청 로깅에서 제외됩니다
+
+`RequestIdFilter.shouldNotFilter`가 `/actuator/prometheus`를 걸러냅니다. 주기적으로 반복되는 스크레이프 요청이 전부 요청 완료 로그가 되면 Loki가 노이즈로 채워지기 때문입니다. 자세한 내용은 위 로깅 절을 참고하세요.
+
+### 메트릭을 테스트하는 법
+
+`PrometheusMetricsIntegrationTest`가 `@ActiveProfiles("prod")`로 실제 운영 설정을 띄운 뒤, `/actuator/prometheus` 응답에 `http_server_requests_seconds_bucket`과 공통 태그가 포함되는지 단언합니다. DB·Redis 없이 돌리려고 `spring.autoconfigure.exclude`로 DataSource·JPA·Flyway·Redis 자동 설정을 제외합니다. 메트릭 설정을 바꿀 때는 이 테스트의 단언도 함께 갱신합니다.
+
 ## 테스트 구조
 
 - **단위 테스트** — DB·Redis·외부 API 없이 순수 JUnit으로 작성합니다. Docker가 필요 없습니다.
