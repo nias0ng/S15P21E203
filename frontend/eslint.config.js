@@ -22,6 +22,7 @@ const FEATURE_DOMAINS = [
   'shelf',
   'community',
   'brand',
+  'note',
 ]
 
 export default tseslint.config([
