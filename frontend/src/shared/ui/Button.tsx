@@ -1,47 +1,7 @@
-import { cva, type VariantProps } from 'class-variance-authority'
+import { type VariantProps } from 'class-variance-authority'
 
 import { cn } from '@/shared/lib/cn'
-
-/**
- * 버튼 스타일을 variant 조합으로 정의합니다.
- *
- * 화면마다 `className="bg-line-soft0 px-4 py-2 rounded..."` 를 새로 쓰지 않고
- * `<Button variant="primary" size="md">` 로 쓰기 위한 것입니다.
- * 색은 반드시 styles/index.css 의 디자인 토큰(brand/ink/surface)만 씁니다.
- */
-const buttonVariants = cva(
-  // 모든 variant 가 공유하는 기본 스타일
-  'inline-flex items-center justify-center gap-2 rounded-card font-medium ' +
-    'transition-colors outline-none ' +
-    'focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ' +
-    'disabled:pointer-events-none disabled:opacity-50',
-  {
-    variants: {
-      variant: {
-        primary: 'bg-ink text-white hover:bg-night',
-        secondary: 'bg-line-soft text-ink hover:bg-fog',
-        outline:
-          'border border-line bg-transparent text-ink hover:bg-line-soft',
-        ghost:
-          'bg-transparent text-ink-muted hover:bg-line-soft hover:text-ink',
-        danger: 'bg-red-600 text-white hover:bg-red-700',
-      },
-      size: {
-        sm: 'h-8 px-3 text-sm',
-        md: 'h-10 px-4 text-sm',
-        lg: 'h-12 px-6 text-base',
-        icon: 'size-10',
-      },
-      fullWidth: {
-        true: 'w-full',
-      },
-    },
-    defaultVariants: {
-      variant: 'primary',
-      size: 'md',
-    },
-  },
-)
+import { buttonVariants } from '@/shared/ui/buttonVariants'
 
 type ButtonProps = React.ComponentPropsWithRef<'button'> &
   VariantProps<typeof buttonVariants> & {
@@ -49,6 +9,10 @@ type ButtonProps = React.ComponentPropsWithRef<'button'> &
     isLoading?: boolean
   }
 
+/**
+ * 버튼. 화면 이동이 목적이면 이 컴포넌트가 아니라 LinkButton 을 쓰세요.
+ * button 안에 링크를 넣는 것은 잘못된 마크업이고 키보드 동작도 깨집니다.
+ */
 export function Button({
   className,
   variant,
