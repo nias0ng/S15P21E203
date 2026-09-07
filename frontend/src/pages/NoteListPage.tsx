@@ -1,15 +1,38 @@
+import { useQuery } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router'
+
+import { NoteCategorySections, noteListQuery } from '@/features/note'
+import { SearchField } from '@/shared/ui/SearchField'
+
 /**
- * 노트 (와이어프레임 A35)
- * 담당 에픽: S15P21E203-112
+ * 노트 (와이어프레임 A35 — 상단 메뉴 [노트] 목적지)
  *
- * TODO: 담당자가 와이어프레임 A35 기준으로 구현합니다.
- * 전역 헤더와 콘텐츠 폭(1120)은 RootLayout 이 처리하므로 본문만 작성하면 됩니다.
+ * 와이어프레임 주석:
+ * - 대분류(CITRUS · WOOD · FLORAL …)로 묶어 세로로 쌓는다 — 대분류 순서는 고정
+ * - 노트를 누르면 노트 상세(A36)
  */
 export default function NoteListPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const keyword = searchParams.get('keyword') ?? ''
+
+  const { data, isPending } = useQuery(noteListQuery(keyword))
+
   return (
-    <section className="space-y-2">
-      <h1 className="text-xl font-semibold">노트</h1>
-      <p className="text-ink-muted text-sm">준비 중인 화면입니다. (A35)</p>
-    </section>
+    <div className="space-y-6">
+      <h1 className="sr-only">노트</h1>
+
+      <SearchField
+        label="노트명으로 검색"
+        placeholder="노트명으로 검색"
+        defaultValue={keyword}
+        key={keyword}
+        onSearch={(next) => {
+          const trimmed = next.trim()
+          setSearchParams(trimmed ? { keyword: trimmed } : {})
+        }}
+      />
+
+      <NoteCategorySections notes={data ?? []} isPending={isPending} />
+    </div>
   )
 }
