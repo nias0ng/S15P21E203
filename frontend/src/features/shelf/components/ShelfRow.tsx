@@ -50,7 +50,7 @@ export function ShelfRow({ title, items, selectedId, onSelect }: Props) {
           <li key={item.shelfItemId} className="relative shrink-0 pt-6">
             {/* 대표 향수는 한 번에 하나 · 보유 중 칸에만 표시됩니다 */}
             {item.representative && (
-              <span className="border-line bg-surface-card text-ink absolute top-0 left-1/2 -translate-x-1/2 border px-2 py-0.5 text-[10px]">
+              <span className="border-line bg-surface-card text-ink absolute top-0 left-1/2 -translate-x-1/2 border px-2 py-0.5 text-[10px] whitespace-nowrap">
                 대표
               </span>
             )}
