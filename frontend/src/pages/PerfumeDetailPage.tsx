@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router'
 
-import { perfumeDetailQuery } from '@/features/perfume/queries'
+import { perfumeDetailQuery } from '@/features/perfume'
 import { PageFallback } from '@/shared/ui/PageFallback'
 
 /**
