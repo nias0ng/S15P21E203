@@ -27,6 +27,18 @@
     system-ui, 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
 
   --radius-card: 0.875rem;
+
+  /*
+   * 콘텐츠 최대 폭. 와이어프레임 S01 규격이 "폭 1120 고정"입니다.
+   * 1120 + 좌우 여백 32 = 1184px 이면 다 보이므로, 1920 화면을 125%(뷰포트 1536)나
+   * 150%(1280) 배율로 쓰는 노트북에서도 여백이 남습니다.
+   * max-w-content 로 사용하고, 시안이 바뀌면 이 값만 고칩니다.
+   */
+  --container-content: 70rem;
+
+  /* 테두리·구분선. 와이어프레임의 #1f1f1f 1px 선에 대응합니다. */
+  --color-line: #1f1f1f;
+  --color-line-soft: #e8e8e8;
 }
 
 @layer base {
