@@ -63,7 +63,7 @@ docker compose -f compose.manual-test.yaml down -v # 데이터까지 삭제
 
 ## 로깅
 
-로그는 **stdout → Docker → Alloy → Grafana Loki → Logs Drilldown** 파이프라인을 탑니다. 파일 appender를 추가하지 말고 stdout으로만 남깁니다. 운영 로그 조회 방법은 `docs/operational-logging.md`에 있습니다.
+로그는 **stdout → Docker → Alloy → Grafana Loki → Logs Drilldown** 파이프라인을 탑니다. 파일 appender를 추가하지 말고 stdout으로만 남깁니다. 운영 메트릭 대시보드와 로그를 이용한 장애 대응 방법은 `docs/operational-logging.md`에 있습니다.
 
 ### RequestIdFilter가 유일한 요청 로깅 지점
 
@@ -75,7 +75,7 @@ docker compose -f compose.manual-test.yaml down -v # 데이터까지 삭제
 
 컨트롤러/서비스에서 요청 단위 접근 로그를 중복으로 남기지 않습니다.
 
-단, `/actuator/prometheus`는 `shouldNotFilter`로 필터 자체를 건너뜁니다. Prometheus가 주기적으로 스크레이프하는 경로라 요청 완료 로그가 계속 쌓이기 때문이고, 이 경로 응답에는 `X-Request-ID`도 붙지 않습니다. `RequestIdFilterTest.skipsRequestLoggingForPrometheusScrapes`가 이를 단언합니다.
+단, `/actuator/prometheus`는 `shouldNotFilter`로 필터 자체를 건너뜁니다. 메트릭 수집기인 Alloy가 주기적으로 스크레이프하는 경로라 요청 완료 로그가 계속 쌓이기 때문이고, 이 경로 응답에는 `X-Request-ID`도 붙지 않습니다. 요청 로깅 제외는 메트릭 수집에 영향을 주지 않습니다. `RequestIdFilterTest.skipsRequestLoggingForPrometheusScrapes`가 이를 단언합니다.
 
 ### 로그 메시지 형식
 
@@ -128,7 +128,7 @@ class SomeTest {
 
 ## 메트릭
 
-메트릭은 `prod` 프로필에서만 켜집니다. `micrometer-registry-prometheus`가 `runtimeOnly` 의존성으로 들어가 있어 `/actuator/prometheus` 엔드포인트가 자동으로 생기고, 계측 코드는 직접 작성하지 않고 Spring Boot의 자동 계측만 사용합니다. 설정은 전부 `application-prod.yaml`의 `management` 블록에 있습니다.
+메트릭은 `prod` 프로필에서만 켜집니다. **Spring Boot → Alloy → Grafana Cloud → Dashboard** 파이프라인을 타며, 로그와 별도로 저장하고 조회합니다. `micrometer-registry-prometheus`가 `runtimeOnly` 의존성으로 들어가 있어 `/actuator/prometheus` 엔드포인트가 자동으로 생기고, 계측 코드는 직접 작성하지 않고 Spring Boot의 자동 계측만 사용합니다. 설정은 전부 `application-prod.yaml`의 `management` 블록에 있습니다.
 
 ### Actuator 엔드포인트는 allowlist로만 엽니다
 
@@ -172,7 +172,7 @@ distribution:
 
 ### 스크레이프 경로는 요청 로깅에서 제외됩니다
 
-`RequestIdFilter.shouldNotFilter`가 `/actuator/prometheus`를 걸러냅니다. 주기적으로 반복되는 스크레이프 요청이 전부 요청 완료 로그가 되면 Loki가 노이즈로 채워지기 때문입니다. 자세한 내용은 위 로깅 절을 참고하세요.
+`RequestIdFilter.shouldNotFilter`가 `/actuator/prometheus`를 요청 로깅에서 걸러냅니다. 주기적으로 반복되는 스크레이프 요청이 전부 요청 완료 로그가 되면 Loki가 노이즈로 채워지기 때문입니다. 엔드포인트 노출과 메트릭 스크레이프는 그대로 동작합니다. 자세한 내용은 위 로깅 절을 참고하세요.
 
 ### 메트릭을 테스트하는 법
 
@@ -216,5 +216,5 @@ Gradle 테스트 워커 JVM이 클래스패스를 해석할 때 `sun.jnu.encodin
 ## 참고 문서
 
 - `README.md` — 신규 팀원 환경 구성 가이드(IntelliJ 설정, 문제 해결 포함)
-- `docs/operational-logging.md` — Grafana Loki에서 운영 로그 조회하기
+- `docs/operational-logging.md` — Grafana Dashboard와 Logs Drilldown을 이용한 운영 모니터링 및 장애 조사
 - `docs/performance-testing.md` — k6로 변경 전후 응답 시간 비교하기(`med`, `p(95)` 기록)
