@@ -99,4 +99,19 @@ class RequestIdFilterTest {
                 .doesNotContain("sensitive-review-id")
                 .doesNotContain("sensitive-token");
     }
+
+    @Test
+    void skipsRequestLoggingForPrometheusScrapes(CapturedOutput output) throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest(
+                "GET",
+                "/actuator/prometheus"
+        );
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        requestIdFilter.doFilter(request, response, (servletRequest, servletResponse) -> {
+        });
+
+        assertThat(response.getHeader(RequestIdFilter.RESPONSE_HEADER)).isNull();
+        assertThat(output).doesNotContain("HTTP request completed");
+    }
 }
