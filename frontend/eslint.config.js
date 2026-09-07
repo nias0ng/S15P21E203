@@ -21,6 +21,7 @@ const FEATURE_DOMAINS = [
   'collection',
   'shelf',
   'community',
+  'brand',
   'note',
 ]
 
