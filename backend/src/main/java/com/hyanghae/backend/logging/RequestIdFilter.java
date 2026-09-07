@@ -19,6 +19,12 @@ public class RequestIdFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(RequestIdFilter.class);
     static final String MDC_KEY = "requestId";
     static final String RESPONSE_HEADER = "X-Request-ID";
+    private static final String PROMETHEUS_PATH = "/actuator/prometheus";
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return (request.getContextPath() + PROMETHEUS_PATH).equals(request.getRequestURI());
+    }
 
     @Override
     protected void doFilterInternal(
