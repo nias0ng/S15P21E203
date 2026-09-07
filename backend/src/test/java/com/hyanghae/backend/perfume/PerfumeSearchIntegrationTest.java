@@ -26,6 +26,10 @@ class PerfumeSearchIntegrationTest {
 
     private static final String SEARCH_URL = "/api/v1/perfumes";
 
+    private static final String BLEU_PRIMARY_IMAGE = "https://img.example.com/bleu-1.jpg";
+    private static final String BLEU_SECONDARY_IMAGE = "https://img.example.com/bleu-2.jpg";
+    private static final String CHANCE_IMAGE = "https://img.example.com/chance.jpg";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -36,14 +40,19 @@ class PerfumeSearchIntegrationTest {
     void insertFixtures() {
         clearPerfumeData();
 
-        jdbcTemplate.update("INSERT INTO brands (brand_id, name, is_active) VALUES (1, 'Chanel', true)");
-        jdbcTemplate.update("INSERT INTO brands (brand_id, name, is_active) VALUES (2, 'Diptyque', true)");
+        insertBrand(1, "Chanel");
+        insertBrand(2, "Diptyque");
 
         insertPerfume(1, 1, "Bleu de Chanel", "블루 드 샤넬", true);
         insertPerfume(2, 1, "Chance", null, true);
         insertPerfume(3, 2, "Do Son", "두 손", true);
         insertPerfume(4, 2, "Retired Scent", null, false);
         insertPerfume(5, null, "Orphan Scent", null, true);
+
+        // 1번은 display_order 가 작은 쪽이 대표, 2번은 display_order 가 NULL 인 한 장뿐, 3번은 이미지 없음
+        insertImage(10, 1, BLEU_SECONDARY_IMAGE, 2);
+        insertImage(11, 1, BLEU_PRIMARY_IMAGE, 1);
+        insertImage(12, 2, CHANCE_IMAGE, null);
     }
 
     @AfterEach
@@ -78,6 +87,14 @@ class PerfumeSearchIntegrationTest {
     }
 
     @Test
+    void findsByPartialKeyword() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "ptyq"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].perfumeId").value(3));
+    }
+
+    @Test
     void ignoresCaseOfKeyword() throws Exception {
         mockMvc.perform(get(SEARCH_URL).param("keyword", "CHANEL"))
                 .andExpect(status().isOk())
@@ -86,21 +103,24 @@ class PerfumeSearchIntegrationTest {
                 .andExpect(jsonPath("$.content[1].perfumeId").value(2));
     }
 
+    /** 기능 명세: 검색어가 입력되지 않은 경우 검색을 수행하지 않는다. */
     @Test
-    void returnsAllActivePerfumesWhenKeywordIsBlank() throws Exception {
-        mockMvc.perform(get(SEARCH_URL).param("keyword", "   "))
+    void returnsEmptyResultWhenKeywordIsMissing() throws Exception {
+        mockMvc.perform(get(SEARCH_URL))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(4));
+                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20));
     }
 
     @Test
-    void returnsAllActivePerfumesWhenKeywordIsMissing() throws Exception {
-        mockMvc.perform(get(SEARCH_URL))
+    void returnsEmptyResultWhenKeywordIsBlank() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "   "))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(4))
-                .andExpect(jsonPath("$.page").value(0))
-                .andExpect(jsonPath("$.size").value(20))
-                .andExpect(jsonPath("$.totalPages").value(1));
+                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.totalElements").value(0));
     }
 
     @Test
@@ -121,22 +141,51 @@ class PerfumeSearchIntegrationTest {
                 .andExpect(jsonPath("$.content[0].brand").doesNotExist());
     }
 
+    /** 대표 이미지는 display_order 가 가장 작은 것입니다. 삽입 순서가 아닙니다. */
+    @Test
+    void usesLowestDisplayOrderImageAsThumbnail() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "bleu"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].thumbnailUrl").value(BLEU_PRIMARY_IMAGE));
+    }
+
+    /** display_order 가 NULL 이어도 이미지가 한 장뿐이면 그것이 대표입니다. */
+    @Test
+    void usesOnlyImageAsThumbnailEvenWhenDisplayOrderIsNull() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "chance"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].thumbnailUrl").value(CHANCE_IMAGE));
+    }
+
+    @Test
+    void returnsNoThumbnailWhenPerfumeHasNoImage() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "do son"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].thumbnailUrl").doesNotExist());
+    }
+
     /** ORDER BY 가 없으면 페이지 간에 항목이 중복되거나 누락될 수 있습니다. */
     @Test
     void paginatesInStableOrder() throws Exception {
-        mockMvc.perform(get(SEARCH_URL).param("size", "2").param("page", "0"))
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "chanel").param("size", "1").param("page", "0"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(4))
+                .andExpect(jsonPath("$.totalElements").value(2))
                 .andExpect(jsonPath("$.totalPages").value(2))
-                .andExpect(jsonPath("$.content.length()").value(2))
-                .andExpect(jsonPath("$.content[0].perfumeId").value(1))
-                .andExpect(jsonPath("$.content[1].perfumeId").value(2));
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].perfumeId").value(1));
 
-        mockMvc.perform(get(SEARCH_URL).param("size", "2").param("page", "1"))
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "chanel").param("size", "1").param("page", "1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content.length()").value(2))
-                .andExpect(jsonPath("$.content[0].perfumeId").value(3))
-                .andExpect(jsonPath("$.content[1].perfumeId").value(5));
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].perfumeId").value(2));
+    }
+
+    private void insertBrand(long id, String name) {
+        jdbcTemplate.update(
+                "INSERT INTO brands (brand_id, name, is_active) VALUES (?, ?, true)",
+                id, name
+        );
     }
 
     private void insertPerfume(long id, Integer brandId, String name, String nameKo, boolean active) {
@@ -146,7 +195,15 @@ class PerfumeSearchIntegrationTest {
         );
     }
 
+    private void insertImage(long id, long perfumeId, String imageUrl, Integer displayOrder) {
+        jdbcTemplate.update(
+                "INSERT INTO perfume_images (image_id, perfume_id, image_url, display_order) VALUES (?, ?, ?, ?)",
+                id, perfumeId, imageUrl, displayOrder
+        );
+    }
+
     private void clearPerfumeData() {
+        jdbcTemplate.update("DELETE FROM perfume_images");
         jdbcTemplate.update("DELETE FROM perfumes");
         jdbcTemplate.update("DELETE FROM brands");
     }
