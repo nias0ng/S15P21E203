@@ -51,9 +51,9 @@ export function Input({
         className={cn(
           'rounded-card h-10 w-full border px-3 text-sm',
           'placeholder:text-ink-muted/70',
-          'focus-visible:ring-brand-400 outline-none focus-visible:ring-2',
-          'disabled:bg-brand-50 disabled:opacity-60',
-          error ? 'border-red-500' : 'border-brand-200',
+          'focus-visible:ring-accent outline-none focus-visible:ring-2',
+          'disabled:bg-line-soft disabled:opacity-60',
+          error ? 'border-red-500' : 'border-line',
           className,
         )}
         {...props}

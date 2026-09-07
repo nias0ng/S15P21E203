@@ -60,7 +60,7 @@ export function Modal({
         className,
       )}
     >
-      <header className="border-brand-100 flex items-center justify-between border-b px-5 py-4">
+      <header className="border-line flex items-center justify-between border-b px-5 py-4">
         <h2 className="text-base font-semibold">{title}</h2>
         <button
           type="button"
@@ -75,7 +75,7 @@ export function Modal({
       <div className="px-5 py-4 text-sm">{children}</div>
 
       {footer && (
-        <footer className="border-brand-100 flex justify-end gap-2 border-t px-5 py-4">
+        <footer className="border-line flex justify-end gap-2 border-t px-5 py-4">
           {footer}
         </footer>
       )}

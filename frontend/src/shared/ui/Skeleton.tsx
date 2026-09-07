@@ -15,7 +15,7 @@ export function Skeleton({
   return (
     <div
       aria-hidden
-      className={cn('bg-brand-100 rounded-card animate-pulse', className)}
+      className={cn('bg-line-soft rounded-card animate-pulse', className)}
       {...props}
     />
   )

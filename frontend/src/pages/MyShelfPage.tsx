@@ -1,14 +1,15 @@
 /**
- * 내 진열대 화면 (기능 명세: SHF / COL)
- * TODO: 담당자가 이 파일을 시작점으로 구현합니다.
+ * 내 진열대 (와이어프레임 A13)
+ * 담당 에픽: S15P21E203-113
+ *
+ * TODO: 담당자가 와이어프레임 A13 기준으로 구현합니다.
+ * 전역 헤더와 콘텐츠 폭(1120)은 RootLayout 이 처리하므로 본문만 작성하면 됩니다.
  */
 export default function MyShelfPage() {
   return (
     <section className="space-y-2">
       <h1 className="text-xl font-semibold">내 진열대</h1>
-      <p className="text-ink-muted text-sm">
-        준비 중인 화면입니다. (SHF / COL)
-      </p>
+      <p className="text-ink-muted text-sm">준비 중인 화면입니다. (A13)</p>
     </section>
   )
 }
