@@ -1,15 +1,73 @@
+import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+
+import {
+  BoardTabs,
+  PostList,
+  postListQuery,
+  REVIEW_SORTS,
+  TrendingPerfumes,
+  trendingPerfumesQuery,
+  type PostSort,
+} from '@/features/community'
+import { ROUTES } from '@/shared/config/routes'
+import { ChipToggle } from '@/shared/ui/ChipToggle'
+import { LinkButton } from '@/shared/ui/LinkButton'
+
 /**
- * 후기 게시판 (와이어프레임 A22a)
- * 담당 에픽: S15P21E203-114
+ * 후기 게시판 (와이어프레임 A22a — CMT-01)
  *
- * TODO: 담당자가 와이어프레임 A22a 기준으로 구현합니다.
- * 전역 헤더와 콘텐츠 폭(1120)은 RootLayout 이 처리하므로 본문만 작성하면 됩니다.
+ * 와이어프레임 주석:
+ * - 후기는 향수 한 개에 반드시 붙는다 — 향수 블록이 없는 후기는 없다
+ * - 정렬은 최근 · 조회 순 · 좋아요 순 세 가지 · 분류 필터는 없다 (전부 후기라서)
+ * - 점수 · 별점 없음 — 좋아요만
+ * - [후기 쓰기] → A24a. 향수 상세(A10)의 [후기 쓰기]도 같은 화면으로 온다
  */
 export default function ReviewBoardPage() {
+  const [sort, setSort] = useState<PostSort>('RECENT')
+
+  const posts = useQuery(postListQuery('REVIEW'))
+  const trending = useQuery(trendingPerfumesQuery())
+
   return (
-    <section className="space-y-2">
-      <h1 className="text-xl font-semibold">후기 게시판</h1>
-      <p className="text-ink-muted text-sm">준비 중인 화면입니다. (A22a)</p>
-    </section>
+    <div className="space-y-4">
+      <h1 className="sr-only">후기 게시판</h1>
+      <BoardTabs />
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_16rem]">
+        <div className="min-w-0 space-y-3">
+          <div className="flex items-center gap-2">
+            {/* 후기 게시판에는 분류 필터가 없습니다 */}
+            <ChipToggle
+              label="정렬"
+              options={REVIEW_SORTS}
+              value={sort}
+              onChange={(next) => setSort(next ?? 'RECENT')}
+            />
+            <LinkButton to={ROUTES.REVIEW_WRITE} className="ml-auto">
+              후기 쓰기
+            </LinkButton>
+          </div>
+
+          {/* TODO: 정렬을 백엔드 파라미터로 넘기세요. 지금은 목록만 보여줍니다. */}
+          <PostList
+            posts={posts.data ?? []}
+            isPending={posts.isPending}
+            emptyAction={
+              <LinkButton to={ROUTES.REVIEW_WRITE} size="sm">
+                후기 쓰기
+              </LinkButton>
+            }
+          />
+
+          <p className="text-ink-muted text-[10.5px] leading-relaxed">
+            후기는 향수 한 개에 반드시 붙습니다. 점수나 별점 없이 좋아요만
+            있습니다.
+          </p>
+        </div>
+
+        <TrendingPerfumes items={trending.data ?? []} />
+      </div>
+    </div>
   )
 }
