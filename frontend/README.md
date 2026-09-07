@@ -2,6 +2,10 @@
 
 React + TypeScript + Vite 기반 프론트엔드입니다.
 
+> **처음 오셨다면** `docs/프론트엔드-초기-설정-가이드.md` 부터 읽어주세요 (설치·환경변수·자주 막히는 지점).
+> 이 문서는 **작업 중에 찾아보는 규약 요약**입니다.
+> 같은 규약을 Claude Code 도 참조하도록 `CLAUDE.md` 에 정리해 두었습니다 — 두 문서 내용은 같습니다.
+
 ## 시작하기
 
 ```bash
@@ -42,7 +46,9 @@ npm run dev                  # http://localhost:5173
 | `npm run format`       | Prettier 자동 포맷                                 |
 | `npm run format:check` | 포맷 검사만                                        |
 | `npm run typecheck`    | 타입 검사만                                        |
-| **`npm run verify`**   | **format:check → lint → typecheck → build 전부 실행. MR 올리기 전에 이것만 통과시키면 됩니다.** |
+| `npm run test`         | 테스트 1회 실행 (Vitest)                           |
+| `npm run test:watch`   | 테스트 감시 모드. 개발 중에는 이걸 켜두세요        |
+| **`npm run verify`**   | **format:check → lint → typecheck → test → build 전부 실행. MR 올리기 전에 이것만 통과시키면 됩니다.** |
 
 ## 폴더 구조
 
@@ -80,6 +86,7 @@ src/
 
 ```
 features/<도메인>/
+├── index.ts        공개 API — 밖에서 쓸 것만 여기서 export
 ├── types.ts        API 요청/응답 타입
 ├── api.ts          http 호출 함수 (순수 함수, 컴포넌트 몰라도 됨)
 ├── queries.ts      queryKey + queryOptions / useMutation
@@ -87,9 +94,28 @@ features/<도메인>/
 └── components/     이 도메인 전용 컴포넌트
 ```
 
+도메인은 `index.ts` 를 통해서만 드나듭니다. 내부 파일을 쪼개거나 옮겨도 화면 코드가 깨지지 않습니다.
+
+```ts
+import { perfumeDetailQuery } from '@/features/perfume' // O
+import { perfumeDetailQuery } from '@/features/perfume/queries' // X
+```
+
 **규칙 하나만 지켜주세요: `features/a` 가 `features/b` 를 import 하지 않기.**
 두 도메인이 같이 필요하면 `shared/` 로 올리거나 `pages/` 에서 조합합니다.
 서로 물고 물리기 시작하면 나중에 아무도 못 건드립니다.
+
+이 규칙은 **ESLint 가 강제합니다.** 어기면 `npm run lint` 가 실패합니다.
+의존 방향은 `app → pages → features → shared` 한 방향이고, 역방향과 도메인 간 교차가 모두 막혀 있습니다.
+
+| 위반 | 결과 |
+| --- | --- |
+| `shared/` 가 `features/` 를 import | 에러 — 이 코드는 공용이 아니라 해당 도메인 소속입니다 |
+| `features/` 가 `pages/`·`app/` 을 import | 에러 — 화면 조립은 `pages/` 에서 합니다 |
+| `features/map` 이 `features/perfume` 을 import | 에러 — `shared/` 로 올리거나 `pages/` 에서 조합하세요 |
+
+규칙은 `eslint.config.js` 의 `import-x/no-restricted-paths` 에 있습니다.
+**새 도메인 폴더를 만들면 같은 파일의 `FEATURE_DOMAINS` 배열에도 추가해야** 검사가 걸립니다.
 
 ## 컨벤션
 
@@ -100,6 +126,60 @@ features/<도메인>/
 - **`any` 금지**: 모르면 `unknown` 쓰고 좁혀서 사용
 - **서버 데이터는 useState 에 담지 않기**: 전부 TanStack Query 로. Zustand 는 로그인 정보·UI 토글 같은 클라이언트 상태만
 - **`console.log` 는 경고**: `npm run lint` 가 실패하므로 커밋 전에 지워주세요
+- **화면을 만들기 전에 `shared/ui/` 를 먼저 보기**: 버튼·입력창·카드·모달은 이미 있습니다 (아래 표)
+- **색·radius 는 디자인 토큰만**: `bg-brand-600`, `text-ink-muted`, `rounded-card`. `#3f5337` 이나 `bg-[#67855a]` 금지
+- **테스트 파일은 대상 파일 옆에**: `Button.tsx` → `Button.test.tsx`. `__tests__/` 폴더는 쓰지 않습니다
+
+## 공용 UI 컴포넌트
+
+새로 만들기 전에 `src/shared/ui/` 에 있는지 먼저 확인하세요.
+
+| 컴포넌트 | 용도 |
+| --- | --- |
+| `Button` | `variant` primary·secondary·outline·ghost·danger / `size` sm·md·lg·icon / `isLoading` |
+| `Input` | 라벨·에러·hint·접근성 속성 포함 (라벨은 필수 prop) |
+| `Card` | 목록에 반복되는 박스. `interactive` 로 호버 효과 |
+| `Badge` | 향 계열·상태 같은 짧은 라벨. `tone` brand·neutral·success·warning·danger |
+| `Modal` | 네이티브 `<dialog>` 기반. 포커스 가두기·Esc·배경 스크롤 잠금 자동 |
+| `Skeleton` | 로딩 중 자리 잡기. 목록에는 스피너보다 이걸 씁니다 |
+| `EmptyState` | 결과 0건 화면 |
+| `PageFallback` | 라우트 lazy 로딩용 전체 스피너 |
+
+```tsx
+import { Button } from '@/shared/ui/Button'
+
+<Button variant="primary" size="lg" isLoading={isSubmitting}>저장</Button>
+```
+
+스타일 차이는 새 컴포넌트를 만들지 않고 **variant 를 추가**합니다.
+`PrimaryButton`, `SmallButton` 같은 파생 컴포넌트는 만들지 않습니다.
+
+공용 컴포넌트에서 `className` 을 받을 때는 반드시 `cn()`(`shared/lib/cn.ts`)으로 합칩니다.
+문자열을 그냥 이어붙이면 호출하는 쪽이 기본 스타일을 덮어쓸 수 없습니다.
+
+### 공용으로 올리는 시점
+
+**예상해서 미리 `shared/` 에 올리지 않습니다.** 처음에는 `features/<도메인>/components/` 에 만들고,
+다른 도메인에서 같은 것이 실제로 필요해진 그 시점에 옮깁니다.
+옮길 때는 도메인 타입 의존을 끊어야 합니다 — `shared/` 가 `features/` 를 import 하면 ESLint 가 막습니다.
+
+애매하면 항상 도메인 안에 둡니다. 나중에 올리는 건 쉽지만, 잘못 올라간 것을 되돌릴 때는
+이미 다른 사람이 그걸 import 한 뒤입니다.
+
+## 테스트
+
+```bash
+npm run test:watch   # 개발 중
+npm run test         # 1회 실행 (verify 에 포함)
+```
+
+- 파일 위치는 **대상 파일 옆**입니다 (`Button.tsx` → `Button.test.tsx`).
+- `describe`/`it`/`expect`/`vi` 는 `vitest` 에서 명시적으로 import 합니다.
+- **클래스명이나 내부 상태를 검사하지 않습니다.** `getByRole('button', { name: '저장' })` 처럼
+  사용자가 보고 조작하는 기준으로 찾으세요. 마크업을 바꿔도 테스트가 안 깨지고 접근성 문제도 같이 잡힙니다.
+- 작성 예시: `src/shared/ui/Button.test.tsx`
+- 최소 기준: `shared/ui/` 공용 컴포넌트와 `shared/lib/` 순수 함수는 테스트를 함께 만듭니다.
+  화면 전체 테스트는 필수가 아닙니다.
 
 ## API 연동
 
@@ -140,7 +220,10 @@ features/<도메인>/
 
 ## 다음에 팀과 정할 것
 
+- [x] 테스트 도구 (Vitest + Testing Library) — S15P21E203-116 에서 도입 완료
+- [ ] **도메인 담당 분배** — FE 3명이 어느 도메인을 맡을지. 교차 import 금지 규칙이 담당 구분과 직결되므로 먼저 정해야 합니다
+- [ ] **Jenkinsfile 에 frontend verify 스테이지 추가** (현재는 backend 만). 브랜치 보호 조건이 "Pipeline 성공 후 병합 필수" 인데 프론트 코드는 파이프라인에서 검증을 전혀 받지 않는 상태입니다
+- [ ] 디자인 토큰(`styles/index.css` 의 `@theme`)을 피그마 시안 값으로 확정
+- [ ] `Pretendard` 폰트 실제 로드 — 현재 폰트 스택에 선언만 되어 있고 파일·CDN 이 없어 시스템 폰트로 떨어집니다
 - [ ] Git hook (husky + lint-staged) — 커밋 시 자동 검사. `frontend/` 가 모노레포 하위라 루트에서 설정해야 해서 팀 합의 후 진행
-- [ ] 테스트 도구 (Vitest + Testing Library) 도입 시점
-- [ ] Jenkinsfile 에 frontend 빌드 스테이지 추가 (현재는 backend 만 있음)
 - [ ] 디자인 시안 확정 후 `src/styles/index.css` 의 `@theme` 토큰 교체
