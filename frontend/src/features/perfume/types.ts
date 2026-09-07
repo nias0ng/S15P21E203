@@ -42,6 +42,12 @@ export interface PerfumeSearchParams {
   // 필터가 걸리지 않은 전체 결과가 내려옵니다. 향 계열 필터는 백엔드에 아직 없습니다.
   scentFamily?: ScentFamily
 
+  // ⚠️ A33 의 필터 두 줄입니다. 백엔드에 아직 없어서 보내도 무시됩니다.
+  // 진열대 기준 필터는 로그인 사용자의 진열대와 조회 이력을 봐야 하므로
+  // 백엔드 작업이 함께 필요합니다.
+  shelf?: ShelfFilter
+  gender?: GenderFilter
+
   /** 0부터 시작합니다 (Spring Pageable 기준). 첫 페이지는 0 입니다. */
   page?: number
   /** 백엔드 기본값 20 */
@@ -60,3 +66,21 @@ export interface Page<T> {
   totalElements: number
   totalPages: number
 }
+
+/** A33 위 줄 필터 — 내 진열대 기준. 로그인 상태에서만 의미가 있습니다. */
+export type ShelfFilter = 'OWNED' | 'WISH' | 'VIEWED'
+
+/** A33 아래 줄 필터 — 향의 성별 */
+export type GenderFilter = 'FEMALE' | 'MALE' | 'UNISEX'
+
+export const SHELF_FILTERS = [
+  { value: 'OWNED', label: '보유' },
+  { value: 'WISH', label: '희망' },
+  { value: 'VIEWED', label: '조회' },
+] as const satisfies readonly { value: ShelfFilter; label: string }[]
+
+export const GENDER_FILTERS = [
+  { value: 'FEMALE', label: '여성' },
+  { value: 'MALE', label: '남성' },
+  { value: 'UNISEX', label: '중성' },
+] as const satisfies readonly { value: GenderFilter; label: string }[]
