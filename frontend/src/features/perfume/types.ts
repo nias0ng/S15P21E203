@@ -104,14 +104,7 @@ export const SEASONS = [
   { value: 'WINTER', label: '겨울' },
 ] as const satisfies readonly { value: Season; label: string }[]
 
-/** 진열대 분류 (SHF-01 · SHF-03). 저장 시 필수입니다. */
-export type ShelfCategory = 'OWNED' | 'TRIED' | 'WISH'
-
-export const SHELF_CATEGORIES = [
-  { value: 'OWNED', label: '보유 중' },
-  { value: 'TRIED', label: '시향해 봄' },
-  { value: 'WISH', label: '보유 희망' },
-] as const satisfies readonly { value: ShelfCategory; label: string }[]
+// 진열대 분류(ShelfCategory)는 진열대 도메인의 어휘라 features/shelf 에 있습니다.
 
 /** DTL-14 계절별 평가 비율. 계절을 여러 개 고를 수 있어 합이 100이 아닐 수 있습니다. */
 export interface SeasonRating {

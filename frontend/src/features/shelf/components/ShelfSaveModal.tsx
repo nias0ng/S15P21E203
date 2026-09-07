@@ -15,8 +15,11 @@ type Props = {
 /**
  * 진열대에 저장 모달 (와이어프레임 A11 좌측 — SHF-01)
  *
- * 와이어프레임 주석: "분류는 필수. 선택하지 않으면 저장하지 않는다 —
- * 보유 중 · 시향해 봄 · 보유 희망 셋 중 하나". 그래서 고르기 전에는 [저장]이 꺼져 있습니다.
+ * 향수 상세(A10)에서 열지만 분류는 진열대 도메인의 어휘라 여기 둡니다.
+ * 화면은 pages 에서 두 도메인을 조합합니다.
+ *
+ * 와이어프레임 주석: "분류는 필수. 선택하지 않으면 저장하지 않는다".
+ * 그래서 고르기 전에는 [저장]이 꺼져 있습니다.
  */
 export function ShelfSaveModal({ open, onClose, onSave }: Props) {
   const [category, setCategory] = useState<ShelfCategory | null>(null)

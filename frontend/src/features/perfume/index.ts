@@ -13,12 +13,10 @@ export { PerfumeSearchResult } from './components/PerfumeSearchResult'
 export { ReviewDetail } from './components/ReviewDetail'
 export { SeasonPickModal } from './components/SeasonPickModal'
 export { SeasonRatingChart } from './components/SeasonRatingChart'
-export { ShelfSaveModal } from './components/ShelfSaveModal'
 export { perfumeDetailQuery, perfumeKeys, perfumeListQuery } from './queries'
 export {
   GENDER_FILTERS,
   SEASONS,
-  SHELF_CATEGORIES,
   SHELF_FILTERS,
   type GenderFilter,
   type Page,
@@ -30,6 +28,5 @@ export {
   type ScentFamily,
   type Season,
   type SeasonRating,
-  type ShelfCategory,
   type ShelfFilter,
 } from './types'
