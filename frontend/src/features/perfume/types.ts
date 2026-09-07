@@ -48,6 +48,13 @@ export interface PerfumeSearchParams {
   shelf?: ShelfFilter
   gender?: GenderFilter
 
+  /**
+   * 브랜드명. A34 브랜드 페이지에서 카드를 누르면 이 필터가 걸린 채로 옵니다
+   * ("브랜드를 누르면 그 브랜드의 향수 목록").
+   * ⚠️ 백엔드 검색 API 는 아직 keyword 만 받아 이 값도 무시됩니다.
+   */
+  brand?: string
+
   /** 0부터 시작합니다 (Spring Pageable 기준). 첫 페이지는 0 입니다. */
   page?: number
   /** 백엔드 기본값 20 */

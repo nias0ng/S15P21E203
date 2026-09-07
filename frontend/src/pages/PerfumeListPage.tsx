@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 
 import {
   perfumeListQuery,
@@ -24,13 +24,18 @@ import { SearchField } from '@/shared/ui/SearchField'
  */
 export default function PerfumeListPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [shelf, setShelf] = useState<ShelfFilter | null>(null)
   const [gender, setGender] = useState<GenderFilter | null>(null)
+
+  // A34 브랜드 페이지에서 카드를 누르면 ?brand= 를 달고 옵니다
+  const brand = searchParams.get('brand')
 
   const { data, isPending } = useQuery(
     perfumeListQuery({
       shelf: shelf ?? undefined,
       gender: gender ?? undefined,
+      brand: brand ?? undefined,
     }),
   )
 
@@ -51,6 +56,26 @@ export default function PerfumeListPage() {
           )
         }}
       />
+
+      {brand && (
+        <div className="flex items-center gap-2">
+          <span className="border-line text-ink flex items-center gap-2 border px-3 py-1.5 text-[11px]">
+            브랜드: {brand}
+            <button
+              type="button"
+              aria-label={`브랜드 필터 ${brand} 해제`}
+              onClick={() => {
+                const next = new URLSearchParams(searchParams)
+                next.delete('brand')
+                setSearchParams(next)
+              }}
+              className="text-ink-muted hover:text-ink"
+            >
+              <span aria-hidden>×</span>
+            </button>
+          </span>
+        </div>
+      )}
 
       <PerfumeFilters
         shelf={shelf}
