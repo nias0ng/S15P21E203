@@ -10,6 +10,7 @@
 export { PerfumeFilters } from './components/PerfumeFilters'
 export { PerfumeGrid } from './components/PerfumeGrid'
 export { PerfumeSearchResult } from './components/PerfumeSearchResult'
+export { ReviewDetail } from './components/ReviewDetail'
 export { SeasonPickModal } from './components/SeasonPickModal'
 export { SeasonRatingChart } from './components/SeasonRatingChart'
 export { ShelfSaveModal } from './components/ShelfSaveModal'

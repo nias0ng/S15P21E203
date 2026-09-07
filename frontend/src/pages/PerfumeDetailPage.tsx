@@ -7,6 +7,7 @@ import {
   SeasonPickModal,
   SeasonRatingChart,
   ShelfSaveModal,
+  type SeasonRating,
 } from '@/features/perfume'
 import { ROUTES } from '@/shared/config/routes'
 import { Badge } from '@/shared/ui/Badge'
@@ -26,6 +27,18 @@ import { Toast } from '@/shared/ui/Toast'
  * 만들어 둔 상태이고, 계절 평가 · AI 요약 · 후기 목록은 응답에 아직 없는 필드라
  * 백엔드가 붙으면 연결해야 합니다.
  */
+/**
+ * ⚠️ 계절별 평가(DTL-14)가 백엔드 응답에 아직 없습니다. 와이어프레임을 눈으로
+ * 확인할 수 있도록 그 화면의 수치를 그대로 넣어두었습니다.
+ * API 가 준비되면 이 상수를 지우고 응답 값을 넘겨주세요.
+ */
+const PLACEHOLDER_SEASON_RATINGS: SeasonRating[] = [
+  { season: 'SPRING', percentage: 40 },
+  { season: 'SUMMER', percentage: 12 },
+  { season: 'AUTUMN', percentage: 38 },
+  { season: 'WINTER', percentage: 10 },
+]
+
 export default function PerfumeDetailPage() {
   const { perfumeId } = useParams<{ perfumeId: string }>()
   const numericId = Number(perfumeId)
@@ -111,8 +124,8 @@ export default function PerfumeDetailPage() {
       {/* ③ 계절별 평가 — 계절마다 도넛 하나 */}
       <section className="space-y-4 p-6">
         <h2 className="text-ink text-sm font-bold">계절별 평가</h2>
-        {/* TODO: 백엔드 DTL-14 응답 연결. 지금은 빈 배열이라 0% 로 그려집니다. */}
-        <SeasonRatingChart ratings={[]} />
+        {/* TODO: 백엔드 DTL-14 응답 연결. 아래는 와이어프레임 수치 자리표시자입니다. */}
+        <SeasonRatingChart ratings={PLACEHOLDER_SEASON_RATINGS} />
         <Button variant="outline" size="sm" onClick={() => setSeasonOpen(true)}>
           계절 등록
         </Button>
