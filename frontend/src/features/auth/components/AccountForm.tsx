@@ -67,7 +67,7 @@ export function AccountForm() {
             <input
               id="account-nickname"
               defaultValue="유저닉네임"
-              className="border-line text-ink focus-visible:ring-brand-400 h-10 w-70 border px-3 text-xs outline-none focus-visible:ring-2"
+              className="border-line text-ink focus-visible:ring-accent h-10 w-70 border px-3 text-xs outline-none focus-visible:ring-2"
             />
             <Button variant="outline" size="sm">
               중복 확인

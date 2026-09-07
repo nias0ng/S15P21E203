@@ -22,7 +22,7 @@ export function Checkbox({
       className={cn(
         'border-line size-3.5 shrink-0 appearance-none border bg-white',
         'checked:bg-ink',
-        'focus-visible:ring-brand-400 outline-none focus-visible:ring-2',
+        'focus-visible:ring-accent outline-none focus-visible:ring-2',
         'disabled:opacity-50',
         className,
       )}

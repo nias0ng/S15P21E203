@@ -2,26 +2,35 @@ import { cva, type VariantProps } from 'class-variance-authority'
 
 import { cn } from '@/shared/lib/cn'
 
+/**
+ * 향 계열 · 노트 · 상태처럼 짧은 라벨.
+ *
+ * tone 은 시그니처 오팔 스펙트럼입니다. 팔레트 규칙이 "PEARL 5~10% MAX" 이므로
+ * 화면을 색으로 채우지 말고 강조가 필요한 지점에만 씁니다.
+ * 색으로 뜻을 구분할 때는 라벨 글자도 함께 달아야 합니다(색만으로 구분 금지).
+ */
 const badgeVariants = cva(
-  'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+  'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium text-ink',
   {
     variants: {
       tone: {
-        brand: 'bg-brand-100 text-brand-700',
-        neutral: 'bg-ink/5 text-ink-muted',
-        success: 'bg-emerald-100 text-emerald-700',
-        warning: 'bg-amber-100 text-amber-800',
-        danger: 'bg-red-100 text-red-700',
+        /** 기본 — 뉴트럴. 대부분은 이걸 씁니다 */
+        neutral: 'bg-line-soft text-ink-muted',
+        vapor: 'bg-vapor',
+        iris: 'bg-iris',
+        coral: 'bg-coral',
+        seaglass: 'bg-seaglass',
+        /** 테두리만 — 카드 위에 여러 개 나열할 때 */
+        outline: 'border-line border bg-transparent text-ink-muted',
       },
     },
-    defaultVariants: { tone: 'brand' },
+    defaultVariants: { tone: 'neutral' },
   },
 )
 
 type BadgeProps = React.ComponentPropsWithRef<'span'> &
   VariantProps<typeof badgeVariants>
 
-/** 향 계열, 노트, 보유 중 여부처럼 짧은 라벨을 표시합니다. */
 export function Badge({ className, tone, ...props }: BadgeProps) {
   return <span className={cn(badgeVariants({ tone }), className)} {...props} />
 }

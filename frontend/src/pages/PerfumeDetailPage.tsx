@@ -40,7 +40,7 @@ export default function PerfumeDetailPage() {
             ['베이스 노트', data.notes.base],
           ] as const
         ).map(([label, notes]) => (
-          <div key={label} className="bg-brand-50 rounded-card p-4">
+          <div key={label} className="bg-line-soft rounded-card p-4">
             <dt className="text-ink-muted text-xs">{label}</dt>
             <dd className="mt-1 text-sm">{notes.join(', ')}</dd>
           </div>
