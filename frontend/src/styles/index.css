@@ -1,0 +1,45 @@
+@import 'tailwindcss';
+
+/*
+ * 디자인 토큰
+ * Tailwind v4 는 CSS 에서 @theme 으로 토큰을 정의합니다.
+ * 여기에 정의한 값은 bg-brand-500, text-ink, rounded-card 처럼 바로 사용할 수 있습니다.
+ * 디자인 시안이 나오면 이 블록의 값만 교체하면 됩니다.
+ */
+@theme {
+  --color-brand-50: #f4f6f3;
+  --color-brand-100: #e4eade;
+  --color-brand-200: #c9d6bf;
+  --color-brand-300: #a7bd99;
+  --color-brand-400: #85a175;
+  --color-brand-500: #67855a;
+  --color-brand-600: #506a45;
+  --color-brand-700: #3f5337;
+  --color-brand-800: #33422d;
+  --color-brand-900: #2b3727;
+
+  --color-ink: #1c1b19;
+  --color-ink-muted: #6b6862;
+  --color-surface: #fbfaf7;
+
+  --font-sans:
+    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+    system-ui, 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+
+  --radius-card: 0.875rem;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-surface text-ink font-sans antialiased;
+    margin: 0;
+  }
+
+  #root {
+    min-height: 100dvh;
+  }
+}

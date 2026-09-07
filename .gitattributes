@@ -1,1 +1,13 @@
+# 줄바꿈 정규화
+#
+# 저장소에는 항상 LF 로 저장하고, 체크아웃할 때도 LF 를 유지합니다.
+# eol=lf 를 지정하지 않으면 Windows 의 core.autocrlf=true 설정이
+# 체크아웃 시 CRLF 로 바꿔버려서, Prettier(endOfLine: "lf")와
+# EditorConfig(end_of_line = lf) 검사가 전부 실패합니다.
+* text=auto eol=lf
+
+# Windows 배치 파일은 CRLF 여야 정상 동작합니다.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
 backend/gradlew text eol=lf
