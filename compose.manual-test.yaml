@@ -1,0 +1,45 @@
+name: hyanghae-manual-test
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${MANUAL_TEST_POSTGRES_DB:-hyanghae_test}
+      POSTGRES_USER: ${MANUAL_TEST_POSTGRES_USER:-hyanghae}
+      POSTGRES_PASSWORD: ${MANUAL_TEST_POSTGRES_PASSWORD:-hyanghae_test}
+    ports:
+      - "${MANUAL_TEST_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - manual-test-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7.4
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+    ports:
+      - "${MANUAL_TEST_REDIS_PORT:-6379}:6379"
+    volumes:
+      - manual-test-redis-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  manual-test-postgres-data:
+  manual-test-redis-data:
