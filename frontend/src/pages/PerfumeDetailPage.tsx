@@ -6,9 +6,10 @@ import {
   perfumeDetailQuery,
   SeasonPickModal,
   SeasonRatingChart,
-  ShelfSaveModal,
   type SeasonRating,
 } from '@/features/perfume'
+// 진열대 저장은 진열대 도메인의 어휘입니다. 화면에서 두 도메인을 조합합니다.
+import { ShelfSaveModal } from '@/features/shelf'
 import { ROUTES } from '@/shared/config/routes'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
