@@ -2,6 +2,7 @@ package com.hyanghae.backend.perfume.controller;
 
 import com.hyanghae.backend.perfume.dto.request.PerfumeSearchCondition;
 import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumeNotesResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSearchResponse;
 import com.hyanghae.backend.perfume.service.PerfumeService;
 import org.springframework.data.domain.Pageable;
@@ -51,5 +52,13 @@ public class PerfumeController {
     @GetMapping("/{perfumeId}")
     public PerfumeDetailResponse getDetail(@PathVariable Long perfumeId) {
         return perfumeService.getDetail(perfumeId);
+    }
+
+    /**
+     * 향수 향조 조회입니다. 노트와 어코드를 함께 내려줍니다.
+     */
+    @GetMapping("/{perfumeId}/notes")
+    public PerfumeNotesResponse getNotes(@PathVariable Long perfumeId) {
+        return perfumeService.getNotes(perfumeId);
     }
 }

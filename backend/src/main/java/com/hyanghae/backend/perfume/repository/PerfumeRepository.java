@@ -123,4 +123,10 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
               AND p.active = true
             """)
     Optional<PerfumeDetailResponse> findDetailById(@Param("perfumeId") Long perfumeId);
+
+    /**
+     * 조회 가능한 향수인지 확인합니다. 향조·통계처럼 향수 자체는 반환하지 않는 하위 리소스가
+     * 없는 향수에 대해 404 를 내려면 존재 여부만 알면 됩니다.
+     */
+    boolean existsByIdAndActiveTrue(Long perfumeId);
 }

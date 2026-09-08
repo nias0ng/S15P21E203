@@ -5,6 +5,7 @@ import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.perfume.dto.request.PerfumeSearchCondition;
 import com.hyanghae.backend.perfume.dto.request.ShelfFilter;
 import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumeNotesResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSearchResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse;
 import com.hyanghae.backend.perfume.exception.PerfumeErrorCode;
@@ -13,7 +14,9 @@ import com.hyanghae.backend.perfume.repository.PerfumeRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeScentFamilyRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeShelfRepository;
 import com.hyanghae.backend.perfume.dto.response.PerfumePriceResponse;
+import com.hyanghae.backend.perfume.repository.PerfumeAccordRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
+import com.hyanghae.backend.perfume.repository.PerfumeNoteRepository;
 import com.hyanghae.backend.perfume.repository.PerfumePriceRepository;
 import java.util.HashMap;
 import java.util.List;
@@ -32,6 +35,8 @@ public class PerfumeService {
     private final PerfumeScentFamilyRepository perfumeScentFamilyRepository;
     private final PerfumeShelfRepository perfumeShelfRepository;
     private final CurrentUser currentUser;
+    private final PerfumeNoteRepository perfumeNoteRepository;
+    private final PerfumeAccordRepository perfumeAccordRepository;
 
     public PerfumeService(
             PerfumeRepository perfumeRepository,
@@ -39,7 +44,9 @@ public class PerfumeService {
             PerfumePriceRepository perfumePriceRepository,
             PerfumeScentFamilyRepository perfumeScentFamilyRepository,
             PerfumeShelfRepository perfumeShelfRepository,
-            CurrentUser currentUser
+            CurrentUser currentUser,
+            PerfumeNoteRepository perfumeNoteRepository,
+            PerfumeAccordRepository perfumeAccordRepository
     ) {
         this.perfumeRepository = perfumeRepository;
         this.perfumeImageRepository = perfumeImageRepository;
@@ -47,6 +54,8 @@ public class PerfumeService {
         this.perfumeScentFamilyRepository = perfumeScentFamilyRepository;
         this.perfumeShelfRepository = perfumeShelfRepository;
         this.currentUser = currentUser;
+        this.perfumeNoteRepository = perfumeNoteRepository;
+        this.perfumeAccordRepository = perfumeAccordRepository;
     }
 
     /**
@@ -108,6 +117,24 @@ public class PerfumeService {
      * 향수 한 건의 이미지를 대표 이미지가 먼저 오도록 전부 가져옵니다. 검색이 쓰는 조회와 같은
      * 정렬 규칙을 쓰므로, 두 API 가 이미지 순서를 다르게 보는 일이 없습니다.
      */
+    /**
+     * 향수의 노트와 어코드를 조회합니다.
+     *
+     * <p>향조 정보가 없는 향수는 두 목록이 빈 배열입니다. 없는 향수와 구분해야 하므로 존재하지
+     * 않는 향수에만 404 를 반환합니다.
+     */
+    @Transactional(readOnly = true)
+    public PerfumeNotesResponse getNotes(Long perfumeId) {
+        if (!perfumeRepository.existsByIdAndActiveTrue(perfumeId)) {
+            throw new BusinessException(PerfumeErrorCode.PERFUME_NOT_FOUND);
+        }
+
+        return new PerfumeNotesResponse(
+                perfumeNoteRepository.findByPerfumeId(perfumeId),
+                perfumeAccordRepository.findByPerfumeId(perfumeId)
+        );
+    }
+
     private List<String> loadImages(Long perfumeId) {
         return perfumeImageRepository.findOrderedByPerfumeIds(List.of(perfumeId)).stream()
                 .map(PerfumeImageUrl::imageUrl)
