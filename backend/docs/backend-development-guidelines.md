@@ -58,7 +58,7 @@ docker compose -f compose.manual-test.yaml down
 ## 3. 코드 구조와 계층별 책임
 
 - 기능 코드는 `com.hyanghae.backend.<domain>`처럼 도메인 단위로 배치합니다.
-- 여러 도메인이 공유하는 응답과 예외 계약만 `common`에 둡니다.
+- 여러 도메인이 공유하는 응답과 예외 계약만 `global`에 둡니다.
 - 의존성은 생성자 주입을 사용합니다. 필드 주입은 사용하지 않습니다.
 - Controller는 HTTP 입력 검증, 요청 변환, 응답 반환과 Service 호출만 담당합니다.
 - Service는 비즈니스 규칙과 트랜잭션 경계를 담당합니다.
@@ -73,17 +73,25 @@ docker compose -f compose.manual-test.yaml down
 백엔드는 계층을 최상위에 모으지 않고 도메인을 먼저 나눈 뒤, 각 도메인 안에서 계층별 하위 패키지를 사용합니다.
 
 ```text
-perfume
-├─ controller
-├─ service
-├─ repository
-├─ entity
-└─ dto
+com.hyanghae.backend
+├─ global
+│  ├─ exception   ErrorCode(인터페이스), BusinessException, GlobalExceptionHandler
+│  ├─ response    ApiErrorResponse, PageResponse
+│  └─ logging     RequestIdFilter
+└─ perfume
+   ├─ controller
+   ├─ service
+   ├─ repository
+   ├─ entity
+   ├─ dto/response
+   └─ exception    PerfumeErrorCode
 ```
 
 - Java 패키지는 `com.hyanghae.backend.<domain>.<layer>` 형식을 사용합니다.
-- 각 도메인에는 실제로 필요한 하위 패키지만 만듭니다.
-- 여러 도메인이 함께 사용하는 코드만 `com.hyanghae.backend.common`에 둡니다.
+- 각 도메인에는 실제로 필요한 하위 패키지만 만듭니다. 코드가 없는 `global/config`, `perfume/dto/request` 같은 패키지는 미리 만들지 않습니다.
+- 여러 도메인이 함께 사용하는 코드만 `com.hyanghae.backend.global`에 둡니다. 인프라·설정·공통 응답 계약만 두고, 비즈니스 의미가 있는 코드는 도메인 안에 둡니다.
+- 도메인별 에러 코드는 해당 도메인의 `exception` 패키지에 둡니다. `global/exception`에는 규격인 `ErrorCode` 인터페이스만 둡니다. 모든 도메인이 하나의 enum을 공유하면 팀원들이 같은 파일을 동시에 고쳐 머지 충돌이 반복됩니다.
+- JPQL 생성자 표현식(`SELECT new com.hyanghae...`)은 문자열이라 클래스를 옮길 때 컴파일러가 잡아주지 않습니다. 패키지를 이동하면 통합 테스트로 확인합니다.
 - 기존 평면 패키지는 관련 리팩터링 범위에서 목표 구조로 이동하며, 다른 작업에서 일부 클래스만 임의로 옮기지 않습니다.
 
 ## 4. API와 Swagger
@@ -204,7 +212,7 @@ Swagger는 문서일 뿐이며 실제 검증과 오류 처리를 대신하지 �
 필요한 범위부터 빠르게 확인한 뒤 전체 테스트를 실행합니다.
 
 ```bash
-./gradlew test --tests "com.hyanghae.backend.logging.RequestIdFilterTest"
+./gradlew test --tests "com.hyanghae.backend.global.logging.RequestIdFilterTest"
 ./gradlew test
 ```
 
