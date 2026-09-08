@@ -48,6 +48,8 @@ class PerfumeSearchIntegrationTest {
         insertPerfume(3, 2, "Do Son", "두 손", true);
         insertPerfume(4, 2, "Retired Scent", null, false);
         insertPerfume(5, null, "Orphan Scent", null, true);
+        // LIKE 와일드카드가 리터럴로 검색되는지 확인하기 위한 데이터입니다
+        insertPerfume(6, null, "100% Pure_Musk", null, true);
 
         // 1번은 display_order 가 작은 쪽이 대표, 2번은 display_order 가 NULL 인 한 장뿐, 3번은 이미지 없음
         insertImage(10, 1, BLEU_SECONDARY_IMAGE, 2);
@@ -179,6 +181,43 @@ class PerfumeSearchIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(1))
                 .andExpect(jsonPath("$.content[0].perfumeId").value(2));
+    }
+
+    /** 검색어의 % 를 이스케이프하지 않으면 모든 이름과 일치해 활성 향수 전체가 조회됩니다. */
+    @Test
+    void treatsPercentInKeywordAsLiteral() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "%"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].perfumeId").value(6));
+    }
+
+    /** 밑줄은 LIKE 에서 임의의 한 글자를 뜻하므로 이스케이프하지 않으면 거의 모든 이름과 일치합니다. */
+    @Test
+    void treatsUnderscoreInKeywordAsLiteral() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "_"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].perfumeId").value(6));
+    }
+
+    /** 이스케이프 문자 자신도 이스케이프되어야 합니다. */
+    @Test
+    void treatsEscapeCharacterInKeywordAsLiteral() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "!"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    /** 범위를 벗어난 페이지는 빈 목록을 반환하고 전체 건수는 유지되어야 합니다. */
+    @Test
+    void returnsEmptyContentForPageBeyondLastPage() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "chanel").param("size", "1").param("page", "9999"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.page").value(9999));
     }
 
     private void insertBrand(long id, String name) {

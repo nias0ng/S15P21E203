@@ -69,12 +69,32 @@ public class PerfumeService {
     }
 
     /**
-     * 빈 문자열과 공백만 있는 검색어를 {@code null} 로 만들어 "검색어 없음"과 같게 다룹니다.
+     * 검색어를 쿼리에 넣을 수 있는 형태로 다듬습니다.
+     *
+     * <p>빈 문자열과 공백만 있는 검색어는 {@code null} 로 만들어 "검색어 없음"과 같게 다룹니다.
+     * 정규화하지 않으면 {@code ?keyword=} 같은 요청이 공백을 포함한 이름만 찾게 됩니다.
      */
     private String normalize(String keyword) {
         if (keyword == null || keyword.isBlank()) {
             return null;
         }
-        return keyword.trim();
+        return escapeLikeWildcards(keyword.trim());
+    }
+
+    /**
+     * 사용자가 입력한 LIKE 와일드카드를 일반 문자로 만듭니다.
+     *
+     * <p>이스케이프하지 않으면 {@code %} 한 글자만 입력해도 모든 이름과 일치해 활성 향수 전체가
+     * 조회됩니다. 검색어 없는 요청을 막아둔 의미가 사라지고, 데이터가 쌓이면 인덱스를 타지 못하는
+     * 전체 조회가 됩니다.
+     *
+     * <p>이스케이프 문자 자신을 먼저 치환해야 합니다. 순서를 바꾸면 뒤 단계가 앞 단계에서 붙인
+     * 이스케이프 문자를 다시 이스케이프합니다.
+     */
+    private String escapeLikeWildcards(String keyword) {
+        return keyword
+                .replace(PerfumeRepository.LIKE_ESCAPE, PerfumeRepository.LIKE_ESCAPE + PerfumeRepository.LIKE_ESCAPE)
+                .replace("%", PerfumeRepository.LIKE_ESCAPE + "%")
+                .replace("_", PerfumeRepository.LIKE_ESCAPE + "_");
     }
 }
