@@ -27,6 +27,10 @@ class PerfumeDetailIntegrationTest {
 
     private static final String PRIMARY_IMAGE = "https://img.example.com/bleu-1.jpg";
     private static final String SECONDARY_IMAGE = "https://img.example.com/bleu-2.jpg";
+    private static final String TIE_LOWER_ID_IMAGE = "https://img.example.com/tie-lower.jpg";
+    private static final String TIE_HIGHER_ID_IMAGE = "https://img.example.com/tie-higher.jpg";
+    private static final String ORDERED_IMAGE = "https://img.example.com/ordered.jpg";
+    private static final String UNORDERED_IMAGE = "https://img.example.com/unordered.jpg";
     private static final String DESCRIPTION = "시트러스와 우디가 교차하는 브랜드 공식 설명입니다.";
 
     @Autowired
@@ -45,10 +49,20 @@ class PerfumeDetailIntegrationTest {
         insertPerfume(2, 1, "No Image Scent", null, true);
         insertPerfume(3, null, "Orphan Scent", null, true);
         insertPerfume(4, 1, "Retired Scent", null, false);
+        insertPerfume(5, 1, "Tie Order Scent", null, true);
+        insertPerfume(6, 1, "Mixed Order Scent", null, true);
 
         // display_order 가 작은 쪽이 대표입니다. 삽입 순서가 아닙니다.
         insertImage(10, 1, SECONDARY_IMAGE, 2);
         insertImage(11, 1, PRIMARY_IMAGE, 1);
+
+        // display_order 가 같으면 image_id 가 작은 쪽이 대표입니다. 삽입 순서와 다르게 넣습니다.
+        insertImage(21, 5, TIE_HIGHER_ID_IMAGE, 3);
+        insertImage(20, 5, TIE_LOWER_ID_IMAGE, 3);
+
+        // display_order 가 NULL 인 이미지는 뒤로 밀립니다. NULL 인 것을 먼저 넣습니다.
+        insertImage(30, 6, UNORDERED_IMAGE, null);
+        insertImage(31, 6, ORDERED_IMAGE, 9);
     }
 
     @AfterEach
@@ -93,6 +107,22 @@ class PerfumeDetailIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfumeId").value(3))
                 .andExpect(jsonPath("$.brand").doesNotExist());
+    }
+
+    /** display_order 가 같을 때 대표 이미지가 매번 같아야 합니다. 정렬에 image_id 가 없으면 순서가 보장되지 않습니다. */
+    @Test
+    void breaksDisplayOrderTieByImageId() throws Exception {
+        mockMvc.perform(get(DETAIL_URL, 5))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.thumbnailUrl").value(TIE_LOWER_ID_IMAGE));
+    }
+
+    /** 이미지가 여러 장이고 일부에 display_order 가 없으면, 값이 있는 쪽이 대표입니다. */
+    @Test
+    void prefersImageWithDisplayOrderOverNull() throws Exception {
+        mockMvc.perform(get(DETAIL_URL, 6))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.thumbnailUrl").value(ORDERED_IMAGE));
     }
 
     /** 명세: 향수 정보가 존재하지 않는 경우 조회 실패 사실을 안내한다. */
