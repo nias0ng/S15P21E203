@@ -1,8 +1,8 @@
 package com.hyanghae.backend.perfume.service;
 
 import com.hyanghae.backend.global.exception.BusinessException;
-import com.hyanghae.backend.global.response.PageResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumeSearchResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse;
 import com.hyanghae.backend.perfume.exception.PerfumeErrorCode;
 import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
@@ -38,19 +38,19 @@ public class PerfumeService {
      * 카탈로그 전체를 긁는 요청이 됩니다.
      */
     @Transactional(readOnly = true)
-    public PageResponse<PerfumeSummaryResponse> search(String keyword, Pageable pageable) {
+    public PerfumeSearchResponse search(String keyword, Pageable pageable) {
         String normalized = normalize(keyword);
         if (normalized == null) {
-            return PageResponse.from(Page.empty(pageable));
+            return PerfumeSearchResponse.from(Page.empty(pageable));
         }
 
         Page<PerfumeSummaryResponse> found = perfumeRepository.searchByKeyword(normalized, pageable);
-        Map<Long, String> thumbnails = loadThumbnails(
+        Map<Long, String> images = loadThumbnails(
                 found.getContent().stream().map(PerfumeSummaryResponse::perfumeId).toList()
         );
 
-        return PageResponse.from(
-                found.map(perfume -> perfume.withThumbnailUrl(thumbnails.get(perfume.perfumeId())))
+        return PerfumeSearchResponse.from(
+                found.map(perfume -> perfume.withImageUrl(images.get(perfume.perfumeId())))
         );
     }
 

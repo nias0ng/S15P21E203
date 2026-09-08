@@ -1,8 +1,7 @@
 package com.hyanghae.backend.perfume.controller;
 
-import com.hyanghae.backend.global.response.PageResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
-import com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumeSearchResponse;
 import com.hyanghae.backend.perfume.service.PerfumeService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -32,7 +31,7 @@ public class PerfumeController {
      * 않을 수 있습니다.
      */
     @GetMapping
-    public PageResponse<PerfumeSummaryResponse> search(
+    public PerfumeSearchResponse search(
             @RequestParam(required = false) String keyword,
             @PageableDefault(size = DEFAULT_PAGE_SIZE, sort = "id") Pageable pageable
     ) {

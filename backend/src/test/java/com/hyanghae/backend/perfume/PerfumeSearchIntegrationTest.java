@@ -67,9 +67,10 @@ class PerfumeSearchIntegrationTest {
         mockMvc.perform(get(SEARCH_URL).param("keyword", "chance"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.content[0].perfumeId").value(2))
-                .andExpect(jsonPath("$.content[0].name").value("Chance"))
-                .andExpect(jsonPath("$.content[0].brand").value("Chanel"));
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(2))
+                .andExpect(jsonPath("$.perfumes[0].name").value("Chance"))
+                .andExpect(jsonPath("$.perfumes[0].brandName").value("Chanel"))
+                .andExpect(jsonPath("$.perfumes[0].nameKo").doesNotExist());
     }
 
     @Test
@@ -77,7 +78,7 @@ class PerfumeSearchIntegrationTest {
         mockMvc.perform(get(SEARCH_URL).param("keyword", "diptyque"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.content[0].name").value("Do Son"));
+                .andExpect(jsonPath("$.perfumes[0].name").value("Do Son"));
     }
 
     @Test
@@ -85,7 +86,8 @@ class PerfumeSearchIntegrationTest {
         mockMvc.perform(get(SEARCH_URL).param("keyword", "블루"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.content[0].perfumeId").value(1));
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
+                .andExpect(jsonPath("$.perfumes[0].nameKo").value("블루 드 샤넬"));
     }
 
     @Test
@@ -93,7 +95,7 @@ class PerfumeSearchIntegrationTest {
         mockMvc.perform(get(SEARCH_URL).param("keyword", "ptyq"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.content[0].perfumeId").value(3));
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(3));
     }
 
     @Test
@@ -101,8 +103,8 @@ class PerfumeSearchIntegrationTest {
         mockMvc.perform(get(SEARCH_URL).param("keyword", "CHANEL"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(2))
-                .andExpect(jsonPath("$.content[0].perfumeId").value(1))
-                .andExpect(jsonPath("$.content[1].perfumeId").value(2));
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
+                .andExpect(jsonPath("$.perfumes[1].perfumeId").value(2));
     }
 
     /** 기능 명세: 검색어가 입력되지 않은 경우 검색을 수행하지 않는다. */
@@ -110,9 +112,8 @@ class PerfumeSearchIntegrationTest {
     void returnsEmptyResultWhenKeywordIsMissing() throws Exception {
         mockMvc.perform(get(SEARCH_URL))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.perfumes").isEmpty())
                 .andExpect(jsonPath("$.totalElements").value(0))
-                .andExpect(jsonPath("$.totalPages").value(0))
                 .andExpect(jsonPath("$.page").value(0))
                 .andExpect(jsonPath("$.size").value(20));
     }
@@ -121,7 +122,7 @@ class PerfumeSearchIntegrationTest {
     void returnsEmptyResultWhenKeywordIsBlank() throws Exception {
         mockMvc.perform(get(SEARCH_URL).param("keyword", "   "))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.perfumes").isEmpty())
                 .andExpect(jsonPath("$.totalElements").value(0));
     }
 
@@ -130,7 +131,7 @@ class PerfumeSearchIntegrationTest {
         mockMvc.perform(get(SEARCH_URL).param("keyword", "retired"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(0))
-                .andExpect(jsonPath("$.content").isEmpty());
+                .andExpect(jsonPath("$.perfumes").isEmpty());
     }
 
     /** brand_id 가 nullable 이므로 LEFT JOIN 이어야 합니다. INNER JOIN 이면 이 향수가 사라집니다. */
@@ -139,8 +140,8 @@ class PerfumeSearchIntegrationTest {
         mockMvc.perform(get(SEARCH_URL).param("keyword", "orphan"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.content[0].name").value("Orphan Scent"))
-                .andExpect(jsonPath("$.content[0].brand").doesNotExist());
+                .andExpect(jsonPath("$.perfumes[0].name").value("Orphan Scent"))
+                .andExpect(jsonPath("$.perfumes[0].brandName").doesNotExist());
     }
 
     /** 대표 이미지는 display_order 가 가장 작은 것입니다. 삽입 순서가 아닙니다. */
@@ -148,7 +149,7 @@ class PerfumeSearchIntegrationTest {
     void usesLowestDisplayOrderImageAsThumbnail() throws Exception {
         mockMvc.perform(get(SEARCH_URL).param("keyword", "bleu"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].thumbnailUrl").value(BLEU_PRIMARY_IMAGE));
+                .andExpect(jsonPath("$.perfumes[0].imageUrl").value(BLEU_PRIMARY_IMAGE));
     }
 
     /** display_order 가 NULL 이어도 이미지가 한 장뿐이면 그것이 대표입니다. */
@@ -156,7 +157,7 @@ class PerfumeSearchIntegrationTest {
     void usesOnlyImageAsThumbnailEvenWhenDisplayOrderIsNull() throws Exception {
         mockMvc.perform(get(SEARCH_URL).param("keyword", "chance"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].thumbnailUrl").value(CHANCE_IMAGE));
+                .andExpect(jsonPath("$.perfumes[0].imageUrl").value(CHANCE_IMAGE));
     }
 
     @Test
@@ -164,7 +165,7 @@ class PerfumeSearchIntegrationTest {
         mockMvc.perform(get(SEARCH_URL).param("keyword", "do son"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.content[0].thumbnailUrl").doesNotExist());
+                .andExpect(jsonPath("$.perfumes[0].imageUrl").doesNotExist());
     }
 
     /** ORDER BY 가 없으면 페이지 간에 항목이 중복되거나 누락될 수 있습니다. */
@@ -173,14 +174,13 @@ class PerfumeSearchIntegrationTest {
         mockMvc.perform(get(SEARCH_URL).param("keyword", "chanel").param("size", "1").param("page", "0"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(2))
-                .andExpect(jsonPath("$.totalPages").value(2))
-                .andExpect(jsonPath("$.content.length()").value(1))
-                .andExpect(jsonPath("$.content[0].perfumeId").value(1));
+                .andExpect(jsonPath("$.perfumes.length()").value(1))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1));
 
         mockMvc.perform(get(SEARCH_URL).param("keyword", "chanel").param("size", "1").param("page", "1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content.length()").value(1))
-                .andExpect(jsonPath("$.content[0].perfumeId").value(2));
+                .andExpect(jsonPath("$.perfumes.length()").value(1))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(2));
     }
 
     /** 검색어의 % 를 이스케이프하지 않으면 모든 이름과 일치해 활성 향수 전체가 조회됩니다. */
@@ -189,7 +189,7 @@ class PerfumeSearchIntegrationTest {
         mockMvc.perform(get(SEARCH_URL).param("keyword", "%"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.content[0].perfumeId").value(6));
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(6));
     }
 
     /** 밑줄은 LIKE 에서 임의의 한 글자를 뜻하므로 이스케이프하지 않으면 거의 모든 이름과 일치합니다. */
@@ -198,7 +198,7 @@ class PerfumeSearchIntegrationTest {
         mockMvc.perform(get(SEARCH_URL).param("keyword", "_"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.content[0].perfumeId").value(6));
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(6));
     }
 
     /** 이스케이프 문자 자신도 이스케이프되어야 합니다. */
@@ -214,9 +214,8 @@ class PerfumeSearchIntegrationTest {
     void returnsEmptyContentForPageBeyondLastPage() throws Exception {
         mockMvc.perform(get(SEARCH_URL).param("keyword", "chanel").param("size", "1").param("page", "9999"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.perfumes").isEmpty())
                 .andExpect(jsonPath("$.totalElements").value(2))
-                .andExpect(jsonPath("$.totalPages").value(2))
                 .andExpect(jsonPath("$.page").value(9999));
     }
 

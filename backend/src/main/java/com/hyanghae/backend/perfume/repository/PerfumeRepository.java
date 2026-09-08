@@ -39,7 +39,7 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
      * {@code ESCAPE ''} 가 되어 이스케이프가 조용히 사라집니다.
      */
     @Query(value = """
-            SELECT new com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse(p.id, p.name, b.name)
+            SELECT new com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse(p.id, p.name, p.nameKo, b.name)
             FROM Perfume p
             LEFT JOIN p.brand b
             WHERE p.active = true
