@@ -9,6 +9,7 @@ import {
 } from '@/features/collection'
 import { shelfItemsQuery } from '@/features/shelf'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
+import { useToast } from '@/shared/hooks/useToast'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { EmptyState } from '@/shared/ui/EmptyState'
@@ -42,7 +43,7 @@ export default function CollectionDetailPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [removeTarget, setRemoveTarget] = useState<number | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
+  const { showToast, toastProps } = useToast()
 
   if (collection.isPending) return <PageFallback />
   if (collection.isError || !collection.data) {
@@ -129,7 +130,7 @@ export default function CollectionDetailPage() {
         onSubmit={() => {
           // TODO: COL-05 컬렉션 수정 API 연결
           setEditOpen(false)
-          setToast('컬렉션을 수정했습니다')
+          showToast('컬렉션을 수정했습니다')
         }}
       />
 
@@ -151,7 +152,7 @@ export default function CollectionDetailPage() {
         onSubmit={() => {
           // TODO: COL-03 향수 추가 API 연결
           setAddOpen(false)
-          setToast('향수를 추가했습니다')
+          showToast('향수를 추가했습니다')
         }}
       />
 
@@ -164,7 +165,7 @@ export default function CollectionDetailPage() {
         onConfirm={() => {
           // TODO: COL-04 향수 제거 API 연결
           setRemoveTarget(null)
-          setToast('컬렉션에서 제거했습니다')
+          showToast('컬렉션에서 제거했습니다')
         }}
       />
 
@@ -179,11 +180,7 @@ export default function CollectionDetailPage() {
         }}
       />
 
-      <Toast
-        open={toast !== null}
-        onClose={() => setToast(null)}
-        message={toast ?? ''}
-      />
+      <Toast {...toastProps} />
     </div>
   )
 }

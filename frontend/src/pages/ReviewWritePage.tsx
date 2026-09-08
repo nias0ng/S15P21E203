@@ -9,6 +9,7 @@ import { ROUTES } from '@/shared/config/routes'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
 import { LinkButton } from '@/shared/ui/LinkButton'
+import { Textarea } from '@/shared/ui/Textarea'
 
 /**
  * 후기 게시글 작성 · 수정 (와이어프레임 A24a — CMT-03 · CMT-06)
@@ -80,17 +81,16 @@ export default function ReviewWritePage() {
           onChange={(event) => setTitle(event.target.value)}
         />
 
-        <label className="block">
-          <span className="sr-only">본문</span>
-          <textarea
-            value={content}
-            onChange={(event) => setContent(event.target.value)}
-            placeholder="이 향을 어떻게 맡았는지 적어주세요"
-            rows={12}
-            required
-            className="border-line text-ink placeholder:text-ink-muted focus-visible:ring-accent w-full border p-3 text-xs outline-none focus-visible:ring-2"
-          />
-        </label>
+        <Textarea
+          label="본문"
+          hideLabel
+          placeholder="이 향을 어떻게 맡았는지 적어주세요"
+          rows={12}
+          required
+          className="p-3"
+          value={content}
+          onChange={(event) => setContent(event.target.value)}
+        />
 
         <div className="space-y-1.5">
           <p className="text-ink-muted text-[10.5px]">이미지 첨부</p>

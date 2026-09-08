@@ -4,6 +4,7 @@ import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { LinkButton } from '@/shared/ui/LinkButton'
+import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import type { Review } from '../types'
 
@@ -34,10 +35,7 @@ export function ReviewDetail({ review, backTo, editTo }: Props) {
 
         <div className="flex items-center gap-3">
           {/* TODO: 프로필 이미지 연동 */}
-          <span
-            aria-hidden
-            className="border-line bg-surface-sunken size-8 shrink-0 rounded-full border"
-          />
+          <Thumbnail className="size-8 shrink-0 rounded-full" />
           <span className="text-ink text-xs">{review.nickname}</span>
           <span className="text-ink-muted text-[10.5px]">
             · {formatRelativeTime(review.createdAt)}

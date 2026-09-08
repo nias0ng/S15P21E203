@@ -9,7 +9,12 @@
  */
 export { PerfumeFilters } from './components/PerfumeFilters'
 export { PerfumeGrid } from './components/PerfumeGrid'
+export { PerfumeNotes } from './components/PerfumeNotes'
+export { PerfumeOverview } from './components/PerfumeOverview'
+export { PerfumeReviewList } from './components/PerfumeReviewList'
+export { PerfumeReviewSummary } from './components/PerfumeReviewSummary'
 export { PerfumeSearchResult } from './components/PerfumeSearchResult'
+export { PerfumeSeasonRatings } from './components/PerfumeSeasonRatings'
 export { ReviewDetail } from './components/ReviewDetail'
 export { SeasonPickModal } from './components/SeasonPickModal'
 export { SeasonRatingChart } from './components/SeasonRatingChart'

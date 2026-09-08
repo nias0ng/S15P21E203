@@ -135,6 +135,8 @@ import { perfumeDetailQuery } from '@/features/perfume/queries'   // X
 | --- | --- |
 | `shared/ui/Button` | `variant` primary·secondary·outline·ghost·danger / `size` sm·md·lg·icon / `isLoading` |
 | `shared/ui/Input` | 라벨·에러·hint·접근성 속성 포함. 라벨은 필수 prop |
+| `shared/ui/Textarea` | 여러 줄 입력. `Input` 과 같은 API(라벨 필수 · 에러 · hint · 접근성 속성) |
+| `shared/ui/Thumbnail` | 이미지 슬롯. 이미지가 없으면 자리표시자 상자. 크기는 `className` 으로. 아바타(`rounded-full`)도 이걸 씁니다 |
 | `shared/ui/Card` | 목록에 반복되는 박스. `interactive` 로 호버 효과 |
 | `shared/ui/Badge` | 향 계열·상태 같은 짧은 라벨. `tone` brand·neutral·success·warning·danger |
 | `shared/ui/Modal` | 네이티브 `<dialog>` 기반. 포커스 가두기·Esc·배경 스크롤 잠금 자동 |

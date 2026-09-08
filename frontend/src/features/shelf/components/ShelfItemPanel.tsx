@@ -1,6 +1,7 @@
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { StarRating } from '@/shared/ui/StarRating'
+import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import { SHELF_CATEGORIES, type ShelfItem } from '../types'
 
@@ -44,15 +45,7 @@ export function ShelfItemPanel({
       <p className="text-ink-muted text-[10.5px]">향수 카드</p>
 
       <div className="flex gap-3">
-        {item.thumbnailUrl ? (
-          <img
-            src={item.thumbnailUrl}
-            alt=""
-            className="border-line bg-surface-sunken size-20 shrink-0 border object-cover"
-          />
-        ) : (
-          <span className="border-line bg-surface-sunken size-20 shrink-0 border" />
-        )}
+        <Thumbnail src={item.thumbnailUrl} className="size-20 shrink-0" />
         <div className="min-w-0 space-y-1">
           <p className="text-ink truncate text-xs font-bold">{item.name}</p>
           <p className="text-ink-muted truncate text-[10.5px]">{item.brand}</p>

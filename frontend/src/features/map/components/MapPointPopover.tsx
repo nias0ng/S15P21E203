@@ -2,6 +2,7 @@ import { toPerfumeDetail } from '@/shared/config/routes'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { LinkButton } from '@/shared/ui/LinkButton'
+import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import type { MapPoint } from '../types'
 
@@ -41,7 +42,7 @@ export function MapPointPopover({
       }}
     >
       <div className="flex items-start gap-2">
-        <span className="border-line bg-surface-sunken size-12 shrink-0 border" />
+        <Thumbnail className="size-12 shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="text-ink truncate text-xs font-bold">{point.name}</p>
           <p className="text-ink-muted truncate text-[10.5px]">{point.brand}</p>

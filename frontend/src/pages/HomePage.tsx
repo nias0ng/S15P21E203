@@ -14,6 +14,7 @@ import {
   type MapPoint,
 } from '@/features/map'
 import { ROUTES } from '@/shared/config/routes'
+import { useToast } from '@/shared/hooks/useToast'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Input } from '@/shared/ui/Input'
@@ -46,7 +47,7 @@ export default function HomePage() {
   const [zoom, setZoom] = useState(1)
   const [selected, setSelected] = useState<MapPoint | null>(null)
   const [similarOf, setSimilarOf] = useState<MapPoint | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
+  const { showToast, toastProps } = useToast()
 
   if (points.isPending) return <PageFallback />
 
@@ -124,7 +125,7 @@ export default function HomePage() {
             // 두 브랜치가 develop 에 모두 들어온 뒤 여기서 ShelfSaveModal 을
             // 열도록 한 줄만 바꾸면 됩니다.
             onSave={() =>
-              setToast('진열대 저장은 진열대 화면 병합 후 연결됩니다')
+              showToast('진열대 저장은 진열대 화면 병합 후 연결됩니다')
             }
             onExploreSimilar={() => {
               setSimilarOf(selected)
@@ -184,11 +185,7 @@ export default function HomePage() {
         />
       )}
 
-      <Toast
-        open={toast !== null}
-        onClose={() => setToast(null)}
-        message={toast ?? ''}
-      />
+      <Toast {...toastProps} />
     </div>
   )
 }
