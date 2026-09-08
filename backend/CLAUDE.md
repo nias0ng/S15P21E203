@@ -176,7 +176,11 @@ distribution:
 
 ### 메트릭을 테스트하는 법
 
-`PrometheusMetricsIntegrationTest`가 `@ActiveProfiles("prod")`로 실제 운영 설정을 띄운 뒤, `/actuator/prometheus` 응답에 `http_server_requests_seconds_bucket`과 공통 태그가 포함되는지 단언합니다. DB·Redis 없이 돌리려고 `spring.autoconfigure.exclude`로 DataSource·JPA·Flyway·Redis 자동 설정을 제외합니다. 메트릭 설정을 바꿀 때는 이 테스트의 단언도 함께 갱신합니다.
+`PrometheusMetricsIntegrationTest`가 `@ActiveProfiles("prod")`로 실제 운영 설정을 띄운 뒤, `/actuator/prometheus` 응답에 `http_server_requests_seconds_bucket`과 공통 태그가 포함되는지 단언합니다. 메트릭 설정을 바꿀 때는 이 테스트의 단언도 함께 갱신합니다.
+
+DB·Redis 없이 돌리기 위해 두 가지를 합니다. `spring.autoconfigure.exclude`로 DataSource·JPA·Flyway·Redis 자동 설정을 제외하고, `classes`에 `BackendApplication` 대신 같은 패키지의 `MetricsTestApplication`을 지정합니다. 후자는 컴포넌트 스캔을 하지 않는 최소 설정입니다. `BackendApplication`을 쓰면 애플리케이션 전체가 스캔되어 리포지토리를 필요로 하는 빈이 컨텍스트에 들어오는데, DB 자동 설정이 꺼져 있어 빈 생성이 실패합니다. 도메인이 늘어날 때마다 같은 문제가 반복되므로 스캔 자체를 하지 않습니다.
+
+프로필 설정은 컴포넌트 스캔과 무관하게 읽히므로 `application-prod.yaml`의 `management` 블록은 그대로 적용됩니다. 다만 애플리케이션 빈이 메트릭에 영향을 주는 경우(`MeterFilter`로 요청 메트릭을 걸러내거나 `MeterRegistryCustomizer`로 공통 태그를 덮어쓰는 등)는 이 구성에서 검증되지 않습니다. 그런 계측 코드를 추가하면 해당 빈을 `classes`에 함께 지정하세요.
 
 ## 테스트 구조
 
