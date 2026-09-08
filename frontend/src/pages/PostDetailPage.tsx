@@ -41,7 +41,17 @@ export default function PostDetailPage() {
 
   if (post.isPending) return <PageFallback />
   if (post.isError || !post.data) {
-    return <EmptyState title="게시글을 불러오지 못했습니다" />
+    return (
+      <EmptyState
+        title="게시글 상세 정보를 불러오지 못했습니다"
+        description="다시 시도해주세요."
+        action={
+          <Button variant="outline" onClick={() => post.refetch()}>
+            다시 시도
+          </Button>
+        }
+      />
+    )
   }
 
   const data = post.data

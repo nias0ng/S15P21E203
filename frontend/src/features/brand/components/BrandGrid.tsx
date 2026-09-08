@@ -7,7 +7,12 @@ import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import type { Brand } from '../types'
 
-type Props = { items: Brand[]; isPending?: boolean }
+type Props = {
+  items: Brand[]
+  isPending?: boolean
+  /** 0건 안내 아래 버튼. 검색어·정렬로 걸러 0건이 된 경우 [초기화] 를 답니다. */
+  emptyAction?: React.ReactNode
+}
 
 /**
  * 브랜드 카드 그리드 (와이어프레임 A34 — 5열)
@@ -16,7 +21,7 @@ type Props = { items: Brand[]; isPending?: boolean }
  * (A33 향수 페이지에 브랜드 필터가 걸린 상태)". 그래서 브랜드 상세 화면이 아니라
  * 향수 페이지로 브랜드를 쿼리에 실어 보냅니다.
  */
-export function BrandGrid({ items, isPending = false }: Props) {
+export function BrandGrid({ items, isPending = false, emptyAction }: Props) {
   const gridClass = 'grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5'
 
   if (isPending) {
@@ -34,6 +39,7 @@ export function BrandGrid({ items, isPending = false }: Props) {
       <EmptyState
         title="브랜드를 찾지 못했습니다"
         description="브랜드명을 다시 확인해 주세요."
+        action={emptyAction}
       />
     )
   }

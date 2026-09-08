@@ -7,6 +7,7 @@ import {
   brandListQuery,
   type BrandSort,
 } from '@/features/brand'
+import { Button } from '@/shared/ui/Button'
 import { ChipToggle } from '@/shared/ui/ChipToggle'
 import { SearchField } from '@/shared/ui/SearchField'
 
@@ -59,7 +60,17 @@ export default function BrandListPage() {
 
       <hr className="border-line" />
 
-      <BrandGrid items={data ?? []} isPending={isPending} />
+      <BrandGrid
+        items={data ?? []}
+        isPending={isPending}
+        emptyAction={
+          (keyword !== '' || sort !== 'NAME') && (
+            <Button variant="outline" onClick={() => setSearchParams({})}>
+              초기화
+            </Button>
+          )
+        }
+      />
     </div>
   )
 }

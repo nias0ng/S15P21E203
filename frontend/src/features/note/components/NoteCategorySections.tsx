@@ -7,7 +7,12 @@ import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import { NOTE_CATEGORIES, type Note } from '../types'
 
-type Props = { notes: Note[]; isPending?: boolean }
+type Props = {
+  notes: Note[]
+  isPending?: boolean
+  /** 0건 안내 아래 버튼. 검색어로 걸러 0건이 된 경우 [초기화] 를 답니다. */
+  emptyAction?: React.ReactNode
+}
 
 /**
  * 대분류별 노트 섹션 (와이어프레임 A35)
@@ -17,7 +22,11 @@ type Props = { notes: Note[]; isPending?: boolean }
  * NOTE_CATEGORIES 배열 순서를 그대로 따릅니다. 해당 노트가 하나도 없는 대분류는
  * 섹션 자체를 그리지 않습니다.
  */
-export function NoteCategorySections({ notes, isPending = false }: Props) {
+export function NoteCategorySections({
+  notes,
+  isPending = false,
+  emptyAction,
+}: Props) {
   if (isPending) {
     return (
       <div className="space-y-6">
@@ -40,6 +49,7 @@ export function NoteCategorySections({ notes, isPending = false }: Props) {
       <EmptyState
         title="노트를 찾지 못했습니다"
         description="노트명을 다시 확인해 주세요."
+        action={emptyAction}
       />
     )
   }

@@ -47,7 +47,17 @@ export default function CollectionDetailPage() {
 
   if (collection.isPending) return <PageFallback />
   if (collection.isError || !collection.data) {
-    return <EmptyState title="컬렉션을 불러오지 못했습니다" />
+    return (
+      <EmptyState
+        title="컬렉션 상세 정보를 불러오지 못했습니다"
+        description="다시 시도해주세요."
+        action={
+          <Button variant="outline" onClick={() => collection.refetch()}>
+            다시 시도
+          </Button>
+        }
+      />
+    )
   }
 
   const data = collection.data

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router'
 
 import { NoteCategorySections, noteListQuery } from '@/features/note'
+import { Button } from '@/shared/ui/Button'
 import { SearchField } from '@/shared/ui/SearchField'
 
 /**
@@ -32,7 +33,17 @@ export default function NoteListPage() {
         }}
       />
 
-      <NoteCategorySections notes={data ?? []} isPending={isPending} />
+      <NoteCategorySections
+        notes={data ?? []}
+        isPending={isPending}
+        emptyAction={
+          keyword !== '' && (
+            <Button variant="outline" onClick={() => setSearchParams({})}>
+              초기화
+            </Button>
+          )
+        }
+      />
     </div>
   )
 }

@@ -14,12 +14,14 @@ type ToastProps = {
 /**
  * 저장 · 삭제 피드백 (와이어프레임 C03 — 화면 하단 고정 · 자동 사라짐)
  *
- * ⚠️ 와이어프레임 주석: "피드백 방식(토스트 · 인라인 · 모달)이 정해지면 한 방식으로 통일".
- * 지금은 와이어프레임에 그려진 대로 토스트로 만들어 두었습니다. 팀에서 다른 방식으로
- * 정하면 이 컴포넌트를 교체하고 호출부를 함께 고쳐야 합니다.
+ * 와이어프레임 C03 의 "피드백 방식 통일" 은 **토스트로 확정**되었습니다.
+ * 저장 · 삭제 · 생성 결과는 전부 이걸로 알립니다. 인라인 · 모달로 알리지 마세요.
  *
- *   const [saved, setSaved] = useState(false)
- *   <Toast open={saved} onClose={() => setSaved(false)} message="진열대에 저장했습니다" />
+ * 상태는 직접 useState 로 들지 말고 shared/hooks/useToast 를 쓰세요.
+ * 인라인 화살표를 onClose 로 넘기면 아래 타이머가 렌더마다 초기화됩니다.
+ *
+ *   const { showToast, toastProps } = useToast()
+ *   <Toast {...toastProps} />
  */
 export function Toast({
   open,

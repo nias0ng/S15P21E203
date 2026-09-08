@@ -4,6 +4,7 @@ import { useParams } from 'react-router'
 import { noteDetailQuery } from '@/features/note'
 import { PerfumeGrid } from '@/features/perfume'
 import { ROUTES } from '@/shared/config/routes'
+import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { PageFallback } from '@/shared/ui/PageFallback'
@@ -24,14 +25,24 @@ export default function NoteDetailPage() {
   const { noteId } = useParams<{ noteId: string }>()
   const numericId = Number(noteId)
 
-  const { data, isPending, isError } = useQuery({
+  const { data, isPending, isError, refetch } = useQuery({
     ...noteDetailQuery(numericId),
     enabled: Number.isFinite(numericId),
   })
 
   if (isPending) return <PageFallback />
   if (isError || !data) {
-    return <EmptyState title="노트 정보를 불러오지 못했습니다" />
+    return (
+      <EmptyState
+        title="노트 상세 정보를 불러오지 못했습니다"
+        description="다시 시도해주세요."
+        action={
+          <Button variant="outline" onClick={() => refetch()}>
+            다시 시도
+          </Button>
+        }
+      />
+    )
   }
 
   return (

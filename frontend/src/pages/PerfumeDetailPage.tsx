@@ -14,6 +14,7 @@ import {
 // 진열대 저장은 진열대 도메인의 어휘입니다. 화면에서 두 도메인을 조합합니다.
 import { ShelfSaveModal } from '@/features/shelf'
 import { useToast } from '@/shared/hooks/useToast'
+import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { PageFallback } from '@/shared/ui/PageFallback'
 import { Toast } from '@/shared/ui/Toast'
@@ -37,7 +38,7 @@ export default function PerfumeDetailPage() {
   const [seasonOpen, setSeasonOpen] = useState(false)
   const { showToast, toastProps } = useToast()
 
-  const { data, isPending, isError, error } = useQuery({
+  const { data, isPending, isError, refetch } = useQuery({
     ...perfumeDetailQuery(numericId),
     enabled: Number.isFinite(numericId),
   })
@@ -46,8 +47,13 @@ export default function PerfumeDetailPage() {
   if (isError) {
     return (
       <EmptyState
-        title="향수 정보를 불러오지 못했습니다"
-        description={error.message}
+        title="향수 상세 정보를 불러오지 못했습니다"
+        description="다시 시도해주세요."
+        action={
+          <Button variant="outline" onClick={() => refetch()}>
+            다시 시도
+          </Button>
+        }
       />
     )
   }

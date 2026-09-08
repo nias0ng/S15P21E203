@@ -10,6 +10,7 @@ import {
   type ShelfFilter,
 } from '@/features/perfume'
 import { ROUTES } from '@/shared/config/routes'
+import { Button } from '@/shared/ui/Button'
 import { SearchField } from '@/shared/ui/SearchField'
 
 /**
@@ -38,6 +39,18 @@ export default function PerfumeListPage() {
       brand: brand ?? undefined,
     }),
   )
+
+  // 검색어·필터로 걸러 0건이 됐을 때만 [초기화] 를 보여줍니다.
+  // 원래 데이터가 없는 경우에는 초기화해도 달라지지 않으니 버튼을 걸지 않습니다.
+  const hasFilter = shelf !== null || gender !== null || brand !== null
+
+  const resetFilters = () => {
+    setShelf(null)
+    setGender(null)
+    const next = new URLSearchParams(searchParams)
+    next.delete('brand')
+    setSearchParams(next)
+  }
 
   return (
     <div className="space-y-3.5">
@@ -90,6 +103,13 @@ export default function PerfumeListPage() {
         items={data?.content ?? []}
         isPending={isPending}
         columns={5}
+        emptyAction={
+          hasFilter && (
+            <Button variant="outline" onClick={resetFilters}>
+              초기화
+            </Button>
+          )
+        }
       />
     </div>
   )
