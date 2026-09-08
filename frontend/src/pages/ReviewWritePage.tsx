@@ -87,7 +87,6 @@ export default function ReviewWritePage() {
           placeholder="이 향을 어떻게 맡았는지 적어주세요"
           rows={12}
           required
-          className="p-3"
           value={content}
           onChange={(event) => setContent(event.target.value)}
         />
