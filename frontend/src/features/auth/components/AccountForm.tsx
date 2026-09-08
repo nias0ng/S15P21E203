@@ -10,9 +10,14 @@ import { WithdrawModal } from './WithdrawModal'
  *
  * 마이페이지 화면은 없습니다. 계정 관련 동작은 이 화면 하나에 모입니다.
  *
- * TODO: 백엔드 회원 API 확정 후 연결
- * - 프로필 이미지 업로드 · 삭제 (형식 · 용량 제한은 별도 정책)
- * - 닉네임 중복 검사
+ * 백엔드와 확정된 정책입니다.
+ * - 이메일은 계정 식별자라 중복 불가 · 변경 불가
+ * - 닉네임은 중복 불가. 별도의 중복 확인 API 로 입력 중에 확인한다
+ * - 프로필 이미지는 JPG · JPEG · PNG · WEBP, 한 장당 최대 5MB
+ *
+ * TODO: 백엔드 회원 API 연결
+ * - 닉네임 중복 확인 API 를 붙여 입력 중 확인으로 바꾸기 (지금은 [중복 확인] 버튼)
+ * - 프로필 이미지 업로드 · 삭제. 형식 · 용량은 화면에서도 먼저 걸러야 합니다
  */
 export function AccountForm() {
   const [passwordOpen, setPasswordOpen] = useState(false)
@@ -36,6 +41,10 @@ export function AccountForm() {
               <Button variant="outline" size="sm">
                 이미지 삭제
               </Button>
+              <p className="text-ink-muted text-[10.5px] leading-relaxed">
+                JPG · JPEG · PNG · WEBP
+                <br />한 장당 최대 5MB
+              </p>
             </div>
           </div>
 
@@ -97,7 +106,7 @@ export function AccountForm() {
         {/* 와이어프레임의 점선 주석 영역 */}
         <div className="text-ink-muted space-y-0.5 border-t border-dashed border-[#d2d2d2] px-6 py-2.5 text-[10.5px] leading-relaxed">
           <p>비밀번호는 이 화면에 표시하지 않는다 — 변경은 별도 모달로만</p>
-          <p>닉네임 중복 검사 · 이미지 형식 · 용량 제한은 별도 정책</p>
+          <p>닉네임은 다른 사용자와 겹칠 수 없습니다</p>
         </div>
       </div>
 

@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { Button } from '@/shared/ui/Button'
 import { Checkbox } from '@/shared/ui/Checkbox'
+import { Input } from '@/shared/ui/Input'
 import { Modal } from '@/shared/ui/Modal'
 
 type Props = { open: boolean; onClose: () => void }
@@ -9,12 +10,20 @@ type Props = { open: boolean; onClose: () => void }
 /**
  * 회원 탈퇴 모달 (와이어프레임 A30 우측 — A29 [회원 탈퇴] 도착 · COM-06)
  *
- * 와이어프레임에 남은 확정 필요 항목 두 가지를 화면에 그대로 적어둡니다.
- * - 삭제 범위 · 보관 기간 · 커뮤니티 게시글 처리는 팀 확정 필요
- * - 비밀번호 재확인을 넣을지 확인 필요
+ * 백엔드와 확정된 탈퇴 정책입니다.
+ * - 회원은 물리 삭제한다 (보관 기간 없음)
+ * - 사용자 개인 데이터(진열대 · 컬렉션 · 메모 등)는 함께 삭제한다
+ * - 게시글 · 댓글 · 향수 후기는 작성자만 지우고 글은 남긴다 (익명화)
+ * - 탈퇴 요청 시 현재 비밀번호를 한 번 더 받아 본인 여부를 확인한다
+ *
+ * 안내 문구가 실제 동작과 어긋나면 안 됩니다. 이전 문구는 후기까지 삭제된다고
+ * 적고 있었는데 확정된 정책은 후기를 남기는 쪽이라, 문구를 정책에 맞춰 고쳤습니다.
  */
 export function WithdrawModal({ open, onClose }: Props) {
   const [confirmed, setConfirmed] = useState(false)
+  const [password, setPassword] = useState('')
+
+  const canWithdraw = confirmed && password.length > 0
 
   return (
     <Modal
@@ -28,10 +37,10 @@ export function WithdrawModal({ open, onClose }: Props) {
           </Button>
           <Button
             variant="danger"
-            // 안내를 확인해야만 탈퇴할 수 있습니다
-            disabled={!confirmed}
+            // 안내 확인과 비밀번호 재확인을 모두 거쳐야 탈퇴할 수 있습니다
+            disabled={!canWithdraw}
             onClick={() => {
-              // TODO: 회원 탈퇴 API 연결
+              // TODO: COM-06 회원 탈퇴 API 연결 (요청 본문에 password 포함)
             }}
           >
             탈퇴
@@ -40,9 +49,14 @@ export function WithdrawModal({ open, onClose }: Props) {
       }
     >
       <div className="space-y-3">
-        <p className="border-line bg-line-soft text-ink border p-3 text-[11px]">
-          진열대 · 컬렉션 · 메모 · 후기 · 향 이미지가 함께 삭제됩니다
-        </p>
+        <div className="border-line bg-line-soft text-ink space-y-1 border p-3 text-[11px] leading-relaxed">
+          <p>진열대 · 컬렉션 · 메모가 함께 삭제됩니다.</p>
+          <p>
+            작성한 게시글 · 댓글 · 후기는{' '}
+            <b>작성자 표시만 지워지고 남습니다.</b>
+          </p>
+          <p>계정은 바로 삭제되며 되돌릴 수 없습니다.</p>
+        </div>
 
         <label className="flex cursor-pointer items-center gap-2.5">
           <Checkbox
@@ -52,10 +66,16 @@ export function WithdrawModal({ open, onClose }: Props) {
           <span className="text-ink text-xs">위 내용을 확인했습니다</span>
         </label>
 
-        <div className="text-ink-muted space-y-0.5 text-[10.5px] leading-relaxed">
-          <p>삭제 범위 · 보관 기간 · 커뮤니티 게시글 처리는 팀 확정 필요</p>
-          <p>비밀번호 재확인을 넣을지 확인 필요</p>
-        </div>
+        {/* 본인 확인 — 로그인한 채로 자리를 비운 경우를 막습니다 */}
+        <Input
+          label="현재 비밀번호"
+          type="password"
+          autoComplete="current-password"
+          placeholder="현재 비밀번호"
+          hint="본인 확인을 위해 한 번 더 입력해주세요."
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+        />
       </div>
     </Modal>
   )
