@@ -3,6 +3,8 @@ import { useState } from 'react'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
+import { Textarea } from '@/shared/ui/Textarea'
+import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import type { Comment } from '../types'
 
@@ -48,16 +50,17 @@ export function CommentSection({
           setDraft('')
         }}
       >
-        <label className="flex-1">
-          <span className="sr-only">댓글 내용</span>
-          <textarea
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+        {/* Textarea 는 래퍼에 className 을 받지 않으므로 flex 배치는 여기서 합니다 */}
+        <div className="flex-1">
+          <Textarea
+            label="댓글 내용"
+            hideLabel
             placeholder="댓글을 입력하세요"
             rows={2}
-            className="border-line text-ink placeholder:text-ink-muted focus-visible:ring-accent w-full border p-2.5 text-xs outline-none focus-visible:ring-2"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
           />
-        </label>
+        </div>
         <Button type="submit" disabled={draft.trim().length === 0}>
           등록
         </Button>
@@ -67,10 +70,7 @@ export function CommentSection({
         {comments.map((comment) => (
           <li key={comment.commentId} className="space-y-2 p-3">
             <div className="flex items-center gap-2 text-[10.5px]">
-              <span
-                aria-hidden
-                className="border-line bg-surface-sunken size-6 shrink-0 rounded-full border"
-              />
+              <Thumbnail className="size-6 shrink-0 rounded-full" />
               <span className="text-ink">{comment.nickname}</span>
               <span className="text-ink-muted">
                 · {formatRelativeTime(comment.createdAt)}
@@ -109,15 +109,13 @@ export function CommentSection({
                   setEditingId(null)
                 }}
               >
-                <label>
-                  <span className="sr-only">댓글 수정</span>
-                  <textarea
-                    value={editDraft}
-                    onChange={(event) => setEditDraft(event.target.value)}
-                    rows={3}
-                    className="border-line text-ink focus-visible:ring-accent w-full border p-2.5 text-xs outline-none focus-visible:ring-2"
-                  />
-                </label>
+                <Textarea
+                  label="댓글 수정"
+                  hideLabel
+                  rows={3}
+                  value={editDraft}
+                  onChange={(event) => setEditDraft(event.target.value)}
+                />
                 <div className="flex justify-end gap-1.5">
                   <Button
                     variant="outline"

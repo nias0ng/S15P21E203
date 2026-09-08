@@ -14,6 +14,7 @@ import {
   shelfItemsQuery,
   type ShelfItem,
 } from '@/features/shelf'
+import { useToast } from '@/shared/hooks/useToast'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { PageFallback } from '@/shared/ui/PageFallback'
@@ -41,7 +42,7 @@ export default function MyShelfPage() {
   const [registerOpen, setRegisterOpen] = useState(false)
   const [createCollectionOpen, setCreateCollectionOpen] = useState(false)
   const [unsaveOpen, setUnsaveOpen] = useState(false)
-  const [toast, setToast] = useState<string | null>(null)
+  const { showToast, toastProps } = useToast()
 
   if (shelf.isPending) return <PageFallback />
 
@@ -86,16 +87,16 @@ export default function MyShelfPage() {
             item={selected}
             onSetRepresentative={() => {
               // TODO: SHF-05 대표 향수 지정 API 연결
-              setToast('대표 향수로 지정했습니다')
+              showToast('대표 향수로 지정했습니다')
             }}
             onUnsave={() => setUnsaveOpen(true)}
             onChangeCategory={() => {
               // TODO: SHF-03 분류 변경 API 연결 (분류 선택 모달)
-              setToast('분류 변경은 API 연결 후 동작합니다')
+              showToast('분류 변경은 API 연결 후 동작합니다')
             }}
             onEditMemo={() => {
               // TODO: SHF-10 메모 수정 API 연결
-              setToast('메모 수정은 API 연결 후 동작합니다')
+              showToast('메모 수정은 API 연결 후 동작합니다')
             }}
           />
         </div>
@@ -140,7 +141,7 @@ export default function MyShelfPage() {
         onSubmit={() => {
           // TODO: SHF-01 진열대 등록 API 연결
           setRegisterOpen(false)
-          setToast('진열대에 담았습니다')
+          showToast('진열대에 담았습니다')
         }}
       />
 
@@ -150,7 +151,7 @@ export default function MyShelfPage() {
         onSubmit={() => {
           // TODO: COL-01 컬렉션 생성 API 연결
           setCreateCollectionOpen(false)
-          setToast('컬렉션을 만들었습니다')
+          showToast('컬렉션을 만들었습니다')
         }}
       />
 
@@ -164,15 +165,11 @@ export default function MyShelfPage() {
           // TODO: SHF-02 저장 해제 API 연결
           setUnsaveOpen(false)
           setSelected(null)
-          setToast('저장을 해제했습니다')
+          showToast('저장을 해제했습니다')
         }}
       />
 
-      <Toast
-        open={toast !== null}
-        onClose={() => setToast(null)}
-        message={toast ?? ''}
-      />
+      <Toast {...toastProps} />
     </div>
   )
 }

@@ -16,6 +16,7 @@ import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { PageFallback } from '@/shared/ui/PageFallback'
+import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 /**
  * 게시글 상세 + 댓글 (와이어프레임 A23 — CMT-02 · 07 · 08 · 09 · 10 · 11)
@@ -103,11 +104,7 @@ export default function PostDetailPage() {
             <ul className="flex flex-wrap gap-2">
               {data.imageUrls.map((url) => (
                 <li key={url}>
-                  <img
-                    src={url}
-                    alt=""
-                    className="border-line bg-surface-sunken h-32 border object-cover"
-                  />
+                  <Thumbnail src={url} className="h-32" />
                 </li>
               ))}
             </ul>

@@ -1,6 +1,7 @@
 import { Link } from 'react-router'
 
 import { cn } from '@/shared/lib/cn'
+import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 type PerfumeCardProps = {
   name: string
@@ -40,17 +41,7 @@ export function PerfumeCard({
 }: PerfumeCardProps) {
   const body = (
     <>
-      {thumbnailUrl ? (
-        <img
-          src={thumbnailUrl}
-          alt=""
-          className="border-line bg-surface-sunken h-28 w-full border object-cover"
-        />
-      ) : (
-        <div className="border-line bg-surface-sunken text-ink-muted flex h-28 w-full items-center justify-center border text-[10.5px]">
-          이미지
-        </div>
-      )}
+      <Thumbnail src={thumbnailUrl} fallback="이미지" className="h-28 w-full" />
 
       <p className="text-ink w-full truncate text-xs font-bold">{name}</p>
       <p className="text-ink-muted w-full truncate text-[10.5px]">{brand}</p>

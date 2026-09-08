@@ -13,6 +13,7 @@ import { Button } from '@/shared/ui/Button'
 import { ChipToggle } from '@/shared/ui/ChipToggle'
 import { Input } from '@/shared/ui/Input'
 import { LinkButton } from '@/shared/ui/LinkButton'
+import { Textarea } from '@/shared/ui/Textarea'
 
 /**
  * 자유 게시글 작성 · 수정 (와이어프레임 A24b — CMT-03 · CMT-06 · CMT-16)
@@ -64,17 +65,16 @@ export default function PostWritePage() {
           onChange={(event) => setTitle(event.target.value)}
         />
 
-        <label className="block">
-          <span className="sr-only">본문</span>
-          <textarea
-            value={content}
-            onChange={(event) => setContent(event.target.value)}
-            placeholder="내용을 입력하세요"
-            rows={12}
-            required
-            className="border-line text-ink placeholder:text-ink-muted focus-visible:ring-accent w-full border p-3 text-xs outline-none focus-visible:ring-2"
-          />
-        </label>
+        <Textarea
+          label="본문"
+          hideLabel
+          placeholder="내용을 입력하세요"
+          rows={12}
+          required
+          className="p-3"
+          value={content}
+          onChange={(event) => setContent(event.target.value)}
+        />
 
         {/* 컬렉션 첨부는 컬렉션 공유를 골랐을 때만 나타납니다 */}
         {category === 'COLLECTION' && (

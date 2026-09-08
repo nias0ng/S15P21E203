@@ -7,6 +7,8 @@ import { EmptyState } from '@/shared/ui/EmptyState'
 import { Modal } from '@/shared/ui/Modal'
 import { SearchField } from '@/shared/ui/SearchField'
 import { StarRating } from '@/shared/ui/StarRating'
+import { Textarea } from '@/shared/ui/Textarea'
+import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import {
   SHELF_CATEGORIES,
@@ -129,9 +131,10 @@ export function PerfumeRegisterModal({
                         : 'hover:border-slate',
                     )}
                   >
-                    <span className="border-line bg-surface-sunken text-ink-muted mb-1.5 flex h-16 w-full items-center justify-center border text-[10px]">
-                      {option.alreadyInShelf ? '담김' : '이미지'}
-                    </span>
+                    <Thumbnail
+                      fallback={option.alreadyInShelf ? '담김' : '이미지'}
+                      className="mb-1.5 h-16 w-full text-[10px]"
+                    />
                     <span className="text-ink block truncate text-[11px] font-bold">
                       {option.name}
                     </span>
@@ -179,16 +182,14 @@ export function PerfumeRegisterModal({
             />
           </div>
 
-          <label className="block space-y-1.5">
-            <span className="sr-only">메모</span>
-            <textarea
-              value={memo}
-              onChange={(event) => setMemo(event.target.value)}
-              placeholder="메모"
-              rows={5}
-              className="border-line text-ink placeholder:text-ink-muted focus-visible:ring-accent w-full border p-2.5 text-xs outline-none focus-visible:ring-2"
-            />
-          </label>
+          <Textarea
+            label="메모"
+            hideLabel
+            placeholder="메모"
+            rows={5}
+            value={memo}
+            onChange={(event) => setMemo(event.target.value)}
+          />
 
           <p className="text-ink-muted text-[10.5px] leading-relaxed">
             적합도와 메모는 선택입니다. 분류만 고르면 담깁니다. 메모는 향수 한

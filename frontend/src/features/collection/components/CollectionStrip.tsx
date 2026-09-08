@@ -2,6 +2,7 @@ import { Link } from 'react-router'
 
 import { toCollectionDetail } from '@/shared/config/routes'
 import { Skeleton } from '@/shared/ui/Skeleton'
+import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import type { CollectionSummary } from '../types'
 
@@ -44,21 +45,13 @@ export function CollectionStrip({ items, isPending = false, onCreate }: Props) {
           <span className="flex gap-1.5">
             {collection.previewThumbnails
               .slice(0, 3)
-              .map((thumbnail, index) =>
-                thumbnail ? (
-                  <img
-                    key={index}
-                    src={thumbnail}
-                    alt=""
-                    className="border-line bg-surface-sunken h-14 flex-1 border object-cover"
-                  />
-                ) : (
-                  <span
-                    key={index}
-                    className="border-line bg-surface-sunken h-14 flex-1 border"
-                  />
-                ),
-              )}
+              .map((thumbnail, index) => (
+                <Thumbnail
+                  key={index}
+                  src={thumbnail}
+                  className="h-14 flex-1"
+                />
+              ))}
           </span>
           <span className="text-ink block truncate text-xs font-bold">
             {collection.title}

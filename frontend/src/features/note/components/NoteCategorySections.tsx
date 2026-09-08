@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { toNoteDetail } from '@/shared/config/routes'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Skeleton } from '@/shared/ui/Skeleton'
+import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import { NOTE_CATEGORIES, type Note } from '../types'
 
@@ -59,17 +60,11 @@ export function NoteCategorySections({ notes, isPending = false }: Props) {
                     to={toNoteDetail(note.noteId)}
                     className="border-line bg-surface-card hover:border-slate flex flex-col gap-1.5 border p-2.5 transition-shadow hover:shadow-md"
                   >
-                    {note.imageUrl ? (
-                      <img
-                        src={note.imageUrl}
-                        alt=""
-                        className="border-line bg-surface-sunken h-20 w-full border object-cover"
-                      />
-                    ) : (
-                      <span className="border-line bg-surface-sunken text-ink-muted flex h-20 w-full items-center justify-center border text-[10.5px]">
-                        이미지
-                      </span>
-                    )}
+                    <Thumbnail
+                      src={note.imageUrl}
+                      fallback="이미지"
+                      className="h-20 w-full"
+                    />
                     <span className="text-ink truncate text-xs font-bold underline-offset-2">
                       {note.name}
                     </span>

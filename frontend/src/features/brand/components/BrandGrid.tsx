@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { ROUTES } from '@/shared/config/routes'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Skeleton } from '@/shared/ui/Skeleton'
+import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import type { Brand } from '../types'
 
@@ -45,17 +46,12 @@ export function BrandGrid({ items, isPending = false }: Props) {
             to={`${ROUTES.PERFUMES}?brand=${encodeURIComponent(brand.name)}`}
             className="border-line bg-surface-card hover:border-slate flex flex-col gap-1.5 border p-2.5 transition-shadow hover:shadow-md"
           >
-            {brand.logoUrl ? (
-              <img
-                src={brand.logoUrl}
-                alt=""
-                className="border-line bg-surface-sunken h-24 w-full border object-contain"
-              />
-            ) : (
-              <span className="border-line bg-surface-sunken text-ink-muted flex h-24 w-full items-center justify-center border text-[10.5px]">
-                로고
-              </span>
-            )}
+            <Thumbnail
+              src={brand.logoUrl}
+              fallback="로고"
+              fit="contain"
+              className="h-24 w-full"
+            />
             <span className="text-ink truncate text-xs font-bold">
               {brand.name}
             </span>

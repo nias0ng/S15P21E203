@@ -5,6 +5,7 @@ import { Checkbox } from '@/shared/ui/Checkbox'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Modal } from '@/shared/ui/Modal'
 import { SearchField } from '@/shared/ui/SearchField'
+import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 type Candidate = {
   perfumeId: number
@@ -87,7 +88,7 @@ export function AddPerfumeModal({
                     checked={picked.includes(candidate.perfumeId)}
                     onChange={() => toggle(candidate.perfumeId)}
                   />
-                  <span className="border-line bg-surface-sunken size-10 shrink-0 border" />
+                  <Thumbnail className="size-10 shrink-0" />
                   <span className="min-w-0">
                     <span className="text-ink block truncate text-xs font-bold">
                       {candidate.name}

@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { toPerfumeDetail } from '@/shared/config/routes'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Skeleton } from '@/shared/ui/Skeleton'
+import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import { perfumeListQuery } from '../queries'
 
@@ -71,17 +72,11 @@ export function PerfumeSearchResult({ keyword }: Props) {
               className="hover:bg-line-soft flex items-center gap-3 p-3 transition-colors"
             >
               {/* ⚠️ thumbnailUrl 은 백엔드가 아직 안 내려줍니다 */}
-              {perfume.thumbnailUrl ? (
-                <img
-                  src={perfume.thumbnailUrl}
-                  alt=""
-                  className="border-line bg-surface-sunken size-14 shrink-0 border object-cover"
-                />
-              ) : (
-                <span className="border-line bg-surface-sunken text-ink-muted flex size-14 shrink-0 items-center justify-center border text-[10.5px]">
-                  이미지
-                </span>
-              )}
+              <Thumbnail
+                src={perfume.thumbnailUrl}
+                fallback="이미지"
+                className="size-14 shrink-0"
+              />
 
               <span className="min-w-0 flex-1">
                 <span className="text-ink block truncate text-xs font-bold">

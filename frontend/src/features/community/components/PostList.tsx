@@ -5,6 +5,7 @@ import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { Badge } from '@/shared/ui/Badge'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Skeleton } from '@/shared/ui/Skeleton'
+import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import { POST_CATEGORIES, type PostSummary } from '../types'
 
@@ -50,10 +51,7 @@ export function PostList({ posts, isPending = false, emptyAction }: Props) {
       {posts.map((post) => (
         <li key={post.postId} className="p-4">
           <div className="flex items-center gap-2 text-[10.5px]">
-            <span
-              aria-hidden
-              className="border-line bg-surface-sunken size-6 shrink-0 rounded-full border"
-            />
+            <Thumbnail className="size-6 shrink-0 rounded-full" />
             <span className="text-ink">{post.nickname}</span>
             <span className="text-ink-muted">
               · {formatRelativeTime(post.createdAt)}

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
 import { Modal } from '@/shared/ui/Modal'
+import { Textarea } from '@/shared/ui/Textarea'
 
 import type { CollectionInput } from '../types'
 
@@ -68,16 +69,14 @@ export function CollectionFormModal({
           value={title}
           onChange={(event) => setTitle(event.target.value)}
         />
-        <label className="block">
-          <span className="sr-only">설명</span>
-          <textarea
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder="설명 (선택)"
-            rows={4}
-            className="border-line text-ink placeholder:text-ink-muted focus-visible:ring-accent w-full border p-2.5 text-xs outline-none focus-visible:ring-2"
-          />
-        </label>
+        <Textarea
+          label="설명"
+          hideLabel
+          placeholder="설명 (선택)"
+          rows={4}
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+        />
 
         {editing ? (
           <p className="text-ink-muted text-[10.5px] leading-relaxed">

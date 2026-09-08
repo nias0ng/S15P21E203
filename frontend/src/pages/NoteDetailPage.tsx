@@ -7,6 +7,7 @@ import { ROUTES } from '@/shared/config/routes'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { PageFallback } from '@/shared/ui/PageFallback'
+import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 /**
  * 노트 상세 (와이어프레임 A36 — A35 에서 노트를 누른 화면)
@@ -40,17 +41,11 @@ export default function NoteDetailPage() {
       </LinkButton>
 
       <div className="flex flex-col gap-4 sm:flex-row">
-        {data.imageUrl ? (
-          <img
-            src={data.imageUrl}
-            alt=""
-            className="border-line bg-surface-sunken h-40 w-56 shrink-0 border object-cover"
-          />
-        ) : (
-          <div className="border-line bg-surface-sunken text-ink-muted flex h-40 w-56 shrink-0 items-center justify-center border text-[10.5px]">
-            노트 이미지
-          </div>
-        )}
+        <Thumbnail
+          src={data.imageUrl}
+          fallback="노트 이미지"
+          className="h-40 w-56 shrink-0"
+        />
 
         <div className="flex-1 space-y-2">
           <div className="border-line flex items-center gap-3 border px-3 py-2.5">

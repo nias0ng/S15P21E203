@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { toPerfumeDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { LinkButton } from '@/shared/ui/LinkButton'
+import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import type { RecommendedPerfume } from '../types'
 
@@ -54,17 +55,11 @@ export function RecommendResultList({ perfumes, selectedId, onSelect }: Props) {
                 <span className="bg-ink flex size-6 shrink-0 items-center justify-center text-[11px] text-white">
                   {index + 1}
                 </span>
-                {perfume.thumbnailUrl ? (
-                  <img
-                    src={perfume.thumbnailUrl}
-                    alt=""
-                    className="border-line bg-surface-sunken size-16 shrink-0 border object-cover"
-                  />
-                ) : (
-                  <span className="border-line bg-surface-sunken text-ink-muted flex size-16 shrink-0 items-center justify-center border text-[10px]">
-                    이미지
-                  </span>
-                )}
+                <Thumbnail
+                  src={perfume.thumbnailUrl}
+                  fallback="이미지"
+                  className="size-16 shrink-0 text-[10px]"
+                />
                 <span className="min-w-0 flex-1">
                   <span className="text-ink block truncate text-xs font-bold">
                     {perfume.name}
