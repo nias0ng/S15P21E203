@@ -20,8 +20,8 @@ type TextareaProps = Omit<React.ComponentPropsWithRef<'textarea'>, 'id'> & {
  * 이걸 만들기 전에는 6곳이 각자 `<label><span className="sr-only">` 로 처리하고 있었고,
  * 한 곳씩 빠뜨리기 쉬운 구조였습니다.
  *
- * 겉모습은 Input 과 다릅니다(text-xs · 모서리 각짐). 기존 6곳의 모양을 그대로 옮긴 것이라,
- * Input 과 시각적으로 통일하는 건 디자인 확정 후 이 파일의 기본 클래스만 고치면 됩니다.
+ * 겉모습은 Input 과 **같게 확정**되었습니다(rounded-card · text-sm · px-3).
+ * 한 화면에 한 줄 입력과 여러 줄 입력이 같이 놓이는 곳이 많아 서로 달라 보이면 어색합니다.
  *
  * 바깥 여백·flex 배치가 필요하면 감싸는 쪽에서 합니다(`<div className="flex-1">`).
  * 래퍼에 className 을 받지 않는 것은 Input 과 같은 규칙입니다.
@@ -55,8 +55,8 @@ export function Textarea({
         aria-invalid={error ? true : undefined}
         aria-describedby={cn(hint && hintId, error && errorId) || undefined}
         className={cn(
-          'text-ink w-full border p-2.5 text-xs',
-          'placeholder:text-ink-muted',
+          'rounded-card w-full border px-3 py-2 text-sm',
+          'placeholder:text-ink-muted/70',
           'focus-visible:ring-accent outline-none focus-visible:ring-2',
           'disabled:bg-line-soft disabled:opacity-60',
           error ? 'border-red-500' : 'border-line',

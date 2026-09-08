@@ -71,7 +71,6 @@ export default function PostWritePage() {
           placeholder="내용을 입력하세요"
           rows={12}
           required
-          className="p-3"
           value={content}
           onChange={(event) => setContent(event.target.value)}
         />

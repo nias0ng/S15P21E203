@@ -49,13 +49,13 @@ describe('Textarea', () => {
     expect(screen.queryByText('선택 항목입니다')).not.toBeInTheDocument()
   })
 
-  it('className 으로 기본 padding 을 덮어쓸 수 있다', () => {
-    render(<Textarea label="본문" className="p-3" />)
+  it('className 으로 기본 글자 크기를 덮어쓸 수 있다', () => {
+    render(<Textarea label="본문" className="text-base" />)
 
-    // cn() 이 twMerge 를 거치므로 기본값 p-2.5 는 사라지고 p-3 만 남습니다
+    // cn() 이 twMerge 를 거치므로 기본값 text-sm 은 사라지고 text-base 만 남습니다
     const textarea = screen.getByRole('textbox', { name: '본문' })
-    expect(textarea.className).toContain('p-3')
-    expect(textarea.className).not.toContain('p-2.5')
+    expect(textarea.className).toContain('text-base')
+    expect(textarea.className).not.toContain('text-sm')
   })
 
   it('rows 같은 textarea 속성이 그대로 전달된다', () => {
