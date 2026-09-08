@@ -177,7 +177,7 @@ export default function PostDetailPage() {
       <ConfirmDialog
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
-        title="게시글을 삭제할까요?"
+        title={`'${data.title}' 게시글을 삭제할까요?`}
         onConfirm={() => {
           // TODO: CMT-07 게시글 삭제 API 연결 후 게시판으로 이동
           setDeleteOpen(false)

@@ -62,6 +62,10 @@ export default function CollectionDetailPage() {
 
   const data = collection.data
   const inCollection = new Set(data.perfumes.map((item) => item.perfumeId))
+  // 확인창 제목에 넣을 대상 이름입니다. id 만 들고 있어 목록에서 찾아옵니다.
+  const removeTargetName = data.perfumes.find(
+    (item) => item.perfumeId === removeTarget,
+  )?.name
 
   return (
     <div className="space-y-6">
@@ -169,7 +173,7 @@ export default function CollectionDetailPage() {
       <ConfirmDialog
         open={removeTarget !== null}
         onClose={() => setRemoveTarget(null)}
-        title="컬렉션에서 제거할까요?"
+        title={`'${removeTargetName ?? '향수'}' 를 컬렉션에서 제거할까요?`}
         description="진열대 저장은 그대로 유지됩니다."
         confirmLabel="제거"
         onConfirm={() => {
@@ -182,7 +186,7 @@ export default function CollectionDetailPage() {
       <ConfirmDialog
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
-        title="컬렉션을 삭제할까요?"
+        title={`'${data.title}' 컬렉션을 삭제할까요?`}
         description="삭제하면 되돌릴 수 없습니다. 담긴 향수의 진열대 저장은 유지됩니다."
         onConfirm={() => {
           // TODO: COL-06 컬렉션 삭제 API 연결 후 진열대로 이동
