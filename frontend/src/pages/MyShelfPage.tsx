@@ -172,7 +172,7 @@ export default function MyShelfPage() {
       <ConfirmDialog
         open={unsaveOpen}
         onClose={() => setUnsaveOpen(false)}
-        title="저장을 해제할까요?"
+        title={`'${selected?.name ?? '향수'}' 저장을 해제할까요?`}
         description="진열대에서 빠지고 메모와 적합도도 함께 사라집니다."
         confirmLabel="저장 해제"
         onConfirm={() => {
