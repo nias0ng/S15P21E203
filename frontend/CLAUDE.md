@@ -137,15 +137,36 @@ import { perfumeDetailQuery } from '@/features/perfume/queries'   // X
 | `shared/ui/Input` | 라벨·에러·hint·접근성 속성 포함. 라벨은 필수 prop |
 | `shared/ui/Textarea` | 여러 줄 입력. `Input` 과 같은 API(라벨 필수 · 에러 · hint · 접근성 속성) |
 | `shared/ui/Thumbnail` | 이미지 슬롯. 이미지가 없으면 자리표시자 상자. 크기는 `className` 으로. 아바타(`rounded-full`)도 이걸 씁니다 |
+| `shared/ui/Checkbox` | 사각 체크박스(14px). 라벨은 호출하는 쪽에서 `<label>` 로 감싸세요 |
+| `shared/ui/SearchField` | 검색 입력 + 버튼. 헤더에 검색창이 없어 목록 화면마다 반복됩니다 |
 | `shared/ui/Card` | 목록에 반복되는 박스. `interactive` 로 호버 효과 |
 | `shared/ui/Badge` | 향 계열·상태 같은 짧은 라벨. `tone` brand·neutral·success·warning·danger |
+| `shared/ui/PerfumeCard` | 향수 카드. 도메인 타입을 받지 않고 `name`·`brand`·`thumbnailUrl` 낱개로 받습니다 |
+| `shared/ui/ChipToggle` | 칩 여러 개 중 고르기 (A11 진열대 분류 · 계절 등록, A15) |
+| `shared/ui/SegmentedFilter` | 한 줄 세그먼트 필터 (A33 진열대 기준 · 성별) |
+| `shared/ui/StarRating` | 별점. 라디오 그룹이라 키보드 화살표로 움직입니다 |
 | `shared/ui/Modal` | 네이티브 `<dialog>` 기반. 포커스 가두기·Esc·배경 스크롤 잠금 자동 |
+| `shared/ui/ConfirmDialog` | 삭제 확인 모달 (C01). 7곳 공용. `destructive` 로 위험 표현 |
+| `shared/ui/LoginRequiredDialog` | 로그인 유도 모달 (C01). 비로그인 저장·작성 시도 시 |
+| `shared/ui/Toast` | 저장·삭제 피드백 (C03). 상태는 `shared/hooks/useToast` 를 쓰세요 |
 | `shared/ui/Skeleton` | 로딩 중 자리 잡기. 목록에는 스피너보다 이걸 씁니다 |
 | `shared/ui/EmptyState` | 결과 0건 화면 |
 | `shared/ui/PageFallback` | 라우트 lazy 로딩용 전체 스피너 |
+| `shared/ui/LinkButton` | 버튼처럼 보이는 링크. **화면 이동은 `onClick` + navigate 대신 이걸 쓰세요** |
 
 variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 **variant 를 추가**합니다
 (`class-variance-authority` 사용). `PrimaryButton`, `SmallButton` 같은 파생 컴포넌트를 만들지 않습니다.
+
+## 공용 훅 인벤토리
+
+| 훅 | 용도 |
+| --- | --- |
+| `shared/hooks/useToast` | 토스트 한 개의 열림 상태. `const { showToast, toastProps } = useToast()` 후 `<Toast {...toastProps} />` |
+
+`onClose` 를 인라인 화살표로 넘기면 `Toast` 의 타이머가 렌더마다 초기화되어 토스트가
+사라지지 않습니다. 이 훅이 `useCallback` 으로 그 문제를 막아주니 직접 `useState` 로
+관리하지 마세요.
+
 
 ## 스타일 규칙
 
