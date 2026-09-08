@@ -59,7 +59,7 @@ export default function HomePage() {
     return (
       <EmptyState
         title="향 지도를 불러오지 못했습니다"
-        description="잠시 후 다시 시도해 주세요."
+        description="다시 시도해주세요."
         action={
           <Button variant="outline" onClick={() => points.refetch()}>
             다시 시도

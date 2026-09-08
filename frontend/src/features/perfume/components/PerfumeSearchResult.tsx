@@ -2,13 +2,18 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
 
 import { toPerfumeDetail } from '@/shared/config/routes'
+import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Skeleton } from '@/shared/ui/Skeleton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import { perfumeListQuery } from '../queries'
 
-type Props = { keyword: string }
+type Props = {
+  keyword: string
+  /** 검색어를 비웁니다. 검색 결과 0건일 때 [초기화] 버튼에 씁니다. */
+  onResetKeyword?: () => void
+}
 
 /**
  * 향수 검색 결과 목록 (와이어프레임 A09 — COM-05)
@@ -16,8 +21,8 @@ type Props = { keyword: string }
  * A33 의 그리드와 달리 한 줄에 하나씩 쌓는 목록형입니다.
  * 와이어프레임에 "검색 결과 128" 처럼 총 건수가 표시됩니다.
  */
-export function PerfumeSearchResult({ keyword }: Props) {
-  const { data, isPending, isError, error } = useQuery({
+export function PerfumeSearchResult({ keyword, onResetKeyword }: Props) {
+  const { data, isPending, isError, refetch } = useQuery({
     ...perfumeListQuery({ keyword }),
     // 검색어가 없으면 요청하지 않습니다
     enabled: keyword.trim().length > 0,
@@ -44,7 +49,15 @@ export function PerfumeSearchResult({ keyword }: Props) {
 
   if (isError) {
     return (
-      <EmptyState title="검색에 실패했습니다" description={error.message} />
+      <EmptyState
+        title="검색에 실패했습니다"
+        description="다시 시도해주세요."
+        action={
+          <Button variant="outline" onClick={() => refetch()}>
+            다시 시도
+          </Button>
+        }
+      />
     )
   }
 
@@ -53,6 +66,13 @@ export function PerfumeSearchResult({ keyword }: Props) {
       <EmptyState
         title="검색 결과가 없습니다"
         description={`'${keyword}' 와 일치하는 향수를 찾지 못했습니다.`}
+        action={
+          onResetKeyword && (
+            <Button variant="outline" onClick={onResetKeyword}>
+              초기화
+            </Button>
+          )
+        }
       />
     )
   }

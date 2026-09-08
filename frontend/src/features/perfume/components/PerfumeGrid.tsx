@@ -10,6 +10,11 @@ type PerfumeGridProps = {
   isPending?: boolean
   /** 결과 0건일 때 보여줄 안내. 없으면 기본 문구를 씁니다. */
   empty?: React.ReactNode
+  /**
+   * 0건 안내 아래에 놓을 버튼. 검색어·필터로 걸러 0건이 된 화면에서 [초기화] 를 답니다.
+   * 필터 상태는 호출부가 들고 있어 여기서 만들 수 없습니다.
+   */
+  emptyAction?: React.ReactNode
   /** 와이어프레임 A33 은 5열, A09 검색 결과는 목록형이라 호출부에서 정합니다. */
   columns?: 4 | 5
 }
@@ -25,6 +30,7 @@ export function PerfumeGrid({
   isPending = false,
   empty,
   columns = 5,
+  emptyAction,
 }: PerfumeGridProps) {
   const gridClass =
     columns === 5
@@ -47,6 +53,7 @@ export function PerfumeGrid({
         <EmptyState
           title="조건에 맞는 향수가 없습니다"
           description="검색어를 바꾸거나 필터를 해제해 보세요."
+          action={emptyAction}
         />
       )
     )

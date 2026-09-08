@@ -29,7 +29,10 @@ export default function PerfumeSearchPage() {
         }}
       />
 
-      <PerfumeSearchResult keyword={keyword} />
+      <PerfumeSearchResult
+        keyword={keyword}
+        onResetKeyword={() => setSearchParams({})}
+      />
     </div>
   )
 }
