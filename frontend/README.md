@@ -84,17 +84,20 @@ src/
 │   ├── recommend/          REC, NLR, TST 추천/자연어/취향테스트
 │   ├── collection/         COL-01~08 컬렉션
 │   ├── shelf/              SHF-01~14 진열대/시향 기록
-│   └── community/          CMT-01~16 게시글/댓글
+│   ├── community/          CMT-01~16 게시글/댓글
+│   ├── brand/              A34 브랜드
+│   └── note/               A35·A36 노트
 ├── shared/                 도메인에 종속되지 않는 공통 코드
 │   ├── api/http.ts         axios 인스턴스 + 인터셉터
 │   ├── config/env.ts       환경변수 (import.meta.env 는 여기서만 읽기)
 │   ├── config/routes.ts    경로 상수
-│   ├── lib/queryClient.ts  TanStack Query 기본값
+│   ├── lib/                순수 함수 (cn · formatRelativeTime · queryClient)
 │   ├── store/              전역 상태 (authStore)
 │   ├── ui/                 버튼·모달 등 공용 컴포넌트
-│   ├── hooks/              공용 훅
+│   ├── hooks/              공용 훅 (useToast)
 │   └── types/              공용 타입
 ├── styles/index.css        Tailwind 진입점 + 디자인 토큰(@theme)
+├── test/setup.ts           Vitest 설정
 └── assets/                 이미지·폰트
 ```
 
@@ -158,12 +161,23 @@ import { perfumeDetailQuery } from '@/features/perfume/queries' // X
 | `Input` | 라벨·에러·hint·접근성 속성 포함 (라벨은 필수 prop) |
 | `Textarea` | 여러 줄 입력. `Input` 과 같은 API (라벨은 필수 prop) |
 | `Thumbnail` | 이미지 슬롯. 없으면 자리표시자 상자. 크기는 `className` 으로 |
+| `Checkbox` | 사각 체크박스(14px). 라벨은 호출하는 쪽에서 `<label>` 로 감싸세요 |
+| `SearchField` | 검색 입력 + 버튼. 헤더에 검색창이 없어 목록 화면마다 반복됩니다 |
 | `Card` | 목록에 반복되는 박스. `interactive` 로 호버 효과 |
 | `Badge` | 향 계열·상태 같은 짧은 라벨. `tone` brand·neutral·success·warning·danger |
+| `Thumbnail` | 이미지 슬롯. 없으면 자리표시자 상자. 크기는 `className` 으로 |
+| `PerfumeCard` | 향수 카드. 도메인 타입을 받지 않고 `name`·`brand`·`thumbnailUrl` 낱개로 받습니다 |
+| `ChipToggle` | 칩 여러 개 중 고르기 (진열대 분류 · 계절 등록) |
+| `SegmentedFilter` | 한 줄 세그먼트 필터 (A33 진열대 기준 · 성별) |
+| `StarRating` | 별점. 라디오 그룹이라 키보드 화살표로 움직입니다 |
 | `Modal` | 네이티브 `<dialog>` 기반. 포커스 가두기·Esc·배경 스크롤 잠금 자동 |
+| `ConfirmDialog` | 삭제 확인 모달. 7곳 공용. `destructive` 로 위험 표현 |
+| `LoginRequiredDialog` | 비로그인 사용자가 저장·작성을 시도할 때 |
+| `Toast` | 저장·삭제 피드백. 상태는 `shared/hooks/useToast` 를 쓰세요 |
 | `Skeleton` | 로딩 중 자리 잡기. 목록에는 스피너보다 이걸 씁니다 |
 | `EmptyState` | 결과 0건 화면 |
 | `PageFallback` | 라우트 lazy 로딩용 전체 스피너 |
+| `LinkButton` | 버튼처럼 보이는 링크. **화면 이동은 `onClick` + navigate 대신 이걸 쓰세요** |
 
 ```tsx
 import { Button } from '@/shared/ui/Button'
