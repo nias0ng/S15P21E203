@@ -4,6 +4,7 @@ import com.hyanghae.backend.perfume.dto.request.PerfumeSearchCondition;
 import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeNotesResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeReviewStatisticsResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumeReviewSummaryResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSeasonStatisticsResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSearchResponse;
 import com.hyanghae.backend.perfume.service.PerfumeService;
@@ -68,6 +69,12 @@ public class PerfumeController {
     @GetMapping("/{perfumeId}/review-statistics")
     public PerfumeReviewStatisticsResponse getReviewStatistics(@PathVariable Long perfumeId) {
         return perfumeService.getReviewStatistics(perfumeId);
+    }
+
+    /** AI 후기 요약 조회입니다. 요약이 없으면 필드가 모두 null 입니다. */
+    @GetMapping("/{perfumeId}/review-summary")
+    public PerfumeReviewSummaryResponse getReviewSummary(@PathVariable Long perfumeId) {
+        return perfumeService.getReviewSummary(perfumeId);
     }
 
     /** 향수 계절 통계 조회입니다. 후기가 고른 계절의 분포입니다. */

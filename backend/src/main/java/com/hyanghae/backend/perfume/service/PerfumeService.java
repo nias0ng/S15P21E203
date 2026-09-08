@@ -7,6 +7,7 @@ import com.hyanghae.backend.perfume.dto.request.ShelfFilter;
 import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeNotesResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeReviewStatisticsResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumeReviewSummaryResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSeasonStatisticResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSeasonStatisticsResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSearchResponse;
@@ -21,6 +22,7 @@ import com.hyanghae.backend.perfume.repository.PerfumeAccordRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
 import com.hyanghae.backend.perfume.repository.PerfumeNoteRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeReviewRepository;
+import com.hyanghae.backend.perfume.repository.PerfumeReviewSummaryRepository;
 import com.hyanghae.backend.perfume.repository.PerfumePriceRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -50,6 +52,7 @@ public class PerfumeService {
     private final PerfumeNoteRepository perfumeNoteRepository;
     private final PerfumeAccordRepository perfumeAccordRepository;
     private final PerfumeReviewRepository perfumeReviewRepository;
+    private final PerfumeReviewSummaryRepository perfumeReviewSummaryRepository;
 
     public PerfumeService(
             PerfumeRepository perfumeRepository,
@@ -60,7 +63,8 @@ public class PerfumeService {
             CurrentUser currentUser,
             PerfumeNoteRepository perfumeNoteRepository,
             PerfumeAccordRepository perfumeAccordRepository,
-            PerfumeReviewRepository perfumeReviewRepository
+            PerfumeReviewRepository perfumeReviewRepository,
+            PerfumeReviewSummaryRepository perfumeReviewSummaryRepository
     ) {
         this.perfumeRepository = perfumeRepository;
         this.perfumeImageRepository = perfumeImageRepository;
@@ -71,6 +75,7 @@ public class PerfumeService {
         this.perfumeNoteRepository = perfumeNoteRepository;
         this.perfumeAccordRepository = perfumeAccordRepository;
         this.perfumeReviewRepository = perfumeReviewRepository;
+        this.perfumeReviewSummaryRepository = perfumeReviewSummaryRepository;
     }
 
     /**
@@ -182,6 +187,21 @@ public class PerfumeService {
                         ))
                         .toList()
         );
+    }
+
+    /**
+     * AI 가 생성한 후기 요약을 반환합니다.
+     *
+     * <p>요약이 없는 향수는 필드가 모두 {@code null} 인 200 응답입니다. 404 로 하면 향수 자체가
+     * 없는 경우와 구분되지 않습니다. 요약을 생성하는 파이프라인이 아직 없어 현재는 모든 향수가
+     * 빈 응답입니다.
+     */
+    @Transactional(readOnly = true)
+    public PerfumeReviewSummaryResponse getReviewSummary(Long perfumeId) {
+        requireExistingPerfume(perfumeId);
+
+        return perfumeReviewSummaryRepository.findResponseByPerfumeId(perfumeId)
+                .orElseGet(PerfumeReviewSummaryResponse::empty);
     }
 
     /**
