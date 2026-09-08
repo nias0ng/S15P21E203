@@ -7,7 +7,7 @@ import com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse;
 import com.hyanghae.backend.perfume.exception.PerfumeErrorCode;
 import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeRepository;
-import com.hyanghae.backend.perfume.repository.PerfumeThumbnail;
+import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,11 +66,17 @@ public class PerfumeService {
         PerfumeDetailResponse detail = perfumeRepository.findDetailById(perfumeId)
                 .orElseThrow(() -> new BusinessException(PerfumeErrorCode.PERFUME_NOT_FOUND));
 
-        return detail.withThumbnailUrl(loadThumbnail(perfumeId));
+        return detail.withImages(loadImages(perfumeId));
     }
 
-    private String loadThumbnail(Long perfumeId) {
-        return loadThumbnails(List.of(perfumeId)).get(perfumeId);
+    /**
+     * 향수 한 건의 이미지를 대표 이미지가 먼저 오도록 전부 가져옵니다. 검색이 쓰는 조회와 같은
+     * 정렬 규칙을 쓰므로, 두 API 가 이미지 순서를 다르게 보는 일이 없습니다.
+     */
+    private List<String> loadImages(Long perfumeId) {
+        return perfumeImageRepository.findOrderedByPerfumeIds(List.of(perfumeId)).stream()
+                .map(PerfumeImageUrl::imageUrl)
+                .toList();
     }
 
     /**
@@ -87,7 +93,7 @@ public class PerfumeService {
         }
 
         Map<Long, String> thumbnails = new HashMap<>();
-        for (PerfumeThumbnail candidate : perfumeImageRepository.findOrderedByPerfumeIds(perfumeIds)) {
+        for (PerfumeImageUrl candidate : perfumeImageRepository.findOrderedByPerfumeIds(perfumeIds)) {
             thumbnails.putIfAbsent(candidate.perfumeId(), candidate.imageUrl());
         }
         return thumbnails;

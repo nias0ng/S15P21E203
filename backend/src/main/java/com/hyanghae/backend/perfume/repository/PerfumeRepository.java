@@ -63,10 +63,11 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
      *
      * <p>비활성 향수는 조회되지 않습니다. 검색에서 제외하는 것과 같은 기준입니다.
      *
-     * <p>{ brand_id} 가 nullable 이므로 { LEFT JOIN} 입니다.
+     * <p>{@code brand_id} 가 nullable 이므로 {@code LEFT JOIN} 입니다.
      */
     @Query("""
-            SELECT new com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse(p.id, p.name, b.name, p.description)
+            SELECT new com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse(
+                       p.id, b.id, b.name, p.name, p.nameKo, p.gender, p.description, p.concentration)
             FROM Perfume p
             LEFT JOIN p.brand b
             WHERE p.id = :perfumeId
