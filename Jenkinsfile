@@ -9,6 +9,9 @@ pipeline {
     environment {
         BACKEND_DIR = 'backend'
         BACKEND_IMAGE = 'hyanghae-backend:latest'
+        FRONTEND_DIR = 'frontend'
+        FRONTEND_DEPLOY_DIR = '/var/www/hyanghae'
+        VITE_API_BASE_URL = '/api/v1'
         DEPLOY_DIR = '/home/ubuntu/hyanghae'
         HEALTH_CHECK_URL = 'http://127.0.0.1:8081/actuator/health'
     }
@@ -59,6 +62,28 @@ pipeline {
             }
         }
 
+        stage('Frontend Build') {
+            when {
+                anyOf {
+                    branch 'develop'
+                    branch 'master'
+                }
+            }
+            steps {
+                sh '''
+                    set -eu
+                    docker run --rm \
+                        --user "$(id -u):$(id -g)" \
+                        --volume "$WORKSPACE/$FRONTEND_DIR:/workspace" \
+                        --workdir /workspace \
+                        --env VITE_API_BASE_URL="$VITE_API_BASE_URL" \
+                        --env npm_config_cache=/tmp/npm-cache \
+                        node:22-bookworm-slim \
+                        sh -c 'npm ci && npm run build'
+                '''
+            }
+        }
+
         stage('Docker Image Build') {
             when {
                 branch 'master'
@@ -88,6 +113,34 @@ pipeline {
                     }
                     cd "$DEPLOY_DIR"
                     docker compose -f compose.yaml up -d
+                '''
+            }
+        }
+
+        stage('Frontend Deploy') {
+            when {
+                branch 'master'
+            }
+            steps {
+                sh '''
+                    set -eu
+                    test -d "$FRONTEND_DIR/dist" || {
+                        echo "$FRONTEND_DIR/dist does not exist." >&2
+                        exit 1
+                    }
+                    test -d "$FRONTEND_DEPLOY_DIR" || {
+                        echo "$FRONTEND_DEPLOY_DIR does not exist." >&2
+                        exit 1
+                    }
+                    test -w "$FRONTEND_DEPLOY_DIR" || {
+                        echo "$FRONTEND_DEPLOY_DIR is not writable by the Jenkins user." >&2
+                        exit 1
+                    }
+                    command -v rsync >/dev/null 2>&1 || {
+                        echo "rsync is not installed on the Jenkins agent." >&2
+                        exit 1
+                    }
+                    rsync -a --delete "$FRONTEND_DIR/dist/" "$FRONTEND_DEPLOY_DIR/"
                 '''
             }
         }
