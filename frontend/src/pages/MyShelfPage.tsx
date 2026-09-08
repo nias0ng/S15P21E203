@@ -11,6 +11,7 @@ import {
   SHELF_SLOTS,
   ShelfItemPanel,
   ShelfRow,
+  ShelfSaveModal,
   shelfItemsQuery,
   type ShelfItem,
 } from '@/features/shelf'
@@ -42,6 +43,7 @@ export default function MyShelfPage() {
   const [registerOpen, setRegisterOpen] = useState(false)
   const [createCollectionOpen, setCreateCollectionOpen] = useState(false)
   const [unsaveOpen, setUnsaveOpen] = useState(false)
+  const [changeCategoryOpen, setChangeCategoryOpen] = useState(false)
   const { showToast, toastProps } = useToast()
 
   if (shelf.isPending) return <PageFallback />
@@ -90,10 +92,7 @@ export default function MyShelfPage() {
               showToast('대표 향수로 지정했습니다')
             }}
             onUnsave={() => setUnsaveOpen(true)}
-            onChangeCategory={() => {
-              // TODO: SHF-03 분류 변경 API 연결 (분류 선택 모달)
-              showToast('분류 변경은 API 연결 후 동작합니다')
-            }}
+            onChangeCategory={() => setChangeCategoryOpen(true)}
             onEditMemo={() => {
               // TODO: SHF-10 메모 수정 API 연결
               showToast('메모 수정은 API 연결 후 동작합니다')
@@ -152,6 +151,21 @@ export default function MyShelfPage() {
           // TODO: COL-01 컬렉션 생성 API 연결
           setCreateCollectionOpen(false)
           showToast('컬렉션을 만들었습니다')
+        }}
+      />
+
+      {/*
+        분류 변경은 A11 진열대 저장 모달과 구성이 같아 같은 컴포넌트를 씁니다.
+        현재 분류를 넘기면 제목·버튼이 "분류 변경"이 되고 그 분류가 미리 선택됩니다.
+      */}
+      <ShelfSaveModal
+        open={changeCategoryOpen}
+        onClose={() => setChangeCategoryOpen(false)}
+        initialCategory={selected?.category ?? null}
+        onSave={() => {
+          // TODO: SHF-03 분류 변경 API 연결 (백엔드 진열대 API 미구현)
+          setChangeCategoryOpen(false)
+          showToast('분류를 변경했습니다')
         }}
       />
 
