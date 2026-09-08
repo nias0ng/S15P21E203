@@ -2,3 +2,8 @@
 frontend/node_modules/
 node_modules/
 .run/
+
+# Environment files
+.env
+.env.*
+!.env.example
