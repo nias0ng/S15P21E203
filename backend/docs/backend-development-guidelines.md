@@ -65,7 +65,7 @@ docker compose -f compose.manual-test.yaml down
 - Repository는 데이터 접근만 담당하며 `ResponseEntity` 같은 웹 계층 타입에 의존하지 않습니다.
 - 조회 성능을 위한 DTO 프로젝션은 사용할 수 있지만 비즈니스 로직은 Repository에 작성하지 않습니다.
 - Entity를 API 응답으로 직접 반환하지 않고 응답 DTO로 변환합니다.
-- 페이징 응답은 Spring Data의 `Page`를 직접 반환하지 않고 `PageResponse<T>`를 사용합니다.
+- 페이징 응답은 Spring Data의 `Page`를 직접 반환하지 않고, API 명세가 정한 필드명을 쓰는 도메인별 응답 record로 감쌉니다. 목록 필드명이 도메인마다 다르므로(`perfumes`, `posts`) 필드명이 고정된 제네릭 응답으로는 표현할 수 없습니다.
 - 이유가 명확하지 않은 새 추상화나 공통 계층을 먼저 만들지 않습니다. 반복되는 요구가 확인된 뒤 공통화합니다.
 
 ### 패키지 목표 구조
@@ -76,7 +76,7 @@ docker compose -f compose.manual-test.yaml down
 com.hyanghae.backend
 ├─ global
 │  ├─ exception   ErrorCode(인터페이스), BusinessException, GlobalExceptionHandler
-│  ├─ response    ApiErrorResponse, PageResponse
+│  ├─ response    ApiErrorResponse
 │  └─ logging     RequestIdFilter
 └─ perfume
    ├─ controller

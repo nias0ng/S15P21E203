@@ -107,6 +107,15 @@ class PerfumeSearchIntegrationTest {
                 .andExpect(jsonPath("$.perfumes[1].perfumeId").value(2));
     }
 
+    /** 명세에서 빠진 필드를 내보내지 않습니다. 프론트엔드는 perfumes 와 totalElements 만 읽습니다. */
+    @Test
+    void doesNotIncludeFieldsRemovedFromSpec() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "chanel"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").doesNotExist())
+                .andExpect(jsonPath("$.totalPages").doesNotExist());
+    }
+
     /** 기능 명세: 검색어가 입력되지 않은 경우 검색을 수행하지 않는다. */
     @Test
     void returnsEmptyResultWhenKeywordIsMissing() throws Exception {
