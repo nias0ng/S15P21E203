@@ -6,6 +6,9 @@ import com.hyanghae.backend.perfume.dto.request.PerfumeSearchCondition;
 import com.hyanghae.backend.perfume.dto.request.ShelfFilter;
 import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeNotesResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumeReviewStatisticsResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumeSeasonStatisticResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumeSeasonStatisticsResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSearchResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse;
 import com.hyanghae.backend.perfume.exception.PerfumeErrorCode;
@@ -17,7 +20,10 @@ import com.hyanghae.backend.perfume.dto.response.PerfumePriceResponse;
 import com.hyanghae.backend.perfume.repository.PerfumeAccordRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
 import com.hyanghae.backend.perfume.repository.PerfumeNoteRepository;
+import com.hyanghae.backend.perfume.repository.PerfumeReviewRepository;
 import com.hyanghae.backend.perfume.repository.PerfumePriceRepository;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +35,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PerfumeService {
 
+    /** 비율의 소수점 자리수입니다. */
+    private static final int RATIO_SCALE = 3;
+
     private final PerfumeRepository perfumeRepository;
     private final PerfumeImageRepository perfumeImageRepository;
     private final PerfumePriceRepository perfumePriceRepository;
@@ -37,6 +46,7 @@ public class PerfumeService {
     private final CurrentUser currentUser;
     private final PerfumeNoteRepository perfumeNoteRepository;
     private final PerfumeAccordRepository perfumeAccordRepository;
+    private final PerfumeReviewRepository perfumeReviewRepository;
 
     public PerfumeService(
             PerfumeRepository perfumeRepository,
@@ -46,7 +56,8 @@ public class PerfumeService {
             PerfumeShelfRepository perfumeShelfRepository,
             CurrentUser currentUser,
             PerfumeNoteRepository perfumeNoteRepository,
-            PerfumeAccordRepository perfumeAccordRepository
+            PerfumeAccordRepository perfumeAccordRepository,
+            PerfumeReviewRepository perfumeReviewRepository
     ) {
         this.perfumeRepository = perfumeRepository;
         this.perfumeImageRepository = perfumeImageRepository;
@@ -56,6 +67,7 @@ public class PerfumeService {
         this.currentUser = currentUser;
         this.perfumeNoteRepository = perfumeNoteRepository;
         this.perfumeAccordRepository = perfumeAccordRepository;
+        this.perfumeReviewRepository = perfumeReviewRepository;
     }
 
     /**
@@ -125,14 +137,63 @@ public class PerfumeService {
      */
     @Transactional(readOnly = true)
     public PerfumeNotesResponse getNotes(Long perfumeId) {
-        if (!perfumeRepository.existsByIdAndActiveTrue(perfumeId)) {
-            throw new BusinessException(PerfumeErrorCode.PERFUME_NOT_FOUND);
-        }
+        requireExistingPerfume(perfumeId);
 
         return new PerfumeNotesResponse(
                 perfumeNoteRepository.findByPerfumeId(perfumeId),
                 perfumeAccordRepository.findByPerfumeId(perfumeId)
         );
+    }
+
+    /** 향수의 후기 수를 반환합니다. */
+    @Transactional(readOnly = true)
+    public PerfumeReviewStatisticsResponse getReviewStatistics(Long perfumeId) {
+        requireExistingPerfume(perfumeId);
+
+        return new PerfumeReviewStatisticsResponse(
+                perfumeReviewRepository.countByPerfumeId(perfumeId)
+        );
+    }
+
+    /**
+     * 후기가 고른 계절의 분포를 반환합니다.
+     *
+     * <p>분모는 계절을 하나라도 고른 후기 수입니다. 후기 하나가 계절을 여러 개 고를 수 있어
+     * 계절별 비율의 합이 1 을 넘을 수 있습니다. 계절을 고르지 않은 후기까지 분모에 넣으면
+     * 계절을 답한 사람들의 분포가 희석됩니다.
+     */
+    @Transactional(readOnly = true)
+    public PerfumeSeasonStatisticsResponse getSeasonStatistics(Long perfumeId) {
+        requireExistingPerfume(perfumeId);
+
+        long reviewsWithSeason = perfumeReviewRepository.countReviewsWithSeasonByPerfumeId(perfumeId);
+
+        return new PerfumeSeasonStatisticsResponse(
+                perfumeReviewRepository.findSeasonCountsByPerfumeId(perfumeId).stream()
+                        .map(season -> new PerfumeSeasonStatisticResponse(
+                                season.seasonId(),
+                                season.code(),
+                                season.name(),
+                                season.count(),
+                                ratioOf(season.count(), reviewsWithSeason)
+                        ))
+                        .toList()
+        );
+    }
+
+    /** 분모가 0 이면 나눗셈 대신 0 을 씁니다. 후기가 없거나 아무도 계절을 고르지 않은 경우입니다. */
+    private BigDecimal ratioOf(long count, long total) {
+        if (total == 0) {
+            return BigDecimal.ZERO.setScale(RATIO_SCALE);
+        }
+        return BigDecimal.valueOf(count)
+                .divide(BigDecimal.valueOf(total), RATIO_SCALE, RoundingMode.HALF_UP);
+    }
+
+    private void requireExistingPerfume(Long perfumeId) {
+        if (!perfumeRepository.existsByIdAndActiveTrue(perfumeId)) {
+            throw new BusinessException(PerfumeErrorCode.PERFUME_NOT_FOUND);
+        }
     }
 
     private List<String> loadImages(Long perfumeId) {

@@ -1,0 +1,56 @@
+package com.hyanghae.backend.perfume.repository;
+
+import com.hyanghae.backend.perfume.entity.PerfumeReview;
+import java.util.List;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+/**
+ * 후기 통계 조회입니다.
+ *
+ * <p>보류된 후기를 제외하는 조건이 아직 없습니다. 후기 작성 기능이 없어
+ * {@code perfume_reviews.status} 의 값 어휘가 정해지지 않았습니다. 값을 추측해 조건을 넣으면
+ * 실제 값이 다를 때 조용히 틀린 통계가 나옵니다. 상태가 정의되면 이 인터페이스의 세 쿼리에
+ * 같은 조건을 추가하면 됩니다.
+ */
+public interface PerfumeReviewRepository extends JpaRepository<PerfumeReview, Long> {
+
+    /** 향수의 후기 수입니다. */
+    @Query("""
+            SELECT COUNT(r)
+            FROM PerfumeReview r
+            WHERE r.perfume.id = :perfumeId
+            """)
+    long countByPerfumeId(@Param("perfumeId") Long perfumeId);
+
+    /**
+     * 계절을 하나라도 고른 후기 수입니다. 계절 비율의 분모로 씁니다.
+     *
+     * <p>계절을 고르지 않은 후기까지 분모에 넣으면, 계절을 답한 사람들의 분포가 희석됩니다.
+     */
+    @Query("""
+            SELECT COUNT(DISTINCT rs.id.reviewId)
+            FROM PerfumeReviewSeason rs, PerfumeReview r
+            WHERE rs.id.reviewId = r.id
+              AND r.perfume.id = :perfumeId
+            """)
+    long countReviewsWithSeasonByPerfumeId(@Param("perfumeId") Long perfumeId);
+
+    /**
+     * 계절별 후기 수입니다. 후기가 고르지 않은 계절도 0 으로 포함합니다.
+     *
+     * <p>화면이 계절 네 칸을 항상 그리므로, 데이터가 있는 계절만 주면 빈 칸을 화면이 채워야 합니다.
+     * 그래서 {@code Season} 을 기준으로 왼쪽 조인합니다.
+     */
+    @Query("""
+            SELECT new com.hyanghae.backend.perfume.repository.SeasonCount(
+                       s.id, s.code, s.name, COUNT(r.id))
+            FROM Season s
+            LEFT JOIN PerfumeReviewSeason rs ON rs.id.seasonId = s.id
+            LEFT JOIN PerfumeReview r ON r.id = rs.id.reviewId AND r.perfume.id = :perfumeId
+            GROUP BY s.id, s.code, s.name
+            ORDER BY s.id
+            """)
+    List<SeasonCount> findSeasonCountsByPerfumeId(@Param("perfumeId") Long perfumeId);
+}
