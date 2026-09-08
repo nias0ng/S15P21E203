@@ -7,7 +7,9 @@ import com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse;
 import com.hyanghae.backend.perfume.exception.PerfumeErrorCode;
 import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeRepository;
+import com.hyanghae.backend.perfume.dto.response.PerfumePriceResponse;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
+import com.hyanghae.backend.perfume.repository.PerfumePriceRepository;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,13 +23,16 @@ public class PerfumeService {
 
     private final PerfumeRepository perfumeRepository;
     private final PerfumeImageRepository perfumeImageRepository;
+    private final PerfumePriceRepository perfumePriceRepository;
 
     public PerfumeService(
             PerfumeRepository perfumeRepository,
-            PerfumeImageRepository perfumeImageRepository
+            PerfumeImageRepository perfumeImageRepository,
+            PerfumePriceRepository perfumePriceRepository
     ) {
         this.perfumeRepository = perfumeRepository;
         this.perfumeImageRepository = perfumeImageRepository;
+        this.perfumePriceRepository = perfumePriceRepository;
     }
 
     /**
@@ -66,7 +71,10 @@ public class PerfumeService {
         PerfumeDetailResponse detail = perfumeRepository.findDetailById(perfumeId)
                 .orElseThrow(() -> new BusinessException(PerfumeErrorCode.PERFUME_NOT_FOUND));
 
-        return detail.withImages(loadImages(perfumeId));
+        return detail.withImagesAndPrices(
+                loadImages(perfumeId),
+                perfumePriceRepository.findByPerfumeId(perfumeId)
+        );
     }
 
     /**
