@@ -1,5 +1,6 @@
 package com.hyanghae.backend.perfume;
 
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -53,4 +54,20 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
                 OR LOWER(b.name) LIKE LOWER(CONCAT('%', :keyword, '%')) ESCAPE '!')
             """)
     Page<PerfumeSummaryResponse> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
+
+    /**
+     * 향수 기본 정보를 조회합니다. 향조·후기·통계는 명세상 별도 기능이라 포함하지 않습니다.
+     *
+     * <p>비활성 향수는 조회되지 않습니다. 검색에서 제외하는 것과 같은 기준입니다.
+     *
+     * <p>{ brand_id} 가 nullable 이므로 { LEFT JOIN} 입니다.
+     */
+    @Query("""
+            SELECT new com.hyanghae.backend.perfume.PerfumeDetailResponse(p.id, p.name, b.name, p.description)
+            FROM Perfume p
+            LEFT JOIN p.brand b
+            WHERE p.id = :perfumeId
+              AND p.active = true
+            """)
+    Optional<PerfumeDetailResponse> findDetailById(@Param("perfumeId") Long perfumeId);
 }
