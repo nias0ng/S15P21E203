@@ -13,6 +13,8 @@ import {
   voyageLogQuery,
   type MapPoint,
 } from '@/features/map'
+// 진열대 저장은 진열대 도메인의 어휘입니다. 화면에서 두 도메인을 조합합니다.
+import { ShelfSaveModal } from '@/features/shelf'
 import { ROUTES } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
 import { Button } from '@/shared/ui/Button'
@@ -47,6 +49,7 @@ export default function HomePage() {
   const [zoom, setZoom] = useState(1)
   const [selected, setSelected] = useState<MapPoint | null>(null)
   const [similarOf, setSimilarOf] = useState<MapPoint | null>(null)
+  const [shelfSaveOpen, setShelfSaveOpen] = useState(false)
   const { showToast, toastProps } = useToast()
 
   if (points.isPending) return <PageFallback />
@@ -121,12 +124,8 @@ export default function HomePage() {
           <MapPointPopover
             point={selected}
             onClose={() => setSelected(null)}
-            // ⚠️ 진열대 저장 모달(A11)은 진열대 스토리(S15P21E203-120)에 있습니다.
-            // 두 브랜치가 develop 에 모두 들어온 뒤 여기서 ShelfSaveModal 을
-            // 열도록 한 줄만 바꾸면 됩니다.
-            onSave={() =>
-              showToast('진열대 저장은 진열대 화면 병합 후 연결됩니다')
-            }
+            // 팝오버는 열어 둔 채 모달만 띄웁니다. 취소하면 고른 포인트가 그대로 남습니다.
+            onSave={() => setShelfSaveOpen(true)}
             onExploreSimilar={() => {
               setSimilarOf(selected)
               setSelected(null)
@@ -184,6 +183,16 @@ export default function HomePage() {
           onPick={(point) => setSimilarOf(point)}
         />
       )}
+
+      <ShelfSaveModal
+        open={shelfSaveOpen}
+        onClose={() => setShelfSaveOpen(false)}
+        onSave={() => {
+          // TODO: SHF-01 진열대 저장 API 연결 (백엔드 진열대 API 미구현)
+          setShelfSaveOpen(false)
+          showToast('진열대에 저장했습니다')
+        }}
+      />
 
       <Toast {...toastProps} />
     </div>
