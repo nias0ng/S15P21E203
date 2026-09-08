@@ -1,32 +1,68 @@
 @import 'tailwindcss';
 
 /*
- * 디자인 토큰
- * Tailwind v4 는 CSS 에서 @theme 으로 토큰을 정의합니다.
- * 여기에 정의한 값은 bg-brand-500, text-ink, rounded-card 처럼 바로 사용할 수 있습니다.
- * 디자인 시안이 나오면 이 블록의 값만 교체하면 됩니다.
+ * 디자인 토큰 — Scent Voyage Color Palette (BRAND SYSTEM / 01)
+ *
+ * 팔레트의 사용 비율 규칙을 그대로 따릅니다.
+ *   NEUTRAL 90~95%  canvas · surface · type · grid
+ *   PEARL    5~10%  scent · wake · reflection   ← 오팔 4색은 강조에만
+ *   "MIST IVORY ↔ ABYSS / COLOR APPEARS ONLY WHEN THE SCENT MOVES."
+ *
+ * 화면 코드에서는 아래 "역할 토큰"만 씁니다. 원색 토큰(ivory/abyss/...)을
+ * 직접 쓰면 나중에 색을 바꿀 때 전부 찾아 고쳐야 합니다.
  */
 @theme {
-  --color-brand-50: #f4f6f3;
-  --color-brand-100: #e4eade;
-  --color-brand-200: #c9d6bf;
-  --color-brand-300: #a7bd99;
-  --color-brand-400: #85a175;
-  --color-brand-500: #67855a;
-  --color-brand-600: #506a45;
-  --color-brand-700: #3f5337;
-  --color-brand-800: #33422d;
-  --color-brand-900: #2b3727;
+  /* ── 원색: 브랜드 앵커 ───────────────────────────────── */
+  --color-ivory: #f6f5f2; /* Mist Ivory  · air · paper · diffusion */
+  --color-abyss: #090b13; /* Abyss       · depth · night · immersion */
 
-  --color-ink: #1c1b19;
-  --color-ink-muted: #6b6862;
-  --color-surface: #fbfaf7;
+  /* ── 원색: 뉴트럴 (밝은 쪽) ──────────────────────────── */
+  --color-paper: #ebe8e5; /* Sail Paper */
+  --color-fog: #dad9d6; /* Pearl Fog */
+  --color-silver: #c7c5c5; /* Silver Current */
 
+  /* ── 원색: 뉴트럴 (어두운 쪽) ────────────────────────── */
+  --color-tide: #151822; /* Deep Tide */
+  --color-night: #323648; /* Night Current */
+  --color-slate: #535565; /* Moon Slate */
+
+  /* ── 원색: 시그니처 오팔 스펙트럼 (합쳐서 화면의 5~10%까지) ── */
+  --color-vapor: #86cdd8; /* Vapor Cyan */
+  --color-iris: #afa3da; /* Iris Current */
+  --color-coral: #d798ac; /* Coral Veil */
+  --color-seaglass: #83b99f; /* Sea Glass */
+
+  /* ── 역할 토큰: 이것만 화면에서 사용 ─────────────────── */
+
+  /* 바탕 */
+  --color-surface: var(--color-ivory); /* 페이지 바탕 */
+  --color-surface-card: #ffffff; /* 카드 · 모달 바탕 */
+  --color-surface-sunken: var(--color-paper); /* 연한 채움 · 이미지 자리 */
+
+  /* 글자 */
+  --color-ink: var(--color-abyss); /* 본문 · 주요 액션 바탕 */
+  --color-ink-muted: var(--color-slate); /* 보조 설명 · 라벨 */
+
+  /* 선 */
+  --color-line: var(--color-silver); /* 테두리 */
+  --color-line-soft: var(--color-paper); /* 연한 구분선 · 호버 배경 */
+
+  /* 강조 — 포커스 링과 "향이 움직이는" 순간에만 */
+  --color-accent: var(--color-vapor);
+
+  /* ── 형태 ────────────────────────────────────────────── */
   --font-sans:
     'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
     system-ui, 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
 
   --radius-card: 0.875rem;
+
+  /*
+   * 콘텐츠 최대 폭. 와이어프레임 S01 규격이 "폭 1120 고정"입니다.
+   * 1120 + 좌우 여백 32 = 1184px 이면 다 보이므로, 1920 화면을 125%(뷰포트 1536)나
+   * 150%(1280) 배율로 쓰는 노트북에서도 여백이 남습니다.
+   */
+  --container-content: 70rem;
 }
 
 @layer base {
