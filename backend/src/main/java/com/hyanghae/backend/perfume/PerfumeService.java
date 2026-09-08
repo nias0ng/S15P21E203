@@ -1,5 +1,6 @@
 package com.hyanghae.backend.perfume;
 
+import com.hyanghae.backend.common.BusinessException;
 import com.hyanghae.backend.common.PageResponse;
 import java.util.HashMap;
 import java.util.List;
@@ -38,7 +39,9 @@ public class PerfumeService {
         }
 
         Page<PerfumeSummaryResponse> found = perfumeRepository.searchByKeyword(normalized, pageable);
-        Map<Long, String> thumbnails = loadThumbnails(found.getContent());
+        Map<Long, String> thumbnails = loadThumbnails(
+                found.getContent().stream().map(PerfumeSummaryResponse::perfumeId).toList()
+        );
 
         return PageResponse.from(
                 found.map(perfume -> perfume.withThumbnailUrl(thumbnails.get(perfume.perfumeId())))
@@ -46,20 +49,36 @@ public class PerfumeService {
     }
 
     /**
-     * 조회된 향수들의 대표 이미지를 한 번의 쿼리로 가져옵니다.
+     * 향수 기본 정보를 조회합니다.
      *
-     * <p>검색 쿼리에 이미지 조인을 합치지 않는 이유는, 한 향수에 이미지가 여러 장이면 행이 중복되고
-     * {@code display_order} 가 같거나 {@code NULL} 인 경우 어떤 행이 남을지 예측하기 어려워지기
-     * 때문입니다. 정렬된 결과에서 향수별 첫 행만 취하면 규칙이 명확합니다.
+     * <p>기능 명세의 "향수 정보가 존재하지 않는 경우 조회 실패 사실을 안내한다" 에 따라 없는 향수는
+     * 예외를 던집니다. 향조·후기·후기 통계·계절별 평가는 명세가 별도 기능으로 분리해 두었으므로
+     * 여기서 내려주지 않습니다.
      */
-    private Map<Long, String> loadThumbnails(List<PerfumeSummaryResponse> perfumes) {
-        if (perfumes.isEmpty()) {
+    @Transactional(readOnly = true)
+    public PerfumeDetailResponse getDetail(Long perfumeId) {
+        PerfumeDetailResponse detail = perfumeRepository.findDetailById(perfumeId)
+                .orElseThrow(() -> new BusinessException(PerfumeErrorCode.PERFUME_NOT_FOUND));
+
+        return detail.withThumbnailUrl(loadThumbnail(perfumeId));
+    }
+
+    private String loadThumbnail(Long perfumeId) {
+        return loadThumbnails(List.of(perfumeId)).get(perfumeId);
+    }
+
+    /**
+     * 향수들의 대표 이미지를 한 번의 쿼리로 가져옵니다.
+     *
+     * <p>조회 쿼리에 이미지 조인을 합치지 않는 이유는, 한 향수에 이미지가 여러 장이면 행이 중복되고
+     * {@code display_order} 가 같거나 {@code NULL} 인 경우 어떤 행이 남을지 예측하기 어려워지기
+     * 때문입니다. 정렬된 결과에서 향수별 첫 행만 취하면 규칙이 명확하고, 검색과 기본 정보 조회가
+     * 같은 규칙을 씁니다.
+     */
+    private Map<Long, String> loadThumbnails(List<Long> perfumeIds) {
+        if (perfumeIds.isEmpty()) {
             return Map.of();
         }
-
-        List<Long> perfumeIds = perfumes.stream()
-                .map(PerfumeSummaryResponse::perfumeId)
-                .toList();
 
         Map<Long, String> thumbnails = new HashMap<>();
         for (PerfumeThumbnail candidate : perfumeImageRepository.findOrderedByPerfumeIds(perfumeIds)) {
@@ -92,9 +111,10 @@ public class PerfumeService {
      * 이스케이프 문자를 다시 이스케이프합니다.
      */
     private String escapeLikeWildcards(String keyword) {
+        String escape = PerfumeRepository.LIKE_ESCAPE;
         return keyword
-                .replace(PerfumeRepository.LIKE_ESCAPE, PerfumeRepository.LIKE_ESCAPE + PerfumeRepository.LIKE_ESCAPE)
-                .replace("%", PerfumeRepository.LIKE_ESCAPE + "%")
-                .replace("_", PerfumeRepository.LIKE_ESCAPE + "_");
+                .replace(escape, escape + escape)
+                .replace("%", escape + "%")
+                .replace("_", escape + "_");
     }
 }

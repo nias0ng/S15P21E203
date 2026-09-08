@@ -4,6 +4,7 @@ import com.hyanghae.backend.common.PageResponse;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -33,5 +34,13 @@ public class PerfumeController {
             @PageableDefault(size = DEFAULT_PAGE_SIZE, sort = "id") Pageable pageable
     ) {
         return perfumeService.search(keyword, pageable);
+    }
+
+    /**
+     * 향수 기본 정보 조회입니다. 향조·후기·통계는 명세상 별도 엔드포인트로 제공합니다.
+     */
+    @GetMapping("/{perfumeId}")
+    public PerfumeDetailResponse getDetail(@PathVariable Long perfumeId) {
+        return perfumeService.getDetail(perfumeId);
     }
 }
