@@ -93,4 +93,14 @@ public class UserPerfume {
         return updatedAt;
     }
 
+    public void updateFitRating(BigDecimal fitRating, OffsetDateTime updatedAt) {
+        this.fitRating = fitRating;
+        this.updatedAt = updatedAt;
+    }
+
+    public void clearFitRating(OffsetDateTime updatedAt) {
+        this.fitRating = null;
+        this.updatedAt = updatedAt;
+    }
+
 }
