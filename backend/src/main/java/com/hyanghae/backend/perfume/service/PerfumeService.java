@@ -37,7 +37,11 @@ import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -382,12 +386,23 @@ public class PerfumeService {
      * 정규화하지 않으면 {@code ?keyword=} 같은 요청이 공백을 포함한 이름만 찾게 됩니다.
      */
     /**
-     * 진열대 필터가 있으면 사람들이 담거나 열어 본 향수로 범위를 좁혀 조회합니다.
+     * 진열대 필터가 있으면 사람들이 담거나 열어 본 향수로 범위를 좁혀 <b>많이 담긴 순</b>으로
+     * 조회합니다.
+     *
+     * <p>진열대 필터에는 다른 정렬이 없습니다. 요청의 {@code sort} 는 보지 않습니다. 이 필터가
+     * 답하는 질문 자체가 "사람들이 많이 담은 향수"라서, 번호순이나 이름순으로 주면 필터를 건 이유가
+     * 사라집니다.
+     *
+     * <p>정렬을 검색 쿼리가 하지 않고 여기서 맞추는 이유가 있습니다. 정렬 기준인 담긴 횟수는
+     * 진열대·조회 이력 테이블에 있고, 향수 검색은 다른 도메인의 엔티티를 보지 않기로 되어 있습니다.
+     * 검색 쿼리에 그 집계를 넣으려면 두 도메인의 테이블을 검색 쿼리가 직접 알아야 합니다.
+     *
+     * <p>그래서 세 단계입니다. 진열대에서 인기순 번호를 받고, 검색 조건을 통과하는 번호를 걸러
+     * 내고, 인기순을 유지한 채 한 페이지를 잘라 그만큼만 내용을 가져옵니다. 세 질의 모두 가볍고,
+     * 오가는 것은 마지막을 빼면 번호뿐입니다.
      *
      * <p>번호가 하나도 없으면 조회하지 않고 빈 페이지를 만듭니다. 결과를 이미 알기 때문이며,
-     * 목록과 개수 두 번의 질의를 아낍니다. 정확성을 위한 것은 아닙니다. 빈 컬렉션을 그대로
-     * 넘겨도 Hibernate 가 항상 거짓인 조건으로 바꿔 주어 같은 결과가 나옵니다. 이 분기를 지워도
-     * 실패하는 테스트가 없다는 것을 확인했습니다.
+     * 뒤따르는 질의를 아낍니다.
      */
     private Page<PerfumeSummaryResponse> findPage(
             ShelfFilter shelf, String keyword, String brand, String gender, Pageable pageable) {
@@ -395,12 +410,49 @@ public class PerfumeService {
             return perfumeRepository.search(keyword, brand, gender, pageable);
         }
 
-        List<Long> perfumeIds = perfumeShelfRepository.findPerfumeIds(shelf);
-        if (perfumeIds.isEmpty()) {
+        List<Long> orderedIds = perfumeShelfRepository.findPerfumeIdsOrderedBySaveCount(shelf);
+        if (orderedIds.isEmpty()) {
             return Page.empty(pageable);
         }
 
-        return perfumeRepository.searchWithinPerfumeIds(keyword, brand, gender, perfumeIds, pageable);
+        Set<Long> matching = Set.copyOf(
+                perfumeRepository.findMatchingIds(keyword, brand, gender, orderedIds));
+        List<Long> found = orderedIds.stream()
+                .filter(matching::contains)
+                .toList();
+
+        return new PageImpl<>(findSummariesInOrder(pageOf(found, pageable)), pageable, found.size());
+    }
+
+    /**
+     * 인기순 번호에서 요청한 페이지만 잘라 냅니다.
+     *
+     * <p>마지막 페이지를 넘겨 요청하면 빈 목록입니다. 예외가 아닙니다. 목록이 줄어드는 사이에 다음
+     * 페이지를 누르면 일어나는 일이고, 그때 화면은 "더 없음"으로 끝나면 됩니다.
+     */
+    private List<Long> pageOf(List<Long> orderedIds, Pageable pageable) {
+        int from = (int) Math.min(pageable.getOffset(), orderedIds.size());
+        int to = Math.min(from + pageable.getPageSize(), orderedIds.size());
+        return orderedIds.subList(from, to);
+    }
+
+    /**
+     * 번호 순서대로 검색 결과 항목을 세웁니다.
+     *
+     * <p>{@code IN} 조회는 넘긴 순서를 지키지 않으므로 여기서 다시 세웁니다. 이 단계를 빼면 인기순이
+     * 조용히 향수 번호순으로 바뀝니다.
+     */
+    private List<PerfumeSummaryResponse> findSummariesInOrder(List<Long> orderedIds) {
+        if (orderedIds.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, PerfumeSummaryResponse> byId = perfumeRepository.findSummariesByIds(orderedIds).stream()
+                .collect(Collectors.toMap(PerfumeSummaryResponse::perfumeId, summary -> summary));
+        return orderedIds.stream()
+                .map(byId::get)
+                .filter(Objects::nonNull)
+                .toList();
     }
 
     /**

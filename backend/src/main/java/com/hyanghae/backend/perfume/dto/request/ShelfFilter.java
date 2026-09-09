@@ -6,6 +6,9 @@ package com.hyanghae.backend.perfume.dto.request;
  * <p><b>전체 사용자 집계입니다.</b> 값 이름이 개인 소유처럼 읽히지만 "내가 담은"이 아니라
  * "사람들이 담은"입니다. 그래서 로그인이 필요 없습니다.
  *
+ * <p>걸러내기만 하는 것이 아니라 순서도 정합니다. 세 값 모두 많이 담긴(열어 본) 순으로 나가고
+ * 다른 정렬은 없습니다.
+ *
  * <p>값은 프론트엔드의 {@code ShelfFilter} 를 그대로 따랐습니다. 진열대 도메인의
  * {@code ShelfCategory} 에는 {@code TRIED} 도 있지만 검색 필터에는 없습니다.
  */

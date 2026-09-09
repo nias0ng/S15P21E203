@@ -29,6 +29,7 @@ class PerfumeSearchShelfIntegrationTest {
 
     private static final long USER_ONE = 1L;
     private static final long USER_TWO = 2L;
+    private static final long USER_THREE = 3L;
 
     @Autowired
     private MockMvc mockMvc;
@@ -142,6 +143,105 @@ class PerfumeSearchShelfIntegrationTest {
         mockMvc.perform(get(SEARCH_URL).param("shelf", "OWNED"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfumes[*].perfumeId", Matchers.not(Matchers.hasItem(7))));
+    }
+
+    /**
+     * 많이 담긴 향수가 앞에 옵니다.
+     *
+     * <p>담긴 횟수와 향수 번호가 거꾸로 가도록 짰습니다. 1번을 세 사람이, 5번을 두 사람이,
+     * 2번을 한 사람이 담았습니다. 2번은 번호가 5번보다 작은데도 뒤에 와야 하므로, 번호순으로
+     * 정렬하면 틀린 답이 나옵니다.
+     */
+    @Test
+    void ordersBySaveCountDescending() throws Exception {
+        insertUser(USER_THREE, "three@example.com", "three");
+        // 1번 = 3명(100, 110, 112), 5번 = 2명(103, 111), 2번 = 1명(113)
+        insertShelfEntry(110, USER_TWO, 1, "OWNED");
+        insertShelfEntry(111, USER_THREE, 5, "OWNED");
+        insertShelfEntry(112, USER_THREE, 1, "OWNED");
+        insertShelfEntry(113, USER_THREE, 2, "OWNED");
+
+        mockMvc.perform(get(SEARCH_URL).param("shelf", "OWNED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(3)))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
+                .andExpect(jsonPath("$.perfumes[1].perfumeId").value(5))
+                .andExpect(jsonPath("$.perfumes[2].perfumeId").value(2));
+    }
+
+    /**
+     * 같은 횟수면 향수 번호순입니다. 순서를 확정하지 않으면 같은 요청이 매번 다른 답을 주어,
+     * 2페이지에 1페이지 항목이 다시 나옵니다.
+     */
+    @Test
+    void breaksTieByPerfumeId() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("shelf", "OWNED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(2)))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
+                .andExpect(jsonPath("$.perfumes[1].perfumeId").value(5));
+    }
+
+    /**
+     * 페이지를 넘겨도 인기순이 이어집니다.
+     *
+     * <p>번호 목록을 자른 뒤 내용을 가져오는 구조라, 마지막에 순서를 다시 세우지 않으면 여기서
+     * 조용히 번호순으로 바뀝니다.
+     */
+    @Test
+    void keepsSaveCountOrderAcrossPages() throws Exception {
+        insertUser(USER_THREE, "three@example.com", "three");
+        insertShelfEntry(110, USER_TWO, 1, "OWNED");
+        insertShelfEntry(111, USER_THREE, 1, "OWNED");
+        insertShelfEntry(112, USER_THREE, 2, "OWNED");
+        // 담긴 횟수: 1번 = 3, 2번 = 1(WISH 라 제외), 5번 = 1
+
+        mockMvc.perform(get(SEARCH_URL).param("shelf", "OWNED").param("page", "0").param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(1)))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
+                .andExpect(jsonPath("$.totalElements").value(3));
+
+        mockMvc.perform(get(SEARCH_URL).param("shelf", "OWNED").param("page", "1").param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(1)))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(2))
+                .andExpect(jsonPath("$.totalElements").value(3));
+    }
+
+    /** 마지막 페이지를 넘겨 요청하면 오류가 아니라 빈 목록입니다. */
+    @Test
+    void returnsEmptyPageBeyondTheLastPage() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("shelf", "OWNED").param("page", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(0)))
+                .andExpect(jsonPath("$.totalElements").value(2));
+    }
+
+    /** 다른 정렬을 요청해도 인기순입니다. 진열대 필터에는 다른 정렬이 없습니다. */
+    @Test
+    void ignoresRequestedSort() throws Exception {
+        insertUser(USER_THREE, "three@example.com", "three");
+        // 5번이 2명(103, 110), 1번이 1명(100)입니다. 번호순을 요청해도 5번이 앞에 와야 합니다.
+        insertShelfEntry(110, USER_THREE, 5, "OWNED");
+
+        mockMvc.perform(get(SEARCH_URL).param("shelf", "OWNED").param("sort", "id,asc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(5))
+                .andExpect(jsonPath("$.perfumes[1].perfumeId").value(1));
+    }
+
+    /** 조회 이력도 많이 열어 본 순입니다. */
+    @Test
+    void ordersViewedByViewCount() throws Exception {
+        // 3번은 픽스처에서 3회, 7번은 여기서 1회입니다.
+        insertView(210, USER_ONE, 7);
+
+        mockMvc.perform(get(SEARCH_URL).param("shelf", "VIEWED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(2)))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(3))
+                .andExpect(jsonPath("$.perfumes[1].perfumeId").value(7));
     }
 
     @Test

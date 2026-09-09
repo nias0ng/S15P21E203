@@ -44,6 +44,10 @@ public class PerfumeController {
      * <p>{@code sort} 기본값을 지정한 이유가 있습니다. {@code ORDER BY} 없는 페이징은 데이터베이스가
      * 행 순서를 보장하지 않으므로, 2페이지에 1페이지 항목이 다시 나오거나 어떤 항목이 아예 조회되지
      * 않을 수 있습니다.
+     *
+     * <p><b>{@code shelf} 가 있으면 {@code sort} 는 무시되고 많이 담긴 순으로 나갑니다.</b> 이
+     * 필터가 답하는 질문 자체가 "사람들이 많이 담은 향수"라서 다른 정렬을 둘 자리가 없습니다.
+     * 같은 횟수면 향수 번호순이라 페이지를 넘겨도 순서가 흔들리지 않습니다.
      */
     @GetMapping
     public PerfumeSearchResponse search(
