@@ -15,9 +15,9 @@ import jakarta.persistence.Table;
  *
  * <p>통계에 필요한 컬럼만 매핑했습니다. 후기 본문·작성자·작성 시각은 후기 목록 기능에서 씁니다.
  *
- * <p>{@code status} 는 매핑해 두었지만 아직 통계에서 걸러내지 않습니다. 후기 작성 기능이 없어
- * 이 컬럼에 어떤 값이 들어가는지 정해지지 않았습니다. 보류된 후기를 통계에서 빼는 것이 맞지만,
- * 값을 추측해 조건을 넣으면 실제 값이 다를 때 조용히 틀린 통계가 나옵니다.
+ * <p>{@code status} 컬럼은 일부러 매핑하지 않습니다. 보류와 비공개 개념이 모두 없어지면서
+ * 컬럼 자체가 사라질 예정입니다. 매핑해 두면 컬럼이 사라지는 순간
+ * {@code ddl-auto: validate} 가 실패해 애플리케이션이 아예 뜨지 않습니다.
  */
 @Entity
 @Table(name = "perfume_reviews")
@@ -31,9 +31,6 @@ public class PerfumeReview {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "perfume_id")
     private Perfume perfume;
-
-    @Column(name = "status", length = 30)
-    private String status;
 
     protected PerfumeReview() {
         // JPA 가 요구하는 기본 생성자입니다.
