@@ -7,7 +7,7 @@ import {
   CollectionFormModal,
   collectionDetailQuery,
 } from '@/features/collection'
-import { shelfItemsQuery } from '@/features/shelf'
+import { shelfItemsQuery, toPerfumeOption } from '@/features/shelf'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
 import { Button } from '@/shared/ui/Button'
@@ -156,12 +156,7 @@ export default function CollectionDetailPage() {
         // 진열대에 있고 아직 이 컬렉션에 없는 향수만 후보입니다
         candidates={(shelf.data ?? [])
           .filter((item) => !inCollection.has(item.perfumeId))
-          .map((item) => ({
-            perfumeId: item.perfumeId,
-            name: item.name,
-            brand: item.brand,
-            thumbnailUrl: item.thumbnailUrl,
-          }))}
+          .map(toPerfumeOption)}
         onSearch={() => {
           // TODO: 진열대 내 검색 연결
         }}

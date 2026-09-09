@@ -30,6 +30,7 @@ export { ShelfFooterStrip } from './components/ShelfFooterStrip'
 export { DisplayCase } from './components/DisplayCase'
 export { ShelfRegisterModal } from './components/ShelfRegisterModal'
 export { ShelfSaveModal } from './components/ShelfSaveModal'
+export { toPerfumeOption } from './lib'
 export { shelfItemsQuery, shelfKeys } from './queries'
 export {
   SHELF_CATEGORIES,
