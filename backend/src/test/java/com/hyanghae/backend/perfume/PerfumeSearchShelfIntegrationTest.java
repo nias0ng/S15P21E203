@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.perfume.exception.PerfumeErrorCode;
 import com.hyanghae.backend.support.IntegrationTest;
-import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
@@ -69,13 +68,14 @@ class PerfumeSearchShelfIntegrationTest {
         insertPerfume(6, 1, "Inactive Owned Scent", false);
         insertPerfume(7, 2, "Owned Diptyque", true);
 
-        insertShelfEntry(100, LOGGED_IN_USER, 1, "OWNED", null);
-        insertShelfEntry(101, LOGGED_IN_USER, 2, "WISH", null);
-        // 진열대에서 뺀 향수입니다. 행은 남고 deleted_at 만 채워집니다.
-        insertShelfEntry(102, LOGGED_IN_USER, 4, "OWNED", "2026-09-01T00:00:00Z");
-        insertShelfEntry(103, OTHER_USER, 5, "OWNED", null);
-        insertShelfEntry(104, LOGGED_IN_USER, 6, "OWNED", null);
-        insertShelfEntry(105, LOGGED_IN_USER, 7, "OWNED", null);
+        insertShelfEntry(100, LOGGED_IN_USER, 1, "OWNED");
+        insertShelfEntry(101, LOGGED_IN_USER, 2, "WISH");
+        insertShelfEntry(102, LOGGED_IN_USER, 4, "OWNED");
+        // 진열대 해제는 행을 물리 삭제합니다.
+        jdbcTemplate.update("DELETE FROM user_perfumes WHERE user_perfumes_id = 102");
+        insertShelfEntry(103, OTHER_USER, 5, "OWNED");
+        insertShelfEntry(104, LOGGED_IN_USER, 6, "OWNED");
+        insertShelfEntry(105, LOGGED_IN_USER, 7, "OWNED");
 
         // 같은 향수를 두 번 봤습니다. 결과에는 한 번만 나와야 합니다.
         insertView(200, LOGGED_IN_USER, 3);
@@ -141,7 +141,7 @@ class PerfumeSearchShelfIntegrationTest {
                 .andExpect(jsonPath("$.totalElements").value(1));
     }
 
-    /** deleted_at 조건을 빼면 이미 치운 향수가 계속 걸립니다. */
+    /** 물리 삭제한 진열대 항목은 검색 결과에 포함되지 않습니다. */
     @Test
     void excludesShelfEntryRemovedFromShelf() throws Exception {
         fakeCurrentUser.login(LOGGED_IN_USER);
@@ -216,13 +216,11 @@ class PerfumeSearchShelfIntegrationTest {
                 id, brandId, name, active);
     }
 
-    private void insertShelfEntry(
-            long id, long userId, long perfumeId, String ownershipStatus, String deletedAt) {
+    private void insertShelfEntry(long id, long userId, long perfumeId, String ownershipStatus) {
         jdbcTemplate.update(
-                "INSERT INTO user_perfumes (user_perfumes_id, user_id, perfume_id, ownership_status,"
-                        + " deleted_at) VALUES (?, ?, ?, ?, ?)",
-                id, userId, perfumeId, ownershipStatus,
-                deletedAt == null ? null : OffsetDateTime.parse(deletedAt));
+                "INSERT INTO user_perfumes (user_perfumes_id, user_id, perfume_id, ownership_status)"
+                        + " VALUES (?, ?, ?, ?)",
+                id, userId, perfumeId, ownershipStatus);
     }
 
     private void insertView(long id, long userId, long perfumeId) {
