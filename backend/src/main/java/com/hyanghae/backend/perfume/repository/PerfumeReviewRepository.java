@@ -9,8 +9,9 @@ import org.springframework.data.repository.query.Param;
 /**
  * 후기 통계 조회입니다.
  *
- * <p>향수에 달린 후기를 전부 셉니다. 보류 개념이 정리되면서 {@code perfume_reviews.status} 가
- * 없어질 예정이라, 상태로 걸러낼 후기가 없습니다.
+ * <p>향수에 달린 후기를 전부 셉니다. 후기는 존재하거나 삭제되거나 둘 중 하나이고 그 사이
+ * 상태가 없습니다. 보류와 비공개 개념이 모두 없어지면서 {@code perfume_reviews.status} 도
+ * 사라질 예정이라, 앞으로도 걸러낼 후기가 생기지 않습니다.
  */
 public interface PerfumeReviewRepository extends JpaRepository<PerfumeReview, Long> {
 

@@ -15,9 +15,9 @@ import jakarta.persistence.Table;
  *
  * <p>통계에 필요한 컬럼만 매핑했습니다. 후기 본문·작성자·작성 시각은 후기 목록 기능에서 씁니다.
  *
- * <p>{@code status} 컬럼은 일부러 매핑하지 않습니다. 보류 개념이 정리되면서 컬럼 자체가
- * 없어질 예정입니다. 매핑해 두면 컬럼이 사라지는 순간 {@code ddl-auto: validate} 가 실패해
- * 애플리케이션이 아예 뜨지 않습니다.
+ * <p>{@code status} 컬럼은 일부러 매핑하지 않습니다. 보류와 비공개 개념이 모두 없어지면서
+ * 컬럼 자체가 사라질 예정입니다. 매핑해 두면 컬럼이 사라지는 순간
+ * {@code ddl-auto: validate} 가 실패해 애플리케이션이 아예 뜨지 않습니다.
  */
 @Entity
 @Table(name = "perfume_reviews")
