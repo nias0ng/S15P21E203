@@ -50,7 +50,7 @@ export function BrandGrid({ items, isPending = false, emptyAction }: Props) {
         <li key={brand.brandId}>
           <Link
             to={`${ROUTES.PERFUMES}?brand=${encodeURIComponent(brand.name)}`}
-            className="border-line bg-surface-card hover:border-slate flex flex-col gap-1.5 border p-2.5 transition-shadow hover:shadow-md"
+            className="border-line bg-surface-card hover:border-accent flex flex-col gap-1.5 border p-2.5 transition-shadow hover:shadow-md"
           >
             <Thumbnail
               src={brand.logoUrl}

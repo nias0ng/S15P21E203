@@ -61,7 +61,7 @@ export function PerfumeCard({
           to={to}
           className={cn(
             shell,
-            'hover:border-slate transition-shadow hover:shadow-md',
+            'hover:border-accent transition-shadow hover:shadow-md',
           )}
         >
           {body}

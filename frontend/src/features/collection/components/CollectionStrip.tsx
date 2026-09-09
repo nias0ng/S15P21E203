@@ -40,7 +40,7 @@ export function CollectionStrip({ items, isPending = false, onCreate }: Props) {
         <Link
           key={collection.collectionId}
           to={toCollectionDetail(collection.collectionId)}
-          className="border-line bg-surface-card hover:border-slate space-y-2 border p-3 transition-shadow hover:shadow-md"
+          className="border-line bg-surface-card hover:border-accent space-y-2 border p-3 transition-shadow hover:shadow-md"
         >
           <span className="flex gap-1.5">
             {collection.previewThumbnails

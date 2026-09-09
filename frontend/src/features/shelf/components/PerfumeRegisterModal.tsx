@@ -128,7 +128,7 @@ export function PerfumeRegisterModal({
                       'border-line w-full border p-2 text-left transition-colors',
                       option.alreadyInShelf
                         ? 'bg-line-soft cursor-not-allowed opacity-60'
-                        : 'hover:border-slate',
+                        : 'hover:border-accent',
                     )}
                   >
                     <Thumbnail

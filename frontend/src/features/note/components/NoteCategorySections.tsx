@@ -68,7 +68,7 @@ export function NoteCategorySections({
                 <li key={note.noteId}>
                   <Link
                     to={toNoteDetail(note.noteId)}
-                    className="border-line bg-surface-card hover:border-slate flex flex-col gap-1.5 border p-2.5 transition-shadow hover:shadow-md"
+                    className="border-line bg-surface-card hover:border-accent flex flex-col gap-1.5 border p-2.5 transition-shadow hover:shadow-md"
                   >
                     <Thumbnail
                       src={note.imageUrl}

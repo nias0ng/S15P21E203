@@ -59,7 +59,7 @@ export function StarRating({
             aria-label={`${max}점 중 ${score}점`}
             onClick={() => onChange(score)}
             className={cn(
-              'focus-visible:ring-accent rounded text-sm outline-none focus-visible:ring-2',
+              'focus-visible:ring-accent-deep rounded text-sm outline-none focus-visible:ring-2',
               filled ? 'text-ink' : 'text-line',
             )}
           >

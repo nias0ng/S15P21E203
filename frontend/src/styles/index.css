@@ -1,54 +1,64 @@
 @import 'tailwindcss';
 
 /*
- * 디자인 토큰 — Scent Voyage Color Palette (BRAND SYSTEM / 01)
+ * 디자인 토큰 — Museum Archive
  *
- * 팔레트의 사용 비율 규칙을 그대로 따릅니다.
- *   NEUTRAL 90~95%  canvas · surface · type · grid
- *   PEARL    5~10%  scent · wake · reflection   ← 오팔 4색은 강조에만
- *   "MIST IVORY ↔ ABYSS / COLOR APPEARS ONLY WHEN THE SCENT MOVES."
+ * 따뜻한 종이 바탕에 흙빛 강조. 컨셉아트의 팔레트 7색을 그대로 옮기고,
+ * 대비 기준을 넘기지 못하는 자리는 아래 "파생" 4색으로 메꿉니다.
  *
- * 화면 코드에서는 아래 "역할 토큰"만 씁니다. 원색 토큰(ivory/abyss/...)을
- * 직접 쓰면 나중에 색을 바꿀 때 전부 찾아 고쳐야 합니다.
+ * 화면 코드에서는 "역할 토큰"만 씁니다. 원색(ivory/bronze/...)을 직접 쓰면
+ * 나중에 색을 바꿀 때 전부 찾아 고쳐야 합니다.
  */
 @theme {
-  /* ── 원색: 브랜드 앵커 ───────────────────────────────── */
-  --color-ivory: #f6f5f2; /* Mist Ivory  · air · paper · diffusion */
-  --color-abyss: #090b13; /* Abyss       · depth · night · immersion */
+  /* ── 원색: Museum Archive 팔레트 ─────────────────────── */
+  --color-ivory: #f9f6ef; /* Ivory       · light · beginnings */
+  --color-bone: #e8e1d6; /* Bone        · warmth · balance */
+  --color-stonegray: #c9c4bb; /* Stone Gray  · quiet strength */
+  --color-sage: #7f8a7a; /* Sage        · nature · harmony */
+  --color-bronze: #a68f5b; /* Aged Bronze · history · craft */
+  --color-charcoal: #2f2f32; /* Charcoal    · depth · clarity */
+  --color-shimmer: #a7c8db; /* Sea Shimmer · wonder · movement */
 
-  /* ── 원색: 뉴트럴 (밝은 쪽) ──────────────────────────── */
-  --color-paper: #ebe8e5; /* Sail Paper */
-  --color-fog: #dad9d6; /* Pearl Fog */
-  --color-silver: #c7c5c5; /* Silver Current */
-
-  /* ── 원색: 뉴트럴 (어두운 쪽) ────────────────────────── */
-  --color-tide: #151822; /* Deep Tide */
-  --color-night: #323648; /* Night Current */
-  --color-slate: #535565; /* Moon Slate */
-
-  /* ── 원색: 시그니처 오팔 스펙트럼 (합쳐서 화면의 5~10%까지) ── */
-  --color-vapor: #86cdd8; /* Vapor Cyan */
-  --color-iris: #afa3da; /* Iris Current */
-  --color-coral: #d798ac; /* Coral Veil */
-  --color-seaglass: #83b99f; /* Sea Glass */
+  /*
+   * ── 파생: 대비를 맞추려고 계산한 값 ───────────────────
+   * 팔레트 7색만으로는 본문 대비(4.5:1)가 안 나오는 자리가 있습니다.
+   * 괄호 안은 ivory 바탕 기준 대비입니다.
+   */
+  --color-charcoal-soft: #727170; /* 4.51:1 — charcoal 을 33% 밝힘 */
+  --color-bronze-deep: #7f6f4d; /* 4.54:1 — bronze 를 어둡게 */
+  --color-sage-deep: #556150; /* 6.06:1 — sage 를 어둡게 */
+  --color-rust: #8f4632; /* 6.30:1 — 흙빛 러스트 */
 
   /* ── 역할 토큰: 이것만 화면에서 사용 ─────────────────── */
 
   /* 바탕 */
   --color-surface: var(--color-ivory); /* 페이지 바탕 */
-  --color-surface-card: #ffffff; /* 카드 · 모달 바탕 */
-  --color-surface-sunken: var(--color-paper); /* 연한 채움 · 이미지 자리 */
+  --color-surface-card: #fefcf8; /* 종이 위에 얹는 따뜻한 흰색 */
+  --color-surface-sunken: var(--color-bone); /* 연한 채움 · 이미지 자리 */
 
   /* 글자 */
-  --color-ink: var(--color-abyss); /* 본문 · 주요 액션 바탕 */
-  --color-ink-muted: var(--color-slate); /* 보조 설명 · 라벨 */
+  --color-ink: var(--color-charcoal); /* 본문 · 주요 액션 바탕 (12.36:1) */
+  --color-ink-muted: var(--color-charcoal-soft); /* 보조 설명 · 라벨 (4.51:1) */
 
   /* 선 */
-  --color-line: var(--color-silver); /* 테두리 */
-  --color-line-soft: var(--color-paper); /* 연한 구분선 · 호버 배경 */
+  --color-line: var(--color-stonegray); /* 테두리 · 호버 배경 */
+  --color-line-soft: var(--color-bone); /* 연한 구분선 */
 
-  /* 강조 — 포커스 링과 "향이 움직이는" 순간에만 */
-  --color-accent: var(--color-vapor);
+  /* 강조 */
+  --color-accent: var(
+    --color-bronze
+  ); /* 테두리 · 아이콘. 글자로는 쓰지 않습니다 (2.90:1) */
+  --color-accent-deep: var(--color-bronze-deep); /* 버튼 바탕 · 포커스 링 */
+
+  /* 상태 — 색만으로 뜻을 구분하지 말고 글자도 함께 답니다 */
+  --color-success: var(--color-sage-deep);
+  --color-danger: var(--color-rust);
+
+  /*
+   * 면으로만 씁니다. ivory 위 1.63:1 이라 글자로 쓰면 안 보입니다.
+   * 그라데이션 · 글로우 전용.
+   */
+  --color-glow: var(--color-shimmer);
 
   /* ── 형태 ────────────────────────────────────────────── */
   /*
@@ -64,7 +74,8 @@
 
   --font-serif: 'Noto Serif KR', Georgia, 'Times New Roman', serif;
 
-  --radius-card: 0.875rem;
+  /* 컨셉아트의 카드는 거의 각져 있습니다. 미술관·아카이브 인상이 여기서 나옵니다. */
+  --radius-card: 0.375rem;
 
   /*
    * 콘텐츠 최대 폭. 와이어프레임 S01 규격이 "폭 1120 고정"입니다.

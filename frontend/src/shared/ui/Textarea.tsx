@@ -57,9 +57,9 @@ export function Textarea({
         className={cn(
           'rounded-card w-full border px-3 py-2 text-sm',
           'placeholder:text-ink-muted/70',
-          'focus-visible:ring-accent outline-none focus-visible:ring-2',
+          'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
           'disabled:bg-line-soft disabled:opacity-60',
-          error ? 'border-red-500' : 'border-line',
+          error ? 'border-danger' : 'border-line',
           className,
         )}
         {...props}
@@ -71,7 +71,7 @@ export function Textarea({
         </p>
       )}
       {error && (
-        <p id={errorId} className="text-xs text-red-600">
+        <p id={errorId} className="text-danger text-xs">
           {error}
         </p>
       )}

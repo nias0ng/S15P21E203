@@ -47,13 +47,13 @@ export function MiniMap({
                 cx={point.x}
                 cy={point.y}
                 r={4}
-                className={highlighted ? 'fill-ink' : 'fill-slate'}
+                className={highlighted ? 'fill-ink' : 'fill-ink-muted'}
               />
               <text
                 x={point.x}
                 y={point.y + 1.6}
                 textAnchor="middle"
-                className="fill-white"
+                className="fill-surface"
                 style={{ fontSize: 4 }}
               >
                 {label}

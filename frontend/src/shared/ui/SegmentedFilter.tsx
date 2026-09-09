@@ -51,7 +51,7 @@ export function SegmentedFilter<T extends string>({
               'flex-1 py-2.5 text-center text-xs transition-colors',
               index > 0 && 'border-line -ml-px border-l',
               selected
-                ? 'bg-ink text-white'
+                ? 'bg-ink text-surface'
                 : 'text-ink hover:bg-line-soft bg-transparent',
             )}
           >
