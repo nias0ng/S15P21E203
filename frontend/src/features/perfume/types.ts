@@ -7,31 +7,40 @@ export interface PerfumeSummary {
   name: string
   brand: string
 
-  // ⚠️ 아래 두 필드는 현재 백엔드가 내려주지 않습니다.
-  // COM-05 검색 응답(백엔드 PerfumeSummaryResponse)은 { perfumeId, name, brand } 뿐입니다.
-  // thumbnailUrl 은 perfume_images, scentFamily 는 perfume_map_points + scent_regions
-  // 조인이 필요해서 각 기능 이슈에서 추가될 예정입니다.
-  //
-  // 그래서 타입은 필수인데 런타임에는 undefined 로 들어옵니다. 타입 단정을 믿고
-  // perfume.scentFamily.toLowerCase() 처럼 바로 쓰면 화면이 죽습니다.
-  // 검색 결과 목록에서 쓸 때는 값이 없는 경우를 먼저 처리해주세요.
-  // 백엔드에서 두 필드가 추가되면 이 주석을 지우면 됩니다.
+  /** 대표 이미지. 등록된 이미지가 없는 향수는 null 로 옵니다 */
   thumbnailUrl: string | null
-  scentFamily: ScentFamily
+
+  // ⚠️ 백엔드가 아직 안 내려줍니다. perfume_map_points + scent_regions 조인이
+  // 필요해서 향 지도 기능 이슈에서 추가될 예정입니다.
+  // 옵셔널로 둔 이유는 아래 PerfumeDetail 의 주석과 같습니다.
+  scentFamily?: ScentFamily
 }
 
-/** DTL-01 향수 기본 정보 조회 */
+/**
+ * DTL-01 향수 기본 정보 조회
+ *
+ * ⚠️ 아래 세 필드는 백엔드 응답에 아직 없습니다. 백엔드 PerfumeDetailResponse 는
+ * { perfumeId, name, brand, thumbnailUrl, description } 뿐이고, 향조·후기 통계는
+ * 기능 명세가 별도 기능으로 분리해 두어 각각의 이슈에서 추가됩니다.
+ *
+ * **필수로 선언하면 타입은 통과하는데 런타임에 undefined 라 화면이 죽습니다.**
+ * 실제로 그렇게 죽었습니다 — 백엔드에 상세 API 가 붙기 전에는 요청이 404 로 끝나
+ * 이 코드까지 오지 않았을 뿐입니다(S15P21E203-169).
+ *
+ * 그래서 옵셔널로 둡니다. 백엔드가 내려주기 시작하면 `?` 를 떼고 이 주석을 지우세요.
+ * 쓰는 쪽은 값이 없는 경우를 먼저 처리해야 합니다.
+ */
 export interface PerfumeDetail extends PerfumeSummary {
   description: string
   /** DTL-02 향조 정보 */
-  notes: {
+  notes?: {
     top: string[]
     middle: string[]
     base: string[]
   }
   /** DTL-10 후기 통계 */
-  reviewCount: number
-  averageScore: number
+  reviewCount?: number
+  averageScore?: number
 }
 
 export interface PerfumeSearchParams {
