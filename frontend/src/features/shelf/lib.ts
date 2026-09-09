@@ -20,3 +20,23 @@ export function toPerfumeOption(item: ShelfItem): PerfumeOption {
     thumbnailUrl: item.thumbnailUrl,
   }
 }
+
+/**
+ * 메모를 마지막으로 쓴 날을 `YYYY.MM.DD` 로 적습니다.
+ *
+ * 백엔드는 UTC ISO 를 주는데 그대로 보여주면 `2026-08-20T00:00:00Z` 가 화면에
+ * 그대로 찍힙니다. **보는 사람의 지역 날짜**로 옮겨서 적습니다 — UTC 로 자르면
+ * 한국에서 밤 9시 이후에 쓴 메모가 다음 날로 보입니다.
+ *
+ * `shared/lib` 이 아니라 여기 두는 이유: 지금 부르는 곳이 진열대 한 곳뿐입니다.
+ * 두 번째 도메인이 같은 표기를 쓰게 되면 그때 `shared/lib` 으로 올립니다
+ * (CLAUDE.md — "예상해서 미리 shared 에 올리지 않습니다").
+ */
+export function formatShelfDate(iso: string | null): string | null {
+  if (!iso) return null
+  const at = new Date(iso)
+  if (Number.isNaN(at.getTime())) return null
+
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${at.getFullYear()}.${pad(at.getMonth() + 1)}.${pad(at.getDate())}`
+}

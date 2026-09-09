@@ -1,12 +1,21 @@
+import { useState } from 'react'
+
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
+import { Textarea } from '@/shared/ui/Textarea'
 
+import { formatShelfDate } from '../lib'
 import type { ShelfItem } from '../types'
 
 type Props = {
   item: ShelfItem | null
-  onClose: () => void
-  onSave: () => void
+  /** 대표 향수로 지정 (보유 중 칸에서만 뜻이 있습니다 — 아래 주석) */
+  onSetRepresentative: () => void
+  /** 분류 변경 모달 열기 */
+  onChangeCategory: () => void
+  /** 진열대에서 빼기. 되돌릴 수 없어서 화면이 확인창을 띄웁니다 */
+  onRemove: () => void
+  onSaveMemo: (memo: string) => void
   className?: string
 }
 
@@ -16,6 +25,17 @@ type Props = {
  * ivory 는 시안의 따뜻한 크림보다 밝고 차가워서 그대로 얹으면 패널이 종이에
  * 묻힙니다. 시안이 확정되면 그 색들을 @theme 으로 올리고 여기 var() 를 토큰으로
  * 바꿉니다. 활자 크기·간격·전환·포커스는 전부 기존 규칙 그대로입니다.
+ */
+
+/*
+ * ⚠️ 이 카드의 높이가 화면 구성을 좌우합니다.
+ *
+ * 머리말 → 진열장 → 하단 띠가 1440x900 한 화면에 들어가야 하는데, 진열장(415px)보다
+ * 이 카드가 키가 커서 **가운데 줄의 높이를 이 카드가 정합니다.** 안쪽 무엇이든
+ * 키우면 하단 띠가 화면 밖으로 밀립니다. 사진 높이 · 사이 간격 · 향조 원 지름 ·
+ * 메모 줄 수가 전부 그래서 시안보다 한 단씩 작습니다.
+ *
+ * 바꿀 일이 생기면 브라우저에서 `main section` 의 높이를 재세요. 830px 이 상한입니다.
  */
 
 /**
@@ -46,16 +66,6 @@ const FOCUS_RING =
   'outline-none focus-visible:ring-2 focus-visible:ring-[var(--shelf-ink)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper-soft)]'
 
 /**
- * 자간을 넓힌 소형 라벨(브랜드명 · SCENT NOTE · TOP/MIDDLE/BASE).
- *
- * `tracking-[0.18em]` 만 임의값입니다. `@theme` 에 자간 토큰이 없고, 자간은 색·크기와
- * 달리 시안이 바뀌어도 함께 갈아끼울 대상이 아니라 토큰을 새로 파지 않았습니다.
- * 대신 세 곳이 같은 값을 써야 하므로 문자열을 여기 한 번만 둡니다 —
- * 나중에 토큰이 생기면 이 상수만 고치면 됩니다.
- */
-const SPACED_LABEL = 'shelf-muted text-caption uppercase tracking-[0.18em]'
-
-/**
  * 향조 3단(탑·미들·베이스).
  *
  * ⚠️ 향조는 별도 엔드포인트라 고정값입니다. 백엔드가 붙으면 이 배열 대신 props 로 받습니다.
@@ -75,12 +85,17 @@ const SCENT_NOTES = [
  * 컬렉션 상세 패널 (와이어프레임 A13 우측 — 진열장 시안)
  *
  * 진열대에서 병을 고르면 그 향수의 얼굴을 크게 보여주는 패널입니다.
- * `ShelfItemPanel` 이 "내가 저장한 향수를 관리"하는 쪽이라면, 이쪽은 "고른 향수를
- * 감상하고 저장"하는 쪽이라 다른 컴포넌트로 둡니다.
  *
  * 카드 폭은 정하지 않습니다 — 진열장과 나란히 놓이는 자리라 화면(pages)이 정합니다.
  */
-export function ShelfDetailPanel({ item, onClose, onSave, className }: Props) {
+export function ShelfDetailPanel({
+  item,
+  onSetRepresentative,
+  onChangeCategory,
+  onRemove,
+  onSaveMemo,
+  className,
+}: Props) {
   if (!item) {
     return (
       <aside
@@ -97,59 +112,31 @@ export function ShelfDetailPanel({ item, onClose, onSave, className }: Props) {
   return (
     <aside
       aria-label="선택한 향수 정보"
-      className={cn(CARD, 'relative flex flex-col gap-3', className)}
+      className={cn(CARD, 'flex flex-col gap-2', className)}
     >
-      {/*
-        여기만 공용 Button 을 쓰지 않는 이유는 ShelfFooterStrip 의 넘김 버튼과
-        같습니다 — 공용 버튼은 어떤 variant 든 호버 배경이 생기는데, 이 × 는 종이 위에
-        인쇄된 기호처럼 배경 없이 글자색만 바뀌어야 합니다. 대신 공통 규칙 중
-        포커스 링과 색 전환(duration-120)은 그대로 가져옵니다.
-      */}
-      <button
-        type="button"
-        aria-label="닫기"
-        onClick={onClose}
-        className={cn(
-          'shelf-muted absolute top-4 right-4 inline-flex size-8 items-center justify-center rounded-full',
-          'transition-colors duration-120 ease-out hover:text-[var(--shelf-ink)]',
-          FOCUS_RING,
-        )}
-      >
-        {/*
-          × 글리프 대신 선을 직접 긋습니다. 글리프는 폰트마다 굵기와 크기가 달라
-          시안의 "가는 선 두 개" 가 재현되지 않습니다(Noto Sans KR 에서는 굵게 나옵니다).
-        */}
-        <svg viewBox="0 0 16 16" aria-hidden className="size-4">
-          <path
-            d="M3.5 3.5l9 9M12.5 3.5l-9 9"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.2"
-            strokeLinecap="round"
-          />
-        </svg>
-      </button>
-
       {/*
         병 이미지는 배경이 투명한 PNG 로 들어옵니다(DisplayCase 와 같은 소스).
         그래서 Thumbnail 을 쓰지 않습니다 — 자리표시자 상자의 테두리·배경이
         투명 영역을 네모로 드러내 병이 상자에 든 것처럼 보입니다.
-        높이 180px 은 시안 실측이고, 이미지가 없을 때도 같은 높이를 비워 둬야
-        아래 글이 위아래로 튀지 않습니다.
+        높이는 시안이 180px 인데 124px 로 줄였습니다. 시안에 없던 조작(대표 지정 ·
+        분류 변경 · 저장 해제 · 메모)이 아래에 들어오면서, 머리말부터 하단 띠까지
+        한 화면에 담으려면 어딘가를 줄여야 했습니다. 사진은 줄여도 무엇인지 알아볼 수
+        있지만 조작은 줄이면 못 누릅니다.
+        이미지가 없을 때도 같은 높이를 비워 둬야 아래 글이 위아래로 튀지 않습니다.
       */}
       {item.thumbnailUrl ? (
         <img
           src={item.thumbnailUrl}
           alt=""
-          className="shelf-bottle-img h-[180px] w-full object-contain"
+          className="shelf-bottle-img h-[124px] w-full object-contain"
         />
       ) : (
-        <div aria-hidden className="h-[180px]" />
+        <div aria-hidden className="h-[124px]" />
       )}
 
       <div className="flex flex-col items-center gap-1">
         {/* 시안의 브랜드명은 자간 넓은 대문자입니다. 한글 브랜드는 uppercase 가 무시됩니다 */}
-        <p className={SPACED_LABEL}>{item.brand}</p>
+        <p className="shelf-label">{item.brand}</p>
 
         {/*
           시안의 향수명이 20px 이라 활자 스케일의 title 이 그대로 맞습니다.
@@ -182,8 +169,8 @@ export function ShelfDetailPanel({ item, onClose, onSave, className }: Props) {
         “자유롭고 당당한, 지금의 나를 닮은 향.”
       </p>
 
-      <div className="flex flex-col items-center gap-2.5">
-        <p className={SPACED_LABEL}>Scent Note</p>
+      <div className="flex flex-col items-center gap-2">
+        <p className="shelf-label">Scent Note</p>
 
         {/*
           flex 가 아니라 3열 그리드입니다. flex 로 두면 이름 길이("패츌리" 3자 vs
@@ -195,48 +182,147 @@ export function ShelfDetailPanel({ item, onClose, onSave, className }: Props) {
         */}
         <ul className="grid w-full grid-cols-3">
           {SCENT_NOTES.map((note) => (
-            <li key={note.stage} className="flex flex-col items-center gap-1.5">
+            <li key={note.stage} className="flex flex-col items-center gap-1">
               <span
                 aria-hidden
                 className={cn(
-                  'shelf-note-swatch size-9 rounded-full',
+                  'shelf-note-swatch size-8 rounded-full',
                   note.tone,
                 )}
               />
-              <span className={SPACED_LABEL}>{note.stage}</span>
+              <span className="shelf-label">{note.stage}</span>
               <span className="text-caption">{note.name}</span>
             </li>
           ))}
         </ul>
       </div>
 
+      <MemoField item={item} onSave={onSaveMemo} />
+
       {/*
+        조작 세 가지. mt-auto 로 카드 맨 아래에 붙입니다.
+
         공용 Button 을 씁니다. 직접 만들면 모서리·굵기·포커스 링·전환·비활성 규칙을
         그대로 베껴 적게 되는데, 나중에 공용 쪽이 바뀔 때 이 버튼만 뒤처집니다.
-        시안의 바탕색과 모서리(6px)·높이(46px)만 덮습니다 — cn(twMerge)이 variant·size 의
-        bg·rounded·h 를 걷어냅니다. size lg 의 세로 여백(py)도 함께 0 으로 두는 이유는,
-        높이를 직접 잡은 뒤에도 py 가 남아 있으면 아이콘과 글자가 아래로 눌리기 때문입니다.
-        mt-auto 는 시안처럼 버튼을 카드 맨 아래에 붙입니다.
+        시안의 바탕색과 모서리(6px)·높이만 덮습니다 — cn(twMerge)이 variant·size 의
+        bg·rounded·h 를 걷어냅니다. size lg 의 세로 여백(py)도 0 으로 두는 이유는,
+        높이를 직접 잡은 뒤에도 py 가 남아 있으면 글자가 아래로 눌리기 때문입니다.
       */}
-      <Button
-        variant="primary"
-        size="lg"
-        fullWidth
-        onClick={onSave}
-        className={cn(
-          'mt-auto h-[46px] rounded-md py-0',
-          'bg-[var(--chip-active)] text-[var(--paper-soft)] hover:opacity-90',
-          FOCUS_RING,
-        )}
-      >
-        <svg viewBox="0 0 24 24" aria-hidden className="size-4">
-          <path
-            fill="currentColor"
-            d="M12 2.5l2.9 6.1 6.6.9-4.8 4.7 1.2 6.6L12 17.7 6.1 20.8l1.2-6.6L2.5 9.5l6.6-.9L12 2.5Z"
-          />
-        </svg>
-        나의 향수로 저장
-      </Button>
+      <div className="mt-auto flex flex-col gap-2">
+        {/*
+          ⚠️ 대표 향수는 **보유 중 칸에만** 표시됩니다(와이어프레임 A13 주석 ·
+          `ShelfItem.representative`). 시향만 해 본 향수나 아직 안 산 향수를 "나를
+          대표하는 향" 으로 두는 건 뜻이 맞지 않아서, 다른 칸에서는 끕니다.
+          숨기지 않고 끄는 이유: 사라지면 아래 두 단추의 자리가 위로 밀려 올라와,
+          병을 옮겨 다닐 때마다 단추 위치가 바뀝니다.
+        */}
+        <Button
+          variant="primary"
+          size="lg"
+          fullWidth
+          disabled={item.category !== 'OWNED' || item.representative}
+          onClick={onSetRepresentative}
+          className={cn(
+            'h-10 rounded-md py-0',
+            'bg-[var(--chip-active)] text-[var(--paper-soft)] hover:opacity-90',
+            FOCUS_RING,
+          )}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden className="size-4">
+            <path
+              fill="currentColor"
+              d="M12 2.5l2.9 6.1 6.6.9-4.8 4.7 1.2 6.6L12 17.7 6.1 20.8l1.2-6.6L2.5 9.5l6.6-.9L12 2.5Z"
+            />
+          </svg>
+          {item.representative ? '대표 향수' : '대표 향수로 지정'}
+        </Button>
+
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            fullWidth
+            onClick={onChangeCategory}
+            className={cn('h-10 rounded-md', FOCUS_RING)}
+          >
+            분류 변경
+          </Button>
+          {/*
+            되돌릴 수 없는 조작이라 danger 입니다. 확인창은 화면(pages)이 띄웁니다 —
+            지운 뒤 무엇을 고를지는 목록을 들고 있는 쪽만 알 수 있습니다.
+          */}
+          <Button
+            variant="danger"
+            size="sm"
+            fullWidth
+            onClick={onRemove}
+            className={cn('h-10 rounded-md', FOCUS_RING)}
+          >
+            저장 해제
+          </Button>
+        </div>
+      </div>
     </aside>
+  )
+}
+
+/**
+ * 개인 메모.
+ *
+ * ⚠️ 메모는 향수 한 개당 하나입니다(와이어프레임 A15 주석). 향수 상세의 후기와는
+ * 별개고, 남에게 보이지 않습니다.
+ *
+ * 저장 단추를 따로 둔 이유: 포커스가 빠질 때 조용히 저장하면, 지우다 만 글이
+ * 그대로 저장되는 일이 생깁니다. 고치지 않았을 때는 꺼 두어서 "아직 안 바뀌었다" 를
+ * 단추 상태로 알려줍니다.
+ *
+ * 값을 props 로 받지 않고 여기서 들고 있는 이유: 향수를 바꾸면 화면이 key 로 이
+ * 컴포넌트를 다시 만들어서 초깃값이 새로 잡힙니다. useEffect 로 맞추면 저장 실패로
+ * 되돌아오는 값과 사용자가 지금 치고 있는 글이 싸웁니다.
+ */
+function MemoField({
+  item,
+  onSave,
+}: {
+  item: ShelfItem
+  onSave: (memo: string) => void
+}) {
+  const initial = item.memo ?? ''
+  const [draft, setDraft] = useState(initial)
+  const dirty = draft.trim() !== initial.trim()
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between">
+        <span className="shelf-label">Memo</span>
+        {!dirty && (
+          <span className="shelf-muted text-caption">
+            {formatShelfDate(item.memoUpdatedAt)}
+          </span>
+        )}
+        {dirty && (
+          <button
+            type="button"
+            onClick={() => onSave(draft.trim())}
+            className={cn(
+              'text-caption underline underline-offset-2',
+              'transition-opacity duration-120 ease-out hover:opacity-70',
+              FOCUS_RING,
+            )}
+          >
+            저장
+          </button>
+        )}
+      </div>
+      <Textarea
+        label="개인 메모"
+        hideLabel
+        rows={2}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        placeholder="이 향을 어디서 언제 맡았는지 적어두세요."
+        className="shelf-field text-caption resize-none rounded-md border-0"
+      />
+    </div>
   )
 }

@@ -3,8 +3,11 @@
  */
 
 /**
- * 진열대 분류. 와이어프레임 A13 주석대로 "칸이 세 개로 고정" 이고,
- * A11 · A15 에서 저장할 때 필수입니다.
+ * 진열대 분류. A11 · A15 에서 저장할 때 필수입니다.
+ *
+ * 여기 적힌 라벨이 이 분류의 **유일한 이름**입니다. 저장 모달도 진열대 도구 줄도
+ * 이 값을 끌어다 씁니다 — 화면마다 다른 낱말로 부르면 사용자가 "시향해 봄" 으로
+ * 담은 향수를 "시향 기록" 에서 찾아야 합니다.
  *
  * 이 어휘가 진열대 도메인에 있는 이유: 향수 상세(A10)의 저장 모달도 이 값을 쓰는데
  * features 끼리는 import 할 수 없으므로, 분류를 소유한 진열대 도메인에 두고
@@ -18,12 +21,30 @@ export const SHELF_CATEGORIES = [
   { value: 'WISH', label: '보유 희망' },
 ] as const satisfies readonly { value: ShelfCategory; label: string }[]
 
-/** A13 의 진열대 세 칸 제목 (분류명 그대로 씁니다) */
-export const SHELF_SLOTS = [
-  { category: 'OWNED', title: '진열대 1 · 보유 중' },
-  { category: 'TRIED', title: '진열대 2 · 시향해 봄' },
-  { category: 'WISH', title: '진열대 3 · 보유 희망' },
-] as const satisfies readonly { category: ShelfCategory; title: string }[]
+/**
+ * 분류 칩에 붙는 개수. **검색어를 적용한 뒤**의 수입니다 —
+ * 검색 중에는 칩 숫자가 "이 칸에 몇 개가 걸렸나" 를 알려주는 쪽이 쓸모 있습니다.
+ *
+ * Record 로 두면 분류가 늘 때 컴파일러가 빠진 칸을 잡아줍니다. 예전에는
+ * `{ all, owned, tried, wish }` 라 분류와 칸 이름을 잇는 표를 따로 들고 있었고,
+ * 그 표가 곧 어긋날 자리였습니다.
+ */
+export type ShelfCounts = Record<ShelfCategory, number>
+
+/**
+ * 진열장에 한 번에 서는 병의 수. 시안 실측입니다.
+ *
+ * 벽감 높이(329px)와 병 폭이 이 수를 전제로 맞춰져 있습니다.
+ */
+export const SHELF_SLOT_COUNT = 7
+
+/**
+ * 좌우 화살표 한 번에 넘어가는 칸 수.
+ *
+ * 일곱 칸을 통째로 넘기지 않는 이유: 화면이 한 번에 전부 바뀌면 방금 본 병이
+ * 어디로 갔는지 알 수 없습니다. 세 칸씩 밀면 네 병이 남아 있어 이어집니다.
+ */
+export const SHELF_PAGE_STEP = 3
 
 /**
  * 진열대에 담긴 향수 한 개.

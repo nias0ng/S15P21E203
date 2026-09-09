@@ -2,32 +2,16 @@ import { useId } from 'react'
 
 import { cn } from '@/shared/lib/cn'
 
-import type { ShelfCategory } from '../types'
-
-/**
- * 컬렉션 목록을 거르는 기준. 'ALL' 만 진열대 분류가 아닌 "안 거름" 상태입니다.
- *
- * 문자열을 직접 나열하지 않고 ShelfCategory 를 얹은 이유: 분류가 늘어나면
- * types.ts 한 곳만 고쳐도 여기까지 따라옵니다. 반대로 나열해두면 분류를 추가한
- * 사람이 이 파일을 못 찾아 칩만 조용히 빠집니다.
- *
- * 이 값을 들고 있는 쪽은 화면(pages)이라 타입도 함께 내보냅니다. 안 내보내면
- * 호출하는 쪽이 useState<'ALL' | ShelfCategory> 로 같은 유니온을 또 적게 되고,
- * 그러면 위에 적은 "한 곳만 고치면 된다" 가 곧바로 깨집니다.
- */
-export type CollectionFilterValue = 'ALL' | ShelfCategory
-
-type CollectionCounts = {
-  all: number
-  owned: number
-  tried: number
-  wish: number
-}
+import {
+  SHELF_CATEGORIES,
+  type ShelfCategory,
+  type ShelfCounts,
+} from '../types'
 
 type Props = {
-  counts: CollectionCounts
-  value: CollectionFilterValue
-  onChange: (next: CollectionFilterValue) => void
+  counts: ShelfCounts
+  value: ShelfCategory
+  onChange: (next: ShelfCategory) => void
   keyword: string
   onKeywordChange: (next: string) => void
   className?: string
@@ -49,27 +33,11 @@ const FIELD =
   'focus-visible:ring-offset-[var(--paper)] outline-none'
 
 /**
- * 칩 정의.
- *
- * 라벨이 SHELF_CATEGORIES 와 다릅니다(시향해 봄 → 시향 기록, 보유 희망 → 위시리스트).
- * 목업의 문구를 그대로 옮긴 것인데, 같은 값을 화면마다 다르게 부르는 셈이라
- * 팀 확정 후 한쪽으로 맞춰야 합니다.
- */
-const FILTER_CHIPS = [
-  { value: 'ALL', label: '전체', countKey: 'all' },
-  { value: 'OWNED', label: '보유 중', countKey: 'owned' },
-  { value: 'TRIED', label: '시향 기록', countKey: 'tried' },
-  { value: 'WISH', label: '위시리스트', countKey: 'wish' },
-] as const satisfies readonly {
-  value: CollectionFilterValue
-  label: string
-  countKey: keyof CollectionCounts
-}[]
-
-/**
- * 컬렉션 목록 위 필터 줄 (와이어프레임 A13 컬렉션 영역 — 진열장 시안)
+ * 진열대 머리말 옆 도구 줄 (와이어프레임 A13 — 진열장 시안)
  *
  * 왼쪽부터 분류 칩 → 구분선 → 드롭다운 → 검색창 순으로 한 줄에 놓입니다.
+ * 진열장에 무엇을 세울지 정하는 줄이라 이름이 Filters 가 아니라 Toolbar 입니다 —
+ * 거르기(칩·검색)와 정렬이 한 줄에 같이 있습니다.
  * 검색창만 flex-1 이라 창 폭이 변해도 칩은 안 밀리고 검색창이 늘고 줄어듭니다.
  * 칩이 밀리면 "지금 무엇으로 걸러져 있는지"가 화면 밖으로 나가버립니다.
  */
@@ -85,9 +53,18 @@ export function ShelfToolbar({
 
   return (
     <div className={cn('flex items-center gap-2', className)}>
-      {/* aria-pressed 만으로는 이 칩들이 한 묶음인 걸 낭독기가 모릅니다 */}
-      <div role="group" aria-label="컬렉션 분류" className="flex gap-2">
-        {FILTER_CHIPS.map((chip) => {
+      {/*
+        칩이 곧 진열장의 세 칸입니다. 라벨을 여기 적지 않고 SHELF_CATEGORIES 에서
+        끌어옵니다 — 예전에는 목업 문구를 옮겨 적어서 저장 모달의 "시향해 봄" 을
+        여기서는 "시향 기록" 이라고 부르고 있었습니다.
+
+        role="tablist" 가 아니라 그냥 group 입니다. 칸이 미끄러져 바뀌긴 하지만
+        탭 패널처럼 id 로 이어붙인 구조가 아니고, 진열장에도 휠로 들어올 수 있어서
+        탭 규약(좌우 화살표로 이동 · aria-controls)을 온전히 지킬 수 없습니다.
+        못 지킬 규약을 이름만 빌려 쓰면 낭독기가 더 헷갈립니다.
+      */}
+      <div role="group" aria-label="진열대 분류" className="flex gap-2">
+        {SHELF_CATEGORIES.map((chip) => {
           const selected = value === chip.value
 
           return (
@@ -114,7 +91,7 @@ export function ShelfToolbar({
                 보조 글자색이 안 읽히므로, 굵기만 남기고 색은 바탕에 맡깁니다.
               */}
               <span className={selected ? 'opacity-70' : 'shelf-muted'}>
-                {counts[chip.countKey]}
+                {counts[chip.value]}
               </span>
             </button>
           )

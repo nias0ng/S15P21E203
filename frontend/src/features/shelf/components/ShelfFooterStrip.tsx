@@ -10,22 +10,7 @@ type Props = {
 }
 
 /**
- * 자간을 넓힌 대문자 소형 라벨.
- *
- * 자간만 임의값입니다. `@theme` 에 자간 토큰이 없고, 자간은 색·크기와 달리 시안이
- * 바뀌어도 함께 갈아끼울 대상이 아니라 토큰을 새로 파지 않았습니다.
- * 대문자 라틴 문자는 기본 자간으로는 붙어 보여서 전시 캡션처럼 벌려야 하는데,
- * 0.18em 은 GlobalHeader(0.06em)·StarRating(0.15em) 보다 넓은 이 화면 전용 값입니다.
- *
- * 이 띠 안에서 두 곳이 같은 값을 써야 하므로 문자열을 여기 한 번만 둡니다.
- * 인라인으로 두면 한쪽에만 근거가 붙어서 다른 쪽은 실수처럼 보입니다.
- * `ShelfDetailPanel` 도 같은 상수를 갖고 있습니다 — `--tracking-*` 토큰이
- * 생기면 두 곳을 함께 걷어냅니다.
- */
-const SPACED_LABEL = 'shelf-muted text-caption uppercase tracking-[0.18em]'
-
-/**
- * 컬렉션 화면 맨 아래 띠 (와이어프레임 A13 하단)
+ * 진열대 화면 맨 아래 띠 (와이어프레임 A13 하단)
  *
  * 문구 · SCROLL 표시 · 인용 · 페이지 표시를 한 줄에 늘어놓습니다.
  * 정보가 아니라 진열장의 "명판" 에 가까워서, 위 테두리 한 줄(border-t)로만
@@ -49,7 +34,7 @@ export function ShelfFooterStrip({
         className,
       )}
     >
-      <p className={cn(SPACED_LABEL, 'leading-relaxed')}>
+      <p className="shelf-label leading-relaxed">
         A SCENT BRINGS YOU BACK
         <br />
         TO A MORE TRUE YOU.
@@ -58,7 +43,7 @@ export function ShelfFooterStrip({
       {/* 스크롤 유도. 선이 아래로 이어지는 모양 자체가 "더 있다" 를 말합니다 */}
       <div className="flex flex-col items-center gap-2">
         <span aria-hidden className="shelf-hairline h-8 w-px" />
-        <span className={SPACED_LABEL}>SCROLL</span>
+        <span className="shelf-label">SCROLL</span>
       </div>
 
       <p className="shelf-muted text-caption leading-relaxed">

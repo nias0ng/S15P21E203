@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 
 import {
   CollectionFormModal,
@@ -7,19 +7,21 @@ import {
   myCollectionsQuery,
 } from '@/features/collection'
 import {
-  ShelfDetailPanel,
-  ShelfToolbar,
-  ShelfFooterStrip,
   DisplayCase,
+  ShelfDeck,
+  ShelfDetailPanel,
+  ShelfFooterStrip,
   ShelfRegisterModal,
   ShelfSaveModal,
+  ShelfToolbar,
   shelfItemsQuery,
-  type CollectionFilterValue,
-  type ShelfItem,
+  toPerfumeOption,
+  useShelfBrowser,
 } from '@/features/shelf'
 import { useToast } from '@/shared/hooks/useToast'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
+import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { PageFallback } from '@/shared/ui/PageFallback'
 import { Toast } from '@/shared/ui/Toast'
 
@@ -86,51 +88,14 @@ export default function MyShelfPage() {
   const shelf = useQuery(shelfItemsQuery())
   const collections = useQuery(myCollectionsQuery())
 
-  const [filter, setFilter] = useState<CollectionFilterValue>('ALL')
-  const [keyword, setKeyword] = useState('')
-  const [selectedId, setSelectedId] = useState<number | null>(null)
   const [registerOpen, setRegisterOpen] = useState(false)
   const [createCollectionOpen, setCreateCollectionOpen] = useState(false)
   const [changeCategoryOpen, setChangeCategoryOpen] = useState(false)
+  const [removeOpen, setRemoveOpen] = useState(false)
   const { showToast, toastProps } = useToast()
 
-  const items = useMemo(() => shelf.data ?? [], [shelf.data])
-
-  const counts = useMemo(
-    () => ({
-      all: items.length,
-      owned: items.filter((item) => item.category === 'OWNED').length,
-      tried: items.filter((item) => item.category === 'TRIED').length,
-      wish: items.filter((item) => item.category === 'WISH').length,
-    }),
-    [items],
-  )
-
-  // 칩과 검색어는 겹쳐 걸립니다. 검색은 향수명과 브랜드명을 함께 봅니다.
-  const visible = useMemo(() => {
-    const needle = keyword.trim().toLowerCase()
-    return items.filter((item) => {
-      if (filter !== 'ALL' && item.category !== filter) return false
-      if (!needle) return true
-      return (
-        item.name.toLowerCase().includes(needle) ||
-        item.brand.toLowerCase().includes(needle)
-      )
-    })
-  }, [items, filter, keyword])
-
-  // 걸러진 목록이 바뀌면 선택이 사라질 수 있습니다. 그때는 첫 향수를 고릅니다 —
-  // 오른쪽 패널이 비어 있으면 화면 절반이 빈 채로 남습니다.
-  const selectedIndex = visible.findIndex(
-    (item) => item.shelfItemId === selectedId,
-  )
-  const current = selectedIndex >= 0 ? selectedIndex : 0
-  const selected: ShelfItem | null = visible[current] ?? null
-
-  const move = (step: 1 | -1) => {
-    const next = visible[current + step]
-    if (next) setSelectedId(next.shelfItemId)
-  }
+  // 칩 · 검색어 · 선택 커서는 서로 규칙이 걸려 있어 한 훅이 함께 들고 있습니다.
+  const browser = useShelfBrowser(shelf.data ?? [])
 
   if (shelf.isPending) return <PageFallback />
 
@@ -182,10 +147,10 @@ export default function MyShelfPage() {
             </div>
 
             {/*
-              `tracking-[0.18em]` 만 임의값입니다. @theme 에 자간 토큰이 없고, 자간은
-              색 · 크기와 달리 시안이 확정돼도 함께 갈아끼울 대상이 아니라 토큰을 새로
-              파지 않았습니다. ShelfDetailPanel 의 SPACED_LABEL 과 같은 값입니다 —
-              자간 토큰이 생기면 두 곳을 함께 고칩니다.
+              여기만 `.shelf-label` 을 안 씁니다. 그 클래스는 대문자로 바꾸는 것까지
+              함께 하는데, 이 문구는 이미 소문자로 적혀 있고 CSS 로 대문자를 만들면
+              낭독기가 "E V E R Y" 처럼 한 글자씩 읽는 일이 생깁니다. 그래서 자간만
+              같은 값으로 맞춥니다 — `.shelf-label` 의 0.18em 과 같은 값입니다.
             */}
             <p className="shelf-muted text-caption tracking-[0.18em] uppercase">
               Every scent
@@ -199,29 +164,46 @@ export default function MyShelfPage() {
             items-start 라 그냥 두면 칩이 제목 윗선에 붙어 한 줄로 안 읽힙니다.
           */}
           <ShelfToolbar
-            counts={counts}
-            value={filter}
-            onChange={(next) => {
-              setFilter(next)
-              setSelectedId(null)
-            }}
-            keyword={keyword}
-            onKeywordChange={(next) => {
-              setKeyword(next)
-              setSelectedId(null)
-            }}
+            counts={browser.counts}
+            value={browser.category}
+            onChange={browser.changeCategory}
+            keyword={browser.keyword}
+            onKeywordChange={browser.changeKeyword}
             className="flex-1 lg:pt-2"
           />
         </div>
 
         {/* 진열장과 상세 패널. 시안의 둘 사이가 17px 이라 gap-4 입니다 */}
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-4">
-          <DisplayCase
-            items={visible}
-            selectedId={selected?.shelfItemId ?? null}
-            onSelect={(item) => setSelectedId(item.shelfItemId)}
+          {/*
+            세 칸이 한 자리에서 위아래로 미끄러집니다. 안 보이는 칸도 미리 그려 두는
+            이유는 넘어가는 동안 다음 칸이 올라오는 게 보여야 하기 때문입니다 —
+            바뀔 때 만들면 빈 자리가 올라온 뒤에 병이 하나씩 나타납니다.
+          */}
+          <ShelfDeck
+            index={browser.categoryIndex}
+            onIndexChange={browser.changeCategoryIndex}
             className="min-w-0 flex-1"
-          />
+          >
+            {browser.sections.map((section) => {
+              const active = section.category === browser.category
+              return (
+                <DisplayCase
+                  key={section.category}
+                  label={section.label}
+                  items={section.items}
+                  selectedId={
+                    active ? (browser.selected?.shelfItemId ?? null) : null
+                  }
+                  onSelect={browser.select}
+                  windowStart={active ? browser.windowStart : 0}
+                  onPage={browser.pageWindow}
+                  canPagePrev={active && browser.canPagePrev}
+                  canPageNext={active && browser.canPageNext}
+                />
+              )
+            })}
+          </ShelfDeck>
 
           {/*
             폭 294px 과 lg:-mt-8 은 시안 실측입니다.
@@ -234,19 +216,32 @@ export default function MyShelfPage() {
             필터 줄 바로 아래에 붙습니다. 음수 마진으로 그 차이를 흉내 내되, 필터 줄과
             겹치지 않을 만큼만 올립니다.
           */}
+          {/*
+            key 로 향수마다 패널을 새로 만듭니다. 안 그러면 메모 입력칸이 이전 향수의
+            글을 그대로 들고 있어서, 병을 바꾼 줄 모르고 남의 메모를 고치게 됩니다.
+          */}
           <ShelfDetailPanel
-            item={selected}
-            onClose={() => setSelectedId(null)}
-            onSave={() => showToast('나의 향수로 저장했습니다')}
+            key={browser.selected?.shelfItemId ?? 'empty'}
+            item={browser.selected}
+            onSetRepresentative={() => {
+              // TODO: SHF-05 대표 향수 지정 API 연결
+              showToast('대표 향수로 지정했습니다')
+            }}
+            onChangeCategory={() => setChangeCategoryOpen(true)}
+            onRemove={() => setRemoveOpen(true)}
+            onSaveMemo={() => {
+              // TODO: SHF-10 메모 저장 API 연결
+              showToast('메모를 저장했습니다')
+            }}
             className="w-full shrink-0 lg:-mt-8 lg:w-[294px]"
           />
         </div>
 
         <ShelfFooterStrip
-          index={visible.length === 0 ? 0 : current + 1}
-          total={visible.length}
-          onPrev={() => move(-1)}
-          onNext={() => move(1)}
+          index={browser.index}
+          total={browser.total}
+          onPrev={() => browser.move(-1)}
+          onNext={() => browser.move(1)}
         />
       </section>
 
@@ -288,14 +283,8 @@ export default function MyShelfPage() {
       <ShelfRegisterModal
         open={registerOpen}
         onClose={() => setRegisterOpen(false)}
-        // 1단계 후보. 향수 도메인 데이터를 이 모양으로 맞춰 넘깁니다.
-        // ⚠️ 아직 검색 API 를 붙이지 않아 진열대에 있는 향수를 그대로 씁니다.
-        options={items.map((item) => ({
-          perfumeId: item.perfumeId,
-          name: item.name,
-          brand: item.brand,
-          thumbnailUrl: item.thumbnailUrl,
-        }))}
+        // ⚠️ 아직 향수 검색 API 를 붙이지 않아 진열대에 있는 향수를 그대로 씁니다.
+        options={(shelf.data ?? []).map(toPerfumeOption)}
         onSearch={() => {
           // TODO: SHF-01 향수 검색 연결
         }}
@@ -312,12 +301,32 @@ export default function MyShelfPage() {
           showToast('컬렉션을 만들었습니다')
         }}
       />
+      {/*
+        분류 변경. initialCategory 를 넘기면 같은 모달이 "저장" 이 아니라 "변경" 으로
+        열립니다 (와이어프레임 C02 — "분류 변경은 A11 과 같은 구성").
+      */}
       <ShelfSaveModal
         open={changeCategoryOpen}
         onClose={() => setChangeCategoryOpen(false)}
+        initialCategory={browser.selected?.category ?? null}
         onSave={() => {
+          // TODO: SHF-03 분류 변경 API 연결
           setChangeCategoryOpen(false)
           showToast('분류를 바꿨습니다')
+        }}
+      />
+
+      {/* 되돌릴 수 없는 조작이라 확인을 받습니다 (공통 규칙 C01) */}
+      <ConfirmDialog
+        open={removeOpen}
+        onClose={() => setRemoveOpen(false)}
+        title={`'${browser.selected?.name ?? '향수'}' 를 진열대에서 뺄까요?`}
+        description="적어둔 메모와 적합도도 함께 사라지고, 되돌릴 수 없습니다."
+        confirmLabel="저장 해제"
+        onConfirm={() => {
+          // TODO: SHF-04 진열대 저장 해제 API 연결
+          setRemoveOpen(false)
+          showToast('진열대에서 뺐습니다')
         }}
       />
       <Toast {...toastProps} />

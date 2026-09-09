@@ -22,21 +22,22 @@
  */
 import './shelf-display.css'
 export { ShelfDetailPanel } from './components/ShelfDetailPanel'
-export {
-  ShelfToolbar,
-  type CollectionFilterValue,
-} from './components/ShelfToolbar'
+export { ShelfToolbar } from './components/ShelfToolbar'
 export { ShelfFooterStrip } from './components/ShelfFooterStrip'
 export { DisplayCase } from './components/DisplayCase'
+export { ShelfDeck } from './components/ShelfDeck'
 export { ShelfRegisterModal } from './components/ShelfRegisterModal'
 export { ShelfSaveModal } from './components/ShelfSaveModal'
+export { useShelfBrowser } from './hooks/useShelfBrowser'
 export { toPerfumeOption } from './lib'
 export { shelfItemsQuery, shelfKeys } from './queries'
 export {
   SHELF_CATEGORIES,
-  SHELF_SLOTS,
+  SHELF_PAGE_STEP,
+  SHELF_SLOT_COUNT,
   type PerfumeOption,
   type ShelfCategory,
+  type ShelfCounts,
   type ShelfItem,
   type ShelfRegisterInput,
 } from './types'
