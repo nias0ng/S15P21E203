@@ -28,25 +28,25 @@ export function ModerationRejectedModal({ open, onClose, rejection }: Props) {
       footer={<Button onClick={onClose}>수정하기</Button>}
     >
       <div className="space-y-3">
-        <div className="space-y-1.5">
-          <p className="text-ink-muted text-[10.5px]">사유</p>
+        <div className="space-y-2">
+          <p className="text-ink-muted text-caption">사유</p>
           <ul className="border-line space-y-1 border p-3">
             {(rejection?.reasons ?? []).map((reason) => (
-              <li key={reason} className="text-ink text-xs">
+              <li key={reason} className="text-ink text-body">
                 {reason}
               </li>
             ))}
           </ul>
         </div>
 
-        <div className="space-y-1.5">
-          <p className="text-ink-muted text-[10.5px]">수정 요청 내용</p>
-          <p className="border-line text-ink border p-3 text-xs leading-relaxed">
+        <div className="space-y-2">
+          <p className="text-ink-muted text-caption">수정 요청 내용</p>
+          <p className="border-line text-ink text-body rounded-card border p-3">
             {rejection?.requestedChange}
           </p>
         </div>
 
-        <p className="text-ink-muted text-[10.5px] leading-relaxed">
+        <p className="text-ink-muted text-caption leading-relaxed">
           작성한 제목과 본문은 그대로 남아 있습니다. 내용을 고쳐 다시 포스팅하면
           같은 검사를 다시 수행합니다.
         </p>

@@ -76,7 +76,7 @@ export function ShelfSaveModal({
       }
     >
       <div className="space-y-3">
-        <p className="text-ink-muted text-[10.5px]">
+        <p className="text-ink-muted text-caption">
           {changing ? '옮길 분류를 선택하세요' : '분류를 선택하세요'}
         </p>
         <ChipToggle
@@ -85,7 +85,7 @@ export function ShelfSaveModal({
           value={category}
           onChange={setCategory}
         />
-        <p className="text-ink-muted text-[10.5px] leading-relaxed">
+        <p className="text-ink-muted text-caption leading-relaxed">
           분류는 필수입니다. 선택하지 않으면{' '}
           {changing ? '변경되지' : '저장되지'} 않습니다.
         </p>

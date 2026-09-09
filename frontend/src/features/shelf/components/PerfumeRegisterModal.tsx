@@ -125,7 +125,7 @@ export function PerfumeRegisterModal({
                     disabled={option.alreadyInShelf}
                     onClick={() => setPicked(option)}
                     className={cn(
-                      'border-line w-full border p-2 text-left transition-colors',
+                      'border-line w-full border p-2 text-left transition-colors duration-120 ease-out',
                       option.alreadyInShelf
                         ? 'bg-line-soft cursor-not-allowed opacity-60'
                         : 'hover:border-accent',
@@ -133,12 +133,12 @@ export function PerfumeRegisterModal({
                   >
                     <Thumbnail
                       fallback={option.alreadyInShelf ? '담김' : '이미지'}
-                      className="mb-1.5 h-16 w-full text-[10px]"
+                      className="text-caption mb-2 h-16 w-full"
                     />
-                    <span className="text-ink block truncate text-[11px] font-bold">
+                    <span className="text-ink text-body block truncate font-medium">
                       {option.name}
                     </span>
-                    <span className="text-ink-muted block truncate text-[10px]">
+                    <span className="text-ink-muted text-caption block truncate">
                       {option.brand}
                     </span>
                   </button>
@@ -150,10 +150,10 @@ export function PerfumeRegisterModal({
       ) : (
         <div className="space-y-3">
           <div className="flex items-center gap-3">
-            <span className="text-ink text-xs font-bold">{picked?.name}</span>
-            <span className="text-ink-muted text-[10.5px]">
-              {picked?.brand}
+            <span className="text-ink text-body font-medium">
+              {picked?.name}
             </span>
+            <span className="text-ink-muted text-caption">{picked?.brand}</span>
             {canChangePerfume && (
               <Button
                 variant="outline"
@@ -174,7 +174,7 @@ export function PerfumeRegisterModal({
           />
 
           <div className="flex items-center gap-3">
-            <span className="text-ink-muted text-[10.5px]">내 취향 적합도</span>
+            <span className="text-ink-muted text-caption">내 취향 적합도</span>
             <StarRating
               label="내 취향 적합도"
               value={rating}
@@ -191,7 +191,7 @@ export function PerfumeRegisterModal({
             onChange={(event) => setMemo(event.target.value)}
           />
 
-          <p className="text-ink-muted text-[10.5px] leading-relaxed">
+          <p className="text-ink-muted text-caption leading-relaxed">
             적합도와 메모는 선택입니다. 분류만 고르면 담깁니다. 메모는 향수 한
             개당 하나이고 진열대에서 수정할 수 있습니다.
           </p>

@@ -79,11 +79,11 @@ export function CollectionFormModal({
         />
 
         {editing ? (
-          <p className="text-ink-muted text-[10.5px] leading-relaxed">
+          <p className="text-ink-muted text-caption leading-relaxed">
             제목 · 설명만 수정합니다. 구성 향수는 컬렉션 상세에서 고칩니다.
           </p>
         ) : (
-          <p className="text-ink-muted text-[10.5px] leading-relaxed">
+          <p className="text-ink-muted text-caption leading-relaxed">
             공개 · 비공개 상태가 없습니다. 남에게 보이는 길은 자유 게시판의
             컬렉션 공유 글뿐입니다. 향수 없이도 만들 수 있습니다.
           </p>

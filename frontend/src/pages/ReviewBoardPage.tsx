@@ -60,7 +60,7 @@ export default function ReviewBoardPage() {
             }
           />
 
-          <p className="text-ink-muted text-[10.5px] leading-relaxed">
+          <p className="text-ink-muted text-caption leading-relaxed">
             후기는 향수 한 개에 반드시 붙습니다. 점수나 별점 없이 좋아요만
             있습니다.
           </p>
