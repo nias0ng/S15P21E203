@@ -79,7 +79,7 @@ export function PerfumeSearchResult({ keyword, onResetKeyword }: Props) {
 
   return (
     <div className="space-y-3">
-      <p className="text-ink-muted text-xs">
+      <p className="text-ink-muted text-caption">
         검색 결과{' '}
         <span className="text-ink font-bold">{data.totalElements}</span>
       </p>
@@ -89,7 +89,7 @@ export function PerfumeSearchResult({ keyword, onResetKeyword }: Props) {
           <li key={perfume.perfumeId}>
             <Link
               to={toPerfumeDetail(perfume.perfumeId)}
-              className="hover:bg-line-soft flex items-center gap-3 p-3 transition-colors"
+              className="hover:bg-line-soft flex items-center gap-3 p-3 transition-colors duration-120 ease-out"
             >
               <Thumbnail
                 src={perfume.imageUrl}
@@ -98,10 +98,10 @@ export function PerfumeSearchResult({ keyword, onResetKeyword }: Props) {
               />
 
               <span className="min-w-0 flex-1">
-                <span className="text-ink block truncate text-xs font-bold">
+                <span className="text-ink text-heading block truncate font-serif font-semibold">
                   {perfume.name}
                 </span>
-                <span className="text-ink-muted block truncate text-[10.5px]">
+                <span className="text-ink-muted text-caption block truncate">
                   {perfume.brandName}
                 </span>
               </span>

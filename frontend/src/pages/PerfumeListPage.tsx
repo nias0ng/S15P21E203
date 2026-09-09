@@ -63,7 +63,7 @@ export default function PerfumeListPage() {
   }
 
   return (
-    <div className="space-y-3.5">
+    <div className="space-y-4">
       <h1 className="sr-only">향수</h1>
 
       {/* 헤더에 검색창이 없고 검색은 각 페이지 안에 있다는 와이어프레임 규칙 */}
@@ -82,7 +82,7 @@ export default function PerfumeListPage() {
 
       {brand && (
         <div className="flex items-center gap-2">
-          <span className="border-line text-ink flex items-center gap-2 border px-3 py-1.5 text-[11px]">
+          <span className="border-line text-ink text-caption rounded-card flex items-center gap-2 border px-3 py-2">
             브랜드: {brand}
             <button
               type="button"
@@ -112,11 +112,13 @@ export default function PerfumeListPage() {
       <section className="space-y-3">
         <div className="flex items-baseline gap-2">
           {/* 글자 크기·굵기는 S15P21E203-162 타이포 스케일에서 확정합니다 */}
-          <h2 className="text-ink font-serif text-lg">
+          <h2 className="text-ink text-title font-serif font-semibold">
             {hasFilter ? '조건에 맞는 향수' : '최근 인기 향수'}
           </h2>
           {items.length > 0 && (
-            <span className="text-ink-muted text-xs">{items.length}개</span>
+            <span className="text-ink-muted text-caption">
+              {items.length}개
+            </span>
           )}
         </div>
 

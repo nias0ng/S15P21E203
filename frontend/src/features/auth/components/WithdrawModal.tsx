@@ -49,7 +49,7 @@ export function WithdrawModal({ open, onClose }: Props) {
       }
     >
       <div className="space-y-3">
-        <div className="border-line bg-line-soft text-ink space-y-1 border p-3 text-[11px] leading-relaxed">
+        <div className="border-line bg-line-soft text-ink text-body rounded-card space-y-1 border p-3">
           <p>진열대 · 컬렉션 · 메모가 함께 삭제됩니다.</p>
           <p>
             작성한 게시글 · 댓글 · 후기는{' '}
@@ -58,12 +58,12 @@ export function WithdrawModal({ open, onClose }: Props) {
           <p>계정은 바로 삭제되며 되돌릴 수 없습니다.</p>
         </div>
 
-        <label className="flex cursor-pointer items-center gap-2.5">
+        <label className="flex cursor-pointer items-center gap-3">
           <Checkbox
             checked={confirmed}
             onChange={(event) => setConfirmed(event.target.checked)}
           />
-          <span className="text-ink text-xs">위 내용을 확인했습니다</span>
+          <span className="text-ink text-body">위 내용을 확인했습니다</span>
         </label>
 
         {/* 본인 확인 — 로그인한 채로 자리를 비운 경우를 막습니다 */}
