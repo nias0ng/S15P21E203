@@ -22,9 +22,8 @@ public interface PerfumeNeighborRepository
      * <p>비활성 향수는 제외합니다. 검색과 기본 정보 조회에서 이미 숨긴 향수가 주변 향수 목록으로
      * 다시 나타나면, 눌렀을 때 404 가 나는 항목을 화면에 그리게 됩니다.
      *
-     * <p>{@code ORDER BY p.id} 는 가까운 순이 아닙니다. {@code perfume_neighbors} 에 거리나
-     * 순위 컬럼이 없어 정할 근거가 없습니다. 그래도 순서를 고정해야 {@code size} 로 자를 때
-     * 매번 같은 결과가 나옵니다. 순위 컬럼이 생기면 이 절만 바꾸면 됩니다.
+     * <p>닮은 순입니다. {@code rank} 가 비어 있는 행은 뒤로 밀고, 같으면 향수 id 로 순서를
+     * 확정합니다. 순서를 고정해야 {@code size} 로 자를 때 매번 같은 결과가 나옵니다.
      */
     @Query("""
             SELECT new com.hyanghae.backend.perfume.dto.response.RelatedPerfumeResponse(
@@ -33,7 +32,7 @@ public interface PerfumeNeighborRepository
             JOIN Perfume p ON p.id = n.id.neighborPerfumeId
             WHERE n.id.perfumeId = :perfumeId
               AND p.active = true
-            ORDER BY p.id
+            ORDER BY n.rank ASC NULLS LAST, p.id
             """)
     List<RelatedPerfumeResponse> findNeighborsByPerfumeId(
             @Param("perfumeId") Long perfumeId, Pageable pageable);
