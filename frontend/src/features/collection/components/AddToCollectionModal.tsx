@@ -30,8 +30,12 @@ type Props = {
  * 컬렉션에 향수 추가 모달 (와이어프레임 A19 우 — COL-03)
  *
  * 여러 개를 고를 수 있습니다. 진열대에 없는 향수는 애초에 후보에 들어오지 않습니다.
+ *
+ * 앱에 "향수를 고르는 모달" 이 셋이라 이름에 목적지를 넣었습니다 —
+ * 여기(컬렉션), `ShelfRegisterModal` 1단계(진열대), `LinkedPerfumeModal`(글).
+ * 셋 다 향수를 고르지만 고른 뒤에 벌어지는 일이 전혀 다릅니다.
  */
-export function AddPerfumeModal({
+export function AddToCollectionModal({
   open,
   onClose,
   candidates,

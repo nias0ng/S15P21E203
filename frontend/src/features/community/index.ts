@@ -10,7 +10,7 @@
 export { BoardTabs } from './components/BoardTabs'
 export { CommentSection } from './components/CommentSection'
 export { ModerationRejectedModal } from './components/ModerationRejectedModal'
-export { PerfumePickModal } from './components/PerfumePickModal'
+export { LinkedPerfumeModal } from './components/LinkedPerfumeModal'
 export { PostList } from './components/PostList'
 export { TrendingPerfumes } from './components/TrendingPerfumes'
 export {

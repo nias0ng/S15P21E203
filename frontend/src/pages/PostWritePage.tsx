@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import {
   ModerationRejectedModal,
-  PerfumePickModal,
+  LinkedPerfumeModal,
   POST_CATEGORIES,
   type LinkedPerfume,
   type ModerationRejection,
@@ -153,7 +153,7 @@ export default function PostWritePage() {
         향수 검색 결과를 여기서 조합해야 합니다.
         TODO: 향수 검색 API 연결
       */}
-      <PerfumePickModal
+      <LinkedPerfumeModal
         open={pickOpen}
         onClose={() => setPickOpen(false)}
         candidates={[]}

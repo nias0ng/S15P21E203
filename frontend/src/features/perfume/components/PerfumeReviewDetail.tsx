@@ -23,7 +23,7 @@ type Props = {
  * 그래서 review.mine 일 때만 두 버튼을 그립니다. 화면에서 숨기는 것만으로는
  * 권한이 지켜지지 않으니 백엔드에서도 작성자를 확인해야 합니다.
  */
-export function ReviewDetail({ review, backTo, editTo }: Props) {
+export function PerfumeReviewDetail({ review, backTo, editTo }: Props) {
   const [deleteOpen, setDeleteOpen] = useState(false)
 
   return (

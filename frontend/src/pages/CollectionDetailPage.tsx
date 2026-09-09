@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useParams } from 'react-router'
 
 import {
-  AddPerfumeModal,
+  AddToCollectionModal,
   CollectionFormModal,
   collectionDetailQuery,
 } from '@/features/collection'
@@ -150,7 +150,7 @@ export default function CollectionDetailPage() {
         }}
       />
 
-      <AddPerfumeModal
+      <AddToCollectionModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
         // 진열대에 있고 아직 이 컬렉션에 없는 향수만 후보입니다

@@ -18,7 +18,11 @@ type Props = {
 }
 
 /**
- * 향수 선택 모달 (와이어프레임 C02 — A24b 의 관련 향수 선택)
+ * 글에 연결할 향수 선택 모달 (와이어프레임 C02 — A24b 의 관련 향수 선택)
+ *
+ * 이름이 커뮤니티 도메인의 `LinkedPerfume` 을 따라갑니다. 향수 도메인의 향수 고르기가
+ * 아니라 **글에 연결된 향수**를 고르는 자리라서, 이름이 향수 도메인을 가리키면
+ * 향수 검색 모달과 헷갈립니다.
  *
  * 와이어프레임 C02 는 선택 모달 3종이지만 실제로 필요한 건 이것뿐입니다.
  * - 내 향 이미지 선택: 향 이미지 기능(X01 · X02)을 만들지 않기로 해서 제외
@@ -30,7 +34,7 @@ type Props = {
  * 향수 데이터는 향수 도메인에 있는데 features 끼리는 import 할 수 없으므로
  * 후보 목록은 화면에서 넘겨받습니다.
  */
-export function PerfumePickModal({
+export function LinkedPerfumeModal({
   open,
   onClose,
   candidates,

@@ -1,6 +1,6 @@
 import { useParams } from 'react-router'
 
-import { ReviewDetail, type Review } from '@/features/perfume'
+import { PerfumeReviewDetail, type Review } from '@/features/perfume'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 
 /**
@@ -27,7 +27,7 @@ export default function ReviewDetailPage() {
 
   return (
     <div className="space-y-2">
-      <ReviewDetail
+      <PerfumeReviewDetail
         review={review}
         // TODO: 후기가 달린 향수 id 로 바꿔주세요 (응답에 포함될 예정)
         backTo={toPerfumeDetail(1)}
