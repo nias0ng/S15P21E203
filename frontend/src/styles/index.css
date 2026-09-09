@@ -51,9 +51,18 @@
   --color-accent: var(--color-vapor);
 
   /* ── 형태 ────────────────────────────────────────────── */
+  /*
+   * 활자. 실물은 index.html 의 <link> 가 받아옵니다.
+   *   본문·라벨·버튼 → font-sans  (Noto Sans KR)
+   *   제목·향수명     → font-serif (Noto Serif KR)
+   * 컨셉의 정체성이 에디토리얼 세리프인데, 본문까지 세리프면 한글 가독성이
+   * 떨어져서 제목에만 씁니다.
+   */
   --font-sans:
-    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
-    system-ui, 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI',
+    'Apple SD Gothic Neo', sans-serif;
+
+  --font-serif: 'Noto Serif KR', Georgia, 'Times New Roman', serif;
 
   --radius-card: 0.875rem;
 
