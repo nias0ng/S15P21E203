@@ -2,6 +2,7 @@ package com.hyanghae.backend.perfume.controller;
 
 import com.hyanghae.backend.perfume.dto.request.PerfumeSearchCondition;
 import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
+import com.hyanghae.backend.perfume.dto.response.RelatedPerfumesResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeNotesResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumePostsResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeReviewStatisticsResponse;
@@ -86,6 +87,34 @@ public class PerfumeController {
     @GetMapping("/{perfumeId}/review-statistics")
     public PerfumeReviewStatisticsResponse getReviewStatistics(@PathVariable Long perfumeId) {
         return perfumeService.getReviewStatistics(perfumeId);
+    }
+
+    /**
+     * 주변 향수 조회입니다. 향수 데이터를 넣을 때 미리 정해 둔 연관 향수를 읽어 옵니다.
+     *
+     * <p>{@code size} 는 페이지 크기가 아니라 최대 개수입니다. 명세에 {@code page} 와
+     * {@code totalElements} 가 없어 나머지를 이어서 볼 방법이 없습니다.
+     */
+    @GetMapping("/{perfumeId}/neighbors")
+    public RelatedPerfumesResponse getNeighbors(
+            @PathVariable Long perfumeId,
+            @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size
+    ) {
+        return perfumeService.getRelatedPerfumes(perfumeId, size);
+    }
+
+    /**
+     * 유사 향수 조회입니다. 주변 향수와 같은 데이터를 같은 형태로 내려줍니다.
+     *
+     * <p>화면에서 놓이는 자리가 달라 명세가 URL 을 두 개로 나눠 두었습니다. 응답이 같으므로
+     * 서비스 메서드도 같은 것을 씁니다. 나중에 근거가 갈리면 그때 나누면 됩니다.
+     */
+    @GetMapping("/{perfumeId}/similar")
+    public RelatedPerfumesResponse getSimilar(
+            @PathVariable Long perfumeId,
+            @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size
+    ) {
+        return perfumeService.getRelatedPerfumes(perfumeId, size);
     }
 
     /** AI 후기 요약 조회입니다. 요약이 없으면 필드가 모두 null 입니다. */

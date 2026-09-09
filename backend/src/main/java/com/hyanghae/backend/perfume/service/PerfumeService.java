@@ -14,6 +14,8 @@ import com.hyanghae.backend.perfume.dto.response.PerfumeSeasonStatisticResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSeasonStatisticsResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSearchResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse;
+import com.hyanghae.backend.perfume.dto.response.RelatedPerfumeResponse;
+import com.hyanghae.backend.perfume.dto.response.RelatedPerfumesResponse;
 import com.hyanghae.backend.perfume.exception.PerfumeErrorCode;
 import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeRepository;
@@ -22,6 +24,7 @@ import com.hyanghae.backend.perfume.repository.PerfumeShelfRepository;
 import com.hyanghae.backend.perfume.dto.response.PerfumePriceResponse;
 import com.hyanghae.backend.perfume.repository.PerfumeAccordRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
+import com.hyanghae.backend.perfume.repository.PerfumeNeighborRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeNoteRepository;
 import com.hyanghae.backend.perfume.repository.PerfumePostRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeReviewRepository;
@@ -33,6 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -47,7 +51,7 @@ public class PerfumeService {
     /** 비율을 백분율로 바꿀 때 곱하는 값입니다. */
     private static final BigDecimal PERCENTAGE_MULTIPLIER = BigDecimal.valueOf(100);
 
-    /** 목록 한 페이지의 최대 크기입니다. 요청이 이보다 크면 여기까지만 줍니다. */
+    /** 목록 하나에 한 번에 내려주는 최대 개수입니다. 요청이 이보다 크면 여기까지만 줍니다. */
     private static final int MAX_PAGE_SIZE = 100;
 
     private final PerfumeRepository perfumeRepository;
@@ -61,6 +65,7 @@ public class PerfumeService {
     private final PerfumeReviewRepository perfumeReviewRepository;
     private final PerfumeReviewSummaryRepository perfumeReviewSummaryRepository;
     private final PerfumePostRepository perfumePostRepository;
+    private final PerfumeNeighborRepository perfumeNeighborRepository;
 
     public PerfumeService(
             PerfumeRepository perfumeRepository,
@@ -73,7 +78,8 @@ public class PerfumeService {
             PerfumeAccordRepository perfumeAccordRepository,
             PerfumeReviewRepository perfumeReviewRepository,
             PerfumeReviewSummaryRepository perfumeReviewSummaryRepository,
-            PerfumePostRepository perfumePostRepository
+            PerfumePostRepository perfumePostRepository,
+            PerfumeNeighborRepository perfumeNeighborRepository
     ) {
         this.perfumeRepository = perfumeRepository;
         this.perfumeImageRepository = perfumeImageRepository;
@@ -86,6 +92,7 @@ public class PerfumeService {
         this.perfumeReviewRepository = perfumeReviewRepository;
         this.perfumeReviewSummaryRepository = perfumeReviewSummaryRepository;
         this.perfumePostRepository = perfumePostRepository;
+        this.perfumeNeighborRepository = perfumeNeighborRepository;
     }
 
     /**
@@ -255,6 +262,38 @@ public class PerfumeService {
 
         return new PerfumePostsResponse(
                 posts, pageNumber, pageSize, perfumePostRepository.countByPerfumeId(perfumeId));
+    }
+
+    /**
+     * 기준 향수와 이어진 향수들을 가져옵니다. 주변 향수와 유사 향수가 이 메서드를 함께 씁니다.
+     *
+     * <p>두 API 는 같은 {@code perfume_neighbors} 데이터를 읽습니다. 화면에서 놓이는 자리만
+     * 다릅니다. 나중에 근거가 갈리면 그때 메서드를 나누면 됩니다.
+     *
+     * <p>연관 관계는 계산하지 않습니다. 향수 데이터를 넣을 때 미리 정해진 쌍을 읽을 뿐입니다.
+     *
+     * <p>{@code size} 는 페이지 크기가 아니라 앞에서 몇 개까지 줄지입니다. 응답에 전체 개수와
+     * 페이지 번호가 없어 나머지를 이어서 볼 방법이 없기 때문입니다. 0 이하거나 지나치게 큰 값이
+     * 와도 예외 대신 허용 범위로 맞춥니다. 목록 길이는 요청이 틀렸다고 거절할 만한 값이 아닙니다.
+     *
+     * <p>이웃이 없는 향수는 빈 목록입니다. 없는 향수와 구분해야 하므로 존재하지 않는 향수에만
+     * 404 를 반환합니다.
+     */
+    @Transactional(readOnly = true)
+    public RelatedPerfumesResponse getRelatedPerfumes(Long perfumeId, int size) {
+        requireExistingPerfume(perfumeId);
+
+        List<RelatedPerfumeResponse> related = perfumeNeighborRepository.findNeighborsByPerfumeId(
+                perfumeId, PageRequest.of(0, Math.clamp(size, 1, MAX_PAGE_SIZE)));
+        Map<Long, String> images = loadThumbnails(
+                related.stream().map(RelatedPerfumeResponse::perfumeId).toList()
+        );
+
+        return new RelatedPerfumesResponse(
+                related.stream()
+                        .map(perfume -> perfume.withImageUrl(images.get(perfume.perfumeId())))
+                        .toList()
+        );
     }
 
     /**
