@@ -17,9 +17,9 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * 향수 후기 통계와 계절 통계를 실제 PostgreSQL 위에서 검증합니다.
  *
- * <p>고정 데이터는 계절 비율의 분모 두 가지를 구분할 수 있게 구성했습니다. 봄을 고른 후기가 3개,
+ * <p>고정 데이터는 계절 백분율의 분모 두 가지를 구분할 수 있게 구성했습니다. 봄을 고른 후기가 3개,
  * 계절을 하나라도 고른 후기가 3개, 전체 후기가 5개입니다. 분모가 "계절을 고른 후기 수"면 봄이
- * 1.000, "전체 후기 수"면 0.600 이 됩니다.
+ * 100.0, "전체 후기 수"면 60.0 이 됩니다.
  */
 @IntegrationTest
 @AutoConfigureMockMvc
@@ -54,7 +54,7 @@ class PerfumeStatisticsIntegrationTest {
         insertReview(103, 1, "PUBLISHED");
         insertReview(104, 1, "HOLD");
 
-        // 100 번은 계절을 두 개 고릅니다. 그래서 비율의 합이 1 을 넘습니다.
+        // 100 번은 계절을 두 개 고릅니다. 그래서 백분율의 합이 100 을 넘습니다.
         insertReviewSeason(100, 1);
         insertReviewSeason(100, 3);
         insertReviewSeason(101, 1);
@@ -109,7 +109,7 @@ class PerfumeStatisticsIntegrationTest {
 
     /**
      * 분모는 계절을 하나라도 고른 후기 수(3)입니다. 전체 후기 수(5)가 아닙니다.
-     * 봄을 고른 후기가 3개이므로 봄의 비율은 1.000 입니다. 전체 후기 수를 분모로 쓰면 0.600 이 됩니다.
+     * 봄을 고른 후기가 3개이므로 봄의 백분율은 100.0 입니다. 전체 후기 수를 분모로 쓰면 60.0 이 됩니다.
      */
     @Test
     void dividesSeasonCountByReviewsThatChoseAnySeason() throws Exception {
@@ -117,18 +117,18 @@ class PerfumeStatisticsIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.seasons[0].code").value("SPRING"))
                 .andExpect(jsonPath("$.seasons[0].count").value(3))
-                .andExpect(jsonPath("$.seasons[0].ratio").value(1.000));
+                .andExpect(jsonPath("$.seasons[0].percentage").value(100.0));
     }
 
-    /** 후기 하나가 계절을 여러 개 고를 수 있어 비율의 합이 1 을 넘습니다. */
+    /** 후기 하나가 계절을 여러 개 고를 수 있어 백분율의 합이 100 을 넘습니다. */
     @Test
-    void allowsRatioSumToExceedOne() throws Exception {
+    void allowsPercentageSumToExceedOneHundred() throws Exception {
         mockMvc.perform(get(SEASON_STATISTICS_URL, 1))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.seasons[0].ratio").value(1.000))
+                .andExpect(jsonPath("$.seasons[0].percentage").value(100.0))
                 .andExpect(jsonPath("$.seasons[2].code").value("AUTUMN"))
                 .andExpect(jsonPath("$.seasons[2].count").value(1))
-                .andExpect(jsonPath("$.seasons[2].ratio").value(0.333));
+                .andExpect(jsonPath("$.seasons[2].percentage").value(33.3));
     }
 
     /** 아무도 고르지 않은 계절도 0 으로 포함합니다. 화면이 계절 네 칸을 항상 그립니다. */
@@ -139,7 +139,7 @@ class PerfumeStatisticsIntegrationTest {
                 .andExpect(jsonPath("$.seasons.length()").value(4))
                 .andExpect(jsonPath("$.seasons[1].code").value("SUMMER"))
                 .andExpect(jsonPath("$.seasons[1].count").value(0))
-                .andExpect(jsonPath("$.seasons[1].ratio").value(0.000))
+                .andExpect(jsonPath("$.seasons[1].percentage").value(0.0))
                 .andExpect(jsonPath("$.seasons[3].code").value("WINTER"))
                 .andExpect(jsonPath("$.seasons[3].count").value(0));
     }
@@ -151,7 +151,7 @@ class PerfumeStatisticsIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.seasons.length()").value(4))
                 .andExpect(jsonPath("$.seasons[0].count").value(0))
-                .andExpect(jsonPath("$.seasons[0].ratio").value(0.000));
+                .andExpect(jsonPath("$.seasons[0].percentage").value(0.0));
     }
 
     @Test

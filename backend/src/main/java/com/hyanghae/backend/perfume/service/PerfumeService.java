@@ -35,8 +35,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PerfumeService {
 
-    /** 비율의 소수점 자리수입니다. */
-    private static final int RATIO_SCALE = 3;
+    /** 백분율의 소수점 자리수입니다. 정수로 반올림하면 3분의 1 이 33 이 되어 값이 뭉개집니다. */
+    private static final int PERCENTAGE_SCALE = 1;
+
+    /** 비율을 백분율로 바꿀 때 곱하는 값입니다. */
+    private static final BigDecimal PERCENTAGE_MULTIPLIER = BigDecimal.valueOf(100);
 
     private final PerfumeRepository perfumeRepository;
     private final PerfumeImageRepository perfumeImageRepository;
@@ -175,19 +178,26 @@ public class PerfumeService {
                                 season.code(),
                                 season.name(),
                                 season.count(),
-                                ratioOf(season.count(), reviewsWithSeason)
+                                percentageOf(season.count(), reviewsWithSeason)
                         ))
                         .toList()
         );
     }
 
-    /** 분모가 0 이면 나눗셈 대신 0 을 씁니다. 후기가 없거나 아무도 계절을 고르지 않은 경우입니다. */
-    private BigDecimal ratioOf(long count, long total) {
+    /**
+     * 0 이상 100 이하의 백분율입니다. 분모가 0 이면 나눗셈 대신 0 을 씁니다. 후기가 없거나
+     * 아무도 계절을 고르지 않은 경우입니다.
+     *
+     * <p>나누기 전에 100 을 곱합니다. 먼저 나누면 소수점 아래에서 반올림한 값을 다시 100 배 해
+     * 오차가 100 배로 커집니다.
+     */
+    private BigDecimal percentageOf(long count, long total) {
         if (total == 0) {
-            return BigDecimal.ZERO.setScale(RATIO_SCALE);
+            return BigDecimal.ZERO.setScale(PERCENTAGE_SCALE);
         }
         return BigDecimal.valueOf(count)
-                .divide(BigDecimal.valueOf(total), RATIO_SCALE, RoundingMode.HALF_UP);
+                .multiply(PERCENTAGE_MULTIPLIER)
+                .divide(BigDecimal.valueOf(total), PERCENTAGE_SCALE, RoundingMode.HALF_UP);
     }
 
     private void requireExistingPerfume(Long perfumeId) {

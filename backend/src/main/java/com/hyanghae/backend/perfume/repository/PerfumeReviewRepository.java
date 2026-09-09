@@ -25,7 +25,7 @@ public interface PerfumeReviewRepository extends JpaRepository<PerfumeReview, Lo
     long countByPerfumeId(@Param("perfumeId") Long perfumeId);
 
     /**
-     * 계절을 하나라도 고른 후기 수입니다. 계절 비율의 분모로 씁니다.
+     * 계절을 하나라도 고른 후기 수입니다. 계절 백분율의 분모로 씁니다.
      *
      * <p>계절을 고르지 않은 후기까지 분모에 넣으면, 계절을 답한 사람들의 분포가 희석됩니다.
      */
