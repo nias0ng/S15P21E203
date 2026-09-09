@@ -57,9 +57,14 @@ class PerfumeSearchIntegrationTest {
         insertImage(11, 1, BLEU_PRIMARY_IMAGE, 1);
         insertImage(12, 2, CHANCE_IMAGE, null);
 
-        // 향 지도에 자리가 잡힌 향수는 1번뿐입니다. 나머지는 향 계열이 null 이어야 합니다.
-        insertScentRegion(1, "FLORAL", "플로럴");
-        insertMapPoint(1, 1);
+        // 향 계열이 붙은 향수는 1번뿐입니다. 나머지는 향 계열이 null 이어야 합니다.
+        // 1번은 계열 두 개에 걸쳐 있고, 비중이 큰 쪽이 대표입니다.
+        // 대표(플로럴)에 일부러 더 큰 계열 번호를 줍니다. 번호순으로 고르면 머스크가 뽑혀
+        // 틀린 답이 나오므로, 비중으로 고르는지가 실제로 검증됩니다.
+        insertScentRegion(1, "MUSK_POWDERY", "머스크·파우더리");
+        insertScentRegion(2, "FLORAL", "플로럴");
+        insertScentFamily(1, 1, 0.3181);
+        insertScentFamily(1, 2, 0.5976);
     }
 
     @AfterEach
@@ -115,9 +120,13 @@ class PerfumeSearchIntegrationTest {
     /**
      * 향 계열은 향 지도 도메인의 테이블에 있어 검색 쿼리와 따로 조회합니다. 붙이지 않으면
      * 화면의 향 계열 뱃지가 비어 있게 됩니다.
+     *
+     * <p>향수 1 은 플로럴 0.5976, 머스크·파우더리 0.3181 로 두 계열에 걸쳐 있습니다. 비중이 큰
+     * 플로럴이 대표입니다. 머스크를 먼저 넣어 두었으므로, 삽입 순서가 아니라 비중으로 고르는지도
+     * 함께 확인됩니다.
      */
     @Test
-    void includesScentFamilyFromScentRegion() throws Exception {
+    void usesFamilyWithLargestWeightAsScentFamily() throws Exception {
         mockMvc.perform(get(SEARCH_URL).param("keyword", "bleu"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
@@ -287,14 +296,15 @@ class PerfumeSearchIntegrationTest {
                 id, code, name);
     }
 
-    private void insertMapPoint(long perfumeId, long scentRegionId) {
+    private void insertScentFamily(long perfumeId, long scentRegionId, double weight) {
         jdbcTemplate.update(
-                "INSERT INTO perfume_map_points (perfume_id, scent_region_id) VALUES (?, ?)",
-                perfumeId, scentRegionId);
+                "INSERT INTO perfume_scent_families (perfume_id, scent_region_id, weight)"
+                        + " VALUES (?, ?, ?)",
+                perfumeId, scentRegionId, weight);
     }
 
     private void clearPerfumeData() {
-        jdbcTemplate.update("DELETE FROM perfume_map_points");
+        jdbcTemplate.update("DELETE FROM perfume_scent_families");
         jdbcTemplate.update("DELETE FROM perfume_images");
         jdbcTemplate.update("DELETE FROM perfumes");
         jdbcTemplate.update("DELETE FROM brands");

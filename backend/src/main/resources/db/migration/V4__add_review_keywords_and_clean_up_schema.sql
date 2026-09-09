@@ -47,3 +47,57 @@ CREATE INDEX idx_perfume_prices_perfume ON perfume_prices (perfume_id);
 CREATE INDEX idx_perfume_review_seasons_season ON perfume_review_seasons (season_id);
 CREATE INDEX idx_user_perfumes_user ON user_perfumes (user_id);
 CREATE INDEX idx_user_perfume_views_user ON user_perfume_views (user_id);
+
+-- 8. 향 계열은 향수당 여러 개입니다.
+-- 향 지도가 향수 하나에 향 계열 1~3개를 비중과 함께 붙입니다(예: 플로럴 0.5976 +
+-- 머스크·파우더리 0.3181). 비중의 합은 1 이하입니다. perfume_map_points 는 향수당 한 행이라
+-- 이 관계를 담을 수 없습니다.
+--
+-- 대표 계열을 따로 저장하지 않습니다. 비중이 가장 큰 행이 대표이므로, 값을 두 군데 두면
+-- 언젠가 서로 어긋납니다.
+CREATE TABLE perfume_scent_families (
+    perfume_id      BIGINT NOT NULL,
+    scent_region_id BIGINT NOT NULL,
+    weight          NUMERIC(10, 6),
+    PRIMARY KEY (perfume_id, scent_region_id),
+    CONSTRAINT fk_perfume_scent_families_perfume
+        FOREIGN KEY (perfume_id) REFERENCES perfumes (perfume_id) ON DELETE CASCADE,
+    CONSTRAINT fk_perfume_scent_families_scent_region
+        FOREIGN KEY (scent_region_id) REFERENCES scent_regions (scent_region_id) ON DELETE RESTRICT
+);
+
+-- 9. 향 계열 9개.
+-- 향 지도가 정한 계열입니다. 7개는 Fragrance Wheel, 2개(구르망·머스크·파우더리)는 IFRA
+-- 원료 데이터에서 왔습니다. 적재 데이터가 name_ko 로 오므로 이름으로 찾을 수 있어야 합니다.
+--
+-- code 는 백엔드가 붙인 값입니다. 적재·프론트와 맞춰야 합니다.
+-- min_x 등 좌표는 비워 둡니다. 새 계열 영역은 사각형이 아니라 다각형이라 이 컬럼으로
+-- 표현되지 않습니다. 지도 파일이 영역을 따로 들고 있습니다.
+INSERT INTO scent_regions (code, name, is_active) VALUES
+    ('FLORAL',         '플로럴',          TRUE),
+    ('GREEN_AROMATIC', '그린·아로마틱',   TRUE),
+    ('WOODY',          '우디',            TRUE),
+    ('CITRUS',         '시트러스',        TRUE),
+    ('AMBER_SPICY',    '앰버·스파이시',   TRUE),
+    ('MUSK_POWDERY',   '머스크·파우더리', TRUE),
+    ('GOURMAND',       '구르망',          TRUE),
+    ('FRUITY',         '프루티',          TRUE),
+    ('AQUATIC',        '아쿠아틱',        TRUE);
+
+-- 10. 적재를 다시 돌려도 중복이 생기지 않도록 하는 유니크 제약.
+-- 적재 데이터는 브랜드·어코드를 이름으로 지목합니다. 이름에 유니크가 없으면 두 번째 적재가
+-- 같은 브랜드를 새로 만들고 향수가 갈라집니다.
+ALTER TABLE brands ADD CONSTRAINT uk_brands_name UNIQUE (name);
+ALTER TABLE accords ADD CONSTRAINT uk_accords_name UNIQUE (name);
+ALTER TABLE notes ADD CONSTRAINT uk_notes_name UNIQUE (name);
+ALTER TABLE scent_regions ADD CONSTRAINT uk_scent_regions_code UNIQUE (code);
+ALTER TABLE scent_regions ADD CONSTRAINT uk_scent_regions_name UNIQUE (name);
+ALTER TABLE perfumes ADD CONSTRAINT uk_perfumes_brand_name UNIQUE (brand_id, name);
+
+-- 11. 주변·유사 향수의 순서.
+-- 적재 데이터의 neighbors 는 닮은 순으로 정렬된 10개입니다. 순서를 담을 곳이 없으면
+-- 향수 번호순으로 뒤섞이고, size 로 자를 때 가장 닮은 향수가 잘려 나갑니다.
+ALTER TABLE perfume_neighbors ADD COLUMN rank INTEGER;
+
+-- 12. 국내 대표 향수 선정 순위.
+ALTER TABLE perfumes ADD COLUMN korea_selection_rank INTEGER;
