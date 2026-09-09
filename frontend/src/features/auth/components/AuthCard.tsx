@@ -25,16 +25,18 @@ export function AuthCard({
   className,
 }: AuthCardProps) {
   return (
-    <div className={cn('w-full max-w-85 space-y-1.5', className)}>
+    <div className={cn('w-full max-w-85 space-y-2', className)}>
       <div className="border-line bg-surface-card space-y-3 border p-5">
-        {eyebrow && <p className="text-ink-muted text-[10.5px]">{eyebrow}</p>}
-        <h1 className="text-ink text-[17px] font-bold">{title}</h1>
-        {description && <p className="text-ink text-xs">{description}</p>}
+        {eyebrow && <p className="text-ink-muted text-caption">{eyebrow}</p>}
+        <h1 className="text-ink text-title font-serif font-semibold">
+          {title}
+        </h1>
+        {description && <p className="text-ink text-body">{description}</p>}
         {children}
       </div>
 
       {notes?.map((note) => (
-        <p key={note} className="text-ink-muted text-[10.5px] leading-relaxed">
+        <p key={note} className="text-ink-muted text-caption">
           {note}
         </p>
       ))}

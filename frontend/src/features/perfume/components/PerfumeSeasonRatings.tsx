@@ -27,7 +27,9 @@ type Props = {
 export function PerfumeSeasonRatings({ ratings, onRegisterSeason }: Props) {
   return (
     <section className="space-y-4 p-6">
-      <h2 className="text-ink text-sm font-bold">계절별 평가</h2>
+      <h2 className="text-ink text-heading font-serif font-semibold">
+        계절별 평가
+      </h2>
       <SeasonRatingChart ratings={ratings ?? PLACEHOLDER_SEASON_RATINGS} />
       <Button variant="outline" size="sm" onClick={onRegisterSeason}>
         계절 등록

@@ -22,20 +22,20 @@ export function PerfumeNotes({ notes }: Props) {
 
   return (
     <section className="space-y-3 p-6">
-      <h2 className="text-ink-muted text-[10.5px]">향조</h2>
+      <h2 className="text-ink-muted text-caption">향조</h2>
 
       {isEmpty ? (
         // TODO: 백엔드 DTL-02 응답 연결
-        <p className="text-ink-muted text-xs">
+        <p className="text-ink-muted text-body">
           향조 정보가 아직 등록되지 않았습니다.
         </p>
       ) : (
         rows.map(([label, items]) => (
           <div key={label} className="flex items-center gap-4">
-            <span className="text-ink w-20 shrink-0 text-xs">{label}</span>
-            <div className="flex flex-wrap gap-1.5">
+            <span className="text-ink text-caption w-20 shrink-0">{label}</span>
+            <div className="flex flex-wrap gap-2">
               {items.length === 0 ? (
-                <span className="text-ink-muted text-xs">—</span>
+                <span className="text-ink-muted text-caption">—</span>
               ) : (
                 items.map((note) => (
                   <Badge key={note} tone="outline">

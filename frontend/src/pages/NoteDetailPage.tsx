@@ -59,24 +59,29 @@ export default function NoteDetailPage() {
         />
 
         <div className="flex-1 space-y-2">
-          <div className="border-line flex items-center gap-3 border px-3 py-2.5">
-            <span className="text-ink-muted text-[10.5px]">대분류</span>
-            <span className="text-ink text-xs font-bold">{data.category}</span>
-            <span className="text-ink-muted text-[10.5px]">· {data.name}</span>
+          <div className="border-line rounded-card flex items-center gap-3 border px-3 py-3">
+            <span className="text-ink-muted text-caption">대분류</span>
+            <span className="text-ink text-body font-medium">
+              {data.category}
+            </span>
+            <span className="text-ink-muted text-caption">· {data.name}</span>
           </div>
 
-          <div className="border-line space-y-2 border p-3">
-            <p className="text-ink-muted text-[10.5px]">설명</p>
-            <p className="text-ink text-xs leading-relaxed">
-              {data.description}
-            </p>
+          <div className="border-line rounded-card space-y-2 border p-3">
+            <p className="text-ink-muted text-caption">설명</p>
+            <p className="text-ink text-body">{data.description}</p>
           </div>
         </div>
       </div>
 
       <section className="space-y-3">
-        <h2 className="text-ink text-sm font-bold">
-          이 노트가 들어간 향수 {data.perfumeCount}
+        {/*
+          ⚠️ 개수(data.perfumeCount)는 자리표시자가 늘 42 를 돌려줍니다. 목록도 아직
+          없어서 "42" 라고 써 두면 진짜 데이터로 읽힙니다. 노트별 향수 API 가 붙으면
+          그때 개수를 답니다.
+        */}
+        <h2 className="text-ink text-title font-serif font-semibold">
+          이 노트가 들어간 향수
         </h2>
         {/* TODO: 노트별 향수 목록 API 연결 (스크롤로 이어 로드도 함께) */}
         <PerfumeGrid

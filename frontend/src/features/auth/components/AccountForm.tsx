@@ -26,22 +26,24 @@ export function AccountForm() {
   return (
     <>
       <div className="border-line bg-surface-card border">
-        <div className="space-y-3.5 p-6">
-          <h1 className="text-ink text-[17px] font-bold">정보 변경</h1>
+        <div className="space-y-4 p-6">
+          <h1 className="text-ink text-title font-serif font-semibold">
+            정보 변경
+          </h1>
 
           {/* 프로필 이미지 */}
           <div className="flex items-start gap-5">
-            <div className="border-line bg-line-soft text-ink-muted flex size-25 items-center justify-center border text-[10.5px]">
+            <div className="border-line bg-line-soft text-ink-muted text-caption rounded-card flex size-25 items-center justify-center border">
               프로필
             </div>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               <Button variant="outline" size="sm">
                 이미지 변경
               </Button>
               <Button variant="outline" size="sm">
                 이미지 삭제
               </Button>
-              <p className="text-ink-muted text-[10.5px] leading-relaxed">
+              <p className="text-ink-muted text-caption">
                 JPG · JPEG · PNG · WEBP
                 <br />한 장당 최대 5MB
               </p>
@@ -50,11 +52,11 @@ export function AccountForm() {
 
           {/* 이메일 — 계정 식별자라 바꿀 수 없습니다 */}
           <div className="flex items-center gap-3">
-            <span className="text-ink-muted w-20 shrink-0 text-[10.5px]">
+            <span className="text-ink-muted text-caption w-20 shrink-0">
               이메일
             </span>
-            <span className="text-ink text-[10.5px]">user@example.com</span>
-            <span className="text-ink-muted text-[10.5px]">
+            <span className="text-ink text-body">user@example.com</span>
+            <span className="text-ink-muted text-caption">
               (변경 불가 · 계정 식별자)
             </span>
           </div>
@@ -69,14 +71,14 @@ export function AccountForm() {
           >
             <label
               htmlFor="account-nickname"
-              className="text-ink-muted w-20 shrink-0 text-[10.5px]"
+              className="text-ink-muted text-caption w-20 shrink-0"
             >
               닉네임
             </label>
             <input
               id="account-nickname"
               defaultValue="유저닉네임"
-              className="border-line text-ink focus-visible:ring-accent-deep h-10 w-70 border px-3 text-xs outline-none focus-visible:ring-2"
+              className="border-line text-ink focus-visible:ring-accent-deep text-body h-10 w-70 border px-3 outline-none focus-visible:ring-2"
             />
             <Button variant="outline" size="sm">
               중복 확인
@@ -85,15 +87,15 @@ export function AccountForm() {
 
           <hr className="border-line" />
 
-          <div className="flex gap-1.5">
+          <div className="flex gap-2">
             <Button type="submit">저장</Button>
             <Button variant="outline">취소</Button>
           </div>
 
           <hr className="border-line" />
 
-          <p className="text-ink-muted text-[10.5px]">계정</p>
-          <div className="flex gap-1.5">
+          <p className="text-ink-muted text-caption">계정</p>
+          <div className="flex gap-2">
             <Button variant="outline" onClick={() => setPasswordOpen(true)}>
               비밀번호 변경
             </Button>
@@ -104,7 +106,7 @@ export function AccountForm() {
         </div>
 
         {/* 와이어프레임의 점선 주석 영역 */}
-        <div className="text-ink-muted space-y-0.5 border-t border-dashed border-[#d2d2d2] px-6 py-2.5 text-[10.5px] leading-relaxed">
+        <div className="text-ink-muted text-caption border-line space-y-1 border-t border-dashed px-6 py-3">
           <p>비밀번호는 이 화면에 표시하지 않는다 — 변경은 별도 모달로만</p>
           <p>닉네임은 다른 사용자와 겹칠 수 없습니다</p>
         </div>

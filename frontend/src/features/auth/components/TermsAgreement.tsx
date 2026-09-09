@@ -22,29 +22,31 @@ export function TermsAgreement({ value, onChange }: TermsAgreementProps) {
 
   return (
     <fieldset className="space-y-3">
-      <legend className="text-ink text-[17px] font-bold">약관 동의</legend>
+      <legend className="text-ink text-title font-serif font-semibold">
+        약관 동의
+      </legend>
 
       {/* 전체 동의 — 테두리로 감싸 나머지 항목과 구분합니다 */}
-      <label className="border-line flex cursor-pointer items-center gap-2.5 border px-3 py-2.5">
+      <label className="border-line flex cursor-pointer items-center gap-3 border px-3 py-3">
         <Checkbox
           checked={allChecked}
           onChange={(event) => toggleAll(event.target.checked)}
         />
-        <span className="text-ink text-xs">전체 동의</span>
+        <span className="text-ink text-body">전체 동의</span>
       </label>
 
       <ul className="space-y-2">
         {TERMS.map((term) => (
-          <li key={term.id} className="flex items-center gap-2.5">
-            <label className="flex flex-1 cursor-pointer items-center gap-2.5">
+          <li key={term.id} className="flex items-center gap-3">
+            <label className="flex flex-1 cursor-pointer items-center gap-3">
               <Checkbox
                 checked={value[term.id]}
                 onChange={(event) =>
                   onChange({ ...value, [term.id]: event.target.checked })
                 }
               />
-              <span className="text-ink text-xs">{term.label}</span>
-              <span className="text-ink-muted text-[10.5px]">
+              <span className="text-ink text-body">{term.label}</span>
+              <span className="text-ink-muted text-caption">
                 ({term.required ? '필수' : '선택'})
               </span>
             </label>
@@ -53,7 +55,7 @@ export function TermsAgreement({ value, onChange }: TermsAgreementProps) {
             {term.required && (
               <button
                 type="button"
-                className="border-line text-ink hover:bg-line-soft shrink-0 border px-2.5 py-1.5 text-[11px]"
+                className="border-line text-ink hover:bg-line-soft text-body rounded-card shrink-0 border px-3 py-2 transition-colors duration-120 ease-out"
               >
                 보기
               </button>

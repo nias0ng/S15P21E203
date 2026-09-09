@@ -36,7 +36,7 @@ export default function BrandListPage() {
   }
 
   return (
-    <div className="space-y-3.5">
+    <div className="space-y-4">
       <h1 className="sr-only">브랜드</h1>
 
       <SearchField
@@ -47,8 +47,8 @@ export default function BrandListPage() {
         onSearch={(next) => updateParam('keyword', next.trim() || null)}
       />
 
-      <div className="flex items-center gap-2.5">
-        <span className="text-ink-muted text-[10.5px]">정렬</span>
+      <div className="flex items-center gap-3">
+        <span className="text-ink-muted text-caption">정렬</span>
         <ChipToggle
           label="브랜드 정렬"
           options={BRAND_SORTS}
