@@ -36,7 +36,9 @@ export default function ReviewWritePage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-ink text-xl font-bold">후기 쓰기</h1>
+      <h1 className="text-ink text-title font-serif font-semibold">
+        후기 쓰기
+      </h1>
 
       <form
         className="space-y-3"
@@ -51,19 +53,19 @@ export default function ReviewWritePage() {
         }}
       >
         {/* 대상 향수는 필수이고 한 개만 답니다 */}
-        <div className="border-line flex items-center gap-3 border px-3 py-2.5">
-          <span className="text-ink-muted text-[10.5px]">대상 향수</span>
+        <div className="border-line flex items-center gap-3 border px-3 py-3">
+          <span className="text-ink-muted text-caption">대상 향수</span>
           {targetPerfume ? (
             <>
-              <span className="text-ink text-xs font-bold">
+              <span className="text-ink text-body font-medium">
                 {targetPerfume.name}
               </span>
-              <span className="text-ink-muted text-[10.5px]">
+              <span className="text-ink-muted text-caption">
                 {targetPerfume.brand}
               </span>
             </>
           ) : (
-            <span className="text-ink-muted text-xs">
+            <span className="text-ink-muted text-body">
               향수를 선택해야 후기를 쓸 수 있습니다
             </span>
           )}
@@ -91,15 +93,15 @@ export default function ReviewWritePage() {
           onChange={(event) => setContent(event.target.value)}
         />
 
-        <div className="space-y-1.5">
-          <p className="text-ink-muted text-[10.5px]">이미지 첨부</p>
+        <div className="space-y-2">
+          <p className="text-ink-muted text-caption">이미지 첨부</p>
           {/* TODO: 이미지 업로드 연결 (형식 · 용량 제한은 별도 정책) */}
           <Button variant="outline" size="sm">
             + 이미지 첨부
           </Button>
         </div>
 
-        <div className="flex justify-end gap-1.5">
+        <div className="flex justify-end gap-2">
           <LinkButton to={ROUTES.COMMUNITY_REVIEWS} variant="outline">
             취소
           </LinkButton>
@@ -111,7 +113,7 @@ export default function ReviewWritePage() {
           </Button>
         </div>
 
-        <p className="text-ink-muted text-[10.5px] leading-relaxed">
+        <p className="text-ink-muted text-caption leading-relaxed">
           후기 게시판 글은 분류가 없습니다. 대상 향수는 필수이고 한 개만 답니다.
           포스팅하면 정책 검수를 거치고, 보류되면 작성한 내용을 유지한 채 사유를
           안내합니다.

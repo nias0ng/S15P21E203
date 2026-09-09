@@ -38,7 +38,9 @@ export function CommentSection({
 
   return (
     <section className="space-y-3">
-      <h2 className="text-ink text-sm font-bold">댓글 {comments.length}</h2>
+      <h2 className="text-ink text-heading font-serif font-semibold">
+        댓글 {comments.length}
+      </h2>
 
       <form
         className="flex items-start gap-2"
@@ -69,7 +71,7 @@ export function CommentSection({
       <ul className="border-line divide-line divide-y border">
         {comments.map((comment) => (
           <li key={comment.commentId} className="space-y-2 p-3">
-            <div className="flex items-center gap-2 text-[10.5px]">
+            <div className="text-caption flex items-center gap-2">
               <Thumbnail className="size-6 shrink-0 rounded-full" />
               <span className="text-ink">{comment.nickname}</span>
               <span className="text-ink-muted">
@@ -77,7 +79,7 @@ export function CommentSection({
               </span>
 
               {comment.mine && editingId !== comment.commentId && (
-                <span className="ml-auto flex gap-1.5">
+                <span className="ml-auto flex gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -116,7 +118,7 @@ export function CommentSection({
                   value={editDraft}
                   onChange={(event) => setEditDraft(event.target.value)}
                 />
-                <div className="flex justify-end gap-1.5">
+                <div className="flex justify-end gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -134,7 +136,7 @@ export function CommentSection({
                 </div>
               </form>
             ) : (
-              <p className="text-ink text-xs leading-relaxed whitespace-pre-wrap">
+              <p className="text-ink text-body whitespace-pre-wrap">
                 {comment.content}
               </p>
             )}
@@ -142,7 +144,7 @@ export function CommentSection({
         ))}
       </ul>
 
-      <p className="text-ink-muted text-[10.5px]">
+      <p className="text-ink-muted text-caption">
         본인 댓글에만 수정 · 삭제가 보입니다.
       </p>
 

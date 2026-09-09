@@ -75,8 +75,10 @@ export default function CollectionDetailPage() {
 
       <header className="space-y-2">
         <div className="flex items-start gap-3">
-          <h1 className="text-ink text-2xl font-bold">{data.title}</h1>
-          <span className="ml-auto flex shrink-0 gap-1.5">
+          <h1 className="text-ink text-display font-serif font-semibold">
+            {data.title}
+          </h1>
+          <span className="ml-auto flex shrink-0 gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -94,9 +96,9 @@ export default function CollectionDetailPage() {
           </span>
         </div>
         {data.description && (
-          <p className="text-ink-muted text-xs">{data.description}</p>
+          <p className="text-ink-muted text-body">{data.description}</p>
         )}
-        <p className="text-ink text-xs">향수 {data.perfumeCount}개</p>
+        <p className="text-ink text-caption">향수 {data.perfumeCount}개</p>
       </header>
 
       <hr className="border-line" />
@@ -123,7 +125,7 @@ export default function CollectionDetailPage() {
                 type="button"
                 aria-label={`${perfume.name} 컬렉션에서 제거`}
                 onClick={() => setRemoveTarget(perfume.perfumeId)}
-                className="border-line bg-surface-card text-ink-muted hover:text-ink absolute top-3.5 right-3.5 border px-1.5 text-[11px]"
+                className="border-line bg-surface-card text-ink-muted hover:text-ink text-caption rounded-card absolute top-4 right-4 border px-2 transition-colors duration-120 ease-out"
               >
                 <span aria-hidden>×</span>
               </button>
@@ -132,7 +134,7 @@ export default function CollectionDetailPage() {
         </ul>
       )}
 
-      <p className="text-ink-muted text-[10.5px] leading-relaxed">
+      <p className="text-ink-muted text-caption leading-relaxed">
         향수를 제거해도 진열대 저장은 유지됩니다. 컬렉션은 공개 · 비공개 구분이
         없고, 남에게 보이는 길은 자유 게시판의 컬렉션 공유 글뿐입니다.
       </p>

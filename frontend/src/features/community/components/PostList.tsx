@@ -50,7 +50,7 @@ export function PostList({ posts, isPending = false, emptyAction }: Props) {
     <ul className="border-line divide-line divide-y border">
       {posts.map((post) => (
         <li key={post.postId} className="p-4">
-          <div className="flex items-center gap-2 text-[10.5px]">
+          <div className="text-caption flex items-center gap-2">
             <Thumbnail className="size-6 shrink-0 rounded-full" />
             <span className="text-ink">{post.nickname}</span>
             <span className="text-ink-muted">
@@ -71,12 +71,12 @@ export function PostList({ posts, isPending = false, emptyAction }: Props) {
           {post.perfume && (
             <Link
               to={toPerfumeDetail(post.perfume.perfumeId)}
-              className="border-line hover:bg-line-soft mt-2 flex items-center gap-2 border px-2.5 py-1.5"
+              className="border-line hover:bg-line-soft mt-2 flex items-center gap-2 border px-3 py-2"
             >
-              <span className="text-ink text-[11px] font-bold">
+              <span className="text-ink text-body font-medium">
                 {post.perfume.name}
               </span>
-              <span className="text-ink-muted text-[10.5px]">
+              <span className="text-ink-muted text-caption">
                 {post.perfume.brand}
               </span>
             </Link>
@@ -84,13 +84,13 @@ export function PostList({ posts, isPending = false, emptyAction }: Props) {
 
           <Link
             to={toPostDetail(post.postId)}
-            className="text-ink mt-2 block text-sm font-bold hover:underline"
+            className="text-ink text-heading mt-2 block font-serif font-semibold hover:underline"
           >
             {post.title}
           </Link>
 
           {/* 점수나 별점은 없습니다. 좋아요만 있습니다. */}
-          <div className="text-ink-muted mt-2 flex items-center gap-4 text-[10.5px]">
+          <div className="text-ink-muted text-caption mt-2 flex items-center gap-4">
             <span>
               <span aria-hidden>{post.liked ? '♥' : '♡'}</span> 좋아요{' '}
               {post.likeCount}

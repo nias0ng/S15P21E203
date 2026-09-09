@@ -55,8 +55,10 @@ export default function MyShelfPage() {
       {/* 내 진열대 */}
       <section className="space-y-4">
         <div className="flex items-center gap-2">
-          <h1 className="text-ink text-lg font-bold">내 진열대</h1>
-          <span className="text-ink-muted text-[10.5px]">{items.length}개</span>
+          <h1 className="text-ink text-title font-serif font-semibold">
+            내 진열대
+          </h1>
+          <span className="text-ink-muted text-caption">{items.length}개</span>
           <Button className="ml-auto" onClick={() => setRegisterOpen(true)}>
             + 향수 등록
           </Button>
@@ -74,7 +76,7 @@ export default function MyShelfPage() {
                 onSelect={setSelected}
               />
             ))}
-            <div className="text-ink-muted space-y-0.5 text-[10.5px] leading-relaxed">
+            <div className="text-ink-muted text-caption space-y-1 leading-relaxed">
               <p>
                 필터 없음 — 분류가 진열대 세 칸으로 나뉘어 있어 고를 것이
                 없습니다. 칸은 세 개로 고정입니다.
@@ -106,8 +108,10 @@ export default function MyShelfPage() {
       {/* 내 컬렉션 */}
       <section className="space-y-4">
         <div className="flex items-center gap-2">
-          <h2 className="text-ink text-lg font-bold">내 컬렉션</h2>
-          <span className="text-ink-muted text-[10.5px]">
+          <h2 className="text-ink text-title font-serif font-semibold">
+            내 컬렉션
+          </h2>
+          <span className="text-ink-muted text-caption">
             {collections.data?.length ?? 0}개
           </span>
         </div>

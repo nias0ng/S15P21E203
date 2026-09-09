@@ -33,7 +33,7 @@ export default function PostWritePage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-ink text-xl font-bold">글쓰기</h1>
+      <h1 className="text-ink text-title font-serif font-semibold">글쓰기</h1>
 
       <form
         className="space-y-3"
@@ -47,7 +47,7 @@ export default function PostWritePage() {
         }}
       >
         <div className="flex items-center gap-3">
-          <span className="text-ink-muted text-[10.5px]">분류</span>
+          <span className="text-ink-muted text-caption">분류</span>
           <ChipToggle
             label="게시글 분류"
             options={POST_CATEGORIES}
@@ -77,8 +77,8 @@ export default function PostWritePage() {
 
         {/* 컬렉션 첨부는 컬렉션 공유를 골랐을 때만 나타납니다 */}
         {category === 'COLLECTION' && (
-          <div className="space-y-1.5">
-            <p className="text-ink-muted text-[10.5px]">컬렉션 첨부</p>
+          <div className="space-y-2">
+            <p className="text-ink-muted text-caption">컬렉션 첨부</p>
             {/* TODO: 내 컬렉션 선택 연결 (화면에서 컬렉션 도메인과 조합) */}
             <Button variant="outline" size="sm">
               + 내 컬렉션에서
@@ -86,13 +86,13 @@ export default function PostWritePage() {
           </div>
         )}
 
-        <div className="space-y-1.5">
-          <p className="text-ink-muted text-[10.5px]">관련 향수 (선택)</p>
-          <div className="flex flex-wrap items-center gap-1.5">
+        <div className="space-y-2">
+          <p className="text-ink-muted text-caption">관련 향수 (선택)</p>
+          <div className="flex flex-wrap items-center gap-2">
             {perfumes.map((perfume) => (
               <span
                 key={perfume.perfumeId}
-                className="border-line text-ink flex items-center gap-2 border px-2.5 py-1.5 text-[11px]"
+                className="border-line text-ink text-caption rounded-card flex items-center gap-2 border px-3 py-2"
               >
                 {perfume.name}
                 <button
@@ -121,15 +121,15 @@ export default function PostWritePage() {
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <p className="text-ink-muted text-[10.5px]">이미지 첨부 (선택)</p>
+        <div className="space-y-2">
+          <p className="text-ink-muted text-caption">이미지 첨부 (선택)</p>
           {/* TODO: 이미지 업로드 연결 */}
           <Button variant="outline" size="sm">
             + 이미지 첨부
           </Button>
         </div>
 
-        <div className="flex justify-end gap-1.5">
+        <div className="flex justify-end gap-2">
           <LinkButton to={ROUTES.COMMUNITY_FREE} variant="outline">
             취소
           </LinkButton>
@@ -142,7 +142,7 @@ export default function PostWritePage() {
           </Button>
         </div>
 
-        <p className="text-ink-muted text-[10.5px] leading-relaxed">
+        <p className="text-ink-muted text-caption leading-relaxed">
           분류는 필수입니다. 컬렉션 첨부는 컬렉션 공유를 골랐을 때만 나타나고,
           관련 향수와 이미지는 없어도 됩니다.
         </p>

@@ -76,16 +76,18 @@ export default function PostDetailPage() {
               }
             </Badge>
           )}
-          <h1 className="text-ink text-xl font-bold">{data.title}</h1>
+          <h1 className="text-ink text-title font-serif font-semibold">
+            {data.title}
+          </h1>
 
-          <div className="flex items-center gap-2 text-[10.5px]">
+          <div className="text-caption flex items-center gap-2">
             <span className="text-ink">{data.nickname}</span>
             <span className="text-ink-muted">
               · {formatRelativeTime(data.createdAt)} · 조회 {data.viewCount}
             </span>
 
             {data.mine && (
-              <span className="ml-auto flex gap-1.5">
+              <span className="ml-auto flex gap-2">
                 <LinkButton to={editTo} variant="outline" size="sm">
                   수정
                 </LinkButton>
@@ -103,14 +105,12 @@ export default function PostDetailPage() {
 
         <hr className="border-line" />
 
-        <p className="text-ink text-xs leading-relaxed whitespace-pre-wrap">
-          {data.content}
-        </p>
+        <p className="text-ink text-body whitespace-pre-wrap">{data.content}</p>
 
         {/* 첨부 이미지가 없으면 영역 자체를 그리지 않습니다 */}
         {data.imageUrls.length > 0 && (
           <section className="space-y-2">
-            <h2 className="text-ink-muted text-[10.5px]">첨부 이미지</h2>
+            <h2 className="text-ink-muted text-caption">첨부 이미지</h2>
             <ul className="flex flex-wrap gap-2">
               {data.imageUrls.map((url) => (
                 <li key={url}>
@@ -124,8 +124,8 @@ export default function PostDetailPage() {
         {/* 컬렉션 공유 글에만 붙습니다 */}
         {data.collectionTitle && (
           <section className="space-y-2">
-            <h2 className="text-ink-muted text-[10.5px]">첨부 컬렉션</h2>
-            <p className="border-line text-ink border px-3 py-2 text-xs">
+            <h2 className="text-ink-muted text-caption">첨부 컬렉션</h2>
+            <p className="border-line text-ink text-body rounded-card border px-3 py-2">
               {data.collectionTitle}
             </p>
           </section>
@@ -134,21 +134,21 @@ export default function PostDetailPage() {
         {/* 연결 향수가 없으면 영역 자체를 그리지 않습니다 */}
         {data.relatedPerfumes.length > 0 && (
           <section className="space-y-2">
-            <h2 className="text-ink-muted text-[10.5px]">연결된 향수</h2>
-            <ul className="space-y-1.5">
+            <h2 className="text-ink-muted text-caption">연결된 향수</h2>
+            <ul className="space-y-2">
               {data.relatedPerfumes.map((perfume) => (
                 <li key={perfume.perfumeId}>
                   <Link
                     to={toPerfumeDetail(perfume.perfumeId)}
                     className="border-line hover:bg-line-soft flex items-center gap-2 border px-3 py-2"
                   >
-                    <span className="text-ink text-xs font-bold">
+                    <span className="text-ink text-body font-medium">
                       {perfume.name}
                     </span>
-                    <span className="text-ink-muted text-[10.5px]">
+                    <span className="text-ink-muted text-caption">
                       {perfume.brand}
                     </span>
-                    <span className="text-ink-muted ml-auto text-[10.5px]">
+                    <span className="text-ink-muted text-caption ml-auto">
                       향수 상세 →
                     </span>
                   </Link>

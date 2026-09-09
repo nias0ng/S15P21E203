@@ -20,18 +20,20 @@ export function TrendingPerfumes({ items }: Props) {
 
   return (
     <aside className="border-line space-y-2 border p-4">
-      <h2 className="text-ink text-xs font-bold">지금 많이 언급되는 향수</h2>
-      <ul className="space-y-1.5">
+      <h2 className="text-ink text-heading font-serif font-semibold">
+        지금 많이 언급되는 향수
+      </h2>
+      <ul className="space-y-2">
         {items.map((item) => (
           <li key={item.perfumeId}>
             <Link
               to={toPerfumeDetail(item.perfumeId)}
               className="hover:bg-line-soft flex items-baseline gap-2 px-1 py-1"
             >
-              <span className="text-ink min-w-0 flex-1 truncate text-[11px]">
+              <span className="text-ink text-body min-w-0 flex-1 truncate">
                 {item.name}
               </span>
-              <span className="text-ink-muted shrink-0 text-[10.5px]">
+              <span className="text-ink-muted text-caption shrink-0">
                 글 {item.postCount}
               </span>
             </Link>

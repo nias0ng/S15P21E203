@@ -82,7 +82,7 @@ export function PerfumePickModal({
           <ul className="max-h-72 space-y-1 overflow-y-auto">
             {candidates.map((candidate) => (
               <li key={candidate.perfumeId}>
-                <label className="hover:bg-line-soft flex cursor-pointer items-center gap-3 p-1.5">
+                <label className="hover:bg-line-soft flex cursor-pointer items-center gap-3 p-2">
                   <Checkbox
                     checked={picked.some(
                       (item) => item.perfumeId === candidate.perfumeId,
@@ -90,10 +90,10 @@ export function PerfumePickModal({
                     onChange={() => toggle(candidate)}
                   />
                   <span className="min-w-0">
-                    <span className="text-ink block truncate text-xs font-bold">
+                    <span className="text-ink text-body block truncate font-medium">
                       {candidate.name}
                     </span>
-                    <span className="text-ink-muted block truncate text-[10.5px]">
+                    <span className="text-ink-muted text-caption block truncate">
                       {candidate.brand}
                     </span>
                   </span>
@@ -103,7 +103,7 @@ export function PerfumePickModal({
           </ul>
         )}
 
-        <p className="text-ink-muted text-[10.5px]">{picked.length}개 선택됨</p>
+        <p className="text-ink-muted text-caption">{picked.length}개 선택됨</p>
       </div>
     </Modal>
   )
