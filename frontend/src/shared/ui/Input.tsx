@@ -33,11 +33,11 @@ export function Input({
   const hintId = `${id}-hint`
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <label
         htmlFor={id}
         className={cn(
-          'block text-sm font-medium',
+          'text-caption block font-medium',
           hideLabel && 'sr-only', // 화면에서만 숨기고 스크린리더는 읽습니다
         )}
       >
@@ -49,7 +49,7 @@ export function Input({
         aria-invalid={error ? true : undefined}
         aria-describedby={cn(hint && hintId, error && errorId) || undefined}
         className={cn(
-          'rounded-card h-10 w-full border px-3 text-sm',
+          'rounded-card text-body h-10 w-full border px-3',
           'placeholder:text-ink-muted/70',
           'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
           'disabled:bg-line-soft disabled:opacity-60',
@@ -60,12 +60,12 @@ export function Input({
       />
 
       {hint && !error && (
-        <p id={hintId} className="text-ink-muted text-xs">
+        <p id={hintId} className="text-ink-muted text-caption">
           {hint}
         </p>
       )}
       {error && (
-        <p id={errorId} className="text-danger text-xs">
+        <p id={errorId} className="text-danger text-caption">
           {error}
         </p>
       )}

@@ -7,9 +7,9 @@ import { cn } from '@/shared/lib/cn'
  * div 로 흉내내면 키보드 포커스와 스페이스바 토글을 잃습니다.
  *
  * 라벨은 호출하는 쪽에서 <label> 로 감싸주세요.
- *   <label className="flex items-center gap-2.5">
+ *   <label className="flex items-center gap-2">
  *     <Checkbox checked={x} onChange={...} />
- *     <span className="text-xs">전체 동의</span>
+ *     <span className="text-body">전체 동의</span>
  *   </label>
  */
 export function Checkbox({

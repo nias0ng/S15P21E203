@@ -1,9 +1,8 @@
-import { Link } from 'react-router'
-
 import { toNoteDetail } from '@/shared/config/routes'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Skeleton } from '@/shared/ui/Skeleton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
+import { TileCard } from '@/shared/ui/TileCard'
 
 import { NOTE_CATEGORIES, type Note } from '../types'
 
@@ -62,23 +61,23 @@ export function NoteCategorySections({
 
         return (
           <section key={category} className="space-y-3">
-            <h2 className="text-ink text-base font-bold">{category}</h2>
+            <h2 className="text-ink text-title font-serif font-semibold">
+              {category}
+            </h2>
             <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
               {items.map((note) => (
                 <li key={note.noteId}>
-                  <Link
+                  <TileCard
                     to={toNoteDetail(note.noteId)}
-                    className="border-line bg-surface-card hover:border-accent flex flex-col gap-1.5 border p-2.5 transition-shadow hover:shadow-md"
-                  >
-                    <Thumbnail
-                      src={note.imageUrl}
-                      fallback="이미지"
-                      className="h-20 w-full"
-                    />
-                    <span className="text-ink truncate text-xs font-bold underline-offset-2">
-                      {note.name}
-                    </span>
-                  </Link>
+                    media={
+                      <Thumbnail
+                        src={note.imageUrl}
+                        fallback="이미지"
+                        className="h-20 w-full"
+                      />
+                    }
+                    title={note.name}
+                  />
                 </li>
               ))}
             </ul>

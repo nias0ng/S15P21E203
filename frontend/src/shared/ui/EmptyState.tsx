@@ -14,9 +14,9 @@ type EmptyStateProps = {
 export function EmptyState({ title, description, action }: EmptyStateProps) {
   return (
     <div className="flex min-h-48 flex-col items-center justify-center gap-2 text-center">
-      <p className="text-sm font-medium">{title}</p>
+      <p className="text-heading font-serif font-semibold">{title}</p>
       {description && (
-        <p className="text-ink-muted max-w-sm text-xs">{description}</p>
+        <p className="text-ink-muted text-body max-w-sm">{description}</p>
       )}
       {action && <div className="mt-2">{action}</div>}
     </div>

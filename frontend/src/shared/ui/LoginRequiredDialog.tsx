@@ -49,7 +49,7 @@ export function LoginRequiredDialog({ open, onClose, redirectTo }: Props) {
         </>
       }
     >
-      <p className="text-ink text-xs">
+      <p className="text-ink text-body">
         추천 결과는 로그인 없이도 볼 수 있습니다.
       </p>
     </Modal>

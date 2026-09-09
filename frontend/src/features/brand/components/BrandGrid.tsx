@@ -1,9 +1,8 @@
-import { Link } from 'react-router'
-
 import { ROUTES } from '@/shared/config/routes'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Skeleton } from '@/shared/ui/Skeleton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
+import { TileCard } from '@/shared/ui/TileCard'
 
 import type { Brand } from '../types'
 
@@ -48,23 +47,19 @@ export function BrandGrid({ items, isPending = false, emptyAction }: Props) {
     <ul className={gridClass}>
       {items.map((brand) => (
         <li key={brand.brandId}>
-          <Link
+          <TileCard
             to={`${ROUTES.PERFUMES}?brand=${encodeURIComponent(brand.name)}`}
-            className="border-line bg-surface-card hover:border-accent flex flex-col gap-1.5 border p-2.5 transition-shadow hover:shadow-md"
-          >
-            <Thumbnail
-              src={brand.logoUrl}
-              fallback="로고"
-              fit="contain"
-              className="h-24 w-full"
-            />
-            <span className="text-ink truncate text-xs font-bold">
-              {brand.name}
-            </span>
-            <span className="text-ink-muted text-[10.5px]">
-              향수 {brand.perfumeCount}개
-            </span>
-          </Link>
+            media={
+              <Thumbnail
+                src={brand.logoUrl}
+                fallback="로고"
+                fit="contain"
+                className="h-24 w-full"
+              />
+            }
+            title={brand.name}
+            caption={`향수 ${brand.perfumeCount}개`}
+          />
         </li>
       ))}
     </ul>

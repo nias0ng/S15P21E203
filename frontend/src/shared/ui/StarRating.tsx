@@ -29,11 +29,11 @@ export function StarRating({
   if (readOnly) {
     return (
       <span className={cn('inline-flex items-center gap-1', className)}>
-        <span aria-hidden className="text-ink text-sm tracking-[0.15em]">
+        <span aria-hidden className="text-ink text-body tracking-[0.15em]">
           {'★'.repeat(value ?? 0)}
           <span className="text-line">{'☆'.repeat(max - (value ?? 0))}</span>
         </span>
-        <span className="text-ink-muted text-[10.5px]">
+        <span className="text-ink-muted text-caption">
           {value ?? '-'} / {max}
         </span>
       </span>
@@ -59,7 +59,7 @@ export function StarRating({
             aria-label={`${max}점 중 ${score}점`}
             onClick={() => onChange(score)}
             className={cn(
-              'focus-visible:ring-accent-deep rounded text-sm outline-none focus-visible:ring-2',
+              'focus-visible:ring-accent-deep rounded-card text-body outline-none focus-visible:ring-2',
               filled ? 'text-ink' : 'text-line',
             )}
           >
@@ -67,7 +67,7 @@ export function StarRating({
           </button>
         )
       })}
-      <span className="text-ink-muted ml-1 text-[10.5px]">
+      <span className="text-ink-muted text-caption ml-1">
         {value ?? '-'} / {max}
       </span>
     </span>
