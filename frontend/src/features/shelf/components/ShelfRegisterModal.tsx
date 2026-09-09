@@ -45,7 +45,7 @@ type Props = {
  * - 적합도와 메모는 선택. 분류만 고르면 담긴다
  * - 메모는 향수 한 개당 하나 — 시향 기록(SHF-08 · SHF-10)이 이 모달로 흡수됐다
  */
-export function PerfumeRegisterModal({
+export function ShelfRegisterModal({
   open,
   onClose,
   options,

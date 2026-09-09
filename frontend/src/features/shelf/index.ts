@@ -4,6 +4,10 @@
  * 이 폴더 밖에서는 `@/features/shelf` 만 import 합니다.
  * 화면: A13 진열대 + 컬렉션 / A15 향수 등록 모달 2단계 / A11 진열대 저장 모달
  *
+ * ShelfRow · ShelfItemPanel 은 지웠습니다. 진열대 세 칸을 가로로 늘어놓던 이전
+ * 레이아웃의 조각인데, 시안이 한 진열장(DisplayCase)으로 합쳐지면서 아무 데서도
+ * 부르지 않게 되었습니다. 되살릴 일이 생기면 git 이력에 있습니다.
+ *
  * ⚠️ 백엔드 진열대 API 가 아직 없습니다. api.ts 가 자리표시자를 돌려줍니다.
  */
 
@@ -17,16 +21,14 @@
  * 조용히 떨어뜨립니다.
  */
 import './shelf-display.css'
-export { CollectionDetailPanel } from './components/CollectionDetailPanel'
+export { ShelfDetailPanel } from './components/ShelfDetailPanel'
 export {
-  CollectionFilters,
+  ShelfToolbar,
   type CollectionFilterValue,
-} from './components/CollectionFilters'
-export { CollectionFooterStrip } from './components/CollectionFooterStrip'
+} from './components/ShelfToolbar'
+export { ShelfFooterStrip } from './components/ShelfFooterStrip'
 export { DisplayCase } from './components/DisplayCase'
-export { PerfumeRegisterModal } from './components/PerfumeRegisterModal'
-export { ShelfItemPanel } from './components/ShelfItemPanel'
-export { ShelfRow } from './components/ShelfRow'
+export { ShelfRegisterModal } from './components/ShelfRegisterModal'
 export { ShelfSaveModal } from './components/ShelfSaveModal'
 export { shelfItemsQuery, shelfKeys } from './queries'
 export {

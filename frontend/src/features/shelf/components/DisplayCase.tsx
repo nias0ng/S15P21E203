@@ -30,6 +30,19 @@ const SLOTS = 7
  */
 const BOTTLE_HEIGHTS = [219, 235, 210, 257, 252, 232, 224] as const
 
+const bottleHeight = (shelfItemId: number) =>
+  BOTTLE_HEIGHTS[shelfItemId % BOTTLE_HEIGHTS.length]
+
+/** 사진과 실루엣이 공유하는 자리·크기 */
+const BOTTLE = 'relative z-[2] max-w-[94%] object-contain object-bottom'
+
+/** 고른 병은 살짝 앞으로 나옵니다. 아직 안 고른 병은 마우스를 올릴 때만 그렇습니다 */
+const lift = (item: ShelfItem, selectedId: number | null) =>
+  cn(
+    'transition-transform duration-200 ease-out',
+    item.shelfItemId === selectedId ? '-translate-y-1' : 'hover:-translate-y-1',
+  )
+
 /**
  * 진열장 (와이어프레임 A13 재디자인 시안)
  *
@@ -40,6 +53,10 @@ const BOTTLE_HEIGHTS = [219, 235, 210, 257, 252, 232, 224] as const
  *
  * 병 이미지는 배경이 투명한 PNG·WebP 입니다. 그래서 이미지 칸에 테두리나 배경을
  * 주지 않습니다 — 주면 투명 영역이 네모로 드러나 병이 상자에 든 것처럼 보입니다.
+ *
+ * 사진은 브랜드 저작물이라 커밋하지 않습니다(.gitignore). 그래서 **사진이 없는
+ * 환경이 정상**입니다 — 갓 clone 한 팀원의 화면이 그렇습니다. 그때 아무것도 안 그리면
+ * 진열장이 텅 빈 채로 보여서 화면이 고장 난 것처럼 읽히므로, 병 실루엣을 대신 세웁니다.
  *
  * **한 번에 일곱 병만 세웁니다.** 진열장은 실제 선반이라 칸 수가 정해져 있고, 걸러진
  * 향수가 25개든 100개든 벽감 크기는 그대로여야 합니다. 넘치는 병은 화면(pages) 아래
@@ -100,23 +117,26 @@ export function DisplayCase({ items, selectedId, onSelect, className }: Props) {
                     className="shelf-ground pointer-events-none absolute -bottom-1 h-3.5 w-[82%] rounded-[50%]"
                   />
 
-                  {item.thumbnailUrl && (
+                  {/*
+                    사진과 실루엣이 같은 높이·같은 움직임을 갖습니다. 실루엣만 크기가
+                    다르면 사진이 있는 환경과 없는 환경의 레이아웃이 달라져서, 사진이
+                    없는 팀원은 다른 화면을 보게 됩니다.
+                  */}
+                  {item.thumbnailUrl ? (
                     <img
                       src={item.thumbnailUrl}
                       alt=""
-                      style={{
-                        height:
-                          BOTTLE_HEIGHTS[
-                            item.shelfItemId % BOTTLE_HEIGHTS.length
-                          ],
-                      }}
+                      style={{ height: bottleHeight(item.shelfItemId) }}
                       className={cn(
-                        'shelf-bottle-img relative z-[2] max-w-[94%] object-contain object-bottom',
-                        'transition-transform duration-200 ease-out',
-                        item.shelfItemId === selectedId
-                          ? '-translate-y-1'
-                          : 'hover:-translate-y-1',
+                        BOTTLE,
+                        'shelf-bottle-img',
+                        lift(item, selectedId),
                       )}
+                    />
+                  ) : (
+                    <BottleSilhouette
+                      style={{ height: bottleHeight(item.shelfItemId) }}
+                      className={cn(BOTTLE, lift(item, selectedId))}
                     />
                   )}
                   <span className="sr-only">
@@ -168,5 +188,35 @@ export function DisplayCase({ items, selectedId, onSelect, className }: Props) {
         })}
       </ul>
     </section>
+  )
+}
+
+/**
+ * 사진이 없는 향수 자리.
+ *
+ * 목 · 어깨 · 몸통을 한 덩어리로 그립니다. 네모 자리표시자를 쓰지 않는 이유는
+ * 이 자리에 들어올 것이 배경 투명 PNG 라서입니다 — 네모를 그려 두면 사진이 들어온
+ * 뒤와 없을 때의 인상이 완전히 달라집니다.
+ */
+function BottleSilhouette({
+  className,
+  style,
+}: {
+  className?: string
+  style?: React.CSSProperties
+}) {
+  return (
+    <svg
+      viewBox="0 0 32 64"
+      preserveAspectRatio="xMidYMax meet"
+      aria-hidden
+      style={style}
+      className={cn('text-[var(--niche-floor)]', className)}
+    >
+      <path
+        fill="currentColor"
+        d="M13 2h6v7c0 2 6 4 6 9v44a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V18c0-5 6-7 6-9V2Z"
+      />
+    </svg>
   )
 }

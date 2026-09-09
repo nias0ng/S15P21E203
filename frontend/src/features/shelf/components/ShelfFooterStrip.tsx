@@ -19,7 +19,7 @@ type Props = {
  *
  * 이 띠 안에서 두 곳이 같은 값을 써야 하므로 문자열을 여기 한 번만 둡니다.
  * 인라인으로 두면 한쪽에만 근거가 붙어서 다른 쪽은 실수처럼 보입니다.
- * `CollectionDetailPanel` 도 같은 상수를 갖고 있습니다 — `--tracking-*` 토큰이
+ * `ShelfDetailPanel` 도 같은 상수를 갖고 있습니다 — `--tracking-*` 토큰이
  * 생기면 두 곳을 함께 걷어냅니다.
  */
 const SPACED_LABEL = 'shelf-muted text-caption uppercase tracking-[0.18em]'
@@ -35,7 +35,7 @@ const SPACED_LABEL = 'shelf-muted text-caption uppercase tracking-[0.18em]'
  * contentinfo 랜드마크가 되는데, 이건 페이지 전체의 푸터가 아니라 화면 한 구역의
  * 장식 띠입니다. 랜드마크를 늘리면 낭독기의 목차만 지저분해집니다.
  */
-export function CollectionFooterStrip({
+export function ShelfFooterStrip({
   index,
   total,
   onPrev,

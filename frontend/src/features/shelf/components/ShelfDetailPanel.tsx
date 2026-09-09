@@ -80,12 +80,7 @@ const SCENT_NOTES = [
  *
  * 카드 폭은 정하지 않습니다 — 진열장과 나란히 놓이는 자리라 화면(pages)이 정합니다.
  */
-export function CollectionDetailPanel({
-  item,
-  onClose,
-  onSave,
-  className,
-}: Props) {
+export function ShelfDetailPanel({ item, onClose, onSave, className }: Props) {
   if (!item) {
     return (
       <aside
@@ -105,7 +100,7 @@ export function CollectionDetailPanel({
       className={cn(CARD, 'relative flex flex-col gap-3', className)}
     >
       {/*
-        여기만 공용 Button 을 쓰지 않는 이유는 CollectionFooterStrip 의 넘김 버튼과
+        여기만 공용 Button 을 쓰지 않는 이유는 ShelfFooterStrip 의 넘김 버튼과
         같습니다 — 공용 버튼은 어떤 variant 든 호버 배경이 생기는데, 이 × 는 종이 위에
         인쇄된 기호처럼 배경 없이 글자색만 바뀌어야 합니다. 대신 공통 규칙 중
         포커스 링과 색 전환(duration-120)은 그대로 가져옵니다.

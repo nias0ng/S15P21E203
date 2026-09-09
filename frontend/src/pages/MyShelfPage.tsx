@@ -7,11 +7,11 @@ import {
   myCollectionsQuery,
 } from '@/features/collection'
 import {
-  CollectionDetailPanel,
-  CollectionFilters,
-  CollectionFooterStrip,
+  ShelfDetailPanel,
+  ShelfToolbar,
+  ShelfFooterStrip,
   DisplayCase,
-  PerfumeRegisterModal,
+  ShelfRegisterModal,
   ShelfSaveModal,
   shelfItemsQuery,
   type CollectionFilterValue,
@@ -184,7 +184,7 @@ export default function MyShelfPage() {
             {/*
               `tracking-[0.18em]` 만 임의값입니다. @theme 에 자간 토큰이 없고, 자간은
               색 · 크기와 달리 시안이 확정돼도 함께 갈아끼울 대상이 아니라 토큰을 새로
-              파지 않았습니다. CollectionDetailPanel 의 SPACED_LABEL 과 같은 값입니다 —
+              파지 않았습니다. ShelfDetailPanel 의 SPACED_LABEL 과 같은 값입니다 —
               자간 토큰이 생기면 두 곳을 함께 고칩니다.
             */}
             <p className="shelf-muted text-caption tracking-[0.18em] uppercase">
@@ -198,7 +198,7 @@ export default function MyShelfPage() {
             lg:pt-2 는 칩 줄(약 34px)의 가운데를 40px 제목의 가운데에 맞추는 값입니다.
             items-start 라 그냥 두면 칩이 제목 윗선에 붙어 한 줄로 안 읽힙니다.
           */}
-          <CollectionFilters
+          <ShelfToolbar
             counts={counts}
             value={filter}
             onChange={(next) => {
@@ -234,7 +234,7 @@ export default function MyShelfPage() {
             필터 줄 바로 아래에 붙습니다. 음수 마진으로 그 차이를 흉내 내되, 필터 줄과
             겹치지 않을 만큼만 올립니다.
           */}
-          <CollectionDetailPanel
+          <ShelfDetailPanel
             item={selected}
             onClose={() => setSelectedId(null)}
             onSave={() => showToast('나의 향수로 저장했습니다')}
@@ -242,7 +242,7 @@ export default function MyShelfPage() {
           />
         </div>
 
-        <CollectionFooterStrip
+        <ShelfFooterStrip
           index={visible.length === 0 ? 0 : current + 1}
           total={visible.length}
           onPrev={() => move(-1)}
@@ -266,7 +266,7 @@ export default function MyShelfPage() {
             `ring-offset-*` 의 기본색은 흰색이라, 이 크림 바탕 위에서는 링과 버튼 사이
             2px 이 흰 줄로 떠서 종이에 흰 자국이 난 것처럼 보입니다. 바탕을 토큰 밖 색으로
             바꾼 이 화면에서만 생기는 문제라 여기서 색을 맞춥니다 —
-            CollectionDetailPanel 이 자기 카드 바탕에 대해 하는 것과 같습니다.
+            ShelfDetailPanel 이 자기 카드 바탕에 대해 하는 것과 같습니다.
           */}
           <Button
             variant="outline"
@@ -285,7 +285,7 @@ export default function MyShelfPage() {
         />
       </section>
 
-      <PerfumeRegisterModal
+      <ShelfRegisterModal
         open={registerOpen}
         onClose={() => setRegisterOpen(false)}
         // 1단계 후보. 향수 도메인 데이터를 이 모양으로 맞춰 넘깁니다.

@@ -73,7 +73,7 @@ const FILTER_CHIPS = [
  * 검색창만 flex-1 이라 창 폭이 변해도 칩은 안 밀리고 검색창이 늘고 줄어듭니다.
  * 칩이 밀리면 "지금 무엇으로 걸러져 있는지"가 화면 밖으로 나가버립니다.
  */
-export function CollectionFilters({
+export function ShelfToolbar({
   counts,
   value,
   onChange,
