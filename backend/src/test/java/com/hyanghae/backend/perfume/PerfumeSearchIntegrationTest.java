@@ -61,7 +61,7 @@ class PerfumeSearchIntegrationTest {
         // 1번은 계열 두 개에 걸쳐 있고, 비중이 큰 쪽이 대표입니다.
         // 대표(플로럴)에 일부러 더 큰 계열 번호를 줍니다. 번호순으로 고르면 머스크가 뽑혀
         // 틀린 답이 나오므로, 비중으로 고르는지가 실제로 검증됩니다.
-        insertScentRegion(1, "MUSK_POWDERY", "머스크·파우더리");
+        insertScentRegion(1, "MUSK", "머스크·파우더리");
         insertScentRegion(2, "FLORAL", "플로럴");
         insertScentFamily(1, 1, 0.3181);
         insertScentFamily(1, 2, 0.5976);
