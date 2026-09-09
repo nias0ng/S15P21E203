@@ -24,7 +24,7 @@ export {
   SEASONS,
   SHELF_FILTERS,
   type GenderFilter,
-  type Page,
+  type PerfumeSearchResponse,
   type PerfumeDetail,
   type PerfumeSearchParams,
   type PerfumeSummary,

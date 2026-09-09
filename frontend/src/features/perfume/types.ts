@@ -2,65 +2,87 @@
 export type ScentFamily =
   'FLORAL' | 'WOODY' | 'CITRUS' | 'ORIENTAL' | 'FRESH' | 'FOUGERE'
 
+/** COM-05 검색 결과의 한 건. 목록·검색·그리드가 이 형태를 씁니다. */
 export interface PerfumeSummary {
   perfumeId: number
   name: string
-  brand: string
-
-  /** 대표 이미지. 등록된 이미지가 없는 향수는 null 로 옵니다 */
-  thumbnailUrl: string | null
-
-  // ⚠️ 백엔드가 아직 안 내려줍니다. perfume_map_points + scent_regions 조인이
-  // 필요해서 향 지도 기능 이슈에서 추가될 예정입니다.
-  // 옵셔널로 둔 이유는 아래 PerfumeDetail 의 주석과 같습니다.
-  scentFamily?: ScentFamily
+  /** 한글명. 없는 향수는 null */
+  nameKo: string | null
+  /** 브랜드명(문자열). 브랜드가 없는 향수는 null */
+  brandName: string | null
+  /** 대표 이미지. 등록된 이미지가 없으면 null */
+  imageUrl: string | null
+  scentFamily: ScentFamily | null
 }
 
 /**
  * DTL-01 향수 기본 정보 조회
  *
- * ⚠️ 아래 세 필드는 백엔드 응답에 아직 없습니다. 백엔드 PerfumeDetailResponse 는
- * { perfumeId, name, brand, thumbnailUrl, description } 뿐이고, 향조·후기 통계는
- * 기능 명세가 별도 기능으로 분리해 두어 각각의 이슈에서 추가됩니다.
+ * **PerfumeSummary 를 상속하지 않습니다.** 검색 응답과 필드 모양이 다릅니다.
+ *   검색  brandName: string | null    imageUrl: string | null
+ *   상세  brand: { brandId, name }    images: string[]
+ * 상속으로 묶으면 타입이 거짓말을 하게 됩니다.
  *
- * **필수로 선언하면 타입은 통과하는데 런타임에 undefined 라 화면이 죽습니다.**
- * 실제로 그렇게 죽었습니다 — 백엔드에 상세 API 가 붙기 전에는 요청이 404 로 끝나
- * 이 코드까지 오지 않았을 뿐입니다(S15P21E203-169).
- *
- * 그래서 옵셔널로 둡니다. 백엔드가 내려주기 시작하면 `?` 를 떼고 이 주석을 지우세요.
- * 쓰는 쪽은 값이 없는 경우를 먼저 처리해야 합니다.
+ * ⚠️ 향조(notes)·후기 통계는 상세 응답에 없습니다. 별도 엔드포인트로 각각의
+ * 이슈에서 붙습니다. 필수로 선언하면 타입은 통과하는데 런타임에 undefined 라
+ * 화면이 죽습니다 — 실제로 그렇게 죽었습니다(S15P21E203-169).
+ * 백엔드가 내려주기 시작하면 `?` 를 떼세요.
  */
-export interface PerfumeDetail extends PerfumeSummary {
-  description: string
-  /** DTL-02 향조 정보 */
+export interface PerfumeDetail {
+  perfumeId: number
+  name: string
+  nameKo: string | null
+  gender: GenderFilter | null
+  description: string | null
+  concentration: string | null
+  /** 검색과 달리 객체입니다 */
+  brand: { brandId: number; name: string } | null
+  /** 대표 이미지는 첫 번째 원소입니다 */
+  images: string[]
+  prices: PerfumePrice[]
+
+  /** DTL-02 향조 정보 — 별도 엔드포인트에서 옵니다 */
   notes?: {
     top: string[]
     middle: string[]
     base: string[]
   }
-  /** DTL-10 후기 통계 */
+  /** DTL-10 후기 통계 — 별도 엔드포인트에서 옵니다 */
   reviewCount?: number
   averageScore?: number
+}
+
+export interface PerfumePrice {
+  volumeMl: number | null
+  minPrice: number | null
+  maxPrice: number | null
+  /** ⚠️ UTC 로 옵니다 (2026-09-05T09:00:00Z). 화면에 쓸 때 KST 로 바꾸세요 */
+  collectedAt: string
 }
 
 export interface PerfumeSearchParams {
   /** 향수명·브랜드명 검색어 */
   keyword?: string
 
-  // ⚠️ 백엔드 컨트롤러는 keyword 만 받습니다. 이 값을 보내도 조용히 무시되고
-  // 필터가 걸리지 않은 전체 결과가 내려옵니다. 향 계열 필터는 백엔드에 아직 없습니다.
+  // ⚠️ scentFamily 는 응답 필드로만 있습니다. 검색 파라미터로는 아직 동작하지
+  // 않아 보내도 무시됩니다. 필요해지면 백엔드에 요청해야 합니다.
   scentFamily?: ScentFamily
 
-  // ⚠️ A33 의 필터 두 줄입니다. 백엔드에 아직 없어서 보내도 무시됩니다.
-  // 진열대 기준 필터는 로그인 사용자의 진열대와 조회 이력을 봐야 하므로
-  // 백엔드 작업이 함께 필요합니다.
+  /**
+   * A33 위 줄 필터 — **전체 사용자 집계** 기준입니다.
+   *
+   * ⚠️ 백엔드가 수정 중입니다. 현재 구현은 개인 진열대 기준이라 비로그인이면
+   * 401(PERFUME_SHELF_FILTER_REQUIRES_LOGIN)이지만, 집계 기준으로 바뀌면
+   * 로그인 없이 동작합니다. 수정본이 나오면 이 주석을 지우세요.
+   */
   shelf?: ShelfFilter
+
+  /** A33 아래 줄 필터. 정의되지 않은 값을 보내면 400 입니다 */
   gender?: GenderFilter
 
   /**
-   * 브랜드명. A34 브랜드 페이지에서 카드를 누르면 이 필터가 걸린 채로 옵니다
-   * ("브랜드를 누르면 그 브랜드의 향수 목록").
-   * ⚠️ 백엔드 검색 API 는 아직 keyword 만 받아 이 값도 무시됩니다.
+   * 브랜드명 **완전 일치**. A34 브랜드 페이지에서 카드를 누르면 이 필터가 걸린 채로
+   * 옵니다. 부분 일치는 keyword 가 담당합니다.
    */
   brand?: string
 
@@ -73,17 +95,31 @@ export interface PerfumeSearchParams {
   // 정렬 옵션이 화면에 필요해지면 여기에 추가하세요.
 }
 
-/** 백엔드 common/PageResponse.java 와 1:1 로 맞춰진 형태입니다. 필드명을 바꾸면 함께 깨집니다. */
-export interface Page<T> {
-  content: T[]
+/**
+ * 향수 검색 응답. 백엔드 PerfumeSearchResponse 와 1:1 입니다.
+ *
+ * **공용 Page<T> 를 쓰지 않습니다.** 목록 필드명이 content 가 아니라 perfumes 이고
+ * totalPages 도 없습니다. 마지막 페이지가 필요하면
+ * `Math.ceil(totalElements / size)` 로 구하세요.
+ */
+export interface PerfumeSearchResponse {
+  perfumes: PerfumeSummary[]
   /** 현재 페이지. 0부터 시작합니다. */
   page: number
   size: number
   totalElements: number
-  totalPages: number
 }
 
-/** A33 위 줄 필터 — 내 진열대 기준. 로그인 상태에서만 의미가 있습니다. */
+/**
+ * A33 위 줄 필터 — 전체 사용자 집계 기준입니다. 로그인이 필요 없습니다.
+ *
+ *   OWNED   많은 사람이 "보유 중" 으로 담은 향수
+ *   WISH    많은 사람이 "보유 희망" 으로 담은 향수
+ *   VIEWED  많이 조회된 향수
+ *
+ * 이름이 개인 소유처럼 읽히지만 실제로는 집계값입니다. 백엔드 파라미터명이라
+ * 그대로 두었습니다.
+ */
 export type ShelfFilter = 'OWNED' | 'WISH' | 'VIEWED'
 
 /** A33 아래 줄 필터 — 향의 성별 */

@@ -5,13 +5,9 @@ import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 type PerfumeCardProps = {
   name: string
-  brand: string
-  /**
-   * 대표 이미지. 없으면 와이어프레임처럼 "이미지" 자리표시자를 그립니다.
-   *
-   * ⚠️ 백엔드 COM-05 검색 응답에는 아직 이 필드가 없어서 런타임에 undefined 로 옵니다.
-   * 그래서 optional 로 두고 없는 경우를 기본 동작으로 처리합니다.
-   */
+  /** 브랜드명. 브랜드가 없는 향수는 null 이라 줄을 그리지 않습니다 */
+  brand?: string | null
+  /** 대표 이미지. 없으면 와이어프레임처럼 "이미지" 자리표시자를 그립니다. */
   thumbnailUrl?: string | null
   /** 카드를 누르면 갈 곳. 없으면 링크가 아닌 그냥 카드가 됩니다. */
   to?: string
@@ -44,7 +40,9 @@ export function PerfumeCard({
       <Thumbnail src={thumbnailUrl} fallback="이미지" className="h-28 w-full" />
 
       <p className="text-ink w-full truncate text-xs font-bold">{name}</p>
-      <p className="text-ink-muted w-full truncate text-[10.5px]">{brand}</p>
+      {brand && (
+        <p className="text-ink-muted w-full truncate text-[10.5px]">{brand}</p>
+      )}
       {badges && <div className="flex flex-wrap gap-1">{badges}</div>}
     </>
   )

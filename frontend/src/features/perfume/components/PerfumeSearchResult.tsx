@@ -61,7 +61,7 @@ export function PerfumeSearchResult({ keyword, onResetKeyword }: Props) {
     )
   }
 
-  if (data.content.length === 0) {
+  if (data.perfumes.length === 0) {
     return (
       <EmptyState
         title="검색 결과가 없습니다"
@@ -85,15 +85,14 @@ export function PerfumeSearchResult({ keyword, onResetKeyword }: Props) {
       </p>
 
       <ul className="border-line divide-line divide-y border">
-        {data.content.map((perfume) => (
+        {data.perfumes.map((perfume) => (
           <li key={perfume.perfumeId}>
             <Link
               to={toPerfumeDetail(perfume.perfumeId)}
               className="hover:bg-line-soft flex items-center gap-3 p-3 transition-colors"
             >
-              {/* ⚠️ thumbnailUrl 은 백엔드가 아직 안 내려줍니다 */}
               <Thumbnail
-                src={perfume.thumbnailUrl}
+                src={perfume.imageUrl}
                 fallback="이미지"
                 className="size-14 shrink-0"
               />
@@ -103,7 +102,7 @@ export function PerfumeSearchResult({ keyword, onResetKeyword }: Props) {
                   {perfume.name}
                 </span>
                 <span className="text-ink-muted block truncate text-[10.5px]">
-                  {perfume.brand}
+                  {perfume.brandName}
                 </span>
               </span>
             </Link>
