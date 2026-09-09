@@ -1,8 +1,7 @@
-import { Link } from 'react-router'
-
 import { toCollectionDetail } from '@/shared/config/routes'
 import { Skeleton } from '@/shared/ui/Skeleton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
+import { TileCard } from '@/shared/ui/TileCard'
 
 import type { CollectionSummary } from '../types'
 
@@ -37,40 +36,36 @@ export function CollectionStrip({ items, isPending = false, onCreate }: Props) {
   return (
     <div className={gridClass}>
       {items.map((collection) => (
-        <Link
+        <TileCard
           key={collection.collectionId}
           to={toCollectionDetail(collection.collectionId)}
-          className="border-line bg-surface-card hover:border-accent space-y-2 border p-3 transition-shadow hover:shadow-md"
-        >
-          <span className="flex gap-1.5">
-            {collection.previewThumbnails
-              .slice(0, 3)
-              .map((thumbnail, index) => (
-                <Thumbnail
-                  key={index}
-                  src={thumbnail}
-                  className="h-14 flex-1"
-                />
-              ))}
-          </span>
-          <span className="text-ink block truncate text-xs font-bold">
-            {collection.title}
-          </span>
-          <span className="text-ink-muted block text-[10.5px]">
-            향수 {collection.perfumeCount}개
-          </span>
-        </Link>
+          media={
+            <span className="flex gap-2">
+              {collection.previewThumbnails
+                .slice(0, 3)
+                .map((thumbnail, index) => (
+                  <Thumbnail
+                    key={index}
+                    src={thumbnail}
+                    className="h-14 flex-1"
+                  />
+                ))}
+            </span>
+          }
+          title={collection.title}
+          caption={`향수 ${collection.perfumeCount}개`}
+        />
       ))}
 
       <button
         type="button"
         onClick={onCreate}
-        className="border-line text-ink-muted hover:bg-line-soft hover:text-ink flex min-h-40 flex-col items-center justify-center gap-1 border border-dashed transition-colors"
+        className="border-line text-ink-muted hover:bg-line-soft hover:text-ink rounded-card flex min-h-40 flex-col items-center justify-center gap-1 border border-dashed transition-colors duration-120 ease-out"
       >
-        <span aria-hidden className="text-lg">
+        <span aria-hidden className="text-title">
           +
         </span>
-        <span className="text-[10.5px]">새 컬렉션</span>
+        <span className="text-caption">새 컬렉션</span>
       </button>
     </div>
   )
