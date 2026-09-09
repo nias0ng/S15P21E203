@@ -99,6 +99,10 @@ class PerfumeStatisticsIntegrationTest {
      * 보류된 후기도 현재는 통계에 세어집니다. 후기 작성 기능이 없어
      * {@code perfume_reviews.status} 의 값 어휘가 정해지지 않았기 때문입니다.
      * 상태가 정의되어 보류 후기를 제외하면 이 단언이 4 로 바뀌어야 합니다.
+     *
+     * <p>이 필터는 표시값만의 문제가 아닙니다. 후기 수는 AI 후기 요약을 다시 만들 시점의
+     * 기준이고, 요약 명세는 공개 후기만 대상으로 삼습니다. 기준이 어긋나면 요약이 계속
+     * 다시 생성되거나 영영 갱신되지 않습니다.
      */
     @Test
     void countsHeldReviewsUntilStatusVocabularyIsDefined() throws Exception {

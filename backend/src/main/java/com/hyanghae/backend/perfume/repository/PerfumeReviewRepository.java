@@ -16,7 +16,12 @@ import org.springframework.data.repository.query.Param;
  */
 public interface PerfumeReviewRepository extends JpaRepository<PerfumeReview, Long> {
 
-    /** 향수의 후기 수입니다. */
+    /**
+     * 향수의 후기 수입니다.
+     *
+     * <p>AI 후기 요약의 재생성 시점을 판단하는 기준이라, 요약 파이프라인이 요약 대상 후기를
+     * 세는 기준과 같아야 합니다. {@code status} 어휘가 정해지면 여기에 필터를 겁니다.
+     */
     @Query("""
             SELECT COUNT(r)
             FROM PerfumeReview r
