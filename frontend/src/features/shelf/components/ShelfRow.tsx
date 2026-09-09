@@ -18,6 +18,8 @@ const STEP = 3
  * 진열대 한 칸 (와이어프레임 A13)
  *
  * 향수를 선반 위에 세워둔 모양입니다. 아래 선에 병 바닥을 맞춰 세웁니다.
+ * 칸 크기는 전부 같고(h-28 w-16), 병이 달라 보이는 것은 사진의 가로세로 비율
+ * 때문입니다. object-contain 이라 비율이 찌그러지지 않습니다.
  *
  * 병 이미지는 **배경이 투명한 PNG** 로 들어옵니다. 그래서 이미지 칸에 테두리나
  * 배경을 주지 않습니다 — 주면 투명 영역이 네모로 드러나 병이 상자에 든 것처럼
@@ -79,11 +81,16 @@ export function ShelfRow({ title, items, selectedId, onSelect }: Props) {
 
       {/* 선반 — 아래 선에 병을 세웁니다 */}
       <div className="relative">
+        {/*
+          overflow-x-hidden 이라 스크롤바가 없고 손으로도 밀리지 않습니다.
+          다만 스크립트로는 여전히 밀 수 있어서(scrollBy) 화살표만 동작합니다.
+          키보드로 화면 밖 병에 탭 이동하면 브라우저가 알아서 그 위치로 옮겨줍니다.
+        */}
         <ul
           ref={trackRef}
-          className="border-ink flex items-end gap-3 overflow-x-auto border-b-2 pb-0"
+          className="border-ink flex items-end gap-3 overflow-x-hidden border-b-2"
         >
-          {items.map((item, index) => (
+          {items.map((item) => (
             <li key={item.shelfItemId} className="relative shrink-0 pt-6">
               {/* 대표 향수는 한 번에 하나 · 보유 중 칸에만 표시됩니다 */}
               {item.representative && (
@@ -97,9 +104,10 @@ export function ShelfRow({ title, items, selectedId, onSelect }: Props) {
                 onClick={() => onSelect(item)}
                 title={`${item.name} · ${item.brand}`}
                 className={cn(
-                  'block w-16 transition-opacity duration-120 ease-out',
+                  // 칸 크기는 전부 같습니다. 병마다 달라 보이는 것은 사진 자체의
+                  // 가로세로 비율이지, 칸이 다른 것이 아닙니다.
+                  'block h-28 w-16 transition-opacity duration-120 ease-out',
                   'focus-visible:ring-accent-deep rounded-card outline-none focus-visible:ring-2',
-                  BOTTLE_HEIGHTS[index % BOTTLE_HEIGHTS.length],
                   selectedId === item.shelfItemId
                     ? 'opacity-100'
                     : 'opacity-80 hover:opacity-100',
@@ -174,7 +182,12 @@ function ScrollArrow({
           : 'from-surface/85 via-surface/45 left-0 bg-gradient-to-r to-transparent',
       )}
     >
-      <span aria-hidden className="text-title leading-none">
+      {/*
+        병 어깨선에 맞춰 7px 내립니다. 간격 스케일(4의 배수)을 벗어나는 값인데,
+        레이아웃 간격이 아니라 글리프 하나의 시각 보정이라 예외로 둡니다.
+        문자 '›' 자체가 위쪽으로 치우쳐 있어 스케일 값으로는 안 맞습니다.
+      */}
+      <span aria-hidden className="text-title mt-[7px] leading-none">
         {isRight ? '›' : '‹'}
       </span>
     </button>
@@ -197,5 +210,3 @@ function BottleSilhouette({ selected }: { selected: boolean }) {
     </svg>
   )
 }
-
-const BOTTLE_HEIGHTS = ['h-24', 'h-28', 'h-20', 'h-26', 'h-22', 'h-30'] as const
