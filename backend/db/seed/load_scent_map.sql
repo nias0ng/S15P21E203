@@ -68,18 +68,24 @@ CREATE TEMP TABLE stg_scent_families (
 --
 -- nextval 로 현재 위치를 읽어 최댓값과 비교하므로 시퀀스가 앞서 있으면 그대로 둡니다.
 -- 뒤로 돌리면 이미 나눠 준 번호를 다시 내주게 됩니다.
+--
+-- setval 의 세 번째 인자가 false 라 "다음에 낼 번호" 를 직접 지정합니다. 두 인자 모두 1 이상이라
+-- 빈 DB 에서도 0 이 들어가지 않습니다. 시퀀스는 1 부터라 0 을 넣으면 범위 밖이라며 실패합니다.
 -- ---------------------------------------------------------------------------
 SELECT setval(pg_get_serial_sequence('accords', 'accord_id'),
-              GREATEST(nextval(pg_get_serial_sequence('accords', 'accord_id')) - 1,
-                       coalesce((SELECT max(accord_id) FROM accords), 0)));
+              GREATEST(nextval(pg_get_serial_sequence('accords', 'accord_id')),
+                       coalesce((SELECT max(accord_id) FROM accords), 0) + 1),
+              false);
 
 SELECT setval(pg_get_serial_sequence('brands', 'brand_id'),
-              GREATEST(nextval(pg_get_serial_sequence('brands', 'brand_id')) - 1,
-                       coalesce((SELECT max(brand_id) FROM brands), 0)));
+              GREATEST(nextval(pg_get_serial_sequence('brands', 'brand_id')),
+                       coalesce((SELECT max(brand_id) FROM brands), 0) + 1),
+              false);
 
 SELECT setval(pg_get_serial_sequence('perfumes', 'perfume_id'),
-              GREATEST(nextval(pg_get_serial_sequence('perfumes', 'perfume_id')) - 1,
-                       coalesce((SELECT max(perfume_id) FROM perfumes), 0)));
+              GREATEST(nextval(pg_get_serial_sequence('perfumes', 'perfume_id')),
+                       coalesce((SELECT max(perfume_id) FROM perfumes), 0) + 1),
+              false);
 
 -- ---------------------------------------------------------------------------
 -- 3. 향 특성(어코드) 이름.
