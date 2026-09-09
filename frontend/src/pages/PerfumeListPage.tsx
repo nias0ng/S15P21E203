@@ -10,7 +10,9 @@ import {
   type ShelfFilter,
 } from '@/features/perfume'
 import { ROUTES } from '@/shared/config/routes'
+import { useIsLoggedIn } from '@/shared/store/authStore'
 import { Button } from '@/shared/ui/Button'
+import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { SearchField } from '@/shared/ui/SearchField'
 
 /**
@@ -36,6 +38,23 @@ export default function PerfumeListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [shelf, setShelf] = useState<ShelfFilter | null>(null)
   const [gender, setGender] = useState<GenderFilter | null>(null)
+
+  const isLoggedIn = useIsLoggedIn()
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false)
+
+  /**
+   * 진열대 필터는 로그인 사용자의 진열대를 봐야 해서 백엔드가 401 을 돌려줍니다
+   * (code: PERFUME_SHELF_FILTER_REQUIRES_LOGIN). 그대로 보내면 화면이 에러로
+   * 빠지므로, 요청을 만들기 전에 로그인 유도로 돌립니다.
+   * 필터를 **해제**하는 것은 로그인이 없어도 됩니다.
+   */
+  const handleShelfChange = (next: ShelfFilter | null) => {
+    if (next !== null && !isLoggedIn) {
+      setLoginPromptOpen(true)
+      return
+    }
+    setShelf(next)
+  }
 
   // A34 브랜드 페이지에서 카드를 누르면 ?brand= 를 달고 옵니다
   const brand = searchParams.get('brand')
@@ -103,7 +122,7 @@ export default function PerfumeListPage() {
       <PerfumeFilters
         shelf={shelf}
         gender={gender}
-        onShelfChange={setShelf}
+        onShelfChange={handleShelfChange}
         onGenderChange={setGender}
       />
 
@@ -133,6 +152,12 @@ export default function PerfumeListPage() {
           }
         />
       </section>
+
+      <LoginRequiredDialog
+        open={loginPromptOpen}
+        onClose={() => setLoginPromptOpen(false)}
+        redirectTo={ROUTES.PERFUMES}
+      />
     </div>
   )
 }
