@@ -6,6 +6,8 @@ import com.hyanghae.backend.perfume.dto.request.PerfumeSearchCondition;
 import com.hyanghae.backend.perfume.dto.request.ShelfFilter;
 import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeNotesResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumePostResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumePostsResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeReviewStatisticsResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeReviewSummaryResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSeasonStatisticResponse;
@@ -21,6 +23,7 @@ import com.hyanghae.backend.perfume.dto.response.PerfumePriceResponse;
 import com.hyanghae.backend.perfume.repository.PerfumeAccordRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
 import com.hyanghae.backend.perfume.repository.PerfumeNoteRepository;
+import com.hyanghae.backend.perfume.repository.PerfumePostRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeReviewRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeReviewSummaryRepository;
 import com.hyanghae.backend.perfume.repository.PerfumePriceRepository;
@@ -43,6 +46,9 @@ public class PerfumeService {
     /** 비율을 백분율로 바꿀 때 곱하는 값입니다. */
     private static final BigDecimal PERCENTAGE_MULTIPLIER = BigDecimal.valueOf(100);
 
+    /** 목록 한 페이지의 최대 크기입니다. 요청이 이보다 크면 여기까지만 줍니다. */
+    private static final int MAX_PAGE_SIZE = 100;
+
     private final PerfumeRepository perfumeRepository;
     private final PerfumeImageRepository perfumeImageRepository;
     private final PerfumePriceRepository perfumePriceRepository;
@@ -53,6 +59,7 @@ public class PerfumeService {
     private final PerfumeAccordRepository perfumeAccordRepository;
     private final PerfumeReviewRepository perfumeReviewRepository;
     private final PerfumeReviewSummaryRepository perfumeReviewSummaryRepository;
+    private final PerfumePostRepository perfumePostRepository;
 
     public PerfumeService(
             PerfumeRepository perfumeRepository,
@@ -64,7 +71,8 @@ public class PerfumeService {
             PerfumeNoteRepository perfumeNoteRepository,
             PerfumeAccordRepository perfumeAccordRepository,
             PerfumeReviewRepository perfumeReviewRepository,
-            PerfumeReviewSummaryRepository perfumeReviewSummaryRepository
+            PerfumeReviewSummaryRepository perfumeReviewSummaryRepository,
+            PerfumePostRepository perfumePostRepository
     ) {
         this.perfumeRepository = perfumeRepository;
         this.perfumeImageRepository = perfumeImageRepository;
@@ -76,6 +84,7 @@ public class PerfumeService {
         this.perfumeAccordRepository = perfumeAccordRepository;
         this.perfumeReviewRepository = perfumeReviewRepository;
         this.perfumeReviewSummaryRepository = perfumeReviewSummaryRepository;
+        this.perfumePostRepository = perfumePostRepository;
     }
 
     /**
@@ -211,6 +220,32 @@ public class PerfumeService {
 
         return perfumeReviewSummaryRepository.findResponseByPerfumeId(perfumeId)
                 .orElseGet(PerfumeReviewSummaryResponse::empty);
+    }
+
+    /**
+     * 향수가 연결된 게시글을 최신순으로 가져옵니다.
+     *
+     * <p>게시글이 없는 향수는 빈 목록입니다. 없는 향수와 구분해야 하므로 존재하지 않는 향수에만
+     * 404 를 반환합니다.
+     *
+     * <p>페이지 번호와 크기가 범위를 벗어나도 예외 대신 허용 범위로 맞춥니다. 음수 페이지는
+     * {@code OFFSET} 을 음수로 만들어 SQL 오류가 되는데, 목록 위치가 잘못됐다고 서버 오류를
+     * 낼 일은 아닙니다.
+     *
+     * <p>개수 조회를 따로 한 번 더 합니다. 명세가 {@code totalElements} 를 요구하기 때문입니다.
+     */
+    @Transactional(readOnly = true)
+    public PerfumePostsResponse getPosts(Long perfumeId, int page, int size) {
+        requireExistingPerfume(perfumeId);
+
+        int pageNumber = Math.max(page, 0);
+        int pageSize = Math.clamp(size, 1, MAX_PAGE_SIZE);
+
+        List<PerfumePostResponse> posts = perfumePostRepository.findPageByPerfumeId(
+                perfumeId, pageSize, (long) pageNumber * pageSize);
+
+        return new PerfumePostsResponse(
+                posts, pageNumber, pageSize, perfumePostRepository.countByPerfumeId(perfumeId));
     }
 
     /**

@@ -3,6 +3,7 @@ package com.hyanghae.backend.perfume.controller;
 import com.hyanghae.backend.perfume.dto.request.PerfumeSearchCondition;
 import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeNotesResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumePostsResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeReviewStatisticsResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeReviewSummaryResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSeasonStatisticsResponse;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -63,6 +65,21 @@ public class PerfumeController {
     @GetMapping("/{perfumeId}/notes")
     public PerfumeNotesResponse getNotes(@PathVariable Long perfumeId) {
         return perfumeService.getNotes(perfumeId);
+    }
+
+    /**
+     * 관련 게시글 조회입니다. 향수가 연결된 게시글을 최신순으로 내려줍니다.
+     *
+     * <p>명세의 Query Parameter 에 {@code size} 만 있지만 응답에 {@code page} 가 있어
+     * {@code page} 도 받습니다. 없으면 2페이지 이후를 볼 방법이 없습니다. 검색과 같은 판단입니다.
+     */
+    @GetMapping("/{perfumeId}/posts")
+    public PerfumePostsResponse getPosts(
+            @PathVariable Long perfumeId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size
+    ) {
+        return perfumeService.getPosts(perfumeId, page, size);
     }
 
     /** 향수 후기 통계 조회입니다. */
