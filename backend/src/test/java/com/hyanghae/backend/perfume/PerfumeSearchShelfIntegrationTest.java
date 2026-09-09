@@ -4,30 +4,22 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.hyanghae.backend.global.security.CurrentUser;
-import com.hyanghae.backend.perfume.exception.PerfumeErrorCode;
 import com.hyanghae.backend.support.IntegrationTest;
-import java.util.Optional;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * 검색의 진열대 필터를 실제 PostgreSQL 위에서 검증합니다.
  *
- * <p>인증이 아직 없어 운영에서는 모든 요청이 비로그인이고 이 필터는 항상 401 입니다. 로그인한
- * 경우의 동작은 {@link CurrentUser} 를 가짜로 갈아끼워 여기서 검증합니다. 인증이 붙으면 구현체만
- * 바뀌고 아래 동작은 그대로여야 합니다.
- *
- * <p>사용자 1 이 로그인한 사용자, 사용자 2 는 타인입니다.
+ * <p>전체 사용자 집계 기준입니다. "내가 담은 향수"가 아니라 "사람들이 담은 향수"라서 로그인이
+ * 필요 없고, 누가 담았는지도 결과에 영향을 주지 않습니다. 사용자 1 과 2 가 서로 다른 향수를
+ * 담아 두었고, 둘 다 결과에 나와야 합니다.
  */
 @IntegrationTest
 @AutoConfigureMockMvc
@@ -35,9 +27,8 @@ class PerfumeSearchShelfIntegrationTest {
 
     private static final String SEARCH_URL = "/api/v1/perfumes";
 
-    private static final long LOGGED_IN_USER = 1L;
-    private static final long OTHER_USER = 2L;
-    private static final long USER_WITHOUT_SHELF = 3L;
+    private static final long USER_ONE = 1L;
+    private static final long USER_TWO = 2L;
 
     @Autowired
     private MockMvc mockMvc;
@@ -45,95 +36,77 @@ class PerfumeSearchShelfIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    @Autowired
-    private FakeCurrentUser fakeCurrentUser;
-
     @BeforeEach
     void insertFixtures() {
         clearData();
-        fakeCurrentUser.logout();
 
-        insertUser(LOGGED_IN_USER, "me@example.com", "me");
-        insertUser(OTHER_USER, "other@example.com", "other");
-        insertUser(USER_WITHOUT_SHELF, "empty@example.com", "empty");
+        insertUser(USER_ONE, "one@example.com", "one");
+        insertUser(USER_TWO, "two@example.com", "two");
 
         insertBrand(1, "Chanel");
         insertBrand(2, "Diptyque");
 
-        insertPerfume(1, 1, "Owned Scent", true);
-        insertPerfume(2, 1, "Wish Scent", true);
-        insertPerfume(3, 2, "Viewed Scent", true);
+        insertPerfume(1, 1, "Owned By One", true);
+        insertPerfume(2, 1, "Wished By One", true);
+        insertPerfume(3, 2, "Viewed By One", true);
         insertPerfume(4, 1, "Removed From Shelf", true);
-        insertPerfume(5, 1, "Other User Scent", true);
-        insertPerfume(6, 1, "Inactive Owned Scent", false);
-        insertPerfume(7, 2, "Owned Diptyque", true);
+        insertPerfume(5, 1, "Owned By Two", true);
+        insertPerfume(6, 1, "Inactive But Owned", false);
+        insertPerfume(7, 2, "Nobody Touched", true);
 
-        insertShelfEntry(100, LOGGED_IN_USER, 1, "OWNED");
-        insertShelfEntry(101, LOGGED_IN_USER, 2, "WISH");
-        insertShelfEntry(102, LOGGED_IN_USER, 4, "OWNED");
+        insertShelfEntry(100, USER_ONE, 1, "OWNED");
+        insertShelfEntry(101, USER_ONE, 2, "WISH");
+        insertShelfEntry(102, USER_ONE, 4, "OWNED");
         // 진열대 해제는 행을 물리 삭제합니다.
         jdbcTemplate.update("DELETE FROM user_perfumes WHERE user_perfumes_id = 102");
-        insertShelfEntry(103, OTHER_USER, 5, "OWNED");
-        insertShelfEntry(104, LOGGED_IN_USER, 6, "OWNED");
-        insertShelfEntry(105, LOGGED_IN_USER, 7, "OWNED");
+        insertShelfEntry(103, USER_TWO, 5, "OWNED");
+        insertShelfEntry(104, USER_TWO, 6, "OWNED");
 
-        // 같은 향수를 두 번 봤습니다. 결과에는 한 번만 나와야 합니다.
-        insertView(200, LOGGED_IN_USER, 3);
-        insertView(201, LOGGED_IN_USER, 3);
-        insertView(202, OTHER_USER, 1);
+        // 같은 향수를 여러 사람이 여러 번 봤습니다. 결과에는 한 번만 나와야 합니다.
+        insertView(200, USER_ONE, 3);
+        insertView(201, USER_ONE, 3);
+        insertView(202, USER_TWO, 3);
     }
 
     @AfterEach
     void cleanUp() {
         clearData();
-        fakeCurrentUser.logout();
     }
 
-    /** 비로그인 요청에 조용히 전체를 돌려주면 필터가 걸린 것처럼 보이지만 남의 자료가 섞입니다. */
+    /** 로그인 없이 쓸 수 있어야 합니다. 전체 사용자 집계라 요청자가 누구인지 볼 필요가 없습니다. */
     @Test
-    void returnsUnauthorizedWhenShelfFilterUsedWithoutLogin() throws Exception {
+    void worksWithoutLogin() throws Exception {
         mockMvc.perform(get(SEARCH_URL).param("shelf", "OWNED"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code")
-                        .value(PerfumeErrorCode.PERFUME_SHELF_FILTER_REQUIRES_LOGIN.code()));
+                .andExpect(status().isOk());
     }
 
-    /** 진열대 필터가 없으면 로그인은 필요 없습니다. */
+    /** 누가 담았는지는 상관없습니다. 사용자 1 의 향수와 사용자 2 의 향수가 함께 나옵니다. */
     @Test
-    void doesNotRequireLoginWhenShelfFilterAbsent() throws Exception {
-        mockMvc.perform(get(SEARCH_URL).param("keyword", "Owned Scent"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(1)));
-    }
-
-    /** 보유 중으로 담아 둔 향수만 나옵니다. 뺀 것·타인 것·비활성은 빠집니다. */
-    @Test
-    void filtersByOwnedShelf() throws Exception {
-        fakeCurrentUser.login(LOGGED_IN_USER);
-
+    void includesPerfumesOwnedByAnyUser() throws Exception {
         mockMvc.perform(get(SEARCH_URL).param("shelf", "OWNED"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfumes", Matchers.hasSize(2)))
                 .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
-                .andExpect(jsonPath("$.perfumes[1].perfumeId").value(7))
-                .andExpect(jsonPath("$.totalElements").value(2));
+                .andExpect(jsonPath("$.perfumes[1].perfumeId").value(5));
     }
 
+    /** ownership_status 조건을 빼면 위시로 담은 향수가 보유 결과에 섞입니다. */
     @Test
-    void filtersByWishShelf() throws Exception {
-        fakeCurrentUser.login(LOGGED_IN_USER);
-
+    void filtersByWish() throws Exception {
         mockMvc.perform(get(SEARCH_URL).param("shelf", "WISH"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfumes", Matchers.hasSize(1)))
                 .andExpect(jsonPath("$.perfumes[0].perfumeId").value(2));
     }
 
-    /** 같은 향수를 여러 번 봐도 한 건입니다. */
+    /**
+     * 같은 향수를 여러 사람이 여러 번 봐도 응답에는 한 건입니다.
+     *
+     * <p>이 보장은 조회 기록을 {@code DISTINCT} 로 뽑기 때문이 아니라, 향수 목록 쿼리가 향수
+     * 하나를 한 행으로 돌려주기 때문입니다. {@code DISTINCT} 를 지워도 이 단언은 통과합니다.
+     */
     @Test
-    void filtersByViewedShelfWithoutDuplicates() throws Exception {
-        fakeCurrentUser.login(LOGGED_IN_USER);
-
+    void filtersByViewed() throws Exception {
         mockMvc.perform(get(SEARCH_URL).param("shelf", "VIEWED"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfumes", Matchers.hasSize(1)))
@@ -141,49 +114,49 @@ class PerfumeSearchShelfIntegrationTest {
                 .andExpect(jsonPath("$.totalElements").value(1));
     }
 
-    /** 물리 삭제한 진열대 항목은 검색 결과에 포함되지 않습니다. */
+    /**
+     * 진열대에서 뺀 향수는 나오지 않습니다.
+     *
+     * <p>거르는 조건이 있어서가 아니라 해제가 행을 물리 삭제하기 때문입니다. 조건으로 막는 것이
+     * 아니므로 이 테스트는 쿼리가 아니라 삭제 정책을 지킵니다. 나중에 다시 소프트 삭제로 돌아가면
+     * 이 단언이 먼저 깨져서, 필터에 조건을 추가해야 한다는 것을 알려줍니다.
+     */
     @Test
-    void excludesShelfEntryRemovedFromShelf() throws Exception {
-        fakeCurrentUser.login(LOGGED_IN_USER);
-
+    void excludesPerfumeRemovedFromShelf() throws Exception {
         mockMvc.perform(get(SEARCH_URL).param("shelf", "OWNED"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfumes[*].perfumeId", Matchers.not(Matchers.hasItem(4))));
     }
 
+    /** 담겨 있어도 비활성 향수는 나오지 않습니다. 다른 조회와 같은 기준입니다. */
     @Test
-    void excludesOtherUsersShelf() throws Exception {
-        fakeCurrentUser.login(LOGGED_IN_USER);
-
-        mockMvc.perform(get(SEARCH_URL).param("shelf", "OWNED"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.perfumes[*].perfumeId", Matchers.not(Matchers.hasItem(5))));
-    }
-
-    /** 진열대에 있어도 비활성 향수는 나오지 않습니다. 다른 조회와 같은 기준입니다. */
-    @Test
-    void excludesInactivePerfumeFromShelfResult() throws Exception {
-        fakeCurrentUser.login(LOGGED_IN_USER);
-
+    void excludesInactivePerfume() throws Exception {
         mockMvc.perform(get(SEARCH_URL).param("shelf", "OWNED"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfumes[*].perfumeId", Matchers.not(Matchers.hasItem(6))));
     }
 
+    /** 아무도 담지 않은 향수는 나오지 않습니다. */
     @Test
-    void combinesShelfWithBrandUsingAnd() throws Exception {
-        fakeCurrentUser.login(LOGGED_IN_USER);
-
-        mockMvc.perform(get(SEARCH_URL).param("shelf", "OWNED").param("brand", "Chanel"))
+    void excludesPerfumeNobodySaved() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("shelf", "OWNED"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(1)))
-                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1));
+                .andExpect(jsonPath("$.perfumes[*].perfumeId", Matchers.not(Matchers.hasItem(7))));
     }
 
-    /** 진열대가 비어 있으면 IN 절에 넣을 값이 없습니다. SQL 오류가 아니라 빈 목록이어야 합니다. */
     @Test
-    void returnsEmptyWhenShelfHasNoPerfume() throws Exception {
-        fakeCurrentUser.login(USER_WITHOUT_SHELF);
+    void combinesShelfWithBrandUsingAnd() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("shelf", "OWNED").param("brand", "Chanel"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(2)))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
+                .andExpect(jsonPath("$.perfumes[1].perfumeId").value(5));
+    }
+
+    /** 담긴 향수가 없으면 IN 절에 넣을 값이 없습니다. SQL 오류가 아니라 빈 목록이어야 합니다. */
+    @Test
+    void returnsEmptyWhenNobodySavedAnything() throws Exception {
+        jdbcTemplate.update("DELETE FROM user_perfumes");
 
         mockMvc.perform(get(SEARCH_URL).param("shelf", "OWNED"))
                 .andExpect(status().isOk())
@@ -193,8 +166,6 @@ class PerfumeSearchShelfIntegrationTest {
 
     @Test
     void rejectsUnknownShelfValue() throws Exception {
-        fakeCurrentUser.login(LOGGED_IN_USER);
-
         mockMvc.perform(get(SEARCH_URL).param("shelf", "BORROWED"))
                 .andExpect(status().isBadRequest());
     }
@@ -235,37 +206,5 @@ class PerfumeSearchShelfIntegrationTest {
         jdbcTemplate.update("DELETE FROM perfumes");
         jdbcTemplate.update("DELETE FROM brands");
         jdbcTemplate.update("DELETE FROM users");
-    }
-
-    /**
-     * 인증이 없는 동안 로그인한 경우를 재현합니다. {@code @Primary} 라 운영 구현인
-     * {@code AnonymousCurrentUser} 대신 주입됩니다.
-     */
-    @TestConfiguration
-    static class FakeCurrentUserConfig {
-
-        @Bean
-        @Primary
-        FakeCurrentUser fakeCurrentUser() {
-            return new FakeCurrentUser();
-        }
-    }
-
-    static class FakeCurrentUser implements CurrentUser {
-
-        private Long id;
-
-        void login(Long id) {
-            this.id = id;
-        }
-
-        void logout() {
-            this.id = null;
-        }
-
-        @Override
-        public Optional<Long> id() {
-            return Optional.ofNullable(id);
-        }
     }
 }
