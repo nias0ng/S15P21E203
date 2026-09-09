@@ -19,6 +19,10 @@ public interface PerfumeReviewKeywordRepository
     /**
      * 키워드가 하나라도 뽑힌 후기 수입니다. 백분율의 분모로 씁니다.
      *
+     * <p>연관관계를 매핑하지 않아 {@code JOIN ... ON} 으로 조인 조건을 직접 씁니다. 조인 조건을
+     * {@code WHERE} 에 섞어 쓰면 어디까지가 조인이고 어디부터가 걸러내는 조건인지 구분되지
+     * 않습니다.
+     *
      * <p>후기 하나에서 키워드가 여러 개 나오므로 {@code DISTINCT} 가 필요합니다. 빼면 분모가
      * 키워드 개수만큼 부풀어 모든 백분율이 작아집니다.
      *
@@ -27,9 +31,9 @@ public interface PerfumeReviewKeywordRepository
      */
     @Query("""
             SELECT COUNT(DISTINCT rk.id.reviewId)
-            FROM PerfumeReviewKeyword rk, PerfumeReview r
-            WHERE rk.id.reviewId = r.id
-              AND r.perfume.id = :perfumeId
+            FROM PerfumeReviewKeyword rk
+            JOIN PerfumeReview r ON r.id = rk.id.reviewId
+            WHERE r.perfume.id = :perfumeId
             """)
     long countReviewsWithKeywordByPerfumeId(@Param("perfumeId") Long perfumeId);
 
@@ -42,10 +46,10 @@ public interface PerfumeReviewKeywordRepository
      */
     @Query("""
             SELECT new com.hyanghae.backend.perfume.repository.KeywordCount(k.name, COUNT(rk))
-            FROM PerfumeReviewKeyword rk, ReviewKeyword k, PerfumeReview r
-            WHERE rk.id.keywordId = k.id
-              AND rk.id.reviewId = r.id
-              AND r.perfume.id = :perfumeId
+            FROM PerfumeReviewKeyword rk
+            JOIN ReviewKeyword k ON k.id = rk.id.keywordId
+            JOIN PerfumeReview r ON r.id = rk.id.reviewId
+            WHERE r.perfume.id = :perfumeId
             GROUP BY k.id, k.name
             ORDER BY COUNT(rk) DESC, k.name
             """)
