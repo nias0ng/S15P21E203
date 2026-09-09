@@ -3,6 +3,8 @@ package com.hyanghae.backend.perfume.controller;
 import com.hyanghae.backend.perfume.dto.request.PerfumeSearchCondition;
 import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeNotesResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumeReviewStatisticsResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumeSeasonStatisticsResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSearchResponse;
 import com.hyanghae.backend.perfume.service.PerfumeService;
 import org.springframework.data.domain.Pageable;
@@ -60,5 +62,17 @@ public class PerfumeController {
     @GetMapping("/{perfumeId}/notes")
     public PerfumeNotesResponse getNotes(@PathVariable Long perfumeId) {
         return perfumeService.getNotes(perfumeId);
+    }
+
+    /** 향수 후기 통계 조회입니다. */
+    @GetMapping("/{perfumeId}/review-statistics")
+    public PerfumeReviewStatisticsResponse getReviewStatistics(@PathVariable Long perfumeId) {
+        return perfumeService.getReviewStatistics(perfumeId);
+    }
+
+    /** 향수 계절 통계 조회입니다. 후기가 고른 계절의 분포입니다. */
+    @GetMapping("/{perfumeId}/season-statistics")
+    public PerfumeSeasonStatisticsResponse getSeasonStatistics(@PathVariable Long perfumeId) {
+        return perfumeService.getSeasonStatistics(perfumeId);
     }
 }
