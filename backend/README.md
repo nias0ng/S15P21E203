@@ -106,6 +106,42 @@ cd backend
 
 Swagger는 `manual-test` 프로필에서만 활성화됩니다.
 
+### 향 지도 초기 데이터 적재
+
+**Flyway와 애플리케이션 실행은 향 지도 데이터를 넣지 않습니다.** 마이그레이션은 표만 만들고,
+국내 대표 향수 200개의 좌표·향 계열·닮은 향수·향 특성은 아래 스크립트를 직접 실행해야 들어갑니다.
+
+적재하지 않아도 애플리케이션은 정상 실행됩니다. 대신 향수 검색 결과에 향 계열 뱃지가 없고,
+주변·유사 향수와 향 지도 관련 응답이 전부 빈 목록입니다. **화면이 비어 보이면 이 단계를 건너뛴
+것인지 먼저 확인하세요.**
+
+스키마가 `V6`까지 적용된 뒤에 실행합니다. 애플리케이션을 한 번 띄우면 Flyway가 적용합니다.
+
+```bash
+cd backend/db/seed
+psql "postgresql://hyanghae:hyanghae_test@localhost:5432/hyanghae_test" -f load_scent_map.sql
+```
+
+`psql`이 없으면 컨테이너 안에서 실행합니다.
+
+```bash
+docker cp backend/db/seed hyanghae-manual-test-postgres-1:/tmp/seed
+docker exec -w /tmp/seed hyanghae-manual-test-postgres-1 \
+  psql -U hyanghae -d hyanghae_test -f load_scent_map.sql
+```
+
+`\copy`가 CSV를 psql의 현재 디렉터리에서 찾으므로 반드시 그 디렉터리에서 실행해야 합니다.
+
+몇 번을 다시 실행해도 결과가 같습니다. 전체가 한 트랜잭션이라 중간에 하나라도 어긋나면 아무것도
+반영되지 않고, 마지막에 적재된 행 수를 출력합니다. 아래와 같이 나오면 정상입니다.
+
+```
+ perfumes | map_points | scent_families | neighbors | perfume_accords | accords | regions_with_polygon
+      200 |        200 |            303 |      2000 |            1598 |      60 |                    9
+```
+
+데이터의 형태와 주의할 점은 [backend/db/seed/README.md](db/seed/README.md)에 있습니다.
+
 ### 서비스 종료
 
 애플리케이션을 종료한 뒤 저장소 루트에서 다음 명령을 실행합니다.
@@ -211,3 +247,6 @@ docker compose -f compose.manual-test.yaml down -v
 ```
 
 필요한 데이터가 없는지 확인한 뒤 실행합니다.
+
+초기화하면 향 지도 데이터도 함께 지워집니다. 컨테이너를 다시 띄우고 애플리케이션을 한 번 실행해
+Flyway를 적용한 뒤, [향 지도 초기 데이터 적재](#향-지도-초기-데이터-적재)를 다시 실행하세요.
