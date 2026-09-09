@@ -22,7 +22,7 @@ type Props = {
  * `CollectionDetailPanel` 도 같은 상수를 갖고 있습니다 — `--tracking-*` 토큰이
  * 생기면 두 곳을 함께 걷어냅니다.
  */
-const SPACED_LABEL = 'text-caption text-ink-muted uppercase tracking-[0.18em]'
+const SPACED_LABEL = 'shelf-muted text-caption uppercase tracking-[0.18em]'
 
 /**
  * 컬렉션 화면 맨 아래 띠 (와이어프레임 A13 하단)
@@ -45,7 +45,7 @@ export function CollectionFooterStrip({
   return (
     <div
       className={cn(
-        'border-line flex items-center justify-between gap-8 border-t pt-6',
+        'flex items-center justify-between gap-8 border-t border-[var(--hairline)] pt-6',
         className,
       )}
     >
@@ -57,11 +57,11 @@ export function CollectionFooterStrip({
 
       {/* 스크롤 유도. 선이 아래로 이어지는 모양 자체가 "더 있다" 를 말합니다 */}
       <div className="flex flex-col items-center gap-2">
-        <span aria-hidden className="bg-line h-8 w-px" />
+        <span aria-hidden className="shelf-hairline h-8 w-px" />
         <span className={SPACED_LABEL}>SCROLL</span>
       </div>
 
-      <p className="text-ink-muted text-caption leading-relaxed">
+      <p className="shelf-muted text-caption leading-relaxed">
         향이 머무는 곳에,
         <br />
         언제나 조금 더 특별한 내가 있습니다.
@@ -77,10 +77,10 @@ export function CollectionFooterStrip({
           바뀐 순번을 낭독기가 스스로 읽어주지 않으면 몇 번째로 옮겨갔는지 알 길이
           없습니다. polite 라 사용자가 읽던 문장을 끊지 않고 뒤이어 읽어줍니다.
         */}
-        <p aria-live="polite" className="text-ink-muted text-body tabular-nums">
+        <p aria-live="polite" className="shelf-muted text-body tabular-nums">
           <span className="sr-only">{`${total}개 중 ${index}번째 향수`}</span>
           <span aria-hidden>
-            <span className="text-ink">{index}</span> / {total}
+            <span className="text-[var(--shelf-ink)]">{index}</span> / {total}
           </span>
         </p>
 
@@ -134,9 +134,9 @@ function PagerButton({
       className={cn(
         // 글리프 자체는 작아서 size-8 로 누를 수 있는 넓이를 따로 확보합니다
         'flex size-8 items-center justify-center',
-        'text-ink-muted hover:text-ink text-title leading-none',
+        'shelf-muted text-title leading-none hover:text-[var(--shelf-ink)]',
         'transition-colors duration-120 ease-out',
-        'focus-visible:ring-accent-deep rounded-card outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+        'rounded-card outline-none focus-visible:ring-2 focus-visible:ring-[var(--shelf-ink)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)]',
         'disabled:pointer-events-none disabled:opacity-40',
       )}
     >

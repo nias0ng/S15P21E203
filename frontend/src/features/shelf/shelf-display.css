@@ -1,0 +1,228 @@
+/*
+ * 진열대 화면 전용 시각 처리 (A13 재디자인 시안)
+ *
+ * ── 왜 CSS 파일인가 ────────────────────────────────────────
+ * CLAUDE.md 는 Tailwind 유틸리티와 @theme 토큰만 쓰라고 합니다. 여기는 예외입니다.
+ * 벽감의 원근 clip-path, 찢어진 종이의 28점 다각형, 4겹 inset 그림자, 종이 질감
+ * 노이즈는 임의값 유틸리티로 옮기면 한 줄이 200자를 넘고 Prettier 가 줄바꿈도
+ * 못 해서 "어디를 고쳐야 하는지" 를 찾을 수 없게 됩니다.
+ *
+ * 그래서 **모양을 만드는 것만** 여기 두고, 배치·간격·활자는 Tailwind 로 씁니다.
+ * 모든 규칙은 `.shelf-scope` 아래로 한정되어 다른 화면에 새지 않습니다.
+ *
+ * ── 왜 색이 @theme 토큰이 아닌가 ───────────────────────────
+ * Museum Archive 팔레트(ivory #f9f6ef)는 이 시안보다 차갑고 밝습니다. 같은
+ * 진열장을 그려도 종이처럼 하얗게만 떠서 깊이가 사라집니다. 시안의 따뜻한
+ * 그레이지를 그대로 쓰되 이 화면 안에만 둡니다.
+ * 이 색을 정식 채택하면 그때 @theme 으로 올리고 여기서 지우면 됩니다.
+ *
+ * ── 왜 @layer components 인가 ──────────────────────────────
+ * 레이어 없이 두면 이 규칙들이 Tailwind 유틸리티를 **전부** 이깁니다. 레이어에
+ * 들어간 스타일은 레이어 밖 스타일보다 항상 약하다는 규칙 때문인데, Tailwind 는
+ * 자기 유틸리티를 전부 레이어 안에 넣기 때문입니다. 그러면 호출하는 쪽에서
+ * `disabled:bg-transparent` 같은 유틸리티로 덮을 수가 없어집니다
+ * (실제로 필터 드롭다운의 비활성 표현이 이것 때문에 안 먹고 있었습니다).
+ * components 에 넣으면 utilities 가 이겨서, "바탕은 CSS 가 깔고 예외는 유틸리티가
+ * 덮는다" 는 원래 의도대로 동작합니다.
+ */
+
+@layer components {
+  .shelf-scope {
+    /* 시안에서 추출한 팔레트. oklch 라 밝기를 바꿔도 색이 탁해지지 않습니다. */
+    --paper: oklch(0.91 0.015 78);
+    --paper-soft: oklch(0.934 0.011 80);
+    --paper-deep: oklch(0.87 0.019 74);
+    --niche-bg: oklch(0.887 0.018 75);
+    --niche-floor: oklch(0.852 0.023 72);
+    --shelf-ink: oklch(0.285 0.014 58);
+    --shelf-ink-soft: oklch(0.455 0.014 61);
+    --chip: oklch(0.947 0.009 80 / 0.74);
+    --chip-active: oklch(0.29 0.015 55);
+    --panel: oklch(0.948 0.009 82 / 0.9);
+    --hairline: oklch(0.53 0.016 62 / 0.34);
+    --depth: oklch(0.31 0.025 59 / 0.32);
+    --highlight: oklch(0.98 0.005 86 / 0.72);
+
+    position: relative;
+    color: var(--shelf-ink);
+  }
+
+  /*
+   * 종이 바탕. `.shelf-scope` 와 나눠 둔 이유는 둘이 붙는 자리가 다르기 때문입니다.
+   * 변수는 본문 래퍼에 있어야 자식들이 물려받고, 바탕은 뷰포트를 통째로 덮는 fixed
+   * 레이어에 있어야 좌우 여백까지 종이 한 장으로 이어집니다.
+   *
+   * 가운데 위가 밝고 가장자리로 갈수록 어두워집니다. 균일한 단색이면 평평해 보입니다.
+   */
+  .shelf-scope .shelf-paper {
+    background: radial-gradient(
+      115% 110% at 45% -12%,
+      var(--paper-soft),
+      var(--paper) 70%,
+      var(--paper-deep)
+    );
+  }
+
+  /*
+   * 종이 질감. 화면 전체에 아주 옅게 얹습니다.
+   * 이것 하나로 "인쇄물" 느낌이 나고, 없으면 디지털 그러데이션으로 보입니다.
+   */
+  .shelf-scope .shelf-grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    pointer-events: none;
+    opacity: 0.12;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.62' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");
+  }
+
+  /*
+   * 벽감(niche) — 벽을 파낸 자리.
+   *
+   * clip-path 가 좌우 변을 안쪽으로 기울여 **원근**을 만듭니다. 위 모서리는 31px
+   * 들어가고 아래로 갈수록 벌어져서, 보는 사람이 상자 안을 들여다보는 각도가 됩니다.
+   * 이게 없으면 그냥 납작한 사각형입니다.
+   *
+   * 그림자는 네 방향에서 세기를 다르게 넣습니다. 위가 제일 진하고(빛이 위에서
+   * 오므로) 아래가 제일 옅습니다. 한 겹으로는 어느 쪽이 깊은지 읽히지 않습니다.
+   */
+  .shelf-scope .shelf-niche {
+    background: linear-gradient(
+      to bottom,
+      var(--niche-bg) 0%,
+      var(--niche-bg) 78%,
+      var(--niche-floor) 100%
+    );
+    box-shadow:
+      inset 0 24px 32px -20px var(--depth),
+      inset 18px 0 24px -22px var(--depth),
+      inset -18px 0 24px -22px var(--depth),
+      inset 0 -16px 24px -18px var(--depth),
+      0 -2px 2px var(--depth),
+      0 1px var(--highlight);
+    clip-path: polygon(
+      0 0,
+      100% 0,
+      calc(100% - 31px) 14px,
+      calc(100% - 31px) calc(100% - 16px),
+      100% 100%,
+      0 100%,
+      24px calc(100% - 17px),
+      24px 15px
+    );
+  }
+
+  /*
+   * 병 뒤에 깔리는 찢어진 종이.
+   *
+   * 각 변에 점을 촘촘히 두어 손으로 뜯은 가장자리를 냅니다. 점이 적으면 톱니처럼
+   * 규칙적으로 보여서 오히려 인공적입니다.
+   */
+  .shelf-scope .shelf-torn {
+    background: var(--paper-soft);
+    filter: drop-shadow(0 1px 1px var(--depth));
+    clip-path: polygon(
+      5% 2%,
+      15% 0,
+      25% 3%,
+      36% 0,
+      48% 3%,
+      60% 0,
+      72% 3%,
+      84% 0,
+      96% 4%,
+      100% 14%,
+      97% 27%,
+      100% 40%,
+      97% 55%,
+      100% 70%,
+      97% 84%,
+      100% 96%,
+      88% 100%,
+      73% 97%,
+      59% 100%,
+      44% 97%,
+      29% 100%,
+      14% 97%,
+      2% 100%,
+      0 86%,
+      3% 71%,
+      0 55%,
+      3% 39%,
+      0 24%,
+      3% 10%
+    );
+  }
+
+  /* 병이 바닥에 닿는 자리. 이게 없으면 병이 떠 보입니다. */
+  .shelf-scope .shelf-ground {
+    background: radial-gradient(ellipse, var(--depth), transparent 70%);
+  }
+
+  /* 병 자체의 그림자. 바닥 그림자와 방향이 같아야 한 조명 아래로 읽힙니다. */
+  .shelf-scope .shelf-bottle-img {
+    filter: drop-shadow(0 10px 8px var(--depth));
+  }
+
+  /*
+   * 상세 패널 — 종이 위에 얹힌 반투명 카드.
+   * backdrop-filter 로 뒤가 살짝 비쳐서 유리처럼 보입니다.
+   */
+  .shelf-scope .shelf-panel {
+    background: var(--panel);
+    box-shadow:
+      0 18px 32px -20px var(--depth),
+      inset 0 1px var(--highlight);
+    backdrop-filter: blur(4px);
+  }
+
+  /* 칩·검색창·드롭다운의 공통 바탕. 위쪽 1px 하이라이트가 살짝 솟은 느낌을 냅니다. */
+  .shelf-scope .shelf-field {
+    background: var(--chip);
+    box-shadow: inset 0 1px var(--highlight);
+  }
+  .shelf-scope .shelf-field-active {
+    color: var(--paper-soft);
+    background: var(--chip-active);
+  }
+
+  /* 향조 원. 안쪽 하이라이트 + 바깥 그림자로 구슬처럼 보이게 합니다. */
+  .shelf-scope .shelf-note-swatch {
+    box-shadow:
+      inset 4px 4px 8px var(--highlight),
+      0 3px 7px var(--depth);
+  }
+
+  /* 시안의 향조 색. 노트 종류를 색으로 구분합니다 — 글자도 함께 답니다. */
+  .shelf-scope .shelf-note-citrus {
+    background: oklch(0.72 0.15 65);
+  }
+  .shelf-scope .shelf-note-floral {
+    background: oklch(0.72 0.08 345);
+  }
+  .shelf-scope .shelf-note-leaf {
+    background: oklch(0.48 0.07 145);
+  }
+  .shelf-scope .shelf-note-wood {
+    background: oklch(0.57 0.065 60);
+  }
+  .shelf-scope .shelf-note-pearl {
+    background: oklch(0.88 0.02 90);
+  }
+
+  /* 얇은 구분선 · 보조 글자색을 Tailwind 쪽에서 부르기 위한 통로 */
+  .shelf-scope .shelf-hairline {
+    background: var(--hairline);
+  }
+  .shelf-scope .shelf-muted {
+    color: var(--shelf-ink-soft);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .shelf-scope * {
+      transition: none !important;
+    }
+  }
+}

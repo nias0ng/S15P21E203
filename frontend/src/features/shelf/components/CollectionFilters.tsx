@@ -34,6 +34,21 @@ type Props = {
 }
 
 /**
+ * 칩 · 검색창의 공통 치수. 시안 실측(높이 42px · 모서리 8px)입니다.
+ *
+ * 높이를 h-[42px] 로 못 박은 이유: 칩·드롭다운·검색창이 한 줄에 서는데 각자
+ * 안쪽 여백으로 높이를 만들면 글자 길이에 따라 1~2px 씩 어긋나 줄이 흔들립니다.
+ *
+ * 색·그림자는 `../shelf-display.css` 의 `.shelf-field` 가 냅니다 —
+ * 위쪽 1px 하이라이트가 종이에서 살짝 솟은 느낌을 만드는데, 그 표현은
+ * 유틸리티로 옮기면 읽히지 않습니다.
+ */
+const FIELD =
+  'shelf-field h-[42px] rounded-lg transition-colors duration-120 ease-out ' +
+  'focus-visible:ring-2 focus-visible:ring-[var(--shelf-ink)] focus-visible:ring-offset-2 ' +
+  'focus-visible:ring-offset-[var(--paper)] outline-none'
+
+/**
  * 칩 정의.
  *
  * 라벨이 SHELF_CATEGORIES 와 다릅니다(시향해 봄 → 시향 기록, 보유 희망 → 위시리스트).
@@ -52,7 +67,7 @@ const FILTER_CHIPS = [
 }[]
 
 /**
- * 컬렉션 목록 위 필터 줄 (와이어프레임 A13 컬렉션 영역)
+ * 컬렉션 목록 위 필터 줄 (와이어프레임 A13 컬렉션 영역 — 진열장 시안)
  *
  * 왼쪽부터 분류 칩 → 구분선 → 드롭다운 → 검색창 순으로 한 줄에 놓입니다.
  * 검색창만 flex-1 이라 창 폭이 변해도 칩은 안 밀리고 검색창이 늘고 줄어듭니다.
@@ -85,31 +100,20 @@ export function CollectionFilters({
               aria-pressed={selected}
               onClick={() => onChange(chip.value)}
               className={cn(
-                // 테두리는 두 상태 모두에 둡니다. 선택될 때만 생기면 칩 높이가
-                // 2px 뛰면서 줄 전체가 흔들립니다(옆 검색 알약도 테두리가 있어
-                // 여기서 높이가 맞춰집니다).
-                'text-caption rounded-card flex items-center gap-2 border px-4 py-2',
-                'transition-colors duration-120 ease-out',
-                'focus-visible:ring-accent-deep outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-                // Selected 는 UI 명세 2장·5장의 채움(bg-ink text-surface)입니다.
-                // accent-deep 은 포커스 링 색이라, 선택 칩 바탕으로 쓰면 그 칩에
-                // 포커스가 갔을 때 링과 바탕이 같은 색이 되어 링이 사라집니다.
-                //
-                // 안 고른 칩의 바탕이 surface-card 인 것도 규칙(2장 Default)이자
-                // 버그 수정입니다. surface-sunken 과 line-soft 는 둘 다 bone 이라
-                // sunken 바탕에서는 hover:bg-line-soft 가 아무 변화도 못 냅니다.
-                selected
-                  ? 'border-ink bg-ink text-surface'
-                  : 'border-line text-ink hover:bg-line-soft bg-surface-card',
+                FIELD,
+                'text-caption flex items-center gap-2 px-4',
+                // 켜진 칩은 테두리가 아니라 **채움**으로 표시합니다. 시안의 종이
+                // 위에서 테두리 한 줄은 눈에 안 띄고, 무엇보다 켜질 때만 테두리가
+                // 생기면 칩 높이가 뛰면서 줄 전체가 흔들립니다.
+                selected && 'shelf-field-active',
               )}
             >
               <span className="font-medium">{chip.label}</span>
               {/*
-                개수는 라벨보다 한 단계 뒤로 물립니다. 선택된 칩에서는 바탕이
-                ink 라 ink-muted 가 거의 안 읽혀서, 밝은 surface 로 올리고
-                위계는 굵기(medium 라벨 / normal 숫자)가 대신 냅니다.
+                개수는 라벨보다 한 단계 뒤로 물립니다. 켜진 칩에서는 바탕이 어두워
+                보조 글자색이 안 읽히므로, 굵기만 남기고 색은 바탕에 맡깁니다.
               */}
-              <span className={selected ? 'text-surface' : 'text-ink-muted'}>
+              <span className={selected ? 'opacity-70' : 'shelf-muted'}>
                 {counts[chip.countKey]}
               </span>
             </button>
@@ -118,7 +122,7 @@ export function CollectionFilters({
       </div>
 
       {/* 거르는 것(칩)과 정렬·검색을 눈으로 갈라주는 선 */}
-      <span aria-hidden className="bg-line mx-2 h-6 w-px" />
+      <span aria-hidden className="shelf-hairline mx-2 h-6 w-px" />
 
       <FilterDropdown label="향 계열" />
       <FilterDropdown label="정렬" />
@@ -131,8 +135,10 @@ export function CollectionFilters({
       <label
         htmlFor={searchInputId}
         className={cn(
-          'border-line bg-surface-card flex flex-1 items-center gap-2 rounded-full border px-4 py-2',
-          'has-[:focus-visible]:ring-accent-deep has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-offset-2',
+          FIELD,
+          'flex flex-1 items-center gap-2 rounded-full px-4',
+          'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--shelf-ink)]',
+          'has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-[var(--paper)]',
         )}
       >
         <SearchIcon />
@@ -143,9 +149,9 @@ export function CollectionFilters({
           value={keyword}
           onChange={(event) => onKeywordChange(event.target.value)}
           placeholder="향수 이름, 브랜드, 노트를 검색해보세요."
-          // 알약이 테두리·바탕을 이미 그리고 있어 input 은 투명하게 얹습니다.
+          // 알약이 바탕을 이미 그리고 있어 input 은 투명하게 얹습니다.
           // min-w-0 이 없으면 placeholder 길이만큼 폭을 우겨서 줄이 넘칩니다.
-          className="text-body text-ink placeholder:text-ink-muted w-full min-w-0 bg-transparent outline-none"
+          className="text-body w-full min-w-0 bg-transparent outline-none placeholder:text-[var(--shelf-ink-soft)]"
         />
       </label>
     </div>
@@ -173,13 +179,11 @@ function FilterDropdown({ label }: { label: string }) {
       aria-haspopup="listbox"
       aria-expanded={false}
       className={cn(
-        'text-caption rounded-card flex items-center gap-2 border px-4 py-2',
-        'border-line bg-surface-card text-ink hover:bg-line-soft',
-        'transition-colors duration-120 ease-out',
-        'focus-visible:ring-accent-deep outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-        // 공통 Disabled 규칙(UI 명세 2장) — 채움을 없애고 테두리만 남깁니다.
+        FIELD,
+        'text-caption flex items-center gap-2 px-4',
+        // 공통 Disabled 규칙(UI 명세 2장) — 채움을 없애고 윤곽만 남깁니다.
         // "누를 수 없다"가 색이 아니라 형태로 드러납니다.
-        'disabled:text-ink-muted disabled:pointer-events-none disabled:bg-transparent disabled:opacity-40',
+        'disabled:pointer-events-none disabled:bg-transparent disabled:opacity-40 disabled:shadow-none',
       )}
     >
       {label}
@@ -203,7 +207,7 @@ function SearchIcon() {
       stroke="currentColor"
       strokeWidth="1.5"
       strokeLinecap="round"
-      className="text-ink-muted size-4 shrink-0"
+      className="shelf-muted size-4 shrink-0"
     >
       <circle cx="7" cy="7" r="4.5" />
       <path d="m10.5 10.5 3 3" />
