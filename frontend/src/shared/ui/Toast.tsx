@@ -45,8 +45,8 @@ export function Toast({
       role="status"
       aria-live="polite"
       className={cn(
-        'bg-ink fixed bottom-6 left-1/2 z-50 -translate-x-1/2',
-        'text-surface px-4 py-3 text-xs shadow-lg',
+        'bg-ink fixed bottom-6 left-1/2 z-40 -translate-x-1/2',
+        'text-surface text-body shadow-overlay px-4 py-3',
         className,
       )}
     >

@@ -17,10 +17,10 @@ import { cva } from 'class-variance-authority'
  */
 export const buttonVariants = cva(
   'inline-flex items-center justify-center gap-2 rounded-card font-medium ' +
-    'transition-colors outline-none ' +
+    'transition-colors duration-120 ease-out outline-none ' +
     'focus-visible:ring-2 focus-visible:ring-accent-deep focus-visible:ring-offset-2 ' +
     'disabled:pointer-events-none disabled:border disabled:border-line ' +
-    'disabled:bg-transparent disabled:text-ink-muted',
+    'disabled:bg-transparent disabled:text-ink-muted disabled:opacity-40',
   {
     variants: {
       variant: {
@@ -33,9 +33,9 @@ export const buttonVariants = cva(
         danger: 'bg-danger text-surface hover:bg-danger/90',
       },
       size: {
-        sm: 'h-8 px-3 text-sm',
-        md: 'h-10 px-4 text-sm',
-        lg: 'h-12 px-6 text-base',
+        sm: 'text-body h-8 px-3',
+        md: 'text-body h-10 px-4',
+        lg: 'text-body h-12 px-6',
         icon: 'size-10',
       },
       fullWidth: {

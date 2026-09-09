@@ -39,16 +39,18 @@ export function PerfumeCard({
     <>
       <Thumbnail src={thumbnailUrl} fallback="이미지" className="h-28 w-full" />
 
-      <p className="text-ink w-full truncate text-xs font-bold">{name}</p>
+      <p className="text-ink text-heading w-full truncate font-serif font-semibold">
+        {name}
+      </p>
       {brand && (
-        <p className="text-ink-muted w-full truncate text-[10.5px]">{brand}</p>
+        <p className="text-ink-muted text-caption w-full truncate">{brand}</p>
       )}
       {badges && <div className="flex flex-wrap gap-1">{badges}</div>}
     </>
   )
 
   const shell = cn(
-    'border-line bg-surface-card flex flex-col gap-1.5 border p-2.5',
+    'border-line bg-surface-card rounded-card flex flex-col gap-2 border p-3',
     className,
   )
 
@@ -59,7 +61,8 @@ export function PerfumeCard({
           to={to}
           className={cn(
             shell,
-            'hover:border-accent transition-shadow hover:shadow-md',
+            'transition-[transform,box-shadow] duration-200 ease-out',
+            'hover:shadow-raised hover:-translate-y-1',
           )}
         >
           {body}
@@ -67,7 +70,7 @@ export function PerfumeCard({
       ) : (
         body
       )}
-      {footer && <div className="mt-1.5">{footer}</div>}
+      {footer && <div className="mt-2">{footer}</div>}
     </article>
   )
 }

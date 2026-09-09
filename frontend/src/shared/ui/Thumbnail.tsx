@@ -67,7 +67,7 @@ export function Thumbnail({
       aria-hidden
       className={cn(
         box,
-        'text-ink-muted flex items-center justify-center text-[10.5px]',
+        'text-ink-muted text-caption flex items-center justify-center',
         className,
       )}
     >

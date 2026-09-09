@@ -20,7 +20,7 @@ type TextareaProps = Omit<React.ComponentPropsWithRef<'textarea'>, 'id'> & {
  * 이걸 만들기 전에는 6곳이 각자 `<label><span className="sr-only">` 로 처리하고 있었고,
  * 한 곳씩 빠뜨리기 쉬운 구조였습니다.
  *
- * 겉모습은 Input 과 **같게 확정**되었습니다(rounded-card · text-sm · px-3).
+ * 겉모습은 Input 과 **같게 확정**되었습니다(rounded-card · text-body · px-3).
  * 한 화면에 한 줄 입력과 여러 줄 입력이 같이 놓이는 곳이 많아 서로 달라 보이면 어색합니다.
  *
  * 바깥 여백·flex 배치가 필요하면 감싸는 쪽에서 합니다(`<div className="flex-1">`).
@@ -39,11 +39,11 @@ export function Textarea({
   const hintId = `${id}-hint`
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <label
         htmlFor={id}
         className={cn(
-          'block text-sm font-medium',
+          'text-caption block font-medium',
           hideLabel && 'sr-only', // 화면에서만 숨기고 스크린리더는 읽습니다
         )}
       >
@@ -55,7 +55,7 @@ export function Textarea({
         aria-invalid={error ? true : undefined}
         aria-describedby={cn(hint && hintId, error && errorId) || undefined}
         className={cn(
-          'rounded-card w-full border px-3 py-2 text-sm',
+          'rounded-card text-body w-full border px-3 py-2',
           'placeholder:text-ink-muted/70',
           'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
           'disabled:bg-line-soft disabled:opacity-60',
@@ -66,12 +66,12 @@ export function Textarea({
       />
 
       {hint && !error && (
-        <p id={hintId} className="text-ink-muted text-xs">
+        <p id={hintId} className="text-ink-muted text-caption">
           {hint}
         </p>
       )}
       {error && (
-        <p id={errorId} className="text-danger text-xs">
+        <p id={errorId} className="text-danger text-caption">
           {error}
         </p>
       )}
