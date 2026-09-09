@@ -1,13 +1,13 @@
 -- 향 지도 인계 데이터(CSV 6개)에 스키마를 맞춥니다.
 --
--- V4 까지의 향 지도 스키마는 데이터를 받아 보기 전에 만든 것이라, 실제 CSV 와 어긋나는 곳이
+-- V5 까지의 향 지도 스키마는 데이터를 받아 보기 전에 만든 것이라, 실제 CSV 와 어긋나는 곳이
 -- 있었습니다. 아래 "측정" 은 인계받은 CSV 에서 직접 센 값입니다. 여기에 맞지 않게 만들면
 -- 데이터가 들어가지 않거나 조용히 일부가 버려집니다.
 --
 -- 적재 스크립트는 backend/db/seed/load_scent_map.sql 입니다.
 
 -- 1. 향 계열 코드를 적재 데이터의 키에 맞춥니다.
--- V4 는 GREEN_AROMATIC · AMBER_SPICY · MUSK_POWDERY 로 심었는데, CSV 의 family_key 는
+-- V5 는 GREEN_AROMATIC · AMBER_SPICY · MUSK_POWDERY 로 심었는데, CSV 의 family_key 는
 -- GREEN · AMBER · MUSK 입니다. 그대로 두면 계열 3개가 조인되지 않아 향수-계열 303행 중
 -- 100행(GREEN 39 + AMBER 24 + MUSK 37)이 적재에서 조용히 사라집니다.
 --
@@ -65,7 +65,7 @@ WHERE scent_regions.code = v.code;
 ALTER TABLE perfumes ADD COLUMN fragrantica_id BIGINT;
 ALTER TABLE perfumes ADD CONSTRAINT uk_perfumes_fragrantica_id UNIQUE (fragrantica_id);
 
--- 4. 적재 데이터가 향수와 함께 주는 값들. korea_selection_rank 는 V4 에서 이미 만들었습니다.
+-- 4. 적재 데이터가 향수와 함께 주는 값들. korea_selection_rank 는 V5 에서 이미 만들었습니다.
 -- release_year: 측정 1978~2026. 200개 중 7개가 비어 있어 NOT NULL 을 걸지 않습니다.
 -- korea_selection_basis: 측정 HWAHAE_MAP_READY_INCLUSION · PURCHASE_RRF_FILL 두 값이고
 --   가장 긴 것이 26자입니다.
@@ -75,7 +75,7 @@ ALTER TABLE perfumes
 
 -- 5. 향수 좌표.
 -- scent_region_id 는 대표 계열 하나를 담는 컬럼인데, 대표는 perfume_scent_families 에서 비중이
--- 가장 큰 행입니다. V4 가 "대표를 따로 저장하지 않는다" 고 정해 놓고 이 컬럼을 남겨 둬서, 적재가
+-- 가장 큰 행입니다. V5 가 "대표를 따로 저장하지 않는다" 고 정해 놓고 이 컬럼을 남겨 둬서, 적재가
 -- 대표를 두 군데 넣어야 하는 상태였습니다. 두 군데에 두면 한쪽만 갱신됐을 때 조용히 어긋납니다.
 --
 -- 측정으로 확인한 것: 향수 200개 전부 비중 1위가 동점이 아니고, 비중 내림차순이 CSV 의 rank 와
@@ -102,7 +102,7 @@ ALTER TABLE perfume_scent_families
     ADD CONSTRAINT ck_perfume_scent_families_weight
         CHECK (weight > 0 AND weight <= 1);
 
--- 7. 주변·유사 향수의 유사도. 순서(rank)는 V4 에서 이미 만들었습니다.
+-- 7. 주변·유사 향수의 유사도. 순서(rank)는 V5 에서 이미 만들었습니다.
 -- 측정: 2000행, 향수당 정확히 10개, rank 1~10, similarity 0.2021~0.7797(소수 넷째 자리까지).
 --
 -- 방향이 있는 관계입니다. a 의 10위 안에 b 가 있어도 b 의 10위 안에 a 가 없을 수 있어 2000행 중
