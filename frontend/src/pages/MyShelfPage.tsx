@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import {
   CollectionFormModal,
@@ -7,30 +7,30 @@ import {
   myCollectionsQuery,
 } from '@/features/collection'
 import {
+  CollectionDetailPanel,
+  CollectionFilters,
+  CollectionFooterStrip,
+  DisplayCase,
   PerfumeRegisterModal,
-  SHELF_SLOTS,
-  ShelfItemPanel,
-  ShelfRow,
   ShelfSaveModal,
   shelfItemsQuery,
+  type CollectionFilterValue,
   type ShelfItem,
 } from '@/features/shelf'
 import { useToast } from '@/shared/hooks/useToast'
 import { Button } from '@/shared/ui/Button'
-import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { PageFallback } from '@/shared/ui/PageFallback'
 import { Toast } from '@/shared/ui/Toast'
 
 /**
- * 내 진열대 (와이어프레임 A13 — SHF-02 · 03 · 05 · 06 · 09 · 10 · COL-01)
+ * 나의 향 컬렉션 (A13 재디자인 시안)
  *
- * 와이어프레임 주석을 그대로 지켰습니다.
- * - 진열대와 컬렉션이 한 페이지 — 컬렉션 목록 화면도, 진열대 하위 탭도 없다
- * - 필터 없음 — 분류가 진열대 세 칸으로 나뉘어 있어 고를 것이 없다 · 칸이 세 개로 고정
- * - 한 칸에 다 안 들어가면 다음 향수를 밀어 본다 (가로 스크롤)
- * - 향수 등록은 A15 등록 모달 2단계로 간다
- * - 대표 향수는 한 번에 하나 (보유 중 칸에만 표시)
- * - 메모는 향수 한 개당 하나 — 등록 모달에서 쓰고 여기서 수정한다
+ * 진열대 세 칸을 **진열장 하나로 합쳤습니다.** 분류는 상단 필터 칩으로 좁혀 봅니다.
+ * 와이어프레임 A13 은 "칸은 세 개로 고정" 이었지만, 시안이 한 진열장에 모두 세우고
+ * 칩으로 거르는 쪽으로 바뀌었습니다.
+ *
+ * 선택한 향수는 오른쪽 패널에 펼쳐집니다. 하단 페이저로도 넘길 수 있어서,
+ * 병을 하나씩 눌러 보지 않아도 순서대로 훑을 수 있습니다.
  *
  * 진열대와 컬렉션은 서로 다른 도메인입니다. features 끼리는 import 할 수 없으므로
  * 이 화면에서 두 도메인을 조합합니다.
@@ -39,73 +39,115 @@ export default function MyShelfPage() {
   const shelf = useQuery(shelfItemsQuery())
   const collections = useQuery(myCollectionsQuery())
 
-  const [selected, setSelected] = useState<ShelfItem | null>(null)
+  const [filter, setFilter] = useState<CollectionFilterValue>('ALL')
+  const [keyword, setKeyword] = useState('')
+  const [selectedId, setSelectedId] = useState<number | null>(null)
   const [registerOpen, setRegisterOpen] = useState(false)
   const [createCollectionOpen, setCreateCollectionOpen] = useState(false)
-  const [unsaveOpen, setUnsaveOpen] = useState(false)
   const [changeCategoryOpen, setChangeCategoryOpen] = useState(false)
   const { showToast, toastProps } = useToast()
 
-  if (shelf.isPending) return <PageFallback />
+  const items = useMemo(() => shelf.data ?? [], [shelf.data])
 
-  const items = shelf.data ?? []
+  const counts = useMemo(
+    () => ({
+      all: items.length,
+      owned: items.filter((item) => item.category === 'OWNED').length,
+      tried: items.filter((item) => item.category === 'TRIED').length,
+      wish: items.filter((item) => item.category === 'WISH').length,
+    }),
+    [items],
+  )
+
+  // 칩과 검색어는 겹쳐 걸립니다. 검색은 향수명과 브랜드명을 함께 봅니다.
+  const visible = useMemo(() => {
+    const needle = keyword.trim().toLowerCase()
+    return items.filter((item) => {
+      if (filter !== 'ALL' && item.category !== filter) return false
+      if (!needle) return true
+      return (
+        item.name.toLowerCase().includes(needle) ||
+        item.brand.toLowerCase().includes(needle)
+      )
+    })
+  }, [items, filter, keyword])
+
+  // 걸러진 목록이 바뀌면 선택이 사라질 수 있습니다. 그때는 첫 향수를 고릅니다 —
+  // 오른쪽 패널이 비어 있으면 화면 절반이 빈 채로 남습니다.
+  const selectedIndex = visible.findIndex(
+    (item) => item.shelfItemId === selectedId,
+  )
+  const current = selectedIndex >= 0 ? selectedIndex : 0
+  const selected: ShelfItem | null = visible[current] ?? null
+
+  const move = (step: 1 | -1) => {
+    const next = visible[current + step]
+    if (next) setSelectedId(next.shelfItemId)
+  }
+
+  if (shelf.isPending) return <PageFallback />
 
   return (
     <div className="space-y-8">
-      {/* 내 진열대 */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <h1 className="text-ink text-title font-serif font-semibold">
-            내 진열대
+      {/* 머리말과 필터가 한 줄에 놓입니다 */}
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
+        <header className="shrink-0 space-y-2">
+          <p className="text-ink-muted text-caption tracking-[0.18em] uppercase">
+            Every scent
+            <br />
+            has a story
+          </p>
+          <h1 className="text-ink text-display font-serif font-semibold">
+            나의 향 컬렉션
           </h1>
-          <span className="text-ink-muted text-caption">{items.length}개</span>
-          <Button className="ml-auto" onClick={() => setRegisterOpen(true)}>
-            + 향수 등록
-          </Button>
-        </div>
+          <p className="text-ink-muted text-body">
+            수집한 향들이 모여,
+            <br />
+            나라는 이야기가 됩니다.
+          </p>
+        </header>
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_18rem]">
-          {/* 칸이 세 개로 고정입니다 */}
-          <div className="min-w-0 space-y-6">
-            {SHELF_SLOTS.map((slot) => (
-              <ShelfRow
-                key={slot.category}
-                title={slot.title}
-                items={items.filter((item) => item.category === slot.category)}
-                selectedId={selected?.shelfItemId ?? null}
-                onSelect={setSelected}
-              />
-            ))}
-            <div className="text-ink-muted text-caption space-y-1 leading-relaxed">
-              <p>
-                필터 없음 — 분류가 진열대 세 칸으로 나뉘어 있어 고를 것이
-                없습니다. 칸은 세 개로 고정입니다.
-              </p>
-              <p>
-                한 칸에 다 안 들어가면 오른쪽 버튼으로 다음 향수를 밀어 봅니다.
-              </p>
-            </div>
-          </div>
+        <CollectionFilters
+          counts={counts}
+          value={filter}
+          onChange={(next) => {
+            setFilter(next)
+            setSelectedId(null)
+          }}
+          keyword={keyword}
+          onKeywordChange={(next) => {
+            setKeyword(next)
+            setSelectedId(null)
+          }}
+          className="flex-1 lg:pt-8"
+        />
+      </div>
 
-          <ShelfItemPanel
-            item={selected}
-            onSetRepresentative={() => {
-              // TODO: SHF-05 대표 향수 지정 API 연결
-              showToast('대표 향수로 지정했습니다')
-            }}
-            onUnsave={() => setUnsaveOpen(true)}
-            onChangeCategory={() => setChangeCategoryOpen(true)}
-            onEditMemo={() => {
-              // TODO: SHF-10 메모 수정 API 연결
-              showToast('메모 수정은 API 연결 후 동작합니다')
-            }}
-          />
-        </div>
-      </section>
+      {/* 진열장과 상세 패널 */}
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <DisplayCase
+          items={visible}
+          selectedId={selected?.shelfItemId ?? null}
+          onSelect={(item) => setSelectedId(item.shelfItemId)}
+          className="min-w-0 flex-1"
+        />
 
-      <hr className="border-line" />
+        <CollectionDetailPanel
+          item={selected}
+          onClose={() => setSelectedId(null)}
+          onSave={() => showToast('나의 향수로 저장했습니다')}
+          className="w-full shrink-0 lg:w-80"
+        />
+      </div>
 
-      {/* 내 컬렉션 */}
+      <CollectionFooterStrip
+        index={visible.length === 0 ? 0 : current + 1}
+        total={visible.length}
+        onPrev={() => move(-1)}
+        onNext={() => move(1)}
+      />
+
+      {/* 내 컬렉션 — 시안에는 없지만 A13 의 아래 절반이라 그대로 둡니다 */}
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <h2 className="text-ink text-title font-serif font-semibold">
@@ -114,6 +156,14 @@ export default function MyShelfPage() {
           <span className="text-ink-muted text-caption">
             {collections.data?.length ?? 0}개
           </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-auto"
+            onClick={() => setRegisterOpen(true)}
+          >
+            + 향수 등록
+          </Button>
         </div>
 
         <CollectionStrip
@@ -123,70 +173,41 @@ export default function MyShelfPage() {
         />
       </section>
 
-      {/*
-        등록 모달의 후보 목록은 이 화면에서 만들어 넘깁니다.
-        TODO: 향수 검색 결과를 연결하세요. 지금은 진열대에 이미 있는 향수만
-        "담김" 상태로 보여줍니다 (선택 불가).
-      */}
       <PerfumeRegisterModal
         open={registerOpen}
         onClose={() => setRegisterOpen(false)}
+        // 1단계 후보. 향수 도메인 데이터를 이 모양으로 맞춰 넘깁니다.
+        // ⚠️ 아직 검색 API 를 붙이지 않아 진열대에 있는 향수를 그대로 씁니다.
         options={items.map((item) => ({
           perfumeId: item.perfumeId,
           name: item.name,
           brand: item.brand,
           thumbnailUrl: item.thumbnailUrl,
-          alreadyInShelf: true,
         }))}
         onSearch={() => {
-          // TODO: 향수 검색 API 연결 (화면에서 조합)
+          // TODO: SHF-01 향수 검색 연결
         }}
         onSubmit={() => {
-          // TODO: SHF-01 진열대 등록 API 연결
           setRegisterOpen(false)
-          showToast('진열대에 담았습니다')
+          showToast('진열대에 등록했습니다')
         }}
       />
-
       <CollectionFormModal
         open={createCollectionOpen}
         onClose={() => setCreateCollectionOpen(false)}
         onSubmit={() => {
-          // TODO: COL-01 컬렉션 생성 API 연결
           setCreateCollectionOpen(false)
           showToast('컬렉션을 만들었습니다')
         }}
       />
-
-      {/*
-        분류 변경은 A11 진열대 저장 모달과 구성이 같아 같은 컴포넌트를 씁니다.
-        현재 분류를 넘기면 제목·버튼이 "분류 변경"이 되고 그 분류가 미리 선택됩니다.
-      */}
       <ShelfSaveModal
         open={changeCategoryOpen}
         onClose={() => setChangeCategoryOpen(false)}
-        initialCategory={selected?.category ?? null}
         onSave={() => {
-          // TODO: SHF-03 분류 변경 API 연결 (백엔드 진열대 API 미구현)
           setChangeCategoryOpen(false)
-          showToast('분류를 변경했습니다')
+          showToast('분류를 바꿨습니다')
         }}
       />
-
-      <ConfirmDialog
-        open={unsaveOpen}
-        onClose={() => setUnsaveOpen(false)}
-        title={`'${selected?.name ?? '향수'}' 저장을 해제할까요?`}
-        description="진열대에서 빠지고 메모와 적합도도 함께 사라집니다."
-        confirmLabel="저장 해제"
-        onConfirm={() => {
-          // TODO: SHF-02 저장 해제 API 연결
-          setUnsaveOpen(false)
-          setSelected(null)
-          showToast('저장을 해제했습니다')
-        }}
-      />
-
       <Toast {...toastProps} />
     </div>
   )

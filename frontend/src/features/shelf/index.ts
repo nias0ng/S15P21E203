@@ -6,6 +6,13 @@
  *
  * ⚠️ 백엔드 진열대 API 가 아직 없습니다. api.ts 가 자리표시자를 돌려줍니다.
  */
+export { CollectionDetailPanel } from './components/CollectionDetailPanel'
+export {
+  CollectionFilters,
+  type CollectionFilterValue,
+} from './components/CollectionFilters'
+export { CollectionFooterStrip } from './components/CollectionFooterStrip'
+export { DisplayCase } from './components/DisplayCase'
 export { PerfumeRegisterModal } from './components/PerfumeRegisterModal'
 export { ShelfItemPanel } from './components/ShelfItemPanel'
 export { ShelfRow } from './components/ShelfRow'
