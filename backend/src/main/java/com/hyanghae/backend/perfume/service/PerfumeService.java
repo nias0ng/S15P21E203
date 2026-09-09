@@ -35,6 +35,7 @@ import java.util.Map;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -233,8 +234,16 @@ public class PerfumeService {
      * 낼 일은 아닙니다.
      *
      * <p>개수 조회를 따로 한 번 더 합니다. 명세가 {@code totalElements} 를 요구하기 때문입니다.
+     *
+     * <p>격리 수준을 {@code REPEATABLE_READ} 로 올린 이유가 있습니다. 기본값인
+     * {@code READ COMMITTED} 는 문장마다 새 스냅샷을 잡습니다. 목록을 읽은 뒤 개수를 세기까지
+     * 사이에 게시글이 추가되거나 지워지면 두 값이 어긋나, 목록에 없는 건수가 {@code totalElements}
+     * 에 잡힙니다. {@code REPEATABLE_READ} 는 트랜잭션의 첫 문장에서 스냅샷을 한 번 잡고 끝까지
+     * 유지하므로 두 쿼리가 같은 시점을 봅니다.
+     *
+     * <p>읽기 전용이라 직렬화 실패는 나지 않습니다. 쓰기 트랜잭션에서만 생기는 문제입니다.
      */
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public PerfumePostsResponse getPosts(Long perfumeId, int page, int size) {
         requireExistingPerfume(perfumeId);
 
