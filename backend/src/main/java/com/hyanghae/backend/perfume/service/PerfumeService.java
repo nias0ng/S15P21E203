@@ -1,13 +1,16 @@
 package com.hyanghae.backend.perfume.service;
 
 import com.hyanghae.backend.global.exception.BusinessException;
+import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.perfume.dto.request.PerfumeSearchCondition;
+import com.hyanghae.backend.perfume.dto.request.ShelfFilter;
 import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSearchResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse;
 import com.hyanghae.backend.perfume.exception.PerfumeErrorCode;
 import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeRepository;
+import com.hyanghae.backend.perfume.repository.PerfumeShelfRepository;
 import com.hyanghae.backend.perfume.dto.response.PerfumePriceResponse;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
 import com.hyanghae.backend.perfume.repository.PerfumePriceRepository;
@@ -25,15 +28,21 @@ public class PerfumeService {
     private final PerfumeRepository perfumeRepository;
     private final PerfumeImageRepository perfumeImageRepository;
     private final PerfumePriceRepository perfumePriceRepository;
+    private final PerfumeShelfRepository perfumeShelfRepository;
+    private final CurrentUser currentUser;
 
     public PerfumeService(
             PerfumeRepository perfumeRepository,
             PerfumeImageRepository perfumeImageRepository,
-            PerfumePriceRepository perfumePriceRepository
+            PerfumePriceRepository perfumePriceRepository,
+            PerfumeShelfRepository perfumeShelfRepository,
+            CurrentUser currentUser
     ) {
         this.perfumeRepository = perfumeRepository;
         this.perfumeImageRepository = perfumeImageRepository;
         this.perfumePriceRepository = perfumePriceRepository;
+        this.perfumeShelfRepository = perfumeShelfRepository;
+        this.currentUser = currentUser;
     }
 
     /**
@@ -45,6 +54,10 @@ public class PerfumeService {
      *
      * <p>전체를 준다고 해서 카탈로그를 통째로 내려주는 것은 아닙니다. 페이지 크기가 걸려 있어
      * 한 번에 나가는 건수는 조건이 있을 때와 같습니다.
+     *
+     * <p>진열대 필터만 다르게 다룹니다. 향수의 속성이 아니라 요청자와 향수의 관계라서, 요청자를
+     * 알 수 없으면 401 입니다. 조용히 전체를 돌려주면 필터가 걸린 것처럼 보이지만 남의 자료가
+     * 섞입니다.
      */
     @Transactional(readOnly = true)
     public PerfumeSearchResponse search(PerfumeSearchCondition condition, Pageable pageable) {
@@ -52,7 +65,11 @@ public class PerfumeService {
         String brand = trimToNull(condition.brand());
         String gender = condition.gender() == null ? null : condition.gender().name();
 
-        Page<PerfumeSummaryResponse> found = perfumeRepository.search(keyword, brand, gender, pageable);
+        Page<PerfumeSummaryResponse> found = findPage(condition.shelf(), keyword, brand, gender, pageable);
+        if (found.isEmpty()) {
+            return PerfumeSearchResponse.from(found);
+        }
+
         Map<Long, String> images = loadThumbnails(
                 found.getContent().stream().map(PerfumeSummaryResponse::perfumeId).toList()
         );
@@ -116,6 +133,32 @@ public class PerfumeService {
      * <p>빈 문자열과 공백만 있는 검색어는 {@code null} 로 만들어 "검색어 없음"과 같게 다룹니다.
      * 정규화하지 않으면 {@code ?keyword=} 같은 요청이 공백을 포함한 이름만 찾게 됩니다.
      */
+    /**
+     * 진열대 필터가 있으면 사용자의 향수 번호로 범위를 좁혀 조회합니다.
+     *
+     * <p>번호가 하나도 없으면 조회하지 않고 빈 페이지를 만듭니다. 결과를 이미 알기 때문이며,
+     * 목록과 개수 두 번의 질의를 아낍니다. 정확성을 위한 것은 아닙니다. 빈 컬렉션을 그대로
+     * 넘겨도 Hibernate 가 항상 거짓인 조건으로 바꿔 주어 같은 결과가 나옵니다. 이 분기를 지워도
+     * 실패하는 테스트가 없다는 것을 확인했습니다.
+     */
+    private Page<PerfumeSummaryResponse> findPage(
+            ShelfFilter shelf, String keyword, String brand, String gender, Pageable pageable) {
+        if (shelf == null) {
+            return perfumeRepository.search(keyword, brand, gender, pageable);
+        }
+
+        Long userId = currentUser.id()
+                .orElseThrow(() -> new BusinessException(
+                        PerfumeErrorCode.PERFUME_SHELF_FILTER_REQUIRES_LOGIN));
+
+        List<Long> perfumeIds = perfumeShelfRepository.findPerfumeIds(userId, shelf);
+        if (perfumeIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        return perfumeRepository.searchWithinPerfumeIds(keyword, brand, gender, perfumeIds, pageable);
+    }
+
     /**
      * 값이 없는 것과 공백만 있는 것을 똑같이 다룹니다. {@code ?brand=} 같은 요청이 공백 이름을
      * 가진 브랜드를 찾으러 가지 않게 합니다.
