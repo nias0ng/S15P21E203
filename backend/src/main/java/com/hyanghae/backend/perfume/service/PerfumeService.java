@@ -1,6 +1,7 @@
 package com.hyanghae.backend.perfume.service;
 
 import com.hyanghae.backend.global.exception.BusinessException;
+import com.hyanghae.backend.perfume.dto.request.PerfumeSearchCondition;
 import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSearchResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse;
@@ -43,13 +44,16 @@ public class PerfumeService {
      * 카탈로그 전체를 긁는 요청이 됩니다.
      */
     @Transactional(readOnly = true)
-    public PerfumeSearchResponse search(String keyword, Pageable pageable) {
-        String normalized = normalize(keyword);
-        if (normalized == null) {
+    public PerfumeSearchResponse search(PerfumeSearchCondition condition, Pageable pageable) {
+        String keyword = normalize(condition.keyword());
+        String brand = trimToNull(condition.brand());
+        String gender = condition.gender() == null ? null : condition.gender().name();
+
+        if (keyword == null && brand == null && gender == null) {
             return PerfumeSearchResponse.from(Page.empty(pageable));
         }
 
-        Page<PerfumeSummaryResponse> found = perfumeRepository.searchByKeyword(normalized, pageable);
+        Page<PerfumeSummaryResponse> found = perfumeRepository.search(keyword, brand, gender, pageable);
         Map<Long, String> images = loadThumbnails(
                 found.getContent().stream().map(PerfumeSummaryResponse::perfumeId).toList()
         );
@@ -113,6 +117,17 @@ public class PerfumeService {
      * <p>빈 문자열과 공백만 있는 검색어는 {@code null} 로 만들어 "검색어 없음"과 같게 다룹니다.
      * 정규화하지 않으면 {@code ?keyword=} 같은 요청이 공백을 포함한 이름만 찾게 됩니다.
      */
+    /**
+     * 값이 없는 것과 공백만 있는 것을 똑같이 다룹니다. {@code ?brand=} 같은 요청이 공백 이름을
+     * 가진 브랜드를 찾으러 가지 않게 합니다.
+     */
+    private String trimToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+
     private String normalize(String keyword) {
         if (keyword == null || keyword.isBlank()) {
             return null;
