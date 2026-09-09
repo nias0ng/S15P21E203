@@ -1,13 +1,20 @@
 package com.hyanghae.backend.perfume.service;
 
 import com.hyanghae.backend.global.exception.BusinessException;
-import com.hyanghae.backend.global.response.PageResponse;
+import com.hyanghae.backend.global.security.CurrentUser;
+import com.hyanghae.backend.perfume.dto.request.PerfumeSearchCondition;
+import com.hyanghae.backend.perfume.dto.request.ShelfFilter;
 import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumeSearchResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse;
 import com.hyanghae.backend.perfume.exception.PerfumeErrorCode;
 import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeRepository;
-import com.hyanghae.backend.perfume.repository.PerfumeThumbnail;
+import com.hyanghae.backend.perfume.repository.PerfumeScentFamilyRepository;
+import com.hyanghae.backend.perfume.repository.PerfumeShelfRepository;
+import com.hyanghae.backend.perfume.dto.response.PerfumePriceResponse;
+import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
+import com.hyanghae.backend.perfume.repository.PerfumePriceRepository;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,37 +28,62 @@ public class PerfumeService {
 
     private final PerfumeRepository perfumeRepository;
     private final PerfumeImageRepository perfumeImageRepository;
+    private final PerfumePriceRepository perfumePriceRepository;
+    private final PerfumeScentFamilyRepository perfumeScentFamilyRepository;
+    private final PerfumeShelfRepository perfumeShelfRepository;
+    private final CurrentUser currentUser;
 
     public PerfumeService(
             PerfumeRepository perfumeRepository,
-            PerfumeImageRepository perfumeImageRepository
+            PerfumeImageRepository perfumeImageRepository,
+            PerfumePriceRepository perfumePriceRepository,
+            PerfumeScentFamilyRepository perfumeScentFamilyRepository,
+            PerfumeShelfRepository perfumeShelfRepository,
+            CurrentUser currentUser
     ) {
         this.perfumeRepository = perfumeRepository;
         this.perfumeImageRepository = perfumeImageRepository;
+        this.perfumePriceRepository = perfumePriceRepository;
+        this.perfumeScentFamilyRepository = perfumeScentFamilyRepository;
+        this.perfumeShelfRepository = perfumeShelfRepository;
+        this.currentUser = currentUser;
     }
 
     /**
      * 향수명·브랜드명으로 향수를 검색합니다.
      *
-     * <p>기능 명세의 "검색어가 입력되지 않은 경우 검색을 수행하지 않는다" 에 따라, 검색어가 없으면
-     * 데이터베이스를 조회하지 않고 빈 결과를 반환합니다. 전체 목록을 돌려주면 검색창을 누르기만 해도
-     * 카탈로그 전체를 긁는 요청이 됩니다.
+     * <p>조건을 하나도 주지 않으면 활성 향수 전체를 페이지 단위로 돌려줍니다. 이 엔드포인트는
+     * 검색창뿐 아니라 향수 목록 화면도 함께 쓰는데, 목록 화면은 필터를 걸기 전에도 향수가 보여야
+     * 합니다. 조건 없는 요청에 빈 목록을 주면 목록 화면이 "검색 결과가 없습니다" 로 시작합니다.
+     *
+     * <p>전체를 준다고 해서 카탈로그를 통째로 내려주는 것은 아닙니다. 페이지 크기가 걸려 있어
+     * 한 번에 나가는 건수는 조건이 있을 때와 같습니다.
+     *
+     * <p>진열대 필터만 다르게 다룹니다. 향수의 속성이 아니라 요청자와 향수의 관계라서, 요청자를
+     * 알 수 없으면 401 입니다. 조용히 전체를 돌려주면 필터가 걸린 것처럼 보이지만 남의 자료가
+     * 섞입니다.
      */
     @Transactional(readOnly = true)
-    public PageResponse<PerfumeSummaryResponse> search(String keyword, Pageable pageable) {
-        String normalized = normalize(keyword);
-        if (normalized == null) {
-            return PageResponse.from(Page.empty(pageable));
+    public PerfumeSearchResponse search(PerfumeSearchCondition condition, Pageable pageable) {
+        String keyword = normalize(condition.keyword());
+        String brand = trimToNull(condition.brand());
+        String gender = condition.gender() == null ? null : condition.gender().name();
+
+        Page<PerfumeSummaryResponse> found = findPage(condition.shelf(), keyword, brand, gender, pageable);
+        if (found.isEmpty()) {
+            return PerfumeSearchResponse.from(found);
         }
 
-        Page<PerfumeSummaryResponse> found = perfumeRepository.searchByKeyword(normalized, pageable);
-        Map<Long, String> thumbnails = loadThumbnails(
-                found.getContent().stream().map(PerfumeSummaryResponse::perfumeId).toList()
-        );
+        List<Long> perfumeIds = found.getContent().stream()
+                .map(PerfumeSummaryResponse::perfumeId)
+                .toList();
+        Map<Long, String> images = loadThumbnails(perfumeIds);
+        Map<Long, String> scentFamilies = perfumeScentFamilyRepository.findByPerfumeIds(perfumeIds);
 
-        return PageResponse.from(
-                found.map(perfume -> perfume.withThumbnailUrl(thumbnails.get(perfume.perfumeId())))
-        );
+        return PerfumeSearchResponse.from(found.map(perfume -> perfume.with(
+                images.get(perfume.perfumeId()),
+                scentFamilies.get(perfume.perfumeId())
+        )));
     }
 
     /**
@@ -66,11 +98,20 @@ public class PerfumeService {
         PerfumeDetailResponse detail = perfumeRepository.findDetailById(perfumeId)
                 .orElseThrow(() -> new BusinessException(PerfumeErrorCode.PERFUME_NOT_FOUND));
 
-        return detail.withThumbnailUrl(loadThumbnail(perfumeId));
+        return detail.withImagesAndPrices(
+                loadImages(perfumeId),
+                perfumePriceRepository.findByPerfumeId(perfumeId)
+        );
     }
 
-    private String loadThumbnail(Long perfumeId) {
-        return loadThumbnails(List.of(perfumeId)).get(perfumeId);
+    /**
+     * 향수 한 건의 이미지를 대표 이미지가 먼저 오도록 전부 가져옵니다. 검색이 쓰는 조회와 같은
+     * 정렬 규칙을 쓰므로, 두 API 가 이미지 순서를 다르게 보는 일이 없습니다.
+     */
+    private List<String> loadImages(Long perfumeId) {
+        return perfumeImageRepository.findOrderedByPerfumeIds(List.of(perfumeId)).stream()
+                .map(PerfumeImageUrl::imageUrl)
+                .toList();
     }
 
     /**
@@ -87,7 +128,7 @@ public class PerfumeService {
         }
 
         Map<Long, String> thumbnails = new HashMap<>();
-        for (PerfumeThumbnail candidate : perfumeImageRepository.findOrderedByPerfumeIds(perfumeIds)) {
+        for (PerfumeImageUrl candidate : perfumeImageRepository.findOrderedByPerfumeIds(perfumeIds)) {
             thumbnails.putIfAbsent(candidate.perfumeId(), candidate.imageUrl());
         }
         return thumbnails;
@@ -99,6 +140,43 @@ public class PerfumeService {
      * <p>빈 문자열과 공백만 있는 검색어는 {@code null} 로 만들어 "검색어 없음"과 같게 다룹니다.
      * 정규화하지 않으면 {@code ?keyword=} 같은 요청이 공백을 포함한 이름만 찾게 됩니다.
      */
+    /**
+     * 진열대 필터가 있으면 사용자의 향수 번호로 범위를 좁혀 조회합니다.
+     *
+     * <p>번호가 하나도 없으면 조회하지 않고 빈 페이지를 만듭니다. 결과를 이미 알기 때문이며,
+     * 목록과 개수 두 번의 질의를 아낍니다. 정확성을 위한 것은 아닙니다. 빈 컬렉션을 그대로
+     * 넘겨도 Hibernate 가 항상 거짓인 조건으로 바꿔 주어 같은 결과가 나옵니다. 이 분기를 지워도
+     * 실패하는 테스트가 없다는 것을 확인했습니다.
+     */
+    private Page<PerfumeSummaryResponse> findPage(
+            ShelfFilter shelf, String keyword, String brand, String gender, Pageable pageable) {
+        if (shelf == null) {
+            return perfumeRepository.search(keyword, brand, gender, pageable);
+        }
+
+        Long userId = currentUser.id()
+                .orElseThrow(() -> new BusinessException(
+                        PerfumeErrorCode.PERFUME_SHELF_FILTER_REQUIRES_LOGIN));
+
+        List<Long> perfumeIds = perfumeShelfRepository.findPerfumeIds(userId, shelf);
+        if (perfumeIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        return perfumeRepository.searchWithinPerfumeIds(keyword, brand, gender, perfumeIds, pageable);
+    }
+
+    /**
+     * 값이 없는 것과 공백만 있는 것을 똑같이 다룹니다. {@code ?brand=} 같은 요청이 공백 이름을
+     * 가진 브랜드를 찾으러 가지 않게 합니다.
+     */
+    private String trimToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+
     private String normalize(String keyword) {
         if (keyword == null || keyword.isBlank()) {
             return null;

@@ -17,10 +17,10 @@ public interface PerfumeImageRepository extends JpaRepository<PerfumeImage, Long
      * {@code image_id} 로 순서를 확정해 매번 같은 이미지가 대표로 뽑히게 합니다.
      */
     @Query("""
-            SELECT new com.hyanghae.backend.perfume.repository.PerfumeThumbnail(i.perfume.id, i.imageUrl)
+            SELECT new com.hyanghae.backend.perfume.repository.PerfumeImageUrl(i.perfume.id, i.imageUrl)
             FROM PerfumeImage i
             WHERE i.perfume.id IN :perfumeIds
             ORDER BY i.perfume.id, i.displayOrder ASC NULLS LAST, i.id
             """)
-    List<PerfumeThumbnail> findOrderedByPerfumeIds(@Param("perfumeIds") Collection<Long> perfumeIds);
+    List<PerfumeImageUrl> findOrderedByPerfumeIds(@Param("perfumeIds") Collection<Long> perfumeIds);
 }

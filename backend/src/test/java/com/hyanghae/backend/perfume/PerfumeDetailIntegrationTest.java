@@ -6,6 +6,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.hyanghae.backend.perfume.exception.PerfumeErrorCode;
 import com.hyanghae.backend.support.IntegrationTest;
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,6 +34,10 @@ class PerfumeDetailIntegrationTest {
     private static final String TIE_HIGHER_ID_IMAGE = "https://img.example.com/tie-higher.jpg";
     private static final String ORDERED_IMAGE = "https://img.example.com/ordered.jpg";
     private static final String UNORDERED_IMAGE = "https://img.example.com/unordered.jpg";
+    private static final String NAME_KO = "블루 드 샤넬";
+    private static final String GENDER = "MALE";
+    private static final String CONCENTRATION = "EDP";
+    private static final String COLLECTED_AT = "2026-09-01T00:00:00Z";
     private static final String DESCRIPTION = "시트러스와 우디가 교차하는 브랜드 공식 설명입니다.";
 
     @Autowired
@@ -46,12 +52,12 @@ class PerfumeDetailIntegrationTest {
 
         insertBrand(1, "Chanel");
 
-        insertPerfume(1, 1, "Bleu de Chanel", DESCRIPTION, true);
-        insertPerfume(2, 1, "No Image Scent", null, true);
-        insertPerfume(3, null, "Orphan Scent", null, true);
-        insertPerfume(4, 1, "Retired Scent", null, false);
-        insertPerfume(5, 1, "Tie Order Scent", null, true);
-        insertPerfume(6, 1, "Mixed Order Scent", null, true);
+        insertPerfume(1, 1, "Bleu de Chanel", NAME_KO, GENDER, DESCRIPTION, CONCENTRATION, true);
+        insertPerfume(2, 1, "No Image Scent", null, null, null, null, true);
+        insertPerfume(3, null, "Orphan Scent", null, null, null, null, true);
+        insertPerfume(4, 1, "Retired Scent", null, null, null, null, false);
+        insertPerfume(5, 1, "Tie Order Scent", null, null, null, null, true);
+        insertPerfume(6, 1, "Mixed Order Scent", null, null, null, null, true);
 
         // display_order 가 작은 쪽이 대표입니다. 삽입 순서가 아닙니다.
         insertImage(10, 1, SECONDARY_IMAGE, 2);
@@ -64,6 +70,10 @@ class PerfumeDetailIntegrationTest {
         // display_order 가 NULL 인 이미지는 뒤로 밀립니다. NULL 인 것을 먼저 넣습니다.
         insertImage(30, 6, UNORDERED_IMAGE, null);
         insertImage(31, 6, ORDERED_IMAGE, 9);
+
+        // 용량 오름차순으로 정렬되는지 보려고 큰 용량을 먼저 넣습니다.
+        insertPrice(40, 1, "100.00", "120000.00", "185000.00");
+        insertPrice(41, 1, "50.00", "80000.00", "110000.00");
     }
 
     @AfterEach
@@ -77,9 +87,22 @@ class PerfumeDetailIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfumeId").value(1))
                 .andExpect(jsonPath("$.name").value("Bleu de Chanel"))
-                .andExpect(jsonPath("$.brand").value("Chanel"))
+                .andExpect(jsonPath("$.brand.brandId").value(1))
+                .andExpect(jsonPath("$.brand.name").value("Chanel"))
+                .andExpect(jsonPath("$.nameKo").value(NAME_KO))
+                .andExpect(jsonPath("$.gender").value(GENDER))
                 .andExpect(jsonPath("$.description").value(DESCRIPTION))
-                .andExpect(jsonPath("$.thumbnailUrl").value(PRIMARY_IMAGE));
+                .andExpect(jsonPath("$.concentration").value(CONCENTRATION));
+    }
+
+    /** ì´ë¯¸ì§ë ëí ì´ë¯¸ì§ê° ë¨¼ì  ì¤ëë¡ ì ë ¬ë ì ì²´ ëª©ë¡ìëë¤. */
+    @Test
+    void returnsAllImagesWithPrimaryFirst() throws Exception {
+        mockMvc.perform(get(DETAIL_URL, 1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.images.length()").value(2))
+                .andExpect(jsonPath("$.images[0]").value(PRIMARY_IMAGE))
+                .andExpect(jsonPath("$.images[1]").value(SECONDARY_IMAGE));
     }
 
     /** 명세: 향조·후기·후기 통계·계절별 평가는 각각의 별도 기능에서 제공한다. */
@@ -94,11 +117,31 @@ class PerfumeDetailIntegrationTest {
     }
 
     @Test
-    void returnsNoThumbnailWhenPerfumeHasNoImage() throws Exception {
+    void returnsEmptyImagesWhenPerfumeHasNoImage() throws Exception {
         mockMvc.perform(get(DETAIL_URL, 2))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfumeId").value(2))
-                .andExpect(jsonPath("$.thumbnailUrl").doesNotExist());
+                .andExpect(jsonPath("$.images").isEmpty());
+    }
+
+    /** 가격은 용량 오름차순입니다. 수집 시점도 함께 내려줍니다. */
+    @Test
+    void returnsPricesOrderedByVolume() throws Exception {
+        mockMvc.perform(get(DETAIL_URL, 1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.prices.length()").value(2))
+                .andExpect(jsonPath("$.prices[0].volumeMl").value(50.00))
+                .andExpect(jsonPath("$.prices[0].minPrice").value(80000.00))
+                .andExpect(jsonPath("$.prices[0].maxPrice").value(110000.00))
+                .andExpect(jsonPath("$.prices[0].collectedAt").value(COLLECTED_AT))
+                .andExpect(jsonPath("$.prices[1].volumeMl").value(100.00));
+    }
+
+    @Test
+    void returnsEmptyPricesWhenPerfumeHasNoPrice() throws Exception {
+        mockMvc.perform(get(DETAIL_URL, 2))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.prices").isEmpty());
     }
 
     /** brand_id 가 nullable 이므로 LEFT JOIN 이어야 합니다. INNER JOIN 이면 404 가 됩니다. */
@@ -115,7 +158,7 @@ class PerfumeDetailIntegrationTest {
     void breaksDisplayOrderTieByImageId() throws Exception {
         mockMvc.perform(get(DETAIL_URL, 5))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.thumbnailUrl").value(TIE_LOWER_ID_IMAGE));
+                .andExpect(jsonPath("$.images[0]").value(TIE_LOWER_ID_IMAGE));
     }
 
     /** 이미지가 여러 장이고 일부에 display_order 가 없으면, 값이 있는 쪽이 대표입니다. */
@@ -123,7 +166,7 @@ class PerfumeDetailIntegrationTest {
     void prefersImageWithDisplayOrderOverNull() throws Exception {
         mockMvc.perform(get(DETAIL_URL, 6))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.thumbnailUrl").value(ORDERED_IMAGE));
+                .andExpect(jsonPath("$.images[0]").value(ORDERED_IMAGE));
     }
 
     /** 명세: 향수 정보가 존재하지 않는 경우 조회 실패 사실을 안내한다. */
@@ -157,10 +200,23 @@ class PerfumeDetailIntegrationTest {
         );
     }
 
-    private void insertPerfume(long id, Integer brandId, String name, String description, boolean active) {
+    private void insertPerfume(
+            long id, Integer brandId, String name, String nameKo,
+            String gender, String description, String concentration, boolean active
+    ) {
         jdbcTemplate.update(
-                "INSERT INTO perfumes (perfume_id, brand_id, name, description, is_active) VALUES (?, ?, ?, ?, ?)",
-                id, brandId, name, description, active
+                "INSERT INTO perfumes (perfume_id, brand_id, name, name_ko, gender, description,"
+                        + " concentration, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                id, brandId, name, nameKo, gender, description, concentration, active
+        );
+    }
+
+    private void insertPrice(long id, long perfumeId, String volumeMl, String minPrice, String maxPrice) {
+        jdbcTemplate.update(
+                "INSERT INTO perfume_prices (price_id, perfume_id, volume_ml, min_price, max_price,"
+                        + " collected_at) VALUES (?, ?, ?, ?, ?, ?)",
+                id, perfumeId, new BigDecimal(volumeMl), new BigDecimal(minPrice),
+                new BigDecimal(maxPrice), OffsetDateTime.parse(COLLECTED_AT)
         );
     }
 
@@ -172,6 +228,7 @@ class PerfumeDetailIntegrationTest {
     }
 
     private void clearPerfumeData() {
+        jdbcTemplate.update("DELETE FROM perfume_prices");
         jdbcTemplate.update("DELETE FROM perfume_images");
         jdbcTemplate.update("DELETE FROM perfumes");
         jdbcTemplate.update("DELETE FROM brands");
