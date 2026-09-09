@@ -65,9 +65,9 @@ export function PerfumeGrid({
         <li key={perfume.perfumeId}>
           <PerfumeCard
             name={perfume.name}
-            brand={perfume.brand}
+            brand={perfume.brandName}
             // ⚠️ 백엔드가 아직 안 내려주는 필드입니다. 없으면 자리표시자가 나옵니다.
-            thumbnailUrl={perfume.thumbnailUrl}
+            thumbnailUrl={perfume.imageUrl}
             to={toPerfumeDetail(perfume.perfumeId)}
           />
         </li>
