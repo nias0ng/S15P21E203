@@ -34,6 +34,9 @@
     --paper-deep: oklch(0.87 0.019 74);
     --niche-bg: oklch(0.887 0.018 75);
     --niche-floor: oklch(0.852 0.023 72);
+    /* 좌우 벽. 바깥(입구)이 밝고 뒷벽과 만나는 안쪽 모서리가 가장 어둡습니다 */
+    --niche-wall: oklch(0.871 0.02 74);
+    --niche-wall-deep: oklch(0.828 0.025 71);
     --shelf-ink: oklch(0.285 0.014 58);
     --shelf-ink-soft: oklch(0.455 0.014 61);
     --chip: oklch(0.947 0.009 80 / 0.74);
@@ -76,6 +79,33 @@
     opacity: 0.12;
     mix-blend-mode: multiply;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.62' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");
+  }
+
+  /*
+   * 벽감의 좌우 벽면.
+   *
+   * 벽감의 clip-path 는 좌우를 **잘라내기만** 합니다. 그래서 잘린 자리에는 아무것도
+   * 없었고 페이지 종이가 그대로 비쳤습니다 — 종이(밝기 223)가 뒷벽(215)보다 밝아서
+   * 깊이가 뒤집혀 보였습니다. 이 상자가 벽감 **뒤에** 깔려 그 자리를 벽면으로 채웁니다.
+   *
+   * 벽감을 자르는 대각선이 위아래로 갈수록 좁아지므로, 여기에 사각형 그러데이션을
+   * 깔아 두기만 해도 드러나는 모양이 저절로 사다리꼴이 됩니다. 벽 모양을 여기서
+   * 또 그리면 두 clip-path 가 서로 어긋날 자리가 생깁니다.
+   *
+   * ⚠️ 24px · 31px 은 아래 벽감 clip-path 의 값과 **같아야** 합니다. 다르면 벽이
+   * 모자라 종이가 비치거나, 남아서 벽감 위로 삐져나옵니다.
+   */
+  .shelf-case {
+    background-image:
+      linear-gradient(to right, var(--niche-wall), var(--niche-wall-deep)),
+      linear-gradient(to left, var(--niche-wall), var(--niche-wall-deep));
+    background-size:
+      24px 100%,
+      31px 100%;
+    background-position:
+      left center,
+      right center;
+    background-repeat: no-repeat;
   }
 
   /*

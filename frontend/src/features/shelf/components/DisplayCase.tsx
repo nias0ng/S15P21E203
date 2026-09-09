@@ -58,68 +58,75 @@ export function DisplayCase({ items, selectedId, onSelect, className }: Props) {
 
   return (
     <section className={cn('min-w-0', className)} aria-label="향수 진열장">
-      {/* 벽감. 높이는 시안 실측값(329px)입니다 */}
-      <div className="shelf-niche relative h-[329px] overflow-hidden">
-        {shown.length === 0 ? (
-          <p className="shelf-muted text-caption absolute inset-0 flex items-center justify-center">
-            조건에 맞는 향수가 없습니다
-          </p>
-        ) : (
-          /*
-            칸 수를 항상 7로 못 박습니다. 남은 병 수에 맞춰 칸을 늘리면 마지막 장에서
-            병이 갑자기 커지면서, 같은 향수가 장을 넘길 때마다 다른 크기로 보입니다.
-            모자란 칸은 빈 자리로 남습니다 — 선반에 빈 칸이 있는 게 맞는 모습입니다.
-          */
-          <div className="absolute inset-x-10 top-9 bottom-0 grid grid-cols-7 items-end">
-            {shown.map((item) => (
-              <button
-                key={item.shelfItemId}
-                type="button"
-                aria-pressed={item.shelfItemId === selectedId}
-                onClick={() => onSelect(item)}
-                title={`${item.name} · ${item.brand}`}
-                className={cn(
-                  'relative flex h-[292px] min-w-0 items-end justify-center',
-                  'rounded-card outline-none focus-visible:ring-2 focus-visible:ring-[var(--shelf-ink)]',
-                )}
-              >
-                {/* 병 뒤 찢어진 종이. 모양은 CSS, 크기·위치는 여기서 */}
-                <span
-                  aria-hidden
-                  className="shelf-torn pointer-events-none absolute bottom-0 h-[88%] w-[82%]"
-                />
-                {/* 병이 바닥에 닿는 자리. 이게 없으면 병이 떠 보입니다 */}
-                <span
-                  aria-hidden
-                  className="shelf-ground pointer-events-none absolute -bottom-1 h-3.5 w-[82%] rounded-[50%]"
-                />
-
-                {item.thumbnailUrl && (
-                  <img
-                    src={item.thumbnailUrl}
-                    alt=""
-                    style={{
-                      height:
-                        BOTTLE_HEIGHTS[
-                          item.shelfItemId % BOTTLE_HEIGHTS.length
-                        ],
-                    }}
-                    className={cn(
-                      'shelf-bottle-img relative z-[2] max-w-[94%] object-contain object-bottom',
-                      'transition-transform duration-200 ease-out',
-                      item.shelfItemId === selectedId
-                        ? '-translate-y-1'
-                        : 'hover:-translate-y-1',
-                    )}
+      {/*
+        바깥 상자가 좌우 **벽면**을, 안쪽 벽감이 뒷벽과 바닥을 그립니다. 둘로 나눈
+        이유는 벽감의 clip-path 가 자기 자식과 그림자까지 전부 잘라내기 때문입니다 —
+        벽을 벽감 안에 두면 그리는 순간 같이 잘려 나갑니다.
+        높이 329px 은 시안 실측값입니다.
+      */}
+      <div className="shelf-case relative h-[329px]">
+        <div className="shelf-niche absolute inset-0 overflow-hidden">
+          {shown.length === 0 ? (
+            <p className="shelf-muted text-caption absolute inset-0 flex items-center justify-center">
+              조건에 맞는 향수가 없습니다
+            </p>
+          ) : (
+            /*
+              칸 수를 항상 7로 못 박습니다. 남은 병 수에 맞춰 칸을 늘리면 마지막 장에서
+              병이 갑자기 커지면서, 같은 향수가 장을 넘길 때마다 다른 크기로 보입니다.
+              모자란 칸은 빈 자리로 남습니다 — 선반에 빈 칸이 있는 게 맞는 모습입니다.
+            */
+            <div className="absolute inset-x-10 top-9 bottom-0 grid grid-cols-7 items-end">
+              {shown.map((item) => (
+                <button
+                  key={item.shelfItemId}
+                  type="button"
+                  aria-pressed={item.shelfItemId === selectedId}
+                  onClick={() => onSelect(item)}
+                  title={`${item.name} · ${item.brand}`}
+                  className={cn(
+                    'relative flex h-[292px] min-w-0 items-end justify-center',
+                    'rounded-card outline-none focus-visible:ring-2 focus-visible:ring-[var(--shelf-ink)]',
+                  )}
+                >
+                  {/* 병 뒤 찢어진 종이. 모양은 CSS, 크기·위치는 여기서 */}
+                  <span
+                    aria-hidden
+                    className="shelf-torn pointer-events-none absolute bottom-0 h-[88%] w-[82%]"
                   />
-                )}
-                <span className="sr-only">
-                  {item.name} {item.brand}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
+                  {/* 병이 바닥에 닿는 자리. 이게 없으면 병이 떠 보입니다 */}
+                  <span
+                    aria-hidden
+                    className="shelf-ground pointer-events-none absolute -bottom-1 h-3.5 w-[82%] rounded-[50%]"
+                  />
+
+                  {item.thumbnailUrl && (
+                    <img
+                      src={item.thumbnailUrl}
+                      alt=""
+                      style={{
+                        height:
+                          BOTTLE_HEIGHTS[
+                            item.shelfItemId % BOTTLE_HEIGHTS.length
+                          ],
+                      }}
+                      className={cn(
+                        'shelf-bottle-img relative z-[2] max-w-[94%] object-contain object-bottom',
+                        'transition-transform duration-200 ease-out',
+                        item.shelfItemId === selectedId
+                          ? '-translate-y-1'
+                          : 'hover:-translate-y-1',
+                      )}
+                    />
+                  )}
+                  <span className="sr-only">
+                    {item.name} {item.brand}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 라벨은 벽감 밖 아래. 병과 같은 그리드를 써야 열이 맞습니다 */}
