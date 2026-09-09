@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.hyanghae.backend.support.IntegrationTest;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -116,23 +117,27 @@ class PerfumeSearchIntegrationTest {
                 .andExpect(jsonPath("$.totalPages").doesNotExist());
     }
 
-    /** 기능 명세: 검색어가 입력되지 않은 경우 검색을 수행하지 않는다. */
+    /**
+     * 조건이 없으면 활성 향수 전체입니다. 이 엔드포인트를 향수 목록 화면이 함께 쓰는데, 목록
+     * 화면은 필터를 걸기 전에도 향수가 보여야 합니다. 비활성 향수 1건은 빠져 5건입니다.
+     */
     @Test
-    void returnsEmptyResultWhenKeywordIsMissing() throws Exception {
+    void returnsAllActivePerfumesWhenNoConditionGiven() throws Exception {
         mockMvc.perform(get(SEARCH_URL))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.perfumes").isEmpty())
-                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(5)))
+                .andExpect(jsonPath("$.totalElements").value(5))
                 .andExpect(jsonPath("$.page").value(0))
                 .andExpect(jsonPath("$.size").value(20));
     }
 
+    /** 공백뿐인 검색어는 값이 없는 것과 같게 다룹니다. 공백을 포함한 이름을 찾으러 가지 않습니다. */
     @Test
-    void returnsEmptyResultWhenKeywordIsBlank() throws Exception {
+    void treatsBlankKeywordAsNoCondition() throws Exception {
         mockMvc.perform(get(SEARCH_URL).param("keyword", "   "))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.perfumes").isEmpty())
-                .andExpect(jsonPath("$.totalElements").value(0));
+                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(5)))
+                .andExpect(jsonPath("$.totalElements").value(5));
     }
 
     @Test

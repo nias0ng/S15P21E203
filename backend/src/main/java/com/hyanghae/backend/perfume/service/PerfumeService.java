@@ -39,19 +39,18 @@ public class PerfumeService {
     /**
      * 향수명·브랜드명으로 향수를 검색합니다.
      *
-     * <p>기능 명세의 "검색어가 입력되지 않은 경우 검색을 수행하지 않는다" 에 따라, 검색어가 없으면
-     * 데이터베이스를 조회하지 않고 빈 결과를 반환합니다. 전체 목록을 돌려주면 검색창을 누르기만 해도
-     * 카탈로그 전체를 긁는 요청이 됩니다.
+     * <p>조건을 하나도 주지 않으면 활성 향수 전체를 페이지 단위로 돌려줍니다. 이 엔드포인트는
+     * 검색창뿐 아니라 향수 목록 화면도 함께 쓰는데, 목록 화면은 필터를 걸기 전에도 향수가 보여야
+     * 합니다. 조건 없는 요청에 빈 목록을 주면 목록 화면이 "검색 결과가 없습니다" 로 시작합니다.
+     *
+     * <p>전체를 준다고 해서 카탈로그를 통째로 내려주는 것은 아닙니다. 페이지 크기가 걸려 있어
+     * 한 번에 나가는 건수는 조건이 있을 때와 같습니다.
      */
     @Transactional(readOnly = true)
     public PerfumeSearchResponse search(PerfumeSearchCondition condition, Pageable pageable) {
         String keyword = normalize(condition.keyword());
         String brand = trimToNull(condition.brand());
         String gender = condition.gender() == null ? null : condition.gender().name();
-
-        if (keyword == null && brand == null && gender == null) {
-            return PerfumeSearchResponse.from(Page.empty(pageable));
-        }
 
         Page<PerfumeSummaryResponse> found = perfumeRepository.search(keyword, brand, gender, pageable);
         Map<Long, String> images = loadThumbnails(

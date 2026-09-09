@@ -145,22 +145,25 @@ class PerfumeSearchFilterIntegrationTest {
                 .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1));
     }
 
-    /** 조건이 하나도 없으면 조회하지 않습니다. 기능 명세서의 예외·정책을 따릅니다. */
+    /** 조건이 하나도 없으면 활성 향수 전체입니다. 비활성 1건이 빠져 5건입니다. */
     @Test
-    void returnsEmptyWhenNoConditionGiven() throws Exception {
+    void returnsAllActivePerfumesWhenNoConditionGiven() throws Exception {
         mockMvc.perform(get(SEARCH_URL))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(0)))
-                .andExpect(jsonPath("$.totalElements").value(0));
+                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(5)))
+                .andExpect(jsonPath("$.totalElements").value(5));
     }
 
-    /** 빈 문자열 필터는 값이 없는 것과 같게 다룹니다. 공백 이름을 가진 브랜드를 찾으러 가지 않습니다. */
+    /**
+     * 공백뿐인 필터는 값이 없는 것과 같게 다룹니다. 공백 이름을 가진 브랜드를 찾으러 가면
+     * 0건이 나오지만, 값이 없는 것으로 보면 전체가 나옵니다.
+     */
     @Test
     void treatsBlankFilterAsAbsent() throws Exception {
         mockMvc.perform(get(SEARCH_URL).param("brand", "   "))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(0)))
-                .andExpect(jsonPath("$.totalElements").value(0));
+                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(5)))
+                .andExpect(jsonPath("$.totalElements").value(5));
     }
 
     /** 모르는 성별 값은 400 입니다. 조용히 0건을 주면 필터가 걸린 것인지 구분할 수 없습니다. */
