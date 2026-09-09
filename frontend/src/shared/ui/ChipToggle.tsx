@@ -64,9 +64,9 @@ export function ChipToggle<T extends string>(props: ChipToggleProps<T>) {
             onClick={() => toggle(option.value)}
             className={cn(
               'border-line border px-3 py-2 text-[11px] transition-colors',
-              'focus-visible:ring-accent outline-none focus-visible:ring-2',
+              'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
               selected
-                ? 'bg-ink text-white'
+                ? 'bg-ink text-surface'
                 : 'text-ink hover:bg-line-soft bg-surface-card',
             )}
           >

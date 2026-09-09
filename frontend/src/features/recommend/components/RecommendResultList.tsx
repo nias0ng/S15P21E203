@@ -52,7 +52,7 @@ export function RecommendResultList({ perfumes, selectedId, onSelect }: Props) {
                 }}
                 className="flex w-full items-start gap-3 text-left"
               >
-                <span className="bg-ink flex size-6 shrink-0 items-center justify-center text-[11px] text-white">
+                <span className="bg-ink text-surface flex size-6 shrink-0 items-center justify-center text-[11px]">
                   {index + 1}
                 </span>
                 <Thumbnail

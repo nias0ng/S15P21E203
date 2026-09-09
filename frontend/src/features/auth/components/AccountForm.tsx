@@ -25,7 +25,7 @@ export function AccountForm() {
 
   return (
     <>
-      <div className="border-line border bg-white">
+      <div className="border-line bg-surface-card border">
         <div className="space-y-3.5 p-6">
           <h1 className="text-ink text-[17px] font-bold">정보 변경</h1>
 
@@ -76,7 +76,7 @@ export function AccountForm() {
             <input
               id="account-nickname"
               defaultValue="유저닉네임"
-              className="border-line text-ink focus-visible:ring-accent h-10 w-70 border px-3 text-xs outline-none focus-visible:ring-2"
+              className="border-line text-ink focus-visible:ring-accent-deep h-10 w-70 border px-3 text-xs outline-none focus-visible:ring-2"
             />
             <Button variant="outline" size="sm">
               중복 확인

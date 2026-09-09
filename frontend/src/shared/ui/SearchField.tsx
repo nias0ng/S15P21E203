@@ -43,7 +43,7 @@ export function SearchField({
         type="search"
         className={cn(
           'border-line text-ink placeholder:text-ink-muted min-w-0 flex-1 border px-3 py-3 text-xs',
-          'focus-visible:ring-accent outline-none focus-visible:ring-2',
+          'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
         )}
         {...props}
       />

@@ -26,7 +26,7 @@ export function AuthCard({
 }: AuthCardProps) {
   return (
     <div className={cn('w-full max-w-85 space-y-1.5', className)}>
-      <div className="border-line space-y-3 border bg-white p-5">
+      <div className="border-line bg-surface-card space-y-3 border p-5">
         {eyebrow && <p className="text-ink-muted text-[10.5px]">{eyebrow}</p>}
         <h1 className="text-ink text-[17px] font-bold">{title}</h1>
         {description && <p className="text-ink text-xs">{description}</p>}

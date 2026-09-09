@@ -40,7 +40,7 @@ export function SimilarExplorer({ center, similar, onPick }: Props) {
 
         {/* 중심 향수 */}
         <div className="bg-ink absolute top-1/2 left-1/2 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full p-3 text-center">
-          <span className="block truncate text-[10.5px] text-white">
+          <span className="text-surface block truncate text-[10.5px]">
             {center.name}
           </span>
         </div>
@@ -56,7 +56,7 @@ export function SimilarExplorer({ center, similar, onPick }: Props) {
               type="button"
               onClick={() => onPick(point)}
               title={`${point.name} · ${point.brand}`}
-              className="border-line bg-fog hover:bg-slate absolute w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border p-2 transition-colors hover:text-white"
+              className="border-line bg-line-soft hover:bg-ink hover:text-surface absolute w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border p-2 transition-colors"
               style={{
                 left: `${50 + Math.cos(angle) * radius}%`,
                 top: `${50 + Math.sin(angle) * radius}%`,

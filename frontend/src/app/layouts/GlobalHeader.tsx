@@ -104,7 +104,7 @@ function CommunityMenu() {
       {open && (
         <ul
           // 와이어프레임 기준 폭 120px
-          className="border-line absolute top-full left-0 z-30 mt-px w-30 border bg-white"
+          className="border-line bg-surface-card absolute top-full left-0 z-30 mt-px w-30 border"
           role="menu"
         >
           {COMMUNITY_ITEMS.map((item, index) => (
@@ -141,7 +141,7 @@ function AccountMenu() {
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen(!open)}
-        className="bg-ink flex items-center gap-2 px-2 py-[3px] text-xs text-white"
+        className="bg-ink text-surface flex items-center gap-2 px-2 py-[3px] text-xs"
       >
         {/* TODO: 프로필 이미지 연동 (A29 정보 변경에서 업로드) */}
         <span
@@ -156,7 +156,7 @@ function AccountMenu() {
       {open && (
         <ul
           // 와이어프레임 기준 폭 158px, 우측 정렬
-          className="border-line absolute top-full right-0 z-30 mt-px w-[158px] border bg-white"
+          className="border-line bg-surface-card absolute top-full right-0 z-30 mt-px w-[158px] border"
           role="menu"
         >
           <li role="none">

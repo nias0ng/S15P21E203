@@ -64,8 +64,8 @@ export function ShelfRow({ title, items, selectedId, onSelect }: Props) {
                 // 병처럼 보이도록 높이를 번갈아 다르게 줍니다
                 BOTTLE_HEIGHTS[index % BOTTLE_HEIGHTS.length],
                 selectedId === item.shelfItemId
-                  ? 'bg-fog border-ink'
-                  : 'bg-surface-sunken hover:bg-fog',
+                  ? 'bg-line border-ink'
+                  : 'bg-surface-sunken hover:bg-line',
               )}
             >
               <span className="sr-only">

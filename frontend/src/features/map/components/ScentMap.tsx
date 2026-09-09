@@ -89,7 +89,7 @@ export function ScentMap({
               'cursor-pointer',
               selectedId === point.perfumeId
                 ? 'fill-ink'
-                : 'fill-slate hover:fill-ink',
+                : 'fill-ink-muted hover:fill-ink',
             )}
             onClick={(event) => {
               // 배경 클릭 핸들러까지 올라가면 방금 연 모달이 바로 닫힙니다
