@@ -16,9 +16,9 @@ import type {
  * 조건(keyword · brand · gender · shelf)은 모두 선택이고 함께 오면 AND 입니다.
  * 하나도 안 보내면 활성 향수 전체가 옵니다.
  *
- * ⚠️ shelf 는 로그인이 필요합니다. 비로그인이면 401
- * (code: PERFUME_SHELF_FILTER_REQUIRES_LOGIN). 백엔드에 인증이 아직 없어
- * 지금은 어떤 요청이든 401 입니다.
+ * shelf 는 전체 사용자 집계 기준이라 로그인이 필요 없습니다.
+ * ⚠️ 백엔드가 수정 중입니다. 현재 구현은 개인 진열대 기준이라 비로그인이면
+ * 401 입니다. 집계 기준 수정본이 나오면 이 주석을 지우세요.
  * ⚠️ gender · shelf 에 정의되지 않은 값을 보내면 400 입니다.
  */
 export async function searchPerfumes(params: PerfumeSearchParams) {

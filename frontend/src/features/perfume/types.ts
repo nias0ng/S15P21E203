@@ -69,10 +69,11 @@ export interface PerfumeSearchParams {
   scentFamily?: ScentFamily
 
   /**
-   * A33 위 줄 필터 — 내 진열대 기준.
-   * ⚠️ 로그인이 필요합니다. 비로그인 요청에 보내면 401 이고 code 는
-   * 'PERFUME_SHELF_FILTER_REQUIRES_LOGIN' 입니다. 백엔드에 인증이 아직 없어
-   * 지금은 어떤 요청이든 401 입니다.
+   * A33 위 줄 필터 — **전체 사용자 집계** 기준입니다.
+   *
+   * ⚠️ 백엔드가 수정 중입니다. 현재 구현은 개인 진열대 기준이라 비로그인이면
+   * 401(PERFUME_SHELF_FILTER_REQUIRES_LOGIN)이지만, 집계 기준으로 바뀌면
+   * 로그인 없이 동작합니다. 수정본이 나오면 이 주석을 지우세요.
    */
   shelf?: ShelfFilter
 
@@ -109,7 +110,16 @@ export interface PerfumeSearchResponse {
   totalElements: number
 }
 
-/** A33 위 줄 필터 — 내 진열대 기준. 로그인 상태에서만 의미가 있습니다. */
+/**
+ * A33 위 줄 필터 — 전체 사용자 집계 기준입니다. 로그인이 필요 없습니다.
+ *
+ *   OWNED   많은 사람이 "보유 중" 으로 담은 향수
+ *   WISH    많은 사람이 "보유 희망" 으로 담은 향수
+ *   VIEWED  많이 조회된 향수
+ *
+ * 이름이 개인 소유처럼 읽히지만 실제로는 집계값입니다. 백엔드 파라미터명이라
+ * 그대로 두었습니다.
+ */
 export type ShelfFilter = 'OWNED' | 'WISH' | 'VIEWED'
 
 /** A33 아래 줄 필터 — 향의 성별 */
