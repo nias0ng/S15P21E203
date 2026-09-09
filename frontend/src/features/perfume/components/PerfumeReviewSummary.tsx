@@ -1,6 +1,6 @@
 type Props = {
-  /** 브랜드 공식 향 설명 */
-  description: string
+  /** 브랜드 공식 향 설명. 없는 향수는 null 로 옵니다 */
+  description: string | null
 }
 
 /**
@@ -28,7 +28,9 @@ export function PerfumeReviewSummary({ description }: Props) {
 
       <div className="space-y-3">
         <h2 className="text-ink text-sm font-bold">브랜드 공식 향 설명</h2>
-        <p className="text-ink text-xs leading-relaxed">{description}</p>
+        <p className="text-ink text-xs leading-relaxed">
+          {description ?? '아직 등록된 설명이 없습니다.'}
+        </p>
       </div>
     </section>
   )
