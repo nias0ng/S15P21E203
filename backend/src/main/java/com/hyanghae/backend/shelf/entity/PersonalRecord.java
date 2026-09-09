@@ -7,7 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -15,8 +15,8 @@ import java.time.OffsetDateTime;
 /**
  * 진열대 향수에 남긴 비공개 시향 기록인 {@code personal_records} 테이블 매핑입니다.
  *
- * <p>한 진열대 항목에 여러 기록을 저장할 수 있는 현재 스키마에 맞춰 다대일 관계로 매핑합니다.
- * 진열대 항목이 삭제되면 데이터베이스의 외래 키 정책에 의해 기록도 함께 삭제됩니다.
+ * <p>한 진열대 항목에는 하나의 시향 기록만 존재하므로 일대일 관계로 매핑합니다. 진열대 항목이
+ * 삭제되면 데이터베이스의 외래 키 정책에 의해 기록도 함께 삭제됩니다.
  */
 @Entity
 @Table(name = "personal_records")
@@ -27,8 +27,8 @@ public class PersonalRecord {
     @Column(name = "id")
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_perfume_id")
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_perfume_id", nullable = false, unique = true)
     private UserPerfume userPerfume;
 
     @Column(name = "content")
