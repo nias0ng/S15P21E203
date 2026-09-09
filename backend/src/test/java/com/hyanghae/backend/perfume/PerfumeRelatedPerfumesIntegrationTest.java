@@ -167,6 +167,23 @@ class PerfumeRelatedPerfumesIntegrationTest {
                 .andExpect(jsonPath("$.perfumes", Matchers.hasSize(0)));
     }
 
+    /**
+     * 숫자로 읽을 수 없는 {@code size} 는 400 입니다. 범위를 벗어난 값(0, 100000)은 목록 길이라
+     * 보고 허용 범위로 맞추지만, 아예 숫자가 아닌 값은 요청이 잘못된 것입니다. 조용히 기본값으로
+     * 넘어가면 화면이 왜 20개만 오는지 알 수 없습니다.
+     *
+     * <p>응답 본문이 Spring 기본 형식이 아니라 우리 {@code ApiErrorResponse} 형식인지도 함께
+     * 확인합니다. 프론트가 모든 오류를 같은 모양으로 읽습니다.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {NEIGHBORS_URL, SIMILAR_URL})
+    void rejectsNonNumericSize(String url) throws Exception {
+        mockMvc.perform(get(url, 1).param("size", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
+                .andExpect(jsonPath("$.message").exists());
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {NEIGHBORS_URL, SIMILAR_URL})
     void returnsNotFoundWhenPerfumeDoesNotExist(String url) throws Exception {

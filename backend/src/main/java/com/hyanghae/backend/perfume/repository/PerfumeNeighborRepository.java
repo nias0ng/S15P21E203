@@ -15,6 +15,10 @@ public interface PerfumeNeighborRepository
     /**
      * 기준 향수와 이어진 향수들을 조회합니다. 주변 향수와 유사 향수가 같은 결과를 씁니다.
      *
+     * <p>연관관계를 매핑하지 않아 {@code JOIN ... ON} 으로 조인 조건을 직접 씁니다. 조인 조건을
+     * {@code WHERE} 에 섞어 쓰면 어디까지가 조인이고 어디부터가 걸러내는 조건인지 구분되지
+     * 않습니다.
+     *
      * <p>비활성 향수는 제외합니다. 검색과 기본 정보 조회에서 이미 숨긴 향수가 주변 향수 목록으로
      * 다시 나타나면, 눌렀을 때 404 가 나는 항목을 화면에 그리게 됩니다.
      *
@@ -25,9 +29,9 @@ public interface PerfumeNeighborRepository
     @Query("""
             SELECT new com.hyanghae.backend.perfume.dto.response.RelatedPerfumeResponse(
                        p.id, p.name, p.nameKo)
-            FROM PerfumeNeighbor n, Perfume p
-            WHERE n.id.neighborPerfumeId = p.id
-              AND n.id.perfumeId = :perfumeId
+            FROM PerfumeNeighbor n
+            JOIN Perfume p ON p.id = n.id.neighborPerfumeId
+            WHERE n.id.perfumeId = :perfumeId
               AND p.active = true
             ORDER BY p.id
             """)
