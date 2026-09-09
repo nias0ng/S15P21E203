@@ -50,7 +50,6 @@ class ShelfPersistenceIntegrationTest {
         assertThat(shelfItem.getRepresentative()).isFalse();
         assertThat(shelfItem.getCreatedAt()).isNotNull();
         assertThat(shelfItem.getUpdatedAt()).isNotNull();
-        assertThat(shelfItem.getDeletedAt()).isNull();
 
         assertThat(record.getUserPerfume().getId()).isEqualTo(fixture.shelfItemId());
         assertThat(record.getContent()).isEqualTo("차분한 우디 향");
@@ -68,31 +67,68 @@ class ShelfPersistenceIntegrationTest {
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
+    @Test
+    void rejectsSamePerfumeTwiceForSameUser() {
+        ShelfFixture fixture = insertShelfItem();
+
+        assertThatThrownBy(() -> insertShelfItem(fixture.userId(), fixture.perfumeId(), false))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void rejectsMoreThanOneRepresentativePerfumeForSameUser() {
+        Long userId = insertUser();
+        insertShelfItem(userId, insertPerfume("first-perfume"), true);
+
+        assertThatThrownBy(() -> insertShelfItem(userId, insertPerfume("second-perfume"), true))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void deletingShelfItemCascadesToPersonalRecord() {
+        ShelfFixture fixture = insertShelfItem();
+        Long recordId = insertPersonalRecord(fixture.shelfItemId(), "삭제될 기록");
+
+        jdbcTemplate.update(
+                "DELETE FROM user_perfumes WHERE user_perfumes_id = ?",
+                fixture.shelfItemId()
+        );
+
+        assertThat(personalRecordRepository.findById(recordId)).isEmpty();
+    }
+
     private ShelfFixture insertShelfItem() {
-        Long userId = jdbcTemplate.queryForObject("""
+        Long userId = insertUser();
+        Long perfumeId = insertPerfume("test-perfume");
+        Long shelfItemId = insertShelfItem(userId, perfumeId, false);
+
+        return new ShelfFixture(userId, perfumeId, shelfItemId);
+    }
+
+    private Long insertUser() {
+        return jdbcTemplate.queryForObject("""
                 INSERT INTO users (email, password_hash, nickname)
                 VALUES ('shelf-test@example.com', 'not-a-real-password-hash', 'shelf-test')
                 RETURNING user_id
                 """, Long.class);
-        Long brandId = jdbcTemplate.queryForObject("""
-                INSERT INTO brands (name)
-                VALUES ('test-brand')
-                RETURNING brand_id
-                """, Long.class);
-        Long perfumeId = jdbcTemplate.queryForObject("""
-                INSERT INTO perfumes (brand_id, name)
-                VALUES (?, 'test-perfume')
+    }
+
+    private Long insertPerfume(String name) {
+        return jdbcTemplate.queryForObject("""
+                INSERT INTO perfumes (name)
+                VALUES (?)
                 RETURNING perfume_id
-                """, Long.class, brandId);
-        Long shelfItemId = jdbcTemplate.queryForObject("""
+                """, Long.class, name);
+    }
+
+    private Long insertShelfItem(Long userId, Long perfumeId, boolean representative) {
+        return jdbcTemplate.queryForObject("""
                 INSERT INTO user_perfumes (
                     user_id, perfume_id, ownership_status, fit_rating, is_representative, created_at, updated_at
                 )
-                VALUES (?, ?, 'TRIED', 4.5, false, NOW(), NOW())
+                VALUES (?, ?, 'TRIED', 4.5, ?, NOW(), NOW())
                 RETURNING user_perfumes_id
-                """, Long.class, userId, perfumeId);
-
-        return new ShelfFixture(userId, perfumeId, shelfItemId);
+                """, Long.class, userId, perfumeId, representative);
     }
 
     private Long insertPersonalRecord(Long shelfItemId, String content) {

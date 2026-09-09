@@ -21,8 +21,9 @@ import java.time.OffsetDateTime;
  * <p>사용자 도메인이 아직 구현되지 않아 {@code user_id}는 식별자 값으로 매핑합니다. 향수는 이미
  * 엔티티가 존재하므로 지연 로딩 연관관계를 사용합니다.
  *
- * <p>삭제 시각이 있는 행은 논리 삭제된 진열대 항목입니다. 조회 시 제외하는 규칙과 대표 향수 변경 등
- * 상태 변경 로직은 후속 기능에서 서비스 트랜잭션과 함께 구현합니다.
+ * <p>진열대 해제는 이 엔티티를 물리 삭제합니다. 연결된 시향 기록과 컬렉션 항목은 데이터베이스의
+ * 외래 키 정책에 따라 함께 삭제됩니다. 대표 향수 변경 등 상태 변경 로직은 후속 기능에서 서비스
+ * 트랜잭션과 함께 구현합니다.
  */
 @Entity
 @Table(name = "user_perfumes")
@@ -55,9 +56,6 @@ public class UserPerfume {
 
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
-
-    @Column(name = "deleted_at")
-    private OffsetDateTime deletedAt;
 
     protected UserPerfume() {
         // JPA 가 요구하는 기본 생성자입니다.
@@ -95,7 +93,4 @@ public class UserPerfume {
         return updatedAt;
     }
 
-    public OffsetDateTime getDeletedAt() {
-        return deletedAt;
-    }
 }
