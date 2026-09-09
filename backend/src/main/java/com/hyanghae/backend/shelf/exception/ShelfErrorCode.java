@@ -1,0 +1,32 @@
+package com.hyanghae.backend.shelf.exception;
+
+import com.hyanghae.backend.global.exception.ErrorCode;
+import org.springframework.http.HttpStatus;
+
+public enum ShelfErrorCode implements ErrorCode {
+
+    SHELF_LOGIN_REQUIRED(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다."),
+    SHELF_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "진열대 항목을 찾을 수 없습니다."),
+    SHELF_INVALID_FIT_RATING(
+            HttpStatus.BAD_REQUEST,
+            "취향 적합도는 1.0부터 5.0까지 0.5 단위로 입력해야 합니다."
+    );
+
+    private final HttpStatus status;
+    private final String message;
+
+    ShelfErrorCode(HttpStatus status, String message) {
+        this.status = status;
+        this.message = message;
+    }
+
+    @Override
+    public HttpStatus status() {
+        return status;
+    }
+
+    @Override
+    public String message() {
+        return message;
+    }
+}
