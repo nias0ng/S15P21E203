@@ -56,6 +56,10 @@ class PerfumeSearchIntegrationTest {
         insertImage(10, 1, BLEU_SECONDARY_IMAGE, 2);
         insertImage(11, 1, BLEU_PRIMARY_IMAGE, 1);
         insertImage(12, 2, CHANCE_IMAGE, null);
+
+        // 향 지도에 자리가 잡힌 향수는 1번뿐입니다. 나머지는 향 계열이 null 이어야 합니다.
+        insertScentRegion(1, "FLORAL", "플로럴");
+        insertMapPoint(1, 1);
     }
 
     @AfterEach
@@ -106,6 +110,28 @@ class PerfumeSearchIntegrationTest {
                 .andExpect(jsonPath("$.totalElements").value(2))
                 .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
                 .andExpect(jsonPath("$.perfumes[1].perfumeId").value(2));
+    }
+
+    /**
+     * 향 계열은 향 지도 도메인의 테이블에 있어 검색 쿼리와 따로 조회합니다. 붙이지 않으면
+     * 화면의 향 계열 뱃지가 비어 있게 됩니다.
+     */
+    @Test
+    void includesScentFamilyFromScentRegion() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "bleu"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
+                .andExpect(jsonPath("$.perfumes[0].scentFamily").value("FLORAL"));
+    }
+
+    /** 향 지도에 자리가 없는 향수도 검색에는 나와야 합니다. 향 계열만 비어 있습니다. */
+    @Test
+    void returnsNullScentFamilyWhenPerfumeHasNoMapPoint() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "chance"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(2))
+                .andExpect(jsonPath("$.perfumes[0].scentFamily").doesNotExist());
     }
 
     /** 명세에서 빠진 필드를 내보내지 않습니다. 프론트엔드는 perfumes 와 totalElements 만 읽습니다. */
@@ -254,9 +280,24 @@ class PerfumeSearchIntegrationTest {
         );
     }
 
+    private void insertScentRegion(long id, String code, String name) {
+        jdbcTemplate.update(
+                "INSERT INTO scent_regions (scent_region_id, code, name, is_active)"
+                        + " VALUES (?, ?, ?, true)",
+                id, code, name);
+    }
+
+    private void insertMapPoint(long perfumeId, long scentRegionId) {
+        jdbcTemplate.update(
+                "INSERT INTO perfume_map_points (perfume_id, scent_region_id) VALUES (?, ?)",
+                perfumeId, scentRegionId);
+    }
+
     private void clearPerfumeData() {
+        jdbcTemplate.update("DELETE FROM perfume_map_points");
         jdbcTemplate.update("DELETE FROM perfume_images");
         jdbcTemplate.update("DELETE FROM perfumes");
         jdbcTemplate.update("DELETE FROM brands");
+        jdbcTemplate.update("DELETE FROM scent_regions");
     }
 }

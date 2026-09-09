@@ -10,6 +10,7 @@ import com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse;
 import com.hyanghae.backend.perfume.exception.PerfumeErrorCode;
 import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeRepository;
+import com.hyanghae.backend.perfume.repository.PerfumeScentFamilyRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeShelfRepository;
 import com.hyanghae.backend.perfume.dto.response.PerfumePriceResponse;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
@@ -28,6 +29,7 @@ public class PerfumeService {
     private final PerfumeRepository perfumeRepository;
     private final PerfumeImageRepository perfumeImageRepository;
     private final PerfumePriceRepository perfumePriceRepository;
+    private final PerfumeScentFamilyRepository perfumeScentFamilyRepository;
     private final PerfumeShelfRepository perfumeShelfRepository;
     private final CurrentUser currentUser;
 
@@ -35,12 +37,14 @@ public class PerfumeService {
             PerfumeRepository perfumeRepository,
             PerfumeImageRepository perfumeImageRepository,
             PerfumePriceRepository perfumePriceRepository,
+            PerfumeScentFamilyRepository perfumeScentFamilyRepository,
             PerfumeShelfRepository perfumeShelfRepository,
             CurrentUser currentUser
     ) {
         this.perfumeRepository = perfumeRepository;
         this.perfumeImageRepository = perfumeImageRepository;
         this.perfumePriceRepository = perfumePriceRepository;
+        this.perfumeScentFamilyRepository = perfumeScentFamilyRepository;
         this.perfumeShelfRepository = perfumeShelfRepository;
         this.currentUser = currentUser;
     }
@@ -70,13 +74,16 @@ public class PerfumeService {
             return PerfumeSearchResponse.from(found);
         }
 
-        Map<Long, String> images = loadThumbnails(
-                found.getContent().stream().map(PerfumeSummaryResponse::perfumeId).toList()
-        );
+        List<Long> perfumeIds = found.getContent().stream()
+                .map(PerfumeSummaryResponse::perfumeId)
+                .toList();
+        Map<Long, String> images = loadThumbnails(perfumeIds);
+        Map<Long, String> scentFamilies = perfumeScentFamilyRepository.findByPerfumeIds(perfumeIds);
 
-        return PerfumeSearchResponse.from(
-                found.map(perfume -> perfume.withImageUrl(images.get(perfume.perfumeId())))
-        );
+        return PerfumeSearchResponse.from(found.map(perfume -> perfume.with(
+                images.get(perfume.perfumeId()),
+                scentFamilies.get(perfume.perfumeId())
+        )));
     }
 
     /**
