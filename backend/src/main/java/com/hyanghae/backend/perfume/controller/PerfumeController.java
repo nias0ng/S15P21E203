@@ -5,6 +5,7 @@ import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.RelatedPerfumesResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeNotesResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumePostsResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumeReviewKeywordsResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeReviewStatisticsResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeReviewSummaryResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSeasonStatisticsResponse;
@@ -81,6 +82,18 @@ public class PerfumeController {
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size
     ) {
         return perfumeService.getPosts(perfumeId, page, size);
+    }
+
+    /**
+     * 후기 키워드 통계 조회입니다. 후기에서 자주 나온 향 표현과 비중을 많이 나온 순으로 줍니다.
+     *
+     * <p>후기 수({@code review-statistics})와 나누어 둔 이유가 있습니다. 후기 수는 바로 셀 수
+     * 있지만 키워드는 AI 가 적재한 뒤에야 값이 생깁니다. 성격이 다른 두 값을 한 응답에 묶으면
+     * 한쪽이 늘 비어 있는 응답이 됩니다.
+     */
+    @GetMapping("/{perfumeId}/review-keywords")
+    public PerfumeReviewKeywordsResponse getReviewKeywords(@PathVariable Long perfumeId) {
+        return perfumeService.getReviewKeywords(perfumeId);
     }
 
     /** 향수 후기 통계 조회입니다. */

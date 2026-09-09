@@ -8,6 +8,8 @@ import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeNotesResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumePostResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumePostsResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumeReviewKeywordResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumeReviewKeywordsResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeReviewStatisticsResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeReviewSummaryResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSeasonStatisticResponse;
@@ -27,6 +29,7 @@ import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
 import com.hyanghae.backend.perfume.repository.PerfumeNeighborRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeNoteRepository;
 import com.hyanghae.backend.perfume.repository.PerfumePostRepository;
+import com.hyanghae.backend.perfume.repository.PerfumeReviewKeywordRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeReviewRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeReviewSummaryRepository;
 import com.hyanghae.backend.perfume.repository.PerfumePriceRepository;
@@ -63,6 +66,7 @@ public class PerfumeService {
     private final PerfumeNoteRepository perfumeNoteRepository;
     private final PerfumeAccordRepository perfumeAccordRepository;
     private final PerfumeReviewRepository perfumeReviewRepository;
+    private final PerfumeReviewKeywordRepository perfumeReviewKeywordRepository;
     private final PerfumeReviewSummaryRepository perfumeReviewSummaryRepository;
     private final PerfumePostRepository perfumePostRepository;
     private final PerfumeNeighborRepository perfumeNeighborRepository;
@@ -77,6 +81,7 @@ public class PerfumeService {
             PerfumeNoteRepository perfumeNoteRepository,
             PerfumeAccordRepository perfumeAccordRepository,
             PerfumeReviewRepository perfumeReviewRepository,
+            PerfumeReviewKeywordRepository perfumeReviewKeywordRepository,
             PerfumeReviewSummaryRepository perfumeReviewSummaryRepository,
             PerfumePostRepository perfumePostRepository,
             PerfumeNeighborRepository perfumeNeighborRepository
@@ -90,6 +95,7 @@ public class PerfumeService {
         this.perfumeNoteRepository = perfumeNoteRepository;
         this.perfumeAccordRepository = perfumeAccordRepository;
         this.perfumeReviewRepository = perfumeReviewRepository;
+        this.perfumeReviewKeywordRepository = perfumeReviewKeywordRepository;
         this.perfumeReviewSummaryRepository = perfumeReviewSummaryRepository;
         this.perfumePostRepository = perfumePostRepository;
         this.perfumeNeighborRepository = perfumeNeighborRepository;
@@ -108,8 +114,12 @@ public class PerfumeService {
      * <p>진열대 필터만 다르게 다룹니다. 향수의 속성이 아니라 요청자와 향수의 관계라서, 요청자를
      * 알 수 없으면 401 입니다. 조용히 전체를 돌려주면 필터가 걸린 것처럼 보이지만 남의 자료가
      * 섞입니다.
+     *
+     * <p>격리 수준을 {@code REPEATABLE_READ} 로 올린 이유는 관련 게시글 조회와 같습니다. 목록과
+     * 전체 개수를 두 번의 쿼리로 얻는데, 기본값인 {@code READ COMMITTED} 는 문장마다 새 스냅샷을
+     * 잡아 두 값이 어긋날 수 있습니다.
      */
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public PerfumeSearchResponse search(PerfumeSearchCondition condition, Pageable pageable) {
         String keyword = normalize(condition.keyword());
         String brand = trimToNull(condition.brand());
@@ -167,6 +177,32 @@ public class PerfumeService {
         return new PerfumeNotesResponse(
                 perfumeNoteRepository.findByPerfumeId(perfumeId),
                 perfumeAccordRepository.findByPerfumeId(perfumeId)
+        );
+    }
+
+    /**
+     * 후기에서 자주 나온 향 표현과 그 비중입니다.
+     *
+     * <p>분모는 키워드가 하나라도 뽑힌 후기 수입니다. 후기 하나에서 키워드가 여러 개 나올 수 있어
+     * 백분율의 합이 100 을 넘을 수 있습니다. 계절 통계와 같은 성질입니다.
+     *
+     * <p>키워드가 없는 향수는 빈 배열입니다. 없는 향수와 구분해야 하므로 존재하지 않는 향수에만
+     * 404 를 반환합니다. 키워드를 뽑는 파이프라인이 아직 없어 현재는 모든 향수가 빈 배열입니다.
+     */
+    @Transactional(readOnly = true)
+    public PerfumeReviewKeywordsResponse getReviewKeywords(Long perfumeId) {
+        requireExistingPerfume(perfumeId);
+
+        long reviewsWithKeyword =
+                perfumeReviewKeywordRepository.countReviewsWithKeywordByPerfumeId(perfumeId);
+
+        return new PerfumeReviewKeywordsResponse(
+                perfumeReviewKeywordRepository.findKeywordCountsByPerfumeId(perfumeId).stream()
+                        .map(keyword -> new PerfumeReviewKeywordResponse(
+                                keyword.keyword(),
+                                percentageOf(keyword.count(), reviewsWithKeyword)
+                        ))
+                        .toList()
         );
     }
 
