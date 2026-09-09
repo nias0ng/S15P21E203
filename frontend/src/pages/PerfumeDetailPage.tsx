@@ -27,8 +27,10 @@ import { Toast } from '@/shared/ui/Toast'
  *   ① PerfumeOverview  ② PerfumeNotes  ③ PerfumeSeasonRatings
  *   ④ PerfumeReviewSummary  ⑤ PerfumeReviewList
  *
- * ⚠️ 백엔드 GET /perfumes/{id} 가 아직 없어 호출하면 404 입니다. 계절 평가 ·
- * AI 요약 · 후기 목록도 응답에 없는 필드라, 각 구역 컴포넌트의 주석을 보세요.
+ * 백엔드 GET /perfumes/{id} 는 구현되어 있지만 응답이
+ * { perfumeId, name, brand, thumbnailUrl, description } 뿐입니다.
+ * ⚠️ 향조 · 계절 평가 · AI 요약 · 후기 목록은 아직 없어 각 구역이 안내 문구만
+ * 보여줍니다. 각 구역 컴포넌트의 주석을 보세요.
  */
 export default function PerfumeDetailPage() {
   const { perfumeId } = useParams<{ perfumeId: string }>()

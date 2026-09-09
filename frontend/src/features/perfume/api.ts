@@ -14,7 +14,12 @@ import type {
 /**
  * COM-05 향수 검색 — 백엔드 GET /api/v1/perfumes
  *
- * ⚠️ 응답의 각 항목에 thumbnailUrl, scentFamily 가 아직 없습니다. PerfumeSummary 주석 참고.
+ * ⚠️ 응답의 각 항목에 scentFamily 가 아직 없습니다. PerfumeSummary 주석 참고.
+ * thumbnailUrl 은 내려옵니다 — 등록된 이미지가 없는 향수는 null 입니다.
+ *
+ * ⚠️ 백엔드는 검색어가 없으면 DB 를 조회하지 않고 빈 결과를 돌려줍니다
+ * ("검색어가 입력되지 않은 경우 검색을 수행하지 않는다"). 목록 화면에서
+ * 검색어 없이 부르면 데이터가 있어도 0건입니다.
  */
 export async function searchPerfumes(params: PerfumeSearchParams) {
   const { data } = await http.get<Page<PerfumeSummary>>('/perfumes', { params })
@@ -24,9 +29,11 @@ export async function searchPerfumes(params: PerfumeSearchParams) {
 /**
  * DTL-01 향수 기본 정보 조회
  *
- * ⚠️ 이 엔드포인트는 백엔드에 아직 구현되어 있지 않습니다 (PerfumeController 에는 검색만 있음).
- * 호출하면 404 가 오고 ApiError 의 code 는 'NOT_FOUND' 입니다.
- * 상세 페이지 작업 전에 백엔드 이슈 진행 상황을 먼저 확인하세요.
+ * 백엔드에 구현되어 있습니다(S15P21E203-128). 없는 향수는 404 이고
+ * ApiError 의 code 는 'PERFUME_NOT_FOUND' 입니다.
+ *
+ * ⚠️ 응답은 { perfumeId, name, brand, thumbnailUrl, description } 뿐입니다.
+ * 향조·후기 통계는 아직 없어 PerfumeDetail 에서 옵셔널입니다.
  */
 export async function getPerfumeDetail(perfumeId: number) {
   const { data } = await http.get<PerfumeDetail>(`/perfumes/${perfumeId}`)
