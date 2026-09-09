@@ -9,10 +9,8 @@ import org.springframework.data.repository.query.Param;
 /**
  * 후기 통계 조회입니다.
  *
- * <p>보류된 후기를 제외하는 조건이 아직 없습니다. 후기 작성 기능이 없어
- * {@code perfume_reviews.status} 의 값 어휘가 정해지지 않았습니다. 값을 추측해 조건을 넣으면
- * 실제 값이 다를 때 조용히 틀린 통계가 나옵니다. 상태가 정의되면 이 인터페이스의 세 쿼리에
- * 같은 조건을 추가하면 됩니다.
+ * <p>향수에 달린 후기를 전부 셉니다. 보류 개념이 정리되면서 {@code perfume_reviews.status} 가
+ * 없어질 예정이라, 상태로 걸러낼 후기가 없습니다.
  */
 public interface PerfumeReviewRepository extends JpaRepository<PerfumeReview, Long> {
 
@@ -20,7 +18,7 @@ public interface PerfumeReviewRepository extends JpaRepository<PerfumeReview, Lo
      * 향수의 후기 수입니다.
      *
      * <p>AI 후기 요약의 재생성 시점을 판단하는 기준이라, 요약 파이프라인이 요약 대상 후기를
-     * 세는 기준과 같아야 합니다. {@code status} 어휘가 정해지면 여기에 필터를 겁니다.
+     * 세는 기준과 같아야 합니다. 지금은 양쪽 다 향수에 달린 모든 후기입니다.
      *
      * <p>시향 기록({@code personal_records})은 세지 않습니다. 기능 명세서의 시스템 처리 항목에
      * 시향 기록을 함께 분석한다는 문장이 있으나, 팀이 후기만 쓰기로 정했습니다.

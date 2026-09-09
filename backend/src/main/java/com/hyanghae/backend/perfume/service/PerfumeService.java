@@ -160,9 +160,8 @@ public class PerfumeService {
      * 일정 개수 쌓일 때마다 요약을 새로 생성하기로 했으므로, 여기서 세는 수와 요약이 들고 있는
      * {@code sourceReviewCount} 의 차이가 곧 "요약 이후 새로 쌓인 후기 수"입니다.
      *
-     * <p>그래서 두 수는 반드시 같은 기준으로 세야 합니다. 요약 파이프라인이 공개 후기만 세는데
-     * 여기서 보류 후기까지 세면, 차이가 항상 남아 요약이 계속 다시 생성됩니다. 지금은
-     * {@code status} 어휘가 정해지지 않아 전부 세고 있습니다.
+     * <p>그래서 두 수는 반드시 같은 기준으로 세야 합니다. 지금은 양쪽 다 향수에 달린 모든
+     * 후기이므로 어긋날 여지가 없습니다.
      */
     @Transactional(readOnly = true)
     public PerfumeReviewStatisticsResponse getReviewStatistics(Long perfumeId) {
