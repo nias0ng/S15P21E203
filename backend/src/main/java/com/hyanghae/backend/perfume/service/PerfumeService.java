@@ -2,7 +2,7 @@ package com.hyanghae.backend.perfume.service;
 
 import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.perfume.dto.request.PerfumeSearchCondition;
-import com.hyanghae.backend.perfume.dto.request.ShelfFilter;
+import com.hyanghae.backend.perfume.dto.request.RankingType;
 import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeNotesResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumePostResponse;
@@ -21,7 +21,7 @@ import com.hyanghae.backend.perfume.exception.PerfumeErrorCode;
 import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeScentFamilyRepository;
-import com.hyanghae.backend.perfume.repository.PerfumeShelfRepository;
+import com.hyanghae.backend.perfume.repository.PerfumeRankingRepository;
 import com.hyanghae.backend.perfume.dto.response.PerfumePriceResponse;
 import com.hyanghae.backend.perfume.repository.PerfumeAccordRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
@@ -64,7 +64,7 @@ public class PerfumeService {
     private final PerfumeImageRepository perfumeImageRepository;
     private final PerfumePriceRepository perfumePriceRepository;
     private final PerfumeScentFamilyRepository perfumeScentFamilyRepository;
-    private final PerfumeShelfRepository perfumeShelfRepository;
+    private final PerfumeRankingRepository perfumeRankingRepository;
     private final PerfumeNoteRepository perfumeNoteRepository;
     private final PerfumeAccordRepository perfumeAccordRepository;
     private final PerfumeReviewRepository perfumeReviewRepository;
@@ -78,7 +78,7 @@ public class PerfumeService {
             PerfumeImageRepository perfumeImageRepository,
             PerfumePriceRepository perfumePriceRepository,
             PerfumeScentFamilyRepository perfumeScentFamilyRepository,
-            PerfumeShelfRepository perfumeShelfRepository,
+            PerfumeRankingRepository perfumeRankingRepository,
             PerfumeNoteRepository perfumeNoteRepository,
             PerfumeAccordRepository perfumeAccordRepository,
             PerfumeReviewRepository perfumeReviewRepository,
@@ -91,7 +91,7 @@ public class PerfumeService {
         this.perfumeImageRepository = perfumeImageRepository;
         this.perfumePriceRepository = perfumePriceRepository;
         this.perfumeScentFamilyRepository = perfumeScentFamilyRepository;
-        this.perfumeShelfRepository = perfumeShelfRepository;
+        this.perfumeRankingRepository = perfumeRankingRepository;
         this.perfumeNoteRepository = perfumeNoteRepository;
         this.perfumeAccordRepository = perfumeAccordRepository;
         this.perfumeReviewRepository = perfumeReviewRepository;
@@ -124,7 +124,7 @@ public class PerfumeService {
         String brand = trimToNull(condition.brand());
         String gender = condition.gender() == null ? null : condition.gender().name();
 
-        Page<PerfumeSummaryResponse> found = findPage(condition.shelf(), keyword, brand, gender, pageable);
+        Page<PerfumeSummaryResponse> found = findPage(condition.ranking(), keyword, brand, gender, pageable);
         if (found.isEmpty()) {
             return PerfumeSearchResponse.from(found);
         }
@@ -386,73 +386,27 @@ public class PerfumeService {
      * 정규화하지 않으면 {@code ?keyword=} 같은 요청이 공백을 포함한 이름만 찾게 됩니다.
      */
     /**
-     * 진열대 필터가 있으면 사람들이 담거나 열어 본 향수로 범위를 좁혀 <b>많이 담긴 순</b>으로
-     * 조회합니다.
+     * {@code ranking} 이 있으면 사람들이 담거나 열어 본 향수만 남겨 <b>기록이 많은 순</b>으로
+     * 조회합니다. 기록이 하나도 없는 향수는 결과에서 빠집니다.
      *
-     * <p>진열대 필터에는 다른 정렬이 없습니다. 요청의 {@code sort} 는 보지 않습니다. 이 필터가
-     * 답하는 질문 자체가 "사람들이 많이 담은 향수"라서, 번호순이나 이름순으로 주면 필터를 건 이유가
-     * 사라집니다.
+     * <p>다른 정렬은 없습니다. 요청의 {@code sort} 는 보지 않습니다. 이 값이 답하는 질문 자체가
+     * "사람들이 많이 담은 향수"라서, 번호순이나 이름순으로 주면 지정한 이유가 사라집니다.
      *
-     * <p>정렬을 검색 쿼리가 하지 않고 여기서 맞추는 이유가 있습니다. 정렬 기준인 담긴 횟수는
-     * 진열대·조회 이력 테이블에 있고, 향수 검색은 다른 도메인의 엔티티를 보지 않기로 되어 있습니다.
-     * 검색 쿼리에 그 집계를 넣으려면 두 도메인의 테이블을 검색 쿼리가 직접 알아야 합니다.
-     *
-     * <p>그래서 세 단계입니다. 진열대에서 인기순 번호를 받고, 검색 조건을 통과하는 번호를 걸러
-     * 내고, 인기순을 유지한 채 한 페이지를 잘라 그만큼만 내용을 가져옵니다. 세 질의 모두 가볍고,
-     * 오가는 것은 마지막을 빼면 번호뿐입니다.
-     *
-     * <p>번호가 하나도 없으면 조회하지 않고 빈 페이지를 만듭니다. 결과를 이미 알기 때문이며,
-     * 뒤따르는 질의를 아낍니다.
+     * <p>집계·정렬·페이징을 모두 DB 에 맡깁니다. 예전에는 담긴 향수 번호를 전부 받아 와서 여기서
+     * 잘랐는데, 향수 13만종에서 번호가 {@code IN} 절 파라미터 상한을 넘겨 요청이 실패했습니다.
+     * 지금은 한 페이지에 필요한 만큼만 오갑니다.
      */
     private Page<PerfumeSummaryResponse> findPage(
-            ShelfFilter shelf, String keyword, String brand, String gender, Pageable pageable) {
-        if (shelf == null) {
+            RankingType ranking, String keyword, String brand, String gender, Pageable pageable) {
+        if (ranking == null) {
             return perfumeRepository.search(keyword, brand, gender, pageable);
         }
 
-        List<Long> orderedIds = perfumeShelfRepository.findPerfumeIdsOrderedBySaveCount(shelf);
-        if (orderedIds.isEmpty()) {
-            return Page.empty(pageable);
-        }
+        List<PerfumeSummaryResponse> page = perfumeRankingRepository.findPage(
+                ranking, keyword, brand, gender, (int) pageable.getOffset(), pageable.getPageSize());
+        long total = perfumeRankingRepository.count(ranking, keyword, brand, gender);
 
-        Set<Long> matching = Set.copyOf(
-                perfumeRepository.findMatchingIds(keyword, brand, gender, orderedIds));
-        List<Long> found = orderedIds.stream()
-                .filter(matching::contains)
-                .toList();
-
-        return new PageImpl<>(findSummariesInOrder(pageOf(found, pageable)), pageable, found.size());
-    }
-
-    /**
-     * 인기순 번호에서 요청한 페이지만 잘라 냅니다.
-     *
-     * <p>마지막 페이지를 넘겨 요청하면 빈 목록입니다. 예외가 아닙니다. 목록이 줄어드는 사이에 다음
-     * 페이지를 누르면 일어나는 일이고, 그때 화면은 "더 없음"으로 끝나면 됩니다.
-     */
-    private List<Long> pageOf(List<Long> orderedIds, Pageable pageable) {
-        int from = (int) Math.min(pageable.getOffset(), orderedIds.size());
-        int to = Math.min(from + pageable.getPageSize(), orderedIds.size());
-        return orderedIds.subList(from, to);
-    }
-
-    /**
-     * 번호 순서대로 검색 결과 항목을 세웁니다.
-     *
-     * <p>{@code IN} 조회는 넘긴 순서를 지키지 않으므로 여기서 다시 세웁니다. 이 단계를 빼면 인기순이
-     * 조용히 향수 번호순으로 바뀝니다.
-     */
-    private List<PerfumeSummaryResponse> findSummariesInOrder(List<Long> orderedIds) {
-        if (orderedIds.isEmpty()) {
-            return List.of();
-        }
-
-        Map<Long, PerfumeSummaryResponse> byId = perfumeRepository.findSummariesByIds(orderedIds).stream()
-                .collect(Collectors.toMap(PerfumeSummaryResponse::perfumeId, summary -> summary));
-        return orderedIds.stream()
-                .map(byId::get)
-                .filter(Objects::nonNull)
-                .toList();
+        return new PageImpl<>(page, pageable, total);
     }
 
     /**
