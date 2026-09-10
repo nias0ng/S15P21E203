@@ -14,8 +14,10 @@ import com.hyanghae.backend.perfume.entity.Gender;
  * <p>{@code gender} 를 문자열이 아니라 enum 으로 받습니다. 값이 잘못되면 조용히 0건이 나가는 대신
  * 400 이 됩니다. 필터가 안 걸린 것인지 해당하는 향수가 없는 것인지 구분할 수 있어야 합니다.
  *
- * <p>{@code shelf} 만 성격이 다릅니다. 향수의 속성이 아니라 요청한 사용자와의 관계라서 로그인이
- * 필요합니다. 비로그인 요청에 이 값이 오면 401 입니다.
+ * <p>{@code ranking} 만 성격이 다릅니다. 향수의 속성이 아니라 사람들이 담거나 열어 본 기록이고,
+ * 전체 사용자 집계라 로그인이 필요 없습니다. 이 값이 있으면 <b>기준에 못 미치는 향수가 결과에서
+ * 빠지고</b>, 남은 향수가 기록이 많은 순으로 나갑니다. OWNED·WISH 는 세 명 이상이 담은 향수만,
+ * VIEWED 는 한 번이라도 열어 본 향수가 모두 나옵니다. {@code sort} 는 무시됩니다.
  */
-public record PerfumeSearchCondition(String keyword, String brand, Gender gender, ShelfFilter shelf) {
+public record PerfumeSearchCondition(String keyword, String brand, Gender gender, RankingType ranking) {
 }
