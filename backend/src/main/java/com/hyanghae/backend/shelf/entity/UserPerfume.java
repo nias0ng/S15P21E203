@@ -103,4 +103,9 @@ public class UserPerfume {
         this.updatedAt = updatedAt;
     }
 
+    public void updateRepresentative(boolean representative, OffsetDateTime updatedAt) {
+        this.representative = representative;
+        this.updatedAt = updatedAt;
+    }
+
 }

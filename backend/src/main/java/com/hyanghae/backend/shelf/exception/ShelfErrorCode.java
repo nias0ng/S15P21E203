@@ -10,6 +10,10 @@ public enum ShelfErrorCode implements ErrorCode {
     SHELF_INVALID_FIT_RATING(
             HttpStatus.BAD_REQUEST,
             "취향 적합도는 1.0부터 5.0까지 0.5 단위로 입력해야 합니다."
+    ),
+    SHELF_REPRESENTATIVE_REQUIRES_OWNED(
+            HttpStatus.BAD_REQUEST,
+            "보유 중인 향수만 대표 향수로 지정할 수 있습니다."
     );
 
     private final HttpStatus status;

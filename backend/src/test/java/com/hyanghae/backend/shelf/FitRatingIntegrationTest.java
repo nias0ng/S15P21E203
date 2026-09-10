@@ -169,8 +169,8 @@ class FitRatingIntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 
-    private String url(long userPerfumeId) {
-        return "/api/v1/users/me/perfumes/" + userPerfumeId + "/fit-rating";
+    private String url(long shelfItemId) {
+        return "/api/v1/users/me/shelf-items/" + shelfItemId + "/fit-rating";
     }
 
     private void insertUser(long id, String email, String nickname) {
