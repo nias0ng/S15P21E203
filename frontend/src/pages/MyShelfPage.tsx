@@ -100,10 +100,12 @@ export default function MyShelfPage() {
   if (shelf.isPending) return <PageFallback />
 
   return (
-    // -my-8 py-4 는 부모 <main> 의 세로 여백(py-8)을 걷어내고 더 좁게 다시 줍니다.
-    // 시안은 머리말부터 하단 문구까지가 한 화면에 들어가는 구성이라, 부모 여백을
-    // 그대로 두면 그 32px 이 그대로 아래로 밀려 스크롤이 생깁니다.
-    <div className={cn(FULL_BLEED, 'shelf-scope -my-8 py-4')}>
+    // -my-8 로 부모 <main> 의 세로 여백(py-8)을 걷어내고 위아래를 따로 줍니다.
+    //
+    // 위 56px 은 시안 실측입니다 — 헤더 아래끝(88)과 제목 윗선(148)의 사이입니다.
+    // 부모 여백(32)을 그대로 쓰면 16px 밖에 안 남아서 제목이 메뉴에 붙어 보입니다.
+    // 아래는 하단 띠가 화면 안에 들어와야 해서 16px 만 줍니다.
+    <div className={cn(FULL_BLEED, 'shelf-scope -my-8 pt-14 pb-4')}>
       {/*
         시안의 종이 바탕과 질감. fixed 로 뷰포트를 통째로 덮습니다 — 이 div 에만
         배경을 깔면 좌우 여백과 화면 아래쪽이 body 의 ivory 로 남아 종이 한 장
@@ -123,10 +125,11 @@ export default function MyShelfPage() {
         justify-between 이 남는 세로 공간을 세 덩어리 사이에 나눠, 하단 문구 줄이
         시안(y 865/941)처럼 화면 맨 아래에 붙습니다. 모자라면 그냥 gap-6 로 흐르고
         스크롤됩니다 — 높이를 고정해 내용을 잘라내지는 않습니다.
-        7.5rem 은 헤더(88px)와 위 py-4 두 겹(32px)을 뺀 값입니다 — 헤더 높이를 바꾸면
-        여기도 함께 바꿔야 하단 띠가 화면 밖으로 밀리지 않습니다.
+        10.5rem(168px)은 헤더 88 + 위 여백 56 + 아래 숨 24 입니다. 아래 24 가 없으면
+        하단 띠가 화면 맨 끝에 딱 붙어서 잘린 것처럼 보입니다.
+        헤더 높이나 위 여백을 바꾸면 여기도 함께 바꿔야 띠가 화면 밖으로 밀리지 않습니다.
       */}
-      <section className="flex flex-col gap-6 lg:min-h-[calc(100dvh_-_7.5rem)] lg:justify-between">
+      <section className="flex flex-col gap-4 lg:min-h-[calc(100dvh_-_10.5rem)] lg:justify-between">
         {/* 머리말과 필터가 한 줄에 놓입니다 (시안: 둘 다 y 145~190) */}
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
           {/*
@@ -135,7 +138,7 @@ export default function MyShelfPage() {
             제목·부제는 한 덩어리(gap-2)이고 영문 문구만 gap-6 으로 떨어뜨려
             "제목의 일부가 아니라 장식" 이라는 것을 간격으로 말합니다.
           */}
-          <header className="flex shrink-0 flex-col gap-6">
+          <header className="flex shrink-0 flex-col gap-4">
             <div className="flex flex-col gap-2">
               <h1 className="font-serif text-[36px] leading-[1.2] font-semibold">
                 나의 향 컬렉션
@@ -175,7 +178,7 @@ export default function MyShelfPage() {
         </div>
 
         {/* 진열장과 상세 패널. 시안의 둘 사이가 17px 이라 gap-4 입니다 */}
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-4">
           {/*
             세 칸이 한 자리에서 위아래로 미끄러집니다. 안 보이는 칸도 미리 그려 두는
             이유는 넘어가는 동안 다음 칸이 올라오는 게 보여야 하기 때문입니다 —

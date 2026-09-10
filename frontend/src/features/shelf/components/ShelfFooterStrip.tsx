@@ -30,7 +30,7 @@ export function ShelfFooterStrip({
   return (
     <div
       className={cn(
-        'flex items-center justify-between gap-8 border-t border-[var(--hairline)] pt-6',
+        'flex items-center justify-between gap-8 border-t border-[var(--hairline)] pt-4',
         className,
       )}
     >
@@ -40,9 +40,15 @@ export function ShelfFooterStrip({
         TO A MORE TRUE YOU.
       </p>
 
-      {/* 스크롤 유도. 선이 아래로 이어지는 모양 자체가 "더 있다" 를 말합니다 */}
-      <div className="flex flex-col items-center gap-2">
-        <span aria-hidden className="shelf-hairline h-8 w-px" />
+      {/*
+        스크롤 유도. 선이 아래로 이어지는 모양 자체가 "더 있다" 를 말합니다.
+
+        ⚠️ 이 묶음이 띠 전체의 높이를 정합니다 — 좌우 문구(두 줄)보다 키가 큽니다.
+        선을 길게 하면 띠가 두꺼워지고 그만큼 하단이 화면 밖으로 밀립니다.
+        시안의 선 길이는 24px 이라 그 값에 맞췄습니다.
+      */}
+      <div className="flex flex-col items-center gap-1.5">
+        <span aria-hidden className="shelf-hairline h-5 w-px" />
         <span className="shelf-label">SCROLL</span>
       </div>
 

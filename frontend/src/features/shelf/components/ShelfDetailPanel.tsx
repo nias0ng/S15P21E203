@@ -53,7 +53,7 @@ type Props = {
  * `.shelf-panel` 이 반투명 바탕 · 그림자 · backdrop-blur 를 냅니다. 뒤의 종이가
  * 살짝 비쳐서 "종이 위에 얹힌 카드" 로 읽힙니다.
  */
-const CARD = 'shelf-panel rounded-[14px] px-6 pt-6 pb-4 min-h-[501px]'
+const CARD = 'shelf-panel rounded-[14px] px-6 pt-5 pb-3 min-h-[501px]'
 
 /**
  * 이 카드 위 버튼의 포커스 링.
@@ -118,7 +118,7 @@ export function ShelfDetailPanel({
         병 이미지는 배경이 투명한 PNG 로 들어옵니다(DisplayCase 와 같은 소스).
         그래서 Thumbnail 을 쓰지 않습니다 — 자리표시자 상자의 테두리·배경이
         투명 영역을 네모로 드러내 병이 상자에 든 것처럼 보입니다.
-        높이는 시안이 180px 인데 124px 로 줄였습니다. 시안에 없던 조작(대표 지정 ·
+        높이는 시안이 180px 인데 100px 로 줄였습니다. 시안에 없던 조작(대표 지정 ·
         분류 변경 · 저장 해제 · 메모)이 아래에 들어오면서, 머리말부터 하단 띠까지
         한 화면에 담으려면 어딘가를 줄여야 했습니다. 사진은 줄여도 무엇인지 알아볼 수
         있지만 조작은 줄이면 못 누릅니다.
@@ -128,10 +128,10 @@ export function ShelfDetailPanel({
         <img
           src={item.thumbnailUrl}
           alt=""
-          className="shelf-bottle-img h-[124px] w-full object-contain"
+          className="shelf-bottle-img h-[100px] w-full object-contain"
         />
       ) : (
-        <div aria-hidden className="h-[124px]" />
+        <div aria-hidden className="h-[100px]" />
       )}
 
       <div className="flex flex-col items-center gap-1">
