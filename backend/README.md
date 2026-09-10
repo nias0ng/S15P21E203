@@ -149,6 +149,22 @@ psql "postgresql://hyanghae:hyanghae_test@localhost:5432/hyanghae_test" -f load_
 
 데이터의 형태와 주의할 점은 [backend/db/seed/README.md](db/seed/README.md)에 있습니다.
 
+### 후기 시드 적재
+
+후기 요약·키워드 배치를 확인할 때만 필요합니다. 후기 작성 API 가 아직 없어서, 후기가 쌓인
+향수를 만들려면 시드를 넣어야 합니다. 향 지도 적재를 먼저 끝내야 합니다.
+
+```bash
+cd backend/db/seed
+
+docker cp . hyanghae-manual-test-postgres-1:/tmp/seed
+docker exec -w /tmp/seed hyanghae-manual-test-postgres-1 \
+  psql -U hyanghae -d hyanghae_test -f load_review_seed.sql
+```
+
+넣는 내용은 [backend/db/seed/README.md](db/seed/README.md#후기-시드-적재), 배치를 켜는 방법은
+[후기 요약·키워드 배치 가이드](docs/review-analysis-batch.md)에 있습니다.
+
 ### 서비스 종료
 
 애플리케이션을 종료한 뒤 저장소 루트에서 다음 명령을 실행합니다.

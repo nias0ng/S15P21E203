@@ -109,7 +109,30 @@ GMS 는 상용 LLM API 앞에 놓인 프록시입니다. `base-url` 뒤의 경�
 요약과 키워드는 한 트랜잭션입니다. 요약만 저장되면 `source_review_count` 가 올라가 재생성 대상에서
 빠지고 키워드는 영구히 비어 있게 됩니다.
 
-## 6. 운영에서 확인하기
+## 6. 로컬에서 확인하기
+
+후기 작성 API 가 아직 없어서 후기가 쌓이지 않습니다. 후기가 없으면 배치는 `targets=0` 으로
+끝나고 GMS 호출은 시도조차 되지 않습니다. 확인용 후기는 시드로 넣습니다.
+
+```bash
+cd backend/db/seed
+
+docker cp . hyanghae-manual-test-postgres-1:/tmp/seed
+docker exec -w /tmp/seed hyanghae-manual-test-postgres-1 \
+  psql -U hyanghae -d hyanghae_test -f load_review_seed.sql
+```
+
+넣는 것은 [후기 시드 문서](../db/seed/README.md#후기-시드-적재)에 있습니다. 후기 6건·12건·4건이
+달린 향수 세 개이고, 4건인 향수는 최소 개수에 모자라 대상이 되지 않습니다. 그 향수만 요약이
+비어 있는 것까지 확인하면 정책이 동작한 것입니다.
+
+그다음 배치를 켜고 실행합니다. `manual-test` 는 주기가 1분입니다.
+
+```bash
+cd backend && REVIEW_ANALYSIS_ENABLED=true GMS_API_KEY=발급받은키 ./gradlew bootRun --args="--spring.profiles.active=manual-test"
+```
+
+## 7. 운영에서 확인하기
 
 실행마다 MDC 에 `requestId=batch-<UUID>` 를 넣으므로 한 실행의 로그를 묶어 볼 수 있습니다.
 찾을 로그는 다음 두 줄입니다.
@@ -132,7 +155,7 @@ ORDER BY updated_at DESC
 LIMIT 10;
 ```
 
-## 7. 아직 하지 않은 것
+## 8. 아직 하지 않은 것
 
 - **실행 잠금.** 인스턴스가 하나라는 전제로 만들었습니다. 여러 대로 늘리면 같은 향수를 동시에
   분석해 호출이 두 번 나갈 수 있습니다.
@@ -140,7 +163,8 @@ LIMIT 10;
 - **후기 수정 반영.** 후기 본문이 바뀌어도 후기 수가 변하지 않으면 대상이 되지 않습니다. 후기
   수정 기능이 생기면 함께 정해야 합니다.
 
-## 8. 참고 문서
+## 9. 참고 문서
 
 - [백엔드 개발 가이드라인](backend-development-guidelines.md)
 - [운영 모니터링 및 Grafana 사용 가이드](operational-logging.md)
+- [후기 시드 적재](../db/seed/README.md#후기-시드-적재)
