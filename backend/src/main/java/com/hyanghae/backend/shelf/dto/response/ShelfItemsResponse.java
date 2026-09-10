@@ -11,10 +11,10 @@ public record ShelfItemsResponse(
         @Schema(description = "현재 페이지 번호", example = "0")
         int page,
 
-        @Schema(description = "페이지 크기", example = "20")
+        @Schema(description = "페이지 크기", example = "7")
         int size,
 
-        @Schema(description = "전체 진열대 항목 수", example = "3")
+        @Schema(description = "선택한 분류의 전체 진열대 항목 수", example = "10")
         long totalElements
 ) {
 

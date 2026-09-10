@@ -9,6 +9,7 @@ import com.hyanghae.backend.shelf.dto.response.OwnershipStatusResponse;
 import com.hyanghae.backend.shelf.dto.response.RepresentativeResponse;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemCreateResponse;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemsResponse;
+import com.hyanghae.backend.shelf.entity.OwnershipStatus;
 import com.hyanghae.backend.shelf.service.FitRatingService;
 import com.hyanghae.backend.shelf.service.OwnershipStatusService;
 import com.hyanghae.backend.shelf.service.RepresentativePerfumeService;
@@ -38,7 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/users/me/shelf-items")
 public class ShelfItemController {
 
-    private static final int DEFAULT_PAGE_SIZE = 20;
+    private static final int DEFAULT_PAGE_SIZE = 7;
 
     private final FitRatingService fitRatingService;
     private final OwnershipStatusService ownershipStatusService;
@@ -76,18 +77,25 @@ public class ShelfItemController {
 
     @Operation(
             summary = "내 진열대 조회",
-            description = "진열대에 저장한 향수를 페이지 단위로 조회합니다."
+            description = "선택한 진열대 분류의 향수를 페이지 단위로 조회합니다."
     )
     @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "400", description = "분류 누락 또는 올바르지 않은 요청")
     @ApiResponse(responseCode = "401", description = "로그인 필요")
     @GetMapping
     public ShelfItemsResponse getMyShelfItems(
+            @Parameter(
+                    description = "조회할 진열대 분류",
+                    required = true,
+                    schema = @Schema(allowableValues = {"OWNED", "TRIED", "WISH"})
+            )
+            @RequestParam OwnershipStatus category,
             @Parameter(description = "페이지 번호. 0부터 시작합니다.", example = "0")
             @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "페이지 크기. 최대 100개입니다.", example = "20")
+            @Parameter(description = "페이지 크기. 기본 7개, 최대 100개입니다.", example = "7")
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size
     ) {
-        return shelfItemService.findMine(page, size);
+        return shelfItemService.findMine(category, page, size);
     }
 
     @Operation(

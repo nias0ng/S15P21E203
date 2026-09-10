@@ -10,6 +10,8 @@ import static org.mockito.Mockito.when;
 import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.perfume.entity.Perfume;
+import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
+import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
 import com.hyanghae.backend.perfume.repository.PerfumeRepository;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemCreateResponse;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemSummaryResponse;
@@ -46,6 +48,9 @@ class ShelfItemServiceTest {
     private PerfumeRepository perfumeRepository;
 
     @Mock
+    private PerfumeImageRepository perfumeImageRepository;
+
+    @Mock
     private CurrentUser currentUser;
 
     private ShelfItemService shelfItemService;
@@ -55,6 +60,7 @@ class ShelfItemServiceTest {
         shelfItemService = new ShelfItemService(
                 userPerfumeRepository,
                 perfumeRepository,
+                perfumeImageRepository,
                 currentUser
         );
     }
@@ -165,8 +171,8 @@ class ShelfItemServiceTest {
                 SHELF_ITEM_ID,
                 PERFUME_ID,
                 "Test Scent",
+                "Test Brand",
                 OwnershipStatus.OWNED,
-                null,
                 true
         );
         PageRequest pageRequest = PageRequest.of(
@@ -175,12 +181,22 @@ class ShelfItemServiceTest {
                 Sort.by(Sort.Direction.ASC, "id")
         );
         when(currentUser.id()).thenReturn(Optional.of(USER_ID));
-        when(userPerfumeRepository.findPageByUserId(USER_ID, pageRequest))
+        when(userPerfumeRepository.findPageByUserIdAndCategory(
+                USER_ID,
+                OwnershipStatus.OWNED,
+                pageRequest
+        ))
                 .thenReturn(new PageImpl<>(List.of(shelfItem), pageRequest, 3));
+        when(perfumeImageRepository.findOrderedByPerfumeIds(List.of(PERFUME_ID)))
+                .thenReturn(List.of(new PerfumeImageUrl(PERFUME_ID, "thumbnail.jpg")));
 
-        ShelfItemsResponse response = shelfItemService.findMine(1, 2);
+        ShelfItemsResponse response = shelfItemService.findMine(OwnershipStatus.OWNED, 1, 2);
 
-        assertThat(response.perfumes()).containsExactly(shelfItem);
+        assertThat(response.perfumes()).singleElement().satisfies(item -> {
+            assertThat(item.brand()).isEqualTo("Test Brand");
+            assertThat(item.thumbnailUrl()).isEqualTo("thumbnail.jpg");
+            assertThat(item.category()).isEqualTo(OwnershipStatus.OWNED);
+        });
         assertThat(response.page()).isEqualTo(1);
         assertThat(response.size()).isEqualTo(2);
         assertThat(response.totalElements()).isEqualTo(3);
@@ -194,10 +210,14 @@ class ShelfItemServiceTest {
                 Sort.by(Sort.Direction.ASC, "id")
         );
         when(currentUser.id()).thenReturn(Optional.of(USER_ID));
-        when(userPerfumeRepository.findPageByUserId(USER_ID, limitedRequest))
+        when(userPerfumeRepository.findPageByUserIdAndCategory(
+                USER_ID,
+                OwnershipStatus.WISH,
+                limitedRequest
+        ))
                 .thenReturn(new PageImpl<>(List.of(), limitedRequest, 0));
 
-        ShelfItemsResponse response = shelfItemService.findMine(-1, 101);
+        ShelfItemsResponse response = shelfItemService.findMine(OwnershipStatus.WISH, -1, 101);
 
         assertThat(response.page()).isZero();
         assertThat(response.size()).isEqualTo(100);
@@ -209,10 +229,14 @@ class ShelfItemServiceTest {
         when(currentUser.id()).thenReturn(Optional.empty());
 
         assertBusinessError(
-                () -> shelfItemService.findMine(0, 20),
+                () -> shelfItemService.findMine(OwnershipStatus.OWNED, 0, 7),
                 ShelfErrorCode.SHELF_LOGIN_REQUIRED
         );
-        verify(userPerfumeRepository, never()).findPageByUserId(any(), any());
+        verify(userPerfumeRepository, never()).findPageByUserIdAndCategory(
+                any(),
+                any(),
+                any()
+        );
     }
 
     private void prepareCreate() {

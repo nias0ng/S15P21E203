@@ -3,6 +3,8 @@ package com.hyanghae.backend.shelf.service;
 import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.perfume.entity.Perfume;
+import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
+import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
 import com.hyanghae.backend.perfume.repository.PerfumeRepository;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemCreateResponse;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemsResponse;
@@ -11,6 +13,9 @@ import com.hyanghae.backend.shelf.entity.UserPerfume;
 import com.hyanghae.backend.shelf.exception.ShelfErrorCode;
 import com.hyanghae.backend.shelf.repository.UserPerfumeRepository;
 import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -25,15 +30,18 @@ public class ShelfItemService {
 
     private final UserPerfumeRepository userPerfumeRepository;
     private final PerfumeRepository perfumeRepository;
+    private final PerfumeImageRepository perfumeImageRepository;
     private final CurrentUser currentUser;
 
     public ShelfItemService(
             UserPerfumeRepository userPerfumeRepository,
             PerfumeRepository perfumeRepository,
+            PerfumeImageRepository perfumeImageRepository,
             CurrentUser currentUser
     ) {
         this.userPerfumeRepository = userPerfumeRepository;
         this.perfumeRepository = perfumeRepository;
+        this.perfumeImageRepository = perfumeImageRepository;
         this.currentUser = currentUser;
     }
 
@@ -76,7 +84,7 @@ public class ShelfItemService {
     }
 
     @Transactional(readOnly = true)
-    public ShelfItemsResponse findMine(int page, int size) {
+    public ShelfItemsResponse findMine(OwnershipStatus category, int page, int size) {
         Long userId = currentUserId();
         int pageNumber = Math.max(page, 0);
         int pageSize = Math.clamp(size, 1, MAX_PAGE_SIZE);
@@ -86,9 +94,31 @@ public class ShelfItemService {
                 Sort.by(Sort.Direction.ASC, "id")
         );
 
-        return ShelfItemsResponse.from(
-                userPerfumeRepository.findPageByUserId(userId, pageRequest)
+        var found = userPerfumeRepository.findPageByUserIdAndCategory(
+                userId,
+                category,
+                pageRequest
         );
+        if (found.isEmpty()) {
+            return ShelfItemsResponse.from(found);
+        }
+
+        List<Long> perfumeIds = found.getContent().stream()
+                .map(item -> item.perfumeId())
+                .toList();
+        Map<Long, String> thumbnails = perfumeImageRepository
+                .findOrderedByPerfumeIds(perfumeIds)
+                .stream()
+                .filter(image -> image.imageUrl() != null)
+                .collect(Collectors.toMap(
+                        PerfumeImageUrl::perfumeId,
+                        PerfumeImageUrl::imageUrl,
+                        (first, ignored) -> first
+                ));
+
+        return ShelfItemsResponse.from(found.map(
+                item -> item.withThumbnailUrl(thumbnails.get(item.perfumeId()))
+        ));
     }
 
     private Long currentUserId() {
