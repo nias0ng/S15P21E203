@@ -53,4 +53,4 @@ hyanghae:
     enabled: ${REVIEW_ANALYSIS_ENABLED:false}
     gms:
       api-key: ${GMS_API_KEY:}
-      model: ${GMS_MODEL:gpt-4o-mini}
+      model: ${GMS_MODEL:gpt-5-nano}

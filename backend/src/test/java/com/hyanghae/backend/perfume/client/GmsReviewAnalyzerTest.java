@@ -60,7 +60,12 @@ class GmsReviewAnalyzerTest {
         server.stop(0);
     }
 
-    /** GMS 는 OpenAI 경로를 그대로 뚫어 주는 프록시라 요청 형식이 {@code /chat/completions} 규격입니다. */
+    /**
+     * GMS 는 OpenAI 경로를 그대로 뚫어 주는 프록시라 요청 형식이 {@code /chat/completions} 규격입니다.
+     *
+     * <p>지시문의 역할이 {@code developer} 인지 함께 봅니다. GPT-5 계열이 쓰는 이름이고
+     * {@code system} 은 그 이전 세대의 이름입니다.
+     */
     @Test
     void sendsOpenAiCompatibleChatCompletionRequest() throws Exception {
         responseBody = chatResponse("""
@@ -70,14 +75,32 @@ class GmsReviewAnalyzerTest {
         analyzer(1000).analyze(List.of(new ReviewContent(1L, "제목", REVIEW_TEXT)));
 
         JsonNode request = objectMapper.readTree(receivedBodies.getFirst());
-        assertThat(request.get("model").asText()).isEqualTo("gpt-4o-mini");
+        assertThat(request.get("model").asText()).isEqualTo("gpt-5-nano");
         assertThat(request.get("response_format").get("type").asText()).isEqualTo("json_object");
-        assertThat(request.get("messages").get(0).get("role").asText()).isEqualTo("system");
+        assertThat(request.get("messages").get(0).get("role").asText()).isEqualTo("developer");
         assertThat(request.get("messages").get(1).get("role").asText()).isEqualTo("user");
 
         JsonNode reviews = objectMapper.readTree(request.get("messages").get(1).get("content").asText());
         assertThat(reviews.get(0).get("reviewId").asLong()).isEqualTo(1L);
         assertThat(reviews.get(0).get("content").asText()).isEqualTo(REVIEW_TEXT);
+    }
+
+    /**
+     * {@code temperature} 를 보내지 않습니다.
+     *
+     * <p>GPT-5 계열은 이 값을 기본값 외에는 받지 않고 400 으로 거절합니다. 값 하나가 무시되는
+     * 문제가 아니라 호출 자체가 실패하므로, 다시 붙는 것을 이 단언으로 막습니다.
+     */
+    @Test
+    void doesNotSendTemperature() throws Exception {
+        responseBody = chatResponse("{\"summary\":\"달콤합니다.\",\"reviews\":[]}");
+
+        analyzer(1000).analyze(List.of(new ReviewContent(1L, null, REVIEW_TEXT)));
+
+        JsonNode request = objectMapper.readTree(receivedBodies.getFirst());
+        assertThat(request.has("temperature")).isFalse();
+        assertThat(request.properties()).extracting(Map.Entry::getKey)
+                .containsExactlyInAnyOrder("model", "messages", "response_format");
     }
 
     /** 지시문에 "JSON" 이 있어야 {@code json_object} 응답 형식을 쓸 수 있습니다. */
@@ -217,7 +240,7 @@ class GmsReviewAnalyzerTest {
                 new ReviewAnalysisProperties.Gms(
                         "http://localhost:" + server.getAddress().getPort() + "/v1",
                         "test-key",
-                        "gpt-4o-mini",
+                        "gpt-5-nano",
                         Duration.ofSeconds(2),
                         Duration.ofSeconds(5)
                 )

@@ -49,7 +49,7 @@
 | `max-summary-length` | `1000` | 저장할 요약 길이 |
 | `gms.base-url` | `https://gms.ssafy.io/gmsapi/api.openai.com/v1` | GMS 경로 |
 | `gms.api-key` | (없음) | GMS 키. 환경변수로만 넣습니다 |
-| `gms.model` | `gpt-4o-mini` | 호출할 모델 |
+| `gms.model` | `gpt-5-nano` | 호출할 모델 |
 | `gms.connect-timeout` | `10s` | 연결 제한 시간 |
 | `gms.read-timeout` | `60s` | 응답 대기 제한 시간 |
 
@@ -72,6 +72,18 @@ GMS 는 상용 LLM API 앞에 놓인 프록시입니다. `base-url` 뒤의 경�
 그대로이고 인증만 GMS 키로 바뀝니다. 지금은 OpenAI 호환 형식(`POST /chat/completions`,
 `Authorization: Bearer <키>`)을 씁니다. 다른 업스트림으로 바꾸려면 `base-url` 만 바꾸는 것으로는
 안 되고 `GmsReviewAnalyzer` 의 요청·응답 매핑을 함께 고쳐야 합니다.
+
+요청 본문에는 `model`, `messages`, `response_format` 세 개만 담습니다. 모델 세대에 따라 받지
+않는 필드가 있어 최소한만 보냅니다.
+
+- **`temperature` 를 보내지 않습니다.** GPT-5 계열은 이 값을 기본값 외에는 받지 않고 400 으로
+  거절합니다. 값 하나가 무시되는 문제가 아니라 호출 자체가 실패합니다. 출력의 흔들림은
+  `response_format` 과 지시문으로 잡습니다.
+- **지시문의 역할은 `developer` 입니다.** GPT-5 계열이 쓰는 이름이고 `system` 은 그 이전 세대의
+  이름입니다.
+
+그래서 `gms.model` 을 다른 세대로 바꿀 때는 이 두 가지가 그 모델에서 유효한지 함께 확인해야
+합니다. `GmsReviewAnalyzerTest` 가 두 규칙을 단언으로 잡아 두었습니다.
 
 모델에게 보내는 것은 **후기 번호와 제목·본문뿐**입니다.
 

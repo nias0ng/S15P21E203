@@ -61,14 +61,16 @@ public record ReviewAnalysisProperties(
      * 실패시킵니다. 인증 없이 호출해 매 실행마다 401 을 받는 것보다 낫습니다.
      *
      * @param apiKey         GMS 키입니다. 로그와 예외 메시지에 절대 넣지 않습니다.
-     * @param model          호출할 모델 이름입니다. GMS 가 허용하는 이름이어야 합니다.
+     * @param model          호출할 모델 이름입니다. GMS 가 허용하는 이름이어야 합니다. 세대를
+     *                       바꿀 때는 {@code GmsChatRequest} 가 보내는 필드와 메시지 역할이
+     *                       그 모델에서 유효한지 함께 확인해야 합니다.
      * @param connectTimeout 연결 제한 시간입니다.
      * @param readTimeout    응답 대기 제한 시간입니다. 요약 생성은 수십 초가 걸릴 수 있습니다.
      */
     public record Gms(
             @DefaultValue("https://gms.ssafy.io/gmsapi/api.openai.com/v1") @NotBlank String baseUrl,
             @DefaultValue("") String apiKey,
-            @DefaultValue("gpt-4o-mini") @NotBlank String model,
+            @DefaultValue("gpt-5-nano") @NotBlank String model,
             @DefaultValue("10s") @NotNull Duration connectTimeout,
             @DefaultValue("60s") @NotNull Duration readTimeout
     ) {

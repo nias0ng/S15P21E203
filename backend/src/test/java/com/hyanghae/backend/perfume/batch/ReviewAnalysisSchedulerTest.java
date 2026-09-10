@@ -93,7 +93,7 @@ class ReviewAnalysisSchedulerTest {
                 new ReviewAnalysisProperties.Gms(
                         "https://gms.example.test/v1",
                         apiKey,
-                        "gpt-4o-mini",
+                        "gpt-5-nano",
                         Duration.ofSeconds(10),
                         Duration.ofSeconds(60)
                 )

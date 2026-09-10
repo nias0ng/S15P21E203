@@ -48,4 +48,4 @@ hyanghae:
     cron: ${REVIEW_ANALYSIS_CRON:0 * * * * *}
     gms:
       api-key: ${GMS_API_KEY:}
-      model: ${GMS_MODEL:gpt-4o-mini}
+      model: ${GMS_MODEL:gpt-5-nano}

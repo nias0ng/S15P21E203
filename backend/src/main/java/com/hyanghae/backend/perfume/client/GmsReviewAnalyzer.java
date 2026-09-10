@@ -22,16 +22,12 @@ import org.springframework.web.client.RestClientResponseException;
  * <p>모델의 출력은 두 겹의 JSON 입니다. 응답 본문을 해석하면 그 안의 문자열이 다시 JSON 이라,
  * {@link ObjectMapper} 로 한 번 더 해석합니다.
  *
- * <p>{@code temperature} 를 낮게 고정합니다. 같은 후기에서 실행마다 다른 키워드가 나오면
- * 키워드 통계가 흔들리고, 요약도 근거 없는 표현으로 새기 쉽습니다.
+ * <p>요청 본문에 무엇을 담고 무엇을 담지 않는지는 {@link GmsChatRequest} 에 적어 두었습니다.
  */
 @Component
 public class GmsReviewAnalyzer implements ReviewAnalyzer {
 
     private static final String CHAT_COMPLETIONS_PATH = "/chat/completions";
-
-    /** 사실에 가까운 출력을 얻기 위한 값입니다. 0 으로 두면 표현이 지나치게 단조로워집니다. */
-    private static final double TEMPERATURE = 0.2;
 
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
@@ -56,7 +52,6 @@ public class GmsReviewAnalyzer implements ReviewAnalyzer {
     public ReviewAnalysis analyze(List<ReviewContent> reviews) {
         GmsChatRequest request = GmsChatRequest.of(
                 properties.gms().model(),
-                TEMPERATURE,
                 instruction(),
                 serialize(reviews)
         );
