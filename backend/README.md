@@ -117,20 +117,27 @@ Swagger는 `manual-test` 프로필에서만 활성화됩니다.
 
 스키마가 `V6`까지 적용된 뒤에 실행합니다. 애플리케이션을 한 번 띄우면 Flyway가 적용합니다.
 
+**`backend/db/seed`로 이동한 뒤** 실행합니다. `\copy`가 CSV를 psql의 현재 디렉터리에서 찾으므로
+다른 곳에서 실행하면 파일을 찾지 못합니다. 바로 앞의 `docker compose` 명령이 저장소 루트 기준이니
+디렉터리가 바뀐다는 점에 주의하세요.
+
 ```bash
 cd backend/db/seed
-psql "postgresql://hyanghae:hyanghae_test@localhost:5432/hyanghae_test" -f load_scent_map.sql
-```
 
-`psql`이 없으면 컨테이너 안에서 실행합니다.
-
-```bash
-docker cp backend/db/seed hyanghae-manual-test-postgres-1:/tmp/seed
+docker cp . hyanghae-manual-test-postgres-1:/tmp/seed
 docker exec -w /tmp/seed hyanghae-manual-test-postgres-1 \
   psql -U hyanghae -d hyanghae_test -f load_scent_map.sql
 ```
 
-`\copy`가 CSV를 psql의 현재 디렉터리에서 찾으므로 반드시 그 디렉터리에서 실행해야 합니다.
+컨테이너 안의 psql을 씁니다. 로컬에 psql이 설치돼 있지 않아도 되고, 접속 정보를 적을 필요도
+없습니다. `docker cp .` 는 이 디렉터리의 내용을 컨테이너로 복사하며, 여러 번 실행해도 덮어쓰기만
+합니다.
+
+로컬에 `psql`이 설치돼 있다면 같은 디렉터리에서 이 한 줄로도 됩니다.
+
+```bash
+psql "postgresql://hyanghae:hyanghae_test@localhost:5432/hyanghae_test" -f load_scent_map.sql
+```
 
 몇 번을 다시 실행해도 결과가 같습니다. 전체가 한 트랜잭션이라 중간에 하나라도 어긋나면 아무것도
 반영되지 않고, 마지막에 적재된 행 수를 출력합니다. 아래와 같이 나오면 정상입니다.

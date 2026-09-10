@@ -3,18 +3,46 @@
 국내 대표 향수 200개의 향 지도 데이터입니다. 향수마다 지도 위 좌표가 있고, 어떤 향 계열에
 속하는지, 어떤 향수와 닮았는지, 어떤 향 특성을 갖는지가 붙어 있습니다.
 
-## 실행
+## 먼저 확인할 것
 
-스키마가 `V6`까지 적용된 상태여야 합니다. `\copy`가 상대 경로를 psql의 현재 디렉터리에서
-찾으므로 **이 디렉터리에서** 실행합니다.
+이 문서의 명령은 **모두 이 디렉터리(`backend/db/seed`)에서** 실행합니다. `\copy`가 CSV를
+psql의 현재 디렉터리에서 찾기 때문입니다.
+
+적재 전에 아래 두 가지가 끝나 있어야 합니다. **둘 다 저장소 루트에서** 하는 일입니다.
+
+1. PostgreSQL 실행 — `docker compose -f compose.manual-test.yaml up -d`
+   ([compose 파일은 저장소 루트에 있습니다](../../../compose.manual-test.yaml))
+2. 애플리케이션을 한 번 실행해 Flyway가 스키마를 `V6`까지 적용
+
+절차 전체는 [backend/README.md](../../README.md)의 "향 지도 초기 데이터 적재"에 있습니다.
+
+## 실행
 
 ```bash
 cd backend/db/seed
+
+docker cp . hyanghae-manual-test-postgres-1:/tmp/seed
+docker exec -w /tmp/seed hyanghae-manual-test-postgres-1 \
+  psql -U hyanghae -d hyanghae_test -f load_scent_map.sql
+```
+
+컨테이너 안의 psql을 씁니다. 로컬에 psql이 설치돼 있지 않아도 되고, 접속 정보를 적을 필요도
+없습니다. `docker cp .` 는 이 디렉터리의 내용을 컨테이너로 복사하며, 여러 번 실행해도 덮어쓰기만
+합니다.
+
+로컬에 `psql`이 설치돼 있다면 이 한 줄로도 됩니다.
+
+```bash
 psql "postgresql://hyanghae:hyanghae_test@localhost:5432/hyanghae_test" -f load_scent_map.sql
 ```
 
 몇 번을 다시 돌려도 결과가 같습니다. 전체가 한 트랜잭션이라 중간에 하나라도 어긋나면 아무것도
-반영되지 않습니다.
+반영되지 않습니다. 마지막에 적재된 행 수를 출력하니 아래와 같은지 확인하세요.
+
+```
+ perfumes | map_points | scent_families | neighbors | perfume_accords | accords | regions_with_polygon
+      200 |        200 |            303 |      2000 |            1598 |      60 |                    9
+```
 
 ## 파일
 
