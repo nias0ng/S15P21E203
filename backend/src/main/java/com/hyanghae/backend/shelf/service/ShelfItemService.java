@@ -15,7 +15,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -76,7 +75,7 @@ public class ShelfItemService {
         userPerfumeRepository.delete(shelfItem);
     }
 
-    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    @Transactional(readOnly = true)
     public ShelfItemsResponse findMine(int page, int size) {
         Long userId = currentUserId();
         int pageNumber = Math.max(page, 0);
