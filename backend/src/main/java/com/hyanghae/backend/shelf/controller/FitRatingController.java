@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "진열대 취향 적합도", description = "진열대 향수의 취향 적합도를 관리합니다.")
 @RestController
-@RequestMapping("/api/v1/users/me/perfumes/{userPerfumeId}/fit-rating")
+@RequestMapping("/api/v1/users/me/shelf-items/{shelfItemId}/fit-rating")
 public class FitRatingController {
 
     private final FitRatingService fitRatingService;
@@ -38,16 +38,16 @@ public class FitRatingController {
     @PutMapping
     public FitRatingResponse update(
             @Parameter(
-                    name = "userPerfumeId",
+                    name = "shelfItemId",
                     description = "사용자 진열대 항목 ID",
                     in = ParameterIn.PATH,
                     required = true,
                     schema = @Schema(type = "integer", format = "int64")
             )
-            @PathVariable Long userPerfumeId,
+            @PathVariable Long shelfItemId,
             @Valid @RequestBody FitRatingRequest request
     ) {
-        return fitRatingService.update(userPerfumeId, request.fitRating());
+        return fitRatingService.update(shelfItemId, request.fitRating());
     }
 
     @Operation(summary = "취향 적합도 삭제")
@@ -58,14 +58,14 @@ public class FitRatingController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(
             @Parameter(
-                    name = "userPerfumeId",
+                    name = "shelfItemId",
                     description = "사용자 진열대 항목 ID",
                     in = ParameterIn.PATH,
                     required = true,
                     schema = @Schema(type = "integer", format = "int64")
             )
-            @PathVariable Long userPerfumeId
+            @PathVariable Long shelfItemId
     ) {
-        fitRatingService.delete(userPerfumeId);
+        fitRatingService.delete(shelfItemId);
     }
 }
