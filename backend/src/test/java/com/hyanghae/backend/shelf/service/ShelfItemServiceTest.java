@@ -9,13 +9,25 @@ import static org.mockito.Mockito.when;
 
 import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.global.security.CurrentUser;
+import com.hyanghae.backend.perfume.dto.response.PerfumeNoteResponse;
 import com.hyanghae.backend.perfume.entity.Perfume;
+import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
+import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
+import com.hyanghae.backend.perfume.repository.PerfumeNoteRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeRepository;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemCreateResponse;
+import com.hyanghae.backend.shelf.dto.response.ShelfItemDetailResponse;
+import com.hyanghae.backend.shelf.dto.response.ShelfItemSummaryResponse;
+import com.hyanghae.backend.shelf.dto.response.ShelfItemsResponse;
 import com.hyanghae.backend.shelf.entity.OwnershipStatus;
+import com.hyanghae.backend.shelf.entity.PersonalRecord;
 import com.hyanghae.backend.shelf.entity.UserPerfume;
 import com.hyanghae.backend.shelf.exception.ShelfErrorCode;
+import com.hyanghae.backend.shelf.repository.PersonalRecordRepository;
 import com.hyanghae.backend.shelf.repository.UserPerfumeRepository;
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +36,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.BeanUtils;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,6 +55,15 @@ class ShelfItemServiceTest {
     private PerfumeRepository perfumeRepository;
 
     @Mock
+    private PerfumeImageRepository perfumeImageRepository;
+
+    @Mock
+    private PerfumeNoteRepository perfumeNoteRepository;
+
+    @Mock
+    private PersonalRecordRepository personalRecordRepository;
+
+    @Mock
     private CurrentUser currentUser;
 
     private ShelfItemService shelfItemService;
@@ -49,6 +73,9 @@ class ShelfItemServiceTest {
         shelfItemService = new ShelfItemService(
                 userPerfumeRepository,
                 perfumeRepository,
+                perfumeImageRepository,
+                perfumeNoteRepository,
+                personalRecordRepository,
                 currentUser
         );
     }
@@ -151,6 +178,134 @@ class ShelfItemServiceTest {
                 () -> shelfItemService.create(PERFUME_ID, null),
                 ShelfErrorCode.SHELF_LOGIN_REQUIRED
         );
+    }
+
+    @Test
+    void returnsCurrentUsersShelfItems() {
+        ShelfItemSummaryResponse shelfItem = new ShelfItemSummaryResponse(
+                SHELF_ITEM_ID,
+                PERFUME_ID,
+                "Test Scent",
+                "Test Brand",
+                OwnershipStatus.OWNED,
+                true
+        );
+        PageRequest pageRequest = PageRequest.of(
+                1,
+                2,
+                Sort.by(Sort.Direction.ASC, "id")
+        );
+        when(currentUser.id()).thenReturn(Optional.of(USER_ID));
+        when(userPerfumeRepository.findPageByUserIdAndCategory(
+                USER_ID,
+                OwnershipStatus.OWNED,
+                pageRequest
+        ))
+                .thenReturn(new PageImpl<>(List.of(shelfItem), pageRequest, 3));
+        when(perfumeImageRepository.findOrderedByPerfumeIds(List.of(PERFUME_ID)))
+                .thenReturn(List.of(new PerfumeImageUrl(PERFUME_ID, "thumbnail.jpg")));
+
+        ShelfItemsResponse response = shelfItemService.findMine(OwnershipStatus.OWNED, 1, 2);
+
+        assertThat(response.perfumes()).singleElement().satisfies(item -> {
+            assertThat(item.brand()).isEqualTo("Test Brand");
+            assertThat(item.thumbnailUrl()).isEqualTo("thumbnail.jpg");
+            assertThat(item.category()).isEqualTo(OwnershipStatus.OWNED);
+        });
+        assertThat(response.page()).isEqualTo(1);
+        assertThat(response.size()).isEqualTo(2);
+        assertThat(response.totalElements()).isEqualTo(3);
+    }
+
+    @Test
+    void limitsShelfItemPageRange() {
+        PageRequest limitedRequest = PageRequest.of(
+                0,
+                100,
+                Sort.by(Sort.Direction.ASC, "id")
+        );
+        when(currentUser.id()).thenReturn(Optional.of(USER_ID));
+        when(userPerfumeRepository.findPageByUserIdAndCategory(
+                USER_ID,
+                OwnershipStatus.WISH,
+                limitedRequest
+        ))
+                .thenReturn(new PageImpl<>(List.of(), limitedRequest, 0));
+
+        ShelfItemsResponse response = shelfItemService.findMine(OwnershipStatus.WISH, -1, 101);
+
+        assertThat(response.page()).isZero();
+        assertThat(response.size()).isEqualTo(100);
+        assertThat(response.perfumes()).isEmpty();
+    }
+
+    @Test
+    void requiresLoginToListShelfItems() {
+        when(currentUser.id()).thenReturn(Optional.empty());
+
+        assertBusinessError(
+                () -> shelfItemService.findMine(OwnershipStatus.OWNED, 0, 7),
+                ShelfErrorCode.SHELF_LOGIN_REQUIRED
+        );
+        verify(userPerfumeRepository, never()).findPageByUserIdAndCategory(
+                any(),
+                any(),
+                any()
+        );
+    }
+
+    @Test
+    void returnsShelfItemDetail() {
+        ShelfItemDetailResponse baseDetail = new ShelfItemDetailResponse(
+                SHELF_ITEM_ID,
+                PERFUME_ID,
+                "Test Scent",
+                "테스트 향수",
+                "Test Brand",
+                OwnershipStatus.OWNED,
+                BigDecimal.valueOf(4.5),
+                true
+        );
+        List<PerfumeNoteResponse> scentNotes = List.of(
+                new PerfumeNoteResponse(1L, "Orange", "TOP"),
+                new PerfumeNoteResponse(2L, "Rose", "MIDDLE"),
+                new PerfumeNoteResponse(3L, "Patchouli", "BASE")
+        );
+        OffsetDateTime memoCreatedAt = OffsetDateTime.parse("2026-09-10T00:00:00Z");
+        PersonalRecord personalRecord = BeanUtils.instantiateClass(PersonalRecord.class);
+        ReflectionTestUtils.setField(personalRecord, "content", "Test memo");
+        ReflectionTestUtils.setField(personalRecord, "createdAt", memoCreatedAt);
+
+        when(currentUser.id()).thenReturn(Optional.of(USER_ID));
+        when(userPerfumeRepository.findDetailByIdAndUserId(SHELF_ITEM_ID, USER_ID))
+                .thenReturn(Optional.of(baseDetail));
+        when(perfumeImageRepository.findOrderedByPerfumeIds(List.of(PERFUME_ID)))
+                .thenReturn(List.of(new PerfumeImageUrl(PERFUME_ID, "thumbnail.jpg")));
+        when(perfumeNoteRepository.findByPerfumeId(PERFUME_ID)).thenReturn(scentNotes);
+        when(personalRecordRepository.findByUserPerfumeId(SHELF_ITEM_ID))
+                .thenReturn(Optional.of(personalRecord));
+
+        ShelfItemDetailResponse response = shelfItemService.findMine(SHELF_ITEM_ID);
+
+        assertThat(response.thumbnailUrl()).isEqualTo("thumbnail.jpg");
+        assertThat(response.nameKo()).isEqualTo("테스트 향수");
+        assertThat(response.rating()).isEqualByComparingTo("4.5");
+        assertThat(response.scentNotes()).containsExactlyElementsOf(scentNotes);
+        assertThat(response.memo()).isEqualTo("Test memo");
+        assertThat(response.memoUpdatedAt()).isEqualTo(memoCreatedAt);
+    }
+
+    @Test
+    void rejectsShelfItemDetailNotOwnedByCurrentUser() {
+        when(currentUser.id()).thenReturn(Optional.of(USER_ID));
+        when(userPerfumeRepository.findDetailByIdAndUserId(SHELF_ITEM_ID, USER_ID))
+                .thenReturn(Optional.empty());
+
+        assertBusinessError(
+                () -> shelfItemService.findMine(SHELF_ITEM_ID),
+                ShelfErrorCode.SHELF_ITEM_NOT_FOUND
+        );
+        verify(perfumeNoteRepository, never()).findByPerfumeId(any());
     }
 
     private void prepareCreate() {
