@@ -199,6 +199,10 @@ LIMIT 10;
 - **프론트 타입 반영.** 화면의 `ReviewSummary` 는 아직 `sentences: string[]` 입니다. 한 단락으로
   보여주기로 정했으니 `summary: string | null` 로 바꾸고 조회를 붙이는 일이 남았습니다.
   `frontend/` 는 FE 파트 담당이라 FE 이슈로 넘깁니다.
+- **모델 비교.** `gpt-5-nano` 하나로 정해 두었습니다. Gemini 계열의 경량 모델 등과 요약 품질,
+  응답 시간, 비용을 비교해 볼 만합니다. 같은 OpenAI 호환 규격 안에서 바뀌는 모델이면
+  `gms.model` 만 바꾸면 되지만, 규격이 다른 제공자면 `gms.base-url` 과 요청·응답 형식을 다루는
+  `GmsReviewAnalyzer` 까지 손대야 합니다.
 
 ## 9. 참고 문서
 
