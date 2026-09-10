@@ -12,10 +12,13 @@ import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.perfume.entity.Perfume;
 import com.hyanghae.backend.perfume.repository.PerfumeRepository;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemCreateResponse;
+import com.hyanghae.backend.shelf.dto.response.ShelfItemSummaryResponse;
+import com.hyanghae.backend.shelf.dto.response.ShelfItemsResponse;
 import com.hyanghae.backend.shelf.entity.OwnershipStatus;
 import com.hyanghae.backend.shelf.entity.UserPerfume;
 import com.hyanghae.backend.shelf.exception.ShelfErrorCode;
 import com.hyanghae.backend.shelf.repository.UserPerfumeRepository;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +27,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.BeanUtils;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -151,6 +157,62 @@ class ShelfItemServiceTest {
                 () -> shelfItemService.create(PERFUME_ID, null),
                 ShelfErrorCode.SHELF_LOGIN_REQUIRED
         );
+    }
+
+    @Test
+    void returnsCurrentUsersShelfItems() {
+        ShelfItemSummaryResponse shelfItem = new ShelfItemSummaryResponse(
+                SHELF_ITEM_ID,
+                PERFUME_ID,
+                "Test Scent",
+                OwnershipStatus.OWNED,
+                null,
+                true
+        );
+        PageRequest pageRequest = PageRequest.of(
+                1,
+                2,
+                Sort.by(Sort.Direction.ASC, "id")
+        );
+        when(currentUser.id()).thenReturn(Optional.of(USER_ID));
+        when(userPerfumeRepository.findPageByUserId(USER_ID, pageRequest))
+                .thenReturn(new PageImpl<>(List.of(shelfItem), pageRequest, 3));
+
+        ShelfItemsResponse response = shelfItemService.findMine(1, 2);
+
+        assertThat(response.perfumes()).containsExactly(shelfItem);
+        assertThat(response.page()).isEqualTo(1);
+        assertThat(response.size()).isEqualTo(2);
+        assertThat(response.totalElements()).isEqualTo(3);
+    }
+
+    @Test
+    void limitsShelfItemPageRange() {
+        PageRequest limitedRequest = PageRequest.of(
+                0,
+                100,
+                Sort.by(Sort.Direction.ASC, "id")
+        );
+        when(currentUser.id()).thenReturn(Optional.of(USER_ID));
+        when(userPerfumeRepository.findPageByUserId(USER_ID, limitedRequest))
+                .thenReturn(new PageImpl<>(List.of(), limitedRequest, 0));
+
+        ShelfItemsResponse response = shelfItemService.findMine(-1, 101);
+
+        assertThat(response.page()).isZero();
+        assertThat(response.size()).isEqualTo(100);
+        assertThat(response.perfumes()).isEmpty();
+    }
+
+    @Test
+    void requiresLoginToListShelfItems() {
+        when(currentUser.id()).thenReturn(Optional.empty());
+
+        assertBusinessError(
+                () -> shelfItemService.findMine(0, 20),
+                ShelfErrorCode.SHELF_LOGIN_REQUIRED
+        );
+        verify(userPerfumeRepository, never()).findPageByUserId(any(), any());
     }
 
     private void prepareCreate() {

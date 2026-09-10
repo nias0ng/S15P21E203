@@ -5,19 +5,24 @@ import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.perfume.entity.Perfume;
 import com.hyanghae.backend.perfume.repository.PerfumeRepository;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemCreateResponse;
+import com.hyanghae.backend.shelf.dto.response.ShelfItemsResponse;
 import com.hyanghae.backend.shelf.entity.OwnershipStatus;
 import com.hyanghae.backend.shelf.entity.UserPerfume;
 import com.hyanghae.backend.shelf.exception.ShelfErrorCode;
 import com.hyanghae.backend.shelf.repository.UserPerfumeRepository;
 import java.time.OffsetDateTime;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ShelfItemService {
 
     private static final OwnershipStatus DEFAULT_OWNERSHIP_STATUS = OwnershipStatus.WISH;
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final UserPerfumeRepository userPerfumeRepository;
     private final PerfumeRepository perfumeRepository;
@@ -69,6 +74,22 @@ public class ShelfItemService {
                 .orElseThrow(() -> new BusinessException(ShelfErrorCode.SHELF_ITEM_NOT_FOUND));
 
         userPerfumeRepository.delete(shelfItem);
+    }
+
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public ShelfItemsResponse findMine(int page, int size) {
+        Long userId = currentUserId();
+        int pageNumber = Math.max(page, 0);
+        int pageSize = Math.clamp(size, 1, MAX_PAGE_SIZE);
+        PageRequest pageRequest = PageRequest.of(
+                pageNumber,
+                pageSize,
+                Sort.by(Sort.Direction.ASC, "id")
+        );
+
+        return ShelfItemsResponse.from(
+                userPerfumeRepository.findPageByUserId(userId, pageRequest)
+        );
     }
 
     private Long currentUserId() {
