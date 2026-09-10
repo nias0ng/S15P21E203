@@ -61,6 +61,22 @@ public class UserPerfume {
         // JPA 가 요구하는 기본 생성자입니다.
     }
 
+    public static UserPerfume create(
+            Long userId,
+            Perfume perfume,
+            OwnershipStatus ownershipStatus,
+            OffsetDateTime createdAt
+    ) {
+        UserPerfume shelfItem = new UserPerfume();
+        shelfItem.userId = userId;
+        shelfItem.perfume = perfume;
+        shelfItem.ownershipStatus = ownershipStatus;
+        shelfItem.representative = false;
+        shelfItem.createdAt = createdAt;
+        shelfItem.updatedAt = createdAt;
+        return shelfItem;
+    }
+
     public Long getId() {
         return id;
     }
