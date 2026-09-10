@@ -235,6 +235,49 @@ class PerfumeReviewAnalysisBatchIntegrationTest {
     }
 
     /**
+     * 최소 개수에 도달하는 순간 대상이 됩니다.
+     *
+     * <p>후기 4건인 향수는 대상이 아니고, 5번째 후기가 들어오면 그 향수의 후기 전체가 대상이
+     * 됩니다. 이 경계가 무너지면 후기 한두 건짜리 향수까지 호출이 나가고, 화면에는 "후기
+     * 100%가 이 표현을 썼다" 같은 값이 나옵니다.
+     */
+    @Test
+    void becomesTargetWhenReviewCountReachesMinimum() {
+        givenKeywords();
+        assertThat(batchService.extractPendingKeywords().targets()).isEqualTo(1);
+
+        insertReview(210, 2, REVIEW_TEXT);
+        givenKeywords(new ReviewKeywords(210L, List.of("달콤한")));
+
+        assertThat(batchService.extractPendingKeywords().targets()).isEqualTo(1);
+        assertThat(lastCapturedSource().reviews())
+                .extracting(ReviewContent::reviewId)
+                .containsExactlyInAnyOrder(200L, 201L, 202L, 203L, 210L);
+        assertThat(keywordNamesOf(210)).containsExactly("달콤한");
+    }
+
+    /**
+     * 추출 시각을 되돌리면 그 후기를 다시 뽑고, 키워드는 누적되지 않고 교체됩니다.
+     *
+     * <p>프롬프트나 모델을 바꿔 전체를 다시 뽑는 경로입니다. 문서는 키워드 행과 추출 시각을 함께
+     * 지우라고 안내하지만, 시각만 되돌리는 실수가 있을 수 있습니다. 그때도 더해지지 않고
+     * 교체되어야 키워드별 비중이 부풀지 않습니다.
+     */
+    @Test
+    void replacesKeywordsWhenExtractionMarkIsReset() {
+        givenKeywords(new ReviewKeywords(100L, List.of("달콤한", "포근한")));
+        batchService.extractPendingKeywords();
+        assertThat(countLinks(100)).isEqualTo(2);
+
+        jdbcTemplate.update("UPDATE perfume_reviews SET keywords_extracted_at = NULL");
+        givenKeywords(new ReviewKeywords(100L, List.of("시원한")));
+        batchService.extractPendingKeywords();
+
+        assertThat(keywordNamesOf(100)).containsExactly("시원한");
+        assertThat(countLinks(100)).isOne();
+    }
+
+    /**
      * 이미 뽑은 후기의 키워드는 그대로 남습니다.
      *
      * <p>모델이 보내지 않은 후기의 키워드를 돌려줘도 적재하지 않습니다. 판단을 모델에게 맡기면
