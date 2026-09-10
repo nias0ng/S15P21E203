@@ -67,23 +67,6 @@ public interface PerfumeReviewKeywordRepository
     );
 
     /**
-     * 준 후기 중 키워드가 이미 붙어 있는 후기 번호입니다.
-     *
-     * <p>배치가 키워드를 다시 뽑지 않을 후기를 가려내는 데 씁니다. 요약은 최근 후기 전체를 근거로
-     * 하지만, 키워드는 후기마다 붙는 값이라 이미 뽑아 둔 후기를 다시 뽑으면 출력이 그만큼 길어져
-     * 호출 시간과 비용만 늘고 결과는 대체로 같습니다.
-     *
-     * <p>{@code DISTINCT} 가 필요합니다. 후기 하나에 키워드가 여러 개 붙어 있으면 그만큼 행이
-     * 나옵니다.
-     */
-    @Query("""
-            SELECT DISTINCT rk.id.reviewId
-            FROM PerfumeReviewKeyword rk
-            WHERE rk.id.reviewId IN :reviewIds
-            """)
-    List<Long> findAnalyzedReviewIds(@Param("reviewIds") Collection<Long> reviewIds);
-
-    /**
      * 후기에 붙어 있던 키워드를 모두 떼어냅니다. 배치가 그 후기의 키워드를 이번 결과로 정할 때 씁니다.
      *
      * <p>지우지 않고 새 키워드만 더하면, 같은 후기를 두 번 분석했을 때 두 결과가 합쳐집니다.

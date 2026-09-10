@@ -1,9 +1,9 @@
--- 후기 시드 적재. 후기 요약·키워드 배치를 수동으로 확인하려면 후기가 쌓인 향수가 있어야 합니다.
+-- 후기 시드 적재. 후기 키워드 추출 배치를 수동으로 확인하려면 후기가 쌓인 향수가 있어야 합니다.
 --
 -- 실행 (이 디렉터리에서):
 --     psql "$DATABASE_URL" -f load_review_seed.sql
 --
--- 스키마는 V6 까지 적용돼 있어야 합니다. 향 지도 적재(load_scent_map.sql)를 먼저 돌려
+-- 스키마는 V7 까지 적용돼 있어야 합니다. 향 지도 적재(load_scent_map.sql)를 먼저 돌려
 -- 향수가 들어 있어야 합니다. 이 스크립트는 향수를 만들지 않고 이미 있는 향수에 후기를 붙입니다.
 --
 -- 몇 번을 다시 돌려도 결과가 같습니다. 지난 실행이 넣은 후기와 사용자를 지운 뒤 다시 넣습니다.
@@ -33,7 +33,7 @@ BEGIN;
 --
 -- 향수마다 후기 수를 다르게 두었습니다. 배치의 최소 개수 정책(기본 5건)이 어디서 갈리는지
 -- 한 번의 실행으로 보이게 하려는 것입니다.
---   1번 자리: 6건  - 최소 개수를 넘겨 요약이 생깁니다.
+--   1번 자리: 6건  - 최소 개수를 넘겨 키워드가 생깁니다.
 --   2번 자리: 12건 - 후기가 많을 때의 프롬프트 크기를 봅니다.
 --   3번 자리: 4건  - 최소 개수에 하나 모자라 대상이 되지 않습니다.
 -- ---------------------------------------------------------------------------
@@ -72,7 +72,7 @@ END $$;
 -- ---------------------------------------------------------------------------
 -- 2. 후기 원문.
 --
--- 실제로 사람이 쓴 것처럼 보이는 문장이어야 합니다. AI 가 읽고 요약할 원문이라, 향 표현이
+-- 실제로 사람이 쓴 것처럼 보이는 문장이어야 합니다. AI 가 읽고 키워드를 뽑을 원문이라, 향 표현이
 -- 고르게 반복되지 않으면 키워드 통계가 한두 개로 쏠려 확인할 것이 없어집니다.
 --
 -- 일부러 섞어 둔 것이 두 가지 있습니다.
@@ -153,10 +153,8 @@ INSERT INTO seed_reviews (slot, seq, title, content) VALUES
 -- 후기에 붙은 키워드(perfume_review_keywords)는 후기가 지워질 때 함께 지워집니다.
 -- 외래키가 ON DELETE CASCADE 입니다.
 --
--- 요약도 함께 지웁니다. 요약은 향수당 한 행이고 source_review_count 를 들고 있어서,
--- 남겨 두면 이제 존재하지 않는 후기로 만든 요약이 화면에 계속 보입니다. 게다가 그 값이 새로
--- 넣은 후기 수와 비슷해 배치가 재생성 대상으로 보지 않으므로, 시드를 다시 돌려도 요약이
--- 갱신되지 않습니다.
+-- 대상 향수의 요약 행도 지웁니다. 지금 배치는 요약을 만들지 않지만, 예전에 만들어졌거나 손으로
+-- 넣어 둔 행이 남아 있으면 이제 존재하지 않는 후기로 만든 요약이 화면에 계속 보입니다.
 -- ---------------------------------------------------------------------------
 DELETE FROM perfume_reviews
 WHERE user_id IN (SELECT user_id FROM users WHERE email LIKE '%@seed.hyanghae.test');
@@ -250,7 +248,7 @@ WITH seeded AS (
 SELECT p.perfume_id,
        p.name,
        count(r.id)      AS reviews,
-       count(r.id) >= 5 AS summary_target
+       count(r.id) >= 5 AS keyword_target
 FROM seeded s
 JOIN perfumes p ON p.perfume_id = s.perfume_id
 LEFT JOIN perfume_reviews r ON r.perfume_id = s.perfume_id
@@ -258,5 +256,5 @@ GROUP BY p.perfume_id, p.name
 ORDER BY p.perfume_id;
 
 \echo ''
-\echo '배치를 켜고 실행하면 summary_target 이 t 인 향수만 요약과 키워드가 생깁니다.'
-\echo '확인: GET /api/v1/perfumes/{perfumeId}/review-summary, /review-keywords'
+\echo '배치를 켜고 실행하면 keyword_target 이 t 인 향수만 키워드가 생깁니다.'
+\echo '확인: GET /api/v1/perfumes/{perfumeId}/review-keywords?size=3'

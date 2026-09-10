@@ -7,19 +7,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyanghae.backend.perfume.batch.ReviewAnalysisProperties;
 import com.hyanghae.backend.perfume.repository.ReviewContent;
-import com.hyanghae.backend.perfume.service.ReviewAnalyzer.AnalysisSource;
-import com.hyanghae.backend.perfume.service.ReviewAnalyzer.ReviewAnalysis;
+import com.hyanghae.backend.perfume.service.ReviewAnalyzer.ExtractedKeywords;
+import com.hyanghae.backend.perfume.service.ReviewAnalyzer.ExtractionSource;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -73,10 +70,10 @@ class GmsReviewAnalyzerTest {
     @Test
     void sendsOpenAiCompatibleChatCompletionRequest() throws Exception {
         responseBody = chatResponse("""
-                {"summary":"달콤합니다.","reviews":[{"reviewId":1,"keywords":["달콤한"]}]}
+                {"reviews":[{"reviewId":1,"keywords":["달콤한"]}]}
                 """);
 
-        analyzer(1000).analyze(source(new ReviewContent(1L, "제목", REVIEW_TEXT)));
+        analyzer(1000).extract(source(new ReviewContent(1L, "제목", REVIEW_TEXT)));
 
         JsonNode request = objectMapper.readTree(receivedBodies.getFirst());
         assertThat(request.get("model").asText()).isEqualTo("gpt-5-nano");
@@ -97,9 +94,9 @@ class GmsReviewAnalyzerTest {
      */
     @Test
     void doesNotSendTemperature() throws Exception {
-        responseBody = chatResponse("{\"summary\":\"달콤합니다.\",\"reviews\":[]}");
+        responseBody = chatResponse("{\"reviews\":[]}");
 
-        analyzer(1000).analyze(source(new ReviewContent(1L, null, REVIEW_TEXT)));
+        analyzer(1000).extract(source(new ReviewContent(1L, null, REVIEW_TEXT)));
 
         JsonNode request = objectMapper.readTree(receivedBodies.getFirst());
         assertThat(request.has("temperature")).isFalse();
@@ -108,46 +105,36 @@ class GmsReviewAnalyzerTest {
     }
 
     /**
-     * 키워드를 뽑을 후기만 표시해서 보냅니다.
+     * 설정값이 지시문의 제 자리에 들어가는지 봅니다.
      *
-     * <p>이미 키워드가 있는 후기는 요약의 근거로만 보냅니다. 다시 뽑으면 출력이 그만큼 길어져
-     * 호출 시간과 비용만 늘고 결과는 대체로 같습니다. 그래도 요약은 전체를 읽어야 하므로 본문은
-     * 함께 보냅니다.
+     * <p>자리표시자와 인자가 어긋난 적이 있습니다. 요약 문장을 빼면서 자리표시자가 하나 줄었는데
+     * 인자는 그대로여서, "최대 5개"가 들어갈 자리에 요약 길이 제한(1000)이 들어가고 규칙 한 줄이
+     * 통째로 사라졌습니다. 컴파일도 되고 호출도 되지만 지시문이 엉뚱해집니다.
      */
     @Test
-    void marksOnlyKeywordTargetsAsNeedingKeywords() throws Exception {
-        responseBody = chatResponse("{\"summary\":\"달콤합니다.\",\"reviews\":[]}");
+    void putsConfiguredLimitsIntoTheRightPlaceholders() throws Exception {
+        responseBody = chatResponse("{\"reviews\":[]}");
 
-        analyzer(1000).analyze(new AnalysisSource(
-                List.of(
-                        new ReviewContent(1L, null, REVIEW_TEXT),
-                        new ReviewContent(2L, null, REVIEW_TEXT)
-                ),
-                Set.of(2L),
-                List.of()
-        ));
+        analyzer(1000).extract(source(new ReviewContent(1L, null, REVIEW_TEXT)));
 
-        JsonNode reviews = sentReviews(objectMapper.readTree(receivedBodies.getFirst()));
-        assertThat(reviews.get(0).get("reviewId").asLong()).isEqualTo(1L);
-        assertThat(reviews.get(0).get("needKeywords").asBoolean()).isFalse();
-        assertThat(reviews.get(0).get("content").asText()).isEqualTo(REVIEW_TEXT);
-        assertThat(reviews.get(1).get("reviewId").asLong()).isEqualTo(2L);
-        assertThat(reviews.get(1).get("needKeywords").asBoolean()).isTrue();
+        assertThat(instructionOf(receivedBodies.getFirst()))
+                .contains("최대 5개")
+                .contains("50자를 넘기지 않습니다");
     }
 
     /**
      * 이미 쓰인 표기를 지시문에 알려 줍니다.
      *
-     * <p>새 후기만 보는 호출이라 지난번에 어떤 이름을 썼는지 모델이 알 수 없습니다. 알려 주지
-     * 않으면 같은 표현에 다른 이름이 붙어("파우더" 와 "파우더리") 같은 뜻이 두 키워드로 갈라집니다.
+     * <p>후기 하나는 한 번만 분석하므로 이번 호출은 새 후기만 봅니다. 지난번에 어떤 이름을 썼는지
+     * 알려 주지 않으면 같은 표현에 다른 이름이 붙어("파우더" 와 "파우더리") 같은 뜻이 두 키워드로
+     * 갈라지고, 상위 몇 개를 뽑을 때 순위가 왜곡됩니다.
      */
     @Test
     void tellsModelWhichKeywordNamesAreAlreadyUsed() throws Exception {
-        responseBody = chatResponse("{\"summary\":\"달콤합니다.\",\"reviews\":[]}");
+        responseBody = chatResponse("{\"reviews\":[]}");
 
-        analyzer(1000).analyze(new AnalysisSource(
+        analyzer(1000).extract(new ExtractionSource(
                 List.of(new ReviewContent(1L, null, REVIEW_TEXT)),
-                Set.of(1L),
                 List.of("달콤한", "파우더리")
         ));
 
@@ -159,19 +146,34 @@ class GmsReviewAnalyzerTest {
     /** 알려 줄 표기가 없으면 그 규칙을 아예 넣지 않습니다. 빈 목록을 주면 모델이 혼란스러워합니다. */
     @Test
     void omitsKnownKeywordRuleWhenNothingIsKnownYet() throws Exception {
-        responseBody = chatResponse("{\"summary\":\"달콤합니다.\",\"reviews\":[]}");
+        responseBody = chatResponse("{\"reviews\":[]}");
 
-        analyzer(1000).analyze(source(new ReviewContent(1L, null, REVIEW_TEXT)));
+        analyzer(1000).extract(source(new ReviewContent(1L, null, REVIEW_TEXT)));
 
         assertThat(instructionOf(receivedBodies.getFirst())).doesNotContain("이미 쓰인 표기");
+    }
+
+    /**
+     * 요약 문장을 요구하지 않습니다.
+     *
+     * <p>화면이 상위 키워드로 문장을 구성하기로 정해졌습니다. 지시문에 요약이 남아 있으면 모델이
+     * 문장을 만들어 출력이 길어지고, 아무도 읽지 않는 값에 호출 시간을 씁니다.
+     */
+    @Test
+    void doesNotAskForSummarySentences() throws Exception {
+        responseBody = chatResponse("{\"reviews\":[]}");
+
+        analyzer(1000).extract(source(new ReviewContent(1L, null, REVIEW_TEXT)));
+
+        assertThat(instructionOf(receivedBodies.getFirst())).doesNotContain("summary");
     }
 
     /** 지시문에 "JSON" 이 있어야 {@code json_object} 응답 형식을 쓸 수 있습니다. */
     @Test
     void statesJsonOutputInInstruction() throws Exception {
-        responseBody = chatResponse("{\"summary\":\"달콤합니다.\",\"reviews\":[]}");
+        responseBody = chatResponse("{\"reviews\":[]}");
 
-        analyzer(1000).analyze(source(new ReviewContent(1L, null, REVIEW_TEXT)));
+        analyzer(1000).extract(source(new ReviewContent(1L, null, REVIEW_TEXT)));
 
         assertThat(instructionOf(receivedBodies.getFirst())).contains("JSON");
     }
@@ -179,9 +181,9 @@ class GmsReviewAnalyzerTest {
     /** 긴 후기는 잘라서 보냅니다. 후기가 길수록 토큰이 늘고, 한 번의 호출 비용이 커집니다. */
     @Test
     void truncatesLongReviewContent() throws Exception {
-        responseBody = chatResponse("{\"summary\":\"달콤합니다.\",\"reviews\":[]}");
+        responseBody = chatResponse("{\"reviews\":[]}");
 
-        analyzer(10).analyze(source(new ReviewContent(1L, null, "가".repeat(30))));
+        analyzer(10).extract(source(new ReviewContent(1L, null, "가".repeat(30))));
 
         JsonNode reviews = sentReviews(objectMapper.readTree(receivedBodies.getFirst()));
         assertThat(reviews.get(0).get("content").asText()).isEqualTo("가".repeat(10));
@@ -189,35 +191,33 @@ class GmsReviewAnalyzerTest {
 
     /** 모델 출력은 응답 본문 안에 문자열로 한 겹 더 들어 있습니다. */
     @Test
-    void parsesSummaryAndKeywordsFromModelOutput() throws Exception {
+    void parsesKeywordsFromModelOutput() throws Exception {
         responseBody = chatResponse("""
-                {"summary":"달콤한 잔향이 오래 남습니다.",
-                 "reviews":[{"reviewId":1,"keywords":["달콤한","포근한"]},
+                {"reviews":[{"reviewId":1,"keywords":["달콤한","포근한"]},
                             {"reviewId":2,"keywords":[]}]}
                 """);
 
-        ReviewAnalysis analysis = analyzer(1000).analyze(source(
+        ExtractedKeywords extracted = analyzer(1000).extract(source(
                 new ReviewContent(1L, null, REVIEW_TEXT),
                 new ReviewContent(2L, null, REVIEW_TEXT)
         ));
 
-        assertThat(analysis.summary()).isEqualTo("달콤한 잔향이 오래 남습니다.");
-        assertThat(analysis.reviewKeywords()).hasSize(2);
-        assertThat(analysis.reviewKeywords().getFirst().reviewId()).isEqualTo(1L);
-        assertThat(analysis.reviewKeywords().getFirst().keywords())
+        assertThat(extracted.reviewKeywords()).hasSize(2);
+        assertThat(extracted.reviewKeywords().getFirst().reviewId()).isEqualTo(1L);
+        assertThat(extracted.reviewKeywords().getFirst().keywords())
                 .containsExactly("달콤한", "포근한");
-        assertThat(analysis.reviewKeywords().get(1).keywords()).isEmpty();
+        assertThat(extracted.reviewKeywords().get(1).keywords()).isEmpty();
     }
 
     /** 키워드 목록을 아예 빼먹은 후기는 빈 목록으로 다룹니다. 값의 판단은 배치가 합니다. */
     @Test
     void treatsMissingKeywordListAsEmpty() throws Exception {
-        responseBody = chatResponse("{\"summary\":\"달콤합니다.\",\"reviews\":[{\"reviewId\":1}]}");
+        responseBody = chatResponse("{\"reviews\":[{\"reviewId\":1}]}");
 
-        ReviewAnalysis analysis =
-                analyzer(1000).analyze(source(new ReviewContent(1L, null, REVIEW_TEXT)));
+        ExtractedKeywords extracted =
+                analyzer(1000).extract(source(new ReviewContent(1L, null, REVIEW_TEXT)));
 
-        assertThat(analysis.reviewKeywords().getFirst().keywords()).isEmpty();
+        assertThat(extracted.reviewKeywords().getFirst().keywords()).isEmpty();
     }
 
     /**
@@ -232,7 +232,7 @@ class GmsReviewAnalyzerTest {
         responseBody = "{\"error\":{\"message\":\"" + REVIEW_TEXT + "\"}}";
 
         assertThatThrownBy(() ->
-                analyzer(1000).analyze(source(new ReviewContent(1L, null, REVIEW_TEXT))))
+                analyzer(1000).extract(source(new ReviewContent(1L, null, REVIEW_TEXT))))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("status=429")
                 .hasMessageNotContaining(REVIEW_TEXT)
@@ -242,10 +242,10 @@ class GmsReviewAnalyzerTest {
     /** 해석하지 못한 출력도 예외 메시지에 담지 않습니다. 그 문자열이 후기 원문일 수 있습니다. */
     @Test
     void doesNotPutModelOutputIntoExceptionWhenOutputIsNotJson() throws Exception {
-        responseBody = chatResponse("요약: " + REVIEW_TEXT);
+        responseBody = chatResponse("키워드: " + REVIEW_TEXT);
 
         assertThatThrownBy(() ->
-                analyzer(1000).analyze(source(new ReviewContent(1L, null, REVIEW_TEXT))))
+                analyzer(1000).extract(source(new ReviewContent(1L, null, REVIEW_TEXT))))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageNotContaining(REVIEW_TEXT)
                 .hasNoCause();
@@ -257,14 +257,14 @@ class GmsReviewAnalyzerTest {
         responseBody = "{\"choices\":[]}";
 
         assertThatThrownBy(() ->
-                analyzer(1000).analyze(source(new ReviewContent(1L, null, REVIEW_TEXT))))
+                analyzer(1000).extract(source(new ReviewContent(1L, null, REVIEW_TEXT))))
                 .isInstanceOf(IllegalStateException.class);
     }
 
     /** GMS 키는 Bearer 인증으로 보냅니다. 원래 API 의 인증 방식이 그대로입니다. */
     @Test
     void authenticatesWithBearerApiKey() throws Exception {
-        responseBody = chatResponse("{\"summary\":\"달콤합니다.\",\"reviews\":[]}");
+        responseBody = chatResponse("{\"reviews\":[]}");
         List<String> authorizations = new ArrayList<>();
         server.removeContext("/v1/chat/completions");
         server.createContext("/v1/chat/completions", exchange -> {
@@ -276,18 +276,14 @@ class GmsReviewAnalyzerTest {
             exchange.close();
         });
 
-        analyzer(1000).analyze(source(new ReviewContent(1L, null, REVIEW_TEXT)));
+        analyzer(1000).extract(source(new ReviewContent(1L, null, REVIEW_TEXT)));
 
         assertThat(authorizations).containsExactly("Bearer test-key");
     }
 
-    /** 준 후기 전체에서 키워드를 뽑는 경우입니다. 키워드가 아직 하나도 없는 향수의 첫 분석입니다. */
-    private AnalysisSource source(ReviewContent... reviews) {
-        List<ReviewContent> all = List.of(reviews);
-        Set<Long> targets = all.stream()
-                .map(ReviewContent::reviewId)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-        return new AnalysisSource(all, targets, List.of());
+    /** 이미 쓰인 표기가 없는 경우입니다. 키워드가 아직 하나도 없는 향수의 첫 추출입니다. */
+    private ExtractionSource source(ReviewContent... reviews) {
+        return new ExtractionSource(List.of(reviews), List.of());
     }
 
     /** 사용자 메시지에 담아 보낸 후기 배열입니다. 본문 안에 JSON 문자열로 한 겹 들어 있습니다. */
@@ -310,13 +306,11 @@ class GmsReviewAnalyzerTest {
                 "0 10 * * * *",
                 "Asia/Seoul",
                 5,
-                10,
                 20,
-                50,
+                20,
                 maxReviewLength,
                 50,
                 5,
-                1000,
                 new ReviewAnalysisProperties.Gms(
                         "http://localhost:" + server.getAddress().getPort() + "/v1",
                         "test-key",

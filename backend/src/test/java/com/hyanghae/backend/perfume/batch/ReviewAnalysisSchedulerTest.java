@@ -51,7 +51,7 @@ class ReviewAnalysisSchedulerTest {
         PerfumeReviewAnalysisBatchService batchService =
                 mock(PerfumeReviewAnalysisBatchService.class);
         AtomicReference<String> requestIdDuringRun = new AtomicReference<>();
-        given(batchService.analyzePerfumesNeedingSummary()).willAnswer(invocation -> {
+        given(batchService.extractPendingKeywords()).willAnswer(invocation -> {
             requestIdDuringRun.set(MDC.get(RequestIdFilter.MDC_KEY));
             return new ReviewAnalysisBatchResult(0, 0, 0, 0);
         });
@@ -67,7 +67,7 @@ class ReviewAnalysisSchedulerTest {
     void removesRunIdFromMdcWhenRunFails() {
         PerfumeReviewAnalysisBatchService batchService =
                 mock(PerfumeReviewAnalysisBatchService.class);
-        given(batchService.analyzePerfumesNeedingSummary())
+        given(batchService.extractPendingKeywords())
                 .willThrow(new IllegalStateException("조회에 실패했습니다."));
 
         ReviewAnalysisScheduler scheduler =
@@ -83,13 +83,11 @@ class ReviewAnalysisSchedulerTest {
                 "0 10 * * * *",
                 "Asia/Seoul",
                 5,
-                10,
                 20,
-                50,
+                20,
                 1000,
                 50,
                 5,
-                1000,
                 new ReviewAnalysisProperties.Gms(
                         "https://gms.example.test/v1",
                         apiKey,

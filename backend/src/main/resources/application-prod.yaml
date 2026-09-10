@@ -43,7 +43,7 @@ management:
       maximum-expected-value:
         http.server.requests: 10s
 
-# 후기 요약·키워드 배치입니다. 기본값은 ReviewAnalysisProperties 에 있고 여기서는 운영에서
+# 후기 키워드 추출 배치입니다. 기본값은 ReviewAnalysisProperties 에 있고 여기서는 운영에서
 # 바꿔야 하는 값만 덮어씁니다.
 #
 # 켜기 전에 GMS_API_KEY 를 배포 디렉터리의 .env 에 넣어야 합니다. 키 없이 켜면 애플리케이션이

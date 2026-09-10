@@ -36,7 +36,7 @@ springdoc:
   swagger-ui:
     enabled: true
 
-# 후기 요약·키워드 배치입니다. 기본은 꺼져 있습니다. 켜면 실제 GMS 를 호출해 비용이 나갑니다.
+# 후기 키워드 추출 배치입니다. 기본은 꺼져 있습니다. 켜면 실제 GMS 를 호출해 비용이 나갑니다.
 #
 # 수동 확인 방법:
 #   REVIEW_ANALYSIS_ENABLED=true GMS_API_KEY=... ./gradlew bootRun --args="--spring.profiles.active=manual-test"
