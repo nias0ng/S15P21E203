@@ -37,8 +37,8 @@ export function CommentSection({
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null)
 
   return (
-    <section className="space-y-3">
-      <h2 className="text-ink text-heading font-serif font-semibold">
+    <section className="space-y-4">
+      <h2 className="text-ink text-title font-serif font-bold">
         댓글 {comments.length}
       </h2>
 
@@ -68,9 +68,14 @@ export function CommentSection({
         </Button>
       </form>
 
-      <ul className="border-line divide-line divide-y border">
+      {/*
+        상자로 감싸지 않고 줄로만 나눕니다. 댓글은 글 하나하나가 카드가 될 만큼
+        길지 않고, 테두리를 두르면 본문보다 댓글 쪽이 더 무거워 보입니다.
+        py-4 는 위아래 여백이고 가로 여백은 없습니다 — 본문과 왼쪽 선을 맞춥니다.
+      */}
+      <ul className="divide-line-soft border-line-soft divide-y border-t">
         {comments.map((comment) => (
-          <li key={comment.commentId} className="space-y-2 p-3">
+          <li key={comment.commentId} className="space-y-2 py-4">
             <div className="text-caption flex items-center gap-2">
               <Thumbnail className="size-6 shrink-0 rounded-full" />
               <span className="text-ink">{comment.nickname}</span>

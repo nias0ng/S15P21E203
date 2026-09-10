@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 
 import {
-  BoardTabs,
+  BoardHeader,
   PostList,
   postListQuery,
   REVIEW_SORTS,
@@ -30,24 +30,25 @@ export default function ReviewBoardPage() {
   const trending = useQuery(trendingPerfumesQuery())
 
   return (
-    <div className="space-y-4">
-      <h1 className="sr-only">후기 게시판</h1>
-      <BoardTabs />
+    <div className="space-y-8">
+      <BoardHeader
+        description="향수 한 개에 대한 시향 기록입니다. 점수나 별점 없이 좋아요만 있습니다."
+        action={
+          <LinkButton to={ROUTES.REVIEW_WRITE} size="sm">
+            후기 쓰기
+          </LinkButton>
+        }
+      />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_16rem]">
-        <div className="min-w-0 space-y-3">
-          <div className="flex items-center gap-2">
-            {/* 후기 게시판에는 분류 필터가 없습니다 */}
-            <ChipToggle
-              label="정렬"
-              options={REVIEW_SORTS}
-              value={sort}
-              onChange={(next) => setSort(next ?? 'RECENT')}
-            />
-            <LinkButton to={ROUTES.REVIEW_WRITE} className="ml-auto">
-              후기 쓰기
-            </LinkButton>
-          </div>
+        <div className="min-w-0 space-y-6">
+          {/* 후기 게시판에는 분류 필터가 없습니다 — 전부 후기라서 */}
+          <ChipToggle
+            label="정렬"
+            options={REVIEW_SORTS}
+            value={sort}
+            onChange={(next) => setSort(next ?? 'RECENT')}
+          />
 
           {/* TODO: 정렬을 백엔드 파라미터로 넘기세요. 지금은 목록만 보여줍니다. */}
           <PostList
@@ -59,11 +60,6 @@ export default function ReviewBoardPage() {
               </LinkButton>
             }
           />
-
-          <p className="text-ink-muted text-caption leading-relaxed">
-            후기는 향수 한 개에 반드시 붙습니다. 점수나 별점 없이 좋아요만
-            있습니다.
-          </p>
         </div>
 
         <TrendingPerfumes items={trending.data ?? []} />
