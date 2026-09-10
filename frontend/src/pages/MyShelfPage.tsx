@@ -123,9 +123,10 @@ export default function MyShelfPage() {
         justify-between 이 남는 세로 공간을 세 덩어리 사이에 나눠, 하단 문구 줄이
         시안(y 865/941)처럼 화면 맨 아래에 붙습니다. 모자라면 그냥 gap-6 로 흐르고
         스크롤됩니다 — 높이를 고정해 내용을 잘라내지는 않습니다.
-        6rem 은 헤더(52px)와 위 py-4 두 겹(32px)을 뺀 값에 여유를 조금 더한 값입니다.
+        7.5rem 은 헤더(88px)와 위 py-4 두 겹(32px)을 뺀 값입니다 — 헤더 높이를 바꾸면
+        여기도 함께 바꿔야 하단 띠가 화면 밖으로 밀리지 않습니다.
       */}
-      <section className="flex flex-col gap-6 lg:min-h-[calc(100dvh_-_6rem)] lg:justify-between">
+      <section className="flex flex-col gap-6 lg:min-h-[calc(100dvh_-_7.5rem)] lg:justify-between">
         {/* 머리말과 필터가 한 줄에 놓입니다 (시안: 둘 다 y 145~190) */}
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
           {/*
