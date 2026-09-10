@@ -17,23 +17,18 @@ type Props = {
 }
 
 /*
- * 병마다 이미지 높이가 다릅니다. 실제 향수병은 브랜드마다 비율이 달라서, 전부 같은
- * 높이로 세우면 상품 카탈로그처럼 보이고 진열장 느낌이 사라집니다.
- * 시안이 병별로 잡아 둔 값을 그대로 가져왔습니다.
+ * 병이 차지하는 칸 높이. **전부 같은 값입니다.**
  *
- * ⚠️ **칸(버튼)은 전부 같은 크기입니다.** 달라지는 것은 칸 안에서 병 이미지가 차지하는
- * 높이뿐이라, 칸이 들쭉날쭉해 보이던 이전 문제와는 다른 이야기입니다.
- *
- * 순서가 아니라 향수 id 로 고르는 이유: 순서로 고르면 어느 장을 넘겨도 일곱 병의
- * 실루엣이 똑같이 반복돼 장이 넘어간 것을 눈치채기 어렵습니다.
+ * 예전에는 id 로 일곱 가지 높이를 돌려썼습니다. 자리표시자가 똑같은 실루엣이라
+ * 높이라도 흔들어야 진열장처럼 보였기 때문입니다. 지금은 진짜 사진이 들어와서
+ * 병마다 비율이 이미 다릅니다 — 넓은 플라콘(미스 디올·끌로에)은 object-contain 이
+ * 폭에 맞추느라 저절로 낮아지고, 길쭉한 병(상탈 33·에르메스)은 높이를 다 씁니다.
+ * 여기서 높이까지 흔들면 그 위에 가짜 편차가 한 겹 더 얹힙니다.
  */
-const BOTTLE_HEIGHTS = [219, 235, 210, 257, 252, 232, 224] as const
-
-const bottleHeight = (shelfItemId: number) =>
-  BOTTLE_HEIGHTS[shelfItemId % BOTTLE_HEIGHTS.length]
+const BOTTLE_HEIGHT = 280
 
 /** 사진과 실루엣이 공유하는 자리·크기 */
-const BOTTLE = 'relative z-[2] max-w-[94%] object-contain object-bottom'
+const BOTTLE = 'relative z-[2] max-w-full object-contain object-bottom'
 
 /** 고른 병은 살짝 앞으로 나옵니다. 아직 안 고른 병은 마우스를 올릴 때만 그렇습니다 */
 const lift = (item: ShelfItem, selectedId: number | null) =>
@@ -45,8 +40,8 @@ const lift = (item: ShelfItem, selectedId: number | null) =>
 /**
  * 진열장 (와이어프레임 A13 재디자인 시안)
  *
- * 벽을 파낸 벽감에 향수병을 세워 둡니다. 벽감의 원근·그림자와 병 뒤 찢어진
- * 종이는 `../shelf-display.css` 가 그립니다 — clip-path 와 6겹 그림자를 유틸리티로
+ * 벽을 파낸 벽감에 향수병을 세워 둡니다. 벽감의 원근·그림자는
+ * `../shelf-display.css` 가 그립니다 — clip-path 와 6겹 그림자를 유틸리티로
  * 옮기면 한 줄이 200자를 넘어 읽을 수 없어서 모양만 CSS 로 뺐습니다.
  * 배치·간격은 여기 Tailwind 입니다.
  *
@@ -102,6 +97,22 @@ export function DisplayCase({
   const offWindow = (at: number) =>
     at < windowStart || at >= windowStart + SHELF_SLOT_COUNT
 
+  /*
+   * 조명에서 얼마나 멀리 있는 칸인지 (0 = 광원 쪽 왼쪽 끝, 1 = 오른쪽 끝).
+   *
+   * 광원이 벽감 **왼쪽 아래에 하나** 있다고 보면 오른쪽으로 갈수록 어두워지고
+   * 그림자가 길어집니다. 일곱 칸이 전부 같은 밝기·같은 그림자면 조명이 아니라
+   * 칸마다 스티커를 붙인 것으로 읽힙니다. 이 값을 CSS 변수로 넘기고 밝기와
+   * 그림자 길이를 calc() 로 풉니다.
+   *
+   * 기준은 절대 순서가 아니라 **창 안에서의 자리**입니다. 조명은 벽감에 붙어
+   * 있으니 트랙이 밀려도 왼쪽 칸이 늘 밝아야 합니다.
+   */
+  const litRatio = (at: number) => {
+    const inWindow = (at - windowStart) / (SHELF_SLOT_COUNT - 1)
+    return Math.min(1, Math.max(0, inWindow))
+  }
+
   const TRACK_MOTION =
     'grid transition-transform duration-[400ms] ease-[cubic-bezier(0.22,0.61,0.36,1)]'
 
@@ -119,78 +130,136 @@ export function DisplayCase({
         높이 329px 은 시안 실측값입니다.
       */}
       <div className="shelf-case relative h-[329px]">
+        {/*
+          벽감 — 뒷벽·바닥·좌우 접힘선을 그립니다. clip-path 가 **자식까지 잘라내므로**
+          여기에는 비어 있을 때의 안내문만 둡니다. 병 트랙은 바깥 상자(.shelf-case)의
+          자식입니다 — 벽감 안에 두면 양 끝 병이 벽 두께만큼 잘립니다. 넘김 화살표를
+          바깥에 둔 것과 같은 이유입니다.
+        */}
         <div className="shelf-niche absolute inset-0 overflow-hidden">
-          {items.length === 0 ? (
+          {items.length === 0 && (
             <p className="shelf-muted text-caption absolute inset-0 flex items-center justify-center">
               조건에 맞는 향수가 없습니다
             </p>
-          ) : (
-            /*
-              감싸는 층이 **창**이고 안쪽이 **트랙**입니다. 트랙의 폭을 %로 잡았으므로
-              그 100% 가 무엇인지가 곧 칸 크기입니다 — 창이 이 자리(좌우 40px 안쪽)를
-              잡아줘야 칸이 141px 이 됩니다. 트랙을 직접 absolute 로 두면 100% 가
-              벽감 전체(1066px)가 되어 병이 한 단 커지고 오른쪽 벽을 넘어갑니다.
-            */
-            <div className="absolute inset-x-10 top-9 bottom-0 overflow-x-clip">
-              <div
-                style={track}
-                className={cn('h-full items-end', TRACK_MOTION)}
-              >
-                {items.map((item, at) => (
-                  <button
-                    key={item.shelfItemId}
-                    type="button"
-                    aria-pressed={item.shelfItemId === selectedId}
-                    onClick={() => onSelect(item)}
-                    title={`${item.name} · ${item.brand}`}
-                    inert={offWindow(at)}
-                    className={cn(
-                      'relative flex h-[292px] min-w-0 items-end justify-center',
-                      'rounded-card outline-none focus-visible:ring-2 focus-visible:ring-[var(--shelf-ink)]',
-                    )}
-                  >
-                    {/* 병 뒤 찢어진 종이. 모양은 CSS, 크기·위치는 여기서 */}
-                    <span
-                      aria-hidden
-                      className="shelf-torn pointer-events-none absolute bottom-0 h-[88%] w-[82%]"
-                    />
-                    {/* 병이 바닥에 닿는 자리. 이게 없으면 병이 떠 보입니다 */}
-                    <span
-                      aria-hidden
-                      className="shelf-ground pointer-events-none absolute -bottom-1 h-3.5 w-[82%] rounded-[50%]"
-                    />
+          )}
+        </div>
 
-                    {/*
+        {items.length > 0 && (
+          /*
+            감싸는 층이 **창**이고 안쪽이 **트랙**입니다. 트랙 폭을 %로 잡았으므로
+            창 폭의 1/7 이 곧 칸 크기입니다.
+
+            창이 **상자 전체 폭**이고 벽감 **밖**에 있습니다. 그래서 양 끝 병이 벽
+            그러데이션 위까지 그려지고 아무것도 잘리지 않습니다. 안쪽으로 물리면
+            칸이 좁아지고(40px 물렸을 때 103px, 지금 112px), 벽감 안에 두면 벽
+            두께만큼 잘립니다.
+
+            ⚠️ 아래 라벨 트랙도 **같은 좌우 기준**이어야 열이 맞습니다.
+            한쪽만 px-10 을 두면 병과 이름이 어긋납니다.
+
+            창 밖 병은 `shelf-window`(CSS) 의 마스크와 각 병의 opacity 가 함께
+            감춥니다. overflow:clip 은 쓰지 않습니다 — 경계에서 픽셀이 뚝 끊겨
+            세로줄로 보입니다.
+          */
+          <div className="shelf-window absolute inset-x-0 top-9 bottom-0">
+            <div style={track} className={cn('h-full items-end', TRACK_MOTION)}>
+              {items.map((item, at) => (
+                <button
+                  key={item.shelfItemId}
+                  type="button"
+                  aria-pressed={item.shelfItemId === selectedId}
+                  onClick={() => onSelect(item)}
+                  title={`${item.name} · ${item.brand}`}
+                  inert={offWindow(at)}
+                  className={cn(
+                    // @container: 그림자를 칸 폭 기준(cqw)으로 재게 합니다.
+                    // 칸은 %로 줄어드는데 그림자만 고정 px 이면, 창이 좁아질수록
+                    // 병 대비 그림자가 커져서 창 경계에 잘린 줄이 보입니다.
+                    '@container relative flex h-[292px] min-w-0 items-end justify-center',
+                    'rounded-card outline-none focus-visible:ring-2 focus-visible:ring-[var(--shelf-ink)]',
+                    // 창 밖 병은 **투명하게** 지웁니다. 잘라내면 창 경계에
+                    // 걸친 그림자까지 같이 잘려 세로줄이 생깁니다. 투명으로
+                    // 지우면 그림자는 벽까지 번지고, 넘김(400ms)에 맞춰
+                    // 사라지고 나타납니다.
+                    'transition-opacity duration-[400ms] ease-[cubic-bezier(0.22,0.61,0.36,1)]',
+                    offWindow(at) && 'opacity-0',
+                  )}
+                >
+                  {/*
                     사진과 실루엣이 같은 높이·같은 움직임을 갖습니다. 실루엣만 크기가
                     다르면 사진이 있는 환경과 없는 환경의 레이아웃이 달라져서, 사진이
                     없는 팀원은 다른 화면을 보게 됩니다.
                   */}
-                    {item.thumbnailUrl ? (
+                  {item.thumbnailUrl ? (
+                    /*
+                        빛을 종이 위에 덮으려면 겹칠 층이 이미지와 **똑같은 상자**를
+                        가져야 합니다. object-contain 은 이미지를 상자 안에 레터박스로
+                        앉히므로, 상자가 어긋나면 mask-size:contain 도 어긋납니다.
+                        그래서 감싸는 span 을 둡니다 — 이 span 이 곧 이미지 상자이고,
+                        빛 층은 inset-0 으로 그 상자를 그대로 물려받습니다.
+                      */
+                    <span
+                      style={{ height: BOTTLE_HEIGHT }}
+                      className={cn(
+                        'relative z-[2] max-w-full',
+                        lift(item, selectedId),
+                      )}
+                    >
+                      {/*
+                          벽에 지는 그림자. drop-shadow 가 아니라 **같은 실루엣을
+                          옆으로 민 그러데이션 층**입니다 — drop-shadow 는 색이 하나라
+                          그림자가 끝까지 같은 농도로 깔려 판자처럼 보입니다.
+                        */}
+                      <span
+                        aria-hidden
+                        className="shelf-bottle-cast"
+                        style={
+                          {
+                            '--bottle': `url("${item.thumbnailUrl}")`,
+                            '--lit': String(litRatio(at)),
+                          } as React.CSSProperties
+                        }
+                      />
                       <img
                         src={item.thumbnailUrl}
                         alt=""
-                        style={{ height: bottleHeight(item.shelfItemId) }}
-                        className={cn(
-                          BOTTLE,
-                          'shelf-bottle-img',
-                          lift(item, selectedId),
-                        )}
+                        style={
+                          {
+                            '--lit': String(litRatio(at)),
+                          } as React.CSSProperties
+                        }
+                        className="shelf-bottle-img relative z-[1] h-full max-w-full object-contain object-bottom"
                       />
-                    ) : (
-                      <BottleSilhouette
-                        style={{ height: bottleHeight(item.shelfItemId) }}
-                        className={cn(BOTTLE, lift(item, selectedId))}
+                      {/*
+                          종이 표면에 앉는 빛. 이미지 자신을 마스크로 써서 실루엣
+                          밖으로 새지 않습니다 — 이게 없으면 종이가 균일한 흰색이라
+                          아무리 바깥에 그림자를 깔아도 빛을 받는 물체로 안 읽힙니다.
+                        */}
+                      <span
+                        aria-hidden
+                        className="shelf-bottle-lit"
+                        style={
+                          {
+                            '--bottle': `url("${item.thumbnailUrl}")`,
+                            '--lit': String(litRatio(at)),
+                          } as React.CSSProperties
+                        }
                       />
-                    )}
-                    <span className="sr-only">
-                      {item.name} {item.brand}
                     </span>
-                  </button>
-                ))}
-              </div>
+                  ) : (
+                    <BottleSilhouette
+                      style={{ height: BOTTLE_HEIGHT }}
+                      className={cn(BOTTLE, lift(item, selectedId))}
+                    />
+                  )}
+                  <span className="sr-only">
+                    {item.name} {item.brand}
+                  </span>
+                </button>
+              ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/*
           넘김 화살표. 벽감이 아니라 **바깥 상자**의 자식입니다 — 벽감의 clip-path 는
@@ -219,7 +288,7 @@ export function DisplayCase({
         overflow-x-clip 입니다. hidden 으로 두면 CSS 규격상 세로가 auto 로 바뀌면서
         라벨 버튼의 포커스 링(box-shadow)이 위아래로 잘립니다.
       */}
-      <div className="overflow-x-clip px-10 pt-3">
+      <div className="overflow-x-clip pt-3">
         <ul style={track} className={TRACK_MOTION}>
           {items.map((item, at) => {
             const selected = item.shelfItemId === selectedId
@@ -232,6 +301,10 @@ export function DisplayCase({
                   className={cn(
                     'w-full px-1 text-center',
                     'rounded-card outline-none focus-visible:ring-2 focus-visible:ring-[var(--shelf-ink)]',
+                    // 병과 같은 규칙. 글씨는 특히 반쯤 잘리면 읽으려다 마는
+                    // 꼴이 되므로, 창 밖이면 아예 지웁니다.
+                    'transition-opacity duration-[400ms] ease-[cubic-bezier(0.22,0.61,0.36,1)]',
+                    offWindow(at) && 'opacity-0',
                   )}
                 >
                   {/*

@@ -48,6 +48,17 @@
     /* 좌우 벽. 바깥(입구)이 밝고 뒷벽과 만나는 안쪽 모서리가 가장 어둡습니다 */
     --niche-wall: oklch(0.871 0.02 74);
     --niche-wall-deep: oklch(0.828 0.025 71);
+    /*
+     * 뒷벽에 드는 조명. 광원이 왼쪽 아래에 있으므로 그쪽이 밝고 오른쪽 위가
+     * 어둡습니다. 밝기로 치면 228 → 215(--niche-bg) → 203 입니다.
+     *
+     * **조명을 여기 두는 것이 핵심입니다.** 물체마다 긴 캐스트 그림자를 달면
+     * 트랙이 옆으로 미끄러지는 화면에서 경계 클리핑·이웃 침범·그림자가 물체를
+     * 따라 움직이는 문제가 전부 따라옵니다. 배경 한 장에 방향을 담으면 자를
+     * 것이 없고, 병에는 발치의 접촉 그림자만 남기면 됩니다.
+     */
+    --niche-lit: oklch(0.925 0.014 77);
+    --niche-shade: oklch(0.85 0.022 72);
     --shelf-ink: oklch(0.285 0.014 58);
     --shelf-ink-soft: oklch(0.455 0.014 61);
     --chip: oklch(0.947 0.009 80 / 0.74);
@@ -56,6 +67,34 @@
     --hairline: oklch(0.53 0.016 62 / 0.34);
     --depth: oklch(0.31 0.025 59 / 0.32);
     --highlight: oklch(0.98 0.005 86 / 0.72);
+    /*
+     * 종이가 벽에 던지는 그림자 색. `.shelf-bottle-cast` **한 곳에서만** 씁니다.
+     *
+     * 색이 RGB(55,40,28) 로 거의 검정이라 알파가 그대로 농도가 됩니다 —
+     * 벽(215)보다 어두워지는 정도가 대략 `알파 x 174` 입니다.
+     *
+     *   0.30 → 52   0.42 → 73   0.50 → 87
+     *
+     * drop-shadow 였을 때는 0.46 에서 검은 띠가 됐지만(그림자 전체가 같은 농도),
+     * 지금은 그러데이션이라 이 값이 **시작점에서만** 나오고 끝으로 갈수록 사라집니다.
+     * 그래서 같은 숫자라도 훨씬 덜 무겁습니다.
+     */
+    --cast: oklch(0.29 0.03 58 / 0.42);
+    /*
+     * 종이 **표면**에 앉는 그늘. 위 두 개가 물체 바깥에 그리는 그림자라면
+     * 이건 물체 자신이 조명에서 먼 쪽으로 어두워지는 몫입니다.
+     * removebg 로 딴 사진은 종이가 균일한 흰색(평균 241, 좌우 차이 2)이라
+     * 이 층이 없으면 아무리 바깥 그림자를 키워도 조명 아래로 안 읽힙니다.
+     *
+     * ⚠️ 색이 RGB(89,74,62) 라 알파가 조금만 세도 흰 종이가 회색이 됩니다.
+     * 종이(239)가 그늘 최대 지점에서 갖는 밝기 — 실측:
+     *
+     *   alpha .55 · opacity .5~.9   왼쪽칸 194(-45)  오른쪽칸 158(-81)  ← 회색 덩어리
+     *   alpha .22 · opacity .35~.8  왼쪽칸 226(-13)  오른쪽칸 210(-29)  ← 조명 falloff
+     *
+     * -30 을 넘기면 "빛을 받는 종이" 가 아니라 "더러운 종이" 로 보입니다.
+     */
+    --lit-shade: oklch(0.42 0.028 58 / 0.22);
 
     position: relative;
     color: var(--shelf-ink);
@@ -135,6 +174,10 @@
    *
    * ⚠️ 24px · 31px 은 아래 벽감 clip-path 의 값과 **같아야** 합니다. 다르면 벽이
    * 모자라 종이가 비치거나, 남아서 벽감 위로 삐져나옵니다.
+   *
+   * 한때 병이 이 두께만큼 잘려서 12/15 로 줄였던 적이 있습니다. 지금은 병 트랙이
+   * 벽감 **밖**(.shelf-case 의 자식)에 있어 잘리지 않으므로 원래 값으로 되돌렸습니다.
+   * 병은 이 벽 그러데이션 **위에** 그려집니다.
    */
   .shelf-case {
     background-image:
@@ -189,7 +232,17 @@
           var(--niche-crease) 17px,
           rgb(0 0 0 / 0) 30px
         ),
-      /* 뒷벽 */ var(--niche-bg);
+      /*
+         뒷벽 — 평면색이 아니라 **조명면**입니다. 왼쪽 아래(광원 쪽)가 밝고
+         오른쪽 위로 갈수록 어두워집니다. 이 한 장이 진열장 전체의 빛 방향을
+         담당하므로, 병에는 긴 그림자를 달지 않습니다.
+      */
+        linear-gradient(
+          to bottom right,
+          var(--niche-lit),
+          var(--niche-bg) 42%,
+          var(--niche-shade)
+        );
     box-shadow:
       /* 좌우 접힘선. 위아래와 달리 여기는 inset 그림자가 맞습니다 — 벽이 잘려나간
          자리(x 24 · 100%-31)가 정확히 접힘선이기 때문입니다 */
@@ -210,55 +263,137 @@
   }
 
   /*
-   * 병 뒤에 깔리는 찢어진 종이.
+   * 트랙 창 — 창 밖 병을 감추는 층.
    *
-   * 각 변에 점을 촘촘히 두어 손으로 뜯은 가장자리를 냅니다. 점이 적으면 톱니처럼
-   * 규칙적으로 보여서 오히려 인공적입니다.
+   * **overflow:clip 이 아니라 마스크입니다.** clip 은 경계에서 픽셀을 뚝 끊는데,
+   * 오른쪽 끝 병의 그림자는 실루엣을 통째로 옆으로 옮긴 것이라 경계에서 이미
+   * 최대 농도입니다. 그래서 끊긴 자리가 벽에 그은 세로줄로 보였습니다.
+   *
+   * overflow-clip-margin 으로도 못 풉니다. 창 밖 병이 경계에서 3px 뒤에 서 있어서
+   * 그림자가 필요한 만큼(21px) 열어주면 이웃 병이 통째로 드러납니다.
+   *
+   * **창 밖 병을 감추는 일은 DisplayCase 가 opacity 로 합니다.** 그래서 여기서는
+   * 감출 것이 없고, 마스크는 밖으로 새어나간 그림자를 부드럽게 끝내는 역할만
+   * 합니다 — 창보다 좌우로 --fade 만큼 크게 잡아 늘어난 바깥 구간에서만 페이드를
+   * 시킵니다. 창 안(0~100%)은 전부 불투명이라 병은 그대로 선명합니다.
+   *
+   * overflow 를 걷어내도 트랙이 페이지를 넓히지는 않습니다 — 바깥 벽감이
+   * overflow:hidden 으로 이미 가둡니다. 오히려 라벨 포커스 링이 안 잘려서 낫습니다.
    */
-  .shelf-scope .shelf-torn {
-    background: var(--paper-soft);
-    filter: drop-shadow(0 1px 1px var(--depth));
-    clip-path: polygon(
-      5% 2%,
-      15% 0,
-      25% 3%,
-      36% 0,
-      48% 3%,
-      60% 0,
-      72% 3%,
-      84% 0,
-      96% 4%,
-      100% 14%,
-      97% 27%,
-      100% 40%,
-      97% 55%,
-      100% 70%,
-      97% 84%,
-      100% 96%,
-      88% 100%,
-      73% 97%,
-      59% 100%,
-      44% 97%,
-      29% 100%,
-      14% 97%,
-      2% 100%,
-      0 86%,
-      3% 71%,
-      0 55%,
-      3% 39%,
-      0 24%,
-      3% 10%
+  .shelf-scope .shelf-window {
+    --fade: 48px;
+
+    mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      #000 var(--fade),
+      #000 calc(100% - var(--fade)),
+      transparent 100%
     );
+    /*
+     * 세로도 --fade 만큼 넓힙니다. 그러데이션이 `to right` 이라 세로 방향으로는
+     * 균일하므로, 마스크 상자만 키우면 위아래로 새어나간 그림자가 잘리지 않습니다.
+     * 병 그림자는 **위로** 뻗는데(광원이 왼쪽 아래) 창 위 경계까지 몇 px 밖에
+     * 안 남아서, 고른 병이 살짝 떠오를 때(lift) 잘리고 있었습니다.
+     */
+    mask-size: calc(100% + var(--fade) * 2) calc(100% + var(--fade) * 2);
+    mask-position: calc(var(--fade) * -1) calc(var(--fade) * -1);
+    mask-repeat: no-repeat;
   }
 
-  /* 병이 바닥에 닿는 자리. 이게 없으면 병이 떠 보입니다. */
-  .shelf-scope .shelf-ground {
-    background: radial-gradient(ellipse, var(--depth), transparent 70%);
-  }
-
-  /* 병 자체의 그림자. 바닥 그림자와 방향이 같아야 한 조명 아래로 읽힙니다. */
+  /*
+   * 병 자체에는 **밝기 감쇠만** 겁니다.
+   *
+   * ⚠️ 여기에 drop-shadow 를 달지 마세요. 그림자는 아래 `.shelf-bottle-cast` 가
+   * 그립니다. drop-shadow 는 색이 하나라 그림자가 끝까지 같은 농도로 깔리고,
+   * 두 겹 쌓으면 겹치는 자리가 배로 어두워져 검은 띠가 됩니다(실측 109).
+   *
+   * 밝기는 `--lit`(0 = 광원 쪽, 1 = 먼 쪽)을 따릅니다. 일곱 칸이 전부 같은
+   * 밝기면 조명이 아니라 칸마다 붙인 스티커로 읽힙니다.
+   */
   .shelf-scope .shelf-bottle-img {
-    filter: drop-shadow(0 10px 8px var(--depth));
+    filter: brightness(calc(1.05 - 0.13 * var(--lit, 0.5)));
+    transition: filter 400ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  /*
+   * 종이가 벽에 던지는 그림자.
+   *
+   * **drop-shadow 가 아닙니다.** drop-shadow 는 색이 한 가지라 그림자 전체가 같은
+   * 농도로 깔리고, 끝까지 진해서 판자를 세워둔 것처럼 보입니다. 여기서는 같은
+   * 실루엣(--bottle 마스크)을 옆으로 밀어 두고 그 안을 그러데이션으로 채워
+   * **멀어질수록 옅어지게** 합니다.
+   *
+   * 광원은 **왼쪽 위**. 그래서 오른쪽(+x) 아래(+y)로 밀고, 그러데이션도 같은
+   * 방향(to bottom right)으로 흐려집니다. 방향을 바꿀 때는 벽감 뒷벽
+   * (--niche-lit/--niche-shade)과 표면 그늘(.shelf-bottle-lit)도 **함께** 돌려야
+   * 한 조명 아래로 읽힙니다.
+   *
+   * 블러를 걸지 않습니다 — 강한 직사광 아래의 각진 그림자가 의도입니다.
+   * 가장자리의 부드러움은 사진 알파가 이미 갖고 있습니다.
+   *
+   * **칸 경계에 갇히지 않습니다.** 이 층을 감싸는 어떤 조상도 overflow 를 걸지
+   * 않아서, 그림자가 옆 칸 위로 자연스럽게 넘어갑니다 — 조명이 하나면 당연한
+   * 모습입니다. 유일한 경계는 창 마스크의 --fade 이고, 그림자 사거리
+   * (translate + 실루엣 폭)가 그보다 길어지면 끝이 잘리니 같이 봐야 합니다.
+   */
+  .shelf-scope .shelf-bottle-cast {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    translate: calc(13cqw + 9cqw * var(--lit, 0.5))
+      calc(15cqw + 9cqw * var(--lit, 0.5));
+    mask-image: var(--bottle);
+    mask-size: contain;
+    mask-position: bottom center;
+    mask-repeat: no-repeat;
+    background: linear-gradient(
+      to bottom right,
+      var(--cast) 4%,
+      transparent 68%
+    );
+    transition: translate 400ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  /*
+   * 종이 표면에 앉는 빛.
+   *
+   * **이미지 자신을 마스크로 씁니다.** `--bottle` 은 그 칸의 사진 URL 이고,
+   * mask-size/position 을 이미지의 object-contain/object-bottom 과 똑같이 맞춰
+   * 그러데이션이 병+종이 실루엣 안에만 들어갑니다. 사각형으로 덮으면 투명
+   * 영역까지 어두워져 병이 상자에 든 것처럼 보입니다.
+   *
+   * multiply 로 곱해서 원본의 명암을 지우지 않고 그 위에 그늘만 얹습니다.
+   * 왼쪽 아래(광원 쪽)는 투명하고 오른쪽 위로 갈수록 짙어집니다.
+   */
+  .shelf-scope .shelf-bottle-lit {
+    position: absolute;
+    inset: 0;
+    /*
+     * 마스크를 **세 겹 겹칩니다.** intersect 는 알파를 곱하므로 실효 마스크가
+     * a³ 이 됩니다. 한 겹(a)이면 removebg 가 남긴 뿌연 가장자리(알파 0.15~0.45)
+     * 에서 회색 띠가 생깁니다 — multiply 합성은 배경이 반투명한 만큼
+     * `(1-αb)·αs·Cs` 로 **그늘 색을 종이에 곱하는 대신 벽에 그대로 칠하기**
+     * 때문입니다. 실측: 가장자리가 벽보다 19 어두워져 종이마다 테두리가 둘러졌습니다.
+     *
+     * a³ 이면 그 값이 1 로 떨어져 벽과 구분되지 않고, 불투명한 본체의 그늘은
+     * 132 로 그대로입니다. 즉 조명은 살리고 띠만 없앱니다.
+     */
+    mask-image: var(--bottle), var(--bottle), var(--bottle);
+    mask-composite: intersect;
+    mask-size: contain;
+    mask-position: bottom center;
+    mask-repeat: no-repeat;
+    background: linear-gradient(
+      to bottom right,
+      transparent 18%,
+      var(--lit-shade) 104%
+    );
+    mix-blend-mode: multiply;
+    /* 먼 칸일수록 그늘이 짙어집니다 — 밝기 감쇠와 같은 --lit 를 씁니다 */
+    opacity: calc(0.35 + 0.45 * var(--lit, 0.5));
+    transition: opacity 400ms cubic-bezier(0.22, 0.61, 0.36, 1);
   }
 
   /*
