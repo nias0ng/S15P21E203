@@ -18,8 +18,9 @@ import org.springframework.test.web.servlet.MockMvc;
  * 검색의 인기순 정렬(ranking)을 실제 PostgreSQL 위에서 검증합니다.
  *
  * <p>전체 사용자 집계 기준입니다. "내가 담은 향수"가 아니라 "사람들이 담은 향수"라서 로그인이
- * 필요 없고, 누가 담았는지도 결과에 영향을 주지 않습니다. 사용자 1 과 2 가 서로 다른 향수를
- * 담아 두었고, 둘 다 결과에 나와야 합니다.
+ * 필요 없고, 누가 담았는지도 결과에 영향을 주지 않습니다.
+ *
+ * <p>보유·위시는 세 명 이상이 담은 향수만 나옵니다. 조회는 하한이 없습니다.
  */
 @IntegrationTest
 @AutoConfigureMockMvc
@@ -27,9 +28,7 @@ class PerfumeSearchRankingIntegrationTest {
 
     private static final String SEARCH_URL = "/api/v1/perfumes";
 
-    private static final long USER_ONE = 1L;
-    private static final long USER_TWO = 2L;
-    private static final long USER_THREE = 3L;
+    private static final long[] USERS = {1L, 2L, 3L, 4L};
 
     @Autowired
     private MockMvc mockMvc;
@@ -37,36 +36,73 @@ class PerfumeSearchRankingIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    /**
+     * 담은 사람 수를 일부러 향수 번호와 거꾸로 줍니다. 번호순으로 정렬하면 틀린 답이 나오므로
+     * 담긴 수로 정렬하는지가 실제로 검증됩니다.
+     *
+     * <pre>
+     * OWNED   5번 4명 · 1번 3명 · 9번 3명   → 통과 (8번 2명, 4번 0명, 7번 0명은 탈락)
+     * WISH    2번 3명                        → 통과
+     * VIEWED  3번 3회(2명) · 7번 1회(1명)     → 하한 없음
+     * </pre>
+     */
     @BeforeEach
     void insertFixtures() {
         clearData();
 
-        insertUser(USER_ONE, "one@example.com", "one");
-        insertUser(USER_TWO, "two@example.com", "two");
+        insertUser(1, "one@example.com", "one");
+        insertUser(2, "two@example.com", "two");
+        insertUser(3, "three@example.com", "three");
+        insertUser(4, "four@example.com", "four");
 
         insertBrand(1, "Chanel");
         insertBrand(2, "Diptyque");
 
-        insertPerfume(1, 1, "Owned By One", true);
-        insertPerfume(2, 1, "Wished By One", true);
-        insertPerfume(3, 2, "Viewed By One", true);
+        insertPerfume(1, 1, "Owned By Three", true);
+        insertPerfume(2, 1, "Wished By Three", true);
+        insertPerfume(3, 2, "Viewed By Two", true);
         insertPerfume(4, 1, "Removed From Shelf", true);
-        insertPerfume(5, 1, "Owned By Two", true);
+        insertPerfume(5, 1, "Owned By Four", true);
         insertPerfume(6, 1, "Inactive But Owned", false);
-        insertPerfume(7, 2, "Nobody Touched", true);
+        insertPerfume(7, 2, "Only Viewed Once", true);
+        insertPerfume(8, 1, "Barely Owned", true);
+        insertPerfume(9, 2, "Also Owned By Three", true);
 
-        insertShelfEntry(100, USER_ONE, 1, "OWNED");
-        insertShelfEntry(101, USER_ONE, 2, "WISH");
-        insertShelfEntry(102, USER_ONE, 4, "OWNED");
-        // 진열대 해제는 행을 물리 삭제합니다.
-        jdbcTemplate.update("DELETE FROM user_perfumes WHERE user_perfumes_id = 102");
-        insertShelfEntry(103, USER_TWO, 5, "OWNED");
-        insertShelfEntry(104, USER_TWO, 6, "OWNED");
+        // 기준을 넘는 향수들. 5번이 4명으로 가장 많고, 1번과 9번이 3명으로 동점입니다.
+        saveBy(5, 1, 2, 3, 4);
+        saveBy(1, 1, 2, 3);
+        saveBy(9, 1, 2, 3);
 
-        // 같은 향수를 여러 사람이 여러 번 봤습니다. 결과에는 한 번만 나와야 합니다.
-        insertView(200, USER_ONE, 3);
-        insertView(201, USER_ONE, 3);
-        insertView(202, USER_TWO, 3);
+        // 기준에 못 미치는 향수. 두 명뿐이라 결과에서 빠져야 합니다.
+        saveBy(8, 1, 2);
+
+        // 담겨 있지만 비활성이라 빠집니다. 기준 자체는 넘깁니다.
+        saveBy(6, 1, 2, 3);
+
+        // 진열대에서 뺀 향수입니다. 해제는 행을 물리 삭제합니다.
+        saveBy(4, 1, 2, 3);
+        jdbcTemplate.update("DELETE FROM user_perfumes WHERE perfume_id = 4");
+
+        wishBy(2, 1, 2, 3);
+
+        // 조회는 하한이 없습니다. 3번은 두 사람이 세 번, 7번은 한 사람이 한 번 봤습니다.
+        insertView(200, 1, 3);
+        insertView(201, 1, 3);
+        insertView(202, 2, 3);
+        insertView(203, 1, 7);
+    }
+
+    /** 여러 사람이 같은 향수를 보유로 담습니다. 진열대 항목 번호는 겹치지 않게 만듭니다. */
+    private void saveBy(long perfumeId, long... userIds) {
+        for (long userId : userIds) {
+            insertShelfEntry(perfumeId * 100 + userId, userId, perfumeId, "OWNED");
+        }
+    }
+
+    private void wishBy(long perfumeId, long... userIds) {
+        for (long userId : userIds) {
+            insertShelfEntry(perfumeId * 100 + userId, userId, perfumeId, "WISH");
+        }
     }
 
     @AfterEach
@@ -81,14 +117,15 @@ class PerfumeSearchRankingIntegrationTest {
                 .andExpect(status().isOk());
     }
 
-    /** 누가 담았는지는 상관없습니다. 사용자 1 의 향수와 사용자 2 의 향수가 함께 나옵니다. */
+    /** 누가 담았는지는 상관없습니다. 여러 사람이 담은 향수가 담긴 수 순으로 함께 나옵니다. */
     @Test
     void includesPerfumesOwnedByAnyUser() throws Exception {
         mockMvc.perform(get(SEARCH_URL).param("ranking", "OWNED"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(2)))
-                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
-                .andExpect(jsonPath("$.perfumes[1].perfumeId").value(5));
+                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(3)))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(5))
+                .andExpect(jsonPath("$.perfumes[1].perfumeId").value(1))
+                .andExpect(jsonPath("$.perfumes[2].perfumeId").value(9));
     }
 
     /** ownership_status 조건을 빼면 위시로 담은 향수가 보유 결과에 섞입니다. */
@@ -110,9 +147,9 @@ class PerfumeSearchRankingIntegrationTest {
     void filtersByViewed() throws Exception {
         mockMvc.perform(get(SEARCH_URL).param("ranking", "VIEWED"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(1)))
+                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(2)))
                 .andExpect(jsonPath("$.perfumes[0].perfumeId").value(3))
-                .andExpect(jsonPath("$.totalElements").value(1));
+                .andExpect(jsonPath("$.totalElements").value(2));
     }
 
     /**
@@ -161,13 +198,13 @@ class PerfumeSearchRankingIntegrationTest {
      */
     @Test
     void appliesSameSearchConditionAsPlainSearch() throws Exception {
-        // keyword: 일반 검색은 이름에 By 가 든 1·2·3·5 를 찾습니다. 그중 OWNED 기록이 있는 것은
-        // 1·5 뿐입니다. 2 는 WISH, 3 은 조회 기록만 있습니다.
-        assertPlainSearchFinds("keyword", "By", 1, 2, 3, 5);
-        assertRankingFinds("keyword", "By", 1, 5);
+        // keyword: 일반 검색은 이름에 Owned 가 든 활성 향수 1·5·8·9 를 찾습니다. 그중 기준을
+        // 넘는 것은 1·5·9 이고 8 번은 두 명뿐이라 빠집니다. 하한이 두 경로에서 갈리는 지점입니다.
+        assertPlainSearchFinds("keyword", "Owned", 1, 5, 8, 9);
+        assertRankingFinds("keyword", "Owned", 1, 5, 9);
 
-        // brand: 일반 검색은 Chanel 의 활성 향수 1·2·4·5, 그중 OWNED 는 1·5 입니다.
-        assertPlainSearchFinds("brand", "Chanel", 1, 2, 4, 5);
+        // brand: 일반 검색은 Chanel 의 활성 향수 1·2·4·5·8, 그중 기준을 넘는 것은 1·5 입니다.
+        assertPlainSearchFinds("brand", "Chanel", 1, 2, 4, 5, 8);
         assertRankingFinds("brand", "Chanel", 1, 5);
 
         // 조건에 걸리는 향수가 없으면 두 경로 모두 빈 목록입니다.
@@ -178,10 +215,10 @@ class PerfumeSearchRankingIntegrationTest {
     /** 전체 개수도 목록과 같은 조건을 봐야 합니다. 어긋나면 마지막 페이지가 빕니다. */
     @Test
     void countsWithTheSameConditionAsTheList() throws Exception {
-        mockMvc.perform(get(SEARCH_URL).param("ranking", "OWNED").param("keyword", "By").param("size", "1"))
+        mockMvc.perform(get(SEARCH_URL).param("ranking", "OWNED").param("keyword", "Owned").param("size", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfumes", Matchers.hasSize(1)))
-                .andExpect(jsonPath("$.totalElements").value(2));
+                .andExpect(jsonPath("$.totalElements").value(3));
     }
 
     private void assertPlainSearchFinds(String param, String value, Integer... expected) throws Exception {
@@ -197,66 +234,65 @@ class PerfumeSearchRankingIntegrationTest {
     }
 
     /**
-     * 많이 담긴 향수가 앞에 옵니다.
+     * 담긴 수가 기준에 못 미치는 향수는 나오지 않습니다.
      *
-     * <p>담긴 횟수와 향수 번호가 거꾸로 가도록 짰습니다. 1번을 세 사람이, 5번을 두 사람이,
-     * 2번을 한 사람이 담았습니다. 2번은 번호가 5번보다 작은데도 뒤에 와야 하므로, 번호순으로
-     * 정렬하면 틀린 답이 나옵니다.
+     * <p>8번은 두 사람이 담았습니다. 한 명만 더 담으면 나와야 하므로 이 단언이 하한을 실제로
+     * 지킵니다. 하한을 지우면 8번이 목록에 섞여 들어와 여기서 먼저 깨집니다.
      */
     @Test
-    void ordersBySaveCountDescending() throws Exception {
-        insertUser(USER_THREE, "three@example.com", "three");
-        // 1번 = 3명(100, 110, 112), 5번 = 2명(103, 111), 2번 = 1명(113)
-        insertShelfEntry(110, USER_TWO, 1, "OWNED");
-        insertShelfEntry(111, USER_THREE, 5, "OWNED");
-        insertShelfEntry(112, USER_THREE, 1, "OWNED");
-        insertShelfEntry(113, USER_THREE, 2, "OWNED");
+    void excludesPerfumeBelowMinimumSaveCount() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("ranking", "OWNED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes[*].perfumeId", Matchers.not(Matchers.hasItem(8))));
+
+        insertShelfEntry(899, USERS[2], 8, "OWNED");
 
         mockMvc.perform(get(SEARCH_URL).param("ranking", "OWNED"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(3)))
-                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
-                .andExpect(jsonPath("$.perfumes[1].perfumeId").value(5))
-                .andExpect(jsonPath("$.perfumes[2].perfumeId").value(2));
+                .andExpect(jsonPath("$.perfumes[*].perfumeId", Matchers.hasItem(8)));
     }
 
     /**
-     * 같은 횟수면 향수 번호순입니다. 순서를 확정하지 않으면 같은 요청이 매번 다른 답을 주어,
-     * 2페이지에 1페이지 항목이 다시 나옵니다.
+     * 많이 담긴 향수가 앞에 옵니다.
+     *
+     * <p>담긴 수와 향수 번호가 거꾸로 가도록 짰습니다. 5번을 네 사람이, 1번을 세 사람이
+     * 담았습니다. 번호순으로 정렬하면 1번이 앞이라 틀린 답이 나옵니다.
+     */
+    @Test
+    void ordersBySaveCountDescending() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("ranking", "OWNED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(3)))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(5))
+                .andExpect(jsonPath("$.perfumes[1].perfumeId").value(1))
+                .andExpect(jsonPath("$.perfumes[2].perfumeId").value(9));
+    }
+
+    /**
+     * 같은 수면 향수 번호순입니다. 순서를 확정하지 않으면 같은 요청이 매번 다른 답을 주어,
+     * 2페이지에 1페이지 항목이 다시 나옵니다. 1번과 9번이 각각 세 사람으로 동점입니다.
      */
     @Test
     void breaksTieByPerfumeId() throws Exception {
         mockMvc.perform(get(SEARCH_URL).param("ranking", "OWNED"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(2)))
-                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
-                .andExpect(jsonPath("$.perfumes[1].perfumeId").value(5));
+                .andExpect(jsonPath("$.perfumes[1].perfumeId").value(1))
+                .andExpect(jsonPath("$.perfumes[2].perfumeId").value(9));
     }
 
-    /**
-     * 페이지를 넘겨도 인기순이 이어집니다.
-     *
-     * <p>번호 목록을 자른 뒤 내용을 가져오는 구조라, 마지막에 순서를 다시 세우지 않으면 여기서
-     * 조용히 번호순으로 바뀝니다.
-     */
+    /** 페이지를 넘겨도 인기순이 이어집니다. */
     @Test
     void keepsSaveCountOrderAcrossPages() throws Exception {
-        insertUser(USER_THREE, "three@example.com", "three");
-        insertShelfEntry(110, USER_TWO, 1, "OWNED");
-        insertShelfEntry(111, USER_THREE, 1, "OWNED");
-        insertShelfEntry(112, USER_THREE, 2, "OWNED");
-        // 담긴 횟수: 1번 = 3, 2번 = 1(WISH 라 제외), 5번 = 1
-
         mockMvc.perform(get(SEARCH_URL).param("ranking", "OWNED").param("page", "0").param("size", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfumes", Matchers.hasSize(1)))
-                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(5))
                 .andExpect(jsonPath("$.totalElements").value(3));
 
         mockMvc.perform(get(SEARCH_URL).param("ranking", "OWNED").param("page", "1").param("size", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfumes", Matchers.hasSize(1)))
-                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(2))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
                 .andExpect(jsonPath("$.totalElements").value(3));
     }
 
@@ -266,28 +302,26 @@ class PerfumeSearchRankingIntegrationTest {
         mockMvc.perform(get(SEARCH_URL).param("ranking", "OWNED").param("page", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfumes", Matchers.hasSize(0)))
-                .andExpect(jsonPath("$.totalElements").value(2));
+                .andExpect(jsonPath("$.totalElements").value(3));
     }
 
-    /** 다른 정렬을 요청해도 인기순입니다. 진열대 필터에는 다른 정렬이 없습니다. */
+    /** 다른 정렬을 요청해도 인기순입니다. {@code ranking} 에는 다른 정렬이 없습니다. */
     @Test
     void ignoresRequestedSort() throws Exception {
-        insertUser(USER_THREE, "three@example.com", "three");
-        // 5번이 2명(103, 110), 1번이 1명(100)입니다. 번호순을 요청해도 5번이 앞에 와야 합니다.
-        insertShelfEntry(110, USER_THREE, 5, "OWNED");
-
         mockMvc.perform(get(SEARCH_URL).param("ranking", "OWNED").param("sort", "id,asc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfumes[0].perfumeId").value(5))
                 .andExpect(jsonPath("$.perfumes[1].perfumeId").value(1));
     }
 
-    /** 조회 이력도 많이 열어 본 순입니다. */
+    /**
+     * 조회 이력도 많이 열어 본 순입니다.
+     *
+     * <p>조회에는 하한이 없습니다. 7번은 한 사람이 한 번 봤을 뿐인데도 나옵니다. 보유·위시였다면
+     * 세 명 기준에 걸려 빠졌을 향수입니다.
+     */
     @Test
     void ordersViewedByViewCount() throws Exception {
-        // 3번은 픽스처에서 3회, 7번은 여기서 1회입니다.
-        insertView(210, USER_ONE, 7);
-
         mockMvc.perform(get(SEARCH_URL).param("ranking", "VIEWED"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfumes", Matchers.hasSize(2)))
@@ -296,12 +330,13 @@ class PerfumeSearchRankingIntegrationTest {
     }
 
     @Test
-    void combinesShelfWithBrandUsingAnd() throws Exception {
+    void combinesRankingWithBrandUsingAnd() throws Exception {
+        // Chanel 이면서 기준을 넘는 것은 5번·1번입니다. 9번은 Diptyque 라 빠집니다.
         mockMvc.perform(get(SEARCH_URL).param("ranking", "OWNED").param("brand", "Chanel"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfumes", Matchers.hasSize(2)))
-                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
-                .andExpect(jsonPath("$.perfumes[1].perfumeId").value(5));
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(5))
+                .andExpect(jsonPath("$.perfumes[1].perfumeId").value(1));
     }
 
     /** 담긴 향수가 없으면 IN 절에 넣을 값이 없습니다. SQL 오류가 아니라 빈 목록이어야 합니다. */

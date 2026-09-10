@@ -9,7 +9,8 @@ import org.springframework.stereotype.Repository;
 /**
  * 사람들이 많이 담거나 열어 본 순으로 향수를 읽습니다. 검색의 {@code ranking} 이 씁니다.
  *
- * <p>특정 사용자가 아니라 <b>전체 사용자 집계</b>입니다. 기록이 하나도 없는 향수는 빠집니다.
+ * <p>특정 사용자가 아니라 <b>전체 사용자 집계</b>입니다. 보유·위시는 세 명 이상이 담은 향수만
+ * 나옵니다({@link #MIN_SAVE_COUNT}).
  *
  * <p>{@code user_perfumes} 는 진열대 도메인, {@code user_perfume_views} 는 지도·이력 도메인의
  * 테이블입니다. 향수 검색이 다른 도메인의 엔티티에 의존하지 않도록 SQL 로 직접 읽습니다.
@@ -37,6 +38,18 @@ import org.springframework.stereotype.Repository;
 public class PerfumeRankingRepository {
 
     /**
+     * 보유·위시 순위에 오르는 최소 인원입니다. 이 수보다 적게 담긴 향수는 결과에서 빠집니다.
+     *
+     * <p>한 명이 담았다는 것만으로는 "사람들이 담은 향수"라고 하기 어렵습니다. 취향이 특이한 한
+     * 사람이 담은 향수가 순위 앞자리에 올라오면 목록이 추천으로 읽히지 않습니다. 여럿이 같은
+     * 판단을 했다는 신호가 되려면 최소한의 수가 필요합니다.
+     *
+     * <p>초기에는 이 하한 때문에 목록이 비어 보일 수 있습니다. 사용자가 쌓이기 전까지는 세 명이
+     * 같은 향수를 담는 일 자체가 드뭅니다. 빈 목록이 부담스러워지면 이 값을 내리면 됩니다.
+     */
+    private static final int MIN_SAVE_COUNT = 3;
+
+    /**
      * 검색 조건입니다. {@link PerfumeRepository#SEARCH_CONDITION} 의 SQL 판이라 두 곳이 같아야
      * 합니다. {@code CAST} 가 필요한 이유도 같습니다. 파라미터를 맨몸으로 쓰면 PostgreSQL 이
      * 타입을 추론하지 못해 {@code bytea} 로 바인딩하고 {@code lower()} 에서 실패합니다.
@@ -59,11 +72,17 @@ public class PerfumeRankingRepository {
             FROM user_perfumes
             WHERE ownership_status = :ownershipStatus AND perfume_id IS NOT NULL
             GROUP BY perfume_id
-            """;
+            HAVING COUNT(*) >= %d
+            """.formatted(MIN_SAVE_COUNT);
 
     /**
      * 열어 본 횟수로 줄 세웁니다. 조회 기록은 한 사람이 같은 향수를 여러 번 남기므로 사람 수와
      * 다릅니다. 사람 수로 바꾸려면 {@code COUNT(DISTINCT user_id)} 입니다.
+     *
+     * <p>여기에는 {@link #MIN_SAVE_COUNT} 같은 하한이 없습니다. 담기는 여러 사람이 같은 판단을
+     * 했다는 신호라 몇 명부터인지가 의미를 갖지만, 조회는 한 사람이 여러 번 남길 수 있어 같은
+     * 숫자가 같은 뜻이 아닙니다. 조회에 하한을 둔다면 몇 회가 아니라 몇 명을 기준으로 삼아야
+     * 하고, 그건 세는 방식을 먼저 정해야 하는 이야기입니다.
      */
     private static final String VIEW_COUNT = """
             SELECT perfume_id, COUNT(*) AS c
@@ -99,7 +118,7 @@ public class PerfumeRankingRepository {
         this.jdbcClient = jdbcClient;
     }
 
-    /** 한 페이지 분량입니다. 기록이 없는 향수는 조인에서 빠집니다. */
+    /** 한 페이지 분량입니다. 기준에 못 미치는 향수는 조인에서 빠집니다. */
     public List<PerfumeSummaryResponse> findPage(
             RankingType ranking, String keyword, String brand, String gender, int offset, int limit) {
         return bind(SELECT_PAGE.formatted(countSource(ranking), CONDITION), ranking, keyword, brand, gender)
