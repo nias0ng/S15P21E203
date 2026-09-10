@@ -1,5 +1,6 @@
 package com.hyanghae.backend.shelf.repository;
 
+import com.hyanghae.backend.shelf.dto.response.ShelfItemDetailResponse;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemSummaryResponse;
 import com.hyanghae.backend.shelf.entity.OwnershipStatus;
 import com.hyanghae.backend.shelf.entity.UserPerfume;
@@ -45,6 +46,28 @@ public interface UserPerfumeRepository extends JpaRepository<UserPerfume, Long> 
             @Param("userId") Long userId,
             @Param("category") OwnershipStatus category,
             Pageable pageable
+    );
+
+    @Query("""
+            SELECT new com.hyanghae.backend.shelf.dto.response.ShelfItemDetailResponse(
+                       up.id,
+                       p.id,
+                       p.name,
+                       p.nameKo,
+                       b.name,
+                       up.ownershipStatus,
+                       up.fitRating,
+                       CASE WHEN up.representative = true THEN true ELSE false END
+                   )
+            FROM UserPerfume up
+            JOIN up.perfume p
+            LEFT JOIN p.brand b
+            WHERE up.id = :id
+              AND up.userId = :userId
+            """)
+    Optional<ShelfItemDetailResponse> findDetailByIdAndUserId(
+            @Param("id") Long id,
+            @Param("userId") Long userId
     );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

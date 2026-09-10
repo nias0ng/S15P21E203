@@ -8,6 +8,7 @@ import com.hyanghae.backend.shelf.dto.response.FitRatingResponse;
 import com.hyanghae.backend.shelf.dto.response.OwnershipStatusResponse;
 import com.hyanghae.backend.shelf.dto.response.RepresentativeResponse;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemCreateResponse;
+import com.hyanghae.backend.shelf.dto.response.ShelfItemDetailResponse;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemsResponse;
 import com.hyanghae.backend.shelf.entity.OwnershipStatus;
 import com.hyanghae.backend.shelf.service.FitRatingService;
@@ -96,6 +97,27 @@ public class ShelfItemController {
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size
     ) {
         return shelfItemService.findMine(category, page, size);
+    }
+
+    @Operation(
+            summary = "진열대 향수 상세 조회",
+            description = "선택한 진열대 항목의 향수 정보와 적합도, 향조, 개인 메모를 조회합니다."
+    )
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "401", description = "로그인 필요")
+    @ApiResponse(responseCode = "404", description = "진열대 항목 없음")
+    @GetMapping("/{shelfItemId}")
+    public ShelfItemDetailResponse getMyShelfItem(
+            @Parameter(
+                    name = "shelfItemId",
+                    description = "사용자 진열대 항목 ID",
+                    in = ParameterIn.PATH,
+                    required = true,
+                    schema = @Schema(type = "integer", format = "int64")
+            )
+            @PathVariable Long shelfItemId
+    ) {
+        return shelfItemService.findMine(shelfItemId);
     }
 
     @Operation(

@@ -5,12 +5,16 @@ import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.perfume.entity.Perfume;
 import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
+import com.hyanghae.backend.perfume.repository.PerfumeNoteRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeRepository;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemCreateResponse;
+import com.hyanghae.backend.shelf.dto.response.ShelfItemDetailResponse;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemsResponse;
 import com.hyanghae.backend.shelf.entity.OwnershipStatus;
+import com.hyanghae.backend.shelf.entity.PersonalRecord;
 import com.hyanghae.backend.shelf.entity.UserPerfume;
 import com.hyanghae.backend.shelf.exception.ShelfErrorCode;
+import com.hyanghae.backend.shelf.repository.PersonalRecordRepository;
 import com.hyanghae.backend.shelf.repository.UserPerfumeRepository;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -31,17 +35,23 @@ public class ShelfItemService {
     private final UserPerfumeRepository userPerfumeRepository;
     private final PerfumeRepository perfumeRepository;
     private final PerfumeImageRepository perfumeImageRepository;
+    private final PerfumeNoteRepository perfumeNoteRepository;
+    private final PersonalRecordRepository personalRecordRepository;
     private final CurrentUser currentUser;
 
     public ShelfItemService(
             UserPerfumeRepository userPerfumeRepository,
             PerfumeRepository perfumeRepository,
             PerfumeImageRepository perfumeImageRepository,
+            PerfumeNoteRepository perfumeNoteRepository,
+            PersonalRecordRepository personalRecordRepository,
             CurrentUser currentUser
     ) {
         this.userPerfumeRepository = userPerfumeRepository;
         this.perfumeRepository = perfumeRepository;
         this.perfumeImageRepository = perfumeImageRepository;
+        this.perfumeNoteRepository = perfumeNoteRepository;
+        this.personalRecordRepository = personalRecordRepository;
         this.currentUser = currentUser;
     }
 
@@ -106,8 +116,33 @@ public class ShelfItemService {
         List<Long> perfumeIds = found.getContent().stream()
                 .map(item -> item.perfumeId())
                 .toList();
-        Map<Long, String> thumbnails = perfumeImageRepository
-                .findOrderedByPerfumeIds(perfumeIds)
+        Map<Long, String> thumbnails = loadThumbnails(perfumeIds);
+
+        return ShelfItemsResponse.from(found.map(
+                item -> item.withThumbnailUrl(thumbnails.get(item.perfumeId()))
+        ));
+    }
+
+    @Transactional(readOnly = true)
+    public ShelfItemDetailResponse findMine(Long shelfItemId) {
+        Long userId = currentUserId();
+        ShelfItemDetailResponse detail = userPerfumeRepository
+                .findDetailByIdAndUserId(shelfItemId, userId)
+                .orElseThrow(() -> new BusinessException(ShelfErrorCode.SHELF_ITEM_NOT_FOUND));
+        PersonalRecord personalRecord = personalRecordRepository
+                        .findByUserPerfumeId(shelfItemId)
+                .orElse(null);
+
+        return detail.withDetails(
+                loadThumbnails(List.of(detail.perfumeId())).get(detail.perfumeId()),
+                perfumeNoteRepository.findByPerfumeId(detail.perfumeId()),
+                personalRecord == null ? null : personalRecord.getContent(),
+                personalRecord == null ? null : memoUpdatedAt(personalRecord)
+        );
+    }
+
+    private Map<Long, String> loadThumbnails(List<Long> perfumeIds) {
+        return perfumeImageRepository.findOrderedByPerfumeIds(perfumeIds)
                 .stream()
                 .filter(image -> image.imageUrl() != null)
                 .collect(Collectors.toMap(
@@ -115,10 +150,12 @@ public class ShelfItemService {
                         PerfumeImageUrl::imageUrl,
                         (first, ignored) -> first
                 ));
+    }
 
-        return ShelfItemsResponse.from(found.map(
-                item -> item.withThumbnailUrl(thumbnails.get(item.perfumeId()))
-        ));
+    private OffsetDateTime memoUpdatedAt(PersonalRecord personalRecord) {
+        return personalRecord.getUpdatedAt() == null
+                ? personalRecord.getCreatedAt()
+                : personalRecord.getUpdatedAt();
     }
 
     private Long currentUserId() {
