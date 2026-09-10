@@ -43,7 +43,7 @@ import org.springframework.test.web.servlet.MockMvc;
  *   <li>향수 1: 본문 있는 후기 5건. 최소 개수를 채운 유일한 향수입니다.
  *   <li>향수 2: 후기 4건. 최소 개수에 하나 모자랍니다.
  *   <li>향수 3: 후기 6건이지만 비활성입니다. 조회 API 가 404 를 주는 향수입니다.
- *   <li>향수 4: 후기 5건이지만 본문이 모두 비어 있습니다. 대상은 되지만 보낼 것이 없습니다.
+ *   <li>향수 4: 후기 5건이지만 본문이 모두 비어 있습니다. 셀 수 있는 후기가 없어 대상이 아닙니다.
  * </ul>
  */
 @IntegrationTest
@@ -106,8 +106,9 @@ class PerfumeReviewAnalysisBatchIntegrationTest {
     /**
      * 최소 후기 수를 채운 향수만 요약이 생깁니다.
      *
-     * <p>본문이 비어 있는 향수 4 도 대상으로는 잡힙니다. 대상 선정은 후기 수만 보기 때문입니다.
-     * 보낼 본문이 없다는 것은 후기를 읽어 본 뒤에 알 수 있고, 그때는 적재하지 않고 건너뜁니다.
+     * <p>본문이 모두 비어 있는 향수 4 는 대상이 아닙니다. 대상 선정이 본문 있는 후기만 세므로
+     * 후기를 읽어 보기 전에 빠집니다. 세지 않으면 보낼 것이 없는 향수가 매 실행의 처리 상한을
+     * 차지합니다.
      */
     @Test
     void summarizesOnlyPerfumesThatReachedMinimumReviewCount() {
@@ -115,12 +116,47 @@ class PerfumeReviewAnalysisBatchIntegrationTest {
 
         ReviewAnalysisBatchResult result = batchService.summarizePerfumesNeedingSummary();
 
-        assertThat(result).isEqualTo(new ReviewAnalysisBatchResult(2, 1, 1, 0));
+        assertThat(result).isEqualTo(new ReviewAnalysisBatchResult(1, 1, 0, 0));
         assertThat(summaryTextOf(1)).isEqualTo(SUMMARY_TEXT);
         assertThat(sourceReviewCountOf(1)).isEqualTo(5);
         assertThat(summaryTextOf(2)).isNull();
         assertThat(summaryTextOf(3)).isNull();
         assertThat(summaryTextOf(4)).isNull();
+    }
+
+    /**
+     * 본문이 비어 있는 후기는 최소 개수에 세지 않습니다.
+     *
+     * <p>후기 작성 API 와 스키마가 본문을 필수로 막지 않아 공백만 있는 후기가 들어올 수 있습니다.
+     * 그런 후기까지 세면 보낼 본문이 없는 향수가 대상이 되고, 요약을 만들지 못해
+     * {@code source_review_count} 도 오르지 않습니다. 그러면 매 실행마다 다시 대상이 되어 처리
+     * 상한을 차지하고, 본문이 제대로 있는 향수가 그만큼 밀립니다.
+     *
+     * <p>반대로 적재하는 후기 수는 전체 후기 수 그대로입니다. 후기 통계 API 의
+     * {@code reviewCount} 와 비교해 요약이 최신인지 판단하므로 양쪽이 같은 것을 세야 합니다.
+     */
+    @Test
+    void countsOnlyReviewsWithTextTowardMinimumReviewCount() {
+        given(reviewAnalyzer.summarize(anyList())).willReturn(SUMMARY_TEXT);
+        for (int i = 0; i < 20; i++) {
+            insertReview(410 + i, 4, "   ");
+        }
+
+        // 향수 4 는 후기가 25건이지만 본문은 하나도 없습니다. 대상은 향수 1 뿐입니다.
+        assertThat(batchService.summarizePerfumesNeedingSummary().targets()).isEqualTo(1);
+        assertThat(summaryTextOf(4)).isNull();
+
+        for (int i = 0; i < 4; i++) {
+            insertReview(440 + i, 4, REVIEW_TEXT);
+        }
+        assertThat(batchService.summarizePerfumesNeedingSummary().targets()).isZero();
+
+        insertReview(444, 4, REVIEW_TEXT);
+        assertThat(batchService.summarizePerfumesNeedingSummary().summarized()).isEqualTo(1);
+
+        assertThat(summaryTextOf(4)).isEqualTo(SUMMARY_TEXT);
+        assertThat(sourceReviewCountOf(4)).isEqualTo(30);
+        assertThat(lastCapturedReviews()).hasSize(5);
     }
 
     /** 적재한 요약은 곧바로 조회 API 로 나갑니다. 적재 형식이 조회 쪽 전제와 같아야 합니다. */
@@ -232,7 +268,7 @@ class PerfumeReviewAnalysisBatchIntegrationTest {
         ReviewAnalysisBatchResult result = batchService.summarizePerfumesNeedingSummary();
 
         assertThat(result.summarized()).isZero();
-        assertThat(result.skipped()).isEqualTo(2);
+        assertThat(result.skipped()).isEqualTo(1);
         assertThat(summaryTextOf(1)).isNull();
     }
 
@@ -248,8 +284,8 @@ class PerfumeReviewAnalysisBatchIntegrationTest {
 
         ReviewAnalysisBatchResult result = batchService.summarizePerfumesNeedingSummary();
 
-        // 향수 1 은 호출이 실패하고, 향수 4 는 보낼 본문이 없어 호출 전에 건너뜁니다.
-        assertThat(result).isEqualTo(new ReviewAnalysisBatchResult(2, 0, 1, 1));
+        // 향수 4 는 본문이 비어 대상이 아니므로, 대상은 호출이 실패한 향수 1 하나입니다.
+        assertThat(result).isEqualTo(new ReviewAnalysisBatchResult(1, 0, 0, 1));
         assertThat(summaryTextOf(1)).isNull();
     }
 
@@ -270,7 +306,7 @@ class PerfumeReviewAnalysisBatchIntegrationTest {
 
         ReviewAnalysisBatchResult result = batchService.summarizePerfumesNeedingSummary();
 
-        // 조건을 넘긴 향수는 24개(향수 1·4 와 새로 넣은 22개)입니다.
+        // 조건을 넘긴 향수는 23개(향수 1 과 새로 넣은 22개)입니다.
         assertThat(result.targets()).isEqualTo(20);
         assertThat(result.summarized() + result.skipped() + result.failed()).isEqualTo(20);
         assertThat(countRows("perfume_review_summaries")).isEqualTo(result.summarized());
@@ -300,12 +336,12 @@ class PerfumeReviewAnalysisBatchIntegrationTest {
         batchService.summarizePerfumesNeedingSummary();
 
         assertThat(output).contains("Review summary batch completed:")
-                .contains("targets=2", "summarized=1", "skipped=1", "failed=0");
+                .contains("targets=1", "summarized=1", "skipped=0", "failed=0");
         assertThat(output).doesNotContain(REVIEW_TEXT);
         assertThat(output).doesNotContain(SUMMARY_TEXT);
     }
 
-    /** 분석기에 실제로 넘어간 후기입니다. 향수 4 는 보낼 본문이 없어 호출 자체가 한 번뿐입니다. */
+    /** 분석기에 실제로 넘어간 후기입니다. 향수 4 는 대상이 아니라 호출 자체가 한 번뿐입니다. */
     @SuppressWarnings("unchecked")
     private List<ReviewContent> capturedReviews() {
         ArgumentCaptor<List<ReviewContent>> captor = ArgumentCaptor.forClass(List.class);
