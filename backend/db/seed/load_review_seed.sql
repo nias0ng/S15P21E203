@@ -24,6 +24,13 @@ BEGIN;
 -- 다시 만들면 향수 번호와 구성이 통째로 바뀌는데, 이름으로 찾으면 그때 시드가 조용히
 -- 아무것도 넣지 않게 됩니다.
 --
+-- 시드가 아닌 후기가 이미 달린 향수는 건너뜁니다. 손으로 넣어 둔 후기와 섞이면 향수별 후기 수가
+-- 아래 표와 달라져 정책 경계를 확인할 수 없고, 남의 데이터를 지우지 않고는 시드를 돌릴 수
+-- 없게 됩니다.
+--
+-- 지난 실행이 넣은 시드 후기는 이 조건에 걸리지 않습니다. 그래서 다시 돌려도 같은 향수가
+-- 다시 뽑힙니다. 이 구분이 없으면 실행마다 다른 향수에 후기가 쌓입니다.
+--
 -- 향수마다 후기 수를 다르게 두었습니다. 배치의 최소 개수 정책(기본 5건)이 어디서 갈리는지
 -- 한 번의 실행으로 보이게 하려는 것입니다.
 --   1번 자리: 6건  - 최소 개수를 넘겨 요약이 생깁니다.
@@ -38,10 +45,17 @@ CREATE TEMP TABLE seed_perfumes (
 INSERT INTO seed_perfumes (slot, perfume_id)
 SELECT row_number() OVER (ORDER BY perfume_id), perfume_id
 FROM (
-    SELECT perfume_id
-    FROM perfumes
-    WHERE is_active = TRUE
-    ORDER BY perfume_id
+    SELECT p.perfume_id
+    FROM perfumes p
+    WHERE p.is_active = TRUE
+      AND NOT EXISTS (
+          SELECT 1
+          FROM perfume_reviews r
+          LEFT JOIN users u ON u.user_id = r.user_id
+          WHERE r.perfume_id = p.perfume_id
+            AND (u.email IS NULL OR u.email NOT LIKE '%@seed.hyanghae.test')
+      )
+    ORDER BY p.perfume_id
     LIMIT 3
 ) p;
 
@@ -51,7 +65,7 @@ DECLARE
 BEGIN
     SELECT count(*) INTO found FROM seed_perfumes;
     IF found < 3 THEN
-        RAISE EXCEPTION '활성 향수가 %개뿐입니다. 향 지도 적재(load_scent_map.sql)를 먼저 실행하세요.', found;
+        RAISE EXCEPTION '후기가 없는 활성 향수가 %개뿐입니다. 향 지도 적재(load_scent_map.sql)를 먼저 실행하세요.', found;
     END IF;
 END $$;
 
