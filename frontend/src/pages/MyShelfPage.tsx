@@ -100,12 +100,12 @@ export default function MyShelfPage() {
   if (shelf.isPending) return <PageFallback />
 
   return (
-    // -my-8 로 부모 <main> 의 세로 여백(py-8)을 걷어내고 위아래를 따로 줍니다.
+    // 부모 <main> 의 세로 여백(pt-14 pb-16)을 걷어내고 위아래를 따로 줍니다.
     //
     // 위 56px 은 시안 실측입니다 — 헤더 아래끝(88)과 제목 윗선(148)의 사이입니다.
     // 부모 여백(32)을 그대로 쓰면 16px 밖에 안 남아서 제목이 메뉴에 붙어 보입니다.
     // 아래는 하단 띠가 화면 안에 들어와야 해서 16px 만 줍니다.
-    <div className={cn(FULL_BLEED, 'shelf-scope -my-8 pt-14 pb-4')}>
+    <div className={cn(FULL_BLEED, 'shelf-scope -mt-14 -mb-16 pt-14 pb-4')}>
       {/*
         시안의 종이 바탕과 질감. fixed 로 뷰포트를 통째로 덮습니다 — 이 div 에만
         배경을 깔면 좌우 여백과 화면 아래쪽이 body 의 ivory 로 남아 종이 한 장

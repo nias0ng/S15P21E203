@@ -26,7 +26,12 @@ export function RootLayout() {
     <div className="flex min-h-dvh flex-col">
       <GlobalHeader onPaper={onPaper} />
 
-      <main className="max-w-content mx-auto w-full flex-1 px-5 py-8">
+      {/*
+        위 56px 은 헤더(88px) 아래 숨입니다. 헤더가 52 -> 88px 로 커지면서 py-8(32)
+        로는 제목이 메뉴에 붙어 보입니다. 진열대 화면이 쓰는 값과 같습니다 —
+        화면마다 다르면 게시판에서 진열대로 넘어갈 때 제목 높이가 튑니다.
+      */}
+      <main className="max-w-content mx-auto w-full flex-1 px-5 pt-14 pb-16">
         <Outlet />
       </main>
     </div>
