@@ -108,4 +108,15 @@ public class UserPerfume {
         this.updatedAt = updatedAt;
     }
 
+    public void updateOwnershipStatus(
+            OwnershipStatus ownershipStatus,
+            OffsetDateTime updatedAt
+    ) {
+        this.ownershipStatus = ownershipStatus;
+        if (ownershipStatus != OwnershipStatus.OWNED) {
+            this.representative = false;
+        }
+        this.updatedAt = updatedAt;
+    }
+
 }

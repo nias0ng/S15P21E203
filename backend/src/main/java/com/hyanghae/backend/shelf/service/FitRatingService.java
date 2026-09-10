@@ -44,7 +44,7 @@ public class FitRatingService {
         Long userId = currentUser.id()
                 .orElseThrow(() -> new BusinessException(ShelfErrorCode.SHELF_LOGIN_REQUIRED));
 
-        return userPerfumeRepository.findByIdAndUserId(userPerfumeId, userId)
+        return userPerfumeRepository.findByIdAndUserIdForUpdate(userPerfumeId, userId)
                 .orElseThrow(() -> new BusinessException(ShelfErrorCode.SHELF_ITEM_NOT_FOUND));
     }
 
