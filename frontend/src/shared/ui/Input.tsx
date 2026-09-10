@@ -51,6 +51,14 @@ export function Input({
         className={cn(
           'rounded-card text-body h-10 w-full border px-3',
           'placeholder:text-ink-muted/70',
+          /*
+           * 바탕을 surface-card(#fefcf8)로 칠합니다. 비워 두면 페이지 바탕
+           * (ivory #f9f6ef)이 그대로 비쳐서, 테두리 한 줄로만 "여기 쓰는 칸" 을
+           * 알려야 합니다. 한 단 밝게 깔면 종이 위에 칸이 얹힌 것으로 읽힙니다.
+           * 비활성일 때만 line-soft 로 눌러 "지금은 못 쓴다" 를 보입니다.
+           */
+          'bg-surface-card',
+
           'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
           'disabled:bg-line-soft disabled:opacity-60',
           error ? 'border-danger' : 'border-line',

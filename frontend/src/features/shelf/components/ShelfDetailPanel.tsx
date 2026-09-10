@@ -321,7 +321,7 @@ function MemoField({
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         placeholder="이 향을 어디서 언제 맡았는지 적어두세요."
-        className="shelf-field text-caption rounded-md border-0"
+        className="shelf-field text-caption rounded-md border-0 bg-[var(--chip)]"
       />
     </div>
   )

@@ -58,6 +58,14 @@ export function Textarea({
           'rounded-card text-body w-full border px-3 py-2',
           'placeholder:text-ink-muted/70',
           /*
+           * 바탕을 surface-card(#fefcf8)로 칠합니다. 비워 두면 페이지 바탕
+           * (ivory #f9f6ef)이 그대로 비쳐서, 테두리 한 줄로만 "여기 쓰는 칸" 을
+           * 알려야 합니다. 한 단 밝게 깔면 종이 위에 칸이 얹힌 것으로 읽힙니다.
+           * 비활성일 때만 line-soft 로 눌러 "지금은 못 쓴다" 를 보입니다.
+           */
+          'bg-surface-card',
+
+          /*
            * 마우스로 늘리지 못하게 합니다. 브라우저 기본값(resize: both)이면 오른쪽
            * 아래 손잡이가 생기는데, 이걸 끌면 옆 단추와 겹치거나 칸이 화면 밖으로
            * 나갑니다 — 레이아웃을 정한 쪽이 감당할 수 없는 변형입니다.
