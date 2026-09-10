@@ -96,10 +96,21 @@ public class PerfumeController {
      * <p>후기 수({@code review-statistics})와 나누어 둔 이유가 있습니다. 후기 수는 바로 셀 수
      * 있지만 키워드는 AI 가 적재한 뒤에야 값이 생깁니다. 성격이 다른 두 값을 한 응답에 묶으면
      * 한쪽이 늘 비어 있는 응답이 됩니다.
+     *
+     * <p>{@code size} 는 페이지 크기가 아니라 최대 개수입니다. 주변·유사 향수와 같은 뜻으로
+     * 씁니다. 상위 세 개만 필요한 화면은 {@code ?size=3} 으로 부릅니다. 많이 나온 순이고 같은
+     * 횟수면 이름순이라 앞에서 자른 결과가 매번 같습니다.
+     *
+     * <p>몇 개를 받든 각 키워드의 백분율은 같습니다. 분모가 "키워드가 하나라도 뽑힌 후기 수"로
+     * 따로 세어지기 때문입니다. 그래서 화면 문구는 "향을 언급한 후기 중 몇 퍼센트"가 됩니다.
+     * 향수에 달린 모든 후기를 분모로 읽으면 실제보다 큰 숫자를 말하게 됩니다.
      */
     @GetMapping("/{perfumeId}/review-keywords")
-    public PerfumeReviewKeywordsResponse getReviewKeywords(@PathVariable Long perfumeId) {
-        return perfumeService.getReviewKeywords(perfumeId);
+    public PerfumeReviewKeywordsResponse getReviewKeywords(
+            @PathVariable Long perfumeId,
+            @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size
+    ) {
+        return perfumeService.getReviewKeywords(perfumeId, size);
     }
 
     /** 향수 후기 통계 조회입니다. */

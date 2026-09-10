@@ -188,16 +188,26 @@ public class PerfumeService {
      * <p>키워드가 없는 향수는 빈 배열입니다. 없는 향수와 구분해야 하므로 존재하지 않는 향수에만
      * 404 를 반환합니다. 키워드는 후기 요약·키워드 배치가 적재하므로, 후기가 정책 개수만큼 쌓이기
      * 전인 향수는 빈 배열입니다.
+     *
+     * <p>{@code size} 는 페이지 크기가 아니라 받을 최대 개수입니다. 화면이 상위 세 개만 쓰면
+     * {@code size=3} 으로 부릅니다. 많이 나온 순이고 같은 횟수면 이름순이라 앞에서 자른 결과가
+     * 매번 같습니다.
+     *
+     * <p>자르는 것은 표시 개수뿐입니다. 백분율의 분모는 따로 세므로 {@code size} 를 바꿔도 각
+     * 키워드의 값은 변하지 않습니다. 상위 세 개만 받아도 "전체 후기 중 몇 퍼센트"라는 의미가
+     * 그대로입니다.
      */
     @Transactional(readOnly = true)
-    public PerfumeReviewKeywordsResponse getReviewKeywords(Long perfumeId) {
+    public PerfumeReviewKeywordsResponse getReviewKeywords(Long perfumeId, int size) {
         requireExistingPerfume(perfumeId);
 
         long reviewsWithKeyword =
                 perfumeReviewKeywordRepository.countReviewsWithKeywordByPerfumeId(perfumeId);
 
         return new PerfumeReviewKeywordsResponse(
-                perfumeReviewKeywordRepository.findKeywordCountsByPerfumeId(perfumeId).stream()
+                perfumeReviewKeywordRepository.findKeywordCountsByPerfumeId(
+                                perfumeId, PageRequest.of(0, Math.clamp(size, 1, MAX_PAGE_SIZE)))
+                        .stream()
                         .map(keyword -> new PerfumeReviewKeywordResponse(
                                 keyword.keyword(),
                                 percentageOf(keyword.count(), reviewsWithKeyword)

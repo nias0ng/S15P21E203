@@ -4,6 +4,7 @@ import com.hyanghae.backend.perfume.entity.PerfumeReviewKeyword;
 import com.hyanghae.backend.perfume.entity.PerfumeReviewKeywordId;
 import java.util.Collection;
 import java.util.List;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -45,6 +46,11 @@ public interface PerfumeReviewKeywordRepository
      *
      * <p>{@code DISTINCT} 를 쓰지 않는 이유는 기본키가 {@code (review_id, keyword_id)} 라
      * 같은 후기에 같은 키워드가 두 번 붙을 수 없기 때문입니다.
+     *
+     * <p>개수 제한을 {@code Pageable} 로 받아 데이터베이스에서 자릅니다. 화면이 상위 몇 개만
+     * 쓰는데 향수마다 키워드가 수십 개씩 나올 수 있어, 다 받아서 버리면 그만큼이 전송 낭비입니다.
+     * 자르는 것은 표시 개수뿐입니다. 백분율의 분모는 따로 세므로 몇 개를 받든 각 키워드의 값은
+     * 같습니다.
      */
     @Query("""
             SELECT new com.hyanghae.backend.perfume.repository.KeywordCount(k.name, COUNT(rk))
@@ -55,7 +61,10 @@ public interface PerfumeReviewKeywordRepository
             GROUP BY k.id, k.name
             ORDER BY COUNT(rk) DESC, k.name
             """)
-    List<KeywordCount> findKeywordCountsByPerfumeId(@Param("perfumeId") Long perfumeId);
+    List<KeywordCount> findKeywordCountsByPerfumeId(
+            @Param("perfumeId") Long perfumeId,
+            Pageable pageable
+    );
 
     /**
      * 후기에 붙어 있던 키워드를 모두 떼어냅니다. 배치가 그 후기를 다시 분석했을 때 씁니다.
