@@ -35,12 +35,22 @@ import { useAuthStore } from '@/shared/store/authStore'
  * 아래 테두리를 뺐습니다. 시안은 헤더와 본문이 같은 종이 한 장이고, 선을 그으면
  * 진열대 화면에서 종이가 두 장으로 잘려 보입니다.
  */
-export function GlobalHeader() {
+export function GlobalHeader({ onPaper = false }: { onPaper?: boolean }) {
   const accessToken = useAuthStore((state) => state.accessToken)
   const isLoggedIn = Boolean(accessToken)
 
   return (
-    <header className="bg-surface sticky top-0 z-20">
+    /*
+     * onPaper 인 화면(진열대)에서는 헤더도 본문과 같은 종이를 깝니다. 투명하게
+     * 두지 않는 이유: 스크롤한 내용이 로고와 메뉴 밑으로 비쳐 지나갑니다.
+     * `.shelf-paper` 가 뷰포트 기준으로 그려져서 본문과 결이 이어집니다.
+     */
+    <header
+      className={cn(
+        'sticky top-0 z-20',
+        onPaper ? 'shelf-scope shelf-paper shelf-grain' : 'bg-surface',
+      )}
+    >
       <div className="grid h-22 grid-cols-[auto_1fr_auto] items-center gap-6 px-8">
         <BrandMark />
         <PrimaryNav isLoggedIn={isLoggedIn} />
