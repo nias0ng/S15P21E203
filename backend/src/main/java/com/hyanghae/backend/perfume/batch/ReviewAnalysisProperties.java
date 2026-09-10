@@ -26,6 +26,7 @@ import org.springframework.validation.annotation.Validated;
  * @param regenerationStep     요약 이후 후기가 이만큼 늘어나면 다시 만듭니다.
  * @param maxPerfumesPerRun    한 번 실행에서 처리할 향수 수입니다. 한 번의 비용 상한입니다.
  * @param maxReviewsPerRequest 한 향수에서 AI 에게 보낼 후기 수입니다. 최근 후기부터 채웁니다.
+ *                             키워드를 후기마다 뽑으므로 호출 시간이 이 수에 비례합니다.
  * @param maxReviewLength      후기 하나를 보낼 때 자르는 길이입니다.
  * @param maxKeywordLength     받아들일 키워드 이름의 최대 길이입니다.
  * @param maxKeywordsPerReview 후기 하나에서 받아들일 키워드 수입니다.
@@ -41,7 +42,7 @@ public record ReviewAnalysisProperties(
         @DefaultValue("5") @Min(1) int minReviewCount,
         @DefaultValue("10") @Min(1) int regenerationStep,
         @DefaultValue("20") @Min(1) int maxPerfumesPerRun,
-        @DefaultValue("50") @Min(1) int maxReviewsPerRequest,
+        @DefaultValue("20") @Min(1) int maxReviewsPerRequest,
         @DefaultValue("1000") @Min(1) int maxReviewLength,
         @DefaultValue("50") @Min(1) @Max(50) int maxKeywordLength,
         @DefaultValue("5") @Min(1) int maxKeywordsPerReview,
@@ -65,14 +66,15 @@ public record ReviewAnalysisProperties(
      *                       바꿀 때는 {@code GmsChatRequest} 가 보내는 필드와 메시지 역할이
      *                       그 모델에서 유효한지 함께 확인해야 합니다.
      * @param connectTimeout 연결 제한 시간입니다.
-     * @param readTimeout    응답 대기 제한 시간입니다. 요약 생성은 수십 초가 걸릴 수 있습니다.
+     * @param readTimeout    응답 대기 제한 시간입니다. gpt-5-nano 로 후기 16건을 보냈을 때 약
+     *                       55초가 걸렸습니다. 후기 수에 비례해 늘어나므로 여유를 둡니다.
      */
     public record Gms(
             @DefaultValue("https://gms.ssafy.io/gmsapi/api.openai.com/v1") @NotBlank String baseUrl,
             @DefaultValue("") String apiKey,
             @DefaultValue("gpt-5-nano") @NotBlank String model,
             @DefaultValue("10s") @NotNull Duration connectTimeout,
-            @DefaultValue("60s") @NotNull Duration readTimeout
+            @DefaultValue("120s") @NotNull Duration readTimeout
     ) {
     }
 }

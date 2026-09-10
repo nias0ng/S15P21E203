@@ -42,7 +42,7 @@
 | `min-review-count` | `5` | 요약을 만들기 시작하는 최소 후기 수 |
 | `regeneration-step` | `10` | 이만큼 후기가 늘면 다시 만듦 |
 | `max-perfumes-per-run` | `20` | 한 번 실행의 향수 수 상한 |
-| `max-reviews-per-request` | `50` | 한 향수에서 보낼 후기 수(최근 순) |
+| `max-reviews-per-request` | `20` | 한 향수에서 보낼 후기 수(최근 순) |
 | `max-review-length` | `1000` | 후기 하나를 보낼 때 자르는 길이 |
 | `max-keyword-length` | `50` | 받아들일 키워드 이름 길이(어휘 컬럼과 같음) |
 | `max-keywords-per-review` | `5` | 후기 하나에서 받아들일 키워드 수 |
@@ -51,7 +51,7 @@
 | `gms.api-key` | (없음) | GMS 키. 환경변수로만 넣습니다 |
 | `gms.model` | `gpt-5-nano` | 호출할 모델 |
 | `gms.connect-timeout` | `10s` | 연결 제한 시간 |
-| `gms.read-timeout` | `60s` | 응답 대기 제한 시간 |
+| `gms.read-timeout` | `120s` | 응답 대기 제한 시간 |
 
 `prod` 와 `manual-test` 는 아래 환경변수로 덮어씁니다.
 
@@ -84,6 +84,11 @@ GMS 는 상용 LLM API 앞에 놓인 프록시입니다. `base-url` 뒤의 경�
 
 그래서 `gms.model` 을 다른 세대로 바꿀 때는 이 두 가지가 그 모델에서 유효한지 함께 확인해야
 합니다. `GmsReviewAnalyzerTest` 가 두 규칙을 단언으로 잡아 두었습니다.
+
+한 번의 호출에 걸리는 시간은 **보내는 후기 수에 비례**합니다. 키워드를 후기마다 뽑으므로 출력이
+그만큼 길어집니다. `gpt-5-nano` 로 후기 16건을 보냈을 때 약 55초가 걸렸습니다. 그래서 한 향수에서
+보내는 후기를 20건으로 제한하고 응답 대기를 120초로 두었습니다. 이 제한을 올리면 시간 초과가 나고,
+그 향수는 매 주기 실패하며 재시도만 반복합니다.
 
 모델에게 보내는 것은 **후기 번호와 제목·본문뿐**입니다.
 
