@@ -20,4 +20,13 @@ public class PerfumeReviewKeyword {
     protected PerfumeReviewKeyword() {
         // JPA 가 요구하는 기본 생성자입니다.
     }
+
+    private PerfumeReviewKeyword(PerfumeReviewKeywordId id) {
+        this.id = id;
+    }
+
+    /** 후기에 키워드를 붙입니다. */
+    public static PerfumeReviewKeyword of(Long reviewId, Long keywordId) {
+        return new PerfumeReviewKeyword(new PerfumeReviewKeywordId(reviewId, keywordId));
+    }
 }

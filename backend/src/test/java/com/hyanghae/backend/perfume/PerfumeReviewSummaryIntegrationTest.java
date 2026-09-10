@@ -18,8 +18,9 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * AI 후기 요약 조회를 실제 PostgreSQL 위에서 검증합니다.
  *
- * <p>요약을 생성하는 파이프라인이 아직 없어 운영 데이터로는 빈 응답만 확인할 수 있습니다.
- * 요약이 있는 경우는 이 테스트가 고정 데이터로 검증합니다.
+ * <p>고정 데이터로 검증합니다. 요약을 적재하는 쪽은
+ * {@link PerfumeReviewAnalysisBatchIntegrationTest} 가 검증하고, 여기서는 저장된 요약이 어떤
+ * 형태로 나가는지만 봅니다.
  */
 @IntegrationTest
 @AutoConfigureMockMvc

@@ -35,3 +35,17 @@ springdoc:
     enabled: true
   swagger-ui:
     enabled: true
+
+# 후기 요약·키워드 배치입니다. 기본은 꺼져 있습니다. 켜면 실제 GMS 를 호출해 비용이 나갑니다.
+#
+# 수동 확인 방법:
+#   REVIEW_ANALYSIS_ENABLED=true GMS_API_KEY=... ./gradlew bootRun --args="--spring.profiles.active=manual-test"
+#
+# 운영과 달리 주기가 1분입니다. 확인하려고 한 시간을 기다릴 수는 없습니다.
+hyanghae:
+  review-analysis:
+    enabled: ${REVIEW_ANALYSIS_ENABLED:false}
+    cron: ${REVIEW_ANALYSIS_CRON:0 * * * * *}
+    gms:
+      api-key: ${GMS_API_KEY:}
+      model: ${GMS_MODEL:gpt-4o-mini}

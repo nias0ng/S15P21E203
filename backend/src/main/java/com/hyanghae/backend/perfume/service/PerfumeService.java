@@ -186,7 +186,8 @@ public class PerfumeService {
      * 백분율의 합이 100 을 넘을 수 있습니다. 계절 통계와 같은 성질입니다.
      *
      * <p>키워드가 없는 향수는 빈 배열입니다. 없는 향수와 구분해야 하므로 존재하지 않는 향수에만
-     * 404 를 반환합니다. 키워드를 뽑는 파이프라인이 아직 없어 현재는 모든 향수가 빈 배열입니다.
+     * 404 를 반환합니다. 키워드는 후기 요약·키워드 배치가 적재하므로, 후기가 정책 개수만큼 쌓이기
+     * 전인 향수는 빈 배열입니다.
      */
     @Transactional(readOnly = true)
     public PerfumeReviewKeywordsResponse getReviewKeywords(Long perfumeId) {
@@ -254,8 +255,8 @@ public class PerfumeService {
      * AI 가 생성한 후기 요약을 반환합니다.
      *
      * <p>요약이 없는 향수는 필드가 모두 {@code null} 인 200 응답입니다. 404 로 하면 향수 자체가
-     * 없는 경우와 구분되지 않습니다. 요약을 생성하는 파이프라인이 아직 없어 현재는 모든 향수가
-     * 빈 응답입니다.
+     * 없는 경우와 구분되지 않습니다. 요약은 후기 요약·키워드 배치가 적재하므로, 후기가 정책
+     * 개수만큼 쌓이기 전인 향수는 빈 응답입니다.
      */
     @Transactional(readOnly = true)
     public PerfumeReviewSummaryResponse getReviewSummary(Long perfumeId) {

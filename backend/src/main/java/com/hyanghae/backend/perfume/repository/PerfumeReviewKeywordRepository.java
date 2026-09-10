@@ -2,8 +2,10 @@ package com.hyanghae.backend.perfume.repository;
 
 import com.hyanghae.backend.perfume.entity.PerfumeReviewKeyword;
 import com.hyanghae.backend.perfume.entity.PerfumeReviewKeywordId;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -54,4 +56,21 @@ public interface PerfumeReviewKeywordRepository
             ORDER BY COUNT(rk) DESC, k.name
             """)
     List<KeywordCount> findKeywordCountsByPerfumeId(@Param("perfumeId") Long perfumeId);
+
+    /**
+     * 후기에 붙어 있던 키워드를 모두 떼어냅니다. 배치가 그 후기를 다시 분석했을 때 씁니다.
+     *
+     * <p>지우지 않고 새 키워드만 더하면, 같은 후기를 두 번 분석했을 때 두 결과가 합쳐집니다.
+     * AI 응답은 실행마다 조금씩 달라지므로 키워드가 계속 늘어나고, 키워드별 비중이 실제보다
+     * 커집니다. 지우고 다시 넣으면 같은 후기를 몇 번 분석해도 결과가 마지막 분석 하나입니다.
+     *
+     * <p>{@code review_keywords} 의 어휘는 지우지 않습니다. 다른 후기가 같은 이름을 쓰고 있고,
+     * 아무도 쓰지 않는 이름이 남아도 통계는 후기와 이어진 행만 셉니다.
+     */
+    @Modifying
+    @Query("""
+            DELETE FROM PerfumeReviewKeyword rk
+            WHERE rk.id.reviewId IN :reviewIds
+            """)
+    void deleteByReviewIdIn(@Param("reviewIds") Collection<Long> reviewIds);
 }
