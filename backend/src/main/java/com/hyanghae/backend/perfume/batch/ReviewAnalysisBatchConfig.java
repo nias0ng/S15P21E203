@@ -5,7 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * 후기 키워드 추출 배치의 설정을 등록합니다.
+ * 후기 요약 배치의 설정을 등록합니다.
  *
  * <p>{@link ReviewAnalysisProperties} 는 배치가 꺼져 있어도 등록합니다. 배치를 켜지 않아도
  * 분석기와 배치 서비스 빈은 만들어지고, 그 빈들이 설정을 주입받습니다.

@@ -13,12 +13,12 @@ import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.stereotype.Component;
 
 /**
- * 후기 키워드 추출 배치를 주기적으로 실행합니다.
+ * 후기 요약 배치를 주기적으로 실행합니다.
  *
  * <p>{@code hyanghae.review-analysis.enabled} 가 참일 때만 빈이 만들어집니다. 기본값이 거짓이라
  * 로컬 실행과 테스트는 외부 API 를 호출하지 않습니다. 운영에서는 환경변수로 켭니다.
  *
- * <p>후기를 저장하는 순간 호출하지 않고 배치로 도는 이유가 있습니다. 키워드 추출은 수십 초가
+ * <p>후기를 저장하는 순간 호출하지 않고 배치로 도는 이유가 있습니다. 요약 생성은 수십 초가
  * 걸리는데, 그것이 후기 작성 응답에 붙으면 사용자가 그만큼 기다립니다. 실패했을 때 후기 작성을
  * 되돌릴 수도 없습니다. 배치는 실패한 후기를 다음 주기에 다시 집어 듭니다.
  *
@@ -89,7 +89,7 @@ class ReviewAnalysisScheduler implements SchedulingConfigurer {
     void run() {
         MDC.put(RequestIdFilter.MDC_KEY, RUN_ID_PREFIX + UUID.randomUUID());
         try {
-            perfumeReviewAnalysisBatchService.extractPendingKeywords();
+            perfumeReviewAnalysisBatchService.summarizePerfumesNeedingSummary();
         } finally {
             MDC.remove(RequestIdFilter.MDC_KEY);
         }

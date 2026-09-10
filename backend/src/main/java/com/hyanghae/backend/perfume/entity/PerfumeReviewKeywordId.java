@@ -19,11 +19,6 @@ public class PerfumeReviewKeywordId implements Serializable {
         // JPA 가 요구하는 기본 생성자입니다.
     }
 
-    public PerfumeReviewKeywordId(Long reviewId, Long keywordId) {
-        this.reviewId = reviewId;
-        this.keywordId = keywordId;
-    }
-
     @Override
     public boolean equals(Object other) {
         if (this == other) {

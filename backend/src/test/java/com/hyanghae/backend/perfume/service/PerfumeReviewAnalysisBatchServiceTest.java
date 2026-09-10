@@ -3,19 +3,18 @@ package com.hyanghae.backend.perfume.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.hyanghae.backend.perfume.batch.ReviewAnalysisProperties;
-import com.hyanghae.backend.perfume.repository.KeywordExtractionTarget;
-import com.hyanghae.backend.perfume.repository.PerfumeReviewKeywordRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeReviewRepository;
 import com.hyanghae.backend.perfume.repository.ReviewContent;
-import com.hyanghae.backend.perfume.service.ReviewAnalyzer.ExtractedKeywords;
-import com.hyanghae.backend.perfume.service.ReviewAnalyzer.ExtractionSource;
-import com.hyanghae.backend.perfume.service.ReviewAnalyzer.ReviewKeywords;
+import com.hyanghae.backend.perfume.repository.ReviewSummaryTarget;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,9 +29,8 @@ import org.springframework.data.domain.Pageable;
  * 띄우는 시간이 규칙 하나마다 붙습니다. 적재된 결과가 실제로 데이터베이스에 어떻게 남는지는
  * {@code PerfumeReviewAnalysisBatchIntegrationTest} 가 봅니다.
  *
- * <p>모델의 출력은 규격을 자주 어깁니다. 보내지 않은 후기 번호, 어휘 컬럼보다 긴 이름, 빈
- * 문자열, 같은 후기가 두 번 오는 응답이 모두 실제로 나옵니다. 그것을 배치가 걸러내지 않으면
- * 엉뚱한 향수의 통계가 바뀌거나 적재 자체가 제약 위반으로 실패합니다.
+ * <p>모델의 출력은 규격을 자주 어깁니다. 빈 요약, 앞뒤 공백, 길이 제한을 넘는 문장이 모두 실제로
+ * 나옵니다. 그것을 배치가 걸러내지 않으면 화면에 빈 요약이 남거나 적재가 실패합니다.
  */
 class PerfumeReviewAnalysisBatchServiceTest {
 
@@ -41,171 +39,124 @@ class PerfumeReviewAnalysisBatchServiceTest {
 
     private final PerfumeReviewRepository perfumeReviewRepository =
             mock(PerfumeReviewRepository.class);
-    private final PerfumeReviewKeywordRepository perfumeReviewKeywordRepository =
-            mock(PerfumeReviewKeywordRepository.class);
     private final ReviewAnalyzer reviewAnalyzer = mock(ReviewAnalyzer.class);
-    private final PerfumeReviewKeywordWriter writer = mock(PerfumeReviewKeywordWriter.class);
+    private final PerfumeReviewSummaryWriter writer = mock(PerfumeReviewSummaryWriter.class);
 
     private final PerfumeReviewAnalysisBatchService service =
             new PerfumeReviewAnalysisBatchService(
                     perfumeReviewRepository,
-                    perfumeReviewKeywordRepository,
                     reviewAnalyzer,
                     writer,
                     properties()
             );
 
     @BeforeEach
-    void givenOnePerfumeWithThreePendingReviews() {
-        given(perfumeReviewRepository.findKeywordExtractionTargets(anyInt(), any(Pageable.class)))
-                .willReturn(List.of(new KeywordExtractionTarget(PERFUME_ID, 5, 3)));
-        given(perfumeReviewRepository.findContentsWithoutKeywords(
-                any(Long.class), any(Pageable.class)))
+    void givenOnePerfumeWithSixReviews() {
+        given(perfumeReviewRepository.findSummaryTargets(
+                anyInt(), anyInt(), any(Pageable.class)))
+                .willReturn(List.of(new ReviewSummaryTarget(PERFUME_ID, 6)));
+        given(perfumeReviewRepository.findContentsByPerfumeId(anyLong(), any(Pageable.class)))
                 .willReturn(List.of(
                         new ReviewContent(11L, "제목", REVIEW_TEXT),
-                        new ReviewContent(12L, "제목", REVIEW_TEXT),
-                        new ReviewContent(13L, "제목", REVIEW_TEXT)
+                        new ReviewContent(12L, "제목", REVIEW_TEXT)
                 ));
-        given(perfumeReviewKeywordRepository.findKeywordCountsByPerfumeId(
-                any(Long.class), any(Pageable.class)))
-                .willReturn(List.of());
     }
 
-    /** 보내지 않은 후기 번호는 버립니다. 다른 향수의 후기 번호면 엉뚱한 향수의 통계가 바뀝니다. */
+    /** 앞뒤 공백은 지웁니다. 화면이 그대로 문장으로 보여주므로 공백이 남으면 줄바꿈이 어긋납니다. */
     @Test
-    void dropsKeywordsForReviewThatWasNotSent() {
-        givenExtracted(new ReviewKeywords(11L, List.of("달콤한")),
-                new ReviewKeywords(999L, List.of("낯선")));
+    void trimsSummary() {
+        given(reviewAnalyzer.summarize(anyList())).willReturn("  달콤한 향이라는 평이 많습니다.  ");
 
-        service.extractPendingKeywords();
+        service.summarizePerfumesNeedingSummary();
 
-        assertThat(written().keywordsByReviewId()).containsOnlyKeys(11L);
-    }
-
-    /** 후기 번호가 비어 있는 항목도 버립니다. */
-    @Test
-    void dropsKeywordsWithoutReviewId() {
-        givenExtracted(new ReviewKeywords(null, List.of("달콤한")));
-
-        service.extractPendingKeywords();
-
-        assertThat(written().keywordsByReviewId()).isEmpty();
+        assertThat(writtenSummary()).isEqualTo("달콤한 향이라는 평이 많습니다.");
     }
 
     /**
-     * 어휘 컬럼보다 긴 이름은 자르지 않고 버립니다.
+     * 빈 요약은 적재하지 않습니다.
      *
-     * <p>자르면 중간에서 끊긴 이름이 어휘에 남고, 그 이름이 통계 화면에 그대로 나옵니다.
+     * <p>빈 요약을 저장하면 {@code source_review_count} 가 올라가 다음 실행에서 재시도되지 않는데,
+     * 화면에는 아무것도 나오지 않습니다.
      */
     @Test
-    void dropsKeywordLongerThanVocabularyColumn() {
-        String tooLong = "가".repeat(51);
-        givenExtracted(new ReviewKeywords(11L, List.of("달콤한", tooLong)));
+    void doesNotWriteBlankSummary() {
+        given(reviewAnalyzer.summarize(anyList())).willReturn("   ");
 
-        service.extractPendingKeywords();
-
-        assertThat(written().keywordsByReviewId().get(11L)).containsExactly("달콤한");
-    }
-
-    /** 후기 하나의 키워드 수 제한을 넘기면 앞에서 자릅니다. */
-    @Test
-    void capsKeywordCountPerReview() {
-        givenExtracted(new ReviewKeywords(11L, List.of(
-                "달콤한", "포근한", "시원한", "산뜻한", "묵직한", "은은한", "깨끗한")));
-
-        service.extractPendingKeywords();
-
-        assertThat(written().keywordsByReviewId().get(11L))
-                .containsExactly("달콤한", "포근한", "시원한", "산뜻한", "묵직한");
-    }
-
-    /** 빈 문자열과 중복은 정리합니다. 중복은 기본키 위반으로 적재를 실패시킵니다. */
-    @Test
-    void dropsBlankKeywordAndRemovesDuplicates() {
-        givenExtracted(new ReviewKeywords(11L, List.of("달콤한", "", "   ", "달콤한")));
-
-        service.extractPendingKeywords();
-
-        assertThat(written().keywordsByReviewId().get(11L)).containsExactly("달콤한");
-    }
-
-    /**
-     * 이름 안의 연속된 공백은 하나로 줄입니다.
-     *
-     * <p>줄이지 않으면 "달콤한 향"과 "달콤한  향"이 어휘에서 다른 행이 되어, 같은 뜻이 두
-     * 키워드로 갈라집니다.
-     */
-    @Test
-    void collapsesWhitespaceInsideKeyword() {
-        givenExtracted(new ReviewKeywords(11L, List.of("  달콤한   향  ")));
-
-        service.extractPendingKeywords();
-
-        assertThat(written().keywordsByReviewId().get(11L)).containsExactly("달콤한 향");
-    }
-
-    /** 같은 후기 번호가 두 번 오면 앞의 것만 씁니다. 합치면 후기 하나의 개수 제한이 무너집니다. */
-    @Test
-    void keepsFirstEntryWhenSameReviewAppearsTwice() {
-        givenExtracted(new ReviewKeywords(11L, List.of("달콤한")),
-                new ReviewKeywords(11L, List.of("시원한")));
-
-        service.extractPendingKeywords();
-
-        assertThat(written().keywordsByReviewId().get(11L)).containsExactly("달콤한");
-    }
-
-    /**
-     * 키워드가 하나도 없어도 보낸 후기 전체를 적재 대상에 담습니다.
-     *
-     * <p>이 목록으로 추출 시각을 남깁니다. 키워드가 나온 후기만 담으면 향 표현이 없는 후기가
-     * 매 주기 다시 AI 에게 갑니다.
-     */
-    @Test
-    void marksEverySentReviewEvenWhenNoKeywordFound() {
-        givenExtracted();
-
-        service.extractPendingKeywords();
-
-        PerfumeReviewKeywords written = written();
-        assertThat(written.extractedReviewIds()).containsExactly(11L, 12L, 13L);
-        assertThat(written.keywordsByReviewId()).isEmpty();
-    }
-
-    /** 호출이 실패하면 적재하지 않습니다. 추출 시각도 남지 않아 다음 실행에 다시 대상이 됩니다. */
-    @Test
-    void doesNotWriteAnythingWhenExtractionFails() {
-        given(reviewAnalyzer.extract(any(ExtractionSource.class)))
-                .willThrow(new IllegalStateException("GMS 호출이 실패했습니다: status=429"));
-
-        assertThat(service.extractPendingKeywords().failed()).isEqualTo(1);
-
-        verify(writer, never()).write(any(PerfumeReviewKeywords.class));
-    }
-
-    /** 보낼 후기가 없으면 AI 를 부르지 않습니다. 대상 선정과 조회 사이에 처리된 경우입니다. */
-    @Test
-    void doesNotCallAnalyzerWhenNothingIsPending() {
-        given(perfumeReviewRepository.findContentsWithoutKeywords(
-                any(Long.class), any(Pageable.class)))
-                .willReturn(List.of());
-
-        assertThat(service.extractPendingKeywords())
+        assertThat(service.summarizePerfumesNeedingSummary())
                 .isEqualTo(new ReviewAnalysisBatchResult(1, 0, 1, 0));
 
-        verify(reviewAnalyzer, never()).extract(any(ExtractionSource.class));
-        verify(writer, never()).write(any(PerfumeReviewKeywords.class));
+        verify(writer, never()).write(anyLong(), anyString(), anyInt());
     }
 
-    private void givenExtracted(ReviewKeywords... reviewKeywords) {
-        given(reviewAnalyzer.extract(any(ExtractionSource.class)))
-                .willReturn(new ExtractedKeywords(List.of(reviewKeywords)));
+    /** 응답에 요약 필드가 없어 {@code null} 이 와도 적재하지 않습니다. */
+    @Test
+    void doesNotWriteNullSummary() {
+        given(reviewAnalyzer.summarize(anyList())).willReturn(null);
+
+        assertThat(service.summarizePerfumesNeedingSummary().skipped()).isEqualTo(1);
+
+        verify(writer, never()).write(anyLong(), anyString(), anyInt());
     }
 
-    private PerfumeReviewKeywords written() {
-        ArgumentCaptor<PerfumeReviewKeywords> captor =
-                ArgumentCaptor.forClass(PerfumeReviewKeywords.class);
-        verify(writer).write(captor.capture());
+    /**
+     * 길이 제한을 넘는 요약은 자릅니다.
+     *
+     * <p>실패로 처리하면 그 향수는 다음 실행에서 같은 응답을 받아 또 실패합니다. 길이는 프롬프트로도
+     * 막고 있어 여기까지 오는 경우가 드뭅니다.
+     */
+    @Test
+    void truncatesTooLongSummary() {
+        given(reviewAnalyzer.summarize(anyList())).willReturn("가".repeat(1200));
+
+        service.summarizePerfumesNeedingSummary();
+
+        assertThat(writtenSummary()).hasSize(1000);
+    }
+
+    /**
+     * 적재하는 기준 후기 수는 향수에 달린 전체 후기 수입니다.
+     *
+     * <p>AI 에게 보낸 후기 수(2건)가 아니라 대상 조회가 센 수(6건)입니다. 보낸 후기 수를 넣으면
+     * 후기가 개수 제한을 넘긴 향수는 매 실행마다 재생성 대상이 됩니다.
+     */
+    @Test
+    void writesTotalReviewCountNotSentCount() {
+        given(reviewAnalyzer.summarize(anyList())).willReturn("달콤한 향이라는 평이 많습니다.");
+
+        service.summarizePerfumesNeedingSummary();
+
+        ArgumentCaptor<Integer> captor = ArgumentCaptor.forClass(Integer.class);
+        verify(writer).write(anyLong(), anyString(), captor.capture());
+        assertThat(captor.getValue()).isEqualTo(6);
+    }
+
+    /** 호출이 실패하면 적재하지 않습니다. 기준 후기 수가 그대로여서 다음 실행에 다시 대상이 됩니다. */
+    @Test
+    void doesNotWriteAnythingWhenSummarizeFails() {
+        given(reviewAnalyzer.summarize(anyList()))
+                .willThrow(new IllegalStateException("GMS 호출이 실패했습니다: status=429"));
+
+        assertThat(service.summarizePerfumesNeedingSummary().failed()).isEqualTo(1);
+
+        verify(writer, never()).write(anyLong(), anyString(), anyInt());
+    }
+
+    /** 보낼 후기 본문이 없으면 AI 를 부르지 않습니다. 본문이 빈 후기만 있는 향수입니다. */
+    @Test
+    void doesNotCallAnalyzerWhenNoReviewTextExists() {
+        given(perfumeReviewRepository.findContentsByPerfumeId(anyLong(), any(Pageable.class)))
+                .willReturn(List.of());
+
+        assertThat(service.summarizePerfumesNeedingSummary())
+                .isEqualTo(new ReviewAnalysisBatchResult(1, 0, 1, 0));
+
+        verify(reviewAnalyzer, never()).summarize(anyList());
+        verify(writer, never()).write(anyLong(), anyString(), anyInt());
+    }
+
+    private String writtenSummary() {
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        verify(writer).write(anyLong(), captor.capture(), anyInt());
         return captor.getValue();
     }
 
@@ -216,11 +167,11 @@ class PerfumeReviewAnalysisBatchServiceTest {
                 "0 10 * * * *",
                 "Asia/Seoul",
                 5,
+                10,
                 20,
                 20,
                 1000,
-                50,
-                5,
+                1000,
                 new ReviewAnalysisProperties.Gms(
                         "https://gms.example.test/v1",
                         "test-key",

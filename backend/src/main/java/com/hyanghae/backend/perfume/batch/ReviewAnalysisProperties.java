@@ -1,7 +1,6 @@
 package com.hyanghae.backend.perfume.batch;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -11,7 +10,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * 후기 키워드 추출 배치의 설정입니다.
+ * 후기 요약 배치의 설정입니다.
  *
  * <p>기본값을 yaml 이 아니라 여기에 둡니다. 프로필이 세 개라 yaml 에 두면 같은 값을 세 곳에
  * 적게 되고, 한 곳을 빼먹으면 그 프로필만 다르게 동작합니다. yaml 은 바꿀 값만 적습니다.
@@ -22,14 +21,12 @@ import org.springframework.validation.annotation.Validated;
  * @param enabled              배치 실행 여부입니다. 켤 때 {@code gms.api-key} 가 반드시 있어야 합니다.
  * @param cron                 실행 주기입니다. 초 단위가 앞에 오는 여섯 자리 표현식입니다.
  * @param zone                 {@code cron} 을 해석할 시간대입니다.
- * @param minReviewCount       키워드를 뽑기 시작하는 최소 후기 수입니다. 후기가 한두 건이면
- *                             비중이 오해를 만들어 화면에 쓸 수 없습니다.
+ * @param minReviewCount       요약을 만들기 시작하는 최소 후기 수입니다.
+ * @param regenerationStep     요약 이후 후기가 이만큼 늘어나면 다시 만듭니다.
  * @param maxPerfumesPerRun    한 번 실행에서 처리할 향수 수입니다. 한 번의 비용 상한입니다.
  * @param maxReviewsPerRequest 한 향수에서 AI 에게 보낼 후기 수입니다. 최근 후기부터 채웁니다.
- *                             키워드를 후기마다 뽑으므로 호출 시간이 이 수에 비례합니다.
  * @param maxReviewLength      후기 하나를 보낼 때 자르는 길이입니다.
- * @param maxKeywordLength     받아들일 키워드 이름의 최대 길이입니다.
- * @param maxKeywordsPerReview 후기 하나에서 받아들일 키워드 수입니다.
+ * @param maxSummaryLength     저장할 요약의 최대 길이입니다.
  * @param gms                  GMS 접속 정보입니다.
  */
 @Validated
@@ -39,11 +36,11 @@ public record ReviewAnalysisProperties(
         @DefaultValue("0 10 * * * *") @NotBlank String cron,
         @DefaultValue("Asia/Seoul") @NotBlank String zone,
         @DefaultValue("5") @Min(1) int minReviewCount,
+        @DefaultValue("10") @Min(1) int regenerationStep,
         @DefaultValue("20") @Min(1) int maxPerfumesPerRun,
         @DefaultValue("20") @Min(1) int maxReviewsPerRequest,
         @DefaultValue("1000") @Min(1) int maxReviewLength,
-        @DefaultValue("50") @Min(1) @Max(50) int maxKeywordLength,
-        @DefaultValue("5") @Min(1) int maxKeywordsPerReview,
+        @DefaultValue("1000") @Min(1) int maxSummaryLength,
         @DefaultValue @Valid @NotNull Gms gms
 ) {
 

@@ -1,7 +1,7 @@
 # 데이터 적재
 
 - [향 지도 데이터](#향-지도-데이터-적재) — 향수 200개와 좌표·향 계열·닮은 향수·향 특성
-- [후기 시드](#후기-시드-적재) — 후기 키워드 추출 배치를 수동으로 확인할 때 쓰는 후기
+- [후기 시드](#후기-시드-적재) — 후기 요약 배치를 수동으로 확인할 때 쓰는 후기
 
 # 향 지도 데이터 적재
 
@@ -100,8 +100,8 @@ psql "postgresql://hyanghae:hyanghae_test@localhost:5432/hyanghae_test" -f load_
 
 # 후기 시드 적재
 
-후기 키워드 추출 배치([문서](../../docs/review-analysis-batch.md))는 후기가 쌓인 향수를 찾아
-AI 로 향 표현 키워드를 뽑습니다. 후기 작성 API 가 아직 없어서, 수동으로 확인하려면 후기를 직접 넣어야
+후기 요약 배치([문서](../../docs/review-analysis-batch.md))는 후기가 쌓인 향수를 찾아
+AI 로 요약을 만듭니다. 후기 작성 API 가 아직 없어서, 수동으로 확인하려면 후기를 직접 넣어야
 합니다. `load_review_seed.sql` 이 그 일을 합니다.
 
 향 지도 적재를 먼저 끝내야 합니다. 이 스크립트는 향수를 만들지 않고 **이미 있는 활성 향수 중
@@ -121,7 +121,7 @@ docker exec -w /tmp/seed hyanghae-manual-test-postgres-1 \
 데이터에 따라 다를 수 있습니다.
 
 ```
- perfume_id |             name             | reviews | keyword_target
+ perfume_id |             name             | reviews | summary_target
 ------------+------------------------------+---------+----------------
           1 | Orphéon Eau de Parfum        |       6 | t
           2 | Green Tea                    |      12 | t
