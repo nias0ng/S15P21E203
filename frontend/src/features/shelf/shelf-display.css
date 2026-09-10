@@ -34,6 +34,13 @@
     --paper-deep: oklch(0.87 0.019 74);
     --niche-bg: oklch(0.887 0.018 75);
     --niche-floor: oklch(0.852 0.023 72);
+    /*
+     * 벽감 안쪽은 **앞이 밝고 뒤로 갈수록 어둡습니다.** 위 선반턱과 아래 선반면은
+     * 보는 사람 쪽으로 열린 면이라 빛을 받고, 뒷벽과 만나는 접힘선이 가장 깊어
+     * 어둡습니다. 좌우 벽(--niche-wall)도 같은 규칙입니다.
+     */
+    --niche-lip: oklch(0.94 0.011 80);
+    --niche-crease: oklch(0.845 0.023 71);
     /* 좌우 벽. 바깥(입구)이 밝고 뒷벽과 만나는 안쪽 모서리가 가장 어둡습니다 */
     --niche-wall: oklch(0.871 0.02 74);
     --niche-wall-deep: oklch(0.828 0.025 71);
@@ -119,17 +126,41 @@
    * 오므로) 아래가 제일 옅습니다. 한 겹으로는 어느 쪽이 깊은지 읽히지 않습니다.
    */
   .shelf-scope .shelf-niche {
-    background: linear-gradient(
-      to bottom,
-      var(--niche-bg) 0%,
-      var(--niche-bg) 78%,
-      var(--niche-floor) 100%
-    );
+    /*
+     * 위에서부터 선반턱 · 뒷벽 · 선반면 세 겹입니다.
+     *
+     * 앞서는 아래로 갈수록 어두워지는 그러데이션 하나에 위아래 inset 그림자를
+     * 얹고 있었습니다. 그러면 **바깥 테두리가 어둡고 안으로 갈수록 밝아져서**
+     * 파인 자리가 아니라 튀어나온 자리처럼 읽힙니다. 실제로 아래쪽은 뒷벽(215)에서
+     * 맨 아래 모서리(182)까지 계속 어두워지기만 했고, 빛을 받아야 할 선반면이
+     * 아예 없었습니다.
+     *
+     * 이제 열린 면(선반턱 앞 · 선반면 앞)이 가장 밝고 뒷벽과 만나는 접힘선이 가장
+     * 어둡습니다. 좌우 벽과도 규칙이 같아집니다.
+     */
+    background:
+      /* 선반면 — 접힘선(위)이 어둡고 앞(아래)으로 나오며 밝아진다 */
+      linear-gradient(
+        to top,
+        var(--niche-lip) 0,
+        var(--niche-lip) 8px,
+        var(--niche-crease) 19px,
+        rgb(0 0 0 / 0) 34px
+      ),
+      /* 선반턱 — 앞(위)이 밝고 접힘선(아래)이 어둡다 */
+        linear-gradient(
+          to bottom,
+          var(--niche-lip) 0,
+          var(--niche-lip) 6px,
+          var(--niche-crease) 17px,
+          rgb(0 0 0 / 0) 30px
+        ),
+      /* 뒷벽 */ var(--niche-bg);
     box-shadow:
-      inset 0 24px 32px -20px var(--depth),
+      /* 좌우 접힘선. 위아래와 달리 여기는 inset 그림자가 맞습니다 — 벽이 잘려나간
+         자리(x 24 · 100%-31)가 정확히 접힘선이기 때문입니다 */
       inset 18px 0 24px -22px var(--depth),
       inset -18px 0 24px -22px var(--depth),
-      inset 0 -16px 24px -18px var(--depth),
       0 -2px 2px var(--depth),
       0 1px var(--highlight);
     clip-path: polygon(
