@@ -1,16 +1,21 @@
 package com.hyanghae.backend.perfume.service;
 
 import com.hyanghae.backend.perfume.batch.ReviewAnalysisProperties;
+import com.hyanghae.backend.perfume.repository.KeywordCount;
+import com.hyanghae.backend.perfume.repository.PerfumeReviewKeywordRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeReviewRepository;
 import com.hyanghae.backend.perfume.repository.ReviewContent;
 import com.hyanghae.backend.perfume.repository.ReviewSummaryTarget;
+import com.hyanghae.backend.perfume.service.ReviewAnalyzer.AnalysisSource;
 import com.hyanghae.backend.perfume.service.ReviewAnalyzer.ReviewAnalysis;
 import com.hyanghae.backend.perfume.service.ReviewAnalyzer.ReviewKeywords;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
@@ -39,21 +44,32 @@ public class PerfumeReviewAnalysisBatchService {
     private static final Logger log =
             LoggerFactory.getLogger(PerfumeReviewAnalysisBatchService.class);
 
+    /**
+     * 모델에게 알려 줄 "이미 쓰인 표기" 개수입니다.
+     *
+     * <p>많이 나온 순으로 앞에서 이만큼만 봅니다. 전부 넘기면 지시문이 길어지고, 한 번만 나온
+     * 표현까지 "이 중에서 쓰라" 고 말하게 되어 새 후기의 표현이 엉뚱한 이름으로 묶입니다.
+     */
+    private static final int KNOWN_KEYWORD_HINT_SIZE = 20;
+
     /** 키워드 이름 안의 연속된 공백을 하나로 줄이는 패턴입니다. */
     private static final String WHITESPACE_RUN = "\\s+";
 
     private final PerfumeReviewRepository perfumeReviewRepository;
+    private final PerfumeReviewKeywordRepository perfumeReviewKeywordRepository;
     private final ReviewAnalyzer reviewAnalyzer;
     private final PerfumeReviewAnalysisWriter perfumeReviewAnalysisWriter;
     private final ReviewAnalysisProperties properties;
 
     public PerfumeReviewAnalysisBatchService(
             PerfumeReviewRepository perfumeReviewRepository,
+            PerfumeReviewKeywordRepository perfumeReviewKeywordRepository,
             ReviewAnalyzer reviewAnalyzer,
             PerfumeReviewAnalysisWriter perfumeReviewAnalysisWriter,
             ReviewAnalysisProperties properties
     ) {
         this.perfumeReviewRepository = perfumeReviewRepository;
+        this.perfumeReviewKeywordRepository = perfumeReviewKeywordRepository;
         this.reviewAnalyzer = reviewAnalyzer;
         this.perfumeReviewAnalysisWriter = perfumeReviewAnalysisWriter;
         this.properties = properties;
@@ -113,6 +129,10 @@ public class PerfumeReviewAnalysisBatchService {
      * <p>후기 본문과 요약 어느 쪽이든 비어 있으면 적재하지 않습니다. 빈 요약을 저장하면
      * {@code source_review_count} 가 올라가 다음 실행에서 재시도되지 않는데, 화면에는 아무것도
      * 나오지 않습니다.
+     *
+     * <p>요약과 키워드의 대상이 다릅니다. 요약은 향수 하나에 대한 글이라 최근 후기 전체를 근거로
+     * 하지만, 키워드는 아직 뽑지 않은 후기에서만 뽑습니다. 이미 뽑아 둔 후기를 다시 뽑으면 출력이
+     * 그만큼 길어져 호출 시간과 비용만 늘고 결과는 대체로 같습니다.
      */
     private boolean analyze(ReviewSummaryTarget target) {
         List<ReviewContent> reviews = perfumeReviewRepository.findContentsByPerfumeId(
@@ -128,7 +148,12 @@ public class PerfumeReviewAnalysisBatchService {
             return false;
         }
 
-        ReviewAnalysis analysis = reviewAnalyzer.analyze(reviews);
+        Set<Long> keywordTargetIds = findReviewsWithoutKeywords(reviews);
+        ReviewAnalysis analysis = reviewAnalyzer.analyze(new AnalysisSource(
+                reviews,
+                keywordTargetIds,
+                findKnownKeywords(target.perfumeId())
+        ));
 
         String summary = normalizeSummary(target.perfumeId(), analysis.summary());
         if (summary == null) {
@@ -136,15 +161,51 @@ public class PerfumeReviewAnalysisBatchService {
             return false;
         }
 
-        List<Long> analyzedReviewIds = reviews.stream().map(ReviewContent::reviewId).toList();
+        log.debug(
+                "Review analysis loaded: perfumeId={}, reviews={}, keywordTargets={}",
+                target.perfumeId(),
+                reviews.size(),
+                keywordTargetIds.size()
+        );
         perfumeReviewAnalysisWriter.write(new PerfumeReviewAnalysis(
                 target.perfumeId(),
                 sourceReviewCount(target),
                 summary,
-                analyzedReviewIds,
-                normalizeKeywords(target.perfumeId(), analysis, Set.copyOf(analyzedReviewIds))
+                List.copyOf(keywordTargetIds),
+                normalizeKeywords(target.perfumeId(), analysis, keywordTargetIds)
         ));
         return true;
+    }
+
+    /**
+     * 보낼 후기 중 키워드가 아직 없는 것만 골라냅니다.
+     *
+     * <p>이미 키워드가 붙은 후기는 그 값을 그대로 둡니다. 다시 뽑아도 대체로 같은 값이 나오는데,
+     * 출력이 후기 수에 비례해 길어져 호출 시간이 늘어납니다. 후기 16건을 모두 뽑을 때 한 번의
+     * 호출이 55초까지 걸렸습니다.
+     */
+    private Set<Long> findReviewsWithoutKeywords(List<ReviewContent> reviews) {
+        Set<Long> reviewIds = reviews.stream()
+                .map(ReviewContent::reviewId)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        reviewIds.removeAll(
+                Set.copyOf(perfumeReviewKeywordRepository.findAnalyzedReviewIds(reviewIds)));
+        return reviewIds;
+    }
+
+    /**
+     * 이 향수의 후기에서 이미 쓰인 키워드 이름입니다. 많이 나온 순으로 몇 개만 봅니다.
+     *
+     * <p>모델에게 같은 뜻은 같은 표기로 쓰라고 알려 주는 데 씁니다. 이번 호출은 새 후기만 보므로,
+     * 알려 주지 않으면 같은 표현에 지난번과 다른 이름이 붙습니다("파우더" 와 "파우더리"). 그러면
+     * 같은 뜻이 두 키워드로 갈라져 상위 몇 개를 뽑을 때 순위가 왜곡됩니다.
+     */
+    private List<String> findKnownKeywords(Long perfumeId) {
+        return perfumeReviewKeywordRepository
+                .findKeywordCountsByPerfumeId(perfumeId, PageRequest.ofSize(KNOWN_KEYWORD_HINT_SIZE))
+                .stream()
+                .map(KeywordCount::keyword)
+                .toList();
     }
 
     /**
@@ -182,11 +243,13 @@ public class PerfumeReviewAnalysisBatchService {
     /**
      * 키워드를 적재할 수 있는 형태로 다듬습니다.
      *
-     * <p>모델의 출력이므로 그대로 믿지 않습니다. 보내지 않은 후기 번호, 빈 문자열, 어휘 컬럼보다
+     * <p>모델의 출력이므로 그대로 믿지 않습니다. 대상이 아닌 후기 번호, 빈 문자열, 어휘 컬럼보다
      * 긴 이름, 같은 후기에 같은 키워드가 두 번 오는 경우가 모두 실제로 나옵니다.
      *
-     * <p>보내지 않은 후기 번호는 버립니다. 다른 향수의 후기 번호일 수 있어, 그대로 적재하면
-     * 엉뚱한 향수의 키워드 통계가 바뀝니다.
+     * <p>키워드 대상이 아닌 후기 번호는 버립니다. 두 가지를 함께 막습니다. 하나는 모델이 만들어낸
+     * 번호입니다. 다른 향수의 후기 번호일 수 있어 그대로 적재하면 엉뚱한 향수의 통계가 바뀝니다.
+     * 다른 하나는 이미 키워드가 있는 후기입니다. 요약의 근거로 보냈을 뿐이라 모델이 지시를
+     * 무시하고 그 후기의 키워드를 돌려줘도 적재하지 않습니다. 판단을 모델에게 맡기지 않습니다.
      *
      * <p>같은 후기 번호가 두 번 오면 앞의 것만 씁니다. 합치면 후기 하나의 키워드 수 제한이
      * 무너집니다.
@@ -194,15 +257,15 @@ public class PerfumeReviewAnalysisBatchService {
     private Map<Long, List<String>> normalizeKeywords(
             Long perfumeId,
             ReviewAnalysis analysis,
-            Set<Long> analyzedReviewIds
+            Set<Long> keywordTargetIds
     ) {
         Map<Long, List<String>> keywordsByReviewId = new LinkedHashMap<>();
 
         for (ReviewKeywords extracted : analysis.reviewKeywords()) {
             Long reviewId = extracted.reviewId();
-            if (reviewId == null || !analyzedReviewIds.contains(reviewId)) {
+            if (reviewId == null || !keywordTargetIds.contains(reviewId)) {
                 log.warn(
-                        "Review analysis returned unknown review: perfumeId={}, reviewId={}",
+                        "Review analysis returned review outside targets: perfumeId={}, reviewId={}",
                         perfumeId,
                         reviewId
                 );

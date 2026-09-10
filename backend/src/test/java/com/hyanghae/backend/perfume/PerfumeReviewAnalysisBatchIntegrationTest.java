@@ -1,8 +1,9 @@
 package com.hyanghae.backend.perfume;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -12,6 +13,7 @@ import com.hyanghae.backend.perfume.repository.ReviewContent;
 import com.hyanghae.backend.perfume.service.PerfumeReviewAnalysisBatchService;
 import com.hyanghae.backend.perfume.service.ReviewAnalysisBatchResult;
 import com.hyanghae.backend.perfume.service.ReviewAnalyzer;
+import com.hyanghae.backend.perfume.service.ReviewAnalyzer.AnalysisSource;
 import com.hyanghae.backend.perfume.service.ReviewAnalyzer.ReviewAnalysis;
 import com.hyanghae.backend.perfume.service.ReviewAnalyzer.ReviewKeywords;
 import com.hyanghae.backend.support.IntegrationTest;
@@ -183,7 +185,7 @@ class PerfumeReviewAnalysisBatchIntegrationTest {
 
         batchService.analyzePerfumesNeedingSummary();
 
-        List<ReviewContent> sent = capturedReviews();
+        List<ReviewContent> sent = capturedSource().reviews();
         assertThat(sent).hasSize(5);
         assertThat(sent).allSatisfy(review -> {
             assertThat(review.reviewId()).isNotNull();
@@ -191,6 +193,18 @@ class PerfumeReviewAnalysisBatchIntegrationTest {
         });
         assertThat(sent).extracting(ReviewContent::reviewId)
                 .containsExactlyInAnyOrder(100L, 101L, 102L, 103L, 104L);
+    }
+
+    /** 키워드가 하나도 없는 향수의 첫 분석에서는 보낸 후기 전체가 키워드 대상입니다. */
+    @Test
+    void asksKeywordsForEveryReviewOnFirstAnalysis() {
+        givenAnalysis(new ReviewAnalysis(SUMMARY_TEXT, List.of()));
+
+        batchService.analyzePerfumesNeedingSummary();
+
+        assertThat(capturedSource().keywordTargetIds())
+                .containsExactlyInAnyOrder(100L, 101L, 102L, 103L, 104L);
+        assertThat(capturedSource().knownKeywords()).isEmpty();
     }
 
     /**
@@ -221,12 +235,43 @@ class PerfumeReviewAnalysisBatchIntegrationTest {
     }
 
     /**
-     * 같은 후기를 다시 분석하면 키워드가 마지막 결과로 바뀝니다.
+     * 다시 분석할 때는 키워드가 아직 없는 후기만 대상입니다.
      *
-     * <p>더하기만 하면 실행마다 조금씩 다른 AI 응답이 쌓여 키워드별 비중이 실제보다 커집니다.
+     * <p>요약은 향수 하나에 대한 글이라 최근 후기 전체를 근거로 하지만, 키워드는 후기마다 붙는
+     * 값이라 이미 뽑아 둔 후기를 다시 뽑을 이유가 없습니다. 다시 뽑으면 출력이 후기 수에 비례해
+     * 길어져 호출 시간과 비용만 늘고 결과는 대체로 같습니다. 후기 16건을 모두 뽑을 때 한 번의
+     * 호출이 55초까지 걸렸습니다.
      */
     @Test
-    void replacesKeywordsOfReanalyzedReview() {
+    void asksKeywordsOnlyForReviewsWithoutThemWhenRegenerating() {
+        givenAnalysis(new ReviewAnalysis(SUMMARY_TEXT, List.of(
+                new ReviewKeywords(100L, List.of("달콤한", "포근한"))
+        )));
+        batchService.analyzePerfumesNeedingSummary();
+
+        for (int i = 0; i < 10; i++) {
+            insertReview(110 + i, 1, REVIEW_TEXT);
+        }
+        givenAnalysis(new ReviewAnalysis(SUMMARY_TEXT, List.of(
+                new ReviewKeywords(110L, List.of("시원한"))
+        )));
+        batchService.analyzePerfumesNeedingSummary();
+
+        AnalysisSource source = lastCapturedSource();
+        // 요약의 근거는 15건 전체입니다. 키워드 대상은 그중 키워드가 없는 14건입니다.
+        assertThat(source.reviews()).hasSize(15);
+        assertThat(source.keywordTargetIds()).hasSize(14).doesNotContain(100L);
+        assertThat(keywordNamesOf(110)).containsExactly("시원한");
+    }
+
+    /**
+     * 이미 키워드가 있는 후기의 키워드는 그대로 남습니다.
+     *
+     * <p>모델이 지시를 무시하고 그 후기의 키워드를 돌려줘도 적재하지 않습니다. 판단을 모델에게
+     * 맡기면 실행마다 결과가 달라집니다.
+     */
+    @Test
+    void keepsKeywordsOfAlreadyAnalyzedReview() {
         givenAnalysis(new ReviewAnalysis(SUMMARY_TEXT, List.of(
                 new ReviewKeywords(100L, List.of("달콤한", "포근한"))
         )));
@@ -240,7 +285,31 @@ class PerfumeReviewAnalysisBatchIntegrationTest {
         )));
         batchService.analyzePerfumesNeedingSummary();
 
-        assertThat(keywordNamesOf(100)).containsExactly("시원한");
+        assertThat(keywordNamesOf(100)).containsExactly("달콤한", "포근한");
+        assertThat(countKeywordNames("시원한")).isZero();
+    }
+
+    /**
+     * 이미 쓰인 키워드 이름을 분석기에 알려 줍니다.
+     *
+     * <p>새 후기만 보는 호출이라 지난번에 어떤 이름을 썼는지 모델이 알 수 없습니다. 알려 주지
+     * 않으면 같은 표현에 다른 이름이 붙어 같은 뜻이 두 키워드로 갈라지고, 상위 몇 개를 뽑을 때
+     * 순위가 왜곡됩니다.
+     */
+    @Test
+    void tellsAnalyzerWhichKeywordNamesAreAlreadyUsed() {
+        givenAnalysis(new ReviewAnalysis(SUMMARY_TEXT, List.of(
+                new ReviewKeywords(100L, List.of("달콤한", "포근한"))
+        )));
+        batchService.analyzePerfumesNeedingSummary();
+
+        for (int i = 0; i < 10; i++) {
+            insertReview(110 + i, 1, REVIEW_TEXT);
+        }
+        batchService.analyzePerfumesNeedingSummary();
+
+        assertThat(lastCapturedSource().knownKeywords())
+                .containsExactlyInAnyOrder("달콤한", "포근한");
     }
 
     /**
@@ -310,7 +379,7 @@ class PerfumeReviewAnalysisBatchIntegrationTest {
      */
     @Test
     void keepsGoingWhenAnalysisFails() {
-        given(reviewAnalyzer.analyze(anyList()))
+        given(reviewAnalyzer.analyze(any(AnalysisSource.class)))
                 .willThrow(new IllegalStateException("GMS 호출이 실패했습니다: status=429"));
 
         ReviewAnalysisBatchResult result = batchService.analyzePerfumesNeedingSummary();
@@ -378,14 +447,20 @@ class PerfumeReviewAnalysisBatchIntegrationTest {
     }
 
     private void givenAnalysis(ReviewAnalysis analysis) {
-        given(reviewAnalyzer.analyze(anyList())).willReturn(analysis);
+        given(reviewAnalyzer.analyze(any(AnalysisSource.class))).willReturn(analysis);
     }
 
-    /** 분석기에 실제로 넘어간 후기입니다. 향수 4 는 보낼 본문이 없어 호출 자체가 한 번뿐입니다. */
-    @SuppressWarnings("unchecked")
-    private List<ReviewContent> capturedReviews() {
-        ArgumentCaptor<List<ReviewContent>> captor = ArgumentCaptor.forClass(List.class);
+    /** 분석기에 실제로 넘어간 자료입니다. 향수 4 는 보낼 본문이 없어 호출 자체가 한 번뿐입니다. */
+    private AnalysisSource capturedSource() {
+        ArgumentCaptor<AnalysisSource> captor = ArgumentCaptor.forClass(AnalysisSource.class);
         verify(reviewAnalyzer).analyze(captor.capture());
+        return captor.getValue();
+    }
+
+    /** 마지막 호출에 넘어간 자료입니다. 실행을 두 번 하는 테스트가 씁니다. */
+    private AnalysisSource lastCapturedSource() {
+        ArgumentCaptor<AnalysisSource> captor = ArgumentCaptor.forClass(AnalysisSource.class);
+        verify(reviewAnalyzer, atLeastOnce()).analyze(captor.capture());
         return captor.getValue();
     }
 

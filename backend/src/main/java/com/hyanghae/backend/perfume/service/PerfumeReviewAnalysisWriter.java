@@ -74,17 +74,21 @@ public class PerfumeReviewAnalysisWriter {
     }
 
     /**
-     * 이번에 분석한 후기의 키워드를 이번 결과로 바꿉니다.
+     * 이번 실행이 키워드를 책임지는 후기의 키워드를 이번 결과로 바꿉니다.
      *
      * <p>지우고 다시 넣으므로 같은 후기를 몇 번 분석해도 결과가 마지막 분석 하나입니다. 더하기만
      * 하면 실행마다 조금씩 다른 AI 응답이 쌓여 키워드별 비중이 실제보다 커집니다.
+     *
+     * <p>대상은 보통 키워드가 아직 없는 후기라서 지울 것이 없습니다. 그래도 지우는 문장을 남겨
+     * 두는 이유가 있습니다. 이 메서드의 약속이 "대상 후기의 키워드는 이번 결과가 전부"인데,
+     * 지우지 않으면 향 표현이 없다고 판정된 후기에 지난 키워드가 남아 그 약속이 깨집니다.
      */
     private void replaceKeywords(PerfumeReviewAnalysis analysis) {
-        if (analysis.analyzedReviewIds().isEmpty()) {
+        if (analysis.keywordTargetIds().isEmpty()) {
             return;
         }
 
-        perfumeReviewKeywordRepository.deleteByReviewIdIn(analysis.analyzedReviewIds());
+        perfumeReviewKeywordRepository.deleteByReviewIdIn(analysis.keywordTargetIds());
 
         Map<Long, List<String>> keywordsByReviewId = analysis.keywordsByReviewId();
         if (keywordsByReviewId.isEmpty()) {
