@@ -57,6 +57,13 @@ export function Textarea({
         className={cn(
           'rounded-card text-body w-full border px-3 py-2',
           'placeholder:text-ink-muted/70',
+          /*
+           * 마우스로 늘리지 못하게 합니다. 브라우저 기본값(resize: both)이면 오른쪽
+           * 아래 손잡이가 생기는데, 이걸 끌면 옆 단추와 겹치거나 칸이 화면 밖으로
+           * 나갑니다 — 레이아웃을 정한 쪽이 감당할 수 없는 변형입니다.
+           * 늘어나야 하는 자리에서는 부르는 쪽이 `resize-y` 로 되돌립니다.
+           */
+          'resize-none',
           'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
           'disabled:bg-line-soft disabled:opacity-60',
           error ? 'border-danger' : 'border-line',
