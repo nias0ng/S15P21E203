@@ -129,4 +129,7 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
      * 없는 향수에 대해 404 를 내려면 존재 여부만 알면 됩니다.
      */
     boolean existsByIdAndActiveTrue(Long perfumeId);
+
+    /** 진열대에 저장할 수 있는 활성 향수 엔티티를 조회합니다. */
+    Optional<Perfume> findByIdAndActiveTrue(Long perfumeId);
 }

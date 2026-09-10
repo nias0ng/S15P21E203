@@ -3,12 +3,15 @@ package com.hyanghae.backend.shelf.controller;
 import com.hyanghae.backend.shelf.dto.request.FitRatingRequest;
 import com.hyanghae.backend.shelf.dto.request.OwnershipStatusRequest;
 import com.hyanghae.backend.shelf.dto.request.RepresentativeRequest;
+import com.hyanghae.backend.shelf.dto.request.ShelfItemCreateRequest;
 import com.hyanghae.backend.shelf.dto.response.FitRatingResponse;
 import com.hyanghae.backend.shelf.dto.response.OwnershipStatusResponse;
 import com.hyanghae.backend.shelf.dto.response.RepresentativeResponse;
+import com.hyanghae.backend.shelf.dto.response.ShelfItemCreateResponse;
 import com.hyanghae.backend.shelf.service.FitRatingService;
 import com.hyanghae.backend.shelf.service.OwnershipStatusService;
 import com.hyanghae.backend.shelf.service.RepresentativePerfumeService;
+import com.hyanghae.backend.shelf.service.ShelfItemService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -20,6 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,15 +38,57 @@ public class ShelfItemController {
     private final FitRatingService fitRatingService;
     private final OwnershipStatusService ownershipStatusService;
     private final RepresentativePerfumeService representativePerfumeService;
+    private final ShelfItemService shelfItemService;
 
     public ShelfItemController(
             FitRatingService fitRatingService,
             OwnershipStatusService ownershipStatusService,
-            RepresentativePerfumeService representativePerfumeService
+            RepresentativePerfumeService representativePerfumeService,
+            ShelfItemService shelfItemService
     ) {
         this.fitRatingService = fitRatingService;
         this.ownershipStatusService = ownershipStatusService;
         this.representativePerfumeService = representativePerfumeService;
+        this.shelfItemService = shelfItemService;
+    }
+
+    @Operation(
+            summary = "진열대에 향수 저장",
+            description = "보유 상태를 생략하면 보유 희망(WISH)으로 저장합니다."
+    )
+    @ApiResponse(responseCode = "201", description = "저장 성공")
+    @ApiResponse(responseCode = "400", description = "올바르지 않은 요청")
+    @ApiResponse(responseCode = "401", description = "로그인 필요")
+    @ApiResponse(responseCode = "404", description = "향수 없음")
+    @ApiResponse(responseCode = "409", description = "이미 저장된 향수")
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public ShelfItemCreateResponse createShelfItem(
+            @Valid @RequestBody ShelfItemCreateRequest request
+    ) {
+        return shelfItemService.create(request.perfumeId(), request.ownershipStatus());
+    }
+
+    @Operation(
+            summary = "진열대에서 향수 삭제",
+            description = "진열대 항목과 연결된 시향 기록·컬렉션 연결을 함께 삭제합니다."
+    )
+    @ApiResponse(responseCode = "204", description = "삭제 성공")
+    @ApiResponse(responseCode = "401", description = "로그인 필요")
+    @ApiResponse(responseCode = "404", description = "진열대 항목 없음")
+    @DeleteMapping("/{shelfItemId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteShelfItem(
+            @Parameter(
+                    name = "shelfItemId",
+                    description = "사용자 진열대 항목 ID",
+                    in = ParameterIn.PATH,
+                    required = true,
+                    schema = @Schema(type = "integer", format = "int64")
+            )
+            @PathVariable Long shelfItemId
+    ) {
+        shelfItemService.delete(shelfItemId);
     }
 
     @Operation(summary = "취향 적합도 등록·수정")
