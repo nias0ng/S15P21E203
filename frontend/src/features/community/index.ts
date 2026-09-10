@@ -8,6 +8,7 @@
  * ⚠️ 백엔드 커뮤니티 API 가 아직 없습니다. api.ts 가 자리표시자를 돌려줍니다.
  */
 export { BoardHeader } from './components/BoardHeader'
+export { ImageAttachField, WriteForm } from './components/WriteForm'
 export { CommentSection } from './components/CommentSection'
 export { ModerationRejectedModal } from './components/ModerationRejectedModal'
 export { LinkedPerfumeModal } from './components/LinkedPerfumeModal'

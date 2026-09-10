@@ -2,13 +2,15 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 
 import {
+  ImageAttachField,
   ModerationRejectedModal,
+  WriteForm,
   type ModerationRejection,
 } from '@/features/community'
 import { ROUTES } from '@/shared/config/routes'
+import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
-import { LinkButton } from '@/shared/ui/LinkButton'
 import { Textarea } from '@/shared/ui/Textarea'
 
 /**
@@ -35,15 +37,14 @@ export default function ReviewWritePage() {
     : null
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-ink text-title font-serif font-semibold">
-        후기 쓰기
-      </h1>
-
-      <form
-        className="space-y-3"
-        onSubmit={(event) => {
-          event.preventDefault()
+    <>
+      <WriteForm
+        title="후기 쓰기"
+        description="대상 향수는 필수이고 한 개만 답니다. 후기에는 분류가 없고, 포스팅하면 정책 검수를 거칩니다."
+        cancelTo={ROUTES.COMMUNITY_REVIEWS}
+        submitLabel="포스팅"
+        submitDisabled={!targetPerfume || title.trim().length === 0}
+        onSubmit={() => {
           // TODO: CMT-03 포스팅 API 연결. 검수를 통과하면 게시글 상세로 이동하고
           // 보류되면 응답의 사유로 A25 모달을 띄웁니다.
           setRejection({
@@ -52,31 +53,56 @@ export default function ReviewWritePage() {
           })
         }}
       >
-        {/* 대상 향수는 필수이고 한 개만 답니다 */}
-        <div className="border-line flex items-center gap-3 border px-3 py-3">
-          <span className="text-ink-muted text-caption">대상 향수</span>
-          {targetPerfume ? (
-            <>
-              <span className="text-ink text-body font-medium">
-                {targetPerfume.name}
-              </span>
-              <span className="text-ink-muted text-caption">
-                {targetPerfume.brand}
-              </span>
-            </>
-          ) : (
-            <span className="text-ink-muted text-body">
-              향수를 선택해야 후기를 쓸 수 있습니다
-            </span>
+        {/*
+          대상 향수는 필수이고 한 개만 답니다. 이 화면에서 가장 먼저 정해야 하는
+          값이라 다른 항목과 달리 칸으로 감싸 무게를 줍니다 — 고르지 않으면
+          [포스팅] 이 꺼져 있는데, 그 이유가 눈에 보여야 합니다.
+        */}
+        <fieldset
+          className={cn(
+            'rounded-card border p-4',
+            targetPerfume
+              ? 'border-line-soft bg-surface-sunken'
+              : 'border-danger bg-surface-card',
           )}
-          <Button variant="outline" size="sm" className="ml-auto">
-            {targetPerfume ? '변경' : '향수 선택'}
-          </Button>
-        </div>
+        >
+          <legend className="text-ink text-caption px-1 font-medium">
+            대상 향수 <span className="text-danger">*</span>
+          </legend>
 
+          <div className="flex flex-wrap items-center gap-3">
+            {targetPerfume ? (
+              <>
+                <span className="text-ink text-body font-medium">
+                  {targetPerfume.name}
+                </span>
+                <span className="text-ink-muted text-caption">
+                  {targetPerfume.brand}
+                </span>
+              </>
+            ) : (
+              <span className="text-ink-muted text-body">
+                향수를 선택해야 후기를 쓸 수 있습니다
+              </span>
+            )}
+            {/* TODO: 향수 검색 연결 (화면에서 향수 도메인과 조합) */}
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              className="ml-auto"
+            >
+              {targetPerfume ? '변경' : '향수 선택'}
+            </Button>
+          </div>
+        </fieldset>
+
+        {/*
+          라벨을 보이게 두었습니다. placeholder 로만 알려주면 한 글자라도 치는
+          순간 무엇을 적는 칸인지 사라집니다.
+        */}
         <Input
           label="제목"
-          hideLabel
           placeholder="제목을 입력하세요"
           required
           value={title}
@@ -85,7 +111,6 @@ export default function ReviewWritePage() {
 
         <Textarea
           label="본문"
-          hideLabel
           placeholder="이 향을 어떻게 맡았는지 적어주세요"
           rows={12}
           required
@@ -93,38 +118,14 @@ export default function ReviewWritePage() {
           onChange={(event) => setContent(event.target.value)}
         />
 
-        <div className="space-y-2">
-          <p className="text-ink-muted text-caption">이미지 첨부</p>
-          {/* TODO: 이미지 업로드 연결 (형식 · 용량 제한은 별도 정책) */}
-          <Button variant="outline" size="sm">
-            + 이미지 첨부
-          </Button>
-        </div>
-
-        <div className="flex justify-end gap-2">
-          <LinkButton to={ROUTES.COMMUNITY_REVIEWS} variant="outline">
-            취소
-          </LinkButton>
-          <Button
-            type="submit"
-            disabled={!targetPerfume || title.trim().length === 0}
-          >
-            포스팅
-          </Button>
-        </div>
-
-        <p className="text-ink-muted text-caption leading-relaxed">
-          후기 게시판 글은 분류가 없습니다. 대상 향수는 필수이고 한 개만 답니다.
-          포스팅하면 정책 검수를 거치고, 보류되면 작성한 내용을 유지한 채 사유를
-          안내합니다.
-        </p>
-      </form>
+        <ImageAttachField />
+      </WriteForm>
 
       <ModerationRejectedModal
         open={rejection !== null}
         onClose={() => setRejection(null)}
         rejection={rejection}
       />
-    </div>
+    </>
   )
 }
