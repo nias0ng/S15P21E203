@@ -186,17 +186,29 @@ public class PerfumeService {
      * 백분율의 합이 100 을 넘을 수 있습니다. 계절 통계와 같은 성질입니다.
      *
      * <p>키워드가 없는 향수는 빈 배열입니다. 없는 향수와 구분해야 하므로 존재하지 않는 향수에만
-     * 404 를 반환합니다. 키워드를 뽑는 파이프라인이 아직 없어 현재는 모든 향수가 빈 배열입니다.
+     * 404 를 반환합니다. 지금 키워드를 적재하는 코드가 없어 모든 향수가 빈 배열입니다. 화면의
+     * AI 요약 구역은 요약 문장을 쓰기로 정해졌고, 키워드 통계 구역을 채우는 일은 따로 남아
+     * 있습니다.
+     *
+     * <p>{@code size} 는 페이지 크기가 아니라 받을 최대 개수입니다. 화면이 상위 세 개만 쓰면
+     * {@code size=3} 으로 부릅니다. 많이 나온 순이고 같은 횟수면 이름순이라 앞에서 자른 결과가
+     * 매번 같습니다.
+     *
+     * <p>자르는 것은 표시 개수뿐입니다. 백분율의 분모는 따로 세므로 {@code size} 를 바꿔도 각
+     * 키워드의 값은 변하지 않습니다. 상위 세 개만 받아도 "전체 후기 중 몇 퍼센트"라는 의미가
+     * 그대로입니다.
      */
     @Transactional(readOnly = true)
-    public PerfumeReviewKeywordsResponse getReviewKeywords(Long perfumeId) {
+    public PerfumeReviewKeywordsResponse getReviewKeywords(Long perfumeId, int size) {
         requireExistingPerfume(perfumeId);
 
         long reviewsWithKeyword =
                 perfumeReviewKeywordRepository.countReviewsWithKeywordByPerfumeId(perfumeId);
 
         return new PerfumeReviewKeywordsResponse(
-                perfumeReviewKeywordRepository.findKeywordCountsByPerfumeId(perfumeId).stream()
+                perfumeReviewKeywordRepository.findKeywordCountsByPerfumeId(
+                                perfumeId, PageRequest.of(0, Math.clamp(size, 1, MAX_PAGE_SIZE)))
+                        .stream()
                         .map(keyword -> new PerfumeReviewKeywordResponse(
                                 keyword.keyword(),
                                 percentageOf(keyword.count(), reviewsWithKeyword)
@@ -254,8 +266,8 @@ public class PerfumeService {
      * AI 가 생성한 후기 요약을 반환합니다.
      *
      * <p>요약이 없는 향수는 필드가 모두 {@code null} 인 200 응답입니다. 404 로 하면 향수 자체가
-     * 없는 경우와 구분되지 않습니다. 요약을 생성하는 파이프라인이 아직 없어 현재는 모든 향수가
-     * 빈 응답입니다.
+     * 없는 경우와 구분되지 않습니다. 요약은 후기 요약 배치가 적재하므로, 후기가 최소 개수만큼
+     * 쌓이기 전인 향수는 빈 응답입니다.
      */
     @Transactional(readOnly = true)
     public PerfumeReviewSummaryResponse getReviewSummary(Long perfumeId) {

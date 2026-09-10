@@ -115,7 +115,7 @@ Swagger는 `manual-test` 프로필에서만 활성화됩니다.
 주변·유사 향수와 향 지도 관련 응답이 전부 빈 목록입니다. **화면이 비어 보이면 이 단계를 건너뛴
 것인지 먼저 확인하세요.**
 
-스키마가 `V6`까지 적용된 뒤에 실행합니다. 애플리케이션을 한 번 띄우면 Flyway가 적용합니다.
+스키마가 최신 버전까지 적용된 뒤에 실행합니다. 애플리케이션을 한 번 띄우면 Flyway가 적용합니다.
 
 **`backend/db/seed`로 이동한 뒤** 실행합니다. `\copy`가 CSV를 psql의 현재 디렉터리에서 찾으므로
 다른 곳에서 실행하면 파일을 찾지 못합니다. 바로 앞의 `docker compose` 명령이 저장소 루트 기준이니
@@ -148,6 +148,22 @@ psql "postgresql://hyanghae:hyanghae_test@localhost:5432/hyanghae_test" -f load_
 ```
 
 데이터의 형태와 주의할 점은 [backend/db/seed/README.md](db/seed/README.md)에 있습니다.
+
+### 후기 시드 적재
+
+후기 요약 배치를 확인할 때만 필요합니다. 후기 작성 API 가 아직 없어서, 후기가 쌓인
+향수를 만들려면 시드를 넣어야 합니다. 향 지도 적재를 먼저 끝내야 합니다.
+
+```bash
+cd backend/db/seed
+
+docker cp . hyanghae-manual-test-postgres-1:/tmp/seed
+docker exec -w /tmp/seed hyanghae-manual-test-postgres-1 \
+  psql -U hyanghae -d hyanghae_test -f load_review_seed.sql
+```
+
+넣는 내용은 [backend/db/seed/README.md](db/seed/README.md#후기-시드-적재), 배치를 켜는 방법은
+[후기 요약 배치 가이드](docs/review-analysis-batch.md)에 있습니다.
 
 ### 서비스 종료
 

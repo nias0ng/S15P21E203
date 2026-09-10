@@ -105,6 +105,33 @@ class PerfumeReviewKeywordsIntegrationTest {
                         Matchers.not(Matchers.hasItem("포근한"))));
     }
 
+    /**
+     * {@code size} 는 받을 최대 개수입니다. 상위 몇 개만 쓰는 화면을 위한 것입니다.
+     *
+     * <p>자르는 것은 표시 개수뿐입니다. "달콤한"의 백분율이 전체를 받을 때와 같아야 합니다.
+     * 분모를 남은 키워드 기준으로 다시 계산하면 상위 세 개만 받았을 때 숫자가 달라집니다.
+     */
+    @Test
+    void limitsKeywordsToRequestedSize() throws Exception {
+        mockMvc.perform(get(KEYWORDS_URL, 1).param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.keywords", Matchers.hasSize(1)))
+                .andExpect(jsonPath("$.keywords[0].keyword").value("달콤한"))
+                .andExpect(jsonPath("$.keywords[0].percentage").value(100.0));
+    }
+
+    /** 범위를 벗어난 개수는 예외 대신 허용 범위로 맞춥니다. 목록 크기가 잘못됐다고 오류를 낼 일은 아닙니다. */
+    @Test
+    void clampsSizeOutOfRange() throws Exception {
+        mockMvc.perform(get(KEYWORDS_URL, 1).param("size", "0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.keywords", Matchers.hasSize(1)));
+
+        mockMvc.perform(get(KEYWORDS_URL, 1).param("size", "999"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.keywords", Matchers.hasSize(2)));
+    }
+
     /** 키워드가 하나도 없는 향수는 빈 배열입니다. 없는 향수와 구분해야 합니다. */
     @Test
     void returnsEmptyListWhenPerfumeHasNoKeyword() throws Exception {
