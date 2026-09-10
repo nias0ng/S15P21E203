@@ -1,10 +1,13 @@
 package com.hyanghae.backend.shelf.controller;
 
 import com.hyanghae.backend.shelf.dto.request.FitRatingRequest;
+import com.hyanghae.backend.shelf.dto.request.OwnershipStatusRequest;
 import com.hyanghae.backend.shelf.dto.request.RepresentativeRequest;
 import com.hyanghae.backend.shelf.dto.response.FitRatingResponse;
+import com.hyanghae.backend.shelf.dto.response.OwnershipStatusResponse;
 import com.hyanghae.backend.shelf.dto.response.RepresentativeResponse;
 import com.hyanghae.backend.shelf.service.FitRatingService;
+import com.hyanghae.backend.shelf.service.OwnershipStatusService;
 import com.hyanghae.backend.shelf.service.RepresentativePerfumeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -29,13 +32,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class ShelfItemController {
 
     private final FitRatingService fitRatingService;
+    private final OwnershipStatusService ownershipStatusService;
     private final RepresentativePerfumeService representativePerfumeService;
 
     public ShelfItemController(
             FitRatingService fitRatingService,
+            OwnershipStatusService ownershipStatusService,
             RepresentativePerfumeService representativePerfumeService
     ) {
         this.fitRatingService = fitRatingService;
+        this.ownershipStatusService = ownershipStatusService;
         this.representativePerfumeService = representativePerfumeService;
     }
 
@@ -102,6 +108,33 @@ public class ShelfItemController {
         return representativePerfumeService.update(
                 shelfItemId,
                 request.representative()
+        );
+    }
+
+    @Operation(
+            summary = "향수 보유 상태 변경",
+            description = "보유 중, 시향해 봄, 보유 희망 중 하나로 변경합니다. "
+                    + "대표 향수를 보유 중 외 상태로 변경하면 대표 지정도 해제됩니다."
+    )
+    @ApiResponse(responseCode = "200", description = "보유 상태 변경 성공")
+    @ApiResponse(responseCode = "400", description = "올바르지 않은 보유 상태")
+    @ApiResponse(responseCode = "401", description = "로그인 필요")
+    @ApiResponse(responseCode = "404", description = "진열대 항목 없음")
+    @PatchMapping("/{shelfItemId}/ownership")
+    public OwnershipStatusResponse updateOwnershipStatus(
+            @Parameter(
+                    name = "shelfItemId",
+                    description = "사용자 진열대 항목 ID",
+                    in = ParameterIn.PATH,
+                    required = true,
+                    schema = @Schema(type = "integer", format = "int64")
+            )
+            @PathVariable Long shelfItemId,
+            @Valid @RequestBody OwnershipStatusRequest request
+    ) {
+        return ownershipStatusService.update(
+                shelfItemId,
+                request.ownershipStatus()
         );
     }
 }
