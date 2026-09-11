@@ -26,6 +26,9 @@ public class MapController {
      * <p>범위({@code minX}·{@code maxX}·{@code minY}·{@code maxY})는 선택입니다. 주지 않으면
      * 지도에 좌표가 있는 활성 향수 전체가 나갑니다. <b>넷 중 일부만 주면 400 입니다.</b>
      *
+     * <p>화면은 지금 범위를 주지 않고 전체를 받아 갑니다. 이유는
+     * {@link MapViewportCondition} 주석에 있습니다.
+     *
      * <p>범위는 향수에만 걸립니다. 계열 영역은 폴리곤이 지도 바깥 여백까지 뻗어 있어 좌표계가
      * 다르고, 9개뿐이라 잘라서 얻는 것이 없습니다.
      */
