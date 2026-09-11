@@ -15,6 +15,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,8 +36,11 @@ import org.springframework.transaction.annotation.Transactional;
  * 번호는 저장하지 않습니다. 지도의 모양과 향 영역이 고정이라 같은 좌표는 언제 읽어도 같은
  * 영역으로 판정됩니다.
  *
- * <p>배는 사용자에게 매달리므로 로그인이 필요합니다. 인증이 아직 없어 지금은 모든 요청이
- * 401 이고, 로그인한 경우의 동작은 통합 테스트가 가짜 {@link CurrentUser} 로 검증합니다.
+ * <p>배를 옮기는 것은 로그인 없이도 됩니다. 남기는 것만 로그인이 필요합니다. 자리와 일지는
+ * 사용자에게 매달리는 값이라, 비로그인 요청은 좌표만 돌려받고 아무것도 남기지 않습니다.
+ *
+ * <p>인증이 아직 없어 지금은 모든 요청이 비로그인이고, 로그인한 경우의 동작은 통합 테스트가
+ * 가짜 {@link CurrentUser} 로 검증합니다.
  */
 @Service
 public class ExplorationService {
@@ -74,9 +78,17 @@ public class ExplorationService {
     /**
      * 배를 옮기고 옮긴 자리를 돌려줍니다.
      *
-     * <p>자리는 어느 경우에나 갱신됩니다. 일지에 안 남는 이동이라도 배는 그리로 갔기 때문입니다.
-     * 일지 기록은 이 안에서 알아서 남기고 응답에 드러내지 않습니다. 화면이 기록 한 줄의 번호를
-     * 쓸 일이 없고, 이 요청의 결과는 "배가 어디로 갔는가" 하나입니다.
+     * <p><b>로그인하지 않아도 배는 움직입니다.</b> 요구사항 정의서 MAP-16 이 "비회원도 향 지도를
+     * 이용하여 향수를 탐색할 수 있다" 로 정하고 있어, 배를 못 움직이면 비회원은 지도를 쓸 수
+     * 없습니다. 대신 남기지 않습니다. 자리와 일지는 사용자에게 매달리는 값이라 매달 곳이 없습니다.
+     * 그때는 옮긴 좌표만 돌려주고 {@code updatedAt} 이 비어 나갑니다.
+     *
+     * <p>지도에 없는 향수를 고르거나 좌표가 빠진 요청은 로그인 여부와 상관없이 막습니다. 배를
+     * 옮길 수 없는 요청인 것은 같기 때문입니다.
+     *
+     * <p>자리는 로그인한 사용자라면 어느 경우에나 갱신됩니다. 일지에 안 남는 이동이라도 배는
+     * 그리로 갔기 때문입니다. 일지 기록은 이 안에서 알아서 남기고 응답에 드러내지 않습니다.
+     * 화면이 기록 한 줄의 번호를 쓸 일이 없고, 이 요청의 결과는 "배가 어디로 갔는가" 하나입니다.
      *
      * <p>향수를 고른 이동은 언제나 기록합니다. 같은 향수를 다시 골라도 줄을 따로 쌓습니다. 일지는
      * 배가 지나온 자리를 적는 화면이라, 지난번에 본 향수를 다시 봤다면 두 번 나오는 것이 맞습니다.
@@ -90,9 +102,14 @@ public class ExplorationService {
      */
     @Transactional
     public ExplorationStateResponse move(ExplorationMoveRequest request) {
-        Long userId = currentUserId();
         ExplorationPoint movedTo = resolvePoint(request);
+        Optional<Long> sailor = currentUser.id();
 
+        if (sailor.isEmpty()) {
+            return ExplorationStateResponse.notSaved(movedTo.x(), movedTo.y());
+        }
+
+        Long userId = sailor.get();
         if (request.isPerfumeVisit()) {
             explorationLogRepository.insert(userId, request.perfumeId(), movedTo);
         } else if (entersNewRegion(userId, movedTo)) {

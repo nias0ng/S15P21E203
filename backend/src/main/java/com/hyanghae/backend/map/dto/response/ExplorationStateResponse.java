@@ -18,4 +18,14 @@ public record ExplorationStateResponse(Double x, Double y, OffsetDateTime update
     public static ExplorationStateResponse empty() {
         return new ExplorationStateResponse(null, null, null);
     }
+
+    /**
+     * 저장하지 않고 자리만 알려주는 응답입니다. 비로그인 사용자의 이동에 씁니다.
+     *
+     * <p>{@code updatedAt} 이 비어 있는 것이 "남기지 않았다" 는 표시입니다. 저장한 시각이 없으니
+     * 채울 값도 없습니다.
+     */
+    public static ExplorationStateResponse notSaved(double x, double y) {
+        return new ExplorationStateResponse(x, y, null);
+    }
 }

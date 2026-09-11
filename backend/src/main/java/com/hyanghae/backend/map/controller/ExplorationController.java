@@ -17,7 +17,11 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>배를 옮기고, 배가 있는 자리를 읽고, 지나온 자취를 일지로 읽습니다.
  *
  * <p>{@link MapController} 와 나눈 이유는 성격이 다르기 때문입니다. 지도 조회는 누구에게나 같은
- * 답을 주는 읽기이고, 여기는 로그인한 사용자의 배에 매달리는 기능입니다.
+ * 답을 주는 읽기이고, 여기는 사용자의 배를 다루는 기능입니다.
+ *
+ * <p>로그인 요구가 셋이 다릅니다. 배를 옮기는 것은 로그인 없이도 되고(비회원도 지도를 탐색할 수
+ * 있어야 합니다), 자리와 일지를 읽는 것은 로그인이 필요합니다. 읽을 값 자체가 사용자에게 매달려
+ * 있기 때문입니다.
  */
 @RestController
 @RequestMapping("/api/v1/map")
@@ -41,7 +45,12 @@ public class ExplorationController {
      * 간 이동은 향 영역이 바뀐 경우에만 남습니다. 화면은 그 차이를 알 필요가 없어 응답에 드러내지
      * 않습니다. 남은 기록은 {@code GET /api/v1/map/exploration-logs} 로 읽습니다.
      *
-     * <p>지도에 없는 향수는 404, 향수 번호도 좌표도 없으면 400, 로그인하지 않았으면 401 입니다.
+     * <p><b>로그인하지 않아도 배는 움직입니다.</b> 비회원도 지도를 탐색할 수 있어야 하기
+     * 때문입니다. 대신 남기지 않습니다. 자리도 일지도 사용자에게 매달리는 값이라, 옮긴 좌표만
+     * 돌려주고 {@code updatedAt} 이 비어 나갑니다.
+     *
+     * <p>지도에 없는 향수는 404, 향수 번호도 좌표도 없으면 400 입니다. 로그인 여부와 상관없이
+     * 같습니다.
      */
     @PutMapping("/exploration/me")
     public ExplorationStateResponse move(@RequestBody ExplorationMoveRequest request) {

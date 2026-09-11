@@ -453,16 +453,52 @@ class ExplorationIntegrationTest {
                 .andExpect(jsonPath("$.code").value(MapErrorCode.MAP_LOGIN_REQUIRED.code()));
     }
 
-    /** 로그인하지 않으면 401 이고 아무것도 남지 않습니다. 기록은 사용자에게 매달리는 값입니다. */
+    /**
+     * 로그인하지 않아도 배는 움직입니다. 대신 아무것도 남지 않습니다.
+     *
+     * <p>비회원도 향 지도로 향수를 탐색할 수 있어야 합니다(요구사항 MAP-16). 자리와 일지는
+     * 사용자에게 매달리는 값이라 매달 곳이 없어, 옮긴 좌표만 돌려주고 {@code updatedAt} 이
+     * 비어 나갑니다.
+     */
     @Test
-    void requiresLogin() throws Exception {
+    void movesWithoutSavingWhenLoggedOut() throws Exception {
         currentUser.logout();
 
         clickPerfume(1)
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(MapErrorCode.MAP_LOGIN_REQUIRED.code()));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.x").value(0.2))
+                .andExpect(jsonPath("$.y").value(0.3))
+                .andExpect(jsonPath("$.updatedAt").doesNotExist());
+
+        clickSea(0.1, 0.1)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.x").value(0.1))
+                .andExpect(jsonPath("$.y").value(0.1));
 
         assertThat(countLogs()).isZero();
+        assertThat(countStates()).isZero();
+    }
+
+    /**
+     * 배를 옮길 수 없는 요청은 로그인하지 않아도 막습니다.
+     *
+     * <p>지도에 없는 향수를 고르거나 좌표가 빠진 요청은 남길지 여부와 무관하게 잘못된 요청입니다.
+     * 비로그인이라고 통과시키면 화면이 배를 엉뚱한 곳에 옮겨 놓습니다.
+     */
+    @Test
+    void rejectsUnmovableRequestsEvenWhenLoggedOut() throws Exception {
+        currentUser.logout();
+
+        clickPerfume(999)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value(MapErrorCode.MAP_PERFUME_NOT_FOUND.code()));
+
+        mockMvc.perform(put(MOVE_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value(MapErrorCode.MAP_EXPLORATION_POINT_REQUIRED.code()));
     }
 
     /** 향수 번호도 좌표도 없으면 400 입니다. 어디로 움직였는지 모르는 기록은 남길 수 없습니다. */
@@ -503,6 +539,11 @@ class ExplorationIntegrationTest {
     private int countLogs() {
         return jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM map_exploration_logs", Integer.class);
+    }
+
+    private int countStates() {
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM map_exploration_states", Integer.class);
     }
 
     private int countStatesOf(long userId) {
