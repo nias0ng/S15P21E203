@@ -1,6 +1,7 @@
 package com.hyanghae.backend.map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -41,10 +42,11 @@ import org.springframework.test.web.servlet.ResultActions;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@Import(ExplorationLogIntegrationTest.FakeCurrentUserConfig.class)
-class ExplorationLogIntegrationTest {
+@Import(ExplorationIntegrationTest.FakeCurrentUserConfig.class)
+class ExplorationIntegrationTest {
 
     private static final String LOGS_URL = "/api/v1/map/exploration-logs";
+    private static final String STATE_URL = "/api/v1/map/exploration/me";
     private static final long USER_ID = 1;
 
     private static final long REGION_A_ID = 9001;
@@ -208,6 +210,79 @@ class ExplorationLogIntegrationTest {
         assertThat(countLogsOf(otherUserId)).isEqualTo(1);
     }
 
+    /**
+     * 배가 있는 자리는 일지에 남지 않는 이동에서도 갱신됩니다.
+     *
+     * <p>지도를 다시 열었을 때 배를 돌려놓는 값이라, 같은 영역 안에서 움직인 마지막 자리까지
+     * 들고 있어야 합니다. 기록만으로 되돌리면 그 영역에 처음 들어간 자리로 갑니다.
+     */
+    @Test
+    void keepsShipPositionEvenWhenNothingIsLogged() throws Exception {
+        clickSea(0.1, 0.1).andExpect(status().isCreated());
+        clickSea(0.3, 0.35).andExpect(status().isNoContent());
+
+        mockMvc.perform(get(STATE_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.x").value(0.3))
+                .andExpect(jsonPath("$.y").value(0.35))
+                .andExpect(jsonPath("$.updatedAt").isNotEmpty());
+
+        assertThat(countLogs()).isEqualTo(1);
+    }
+
+    /** 향수를 고른 이동은 그 향수의 지도 좌표가 배의 자리가 됩니다. */
+    @Test
+    void movesShipToThePerfumeCoordinates() throws Exception {
+        clickPerfume(1).andExpect(status().isCreated());
+
+        mockMvc.perform(get(STATE_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.x").value(0.2))
+                .andExpect(jsonPath("$.y").value(0.3));
+    }
+
+    /**
+     * 한 번도 움직인 적이 없으면 세 필드가 모두 비어서 나갑니다.
+     *
+     * <p>처음 온 사용자는 오류가 아닙니다. 화면은 이 응답을 받아 배를 시작 자리에 놓습니다.
+     */
+    @Test
+    void servesEmptyPositionBeforeTheFirstMove() throws Exception {
+        mockMvc.perform(get(STATE_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.x").doesNotExist())
+                .andExpect(jsonPath("$.y").doesNotExist())
+                .andExpect(jsonPath("$.updatedAt").doesNotExist());
+    }
+
+    /** 배의 자리도 사용자별입니다. 다른 사람이 움직여도 내 자리는 그대로입니다. */
+    @Test
+    void keepsShipPositionPerUser() throws Exception {
+        long otherUserId = 3;
+        insertUser(otherUserId, "sailor3@hyanghae.test", "다른 배");
+
+        clickSea(0.1, 0.1).andExpect(status().isCreated());
+
+        currentUser.login(otherUserId);
+        clickSea(0.7, 0.7).andExpect(status().isCreated());
+
+        currentUser.login(USER_ID);
+        mockMvc.perform(get(STATE_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.x").value(0.1))
+                .andExpect(jsonPath("$.y").value(0.1));
+    }
+
+    /** 자리 조회도 로그인이 필요합니다. */
+    @Test
+    void requiresLoginToReadPosition() throws Exception {
+        currentUser.logout();
+
+        mockMvc.perform(get(STATE_URL))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(MapErrorCode.MAP_LOGIN_REQUIRED.code()));
+    }
+
     /** 로그인하지 않으면 401 이고 아무것도 남지 않습니다. 기록은 사용자에게 매달리는 값입니다. */
     @Test
     void requiresLogin() throws Exception {
@@ -313,6 +388,7 @@ class ExplorationLogIntegrationTest {
      */
     private void clearData() {
         jdbcTemplate.update("DELETE FROM map_exploration_logs");
+        jdbcTemplate.update("DELETE FROM map_exploration_states");
         jdbcTemplate.update("DELETE FROM perfume_map_points");
         jdbcTemplate.update("DELETE FROM perfumes");
         jdbcTemplate.update("DELETE FROM brands");
