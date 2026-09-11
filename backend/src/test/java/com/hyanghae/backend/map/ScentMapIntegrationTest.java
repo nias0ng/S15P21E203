@@ -22,8 +22,8 @@ import org.springframework.test.web.servlet.MockMvc;
  *
  * <ul>
  *   <li>향수 1: 좌표 (0.2, 0.3). 계열 두 개를 갖고 비중이 큰 쪽이 대표입니다. 이미지가 두 장입니다.
- *   <li>향수 2: 좌표 (0.5, 0.5). 조회 범위의 경계에 정확히 걸립니다.
- *   <li>향수 3: 좌표 (0.9, 0.9). 조회 범위 밖입니다.
+ *   <li>향수 2: 좌표 (0.5, 0.5).
+ *   <li>향수 3: 좌표 (0.9, 0.9). 지도의 먼 쪽입니다.
  *   <li>향수 4: 좌표는 있지만 비활성입니다.
  *   <li>향수 5: 활성이지만 좌표가 없습니다. 지도에 찍을 자리가 없습니다.
  *   <li>향수 6: 좌표 (0.1, 0.1). 계열도 이미지도 없습니다.
@@ -158,64 +158,6 @@ class ScentMapIntegrationTest {
                 .andExpect(jsonPath("$.perfumes[0].scentRegionId").value(regionIdOf("FLORAL")))
                 .andExpect(jsonPath("$.perfumes[3].perfumeId").value(6))
                 .andExpect(jsonPath("$.perfumes[3].scentRegionId").doesNotExist());
-    }
-
-    /** 범위를 주면 향수를 자릅니다. 경계에 걸친 향수는 포함합니다. */
-    @Test
-    void filtersPerfumesByViewportIncludingBoundary() throws Exception {
-        mockMvc.perform(get(MAP_URL)
-                        .param("minX", "0")
-                        .param("maxX", "0.5")
-                        .param("minY", "0")
-                        .param("maxY", "0.5"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.perfumes[*].perfumeId")
-                        .value(Matchers.contains(1, 2, 6)));
-    }
-
-    /**
-     * 범위 안에 향수가 없어도 계열은 그대로 나갑니다.
-     *
-     * <p>계열 영역은 범위로 자르지 않습니다. 폴리곤이 지도 바깥 여백까지 뻗어 있어 좌표계가 다르고,
-     * 잘라 주면 화면이 영역을 그릴 수 없습니다.
-     */
-    @Test
-    void keepsRegionsWhenViewportHasNoPerfume() throws Exception {
-        mockMvc.perform(get(MAP_URL)
-                        .param("minX", "0.95")
-                        .param("maxX", "1")
-                        .param("minY", "0.95")
-                        .param("maxY", "1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.perfumes").isEmpty())
-                .andExpect(jsonPath("$.regions[?(@.code == 'TEST_ACTIVE')]").isNotEmpty());
-    }
-
-    /**
-     * 범위를 일부만 주면 400 입니다.
-     *
-     * <p>나머지를 빠뜨린 실수일 가능성이 훨씬 큽니다. 조용히 한쪽만 걸어 주면 화면은 범위 조회가
-     * 된 줄로 압니다.
-     */
-    @Test
-    void rejectsPartialViewport() throws Exception {
-        mockMvc.perform(get(MAP_URL).param("minX", "0.1"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code")
-                        .value(MapErrorCode.MAP_VIEWPORT_INCOMPLETE.code()));
-    }
-
-    /** 최솟값이 최댓값보다 크면 400 입니다. 빈 목록으로 답하면 "향수가 없다"와 구분되지 않습니다. */
-    @Test
-    void rejectsInvertedViewport() throws Exception {
-        mockMvc.perform(get(MAP_URL)
-                        .param("minX", "0.8")
-                        .param("maxX", "0.2")
-                        .param("minY", "0")
-                        .param("maxY", "1"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code")
-                        .value(MapErrorCode.MAP_VIEWPORT_INVERTED.code()));
     }
 
     /** 선택한 향수의 요약입니다. 이미지는 대표 한 장이고 {@code display_order} 가 작은 쪽입니다. */

@@ -1,12 +1,10 @@
 package com.hyanghae.backend.map.repository;
 
-import com.hyanghae.backend.map.dto.request.MapViewportCondition;
 import com.hyanghae.backend.map.dto.response.MapPerfumeDetailResponse;
 import com.hyanghae.backend.map.dto.response.MapPerfumeResponse;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -81,12 +79,6 @@ public class ScentMapRepository {
             WHERE p.is_active = TRUE
             """;
 
-    /** 경계에 걸친 향수는 포함합니다. 화면 가장자리의 점이 사라지면 지도를 옮길 때 깜박입니다. */
-    private static final String VIEWPORT_FILTER = """
-              AND mp.map_x BETWEEN :minX AND :maxX
-              AND mp.map_y BETWEEN :minY AND :maxY
-            """;
-
     private static final String ORDER_BY_PERFUME_ID = "ORDER BY p.perfume_id\n";
 
     private static final String SELECT_MAP_PERFUME = """
@@ -127,19 +119,6 @@ public class ScentMapRepository {
     /** 지도에 좌표가 있는 활성 향수 전체입니다. */
     public List<MapPerfumeResponse> findPerfumes() {
         return jdbcClient.sql(SELECT_MAP_PERFUMES + ORDER_BY_PERFUME_ID)
-                .query(ScentMapRepository::toMapPerfume)
-                .list();
-    }
-
-    /** 주어진 사각형 안(경계 포함)에 있는 활성 향수입니다. */
-    public List<MapPerfumeResponse> findPerfumesIn(MapViewportCondition viewport) {
-        return jdbcClient.sql(SELECT_MAP_PERFUMES + VIEWPORT_FILTER + ORDER_BY_PERFUME_ID)
-                .params(Map.of(
-                        "minX", viewport.minX(),
-                        "maxX", viewport.maxX(),
-                        "minY", viewport.minY(),
-                        "maxY", viewport.maxY()
-                ))
                 .query(ScentMapRepository::toMapPerfume)
                 .list();
     }

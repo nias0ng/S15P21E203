@@ -4,9 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyanghae.backend.global.exception.BusinessException;
-import com.hyanghae.backend.map.dto.request.MapViewportCondition;
 import com.hyanghae.backend.map.dto.response.MapPerfumeDetailResponse;
-import com.hyanghae.backend.map.dto.response.MapPerfumeResponse;
 import com.hyanghae.backend.map.dto.response.ScentMapResponse;
 import com.hyanghae.backend.map.dto.response.ScentRegionResponse;
 import com.hyanghae.backend.map.exception.MapErrorCode;
@@ -37,19 +35,17 @@ public class ScentMapService {
     /**
      * 계열 영역과 향수 좌표를 함께 돌려줍니다.
      *
-     * <p>범위를 주면 향수만 그 사각형으로 자릅니다. 계열 영역은 항상 전체입니다.
-     *
-     * <p>범위를 일부만 주거나 최솟값이 최댓값보다 크면 400 입니다. 둘 다 빈 목록이나 전체 목록으로
-     * 조용히 넘어갈 수 있는데, 그러면 화면은 범위 조회가 된 줄로 알고 "이 범위에 향수가 없다"와
-     * 구분하지 못합니다.
+     * <p>지도에 있는 향수 전체를 한 번에 줍니다. 화면은 이 목록을 받아 두고 배와 가까운 향수를
+     * 직접 고릅니다. 배가 움직일 때마다 서버에 물으면 그만큼 왕복이 생깁니다. 지도에 올리는
+     * 향수가 200개로 고정이라 가능한 방식입니다.
      */
     @Transactional(readOnly = true)
-    public ScentMapResponse getMap(MapViewportCondition viewport) {
+    public ScentMapResponse getMap() {
         List<ScentRegionResponse> regions = scentMapRepository.findActiveRegions().stream()
                 .map(this::toRegion)
                 .toList();
 
-        return new ScentMapResponse(regions, findPerfumes(viewport));
+        return new ScentMapResponse(regions, scentMapRepository.findPerfumes());
     }
 
     /**
@@ -63,19 +59,6 @@ public class ScentMapService {
     public MapPerfumeDetailResponse getPerfume(Long perfumeId) {
         return scentMapRepository.findPerfume(perfumeId)
                 .orElseThrow(() -> new BusinessException(MapErrorCode.MAP_PERFUME_NOT_FOUND));
-    }
-
-    private List<MapPerfumeResponse> findPerfumes(MapViewportCondition viewport) {
-        if (viewport.isUnbounded()) {
-            return scentMapRepository.findPerfumes();
-        }
-        if (!viewport.isComplete()) {
-            throw new BusinessException(MapErrorCode.MAP_VIEWPORT_INCOMPLETE);
-        }
-        if (viewport.isInverted()) {
-            throw new BusinessException(MapErrorCode.MAP_VIEWPORT_INVERTED);
-        }
-        return scentMapRepository.findPerfumesIn(viewport);
     }
 
     /**

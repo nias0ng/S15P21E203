@@ -11,11 +11,7 @@ import org.springframework.http.HttpStatus;
  */
 public enum MapErrorCode implements ErrorCode {
 
-    MAP_PERFUME_NOT_FOUND(HttpStatus.NOT_FOUND, "지도에서 향수를 찾을 수 없습니다."),
-    MAP_VIEWPORT_INCOMPLETE(
-            HttpStatus.BAD_REQUEST, "지도 조회 범위는 minX·maxX·minY·maxY 를 모두 주어야 합니다."),
-    MAP_VIEWPORT_INVERTED(
-            HttpStatus.BAD_REQUEST, "지도 조회 범위의 최솟값이 최댓값보다 큽니다.");
+    MAP_PERFUME_NOT_FOUND(HttpStatus.NOT_FOUND, "지도에서 향수를 찾을 수 없습니다.");
 
     private final HttpStatus status;
     private final String message;
