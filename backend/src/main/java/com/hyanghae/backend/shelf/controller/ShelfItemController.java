@@ -2,10 +2,14 @@ package com.hyanghae.backend.shelf.controller;
 
 import com.hyanghae.backend.shelf.dto.request.FitRatingRequest;
 import com.hyanghae.backend.shelf.dto.request.OwnershipStatusRequest;
+import com.hyanghae.backend.shelf.dto.request.MemoRequest;
 import com.hyanghae.backend.shelf.dto.request.RepresentativeRequest;
 import com.hyanghae.backend.shelf.dto.request.ShelfItemCreateRequest;
 import com.hyanghae.backend.shelf.dto.response.FitRatingResponse;
 import com.hyanghae.backend.shelf.dto.response.OwnershipStatusResponse;
+import com.hyanghae.backend.shelf.dto.response.MemoCreateResponse;
+import com.hyanghae.backend.shelf.dto.response.MemoResponse;
+import com.hyanghae.backend.shelf.dto.response.MemoUpdateResponse;
 import com.hyanghae.backend.shelf.dto.response.RepresentativeResponse;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemCreateResponse;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemDetailResponse;
@@ -13,6 +17,7 @@ import com.hyanghae.backend.shelf.dto.response.ShelfItemsResponse;
 import com.hyanghae.backend.shelf.entity.OwnershipStatus;
 import com.hyanghae.backend.shelf.service.FitRatingService;
 import com.hyanghae.backend.shelf.service.OwnershipStatusService;
+import com.hyanghae.backend.shelf.service.MemoService;
 import com.hyanghae.backend.shelf.service.RepresentativePerfumeService;
 import com.hyanghae.backend.shelf.service.ShelfItemService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -44,17 +49,20 @@ public class ShelfItemController {
 
     private final FitRatingService fitRatingService;
     private final OwnershipStatusService ownershipStatusService;
+    private final MemoService memoService;
     private final RepresentativePerfumeService representativePerfumeService;
     private final ShelfItemService shelfItemService;
 
     public ShelfItemController(
             FitRatingService fitRatingService,
             OwnershipStatusService ownershipStatusService,
+            MemoService memoService,
             RepresentativePerfumeService representativePerfumeService,
             ShelfItemService shelfItemService
     ) {
         this.fitRatingService = fitRatingService;
         this.ownershipStatusService = ownershipStatusService;
+        this.memoService = memoService;
         this.representativePerfumeService = representativePerfumeService;
         this.shelfItemService = shelfItemService;
     }
@@ -121,8 +129,90 @@ public class ShelfItemController {
     }
 
     @Operation(
+            summary = "메모 작성",
+            description = "선택한 진열대 향수에 메모를 작성합니다."
+    )
+    @ApiResponse(responseCode = "201", description = "작성 성공")
+    @ApiResponse(responseCode = "400", description = "올바르지 않은 요청")
+    @ApiResponse(responseCode = "401", description = "로그인 필요")
+    @ApiResponse(responseCode = "404", description = "진열대 항목 없음")
+    @ApiResponse(responseCode = "409", description = "이미 메모가 존재함")
+    @PostMapping("/{shelfItemId}/memo")
+    @ResponseStatus(HttpStatus.CREATED)
+    public MemoCreateResponse createMemo(
+            @Parameter(
+                    name = "shelfItemId",
+                    description = "사용자 진열대 항목 ID",
+                    in = ParameterIn.PATH,
+                    required = true,
+                    schema = @Schema(type = "integer", format = "int64")
+            )
+            @PathVariable Long shelfItemId,
+            @Valid @RequestBody MemoRequest request
+    ) {
+        return memoService.create(shelfItemId, request.content());
+    }
+
+    @Operation(summary = "메모 조회")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "401", description = "로그인 필요")
+    @ApiResponse(responseCode = "404", description = "메모 없음")
+    @GetMapping("/{shelfItemId}/memo")
+    public MemoResponse getMemo(
+            @Parameter(
+                    name = "shelfItemId",
+                    description = "사용자 진열대 항목 ID",
+                    in = ParameterIn.PATH,
+                    required = true,
+                    schema = @Schema(type = "integer", format = "int64")
+            )
+            @PathVariable Long shelfItemId
+    ) {
+        return memoService.findMine(shelfItemId);
+    }
+
+    @Operation(summary = "메모 수정")
+    @ApiResponse(responseCode = "200", description = "수정 성공")
+    @ApiResponse(responseCode = "400", description = "올바르지 않은 요청")
+    @ApiResponse(responseCode = "401", description = "로그인 필요")
+    @ApiResponse(responseCode = "404", description = "메모 없음")
+    @PatchMapping("/{shelfItemId}/memo")
+    public MemoUpdateResponse updateMemo(
+            @Parameter(
+                    name = "shelfItemId",
+                    description = "사용자 진열대 항목 ID",
+                    in = ParameterIn.PATH,
+                    required = true,
+                    schema = @Schema(type = "integer", format = "int64")
+            )
+            @PathVariable Long shelfItemId,
+            @Valid @RequestBody MemoRequest request
+    ) {
+        return memoService.update(shelfItemId, request.content());
+    }
+
+    @Operation(summary = "메모 삭제")
+    @ApiResponse(responseCode = "204", description = "삭제 성공")
+    @ApiResponse(responseCode = "401", description = "로그인 필요")
+    @ApiResponse(responseCode = "404", description = "메모 없음")
+    @DeleteMapping("/{shelfItemId}/memo")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteMemo(
+            @Parameter(
+                    name = "shelfItemId",
+                    description = "사용자 진열대 항목 ID",
+                    in = ParameterIn.PATH,
+                    required = true,
+                    schema = @Schema(type = "integer", format = "int64")
+            )
+            @PathVariable Long shelfItemId
+    ) {
+        memoService.delete(shelfItemId);
+    }
+
+    @Operation(
             summary = "진열대에서 향수 삭제",
-            description = "진열대 항목과 연결된 시향 기록·컬렉션 연결을 함께 삭제합니다."
+            description = "진열대 항목과 연결된 메모·컬렉션 연결을 함께 삭제합니다."
     )
     @ApiResponse(responseCode = "204", description = "삭제 성공")
     @ApiResponse(responseCode = "401", description = "로그인 필요")

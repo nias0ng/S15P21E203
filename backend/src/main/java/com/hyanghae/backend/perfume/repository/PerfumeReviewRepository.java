@@ -22,8 +22,8 @@ public interface PerfumeReviewRepository extends JpaRepository<PerfumeReview, Lo
      * <p>키워드 추출을 시작하는 최소 개수 정책의 기준이라, 배치가 대상을 고를 때 세는 수와
      * 같아야 합니다. 지금은 양쪽 다 향수에 달린 모든 후기입니다.
      *
-     * <p>시향 기록({@code personal_records})은 세지 않습니다. 기능 명세서의 시스템 처리 항목에
-     * 시향 기록을 함께 분석한다는 문장이 있으나, 팀이 후기만 쓰기로 정했습니다.
+     * <p>메모({@code memos})는 세지 않습니다. 기능 명세서의 시스템 처리 항목에
+     * 메모를 함께 분석한다는 문장이 있으나, 팀이 후기만 쓰기로 정했습니다.
      */
     @Query("""
             SELECT COUNT(r)
