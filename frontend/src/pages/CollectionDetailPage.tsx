@@ -68,17 +68,17 @@ export default function CollectionDetailPage() {
   )?.name
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6.25">
       <LinkButton to={ROUTES.MY_SHELF} variant="outline" size="sm">
         ← 진열대
       </LinkButton>
 
-      <header className="space-y-2">
-        <div className="flex items-start gap-3">
+      <header className="space-y-2.5">
+        <div className="flex items-start gap-2.5">
           <h1 className="text-ink text-display font-serif font-semibold">
             {data.title}
           </h1>
-          <span className="ml-auto flex shrink-0 gap-2">
+          <span className="ml-auto flex shrink-0 gap-2.5">
             <Button
               variant="outline"
               size="sm"
@@ -111,7 +111,7 @@ export default function CollectionDetailPage() {
           description="진열대에 저장한 향수를 컬렉션에 넣어보세요."
         />
       ) : (
-        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <ul className="grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-6">
           {data.perfumes.map((perfume) => (
             <li key={perfume.perfumeId} className="relative">
               <PerfumeCard
@@ -125,7 +125,7 @@ export default function CollectionDetailPage() {
                 type="button"
                 aria-label={`${perfume.name} 컬렉션에서 제거`}
                 onClick={() => setRemoveTarget(perfume.perfumeId)}
-                className="border-line bg-surface-card text-ink-muted hover:text-ink text-caption rounded-card absolute top-4 right-4 border px-2 transition-colors duration-120 ease-out"
+                className="border-line bg-surface-card text-ink-muted hover:text-ink text-caption rounded-card absolute top-3.75 right-3.75 border px-2.5 transition-colors duration-120 ease-out"
               >
                 <span aria-hidden>×</span>
               </button>

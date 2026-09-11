@@ -39,7 +39,7 @@ export default function FreeBoardPage() {
   )
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-7.5">
       <BoardHeader
         description="향수 이야기를 자유롭게 나눕니다. 컬렉션을 남에게 보이는 유일한 길이기도 합니다."
         action={
@@ -49,17 +49,17 @@ export default function FreeBoardPage() {
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_16rem]">
-        <div className="min-w-0 space-y-6">
+      <div className="grid gap-6.25 lg:grid-cols-[1fr_255px]">
+        <div className="min-w-0 space-y-6.25">
           {/*
             정렬과 분류를 두 줄로 둡니다. 자유 게시판은 칩이 여덟 개(4+4)라 한 줄에
-            넣으면 목록 폭(840px)을 넘어 줄바꿈이 제멋대로 일어납니다.
-            두 줄 사이는 gap-2 로 붙여서 한 덩어리로 읽히게 합니다.
+            넣으면 좁은 화면의 목록 폭(1024 에서 약 660px)을 넘어 줄바꿈이 제멋대로 일어납니다.
+            두 줄 사이는 gap-2.5 로 붙여서 한 덩어리로 읽히게 합니다.
           */}
           <div
             role="group"
             aria-label="글 거르기"
-            className="flex flex-col gap-2"
+            className="flex flex-col gap-2.5"
           >
             <ChipToggle
               label="정렬"

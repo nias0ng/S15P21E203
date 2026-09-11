@@ -46,26 +46,26 @@ export default function NoteDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6.25">
       <LinkButton to={ROUTES.NOTES} variant="outline" size="sm">
         ← 뒤로 가기
       </LinkButton>
 
-      <div className="flex flex-col gap-4 sm:flex-row">
+      <div className="flex flex-col gap-3.75 sm:flex-row">
         <Thumbnail
           src={data.imageUrl}
           fallback="노트 이미지"
-          className="h-40 w-56 shrink-0"
+          className="h-40 w-56.25 shrink-0"
         />
 
-        <div className="flex-1 space-y-2">
-          <div className="border-line flex items-center gap-3 border px-3 py-2.5">
+        <div className="flex-1 space-y-2.5">
+          <div className="border-line flex items-center gap-2.5 border px-2.5 py-2.5">
             <span className="text-ink-muted text-[10.5px]">대분류</span>
             <span className="text-ink text-xs font-bold">{data.category}</span>
             <span className="text-ink-muted text-[10.5px]">· {data.name}</span>
           </div>
 
-          <div className="border-line space-y-2 border p-3">
+          <div className="border-line space-y-2.5 border p-2.5">
             <p className="text-ink-muted text-[10.5px]">설명</p>
             <p className="text-ink text-xs leading-relaxed">
               {data.description}
@@ -74,7 +74,7 @@ export default function NoteDetailPage() {
         </div>
       </div>
 
-      <section className="space-y-3">
+      <section className="space-y-2.5">
         <h2 className="text-ink text-sm font-bold">
           이 노트가 들어간 향수 {data.perfumeCount}
         </h2>

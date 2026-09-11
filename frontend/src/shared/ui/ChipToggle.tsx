@@ -51,7 +51,7 @@ export function ChipToggle<T extends string>(props: ChipToggleProps<T>) {
     <div
       role="group"
       aria-label={label}
-      className={cn('flex flex-wrap gap-2', className)}
+      className={cn('flex flex-wrap gap-2.5', className)}
     >
       {options.map((option) => {
         const selected = isSelected(option.value)
@@ -63,7 +63,7 @@ export function ChipToggle<T extends string>(props: ChipToggleProps<T>) {
             aria-pressed={selected}
             onClick={() => toggle(option.value)}
             className={cn(
-              'border-line text-caption rounded-card border px-3 py-2',
+              'border-line text-caption rounded-card border px-2.5 py-2.5',
               'transition-colors duration-120 ease-out',
               'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
               selected

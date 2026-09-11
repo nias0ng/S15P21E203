@@ -15,22 +15,19 @@ import { useAuthStore } from '@/shared/store/authStore'
  *
  * 마이페이지 화면은 없습니다. 개인 정보 수정은 계정 아이콘에서 바로 들어갑니다.
  *
- * ── 배치 (시안 1671px 기준을 비율로 옮겼습니다) ────────────────
- *   로고 왼쪽 끝    52 / 1671 = 3.1%   시안의 진열장 왼쪽 끝(56)과 거의 같은 선
- *   메뉴 다섯 개    526 ~ 1060         로고와 우측 도구 사이의 정중앙
- *   돋보기 · 계정   1428 · 1482        중심 간격 54, 아이콘 20 이므로 사이 32
- *   구분선          1524               좌우 24 씩
- *   문구            1548 ~ 1610
+ * ── 배치 (1920 기준) ──────────────────────────────────────
+ *   높이           90
+ *   좌우 여백       --gutter (1920 에서 60) — 본문과 같은 값이라 로고가 본문 왼쪽 끝
+ *                  (진열장 모서리 · 제목) 바로 위에 섭니다
+ *   메뉴 다섯 개    항목 사이 60, 로고와 우측 도구 사이의 정중앙
+ *   우측 도구       돋보기 · 계정 · 구분선 · 문구, 사이 30
  *
  * 세 덩어리라 `grid-cols-[auto_1fr_auto]` 입니다. flex + ml-auto 로 하면 메뉴가 좌우
  * 덩어리 폭에 밀려서, 로그인 여부로 오른쪽 폭이 바뀔 때 메뉴가 함께 움직입니다.
- * 가운데를 1fr 로 두면 메뉴가 남는 자리의 정중앙에 서는데, 시안의 메뉴 중심(793)이
- * 로고 끝(190)과 도구 시작(1400)의 한가운데(795)와 맞습니다.
+ * 가운데를 1fr 로 두면 메뉴가 남는 자리의 정중앙에 섭니다.
  *
- * 폭을 `max-w-content`(1120px)로 묶지 않습니다. 시안은 로고와 문구가 화면 양 끝에
- * 붙는 구성이고, 진열대 화면도 그 폭을 벗어나 화면을 꽉 채웁니다. 좌우 여백 32px 은
- * 진열대 본문(FULL_BLEED)의 여백과 같은 값이라 로고가 진열장 왼쪽 모서리 바로 위에
- * 섭니다 — 시안이 52 대 56 으로 맞춰 둔 그 관계입니다.
+ * 폭은 본문과 같은 화면 틀(max-w-frame, 1920)입니다. 바탕은 화면 끝까지 칠하고
+ * 내용만 틀 안에 둬서, 1920 보다 넓은 모니터에서도 로고와 본문이 같은 선에 섭니다.
  *
  * 아래 테두리를 뺐습니다. 시안은 헤더와 본문이 같은 종이 한 장이고, 선을 그으면
  * 진열대 화면에서 종이가 두 장으로 잘려 보입니다.
@@ -51,12 +48,12 @@ export function GlobalHeader({ onPaper = false }: { onPaper?: boolean }) {
         onPaper ? 'shelf-scope shelf-paper shelf-grain' : 'bg-surface',
       )}
     >
-      <div className="grid h-22 grid-cols-[auto_1fr_auto] items-center gap-6 px-8">
+      <div className="max-w-frame mx-auto grid h-22.5 grid-cols-[auto_1fr_auto] items-center gap-5 px-[var(--gutter)]">
         <BrandMark />
         <PrimaryNav isLoggedIn={isLoggedIn} />
 
         {/* 돋보기 · 계정 · 구분선 · 문구 (시안 우측 묶음) */}
-        <div className="flex shrink-0 items-center gap-8">
+        <div className="flex shrink-0 items-center gap-7.5">
           <Link
             to={ROUTES.PERFUME_SEARCH}
             aria-label="향수 검색"
@@ -74,7 +71,7 @@ export function GlobalHeader({ onPaper = false }: { onPaper?: boolean }) {
             구분선과 문구는 넓은 화면에서만 나옵니다. 좁아지면 가운데 메뉴가 먼저
             찌그러지는데, 문구는 읽을거리가 아니라 장식이라 먼저 자리를 내주는 쪽입니다.
           */}
-          <span aria-hidden className="bg-line hidden h-8 w-px xl:block" />
+          <span aria-hidden className="bg-line hidden h-7.5 w-px xl:block" />
           <p className="text-ink-muted text-caption hidden leading-relaxed xl:block">
             오늘도,
             <br />
@@ -109,7 +106,7 @@ function BrandMark() {
       </span>
       <span
         aria-hidden
-        className="text-ink-muted mt-1.5 block text-[10px] leading-none tracking-[0.28em]"
+        className="text-ink-muted mt-1.25 block text-[10px] leading-none tracking-[0.28em]"
       >
         SCENT JOURNEY
       </span>
@@ -134,10 +131,10 @@ function PrimaryNav({ isLoggedIn }: { isLoggedIn: boolean }) {
   const items = NAV_ITEMS.filter((item) => isLoggedIn || !item.requiresAuth)
 
   return (
-    // 가운데 칸의 정중앙. 항목 사이 56px 은 시안(1671 기준 62px)을 1440 으로 환산한
-    // 53px 에 가장 가까우면서 간격 스케일(8의 배수) 안에 있는 값입니다.
+    // 가운데 칸의 정중앙. 항목 사이 60px 은 시안(1671 폭에서 62px)을 1920 규격에
+    // 맞추면서 끝자리를 0 으로 둔 값입니다.
     <nav aria-label="주요 메뉴" className="justify-self-center">
-      <ul className="text-body flex items-center gap-14">
+      <ul className="text-body flex items-center gap-15">
         {items.map((item) => (
           <li key={item.to}>
             <NavLink to={item.to} className={navLinkClass}>
@@ -156,7 +153,7 @@ function PrimaryNav({ isLoggedIn }: { isLoggedIn: boolean }) {
 /*
  * 시안의 메뉴에는 호버 배경이 없습니다. 종이 위에 인쇄된 차례처럼 보여야 해서
  * 배경 대신 글자색만 옅어지고, 지금 보고 있는 화면만 밑줄로 표시됩니다.
- * 좌우 padding 을 걷어낸 이유: 항목 간격을 56px 로 잡았는데 패딩이 남아 있으면
+ * 좌우 padding 을 걷어낸 이유: 항목 간격을 60px 로 잡았는데 패딩이 남아 있으면
  * 글자 사이가 시안보다 그만큼 더 벌어집니다.
  */
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -189,7 +186,7 @@ function CommunityMenu() {
       {open && (
         <ul
           // 와이어프레임 기준 폭 120px
-          className="border-line bg-surface-card absolute top-full left-0 z-30 mt-2 w-30 border"
+          className="border-line bg-surface-card absolute top-full left-0 z-30 mt-2.5 w-30 border"
           role="menu"
         >
           {COMMUNITY_ITEMS.map((item, index) => (
@@ -199,7 +196,7 @@ function CommunityMenu() {
                 to={item.to}
                 onClick={() => setOpen(false)}
                 className={cn(
-                  'text-ink hover:bg-line-soft text-caption block px-3 py-2.5',
+                  'text-ink hover:bg-line-soft text-caption block px-2.5 py-2.5',
                   index < COMMUNITY_ITEMS.length - 1 && 'border-line border-b',
                 )}
               >
@@ -246,7 +243,7 @@ function AccountMenu() {
       {open && (
         <ul
           // 와이어프레임 기준 폭 158px, 우측 정렬
-          className="border-line bg-surface-card absolute top-full right-0 z-30 mt-2 w-[158px] border"
+          className="border-line bg-surface-card absolute top-full right-0 z-30 mt-2.5 w-40 border"
           role="menu"
         >
           <li role="none">
@@ -254,7 +251,7 @@ function AccountMenu() {
               role="menuitem"
               to={ROUTES.ACCOUNT}
               onClick={() => setOpen(false)}
-              className="text-ink hover:bg-line-soft border-line text-caption block border-b px-3 py-2.5"
+              className="text-ink hover:bg-line-soft border-line text-caption block border-b px-2.5 py-2.5"
             >
               개인 정보 수정
             </Link>
@@ -268,7 +265,7 @@ function AccountMenu() {
                 setOpen(false)
                 navigate(ROUTES.HOME)
               }}
-              className="text-ink hover:bg-line-soft text-caption block w-full px-3 py-2.5 text-left"
+              className="text-ink hover:bg-line-soft text-caption block w-full px-2.5 py-2.5 text-left"
             >
               로그아웃
             </button>
@@ -284,7 +281,7 @@ function LoginButton() {
     <Link
       to={ROUTES.LOGIN}
       className={cn(
-        'border-line text-ink hover:bg-line-soft rounded-card block border px-3 py-1.5',
+        'border-line text-ink hover:bg-line-soft rounded-card block border px-2.5 py-1.25',
         'text-caption transition-colors duration-120 ease-out',
         'focus-visible:ring-accent-deep outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
       )}

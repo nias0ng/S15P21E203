@@ -28,7 +28,7 @@ export function StarRating({
 
   if (readOnly) {
     return (
-      <span className={cn('inline-flex items-center gap-1', className)}>
+      <span className={cn('inline-flex items-center gap-1.25', className)}>
         <span aria-hidden className="text-ink text-body tracking-[0.15em]">
           {'★'.repeat(value ?? 0)}
           <span className="text-line">{'☆'.repeat(max - (value ?? 0))}</span>
@@ -44,7 +44,7 @@ export function StarRating({
     <span
       role="radiogroup"
       aria-label={label}
-      className={cn('inline-flex items-center gap-1', className)}
+      className={cn('inline-flex items-center gap-1.25', className)}
     >
       {Array.from({ length: max }, (_, index) => {
         const score = index + 1
@@ -67,7 +67,7 @@ export function StarRating({
           </button>
         )
       })}
-      <span className="text-ink-muted text-caption ml-1">
+      <span className="text-ink-muted text-caption ml-1.25">
         {value ?? '-'} / {max}
       </span>
     </span>

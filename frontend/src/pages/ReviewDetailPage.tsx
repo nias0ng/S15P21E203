@@ -26,7 +26,7 @@ export default function ReviewDetailPage() {
   const review = PLACEHOLDER_REVIEW
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       <PerfumeReviewDetail
         review={review}
         // TODO: 후기가 달린 향수 id 로 바꿔주세요 (응답에 포함될 예정)

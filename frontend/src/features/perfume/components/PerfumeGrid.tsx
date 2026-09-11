@@ -34,14 +34,14 @@ export function PerfumeGrid({
 }: PerfumeGridProps) {
   const gridClass =
     columns === 5
-      ? 'grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5'
-      : 'grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4'
+      ? 'grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-5'
+      : 'grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-4'
 
   if (isPending) {
     return (
       <div className={gridClass}>
         {Array.from({ length: columns * 2 }, (_, index) => (
-          <Skeleton key={index} className="h-44" />
+          <Skeleton key={index} className="h-43.75" />
         ))}
       </div>
     )

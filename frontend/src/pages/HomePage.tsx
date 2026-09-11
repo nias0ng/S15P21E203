@@ -79,12 +79,12 @@ export default function HomePage() {
     : []
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3.75">
       <h1 className="sr-only">향 지도</h1>
 
       {/* 별도 입력 화면 없이 바로 결과로 갑니다 */}
       <form
-        className="flex items-start gap-2"
+        className="flex items-start gap-2.5"
         onSubmit={(event) => {
           event.preventDefault()
           const trimmed = keyword.trim()
@@ -105,7 +105,7 @@ export default function HomePage() {
       </form>
 
       <div className="relative">
-        <div className="h-[32rem]">
+        <div className="h-127.5">
           <ScentMap
             points={items}
             tasteArea={tasteArea.data}
@@ -134,11 +134,11 @@ export default function HomePage() {
         )}
 
         {/* 향해 일지는 지도 위에 계속 떠 있습니다 */}
-        <div className="absolute top-3 right-3">
+        <div className="absolute top-2.5 right-2.5">
           <VoyageLog entries={log.data ?? []} />
         </div>
 
-        <div className="absolute bottom-3 left-3 w-40">
+        <div className="absolute bottom-2.5 left-2.5 w-40">
           <MiniMap
             points={items}
             viewport={{
@@ -151,7 +151,7 @@ export default function HomePage() {
           />
         </div>
 
-        <div className="absolute right-3 bottom-3 flex flex-col gap-1">
+        <div className="absolute right-2.5 bottom-2.5 flex flex-col gap-1.25">
           <Button
             variant="outline"
             size="icon"

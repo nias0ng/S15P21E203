@@ -149,6 +149,7 @@ import { perfumeDetailQuery } from '@/features/perfume/queries' // X
 - **`console.log` 는 경고**: `npm run lint` 가 실패하므로 커밋 전에 지워주세요
 - **화면을 만들기 전에 `shared/ui/` 를 먼저 보기**: 버튼·입력창·카드·모달은 이미 있습니다 (아래 표)
 - **색·radius 는 디자인 토큰만**: `bg-brand-600`, `text-ink-muted`, `rounded-card`. `#3f5337` 이나 `bg-[#67855a]` 금지
+- **화면 폭 · 치수는 1920 x 1080 기준**: 좌우 여백은 `--gutter`(1920 에서 60, 끝자리 0), 본문 폭은 라우트 `handle.width` 로 `full`(1800) · `wide`(1440, 기본) · `text`(800) 중 하나. 요소 치수는 끝자리 0 또는 5(글자 크기는 제외 — 활자 스케일 그대로). 화면 확인은 1920 x 1080 부터 (자세한 표는 `CLAUDE.md`)
 - **테스트 파일은 대상 파일 옆에**: `Button.tsx` → `Button.test.tsx`. `__tests__/` 폴더는 쓰지 않습니다
 
 ## 공용 UI 컴포넌트

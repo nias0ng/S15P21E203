@@ -42,8 +42,10 @@ export function SeasonPickModal({
         </>
       }
     >
-      <div className="flex items-center gap-2">
-        <span className="text-ink-muted w-8 shrink-0 text-[10.5px]">계절</span>
+      <div className="flex items-center gap-2.5">
+        <span className="text-ink-muted w-7.5 shrink-0 text-[10.5px]">
+          계절
+        </span>
         <ChipToggle
           label="잘 어울리는 계절"
           multiple

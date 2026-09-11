@@ -16,7 +16,7 @@ import { cva } from 'class-variance-authority'
  * 우선순위가 높아서, variant 가 지정한 bg · text 를 덮습니다.
  */
 export const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 rounded-card font-medium ' +
+  'inline-flex items-center justify-center gap-2.5 rounded-card font-medium ' +
     'transition-colors duration-120 ease-out outline-none ' +
     'focus-visible:ring-2 focus-visible:ring-accent-deep focus-visible:ring-offset-2 ' +
     'disabled:pointer-events-none disabled:border disabled:border-line ' +
@@ -33,9 +33,9 @@ export const buttonVariants = cva(
         danger: 'bg-danger text-surface hover:bg-danger/90',
       },
       size: {
-        sm: 'text-body h-8 px-3',
-        md: 'text-body h-10 px-4',
-        lg: 'text-body h-12 px-6',
+        sm: 'text-body h-7.5 px-2.5',
+        md: 'text-body h-10 px-3.75',
+        lg: 'text-body h-12.5 px-6.25',
         icon: 'size-10',
       },
       fullWidth: {

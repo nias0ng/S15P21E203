@@ -10,7 +10,7 @@ import { cn } from '@/shared/lib/cn'
  * 색으로 뜻을 구분할 때는 라벨 글자도 함께 달아야 합니다(색만으로 구분 금지).
  */
 const badgeVariants = cva(
-  'text-caption inline-flex items-center rounded-full px-3 py-1 font-medium',
+  'text-caption inline-flex items-center rounded-full px-2.5 py-1.25 font-medium',
   {
     variants: {
       tone: {

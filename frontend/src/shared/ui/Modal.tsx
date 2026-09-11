@@ -55,27 +55,27 @@ export function Modal({
         if (event.target === dialogRef.current) onClose()
       }}
       className={cn(
-        'rounded-card m-auto w-[min(32rem,calc(100vw-2rem))] p-0',
+        'rounded-card m-auto w-[min(510px,calc(100vw-40px))] p-0',
         'backdrop:bg-ink/40 open:flex open:flex-col',
         className,
       )}
     >
-      <header className="border-line flex items-center justify-between border-b px-5 py-4">
+      <header className="border-line flex items-center justify-between border-b px-5 py-3.75">
         <h2 className="text-title font-serif font-semibold">{title}</h2>
         <button
           type="button"
           onClick={onClose}
           aria-label="닫기"
-          className="text-ink-muted hover:text-ink rounded p-1 text-lg leading-none"
+          className="text-ink-muted hover:text-ink rounded p-1.25 text-lg leading-none"
         >
           ×
         </button>
       </header>
 
-      <div className="text-body px-5 py-4">{children}</div>
+      <div className="text-body px-5 py-3.75">{children}</div>
 
       {footer && (
-        <footer className="border-line flex justify-end gap-2 border-t px-5 py-4">
+        <footer className="border-line flex justify-end gap-2.5 border-t px-5 py-3.75">
           {footer}
         </footer>
       )}

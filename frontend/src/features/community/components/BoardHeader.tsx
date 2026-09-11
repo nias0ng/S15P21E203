@@ -32,8 +32,8 @@ const TABS = [
  */
 export function BoardHeader({ description, action }: Props) {
   return (
-    <header className="space-y-6">
-      <div className="space-y-2">
+    <header className="space-y-6.25">
+      <div className="space-y-2.5">
         <h1 className="text-ink text-display font-serif font-bold">커뮤니티</h1>
         <p className="text-ink-muted text-body">{description}</p>
       </div>
@@ -42,7 +42,7 @@ export function BoardHeader({ description, action }: Props) {
         탭과 단추가 한 줄에 놓입니다. 밑줄(border-b)은 줄 전체에 그어서 탭이
         그 위에 얹힌 것처럼 보이게 합니다 — 탭에만 그으면 단추 쪽이 허전합니다.
       */}
-      <div className="border-line flex items-end justify-between gap-4 border-b">
+      <div className="border-line flex items-end justify-between gap-3.75 border-b">
         <nav aria-label="게시판" className="flex">
           {TABS.map((tab) => (
             <NavLink
@@ -50,7 +50,7 @@ export function BoardHeader({ description, action }: Props) {
               to={tab.to}
               className={({ isActive }) =>
                 cn(
-                  'text-body px-4 py-3 font-medium',
+                  'text-body px-3.75 py-2.5 font-medium',
                   'transition-colors duration-120 ease-out',
                   'focus-visible:ring-accent-deep rounded-t-card outline-none focus-visible:ring-2',
                   isActive
@@ -68,7 +68,7 @@ export function BoardHeader({ description, action }: Props) {
           단추를 밑줄 위로 4px 띄웁니다. 줄에 딱 붙이면 단추가 탭의 일부처럼 읽혀서,
           "글을 쓴다" 와 "게시판을 옮긴다" 가 같은 종류의 조작으로 보입니다.
         */}
-        {action && <div className="mb-1 shrink-0">{action}</div>}
+        {action && <div className="mb-1.25 shrink-0">{action}</div>}
       </div>
     </header>
   )

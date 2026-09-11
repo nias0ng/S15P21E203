@@ -1,14 +1,56 @@
-import { Outlet, useLocation } from 'react-router'
+import { Outlet, useLocation, useMatches } from 'react-router'
 
 import { GlobalHeader } from '@/app/layouts/GlobalHeader'
 import { ROUTES } from '@/shared/config/routes'
+import { cn } from '@/shared/lib/cn'
+
+/**
+ * 화면이 쓰는 본문 폭. 라우트 설정(app/router)의 `handle.width` 로 정합니다.
+ *
+ *   full  화면 틀 전체(1920 에서 1800) — 진열대 · 향 지도처럼 화면을 그림으로 쓰는 곳
+ *   wide  1440 — 목록 · 격자 · 상세 (적지 않으면 이것)
+ *   text  800 — 글을 읽고 쓰는 곳 · 계정 폼
+ *
+ * 폭의 근거는 styles/index.css 의 --container-* 주석에 있습니다.
+ */
+export type PageWidth = 'full' | 'wide' | 'text'
+
+const WIDTH: Record<PageWidth, string> = {
+  full: '',
+  wide: 'max-w-wide',
+  text: 'max-w-text',
+}
+
+const isPageWidth = (value: unknown): value is PageWidth =>
+  value === 'full' || value === 'wide' || value === 'text'
+
+/** 지금 화면의 폭. 가장 안쪽 라우트에 적힌 값이 이깁니다 */
+function usePageWidth(): PageWidth {
+  const matches = useMatches()
+  for (let at = matches.length - 1; at >= 0; at -= 1) {
+    const handle: unknown = matches[at]?.handle
+    if (
+      typeof handle === 'object' &&
+      handle !== null &&
+      'width' in handle &&
+      isPageWidth(handle.width)
+    ) {
+      return handle.width
+    }
+  }
+  return 'wide'
+}
 
 /**
  * 모든 화면의 공통 껍데기.
  *
- * 콘텐츠 폭은 와이어프레임 S01 규격대로 1120px 고정입니다
- * (max-w-content = --container-content 토큰, styles/index.css).
- * 향 지도처럼 화면을 꽉 채워야 하는 화면은 페이지 안에서 폭 제한을 벗어납니다.
+ * 1920 x 1080 이 가장 넓은 규격입니다. 틀(max-w-frame, 1920)에 좌우 여백(--gutter,
+ * 1920 에서 60)을 두르고, 그 안에서 화면마다 정한 폭(full · wide · text)으로 본문을
+ * 가운데 세웁니다. 헤더도 같은 틀과 여백을 써서 로고와 본문 왼쪽 끝이 한 줄에 섭니다.
+ *
+ * 예전에는 모든 화면이 1120 고정(와이어프레임 S01)이었고, 넓게 써야 하는 진열대만
+ * 음수 마진으로 그 제약을 깨고 나갔습니다. 이제 넓게 쓰는 화면은 라우트에 full 이라고
+ * 적기만 하면 됩니다.
  */
 export function RootLayout() {
   /*
@@ -21,18 +63,20 @@ export function RootLayout() {
    * 일이라 여기 둡니다.
    */
   const onPaper = useLocation().pathname === ROUTES.MY_SHELF
+  const width = usePageWidth()
 
   return (
     <div className="flex min-h-dvh flex-col">
       <GlobalHeader onPaper={onPaper} />
 
       {/*
-        위 56px 은 헤더(88px) 아래 숨입니다. 헤더가 52 -> 88px 로 커지면서 py-8(32)
-        로는 제목이 메뉴에 붙어 보입니다. 진열대 화면이 쓰는 값과 같습니다 —
+        위 60px 은 헤더(90px) 아래 숨입니다. 진열대 화면도 같은 값을 씁니다 —
         화면마다 다르면 게시판에서 진열대로 넘어갈 때 제목 높이가 튑니다.
       */}
-      <main className="max-w-content mx-auto w-full flex-1 px-5 pt-14 pb-16">
-        <Outlet />
+      <main className="max-w-frame mx-auto w-full flex-1 px-[var(--gutter)] pt-15 pb-15">
+        <div className={cn('mx-auto w-full', WIDTH[width])}>
+          <Outlet />
+        </div>
       </main>
     </div>
   )

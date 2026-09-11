@@ -54,7 +54,7 @@ export default function PostWritePage() {
           fieldset 과 legend 로 묶습니다. 예전에는 `<span>분류</span>` 였는데,
           낭독기에는 칩 세 개가 무엇을 고르는 것인지 전해지지 않았습니다.
         */}
-        <fieldset className="space-y-2">
+        <fieldset className="space-y-2.5">
           <legend className="text-ink text-caption font-medium">
             분류 <span className="text-danger">*</span>
           </legend>
@@ -89,7 +89,7 @@ export default function PostWritePage() {
 
         {/* 컬렉션 첨부는 컬렉션 공유를 골랐을 때만 나타납니다 */}
         {category === 'COLLECTION' && (
-          <fieldset className="space-y-2">
+          <fieldset className="space-y-2.5">
             <legend className="text-ink text-caption font-medium">
               컬렉션 첨부
             </legend>
@@ -100,15 +100,15 @@ export default function PostWritePage() {
           </fieldset>
         )}
 
-        <fieldset className="space-y-2">
+        <fieldset className="space-y-2.5">
           <legend className="text-ink text-caption font-medium">
             관련 향수 <span className="text-ink-muted">(선택)</span>
           </legend>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2.5">
             {perfumes.map((perfume) => (
               <span
                 key={perfume.perfumeId}
-                className="border-line-soft bg-surface-sunken text-ink text-caption rounded-card flex items-center gap-2 border px-3 py-2"
+                className="border-line-soft bg-surface-sunken text-ink text-caption rounded-card flex items-center gap-2.5 border px-2.5 py-2.5"
               >
                 {perfume.name}
                 <button

@@ -33,7 +33,7 @@ export function Input({
   const hintId = `${id}-hint`
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       <label
         htmlFor={id}
         className={cn(
@@ -49,7 +49,7 @@ export function Input({
         aria-invalid={error ? true : undefined}
         aria-describedby={cn(hint && hintId, error && errorId) || undefined}
         className={cn(
-          'rounded-card text-body h-10 w-full border px-3',
+          'rounded-card text-body h-10 w-full border px-2.5',
           'placeholder:text-ink-muted/70',
           /*
            * 바탕을 surface-card(#fefcf8)로 칠합니다. 비워 두면 페이지 바탕

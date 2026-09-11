@@ -26,7 +26,7 @@ export function AccountForm() {
   return (
     <>
       <div className="border-line bg-surface-card border">
-        <div className="space-y-3.5 p-6">
+        <div className="space-y-3.75 p-6.25">
           <h1 className="text-ink text-[17px] font-bold">정보 변경</h1>
 
           {/* 프로필 이미지 */}
@@ -34,7 +34,7 @@ export function AccountForm() {
             <div className="border-line bg-line-soft text-ink-muted flex size-25 items-center justify-center border text-[10.5px]">
               프로필
             </div>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.25">
               <Button variant="outline" size="sm">
                 이미지 변경
               </Button>
@@ -49,7 +49,7 @@ export function AccountForm() {
           </div>
 
           {/* 이메일 — 계정 식별자라 바꿀 수 없습니다 */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <span className="text-ink-muted w-20 shrink-0 text-[10.5px]">
               이메일
             </span>
@@ -61,7 +61,7 @@ export function AccountForm() {
 
           {/* 닉네임 + 중복 확인 */}
           <form
-            className="flex items-center gap-3"
+            className="flex items-center gap-2.5"
             onSubmit={(event) => {
               event.preventDefault()
               // TODO: 닉네임 저장 API 연결
@@ -76,7 +76,7 @@ export function AccountForm() {
             <input
               id="account-nickname"
               defaultValue="유저닉네임"
-              className="border-line text-ink focus-visible:ring-accent-deep h-10 w-70 border px-3 text-xs outline-none focus-visible:ring-2"
+              className="border-line text-ink focus-visible:ring-accent-deep h-10 w-70 border px-2.5 text-xs outline-none focus-visible:ring-2"
             />
             <Button variant="outline" size="sm">
               중복 확인
@@ -85,7 +85,7 @@ export function AccountForm() {
 
           <hr className="border-line" />
 
-          <div className="flex gap-1.5">
+          <div className="flex gap-1.25">
             <Button type="submit">저장</Button>
             <Button variant="outline">취소</Button>
           </div>
@@ -93,7 +93,7 @@ export function AccountForm() {
           <hr className="border-line" />
 
           <p className="text-ink-muted text-[10.5px]">계정</p>
-          <div className="flex gap-1.5">
+          <div className="flex gap-1.25">
             <Button variant="outline" onClick={() => setPasswordOpen(true)}>
               비밀번호 변경
             </Button>
@@ -104,7 +104,7 @@ export function AccountForm() {
         </div>
 
         {/* 와이어프레임의 점선 주석 영역 */}
-        <div className="text-ink-muted space-y-0.5 border-t border-dashed border-[#d2d2d2] px-6 py-2.5 text-[10.5px] leading-relaxed">
+        <div className="text-ink-muted space-y-0.5 border-t border-dashed border-[#d2d2d2] px-6.25 py-2.5 text-[10.5px] leading-relaxed">
           <p>비밀번호는 이 화면에 표시하지 않는다 — 변경은 별도 모달로만</p>
           <p>닉네임은 다른 사용자와 겹칠 수 없습니다</p>
         </div>

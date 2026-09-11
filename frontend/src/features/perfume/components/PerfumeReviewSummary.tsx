@@ -12,8 +12,8 @@ type Props = {
  */
 export function PerfumeReviewSummary({ description }: Props) {
   return (
-    <section className="grid gap-6 p-6 sm:grid-cols-2">
-      <div className="space-y-3">
+    <section className="grid gap-6.25 p-6.25 sm:grid-cols-2">
+      <div className="space-y-2.5">
         <h2 className="text-ink text-sm font-bold">AI 후기 요약</h2>
         {/* TODO: 백엔드 DTL-23 응답 연결 */}
         <p className="text-ink-muted text-xs leading-relaxed">
@@ -26,7 +26,7 @@ export function PerfumeReviewSummary({ description }: Props) {
         </p>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <h2 className="text-ink text-sm font-bold">브랜드 공식 향 설명</h2>
         <p className="text-ink text-xs leading-relaxed">
           {description ?? '아직 등록된 설명이 없습니다.'}

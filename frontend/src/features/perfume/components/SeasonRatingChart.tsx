@@ -24,9 +24,9 @@ export function SeasonRatingChart({ ratings }: Props) {
   )
 
   return (
-    <ul className="flex flex-wrap gap-6">
+    <ul className="flex flex-wrap gap-6.25">
       {SEASONS.map((season) => (
-        <li key={season.value} className="flex flex-col items-center gap-2">
+        <li key={season.value} className="flex flex-col items-center gap-2.5">
           <SeasonDonut percentage={bySeason.get(season.value) ?? 0} />
           <span className="text-ink text-xs">{season.label}</span>
         </li>
@@ -35,8 +35,8 @@ export function SeasonRatingChart({ ratings }: Props) {
   )
 }
 
-/* 도넛 하나. 반지름과 두께는 와이어프레임 비율(지름 88 · 링 12)에 맞췄습니다. */
-const SIZE = 88
+/* 도넛 하나. 와이어프레임은 지름 88 · 링 12 인데, 치수 끝자리 0/5 규칙에 맞춰 지름만 90 으로 올렸습니다. */
+const SIZE = 90
 const STROKE = 12
 const RADIUS = (SIZE - STROKE) / 2
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS

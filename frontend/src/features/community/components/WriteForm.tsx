@@ -19,8 +19,8 @@ type Props = {
  * 후기 쓰기와 자유 글쓰기는 **가운데 입력 항목만 다르고 나머지가 같습니다** —
  * 제목 · 설명 · 취소/포스팅 줄. 나눠 두면 한쪽만 고쳐집니다.
  *
- * ── 폭을 46rem 으로 좁힌 이유 ─────────────────────────────
- * 글을 쓰는 화면입니다. 1120px 짜리 입력칸은 한 줄이 100자를 넘어가서, 방금 친 글을
+ * ── 폭을 text(800px)로 좁힌 이유 ──────────────────────────
+ * 글을 쓰는 화면입니다. 1440px 짜리 입력칸은 한 줄이 100자를 넘어가서, 방금 친 글을
  * 다시 읽기가 어렵습니다. 읽는 화면(게시글 상세)과 같은 폭이라 쓰고 나서 보이는
  * 모습도 예상대로입니다.
  *
@@ -39,14 +39,15 @@ export function WriteForm({
   children,
 }: Props) {
   return (
-    <div className="mx-auto max-w-[46rem] space-y-8">
-      <header className="space-y-2">
+    // 폭은 글쓰기 화면의 라우트(TEXT, 800)가 정합니다 — 글 읽는 화면과 같은 폭
+    <div className="space-y-7.5">
+      <header className="space-y-2.5">
         <h1 className="text-ink text-display font-serif font-bold">{title}</h1>
         <p className="text-ink-muted text-body">{description}</p>
       </header>
 
       <form
-        className="space-y-6"
+        className="space-y-6.25"
         onSubmit={(event) => {
           event.preventDefault()
           onSubmit()
@@ -58,7 +59,7 @@ export function WriteForm({
           단추 줄을 선으로 떼어 놓습니다. 붙여 두면 마지막 입력 항목의 일부처럼
           보여서, 이미지 첨부 단추와 포스팅 단추가 같은 무게로 읽힙니다.
         */}
-        <div className="border-line flex justify-end gap-2 border-t pt-6">
+        <div className="border-line flex justify-end gap-2.5 border-t pt-6.25">
           <LinkButton to={cancelTo} variant="outline">
             취소
           </LinkButton>
@@ -78,7 +79,7 @@ export function WriteForm({
  */
 export function ImageAttachField() {
   return (
-    <fieldset className="space-y-2">
+    <fieldset className="space-y-2.5">
       <legend className="text-ink text-caption font-medium">
         이미지 첨부 <span className="text-ink-muted">(선택)</span>
       </legend>

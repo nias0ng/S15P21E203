@@ -29,7 +29,7 @@ export function PasswordChangeModal({ open, onClose }: Props) {
     >
       <form
         id="password-change-form"
-        className="space-y-3"
+        className="space-y-2.5"
         onSubmit={(event) => {
           event.preventDefault()
           // TODO: 비밀번호 변경 API 연결

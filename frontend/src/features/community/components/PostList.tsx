@@ -39,9 +39,9 @@ type Props = {
 export function PostList({ posts, isPending = false, emptyAction }: Props) {
   if (isPending) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-3.75">
         {Array.from({ length: 4 }, (_, index) => (
-          <Skeleton key={index} className="rounded-card h-32" />
+          <Skeleton key={index} className="rounded-card h-32.5" />
         ))}
       </div>
     )
@@ -58,7 +58,7 @@ export function PostList({ posts, isPending = false, emptyAction }: Props) {
   }
 
   return (
-    <ul className="space-y-4">
+    <ul className="space-y-3.75">
       {posts.map((post) => (
         <li key={post.postId}>
           {/*
@@ -67,8 +67,8 @@ export function PostList({ posts, isPending = false, emptyAction }: Props) {
             헷갈립니다. 대신 카드에 group 을 걸어 어디에 마우스를 올리든 제목에
             밑줄이 들어옵니다.
           */}
-          <Card interactive className="group space-y-3">
-            <div className="space-y-2">
+          <Card interactive className="group space-y-2.5">
+            <div className="space-y-2.5">
               <Link
                 to={toPostDetail(post.postId)}
                 className={cn(
@@ -80,7 +80,7 @@ export function PostList({ posts, isPending = false, emptyAction }: Props) {
                 {post.title}
               </Link>
 
-              <div className="text-caption flex flex-wrap items-center gap-2">
+              <div className="text-caption flex flex-wrap items-center gap-2.5">
                 <Thumbnail className="size-5 shrink-0 rounded-full" />
                 <span className="text-ink">{post.nickname}</span>
                 <span className="text-ink-muted">
@@ -107,7 +107,7 @@ export function PostList({ posts, isPending = false, emptyAction }: Props) {
                   'border-line-soft bg-surface-sunken hover:border-accent rounded-card',
                   // w-fit 으로 내용만큼만 차지합니다. 칸 전체를 채우면 향수 이름
                   // 하나가 제목만큼 넓은 띠가 되어 무엇이 제목인지 흐려집니다.
-                  'inline-flex w-fit max-w-full items-baseline gap-2 border px-3 py-2',
+                  'inline-flex w-fit max-w-full items-baseline gap-2.5 border px-2.5 py-2.5',
                   'transition-colors duration-120 ease-out',
                   'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
                 )}
@@ -122,7 +122,7 @@ export function PostList({ posts, isPending = false, emptyAction }: Props) {
             )}
 
             {/* 점수나 별점은 없습니다. 좋아요만 있습니다. */}
-            <div className="text-ink-muted text-caption flex items-center gap-4">
+            <div className="text-ink-muted text-caption flex items-center gap-3.75">
               <span className={post.liked ? 'text-danger' : undefined}>
                 <span aria-hidden>{post.liked ? '♥' : '♡'}</span> 좋아요{' '}
                 {post.likeCount}

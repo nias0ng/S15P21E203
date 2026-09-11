@@ -60,17 +60,17 @@ export default function ReviewWritePage() {
         */}
         <fieldset
           className={cn(
-            'rounded-card border p-4',
+            'rounded-card border p-3.75',
             targetPerfume
               ? 'border-line-soft bg-surface-sunken'
               : 'border-danger bg-surface-card',
           )}
         >
-          <legend className="text-ink text-caption px-1 font-medium">
+          <legend className="text-ink text-caption px-1.25 font-medium">
             대상 향수 <span className="text-danger">*</span>
           </legend>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             {targetPerfume ? (
               <>
                 <span className="text-ink text-body font-medium">

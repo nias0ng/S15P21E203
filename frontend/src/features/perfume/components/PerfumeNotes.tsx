@@ -21,7 +21,7 @@ export function PerfumeNotes({ notes }: Props) {
   const isEmpty = rows.every(([, items]) => items.length === 0)
 
   return (
-    <section className="space-y-3 p-6">
+    <section className="space-y-2.5 p-6.25">
       <h2 className="text-ink-muted text-[10.5px]">향조</h2>
 
       {isEmpty ? (
@@ -31,9 +31,9 @@ export function PerfumeNotes({ notes }: Props) {
         </p>
       ) : (
         rows.map(([label, items]) => (
-          <div key={label} className="flex items-center gap-4">
+          <div key={label} className="flex items-center gap-3.75">
             <span className="text-ink w-20 shrink-0 text-xs">{label}</span>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.25">
               {items.length === 0 ? (
                 <span className="text-ink-muted text-xs">—</span>
               ) : (

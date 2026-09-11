@@ -26,24 +26,24 @@ export function TrendingPerfumes({ items }: Props) {
   if (items.length === 0) return null
 
   return (
-    <aside className="border-line rounded-card bg-surface-card self-start border p-4">
+    <aside className="border-line rounded-card bg-surface-card self-start border p-3.75">
       <h2 className="text-ink text-heading font-serif font-bold">
         지금 많이 언급되는 향수
       </h2>
 
-      <ol className="mt-3 space-y-1">
+      <ol className="mt-2.5 space-y-1.25">
         {items.map((item, rank) => (
           <li key={item.perfumeId}>
             <Link
               to={toPerfumeDetail(item.perfumeId)}
               className={cn(
-                'hover:bg-line-soft rounded-card flex items-baseline gap-3 px-2 py-2',
+                'hover:bg-line-soft rounded-card flex items-baseline gap-2.5 px-2.5 py-2.5',
                 'transition-colors duration-120 ease-out',
                 'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
               )}
             >
               {/* tabular-nums 는 두 자리가 되어도 이름 시작점이 안 밀리게 합니다 */}
-              <span className="text-ink-muted text-caption w-4 shrink-0 tabular-nums">
+              <span className="text-ink-muted text-caption w-3.75 shrink-0 tabular-nums">
                 {rank + 1}
               </span>
               <span className="text-ink text-body min-w-0 flex-1 truncate">
@@ -58,7 +58,7 @@ export function TrendingPerfumes({ items }: Props) {
       </ol>
 
       {/* 오른쪽 숫자가 무엇인지 한 번만 말해 둡니다 — 줄마다 "글" 을 붙이면 시끄럽습니다 */}
-      <p className="text-ink-muted text-caption border-line-soft mt-3 border-t pt-3">
+      <p className="text-ink-muted text-caption border-line-soft mt-2.5 border-t pt-2.5">
         최근 한 주 동안 언급된 글 수
       </p>
     </aside>

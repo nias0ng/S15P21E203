@@ -36,7 +36,7 @@ export default function BrandListPage() {
   }
 
   return (
-    <div className="space-y-3.5">
+    <div className="space-y-3.75">
       <h1 className="sr-only">브랜드</h1>
 
       <SearchField

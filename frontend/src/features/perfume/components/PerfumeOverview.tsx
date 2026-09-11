@@ -18,28 +18,28 @@ type Props = {
  */
 export function PerfumeOverview({ perfume, onSaveToShelf }: Props) {
   return (
-    <section className="flex flex-col gap-6 p-6 sm:flex-row">
+    <section className="flex flex-col gap-6.25 p-6.25 sm:flex-row">
       {/* 상세 응답의 images 는 배열이고 대표 이미지는 첫 번째 원소입니다 */}
       <Thumbnail
         src={perfume.images[0] ?? null}
         fallback="대표 이미지"
-        className="h-72 w-60 shrink-0"
+        className="h-72.5 w-60 shrink-0"
       />
 
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {/* 검색은 brandName 문자열, 상세는 brand 객체입니다 */}
         <p className="text-ink-muted text-xs">{perfume.brand?.name}</p>
         <h1 className="text-2xl font-bold">{perfume.nameKo ?? perfume.name}</h1>
 
         {perfume.concentration && (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1.25">
             <Badge tone="outline">{perfume.concentration}</Badge>
           </div>
         )}
 
         <div>
           <Button onClick={onSaveToShelf}>진열대에 저장</Button>
-          <p className="text-ink-muted mt-2 text-[10.5px]">
+          <p className="text-ink-muted mt-2.5 text-[10.5px]">
             진열대 저장은 분류 선택이 필수입니다.
           </p>
         </div>

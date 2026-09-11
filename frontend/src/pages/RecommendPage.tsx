@@ -48,13 +48,13 @@ export default function RecommendPage() {
         <ScentMap points={points.data ?? []} zoom={1} dimmed />
       </div>
 
-      <div className="space-y-4 py-4">
+      <div className="space-y-3.75 py-3.75">
         {/* 입력한 말 */}
-        <div className="border-line bg-surface-card/95 space-y-2 border p-3 backdrop-blur">
+        <div className="border-line bg-surface-card/95 space-y-2.5 border p-2.5 backdrop-blur">
           <p className="text-ink-muted text-[10.5px]">입력한 말</p>
           {editing ? (
             <form
-              className="flex items-start gap-2"
+              className="flex items-start gap-2.5"
               onSubmit={(event) => {
                 event.preventDefault()
                 const trimmed = draft.trim()
@@ -75,7 +75,7 @@ export default function RecommendPage() {
               <Button type="submit">찾기</Button>
             </form>
           ) : (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               <p className="text-ink flex-1 text-sm">&ldquo;{query}&rdquo;</p>
               <Button
                 variant="outline"
@@ -110,14 +110,14 @@ export default function RecommendPage() {
           />
         ) : (
           query && (
-            <div className="grid gap-4 lg:grid-cols-[1fr_18rem]">
+            <div className="grid gap-3.75 lg:grid-cols-[1fr_290px]">
               <RecommendResultList
                 perfumes={perfumes}
                 selectedId={highlightedId}
                 onSelect={setHighlightedId}
               />
 
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {/* 조작은 미니 맵에서 합니다 */}
                 <MiniMap
                   points={perfumes.map((perfume) => ({

@@ -30,7 +30,7 @@ export default function ReviewBoardPage() {
   const trending = useQuery(trendingPerfumesQuery())
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-7.5">
       <BoardHeader
         description="향수 한 개에 대한 시향 기록입니다. 점수나 별점 없이 좋아요만 있습니다."
         action={
@@ -40,8 +40,8 @@ export default function ReviewBoardPage() {
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_16rem]">
-        <div className="min-w-0 space-y-6">
+      <div className="grid gap-6.25 lg:grid-cols-[1fr_255px]">
+        <div className="min-w-0 space-y-6.25">
           {/* 후기 게시판에는 분류 필터가 없습니다 — 전부 후기라서 */}
           <ChipToggle
             label="정렬"

@@ -39,7 +39,7 @@ export function PerfumeSearchResult({ keyword, onResetKeyword }: Props) {
 
   if (isPending) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {Array.from({ length: 6 }, (_, index) => (
           <Skeleton key={index} className="h-20" />
         ))}
@@ -78,7 +78,7 @@ export function PerfumeSearchResult({ keyword, onResetKeyword }: Props) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       <p className="text-ink-muted text-xs">
         검색 결과{' '}
         <span className="text-ink font-bold">{data.totalElements}</span>
@@ -89,12 +89,12 @@ export function PerfumeSearchResult({ keyword, onResetKeyword }: Props) {
           <li key={perfume.perfumeId}>
             <Link
               to={toPerfumeDetail(perfume.perfumeId)}
-              className="hover:bg-line-soft flex items-center gap-3 p-3 transition-colors"
+              className="hover:bg-line-soft flex items-center gap-2.5 p-2.5 transition-colors"
             >
               <Thumbnail
                 src={perfume.imageUrl}
                 fallback="이미지"
-                className="size-14 shrink-0"
+                className="size-13.75 shrink-0"
               />
 
               <span className="min-w-0 flex-1">

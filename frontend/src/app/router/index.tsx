@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { createBrowserRouter } from 'react-router'
 
-import { RootLayout } from '@/app/layouts/RootLayout'
+import { RootLayout, type PageWidth } from '@/app/layouts/RootLayout'
 import { ErrorPage } from '@/pages/ErrorPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { ROUTES } from '@/shared/config/routes'
@@ -39,14 +39,26 @@ const withSuspense = (element: React.ReactNode) => (
   <Suspense fallback={<PageFallback />}>{element}</Suspense>
 )
 
+/*
+ * 화면이 쓰는 본문 폭(RootLayout 의 PageWidth). 적지 않은 화면은 wide(1440)입니다.
+ *   FULL  화면 전체를 그림으로 쓰는 곳 — 향 지도 · 진열대
+ *   TEXT  글을 읽고 쓰는 곳 · 계정 폼 — 한 줄이 너무 길어지지 않게 800 으로 가둡니다
+ */
+const FULL = { width: 'full' } satisfies { width: PageWidth }
+const TEXT = { width: 'text' } satisfies { width: PageWidth }
+
 export const router = createBrowserRouter([
   {
     path: ROUTES.HOME,
     element: <RootLayout />,
     errorElement: <ErrorPage />,
     children: [
-      { index: true, element: withSuspense(<HomePage />) },
-      { path: ROUTES.RECOMMEND, element: withSuspense(<RecommendPage />) },
+      { index: true, element: withSuspense(<HomePage />), handle: FULL },
+      {
+        path: ROUTES.RECOMMEND,
+        element: withSuspense(<RecommendPage />),
+        handle: FULL,
+      },
 
       { path: ROUTES.PERFUMES, element: withSuspense(<PerfumeListPage />) },
       {
@@ -60,13 +72,18 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.REVIEW_DETAIL,
         element: withSuspense(<ReviewDetailPage />),
+        handle: TEXT,
       },
 
       { path: ROUTES.BRANDS, element: withSuspense(<BrandListPage />) },
       { path: ROUTES.NOTES, element: withSuspense(<NoteListPage />) },
       { path: ROUTES.NOTE_DETAIL, element: withSuspense(<NoteDetailPage />) },
 
-      { path: ROUTES.MY_SHELF, element: withSuspense(<MyShelfPage />) },
+      {
+        path: ROUTES.MY_SHELF,
+        element: withSuspense(<MyShelfPage />),
+        handle: FULL,
+      },
       {
         path: ROUTES.COLLECTION_DETAIL,
         element: withSuspense(<CollectionDetailPage />),
@@ -77,17 +94,42 @@ export const router = createBrowserRouter([
         element: withSuspense(<ReviewBoardPage />),
       },
       { path: ROUTES.COMMUNITY_FREE, element: withSuspense(<FreeBoardPage />) },
-      { path: ROUTES.POST_DETAIL, element: withSuspense(<PostDetailPage />) },
-      { path: ROUTES.REVIEW_WRITE, element: withSuspense(<ReviewWritePage />) },
-      { path: ROUTES.POST_WRITE, element: withSuspense(<PostWritePage />) },
+      {
+        path: ROUTES.POST_DETAIL,
+        element: withSuspense(<PostDetailPage />),
+        handle: TEXT,
+      },
+      {
+        path: ROUTES.REVIEW_WRITE,
+        element: withSuspense(<ReviewWritePage />),
+        handle: TEXT,
+      },
+      {
+        path: ROUTES.POST_WRITE,
+        element: withSuspense(<PostWritePage />),
+        handle: TEXT,
+      },
 
-      { path: ROUTES.LOGIN, element: withSuspense(<LoginPage />) },
-      { path: ROUTES.SIGNUP, element: withSuspense(<SignupPage />) },
+      {
+        path: ROUTES.LOGIN,
+        element: withSuspense(<LoginPage />),
+        handle: TEXT,
+      },
+      {
+        path: ROUTES.SIGNUP,
+        element: withSuspense(<SignupPage />),
+        handle: TEXT,
+      },
       {
         path: ROUTES.PASSWORD_RESET,
         element: withSuspense(<PasswordResetPage />),
+        handle: TEXT,
       },
-      { path: ROUTES.ACCOUNT, element: withSuspense(<AccountPage />) },
+      {
+        path: ROUTES.ACCOUNT,
+        element: withSuspense(<AccountPage />),
+        handle: TEXT,
+      },
 
       { path: '*', element: <NotFoundPage /> },
     ],

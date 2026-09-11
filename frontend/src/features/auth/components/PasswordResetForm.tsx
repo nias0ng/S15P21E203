@@ -20,7 +20,7 @@ export function PasswordFindForm() {
       notes={['발송 방식 · 재발송 제한은 팀 확정 필요']}
     >
       <form
-        className="space-y-3"
+        className="space-y-2.5"
         onSubmit={(event) => {
           event.preventDefault()
           // TODO: 재설정 메일 발송 API 연결
@@ -44,7 +44,7 @@ export function PasswordFindForm() {
         <p
           // 폼 제출 결과라 화면 낭독기에도 알려야 합니다
           aria-live="polite"
-          className="border-line text-ink border p-3 text-[11px]"
+          className="border-line text-ink border p-2.5 text-[11px]"
         >
           메일을 보냈습니다. 받은 메일함을 확인해주세요.
         </p>
@@ -65,7 +65,7 @@ export function PasswordResetForm() {
       notes={['링크 유효 시간 · 만료 시 화면은 팀 확정 필요']}
     >
       <form
-        className="space-y-3"
+        className="space-y-2.5"
         onSubmit={(event) => {
           event.preventDefault()
           // TODO: 비밀번호 재설정 API 연결 후 로그인 처리

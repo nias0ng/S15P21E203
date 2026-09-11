@@ -71,7 +71,7 @@ export function AddToCollectionModal({
         </>
       }
     >
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <SearchField
           label="향수명 또는 브랜드명으로 검색"
           placeholder="향수명 · 브랜드 검색"
@@ -84,10 +84,10 @@ export function AddToCollectionModal({
             description="진열대에 저장한 향수만 컬렉션에 넣을 수 있습니다."
           />
         ) : (
-          <ul className="max-h-72 space-y-1 overflow-y-auto">
+          <ul className="max-h-72.5 space-y-1.25 overflow-y-auto">
             {candidates.map((candidate) => (
               <li key={candidate.perfumeId}>
-                <label className="hover:bg-line-soft flex cursor-pointer items-center gap-3 p-2">
+                <label className="hover:bg-line-soft flex cursor-pointer items-center gap-2.5 p-2.5">
                   <Checkbox
                     checked={picked.includes(candidate.perfumeId)}
                     onChange={() => toggle(candidate.perfumeId)}

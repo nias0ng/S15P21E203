@@ -9,8 +9,8 @@ type TileCardProps = {
    * 이미지 자리. 호출하는 쪽이 `Thumbnail` 을 직접 넘깁니다.
    *
    * 이미지 URL 하나를 받게 하지 않은 이유는 컬렉션이 썸네일 **세 장**을 나란히
-   * 보여주기 때문입니다. 높이도 도메인마다 다릅니다(노트 h-20 · 브랜드 h-24 ·
-   * 컬렉션 h-14). 여기서 정하면 셋 중 둘이 예외가 됩니다.
+   * 보여주기 때문입니다. 높이도 도메인마다 다릅니다(노트 h-20 · 브랜드 h-23.75 ·
+   * 컬렉션 h-13.75). 여기서 정하면 셋 중 둘이 예외가 됩니다.
    */
   media: React.ReactNode
   /** 한 줄로 줄여서 보여줍니다 */
@@ -40,9 +40,9 @@ export function TileCard({
     <Link
       to={to}
       className={cn(
-        'border-line bg-surface-card rounded-card flex flex-col gap-2 border p-3',
+        'border-line bg-surface-card rounded-card flex flex-col gap-2.5 border p-2.5',
         'transition-[transform,box-shadow] duration-200 ease-out',
-        'hover:shadow-raised hover:-translate-y-1',
+        'hover:shadow-raised hover:-translate-y-1.25',
         className,
       )}
     >

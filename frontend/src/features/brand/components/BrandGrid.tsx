@@ -21,7 +21,7 @@ type Props = {
  * 향수 페이지로 브랜드를 쿼리에 실어 보냅니다.
  */
 export function BrandGrid({ items, isPending = false, emptyAction }: Props) {
-  const gridClass = 'grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5'
+  const gridClass = 'grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-5'
 
   if (isPending) {
     return (
@@ -54,7 +54,7 @@ export function BrandGrid({ items, isPending = false, emptyAction }: Props) {
                 src={brand.logoUrl}
                 fallback="로고"
                 fit="contain"
-                className="h-24 w-full"
+                className="h-23.75 w-full"
               />
             }
             title={brand.name}

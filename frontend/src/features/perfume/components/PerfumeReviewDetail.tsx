@@ -28,21 +28,21 @@ export function PerfumeReviewDetail({ review, backTo, editTo }: Props) {
 
   return (
     <article className="border-line bg-surface-card border">
-      <div className="space-y-4 p-6">
+      <div className="space-y-3.75 p-6.25">
         <LinkButton to={backTo} variant="outline" size="sm">
           ← 향수 상세
         </LinkButton>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {/* TODO: 프로필 이미지 연동 */}
-          <Thumbnail className="size-8 shrink-0 rounded-full" />
+          <Thumbnail className="size-7.5 shrink-0 rounded-full" />
           <span className="text-ink text-xs">{review.nickname}</span>
           <span className="text-ink-muted text-[10.5px]">
             · {formatRelativeTime(review.createdAt)}
           </span>
 
           {review.mine && (
-            <span className="ml-auto flex gap-1.5">
+            <span className="ml-auto flex gap-1.25">
               <LinkButton to={editTo} variant="outline" size="sm">
                 수정
               </LinkButton>
