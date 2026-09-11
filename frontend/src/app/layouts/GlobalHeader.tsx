@@ -4,6 +4,7 @@ import { Link, NavLink, useNavigate } from 'react-router'
 import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { useAuthStore } from '@/shared/store/authStore'
+import { SearchIcon } from '@/shared/ui/SearchIcon'
 
 /**
  * 전역 헤더 (와이어프레임 N01 · 모든 화면 공통 — 진열장 시안 배치)
@@ -295,24 +296,6 @@ function LoginButton() {
 }
 
 /* ------------------------------------------------------------------ */
-
-/** 돋보기. 아이콘 하나 때문에 라이브러리를 붙이지 않습니다 */
-function SearchIcon() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      className="size-5"
-    >
-      <circle cx="9" cy="9" r="5.75" />
-      <path d="m13.5 13.5 4 4" />
-    </svg>
-  )
-}
 
 /** 사람 실루엣 */
 function AccountIcon() {
