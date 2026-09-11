@@ -17,7 +17,6 @@ import com.hyanghae.backend.shelf.entity.UserPerfume;
 import com.hyanghae.backend.shelf.exception.ShelfErrorCode;
 import com.hyanghae.backend.shelf.repository.MemoRepository;
 import com.hyanghae.backend.shelf.repository.UserPerfumeRepository;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -73,7 +72,6 @@ class MemoServiceTest {
 
         assertThat(response.memoId()).isEqualTo(MEMO_ID);
         assertThat(response.content()).isEqualTo("새 메모");
-        assertThat(response.testedAt()).isEqualTo(response.createdAt().toLocalDate());
     }
 
     @Test
@@ -106,9 +104,8 @@ class MemoServiceTest {
     }
 
     @Test
-    void updatesContentWithoutChangingTestedAt() {
+    void updatesContent() {
         Memo memo = memo("수정 전");
-        LocalDate originalTestedAt = memo.getTestedAt();
         when(currentUser.id()).thenReturn(Optional.of(USER_ID));
         when(memoRepository.findByShelfItemIdAndUserIdForUpdate(
                 SHELF_ITEM_ID,
@@ -121,7 +118,6 @@ class MemoServiceTest {
         );
 
         assertThat(response.content()).isEqualTo("수정 후");
-        assertThat(response.testedAt()).isEqualTo(originalTestedAt);
         assertThat(response.updatedAt()).isAfter(memo.getCreatedAt());
     }
 
@@ -167,7 +163,6 @@ class MemoServiceTest {
         Memo memo = Memo.create(
                 BeanUtils.instantiateClass(UserPerfume.class),
                 content,
-                LocalDate.of(2026, 9, 1),
                 createdAt
         );
         return assignId(memo);

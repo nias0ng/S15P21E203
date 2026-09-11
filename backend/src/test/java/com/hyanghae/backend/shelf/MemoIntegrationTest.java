@@ -11,7 +11,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.shelf.exception.ShelfErrorCode;
 import com.hyanghae.backend.support.IntegrationTest;
-import java.time.LocalDate;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,7 +62,7 @@ class MemoIntegrationTest {
     }
 
     @Test
-    void createsMemoWithCurrentDate() throws Exception {
+    void createsMemo() throws Exception {
         fakeCurrentUser.login(LOGGED_IN_USER);
 
         mockMvc.perform(post(URL, SHELF_ITEM_ID)
@@ -72,12 +71,12 @@ class MemoIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.memoId").isNumber())
                 .andExpect(jsonPath("$.content").value("비 오는 날 잔향이 좋았다."))
-                .andExpect(jsonPath("$.testedAt").value(LocalDate.now().toString()))
+                .andExpect(jsonPath("$.testedAt").doesNotExist())
                 .andExpect(jsonPath("$.createdAt").isNotEmpty())
                 .andExpect(jsonPath("$.updatedAt").doesNotExist());
 
         Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM personal_records WHERE user_perfume_id = ?",
+                "SELECT COUNT(*) FROM memos WHERE user_perfume_id = ?",
                 Integer.class,
                 SHELF_ITEM_ID
         );
@@ -86,7 +85,7 @@ class MemoIntegrationTest {
 
     @Test
     void rejectsDuplicateMemo() throws Exception {
-        insertMemo(1L, SHELF_ITEM_ID, "기존 기록", "2026-09-01");
+        insertMemo(1L, SHELF_ITEM_ID, "기존 기록");
         fakeCurrentUser.login(LOGGED_IN_USER);
 
         mockMvc.perform(post(URL, SHELF_ITEM_ID)
@@ -100,21 +99,21 @@ class MemoIntegrationTest {
 
     @Test
     void returnsMemo() throws Exception {
-        insertMemo(1L, SHELF_ITEM_ID, "조회할 기록", "2026-09-01");
+        insertMemo(1L, SHELF_ITEM_ID, "조회할 기록");
         fakeCurrentUser.login(LOGGED_IN_USER);
 
         mockMvc.perform(get(URL, SHELF_ITEM_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.memoId").value(1))
                 .andExpect(jsonPath("$.content").value("조회할 기록"))
-                .andExpect(jsonPath("$.testedAt").value("2026-09-01"))
+                .andExpect(jsonPath("$.testedAt").doesNotExist())
                 .andExpect(jsonPath("$.createdAt").value("2026-09-01T01:00:00Z"))
                 .andExpect(jsonPath("$.updatedAt").value("2026-09-01T01:00:00Z"));
     }
 
     @Test
     void updatesOnlyContent() throws Exception {
-        insertMemo(1L, SHELF_ITEM_ID, "수정 전", "2026-09-01");
+        insertMemo(1L, SHELF_ITEM_ID, "수정 전");
         fakeCurrentUser.login(LOGGED_IN_USER);
 
         mockMvc.perform(patch(URL, SHELF_ITEM_ID)
@@ -123,21 +122,21 @@ class MemoIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.memoId").value(1))
                 .andExpect(jsonPath("$.content").value("수정 후"))
-                .andExpect(jsonPath("$.testedAt").value("2026-09-01"))
+                .andExpect(jsonPath("$.testedAt").doesNotExist())
                 .andExpect(jsonPath("$.updatedAt").isNotEmpty())
                 .andExpect(jsonPath("$.createdAt").doesNotExist());
     }
 
     @Test
     void deletesMemoPhysically() throws Exception {
-        insertMemo(1L, SHELF_ITEM_ID, "삭제할 기록", "2026-09-01");
+        insertMemo(1L, SHELF_ITEM_ID, "삭제할 기록");
         fakeCurrentUser.login(LOGGED_IN_USER);
 
         mockMvc.perform(delete(URL, SHELF_ITEM_ID))
                 .andExpect(status().isNoContent());
 
         Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM personal_records WHERE user_perfume_id = ?",
+                "SELECT COUNT(*) FROM memos WHERE user_perfume_id = ?",
                 Integer.class,
                 SHELF_ITEM_ID
         );
@@ -146,7 +145,7 @@ class MemoIntegrationTest {
 
     @Test
     void hidesOtherUsersMemo() throws Exception {
-        insertMemo(1L, 186L, "다른 사용자 기록", "2026-09-01");
+        insertMemo(1L, 186L, "다른 사용자 기록");
         fakeCurrentUser.login(LOGGED_IN_USER);
 
         mockMvc.perform(get(URL, 186L))
@@ -201,23 +200,22 @@ class MemoIntegrationTest {
         );
     }
 
-    private void insertMemo(long id, long shelfItemId, String content, String testedAt) {
+    private void insertMemo(long id, long shelfItemId, String content) {
         jdbcTemplate.update(
-                "INSERT INTO personal_records "
-                        + "(id, user_perfume_id, content, tested_at, created_at, updated_at) "
-                        + "VALUES (?, ?, ?, ?::date, '2026-09-01T10:00:00+09:00'::timestamptz, "
+                "INSERT INTO memos "
+                        + "(memo_id, user_perfume_id, content, created_at, updated_at) "
+                        + "VALUES (?, ?, ?, '2026-09-01T10:00:00+09:00'::timestamptz, "
                         + "'2026-09-01T10:00:00+09:00'::timestamptz)",
                 id,
                 shelfItemId,
-                content,
-                testedAt
+                content
         );
     }
 
     private void clearData() {
         jdbcTemplate.update("DELETE FROM collection_perfumes");
         jdbcTemplate.update("DELETE FROM collections");
-        jdbcTemplate.update("DELETE FROM personal_records");
+        jdbcTemplate.update("DELETE FROM memos");
         jdbcTemplate.update("DELETE FROM user_perfumes");
         jdbcTemplate.update("DELETE FROM perfume_notes");
         jdbcTemplate.update("DELETE FROM perfume_images");

@@ -21,7 +21,7 @@ public interface PerfumeReviewRepository extends JpaRepository<PerfumeReview, Lo
      * <p>AI 후기 요약의 재생성 시점을 판단하는 기준이라, 요약 파이프라인이 요약 대상 후기를
      * 세는 기준과 같아야 합니다. 지금은 양쪽 다 향수에 달린 모든 후기입니다.
      *
-     * <p>메모({@code personal_records})는 세지 않습니다. 기능 명세서의 시스템 처리 항목에
+     * <p>메모({@code memos})는 세지 않습니다. 기능 명세서의 시스템 처리 항목에
      * 메모를 함께 분석한다는 문장이 있으나, 팀이 후기만 쓰기로 정했습니다.
      */
     @Query("""

@@ -11,7 +11,6 @@ import com.hyanghae.backend.shelf.repository.UserPerfumeRepository;
 import com.hyanghae.backend.support.IntegrationTest;
 import jakarta.persistence.EntityManagerFactory;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -53,7 +52,6 @@ class ShelfPersistenceIntegrationTest {
 
         assertThat(memo.getUserPerfume().getId()).isEqualTo(fixture.shelfItemId());
         assertThat(memo.getContent()).isEqualTo("차분한 우디 향");
-        assertThat(memo.getTestedAt()).isEqualTo(LocalDate.of(2026, 9, 9));
         assertThat(memo.getCreatedAt()).isNotNull();
         assertThat(memo.getUpdatedAt()).isNotNull();
     }
@@ -133,9 +131,9 @@ class ShelfPersistenceIntegrationTest {
 
     private Long insertMemo(Long shelfItemId, String content) {
         return jdbcTemplate.queryForObject("""
-                INSERT INTO personal_records (user_perfume_id, content, tested_at, created_at, updated_at)
-                VALUES (?, ?, DATE '2026-09-09', NOW(), NOW())
-                RETURNING id
+                INSERT INTO memos (user_perfume_id, content, created_at, updated_at)
+                VALUES (?, ?, NOW(), NOW())
+                RETURNING memo_id
                 """, Long.class, shelfItemId, content);
     }
 

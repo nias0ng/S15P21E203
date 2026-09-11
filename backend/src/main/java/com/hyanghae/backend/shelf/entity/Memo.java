@@ -9,22 +9,21 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
 /**
- * 진열대 향수에 남긴 비공개 메모인 {@code personal_records} 테이블 매핑입니다.
+ * 진열대 향수에 남긴 비공개 메모인 {@code memos} 테이블 매핑입니다.
  *
  * <p>한 진열대 항목에는 하나의 메모만 존재하므로 일대일 관계로 매핑합니다. 진열대 항목이
  * 삭제되면 데이터베이스의 외래 키 정책에 의해 메모도 함께 삭제됩니다.
  */
 @Entity
-@Table(name = "personal_records")
+@Table(name = "memos")
 public class Memo {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
+    @Column(name = "memo_id")
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
@@ -33,9 +32,6 @@ public class Memo {
 
     @Column(name = "content")
     private String content;
-
-    @Column(name = "tested_at")
-    private LocalDate testedAt;
 
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
@@ -50,13 +46,11 @@ public class Memo {
     public static Memo create(
             UserPerfume userPerfume,
             String content,
-            LocalDate testedAt,
             OffsetDateTime createdAt
     ) {
         Memo memo = new Memo();
         memo.userPerfume = userPerfume;
         memo.content = content;
-        memo.testedAt = testedAt;
         memo.createdAt = createdAt;
         memo.updatedAt = createdAt;
         return memo;
@@ -72,10 +66,6 @@ public class Memo {
 
     public String getContent() {
         return content;
-    }
-
-    public LocalDate getTestedAt() {
-        return testedAt;
     }
 
     public OffsetDateTime getCreatedAt() {

@@ -47,7 +47,6 @@ public class MemoService {
         Memo memo = Memo.create(
                 shelfItem,
                 content,
-                createdAt.toLocalDate(),
                 createdAt
         );
 

@@ -130,7 +130,7 @@ public class ShelfItemController {
 
     @Operation(
             summary = "메모 작성",
-            description = "선택한 진열대 향수에 메모를 작성합니다. 시향일은 작성일로 저장합니다."
+            description = "선택한 진열대 향수에 메모를 작성합니다."
     )
     @ApiResponse(responseCode = "201", description = "작성 성공")
     @ApiResponse(responseCode = "400", description = "올바르지 않은 요청")
