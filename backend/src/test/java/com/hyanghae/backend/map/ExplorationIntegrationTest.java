@@ -7,9 +7,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.hyanghae.backend.global.security.CurrentUser;
+import com.hyanghae.backend.map.dto.request.ExplorationLogCreateRequest;
 import com.hyanghae.backend.map.exception.MapErrorCode;
+import com.hyanghae.backend.map.service.ExplorationService;
 import com.hyanghae.backend.support.IntegrationTest;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -62,6 +70,9 @@ class ExplorationIntegrationTest {
 
     @Autowired
     private FakeCurrentUser currentUser;
+
+    @Autowired
+    private ExplorationService explorationService;
 
     @BeforeEach
     void insertFixtures() {
@@ -273,6 +284,47 @@ class ExplorationIntegrationTest {
                 .andExpect(jsonPath("$.y").value(0.1));
     }
 
+    /**
+     * 같은 사용자가 동시에 여러 번 움직여도 배의 자리는 한 줄로 남습니다.
+     *
+     * <p>자리는 {@code ON CONFLICT} 로 넣거나 덮어씁니다. 조회해서 있으면 수정하고 없으면 넣는
+     * 방식이면 여러 요청이 같은 순간에 "없다" 를 보고 각자 넣어 기본키 충돌로 실패합니다.
+     *
+     * <p>기록 쪽은 개수를 단언하지 않습니다. 동시에 들어온 클릭들이 서로의 직전 기록을 보지 못해
+     * 같은 구역 진입이 여러 줄 남을 수 있습니다. 제약으로 막을 수 있는 것이 아니고(같은 향수를
+     * 다시 고르는 것은 허용해야 합니다), 일지 조회가 연속된 같은 구역을 한 줄로 묶으므로 화면에는
+     * 드러나지 않습니다.
+     */
+    @Test
+    void keepsOneShipPositionUnderConcurrentMoves() throws Exception {
+        int movers = 8;
+        ExecutorService pool = Executors.newFixedThreadPool(movers);
+        CountDownLatch ready = new CountDownLatch(movers);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<?>> moves = new ArrayList<>();
+
+        try {
+            for (int i = 0; i < movers; i++) {
+                double y = 0.10 + i * 0.01;
+                moves.add(pool.submit(() -> {
+                    ready.countDown();
+                    start.await();
+                    return explorationService.move(
+                            new ExplorationLogCreateRequest(null, 0.1, y));
+                }));
+            }
+            ready.await();
+            start.countDown();
+            for (Future<?> move : moves) {
+                move.get();
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+
+        assertThat(countStatesOf(USER_ID)).isEqualTo(1);
+    }
+
     /** 자리 조회도 로그인이 필요합니다. */
     @Test
     void requiresLoginToReadPosition() throws Exception {
@@ -335,6 +387,13 @@ class ExplorationIntegrationTest {
     private int countLogs() {
         return jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM map_exploration_logs", Integer.class);
+    }
+
+    private int countStatesOf(long userId) {
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM map_exploration_states WHERE user_id = ?",
+                Integer.class,
+                userId);
     }
 
     private int countLogsOf(long userId) {
