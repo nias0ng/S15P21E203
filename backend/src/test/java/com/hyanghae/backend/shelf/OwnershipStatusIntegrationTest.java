@@ -196,7 +196,7 @@ class OwnershipStatusIntegrationTest {
     }
 
     private void clearData() {
-        jdbcTemplate.update("DELETE FROM personal_records");
+        jdbcTemplate.update("DELETE FROM memos");
         jdbcTemplate.update("DELETE FROM user_perfumes");
         jdbcTemplate.update("DELETE FROM perfumes");
         jdbcTemplate.update("DELETE FROM users");

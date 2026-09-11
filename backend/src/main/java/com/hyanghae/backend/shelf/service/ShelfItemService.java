@@ -11,10 +11,10 @@ import com.hyanghae.backend.shelf.dto.response.ShelfItemCreateResponse;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemDetailResponse;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemsResponse;
 import com.hyanghae.backend.shelf.entity.OwnershipStatus;
-import com.hyanghae.backend.shelf.entity.PersonalRecord;
+import com.hyanghae.backend.shelf.entity.Memo;
 import com.hyanghae.backend.shelf.entity.UserPerfume;
 import com.hyanghae.backend.shelf.exception.ShelfErrorCode;
-import com.hyanghae.backend.shelf.repository.PersonalRecordRepository;
+import com.hyanghae.backend.shelf.repository.MemoRepository;
 import com.hyanghae.backend.shelf.repository.UserPerfumeRepository;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -36,7 +36,7 @@ public class ShelfItemService {
     private final PerfumeRepository perfumeRepository;
     private final PerfumeImageRepository perfumeImageRepository;
     private final PerfumeNoteRepository perfumeNoteRepository;
-    private final PersonalRecordRepository personalRecordRepository;
+    private final MemoRepository memoRepository;
     private final CurrentUser currentUser;
 
     public ShelfItemService(
@@ -44,14 +44,14 @@ public class ShelfItemService {
             PerfumeRepository perfumeRepository,
             PerfumeImageRepository perfumeImageRepository,
             PerfumeNoteRepository perfumeNoteRepository,
-            PersonalRecordRepository personalRecordRepository,
+            MemoRepository memoRepository,
             CurrentUser currentUser
     ) {
         this.userPerfumeRepository = userPerfumeRepository;
         this.perfumeRepository = perfumeRepository;
         this.perfumeImageRepository = perfumeImageRepository;
         this.perfumeNoteRepository = perfumeNoteRepository;
-        this.personalRecordRepository = personalRecordRepository;
+        this.memoRepository = memoRepository;
         this.currentUser = currentUser;
     }
 
@@ -129,15 +129,15 @@ public class ShelfItemService {
         ShelfItemDetailResponse detail = userPerfumeRepository
                 .findDetailByIdAndUserId(shelfItemId, userId)
                 .orElseThrow(() -> new BusinessException(ShelfErrorCode.SHELF_ITEM_NOT_FOUND));
-        PersonalRecord personalRecord = personalRecordRepository
-                        .findByUserPerfumeId(shelfItemId)
+        Memo memo = memoRepository
+                .findByUserPerfumeId(shelfItemId)
                 .orElse(null);
 
         return detail.withDetails(
                 loadThumbnails(List.of(detail.perfumeId())).get(detail.perfumeId()),
                 perfumeNoteRepository.findByPerfumeId(detail.perfumeId()),
-                personalRecord == null ? null : personalRecord.getContent(),
-                personalRecord == null ? null : memoUpdatedAt(personalRecord)
+                memo == null ? null : memo.getContent(),
+                memo == null ? null : memoUpdatedAt(memo)
         );
     }
 
@@ -152,10 +152,10 @@ public class ShelfItemService {
                 ));
     }
 
-    private OffsetDateTime memoUpdatedAt(PersonalRecord personalRecord) {
-        return personalRecord.getUpdatedAt() == null
-                ? personalRecord.getCreatedAt()
-                : personalRecord.getUpdatedAt();
+    private OffsetDateTime memoUpdatedAt(Memo memo) {
+        return memo.getUpdatedAt() == null
+                ? memo.getCreatedAt()
+                : memo.getUpdatedAt();
     }
 
     private Long currentUserId() {

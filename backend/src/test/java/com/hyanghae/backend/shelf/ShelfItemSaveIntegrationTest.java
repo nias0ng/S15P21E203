@@ -156,7 +156,7 @@ class ShelfItemSaveIntegrationTest {
         long shelfItemId = createShelfItem(ACTIVE_PERFUME);
         long collectionId = insertCollection(LOGGED_IN_USER);
         jdbcTemplate.update(
-                "INSERT INTO personal_records (user_perfume_id, content) VALUES (?, 'memo')",
+                "INSERT INTO memos (user_perfume_id, content) VALUES (?, 'memo')",
                 shelfItemId
         );
         jdbcTemplate.update(
@@ -169,7 +169,7 @@ class ShelfItemSaveIntegrationTest {
                 .andExpect(status().isNoContent());
 
         assertThat(countRows("user_perfumes", "user_perfumes_id", shelfItemId)).isZero();
-        assertThat(countRows("personal_records", "user_perfume_id", shelfItemId)).isZero();
+        assertThat(countRows("memos", "user_perfume_id", shelfItemId)).isZero();
         assertThat(countRows("collection_perfumes", "user_perfume_id", shelfItemId)).isZero();
     }
 
@@ -264,7 +264,7 @@ class ShelfItemSaveIntegrationTest {
     private void clearData() {
         jdbcTemplate.update("DELETE FROM collection_perfumes");
         jdbcTemplate.update("DELETE FROM collections");
-        jdbcTemplate.update("DELETE FROM personal_records");
+        jdbcTemplate.update("DELETE FROM memos");
         jdbcTemplate.update("DELETE FROM user_perfumes");
         jdbcTemplate.update("DELETE FROM perfumes");
         jdbcTemplate.update("DELETE FROM users");
