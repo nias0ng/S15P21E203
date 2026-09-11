@@ -4,10 +4,12 @@ import com.hyanghae.backend.collection.dto.request.CollectionCreateRequest;
 import com.hyanghae.backend.collection.dto.request.CollectionUpdateRequest;
 import com.hyanghae.backend.collection.dto.response.CollectionCreateResponse;
 import com.hyanghae.backend.collection.dto.response.CollectionDetailResponse;
+import com.hyanghae.backend.collection.dto.response.CollectionPerfumeCreateResponse;
 import com.hyanghae.backend.collection.dto.response.CollectionPerfumeResponse;
 import com.hyanghae.backend.collection.dto.response.CollectionsResponse;
 import com.hyanghae.backend.collection.dto.response.CollectionUpdateResponse;
 import com.hyanghae.backend.collection.entity.Collection;
+import com.hyanghae.backend.collection.entity.CollectionPerfume;
 import com.hyanghae.backend.collection.exception.CollectionErrorCode;
 import com.hyanghae.backend.collection.repository.CollectionPerfumeRepository;
 import com.hyanghae.backend.collection.repository.CollectionRepository;
@@ -88,6 +90,76 @@ public class CollectionService {
             throw new BusinessException(CollectionErrorCode.COLLECTION_NAME_ALREADY_EXISTS);
         }
         return new CollectionCreateResponse(collection.getId(), name, description, now);
+    }
+
+    @Transactional
+    public CollectionPerfumeCreateResponse addPerfume(
+            Long collectionId,
+            Long shelfItemId
+    ) {
+        Long userId = currentUserId();
+        UserPerfume shelfItem = userPerfumeRepository
+                .findByIdAndUserIdForUpdate(shelfItemId, userId)
+                .orElseThrow(() -> new BusinessException(
+                        CollectionErrorCode.COLLECTION_SHELF_ITEM_NOT_FOUND
+                ));
+        Collection collection = collectionRepository
+                .findByIdAndUserIdForUpdate(collectionId, userId)
+                .orElseThrow(() -> new BusinessException(
+                        CollectionErrorCode.COLLECTION_NOT_FOUND
+                ));
+
+        if (collectionPerfumeRepository.existsByCollectionIdAndShelfItemId(
+                collectionId,
+                shelfItemId
+        )) {
+            throw new BusinessException(
+                    CollectionErrorCode.COLLECTION_PERFUME_ALREADY_EXISTS
+            );
+        }
+
+        Integer maxDisplayOrder = collectionPerfumeRepository
+                .findMaxDisplayOrderByCollectionId(collectionId);
+        int displayOrder = maxDisplayOrder == null ? 0 : maxDisplayOrder + 1;
+        OffsetDateTime createdAt = OffsetDateTime.now();
+        CollectionPerfume collectionPerfume = CollectionPerfume.create(
+                collection,
+                shelfItem,
+                displayOrder,
+                createdAt
+        );
+        collection.updateModifiedAt(createdAt);
+
+        try {
+            collectionPerfumeRepository.saveAndFlush(collectionPerfume);
+        } catch (DataIntegrityViolationException exception) {
+            throw new BusinessException(
+                    CollectionErrorCode.COLLECTION_PERFUME_ALREADY_EXISTS
+            );
+        }
+
+        return new CollectionPerfumeCreateResponse(
+                collectionId,
+                shelfItemId,
+                createdAt
+        );
+    }
+
+    @Transactional
+    public void removePerfume(Long collectionId, Long shelfItemId) {
+        Collection collection = findMineForUpdate(collectionId);
+        CollectionPerfume collectionPerfume = collectionPerfumeRepository
+                .findByCollectionIdAndShelfItemIdForUpdate(collectionId, shelfItemId)
+                .orElseThrow(() -> new BusinessException(
+                        CollectionErrorCode.COLLECTION_PERFUME_NOT_FOUND
+                ));
+
+        if (collectionPerfumeRepository.countByCollectionId(collectionId) <= 1) {
+            throw new BusinessException(CollectionErrorCode.COLLECTION_LAST_PERFUME);
+        }
+
+        collectionPerfumeRepository.delete(collectionPerfume);
+        collection.updateModifiedAt(OffsetDateTime.now());
     }
 
     @Transactional

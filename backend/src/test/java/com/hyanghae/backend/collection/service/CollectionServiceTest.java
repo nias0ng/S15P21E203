@@ -13,6 +13,7 @@ import com.hyanghae.backend.collection.dto.request.CollectionCreateRequest;
 import com.hyanghae.backend.collection.dto.request.CollectionUpdateRequest;
 import com.hyanghae.backend.collection.dto.response.CollectionSummaryResponse;
 import com.hyanghae.backend.collection.entity.Collection;
+import com.hyanghae.backend.collection.entity.CollectionPerfume;
 import com.hyanghae.backend.collection.repository.CollectionPerfumeRepository;
 import com.hyanghae.backend.collection.repository.CollectionRepository;
 import com.hyanghae.backend.global.exception.BusinessException;
@@ -93,5 +94,30 @@ class CollectionServiceTest {
         assertThat(response.page()).isEqualTo(99);
         assertThat(response.size()).isEqualTo(100);
         assertThat(response.totalElements()).isEqualTo(10);
+    }
+
+    @Test
+    void missingShelfItemIsRejectedBeforeAddingPerfume() {
+        when(userPerfumeRepository.findByIdAndUserIdForUpdate(2L, 1L))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.addPerfume(1L, 2L))
+                .isInstanceOf(BusinessException.class);
+        verifyNoInteractions(collectionRepository);
+    }
+
+    @Test
+    void lastCollectionPerfumeCannotBeRemoved() {
+        Collection collection = mock(Collection.class);
+        CollectionPerfume collectionPerfume = mock(CollectionPerfume.class);
+        when(collectionRepository.findByIdAndUserIdForUpdate(1L, 1L))
+                .thenReturn(Optional.of(collection));
+        when(collectionPerfumeRepository.findByCollectionIdAndShelfItemIdForUpdate(1L, 2L))
+                .thenReturn(Optional.of(collectionPerfume));
+        when(collectionPerfumeRepository.countByCollectionId(1L)).thenReturn(1L);
+
+        assertThatThrownBy(() -> service.removePerfume(1L, 2L))
+                .isInstanceOf(BusinessException.class);
+        verify(collectionPerfumeRepository, never()).delete(collectionPerfume);
     }
 }

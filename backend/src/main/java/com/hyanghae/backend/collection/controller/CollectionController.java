@@ -1,9 +1,11 @@
 package com.hyanghae.backend.collection.controller;
 
 import com.hyanghae.backend.collection.dto.request.CollectionCreateRequest;
+import com.hyanghae.backend.collection.dto.request.CollectionPerfumeCreateRequest;
 import com.hyanghae.backend.collection.dto.request.CollectionUpdateRequest;
 import com.hyanghae.backend.collection.dto.response.CollectionCreateResponse;
 import com.hyanghae.backend.collection.dto.response.CollectionDetailResponse;
+import com.hyanghae.backend.collection.dto.response.CollectionPerfumeCreateResponse;
 import com.hyanghae.backend.collection.dto.response.CollectionsResponse;
 import com.hyanghae.backend.collection.dto.response.CollectionUpdateResponse;
 import com.hyanghae.backend.collection.service.CollectionService;
@@ -54,6 +56,62 @@ public class CollectionController {
             @Valid @RequestBody CollectionCreateRequest request
     ) {
         return collectionService.create(request);
+    }
+
+    @Operation(
+            summary = "컬렉션에 향수 추가",
+            description = "내 진열대에 저장된 향수를 컬렉션의 마지막 순서에 추가합니다."
+    )
+    @ApiResponse(responseCode = "201", description = "추가 성공")
+    @ApiResponse(responseCode = "400", description = "올바르지 않은 요청")
+    @ApiResponse(responseCode = "401", description = "로그인 필요")
+    @ApiResponse(responseCode = "404", description = "컬렉션 또는 진열대 항목 없음")
+    @ApiResponse(responseCode = "409", description = "컬렉션에 이미 추가된 향수")
+    @PostMapping("/{collectionId}/perfumes")
+    @ResponseStatus(HttpStatus.CREATED)
+    public CollectionPerfumeCreateResponse addCollectionPerfume(
+            @Parameter(
+                    name = "collectionId",
+                    description = "컬렉션 ID",
+                    in = ParameterIn.PATH,
+                    required = true,
+                    schema = @Schema(type = "integer", format = "int64")
+            )
+            @PathVariable Long collectionId,
+            @Valid @RequestBody CollectionPerfumeCreateRequest request
+    ) {
+        return collectionService.addPerfume(collectionId, request.shelfItemId());
+    }
+
+    @Operation(
+            summary = "컬렉션에서 향수 제거",
+            description = "컬렉션에서 향수 연결만 제거하며 진열대 향수는 유지합니다."
+    )
+    @ApiResponse(responseCode = "204", description = "제거 성공")
+    @ApiResponse(responseCode = "401", description = "로그인 필요")
+    @ApiResponse(responseCode = "404", description = "컬렉션 또는 컬렉션 향수 없음")
+    @ApiResponse(responseCode = "409", description = "마지막 향수는 제거 불가")
+    @DeleteMapping("/{collectionId}/perfumes/{shelfItemId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void removeCollectionPerfume(
+            @Parameter(
+                    name = "collectionId",
+                    description = "컬렉션 ID",
+                    in = ParameterIn.PATH,
+                    required = true,
+                    schema = @Schema(type = "integer", format = "int64")
+            )
+            @PathVariable Long collectionId,
+            @Parameter(
+                    name = "shelfItemId",
+                    description = "사용자 진열대 항목 ID",
+                    in = ParameterIn.PATH,
+                    required = true,
+                    schema = @Schema(type = "integer", format = "int64")
+            )
+            @PathVariable Long shelfItemId
+    ) {
+        collectionService.removePerfume(collectionId, shelfItemId);
     }
 
     @Operation(summary = "내 컬렉션 목록 조회")

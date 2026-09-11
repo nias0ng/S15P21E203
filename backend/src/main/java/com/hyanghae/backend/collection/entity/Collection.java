@@ -94,4 +94,8 @@ public class Collection {
         this.description = description;
         this.updatedAt = updatedAt;
     }
+
+    public void updateModifiedAt(OffsetDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 }

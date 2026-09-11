@@ -55,13 +55,97 @@ class CollectionIntegrationTest {
     }
 
     @Test
-    void documentsAllFiveEndpoints() throws Exception {
+    void documentsAllSevenEndpoints() throws Exception {
         mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/api/v1/users/me/collections'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/users/me/collections'].post").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/users/me/collections/{collectionId}'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/users/me/collections/{collectionId}'].patch").exists())
-                .andExpect(jsonPath("$.paths['/api/v1/users/me/collections/{collectionId}'].delete").exists());
+                .andExpect(jsonPath("$.paths['/api/v1/users/me/collections/{collectionId}'].delete").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/users/me/collections/{collectionId}/perfumes'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/users/me/collections/{collectionId}/perfumes/{shelfItemId}'].delete").exists());
+    }
+
+    @Test
+    void addsAndRemovesCollectionPerfume() throws Exception {
+        long collectionId = create("addition");
+        jdbc.update("INSERT INTO perfumes (perfume_id,name) VALUES (4,'Third')");
+        jdbc.update("""
+                INSERT INTO user_perfumes (user_perfumes_id,user_id,perfume_id)
+                VALUES (4,1,4)
+                """);
+
+        mvc.perform(post(URL + "/" + collectionId + "/perfumes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"shelfItemId\":4}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.collectionId").value(collectionId))
+                .andExpect(jsonPath("$.shelfItemId").value(4))
+                .andExpect(jsonPath("$.createdAt").exists());
+
+        mvc.perform(get(URL + "/" + collectionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes.length()").value(3))
+                .andExpect(jsonPath("$.perfumes[2].shelfItemId").value(4));
+
+        mvc.perform(delete(URL + "/" + collectionId + "/perfumes/4"))
+                .andExpect(status().isNoContent());
+
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM collection_perfumes WHERE collection_id = ?",
+                Long.class,
+                collectionId
+        )).isEqualTo(2);
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM user_perfumes WHERE user_perfumes_id = 4",
+                Long.class
+        )).isOne();
+    }
+
+    @Test
+    void rejectsDuplicateAndForeignShelfItem() throws Exception {
+        long collectionId = create("validation");
+
+        mvc.perform(post(URL + "/" + collectionId + "/perfumes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"shelfItemId\":1}"))
+                .andExpect(status().isConflict());
+
+        mvc.perform(post(URL + "/" + collectionId + "/perfumes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"shelfItemId\":3}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void rejectsRemovingLastCollectionPerfume() throws Exception {
+        String result = mvc.perform(post(URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"single\",\"shelfItemIds\":[1]}"))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        long collectionId = mapper.readTree(result).get("collectionId").asLong();
+
+        mvc.perform(delete(URL + "/" + collectionId + "/perfumes/1"))
+                .andExpect(status().isConflict());
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM collection_perfumes WHERE collection_id = ?",
+                Long.class,
+                collectionId
+        )).isOne();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"shelfItemId\":null}", "{\"shelfItemId\":0}"})
+    void rejectsInvalidCollectionPerfumeCreate(String body) throws Exception {
+        long collectionId = create("invalid-addition");
+
+        mvc.perform(post(URL + "/" + collectionId + "/perfumes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -155,6 +239,12 @@ class CollectionIntegrationTest {
         mvc.perform(delete(URL+"/"+id)).andExpect(status().isNotFound());
         mvc.perform(patch(URL+"/"+id).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"x\"}"))
                 .andExpect(status().isNotFound());
+        mvc.perform(post(URL + "/" + id + "/perfumes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"shelfItemId\":3}"))
+                .andExpect(status().isNotFound());
+        mvc.perform(delete(URL + "/" + id + "/perfumes/1"))
+                .andExpect(status().isNotFound());
         user.id = null;
         mvc.perform(get(URL)).andExpect(status().isUnauthorized());
         mvc.perform(get(URL+"/"+id)).andExpect(status().isUnauthorized());
@@ -162,6 +252,12 @@ class CollectionIntegrationTest {
         mvc.perform(post(URL).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"x\",\"shelfItemIds\":[1]}"))
                 .andExpect(status().isUnauthorized());
         mvc.perform(patch(URL+"/"+id).contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"x\"}"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post(URL + "/" + id + "/perfumes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"shelfItemId\":1}"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(delete(URL + "/" + id + "/perfumes/1"))
                 .andExpect(status().isUnauthorized());
     }
 
