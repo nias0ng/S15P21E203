@@ -36,6 +36,14 @@ export function CommentSection({
   const [editDraft, setEditDraft] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null)
 
+  /*
+   * 댓글 묶음은 밝은 판에 올리지 않습니다. 종이 바탕 그대로 두고, 흰 칸은 입력창
+   * 하나만 갖습니다 — 그래야 이 구역에서 유일하게 "쓰는 자리" 가 어디인지 한눈에
+   * 보입니다. 판을 깔면 같은 색 위에 같은 색 입력창이 놓여 테두리로만 구분됩니다.
+   *
+   * 위쪽 게시글(A23 본문)은 반대로 판에 올립니다. 읽는 덩어리는 경계가 있어야
+   * 어디까지가 그 글인지 보이고, 쓰는 칸은 주변이 비어 있어야 눈에 띕니다.
+   */
   return (
     <section className="space-y-4">
       <h2 className="text-ink text-title font-serif font-bold">

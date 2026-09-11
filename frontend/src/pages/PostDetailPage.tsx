@@ -17,6 +17,7 @@ import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { PageFallback } from '@/shared/ui/PageFallback'
+import { PANEL } from '@/shared/ui/panel'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 /**
@@ -66,12 +67,17 @@ export default function PostDetailPage() {
     data.board === 'REVIEW' ? ROUTES.REVIEW_WRITE : ROUTES.POST_WRITE
 
   return (
-    <div className="mx-auto max-w-[46rem] space-y-8">
+    <div className="mx-auto max-w-[46rem] space-y-4">
       <LinkButton to={backTo} variant="outline" size="sm">
         ← 커뮤니티
       </LinkButton>
 
-      <article className="space-y-6">
+      {/*
+        제목부터 연결 향수까지 글 한 편을 통째로 밝은 판에 올립니다. 종이 위에
+        맨 글자로 두면 이 화면에서 가장 중요한 덩어리가 경계 없이 흩어져 보입니다.
+        향수 상세(A10)의 구역들과 같은 판이라 두 화면이 한 벌로 읽힙니다.
+      */}
+      <article className={cn(PANEL, 'space-y-6')}>
         {/* 제목 묶음. 아래 선으로 본문과 나눕니다 — hr 을 따로 두면 간격이 두 번 생깁니다 */}
         <header className="border-line space-y-3 border-b pb-6">
           {data.category && (
@@ -110,6 +116,10 @@ export default function PostDetailPage() {
           </div>
         </header>
 
+        {/*
+          본문에 따로 칸을 두르지 않습니다. 판 전체가 이미 밝은 바탕이라, 같은
+          색 상자를 한 겹 더 올리면 테두리만 남아 겉도는 줄이 됩니다.
+        */}
         <p className="text-ink text-body whitespace-pre-wrap">{data.content}</p>
 
         {/* 첨부 이미지가 없으면 영역 자체를 그리지 않습니다 */}
@@ -175,8 +185,7 @@ export default function PostDetailPage() {
         )}
       </article>
 
-      <hr className="border-line" />
-
+      {/* 판 사이 여백이 구분을 하므로 가로줄을 두지 않습니다 */}
       <CommentSection
         comments={comments.data ?? []}
         onCreate={() => {
