@@ -44,8 +44,15 @@ public class ExplorationService {
     /** 일지를 만들 때 훑는 기록 수의 상한입니다. 그보다 오래된 진입은 일지에 나오지 않습니다. */
     private static final int MAX_SCANNED_LOGS = 200;
 
-    /** 한 번에 돌려주는 구역 진입 수의 상한입니다. */
-    private static final int MAX_ENTRIES = 100;
+    /**
+     * 한 번에 돌려주는 구역 진입 수의 상한입니다.
+     *
+     * <p>{@link #MAX_SCANNED_LOGS} 와 맞물려 있습니다. 진입 20개를 만들려면 훑는 200줄 안에
+     * 진입이 20개 있어야 하고, 진입당 평균 10줄입니다. 이보다 크게 받으면 요청한 수를 채우지
+     * 못하는 일이 흔해집니다. 더 멀리 보여줘야 하면 기록에 영역을 저장해 SQL 로 묶는 쪽으로
+     * 바꾸는 것이 낫습니다. 그러면 상한 자체가 필요 없어집니다.
+     */
+    private static final int MAX_ENTRIES = 20;
 
     private final ExplorationLogRepository explorationLogRepository;
     private final ExplorationStateRepository explorationStateRepository;
@@ -138,6 +145,10 @@ public class ExplorationService {
      *
      * <p>상한에 걸렸을 때 가장 오래된 덩어리는 버립니다. 그 덩어리를 연 기록이 상한 밖에 남아
      * 있을 수 있어, 진입 시각과 향수 목록이 실제보다 짧게 보입니다.
+     *
+     * <p>다만 덩어리가 하나뿐이면 버리지 않습니다. 한 구역에 머물며 향수를 계속 누른 사용자는
+     * 상한 200줄이 전부 한 덩어리가 되는데, 그것까지 버리면 가장 열심히 본 사람의 일지가 텅
+     * 빕니다. 진입 시각이 실제보다 늦게 보이는 편이 아무것도 안 보이는 것보다 낫습니다.
      */
     private List<VoyageLogEntryResponse> toEntries(
             List<ExplorationLogRow> recentFirst,
@@ -160,7 +171,7 @@ public class ExplorationService {
         }
 
         boolean scannedToTheLimit = recentFirst.size() == MAX_SCANNED_LOGS;
-        if (scannedToTheLimit && !entries.isEmpty()) {
+        if (scannedToTheLimit && entries.size() > 1) {
             entries.pollLast();
         }
         return entries.stream()

@@ -57,6 +57,9 @@ class ExplorationIntegrationTest {
     private static final String LOGS_URL = "/api/v1/map/exploration-logs";
     private static final long USER_ID = 1;
 
+    /** ExplorationService 가 일지를 만들 때 훑는 기록 수의 상한과 같은 값입니다. */
+    private static final int SCAN_LIMIT = 200;
+
     private static final long REGION_A_ID = 9001;
     private static final long REGION_B_ID = 9002;
     private static final String REGION_A_POLYGON = "[[[0,0],[0.4,0],[0.4,0.4],[0,0.4]]]";
@@ -382,6 +385,28 @@ class ExplorationIntegrationTest {
                 .andExpect(jsonPath("$.entries[0].region").value("TEST_B"));
     }
 
+    /**
+     * 한 덩어리가 훑는 상한을 다 채워도 일지가 비지 않습니다.
+     *
+     * <p>상한에 걸리면 가장 오래된 덩어리를 버립니다. 그 덩어리를 연 기록이 상한 밖에 남아 시각과
+     * 향수 목록이 잘려 보이기 때문입니다. 그런데 한 구역에 머물며 향수를 계속 누른 사용자는 상한이
+     * 전부 한 덩어리가 되고, 그것까지 버리면 가장 열심히 본 사람의 일지가 텅 빕니다.
+     *
+     * <p>기록을 직접 넣습니다. 같은 수만큼 실제로 누르면 요청이 200번 나가 테스트가 느려집니다.
+     */
+    @Test
+    void keepsTheOnlyEntryWhenItFillsTheScanLimit() throws Exception {
+        for (int i = 0; i < SCAN_LIMIT; i++) {
+            insertLog(USER_ID, 1L, 0.2, 0.3);
+        }
+
+        mockMvc.perform(get(LOGS_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries.length()").value(1))
+                .andExpect(jsonPath("$.entries[0].region").value("TEST_A"))
+                .andExpect(jsonPath("$.entries[0].visited.length()").value(1));
+    }
+
     /** 움직인 적이 없으면 일지가 빕니다. 오류가 아닙니다. */
     @Test
     void servesEmptyVoyageLogBeforeTheFirstMove() throws Exception {
@@ -522,6 +547,13 @@ class ExplorationIntegrationTest {
         jdbcTemplate.update(
                 "INSERT INTO perfumes (perfume_id, brand_id, name, is_active) VALUES (?, 1, ?, ?)",
                 id, name, active);
+    }
+
+    private void insertLog(long userId, Long perfumeId, double x, double y) {
+        jdbcTemplate.update(
+                "INSERT INTO map_exploration_logs (user_id, perfume_id, x_coordinate,"
+                        + " y_coordinate) VALUES (?, ?, ?, ?)",
+                userId, perfumeId, x, y);
     }
 
     private void insertMapPoint(long perfumeId, double x, double y) {
