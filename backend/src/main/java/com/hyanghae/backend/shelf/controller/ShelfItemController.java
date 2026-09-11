@@ -218,6 +218,7 @@ public class ShelfItemController {
     @ApiResponse(responseCode = "401", description = "로그인 필요")
     @ApiResponse(responseCode = "404", description = "진열대 항목 없음")
     @DeleteMapping("/{shelfItemId}")
+    @ApiResponse(responseCode = "409", description = "컬렉션의 마지막 향수는 삭제 불가")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteShelfItem(
             @Parameter(

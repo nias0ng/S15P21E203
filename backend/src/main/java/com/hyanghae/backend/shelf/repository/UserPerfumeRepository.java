@@ -5,6 +5,7 @@ import com.hyanghae.backend.shelf.dto.response.ShelfItemSummaryResponse;
 import com.hyanghae.backend.shelf.entity.OwnershipStatus;
 import com.hyanghae.backend.shelf.entity.UserPerfume;
 import jakarta.persistence.LockModeType;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -18,6 +19,30 @@ import org.springframework.data.repository.query.Param;
 public interface UserPerfumeRepository extends JpaRepository<UserPerfume, Long> {
 
     boolean existsByUserIdAndPerfumeId(Long userId, Long perfumeId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT up
+            FROM UserPerfume up
+            WHERE up.userId = :userId
+              AND up.id IN :ids
+            ORDER BY up.id
+            """)
+    List<UserPerfume> findAllByIdInAndUserIdForUpdate(
+            @Param("ids") Collection<Long> ids,
+            @Param("userId") Long userId
+    );
+
+    @Query(value = """
+            SELECT c.collection_id FROM collections c
+            JOIN collection_perfumes cp ON cp.collection_id = c.collection_id
+            WHERE cp.user_perfume_id = :id ORDER BY c.collection_id FOR UPDATE OF c
+            """, nativeQuery = true)
+    List<Long> lockContainingCollections(@Param("id") Long id);
+
+    @Query(value = "SELECT COUNT(*) FROM collection_perfumes WHERE collection_id = :id",
+            nativeQuery = true)
+    long countCollectionItems(@Param("id") Long id);
 
     @Query(
             value = """
