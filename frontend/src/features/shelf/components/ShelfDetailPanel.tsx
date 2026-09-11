@@ -28,32 +28,31 @@ type Props = {
  */
 
 /*
- * ⚠️ 이 카드의 높이가 화면 구성을 좌우합니다.
+ * ⚠️ 이 카드의 높이가 좁은 화면의 한 장을 좌우합니다.
  *
- * 머리말 → 진열장 → 하단 띠가 1440x900 한 화면에 들어가야 하는데, 진열장(415px)보다
- * 이 카드가 키가 커서 **가운데 줄의 높이를 이 카드가 정합니다.** 안쪽 무엇이든
- * 키우면 하단 띠가 화면 밖으로 밀립니다. 사진 높이 · 사이 간격 · 향조 원 지름 ·
- * 메모 줄 수가 전부 그래서 시안보다 한 단씩 작습니다.
- *
- * 바꿀 일이 생기면 브라우저에서 `main section` 의 높이를 재세요. 830px 이 상한입니다.
+ * 진열대 화면은 스크롤하지 않는 한 장이고, 이 카드는 벽감 옆에서 벽감과 윗선 ·
+ * 아랫선을 맞춥니다. 벽감은 남는 세로 공간에 맞춰 커지지만 이 카드는 내용만큼 키가
+ * 있어서, 1440 x 900 처럼 빠듯한 화면에서는 이 카드가 벽감보다 길어집니다. 안쪽
+ * 무엇이든 키우면 그런 화면에서 카드 아랫단이 하단 띠 쪽으로 밀립니다. 사진 높이 ·
+ * 사이 간격 · 향조 원 지름 · 메모 줄 수가 전부 그래서 시안보다 한 단씩 작습니다.
  */
 
 /**
  * 카드 껍데기. 향수를 고르기 전과 후 두 상태가 같은 모양이어야 해서 한 곳에 둡니다.
  *
- * `rounded-[14px]` · `min-h-[501px]` 과 여백(위 24 · 좌우 24 · 아래 16)은 시안
- * 실측입니다. rounded-card(6px)는 "각진 아카이브" 인상을 만드는 값이라 시안의
- * 둥근 카드와 성격이 다릅니다.
+ * `rounded-[14px]` 과 여백은 시안 실측을 치수 끝자리 0/5 로 맞춘 값입니다
+ * (최소 높이 500 · 위 20 · 좌우 25 · 아래 10). rounded-card(6px)는 "각진 아카이브"
+ * 인상을 만드는 값이라 시안의 둥근 카드와 성격이 다릅니다.
  * 최소 높이를 두 상태가 함께 쓰는 이유: 선택 전후로 카드가 커졌다 작아지면
  * 병을 누를 때마다 옆 진열장까지 밀려 흔들립니다.
  *
- * ⚠️ 카드 높이가 이 화면의 한 장(머리말~하단 띠가 한 화면)을 좌우합니다. 안쪽
- * 무엇이든 키우면 진열장 줄이 함께 길어져 하단 띠가 화면 밖으로 밀립니다.
+ * 벽감이 이 최소 높이보다 크면 카드가 벽감 높이까지 늘어납니다(ShelfWall 이 자리를
+ * 벽감 높이로 잡고 이 카드를 flex-1 로 채웁니다). 조작 단추는 mt-auto 로 늘 맨 아래입니다.
  *
  * `.shelf-panel` 이 반투명 바탕 · 그림자 · backdrop-blur 를 냅니다. 뒤의 종이가
  * 살짝 비쳐서 "종이 위에 얹힌 카드" 로 읽힙니다.
  */
-const CARD = 'shelf-panel rounded-[14px] px-6 pt-5 pb-3 min-h-[501px]'
+const CARD = 'shelf-panel rounded-[14px] px-6.25 pt-5 pb-2.5 min-h-125'
 
 /**
  * 이 카드 위 버튼의 포커스 링.
@@ -112,7 +111,7 @@ export function ShelfDetailPanel({
   return (
     <aside
       aria-label="선택한 향수 정보"
-      className={cn(CARD, 'flex flex-col gap-2', className)}
+      className={cn(CARD, 'flex flex-col gap-2.5', className)}
     >
       {/*
         병 이미지는 배경이 투명한 PNG 로 들어옵니다(DisplayCase 와 같은 소스).
@@ -134,7 +133,7 @@ export function ShelfDetailPanel({
         <div aria-hidden className="h-[100px]" />
       )}
 
-      <div className="flex flex-col items-center gap-1">
+      <div className="flex flex-col items-center gap-1.25">
         {/* 시안의 브랜드명은 자간 넓은 대문자입니다. 한글 브랜드는 uppercase 가 무시됩니다 */}
         <p className="shelf-label">{item.brand}</p>
 
@@ -169,7 +168,7 @@ export function ShelfDetailPanel({
         “자유롭고 당당한, 지금의 나를 닮은 향.”
       </p>
 
-      <div className="flex flex-col items-center gap-2">
+      <div className="flex flex-col items-center gap-2.5">
         <p className="shelf-label">Scent Note</p>
 
         {/*
@@ -177,16 +176,20 @@ export function ShelfDetailPanel({
           "베르가못" 4자)에 따라 칸이 서로 달라져 원 세 개가 가운데 정렬에서
           어긋납니다. 그리드면 이름이 무엇이든 원의 간격이 같습니다.
 
-          원 지름 36px 도 시안 실측입니다. 패널 안쪽 폭 246px 을 셋으로 나눈 82px
-          안에 원과 라벨이 함께 들어갑니다.
+          원 지름 30px 은 시안 실측(36px)을 이 카드 높이에 맞춰 한 단 줄인 값입니다.
+          패널 안쪽 폭 250px(1440 기준)을 셋으로 나눈 83px 남짓 안에 원과 라벨이 함께
+          들어갑니다.
         */}
         <ul className="grid w-full grid-cols-3">
           {SCENT_NOTES.map((note) => (
-            <li key={note.stage} className="flex flex-col items-center gap-1">
+            <li
+              key={note.stage}
+              className="flex flex-col items-center gap-1.25"
+            >
               <span
                 aria-hidden
                 className={cn(
-                  'shelf-note-swatch size-8 rounded-full',
+                  'shelf-note-swatch size-7.5 rounded-full',
                   note.tone,
                 )}
               />
@@ -208,7 +211,7 @@ export function ShelfDetailPanel({
         bg·rounded·h 를 걷어냅니다. size lg 의 세로 여백(py)도 0 으로 두는 이유는,
         높이를 직접 잡은 뒤에도 py 가 남아 있으면 글자가 아래로 눌리기 때문입니다.
       */}
-      <div className="mt-auto flex flex-col gap-2">
+      <div className="mt-auto flex flex-col gap-2.5">
         {/*
           ⚠️ 대표 향수는 **보유 중 칸에만** 표시됩니다(와이어프레임 A13 주석 ·
           `ShelfItem.representative`). 시향만 해 본 향수나 아직 안 산 향수를 "나를
@@ -228,7 +231,7 @@ export function ShelfDetailPanel({
             FOCUS_RING,
           )}
         >
-          <svg viewBox="0 0 24 24" aria-hidden className="size-4">
+          <svg viewBox="0 0 24 24" aria-hidden className="size-3.75">
             <path
               fill="currentColor"
               d="M12 2.5l2.9 6.1 6.6.9-4.8 4.7 1.2 6.6L12 17.7 6.1 20.8l1.2-6.6L2.5 9.5l6.6-.9L12 2.5Z"
@@ -237,7 +240,7 @@ export function ShelfDetailPanel({
           {item.representative ? '대표 향수' : '대표 향수로 지정'}
         </Button>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2.5">
           <Button
             variant="outline"
             size="sm"
@@ -292,7 +295,7 @@ function MemoField({
   const dirty = draft.trim() !== initial.trim()
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1.25">
       <div className="flex items-center justify-between">
         <span className="shelf-label">Memo</span>
         {!dirty && (

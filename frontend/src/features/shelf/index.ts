@@ -4,9 +4,8 @@
  * 이 폴더 밖에서는 `@/features/shelf` 만 import 합니다.
  * 화면: A13 진열대 + 컬렉션 / A15 향수 등록 모달 2단계 / A11 진열대 저장 모달
  *
- * ShelfRow · ShelfItemPanel 은 지웠습니다. 진열대 세 칸을 가로로 늘어놓던 이전
- * 레이아웃의 조각인데, 시안이 한 진열장(DisplayCase)으로 합쳐지면서 아무 데서도
- * 부르지 않게 되었습니다. 되살릴 일이 생기면 git 이력에 있습니다.
+ * 진열대는 분류마다 벽감을 하나씩 가로로 이어 붙인 벽(ShelfWall)이고, 벽감 하나가
+ * DisplayCase 입니다. ShelfDeck 은 진열대와 내 컬렉션을 위아래로 바꾸는 무대입니다.
  *
  * ⚠️ 백엔드 진열대 API 가 아직 없습니다. api.ts 가 자리표시자를 돌려줍니다.
  */
@@ -24,7 +23,7 @@ import './shelf-display.css'
 export { ShelfDetailPanel } from './components/ShelfDetailPanel'
 export { ShelfToolbar } from './components/ShelfToolbar'
 export { ShelfFooterStrip } from './components/ShelfFooterStrip'
-export { DisplayCase } from './components/DisplayCase'
+export { ShelfWall, type ShelfWallHandle } from './components/ShelfWall'
 export { ShelfDeck } from './components/ShelfDeck'
 export { ShelfRegisterModal } from './components/ShelfRegisterModal'
 export { ShelfSaveModal } from './components/ShelfSaveModal'
@@ -33,11 +32,10 @@ export { toPerfumeOption } from './lib'
 export { shelfItemsQuery, shelfKeys } from './queries'
 export {
   SHELF_CATEGORIES,
-  SHELF_PAGE_STEP,
-  SHELF_SLOT_COUNT,
   type PerfumeOption,
   type ShelfCategory,
   type ShelfCounts,
   type ShelfItem,
   type ShelfRegisterInput,
+  type ShelfSection,
 } from './types'

@@ -3,7 +3,7 @@
  *
  * ── 왜 CSS 파일인가 ────────────────────────────────────────
  * CLAUDE.md 는 Tailwind 유틸리티와 @theme 토큰만 쓰라고 합니다. 여기는 예외입니다.
- * 벽감의 원근 clip-path, 찢어진 종이의 28점 다각형, 4겹 inset 그림자, 종이 질감
+ * 벽감 면마다의 사다리꼴 clip-path, 접힘선에 고이는 여러 겹의 inset 그림자, 종이 질감
  * 노이즈는 임의값 유틸리티로 옮기면 한 줄이 200자를 넘고 Prettier 가 줄바꿈도
  * 못 해서 "어디를 고쳐야 하는지" 를 찾을 수 없게 됩니다.
  *
@@ -32,33 +32,42 @@
     --paper: oklch(0.91 0.015 78);
     --paper-soft: oklch(0.934 0.011 80);
     --paper-deep: oklch(0.87 0.019 74);
-    --niche-bg: oklch(0.887 0.018 75);
-    --niche-floor: oklch(0.852 0.023 72);
     /*
-     * 벽감 안쪽은 **앞이 밝고 뒤로 갈수록 어둡습니다.** 위 선반턱과 아래 선반면은
-     * 보는 사람 쪽으로 열린 면이라 빛을 받고, 뒷벽과 만나는 접힘선이 가장 깊어
-     * 어둡습니다. 좌우 벽(--niche-wall)도 같은 규칙입니다.
+     * 벽감 — 면마다 받는 빛이 다릅니다. 조명은 입구 앞 위쪽에서 부드럽게 퍼집니다.
      *
-     * 열린 면은 뒷벽(--niche-bg)보다 **한 단만** 밝습니다. 더 밝히면 흰 띠가
-     * 얹힌 것처럼 떠서, 나무를 파낸 자리가 아니라 다른 재질을 덧댄 것으로 보입니다.
-     * 깊이는 밝기 차이가 아니라 접힘선 하나로 충분히 읽힙니다.
+     *   천장    가장 어둡습니다. 입구 쪽(위)이 제일 어둡고 안으로 갈수록 풀립니다
+     *   좌우 벽 입구 쪽이 밝고, 뒷벽과 만나는 접힘선이 어둡습니다
+     *   뒷벽    위가 조금 어둡고 가운데~아래가 밝습니다
+     *   바닥    뒷벽보다 한 단 진합니다. 접힘선에서 앞으로 나오며 밝아집니다
+     *
+     * 면끼리 명도 차는 작게 둡니다. 차이가 크면 공간이 아니라 색이 다른 판을 이어
+     * 붙인 것으로 보입니다 — 깊이는 접힘선에 고이는 그늘(--niche-ao)이 만듭니다.
      */
-    --niche-lip: oklch(0.903 0.015 77);
-    --niche-crease: oklch(0.845 0.023 71);
-    /* 좌우 벽. 바깥(입구)이 밝고 뒷벽과 만나는 안쪽 모서리가 가장 어둡습니다 */
-    --niche-wall: oklch(0.871 0.02 74);
-    --niche-wall-deep: oklch(0.828 0.025 71);
+    --niche-ceiling: oklch(0.79 0.026 70);
+    --niche-ceiling-deep: oklch(0.832 0.023 72);
+    --niche-wall: oklch(0.872 0.019 75);
+    --niche-wall-deep: oklch(0.832 0.023 72);
+    --niche-back-top: oklch(0.852 0.021 73);
+    --niche-back: oklch(0.884 0.018 76);
+    --niche-back-low: oklch(0.896 0.016 77);
+    --niche-floor: oklch(0.842 0.023 72);
+    --niche-floor-front: oklch(0.874 0.02 75);
+    /* 면과 면 사이 틈으로 비치는 바탕. 접힘선 색이라 틈이 곧 접힘선으로 읽힙니다 */
+    --niche-seam: oklch(0.8 0.025 70);
+    /* 접힘선에 고이는 그늘 (ambient occlusion) */
+    --niche-ao: oklch(0.36 0.03 60 / 0.3);
+    --niche-ao-soft: oklch(0.36 0.03 60 / 0.16);
+    /* 뒷벽 아래에 고이는 빛 */
+    --niche-glow: oklch(0.955 0.012 82 / 0.6);
     /*
-     * 뒷벽에 드는 조명. 광원이 왼쪽 아래에 있으므로 그쪽이 밝고 오른쪽 위가
-     * 어둡습니다. 밝기로 치면 228 → 215(--niche-bg) → 203 입니다.
-     *
-     * **조명을 여기 두는 것이 핵심입니다.** 물체마다 긴 캐스트 그림자를 달면
-     * 트랙이 옆으로 미끄러지는 화면에서 경계 클리핑·이웃 침범·그림자가 물체를
-     * 따라 움직이는 문제가 전부 따라옵니다. 배경 한 장에 방향을 담으면 자를
-     * 것이 없고, 병에는 발치의 접촉 그림자만 남기면 됩니다.
+     * 입구 테두리. 위 테두리는 아래를 보고 있어 어둡고, 아래 테두리는 빛을 받아 밝습니다.
+     * 페이지 종이(0.91)에서 **한 단씩만** 벌립니다. 더 벌리면 벽을 판 자리가 아니라
+     * 액자 틀을 두른 것처럼 보이고, 아래 테두리는 흰 선반 모서리처럼 따로 뜹니다.
      */
-    --niche-lit: oklch(0.925 0.014 77);
-    --niche-shade: oklch(0.85 0.022 72);
+    --bevel-top: oklch(0.848 0.021 73);
+    --bevel-side: oklch(0.894 0.017 76);
+    --bevel-bottom: oklch(0.922 0.013 80);
+    --bevel-rim: oklch(0.97 0.006 84 / 0.55);
     --shelf-ink: oklch(0.285 0.014 58);
     --shelf-ink-soft: oklch(0.455 0.014 61);
     --chip: oklch(0.947 0.009 80 / 0.74);
@@ -68,18 +77,45 @@
     --depth: oklch(0.31 0.025 59 / 0.32);
     --highlight: oklch(0.98 0.005 86 / 0.72);
     /*
-     * 종이가 벽에 던지는 그림자 색. `.shelf-bottle-cast` **한 곳에서만** 씁니다.
-     *
-     * 색이 RGB(55,40,28) 로 거의 검정이라 알파가 그대로 농도가 됩니다 —
-     * 벽(215)보다 어두워지는 정도가 대략 `알파 x 174` 입니다.
-     *
-     *   0.30 → 52   0.42 → 73   0.50 → 87
-     *
-     * drop-shadow 였을 때는 0.46 에서 검은 띠가 됐지만(그림자 전체가 같은 농도),
-     * 지금은 그러데이션이라 이 값이 **시작점에서만** 나오고 끝으로 갈수록 사라집니다.
-     * 그래서 같은 숫자라도 훨씬 덜 무겁습니다.
+     * 병 발치의 접지 그림자. 가운데 뭉치는 진한 색과 둘레로 번지는 옅은 색 두 가지입니다.
+     * 짧고 진해야 병이 바닥에 붙어 보입니다.
      */
-    --cast: oklch(0.29 0.03 58 / 0.42);
+    --contact: oklch(0.27 0.03 55 / 0.5);
+    --contact-soft: oklch(0.3 0.03 58 / 0.16);
+    /* 발치에서 바닥에 비스듬히 눕는 그림자. 접지 그림자(0.5)보다 조금만 옅습니다 */
+    --floor-shade: oklch(0.28 0.03 56 / 0.45);
+    /*
+     * 이름표(태그). 벽감보다 한 단 밝은 크림 종이, 황동 아일릿, 갈색 실입니다.
+     * 고른 병의 태그는 한 단 더 밝아지고 가장자리에 먹색(--shelf-ink)이 돕니다.
+     */
+    --tag-paper: oklch(0.945 0.012 82);
+    --tag-paper-active: oklch(0.968 0.009 84);
+    --tag-edge: oklch(0.55 0.02 65 / 0.2);
+    --tag-edge-active: oklch(0.29 0.015 55 / 0.42);
+    --tag-string: oklch(0.42 0.03 58 / 0.8);
+    --tag-hole: oklch(0.32 0.025 58);
+    --eyelet: oklch(0.74 0.07 80);
+    --eyelet-edge: oklch(0.55 0.06 70);
+    /* 잘린 종이의 두께 — 빛을 받는 왼쪽·위 가장자리의 흰 선 */
+    --rim: oklch(0.995 0.004 90 / 0.95);
+    --rim-soft: oklch(0.995 0.004 90 / 0.45);
+    /*
+     * 종이 두께 선에 입히는 결. 선의 **알파**를 흔들어서 섬유가 빛을 받은 자리는
+     * 하얗게, 사이사이는 옅게 끊기게 합니다.
+     *
+     * 바탕 결(--grain-fine)을 그대로 쓰지 않는 이유: 그 결은 알파가 0.5 이하로 옅어서
+     * 마스크로 걸면 선 전체가 흐려지기만 합니다. 여기서는 feColorMatrix 로 알파를
+     * `2.4 x 잡음 - 0.45` 로 펴서, 평균 0.7 쯤을 유지한 채 대비만 키웠습니다.
+     * 결을 더 거칠게 하려면 2.4 를 올리고(끊김이 늘어남), 곱게 하려면 baseFrequency 를
+     * 올립니다(알갱이가 잘아짐).
+     */
+    --grain-rim: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 2.4 0 0 0 -.45'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23r)'/%3E%3C/svg%3E");
+    /*
+     * 병이 던지는 그림자. 병에 가까운 쪽(바닥 · 벽 아랫단)이 짙고, 벽을 타고 올라갈수록
+     * 옅어집니다(--cast-far). 그림자가 끝까지 같은 농도면 판자를 세운 것처럼 보입니다.
+     */
+    --cast: oklch(0.3 0.03 58 / 0.34);
+    --cast-far: oklch(0.3 0.03 58 / 0.12);
     /*
      * 종이 **표면**에 앉는 그늘. 위 두 개가 물체 바깥에 그리는 그림자라면
      * 이건 물체 자신이 조명에서 먼 쪽으로 어두워지는 몫입니다.
@@ -95,6 +131,19 @@
      * -30 을 넘기면 "빛을 받는 종이" 가 아니라 "더러운 종이" 로 보입니다.
      */
     --lit-shade: oklch(0.42 0.028 58 / 0.22);
+    /*
+     * 종이 질감 두 겹. 페이지 바탕(.shelf-grain)과 벽감 안(.shelf-niche-grain)이
+     * 같은 결을 씁니다 — 두 곳의 결이 다르면 벽감만 다른 재료로 보입니다.
+     *
+     * 두 겹인 이유: 알갱이 한 겹만 얹으면 화면에 모래를 뿌린 것처럼 보이고, 종이의
+     * "떠서 만든 두께 차이" 가 안 납니다. 촘촘한 결 위에 큰 얼룩을 겹쳐야 종이로
+     * 읽힙니다 — 사람 눈이 종이를 알아보는 건 알갱이가 아니라 그 얼룩입니다.
+     *
+     * feColorMatrix 로 채도를 0 으로 만듭니다. feTurbulence 는 원래 색이 있는
+     * 잡음이라 그대로 쓰면 알록달록한 점이 박혀 TV 노이즈처럼 보입니다.
+     */
+    --grain-fine: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='.5'/%3E%3C/svg%3E");
+    --grain-mottle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='700'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.011' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)' opacity='.34'/%3E%3C/svg%3E");
 
     position: relative;
     color: var(--shelf-ink);
@@ -126,6 +175,13 @@
   /*
    * 종이 질감. 화면 전체에 아주 옅게 얹습니다.
    * 이것 하나로 "인쇄물" 느낌이 나고, 없으면 디지털 그러데이션으로 보입니다.
+   * 결 자체는 `.shelf-scope` 의 --grain-* 에 있습니다.
+   *
+   * 앞서 opacity 0.12 에서는 안 보여서 넘어갔는데, 진하게 올리면 채도 없는 결이라
+   * 알록달록한 점 없이 종이로만 드러납니다.
+   *
+   * 타일 크기를 서로 나누어떨어지지 않게 둔 이유: 180 과 700 이 배수 관계면
+   * 두 겹이 같은 자리에서 반복돼 격자무늬가 보입니다.
    */
   .shelf-scope .shelf-grain::after,
   .shelf-scope.shelf-grain::after {
@@ -136,24 +192,7 @@
     pointer-events: none;
     opacity: 0.42;
     mix-blend-mode: multiply;
-
-    /*
-     * 두 겹입니다. 알갱이 한 겹만 얹으면 화면에 모래를 뿌린 것처럼 보이고, 종이의
-     * "떠서 만든 두께 차이" 가 안 납니다. 촘촘한 결 위에 큰 얼룩을 겹쳐야 종이로
-     * 읽힙니다 — 사람 눈이 종이를 알아보는 건 알갱이가 아니라 그 얼룩입니다.
-     *
-     * feColorMatrix 로 채도를 0 으로 만듭니다. feTurbulence 는 원래 색이 있는
-     * 잡음이라 그대로 쓰면 알록달록한 점이 박혀 TV 노이즈처럼 보입니다.
-     * 앞서 opacity 0.12 에서는 안 보여서 넘어갔는데, 진하게 올리면 바로 드러납니다.
-     *
-     * 타일 크기를 서로 나누어떨어지지 않게 둔 이유: 180 과 700 이 배수 관계면
-     * 두 겹이 같은 자리에서 반복돼 격자무늬가 보입니다.
-     */
-    background-image:
-      /* 종이 결 — 촘촘한 알갱이 */
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='.5'/%3E%3C/svg%3E"),
-      /* 큰 얼룩 — 종이를 뜰 때 생기는 두께 차이 */
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='700'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.011' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)' opacity='.34'/%3E%3C/svg%3E");
+    background-image: var(--grain-fine), var(--grain-mottle);
     background-size:
       180px 180px,
       700px 700px;
@@ -162,233 +201,584 @@
   }
 
   /*
-   * 벽감의 좌우 벽면.
+   * 진열장 크기 — 벽감 높이(--case-h) · 병 높이(--bottle-h) · 칸 폭(--pitch).
    *
-   * 벽감의 clip-path 는 좌우를 **잘라내기만** 합니다. 그래서 잘린 자리에는 아무것도
-   * 없었고 페이지 종이가 그대로 비쳤습니다 — 종이(밝기 223)가 뒷벽(215)보다 밝아서
-   * 깊이가 뒤집혀 보였습니다. 이 상자가 벽감 **뒤에** 깔려 그 자리를 벽면으로 채웁니다.
+   * 고정값이 아니라 ShelfWall 이 진열장 자리의 크기에서 계산해 넣습니다(lib.ts 의
+   * shelfMetrics). 화면이 한 장으로 고정돼 있어, 남는 세로 공간만큼 진열장이 커집니다.
+   * 1920 x 1080 에서 벽감 605 · 병 515 · 칸 288(한 화면 다섯 칸)입니다.
+   * 여기 값은 크기를 재기 전에 쓰는 기본값입니다.
    *
-   * 벽감을 자르는 대각선이 위아래로 갈수록 좁아지므로, 여기에 사각형 그러데이션을
-   * 깔아 두기만 해도 드러나는 모양이 저절로 사다리꼴이 됩니다. 벽 모양을 여기서
-   * 또 그리면 두 clip-path 가 서로 어긋날 자리가 생깁니다.
-   *
-   * ⚠️ 24px · 31px 은 아래 벽감 clip-path 의 값과 **같아야** 합니다. 다르면 벽이
-   * 모자라 종이가 비치거나, 남아서 벽감 위로 삐져나옵니다.
-   *
-   * 한때 병이 이 두께만큼 잘려서 12/15 로 줄였던 적이 있습니다. 지금은 병 트랙이
-   * 벽감 **밖**(.shelf-case 의 자식)에 있어 잘리지 않으므로 원래 값으로 되돌렸습니다.
-   * 병은 이 벽 그러데이션 **위에** 그려집니다.
+   * ⚠️ 커진 병(병 높이 x 1.06)이 천장에 닿지 않아야 합니다 — 계산이 병 위에 병 높이의
+   * 10%(최소 30)를 남깁니다.
    */
-  .shelf-case {
-    background-image:
-      linear-gradient(to right, var(--niche-wall), var(--niche-wall-deep)),
-      linear-gradient(to left, var(--niche-wall), var(--niche-wall-deep));
-    background-size:
-      24px 100%,
-      31px 100%;
-    background-position:
-      left center,
-      right center;
-    background-repeat: no-repeat;
+  .shelf-scope {
+    --case-h: 345px;
+    --bottle-h: 280px;
+    --pitch: 200px;
   }
 
   /*
-   * 벽감(niche) — 벽을 파낸 자리.
+   * 진열장 치수 — 벽감 면이 보이는 깊이와 병이 서는 자리.
    *
-   * clip-path 가 좌우 변을 안쪽으로 기울여 **원근**을 만듭니다. 위 모서리는 31px
-   * 들어가고 아래로 갈수록 벌어져서, 보는 사람이 상자 안을 들여다보는 각도가 됩니다.
-   * 이게 없으면 그냥 납작한 사각형입니다.
+   * 진열장 상자가 아니라 section 에 둡니다. 병 트랙과 매달린 이름표가 같은 좌우
+   * 기준(--track-inset)을 씁니다.
+   * 치수는 1920 규격대로 끝자리를 0 또는 5 로 맞춥니다(입구 테두리 같은 선 굵기와
+   * 글자 크기는 예외).
+   */
+  .shelf-case {
+    /* 입구 테두리 두께. 두꺼우면 벽을 판 자리가 아니라 액자 틀로 읽힙니다 */
+    --bevel: 3px;
+    /* 천장 · 좌우 벽 · 바닥이 보이는 깊이 */
+    --ceil: 20px;
+    --wall: 30px;
+    --floor: 30px;
+    /*
+     * 병 발치가 바닥 앞 가장자리에서 들어간 거리. 병이 바닥 가운데쯤 섭니다.
+     * 입구 테두리(3)와 합친 발치 높이(--base-inset)가 15 로 끝자리 규칙에 맞습니다
+     */
+    --floor-front: 12px;
+
+    /* 병 트랙과 라벨 줄의 좌우 기준. 병은 뒷벽 폭 안에만 섭니다 */
+    --track-inset: calc(var(--bevel) + var(--wall));
+    /* 병 발치 높이 (상자 아래끝 기준) */
+    --base-inset: calc(var(--bevel) + var(--floor-front));
+    /* 병 발치에서 뒷벽 밑선까지. 병 그림자가 바닥에서 벽으로 꺾이는 자리입니다 */
+    --floor-gap: calc(var(--floor) - var(--floor-front));
+  }
+
+  /*
+   * 벽감 — 벽을 파낸 자리. **면 단위로 나눠 그립니다.**
    *
-   * 그림자는 네 방향에서 세기를 다르게 넣습니다. 위가 제일 진하고(빛이 위에서
-   * 오므로) 아래가 제일 옅습니다. 한 겹으로는 어느 쪽이 깊은지 읽히지 않습니다.
+   * 뒷벽 · 천장 · 좌우 벽 · 바닥 · 입구 테두리가 각자 한 겹입니다. 예전에는 div 하나에
+   * 그러데이션 세 장과 clip-path 를 몰아넣어서, 면마다 빛을 따로 줄 수 없었고
+   * 천장·바닥을 그러데이션 띠 폭으로만 흉내 내 경계가 딱딱했습니다.
+   *
+   * 면은 전부 입구 테두리 안쪽 상자(inset: --bevel)를 같이 쓰고 clip-path 로 자기 모양만
+   * 남깁니다. 한 좌표계를 공유해야 네 사다리꼴의 꼭짓점이 정확히 맞물립니다.
+   * 뒷벽만 clip-path 가 아니라 진짜 사각형입니다 — 가장자리에 접힘선 그늘(inset 그림자)을
+   * 달아야 하는데, 사각형이어야 그림자가 네 접힘선에 정확히 붙습니다.
+   *
+   * 칠하는 순서(DOM 순서)가 곧 겹치는 순서입니다: 뒷벽 → 뒷벽 조명 → 천장·좌우 벽·바닥 →
+   * 질감 → 입구 테두리. 조명이 면들보다 먼저라, 조명이 움직여도 벽이 가려 줍니다.
    */
   .shelf-scope .shelf-niche {
+    /* 면 사이 틈(안티에일리어싱)으로 페이지가 비치지 않게 접힘선 색을 깔아 둡니다 */
+    background: var(--niche-seam);
+    /* 질감 층의 multiply 가 벽감 밖 페이지까지 곱하지 않게 가둡니다 */
+    isolation: isolate;
+  }
+
+  .shelf-scope .shelf-face {
+    position: absolute;
+    inset: var(--bevel);
+    pointer-events: none;
+  }
+
+  .shelf-scope .shelf-niche-back,
+  .shelf-scope .shelf-niche-light {
+    inset: calc(var(--bevel) + var(--ceil)) calc(var(--bevel) + var(--wall))
+      calc(var(--bevel) + var(--floor));
+  }
+
+  /* 뒷벽 — 위가 조금 어둡고 가운데~아래가 밝습니다 */
+  .shelf-scope .shelf-niche-back {
+    background: linear-gradient(
+      to bottom,
+      var(--niche-back-top),
+      var(--niche-back) 45%,
+      var(--niche-back-low)
+    );
     /*
-     * 위에서부터 선반턱 · 뒷벽 · 선반면 세 겹입니다.
-     *
-     * 앞서는 아래로 갈수록 어두워지는 그러데이션 하나에 위아래 inset 그림자를
-     * 얹고 있었습니다. 그러면 **바깥 테두리가 어둡고 안으로 갈수록 밝아져서**
-     * 파인 자리가 아니라 튀어나온 자리처럼 읽힙니다. 실제로 아래쪽은 뒷벽(215)에서
-     * 맨 아래 모서리(182)까지 계속 어두워지기만 했고, 빛을 받아야 할 선반면이
-     * 아예 없었습니다.
-     *
-     * 이제 열린 면(선반턱 앞 · 선반면 앞)이 가장 밝고 뒷벽과 만나는 접힘선이 가장
-     * 어둡습니다. 좌우 벽과도 규칙이 같아집니다.
+     * 네 접힘선에 고이는 그늘. 천장 밑이 가장 깊고(빛이 위에서 오므로), 좌우가
+     * 그다음, 바닥이 가장 옅습니다. 한 겹으로 두르면 어느 쪽이 깊은지 읽히지 않습니다.
      */
-    background:
-      /* 선반면 — 접힘선(위)이 어둡고 앞(아래)으로 나오며 밝아진다 */
-      linear-gradient(
-        to top,
-        var(--niche-lip) 0,
-        var(--niche-lip) 8px,
-        var(--niche-crease) 19px,
-        rgb(0 0 0 / 0) 34px
-      ),
-      /* 선반턱 — 앞(위)이 밝고 접힘선(아래)이 어둡다 */
-        linear-gradient(
-          to bottom,
-          var(--niche-lip) 0,
-          var(--niche-lip) 6px,
-          var(--niche-crease) 17px,
-          rgb(0 0 0 / 0) 30px
-        ),
-      /*
-         뒷벽 — 평면색이 아니라 **조명면**입니다. 왼쪽 아래(광원 쪽)가 밝고
-         오른쪽 위로 갈수록 어두워집니다. 이 한 장이 진열장 전체의 빛 방향을
-         담당하므로, 병에는 긴 그림자를 달지 않습니다.
-      */
-        linear-gradient(
-          to bottom right,
-          var(--niche-lit),
-          var(--niche-bg) 42%,
-          var(--niche-shade)
-        );
     box-shadow:
-      /* 좌우 접힘선. 위아래와 달리 여기는 inset 그림자가 맞습니다 — 벽이 잘려나간
-         자리(x 24 · 100%-31)가 정확히 접힘선이기 때문입니다 */
-      inset 18px 0 24px -22px var(--depth),
-      inset -18px 0 24px -22px var(--depth),
-      0 -2px 2px var(--depth),
-      0 1px var(--highlight);
+      inset 0 18px 22px -12px var(--niche-ao),
+      inset 18px 0 20px -16px var(--niche-ao-soft),
+      inset -18px 0 20px -16px var(--niche-ao-soft),
+      inset 0 -12px 14px -12px var(--niche-ao-soft);
+  }
+
+  /*
+   * 뒷벽 아래에 고이는 빛. 뒷벽과 따로 둔 이유는 마우스를 따라 몇 px 움직여야
+   * 해서입니다(--px · --py 는 DisplayCase 가 -1~1 로 넣습니다). 가장자리가 투명한
+   * 그러데이션이라 움직여도 경계가 드러나지 않습니다.
+   */
+  .shelf-scope .shelf-niche-light {
+    background: radial-gradient(
+      60% 85% at 45% 100%,
+      var(--niche-glow),
+      transparent 72%
+    );
+    translate: calc(var(--px, 0) * 3px) calc(var(--py, 0) * 2px);
+    transition: translate 600ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  /* 천장 — 가장 어둡습니다. 입구 쪽(위)이 제일 어둡고 안으로 갈수록 풀립니다 */
+  .shelf-scope .shelf-niche-ceiling {
     clip-path: polygon(
       0 0,
       100% 0,
-      calc(100% - 31px) 14px,
-      calc(100% - 31px) calc(100% - 16px),
-      100% 100%,
-      0 100%,
-      24px calc(100% - 17px),
-      24px 15px
+      calc(100% - var(--wall)) var(--ceil),
+      var(--wall) var(--ceil)
+    );
+    background: linear-gradient(
+      to bottom,
+      var(--niche-ceiling),
+      var(--niche-ceiling-deep) var(--ceil)
     );
   }
 
   /*
-   * 트랙 창 — 창 밖 병을 감추는 층.
+   * 좌우 벽 — 입구 쪽이 밝고 뒷벽과 만나는 접힘선이 어둡습니다.
+   * 위쪽에는 천장 그늘이 조금 내려와 있습니다.
+   */
+  .shelf-scope .shelf-niche-wall-left {
+    clip-path: polygon(
+      0 0,
+      var(--wall) var(--ceil),
+      var(--wall) calc(100% - var(--floor)),
+      0 100%
+    );
+    background:
+      linear-gradient(to bottom, var(--niche-ao-soft), transparent 45%),
+      linear-gradient(
+        to right,
+        var(--niche-wall),
+        var(--niche-wall-deep) var(--wall)
+      );
+  }
+  .shelf-scope .shelf-niche-wall-right {
+    clip-path: polygon(
+      100% 0,
+      100% 100%,
+      calc(100% - var(--wall)) calc(100% - var(--floor)),
+      calc(100% - var(--wall)) var(--ceil)
+    );
+    background:
+      linear-gradient(to bottom, var(--niche-ao-soft), transparent 45%),
+      linear-gradient(
+        to left,
+        var(--niche-wall),
+        var(--niche-wall-deep) var(--wall)
+      );
+  }
+
+  /*
+   * 바닥 — 병이 실제로 서는 면. 뒷벽보다 한 단 진합니다.
    *
-   * **overflow:clip 이 아니라 마스크입니다.** clip 은 경계에서 픽셀을 뚝 끊는데,
-   * 오른쪽 끝 병의 그림자는 실루엣을 통째로 옆으로 옮긴 것이라 경계에서 이미
-   * 최대 농도입니다. 그래서 끊긴 자리가 벽에 그은 세로줄로 보였습니다.
+   * 뒷벽과 만나는 접힘선에 그늘을 먼저 깔아, 뒷벽 아래쪽 그늘과 이어지며 경계가
+   * 번지게 합니다. 선으로 딱 끊기면 바닥이 뒷벽 앞에 세운 판처럼 보입니다.
+   */
+  .shelf-scope .shelf-niche-floor {
+    clip-path: polygon(
+      var(--wall) calc(100% - var(--floor)),
+      calc(100% - var(--wall)) calc(100% - var(--floor)),
+      100% 100%,
+      0 100%
+    );
+    background:
+      linear-gradient(
+        to bottom,
+        var(--niche-ao) calc(100% - var(--floor)),
+        transparent calc(100% - var(--floor) + 12px)
+      ),
+      linear-gradient(
+        to bottom,
+        var(--niche-floor) calc(100% - var(--floor)),
+        var(--niche-floor-front)
+      );
+  }
+
+  /*
+   * 재질감 — 페이지 바탕과 같은 종이 결을 벽감 안에도 얹습니다.
    *
-   * overflow-clip-margin 으로도 못 풉니다. 창 밖 병이 경계에서 3px 뒤에 서 있어서
-   * 그림자가 필요한 만큼(21px) 열어주면 이웃 병이 통째로 드러납니다.
+   * 바탕의 질감 층(.shelf-grain)은 본문 **뒤**에 깔려서 벽감을 덮지 못합니다. 이게
+   * 없으면 벽감 안만 매끈한 디지털 그러데이션으로 떠 보입니다.
+   * 바탕보다 옅게 둡니다 — 눈에 띄는 무늬가 아니라 "완전한 평면은 아니다" 정도가
+   * 목표입니다.
+   */
+  .shelf-scope .shelf-niche-grain {
+    background-image: var(--grain-fine), var(--grain-mottle);
+    background-size:
+      180px 180px,
+      700px 700px;
+    mix-blend-mode: multiply;
+    opacity: 0.32;
+  }
+
+  /*
+   * 입구 테두리(베벨) — 벽을 판 두께가 보이는 자리.
    *
-   * **창 밖 병을 감추는 일은 DisplayCase 가 opacity 로 합니다.** 그래서 여기서는
-   * 감출 것이 없고, 마스크는 밖으로 새어나간 그림자를 부드럽게 끝내는 역할만
-   * 합니다 — 창보다 좌우로 --fade 만큼 크게 잡아 늘어난 바깥 구간에서만 페이드를
-   * 시킵니다. 창 안(0~100%)은 전부 불투명이라 병은 그대로 선명합니다.
+   * border 네 변은 모서리에서 대각선으로 맞물리므로, 깎아 낸 모서리 면이 그대로
+   * 나옵니다. 위 테두리는 아래를 보고 있어 어둡고, 아래 테두리는 빛을 받아 밝습니다.
+   */
+  .shelf-scope .shelf-niche-bevel {
+    inset: 0;
+    border: var(--bevel) solid;
+    border-color: var(--bevel-top) var(--bevel-side) var(--bevel-bottom);
+    box-shadow:
+      /* 테두리와 천장이 만나는 모서리. 이 선이 선명해야 칼로 판 자리로 읽힙니다 */
+      inset 0 1px 0 var(--niche-ao),
+      /* 입구 아래 가장자리가 빛을 받는 선 */ 0 1px 0 var(--bevel-rim);
+  }
+
+  /*
+   * 벽 창 — 벽이 옆으로 흐르는 자리(ShelfWall).
    *
-   * overflow 를 걷어내도 트랙이 페이지를 넓히지는 않습니다 — 바깥 벽감이
-   * overflow:hidden 으로 이미 가둡니다. 오히려 라벨 포커스 링이 안 잘려서 낫습니다.
+   * **overflow:clip 이 아니라 마스크입니다.** clip 은 경계에서 픽셀을 뚝 끊어서, 흐르는
+   * 병과 벽감이 창 끝에서 칼로 자른 듯 잘립니다. 마스크는 창보다 좌우로 조금 크게 잡아
+   * 늘어난 바깥 구간에서만 페이드를 시킵니다 — 창 안(0~100%)은 전부 불투명이라,
+   * 멈춰 선 병은 창 끝의 것까지 그대로 선명합니다.
+   *
+   *   왼쪽 --fade-start  화면 좌우 여백(--gutter)만큼. 여백 위로 벽이 스며 나갑니다
+   *   오른쪽 --fade-end  상세 패널과의 간격(20)만큼. 패널 밑으로 새지 않습니다
+   *
+   * 멈춰 있을 때 창 밖 병은 ShelfWall 이 inert 로 투명하게 지웁니다(.shelf-slot[inert]).
+   * 페이드 구간에 이웃 병이 비치면 창 끝에 병이 걸린 것처럼 보여서입니다.
    */
   .shelf-scope .shelf-window {
-    --fade: 48px;
+    --fade: 50px;
+    --fade-start: var(--gutter);
+    --fade-end: 20px;
 
     mask-image: linear-gradient(
       to right,
       transparent 0,
-      #000 var(--fade),
-      #000 calc(100% - var(--fade)),
+      #000 var(--fade-start),
+      #000 calc(100% - var(--fade-end)),
       transparent 100%
     );
     /*
-     * 세로도 --fade 만큼 넓힙니다. 그러데이션이 `to right` 이라 세로 방향으로는
-     * 균일하므로, 마스크 상자만 키우면 위아래로 새어나간 그림자가 잘리지 않습니다.
-     * 병 그림자는 **위로** 뻗는데(광원이 왼쪽 아래) 창 위 경계까지 몇 px 밖에
-     * 안 남아서, 고른 병이 살짝 떠오를 때(lift) 잘리고 있었습니다.
+     * 세로로도 넓힙니다. 그러데이션이 `to right` 이라 세로 방향으로는 균일하므로,
+     * 마스크 상자를 키운 만큼 창 밖으로 나간 것들이 보입니다.
+     *
+     *   위로 --fade   커진 병의 윗부분
+     *   아래로 --hang 발치 아래의 바닥 그림자와 매달린 이름표(줄 20 + 태그 65 + 그림자)
+     *
+     * ⚠️ mask-clip: no-clip 이 있어야 이게 먹습니다. 기본값(border-box)은 마스크를 건
+     * 요소의 내용을 **자기 상자 안으로 잘라** 버려서, 마스크 이미지를 아무리 키워도
+     * 창 밖은 안 그려집니다. 창의 아래끝이 벽감 아래끝이라, 매달린 이름표가 통째로
+     * 사라집니다.
      */
-    mask-size: calc(100% + var(--fade) * 2) calc(100% + var(--fade) * 2);
-    mask-position: calc(var(--fade) * -1) calc(var(--fade) * -1);
+    --hang: 110px;
+
+    mask-size: calc(100% + var(--fade-start) + var(--fade-end))
+      calc(100% + var(--fade) + var(--hang));
+    mask-position: calc(var(--fade-start) * -1) calc(var(--fade) * -1);
+    mask-clip: no-clip;
     mask-repeat: no-repeat;
+    /*
+     * 마스크 이미지 **바깥**을 잘라 냅니다. no-clip 이면 크롬은 마스크 이미지가 닿지 않는
+     * 곳을 가리지 않고 그대로 그려서, 창 밖으로 흘러간 벽(다음 분류의 이름표 · 벽감)이
+     * 상세 패널 너머 오른쪽 여백에 비칩니다. 자르는 선이 페이드가 0 이 된 바깥 경계라
+     * 칼로 자른 자국은 보이지 않습니다.
+     */
+    clip-path: inset(
+      calc(var(--fade) * -1) calc(var(--fade-end) * -1) calc(var(--hang) * -1)
+        calc(var(--fade-start) * -1)
+    );
   }
 
   /*
-   * 병 자체에는 **밝기 감쇠만** 겁니다.
-   *
-   * ⚠️ 여기에 drop-shadow 를 달지 마세요. 그림자는 아래 `.shelf-bottle-cast` 가
-   * 그립니다. drop-shadow 는 색이 하나라 그림자가 끝까지 같은 농도로 깔리고,
-   * 두 겹 쌓으면 겹치는 자리가 배로 어두워져 검은 띠가 됩니다(실측 109).
-   *
-   * 밝기는 `--lit`(0 = 광원 쪽, 1 = 먼 쪽)을 따릅니다. 일곱 칸이 전부 같은
-   * 밝기면 조명이 아니라 칸마다 붙인 스티커로 읽힙니다.
+   * 벽감 하나의 병 줄(DisplayCase). 병에 아주 약한 시차를 줍니다. 뒷벽 조명
+   * (.shelf-niche-light)과 반대로 1px 남짓 움직여서, 마우스를 움직일 때 병이 뒷벽보다
+   * 앞에 서 있다는 것이 느껴집니다. --px · --py 는 벽감마다 마우스 위치로 넣습니다.
    */
-  .shelf-scope .shelf-bottle-img {
-    filter: brightness(calc(1.05 - 0.13 * var(--lit, 0.5)));
-    transition: filter 400ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  .shelf-scope .shelf-bottles {
+    translate: calc(var(--px, 0) * -1.5px) calc(var(--py, 0) * -1px);
+    transition: translate 600ms cubic-bezier(0.22, 0.61, 0.36, 1);
   }
 
   /*
-   * 종이가 벽에 던지는 그림자.
+   * 병 한 칸(.shelf-slot)과 그 안의 층들 — 겹치는 순서를 **칸끼리 섞어서** 정합니다.
    *
-   * **drop-shadow 가 아닙니다.** drop-shadow 는 색이 한 가지라 그림자 전체가 같은
-   * 농도로 깔리고, 끝까지 진해서 판자를 세워둔 것처럼 보입니다. 여기서는 같은
-   * 실루엣(--bottle 마스크)을 옆으로 밀어 두고 그 안을 그러데이션으로 채워
-   * **멀어질수록 옅어지게** 합니다.
+   * 병 그림자는 오른쪽 옆 병의 사진 **위에** 떨어져야 합니다. 광원이 왼쪽이라, 가까이
+   * 선 병끼리는 왼쪽 병의 그림자가 오른쪽 병을 덮는 게 맞습니다. 그래서 칸마다 따로
+   * 쌓지 않고 트랙 하나에 모든 층을 섞어 세우고, 왼쪽 칸일수록 앞에 둡니다.
    *
-   * 광원은 **왼쪽 위**. 그래서 오른쪽(+x) 아래(+y)로 밀고, 그러데이션도 같은
-   * 방향(to bottom right)으로 흐려집니다. 방향을 바꿀 때는 벽감 뒷벽
-   * (--niche-lit/--niche-shade)과 표면 그늘(.shelf-bottle-lit)도 **함께** 돌려야
-   * 한 조명 아래로 읽힙니다.
+   *   왼쪽 병 사진 > 왼쪽 병 그림자 > 오른쪽 병 사진 > 오른쪽 병 그림자 > …
    *
-   * 블러를 걸지 않습니다 — 강한 직사광 아래의 각진 그림자가 의도입니다.
-   * 가장자리의 부드러움은 사진 알파가 이미 갖고 있습니다.
+   * 칸 순위(--rank)는 DisplayCase 가 --order 로 넣습니다(왼쪽이 큰 수). 층마다
+   * `순위 x 4 + 자기 자리(--layer)` 를 z-index 로 씁니다.
    *
-   * **칸 경계에 갇히지 않습니다.** 이 층을 감싸는 어떤 조상도 overflow 를 걸지
-   * 않아서, 그림자가 옆 칸 위로 자연스럽게 넘어갑니다 — 조명이 하나면 당연한
-   * 모습입니다. 유일한 경계는 창 마스크의 --fade 이고, 그림자 사거리
-   * (translate + 실루엣 폭)가 그보다 길어지면 끝이 잘리니 같이 봐야 합니다.
+   *   0 벽 그림자 · 1 사진 · 2 표면 그늘 · 3 종이 두께
+   *
+   * **순서는 고정입니다.** 마우스를 올린 병이나 고른 병도 앞으로 끌어내지 않습니다.
+   * z-index 는 서서히 바뀌지 않고 한 프레임에 뒤집혀서, 끌어내는 순간 왼쪽 병이 드리운
+   * 그림자가 툭 사라지고 제자리로 돌아가는 순간 툭 생겼습니다. 순서는 그대로 두고
+   * 크기만 바꾸면, 모든 그림자가 크기 전환을 따라 부드럽게 움직입니다.
+   * 커진 병의 왼쪽 가장자리(4px 남짓)는 왼쪽 병 밑으로 들어가는데, 왼쪽이 앞인 이
+   * 순서에서는 그게 맞는 모습입니다.
+   *
+   * ⚠️ 칸(.shelf-slot)과 병 상자에 **쌓임 맥락을 만드는 속성**(z-index · transform ·
+   * opacity · filter · container-type)을 걸지 마세요. 거는 순간 그 칸의 층이 칸 안에
+   * 갇혀 옆 병 위로 못 올라가고, 그림자의 multiply 도 옆 병 사진과 섞이지 못합니다.
+   * 그래서 커지는 효과도, 창 밖 병을 지우는 투명도도 칸이 아니라 층마다 따로 겁니다.
    */
-  .shelf-scope .shelf-bottle-cast {
-    /* 아래로 미는 거리. 마스크로 잘라내는 지점과 **같은 값**이어야 합니다 */
-    --drop: calc(9cqw + 6cqw * var(--lit, 0.5));
+  .shelf-scope .shelf-slot {
+    --rank: var(--order, 0);
+    --slot-alpha: 1;
+  }
+  /*
+   * 창 밖 병(벽이 멈춰 있을 때 ShelfWall 이 inert 를 겁니다). 투명하게 지워서, 창
+   * 가장자리 페이드 구간에 이웃 병이 비치지 않게 합니다. 벽이 흐르기 시작하면 inert 가
+   * 풀려 400ms 에 걸쳐 다시 나타납니다 — 들어올 병이 창 끝에서 서서히 떠오릅니다.
+   *
+   * 칸에 opacity 를 걸지 않고 층마다 이 값을 곱합니다. 칸에 걸면 사라지는 400ms 동안
+   * 그 칸이 쌓임 맥락이 되어, 옆 병에 떨어져 있던 그림자가 사라지기 시작하는 순간 툭
+   * 꺼집니다.
+   */
+  .shelf-scope .shelf-slot[inert] {
+    --slot-alpha: 0;
+  }
+
+  .shelf-scope .shelf-bottle-layer {
+    --layer: 1;
+
+    z-index: calc(var(--rank) * 4 + var(--layer));
+    opacity: var(--slot-alpha);
+    /* 발치를 축으로 커져야 바닥에 선 채로 커집니다. 가운데를 축으로 두면 떠오릅니다 */
+    transform-origin: 50% 100%;
+    /* 제자리로 돌아올 때. 커질 때보다 조금 빠르게 줄어듭니다 */
+    transition:
+      scale 320ms cubic-bezier(0.4, 0, 0.2, 1),
+      filter 320ms ease-out,
+      opacity 400ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  /*
+   * 커질 때. 처음에 빠르게 반응하고 끝을 길게 끌며 멈춥니다(ease-out quint).
+   * 튕기는(overshoot) 곡선은 진열장의 차분한 톤과 맞지 않아 쓰지 않습니다.
+   * 1.06 배 — 발치 기준이라 위로 17px 자라고, 커진 병이 천장에 닿지 않는 한도입니다.
+   */
+  .shelf-scope
+    .shelf-slot:is([aria-pressed='true'], :focus-visible)
+    .shelf-bottle-layer {
+    scale: 1.06;
+    transition:
+      scale 420ms cubic-bezier(0.22, 1, 0.36, 1),
+      filter 420ms ease-out,
+      opacity 400ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  /* 빛 쪽으로 한 발 나온 만큼 아주 조금 밝아집니다 */
+  .shelf-scope
+    .shelf-slot:is([aria-pressed='true'], :focus-visible)
+    .shelf-bottle-img {
+    filter: brightness(1.03);
+  }
+
+  /* 터치 화면은 누른 뒤에도 :hover 가 남아서, 마우스가 있을 때만 겁니다 */
+  @media (hover: hover) {
+    .shelf-scope .shelf-slot:hover .shelf-bottle-layer {
+      scale: 1.06;
+      transition:
+        scale 420ms cubic-bezier(0.22, 1, 0.36, 1),
+        filter 420ms ease-out,
+        opacity 400ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    }
+    .shelf-scope .shelf-slot:hover .shelf-bottle-img {
+      filter: brightness(1.03);
+    }
+  }
+
+  /*
+   * 병 사진.
+   *
+   * ⚠️ 여기에 drop-shadow 를 달지 마세요. 그림자는 아래 접지 · 바닥 · 벽 그림자가
+   * 나눠 그립니다. drop-shadow 는 병 둘레에 고르게 번져서 병이 바닥에서 떠 보입니다.
+   */
+
+  /*
+   * 바닥 그림자 두 겹(접지 · 바닥에 눕는 띠)은 병이 커질 때 **바닥에 붙은 채** 옆으로만
+   * 조금 넓어집니다. 병과 같이 위로 자라면 그림자가 공중에 뜹니다.
+   */
+  .shelf-scope :is(.shelf-bottle-contact, .shelf-bottle-floor) {
+    opacity: var(--slot-alpha);
+    transition:
+      scale 320ms cubic-bezier(0.4, 0, 0.2, 1),
+      opacity 400ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .shelf-scope
+    .shelf-slot:is([aria-pressed='true'], :focus-visible)
+    :is(.shelf-bottle-contact, .shelf-bottle-floor) {
+    scale: 1.06 1;
+    transition:
+      scale 420ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 400ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  @media (hover: hover) {
+    .shelf-scope
+      .shelf-slot:hover
+      :is(.shelf-bottle-contact, .shelf-bottle-floor) {
+      scale: 1.06 1;
+      transition:
+        scale 420ms cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 400ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    }
+  }
+
+  /*
+   * 접지 그림자 — 병 바로 밑의 짧고 진한 그림자.
+   *
+   * 병이 바닥에 **닿아 있다**는 인상은 거의 이것 하나가 만듭니다. 벽에 지는 큰
+   * 그림자만 있으면 병이 공중에 떠 보입니다. 가운데는 진하게 뭉치고(안쪽 층),
+   * 둘레는 옅게 번집니다(바깥 층). 사진 밑단보다 몇 px 아래까지 내려 종이 밑으로
+   * 살짝 비치게 합니다.
+   *
+   * z-index 0 이라 모든 병 층(4 이상)보다 아래입니다 — 옆 병 발치 밑으로 들어갑니다.
+   */
+  .shelf-scope .shelf-bottle-contact {
+    position: absolute;
+    right: 12%;
+    bottom: -5px;
+    left: 12%;
+    z-index: 0;
+    height: 12px;
+    pointer-events: none;
+    background:
+      radial-gradient(closest-side, var(--contact) 25%, transparent) center /
+        80% 55% no-repeat,
+      radial-gradient(closest-side, var(--contact-soft), transparent);
+  }
+
+  /*
+   * 바닥에 눕는 그림자 — 병 **아랫단의 실루엣**을 병 뒤 바닥에 눕힌 것.
+   *
+   * 사진 아래 10%(--slice)만 잘라, 세로로 절반(--lay) 납작하게 누르고 오른쪽 뒤로
+   * 기울입니다. 광원이 왼쪽 앞이라 병 아랫단의 그림자가 바닥을 따라 오른쪽 뒤로 눕고,
+   * 병에 가려지지 않은 오른쪽만 보입니다. 모양이 찢긴 종이 밑단을 그대로 따라서
+   * 병마다 그림자 윤곽이 다릅니다.
+   *
+   * 사각형 띠를 기울이던 때는 병 모양과 상관없이 모서리가 각져 보였습니다. 실루엣을
+   * 쓰면 둥근 병은 둥글게, 네모난 병은 네모나게 눕습니다.
+   *
+   * **뒷벽에 닿지 않습니다.** 10% ≈ 28px 을 절반으로 눌러 14px — 발치에서 뒷벽
+   * 밑선까지(--floor-gap 18px)보다 짧아서, 흐림(2px)까지 쳐도 벽 앞에서 끝납니다.
+   * 발치 **앞**으로도 깔지 않습니다. 앞쪽 바닥은 빛을 받는 자리라 그림자가 병 앞으로
+   * 튀어나온 것처럼 보입니다(바로 밑의 짧은 그늘은 접지 그림자가 맡습니다).
+   *
+   * 순서: 실루엣으로 오림(mask) → 아래 10%만 남김(clip-path) → 흐림(filter) →
+   * 누르고 기울임(transform). 흐림이 오린 뒤에 걸려야 하는데, filter 는 clip-path 보다
+   * 먼저 적용돼서 이 요소 하나로는 오린 선이 칼같이 남습니다. 그래서 오리기는
+   * ::before 에, 흐림은 이 층에 둡니다(벽 그림자와 같은 이유).
+   */
+  .shelf-scope .shelf-bottle-floor {
+    /* 사진 아래 몇 % 를 눕힐지 */
+    --slice: 10%;
+    /* 눕힌 그림자의 세로 비율. 바닥은 원근으로 납작하게 보입니다 */
+    --lay: 0.5;
+    /*
+     * 기울기. "뒷벽 밑선 높이(--floor-gap)만큼 들어가는 동안 --sx 만큼 밀리게" 로,
+     * 벽 그림자(.shelf-bottle-cast)의 --dx 와 같은 방향 · 같은 비율입니다.
+     */
+    --sx: calc(var(--pitch) * 0.14);
 
     position: absolute;
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    translate: calc(13cqw + 9cqw * var(--lit, 0.5)) var(--drop);
-
-    /*
-     * 마스크 두 겹을 intersect 합니다.
-     *   1) 병 실루엣 — 그림자 모양
-     *   2) 바닥선 컷 — 아래로 민 만큼(--drop) 밑을 잘라냅니다
-     *
-     * 벽에 진 그림자는 벽이 바닥과 만나는 선에서 끝납니다. 이 컷이 없으면
-     * 실루엣이 통째로 내려가서 **선반 밖 라벨 자리까지 그림자가 흘렀습니다**
-     * (실측: 상자 아래로 23px). 두 값이 어긋나면 바닥선에 틈이 생기거나
-     * 그림자가 다시 삐져나오니 --drop 하나로 묶어 둡니다.
-     */
-    mask-image:
-      var(--bottle),
-      linear-gradient(
-        to bottom,
-        #000 calc(100% - var(--drop)),
-        transparent calc(100% - var(--drop))
-      );
-    mask-composite: intersect;
-    mask-size:
-      contain,
-      100% 100%;
-    mask-position:
-      bottom center,
-      top left;
-    mask-repeat: no-repeat;
-
-    /*
-     * 투명해지는 방향은 **가로 한 축**입니다(대각선 아님). 왼쪽이 짙고 오른쪽으로
-     * 갈수록 사라집니다 — 조명이 왼쪽에 있으니 물체에 가까운 쪽이 짙고 멀어질수록
-     * 옅어지는 게 맞습니다. 대각선으로 두면 위아래 농도까지 같이 흔들려서
-     * 어느 방향으로 빛이 오는지 읽기 어려워집니다.
-     *
-     * ⚠️ 투명 시작점을 100% 보다 앞당기지 마세요. 그림자를 오른쪽으로 밀어 두었기
-     * 때문에 **눈에 보이는 건 오른쪽 끝 띠**인데(병에 안 가려진 부분), 68% 로
-     * 두었더니 그 띠가 통째로 투명 구간에 들어가 오른쪽 그림자가 사라졌습니다.
-     */
-    background: linear-gradient(to right, var(--cast) 4%, transparent 100%);
-    transition: translate 400ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    filter: blur(2px);
+    transform-origin: 50% 100%;
+    transform: skewX(calc(-1 * atan2(var(--sx), var(--floor-gap))))
+      scaleY(var(--lay));
+  }
+  .shelf-scope .shelf-bottle-floor::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    mask: var(--bottle) bottom center / contain no-repeat;
+    clip-path: inset(calc(100% - var(--slice)) 0 0 0);
+    /* 발치 쪽이 가장 짙고, 누운 그림자의 끝(뒤쪽)으로 가며 벽 그림자 농도로 옅어집니다 */
+    background: linear-gradient(
+      to top,
+      var(--floor-shade),
+      var(--cast) var(--slice)
+    );
   }
 
   /*
-   * 종이 표면에 앉는 빛.
+   * 병이 던지는 그림자 — **바닥 조각과 벽 조각이 이어진 한 덩어리**입니다.
+   *
+   * 광원이 입구 앞 왼쪽 위라 그림자는 병 발치에서 시작해 바닥을 따라 오른쪽 뒤로
+   * 눕고, 뒷벽 밑선에 닿으면 벽을 타고 올라갑니다.
+   *
+   *   바닥 조각(::after)  실루엣 아랫단(--floor-gap)을 발치 → 뒷벽 밑선까지 비스듬히
+   *   벽 조각(::before)   실루엣을 오른쪽 아래로 밀고, 뒷벽 밑선 아래를 잘라 냄
+   *
+   * 두 조각이 뒷벽 밑선에서 **같은 가로 위치(--dx)**로 만나도록 맞춰 두었습니다.
+   * 예전에는 벽 조각만 있어서 접지 그림자와 벽 그림자 사이 바닥이 비었고, 병이 벽에
+   * 붙은 스티커처럼 보였습니다.
+   *
+   * 흐림은 두 조각을 감싼 이 층에 겁니다. 그래야 이음매까지 한 번에 번져 선이
+   * 남지 않습니다. 조각마다 따로 흐리면 만나는 자리에 겹친 띠가 생깁니다.
+   * 한 요소에 흐림과 마스크를 같이 걸지 않는 이유: 흐림이 마스크보다 **먼저**
+   * 적용돼(filter → mask 순서) 흐린 사각형을 실루엣으로 오려 낸 꼴이 되고,
+   * 가장자리가 칼같이 남습니다.
+   *
+   * 미는 거리는 칸 폭(--pitch) 기준이라 칸이 좁아지면 함께 줄어듭니다.
+   *
+   * 옆 병 사진 위에 떨어질 때는 multiply 로 곱합니다. 그림자는 빛이 **줄어드는** 자리라
+   * 밑에 깔린 사진의 색과 결을 그대로 둔 채 어둡게만 해야 자연스럽습니다. add(더하기)는
+   * 빛을 보태는 합성이라 그림자가 오히려 밝게 뜹니다. 벽 위에서는 창(마스크) 안에 곱할
+   * 바탕이 없어 보통 합성과 같게 칠해지므로, 벽 그림자는 전과 똑같습니다.
+   */
+  .shelf-scope .shelf-bottle-cast {
+    /*
+     * 가로로 미는 거리(칸 폭의 14%). 바닥 조각은 병에 가려지고 이 거리만큼
+     * 삐져나온 쪽만 보이므로, 너무 작으면 바닥 그림자가 발치의 작은 삼각형으로 줄어
+     * 벽 그림자와 이어지는 게 안 읽힙니다.
+     */
+    --dx: calc(var(--pitch) * 0.14);
+    --dy: calc(var(--pitch) * 0.03);
+    --layer: 0;
+
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    filter: blur(4px);
+    mix-blend-mode: multiply;
+  }
+  .shelf-scope .shelf-bottle-cast::before,
+  .shelf-scope .shelf-bottle-cast::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    mask: var(--bottle) bottom center / contain no-repeat;
+    background: var(--cast);
+  }
+
+  /*
+   * 벽 조각. 아래로 민 거리(--dy)까지 더해 잘라야 잘린 선이 화면에서 정확히
+   * 뒷벽 밑선(발치에서 --floor-gap 위)에 옵니다.
+   */
+  .shelf-scope .shelf-bottle-cast::before {
+    translate: var(--dx) var(--dy);
+    clip-path: inset(0 0 calc(var(--dy) + var(--floor-gap)) 0);
+    /*
+     * 잘린 아랫단(바닥 조각과 만나는 자리)이 바닥 조각과 같은 --cast 에서 시작해야
+     * 이음매에 농도 차가 안 생깁니다. 거기서 위로 올라가며 옅어집니다.
+     */
+    background: linear-gradient(
+      to top,
+      var(--cast) calc(var(--dy) + var(--floor-gap)),
+      var(--cast-far)
+    );
+  }
+
+  /*
+   * 바닥 조각. 실루엣 아랫단만 남기고 발치를 축으로 기울입니다.
+   * 기울기는 "뒷벽 밑선 높이(--floor-gap)만큼 올라가는 동안 --dx 만큼 밀리게"
+   * 입니다 — 그래서 윗변이 벽 조각의 아랫변과 같은 자리에서 만납니다.
+   */
+  .shelf-scope .shelf-bottle-cast::after {
+    clip-path: inset(calc(100% - var(--floor-gap)) 0 0 0);
+    transform-origin: 50% 100%;
+    transform: skewX(calc(-1 * atan2(var(--dx), var(--floor-gap))));
+  }
+
+  /*
+   * 종이 표면에 앉는 그늘.
    *
    * **이미지 자신을 마스크로 씁니다.** `--bottle` 은 그 칸의 사진 URL 이고,
    * mask-size/position 을 이미지의 object-contain/object-bottom 과 똑같이 맞춰
@@ -396,11 +786,19 @@
    * 영역까지 어두워져 병이 상자에 든 것처럼 보입니다.
    *
    * multiply 로 곱해서 원본의 명암을 지우지 않고 그 위에 그늘만 얹습니다.
-   * 왼쪽 아래(광원 쪽)는 투명하고 오른쪽 위로 갈수록 짙어집니다.
+   * 발치로 갈수록(바닥 가까이 빛이 덜 닿는 자리) 조금, 오른쪽으로(광원 반대) 조금
+   * 어두워집니다.
    */
   .shelf-scope .shelf-bottle-lit {
+    /*
+     * 사진(층 1)보다 위여야 곱해집니다. 아래에 깔리면 사진에 가려 아무 효과가 없습니다
+     * — 실제로 한동안 z-index 없이 사진 밑에 깔려 있었습니다.
+     */
+    --layer: 2;
+
     position: absolute;
     inset: 0;
+    pointer-events: none;
     /*
      * 마스크를 **세 겹 겹칩니다.** intersect 는 알파를 곱하므로 실효 마스크가
      * a³ 이 됩니다. 한 겹(a)이면 removebg 가 남긴 뿌연 가장자리(알파 0.15~0.45)
@@ -409,22 +807,204 @@
      * 때문입니다. 실측: 가장자리가 벽보다 19 어두워져 종이마다 테두리가 둘러졌습니다.
      *
      * a³ 이면 그 값이 1 로 떨어져 벽과 구분되지 않고, 불투명한 본체의 그늘은
-     * 132 로 그대로입니다. 즉 조명은 살리고 띠만 없앱니다.
+     * 그대로입니다. 즉 그늘은 살리고 띠만 없앱니다.
      */
     mask-image: var(--bottle), var(--bottle), var(--bottle);
     mask-composite: intersect;
     mask-size: contain;
     mask-position: bottom center;
     mask-repeat: no-repeat;
-    background: linear-gradient(
-      to bottom right,
-      transparent 18%,
-      var(--lit-shade) 104%
-    );
+    background:
+      linear-gradient(to bottom, transparent 50%, var(--lit-shade) 104%),
+      linear-gradient(to right, transparent 40%, var(--lit-shade) 112%);
     mix-blend-mode: multiply;
-    /* 먼 칸일수록 그늘이 짙어집니다 — 밝기 감쇠와 같은 --lit 를 씁니다 */
-    opacity: calc(0.35 + 0.45 * var(--lit, 0.5));
+    /* 창 밖 병이면 칸 투명도(--slot-alpha)까지 곱합니다 */
+    opacity: calc(0.6 * var(--slot-alpha));
+  }
+
+  /*
+   * 종이 두께 — 잘린 종이의 왼쪽·위 가장자리에 앉는 가는 흰 선.
+   *
+   * 광원이 왼쪽 위라, 얇은 종이의 옆면(두께) 중 그쪽을 보는 면만 빛을 받아 하얗게
+   * 섭니다. 이 한 줄이 "사진을 오려 붙인 것" 과 "종이를 잘라 세운 것" 을 가릅니다.
+   *
+   * 모양은 실루엣끼리 빼서 만듭니다:
+   *
+   *   왼쪽 위로 1px 민 실루엣 − 오른쪽 아래로 0.5px 민 실루엣
+   *   = 왼쪽·위 가장자리를 따라 1.5px 남짓한 띠
+   *
+   * 띠가 가장자리 바깥 1px(벽 위)과 안쪽 0.5px(종이 위)에 걸칩니다. 흰 종이 안쪽에만
+   * 두면 흰색 위에 흰색이라 보이지 않고, 벽을 배경으로 둬야 선이 섭니다.
+   * 사진 가장자리의 부드러운 알파를 그대로 빼서 만드니 찢긴 결을 따라 선도 부드럽습니다.
+   *
+   * 합성은 screen 입니다. 빛이 **더해지는** 자리라 곱하기가 아니라 더하기 쪽이 맞는데,
+   * add 는 이미 밝은 종이를 하얗게 날려 버리고 screen 은 밝을수록 덜 더해서 결이 남습니다.
+   * 왼쪽 위에서 가장 밝고 오른쪽 아래로 가며 사라져서, 테두리처럼 둘러지지 않고 빛을
+   * 받는 쪽에만 앉습니다.
+   *
+   * 선에는 종이 결(--grain-rim)을 입힙니다. 고른 흰 선은 펜으로 그은 테두리처럼
+   * 보이고, 종이의 잘린 단면은 섬유가 들쭉날쭉해서 빛도 알갱이지게 받습니다.
+   * 마스크를 세 겹 합칩니다(위에서부터):
+   *
+   *   결 ∩ ( 왼쪽 위로 민 실루엣 − 오른쪽 아래로 민 실루엣 )
+   */
+  .shelf-scope .shelf-bottle-rim {
+    --layer: 3;
+
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    mask-image: var(--grain-rim), var(--bottle), var(--bottle);
+    mask-size:
+      96px 96px,
+      contain,
+      contain;
+    mask-repeat: repeat, no-repeat, no-repeat;
+    mask-position:
+      0 0,
+      calc(50% - 1px) calc(100% - 1px),
+      calc(50% + 0.5px) calc(100% + 0.5px);
+    mask-composite: intersect, subtract, add;
+    background: linear-gradient(
+      135deg,
+      var(--rim) 0%,
+      var(--rim-soft) 45%,
+      transparent 80%
+    );
+    mix-blend-mode: screen;
+  }
+
+  /*
+   * 이름표 — 병 발치에 줄로 매달린 종이 태그.
+   *
+   *   병 발치(축) ─ 줄 ─ 구멍(아일릿) ─ 태그
+   *
+   * 묶음(.shelf-tag-hanger)의 윗변이 곧 줄이 병에 걸린 점이고, 그 점을 회전축
+   * (transform-origin: 50% 0)으로 둡니다. 트랙이 옆으로 밀릴 때 useTagSwing 이 매
+   * 프레임 --tag-swing(기울기)을 넣어 흔들고, 가라앉으면 지웁니다. rotate 에
+   * transition 을 걸지 마세요 — 매 프레임 바뀌는 값이라 전환이 끼면 흔들림이 뒤처져
+   * 흐물거립니다. 줄에 매다는 장식을 더할 때도 이 묶음 안에 넣으면 같이 흔들립니다.
+   *
+   * z-index 1 — 바닥 그림자(0) 위, 병 층(4 이상) 아래입니다. 그래서 줄의 윗끝이 병
+   * 밑단 뒤로 살짝 들어가 병 밑에서 나온 것처럼 보입니다.
+   *
+   * 투명도는 칸의 --slot-alpha 를 따릅니다. 창 밖으로 넘어가는 병과 함께 사라집니다.
+   */
+  .shelf-scope .shelf-tag-hanger {
+    /* 줄 길이 — 병 발치에서 태그 윗변까지. 태그가 벽감 아래끝보다 5px 아래에 걸립니다 */
+    --tag-drop: 20px;
+
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: max-content;
+    /* 칸 폭을 넘지 않게. 이름이 길면 태그 안에서 두 줄로 접힙니다 */
+    max-width: calc(100% - 10px);
+    translate: -50% 0;
+    transform-origin: 50% 0;
+    rotate: var(--tag-swing, 0deg);
+    opacity: var(--slot-alpha);
     transition: opacity 400ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  /*
+   * 태그 종이. 벽감보다 한 단 밝은 크림색에, 바탕과 같은 종이 결을 옅게 얹습니다.
+   * 높이를 못 박아(한 줄 이름도 두 줄 자리를 차지) 태그들의 아랫선을 맞춥니다.
+   */
+  .shelf-scope .shelf-tag {
+    position: relative;
+    isolation: isolate;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    max-width: 100%;
+    height: 65px;
+    margin-top: var(--tag-drop);
+    /* 위는 아일릿(4 + 7) 아래까지 비웁니다 */
+    padding: 15px 10px 5px;
+    border-radius: var(--radius-card);
+    color: var(--shelf-ink);
+    text-align: center;
+    background: var(--tag-paper);
+    box-shadow:
+      inset 0 1px 0 var(--highlight),
+      0 0 0 1px var(--tag-edge),
+      0 7px 10px -7px var(--depth);
+    transition:
+      background-color 200ms ease-out,
+      box-shadow 200ms ease-out;
+  }
+  .shelf-scope .shelf-tag::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    /* 태그 바탕 위 · 글자 아래. 태그가 isolation 이라 곱하기가 태그 밖으로 안 번집니다 */
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background-image: var(--grain-fine);
+    background-size: 180px 180px;
+    mix-blend-mode: multiply;
+    opacity: 0.35;
+  }
+
+  /* 고른 병의 태그. 한 단 밝아지고 가장자리에 먹색이 돕니다 */
+  .shelf-scope .shelf-slot[aria-pressed='true'] .shelf-tag {
+    background: var(--tag-paper-active);
+    box-shadow:
+      inset 0 1px 0 var(--highlight),
+      0 0 0 1px var(--tag-edge-active),
+      0 9px 14px -8px var(--depth);
+  }
+  /* 키보드 포커스 링. 버튼 상자(병 칸) 대신 매달린 태그에 두릅니다 */
+  .shelf-scope .shelf-slot:focus-visible .shelf-tag {
+    box-shadow:
+      inset 0 1px 0 var(--highlight),
+      0 0 0 2px var(--shelf-ink),
+      0 9px 14px -8px var(--depth);
+  }
+
+  /*
+   * 아일릿 — 태그 윗가운데의 황동 고리. 가운데 구멍은 어두운 점으로 둡니다.
+   * 줄이 이 구멍 가운데에서 끝납니다(.shelf-tag-string 의 높이 참고).
+   */
+  .shelf-scope .shelf-tag-eyelet {
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    width: 7px;
+    height: 7px;
+    translate: -50% 0;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      var(--tag-hole) 0 1.6px,
+      var(--eyelet) 2px 3px,
+      var(--eyelet-edge) 3.5px
+    );
+    box-shadow: 0 0.5px 0 var(--highlight);
+  }
+
+  /*
+   * 줄. 병 밑단 뒤로 6px 들어간 곳에서 시작해(윗끝을 흐려 병 밑에서 나오는 것처럼)
+   * 아일릿 구멍 가운데(태그 윗변 + 7.5px)에서 끝납니다. 태그보다 뒤에 그려서
+   * 구멍까지 줄이 태그 앞으로 지나갑니다.
+   */
+  .shelf-scope .shelf-tag-string {
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    width: 1px;
+    height: calc(var(--tag-drop) + 6px + 7.5px);
+    translate: -50% 0;
+    pointer-events: none;
+    background: linear-gradient(to bottom, transparent, var(--tag-string) 6px);
   }
 
   /*
@@ -474,7 +1054,7 @@
   }
 
   /*
-   * 자간을 넓힌 소형 라벨 — 브랜드명 · SCENT NOTE · TOP/MIDDLE/BASE · 하단 영문 문구.
+   * 자간을 넓힌 소형 라벨 — 브랜드명 · SCENT NOTE · TOP/MIDDLE/BASE · MEMO.
    *
    * @theme 에 자간 토큰이 없어서 두 컴포넌트가 각자 `tracking-[0.18em]` 문자열
    * 상수를 들고 있었습니다. 같은 값을 두 곳에서 관리하면 한쪽만 바뀝니다.
@@ -493,7 +1073,7 @@
   }
 
   /*
-   * 벽 가운데 넘김 화살표.
+   * 벽 양 끝 넘김 화살표.
    *
    * 반투명이라 뒤의 벽면이 비칩니다. 불투명하게 채우면 벽의 그러데이션이 끊겨
    * 진열장에 스티커를 붙인 것처럼 보입니다. 위쪽 1px 하이라이트와 옅은 그림자로
@@ -522,6 +1102,11 @@
   @media (prefers-reduced-motion: reduce) {
     .shelf-scope * {
       transition: none !important;
+    }
+    /* 마우스를 따라 움직이는 조명과 병의 시차도 끕니다 */
+    .shelf-scope .shelf-niche-light,
+    .shelf-scope .shelf-bottles {
+      translate: none;
     }
   }
 }

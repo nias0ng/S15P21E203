@@ -107,7 +107,7 @@ export function ShelfRegisterModal({
       }
     >
       {step === 1 ? (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <SearchField
             label="향수명 또는 브랜드명으로 검색"
             placeholder="향수명 · 브랜드 검색"
@@ -120,7 +120,7 @@ export function ShelfRegisterModal({
               description="검색어를 바꿔 보세요."
             />
           ) : (
-            <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
               {options.map((option) => (
                 <li key={option.perfumeId}>
                   <button
@@ -129,7 +129,7 @@ export function ShelfRegisterModal({
                     disabled={option.alreadyInShelf}
                     onClick={() => setPicked(option)}
                     className={cn(
-                      'border-line w-full border p-2 text-left transition-colors duration-120 ease-out',
+                      'border-line w-full border p-2.5 text-left transition-colors duration-120 ease-out',
                       option.alreadyInShelf
                         ? 'bg-line-soft cursor-not-allowed opacity-60'
                         : 'hover:border-accent',
@@ -137,7 +137,7 @@ export function ShelfRegisterModal({
                   >
                     <Thumbnail
                       fallback={option.alreadyInShelf ? '담김' : '이미지'}
-                      className="text-caption mb-2 h-16 w-full"
+                      className="text-caption mb-2.5 h-16.25 w-full"
                     />
                     <span className="text-ink text-body block truncate font-medium">
                       {option.name}
@@ -152,8 +152,8 @@ export function ShelfRegisterModal({
           )}
         </div>
       ) : (
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-2.5">
             <span className="text-ink text-body font-medium">
               {picked?.name}
             </span>
@@ -177,7 +177,7 @@ export function ShelfRegisterModal({
             onChange={setCategory}
           />
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <span className="text-ink-muted text-caption">내 취향 적합도</span>
             <StarRating
               label="내 취향 적합도"

@@ -75,7 +75,7 @@ export function ShelfSaveModal({
         </>
       }
     >
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <p className="text-ink-muted text-caption">
           {changing ? '옮길 분류를 선택하세요' : '분류를 선택하세요'}
         </p>

@@ -20,7 +20,7 @@ type Props = {
 /**
  * 칩 · 검색창의 공통 치수. 시안 실측(높이 42px · 모서리 8px)입니다.
  *
- * 높이를 h-[42px] 로 못 박은 이유: 칩·드롭다운·검색창이 한 줄에 서는데 각자
+ * 높이를 h-10 로 못 박은 이유: 칩·드롭다운·검색창이 한 줄에 서는데 각자
  * 안쪽 여백으로 높이를 만들면 글자 길이에 따라 1~2px 씩 어긋나 줄이 흔들립니다.
  *
  * 색·그림자는 `../shelf-display.css` 의 `.shelf-field` 가 냅니다 —
@@ -28,7 +28,7 @@ type Props = {
  * 유틸리티로 옮기면 읽히지 않습니다.
  */
 const FIELD =
-  'shelf-field h-[42px] rounded-lg transition-colors duration-120 ease-out ' +
+  'shelf-field h-10 rounded-lg transition-colors duration-120 ease-out ' +
   'focus-visible:ring-2 focus-visible:ring-[var(--shelf-ink)] focus-visible:ring-offset-2 ' +
   'focus-visible:ring-offset-[var(--paper)] outline-none'
 
@@ -36,10 +36,10 @@ const FIELD =
  * 진열대 머리말 옆 도구 줄 (와이어프레임 A13 — 진열장 시안)
  *
  * 왼쪽부터 분류 칩 → 구분선 → 드롭다운 → 검색창 순으로 한 줄에 놓입니다.
- * 진열장에 무엇을 세울지 정하는 줄이라 이름이 Filters 가 아니라 Toolbar 입니다 —
- * 거르기(칩·검색)와 정렬이 한 줄에 같이 있습니다.
+ * 진열대를 다루는 줄이라 이름이 Filters 가 아니라 Toolbar 입니다 — 칸으로 가기(칩),
+ * 거르기(검색)와 정렬이 한 줄에 같이 있습니다.
  * 검색창만 flex-1 이라 창 폭이 변해도 칩은 안 밀리고 검색창이 늘고 줄어듭니다.
- * 칩이 밀리면 "지금 무엇으로 걸러져 있는지"가 화면 밖으로 나가버립니다.
+ * 칩이 밀리면 "지금 벽의 어느 칸을 보고 있는지"가 화면 밖으로 나가버립니다.
  */
 export function ShelfToolbar({
   counts,
@@ -52,18 +52,21 @@ export function ShelfToolbar({
   const searchInputId = useId()
 
   return (
-    <div className={cn('flex items-center gap-2', className)}>
+    <div className={cn('flex items-center gap-2.5', className)}>
       {/*
-        칩이 곧 진열장의 세 칸입니다. 라벨을 여기 적지 않고 SHELF_CATEGORIES 에서
+        칩이 곧 진열대 벽의 세 칸입니다. 라벨을 여기 적지 않고 SHELF_CATEGORIES 에서
         끌어옵니다 — 예전에는 목업 문구를 옮겨 적어서 저장 모달의 "시향해 봄" 을
         여기서는 "시향 기록" 이라고 부르고 있었습니다.
 
-        role="tablist" 가 아니라 그냥 group 입니다. 칸이 미끄러져 바뀌긴 하지만
-        탭 패널처럼 id 로 이어붙인 구조가 아니고, 진열장에도 휠로 들어올 수 있어서
-        탭 규약(좌우 화살표로 이동 · aria-controls)을 온전히 지킬 수 없습니다.
-        못 지킬 규약을 이름만 빌려 쓰면 낭독기가 더 헷갈립니다.
+        칩은 거르지 않습니다. 세 칸이 벽에 모두 이어 서 있고, 칩을 누르면 그 칸의
+        첫머리로 벽이 흐릅니다. 켜진 칩은 지금 창 가운데에 걸린 칸입니다 — 휠로 벽을
+        흘리면 칩도 따라 켜집니다.
+
+        role="tablist" 가 아니라 그냥 group 입니다. 탭 패널처럼 id 로 이어붙인 구조가
+        아니고, 벽을 휠로도 옮길 수 있어서 탭 규약(좌우 화살표로 이동 · aria-controls)을
+        온전히 지킬 수 없습니다. 못 지킬 규약을 이름만 빌려 쓰면 낭독기가 더 헷갈립니다.
       */}
-      <div role="group" aria-label="진열대 분류" className="flex gap-2">
+      <div role="group" aria-label="진열대 분류" className="flex gap-2.5">
         {SHELF_CATEGORIES.map((chip) => {
           const selected = value === chip.value
 
@@ -71,14 +74,13 @@ export function ShelfToolbar({
             <button
               key={chip.value}
               type="button"
-              // 라디오가 아니라 토글로 읽히도록 aria-pressed 를 씁니다.
-              // 같은 칩을 다시 눌러도 해제되지 않는(항상 하나는 켜진) 필터라
-              // 해제 동작은 두지 않았습니다 — 'ALL' 이 그 자리를 대신합니다.
+              // 켜짐을 aria-pressed 로 알립니다. 늘 하나는 켜져 있고(창 가운데 칸),
+              // 같은 칩을 다시 누르면 그 칸의 첫머리로 다시 갑니다.
               aria-pressed={selected}
               onClick={() => onChange(chip.value)}
               className={cn(
                 FIELD,
-                'text-caption flex items-center gap-2 px-4',
+                'text-caption flex items-center gap-2.5 px-3.75',
                 // 켜진 칩은 테두리가 아니라 **채움**으로 표시합니다. 시안의 종이
                 // 위에서 테두리 한 줄은 눈에 안 띄고, 무엇보다 켜질 때만 테두리가
                 // 생기면 칩 높이가 뛰면서 줄 전체가 흔들립니다.
@@ -99,7 +101,7 @@ export function ShelfToolbar({
       </div>
 
       {/* 거르는 것(칩)과 정렬·검색을 눈으로 갈라주는 선 */}
-      <span aria-hidden className="shelf-hairline mx-2 h-6 w-px" />
+      <span aria-hidden className="shelf-hairline mx-2.5 h-6.25 w-px" />
 
       <FilterDropdown label="향 계열" />
       <FilterDropdown label="정렬" />
@@ -113,7 +115,7 @@ export function ShelfToolbar({
         htmlFor={searchInputId}
         className={cn(
           FIELD,
-          'flex flex-1 items-center gap-2 rounded-full px-4',
+          'flex flex-1 items-center gap-2.5 rounded-full px-3.75',
           'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--shelf-ink)]',
           'has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-[var(--paper)]',
         )}
@@ -157,7 +159,7 @@ function FilterDropdown({ label }: { label: string }) {
       aria-expanded={false}
       className={cn(
         FIELD,
-        'text-caption flex items-center gap-2 px-4',
+        'text-caption flex items-center gap-2.5 px-3.75',
         // 공통 Disabled 규칙(UI 명세 2장) — 채움을 없애고 윤곽만 남깁니다.
         // "누를 수 없다"가 색이 아니라 형태로 드러납니다.
         'disabled:pointer-events-none disabled:bg-transparent disabled:opacity-40 disabled:shadow-none',
@@ -184,7 +186,7 @@ function SearchIcon() {
       stroke="currentColor"
       strokeWidth="1.5"
       strokeLinecap="round"
-      className="shelf-muted size-4 shrink-0"
+      className="shelf-muted size-3.75 shrink-0"
     >
       <circle cx="7" cy="7" r="4.5" />
       <path d="m10.5 10.5 3 3" />

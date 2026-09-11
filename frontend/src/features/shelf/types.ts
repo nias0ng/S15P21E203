@@ -31,20 +31,12 @@ export const SHELF_CATEGORIES = [
  */
 export type ShelfCounts = Record<ShelfCategory, number>
 
-/**
- * 진열장에 한 번에 서는 병의 수. 시안 실측입니다.
- *
- * 벽감 높이(329px)와 병 폭이 이 수를 전제로 맞춰져 있습니다.
- */
-export const SHELF_SLOT_COUNT = 7
-
-/**
- * 좌우 화살표 한 번에 넘어가는 칸 수.
- *
- * 일곱 칸을 통째로 넘기지 않는 이유: 화면이 한 번에 전부 바뀌면 방금 본 병이
- * 어디로 갔는지 알 수 없습니다. 세 칸씩 밀면 네 병이 남아 있어 이어집니다.
- */
-export const SHELF_PAGE_STEP = 3
+/** 진열장 한 칸 — 분류 하나와 거기 선 향수들 */
+export type ShelfSection = {
+  category: ShelfCategory
+  label: string
+  items: ShelfItem[]
+}
 
 /**
  * 진열대에 담긴 향수 한 개.

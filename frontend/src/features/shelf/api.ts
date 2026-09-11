@@ -12,18 +12,27 @@ import type { ShelfItem } from './types'
  * 품질 90 으로 옮겨 73KB 가 됐습니다(75% 절감). 눈에 보이는 차이가 있는 픽셀은
  * 0.07% 로, 유리병 그러데이션에도 띠가 생기지 않습니다.
  * 팔레트 PNG 는 더 작지만(60KB) 256색이라 그러데이션이 끊깁니다.
+ *
+ * 사진은 **투명 여백을 잘라낸 것**이어야 합니다. removebg 원본은 1505x1360 캔버스
+ * 가운데에 병이 폭의 40% 안팎으로 앉아 있어서, object-contain 이 캔버스째 칸 폭에
+ * 맞추느라 병이 1/3 크기로 줄어듭니다.
  */
-const BOTTLE_IMAGES = Object.values(
+const BOTTLE_IMAGES = Object.entries(
   import.meta.glob<{ default: string }>('../../assets/bottles/*.{png,webp}', {
     eager: true,
   }),
-).map((module) => module.default)
+)
 
-/** 사진 수가 향수 수보다 적어도 되도록 돌려 씁니다. 없으면 null */
-const bottle = (index: number) =>
-  BOTTLE_IMAGES.length > 0
-    ? (BOTTLE_IMAGES[index % BOTTLE_IMAGES.length] ?? null)
-    : null
+/**
+ * 파일 이름에 `name` 이 들어간 사진. 없으면 null
+ *
+ * 순서로 돌려 쓰지 않고 이름으로 찾습니다 — 순서로 붙이면 폴더에 어떤 사진이
+ * 들었느냐에 따라 조 말론 자리에 딥티크 병이 섭니다. `name` 은 파일 이름의
+ * `브랜드_-_향수명` 부분입니다. 앞 번호와 removebg 가 붙인 꼬리는 받은 곳마다
+ * 다를 수 있어서 빼고 적습니다.
+ */
+const bottle = (name: string) =>
+  BOTTLE_IMAGES.find(([path]) => path.includes(name))?.[1].default ?? null
 
 /**
  * ⚠️ 백엔드에 진열대 엔드포인트가 아직 없습니다. 화면을 눈으로 확인할 수 있도록
@@ -42,7 +51,7 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
     perfumeId: 1,
     name: '조 말론 우드 세이지 앤 씨 솔트',
     brand: '조말론',
-    thumbnailUrl: bottle(0),
+    thumbnailUrl: bottle('Jo_Malone_London_-_Wood_Sage'),
     category: 'OWNED',
     representative: true,
     rating: 4,
@@ -54,7 +63,7 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
     perfumeId: 2,
     name: '딥티크 오 드 퍼퓸 오르페옹',
     brand: '딥티크',
-    thumbnailUrl: bottle(1),
+    thumbnailUrl: bottle('Diptyque_-_Orpheon'),
     category: 'OWNED',
     representative: false,
     rating: 5,
@@ -66,7 +75,7 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
     perfumeId: 3,
     name: '르라보 상탈 33',
     brand: '르라보',
-    thumbnailUrl: bottle(2),
+    thumbnailUrl: bottle('Le_Labo_-_Santal_33'),
     category: 'OWNED',
     representative: false,
     rating: 3,
@@ -78,7 +87,7 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
     perfumeId: 4,
     name: '바이레도 블랑쉬',
     brand: '바이레도',
-    thumbnailUrl: bottle(3),
+    thumbnailUrl: bottle('Byredo_-_Blanche'),
     category: 'OWNED',
     representative: false,
     rating: 4,
@@ -88,9 +97,9 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
   {
     shelfItemId: 5,
     perfumeId: 5,
-    name: '메종 마르지엘라 재즈 클럽',
+    name: '메종 마르지엘라 레이지 선데이 모닝',
     brand: '메종 마르지엘라',
-    thumbnailUrl: bottle(4),
+    thumbnailUrl: bottle('Maison_Martin_Margiela_-_Lazy_Sunday_Morning'),
     category: 'OWNED',
     representative: false,
     rating: 5,
@@ -102,7 +111,7 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
     perfumeId: 6,
     name: '딥티크 필로시코스',
     brand: '딥티크',
-    thumbnailUrl: bottle(5),
+    thumbnailUrl: bottle('Diptyque_-_Philosykos_Eau_de_Toilette'),
     category: 'TRIED',
     representative: false,
     rating: 4,
@@ -114,7 +123,7 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
     perfumeId: 7,
     name: '샤넬 코코 마드모아젤',
     brand: '샤넬',
-    thumbnailUrl: bottle(6),
+    thumbnailUrl: bottle('Chanel_-_Coco_Mademoiselle'),
     category: 'TRIED',
     representative: false,
     rating: 3,
@@ -126,7 +135,7 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
     perfumeId: 8,
     name: '디올 미스 디올',
     brand: '디올',
-    thumbnailUrl: bottle(7),
+    thumbnailUrl: bottle('Dior_-_Miss_Dior_Eau_de_Parfum'),
     category: 'TRIED',
     representative: false,
     rating: 5,
@@ -138,7 +147,7 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
     perfumeId: 9,
     name: '이솝 테싯',
     brand: '이솝',
-    thumbnailUrl: bottle(8),
+    thumbnailUrl: bottle('Aesop_-_Tacit'),
     category: 'TRIED',
     representative: false,
     rating: 4,
@@ -150,7 +159,7 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
     perfumeId: 10,
     name: '바이레도 집시 워터',
     brand: '바이레도',
-    thumbnailUrl: bottle(9),
+    thumbnailUrl: bottle('Byredo_-_Gypsy_Water'),
     category: 'TRIED',
     representative: false,
     rating: 3,
@@ -162,7 +171,7 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
     perfumeId: 11,
     name: '톰포드 네롤리 포르토피노',
     brand: '톰포드',
-    thumbnailUrl: bottle(10),
+    thumbnailUrl: bottle('Tom_Ford_-_Neroli_Portofino'),
     category: 'TRIED',
     representative: false,
     rating: 4,
@@ -174,7 +183,7 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
     perfumeId: 12,
     name: '조말론 블랙베리 앤 베이',
     brand: '조말론',
-    thumbnailUrl: bottle(11),
+    thumbnailUrl: bottle('Jo_Malone_London_-_Blackberry'),
     category: 'TRIED',
     representative: false,
     rating: 5,
@@ -186,7 +195,7 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
     perfumeId: 13,
     name: '랑방 에끌라 드 아르페쥬',
     brand: '랑방',
-    thumbnailUrl: bottle(12),
+    thumbnailUrl: bottle('Lanvin_-_Eclat_d_Arpege'),
     category: 'TRIED',
     representative: false,
     rating: 3,
@@ -198,7 +207,7 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
     perfumeId: 14,
     name: '구찌 블룸',
     brand: '구찌',
-    thumbnailUrl: bottle(13),
+    thumbnailUrl: bottle('Gucci_-_Gucci_Bloom'),
     category: 'TRIED',
     representative: false,
     rating: 4,
@@ -210,7 +219,7 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
     perfumeId: 15,
     name: '에르메스 운 자르뎅 수르닐',
     brand: '에르메스',
-    thumbnailUrl: bottle(14),
+    thumbnailUrl: bottle('Hermes_-_Un_Jardin_Sur_Le_Nil'),
     category: 'TRIED',
     representative: false,
     rating: 4,
@@ -220,9 +229,9 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
   {
     shelfItemId: 16,
     perfumeId: 16,
-    name: '아쿠아디파르마 피코 디 아말피',
-    brand: '아쿠아디파르마',
-    thumbnailUrl: bottle(15),
+    name: '돌체앤가바나 라이트 블루',
+    brand: '돌체앤가바나',
+    thumbnailUrl: bottle('Dolce_Gabbana_-_Light_Blue_Eau_de_Toilette'),
     category: 'TRIED',
     representative: false,
     rating: 3,
@@ -234,7 +243,7 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
     perfumeId: 17,
     name: '입생로랑 리브르',
     brand: '입생로랑뷰티',
-    thumbnailUrl: bottle(16),
+    thumbnailUrl: bottle('Yves_Saint_Laurent_-_Libre'),
     category: 'TRIED',
     representative: false,
     rating: 5,
@@ -244,9 +253,9 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
   {
     shelfItemId: 18,
     perfumeId: 18,
-    name: '끌로에 시그니처',
+    name: '끌로에 노마드',
     brand: '끌로에',
-    thumbnailUrl: bottle(17),
+    thumbnailUrl: bottle('Chloe_-_Nomade'),
     category: 'TRIED',
     representative: false,
     rating: 4,
@@ -256,9 +265,9 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
   {
     shelfItemId: 19,
     perfumeId: 19,
-    name: '포맨트 코튼메모리',
-    brand: '포맨트',
-    thumbnailUrl: bottle(18),
+    name: '클린 웜 코튼',
+    brand: '클린',
+    thumbnailUrl: bottle('Clean_-_Clean_Warm_Cotton'),
     category: 'TRIED',
     representative: false,
     rating: 3,
@@ -268,9 +277,9 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
   {
     shelfItemId: 20,
     perfumeId: 20,
-    name: '산타마리아노벨라 프리지아',
+    name: '산타마리아노벨라 안젤리 디 피렌체',
     brand: '산타마리아노벨라',
-    thumbnailUrl: bottle(19),
+    thumbnailUrl: bottle('Santa_Maria_Novella_-_Angeli_di_Firenze'),
     category: 'TRIED',
     representative: false,
     rating: 4,
@@ -282,7 +291,7 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
     perfumeId: 21,
     name: '르라보 어나더 13',
     brand: '르라보',
-    thumbnailUrl: bottle(20),
+    thumbnailUrl: bottle('Le_Labo_-_Another_13'),
     category: 'TRIED',
     representative: false,
     rating: 5,
@@ -294,7 +303,7 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
     perfumeId: 22,
     name: '몽블랑 레전드',
     brand: '몽블랑',
-    thumbnailUrl: bottle(21),
+    thumbnailUrl: bottle('Montblanc_-_Legend'),
     category: 'TRIED',
     representative: false,
     rating: 2,
@@ -306,7 +315,7 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
     perfumeId: 23,
     name: '프라다 캔디',
     brand: '프라다',
-    thumbnailUrl: bottle(22),
+    thumbnailUrl: bottle('Prada_-_Prada_Candy'),
     category: 'WISH',
     representative: false,
     rating: null,
@@ -316,9 +325,9 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
   {
     shelfItemId: 24,
     perfumeId: 24,
-    name: '헉슬리 모로칸가드너',
-    brand: '헉슬리',
-    thumbnailUrl: bottle(23),
+    name: '프레데릭 말 포트레이트 오브 어 레이디',
+    brand: '프레데릭 말',
+    thumbnailUrl: bottle('Frederic_Malle_-_Portrait_of_a_Lady'),
     category: 'WISH',
     representative: false,
     rating: null,
@@ -328,9 +337,9 @@ const PLACEHOLDER_SHELF: ShelfItem[] = [
   {
     shelfItemId: 25,
     perfumeId: 25,
-    name: '탬버린즈 에그 퍼퓸',
-    brand: '탬버린즈',
-    thumbnailUrl: bottle(24),
+    name: '샤넬 샹스 오 땅드르',
+    brand: '샤넬',
+    thumbnailUrl: bottle('Chanel_-_Chance_Eau_Tendre'),
     category: 'WISH',
     representative: false,
     rating: null,
