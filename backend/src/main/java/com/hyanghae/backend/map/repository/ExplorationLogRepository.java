@@ -1,9 +1,9 @@
 package com.hyanghae.backend.map.repository;
 
-import com.hyanghae.backend.map.dto.response.ExplorationLogCreateResponse;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -33,14 +33,13 @@ public class ExplorationLogRepository {
     /**
      * 기록 한 줄을 넣습니다. 빈 바다로 간 이동은 {@code perfumeId} 가 {@code null} 입니다.
      *
-     * <p>{@code visited_at} 을 값으로 주지 않습니다. 표의 기본값이 {@code NOW()} 이고, 넣은
-     * 시각을 {@code RETURNING} 으로 돌려받아 응답에 씁니다. 애플리케이션이 만든 시각을 쓰면
-     * 인스턴스마다 시계가 조금씩 달라 같은 순간의 기록이 뒤섞여 보입니다.
+     * <p>{@code visited_at} 을 값으로 주지 않습니다. 표의 기본값이 {@code NOW()} 입니다.
+     * 애플리케이션이 만든 시각을 쓰면 인스턴스마다 시계가 조금씩 달라 같은 순간의 기록이
+     * 뒤섞여 보입니다.
      */
     private static final String INSERT_LOG = """
             INSERT INTO map_exploration_logs (user_id, perfume_id, x_coordinate, y_coordinate)
             VALUES (:userId, :perfumeId, :x, :y)
-            RETURNING log_id, visited_at
             """;
 
     /**
@@ -61,10 +60,45 @@ public class ExplorationLogRepository {
             LIMIT 1
             """;
 
+    /**
+     * 향해 일지를 만들 기록입니다. 최근 것부터 가져옵니다.
+     *
+     * <p>향수 이름을 함께 읽습니다. 일지는 구역 진입 아래에 그 구역에서 들른 향수를 이름으로
+     * 보여주고, 기록이 가리키는 향수는 지도에 있던 향수라 이름이 반드시 있습니다.
+     *
+     * <p>비활성으로 바뀐 향수도 이름이 나옵니다. 지나간 항해의 기록이라 그때 무엇을 봤는지는
+     * 그대로 남는 것이 맞습니다. 그래서 {@code is_active} 를 보지 않습니다.
+     */
+    private static final String SELECT_RECENT_LOGS = """
+            SELECT l.log_id, l.perfume_id, p.name AS perfume_name,
+                   l.x_coordinate, l.y_coordinate, l.visited_at
+            FROM map_exploration_logs l
+            LEFT JOIN perfumes p ON p.perfume_id = l.perfume_id
+            WHERE l.user_id = :userId
+            ORDER BY l.visited_at DESC, l.log_id DESC
+            LIMIT :limit
+            """;
+
     private final JdbcClient jdbcClient;
 
     public ExplorationLogRepository(JdbcClient jdbcClient) {
         this.jdbcClient = jdbcClient;
+    }
+
+    /** 최근 기록부터 {@code limit} 줄입니다. */
+    public List<ExplorationLogRow> findRecent(Long userId, int limit) {
+        return jdbcClient.sql(SELECT_RECENT_LOGS)
+                .param("userId", userId)
+                .param("limit", limit)
+                .query((rs, rowNum) -> new ExplorationLogRow(
+                        rs.getLong("log_id"),
+                        rs.getObject("perfume_id", Long.class),
+                        rs.getString("perfume_name"),
+                        rs.getDouble("x_coordinate"),
+                        rs.getDouble("y_coordinate"),
+                        rs.getObject("visited_at", OffsetDateTime.class)
+                ))
+                .list();
     }
 
     /** 지도에 없는 향수는 빈 {@link Optional} 입니다. */
@@ -75,21 +109,17 @@ public class ExplorationLogRepository {
                 .optional();
     }
 
-    public ExplorationLogCreateResponse insert(
+    public void insert(
             Long userId,
             Long perfumeId,
             ExplorationPoint point
     ) {
-        return jdbcClient.sql(INSERT_LOG)
+        jdbcClient.sql(INSERT_LOG)
                 .param("userId", userId)
                 .param("perfumeId", perfumeId)
                 .param("x", point.x())
                 .param("y", point.y())
-                .query((rs, rowNum) -> new ExplorationLogCreateResponse(
-                        rs.getLong("log_id"),
-                        rs.getObject("visited_at", OffsetDateTime.class)
-                ))
-                .single();
+                .update();
     }
 
     /** 기록이 하나도 없는 사용자는 빈 {@link Optional} 입니다. */

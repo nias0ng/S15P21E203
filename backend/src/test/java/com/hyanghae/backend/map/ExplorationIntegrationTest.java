@@ -2,12 +2,12 @@ package com.hyanghae.backend.map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.hyanghae.backend.global.security.CurrentUser;
-import com.hyanghae.backend.map.dto.request.ExplorationLogCreateRequest;
+import com.hyanghae.backend.map.dto.request.ExplorationMoveRequest;
 import com.hyanghae.backend.map.exception.MapErrorCode;
 import com.hyanghae.backend.map.service.ExplorationService;
 import com.hyanghae.backend.support.IntegrationTest;
@@ -53,8 +53,8 @@ import org.springframework.test.web.servlet.ResultActions;
 @Import(ExplorationIntegrationTest.FakeCurrentUserConfig.class)
 class ExplorationIntegrationTest {
 
+    private static final String MOVE_URL = "/api/v1/map/exploration/me";
     private static final String LOGS_URL = "/api/v1/map/exploration-logs";
-    private static final String STATE_URL = "/api/v1/map/exploration/me";
     private static final long USER_ID = 1;
 
     private static final long REGION_A_ID = 9001;
@@ -107,12 +107,11 @@ class ExplorationIntegrationTest {
      */
     @Test
     void recordsPerfumeVisitWithMapCoordinates() throws Exception {
-        mockMvc.perform(post(LOGS_URL)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"perfumeId\": 1}"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.logId").isNumber())
-                .andExpect(jsonPath("$.visitedAt").isNotEmpty());
+        clickPerfume(1)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.x").value(0.2))
+                .andExpect(jsonPath("$.y").value(0.3))
+                .andExpect(jsonPath("$.updatedAt").isNotEmpty());
 
         assertThat(longColumnOf("user_id")).isEqualTo(USER_ID);
         assertThat(longColumnOf("perfume_id")).isEqualTo(1L);
@@ -128,8 +127,8 @@ class ExplorationIntegrationTest {
      */
     @Test
     void stacksRowsForRepeatedPerfumeVisits() throws Exception {
-        clickPerfume(1).andExpect(status().isCreated());
-        clickPerfume(1).andExpect(status().isCreated());
+        clickPerfume(1).andExpect(status().isOk());
+        clickPerfume(1).andExpect(status().isOk());
 
         assertThat(countLogs()).isEqualTo(2);
     }
@@ -161,11 +160,11 @@ class ExplorationIntegrationTest {
      */
     @Test
     void recordsSeaMovesOnlyWhenTheRegionChanges() throws Exception {
-        clickSea(0.1, 0.1).andExpect(status().isCreated());    // 바깥 -> A
-        clickSea(0.3, 0.3).andExpect(status().isNoContent());  // A -> A
-        clickSea(0.5, 0.5).andExpect(status().isCreated());    // A -> 바다
-        clickSea(0.55, 0.5).andExpect(status().isNoContent()); // 바다 -> 바다
-        clickSea(0.7, 0.7).andExpect(status().isCreated());    // 바다 -> B
+        clickSea(0.1, 0.1).andExpect(status().isOk());    // 바깥 -> A
+        clickSea(0.3, 0.3).andExpect(status().isOk());  // A -> A
+        clickSea(0.5, 0.5).andExpect(status().isOk());    // A -> 바다
+        clickSea(0.55, 0.5).andExpect(status().isOk()); // 바다 -> 바다
+        clickSea(0.7, 0.7).andExpect(status().isOk());    // 바다 -> B
 
         assertThat(countLogs()).isEqualTo(3);
         assertThat(countLogsWithoutPerfume()).isEqualTo(3);
@@ -179,7 +178,7 @@ class ExplorationIntegrationTest {
      */
     @Test
     void ignoresFirstMoveIntoOpenSea() throws Exception {
-        clickSea(0.5, 0.5).andExpect(status().isNoContent());
+        clickSea(0.5, 0.5).andExpect(status().isOk());
 
         assertThat(countLogs()).isZero();
     }
@@ -192,9 +191,9 @@ class ExplorationIntegrationTest {
      */
     @Test
     void treatsPerfumeVisitAsTheShipPosition() throws Exception {
-        clickPerfume(1).andExpect(status().isCreated());
+        clickPerfume(1).andExpect(status().isOk());
 
-        clickSea(0.3, 0.3).andExpect(status().isNoContent());
+        clickSea(0.3, 0.3).andExpect(status().isOk());
 
         assertThat(countLogs()).isEqualTo(1);
     }
@@ -212,10 +211,10 @@ class ExplorationIntegrationTest {
         insertUser(otherUserId, "other@hyanghae.test", "다른 항해자");
 
         currentUser.login(otherUserId);
-        clickSea(0.1, 0.1).andExpect(status().isCreated());   // 다른 사용자가 A 로 진입
+        clickSea(0.1, 0.1).andExpect(status().isOk());   // 다른 사용자가 A 로 진입
 
         currentUser.login(USER_ID);
-        clickSea(0.1, 0.1).andExpect(status().isCreated());   // 나도 A 로 진입
+        clickSea(0.1, 0.1).andExpect(status().isOk());   // 나도 A 로 진입
 
         assertThat(countLogsOf(USER_ID)).isEqualTo(1);
         assertThat(countLogsOf(otherUserId)).isEqualTo(1);
@@ -229,10 +228,10 @@ class ExplorationIntegrationTest {
      */
     @Test
     void keepsShipPositionEvenWhenNothingIsLogged() throws Exception {
-        clickSea(0.1, 0.1).andExpect(status().isCreated());
-        clickSea(0.3, 0.35).andExpect(status().isNoContent());
+        clickSea(0.1, 0.1).andExpect(status().isOk());
+        clickSea(0.3, 0.35).andExpect(status().isOk());
 
-        mockMvc.perform(get(STATE_URL))
+        mockMvc.perform(get(MOVE_URL))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.x").value(0.3))
                 .andExpect(jsonPath("$.y").value(0.35))
@@ -244,9 +243,9 @@ class ExplorationIntegrationTest {
     /** 향수를 고른 이동은 그 향수의 지도 좌표가 배의 자리가 됩니다. */
     @Test
     void movesShipToThePerfumeCoordinates() throws Exception {
-        clickPerfume(1).andExpect(status().isCreated());
+        clickPerfume(1).andExpect(status().isOk());
 
-        mockMvc.perform(get(STATE_URL))
+        mockMvc.perform(get(MOVE_URL))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.x").value(0.2))
                 .andExpect(jsonPath("$.y").value(0.3));
@@ -259,7 +258,7 @@ class ExplorationIntegrationTest {
      */
     @Test
     void servesEmptyPositionBeforeTheFirstMove() throws Exception {
-        mockMvc.perform(get(STATE_URL))
+        mockMvc.perform(get(MOVE_URL))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.x").doesNotExist())
                 .andExpect(jsonPath("$.y").doesNotExist())
@@ -272,13 +271,13 @@ class ExplorationIntegrationTest {
         long otherUserId = 3;
         insertUser(otherUserId, "sailor3@hyanghae.test", "다른 배");
 
-        clickSea(0.1, 0.1).andExpect(status().isCreated());
+        clickSea(0.1, 0.1).andExpect(status().isOk());
 
         currentUser.login(otherUserId);
-        clickSea(0.7, 0.7).andExpect(status().isCreated());
+        clickSea(0.7, 0.7).andExpect(status().isOk());
 
         currentUser.login(USER_ID);
-        mockMvc.perform(get(STATE_URL))
+        mockMvc.perform(get(MOVE_URL))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.x").value(0.1))
                 .andExpect(jsonPath("$.y").value(0.1));
@@ -310,7 +309,7 @@ class ExplorationIntegrationTest {
                     ready.countDown();
                     start.await();
                     return explorationService.move(
-                            new ExplorationLogCreateRequest(null, 0.1, y));
+                            new ExplorationMoveRequest(null, 0.1, y));
                 }));
             }
             ready.await();
@@ -325,12 +324,106 @@ class ExplorationIntegrationTest {
         assertThat(countStatesOf(USER_ID)).isEqualTo(1);
     }
 
+    /**
+     * 향해 일지는 구역 진입 단위로 묶여 최근 것부터 나옵니다.
+     *
+     * <p>배가 지나온 순서대로 눌러 봅니다. A 구역에 들어가 향수를 두 번 고르고(같은 향수를 두 번
+     * 포함), 바다로 나갔다가 B 구역으로 들어갑니다. 일지는 진입 두 줄이고, A 줄에는 향수가 한 번만
+     * 나오며, 바다로 나간 줄은 보이지 않습니다.
+     */
+    @Test
+    void groupsVoyageLogByRegionEntry() throws Exception {
+        clickSea(0.1, 0.1).andExpect(status().isOk());   // A 진입
+        clickPerfume(1).andExpect(status().isOk());      // A 안의 향수
+        clickPerfume(1).andExpect(status().isOk());      // 같은 향수를 다시
+        clickSea(0.5, 0.5).andExpect(status().isOk());   // 영역 밖 바다
+        clickSea(0.7, 0.7).andExpect(status().isOk());   // B 진입
+
+        mockMvc.perform(get(LOGS_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries.length()").value(2))
+                .andExpect(jsonPath("$.entries[0].region").value("TEST_B"))
+                .andExpect(jsonPath("$.entries[0].visited").isEmpty())
+                .andExpect(jsonPath("$.entries[1].region").value("TEST_A"))
+                .andExpect(jsonPath("$.entries[1].scentRegionId").value(REGION_A_ID))
+                .andExpect(jsonPath("$.entries[1].enteredAt").isNotEmpty())
+                .andExpect(jsonPath("$.entries[1].visited.length()").value(1))
+                .andExpect(jsonPath("$.entries[1].visited[0].perfumeId").value(1))
+                .andExpect(jsonPath("$.entries[1].visited[0].name").value("Base Scent"));
+    }
+
+    /**
+     * 바다에 나갔다 같은 구역으로 돌아오면 진입이 두 줄입니다.
+     *
+     * <p>배가 그 구역을 두 번 지난 것이라 일지에도 두 번 적는 것이 맞습니다.
+     */
+    @Test
+    void splitsEntriesWhenTheShipLeavesAndReturns() throws Exception {
+        clickSea(0.1, 0.1).andExpect(status().isOk());   // A 진입
+        clickSea(0.5, 0.5).andExpect(status().isOk());   // 영역 밖으로
+        clickSea(0.2, 0.2).andExpect(status().isOk());   // A 로 다시
+
+        mockMvc.perform(get(LOGS_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries.length()").value(2))
+                .andExpect(jsonPath("$.entries[0].region").value("TEST_A"))
+                .andExpect(jsonPath("$.entries[1].region").value("TEST_A"));
+    }
+
+    /** {@code size} 로 받을 진입 수를 줄일 수 있습니다. 최근 것부터 남습니다. */
+    @Test
+    void limitsVoyageLogEntries() throws Exception {
+        clickSea(0.1, 0.1).andExpect(status().isOk());   // A
+        clickSea(0.7, 0.7).andExpect(status().isOk());   // B
+
+        mockMvc.perform(get(LOGS_URL).param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries.length()").value(1))
+                .andExpect(jsonPath("$.entries[0].region").value("TEST_B"));
+    }
+
+    /** 움직인 적이 없으면 일지가 빕니다. 오류가 아닙니다. */
+    @Test
+    void servesEmptyVoyageLogBeforeTheFirstMove() throws Exception {
+        mockMvc.perform(get(LOGS_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries").isEmpty());
+    }
+
+    /** 일지도 사용자별입니다. 다른 사람의 항해는 내 일지에 나오지 않습니다. */
+    @Test
+    void keepsVoyageLogPerUser() throws Exception {
+        long otherUserId = 4;
+        insertUser(otherUserId, "sailor4@hyanghae.test", "남의 배");
+
+        currentUser.login(otherUserId);
+        clickSea(0.7, 0.7).andExpect(status().isOk());   // 다른 사용자가 B 로
+
+        currentUser.login(USER_ID);
+        clickSea(0.1, 0.1).andExpect(status().isOk());   // 나는 A 로
+
+        mockMvc.perform(get(LOGS_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries.length()").value(1))
+                .andExpect(jsonPath("$.entries[0].region").value("TEST_A"));
+    }
+
+    /** 일지 조회도 로그인이 필요합니다. */
+    @Test
+    void requiresLoginToReadVoyageLog() throws Exception {
+        currentUser.logout();
+
+        mockMvc.perform(get(LOGS_URL))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(MapErrorCode.MAP_LOGIN_REQUIRED.code()));
+    }
+
     /** 자리 조회도 로그인이 필요합니다. */
     @Test
     void requiresLoginToReadPosition() throws Exception {
         currentUser.logout();
 
-        mockMvc.perform(get(STATE_URL))
+        mockMvc.perform(get(MOVE_URL))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(MapErrorCode.MAP_LOGIN_REQUIRED.code()));
     }
@@ -350,7 +443,7 @@ class ExplorationIntegrationTest {
     /** 향수 번호도 좌표도 없으면 400 입니다. 어디로 움직였는지 모르는 기록은 남길 수 없습니다. */
     @Test
     void rejectsRequestWithoutPerfumeOrCoordinate() throws Exception {
-        mockMvc.perform(post(LOGS_URL)
+        mockMvc.perform(put(MOVE_URL)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest())
@@ -360,16 +453,14 @@ class ExplorationIntegrationTest {
         assertThat(countLogs()).isZero();
     }
 
-    private ResultActions clickPerfume(long perfumeId)
-            throws Exception {
-        return mockMvc.perform(post(LOGS_URL)
+    private ResultActions clickPerfume(long perfumeId) throws Exception {
+        return mockMvc.perform(put(MOVE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"perfumeId\": " + perfumeId + "}"));
     }
 
-    private ResultActions clickSea(double x, double y)
-            throws Exception {
-        return mockMvc.perform(post(LOGS_URL)
+    private ResultActions clickSea(double x, double y) throws Exception {
+        return mockMvc.perform(put(MOVE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"x\": " + x + ", \"y\": " + y + "}"));
     }

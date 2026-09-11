@@ -2,15 +2,19 @@ package com.hyanghae.backend.map.service;
 
 import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.global.security.CurrentUser;
-import com.hyanghae.backend.map.dto.request.ExplorationLogCreateRequest;
-import com.hyanghae.backend.map.dto.response.ExplorationLogCreateResponse;
+import com.hyanghae.backend.map.dto.request.ExplorationMoveRequest;
 import com.hyanghae.backend.map.dto.response.ExplorationStateResponse;
+import com.hyanghae.backend.map.dto.response.VoyageLogEntryResponse;
+import com.hyanghae.backend.map.dto.response.VoyageLogResponse;
 import com.hyanghae.backend.map.exception.MapErrorCode;
 import com.hyanghae.backend.map.repository.ExplorationLogRepository;
+import com.hyanghae.backend.map.repository.ExplorationLogRow;
 import com.hyanghae.backend.map.repository.ExplorationPoint;
 import com.hyanghae.backend.map.repository.ExplorationStateRepository;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +41,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ExplorationService {
 
+    /** 일지를 만들 때 훑는 기록 수의 상한입니다. 그보다 오래된 진입은 일지에 나오지 않습니다. */
+    private static final int MAX_SCANNED_LOGS = 200;
+
+    /** 한 번에 돌려주는 구역 진입 수의 상한입니다. */
+    private static final int MAX_ENTRIES = 100;
+
     private final ExplorationLogRepository explorationLogRepository;
     private final ExplorationStateRepository explorationStateRepository;
     private final ScentRegionLocator scentRegionLocator;
@@ -55,9 +65,11 @@ public class ExplorationService {
     }
 
     /**
-     * 배를 옮깁니다. 일지에 남길 것이 있으면 그 기록을, 없으면 빈 {@link Optional} 을 돌려줍니다.
+     * 배를 옮기고 옮긴 자리를 돌려줍니다.
      *
      * <p>자리는 어느 경우에나 갱신됩니다. 일지에 안 남는 이동이라도 배는 그리로 갔기 때문입니다.
+     * 일지 기록은 이 안에서 알아서 남기고 응답에 드러내지 않습니다. 화면이 기록 한 줄의 번호를
+     * 쓸 일이 없고, 이 요청의 결과는 "배가 어디로 갔는가" 하나입니다.
      *
      * <p>향수를 고른 이동은 언제나 기록합니다. 같은 향수를 다시 골라도 줄을 따로 쌓습니다. 일지는
      * 배가 지나온 자리를 적는 화면이라, 지난번에 본 향수를 다시 봤다면 두 번 나오는 것이 맞습니다.
@@ -70,20 +82,17 @@ public class ExplorationService {
      * 향수로 배를 옮길 수도 없습니다. 지도 조회 두 개와 같은 코드로 답합니다.
      */
     @Transactional
-    public Optional<ExplorationLogCreateResponse> move(ExplorationLogCreateRequest request) {
+    public ExplorationStateResponse move(ExplorationMoveRequest request) {
         Long userId = currentUserId();
         ExplorationPoint movedTo = resolvePoint(request);
 
-        explorationStateRepository.save(userId, movedTo);
-
         if (request.isPerfumeVisit()) {
-            return Optional.of(
-                    explorationLogRepository.insert(userId, request.perfumeId(), movedTo));
+            explorationLogRepository.insert(userId, request.perfumeId(), movedTo);
+        } else if (entersNewRegion(userId, movedTo)) {
+            explorationLogRepository.insert(userId, null, movedTo);
         }
-        if (entersNewRegion(userId, movedTo)) {
-            return Optional.of(explorationLogRepository.insert(userId, null, movedTo));
-        }
-        return Optional.empty();
+
+        return explorationStateRepository.save(userId, movedTo);
     }
 
     /**
@@ -96,12 +105,77 @@ public class ExplorationService {
     }
 
     /**
+     * 향해 일지입니다. 최근 구역 진입부터 {@code size} 개를 돌려줍니다.
+     *
+     * <p>기록을 시간순으로 늘어놓고 향 영역이 바뀌는 지점에서 끊습니다. 한 덩어리가 "○○ 구역
+     * 진입" 한 줄이고, 그 안에서 들른 향수가 딸립니다. 계열 영역 밖의 바다로 나간 이동은 그릴
+     * 구역이 없어 줄로 나오지 않지만, 덩어리를 끊기는 하므로 바다에 나갔다 같은 구역으로 돌아오면
+     * 진입이 두 줄이 됩니다.
+     *
+     * <p>묶는 일을 서버가 합니다. 영역 번호를 저장하지 않기로 해서 SQL 로는 묶을 수 없고, 화면이
+     * 묶으면 폴리곤 판정을 양쪽이 각자 구현하게 됩니다.
+     *
+     * <p>읽는 기록 수에 상한이 있습니다({@link #MAX_SCANNED_LOGS}). 그보다 오래된 진입은 일지에
+     * 나오지 않습니다. 지금 화면이 최근 항해만 보여주므로 충분하고, 더 멀리 보여줘야 하면 영역
+     * 번호를 저장해 SQL 로 묶는 쪽으로 바꾸는 것이 낫습니다.
+     */
+    @Transactional(readOnly = true)
+    public VoyageLogResponse findMyVoyageLog(int size) {
+        List<ExplorationLogRow> recent =
+                explorationLogRepository.findRecent(currentUserId(), MAX_SCANNED_LOGS);
+        List<VoyageLogEntryResponse> entries = toEntries(recent, scentRegionLocator.load());
+
+        return new VoyageLogResponse(entries.stream()
+                .limit(Math.clamp(size, 1, MAX_ENTRIES))
+                .toList());
+    }
+
+    /**
+     * 기록을 구역 진입 단위로 묶습니다. 돌려주는 순서는 최근 진입부터입니다.
+     *
+     * <p>받은 기록은 최근 순이라 뒤에서부터 훑어 시간순으로 봅니다. 영역이 직전과 다르면 새
+     * 덩어리를 열고, 같으면 그 덩어리에 향수를 더합니다.
+     *
+     * <p>상한에 걸렸을 때 가장 오래된 덩어리는 버립니다. 그 덩어리를 연 기록이 상한 밖에 남아
+     * 있을 수 있어, 진입 시각과 향수 목록이 실제보다 짧게 보입니다.
+     */
+    private List<VoyageLogEntryResponse> toEntries(
+            List<ExplorationLogRow> recentFirst,
+            ScentRegions regions
+    ) {
+        Deque<VoyageLogEntry> entries = new ArrayDeque<>();
+        Long openedIn = null;
+
+        for (int i = recentFirst.size() - 1; i >= 0; i--) {
+            ExplorationLogRow row = recentFirst.get(i);
+            Long region = regions.idAt(row.x(), row.y()).orElse(null);
+
+            if (!Objects.equals(region, openedIn) || entries.isEmpty()) {
+                entries.push(new VoyageLogEntry(row, regions.at(row.x(), row.y()).orElse(null)));
+                openedIn = region;
+            }
+            if (row.perfumeId() != null) {
+                entries.peek().visit(row);
+            }
+        }
+
+        boolean scannedToTheLimit = recentFirst.size() == MAX_SCANNED_LOGS;
+        if (scannedToTheLimit && !entries.isEmpty()) {
+            entries.pollLast();
+        }
+        return entries.stream()
+                .filter(VoyageLogEntry::isInsideRegion)
+                .map(VoyageLogEntry::toResponse)
+                .toList();
+    }
+
+    /**
      * 향수를 고른 이동이면 그 향수의 지도 좌표를, 빈 바다면 클릭한 좌표를 씁니다.
      *
      * <p>향수를 고른 경우 화면이 보낸 좌표를 쓰지 않습니다. 지도에 찍힌 자리와 기록에 남는 자리가
      * 어긋날 수 있고, 같은 값을 두 곳이 각자 갖게 됩니다.
      */
-    private ExplorationPoint resolvePoint(ExplorationLogCreateRequest request) {
+    private ExplorationPoint resolvePoint(ExplorationMoveRequest request) {
         if (request.isPerfumeVisit()) {
             return explorationLogRepository.findMapPoint(request.perfumeId())
                     .orElseThrow(() -> new BusinessException(MapErrorCode.MAP_PERFUME_NOT_FOUND));
@@ -122,9 +196,10 @@ public class ExplorationService {
      * 기록되므로 두 값의 영역은 언제나 같고, 기록 쪽이 판단의 근거를 그대로 보여줍니다.
      */
     private boolean entersNewRegion(Long userId, ExplorationPoint movedTo) {
-        Long movedInto = scentRegionLocator.regionIdAt(movedTo.x(), movedTo.y()).orElse(null);
+        ScentRegions regions = scentRegionLocator.load();
+        Long movedInto = regions.idAt(movedTo.x(), movedTo.y()).orElse(null);
         Long cameFrom = explorationLogRepository.findLastPoint(userId)
-                .flatMap(point -> scentRegionLocator.regionIdAt(point.x(), point.y()))
+                .flatMap(point -> regions.idAt(point.x(), point.y()))
                 .orElse(null);
 
         return !Objects.equals(movedInto, cameFrom);

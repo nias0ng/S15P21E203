@@ -1,7 +1,7 @@
 package com.hyanghae.backend.map.dto.request;
 
 /**
- * 배가 움직였다는 요청입니다. 지도에서 클릭 한 번에 하나씩 보냅니다.
+ * 배를 어디로 옮기라는 요청입니다. 지도에서 클릭 한 번에 하나씩 보냅니다.
  *
  * <p>클릭은 두 가지입니다. 향수를 고르면 {@code perfumeId} 를 보내고, 빈 바다를 고르면
  * {@code x}·{@code y} 를 보냅니다.
@@ -12,7 +12,7 @@ package com.hyanghae.backend.map.dto.request;
  *
  * <p>둘 다 없으면 400 입니다. 어디로 움직였는지 모르는 기록은 남길 수 없습니다.
  */
-public record ExplorationLogCreateRequest(Long perfumeId, Double x, Double y) {
+public record ExplorationMoveRequest(Long perfumeId, Double x, Double y) {
 
     /** 향수를 고른 클릭입니다. 좌표는 서버가 채웁니다. */
     public boolean isPerfumeVisit() {

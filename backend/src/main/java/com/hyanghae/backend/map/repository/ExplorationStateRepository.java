@@ -1,6 +1,8 @@
 package com.hyanghae.backend.map.repository;
 
 import com.hyanghae.backend.map.dto.response.ExplorationStateResponse;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -33,6 +35,7 @@ public class ExplorationStateRepository {
             SET exploration_x = EXCLUDED.exploration_x,
                 exploration_y = EXCLUDED.exploration_y,
                 updated_at = EXCLUDED.updated_at
+            RETURNING exploration_x, exploration_y, updated_at
             """;
 
     private static final String SELECT_STATE = """
@@ -47,23 +50,29 @@ public class ExplorationStateRepository {
         this.jdbcClient = jdbcClient;
     }
 
-    public void save(Long userId, ExplorationPoint point) {
-        jdbcClient.sql(UPSERT_STATE)
+    /** 옮긴 뒤의 자리를 그대로 돌려줍니다. 갱신 시각은 데이터베이스가 넣은 값입니다. */
+    public ExplorationStateResponse save(Long userId, ExplorationPoint point) {
+        return jdbcClient.sql(UPSERT_STATE)
                 .param("userId", userId)
                 .param("x", point.x())
                 .param("y", point.y())
-                .update();
+                .query(ExplorationStateRepository::toState)
+                .single();
     }
 
     /** 한 번도 움직인 적이 없는 사용자는 빈 {@link Optional} 입니다. */
     public Optional<ExplorationStateResponse> find(Long userId) {
         return jdbcClient.sql(SELECT_STATE)
                 .param("userId", userId)
-                .query((rs, rowNum) -> new ExplorationStateResponse(
-                        rs.getObject("exploration_x", Double.class),
-                        rs.getObject("exploration_y", Double.class),
-                        rs.getObject("updated_at", OffsetDateTime.class)
-                ))
+                .query(ExplorationStateRepository::toState)
                 .optional();
+    }
+
+    private static ExplorationStateResponse toState(ResultSet rs, int rowNum) throws SQLException {
+        return new ExplorationStateResponse(
+                rs.getObject("exploration_x", Double.class),
+                rs.getObject("exploration_y", Double.class),
+                rs.getObject("updated_at", OffsetDateTime.class)
+        );
     }
 }

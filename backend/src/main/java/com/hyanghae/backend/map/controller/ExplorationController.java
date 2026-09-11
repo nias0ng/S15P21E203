@@ -1,19 +1,20 @@
 package com.hyanghae.backend.map.controller;
 
-import com.hyanghae.backend.map.dto.request.ExplorationLogCreateRequest;
-import com.hyanghae.backend.map.dto.response.ExplorationLogCreateResponse;
+import com.hyanghae.backend.map.dto.request.ExplorationMoveRequest;
 import com.hyanghae.backend.map.dto.response.ExplorationStateResponse;
+import com.hyanghae.backend.map.dto.response.VoyageLogResponse;
 import com.hyanghae.backend.map.service.ExplorationService;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 향 지도에서 배가 움직이는 일을 다룹니다.
+ * 향 지도에서 배가 있는 자리를 다룹니다.
+ *
+ * <p>배를 옮기고, 배가 있는 자리를 읽고, 지나온 자취를 일지로 읽습니다.
  *
  * <p>{@link MapController} 와 나눈 이유는 성격이 다르기 때문입니다. 지도 조회는 누구에게나 같은
  * 답을 주는 읽기이고, 여기는 로그인한 사용자의 배에 매달리는 기능입니다.
@@ -22,6 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/map")
 public class ExplorationController {
 
+    private static final int DEFAULT_ENTRY_SIZE = 20;
+
     private final ExplorationService explorationService;
 
     public ExplorationController(ExplorationService explorationService) {
@@ -29,24 +32,20 @@ public class ExplorationController {
     }
 
     /**
-     * 배가 움직인 것을 알립니다. 지도에서 클릭 한 번에 한 번 부릅니다.
+     * 배를 옮깁니다. 지도에서 클릭 한 번에 한 번 부릅니다.
      *
      * <p>향수를 골랐으면 {@code perfumeId} 를, 빈 바다를 골랐으면 {@code x}·{@code y} 를 보냅니다.
-     * 향수를 고른 경우 좌표는 서버가 그 향수의 지도 좌표로 채웁니다.
+     * 향수를 고른 경우 좌표는 서버가 그 향수의 지도 좌표로 채웁니다. 응답은 옮긴 뒤의 자리입니다.
      *
-     * <p>배가 있는 자리는 어느 경우에나 갱신됩니다. <b>향해 일지에 남을 이동이면 201, 남길 것이
-     * 없으면 204 입니다.</b> 같은 향 영역 안에서 빈 바다를 다시 누른 이동은 일지에 적을 내용이
-     * 없어 기록하지 않습니다. 화면은 두 경우를 구분하지 않고 클릭마다 부르면 됩니다.
+     * <p>향해 일지에 남길 이동이면 기록도 함께 남습니다. 향수를 고른 이동은 언제나 남고, 빈 바다로
+     * 간 이동은 향 영역이 바뀐 경우에만 남습니다. 화면은 그 차이를 알 필요가 없어 응답에 드러내지
+     * 않습니다. 남은 기록은 {@code GET /api/v1/map/exploration-logs} 로 읽습니다.
      *
      * <p>지도에 없는 향수는 404, 향수 번호도 좌표도 없으면 400, 로그인하지 않았으면 401 입니다.
      */
-    @PostMapping("/exploration-logs")
-    public ResponseEntity<ExplorationLogCreateResponse> move(
-            @RequestBody ExplorationLogCreateRequest request
-    ) {
-        return explorationService.move(request)
-                .map(log -> ResponseEntity.status(HttpStatus.CREATED).body(log))
-                .orElseGet(() -> ResponseEntity.noContent().build());
+    @PutMapping("/exploration/me")
+    public ExplorationStateResponse move(@RequestBody ExplorationMoveRequest request) {
+        return explorationService.move(request);
     }
 
     /**
@@ -58,5 +57,25 @@ public class ExplorationController {
     @GetMapping("/exploration/me")
     public ExplorationStateResponse getMyPosition() {
         return explorationService.findMyPosition();
+    }
+
+    /**
+     * 향해 일지입니다. 최근 구역 진입부터 나옵니다.
+     *
+     * <p>한 줄이 "○○ 구역 진입" 이고 그 구역에서 들른 향수가 딸립니다. 들르지 않고 지나가기만 한
+     * 구역은 향수 목록이 빈 채로 나옵니다. 계열 영역 밖의 바다로 나간 이동은 그릴 구역이 없어
+     * 줄로 나오지 않지만, 바다에 나갔다 같은 구역으로 돌아오면 진입이 두 줄이 됩니다.
+     *
+     * <p>{@code size} 는 받을 진입 수입니다. 기본 20개, 최대 100개이고 그 범위를 벗어난 값은
+     * 잘립니다. 오래된 항해까지 거슬러 볼 수 있는 페이지는 아직 없습니다. 화면이 필요해지면
+     * 기록에 영역을 저장해 SQL 로 묶는 쪽으로 바꾸는 것이 낫습니다.
+     *
+     * <p>로그인하지 않았으면 401 입니다.
+     */
+    @GetMapping("/exploration-logs")
+    public VoyageLogResponse getMyVoyageLog(
+            @RequestParam(defaultValue = "" + DEFAULT_ENTRY_SIZE) int size
+    ) {
+        return explorationService.findMyVoyageLog(size);
     }
 }
