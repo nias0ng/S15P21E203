@@ -90,6 +90,11 @@ public class ShelfItemService {
                 .findByIdAndUserIdForUpdate(shelfItemId, userId)
                 .orElseThrow(() -> new BusinessException(ShelfErrorCode.SHELF_ITEM_NOT_FOUND));
 
+        for (Long collectionId : userPerfumeRepository.lockContainingCollections(shelfItemId)) {
+            if (userPerfumeRepository.countCollectionItems(collectionId) <= 1) {
+                throw new BusinessException(ShelfErrorCode.SHELF_LAST_COLLECTION_ITEM);
+            }
+        }
         userPerfumeRepository.delete(shelfItem);
     }
 

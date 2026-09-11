@@ -5,6 +5,8 @@ import org.springframework.http.HttpStatus;
 
 public enum ShelfErrorCode implements ErrorCode {
 
+    SHELF_LAST_COLLECTION_ITEM(HttpStatus.CONFLICT, "컬렉션의 마지막 향수입니다. 컬렉션을 먼저 삭제해주세요."),
+
     SHELF_LOGIN_REQUIRED(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다."),
     SHELF_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "진열대 항목을 찾을 수 없습니다."),
     SHELF_PERFUME_NOT_FOUND(HttpStatus.NOT_FOUND, "저장할 향수를 찾을 수 없습니다."),

@@ -155,6 +155,15 @@ class ShelfItemSaveIntegrationTest {
         fakeCurrentUser.login(LOGGED_IN_USER);
         long shelfItemId = createShelfItem(ACTIVE_PERFUME);
         long collectionId = insertCollection(LOGGED_IN_USER);
+        long otherPerfumeId = jdbcTemplate.queryForObject(
+                "INSERT INTO perfumes (perfume_id, name) VALUES (900, 'other collection perfume') RETURNING perfume_id",
+                Long.class);
+        long otherShelfId = jdbcTemplate.queryForObject(
+                "INSERT INTO user_perfumes (user_id, perfume_id) VALUES (?, ?) RETURNING user_perfumes_id",
+                Long.class, LOGGED_IN_USER, otherPerfumeId);
+        jdbcTemplate.update(
+                "INSERT INTO collection_perfumes (collection_id, user_perfume_id) VALUES (?, ?)",
+                collectionId, otherShelfId);
         jdbcTemplate.update(
                 "INSERT INTO memos (user_perfume_id, content) VALUES (?, 'memo')",
                 shelfItemId
