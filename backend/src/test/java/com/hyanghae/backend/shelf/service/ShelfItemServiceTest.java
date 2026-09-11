@@ -19,11 +19,11 @@ import com.hyanghae.backend.shelf.dto.response.ShelfItemCreateResponse;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemDetailResponse;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemSummaryResponse;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemsResponse;
+import com.hyanghae.backend.shelf.entity.Memo;
 import com.hyanghae.backend.shelf.entity.OwnershipStatus;
-import com.hyanghae.backend.shelf.entity.PersonalRecord;
 import com.hyanghae.backend.shelf.entity.UserPerfume;
 import com.hyanghae.backend.shelf.exception.ShelfErrorCode;
-import com.hyanghae.backend.shelf.repository.PersonalRecordRepository;
+import com.hyanghae.backend.shelf.repository.MemoRepository;
 import com.hyanghae.backend.shelf.repository.UserPerfumeRepository;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -61,7 +61,7 @@ class ShelfItemServiceTest {
     private PerfumeNoteRepository perfumeNoteRepository;
 
     @Mock
-    private PersonalRecordRepository personalRecordRepository;
+    private MemoRepository memoRepository;
 
     @Mock
     private CurrentUser currentUser;
@@ -75,7 +75,7 @@ class ShelfItemServiceTest {
                 perfumeRepository,
                 perfumeImageRepository,
                 perfumeNoteRepository,
-                personalRecordRepository,
+                memoRepository,
                 currentUser
         );
     }
@@ -272,9 +272,9 @@ class ShelfItemServiceTest {
                 new PerfumeNoteResponse(3L, "Patchouli", "BASE")
         );
         OffsetDateTime memoCreatedAt = OffsetDateTime.parse("2026-09-10T00:00:00Z");
-        PersonalRecord personalRecord = BeanUtils.instantiateClass(PersonalRecord.class);
-        ReflectionTestUtils.setField(personalRecord, "content", "Test memo");
-        ReflectionTestUtils.setField(personalRecord, "createdAt", memoCreatedAt);
+        Memo memo = BeanUtils.instantiateClass(Memo.class);
+        ReflectionTestUtils.setField(memo, "content", "Test memo");
+        ReflectionTestUtils.setField(memo, "createdAt", memoCreatedAt);
 
         when(currentUser.id()).thenReturn(Optional.of(USER_ID));
         when(userPerfumeRepository.findDetailByIdAndUserId(SHELF_ITEM_ID, USER_ID))
@@ -282,8 +282,8 @@ class ShelfItemServiceTest {
         when(perfumeImageRepository.findOrderedByPerfumeIds(List.of(PERFUME_ID)))
                 .thenReturn(List.of(new PerfumeImageUrl(PERFUME_ID, "thumbnail.jpg")));
         when(perfumeNoteRepository.findByPerfumeId(PERFUME_ID)).thenReturn(scentNotes);
-        when(personalRecordRepository.findByUserPerfumeId(SHELF_ITEM_ID))
-                .thenReturn(Optional.of(personalRecord));
+        when(memoRepository.findByUserPerfumeId(SHELF_ITEM_ID))
+                .thenReturn(Optional.of(memo));
 
         ShelfItemDetailResponse response = shelfItemService.findMine(SHELF_ITEM_ID);
 

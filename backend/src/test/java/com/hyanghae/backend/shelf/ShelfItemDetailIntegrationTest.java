@@ -60,7 +60,7 @@ class ShelfItemDetailIntegrationTest {
         insertPerfumeNote(1L, 1L, "TOP");
         insertPerfumeNote(1L, 2L, "MIDDLE");
         insertPerfumeNote(1L, 3L, "BASE");
-        insertPersonalRecord(
+        insertMemo(
                 1L,
                 SHELF_ITEM_ID,
                 "비 오는 날 잔향이 오래 남는다.",
@@ -220,7 +220,7 @@ class ShelfItemDetailIntegrationTest {
         );
     }
 
-    private void insertPersonalRecord(
+    private void insertMemo(
             long id,
             long shelfItemId,
             String content,
