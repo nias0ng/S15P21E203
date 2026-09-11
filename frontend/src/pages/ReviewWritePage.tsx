@@ -7,9 +7,13 @@ import {
   WriteForm,
   type ModerationRejection,
 } from '@/features/community'
+// 계절은 향수 도메인의 어휘입니다. features/community 는 features/perfume 를
+// import 할 수 없으므로(ESLint) 화면에서 두 도메인을 조합합니다.
+import { SEASONS, type Season } from '@/features/perfume'
 import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
+import { ChipToggle } from '@/shared/ui/ChipToggle'
 import { Input } from '@/shared/ui/Input'
 import { Textarea } from '@/shared/ui/Textarea'
 
@@ -29,6 +33,7 @@ export default function ReviewWritePage() {
 
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
+  const [seasons, setSeasons] = useState<Season[]>([])
   const [rejection, setRejection] = useState<ModerationRejection | null>(null)
 
   // TODO: perfumeId 로 향수를 조회해 이름 · 브랜드를 채우세요 (화면에서 조합)
@@ -47,6 +52,7 @@ export default function ReviewWritePage() {
         onSubmit={() => {
           // TODO: CMT-03 포스팅 API 연결. 검수를 통과하면 게시글 상세로 이동하고
           // 보류되면 응답의 사유로 A25 모달을 띄웁니다.
+          // TODO: DTL-16 계절 등록 API 연결 — 위 seasons 를 함께 보냅니다
           setRejection({
             reasons: ['향수 커뮤니티 주제와 관련이 없는 내용입니다'],
             requestedChange: '향수 관련 내용으로 수정해주세요',
@@ -117,6 +123,33 @@ export default function ReviewWritePage() {
           value={content}
           onChange={(event) => setContent(event.target.value)}
         />
+
+        {/*
+          계절별 평가 (DTL-16). 예전에는 향수 상세의 [계절 등록] 단추가 모달을
+          띄웠는데, 이 향을 어느 계절에 맡았는지는 후기와 같은 순간에 남기는
+          값이라 여기로 옮겼습니다. 입구가 둘이면 한쪽만 쓰이고 다른 쪽은
+          잊힙니다.
+
+          네 칸을 같은 폭으로 늘여 한 줄에 놓습니다. 칩이 글자 폭대로 떨어져
+          있으면 "봄" 과 "여름" 의 크기가 달라 고르는 대상이 아니라 태그처럼
+          보입니다.
+
+          여러 개 고를 수 있습니다 — 봄과 가을에 다 어울리는 향이 있습니다.
+        */}
+        <fieldset className="space-y-2">
+          <legend className="text-ink text-caption font-medium">
+            계절별 평가 <span className="text-ink-muted">(선택)</span>
+          </legend>
+          <ChipToggle
+            label="이 향이 잘 어울리는 계절"
+            multiple
+            tone="warm"
+            options={SEASONS}
+            value={seasons}
+            onChange={setSeasons}
+            className="grid grid-cols-4 gap-2"
+          />
+        </fieldset>
 
         <ImageAttachField />
       </WriteForm>

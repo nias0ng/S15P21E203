@@ -1,6 +1,8 @@
 import { ROUTES } from '@/shared/config/routes'
+import { cn } from '@/shared/lib/cn'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { LinkButton } from '@/shared/ui/LinkButton'
+import { PANEL } from '@/shared/ui/panel'
 
 /**
  * 향수 상세 ⑤ 후기 (와이어프레임 A10 — DTL-03 · DTL-10)
@@ -9,7 +11,7 @@ import { LinkButton } from '@/shared/ui/LinkButton'
  */
 export function PerfumeReviewList() {
   return (
-    <section className="space-y-3 p-6">
+    <section className={cn(PANEL, 'space-y-3')}>
       <LinkButton to={ROUTES.REVIEW_WRITE}>후기 쓰기</LinkButton>
       <p className="text-ink-muted text-[10.5px]">
         [후기 쓰기]는 모달이 아니라 후기 게시글 작성 화면으로 이동합니다. 이

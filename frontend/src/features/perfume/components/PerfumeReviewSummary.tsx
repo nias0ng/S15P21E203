@@ -1,3 +1,6 @@
+import { cn } from '@/shared/lib/cn'
+import { PANEL } from '@/shared/ui/panel'
+
 type Props = {
   /** 브랜드 공식 향 설명. 없는 향수는 null 로 옵니다 */
   description: string | null
@@ -12,7 +15,7 @@ type Props = {
  */
 export function PerfumeReviewSummary({ description }: Props) {
   return (
-    <section className="grid gap-6 p-6 sm:grid-cols-2">
+    <section className={cn(PANEL, 'grid gap-6 sm:grid-cols-2')}>
       <div className="space-y-3">
         <h2 className="text-ink text-sm font-bold">AI 후기 요약</h2>
         {/* TODO: 백엔드 DTL-23 응답 연결 */}

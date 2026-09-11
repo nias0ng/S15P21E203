@@ -1,5 +1,7 @@
+import { cn } from '@/shared/lib/cn'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
+import { PANEL } from '@/shared/ui/panel'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import type { PerfumeDetail } from '../types'
@@ -18,12 +20,22 @@ type Props = {
  */
 export function PerfumeOverview({ perfume, onSaveToShelf }: Props) {
   return (
-    <section className="flex flex-col gap-6 p-6 sm:flex-row">
-      {/* 상세 응답의 images 는 배열이고 대표 이미지는 첫 번째 원소입니다 */}
+    <section className={cn(PANEL, 'flex flex-col gap-6 sm:flex-row')}>
+      {/*
+        상세 응답의 images 는 배열이고 대표 이미지는 첫 번째 원소입니다.
+
+        contain 입니다. cover 로 두면 240x288 칸에 맞추느라 세로로 긴 병의
+        위아래가 잘려서, 뚜껑도 바닥도 없는 몸통만 보였습니다. 향수는 병
+        실루엣이 곧 정체성이라 상세 화면에서 잘리면 안 됩니다.
+
+        살짝 가라앉은 판을 깔고 여백을 줍니다. 구역 바탕과 같은 색으로 두면
+        흰 배경 제품 사진이 어디서 시작하고 끝나는지 보이지 않습니다.
+      */}
       <Thumbnail
         src={perfume.images[0] ?? null}
         fallback="대표 이미지"
-        className="h-72 w-60 shrink-0"
+        fit="contain"
+        className="bg-surface-sunken/35 rounded-card h-72 w-60 shrink-0 border-transparent p-4"
       />
 
       <div className="space-y-3">
