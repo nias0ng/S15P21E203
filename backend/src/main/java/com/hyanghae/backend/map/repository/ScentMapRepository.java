@@ -52,8 +52,27 @@ public class ScentMapRepository {
             ) dominant ON TRUE
             """;
 
+    /**
+     * 대표 이미지 한 장입니다. {@code display_order} 가 비어 있는 행은 뒤로 밀고 이미지 번호로
+     * 순서를 확정해, 같은 향수가 매번 같은 이미지를 갖게 합니다. 향수 도메인의 규칙과 같습니다.
+     *
+     * <p>향수마다 한 번씩 도는 하위 질의입니다. {@code perfume_images} 는 향수 번호에 인덱스가
+     * 있어(V5 의 {@code idx_perfume_images_perfume}) 카탈로그가 커져도 지도에 있는 200개의
+     * 인덱스 조회로 끝납니다.
+     */
+    private static final String REPRESENTATIVE_IMAGE = """
+                   (SELECT i.image_url
+                    FROM perfume_images i
+                    WHERE i.perfume_id = p.perfume_id
+                    ORDER BY i.display_order NULLS LAST, i.image_id
+                    LIMIT 1) AS image_url
+            """;
+
     private static final String SELECT_MAP_PERFUMES = """
-            SELECT p.perfume_id, p.name, mp.map_x, mp.map_y, dominant.scent_region_id
+            SELECT p.perfume_id, p.name, mp.map_x, mp.map_y, dominant.scent_region_id,
+            """
+            + REPRESENTATIVE_IMAGE
+            + """
             FROM perfume_map_points mp
             JOIN perfumes p ON p.perfume_id = mp.perfume_id
             """
@@ -73,11 +92,9 @@ public class ScentMapRepository {
     private static final String SELECT_MAP_PERFUME = """
             SELECT p.perfume_id, p.name, p.name_ko, mp.map_x, mp.map_y,
                    dominant.scent_region_id,
-                   (SELECT i.image_url
-                    FROM perfume_images i
-                    WHERE i.perfume_id = p.perfume_id
-                    ORDER BY i.display_order NULLS LAST, i.image_id
-                    LIMIT 1) AS image_url
+            """
+            + REPRESENTATIVE_IMAGE
+            + """
             FROM perfume_map_points mp
             JOIN perfumes p ON p.perfume_id = mp.perfume_id
             """
@@ -147,6 +164,7 @@ public class ScentMapRepository {
         return new MapPerfumeResponse(
                 rs.getLong("perfume_id"),
                 rs.getString("name"),
+                rs.getString("image_url"),
                 rs.getDouble("map_x"),
                 rs.getDouble("map_y"),
                 rs.getObject("scent_region_id", Long.class)

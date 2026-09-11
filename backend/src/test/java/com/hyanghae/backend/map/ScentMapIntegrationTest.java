@@ -135,6 +135,21 @@ class ScentMapIntegrationTest {
                 .andExpect(jsonPath("$.perfumes[0].y").value(0.3));
     }
 
+    /**
+     * 목록에도 대표 이미지가 함께 나갑니다.
+     *
+     * <p>화면은 배와 가까운 향수 몇 개만 그리고 그 몇 개가 배를 움직일 때마다 바뀝니다. 주소를
+     * 선택 시점에 따로 불러오면 이동할 때마다 요청이 여러 개 나갑니다.
+     */
+    @Test
+    void servesRepresentativeImageInTheList() throws Exception {
+        mockMvc.perform(get(MAP_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes[0].imageUrl").value("first.jpg"))
+                .andExpect(jsonPath("$.perfumes[3].perfumeId").value(6))
+                .andExpect(jsonPath("$.perfumes[3].imageUrl").doesNotExist());
+    }
+
     /** 대표 계열은 비중이 가장 큰 계열입니다. 계열이 없는 향수는 {@code null} 입니다. */
     @Test
     void usesDominantScentFamilyAsRegion() throws Exception {
