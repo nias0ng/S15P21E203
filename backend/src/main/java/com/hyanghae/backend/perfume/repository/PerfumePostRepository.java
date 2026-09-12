@@ -7,7 +7,10 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 /**
- * 향수에 연결된 게시글을 읽습니다.
+ * 향수에 연결된 자유 게시판 글을 읽습니다.
+ *
+ * <p>후기는 여기 없습니다. 후기는 {@code perfume_reviews} 에 있고 {@code review} 도메인이
+ * 읽습니다. 향수 상세 화면은 두 가지를 각각 다른 자리에 보여줍니다.
  *
  * <p>다른 리포지토리와 달리 JPA 가 아니라 SQL 을 직접 씁니다. {@code posts} 는 커뮤니티 도메인의
  * 테이블이라 여기서 엔티티를 만들면 두 벌이 됩니다. 커뮤니티의 {@code PostRepository} 도 엔티티

@@ -20,7 +20,7 @@ import java.util.List;
  */
 public class PostUpdateRequest {
 
-    private Long categoryId;
+    private String category;
     private String title;
     private String content;
     private List<Long> perfumeIds;
@@ -32,8 +32,8 @@ public class PostUpdateRequest {
     private boolean perfumesPresent;
     private boolean imagesPresent;
 
-    public void setCategoryId(Long categoryId) {
-        this.categoryId = categoryId;
+    public void setCategory(String category) {
+        this.category = category;
         this.categoryPresent = true;
     }
 
@@ -57,8 +57,8 @@ public class PostUpdateRequest {
         this.imagesPresent = true;
     }
 
-    public Long getCategoryId() {
-        return categoryId;
+    public String getCategory() {
+        return category;
     }
 
     @Size(max = 50, message = "제목은 50자까지 쓸 수 있습니다.")
@@ -115,7 +115,7 @@ public class PostUpdateRequest {
     public boolean isValidPatch() {
         boolean hasSomething = categoryPresent || titlePresent || contentPresent
                 || perfumesPresent || imagesPresent;
-        boolean keepsRequiredValues = (!categoryPresent || categoryId != null)
+        boolean keepsRequiredValues = (!categoryPresent || (category != null && !category.isBlank()))
                 && (!titlePresent || (title != null && !title.isBlank()))
                 && (!contentPresent || (content != null && !content.isBlank()))
                 && (!perfumesPresent || perfumeIds != null)

@@ -1,8 +1,6 @@
 package com.hyanghae.backend.community.repository;
 
-import com.hyanghae.backend.community.dto.response.PostCategoryResponse;
 import com.hyanghae.backend.community.dto.response.PostPerfumeResponse;
-import com.hyanghae.backend.community.dto.response.PostSummaryResponse;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
@@ -15,9 +13,16 @@ import org.springframework.stereotype.Repository;
 /**
  * 게시글과 딸린 값들을 읽고 씁니다.
  *
+ * <p>여기서 다루는 게시글은 <b>자유 게시판 글</b>입니다. 후기는 {@code perfume_reviews} 에 있고
+ * {@code review} 도메인이 담당합니다. 두 가지를 모두 "글" 이라고 부르면 헷갈리므로, 이 클래스가
+ * 읽는 {@code posts} 는 자유 게시판 하나만 담습니다.
+ *
  * <p>엔티티를 만들지 않고 SQL 을 직접 씁니다. 글 하나가 분류·이미지·향수 세 곳에 걸쳐 있고 수정이
  * 부분 갱신이라, 영속성 컨텍스트를 거치기보다 바뀌는 값만 문장으로 쓰는 편이 읽힙니다. 향수
  * 도메인이 글을 읽는 {@code PerfumePostRepository} 도 같은 방식입니다.
+ *
+ * <p>분류는 번호가 아니라 <b>코드</b>로 주고받습니다. 번호는 자동 증가라 환경마다 다르고, 화면은
+ * 와이어프레임이 정한 코드만 알고 있습니다.
  */
 @Repository
 public class PostRepository {
@@ -32,7 +37,8 @@ public class PostRepository {
     private static final String FROM_AND_WHERE = """
             FROM posts p
             LEFT JOIN users u ON u.user_id = p.user_id
-            WHERE (CAST(:categoryId AS BIGINT) IS NULL OR p.category_id = :categoryId)
+            LEFT JOIN post_categories c ON c.category_id = p.category_id
+            WHERE (CAST(:category AS VARCHAR) IS NULL OR c.code = :category)
             """;
 
     /**
@@ -41,7 +47,7 @@ public class PostRepository {
      * 아예 안 보입니다.
      */
     private static final String SELECT_PAGE = """
-            SELECT p.post_id, p.title, u.nickname, p.created_at
+            SELECT p.post_id, c.code AS category_code, p.title, u.nickname, p.created_at
             """ + FROM_AND_WHERE + """
             ORDER BY p.created_at DESC NULLS LAST, p.post_id DESC
             LIMIT :limit OFFSET :offset
@@ -50,13 +56,33 @@ public class PostRepository {
     private static final String COUNT_ALL = "SELECT COUNT(*) " + FROM_AND_WHERE;
 
     /**
+     * 목록 한 줄에 실을 대표 향수입니다. 글마다 하나씩만 가져옵니다.
+     *
+     * <p>페이지에 있는 글 번호를 모아 한 번에 읽습니다. 글마다 따로 조회하면 한 페이지에 쿼리가
+     * 스무 번 나갑니다.
+     *
+     * <p>{@code DISTINCT ON} 은 PostgreSQL 기능으로, 괄호 안 컬럼이 같은 행들 중 {@code ORDER BY}
+     * 로 정한 첫 행만 남깁니다. 그래서 글마다 화면에 먼저 걸어 둔 향수 하나가 남습니다.
+     */
+    private static final String SELECT_REPRESENTATIVE_PERFUMES = """
+            SELECT DISTINCT ON (pp.post_id)
+                   pp.post_id, pp.perfume_id, p.name, b.name AS brand
+            FROM post_perfumes pp
+            JOIN perfumes p ON p.perfume_id = pp.perfume_id
+            LEFT JOIN brands b ON b.brand_id = p.brand_id
+            WHERE pp.post_id IN (:postIds)
+            ORDER BY pp.post_id, pp.display_order NULLS LAST, pp.perfume_id
+            """;
+
+    /**
      * 글 하나입니다. 작성자가 탈퇴하면 {@code user_id} 가 비고 닉네임도 비어 나갑니다. 분류는
      * 반드시 있어야 하는 값이지만 예전 데이터를 위해 왼쪽 조인으로 둡니다.
      */
     private static final String SELECT_DETAIL = """
-            SELECT p.post_id, p.user_id, p.title, p.content, p.created_at, p.updated_at,
+            SELECT p.post_id, p.user_id, p.category_id, p.title, p.content,
+                   p.created_at, p.updated_at,
                    u.nickname,
-                   c.category_id, c.code AS category_code, c.name AS category_name
+                   c.code AS category_code
             FROM posts p
             LEFT JOIN users u ON u.user_id = p.user_id
             LEFT JOIN post_categories c ON c.category_id = p.category_id
@@ -71,7 +97,7 @@ public class PostRepository {
             """;
 
     private static final String SELECT_PERFUMES = """
-            SELECT pp.perfume_id, p.name, b.name AS brand_name
+            SELECT pp.perfume_id, p.name, b.name AS brand
             FROM post_perfumes pp
             JOIN perfumes p ON p.perfume_id = pp.perfume_id
             LEFT JOIN brands b ON b.brand_id = p.brand_id
@@ -120,10 +146,10 @@ public class PostRepository {
             "DELETE FROM post_perfumes WHERE post_id = :postId";
 
     /** 분류는 활성인 것만 고를 수 있습니다. 내린 분류로 새 글을 쓰게 두면 화면에 없는 탭이 생깁니다. */
-    private static final String SELECT_ACTIVE_CATEGORY = """
-            SELECT category_id, code, name
+    private static final String SELECT_ACTIVE_CATEGORY_ID = """
+            SELECT category_id
             FROM post_categories
-            WHERE category_id = :categoryId
+            WHERE code = :category
               AND is_active = TRUE
             """;
 
@@ -141,13 +167,15 @@ public class PostRepository {
         this.jdbcClient = jdbcClient;
     }
 
-    public List<PostSummaryResponse> findPage(Long categoryId, int limit, long offset) {
+    /** 대표 향수는 여기 없습니다. 서비스가 {@link #findRepresentativePerfumes} 로 채웁니다. */
+    public List<PostListRow> findPage(String category, int limit, long offset) {
         return jdbcClient.sql(SELECT_PAGE)
-                .param("categoryId", categoryId)
+                .param("category", category)
                 .param("limit", limit)
                 .param("offset", offset)
-                .query((rs, rowNum) -> new PostSummaryResponse(
+                .query((rs, rowNum) -> new PostListRow(
                         rs.getLong("post_id"),
+                        rs.getString("category_code"),
                         rs.getString("title"),
                         rs.getString("nickname"),
                         rs.getObject("created_at", OffsetDateTime.class)
@@ -155,11 +183,25 @@ public class PostRepository {
                 .list();
     }
 
-    public long count(Long categoryId) {
+    public long count(String category) {
         return jdbcClient.sql(COUNT_ALL)
-                .param("categoryId", categoryId)
+                .param("category", category)
                 .query(Long.class)
                 .single();
+    }
+
+    /** 글 번호별 대표 향수입니다. 향수를 걸지 않은 글은 결과에 없습니다. */
+    public List<PostPerfumeRow> findRepresentativePerfumes(Collection<Long> postIds) {
+        if (postIds.isEmpty()) {
+            return List.of();
+        }
+        return jdbcClient.sql(SELECT_REPRESENTATIVE_PERFUMES)
+                .param("postIds", postIds)
+                .query((rs, rowNum) -> new PostPerfumeRow(
+                        rs.getLong("post_id"),
+                        toPerfume(rs)
+                ))
+                .list();
     }
 
     /** 없는 글은 빈 {@link Optional} 입니다. */
@@ -169,7 +211,8 @@ public class PostRepository {
                 .query((rs, rowNum) -> new PostRow(
                         rs.getLong("post_id"),
                         rs.getObject("user_id", Long.class),
-                        toJoinedCategory(rs),
+                        rs.getObject("category_id", Long.class),
+                        rs.getString("category_code"),
                         rs.getString("nickname"),
                         rs.getString("title"),
                         rs.getString("content"),
@@ -189,11 +232,7 @@ public class PostRepository {
     public List<PostPerfumeResponse> findPerfumes(Long postId) {
         return jdbcClient.sql(SELECT_PERFUMES)
                 .param("postId", postId)
-                .query((rs, rowNum) -> new PostPerfumeResponse(
-                        rs.getLong("perfume_id"),
-                        rs.getString("name"),
-                        rs.getString("brand_name")
-                ))
+                .query((rs, rowNum) -> toPerfume(rs))
                 .list();
     }
 
@@ -249,10 +288,10 @@ public class PostRepository {
     }
 
     /** 내려간 분류나 없는 분류는 빈 {@link Optional} 입니다. */
-    public Optional<PostCategoryResponse> findActiveCategory(Long categoryId) {
-        return jdbcClient.sql(SELECT_ACTIVE_CATEGORY)
-                .param("categoryId", categoryId)
-                .query(PostRepository::toCategory)
+    public Optional<Long> findActiveCategoryId(String category) {
+        return jdbcClient.sql(SELECT_ACTIVE_CATEGORY_ID)
+                .param("category", category)
+                .query(Long.class)
                 .optional();
     }
 
@@ -267,29 +306,12 @@ public class PostRepository {
                 .single();
     }
 
-    /**
-     * 상세 조회의 분류입니다. 글과 분류를 한 번에 읽느라 이름이 겹쳐 별칭을 붙였습니다.
-     *
-     * <p>분류가 비어 있는 글이 있을 수 있어 {@code null} 을 돌려줍니다. 지금 쓰기는 분류를 반드시
-     * 요구하지만, 컬럼이 {@code NOT NULL} 이 아니라 예전 데이터가 비어 있을 수 있습니다.
-     */
-    private static PostCategoryResponse toJoinedCategory(ResultSet rs) throws SQLException {
-        Long categoryId = rs.getObject("category_id", Long.class);
-        if (categoryId == null) {
-            return null;
-        }
-        return new PostCategoryResponse(
-                categoryId,
-                rs.getString("category_code"),
-                rs.getString("category_name")
-        );
-    }
-
-    private static PostCategoryResponse toCategory(ResultSet rs, int rowNum) throws SQLException {
-        return new PostCategoryResponse(
-                rs.getLong("category_id"),
-                rs.getString("code"),
-                rs.getString("name")
+    /** {@code brand} 가 비어 있을 수 있습니다. 브랜드가 없는 향수가 인계 데이터에 있습니다. */
+    private static PostPerfumeResponse toPerfume(ResultSet rs) throws SQLException {
+        return new PostPerfumeResponse(
+                rs.getLong("perfume_id"),
+                rs.getString("name"),
+                rs.getString("brand")
         );
     }
 }

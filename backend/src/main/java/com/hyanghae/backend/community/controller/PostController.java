@@ -21,7 +21,10 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 게시글입니다.
+ * 자유 게시판 글입니다.
+ *
+ * <p>후기는 향수에 매달리는 다른 자료라 {@code review} 도메인이 담당합니다. 후기 게시판 화면도
+ * 후기 쪽 자료를 보여줍니다. 여기 있는 것은 컬렉션 공유·추천·잡담 세 분류의 글뿐입니다.
  *
  * <p>읽기(목록·상세)는 로그인이 필요 없고, 쓰기(작성·수정·삭제)는 필요합니다. 게시판은 누구나 볼
  * 수 있어야 하고, 글은 쓴 사람에게 매달리는 값입니다.
@@ -56,16 +59,17 @@ public class PostController {
     /**
      * 게시글 목록입니다. 최신순입니다.
      *
-     * <p>{@code categoryId} 를 주면 그 분류만, 주지 않으면 전체입니다. 페이지 크기는 기본 20,
+     * <p>{@code category} 에 분류 코드(COLLECTION · RECOMMEND · CHAT)를 주면 그 분류만, 주지 않으면
+     * 전체입니다. 번호가 아니라 코드인 이유는 번호가 자동 증가라 환경마다 다르기 때문입니다. 페이지 크기는 기본 20,
      * 최대 100 이고 그 범위를 벗어난 값은 잘립니다.
      */
     @GetMapping
     public PostsResponse getPosts(
-            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String category,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size
     ) {
-        return postService.findPage(categoryId, page, size);
+        return postService.findPage(category, page, size);
     }
 
     /**
