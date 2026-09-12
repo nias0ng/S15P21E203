@@ -1,4 +1,4 @@
-package com.hyanghae.backend.perfume.entity;
+package com.hyanghae.backend.review.entity;
 
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
@@ -18,5 +18,13 @@ public class PerfumeReviewSeason {
 
     protected PerfumeReviewSeason() {
         // JPA 가 요구하는 기본 생성자입니다.
+    }
+
+    private PerfumeReviewSeason(Long reviewId, Long seasonId) {
+        this.id = PerfumeReviewSeasonId.of(reviewId, seasonId);
+    }
+
+    public static PerfumeReviewSeason of(Long reviewId, Long seasonId) {
+        return new PerfumeReviewSeason(reviewId, seasonId);
     }
 }

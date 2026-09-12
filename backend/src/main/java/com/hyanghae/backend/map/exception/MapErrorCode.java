@@ -11,7 +11,10 @@ import org.springframework.http.HttpStatus;
  */
 public enum MapErrorCode implements ErrorCode {
 
-    MAP_PERFUME_NOT_FOUND(HttpStatus.NOT_FOUND, "지도에서 향수를 찾을 수 없습니다.");
+    MAP_PERFUME_NOT_FOUND(HttpStatus.NOT_FOUND, "지도에서 향수를 찾을 수 없습니다."),
+    MAP_LOGIN_REQUIRED(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다."),
+    MAP_EXPLORATION_POINT_REQUIRED(
+            HttpStatus.BAD_REQUEST, "향수 번호나 좌표 중 하나는 보내야 합니다.");
 
     private final HttpStatus status;
     private final String message;

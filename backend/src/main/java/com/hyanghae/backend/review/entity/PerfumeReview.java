@@ -1,5 +1,6 @@
-package com.hyanghae.backend.perfume.entity;
+package com.hyanghae.backend.review.entity;
 
+import com.hyanghae.backend.perfume.entity.Perfume;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -14,8 +15,7 @@ import java.time.Instant;
 /**
  * {@code perfume_reviews} 테이블 매핑입니다.
  *
- * <p>통계와 AI 요약에 필요한 컬럼을 매핑했습니다. 작성자는 아직 매핑하지 않습니다. 후기 목록
- * 기능이 쓸 때 추가하면 됩니다.
+ * <p>후기 CRUD와 목록 조회, 통계 및 AI 요약에 필요한 컬럼을 매핑합니다.
  *
  * <p>{@code title} 과 {@code content} 는 후기 요약 배치가 씁니다. AI 에게 보낼 원문이 있어야
  * 하는데, 매핑이 없으면 JPQL 에서 이 컬럼을 지목할 수 없습니다.
@@ -40,6 +40,9 @@ public class PerfumeReview {
     @JoinColumn(name = "perfume_id")
     private Perfume perfume;
 
+    @Column(name = "user_id")
+    private Long userId;
+
     @Column(name = "title", length = 100)
     private String title;
 
@@ -49,7 +52,61 @@ public class PerfumeReview {
     @Column(name = "created_at")
     private Instant createdAt;
 
+    @Column(name = "updated_at")
+    private Instant updatedAt;
+
     protected PerfumeReview() {
         // JPA 가 요구하는 기본 생성자입니다.
+    }
+
+    public static PerfumeReview create(
+            Long userId,
+            Perfume perfume,
+            String title,
+            String content,
+            Instant createdAt
+    ) {
+        PerfumeReview review = new PerfumeReview();
+        review.userId = userId;
+        review.perfume = perfume;
+        review.title = title;
+        review.content = content;
+        review.createdAt = createdAt;
+        review.updatedAt = createdAt;
+        return review;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public Perfume getPerfume() {
+        return perfume;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void update(String title, String content, Instant updatedAt) {
+        this.title = title;
+        this.content = content;
+        this.updatedAt = updatedAt;
     }
 }

@@ -1,7 +1,7 @@
 package com.hyanghae.backend.perfume.service;
 
 import com.hyanghae.backend.perfume.batch.ReviewAnalysisProperties;
-import com.hyanghae.backend.perfume.repository.PerfumeReviewRepository;
+import com.hyanghae.backend.review.repository.PerfumeReviewRepository;
 import com.hyanghae.backend.perfume.repository.ReviewContent;
 import com.hyanghae.backend.perfume.repository.ReviewSummaryTarget;
 import java.util.List;
