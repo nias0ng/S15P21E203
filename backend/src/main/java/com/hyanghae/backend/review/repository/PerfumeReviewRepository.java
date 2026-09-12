@@ -1,9 +1,16 @@
-package com.hyanghae.backend.perfume.repository;
+package com.hyanghae.backend.review.repository;
 
-import com.hyanghae.backend.perfume.entity.PerfumeReview;
+import com.hyanghae.backend.perfume.repository.ReviewContent;
+import com.hyanghae.backend.perfume.repository.ReviewSummaryTarget;
+import com.hyanghae.backend.perfume.repository.SeasonCount;
+import com.hyanghae.backend.review.entity.PerfumeReview;
+import jakarta.persistence.LockModeType;
 import java.util.List;
+import java.util.Optional;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -15,6 +22,43 @@ import org.springframework.data.repository.query.Param;
  * 사라질 예정이라, 앞으로도 걸러낼 후기가 생기지 않습니다.
  */
 public interface PerfumeReviewRepository extends JpaRepository<PerfumeReview, Long> {
+
+    boolean existsByUserIdAndPerfumeId(Long userId, Long perfumeId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT r
+            FROM PerfumeReview r
+            WHERE r.id = :reviewId
+              AND r.userId = :userId
+            """)
+    Optional<PerfumeReview> findByIdAndUserIdForUpdate(
+            @Param("reviewId") Long reviewId,
+            @Param("userId") Long userId
+    );
+
+    @Query(
+            value = """
+                    SELECT r.id AS reviewId,
+                           u.nickname AS nickname,
+                           r.title AS title,
+                           r.content AS content,
+                           CASE WHEN r.user_id = :currentUserId THEN TRUE ELSE FALSE END AS mine,
+                           r.created_at AS createdAt,
+                           COALESCE(r.updated_at, r.created_at) AS updatedAt
+                    FROM perfume_reviews r
+                    LEFT JOIN users u ON u.user_id = r.user_id
+                    WHERE r.perfume_id = :perfumeId
+                    ORDER BY r.created_at DESC NULLS LAST, r.id DESC
+                    """,
+            countQuery = "SELECT COUNT(*) FROM perfume_reviews WHERE perfume_id = :perfumeId",
+            nativeQuery = true
+    )
+    Page<PerfumeReviewListRow> findPageByPerfumeId(
+            @Param("perfumeId") Long perfumeId,
+            @Param("currentUserId") Long currentUserId,
+            Pageable pageable
+    );
 
     /**
      * 향수의 후기 수입니다.
