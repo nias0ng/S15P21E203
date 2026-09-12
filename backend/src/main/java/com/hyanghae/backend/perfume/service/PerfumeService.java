@@ -29,7 +29,7 @@ import com.hyanghae.backend.perfume.repository.PerfumeNeighborRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeNoteRepository;
 import com.hyanghae.backend.perfume.repository.PerfumePostRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeReviewKeywordRepository;
-import com.hyanghae.backend.perfume.repository.PerfumeReviewRepository;
+import com.hyanghae.backend.review.repository.PerfumeReviewRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeReviewSummaryRepository;
 import com.hyanghae.backend.perfume.repository.PerfumePriceRepository;
 import java.math.BigDecimal;

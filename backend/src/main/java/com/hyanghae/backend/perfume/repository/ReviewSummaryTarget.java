@@ -1,5 +1,7 @@
 package com.hyanghae.backend.perfume.repository;
 
+import com.hyanghae.backend.review.repository.PerfumeReviewRepository;
+
 /**
  * 후기 요약을 새로 만들어야 하는 향수입니다.
  *
