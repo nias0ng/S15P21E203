@@ -10,14 +10,11 @@ import org.springframework.stereotype.Repository;
  * 향수에 연결된 게시글을 읽습니다.
  *
  * <p>다른 리포지토리와 달리 JPA 가 아니라 SQL 을 직접 씁니다. {@code posts} 는 커뮤니티 도메인의
- * 테이블이고 {@code Post} 엔티티는 그쪽에서 만들 예정입니다. 여기서 엔티티를 먼저 만들면 나중에
- * 두 벌이 되므로, 엔티티 없이 읽을 수 있는 방법을 택했습니다.
+ * 테이블이라 여기서 엔티티를 만들면 두 벌이 됩니다. 커뮤니티의 {@code PostRepository} 도 엔티티
+ * 없이 SQL 을 쓰므로 {@code Post} 엔티티는 생기지 않습니다.
  *
- * <p>{@code Post} 엔티티가 생기면 이 클래스를 JPQL 리포지토리로 바꾸면 됩니다. 응답 형태는
- * 그대로이므로 컨트롤러와 서비스는 건드릴 일이 없습니다.
- *
- * <p>게시글 상태로 거르지 않습니다. 게시글 보류 기능이 없어지면서 {@code posts.status} 도
- * 사라질 예정입니다.
+ * <p>게시글 상태로 거르지 않습니다. 게시글 보류 기능이 없어지면서 {@code posts.status} 가 V5 에서
+ * 삭제됐습니다. 글은 있거나 지워졌거나 둘 중 하나입니다.
  */
 @Repository
 public class PerfumePostRepository {
