@@ -5,3 +5,7 @@
 
 pandas>=2.0
 numpy>=1.24
+
+# HTTP 서버(server.py). 엔진만 쓸 거면 없어도 됩니다.
+fastapi>=0.110
+uvicorn>=0.27
