@@ -8,15 +8,19 @@ import com.hyanghae.backend.community.dto.response.PostPerfumeResponse;
 import com.hyanghae.backend.community.dto.response.PostSummaryResponse;
 import com.hyanghae.backend.community.dto.response.PostUpdateResponse;
 import com.hyanghae.backend.community.dto.response.PostsResponse;
+import com.hyanghae.backend.community.entity.Post;
+import com.hyanghae.backend.community.entity.PostCategory;
 import com.hyanghae.backend.community.exception.CommunityErrorCode;
-import com.hyanghae.backend.community.repository.CreatedPost;
+import com.hyanghae.backend.community.repository.PostCategoryRepository;
 import com.hyanghae.backend.community.repository.PostListRow;
 import com.hyanghae.backend.community.repository.PostPerfumeRow;
 import com.hyanghae.backend.community.repository.PostRepository;
-import com.hyanghae.backend.community.repository.PostRow;
 import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.global.security.CurrentUser;
+import com.hyanghae.backend.perfume.entity.Perfume;
+import com.hyanghae.backend.perfume.repository.PerfumeRepository;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -45,33 +49,47 @@ public class PostService {
     private static final int MAX_PAGE_SIZE = 100;
 
     private final PostRepository postRepository;
+    private final PostCategoryRepository postCategoryRepository;
+    private final PerfumeRepository perfumeRepository;
     private final CurrentUser currentUser;
 
-    public PostService(PostRepository postRepository, CurrentUser currentUser) {
+    public PostService(
+            PostRepository postRepository,
+            PostCategoryRepository postCategoryRepository,
+            PerfumeRepository perfumeRepository,
+            CurrentUser currentUser
+    ) {
         this.postRepository = postRepository;
+        this.postCategoryRepository = postCategoryRepository;
+        this.perfumeRepository = perfumeRepository;
         this.currentUser = currentUser;
     }
 
     /**
      * 글을 씁니다. 분류는 활성인 것이어야 하고, 거는 향수도 활성이어야 합니다.
      *
-     * <p>향수와 이미지는 보낸 순서를 그대로 보여줄 순서로 씁니다.
+     * <p>향수와 이미지는 보낸 순서를 그대로 보여줄 순서로 씁니다. 글에 딸린 값이라 글을 저장하면
+     * 함께 저장됩니다.
      */
     @Transactional
     public PostCreateResponse create(PostCreateRequest request) {
         Long userId = requireLogin();
-        Long categoryId = requireActiveCategory(request.category());
+        PostCategory category = requireActiveCategory(request.category());
+        List<Perfume> perfumes = requireActivePerfumes(request.perfumeIds());
 
-        List<Long> perfumeIds = distinctPerfumeIds(request.perfumeIds());
-        requireActivePerfumes(perfumeIds);
-        List<String> imageUrls = orEmpty(request.imageUrls());
+        Post post = Post.create(
+                userId,
+                category,
+                request.title().strip(),
+                request.content().strip(),
+                OffsetDateTime.now()
+        );
+        post.addPerfumes(perfumes);
+        post.replaceImages(orEmpty(request.imageUrls()));
 
-        CreatedPost created = postRepository.insert(
-                userId, categoryId, request.title().strip(), request.content().strip());
-        postRepository.replacePerfumes(created.postId(), perfumeIds);
-        postRepository.replaceImages(created.postId(), imageUrls);
+        postRepository.save(post);
 
-        return new PostCreateResponse(created.postId(), created.createdAt());
+        return new PostCreateResponse(post.getId(), post.getCreatedAt());
     }
 
     /**
@@ -81,36 +99,36 @@ public class PostService {
      */
     @Transactional
     public PostUpdateResponse update(Long postId, PostUpdateRequest request) {
-        PostRow post = requireMyPost(postId);
+        Post post = requireMyPost(postId);
 
-        Long categoryId = request.isCategoryPresent()
+        PostCategory category = request.isCategoryPresent()
                 ? requireActiveCategory(request.getCategory())
-                : post.categoryId();
-        String title = request.isTitlePresent() ? request.getTitle().strip() : post.title();
-        String content = request.isContentPresent() ? request.getContent().strip() : post.content();
+                : post.getCategory();
+        String title = request.isTitlePresent() ? request.getTitle().strip() : post.getTitle();
+        String content = request.isContentPresent()
+                ? request.getContent().strip()
+                : post.getContent();
 
-        OffsetDateTime updatedAt = postRepository.update(postId, categoryId, title, content);
+        post.update(category, title, content, OffsetDateTime.now());
 
         if (request.isPerfumesPresent()) {
-            List<Long> perfumeIds = distinctPerfumeIds(request.getPerfumeIds());
-            requireActivePerfumes(perfumeIds);
-            postRepository.replacePerfumes(postId, perfumeIds);
+            replacePerfumes(post, request.getPerfumeIds());
         }
         if (request.isImagesPresent()) {
-            postRepository.replaceImages(postId, request.getImageUrls());
+            post.replaceImages(request.getImageUrls());
         }
 
-        return new PostUpdateResponse(postId, updatedAt);
+        return new PostUpdateResponse(post.getId(), post.getUpdatedAt());
     }
 
     /**
-     * 글을 지웁니다. 이미지와 향수 연결은 외래키가 함께 지웁니다.
+     * 글을 지웁니다. 이미지와 향수 연결은 글이 함께 지웁니다.
      *
-     * <p>댓글도 함께 지워집니다({@code comments.post_id} 가 {@code ON DELETE CASCADE} 입니다).
+     * <p>댓글은 외래키가 지웁니다({@code comments.post_id} 가 {@code ON DELETE CASCADE} 입니다).
      */
     @Transactional
     public void delete(Long postId) {
-        postRepository.delete(requireMyPost(postId).postId());
+        postRepository.delete(requireMyPost(postId));
     }
 
     /**
@@ -132,46 +150,68 @@ public class PostService {
 
         List<PostSummaryResponse> posts = rows.stream()
                 .map(row -> new PostSummaryResponse(
-                        row.postId(),
-                        row.category(),
-                        row.title(),
-                        row.nickname(),
-                        perfumes.get(row.postId()),
-                        row.createdAt()
+                        row.getPostId(),
+                        row.getCategory(),
+                        row.getTitle(),
+                        row.getNickname(),
+                        perfumes.get(row.getPostId()),
+                        OffsetDateTime.ofInstant(row.getCreatedAt(), ZoneId.systemDefault())
                 ))
                 .toList();
 
         return new PostsResponse(
-                posts, pageNumber, pageSize, postRepository.count(category));
+                posts, pageNumber, pageSize, postRepository.countPage(category));
     }
 
     /** 게시글 상세입니다. 없는 글은 404 입니다. */
     @Transactional(readOnly = true)
     public PostDetailResponse findOne(Long postId) {
-        PostRow post = requirePost(postId);
+        Post post = requirePost(postId);
 
         return new PostDetailResponse(
-                post.postId(),
-                post.categoryCode(),
-                post.nickname(),
-                post.title(),
-                post.content(),
+                post.getId(),
+                post.getCategory() == null ? null : post.getCategory().getCode(),
+                nicknameOf(post),
+                post.getTitle(),
+                post.getContent(),
                 postRepository.findImageUrls(postId),
                 postRepository.findPerfumes(postId),
                 isMine(post),
-                post.createdAt(),
-                post.updatedAt()
+                post.getCreatedAt(),
+                post.getUpdatedAt()
         );
     }
 
-    private Map<Long, PostPerfumeResponse> representativePerfumes(List<PostListRow> rows) {
-        List<Long> postIds = rows.stream().map(PostListRow::postId).toList();
+    /**
+     * 향수 연결을 통째로 바꿉니다.
+     *
+     * <p>비우고 담는 사이에 {@code flush} 를 한 번 끼웁니다. {@code post_perfumes} 의 기본키가
+     * (글, 향수)인데 Hibernate 는 한 번의 flush 에서 INSERT 를 DELETE 보다 먼저 내보냅니다. 같은
+     * 향수를 그대로 두는 수정이라면 지우기 전에 넣으려다 기본키 충돌로 실패합니다.
+     */
+    private void replacePerfumes(Post post, List<Long> perfumeIds) {
+        List<Perfume> perfumes = requireActivePerfumes(perfumeIds);
 
-        return postRepository.findRepresentativePerfumes(postIds).stream()
-                .collect(Collectors.toMap(PostPerfumeRow::postId, PostPerfumeRow::perfume));
+        post.clearPerfumes();
+        postRepository.flush();
+        post.addPerfumes(perfumes);
     }
 
-    private PostRow requirePost(Long postId) {
+    private Map<Long, PostPerfumeResponse> representativePerfumes(List<PostListRow> rows) {
+        List<Long> postIds = rows.stream().map(PostListRow::getPostId).toList();
+        if (postIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return postRepository.findRepresentativePerfumes(postIds).stream()
+                .collect(Collectors.toMap(
+                        PostPerfumeRow::getPostId,
+                        row -> new PostPerfumeResponse(
+                                row.getPerfumeId(), row.getName(), row.getBrand())
+                ));
+    }
+
+    private Post requirePost(Long postId) {
         return postRepository.findById(postId)
                 .orElseThrow(() ->
                         new BusinessException(CommunityErrorCode.COMMUNITY_POST_NOT_FOUND));
@@ -185,12 +225,20 @@ public class PostService {
      *
      * <p>작성자가 탈퇴한 글은 아무도 고칠 수 없습니다. 글은 남지만 주인이 없어집니다.
      */
-    private PostRow requireMyPost(Long postId) {
-        PostRow post = requirePost(postId);
-        if (!Objects.equals(post.authorId(), requireLogin())) {
+    private Post requireMyPost(Long postId) {
+        Post post = requirePost(postId);
+        if (!Objects.equals(post.getUserId(), requireLogin())) {
             throw new BusinessException(CommunityErrorCode.COMMUNITY_POST_NOT_OWNED);
         }
         return post;
+    }
+
+    /** 탈퇴한 작성자의 글은 닉네임이 비어 나갑니다. */
+    private String nicknameOf(Post post) {
+        if (post.getUserId() == null) {
+            return null;
+        }
+        return postRepository.findNickname(post.getUserId()).orElse(null);
     }
 
     /**
@@ -199,36 +247,43 @@ public class PostService {
      * <p>여기서는 로그인을 <b>요구하지 않습니다.</b> 비로그인이면 그냥 거짓입니다. 상세 조회는
      * 누구나 할 수 있어야 하므로 401 을 던지면 안 됩니다.
      */
-    private boolean isMine(PostRow post) {
-        return post.authorId() != null
-                && currentUser.id().map(post.authorId()::equals).orElse(false);
+    private boolean isMine(Post post) {
+        return post.getUserId() != null
+                && currentUser.id().map(post.getUserId()::equals).orElse(false);
     }
 
-    private Long requireActiveCategory(String category) {
-        return postRepository.findActiveCategoryId(category)
+    private PostCategory requireActiveCategory(String category) {
+        return postCategoryRepository.findByCodeAndActiveTrue(category)
                 .orElseThrow(() ->
                         new BusinessException(CommunityErrorCode.COMMUNITY_CATEGORY_NOT_FOUND));
     }
 
     /**
-     * 같은 향수를 두 번 걸 수 없습니다.
+     * 글에 걸 향수를 <b>보낸 순서대로</b> 찾습니다. 없거나 내려간 향수가 섞이면 404 입니다.
      *
-     * <p>{@code post_perfumes} 의 기본키가 (글, 향수)라 어차피 두 번은 들어가지 않습니다. 조용히
-     * 하나로 합치지 않고 400 으로 돌려주는 이유는, 화면이 중복을 보냈다는 것은 목록을 잘못 만들고
-     * 있다는 뜻이기 때문입니다.
+     * <p>같은 향수를 두 번 걸 수 없습니다. {@code post_perfumes} 의 기본키가 (글, 향수)라 어차피
+     * 두 번은 들어가지 않습니다. 조용히 하나로 합치지 않고 400 으로 돌려주는 이유는, 화면이
+     * 중복을 보냈다는 것은 목록을 잘못 만들고 있다는 뜻이기 때문입니다.
+     *
+     * <p>조회 결과는 순서를 보장하지 않으므로 번호로 다시 줄 세웁니다. 순서가 곧 화면에 보일
+     * 순서입니다.
      */
-    private List<Long> distinctPerfumeIds(List<Long> perfumeIds) {
+    private List<Perfume> requireActivePerfumes(List<Long> perfumeIds) {
         List<Long> ids = orEmpty(perfumeIds);
         if (new HashSet<>(ids).size() != ids.size()) {
             throw new BusinessException(CommunityErrorCode.COMMUNITY_POST_INVALID);
         }
-        return ids;
-    }
+        if (ids.isEmpty()) {
+            return List.of();
+        }
 
-    private void requireActivePerfumes(List<Long> perfumeIds) {
-        if (postRepository.countActivePerfumes(perfumeIds) != perfumeIds.size()) {
+        Map<Long, Perfume> found = perfumeRepository.findAllByIdInAndActiveTrue(ids).stream()
+                .collect(Collectors.toMap(Perfume::getId, Function.identity()));
+        if (found.size() != ids.size()) {
             throw new BusinessException(CommunityErrorCode.COMMUNITY_PERFUME_NOT_FOUND);
         }
+
+        return ids.stream().map(found::get).toList();
     }
 
     private <T> List<T> orEmpty(List<T> values) {

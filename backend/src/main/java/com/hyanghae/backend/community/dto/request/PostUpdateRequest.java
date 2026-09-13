@@ -3,6 +3,9 @@ package com.hyanghae.backend.community.dto.request;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 
@@ -76,12 +79,12 @@ public class PostUpdateRequest {
     }
 
     @Schema(description = "바꿀 향수 ID 목록. 통째로 교체되고 빈 배열이면 모두 지웁니다. 생략하면 유지")
-    public List<Long> getPerfumeIds() {
+    public List<@NotNull @Positive Long> getPerfumeIds() {
         return perfumeIds;
     }
 
     @Schema(description = "바꿀 이미지 주소 목록. 통째로 교체되고 빈 배열이면 모두 지웁니다. 생략하면 유지")
-    public List<String> getImageUrls() {
+    public List<@NotBlank String> getImageUrls() {
         return imageUrls;
     }
 
