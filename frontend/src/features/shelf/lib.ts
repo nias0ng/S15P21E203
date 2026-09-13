@@ -41,6 +41,35 @@ export function formatShelfDate(iso: string | null): string | null {
   return `${at.getFullYear()}.${pad(at.getMonth() + 1)}.${pad(at.getDate())}`
 }
 
+/**
+ * 향수 이름 앞에 붙은 브랜드를 뗍니다. 이름표는 첫 줄에 브랜드를 따로 적어서, 이름에도
+ * 브랜드가 붙어 있으면 "조말론 / 조 말론 우드 세이지 앤 씨 솔트" 처럼 같은 말이 두 번 보입니다.
+ *
+ *   ('조 말론 우드 세이지 앤 씨 솔트', '조말론') → '우드 세이지 앤 씨 솔트'  띄어쓰기가 달라도 같은 브랜드
+ *   ('입생로랑 리브르', '입생로랑뷰티')          → '리브르'                  브랜드의 앞부분만 적힌 경우
+ *   ('디올 미스 디올', '디올')                   → '미스 디올'               앞에서 한 번만
+ *   ('블루 드 샤넬', '샤넬')                     → 그대로                    브랜드로 시작하지 않음
+ *
+ * 앞 낱말을 이어 붙인 것이 브랜드(띄어쓰기 · 대소문자 무시)의 앞부분이고, 브랜드의 절반
+ * (최소 두 글자) 이상일 때만 뗍니다. 한두 글자가 우연히 겹친 이름까지 자르지 않으려는 것입니다.
+ * 이름이 브랜드뿐이면 비우지 않고 그대로 둡니다.
+ */
+export function nameWithoutBrand(name: string, brand: string): string {
+  const key = brand.replace(/\s+/g, '').toLowerCase()
+  const words = name.trim().split(/\s+/)
+  const least = Math.max(2, Math.ceil(key.length / 2))
+
+  let joined = ''
+  let cut = 0
+  // 마지막 낱말은 남깁니다 — 이름이 통째로 사라지면 안 됩니다
+  for (let at = 0; at < words.length - 1; at += 1) {
+    joined += words[at]?.toLowerCase() ?? ''
+    if (!key.startsWith(joined)) break
+    if (joined.length >= least) cut = at + 1
+  }
+  return cut > 0 ? words.slice(cut).join(' ') : name
+}
+
 /** 줄에 매달린 이름표 하나의 흔들림 */
 export type Swing = {
   /** 기울기(라디안). 양수면 시계 방향 — 태그 아랫단이 왼쪽으로 갑니다 */
@@ -99,78 +128,117 @@ const ceil5 = (value: number) => Math.ceil(value / 5) * 5
  * 머리말 부제와 하단 문구를 걷어낸 만큼 진열장이 커지도록, 치수를 고정값이 아니라
  * 진열장 자리의 크기에서 계산합니다.
  *
- *   벽감 높이 = 위 테두리·천장 23 + 병 위 여유 + 병 + 병 발치부터 아래끝 15
+ *   벽감 높이 = 위 테두리·천장 23 + 병 위 여유 + 채움 병 + 병 발치부터 아래끝 15
  *   진열장 자리 = 벽감 + 매달린 이름표 자리 85(줄 5 + 태그 65 + 그림자 15)
  *
- * 병 위 여유는 병 높이의 10%(최소 30)입니다. 마우스를 올리면 병이 1.06 배로 자라는데
- * 그만큼은 천장 아래에 남아야 합니다.
+ * 벽감은 **병이 벽감을 꽉 채운다고 칠 때(채움 병)** 의 크기로 잡습니다. 병 위 여유는
+ * 그 높이의 10%(최소 30)입니다.
+ *
+ * 실제 병 사진은 그 벽감 높이의 70%(BOTTLE_PER_CASE)로 줄여 세웁니다. 채움 병 그대로
+ * (벽감의 85%) 세우면 병이 너무 크게 보이고, 넓은 병은 칸 폭을 다 써서 옆 병과 어깨가
+ * 붙습니다. 벽감 높이는 채움 병으로 정하므로 사진을 줄여도 화면 구성은 그대로이고,
+ * 사진은 object-contain 이라 비율을 지킨 채 줄어듭니다. 줄인 병이 마우스를 올려
+ * 1.06 배로 자라도 천장까지는 넉넉히 남습니다.
  */
 const HANG = 85
 const CASE_CHROME = 38
 const HEADROOM = 0.1
 const MIN_HEADROOM = 30
+const BOTTLE_PER_CASE = 0.7
 
 /**
- * 칸 폭과 병 높이의 비율. 칸 폭이 병 높이의 0.6 배쯤일 때 가는 병은 높이를 다 쓰고,
- * 넓은 플라콘은 폭에 맞춰 조금 낮아집니다(시안의 칸도 이 비율입니다).
- * 병 높이는 칸 폭의 1.8 배를 넘기지 않습니다 — 넘기면 대부분의 병이 폭에 막혀
- * 키만 큰 빈 칸이 됩니다.
+ * 벽감 높이를 정하는 셈 — 칸 폭과 채움 병 높이의 비율. 채움 병 높이는 칸 폭의 1.8 배를
+ * 넘기지 않습니다. 예전 "패널에 가리지 않는 폭에 다섯 칸" 배치에서 벽감 높이를 정하던
+ * 식이고, 칸을 촘촘히 바꾼 뒤에도 벽감 높이를 그대로 두려고 이 셈으로만 남겨 둡니다.
  */
 const PITCH_PER_BOTTLE = 0.6
 const MAX_BOTTLE_PER_PITCH = 1.8
 
 /**
- * 한 화면의 칸 수. 다섯 칸을 바라되, 칸 폭이 200px 아래로 내려가면 줄입니다.
- * 이름표 벽도 칸 하나를 쓰므로 다섯 칸이면 병이 적어도 넷은 보입니다.
+ * 벽감 높이를 정할 때 세는 칸 수. 가리지 않는 폭에 다섯 칸을 바라되, 칸 폭이 200px
+ * 아래로 내려가면 줄입니다. **벽감 높이에만** 씁니다 — 실제 칸은 아래 SLOT_PER_BOTTLE 로
+ * 촘촘히 나눕니다.
  */
 const PREFERRED_VISIBLE = 5
 const MIN_PITCH = 200
 const MIN_VISIBLE = 3
 const MAX_VISIBLE = 9
 
+/**
+ * 실제 칸 폭 — 병 사진 높이의 0.55 배로 촘촘히 세웁니다. 1920 에서 칸 225, 창 전체 여덟 칸
+ * (패널에 가리지 않는 자리에 여섯 칸 반). 가는 병은 높이를 다 쓰고, 넓은 플라콘은 칸 폭에
+ * 맞춰 조금 낮아집니다.
+ */
+const SLOT_PER_BOTTLE = 0.55
+const MAX_SLOTS = 12
+
 export type ShelfMetrics = {
-  /** 한 화면에 서는 칸 수(이름표 벽 칸 포함) */
+  /** 창 전체 — 상세 패널 밑까지 — 에 서는 칸 수(이름표 벽 칸 포함) */
   visible: number
+  /**
+   * 상세 패널에 가리지 않는 자리에 온전히 들어가는 칸 수. 고른 병을 들이는 자리 · 벽 끝 ·
+   * 칩 켜짐(가리지 않는 자리의 가운데)을 이 칸 수로 셉니다.
+   */
+  clear: number
   /** 칸 하나의 폭(px). 창 폭을 칸 수로 나눈 값이라 끝자리 규칙 밖입니다 */
   pitch: number
-  /** 병 칸 높이(px) */
+  /** 병 사진 칸 높이(px). 벽감 높이의 70% 입니다 */
   bottle: number
   /** 벽감 높이(px) */
   caseHeight: number
 }
 
 /**
- * 진열장 자리의 폭 · 높이로 치수를 정합니다.
+ * 진열장 자리의 크기로 치수를 정합니다.
  *
- * 1920 x 1080 에서 진열장 자리는 1440 x 780 입니다 → 다섯 칸(288) · 병 515 · 벽감 605.
+ *   width       창 전체 폭(상세 패널 밑까지)
+ *   height      진열장 자리 높이
+ *   clearWidth  패널에 가리지 않는 폭(창 폭 − 패널 − 간격 20)
+ *
+ * 1920 x 1080 → 1800 x 780 · 가리지 않는 폭 1440 → 벽감 605 · 병 420 · 칸 225 ·
+ * 창 전체 여덟 칸 · 가리지 않는 칸 여섯.
  * 병 · 벽감 높이는 끝자리를 5 로 맞춥니다. 칸 폭만은 창 폭을 나눈 값이라 그대로 둡니다
  * — 반올림하면 칸 수 x 칸 폭이 창 폭과 어긋나 끝 병이 창 경계에 걸립니다.
  */
-export function shelfMetrics(width: number, height: number): ShelfMetrics {
-  // 아직 크기를 못 쟀을 때(첫 그림 · 테스트 환경) 예전 치수로 둡니다
+export function shelfMetrics(
+  width: number,
+  height: number,
+  clearWidth = width,
+): ShelfMetrics {
+  // 아직 크기를 못 쟀을 때(첫 그림 · 테스트 환경) 벽감 345 기준으로 둡니다
   if (width <= 0 || height <= 0) {
-    return { visible: 7, pitch: 200, bottle: 280, caseHeight: 345 }
+    return { visible: 7, clear: 7, pitch: 200, bottle: 240, caseHeight: 345 }
   }
+  const span = clamp(clearWidth, 1, width)
 
+  // ── 벽감 높이 (위 설명 — 채움 병)
   const room = height - HANG - CASE_CHROME
   const tallest = Math.min(room / (1 + HEADROOM), room - MIN_HEADROOM)
-
-  const preferred = Math.round(width / (tallest * PITCH_PER_BOTTLE))
-  const roomy = Math.min(PREFERRED_VISIBLE, Math.floor(width / MIN_PITCH))
-  const visible = clamp(Math.max(preferred, roomy), MIN_VISIBLE, MAX_VISIBLE)
-  const pitch = width / visible
-
-  const bottle = Math.max(
+  const preferred = Math.round(span / (tallest * PITCH_PER_BOTTLE))
+  const roomy = Math.min(PREFERRED_VISIBLE, Math.floor(span / MIN_PITCH))
+  const standing = clamp(Math.max(preferred, roomy), MIN_VISIBLE, MAX_VISIBLE)
+  const filling = Math.max(
     100,
-    floor5(Math.min(tallest, pitch * MAX_BOTTLE_PER_PITCH)),
+    floor5(Math.min(tallest, (span / standing) * MAX_BOTTLE_PER_PITCH)),
   )
-  const headroom = Math.max(MIN_HEADROOM, bottle * HEADROOM)
+  const headroom = Math.max(MIN_HEADROOM, filling * HEADROOM)
   const caseHeight = Math.min(
-    ceil5(CASE_CHROME + headroom + bottle),
+    ceil5(CASE_CHROME + headroom + filling),
     floor5(height - HANG),
   )
+  const bottle = floor5(caseHeight * BOTTLE_PER_CASE)
 
-  return { visible, pitch, bottle, caseHeight }
+  // ── 칸 — 병 사진 폭에 맞춰 촘촘히, 창 전체를 칸 수로 나눕니다
+  const visible = clamp(
+    Math.round(width / (bottle * SLOT_PER_BOTTLE)),
+    MIN_VISIBLE,
+    MAX_SLOTS,
+  )
+  const pitch = width / visible
+  // 딱 맞아떨어지는 칸이 부동소수 오차로 하나 덜 세어지지 않게 조금 여유를 둡니다
+  const clear = clamp(Math.floor(span / pitch + 1e-6), 1, visible)
+
+  return { visible, clear, pitch, bottle, caseHeight }
 }
 
 /** 진열장 자리에서 벽감 아래로 매달린 이름표가 쓰는 높이 */
@@ -196,6 +264,12 @@ export type WallSection = ShelfSection & {
   start: number
   /** 벽감이 차지하는 칸 수. 비어 있어도 "비어 있음" 을 적을 한 칸은 둡니다 */
   span: number
+  /**
+   * 벽감 뒤에 비워 두는 벽 칸 수. 병이 적어 이 분류가 한 화면을 못 채우면, 이 분류의
+   * 첫머리에 섰을 때 다음 분류가 화면(상세 패널 밑 포함)에 비치지 않도록 벽을 비웁니다.
+   * 마지막 분류 뒤에는 다음 분류가 없어서 두지 않습니다.
+   */
+  gap: number
 }
 
 export type WallLayout = {
@@ -204,14 +278,20 @@ export type WallLayout = {
   total: number
 }
 
-export function layoutWall(sections: ShelfSection[]): WallLayout {
+/**
+ * `visible` 은 창 전체(상세 패널 밑까지)의 칸 수입니다. 주면, 이름표 벽 + 벽감이 한 화면을
+ * 못 채우는 분류 뒤에 빈 벽(`gap`)을 둬서 다음 분류가 창 밖에서 시작하게 합니다.
+ */
+export function layoutWall(sections: ShelfSection[], visible = 0): WallLayout {
   let at = 0
-  const placed = sections.map((section) => {
+  const placed = sections.map((section, index) => {
     const plaque = at
     const start = plaque + 1
     const span = Math.max(1, section.items.length)
-    at = start + span
-    return { ...section, plaque, start, span }
+    const last = index === sections.length - 1
+    const gap = last ? 0 : Math.max(0, visible - 1 - span)
+    at = start + span + gap
+    return { ...section, plaque, start, span, gap }
   })
   return { sections: placed, total: at + 1 }
 }

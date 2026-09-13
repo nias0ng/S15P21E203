@@ -52,7 +52,10 @@ type Props = {
  * `.shelf-panel` 이 반투명 바탕 · 그림자 · backdrop-blur 를 냅니다. 뒤의 종이가
  * 살짝 비쳐서 "종이 위에 얹힌 카드" 로 읽힙니다.
  */
-const CARD = 'shelf-panel rounded-[14px] px-6.25 pt-5 pb-2.5 min-h-125'
+// 세로가 빠듯한 화면(창 높이 840 아래)에서는 최소 높이를 풀어 내용만큼만 섭니다 —
+// 500 을 지키면 카드 아랫단이 하단 띠 선에 붙습니다
+const CARD =
+  'shelf-panel rounded-[14px] px-6.25 pt-5 pb-2.5 min-h-125 [@media(height<52.5rem)]:min-h-0'
 
 /**
  * 이 카드 위 버튼의 포커스 링.
@@ -111,7 +114,12 @@ export function ShelfDetailPanel({
   return (
     <aside
       aria-label="선택한 향수 정보"
-      className={cn(CARD, 'flex flex-col gap-2.5', className)}
+      className={cn(
+        CARD,
+        // 세로가 빠듯한 화면(창 높이 840 아래)에서는 사이 간격을 한 단 줄입니다(아래 사진 설명)
+        'flex flex-col gap-2.5 [@media(height<52.5rem)]:gap-1.25',
+        className,
+      )}
     >
       {/*
         병 이미지는 배경이 투명한 PNG 로 들어옵니다(DisplayCase 와 같은 소스).
@@ -121,16 +129,22 @@ export function ShelfDetailPanel({
         분류 변경 · 저장 해제 · 메모)이 아래에 들어오면서, 머리말부터 하단 띠까지
         한 화면에 담으려면 어딘가를 줄여야 했습니다. 사진은 줄여도 무엇인지 알아볼 수
         있지만 조작은 줄이면 못 누릅니다.
+        창 높이가 840 아래면 사진을 60px 로 한 번 더 줄이고 사이 간격도 줄입니다. 이 카드는
+        스크롤 막대 없이 내용을 다 담아야 하는데(진열대 화면은 스크롤하지 않는 한 장),
+        그런 화면에서는 카드가 설 세로 자리가 모자랍니다.
         이미지가 없을 때도 같은 높이를 비워 둬야 아래 글이 위아래로 튀지 않습니다.
       */}
       {item.thumbnailUrl ? (
         <img
           src={item.thumbnailUrl}
           alt=""
-          className="shelf-bottle-img h-[100px] w-full object-contain"
+          className="shelf-bottle-img h-[100px] w-full object-contain [@media(height<52.5rem)]:h-[60px]"
         />
       ) : (
-        <div aria-hidden className="h-[100px]" />
+        <div
+          aria-hidden
+          className="h-[100px] [@media(height<52.5rem)]:h-[60px]"
+        />
       )}
 
       <div className="flex flex-col items-center gap-1.25">

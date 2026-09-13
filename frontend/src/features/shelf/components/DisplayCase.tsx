@@ -1,5 +1,6 @@
 import { cn } from '@/shared/lib/cn'
 
+import { nameWithoutBrand } from '../lib'
 import type { ShelfItem } from '../types'
 
 type Props = {
@@ -89,7 +90,8 @@ export function DisplayCase({
     >
       {/*
         벽감 면들. 순서가 곧 겹치는 순서입니다 — 뒷벽과 그 조명이 먼저 깔리고,
-        천장·좌우 벽·바닥이 그 가장자리를 덮고, 질감과 입구 테두리가 맨 위에 옵니다.
+        천장·좌우 벽·바닥이 그 가장자리를 덮고, 입구 테두리를 두른 뒤 질감이 맨 위에서
+        테두리까지 덮습니다(shelf-display.css 의 .shelf-niche-grain).
         전부 장식이라 낭독기에서 뺍니다.
       */}
       <div
@@ -102,8 +104,8 @@ export function DisplayCase({
         <div className="shelf-face shelf-niche-wall-left" />
         <div className="shelf-face shelf-niche-wall-right" />
         <div className="shelf-face shelf-niche-floor" />
-        <div className="shelf-face shelf-niche-grain" />
         <div className="shelf-face shelf-niche-bevel" />
+        <div className="shelf-face shelf-niche-grain" />
       </div>
 
       {items.length === 0 ? (
@@ -234,6 +236,8 @@ export function DisplayCase({
                 */}
                 <span className="shelf-tag-hanger">
                   <span className="shelf-tag">
+                    {/* 가장자리 두께 — 왼쪽 위 빛 · 오른쪽 아래 그늘(CSS 의 .shelf-tag-bevel) */}
+                    <span aria-hidden className="shelf-tag-bevel" />
                     <span aria-hidden className="shelf-tag-eyelet" />
                     <span className="shelf-muted text-caption block max-w-full truncate font-serif leading-snug">
                       {item.brand}
@@ -241,9 +245,11 @@ export function DisplayCase({
                     {/*
                       두 줄에 못 박습니다. 태그 높이가 이름마다 달라지면 줄 끝에
                       매달린 태그들의 아랫선이 들쭉날쭉해집니다.
+                      이름 앞의 브랜드는 뗍니다 — 윗줄에 브랜드가 이미 있습니다.
+                      전체 이름은 병에 마우스를 올리면 뜨는 title 에 남습니다.
                     */}
                     <span className="text-caption line-clamp-2 font-serif leading-snug">
-                      {item.name}
+                      {nameWithoutBrand(item.name, item.brand)}
                     </span>
                   </span>
                   <span aria-hidden className="shelf-tag-string" />

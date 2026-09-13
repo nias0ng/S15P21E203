@@ -72,7 +72,11 @@
     --shelf-ink-soft: oklch(0.455 0.014 61);
     --chip: oklch(0.947 0.009 80 / 0.74);
     --chip-active: oklch(0.29 0.015 55);
-    --panel: oklch(0.948 0.009 82 / 0.9);
+    /*
+     * 상세 패널 바탕. 벽 위에 얹혀서 아주 옅게 비칩니다 — 밑으로 병이 더 이어진다는 걸
+     * 알 수 있을 만큼만 투명하게 둡니다(흐림은 .shelf-panel 의 backdrop-filter).
+     */
+    --panel: oklch(0.948 0.009 82 / 0.82);
     --hairline: oklch(0.53 0.016 62 / 0.34);
     --depth: oklch(0.31 0.025 59 / 0.32);
     --highlight: oklch(0.98 0.005 86 / 0.72);
@@ -205,7 +209,8 @@
    *
    * 고정값이 아니라 ShelfWall 이 진열장 자리의 크기에서 계산해 넣습니다(lib.ts 의
    * shelfMetrics). 화면이 한 장으로 고정돼 있어, 남는 세로 공간만큼 진열장이 커집니다.
-   * 1920 x 1080 에서 벽감 605 · 병 515 · 칸 288(한 화면 다섯 칸)입니다.
+   * 1920 x 1080 에서 벽감 605 · 병 420 · 칸 288(한 화면 다섯 칸)입니다. 병 사진은 벽감
+   * 높이의 70% 로 줄여 세웁니다 — 벽감을 꽉 채우면 병이 너무 크게 보입니다.
    * 여기 값은 크기를 재기 전에 쓰는 기본값입니다.
    *
    * ⚠️ 커진 병(병 높이 x 1.06)이 천장에 닿지 않아야 합니다 — 계산이 병 위에 병 높이의
@@ -259,7 +264,8 @@
    * 달아야 하는데, 사각형이어야 그림자가 네 접힘선에 정확히 붙습니다.
    *
    * 칠하는 순서(DOM 순서)가 곧 겹치는 순서입니다: 뒷벽 → 뒷벽 조명 → 천장·좌우 벽·바닥 →
-   * 질감 → 입구 테두리. 조명이 면들보다 먼저라, 조명이 움직여도 벽이 가려 줍니다.
+   * 입구 테두리 → 질감. 조명이 면들보다 먼저라, 조명이 움직여도 벽이 가려 줍니다.
+   * 질감이 맨 마지막인 이유는 아래 .shelf-niche-grain 에 있습니다.
    */
   .shelf-scope .shelf-niche {
     /* 면 사이 틈(안티에일리어싱)으로 페이지가 비치지 않게 접힘선 색을 깔아 둡니다 */
@@ -397,8 +403,14 @@
    * 없으면 벽감 안만 매끈한 디지털 그러데이션으로 떠 보입니다.
    * 바탕보다 옅게 둡니다 — 눈에 띄는 무늬가 아니라 "완전한 평면은 아니다" 정도가
    * 목표입니다.
+   *
+   * **입구 테두리까지 덮습니다(inset 0 · 테두리보다 나중에 칠함).** 예전에는 테두리 안쪽만
+   * 덮고 테두리가 그 위에 칠해져서, 테두리만 결이 없는 맨 색으로 남았습니다. 바깥 페이지
+   * 종이는 결(multiply)에 한 단 어두워져 있어서, 종이보다 조금 어둡게 잡은 옆 테두리
+   * (--bevel-side)가 오히려 밝게 떠 벽감 양옆에 흰 세로줄로 보였습니다.
    */
   .shelf-scope .shelf-niche-grain {
+    inset: 0;
     background-image: var(--grain-fine), var(--grain-mottle);
     background-size:
       180px 180px,
@@ -427,12 +439,23 @@
    * 벽 창 — 벽이 옆으로 흐르는 자리(ShelfWall).
    *
    * **overflow:clip 이 아니라 마스크입니다.** clip 은 경계에서 픽셀을 뚝 끊어서, 흐르는
-   * 병과 벽감이 창 끝에서 칼로 자른 듯 잘립니다. 마스크는 창보다 좌우로 조금 크게 잡아
-   * 늘어난 바깥 구간에서만 페이드를 시킵니다 — 창 안(0~100%)은 전부 불투명이라,
-   * 멈춰 선 병은 창 끝의 것까지 그대로 선명합니다.
+   * 병과 벽감이 창 끝에서 칼로 자른 듯 잘립니다. 마스크는 좌우 끝에서만 서서히 지웁니다.
    *
-   *   왼쪽 --fade-start  화면 좌우 여백(--gutter)만큼. 여백 위로 벽이 스며 나갑니다
-   *   오른쪽 --fade-end  상세 패널과의 간격(20)만큼. 패널 밑으로 새지 않습니다
+   * **창 상자를 페이드 · 매달린 이름표 자리까지 넓힙니다.** 벽(안쪽 트랙)은 여백만큼
+   * 들어가 원래 자리 — 진열장 자리 왼쪽 끝 · 벽감 윗선 — 에 섭니다.
+   *
+   *   좌우 --fade-start · --fade-end  화면 좌우 여백(--gutter)만큼. 여백 위로 벽이 스며 나갑니다
+   *   위   --fade                     커진 병의 윗부분
+   *   아래 --hang                     발치 아래의 바닥 그림자와 매달린 이름표(줄 20 + 태그 65 + 그림자)
+   *
+   * 예전에는 창 상자를 벽감 크기로 두고 마스크만 상자 밖으로 키웠습니다(mask-clip: no-clip).
+   * 그러면 크롬이 상자 안과 밖을 따로 그려 **상자 테두리 자리에 1px 흰 줄**이 생겼습니다 —
+   * 벽감이 창 왼쪽 끝을 지날 때 세로줄로, 벽감 윗선에서 가로줄로 보이던 것이 그것입니다.
+   * 상자 자체를 넓히면 마스크가 상자 안에서 끝나 그 경계가 사라지고, 상자 밖(창 밖으로 흘러간
+   * 벽)은 기본 mask-clip(border-box)이 잘라 줍니다.
+   *
+   * 넓힌 여백이 제목 줄 쪽으로 겹쳐도 클릭 · 휠을 가로채지 않게 창은 pointer-events 를 끄고,
+   * 벽(안쪽 트랙)만 다시 켭니다.
    *
    * 멈춰 있을 때 창 밖 병은 ShelfWall 이 inert 로 투명하게 지웁니다(.shelf-slot[inert]).
    * 페이드 구간에 이웃 병이 비치면 창 끝에 병이 걸린 것처럼 보여서입니다.
@@ -440,8 +463,16 @@
   .shelf-scope .shelf-window {
     --fade: 50px;
     --fade-start: var(--gutter);
-    --fade-end: 20px;
+    --fade-end: var(--gutter);
+    --hang: 110px;
 
+    position: absolute;
+    top: calc(var(--fade) * -1);
+    right: calc(var(--fade-end) * -1);
+    left: calc(var(--fade-start) * -1);
+    height: calc(var(--fade) + var(--case-h) + var(--hang));
+    padding: var(--fade) var(--fade-end) var(--hang) var(--fade-start);
+    pointer-events: none;
     mask-image: linear-gradient(
       to right,
       transparent 0,
@@ -449,35 +480,10 @@
       #000 calc(100% - var(--fade-end)),
       transparent 100%
     );
-    /*
-     * 세로로도 넓힙니다. 그러데이션이 `to right` 이라 세로 방향으로는 균일하므로,
-     * 마스크 상자를 키운 만큼 창 밖으로 나간 것들이 보입니다.
-     *
-     *   위로 --fade   커진 병의 윗부분
-     *   아래로 --hang 발치 아래의 바닥 그림자와 매달린 이름표(줄 20 + 태그 65 + 그림자)
-     *
-     * ⚠️ mask-clip: no-clip 이 있어야 이게 먹습니다. 기본값(border-box)은 마스크를 건
-     * 요소의 내용을 **자기 상자 안으로 잘라** 버려서, 마스크 이미지를 아무리 키워도
-     * 창 밖은 안 그려집니다. 창의 아래끝이 벽감 아래끝이라, 매달린 이름표가 통째로
-     * 사라집니다.
-     */
-    --hang: 110px;
-
-    mask-size: calc(100% + var(--fade-start) + var(--fade-end))
-      calc(100% + var(--fade) + var(--hang));
-    mask-position: calc(var(--fade-start) * -1) calc(var(--fade) * -1);
-    mask-clip: no-clip;
     mask-repeat: no-repeat;
-    /*
-     * 마스크 이미지 **바깥**을 잘라 냅니다. no-clip 이면 크롬은 마스크 이미지가 닿지 않는
-     * 곳을 가리지 않고 그대로 그려서, 창 밖으로 흘러간 벽(다음 분류의 이름표 · 벽감)이
-     * 상세 패널 너머 오른쪽 여백에 비칩니다. 자르는 선이 페이드가 0 이 된 바깥 경계라
-     * 칼로 자른 자국은 보이지 않습니다.
-     */
-    clip-path: inset(
-      calc(var(--fade) * -1) calc(var(--fade-end) * -1) calc(var(--hang) * -1)
-        calc(var(--fade-start) * -1)
-    );
+  }
+  .shelf-scope .shelf-window > * {
+    pointer-events: auto;
   }
 
   /*
@@ -933,7 +939,6 @@
     text-align: center;
     background: var(--tag-paper);
     box-shadow:
-      inset 0 1px 0 var(--highlight),
       0 0 0 1px var(--tag-edge),
       0 7px 10px -7px var(--depth);
     transition:
@@ -958,16 +963,90 @@
   .shelf-scope .shelf-slot[aria-pressed='true'] .shelf-tag {
     background: var(--tag-paper-active);
     box-shadow:
-      inset 0 1px 0 var(--highlight),
       0 0 0 1px var(--tag-edge-active),
       0 9px 14px -8px var(--depth);
   }
   /* 키보드 포커스 링. 버튼 상자(병 칸) 대신 매달린 태그에 두릅니다 */
   .shelf-scope .shelf-slot:focus-visible .shelf-tag {
     box-shadow:
-      inset 0 1px 0 var(--highlight),
       0 0 0 2px var(--shelf-ink),
       0 9px 14px -8px var(--depth);
+  }
+
+  /*
+   * 이름표 두께 — 종이 태그 가장자리 안쪽에 앉는 아주 얇은 빛과 그늘(베벨).
+   *
+   * 광원이 왼쪽 위라 위 · 왼쪽 가장자리가 빛을 받고, 아래 · 오른쪽 가장자리에는 얇은 그늘이
+   * 집니다. **두 면이 똑같이 빛나지 않게** 합니다 — 위를 보는 윗면이 빛을 더 받고, 옆을 보는
+   * 왼쪽 면은 한 단 약합니다. 둘 다 왼쪽 위 모서리에서 멀어질수록 사그라듭니다.
+   * 그늘도 같은 식으로 오른쪽 아래 모서리가 가장 짙고, 아랫면보다 오른쪽 면이 옅습니다.
+   *
+   * 예전의 inset box-shadow 한 줄(윗변 1px)은 한 변 전체가 같은 밝기라 펜으로 그은 선처럼
+   * 보였습니다. 그래서 태그 모양(둥근 모서리 포함)을 따라 도는 1px 띠를 칠하고, 마스크로
+   * 밝기를 거릅니다. 마스크 네 겹을 겹칩니다(위에서부터):
+   *
+   *   면 차이 ∩ 모서리 사그라짐 ∩ ( 안쪽(content-box) 을 뺀 1px 띠 )
+   *
+   *   면 차이      빛은 아래로 · 그늘은 위로 갈수록 한 번 더 약해짐 → 옆면이 옅어짐
+   *   모서리 사그라짐 빛은 왼쪽 위 · 그늘은 오른쪽 아래 모서리에서 퍼지는 타원 그러데이션
+   *
+   * 빛 색은 병 사진의 종이 두께 선(--rim)과 같습니다 — 둘 다 잘린 종이의 단면입니다.
+   */
+  .shelf-scope .shelf-tag-bevel {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+  .shelf-scope .shelf-tag-bevel::before,
+  .shelf-scope .shelf-tag-bevel::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    /* 띠 두께 */
+    padding: 1px;
+    border-radius: inherit;
+    mask-repeat: no-repeat;
+    mask-clip: border-box, border-box, content-box, border-box;
+    mask-origin: border-box, border-box, content-box, border-box;
+    mask-composite: intersect, intersect, exclude, add;
+  }
+  /* 빛 — 왼쪽 위 */
+  .shelf-scope .shelf-tag-bevel::before {
+    background: var(--rim);
+    opacity: 0.75;
+    mask-image:
+      linear-gradient(
+        to bottom,
+        #000 0%,
+        rgb(0 0 0 / 0.5) 35%,
+        rgb(0 0 0 / 0.35) 100%
+      ),
+      radial-gradient(
+        90% 170% at 0 0,
+        #000 0%,
+        rgb(0 0 0 / 0.4) 40%,
+        transparent 75%
+      ),
+      linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+  }
+  /* 그늘 — 오른쪽 아래 */
+  .shelf-scope .shelf-tag-bevel::after {
+    background: var(--niche-ao);
+    mask-image:
+      linear-gradient(
+        to top,
+        #000 0%,
+        rgb(0 0 0 / 0.55) 35%,
+        rgb(0 0 0 / 0.4) 100%
+      ),
+      radial-gradient(
+        90% 170% at 100% 100%,
+        #000 0%,
+        rgb(0 0 0 / 0.4) 40%,
+        transparent 75%
+      ),
+      linear-gradient(#000 0 0), linear-gradient(#000 0 0);
   }
 
   /*

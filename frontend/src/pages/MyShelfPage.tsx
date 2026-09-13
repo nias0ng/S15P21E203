@@ -124,7 +124,7 @@ export default function MyShelfPage() {
         {[
           <div
             key="shelf"
-            className="flex h-full flex-col px-[var(--gutter)] pt-15"
+            className="flex h-full flex-col px-[var(--gutter)] pt-10"
           >
             {/* 제목과 도구 줄이 한 줄에 놓입니다. 부제를 걷어내 한 줄 높이(50)입니다 */}
             <div className="flex min-h-12.5 items-center gap-10">
@@ -176,6 +176,7 @@ export default function MyShelfPage() {
                     // TODO: SHF-10 메모 저장 API 연결
                     showToast('메모를 저장했습니다')
                   }}
+                  // 높이는 벽감 이상. 내용이 더 길면 스크롤 없이 아래로 늘어납니다(ShelfWall)
                   className="flex-1"
                 />
               }
@@ -189,7 +190,7 @@ export default function MyShelfPage() {
           */
           <div
             key="collection"
-            className="flex h-full flex-col px-[var(--gutter)] pt-15"
+            className="flex h-full flex-col px-[var(--gutter)] pt-10"
           >
             <div className="flex min-h-12.5 items-center gap-5">
               <h2 className="font-serif text-[36px] leading-[1.2] font-semibold">

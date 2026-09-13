@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   formatShelfDate,
   layoutWall,
+  nameWithoutBrand,
   revealStart,
   sectionAt,
   shelfMetrics,
@@ -11,6 +12,37 @@ import {
   type Swing,
 } from './lib'
 import type { ShelfItem, ShelfSection } from './types'
+
+describe('nameWithoutBrand', () => {
+  it('이름 앞에 붙은 브랜드를 뗀다 — 띄어쓰기가 달라도 같은 브랜드로 본다', () => {
+    expect(nameWithoutBrand('조 말론 우드 세이지 앤 씨 솔트', '조말론')).toBe(
+      '우드 세이지 앤 씨 솔트',
+    )
+    expect(
+      nameWithoutBrand('메종 마르지엘라 레이지 선데이 모닝', '메종 마르지엘라'),
+    ).toBe('레이지 선데이 모닝')
+  })
+
+  it('브랜드 이름의 앞부분만 적힌 경우도 뗀다', () => {
+    expect(nameWithoutBrand('입생로랑 리브르', '입생로랑뷰티')).toBe('리브르')
+  })
+
+  it('앞에서 한 번만 떼고, 이름 뒤쪽의 브랜드 낱말은 남긴다', () => {
+    expect(nameWithoutBrand('디올 미스 디올', '디올')).toBe('미스 디올')
+  })
+
+  it('브랜드로 시작하지 않으면 그대로 둔다', () => {
+    expect(nameWithoutBrand('블루 드 샤넬', '샤넬')).toBe('블루 드 샤넬')
+  })
+
+  it('이름이 브랜드뿐이면 비우지 않고 그대로 둔다', () => {
+    expect(nameWithoutBrand('샤넬', '샤넬')).toBe('샤넬')
+  })
+
+  it('한두 글자만 우연히 겹치는 이름은 자르지 않는다', () => {
+    expect(nameWithoutBrand('로라 스카이', '로라메르시에')).toBe('로라 스카이')
+  })
+})
 
 describe('formatShelfDate', () => {
   it('ISO 문자열을 YYYY.MM.DD 로 적는다', () => {
@@ -70,12 +102,26 @@ describe('swingStep', () => {
 })
 
 describe('shelfMetrics', () => {
-  it('1920 x 1080 의 진열장 자리(1440 x 780)에서 다섯 칸 · 병 515 · 벽감 605 가 된다', () => {
-    const metrics = shelfMetrics(1440, 780)
-    expect(metrics.visible).toBe(5)
-    expect(metrics.pitch).toBe(288)
-    expect(metrics.bottle).toBe(515)
+  it('1920 x 1080 의 진열장 자리(1800 x 780, 가리지 않는 폭 1440)에서 벽감 605 · 병 420 · 칸 225 가 된다', () => {
+    const metrics = shelfMetrics(1800, 780, 1440)
     expect(metrics.caseHeight).toBe(605)
+    expect(metrics.bottle).toBe(420)
+    expect(metrics.visible).toBe(8)
+    expect(metrics.pitch).toBe(225)
+    expect(metrics.clear).toBe(6)
+  })
+
+  it('병 사진은 벽감 높이의 70% 로 서고, 칸을 좁혀도 벽감 높이는 그대로다', () => {
+    // 1440 x 900 의 진열장 자리(1340 x 600, 가리지 않는 폭 1020). 벽감 440 은 예전과 같은 값입니다
+    const { caseHeight, bottle } = shelfMetrics(1340, 600, 1020)
+    expect(caseHeight).toBe(440)
+    expect(bottle).toBe(305)
+  })
+
+  it('가리지 않는 칸은 패널에 가리지 않는 폭 안에 온전히 들어간다', () => {
+    const { clear, pitch } = shelfMetrics(1800, 780, 1440)
+    expect(clear * pitch).toBeLessThanOrEqual(1440)
+    expect((clear + 1) * pitch).toBeGreaterThan(1440)
   })
 
   it('칸 수 x 칸 폭이 창 폭과 같다 — 어긋나면 끝 병이 창 경계에 걸린다', () => {
@@ -153,6 +199,18 @@ describe('layoutWall', () => {
     ])
     expect(sections[0]?.span).toBe(1)
     expect(sections[1]?.plaque).toBe(2)
+  })
+
+  it('병이 한 화면을 못 채우는 분류 뒤에는 빈 벽을 둬서 다음 분류가 그 화면에 비치지 않는다', () => {
+    // 창 전체 여덟 칸. 보유 중은 이름표 1 + 병 5 = 6칸이라 빈 벽 2칸을 두어, 시향해 봄 이름표가
+    // 여덟째 칸(창 밖)에서 시작합니다. 시향해 봄은 한 화면을 넘고, 보유 희망은 마지막이라 비우지 않습니다
+    const { sections, total } = layoutWall(SECTIONS, 8)
+    expect(sections.map(({ plaque, gap }) => [plaque, gap])).toEqual([
+      [0, 2],
+      [8, 0],
+      [26, 0],
+    ])
+    expect(total).toBe(31)
   })
 })
 
