@@ -86,8 +86,8 @@ public class PostService {
         Post post = Post.create(
                 userId,
                 category,
-                request.title().strip(),
-                request.content().strip(),
+                request.title(),
+                request.content(),
                 findMyCollection(request.collectionId()),
                 OffsetDateTime.now()
         );
@@ -111,9 +111,9 @@ public class PostService {
         PostCategory category = request.isCategoryPresent()
                 ? requireActiveCategory(request.getCategory())
                 : post.getCategory();
-        String title = request.isTitlePresent() ? request.getTitle().strip() : post.getTitle();
+        String title = request.isTitlePresent() ? request.getTitle() : post.getTitle();
         String content = request.isContentPresent()
-                ? request.getContent().strip()
+                ? request.getContent()
                 : post.getContent();
 
         post.update(category, title, content, OffsetDateTime.now());

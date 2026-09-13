@@ -71,7 +71,7 @@ public class CommentService {
             CommentCreateRequest request
     ) {
         Long userId = requireLogin();
-        String content = request.content().strip();
+        String content = request.content();
         OffsetDateTime now = OffsetDateTime.now();
 
         Comment comment = switch (parent) {
@@ -123,7 +123,7 @@ public class CommentService {
     @Transactional
     public CommentUpdateResponse update(Long commentId, CommentUpdateRequest request) {
         Comment comment = requireMyComment(commentId);
-        comment.update(request.content().strip(), OffsetDateTime.now());
+        comment.update(request.content(), OffsetDateTime.now());
 
         return new CommentUpdateResponse(comment.getId(), comment.getUpdatedAt());
     }

@@ -13,7 +13,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyanghae.backend.community.exception.CommunityErrorCode;
 import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.support.IntegrationTest;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -484,6 +491,28 @@ class CommentIntegrationTest {
         assertThat(countRows("comments")).isZero();
     }
 
+    /**
+     * 같은 댓글을 동시에 지워도 결과가 하나로 정해집니다.
+     *
+     * <p>수정·삭제는 잠그고 읽습니다. 먼저 들어온 쪽이 행을 잠그고 지운 뒤 커밋하면, 기다리던 쪽은
+     * 그때서야 조회하고 아무것도 찾지 못해 404 로 답합니다. 잠금이 없으면 둘 다 조회에 성공해
+     * 양쪽 모두 204 를 받고, 화면은 지워지지 않은 댓글을 지웠다고 믿습니다.
+     *
+     * <p>두 요청이 같은 순간에 출발하도록 관문으로 맞춥니다. 어느 쪽이 이기는지는 그때그때
+     * 다르지만, <b>정확히 하나만 성공</b>한다는 결과는 매번 같아야 합니다.
+     */
+    @Test
+    void serializesConcurrentDeletes() throws Exception {
+        long commentId = writeOnPost("경합 댓글");
+
+        List<Integer> statuses = runTogether(
+                () -> deleteStatusOf(commentId),
+                () -> deleteStatusOf(commentId));
+
+        assertThat(statuses).containsExactlyInAnyOrder(204, 404);
+        assertThat(countRows("comments")).isZero();
+    }
+
     // ────────────────────────────────────────────────────────────────
     // 문서
     // ────────────────────────────────────────────────────────────────
@@ -509,6 +538,41 @@ class CommentIntegrationTest {
     // ────────────────────────────────────────────────────────────────
     // 도우미
     // ────────────────────────────────────────────────────────────────
+
+    /** 두 요청을 같은 순간에 출발시키고 상태 코드를 모읍니다. */
+    private List<Integer> runTogether(Callable<Integer> first, Callable<Integer> second)
+            throws Exception {
+        CyclicBarrier gate = new CyclicBarrier(2);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+
+        try {
+            List<Future<Integer>> futures = pool.invokeAll(List.of(
+                    atGate(gate, first),
+                    atGate(gate, second)));
+
+            List<Integer> statuses = new ArrayList<>();
+            for (Future<Integer> future : futures) {
+                statuses.add(future.get());
+            }
+            return statuses;
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    private Callable<Integer> atGate(CyclicBarrier gate, Callable<Integer> task) {
+        return () -> {
+            gate.await();
+            return task.call();
+        };
+    }
+
+    private int deleteStatusOf(long commentId) throws Exception {
+        return mockMvc.perform(delete(COMMENT_URL, commentId))
+                .andReturn()
+                .getResponse()
+                .getStatus();
+    }
 
     private long writeOnPost(String content) throws Exception {
         return write(POST_COMMENTS_URL, POST_ID, content);

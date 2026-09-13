@@ -17,4 +17,15 @@ public record CommentUpdateRequest(
         @Size(max = 500, message = "댓글은 500자까지 쓸 수 있습니다.")
         String content
 ) {
+
+    /**
+     * 앞뒤 공백을 만들 때 다듬습니다.
+     *
+     * <p>서비스가 아니라 여기서 다듬는 이유가 있습니다. 레코드의 압축 생성자는 어떤 경로로
+     * 만들어도 반드시 지나가므로, 다듬지 않은 값이 서비스로 들어갈 길이 없습니다. 검증도 다듬은
+     * 값에 걸려 공백만 보낸 요청이 400 으로 막힙니다.
+     */
+    public CommentUpdateRequest {
+        content = content == null ? null : content.strip();
+    }
 }

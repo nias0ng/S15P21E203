@@ -42,17 +42,17 @@ public class PostUpdateRequest {
     private boolean imagesPresent;
 
     public void setCategory(String category) {
-        this.category = category;
+        this.category = category == null ? null : category.strip();
         this.categoryPresent = true;
     }
 
     public void setTitle(String title) {
-        this.title = title;
+        this.title = title == null ? null : title.strip();
         this.titlePresent = true;
     }
 
     public void setContent(String content) {
-        this.content = content;
+        this.content = content == null ? null : content.strip();
         this.contentPresent = true;
     }
 

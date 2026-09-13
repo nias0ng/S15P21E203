@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyanghae.backend.community.exception.CommunityErrorCode;
 import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.support.IntegrationTest;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.hamcrest.Matchers;
@@ -229,6 +230,42 @@ class PostIntegrationTest {
         assertThat(none).isPositive();
     }
 
+    /**
+     * 댓글 수가 모두 같아도 페이지를 넘길 때 겹치거나 빠지는 글이 없습니다.
+     *
+     * <p>정렬의 첫 기준만 두면 같은 값끼리의 순서를 데이터베이스가 그때그때 정합니다. 그러면
+     * 1페이지에 나온 글이 2페이지에 또 나오고 어떤 글은 아예 안 보입니다. 최신순과 글 번호까지
+     * 이어 붙여 순서를 확정한 이유입니다.
+     */
+    @Test
+    void keepsOrderStableWhenCommentCountsTie() throws Exception {
+        List<String> titles = List.of("하나", "둘", "셋", "넷", "다섯");
+        for (String title : titles) {
+            long postId = write("CHAT", title, "본문", null, null);
+            writeComment(postId, "댓글 하나씩");
+        }
+
+        List<String> seen = new ArrayList<>();
+        for (int page = 0; page < 3; page++) {
+            String body = mockMvc.perform(get(POSTS_URL)
+                            .param("sort", "COMMENTS")
+                            .param("size", "2")
+                            .param("page", String.valueOf(page)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.posts[*].commentCount")
+                            .value(Matchers.everyItem(Matchers.is(1))))
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString();
+
+            objectMapper.readTree(body).get("posts")
+                    .forEach(post -> seen.add(post.get("title").asText()));
+        }
+
+        assertThat(seen).doesNotHaveDuplicates();
+        assertThat(seen).containsExactlyInAnyOrderElementsOf(titles);
+    }
+
     /** 목록에 없는 정렬 기준은 400 입니다. Spring 이 값을 못 바꿔 서비스까지 오지 않습니다. */
     @Test
     void rejectsUnknownSort() throws Exception {
@@ -279,6 +316,29 @@ class PostIntegrationTest {
         }
 
         assertThat(countRows("posts")).isZero();
+    }
+
+    /**
+     * 수정으로도 남의 컬렉션을 붙일 수 없습니다.
+     *
+     * <p>작성만 막으면 글을 쓴 뒤 수정으로 붙이는 길이 열립니다. 두 경로가 같은 규칙을 봐야
+     * 합니다.
+     */
+    @Test
+    void rejectsAttachingSomeoneElsesCollectionOnUpdate() throws Exception {
+        long postId = write("COLLECTION", "공유 글", "본문", null, null);
+
+        for (long collectionId : new long[]{MISSING_COLLECTION_ID, OTHER_COLLECTION_ID}) {
+            mockMvc.perform(patch(POST_URL, postId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"collectionId\": " + collectionId + "}"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code")
+                            .value(CommunityErrorCode.COMMUNITY_COLLECTION_NOT_FOUND.code()));
+        }
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(jsonPath("$.collectionId").doesNotExist());
     }
 
     /** 수정으로 첨부를 바꾸거나 뗄 수 있습니다. null 을 보내면 뗍니다. */

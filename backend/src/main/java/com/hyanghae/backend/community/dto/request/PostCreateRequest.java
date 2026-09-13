@@ -53,4 +53,16 @@ public record PostCreateRequest(
         @Schema(description = "이미지 주소. 보낸 순서대로 표시됩니다.", nullable = true)
         List<@NotBlank String> imageUrls
 ) {
+
+    /**
+     * 앞뒤 공백을 만들 때 다듬습니다.
+     *
+     * <p>레코드의 압축 생성자는 어떤 경로로 만들어도 반드시 지나가므로, 다듬지 않은 값이 서비스로
+     * 들어갈 길이 없습니다. 검증도 다듬은 값에 걸립니다.
+     */
+    public PostCreateRequest {
+        category = category == null ? null : category.strip();
+        title = title == null ? null : title.strip();
+        content = content == null ? null : content.strip();
+    }
 }
