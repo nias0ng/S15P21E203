@@ -118,6 +118,8 @@ out = recommend(index, text, conditions)   # 없으면 사전 문자열 매칭�
 
 ```
 nlr_engine.py      검색·정렬 엔진. 규칙은 이 파일이 기준입니다
+server.py          HTTP 서버 (아래 참고)
+unmatched_log.py   사전이 못 받은 표현을 기록합니다 (아래 참고)
 build_data.py      원본 덤프에서 data/perfumes_nlr.csv.gz 를 다시 만듭니다
 data/
   perfumes_nlr.csv.gz        5.0MB  향수 129,161개 (id·이름·브랜드·accord·평가자수·평점)
@@ -125,6 +127,105 @@ data/
   accord_dictionary.csv        7KB  accord 92개 마스터 (적재 시 검증용)
 docs/
   search_rules.md            검색 규칙 명세
+  nlr_api_contract.md        프론트·백엔드와 주고받을 형식
+logs/                        미매칭 로그가 쌓입니다. .gitignore 대상입니다
+```
+
+---
+
+## HTTP 서버로 띄우기
+
+```bash
+uvicorn server:app --host 0.0.0.0 --port 8000
+```
+
+기동할 때 데이터를 **한 번만** 읽습니다(약 1초). `/health` 가 200 을 주면 준비된 것입니다.
+
+```bash
+curl http://localhost:8000/health
+# {"status":"ok","perfumes":129161,"accords":92}
+
+curl -X POST http://localhost:8000/nlr/recommend \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"빨래 냄새 나는 향수 찾고 있어"}'
+```
+
+| 엔드포인트 | 하는 일 |
+|---|---|
+| `POST /nlr/understand` | 문장 → 향 조건만. **향수를 찾지 않습니다** |
+| `POST /nlr/recommend` | 문장 → 향수 5개까지 |
+| `GET /health` | 적재 완료 여부. Jenkins 헬스체크가 봅니다 |
+
+**둘로 나눈 이유** — 향수 13만 개를 DB 에 넣을지가 아직 협의 중입니다. 어느 쪽으로 가든
+`/nlr/understand` 는 그대로 씁니다. 한국어를 향 조건으로 바꾸는 일은 Python 이 계속 맡습니다.
+
+요청·응답 형식은 [docs/nlr_api_contract.md](docs/nlr_api_contract.md) 에 있습니다.
+에러는 백엔드 공통 형식(`{code, message}`)을 씁니다.
+
+### 환경변수
+
+| 이름 | 기본값 | 언제 씁니까 |
+|---|---|---|
+| `NLR_LOG_PATH` | `ai/logs/unmatched.jsonl` | 컨테이너에서 볼륨 경로를 줄 때 |
+| `NLR_LEXICON_PATH` | `data/domain_lexicon_v1_2.csv` | 사전 버전을 바꿔 비교할 때 |
+| `NLR_PERFUMES_PATH` | `data/perfumes_nlr.csv.gz` | — |
+
+### 아직 서버에 없는 것
+
+- **LLM 구조화 호출.** `conditions` 를 요청으로 받기만 합니다. 안 넘기면 사전 문자열
+  매칭만 써서 결과가 나오는 비율이 **77.7% → 35.7%** 로 떨어집니다
+- **호출량 제한과 인증.** Spring 이 합니다. 이 서버는 외부에 열지 마십시오
+- **Dockerfile.** 배포는 별도 작업입니다
+
+---
+
+## 미매칭 로그 — 사전이 못 받은 말을 남깁니다
+
+지금 사전이 표현을 못 받으면 그 사실이 사라집니다. **합성 평가셋의 22.3%, 실사용자 설문의
+44%** 가 향 조건을 하나도 못 뽑는데 그 내용이 안 남습니다. 이걸 남겨 사전을 키우는 근거로 씁니다.
+
+```python
+import unmatched_log as ulog
+
+out = recommend(index, "밤에 쓰기 좋은 섹시한 향")
+ulog.record(out)                          # 미매칭 표현을 한 줄씩 덧붙입니다
+
+for row in ulog.review_queue(top_n=20):   # 자주 나온 순으로 검토 후보
+    print(row["normalized_key"], row["occurrence_count"], row["reasons"])
+```
+
+**`conditions` 를 함께 넘겨야 작동합니다.** 표현을 뽑는 단계가 LLM 구조화이기 때문입니다.
+
+미매칭 원인을 셋으로 가릅니다. **고쳐야 할 곳이 다릅니다.**
+
+| 원인 | 뜻 | 무엇을 해야 하나 |
+|---|---|---|
+| `NOT_IN_LEXICON` | 사전에 없다 | 항목을 추가합니다 |
+| `CONDITION_NOT_MET` | 있는데 `match_condition` 이 안 걸렸다 | 조건 토큰을 손봅니다 |
+| `NOT_CORE` | 있는데 `optional`/`NO_MAPPING` 이다 | **이미 판정한 이력이 있습니다.** 함부로 올리지 마십시오 |
+
+### LLM 추정을 붙이려면
+
+**이 폴더는 네트워크를 모릅니다.** 추정 함수를 만들어 넘기십시오.
+
+```python
+estimate = ulog.cached_estimator(my_gms_call)   # 같은 표현은 한 번만 부릅니다
+out = recommend(index, text, conditions, estimator=estimate)
+```
+
+조건이 **하나도 안 잡혔을 때만** 부릅니다. 추정으로 나온 조건은 등급이 `LLM` 이고
+`rationale` 이 비어 있습니다 — 사전의 근거와 LLM 의 사후 설명을 한 칸에 섞지 않습니다.
+
+### 개인정보
+
+`logs/unmatched.jsonl` 에 **사용자가 입력한 원문이 들어갑니다.** 설문 실측에 건강·신분
+서술이 있었습니다. 원문은 500자까지만 저장하고, `logs/` 는 `.gitignore` 에 있습니다.
+**한 번 커밋해서 푸시하면 되돌릴 수 없습니다.**
+
+보관 기간이 지난 원문은 이렇게 비웁니다. 표현과 원인은 남고 원문만 사라집니다.
+
+```python
+ulog.purge_raw_text()      # 기본 30일
 ```
 
 ### 왜 향수 데이터를 파일로 들고 있나 — 임시 조치입니다
