@@ -13,15 +13,88 @@
   '빨래' -> soapy, fresh 로 해석했고, 각 향수가 어느 조건에 얼마나 맞았는지 함께 돌려줍니다.
 ```
 
-## 빠른 실행
+## 시작하기
+
+**필요한 것** — Python 3.11 이상. 그 외에는 없습니다. DB 도 인터넷도 필요 없습니다.
+`pandas` 와 `numpy` 만 설치하면 되고 데이터는 저장소에 들어 있습니다.
+
+### 1. 가상환경 만들기
+
+이 폴더(`ai/`)에서 실행합니다. `venv/` 는 `.gitignore` 에 있어 커밋되지 않습니다.
+
+**Windows (Git Bash)**
+```bash
+cd ai
+python -m venv venv
+source venv/Scripts/activate
+```
+
+**Windows (PowerShell)**
+```powershell
+cd ai
+python -m venv venv
+venv\Scripts\Activate.ps1
+```
+> `Activate.ps1` 이 막히면 `Set-ExecutionPolicy -Scope Process RemoteSigned` 를 한 번 실행합니다.
+
+**macOS · Linux**
+```bash
+cd ai
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### 2. 설치
 
 ```bash
 pip install -r requirements.txt
+```
 
+### 3. 한글이 깨지면 — Windows 에서 필요합니다
+
+터미널 인코딩 때문에 출력이 `�Է�   ���� ����` 처럼 깨질 수 있습니다.
+**돌리기 전에 한 번 설정하면 됩니다.**
+
+```bash
+export PYTHONIOENCODING=utf-8        # Git Bash / macOS / Linux
+```
+```powershell
+$env:PYTHONIOENCODING = "utf-8"      # PowerShell
+```
+
+터미널을 새로 열면 다시 설정해야 합니다. 깨지지 않으면 넘어가셔도 됩니다.
+
+### 4. 확인
+
+```bash
 python nlr_engine.py "빨래 냄새 나는 향수 찾고 있어"
 ```
 
-코드에서 쓸 때는 이렇게 씁니다.
+이렇게 나오면 정상입니다.
+
+```
+입력   빨래 냄새 나는 향수 찾고 있어
+조건   ['fresh', 'soapy']  (표현 ['빨래'])
+상태   OK  단계 AND  후보 518
+  1. Laundry              Ostrikov Beauty Publ   [soapy=100 fresh=93] 평가자 29
+  2. Exit The King        Etat Libre d'Orange    [soapy=100 fresh=57] 평가자 2,358
+  ...
+```
+
+문장을 여러 개 이어 붙이면 한 번에 돌아갑니다. 데이터는 한 번만 읽습니다.
+
+```bash
+python nlr_engine.py \
+  "휴양지에서 쓸 향수" \
+  "포근한 이불 같은 향" \
+  "데이트할 때 쓸 향수"
+```
+
+`--json` 을 붙이면 API 가 돌려줄 실제 응답 모양으로 나옵니다.
+
+---
+
+## 코드에서 쓰기
 
 ```python
 from nlr_engine import load_index, recommend
@@ -31,6 +104,13 @@ out = recommend(index, "빨래 냄새 나는 향수 찾고 있어")
 ```
 
 `load_index()` 는 13만 × 92 행렬(약 48MB)을 만듭니다. **요청마다 부르면 안 됩니다.**
+적재는 1초 안팎이고, 추천 한 번은 **4ms** 정도입니다.
+
+LLM 구조화 결과가 있으면 세 번째 인자로 넘깁니다.
+
+```python
+out = recommend(index, text, conditions)   # 없으면 사전 문자열 매칭만 씁니다
+```
 
 ---
 
