@@ -1,5 +1,6 @@
 package com.hyanghae.backend.community.dto.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -25,18 +26,24 @@ import java.util.List;
  * <p>이미지는 주소만 받습니다. 파일을 올리는 방법은 아직 정해지지 않았습니다.
  */
 public record PostCreateRequest(
+        @Schema(description = "분류 코드", example = "CHAT",
+                allowableValues = {"COLLECTION", "RECOMMEND", "CHAT"})
         @NotBlank(message = "분류를 골라야 합니다.")
         String category,
 
+        @Schema(description = "글 제목", maxLength = 50)
         @NotBlank(message = "제목을 입력해야 합니다.")
         @Size(max = 50, message = "제목은 50자까지 쓸 수 있습니다.")
         String title,
 
+        @Schema(description = "글 내용")
         @NotBlank(message = "내용을 입력해야 합니다.")
         String content,
 
+        @Schema(description = "글에 걸 향수 ID. 보낸 순서대로 표시됩니다.", nullable = true)
         List<@NotNull @Positive Long> perfumeIds,
 
+        @Schema(description = "이미지 주소. 보낸 순서대로 표시됩니다.", nullable = true)
         List<@NotBlank String> imageUrls
 ) {
 }

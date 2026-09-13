@@ -1,6 +1,7 @@
 package com.hyanghae.backend.community.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
 import java.util.List;
@@ -57,23 +58,29 @@ public class PostUpdateRequest {
         this.imagesPresent = true;
     }
 
+    @Schema(description = "바꿀 분류 코드. 생략하면 유지", example = "CHAT",
+            allowableValues = {"COLLECTION", "RECOMMEND", "CHAT"})
     public String getCategory() {
         return category;
     }
 
+    @Schema(description = "바꿀 제목. 생략하면 유지", maxLength = 50)
     @Size(max = 50, message = "제목은 50자까지 쓸 수 있습니다.")
     public String getTitle() {
         return title;
     }
 
+    @Schema(description = "바꿀 내용. 생략하면 유지")
     public String getContent() {
         return content;
     }
 
+    @Schema(description = "바꿀 향수 ID 목록. 통째로 교체되고 빈 배열이면 모두 지웁니다. 생략하면 유지")
     public List<Long> getPerfumeIds() {
         return perfumeIds;
     }
 
+    @Schema(description = "바꿀 이미지 주소 목록. 통째로 교체되고 빈 배열이면 모두 지웁니다. 생략하면 유지")
     public List<String> getImageUrls() {
         return imageUrls;
     }

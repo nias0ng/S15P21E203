@@ -26,6 +26,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -39,6 +40,7 @@ import org.springframework.test.web.servlet.ResultActions;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
+@ActiveProfiles({"manual-test", "test"})
 class PostIntegrationTest {
 
     private static final String POSTS_URL = "/api/v1/posts";
@@ -425,6 +427,23 @@ class PostIntegrationTest {
         currentUser.login(OTHER_WRITER_ID);
         mockMvc.perform(delete(POST_URL, postId))
                 .andExpect(status().isForbidden());
+    }
+
+    /**
+     * API 문서에 다섯 개가 모두 실립니다.
+     *
+     * <p>문서 애노테이션은 코드와 달라져도 컴파일러가 잡아주지 않습니다. 엔드포인트를 지우거나
+     * 옮겼는데 문서만 남는 일을 이 테스트가 막습니다.
+     */
+    @Test
+    void documentsAllPostEndpoints() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/api/v1/posts'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/posts'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/posts/{postId}'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/posts/{postId}'].patch").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/posts/{postId}'].delete").exists());
     }
 
     private long write(
