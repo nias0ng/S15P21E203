@@ -78,8 +78,9 @@ type Props = {
  * 진열장은 제목 줄 바로 아래에 붙이고, 남는 세로 공간은 아래(하단 띠 위)로 보냅니다.
  *
  * ── 창 밖 병 ───────────────────────────────────────────────
- * 멈춰 있을 때 창 밖 병은 inert 로 탭 순서에서 빼고 투명하게 지웁니다. 흐르는 동안에는
- * 전부 보이게 풀어 둡니다 — 들어올 병이 창 가장자리에서 서서히 나타나야 합니다.
+ * 멈춰 있을 때 창 밖 병은 inert 로 탭 순서에서 빼고, 창 끝 페이드 구간에 걸리는 이웃 병만
+ * 투명하게 지웁니다(아래 faded). 흐르는 동안에는 전부 풀어 둡니다 — 들어올 병이 창
+ * 가장자리에서 서서히 나타나야 합니다.
  *
  * ── 접근성 ─────────────────────────────────────────────
  * 휠은 **보조 수단**입니다. 칩(분류의 첫머리로)과 하단 페이저(한 병씩)가 키보드로
@@ -144,7 +145,7 @@ export function ShelfWall({
   /** 멈춘 칸과 흐르는 중인지. 창 밖 병 · 화살표를 여기에 맞춥니다 */
   const [view, setView] = useState({ start: 0, moving: false })
   const lastCategory = useRef<ShelfCategory | null>(null)
-  const kickSwing = useTagSwing(trackRef)
+  const kickSwing = useTagSwing(trackRef, viewportRef)
 
   const flow = useShelfFlow({
     viewport: viewportRef,
@@ -221,6 +222,16 @@ export function ShelfWall({
     !view.moving &&
     (index < view.start || index >= view.start + metrics.visible)
 
+  /*
+   * 창 밖 병 중 **창 양 끝 페이드 구간에 걸리는 이웃 한 칸씩**만 투명하게 지웁니다. 그보다 먼
+   * 병은 창 마스크 밖이라 원래 보이지 않습니다. 예전에는 창 밖 병을 전부 지웠다가 움직이는
+   * 순간 한꺼번에 되살려서, 병 스무 개의 층 백여 개가 동시에 투명도 전환을 하며 다시
+   * 그려졌습니다 — 휠을 빠르게 굴릴 때 끊기던 주된 원인이었습니다.
+   */
+  const faded = (index: number) =>
+    !view.moving &&
+    (index === view.start - 1 || index === view.start + metrics.visible)
+
   /** 화살표 한 번에 넘기는 칸 수. 절반쯤 남겨야 방금 본 병이 어디로 갔는지 이어집니다 */
   const step = Math.max(1, Math.floor(metrics.clear / 2))
 
@@ -279,6 +290,7 @@ export function ShelfWall({
                         selectedId={selectedId}
                         onSelect={onSelect}
                         isHidden={(at) => hidden(section.start + at)}
+                        isFaded={(at) => faded(section.start + at)}
                         emptyMessage={emptyMessage}
                       />
                       {/* 빈 벽 — 다음 분류를 창 밖으로 밀어 둡니다 */}
@@ -334,6 +346,8 @@ export function ShelfWall({
               'absolute top-0 right-0 flex flex-col',
               !measured && 'invisible',
             )}
+            // 벽이 흐르는 동안 패널 뒤 흐림을 끕니다(shelf-display.css 의 .shelf-panel)
+            data-moving={view.moving || undefined}
             style={{
               width: metrics.panelWidth,
               minHeight: metrics.panelHeight,

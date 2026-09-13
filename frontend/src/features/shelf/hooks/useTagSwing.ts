@@ -36,6 +36,13 @@ const STEP = 1 / 120
  */
 const GAP = 0.25
 
+/** 창 가장자리 바깥 이만큼(px)까지는 기울기를 씁니다 — 창 양 끝 페이드 구간(최대 60)입니다 */
+const MARGIN = 60
+
+/** 트랙에 useShelfFlow 가 적어 둔 가로 이동(px) */
+const shiftOf = (element: HTMLElement) =>
+  Number(/translate3d\((-?[\d.]+)px/.exec(element.style.transform)?.[1] ?? 0)
+
 /**
  * 트랙이 옆으로 움직일 때 줄에 매달린 이름표를 흔듭니다. 돌려주는 함수(kick)를
  * 트랙이 움직이기 시작할 때 부르세요.
@@ -55,8 +62,20 @@ const GAP = 0.25
  *
  * 상태(useState)로 두지 않고 요소에 직접 씁니다. 상태로 두면 매 프레임 병 스물다섯
  * 개가 다시 그려집니다. 움직임을 줄이도록 설정한 사용자에게는 흔들지 않습니다.
+ *
+ * ── 그리는 비용 ─────────────────────────────────────────────
+ * 태그 기울기는 합성 단계가 아니라 **다시 그리기**로 반영됩니다. 태그를 따로 합성 층으로
+ * 올리면 그 위에 겹친 병 층(곱하기 · 흐림)이 줄줄이 따라 올라가 더 무거워집니다. 그래서
+ *
+ *   - 진자는 태그 전부 굴리되, 기울기는 **창 가까이 있는 태그에만** 씁니다. 창 밖 태그는
+ *     마스크에 가려 보이지 않는데도 매 프레임 다시 그려지고 있었습니다.
+ *   - 트랙 위치는 getBoundingClientRect 로 매 프레임 재지 않고 useShelfFlow 가 적어 둔
+ *     transform 에서 읽습니다. 재면 프레임마다 레이아웃 계산을 한 번 더 강제합니다.
  */
-export function useTagSwing(track: RefObject<HTMLElement | null>) {
+export function useTagSwing(
+  track: RefObject<HTMLElement | null>,
+  viewport: RefObject<HTMLElement | null>,
+) {
   const frame = useRef(0)
 
   // 진열장이 사라지면(다른 화면으로 이동) 돌던 흔들림을 멈춥니다
@@ -64,19 +83,31 @@ export function useTagSwing(track: RefObject<HTMLElement | null>) {
 
   return useCallback(() => {
     const element = track.current
-    if (!element || frame.current) return
+    const view = viewport.current
+    if (!element || !view || frame.current) return
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+
+    // 레이아웃은 시작할 때 한 번만 잽니다. 태그는 트랙과 함께 움직여 트랙 안 자리가 그대로입니다
+    const trackBox = element.getBoundingClientRect()
+    const viewBox = view.getBoundingClientRect()
+    const startShift = shiftOf(element)
+    const trackLeft = () => trackBox.left + shiftOf(element) - startShift
 
     const pendulums = [
       ...element.querySelectorAll<HTMLElement>('.shelf-tag-hanger'),
-    ].map((hanger, at) => ({
-      hanger,
-      // 황금비 수열로 칸마다 고르게 흩어 둡니다 — 이웃한 태그끼리 박자가 겹치지 않게
-      omega: ((2 * Math.PI) / PERIOD) * (0.9 + 0.2 * ((at * 0.618034) % 1)),
-      swing: { angle: 0, speed: 0 } as Swing,
-    }))
+    ].map((hanger, at) => {
+      const box = hanger.getBoundingClientRect()
+      return {
+        hanger,
+        left: box.left - trackBox.left,
+        right: box.right - trackBox.left,
+        // 황금비 수열로 칸마다 고르게 흩어 둡니다 — 이웃한 태그끼리 박자가 겹치지 않게
+        omega: ((2 * Math.PI) / PERIOD) * (0.9 + 0.2 * ((at * 0.618034) % 1)),
+        swing: { angle: 0, speed: 0 } as Swing,
+      }
+    })
 
-    let lastX = element.getBoundingClientRect().left
+    let lastX = trackLeft()
     let lastSpeed = 0
     let lastTime = performance.now()
     let calm = 0
@@ -84,7 +115,7 @@ export function useTagSwing(track: RefObject<HTMLElement | null>) {
     const tick = (now: number) => {
       const elapsed = (now - lastTime) / 1000
       lastTime = now
-      const x = element.getBoundingClientRect().left
+      const x = trackLeft()
 
       if (elapsed > GAP) {
         // 오래 멈췄다 돌아왔습니다. 위치만 새로 잡고 흔들지는 않습니다.
@@ -120,10 +151,15 @@ export function useTagSwing(track: RefObject<HTMLElement | null>) {
           if (Math.abs(angle) > REST || Math.abs(turning) > REST * 10) {
             settled = false
           }
-          pendulum.hanger.style.setProperty(
-            '--tag-swing',
-            `${((angle * 180) / Math.PI).toFixed(3)}deg`,
-          )
+          const near =
+            x + pendulum.right > viewBox.left - MARGIN &&
+            x + pendulum.left < viewBox.right + MARGIN
+          if (near) {
+            pendulum.hanger.style.setProperty(
+              '--tag-swing',
+              `${((angle * 180) / Math.PI).toFixed(3)}deg`,
+            )
+          }
         }
         calm = settled ? calm + 1 : 0
       }
@@ -138,5 +174,5 @@ export function useTagSwing(track: RefObject<HTMLElement | null>) {
       frame.current = requestAnimationFrame(tick)
     }
     frame.current = requestAnimationFrame(tick)
-  }, [track])
+  }, [track, viewport])
 }

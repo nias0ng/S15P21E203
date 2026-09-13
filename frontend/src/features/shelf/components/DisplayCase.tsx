@@ -9,8 +9,10 @@ type Props = {
   span: number
   selectedId: number | null
   onSelect: (item: ShelfItem) => void
-  /** 창 밖이라 감출 병인가. `at` 은 이 벽감 안의 순서입니다 */
+  /** 창 밖이라 탭 순서에서 뺄 병인가. `at` 은 이 벽감 안의 순서입니다 */
   isHidden: (at: number) => boolean
+  /** 창 끝 페이드 구간에 걸려 투명하게 지울 병인가 */
+  isFaded: (at: number) => boolean
   /** 향수가 없을 때 벽감 안에 적는 말 */
   emptyMessage: string
 }
@@ -79,6 +81,7 @@ export function DisplayCase({
   selectedId,
   onSelect,
   isHidden,
+  isFaded,
   emptyMessage,
 }: Props) {
   return (
@@ -133,10 +136,12 @@ export function DisplayCase({
                 aria-pressed={selected}
                 onClick={() => onSelect(item)}
                 title={`${item.name} · ${item.brand}`}
-                // 창 밖 병. 탭 순서에서 빠지고, CSS 가 이 속성을 보고 병을
-                // **투명하게** 지웁니다(.shelf-slot[inert]). 잘라내면 창 경계에
-                // 걸친 그림자까지 같이 잘려 세로줄이 생깁니다.
+                // 창 밖 병. 탭 순서와 낭독기에서 뺍니다
                 inert={isHidden(at)}
+                // 창 끝 페이드 구간에 걸리는 이웃 병만 CSS 가 **투명하게** 지웁니다
+                // (.shelf-slot[data-faded]). 잘라내면 창 경계에 걸친 그림자까지
+                // 같이 잘려 세로줄이 생깁니다.
+                data-faded={isFaded(at) || undefined}
                 // 겹치는 순위. 왼쪽 병일수록 앞이라 그 그림자가 오른쪽 병 위에
                 // 떨어집니다. 층마다의 z-index 는 shelf-display.css 의
                 // .shelf-slot 이 이 값으로 계산합니다.
