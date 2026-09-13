@@ -20,6 +20,9 @@ import java.util.List;
  * <p>{@code title} 의 길이 제한은 {@code posts.title} 이 50자라 거기에 맞춘 것입니다. 더 길게
  * 받으면 저장할 때 잘리거나 실패합니다.
  *
+ * <p>{@code collectionId} 는 컬렉션 공유 글에 붙이는 내 컬렉션입니다. 없어도 됩니다. 분류가
+ * 컬렉션 공유가 아니어도 막지 않습니다. 화면이 그 분류에서만 첨부 자리를 보여줍니다.
+ *
  * <p>{@code perfumeIds} 와 {@code imageUrls} 는 없어도 됩니다. 자유 게시판 글은 향수를 걸지 않을
  * 수 있고, 이미지도 선택입니다. 둘 다 보낸 순서를 그대로 보여줄 순서로 씁니다.
  *
@@ -39,6 +42,10 @@ public record PostCreateRequest(
         @Schema(description = "글 내용")
         @NotBlank(message = "내용을 입력해야 합니다.")
         String content,
+
+        @Schema(description = "첨부할 컬렉션 ID. 컬렉션 공유 글에서 씁니다.", nullable = true)
+        @Positive
+        Long collectionId,
 
         @Schema(description = "글에 걸 향수 ID. 보낸 순서대로 표시됩니다.", nullable = true)
         List<@NotNull @Positive Long> perfumeIds,

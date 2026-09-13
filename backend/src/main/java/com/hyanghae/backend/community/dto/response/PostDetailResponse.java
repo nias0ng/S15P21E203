@@ -15,6 +15,10 @@ import java.util.List;
  * <p>{@code nickname} 이 비어 있을 수 있습니다. 회원이 탈퇴하면 글은 남고 작성자만 지워집니다.
  * 그런 글은 주인이 없어 아무도 고칠 수 없고 {@code mine} 도 항상 거짓입니다.
  *
+ * <p>{@code collectionId} 와 {@code collectionTitle} 은 컬렉션 공유 글에 붙인 컬렉션입니다.
+ * 첨부가 없거나 그 컬렉션이 지워졌으면 둘 다 비어 있습니다. 제목만 주면 화면이 컬렉션 상세로
+ * 넘어갈 수 없어 번호도 함께 보냅니다.
+ *
  * <p>{@code imageUrls} 와 {@code relatedPerfumes} 는 글에 걸어 둔 순서 그대로입니다.
  *
  * <p>명세에 있던 {@code status}·{@code holdReason} 은 없습니다. 게시글 보류 기능이 없어지면서
@@ -28,6 +32,9 @@ public record PostDetailResponse(
         String content,
         List<String> imageUrls,
         List<PostPerfumeResponse> relatedPerfumes,
+        Long collectionId,
+        String collectionTitle,
+        long commentCount,
         boolean mine,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt

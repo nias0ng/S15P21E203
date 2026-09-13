@@ -1,5 +1,6 @@
 package com.hyanghae.backend.community.entity;
 
+import com.hyanghae.backend.collection.entity.Collection;
 import com.hyanghae.backend.perfume.entity.Perfume;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -47,6 +48,10 @@ public class Post {
     @JoinColumn(name = "category_id")
     private PostCategory category;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "collection_id")
+    private Collection collection;
+
     @Column(name = "title", length = 50)
     private String title;
 
@@ -80,11 +85,13 @@ public class Post {
             PostCategory category,
             String title,
             String content,
+            Collection collection,
             OffsetDateTime createdAt
     ) {
         Post post = new Post();
         post.userId = userId;
         post.category = category;
+        post.collection = collection;
         post.title = title;
         post.content = content;
         post.createdAt = createdAt;
@@ -143,6 +150,16 @@ public class Post {
 
     public Long getUserId() {
         return userId;
+    }
+
+    /** 첨부한 컬렉션입니다. 없을 수 있고, 컬렉션이 지워지면 비워집니다. */
+    public Collection getCollection() {
+        return collection;
+    }
+
+    /** 첨부를 바꾸거나 뗍니다. {@code null} 이면 떼는 것입니다. */
+    public void attachCollection(Collection collection) {
+        this.collection = collection;
     }
 
     public PostCategory getCategory() {
