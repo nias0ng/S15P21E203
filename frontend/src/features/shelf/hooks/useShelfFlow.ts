@@ -23,7 +23,13 @@ const FOLLOW = 9
 /** 목표와 이만큼(px) 가까워지면 그 자리에 세우고 멈춥니다 */
 const REST_PX = 0.25
 
-type Mode = 'rest' | 'follow' | 'tween'
+/** 손가락이 이만큼(px) 옆으로 가야 끌기로 봅니다. 그 전에 떼면 병을 누른 것입니다 */
+const DRAG_SLOP = 8
+
+/** 손을 뗀 속도(px/ms)에 곱해 더 흘려 보내는 시간(ms). 튕기듯 떼면 그만큼 더 갑니다 */
+const FLING_MS = 160
+
+type Mode = 'rest' | 'follow' | 'tween' | 'drag'
 
 type Options = {
   /** 휠을 받는 자리 */
@@ -69,6 +75,9 @@ const prefersReducedMotion = () =>
  *        휠이 멈추면 목표를 칸 경계에 맞춥니다(`snapStart`) — 창 양 끝에 병이 걸린 채
  *        서지 않고, 넘어가던 병은 끝까지 들여 세웁니다.
  *   이동 칩 · 페이저 · 화살표는 정해진 칸으로 곧장 갑니다. 거리가 멀수록 조금 오래 걸립니다.
+ *   끌기 손가락(터치 · 펜)으로 끌면 트랙이 손가락을 그대로 따르고, 떼면 뗀 속도만큼 더
+ *        흘러 칸 경계에 섭니다. 마우스 끌기는 받지 않습니다 — 병을 누르는 동작과 겹칩니다.
+ *        세로로 끌면 페이지가 스크롤됩니다(ShelfWall 의 touch-action: pan-y).
  *
  * 위치는 요소의 transform 에 직접 씁니다. 상태로 들면 매 프레임 병 스물다섯 개가 다시
  * 그려집니다. 화면이 알아야 하는 것(멈춘 칸 · 움직이기 시작함)만 콜백으로 알립니다.
@@ -99,7 +108,20 @@ export function useShelfFlow(options: Options): ShelfFlow {
     const element = options.viewport.current
     if (!element) return
     element.addEventListener('wheel', flow.wheel, { passive: false })
-    return () => element.removeEventListener('wheel', flow.wheel)
+    element.addEventListener('pointerdown', flow.pointerDown)
+    element.addEventListener('pointermove', flow.pointerMove)
+    element.addEventListener('pointerup', flow.pointerUp)
+    element.addEventListener('pointercancel', flow.pointerUp)
+    // 끌고 난 뒤의 click 을 병 단추보다 먼저 받아야 해서 capture 로 답니다
+    element.addEventListener('click', flow.click, true)
+    return () => {
+      element.removeEventListener('wheel', flow.wheel)
+      element.removeEventListener('pointerdown', flow.pointerDown)
+      element.removeEventListener('pointermove', flow.pointerMove)
+      element.removeEventListener('pointerup', flow.pointerUp)
+      element.removeEventListener('pointercancel', flow.pointerUp)
+      element.removeEventListener('click', flow.click, true)
+    }
   }, [flow, options.viewport])
 
   useEffect(() => () => flow.dispose(), [flow])
@@ -132,6 +154,20 @@ function createFlow() {
   let duration = 0
   let frame = 0
   let lastFrame = 0
+
+  /** 손가락으로 끄는 중. 끌기로 넘어가기 전(DRAG_SLOP 안)에는 moved 가 false 입니다 */
+  let drag: {
+    id: number
+    startX: number
+    from: number
+    lastX: number
+    lastTime: number
+    /** px/ms, 오른쪽이 + */
+    velocity: number
+    moved: boolean
+  } | null = null
+  /** 끌고 난 뒤 손을 떼면 그 자리 병에 click 이 한 번 옵니다. 그 click 을 버립니다 */
+  let swallowClick = false
 
   const apply = () => {
     const { track, pitch } = read()
@@ -224,6 +260,79 @@ function createFlow() {
       lastInput = performance.now()
       snapped = false
       run()
+    },
+
+    pointerDown(event: PointerEvent) {
+      if (event.pointerType === 'mouse' || !event.isPrimary) return
+      swallowClick = false
+      drag = {
+        id: event.pointerId,
+        startX: event.clientX,
+        from: position,
+        lastX: event.clientX,
+        lastTime: event.timeStamp,
+        velocity: 0,
+        moved: false,
+      }
+    },
+
+    pointerMove(event: PointerEvent) {
+      if (!drag || event.pointerId !== drag.id) return
+      const { pitch, max } = read()
+
+      if (!drag.moved) {
+        if (Math.abs(event.clientX - drag.startX) < DRAG_SLOP) return
+        // 여기서부터 끌기입니다. 흐르던 중이면 손가락이 그 자리에서 잡습니다
+        drag.moved = true
+        drag.startX = event.clientX
+        drag.from = position
+        cancelAnimationFrame(frame)
+        frame = 0
+        mode = 'drag'
+        snapped = true
+        const element = event.currentTarget
+        if (element instanceof Element)
+          element.setPointerCapture(event.pointerId)
+        read().onMoveStart()
+      }
+
+      position = clamp(
+        drag.from - (event.clientX - drag.startX) / pitch,
+        0,
+        max,
+      )
+      target = position
+      const elapsed = event.timeStamp - drag.lastTime
+      if (elapsed > 0) drag.velocity = (event.clientX - drag.lastX) / elapsed
+      drag.lastX = event.clientX
+      drag.lastTime = event.timeStamp
+      apply()
+      read().onMove(position)
+    },
+
+    pointerUp(event: PointerEvent) {
+      if (!drag || event.pointerId !== drag.id) return
+      const { moved, velocity } = drag
+      drag = null
+      if (!moved) return
+
+      swallowClick = true
+      const { pitch, max } = read()
+      // 손가락이 왼쪽으로 튕기면(velocity < 0) 벽은 오른쪽 병으로 더 흘러갑니다
+      const fling = (-velocity * FLING_MS) / pitch
+      direction = Math.sign(fling)
+      target = snapStart(clamp(position + fling, 0, max), direction, max)
+      mode = 'follow'
+      // 끌기를 시작할 때 onMoveStart 를 이미 불렀으니 run() 을 거치지 않습니다
+      lastFrame = performance.now()
+      frame = requestAnimationFrame(tick)
+    },
+
+    click(event: MouseEvent) {
+      if (!swallowClick) return
+      swallowClick = false
+      event.preventDefault()
+      event.stopPropagation()
     },
 
     go(start: number, instant = false) {

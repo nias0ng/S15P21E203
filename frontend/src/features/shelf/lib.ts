@@ -245,6 +245,118 @@ export function shelfMetrics(
 export const SHELF_HANG = HANG
 
 /*
+ * ── 상세 패널 ───────────────────────────────────────────────
+ *
+ * 넓은 화면에서 상세 패널은 벽 오른쪽 위에 얹힙니다. 1920 x 1080 에서는 벽감이 605 이고
+ * 패널이 시안 크기(폭 340)로 섭니다. 화면이 작아져 벽감이 낮아지면 패널도 통째로
+ * 줄어듭니다 — 폭 · 여백 · 사진 · 글자 · 단추가 전부 `벽감 높이 / 605` 배입니다.
+ *
+ * 다만 **글자가 읽히는 하한(0.85 배 — 작은 글자 12px 가 10px 남짓)** 아래로는 줄이지
+ * 않습니다. 그보다 작게 줄여야 하는 화면은 억지로 줄이지 않고 배치를 바꿉니다 — 패널을
+ * 벽 아래로 내리는 쌓는 배치(MyShelfPage)입니다.
+ *
+ * 패널 높이는 두 자리 중 하나에 맞춥니다. 줄인 내용이 벽감에 들면 벽감 높이, 하한에
+ * 걸려 안 들면 벽감 + 매달린 이름표 자리(진열장 자리 전체)입니다. 그 사이 아무 데서나
+ * 끝나면 패널 아랫선이 벽감에도 이름표에도 맞지 않아 어정쩡합니다.
+ *
+ * 패널 폭과 벽감 높이는 서로를 정합니다. 패널이 좁아지면 가리지 않는 폭이 넓어지고, 벽감
+ * 높이는 그 폭으로 셉니다(shelfMetrics). 그래서 화면 폭에 비례한 폭에서 시작해 폭이 더
+ * 바뀌지 않을 때까지 맞춰 봅니다. 벽감 높이를 셀 때 쓰는 칸 수가 바뀌는 경계에서는 폭이
+ * 두 값 사이를 오갈 수 있어서 네 번까지만 맞춥니다. 배율은 마지막에 센 벽감 높이로 정하므로
+ * 그때도 패널 높이는 벽감과 맞습니다.
+ */
+const PANEL_WIDTH = 340
+const PANEL_CASE = 605
+const PANEL_GAP = 20
+const PANEL_PASSES = 4
+/** 글자가 읽히는 하한. 이보다 작게 줄여야 하는 화면은 배치를 바꿉니다 */
+export const PANEL_MIN_SCALE = 0.85
+/**
+ * 패널 내용 높이(1920 규격). 실측 528(이름 한 줄)에 이름 · 소개가 한 줄씩 더 접힐
+ * 자리를 더했습니다. 줄인 내용이 벽감에 드는지 가를 때만 씁니다.
+ */
+const PANEL_CONTENT = 560
+/** 1920 규격의 본문 폭(화면 틀 1920 − 좌우 여백 60 x 2). 패널 폭을 처음 어림할 때만 씁니다 */
+const FRAME_WIDTH = 1800
+
+export type ShelfLayoutOptions = {
+  /** 상세 패널을 벽 위에 얹는가. 쌓는 배치에서는 패널이 벽 아래에 따로 서서 false 입니다 */
+  panel?: boolean
+}
+
+export type ShelfLayout = ShelfMetrics & {
+  /** 상세 패널 폭(px). 1920 규격에서 340, 패널을 얹지 않으면 0 */
+  panelWidth: number
+  /** 상세 패널 배율 — 벽감 높이 / 605 를 0.85 ~ 1 사이로 */
+  panelScale: number
+  /** 상세 패널 최소 높이(px) — 벽감 높이, 또는 벽감 + 이름표 자리 */
+  panelHeight: number
+  /** 패널에 가리지 않는 폭(px) — 창 폭 − 패널 폭 − 간격 20. 패널을 얹지 않으면 창 폭 */
+  clearWidth: number
+}
+
+/**
+ * 진열장 자리의 크기로 벽 치수와 상세 패널 크기를 함께 정합니다.
+ *
+ *   1920 x 1080 → 자리 1800 x 800 → 패널 340 x 605 · 배율 1 · 가리지 않는 폭 1440 · 벽감 605
+ *   1440 x 780  → 자리 1340 x 500 → 패널 289 x 500 · 배율 0.85(하한) · 벽감 415
+ */
+export function shelfLayout(
+  width: number,
+  height: number,
+  { panel = true }: ShelfLayoutOptions = {},
+): ShelfLayout {
+  if (!panel) {
+    return {
+      ...shelfMetrics(width, height),
+      panelWidth: 0,
+      panelScale: 1,
+      panelHeight: 0,
+      clearWidth: Math.max(0, width),
+    }
+  }
+  // 아직 크기를 못 쟀을 때는 패널을 줄이지 않습니다. ShelfWall 은 재기 전에 패널을 숨깁니다
+  if (width <= 0 || height <= 0) {
+    const metrics = shelfMetrics(width, height)
+    return {
+      ...metrics,
+      panelWidth: PANEL_WIDTH,
+      panelScale: 1,
+      panelHeight: metrics.caseHeight,
+      clearWidth: Math.max(0, width - PANEL_WIDTH - PANEL_GAP),
+    }
+  }
+
+  const scaleOf = (caseHeight: number) =>
+    clamp(caseHeight / PANEL_CASE, PANEL_MIN_SCALE, 1)
+  const metricsFor = (panelWidth: number) =>
+    shelfMetrics(width, height, width - panelWidth - PANEL_GAP)
+
+  let panelWidth = Math.round(
+    PANEL_WIDTH * clamp(width / FRAME_WIDTH, PANEL_MIN_SCALE, 1),
+  )
+  let metrics = metricsFor(panelWidth)
+  for (let pass = 0; pass < PANEL_PASSES; pass += 1) {
+    const next = Math.round(PANEL_WIDTH * scaleOf(metrics.caseHeight))
+    if (next === panelWidth) break
+    panelWidth = next
+    metrics = metricsFor(panelWidth)
+  }
+
+  const panelScale = scaleOf(metrics.caseHeight)
+  return {
+    ...metrics,
+    panelWidth,
+    panelScale,
+    panelHeight:
+      PANEL_CONTENT * panelScale <= metrics.caseHeight
+        ? metrics.caseHeight
+        : metrics.caseHeight + HANG,
+    clearWidth: width - panelWidth - PANEL_GAP,
+  }
+}
+
+/*
  * ── 벽 한 줄의 칸 배치 ──────────────────────────────────────
  *
  * 분류마다 [이름표 벽][벽감] 을 붙이고 맨 끝에 벽 한 칸을 더 둡니다.

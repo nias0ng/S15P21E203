@@ -18,7 +18,7 @@ import {
   revealStart,
   sectionAt,
   SHELF_HANG,
-  shelfMetrics,
+  shelfLayout,
 } from '../lib'
 import type { ShelfCategory, ShelfItem, ShelfSection } from '../types'
 
@@ -40,13 +40,10 @@ type Props = {
   resetKey: string
   /** 향수가 없는 분류의 벽감에 적는 말 */
   emptyMessage: string
-  /** 벽 오른쪽 위에 얹히는 상세 패널 */
-  aside: ReactNode
+  /** 벽 오른쪽 위에 얹히는 상세 패널. 주지 않으면 패널 없이 창 전체를 씁니다(쌓는 배치) */
+  aside?: ReactNode
   className?: string
 }
-
-/** 상세 패널과 그 왼쪽에 온전히 보이는 칸 사이의 간격(px) */
-const PANEL_GAP = 20
 
 /**
  * 진열대 벽 (A13 재디자인) — 분류마다 벽감을 하나씩, 가로로 이어 붙인 벽입니다.
@@ -65,18 +62,19 @@ const PANEL_GAP = 20
  * 휠 한 번이 무엇을 할지 화면을 보고 알 수 없었습니다. 지금은 휠이 언제나 옆으로 흐릅니다.
  *
  * ── 상세 패널은 벽 위에 얹힙니다 ─────────────────────────────
- * 벽은 화면 오른쪽 끝까지 이어지고, 상세 패널이 그 오른쪽 위에 벽감 윗선에 맞춰 얹힙니다.
- * 높이는 벽감 이상이고, 내용이 더 길면(세로가 빠듯한 화면) 스크롤 없이 이름표 자리까지
- * 늘어납니다. 패널이 아주 옅게 비쳐서(.shelf-panel) 그 밑으로 병이 더 이어진다는 게
- * 보입니다. 그래서 칸 수를 두 가지로 셉니다(lib.ts 의 shelfMetrics).
+ * 벽은 화면 오른쪽 끝까지 이어지고, 상세 패널이 그 오른쪽 위에 벽감과 같은 높이로 얹힙니다.
+ * 화면이 작아져 벽감이 낮아지면 패널도 같은 비율로 통째로 줄어듭니다(lib.ts 의 shelfLayout).
+ * 패널이 아주 옅게 비쳐서(.shelf-panel) 그 밑으로 병이 더 이어진다는 게 보입니다. 그래서
+ * 칸 수를 두 가지로 셉니다(lib.ts 의 shelfMetrics).
  *
  *   visible  창 전체(패널 밑까지)에 서는 칸 — 창 밖 병 감추기 · 빈 벽 길이
  *   clear    패널에 가리지 않는 칸 — 고른 병 들이기 · 벽 끝 · 칩 켜짐 · 오른쪽 화살표 자리
  *
  * ── 크기 ─────────────────────────────────────────────────
- * 벽감 높이와 칸 폭은 이 자리의 크기에서 계산합니다(lib.ts 의 shelfMetrics). 화면이 고정
- * 한 장이라, 머리말 부제와 하단 문구를 걷어낸 세로 공간을 진열장이 씁니다. 계산한 값은
- * CSS 변수(--case-h · --bottle-h · --pitch · --clear-w)로 넣고, 모양은 CSS 가 그립니다.
+ * 벽감 높이 · 칸 폭 · 상세 패널 크기는 이 자리의 크기에서 계산합니다(lib.ts 의 shelfLayout).
+ * 화면이 고정 한 장이라, 머리말 부제와 하단 문구를 걷어낸 세로 공간을 진열장이 씁니다.
+ * 계산한 값은 CSS 변수(--case-h · --bottle-h · --pitch · --clear-w · --panel-scale)로 넣고,
+ * 모양은 CSS 가 그립니다.
  * 진열장은 제목 줄 바로 아래에 붙이고, 남는 세로 공간은 아래(하단 띠 위)로 보냅니다.
  *
  * ── 창 밖 병 ───────────────────────────────────────────────
@@ -102,39 +100,36 @@ export function ShelfWall({
   const areaRef = useRef<HTMLDivElement>(null)
   const viewportRef = useRef<HTMLElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
-  const asideRef = useRef<HTMLDivElement>(null)
   const idPrefix = useId()
 
   /*
-   * 진열장 자리의 크기. 높이는 이 컴포넌트 전체(무대가 남긴 세로 공간), 폭은 창 전체와
-   * 그중 패널에 가리지 않는 폭입니다. 크기를 재기 전에는 벽을 그리지 않습니다 — 예전
-   * 치수로 한 번 그렸다가 바꾸면 병이 한 프레임 작게 보였다 커집니다.
+   * 진열장 자리의 크기. 높이는 이 컴포넌트 전체(무대가 남긴 세로 공간), 폭은 창 전체입니다.
+   * 패널 폭은 재지 않고 이 크기에서 계산합니다 — 패널 폭이 벽감 높이를 따라 바뀌어서, 잰
+   * 폭으로 다시 셈하면 폭과 벽감 높이가 서로를 쫓아 오갑니다. 크기를 재기 전에는 벽을
+   * 그리지 않습니다 — 예전 치수로 한 번 그렸다가 바꾸면 병이 한 프레임 작게 보였다 커집니다.
    */
-  const [size, setSize] = useState({ width: 0, height: 0, clear: 0 })
+  const [size, setSize] = useState({ width: 0, height: 0 })
   useEffect(() => {
     const area = areaRef.current
     const viewport = viewportRef.current
-    const panel = asideRef.current
-    if (!area || !viewport || !panel || typeof ResizeObserver === 'undefined')
-      return
+    if (!area || !viewport || typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver(() => {
       const width = viewport.clientWidth
       const height = area.clientHeight
-      const clear = width - panel.offsetWidth - PANEL_GAP
       setSize((prev) =>
-        prev.width === width && prev.height === height && prev.clear === clear
+        prev.width === width && prev.height === height
           ? prev
-          : { width, height, clear },
+          : { width, height },
       )
     })
     observer.observe(area)
     observer.observe(viewport)
-    observer.observe(panel)
     return () => observer.disconnect()
   }, [])
 
   const measured = size.width > 0 && size.height > 0
-  const metrics = shelfMetrics(size.width, size.height, size.clear)
+  const withPanel = aside != null
+  const metrics = shelfLayout(size.width, size.height, { panel: withPanel })
   const layout = useMemo(
     () => layoutWall(sections, metrics.visible),
     [sections, metrics.visible],
@@ -238,7 +233,8 @@ export function ShelfWall({
           '--case-h': `${metrics.caseHeight}px`,
           '--bottle-h': `${metrics.bottle}px`,
           '--pitch': `${metrics.pitch}px`,
-          '--clear-w': `${Math.max(0, size.clear)}px`,
+          '--clear-w': `${Math.max(0, metrics.clearWidth)}px`,
+          '--panel-scale': metrics.panelScale,
         } as React.CSSProperties
       }
     >
@@ -250,7 +246,8 @@ export function ShelfWall({
         <section
           ref={viewportRef}
           aria-label="진열대"
-          className="group/wall absolute inset-0"
+          // 가로 끌기는 useShelfFlow 가 받고, 세로 끌기는 페이지 스크롤로 넘깁니다
+          className="group/wall absolute inset-0 touch-pan-y"
         >
           {measured && (
             /*
@@ -323,21 +320,28 @@ export function ShelfWall({
         </section>
 
         {/*
-          상세 패널 자리. 폭 340px(1920 규격) · 300px(1535 이하). 윗선은 벽감에 맞추고,
-          높이는 벽감 이상 — 내용이 더 길면 스크롤 막대를 만들지 않고 아래로 늘어납니다.
+          상세 패널 자리. 윗선은 벽감에 맞추고, 높이는 벽감 또는 이름표 자리까지입니다.
+          폭은 1920 규격에서 340px 이고 벽감 높이를 따라 0.85 배까지 줄어듭니다 — 패널
+          안쪽은 ShelfDetailPanel 이 --panel-scale 로 통째로 줄입니다(lib.ts 의 shelfLayout).
+          내용이 그보다 길면 스크롤 막대 없이 아래로 늘어납니다.
           창(section) 밖 형제로 둡니다 — 창 안에 두면 패널 위의 휠이 벽을 흘립니다.
         */}
-        <div
-          ref={asideRef}
-          // 크기를 재기 전에는 숨깁니다. 기본 벽감 높이(345)로 한 프레임 그려졌다가
-          // 늘어나면 패널이 튀어 보입니다. 폭은 재야 해서 자리는 둡니다
-          className={cn(
-            'absolute top-0 right-0 flex min-h-[var(--case-h)] w-[300px] flex-col 2xl:w-[340px]',
-            !measured && 'invisible',
-          )}
-        >
-          {aside}
-        </div>
+        {withPanel && (
+          <div
+            // 크기를 재기 전에는 숨깁니다. 기본 벽감 높이(345)로 한 프레임 그려졌다가
+            // 늘어나면 패널이 튀어 보입니다
+            className={cn(
+              'absolute top-0 right-0 flex flex-col',
+              !measured && 'invisible',
+            )}
+            style={{
+              width: metrics.panelWidth,
+              minHeight: metrics.panelHeight,
+            }}
+          >
+            {aside}
+          </div>
+        )}
       </div>
     </div>
   )

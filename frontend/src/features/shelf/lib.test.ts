@@ -6,6 +6,7 @@ import {
   nameWithoutBrand,
   revealStart,
   sectionAt,
+  shelfLayout,
   shelfMetrics,
   snapStart,
   swingStep,
@@ -149,6 +150,75 @@ describe('shelfMetrics', () => {
     const { bottle, caseHeight } = shelfMetrics(1020, 610)
     expect(bottle % 5).toBe(0)
     expect(caseHeight % 5).toBe(0)
+  })
+})
+
+describe('shelfLayout', () => {
+  it('1920 x 1080 의 진열장 자리(1800 x 800)에서 패널은 시안 크기 340 · 배율 1 이고 벽감과 높이가 같다', () => {
+    const layout = shelfLayout(1800, 800)
+    expect(layout.panelWidth).toBe(340)
+    expect(layout.panelScale).toBe(1)
+    expect(layout.clearWidth).toBe(1440)
+    expect(layout.caseHeight).toBe(605)
+    expect(layout.panelHeight).toBe(605)
+  })
+
+  it('화면이 작아지면 패널이 벽감 높이를 따라 줄어든다', () => {
+    // 1680 x 950 의 진열장 자리
+    const { panelScale, panelWidth, panelHeight, caseHeight } = shelfLayout(
+      1560,
+      670,
+    )
+    expect(panelScale).toBeLessThan(1)
+    expect(panelScale).toBeCloseTo(caseHeight / 605, 6)
+    expect(Math.abs(panelWidth - 340 * panelScale)).toBeLessThanOrEqual(1)
+    expect(panelHeight).toBe(caseHeight)
+  })
+
+  it('글자가 읽히는 하한(0.85 배) 아래로는 줄지 않고, 그때는 패널이 이름표 자리까지 내려온다', () => {
+    // 1440 x 780 · 1280 x 720 의 진열장 자리 — 벽감이 605 의 0.85 배보다 낮습니다
+    const areas = [
+      [1340, 500],
+      [1180, 440],
+    ] as const
+    for (const [width, height] of areas) {
+      const { panelScale, panelWidth, panelHeight, caseHeight } = shelfLayout(
+        width,
+        height,
+      )
+      expect(panelScale).toBe(0.85)
+      expect(panelWidth).toBe(289)
+      expect(panelHeight).toBe(caseHeight + 85)
+    }
+  })
+
+  it('패널을 얹지 않는 배치에서는 창 전체가 가리지 않는 자리다', () => {
+    const layout = shelfLayout(708, 530, { panel: false })
+    expect(layout.panelWidth).toBe(0)
+    expect(layout.clearWidth).toBe(708)
+    expect(layout.clear).toBe(layout.visible)
+  })
+
+  it('가리지 않는 칸은 패널 왼쪽 폭 안에 온전히 들어간다', () => {
+    const areas = [
+      [1800, 800],
+      [1560, 670],
+      [1340, 500],
+    ] as const
+    for (const [width, height] of areas) {
+      const { clear, pitch, panelWidth, clearWidth } = shelfLayout(
+        width,
+        height,
+      )
+      expect(clearWidth).toBe(width - panelWidth - 20)
+      expect(clear * pitch).toBeLessThanOrEqual(clearWidth + 0.001)
+    }
+  })
+
+  it('규격보다 큰 화면에서도 패널은 시안보다 커지지 않는다', () => {
+    const { panelScale, panelWidth } = shelfLayout(1800, 1160)
+    expect(panelScale).toBe(1)
+    expect(panelWidth).toBe(340)
   })
 })
 

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 
 import {
   CollectionFormModal,
@@ -10,12 +10,14 @@ import {
   ShelfDeck,
   ShelfDetailPanel,
   ShelfFooterStrip,
+  ShelfPager,
   ShelfRegisterModal,
   ShelfSaveModal,
   ShelfToolbar,
   ShelfWall,
   shelfItemsQuery,
   toPerfumeOption,
+  useShelfArrangement,
   useShelfBrowser,
   type ShelfWallHandle,
 } from '@/features/shelf'
@@ -41,6 +43,7 @@ import { Toast } from '@/shared/ui/Toast'
  *    그 크기가 나오지 않습니다. 이 화면에서 가장 큰 글자라 한 단만 어긋나도 위계가 눈에
  *    띄게 달라져 여기만 값을 적고 나머지 활자는 전부 토큰을 씁니다. leading-[1.2] 는
  *    --text-display--line-height 와 같은 비율이라 스케일을 벗어난 값이 아닙니다.
+ *    휴대폰 폭에서는 36px 제목이 한 줄을 다 차지해서 스케일 최대치(text-display)로 둡니다.
  *
  * 간격 · 치수는 1920 기준으로 끝자리를 0 또는 5 로 맞춥니다(styles/index.css 의
  * 화면 폭 주석). 글자 크기는 이 규칙에서 빠지고 위 2)대로 둡니다.
@@ -54,20 +57,36 @@ import { Toast } from '@/shared/ui/Toast'
 
 type Stage = 'shelf' | 'collection'
 
+/** 두 무대의 제목. 휴대폰 폭에서는 스케일 최대치(28px), 태블릿 폭부터 시안의 36px(위 2) */
+const STAGE_TITLE =
+  'font-serif text-display font-semibold md:text-[36px] md:leading-[1.2]'
+
 /**
  * 나의 진열대 (A13 재디자인 시안)
  *
+ * 화면 폭에 따라 **배치가 둘**입니다(features/shelf 의 useShelfArrangement).
+ *
+ * ── 한 장 배치(1024~) ────────────────────────────────────
  * **스크롤하지 않는 한 장입니다.** 헤더 아래를 두 무대가 나눠 쓰고, 하단 띠의 단추로
  * 위아래로 바뀝니다(ShelfDeck).
  *
  *   진열대     분류마다 벽감을 하나씩 가로로 이어 붙인 벽(ShelfWall). 휠로 좌우로 흐르고,
- *              칩을 누르면 그 분류의 첫머리로 갑니다. 고른 향수는 오른쪽 패널에 펼쳐지고,
- *              하단 페이저로 벽 순서대로 한 병씩 넘길 수 있습니다.
+ *              칩을 누르면 그 분류의 첫머리로 갑니다. 고른 향수는 벽 위 오른쪽 패널에
+ *              펼쳐지고, 하단 페이저로 벽 순서대로 한 병씩 넘길 수 있습니다.
  *   내 컬렉션  예전에는 진열대 아래로 스크롤해야 나왔습니다. 화면을 한 장으로 고정하면서
  *              아래에서 올라오는 무대로 옮겼습니다.
  *
  * 머리말 부제 · 영문 문구와 하단 문구를 걷어낸 세로 공간은 진열장이 씁니다 — 벽감
- * 크기를 고정값이 아니라 남은 공간에서 계산합니다(features/shelf 의 shelfMetrics).
+ * 크기를 고정값이 아니라 남은 공간에서 계산합니다(features/shelf 의 shelfLayout).
+ * 세로가 아주 낮은 창에서는 한 장의 최소 높이(650)를 지키고 페이지가 조금 스크롤됩니다.
+ * 그보다 줄이면 상세 패널 글자가 읽히지 않는 크기로 줄어듭니다.
+ *
+ * ── 쌓는 배치(~1023, 태블릿 · 휴대폰) ─────────────────────────
+ * 패널을 벽 위에 얹을 자리가 없어서 억지로 줄이지 않고 위에서 아래로 이어 세웁니다.
+ * 페이지가 세로로 스크롤됩니다.
+ *
+ *   제목 → 칩 · 드롭다운(옆으로 밀림) → 검색 → 벽(화면 폭 가득, 손가락으로 끌기)
+ *   → 페이저 → 상세 카드(넓으면 두 단) → 내 컬렉션
  *
  * 진열대와 컬렉션은 서로 다른 도메인입니다. features 끼리는 import 할 수 없으므로
  * 이 화면에서 두 도메인을 조합합니다.
@@ -75,6 +94,7 @@ type Stage = 'shelf' | 'collection'
 export default function MyShelfPage() {
   const shelf = useQuery(shelfItemsQuery())
   const collections = useQuery(myCollectionsQuery())
+  const arrangement = useShelfArrangement()
 
   const [stage, setStage] = useState<Stage>('shelf')
   const [registerOpen, setRegisterOpen] = useState(false)
@@ -91,154 +111,99 @@ export default function MyShelfPage() {
 
   const collectionCount = collections.data?.length ?? 0
 
-  return (
+  /*
+   * 두 배치가 같은 조각을 다른 자리에 놓습니다. 조각은 여기서 한 번만 적습니다 —
+   * 배치마다 따로 적으면 한쪽만 고쳐져 두 배치가 조용히 달라집니다.
+   */
+  const toolbar = (className?: string) => (
+    <ShelfToolbar
+      counts={browser.counts}
+      value={browser.viewCategory}
+      onChange={(category) => {
+        browser.selectFirstOf(category)
+        wall.current?.showCategory(category)
+      }}
+      keyword={browser.keyword}
+      onKeywordChange={browser.changeKeyword}
+      className={className}
+    />
+  )
+
+  const shelfWall = (className: string, aside?: ReactNode) => (
+    <ShelfWall
+      ref={wall}
+      sections={browser.sections}
+      selectedId={browser.selected?.shelfItemId ?? null}
+      onSelect={browser.select}
+      onViewCategoryChange={browser.changeViewCategory}
+      resetKey={browser.keyword}
+      emptyMessage={
+        browser.keyword
+          ? '조건에 맞는 향수가 없습니다'
+          : '아직 담은 향수가 없습니다'
+      }
+      className={className}
+      aside={aside}
+    />
+  )
+
+  const detail = (className?: string) => (
     /*
-      부모 <main> 의 세로 여백(pt-15 pb-15)을 걷어내고 뷰포트 높이에 맞춥니다.
-      90px 은 헤더 높이(GlobalHeader 의 h-22.5)입니다. 헤더 높이를 바꾸면 여기도 함께
-      바꿔야 페이지에 세로 스크롤이 생기지 않습니다.
+      key 로 향수마다 패널을 새로 만듭니다. 안 그러면 메모 입력칸이 이전
+      향수의 글을 그대로 들고 있어서, 병을 바꾼 줄 모르고 남의 메모를 고치게
+      됩니다.
     */
-    <div className="shelf-scope -mt-15 -mb-15 flex h-[calc(100dvh_-_90px)] flex-col">
-      {/*
-        시안의 종이 바탕과 질감. fixed 로 뷰포트를 통째로 덮습니다 — 이 div 에만
-        배경을 깔면 좌우 여백과 화면 아래쪽이 body 의 ivory 로 남아 종이 한 장
-        느낌이 끊깁니다. -z-10 이라 본문 뒤, 헤더(bg-surface · z-20) 아래에 깔립니다.
+    <ShelfDetailPanel
+      key={browser.selected?.shelfItemId ?? 'empty'}
+      item={browser.selected}
+      onSetRepresentative={() => {
+        // TODO: SHF-05 대표 향수 지정 API 연결
+        showToast('대표 향수로 지정했습니다')
+      }}
+      onChangeCategory={() => setChangeCategoryOpen(true)}
+      onRemove={() => setRemoveOpen(true)}
+      onSaveMemo={() => {
+        // TODO: SHF-10 메모 저장 API 연결
+        showToast('메모를 저장했습니다')
+      }}
+      className={className}
+    />
+  )
 
-        질감(shelf-grain)을 본문이 아니라 이 레이어에 얹는 이유: 노이즈는
-        mix-blend-mode 로 밑을 곱하는데, 본문 위에 두면 새 쌓임 맥락이 생겨
-        Toast(fixed)와 모달이 그 아래로 밀립니다.
-      */}
-      <div
-        aria-hidden
-        className="shelf-paper shelf-grain fixed inset-0 -z-10"
-      />
-
+  const collectionHeader = (
+    <div className="flex min-h-12.5 items-center gap-5">
+      <h2 className={STAGE_TITLE}>내 컬렉션</h2>
+      <span className="shelf-muted text-body tabular-nums">
+        {collectionCount}개
+      </span>
       {/*
-        무대는 좌우 여백까지 넓혀 둡니다(-mx-[var(--gutter)]). 무대가 위아래로 바뀔 때
-        넘친 것을 잘라야 하는데, 본문 폭에서 자르면 벽이 좌우 여백으로 스며 나가는
-        페이드가 여백 경계에서 뚝 끊깁니다. 무대 안쪽은 같은 여백을 다시 두어 줄을 맞춥니다.
+        굵기 · 오프셋 폭은 공용 버튼 규칙 그대로이고 링과 오프셋 **색**만 더합니다.
+        `ring-offset-*` 의 기본색은 흰색이라, 이 크림 바탕 위에서는 링과 버튼 사이
+        2px 이 흰 줄로 떠서 종이에 흰 자국이 난 것처럼 보입니다. 바탕을 토큰 밖 색으로
+        바꾼 이 화면에서만 생기는 문제라 여기서 색을 맞춥니다 —
+        ShelfDetailPanel 이 자기 카드 바탕에 대해 하는 것과 같습니다.
       */}
-      <ShelfDeck
-        index={stage === 'shelf' ? 0 : 1}
-        className="-mx-[var(--gutter)] min-h-0 flex-1"
+      <Button
+        variant="outline"
+        size="sm"
+        className="ml-auto focus-visible:ring-[var(--shelf-ink)] focus-visible:ring-offset-[var(--paper)]"
+        onClick={() => setRegisterOpen(true)}
       >
-        {[
-          <div
-            key="shelf"
-            className="flex h-full flex-col px-[var(--gutter)] pt-10"
-          >
-            {/* 제목과 도구 줄이 한 줄에 놓입니다. 부제를 걷어내 한 줄 높이(50)입니다 */}
-            <div className="flex min-h-12.5 items-center gap-10">
-              <h1 className="shrink-0 font-serif text-[36px] leading-[1.2] font-semibold">
-                나의 진열대
-              </h1>
-              <ShelfToolbar
-                counts={browser.counts}
-                value={browser.viewCategory}
-                onChange={(category) => {
-                  browser.selectFirstOf(category)
-                  wall.current?.showCategory(category)
-                }}
-                keyword={browser.keyword}
-                onKeywordChange={browser.changeKeyword}
-                className="flex-1"
-              />
-            </div>
+        + 향수 등록
+      </Button>
+    </div>
+  )
 
-            <ShelfWall
-              ref={wall}
-              sections={browser.sections}
-              selectedId={browser.selected?.shelfItemId ?? null}
-              onSelect={browser.select}
-              onViewCategoryChange={browser.changeViewCategory}
-              resetKey={browser.keyword}
-              emptyMessage={
-                browser.keyword
-                  ? '조건에 맞는 향수가 없습니다'
-                  : '아직 담은 향수가 없습니다'
-              }
-              className="mt-7.5 flex-1"
-              aside={
-                /*
-                  key 로 향수마다 패널을 새로 만듭니다. 안 그러면 메모 입력칸이 이전
-                  향수의 글을 그대로 들고 있어서, 병을 바꾼 줄 모르고 남의 메모를 고치게
-                  됩니다.
-                */
-                <ShelfDetailPanel
-                  key={browser.selected?.shelfItemId ?? 'empty'}
-                  item={browser.selected}
-                  onSetRepresentative={() => {
-                    // TODO: SHF-05 대표 향수 지정 API 연결
-                    showToast('대표 향수로 지정했습니다')
-                  }}
-                  onChangeCategory={() => setChangeCategoryOpen(true)}
-                  onRemove={() => setRemoveOpen(true)}
-                  onSaveMemo={() => {
-                    // TODO: SHF-10 메모 저장 API 연결
-                    showToast('메모를 저장했습니다')
-                  }}
-                  // 높이는 벽감 이상. 내용이 더 길면 스크롤 없이 아래로 늘어납니다(ShelfWall)
-                  className="flex-1"
-                />
-              }
-            />
-          </div>,
+  const collectionStrip = (
+    <CollectionStrip
+      items={collections.data ?? []}
+      isPending={collections.isPending}
+      onCreate={() => setCreateCollectionOpen(true)}
+    />
+  )
 
-          /*
-            내 컬렉션 — 시안에는 없지만 A13 의 아래 절반이라 지우지 않고 둡니다.
-            진열대 무대와 같은 자리에 같은 크기의 제목을 둬서, 바뀔 때 제목이 같은
-            줄에서 갈려 올라옵니다. 컬렉션이 많아 넘치면 이 무대 안에서만 스크롤합니다.
-          */
-          <div
-            key="collection"
-            className="flex h-full flex-col px-[var(--gutter)] pt-10"
-          >
-            <div className="flex min-h-12.5 items-center gap-5">
-              <h2 className="font-serif text-[36px] leading-[1.2] font-semibold">
-                내 컬렉션
-              </h2>
-              <span className="shelf-muted text-body tabular-nums">
-                {collectionCount}개
-              </span>
-              {/*
-                굵기 · 오프셋 폭은 공용 버튼 규칙 그대로이고 링과 오프셋 **색**만 더합니다.
-                `ring-offset-*` 의 기본색은 흰색이라, 이 크림 바탕 위에서는 링과 버튼 사이
-                2px 이 흰 줄로 떠서 종이에 흰 자국이 난 것처럼 보입니다. 바탕을 토큰 밖 색으로
-                바꾼 이 화면에서만 생기는 문제라 여기서 색을 맞춥니다 —
-                ShelfDetailPanel 이 자기 카드 바탕에 대해 하는 것과 같습니다.
-              */}
-              <Button
-                variant="outline"
-                size="sm"
-                className="ml-auto focus-visible:ring-[var(--shelf-ink)] focus-visible:ring-offset-[var(--paper)]"
-                onClick={() => setRegisterOpen(true)}
-              >
-                + 향수 등록
-              </Button>
-            </div>
-
-            <div className="mt-7.5 min-h-0 flex-1 overflow-y-auto pb-7.5">
-              <CollectionStrip
-                items={collections.data ?? []}
-                isPending={collections.isPending}
-                onCreate={() => setCreateCollectionOpen(true)}
-              />
-            </div>
-          </div>,
-        ]}
-      </ShelfDeck>
-
-      <ShelfFooterStrip
-        view={stage}
-        onToggleView={() =>
-          setStage((current) => (current === 'shelf' ? 'collection' : 'shelf'))
-        }
-        collectionCount={collectionCount}
-        index={browser.index}
-        total={browser.total}
-        onPrev={() => browser.move(-1)}
-        onNext={() => browser.move(1)}
-      />
-
+  const dialogs = (
+    <>
       <ShelfRegisterModal
         open={registerOpen}
         onClose={() => setRegisterOpen(false)}
@@ -289,6 +254,134 @@ export default function MyShelfPage() {
         }}
       />
       <Toast {...toastProps} />
+    </>
+  )
+
+  /*
+    시안의 종이 바탕과 질감. fixed 로 뷰포트를 통째로 덮습니다 — 이 div 에만
+    배경을 깔면 좌우 여백과 화면 아래쪽이 body 의 ivory 로 남아 종이 한 장
+    느낌이 끊깁니다. -z-10 이라 본문 뒤, 헤더(bg-surface · z-20) 아래에 깔립니다.
+
+    질감(shelf-grain)을 본문이 아니라 이 레이어에 얹는 이유: 노이즈는
+    mix-blend-mode 로 밑을 곱하는데, 본문 위에 두면 새 쌓임 맥락이 생겨
+    Toast(fixed)와 모달이 그 아래로 밀립니다.
+  */
+  const paper = (
+    <div aria-hidden className="shelf-paper shelf-grain fixed inset-0 -z-10" />
+  )
+
+  if (arrangement === 'stacked') {
+    return (
+      <div className="shelf-scope flex flex-col">
+        {paper}
+
+        <div className="flex flex-col gap-5">
+          <h1 className={STAGE_TITLE}>나의 진열대</h1>
+          {toolbar()}
+        </div>
+
+        {/*
+          벽이 좌우 여백으로 스며 나가는 페이드를 본문 폭에서 자르지 않고 여백 바깥에서
+          자릅니다(한 장 배치의 ShelfDeck 과 같은 이유). 자르지 않으면 옆으로 긴 벽이
+          페이지 가로 스크롤을 만듭니다.
+
+          높이는 화면 폭을 따릅니다 — 페이지가 스크롤되어 남는 세로 공간이라는 기준이
+          없습니다. 휴대폰에서 병 셋, 태블릿에서 병 넷 남짓이 한 화면에 섭니다.
+        */}
+        <div className="-mx-[var(--gutter)] mt-7.5 overflow-x-clip px-[var(--gutter)]">
+          {shelfWall('h-[clamp(380px,72vw,560px)]')}
+        </div>
+
+        <ShelfPager
+          index={browser.index}
+          total={browser.total}
+          onPrev={() => browser.move(-1)}
+          onNext={() => browser.move(1)}
+          className="mt-2.5 self-end"
+        />
+
+        <div className="mt-5">{detail()}</div>
+
+        <section aria-label="내 컬렉션" className="mt-15 flex flex-col gap-7.5">
+          {collectionHeader}
+          {collectionStrip}
+        </section>
+
+        {dialogs}
+      </div>
+    )
+  }
+
+  return (
+    /*
+      부모 <main> 의 세로 여백(pt-15 pb-15)을 걷어내고 뷰포트 높이에 맞춥니다.
+      90px 은 헤더 높이(GlobalHeader 의 h-22.5)입니다. 헤더 높이를 바꾸면 여기도 함께
+      바꿔야 페이지에 세로 스크롤이 생기지 않습니다.
+      최소 높이 650 — 진열장 자리가 460 아래로 줄지 않는 높이입니다(위 한 장 배치 설명).
+    */
+    <div className="shelf-scope -mt-15 -mb-15 flex h-[calc(100dvh_-_90px)] min-h-162.5 flex-col">
+      {paper}
+
+      {/*
+        무대는 좌우 여백까지 넓혀 둡니다(-mx-[var(--gutter)]). 무대가 위아래로 바뀔 때
+        넘친 것을 잘라야 하는데, 본문 폭에서 자르면 벽이 좌우 여백으로 스며 나가는
+        페이드가 여백 경계에서 뚝 끊깁니다. 무대 안쪽은 같은 여백을 다시 두어 줄을 맞춥니다.
+      */}
+      <ShelfDeck
+        index={stage === 'shelf' ? 0 : 1}
+        className="-mx-[var(--gutter)] min-h-0 flex-1"
+      >
+        {[
+          <div
+            key="shelf"
+            className="flex h-full flex-col px-[var(--gutter)] pt-10"
+          >
+            {/* 제목과 도구 줄이 한 줄에 놓입니다. 부제를 걷어내 한 줄 높이(50)입니다 */}
+            <div className="flex min-h-12.5 items-center gap-10">
+              <h1 className="shrink-0 font-serif text-[36px] leading-[1.2] font-semibold">
+                나의 진열대
+              </h1>
+              {toolbar('flex-1')}
+            </div>
+
+            {shelfWall(
+              'mt-7.5 flex-1',
+              // 높이는 벽감 또는 이름표 자리까지. 작은 화면에서는 벽감을 따라 통째로 줄어듭니다(ShelfWall)
+              detail('flex-1'),
+            )}
+          </div>,
+
+          /*
+            내 컬렉션 — 시안에는 없지만 A13 의 아래 절반이라 지우지 않고 둡니다.
+            진열대 무대와 같은 자리에 같은 크기의 제목을 둬서, 바뀔 때 제목이 같은
+            줄에서 갈려 올라옵니다. 컬렉션이 많아 넘치면 이 무대 안에서만 스크롤합니다.
+          */
+          <div
+            key="collection"
+            className="flex h-full flex-col px-[var(--gutter)] pt-10"
+          >
+            {collectionHeader}
+
+            <div className="mt-7.5 min-h-0 flex-1 overflow-y-auto pb-7.5">
+              {collectionStrip}
+            </div>
+          </div>,
+        ]}
+      </ShelfDeck>
+
+      <ShelfFooterStrip
+        view={stage}
+        onToggleView={() =>
+          setStage((current) => (current === 'shelf' ? 'collection' : 'shelf'))
+        }
+        collectionCount={collectionCount}
+        index={browser.index}
+        total={browser.total}
+        onPrev={() => browser.move(-1)}
+        onNext={() => browser.move(1)}
+      />
+
+      {dialogs}
     </div>
   )
 }

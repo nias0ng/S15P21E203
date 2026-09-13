@@ -23,10 +23,15 @@ import './shelf-display.css'
 export { ShelfDetailPanel } from './components/ShelfDetailPanel'
 export { ShelfToolbar } from './components/ShelfToolbar'
 export { ShelfFooterStrip } from './components/ShelfFooterStrip'
+export { ShelfPager } from './components/ShelfPager'
 export { ShelfWall, type ShelfWallHandle } from './components/ShelfWall'
 export { ShelfDeck } from './components/ShelfDeck'
 export { ShelfRegisterModal } from './components/ShelfRegisterModal'
 export { ShelfSaveModal } from './components/ShelfSaveModal'
+export {
+  useShelfArrangement,
+  type ShelfArrangement,
+} from './hooks/useShelfArrangement'
 export { useShelfBrowser } from './hooks/useShelfBrowser'
 export { toPerfumeOption } from './lib'
 export { shelfItemsQuery, shelfKeys } from './queries'
