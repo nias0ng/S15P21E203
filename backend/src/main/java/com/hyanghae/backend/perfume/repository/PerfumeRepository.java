@@ -3,6 +3,8 @@ package com.hyanghae.backend.perfume.repository;
 import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse;
 import com.hyanghae.backend.perfume.entity.Perfume;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +21,9 @@ import org.springframework.data.repository.query.Param;
  * DTO 프로젝션은 목록·카운트 두 번의 쿼리로 끝납니다.
  */
 public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
+
+    /** 활성 향수만 찾습니다. 보낸 수와 결과 수가 다르면 없거나 내려간 향수가 섞인 것입니다. */
+    List<Perfume> findAllByIdInAndActiveTrue(Collection<Long> perfumeIds);
 
     /** LIKE 패턴의 이스케이프 문자입니다. {@link PerfumeService} 가 같은 값을 씁니다. */
     String LIKE_ESCAPE = "!";
