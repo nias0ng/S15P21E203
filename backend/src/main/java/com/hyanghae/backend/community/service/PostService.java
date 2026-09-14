@@ -269,6 +269,10 @@ public class PostService {
     public PostLikeResponse like(Long postId) {
         Long userId = requireLogin();
         requirePost(postId);
+
+        // 넣은 행 수를 일부러 버립니다. 처음 누른 것(1)과 이미 눌러 둔 것(0)의 응답이 같아야
+        // 하기 때문입니다. 여기서 갈라 다른 상태나 오류를 돌려주면, 응답이 끊겨 화면이 요청을
+        // 다시 보냈을 때 두 번째 요청만 다른 답을 받습니다. 그게 PUT 으로 둔 이유를 무너뜨립니다.
         postLikeRepository.like(postId, userId);
 
         return new PostLikeResponse(postId, true, postLikeRepository.countOfPost(postId));

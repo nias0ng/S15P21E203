@@ -62,7 +62,7 @@ public interface PerfumeReviewRepository extends JpaRepository<PerfumeReview, Lo
      * <p>좋아요 수는 딸린 쿼리로 셉니다. {@code review_likes} 의 기본키가 후기 번호로 시작해 표를
      * 보지 않고 셀 수 있습니다. 조회수만 저장된 값을 그대로 읽습니다.
      */
-    String BOARD_SELECT = """
+    String BOARD_COLUMNS = """
             SELECT r.id AS reviewId,
                    r.title AS title,
                    r.content AS content,
@@ -76,11 +76,23 @@ public interface PerfumeReviewRepository extends JpaRepository<PerfumeReview, Lo
                      WHERE rl.review_id = r.id) AS likeCount,
                    r.created_at AS createdAt,
                    COALESCE(r.updated_at, r.created_at) AS updatedAt
+            """;
+
+    /**
+     * 목록과 개수가 같은 범위를 보도록 조인을 묶어 둡니다.
+     *
+     * <p>지금은 거르는 조건이 없어 어느 쪽으로 세든 같은 수가 나옵니다. 그래도 묶어 두는 이유는,
+     * 나중에 여기에 조건이 붙을 때 <b>한쪽만 고치면 마지막 페이지가 비거나 개수가 맞지 않기</b>
+     * 때문입니다. 게시글 목록({@code PostRepository.FROM_AND_WHERE})도 같은 이유로 묶여 있습니다.
+     */
+    String BOARD_FROM = """
             FROM perfume_reviews r
             LEFT JOIN users u ON u.user_id = r.user_id
             LEFT JOIN perfumes p ON p.perfume_id = r.perfume_id
             LEFT JOIN brands b ON b.brand_id = p.brand_id
             """;
+
+    String BOARD_SELECT = BOARD_COLUMNS + BOARD_FROM;
 
     /**
      * 최신순입니다. 시각이 같거나 비어 있어도 {@code id} 로 순서를 확정합니다. 순서가 흔들리면
@@ -100,7 +112,7 @@ public interface PerfumeReviewRepository extends JpaRepository<PerfumeReview, Lo
     String BOARD_ORDER_LIKES =
             "ORDER BY likeCount DESC, r.created_at DESC NULLS LAST, r.id DESC";
 
-    String BOARD_COUNT = "SELECT COUNT(*) FROM perfume_reviews";
+    String BOARD_COUNT = "SELECT COUNT(*) " + BOARD_FROM;
 
     @Query(value = BOARD_SELECT + BOARD_ORDER_RECENT, countQuery = BOARD_COUNT,
             nativeQuery = true)

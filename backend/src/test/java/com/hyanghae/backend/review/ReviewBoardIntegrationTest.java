@@ -318,6 +318,25 @@ class ReviewBoardIntegrationTest {
                 .andExpect(jsonPath("$.reviews[0].viewCount").value(3));
     }
 
+    /**
+     * 상세 응답의 조회수가 <b>표에 적힌 값과 같습니다.</b>
+     *
+     * <p>올린 뒤에 읽고, 읽는 문장이 네이티브 쿼리라 영속성 컨텍스트를 거치지 않습니다. 캐시된
+     * 값을 읽을 자리가 아예 없습니다. 글 쪽과 같은 것을 확인합니다.
+     */
+    @Test
+    void returnsTheViewCountThatWasJustStored() throws Exception {
+        insertReview(1, WRITER_ID, 1, "조회될 후기", "본문");
+
+        mockMvc.perform(get(REVIEW_URL, 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.viewCount").value(1));
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT view_count FROM perfume_reviews WHERE id = 1", Long.class))
+                .isEqualTo(1);
+    }
+
     /** 없는 후기는 404 이고 조회수도 생기지 않습니다. */
     @Test
     void rejectsMissingReview() throws Exception {

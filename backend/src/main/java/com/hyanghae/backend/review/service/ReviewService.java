@@ -306,6 +306,9 @@ public class ReviewService {
     public ReviewLikeResponse like(Long reviewId) {
         Long userId = currentUserId();
         requireReview(reviewId);
+
+        // 넣은 행 수를 일부러 버립니다. 처음 누른 것(1)과 이미 눌러 둔 것(0)의 응답이 같아야
+        // 하기 때문입니다. 글 좋아요와 같은 판단입니다.
         reviewLikeRepository.like(reviewId, userId);
 
         return new ReviewLikeResponse(

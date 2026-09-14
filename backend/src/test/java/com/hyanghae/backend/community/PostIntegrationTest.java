@@ -988,6 +988,35 @@ class PostIntegrationTest {
                 .andExpect(jsonPath("$.posts[0].viewCount").value(3));
     }
 
+    /**
+     * 상세 응답의 조회수가 <b>표에 적힌 값과 같습니다.</b>
+     *
+     * <p>조회수를 올린 뒤 같은 트랜잭션에서 글을 읽습니다. 올리기 전에 읽어 둔 글이 없고
+     * {@code @Modifying(clearAutomatically = true)} 가 영속성 컨텍스트를 비우므로, 뒤따르는
+     * 조회는 표를 다시 봅니다. 그래서 방금 올린 값이 그대로 응답에 실립니다.
+     *
+     * <p>격리 수준과도 무관합니다. 어떤 수준이든 트랜잭션은 자기가 쓴 것을 봅니다.
+     *
+     * <p>{@code countsAViewEachTimeTheDetailOpens} 가 응답만 보는 데 비해 여기서는 두 값을 맞춰
+     * 봅니다. 캐시된 값을 읽는다면 응답만 뒤처져 둘이 어긋납니다.
+     */
+    @Test
+    void returnsTheViewCountThatWasJustStored() throws Exception {
+        long postId = write("CHAT", "조회될 글", "본문", null, null);
+
+        String body = mockMvc.perform(get(POST_URL, postId))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        long inResponse = objectMapper.readTree(body).get("viewCount").asLong();
+        long inTable = jdbcTemplate.queryForObject(
+                "SELECT view_count FROM posts WHERE post_id = ?", Long.class, postId);
+
+        assertThat(inResponse).isEqualTo(inTable).isEqualTo(1);
+    }
+
     /** 없는 글을 열어도 조회수가 생기지 않습니다. */
     @Test
     void doesNotCountAViewForAMissingPost() throws Exception {
