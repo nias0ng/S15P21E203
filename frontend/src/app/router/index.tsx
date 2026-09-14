@@ -21,6 +21,9 @@ const BrandListPage = lazy(() => import('@/pages/BrandListPage')) // A34  · 111
 const NoteListPage = lazy(() => import('@/pages/NoteListPage')) // A35  · 112
 const NoteDetailPage = lazy(() => import('@/pages/NoteDetailPage')) // A36  · 112
 
+// ⚠️ 임시 경로. 회원가입이 동작하면 가입 직후 온보딩 스텝으로 옮기고 이 줄을 지웁니다.
+const TasteTestPage = lazy(() => import('@/pages/TasteTestPage')) // TST-03
+
 const MyShelfPage = lazy(() => import('@/pages/MyShelfPage')) // A13  · 113
 const CollectionDetailPage = lazy(() => import('@/pages/CollectionDetailPage')) // A17  · 113
 
@@ -65,6 +68,8 @@ export const router = createBrowserRouter([
       { path: ROUTES.BRANDS, element: withSuspense(<BrandListPage />) },
       { path: ROUTES.NOTES, element: withSuspense(<NoteListPage />) },
       { path: ROUTES.NOTE_DETAIL, element: withSuspense(<NoteDetailPage />) },
+
+      { path: ROUTES.TASTE_TEST, element: withSuspense(<TasteTestPage />) },
 
       { path: ROUTES.MY_SHELF, element: withSuspense(<MyShelfPage />) },
       {
