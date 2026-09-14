@@ -49,6 +49,20 @@ export interface ShelfItem {
   perfumeId: number
   name: string
   brand: string
+  /*
+   * 이름표에 적는 영문 줄 셋. 사람이 읽는 대소문자 그대로 두고, 대문자는 CSS 가 입힙니다.
+   *
+   * ⚠️ 백엔드가 아직 주지 않습니다 — 지금은 자리표시자(api.ts)에만 채워 두었습니다. 필수로
+   * 선언하면 타입은 통과하는데 런타임에 undefined 라 이름표에 빈 줄이 생깁니다. 없으면
+   * 이름표가 영문 브랜드 자리에 한글 브랜드를 적고 나머지 줄은 뺍니다(DisplayCase).
+   * 백엔드가 내려주기 시작하면 `?` 를 떼세요.
+   */
+  /** 영문 브랜드 (Jo Malone). 이름표 첫 줄에 자간을 넓힌 대문자로 적습니다 */
+  brandEn?: string
+  /** 영문 향수 이름 (Wood Sage & Sea Salt). 한글 이름 밑에 기울여 적습니다 */
+  nameEn?: string
+  /** 부향률 (Eau de Cologne). 이름표 맨 아래에 작은 대문자로 적습니다 */
+  concentration?: string
   thumbnailUrl: string | null
   category: ShelfCategory
   /** 대표 향수는 한 번에 하나. 보유 중 칸에만 표시됩니다 (A13 주석). */

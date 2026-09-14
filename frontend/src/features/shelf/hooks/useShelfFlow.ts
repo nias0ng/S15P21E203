@@ -1,27 +1,13 @@
 import { useEffect, useLayoutEffect, useState, type RefObject } from 'react'
 
-import { snapStart } from '../lib'
-
-/**
- * 휠 한 번이 트랙을 미는 거리 배율. 마우스 휠 한 번(100px)이 칸 폭의 40% 남짓이 되어,
- * 한 번 굴리면 병 하나가 들어오고 여러 번 굴리면 그만큼 흘러갑니다.
- */
-const WHEEL_GAIN = 1.2
-
-/** 줄 단위로 오는 휠(파이어폭스)의 한 줄 높이 */
-const LINE_HEIGHT = 40
-
-/** 휠이 이만큼(ms) 조용하면 굴리기를 끝낸 것으로 보고 병 경계에 맞춰 세웁니다 */
-const IDLE_MS = 110
-
-/**
- * 트랙이 목표를 따라가는 빠르기(1/초). 목표와의 거리를 초당 이 비율로 줄여서, 굴리는
- * 동안은 휠을 바짝 따라오고 멈추면 미끄러지듯 섭니다. 크면 딱딱하고 작으면 굼뜹니다.
- */
-const FOLLOW = 9
-
-/** 목표와 이만큼(px) 가까워지면 그 자리에 세우고 멈춥니다 */
-const REST_PX = 0.25
+import {
+  meterWheel,
+  nearStop,
+  snapStart,
+  springStep,
+  WHEEL_IDLE,
+  wheelStop,
+} from '../lib'
 
 /** 손가락이 이만큼(px) 옆으로 가야 끌기로 봅니다. 그 전에 떼면 병을 누른 것입니다 */
 const DRAG_SLOP = 8
@@ -29,7 +15,49 @@ const DRAG_SLOP = 8
 /** 손을 뗀 속도(px/ms)에 곱해 더 흘려 보내는 시간(ms). 튕기듯 떼면 그만큼 더 갑니다 */
 const FLING_MS = 160
 
-type Mode = 'rest' | 'follow' | 'tween' | 'drag'
+/*
+ * 멈출 칸에 붙는 용수철(lib.ts 의 springStep). 휠 · 끌기를 뗀 뒤에 씁니다.
+ *
+ *   고유 진동수 18 · 감쇠비 0.8   휠 한 번(1920 에서 한 칸 209px)이 0.19초에 95% 를 가고, 2px 남짓
+ *                                 넘었다 돌아와 0.43초에 섭니다 — 자석에 딸깍 붙는 느낌입니다
+ *   벽 양 끝(0 · max)으로는 1     넘어가면 벽 끝 너머 빈 곳이 비칩니다
+ *   속도 한도 24 칸/초            여러 번 쌓아 굴려도 1920 에서 한 프레임 83px 남짓까지만 건너뜁니다
+ *
+ * 예전에는 굴린 만큼 목표를 옮겨 따라가다 110ms 조용하면 칸 경계에 맞췄는데, 맞추는 순간 목표가
+ * 멀어져 속도가 3.4 배로 튀었습니다. 용수철은 목적지가 바뀌어도 속도를 이어서 튀지 않습니다.
+ */
+const SPRING_OMEGA = 18
+const SPRING_DAMPING = 0.8
+const SPRING_MAX_SPEED = 24
+/** 용수철을 굴리는 한 걸음(초). 프레임이 이보다 길면 여러 걸음으로 나눠 굴립니다 */
+const SPRING_STEP = 1 / 120
+/** 목적지와 이만큼(px) 가깝고 이보다(px/초) 느리면 그 칸에 세우고 멈춥니다 */
+const REST_PX = 0.5
+const REST_SPEED_PX = 10
+
+/*
+ * 칩 · 이름표 벽 · 페이저 · 화살표로 정해진 칸까지 옮길 때(glide) 걸리는 시간.
+ *
+ *   시간 = 220 + 170 x √(옮기는 칸 수) ms, 380 ~ 1300 사이
+ *
+ * 예전에는 칸 수에 곧게 비례하다 900ms 에서 잘라서, 먼 분류로 갈 때 스물여섯 칸(1920 에서
+ * 5850px)을 900ms 에 가느라 가장 빠른 순간 한 프레임에 300px 넘게 건너뛰었습니다. 제곱근으로
+ * 늘리면 가까운 곳은 예전과 비슷하고(한 칸 390 · 세 칸 515), 먼 곳은 조금 더 오래(여섯 칸
+ * 635 · 스물여섯 칸 1085) 걸리면서 한 프레임에 건너뛰는 거리가 절반 아래(140px 남짓)로 줍니다.
+ */
+const GLIDE_BASE_MS = 220
+const GLIDE_PER_SLOT_MS = 170
+const GLIDE_MIN_MS = 380
+const GLIDE_MAX_MS = 1300
+
+/**
+ * 움직이던 중에 새로 옮기면 그 속도를 이어받는데(glideCarry), 이어받는 거리를 옮기는 거리의
+ * 이 배수까지로 묶습니다. 같은 쪽으로 2.47 배를 넘게 이어받으면 목적지를 지나쳤다 돌아옵니다.
+ */
+const GLIDE_CARRY_LIMIT = 2
+
+/** 서 있음 · 용수철로 칸에 붙는 중(휠 · 끌기를 뗀 뒤) · 정해진 칸으로 옮기는 중 · 손가락으로 끄는 중 */
+type Mode = 'rest' | 'spring' | 'tween' | 'drag'
 
 type Options = {
   /** 휠을 받는 자리 */
@@ -40,6 +68,18 @@ type Options = {
   pitch: number
   /** 창 왼쪽 끝이 설 수 있는 마지막 칸 */
   max: number
+  /**
+   * 창 왼쪽 끝이 멈출 수 있는 칸들(lib.ts 의 wallStops). 이름표 벽 기둥이 창 경계에 잘리는 칸은
+   * 빠져 있어서, 휠은 그 칸을 건너뛰고 칩 · 화살표는 가던 쪽의 다음 멈출 자리로 비켜섭니다(nearStop).
+   */
+  stops: readonly number[]
+  /** 패널에 가리지 않는 칸 수. 휠을 연달아 굴려 지금 자리보다 앞서 쌓을 수 있는 칸 수의 한도입니다 */
+  clear: number
+  /**
+   * 벽 끝에 서 있을 때 그 너머로 굴린 휠을 막지 않고 페이지 스크롤로 넘깁니다(쌓는 배치). 한 장
+   * 배치는 페이지가 스크롤되지 않아서 늘 휠을 받습니다.
+   */
+  pageScrollAtEnds?: boolean
   /** 서 있다가 움직이기 시작할 때 */
   onMoveStart: () => void
   /** 움직이는 동안 매 프레임. 위치는 칸 단위 소수입니다 */
@@ -58,9 +98,23 @@ export type ShelfFlow = {
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
 
-/** 칩 · 페이저로 옮길 때의 곡선. 출발과 도착을 모두 부드럽게 합니다 */
-const easeInOut = (t: number) =>
-  t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2
+/**
+ * 칩 · 이름표 벽 · 페이저 · 화살표로 옮길 때의 곡선(사인). 출발과 도착을 모두 부드럽게
+ * 하되, 가장 빠른 순간이 평균 속도의 1.57 배라 예전 3차 곡선(3 배)보다 한가운데에서 덜 튑니다.
+ */
+const glideEase = (t: number) => (1 - Math.cos(Math.PI * t)) / 2
+
+/**
+ * 움직이던 속도를 이어받는 몫(3차 에르미트 곡선의 출발 기울기 항). 0 과 1 에서 0 이고,
+ * 기울기가 출발에서 1 · 도착에서 0 입니다.
+ *
+ *   위치 = 출발 + 옮기는 거리 x glideEase(t) + 이어받은 거리 x glideCarry(t)
+ *
+ * 이어받은 거리 = 움직이던 속도 x 걸리는 시간. 그래서 출발하는 순간의 속도가 움직이던 속도와
+ * 같고 도착하는 순간에는 멈춥니다. 화살표를 연달아 누르거나 흐르는 중에 칩을 눌러도 벽이
+ * 뚝 섰다가 다시 출발하지 않습니다.
+ */
+const glideCarry = (t: number) => t * (1 - t) ** 2
 
 const prefersReducedMotion = () =>
   window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
@@ -71,20 +125,36 @@ const prefersReducedMotion = () =>
  * 위치를 px 가 아니라 **칸 단위**로 들고 있습니다. 창 크기가 바뀌어 칸 폭이 달라져도
  * 같은 병이 창 왼쪽 끝에 남습니다.
  *
- *   휠   목표에 굴린 거리를 더하고, 트랙은 목표를 부드럽게 따라갑니다(흐르듯이).
- *        휠이 멈추면 목표를 칸 경계에 맞춥니다(`snapStart`) — 창 양 끝에 병이 걸린 채
- *        서지 않고, 넘어가던 병은 끝까지 들여 세웁니다.
- *   이동 칩 · 페이저 · 화살표는 정해진 칸으로 곧장 갑니다. 거리가 멀수록 조금 오래 걸립니다.
- *   끌기 손가락(터치 · 펜)으로 끌면 트랙이 손가락을 그대로 따르고, 떼면 뗀 속도만큼 더
- *        흘러 칸 경계에 섭니다. 마우스 끌기는 받지 않습니다 — 병을 누르는 동작과 겹칩니다.
- *        세로로 끌면 페이지가 스크롤됩니다(ShelfWall 의 touch-action: pan-y).
+ *   휠   **한 번 = 한 칸**입니다. 마우스 휠 한 번(배율에 따라 66.7 ~ 150), 파이어폭스의 줄 단위,
+ *        맥 마우스의 작은 한 번이 모두 한 칸이고, 트랙패드는 칸 폭의 절반만큼 밀 때마다 한 칸입니다
+ *        (lib.ts 의 meterWheel). 향하는 칸(목적지)은 늘 멈출 수 있는 정수 칸이고, 벽은 용수철로
+ *        그 칸에 끌려가 **자석처럼 딸깍 붙습니다**(springStep).
+ *        흐르는 중에 같은 쪽으로 또 굴리면 목적지에 한 칸씩 쌓이고(가리지 않는 칸 수까지), 반대로
+ *        굴리면 지금 자리에서 그쪽 다음 칸으로 곧바로 돌아섭니다(wheelStop). 목적지가 바뀌어도
+ *        속도를 이어서 튀거나 끊기지 않습니다. 이름표 벽 기둥이 창 경계에 잘리는 막힌 자리는
+ *        건너뛰어서, 기둥은 휠 한 번에 통째로 지나갑니다(`stops`).
+ *        벽 끝에서 더 굴리면 아무 일도 없습니다 — 움직이기 시작했다고 알리지 않아서 패널 흐림 ·
+ *        창 끝 병 · 태그가 깜빡이거나 흔들리지 않습니다.
+ *   이동 칩 · 이름표 벽 · 페이저 · 화살표는 정해진 칸으로 곧장 갑니다(glide). 거리가 멀수록
+ *        조금 오래 걸리고, 움직이던 중이면 그 속도를 이어받아 출발합니다. 옮기는 중에 휠을
+ *        굴리면 흐르던 속도 그대로 용수철이 이어받습니다. 손가락으로 잡아도 그 자리에서 잡힙니다.
+ *   끌기 손가락(터치 · 펜)으로 끌면 트랙이 손가락을 그대로 따르고, 떼면 뗀 속도만큼 더 흘러갈
+ *        칸을 정해(snapStart) 용수철이 뗀 속도 그대로 이어받아 붙입니다. 마우스 끌기는 받지
+ *        않습니다 — 병을 누르는 동작과 겹칩니다. 세로로 끌면 페이지가 스크롤됩니다(ShelfWall 의
+ *        touch-action: pan-y).
  *
  * 위치는 요소의 transform 에 직접 씁니다. 상태로 들면 매 프레임 병 스물다섯 개가 다시
- * 그려집니다. 화면이 알아야 하는 것(멈춘 칸 · 움직이기 시작함)만 콜백으로 알립니다.
+ * 그려집니다. 화면이 알아야 하는 것(멈춘 칸 · 움직이기 시작함)만 콜백으로 알립니다. 흐르는 중이라는
+ * 표시(data-moving)도 화면이 상태가 아니라 DOM 에 직접 씁니다(ShelfWall).
+ *
+ * 마우스를 올린 병 키우기는 마우스를 실제로 움직였을 때만 겁니다. 마우스를 움직이면 휠을 받는 자리에
+ * data-pointer 를 붙이고, 휠을 굴리면 뗍니다 — 휠로 흘린 벽이 설 때 가만히 있던 커서 밑의 병이 툭
+ * 커지지 않습니다(shelf-display.css 의 "마우스를 올린 병").
  *
  * 휠 이벤트는 React 의 onWheel 이 아니라 직접 답니다. React 는 wheel 을 passive 로
- * 붙여서 preventDefault 가 통하지 않습니다. 움직임을 줄이도록 설정한 사용자에게는
- * 흐르지 않고 멈출 자리로 바로 옮깁니다.
+ * 붙여서 preventDefault 가 통하지 않습니다. 쌓는 배치에서는 벽 끝에 서 있을 때 그 너머로 굴린
+ * 휠을 막지 않아 페이지가 이어서 스크롤됩니다(`pageScrollAtEnds`). 움직임을 줄이도록 설정한
+ * 사용자에게는 흐르지 않고 멈출 자리로 바로 옮깁니다 — 휠도 한 번에 한 칸씩 바로 옮깁니다.
  */
 export function useShelfFlow(options: Options): ShelfFlow {
   const [flow] = useState(createFlow)
@@ -103,6 +173,11 @@ export function useShelfFlow(options: Options): ShelfFlow {
   useEffect(() => {
     if (flow.destination() > options.max) flow.go(options.max, true)
   }, [flow, options.max])
+
+  // 창 크기가 바뀌어 서 있던(향하던) 칸이 막힌 자리가 되면(기둥이 창 경계에 잘림) 옆 멈출 자리로 옮깁니다
+  useEffect(() => {
+    flow.realign()
+  }, [flow, options.stops])
 
   useEffect(() => {
     const element = options.viewport.current
@@ -134,6 +209,8 @@ const IDLE_OPTIONS: Options = {
   track: { current: null },
   pitch: 1,
   max: 0,
+  stops: [0],
+  clear: 1,
   onMoveStart: () => {},
   onMove: () => {},
   onSettle: () => {},
@@ -143,15 +220,22 @@ function createFlow() {
   let options = IDLE_OPTIONS
   const read = () => options
 
+  /** 창 왼쪽 끝의 위치(칸, 소수) */
   let position = 0
-  let target = 0
+  /** 향하는 칸 — 늘 멈출 수 있는 정수 칸이고, 서 있으면 position 과 같습니다 */
+  let dest = 0
   let mode: Mode = 'rest'
-  let direction = 0
-  let lastInput = 0
-  let snapped = true
+  /** 용수철의 속도(칸/초) */
+  let velocity = 0
+  /** 휠 계량기(lib.ts 의 meterWheel) */
+  let meter = WHEEL_IDLE
   let from = 0
   let startedAt = 0
   let duration = 0
+  /** 옮기기(tween)가 이어받은 거리(칸). 움직이던 속도 x 걸리는 시간입니다(glideCarry) */
+  let carry = 0
+  /** 옮기기 · 끌기에서 잰 속도(칸/ms). 새로 옮기거나 휠로 넘겨받을 때 이어 씁니다 */
+  let speed = 0
   let frame = 0
   let lastFrame = 0
 
@@ -178,40 +262,65 @@ function createFlow() {
   }
 
   const finish = () => {
-    mode = 'rest'
+    cancelAnimationFrame(frame)
     frame = 0
-    position = target
+    mode = 'rest'
+    speed = 0
+    velocity = 0
+    position = dest
     apply()
     read().onMove(position)
-    read().onSettle(Math.round(position))
+    read().onSettle(dest)
   }
+
+  /** 지금 움직이는 속도(칸/ms) */
+  const currentSpeed = () => (mode === 'spring' ? velocity / 1000 : speed)
 
   const tick = (now: number) => {
     const { pitch, max } = read()
-    const elapsed = Math.min(0.05, (now - lastFrame) / 1000)
+    // 첫 프레임의 시각이 run() 을 부른 시각보다 앞설 수 있어 0 아래로 내려가지 않게 합니다
+    const frameMs = Math.max(0, now - lastFrame)
+    const elapsed = Math.min(0.05, frameMs / 1000)
     lastFrame = now
+    const before = position
 
     if (mode === 'tween') {
-      const t = Math.min(1, (now - startedAt) / duration)
-      position = from + (target - from) * easeInOut(t)
+      const t = clamp((now - startedAt) / duration, 0, 1)
+      position = clamp(
+        from + (dest - from) * glideEase(t) + carry * glideCarry(t),
+        0,
+        max,
+      )
       if (t >= 1) return finish()
     } else {
-      if (!snapped && now - lastInput > IDLE_MS) {
-        target = snapStart(target, direction, max)
-        snapped = true
+      // 움직임을 줄인 사용자: 끌기를 뗀 뒤에도 멈출 자리로 바로 옮깁니다
+      if (prefersReducedMotion()) return finish()
+      // 벽 끝으로 갈 때는 넘어가지 않게 감쇠비 1 로 붙입니다
+      const damping = dest <= 0 || dest >= max ? 1 : SPRING_DAMPING
+      for (let left = elapsed; left > 1e-9; left -= SPRING_STEP) {
+        const next = springStep(
+          { position, velocity },
+          dest,
+          Math.min(SPRING_STEP, left),
+          { omega: SPRING_OMEGA, damping, maxSpeed: SPRING_MAX_SPEED },
+        )
+        position = next.position
+        velocity = next.velocity
       }
-      // 움직임을 줄인 사용자: 굴리는 동안은 서 있다가 멈출 자리로 바로 옮깁니다
-      if (prefersReducedMotion()) {
-        if (snapped) return finish()
-        frame = requestAnimationFrame(tick)
-        return
+      // 빠르게 오다 벽 끝에 닿으면(흐르던 속도를 이어받았을 때) 넘어가지 않고 거기서 섭니다
+      if (position < 0 || position > max) {
+        position = clamp(position, 0, max)
+        velocity = 0
       }
-      position += (target - position) * (1 - Math.exp(-FOLLOW * elapsed))
-      if (snapped && Math.abs(target - position) * pitch < REST_PX) {
+      if (
+        Math.abs(dest - position) * pitch < REST_PX &&
+        Math.abs(velocity) * pitch < REST_SPEED_PX
+      ) {
         return finish()
       }
     }
 
+    if (frameMs > 0) speed = (position - before) / frameMs
     apply()
     read().onMove(position)
     frame = requestAnimationFrame(tick)
@@ -224,41 +333,121 @@ function createFlow() {
     frame = requestAnimationFrame(tick)
   }
 
+  const go = (start: number, instant = false) => {
+    const { max, stops } = read()
+    // 막힌 자리(이름표 벽 기둥이 창 경계에 잘리는 칸)면 가던 쪽의 다음 멈출 자리로 갑니다
+    const to = nearStop(
+      stops,
+      clamp(Math.round(start), 0, max),
+      Math.sign(start - position) || 1,
+    )
+    if (instant || prefersReducedMotion()) {
+      dest = to
+      return finish()
+    }
+    if (mode === 'rest' && position === to) return
+    // 이미 그 칸으로 가는 중이면 흐르던 그대로 둡니다 — 다시 출발하면 속도가 흐트러집니다
+    if ((mode === 'tween' || mode === 'spring') && dest === to) return
+
+    const moving = currentSpeed()
+    const distance = to - position
+    duration = clamp(
+      GLIDE_BASE_MS + GLIDE_PER_SLOT_MS * Math.sqrt(Math.abs(distance)),
+      GLIDE_MIN_MS,
+      GLIDE_MAX_MS,
+    )
+    /*
+     * 움직이던 중이면 그 속도를 이어받습니다(glideCarry). 휠로 칸에 붙던 중(용수철)이면 그
+     * 속도입니다. 같은 쪽이면 옮기는 거리의 GLIDE_CARRY_LIMIT 배까지(지나쳤다 돌아오지 않게),
+     * 반대쪽이면 한 칸 이상은 이어받아 뚝 서지 않고 잠깐 밀렸다 돌아서게 합니다.
+     */
+    const limit =
+      GLIDE_CARRY_LIMIT *
+      (Math.sign(moving) === Math.sign(distance)
+        ? Math.abs(distance)
+        : Math.max(1, Math.abs(distance)))
+    carry = mode === 'rest' ? 0 : clamp(moving * duration, -limit, limit)
+    dest = to
+    mode = 'tween'
+    from = position
+    startedAt = performance.now()
+    run()
+  }
+
   return {
     apply,
+    go,
 
     configure(next: Options) {
       options = next
     },
 
-    destination: () => (snapped ? target : snapStart(target, 0, read().max)),
+    destination: () => (mode === 'drag' ? Math.round(position) : dest),
+
+    /** 멈출 자리가 바뀌어(창 크기) 향하던 칸이 막힌 자리가 되면 가던 쪽의 옆 멈출 자리로 옮깁니다 */
+    realign() {
+      const { stops } = read()
+      if (mode === 'drag' || stops.includes(dest)) return
+      const to = nearStop(stops, dest, Math.sign(dest - position) || 1)
+      if (mode === 'spring') dest = to
+      else go(to, mode === 'rest')
+    },
 
     wheel(event: WheelEvent) {
       // 두 손가락 확대(ctrl + 휠)는 브라우저에 맡깁니다
       if (event.ctrlKey) return
-      const { viewport, pitch, max } = read()
-      // 트랙패드로 좌우로 밀어도 같은 방향으로 흐릅니다
-      const dominant =
+      const { pitch, stops, clear, pageScrollAtEnds } = read()
+      // 트랙패드로 좌우로 밀어도 같은 방향으로 흐릅니다. 값을 deltaMode 보다 먼저 읽어야
+      // 파이어폭스가 줄 단위가 아니라 px 로 줍니다
+      const delta =
         Math.abs(event.deltaX) > Math.abs(event.deltaY)
           ? event.deltaX
           : event.deltaY
-      if (!dominant) return
+      if (!delta) return
+      // 휠로 흘리면 가만히 있는 커서 밑으로 병이 지나갑니다. 마우스를 다시 움직일 때까지 커서 밑 병을 키우지 않습니다
+      const target = event.currentTarget
+      if (target instanceof Element && target.hasAttribute('data-pointer')) {
+        target.removeAttribute('data-pointer')
+      }
+      // 쌓는 배치: 벽 끝에 서 있는데 그 너머로 굴리면 페이지가 이어서 스크롤되게 둡니다
+      if (
+        pageScrollAtEnds &&
+        mode === 'rest' &&
+        wheelStop(
+          stops,
+          { position, dest, moving: false },
+          delta > 0 ? 1 : -1,
+        ) === dest
+      ) {
+        return
+      }
       event.preventDefault()
 
-      const unit =
-        event.deltaMode === 1
-          ? LINE_HEIGHT
-          : event.deltaMode === 2
-            ? (viewport.current?.clientWidth ?? pitch)
-            : 1
-      const delta = (dominant * unit * WHEEL_GAIN) / pitch
+      const counted = meterWheel(meter, {
+        delta,
+        deltaMode: event.deltaMode,
+        time: event.timeStamp,
+        pitch,
+      })
+      meter = counted.meter
+      // 손가락으로 잡고 있으면 손가락을 따릅니다
+      if (counted.step === 0 || mode === 'drag') return
 
-      // 옮기던 중이면 그 목적지에서 이어 굴립니다
-      mode = 'follow'
-      target = clamp(target + delta, 0, max)
-      direction = Math.sign(delta)
-      lastInput = performance.now()
-      snapped = false
+      const next = wheelStop(
+        stops,
+        { position, dest, moving: mode !== 'rest' },
+        counted.step,
+      )
+      // 벽 끝에서 더 굴리면 아무 일도 없습니다 — 움직이기 시작했다고 알리지도 않습니다
+      if (next === dest) return
+      // 지금 자리보다 가리지 않는 칸 수 넘게 앞서 쌓지 않습니다
+      if (Math.abs(next - position) > clear) return
+
+      dest = next
+      if (prefersReducedMotion()) return finish()
+      // 옮기던 중이면 흐르던 속도 그대로 용수철이 이어받습니다 — 뚝 섰다가 다시 출발하지 않습니다
+      if (mode === 'tween') velocity = speed * 1000
+      mode = 'spring'
       run()
     },
 
@@ -277,6 +466,15 @@ function createFlow() {
     },
 
     pointerMove(event: PointerEvent) {
+      // 마우스를 실제로 움직였습니다 — 이제 커서 밑 병을 키워도 됩니다(휠이 떼어 둔 data-pointer)
+      const target = event.currentTarget
+      if (
+        event.pointerType === 'mouse' &&
+        target instanceof Element &&
+        !target.hasAttribute('data-pointer')
+      ) {
+        target.setAttribute('data-pointer', '')
+      }
       if (!drag || event.pointerId !== drag.id) return
       const { pitch, max } = read()
 
@@ -289,7 +487,6 @@ function createFlow() {
         cancelAnimationFrame(frame)
         frame = 0
         mode = 'drag'
-        snapped = true
         const element = event.currentTarget
         if (element instanceof Element)
           element.setPointerCapture(event.pointerId)
@@ -301,9 +498,10 @@ function createFlow() {
         0,
         max,
       )
-      target = position
       const elapsed = event.timeStamp - drag.lastTime
       if (elapsed > 0) drag.velocity = (event.clientX - drag.lastX) / elapsed
+      // 손가락이 오른쪽으로 가면(velocity > 0) 벽은 앞 칸 쪽으로 갑니다
+      speed = -drag.velocity / pitch
       drag.lastX = event.clientX
       drag.lastTime = event.timeStamp
       apply()
@@ -312,17 +510,23 @@ function createFlow() {
 
     pointerUp(event: PointerEvent) {
       if (!drag || event.pointerId !== drag.id) return
-      const { moved, velocity } = drag
+      const { moved, velocity: fingerSpeed, from: grabbed } = drag
       drag = null
       if (!moved) return
 
       swallowClick = true
-      const { pitch, max } = read()
-      // 손가락이 왼쪽으로 튕기면(velocity < 0) 벽은 오른쪽 병으로 더 흘러갑니다
-      const fling = (-velocity * FLING_MS) / pitch
-      direction = Math.sign(fling)
-      target = snapStart(clamp(position + fling, 0, max), direction, max)
-      mode = 'follow'
+      const { pitch, max, stops } = read()
+      // 손가락이 왼쪽으로 튕기면(속도 < 0) 벽은 오른쪽 병으로 더 흘러갑니다
+      const projected = position - (fingerSpeed * FLING_MS) / pitch
+      const direction = Math.sign(-fingerSpeed) || Math.sign(position - grabbed)
+      dest = nearStop(
+        stops,
+        snapStart(clamp(projected, 0, max), direction, max),
+        direction || 1,
+      )
+      // 뗀 속도 그대로 용수철이 이어받아 그 칸에 붙입니다
+      velocity = (-fingerSpeed * 1000) / pitch
+      mode = 'spring'
       // 끌기를 시작할 때 onMoveStart 를 이미 불렀으니 run() 을 거치지 않습니다
       lastFrame = performance.now()
       frame = requestAnimationFrame(tick)
@@ -333,22 +537,6 @@ function createFlow() {
       swallowClick = false
       event.preventDefault()
       event.stopPropagation()
-    },
-
-    go(start: number, instant = false) {
-      const to = clamp(Math.round(start), 0, read().max)
-      target = to
-      snapped = true
-      if (instant || prefersReducedMotion()) {
-        cancelAnimationFrame(frame)
-        return finish()
-      }
-      if (mode === 'rest' && position === to) return
-      mode = 'tween'
-      from = position
-      startedAt = performance.now()
-      duration = clamp(260 + 90 * Math.abs(to - position), 320, 900)
-      run()
     },
 
     dispose() {

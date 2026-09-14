@@ -49,7 +49,7 @@ type Props = {
  * (위 20 · 좌우 25 · 아래 10). rounded-card(6px)는 "각진 아카이브"
  * 인상을 만드는 값이라 시안의 둥근 카드와 성격이 다릅니다.
  *
- * 높이는 ShelfWall 이 자리를 벽감 높이로 잡고 이 카드를 flex-1 로 채워 정합니다. 선택 전후
+ * 높이는 ShelfWall 이 자리를 벽감 + 이름표 자리 높이로 잡고 이 카드를 flex-1 로 채워 정합니다. 선택 전후
  * 두 상태가 같은 높이라, 병을 누를 때마다 카드가 커졌다 작아지지 않습니다.
  * 조작 단추는 mt-auto 로 늘 맨 아래입니다.
  *
@@ -139,11 +139,17 @@ export function ShelfDetailPanel({
         못 누릅니다.
         두 단으로 넓게 설 때(쌓는 배치)는 세로 자리가 넉넉해 시안의 180px 로 둡니다.
         이미지가 없을 때도 같은 높이를 비워 둬야 아래 글이 위아래로 튀지 않습니다.
+
+        고른 병의 사진이라 먼저 받고(fetchPriority high) 그 자리에서 풀어 그립니다(decoding sync).
+        벽의 그 병과 같은 주소라 이미 받아 둔 사진을 씁니다. 병을 바꿀 때마다 key 로 새로 그려서,
+        비동기로 풀면 사진 자리가 한 프레임 비었다 채워집니다.
       */}
           {item.thumbnailUrl ? (
             <img
               src={item.thumbnailUrl}
               alt=""
+              fetchPriority="high"
+              decoding="sync"
               className="shelf-bottle-img h-[100px] w-full object-contain @xl:h-[180px]"
             />
           ) : (

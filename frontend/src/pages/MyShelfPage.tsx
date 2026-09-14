@@ -19,6 +19,7 @@ import {
   toPerfumeOption,
   useShelfArrangement,
   useShelfBrowser,
+  type ShelfCategory,
   type ShelfWallHandle,
 } from '@/features/shelf'
 import { useToast } from '@/shared/hooks/useToast'
@@ -112,6 +113,16 @@ export default function MyShelfPage() {
   const collectionCount = collections.data?.length ?? 0
 
   /*
+   * 분류로 가기 — 칩과 벽의 이름표가 같은 곳으로 보냅니다. 그 분류의 첫 향수를 고르고,
+   * 벽을 그 분류의 첫머리(이름표가 창 왼쪽 끝)로 흘립니다. 둘이 따로 적히면 한쪽만
+   * 첫 향수를 골라서, 같은 분류로 갔는데 상세 패널이 다르게 남습니다.
+   */
+  const showCategory = (category: ShelfCategory) => {
+    browser.selectFirstOf(category)
+    wall.current?.showCategory(category)
+  }
+
+  /*
    * 두 배치가 같은 조각을 다른 자리에 놓습니다. 조각은 여기서 한 번만 적습니다 —
    * 배치마다 따로 적으면 한쪽만 고쳐져 두 배치가 조용히 달라집니다.
    */
@@ -119,10 +130,7 @@ export default function MyShelfPage() {
     <ShelfToolbar
       counts={browser.counts}
       value={browser.viewCategory}
-      onChange={(category) => {
-        browser.selectFirstOf(category)
-        wall.current?.showCategory(category)
-      }}
+      onChange={showCategory}
       keyword={browser.keyword}
       onKeywordChange={browser.changeKeyword}
       className={className}
@@ -136,6 +144,7 @@ export default function MyShelfPage() {
       selectedId={browser.selected?.shelfItemId ?? null}
       onSelect={browser.select}
       onViewCategoryChange={browser.changeViewCategory}
+      onPlaqueSelect={showCategory}
       resetKey={browser.keyword}
       emptyMessage={
         browser.keyword
@@ -346,7 +355,7 @@ export default function MyShelfPage() {
 
             {shelfWall(
               'mt-7.5 flex-1',
-              // 높이는 벽감 또는 이름표 자리까지. 작은 화면에서는 벽감을 따라 통째로 줄어듭니다(ShelfWall)
+              // 높이는 벽감 + 이름표 자리까지. 작은 화면에서는 벽감을 따라 통째로 줄어듭니다(ShelfWall)
               detail('flex-1'),
             )}
           </div>,
@@ -371,9 +380,12 @@ export default function MyShelfPage() {
 
       <ShelfFooterStrip
         view={stage}
-        onToggleView={() =>
-          setStage((current) => (current === 'shelf' ? 'collection' : 'shelf'))
-        }
+        onToggleView={() => {
+          // 무대가 바뀌기 직전에 벽의 이름표에 아래에서 바람을 일으킵니다 — 진열대가 위로 빠질 때는 세게,
+          // 돌아올 때는 조금 약하게 들렸다 가라앉습니다(ShelfWall 의 gust). 쌓는 배치에는 무대가 없어 부르지 않습니다
+          wall.current?.gust(stage === 'shelf' ? 'leave' : 'arrive')
+          setStage(stage === 'shelf' ? 'collection' : 'shelf')
+        }}
         collectionCount={collectionCount}
         index={browser.index}
         total={browser.total}

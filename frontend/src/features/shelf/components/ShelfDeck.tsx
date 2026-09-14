@@ -24,6 +24,12 @@ type Props = {
  * 움직임을 줄이도록 설정한 사용자에게는 `shelf-display.css` 의 reduced-motion
  * 규칙이 전환을 끄고 즉시 바뀝니다.
  */
+/**
+ * 무대가 바뀌는 시간(ms). 이름표 바람(useTagSwing)이 떠날 때 이 시간에 맞춰 끝나서, 여기만 바꾸면
+ * 둘이 함께 움직입니다. duration 클래스로 적지 않고 style 로 넣는 이유입니다.
+ */
+export const DECK_MS = 450
+
 export function ShelfDeck({ index, children, className }: Props) {
   return (
     <div className={cn('relative overflow-clip', className)}>
@@ -36,8 +42,11 @@ export function ShelfDeck({ index, children, className }: Props) {
         병 이미지 스물다섯 장이 든 무대라, 매 프레임 레이아웃을 다시 재면 눈에 띄게 끊깁니다.
       */}
       <div
-        className="h-full transition-transform duration-[450ms] ease-[cubic-bezier(0.22,0.61,0.36,1)]"
-        style={{ transform: `translate3d(0, ${-index * 100}%, 0)` }}
+        className="h-full transition-transform ease-[cubic-bezier(0.22,0.61,0.36,1)]"
+        style={{
+          transform: `translate3d(0, ${-index * 100}%, 0)`,
+          transitionDuration: `${DECK_MS}ms`,
+        }}
       >
         {children.map((stage, at) => (
           <div
