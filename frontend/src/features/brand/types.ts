@@ -14,22 +14,15 @@ export interface Brand {
   perfumeCount: number
 }
 
-/**
- * 브랜드 상세(`/brands/:brandId`)가 쓰는 한 건.
- *
- * 목록에 없는 것은 소개 문구뿐이라 Brand 를 넓혀 씁니다. 목록 응답에까지 긴 글이
- * 실릴 이유가 없어서 상세에만 두었습니다.
- */
+/** 브랜드 상세. 목록에 없는 것은 소개뿐이라 Brand 를 넓혀 씁니다 */
 export interface BrandDetail extends Brand {
   /** ⚠️ 백엔드에 브랜드 소개 필드가 없습니다. api.ts 가 자리표시자를 채웁니다 */
   description: string
 }
 
 /**
- * 브랜드 상세의 향수 카드 한 장.
- *
- * 향수 도메인 타입(PerfumeSummary)을 쓰지 않습니다 — features 끼리는 import 할 수
- * 없습니다. 카드가 실제로 읽는 값만 정의하고, 화면(pages)이 PerfumeCard 에 넘깁니다.
+ * 브랜드 상세의 향수 카드 한 장. PerfumeSummary 를 쓰지 않는 이유는 features 끼리
+ * import 할 수 없어서입니다 — 카드가 읽는 값만 정의합니다.
  */
 export interface BrandPerfume {
   perfumeId: number

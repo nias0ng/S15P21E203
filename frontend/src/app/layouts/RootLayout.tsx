@@ -12,13 +12,9 @@ import { ROUTES } from '@/shared/config/routes'
  */
 export function RootLayout() {
   /*
-   * 진열대는 화면 전체가 종이 한 장인 구성이라 헤더도 그 종이 위에 놓입니다.
-   * 헤더가 자기 바탕(ivory)을 칠하면 종이가 두 장으로 잘려 가로줄이 생깁니다 —
-   * 실제로 헤더 246 대 본문 219 로 눈에 띄게 갈라져 있었습니다.
-   *
-   * 라우트를 여기서 보는 이유: 헤더는 자기가 어느 화면 위에 있는지 모르고, 알게
-   * 하면 화면이 늘 때마다 헤더를 고치게 됩니다. 껍데기가 화면을 아는 건 껍데기의
-   * 일이라 여기 둡니다.
+   * 진열대는 화면 전체가 종이 한 장이라 헤더가 자기 바탕을 칠하면 가로줄이 생깁니다.
+   * 라우트를 여기서 보는 이유: 헤더가 화면을 알게 하면 화면이 늘 때마다 헤더를
+   * 고치게 됩니다.
    */
   const onPaper = useLocation().pathname === ROUTES.MY_SHELF
 
@@ -26,11 +22,7 @@ export function RootLayout() {
     <div className="flex min-h-dvh flex-col">
       <GlobalHeader onPaper={onPaper} />
 
-      {/*
-        위 56px 은 헤더(88px) 아래 숨입니다. 헤더가 52 -> 88px 로 커지면서 py-8(32)
-        로는 제목이 메뉴에 붙어 보입니다. 진열대 화면이 쓰는 값과 같습니다 —
-        화면마다 다르면 게시판에서 진열대로 넘어갈 때 제목 높이가 튑니다.
-      */}
+      {/* 위 56px 은 헤더 아래 숨. 진열대 화면과 같은 값이라 넘어갈 때 제목이 안 튑니다 */}
       <main className="max-w-content mx-auto w-full flex-1 px-5 pt-14 pb-16">
         <Outlet />
       </main>

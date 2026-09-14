@@ -36,13 +36,9 @@ export interface RecommendResult {
 /**
  * 개인화 맞춤 추천 (REC-12 · REC-13) — 진열대 화면의 추천 카드가 쓰는 한 건.
  *
- * 자연어 추천과 다른 점은 **묻지 않았는데 온다**는 것입니다. 그래서 "무엇을
- * 추천하는가" 만큼 "왜 나에게 이것을 주는가" 가 중요합니다. 이유 없이 향수만
- * 들이밀면 광고로 읽힙니다.
- *
- * 이유는 자연어 추천의 RecommendReason 을 그대로 씁니다. 입력한 표현이 없으므로
- * phrase 는 늘 null 이고 evidence 만 채웁니다
- * ("담아 두신 향수 7개 중 4개가 우디 계열입니다").
+ * 자연어 추천과 달리 **묻지 않았는데 옵니다.** 그래서 이유 없이 향수만 들이밀면
+ * 광고로 읽힙니다. 이유는 RecommendReason 을 그대로 쓰되 입력한 표현이 없으므로
+ * phrase 는 늘 null 입니다.
  */
 export interface PersonalRecommendation {
   perfumeId: number
