@@ -12,13 +12,8 @@ type Props = {
 /**
  * 진열대 화면 맨 아래 띠 (와이어프레임 A13 하단)
  *
- * 문구 · SCROLL 표시 · 인용 · 페이지 표시를 한 줄에 늘어놓습니다.
- * 정보가 아니라 진열장의 "명판" 에 가까워서, 위 테두리 한 줄(border-t)로만
- * 본문과 나눕니다. 상자를 만들면 아래쪽이 또 하나의 카드처럼 보입니다.
- *
- * `<footer>` 대신 `<div>` 를 쓰는 이유: `<footer>` 는 body 직속일 때
- * contentinfo 랜드마크가 되는데, 이건 페이지 전체의 푸터가 아니라 화면 한 구역의
- * 장식 띠입니다. 랜드마크를 늘리면 낭독기의 목차만 지저분해집니다.
+ * `<footer>` 가 아니라 `<div>` 인 이유: 페이지 푸터가 아니라 한 구역의 장식 띠라
+ * contentinfo 랜드마크를 만들면 낭독기 목차만 지저분해집니다.
  */
 export function ShelfFooterStrip({
   index,
@@ -40,13 +35,7 @@ export function ShelfFooterStrip({
         TO A MORE TRUE YOU.
       </p>
 
-      {/*
-        스크롤 유도. 선이 아래로 이어지는 모양 자체가 "더 있다" 를 말합니다.
-
-        ⚠️ 이 묶음이 띠 전체의 높이를 정합니다 — 좌우 문구(두 줄)보다 키가 큽니다.
-        선을 길게 하면 띠가 두꺼워지고 그만큼 하단이 화면 밖으로 밀립니다.
-        시안의 선 길이는 24px 이라 그 값에 맞췄습니다.
-      */}
+      {/* ⚠️ 이 묶음이 띠 높이를 정합니다. 선을 길게 하면 하단이 화면 밖으로 밀립니다 */}
       <div className="flex flex-col items-center gap-1.5">
         <span aria-hidden className="shelf-hairline h-5 w-px" />
         <span className="shelf-label">SCROLL</span>
@@ -60,13 +49,9 @@ export function ShelfFooterStrip({
 
       <div className="flex items-center gap-4">
         {/*
-          tabular-nums 로 숫자 폭을 고정합니다. 기본 비례 숫자로는 1 이 좁아서
-          9 → 10 처럼 자릿수가 바뀔 때 옆의 화살표까지 좌우로 흔들립니다.
-          화면에는 목업대로 "3 / 12" 를, 낭독기에는 뜻이 통하는 문장을 들려줍니다.
-
-          aria-live 를 다는 이유: 화살표를 눌러도 포커스는 버튼에 그대로 있어서,
-          바뀐 순번을 낭독기가 스스로 읽어주지 않으면 몇 번째로 옮겨갔는지 알 길이
-          없습니다. polite 라 사용자가 읽던 문장을 끊지 않고 뒤이어 읽어줍니다.
+          tabular-nums 로 숫자 폭을 고정합니다 — 9 → 10 에서 옆 화살표까지 흔들립니다.
+          aria-live: 화살표를 눌러도 포커스가 버튼에 남아 있어, 읽어주지 않으면
+          몇 번째로 옮겨갔는지 알 길이 없습니다.
         */}
         <p aria-live="polite" className="shelf-muted text-body tabular-nums">
           <span className="sr-only">{`${total}개 중 ${index}번째 향수`}</span>
@@ -97,13 +82,10 @@ export function ShelfFooterStrip({
 /**
  * 글리프만 있는 넘김 버튼.
  *
- * 공용 `Button` 을 쓰지 않는 이유는 variant 로 표현할 수 있는 차이가 아니어서입니다.
- * 공용 버튼은 어떤 variant 든 채움이나 호버 배경이 생기는데, 여기 화살표는
- * 종이 위에 인쇄된 기호처럼 배경 없이 글자색만 바뀌어야 합니다.
- *
- * 비활성은 공통 규칙 중 opacity-40 · pointer-events-none 만 가져옵니다.
- * 공통 규칙의 "테두리만 남기기" 는 채움이 있는 버튼에서 채움을 걷어내는 규칙인데,
- * 이 버튼은 원래 테두리도 채움도 없어서 그대로 적용하면 없던 네모가 생겨납니다.
+ * 공용 Button 을 안 쓰는 이유: 어떤 variant 든 채움이나 호버 배경이 생기는데, 이건
+ * 종이에 인쇄된 기호처럼 글자색만 바뀌어야 합니다. 비활성도 공통 규칙 중
+ * opacity-40 · pointer-events-none 만 가져옵니다 — "테두리만 남기기" 를 적용하면
+ * 없던 네모가 생깁니다.
  */
 function PagerButton({
   label,

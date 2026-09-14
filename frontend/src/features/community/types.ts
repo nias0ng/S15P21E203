@@ -6,11 +6,7 @@
 /** 게시판 두 개. 하위 탭이 아니라 별도 경로입니다. */
 export type BoardType = 'REVIEW' | 'FREE'
 
-/**
- * 자유 게시판 분류 (CMT-16).
- * 와이어프레임 주석: "분류는 컬렉션 공유 · 추천 · 잡담 셋 중 하나 — 필수 ·
- * 자유 게시판 글에만 있다". 후기 게시판 글은 전부 같은 종류라 분류가 없습니다.
- */
+/** 자유 게시판 분류 (CMT-16). 필수이고, 후기 게시판 글에는 분류가 없습니다 */
 export type PostCategory = 'COLLECTION' | 'RECOMMEND' | 'CHAT'
 
 export const POST_CATEGORIES = [
@@ -25,10 +21,7 @@ export const POST_CATEGORY_FILTERS = [
   ...POST_CATEGORIES,
 ] as const
 
-/**
- * 정렬. 후기 게시판은 세 가지, 자유 게시판은 댓글 많은 순까지 네 가지입니다
- * (와이어프레임 주석).
- */
+/** 정렬. 후기 게시판은 세 가지, 자유 게시판은 댓글 많은 순까지 네 가지입니다 */
 export type PostSort = 'RECENT' | 'VIEWS' | 'LIKES' | 'COMMENTS'
 
 export const REVIEW_SORTS = [
@@ -93,10 +86,7 @@ export interface TrendingPerfume {
   postCount: number
 }
 
-/**
- * CMT-13 검수 보류 결과 (A25 수정 요청 모달).
- * 와이어프레임 주석: 작성한 제목과 본문은 유지된다 — 다시 쓰게 만들지 않는다.
- */
+/** CMT-13 검수 보류 결과 (A25). 작성한 제목·본문은 유지합니다 — 다시 쓰게 하지 않습니다 */
 export interface ModerationRejection {
   /** 보류 사유들 */
   reasons: string[]

@@ -20,14 +20,10 @@ import { Thumbnail } from '@/shared/ui/Thumbnail'
 /**
  * 브랜드 상세 — A34 브랜드 페이지에서 카드를 누른 화면
  *
- * 브랜드 이름 · 소개 · 그 브랜드의 향수 카드를 보여줍니다.
+ * **와이어프레임에 없는 신규 화면입니다.** 구성은 같은 모양인 노트 상세(A36)를 따릅니다.
  *
- * **와이어프레임에 없는 신규 화면입니다.** 원래는 브랜드를 누르면 향수 목록에
- * `?brand=` 필터가 걸린 채로 갔는데, 그 화면에는 브랜드의 이름과 소개를 놓을
- * 자리가 없습니다. 구성은 같은 모양인 노트 상세(A36)를 따릅니다.
- *
- * ⚠️ 브랜드는 백엔드 엔드포인트가 없어 소개도 향수 목록도 자리표시자입니다.
- * 향수 목록은 검색 API 의 brand 필터로 대체할 수 있습니다(features/brand/api.ts 주석).
+ * ⚠️ 백엔드 엔드포인트가 없어 소개도 향수 목록도 자리표시자입니다. 향수 목록은
+ * 검색 API 의 brand 필터로 대체할 수 있습니다(features/brand/api.ts 주석).
  */
 export default function BrandDetailPage() {
   const { brandId } = useParams<{ brandId: string }>()
@@ -42,8 +38,7 @@ export default function BrandDetailPage() {
 
   if (valid && brand.isPending) return <PageFallback />
 
-  // 없는 brandId 와 불러오기 실패를 같은 안내로 묶습니다. 사용자가 할 일(돌아가기 ·
-  // 다시 시도)이 같아서, 나눠 봐야 문구만 늘어납니다.
+  // 없는 brandId 와 불러오기 실패를 같은 안내로 묶습니다 — 할 일이 같습니다
   if (!valid || brand.isError || !brand.data) {
     return (
       <EmptyState
@@ -133,9 +128,8 @@ export default function BrandDetailPage() {
 /**
  * 브랜드 표식. 로고가 있으면 로고를, 없으면 로마자 첫 글자를 씁니다.
  *
- * ⚠️ 지금은 모든 브랜드의 logoUrl 이 null 이라 늘 첫 글자가 나옵니다. 자리표시자
- * 상자를 그대로 두면 열 개 브랜드가 전부 "로고" 라고 적힌 같은 회색 사각형이라,
- * 어느 브랜드의 화면인지 상단만 봐서는 알 수 없습니다.
+ * ⚠️ 지금은 logoUrl 이 전부 null 이라 늘 첫 글자가 나옵니다. 자리표시자 상자를 두면
+ * 열 개 브랜드가 전부 같은 회색 사각형이 됩니다.
  */
 function BrandMark({
   name,

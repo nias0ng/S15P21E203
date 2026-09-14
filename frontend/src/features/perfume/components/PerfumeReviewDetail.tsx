@@ -19,9 +19,8 @@ type Props = {
 /**
  * 후기 상세 (와이어프레임 A12 — DTL-03 · DTL-05 · DTL-06)
  *
- * 와이어프레임 주석: "본인이 작성한 후기에만 수정 · 삭제가 보인다".
- * 그래서 review.mine 일 때만 두 버튼을 그립니다. 화면에서 숨기는 것만으로는
- * 권한이 지켜지지 않으니 백엔드에서도 작성자를 확인해야 합니다.
+ * `review.mine` 일 때만 수정·삭제를 그립니다. 화면에서 숨기는 것만으로는 권한이
+ * 지켜지지 않으니 백엔드에서도 작성자를 확인해야 합니다.
  */
 export function PerfumeReviewDetail({ review, backTo, editTo }: Props) {
   const [deleteOpen, setDeleteOpen] = useState(false)

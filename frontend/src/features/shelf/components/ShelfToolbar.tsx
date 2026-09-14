@@ -19,11 +19,8 @@ type Props = {
 }
 
 /**
- * 칩 · 검색창의 공통 치수. 시안 실측입니다.
- *
- * 높이를 못 박은 이유: 칩·드롭다운·검색창이 한 줄에 서는데 각자 안쪽 여백으로
- * 높이를 만들면 글자 길이에 따라 어긋나 줄이 흔들립니다.
- * 색·그림자는 `../shelf-display.css` 의 `.shelf-field` 가 냅니다.
+ * 칩 · 검색창의 공통 치수. 높이를 못 박은 이유: 각자 안쪽 여백으로 높이를 만들면
+ * 글자 길이에 따라 어긋나 줄이 흔들립니다. 색·그림자는 `.shelf-field` 가 냅니다.
  */
 const FIELD =
   'shelf-field h-[42px] rounded-lg transition-colors duration-120 ease-out ' +
@@ -52,12 +49,8 @@ export function ShelfToolbar({
   return (
     <div className={cn('flex items-center gap-2', className)}>
       {/*
-        칩이 곧 진열장의 세 칸입니다. 라벨은 SHELF_CATEGORIES 에서 끌어옵니다.
-
-        role="tablist" 가 아니라 group 인 이유: 탭 패널처럼 id 로 이어붙인 구조가
-        아니고 진열장에 휠로도 들어올 수 있어서 탭 규약(좌우 화살표 이동 ·
-        aria-controls)을 온전히 지킬 수 없습니다. 못 지킬 규약을 이름만 빌려 쓰면
-        낭독기가 더 헷갈립니다.
+        role="tablist" 가 아니라 group 인 이유: 탭 규약(좌우 화살표 이동 ·
+        aria-controls)을 온전히 지킬 수 없어, 이름만 빌리면 낭독기가 더 헷갈립니다.
       */}
       <div role="group" aria-label="진열대 분류" className="flex gap-2">
         {SHELF_CATEGORIES.map((chip) => {
@@ -126,12 +119,9 @@ export function ShelfToolbar({
 /**
  * 향 계열 · 정렬 드롭다운.
  *
- * ⚠️ 목록 API 에 향 계열 필터와 정렬 파라미터가 아직 없어 **disabled 로 두었습니다.**
- * 자리를 비우지 않는 이유는 칸이 생길 때 검색창 폭이 줄어드는 변화를 미리 보기
- * 위해서입니다. 파라미터가 생기면 disabled 를 걷고 목록만 붙이면 됩니다.
- *
- * 켜졌을 때의 모양을 바탕 클래스에 두고 꺼진 모양만 disabled: 로 덮습니다.
- * 반대로 하면 disabled 를 걷는 사람이 스타일을 새로 짜다 포커스 링을 빠뜨립니다.
+ * ⚠️ 목록 API 에 해당 파라미터가 없어 disabled 입니다. 생기면 disabled 만 걷으면 됩니다.
+ * 켜진 모양을 바탕 클래스에 두고 꺼진 모양만 disabled: 로 덮은 이유: 반대로 하면
+ * disabled 를 걷는 사람이 스타일을 새로 짜다 포커스 링을 빠뜨립니다.
  */
 function FilterDropdown({ label }: { label: string }) {
   return (

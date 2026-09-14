@@ -21,13 +21,11 @@ import { Toast } from '@/shared/ui/Toast'
 /**
  * 컬렉션 상세 (와이어프레임 A17 — COL-04 · COL-07)
  *
- * 와이어프레임 주석:
- * - 향수를 제거해도 진열대 저장은 유지된다
- * - 컬렉션은 공개 · 비공개 구분이 없다 — 남에게 보이는 길은 자유 게시판의
- *   컬렉션 공유 글뿐이다
+ * 컬렉션은 공개·비공개 구분이 없습니다 — 남에게 보이는 길은 자유 게시판의
+ * 컬렉션 공유 글뿐입니다.
  *
- * 향수 추가 후보는 진열대에 있는 향수뿐이라(A19 주석) 이 화면에서 진열대 데이터를
- * 함께 불러 모달에 넘깁니다. features 끼리는 import 할 수 없으므로 조합은 여기서 합니다.
+ * 향수 추가 후보가 진열대에 있는 향수뿐이라(A19) 여기서 진열대 데이터를 함께
+ * 불러 모달에 넘깁니다.
  */
 export default function CollectionDetailPage() {
   const { collectionId } = useParams<{ collectionId: string }>()

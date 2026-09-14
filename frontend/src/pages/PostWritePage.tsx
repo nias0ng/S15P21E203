@@ -20,10 +20,8 @@ import { Textarea } from '@/shared/ui/Textarea'
 /**
  * 자유 게시글 작성 · 수정 (와이어프레임 A24b — CMT-03 · CMT-06 · CMT-16)
  *
- * 와이어프레임 주석:
- * - 분류는 컬렉션 공유 · 추천 · 잡담 셋 중 하나 — 필수 · 자유 게시판 글에만 있다
- * - 컬렉션 첨부는 컬렉션 공유를 골랐을 때만 나타난다 · 관련 향수 · 이미지는 없어도 된다
- * - [포스팅] → 검사 → 통과하면 A23, 걸리면 A25 모달
+ * 분류는 필수이고, 컬렉션 첨부는 "컬렉션 공유" 를 골랐을 때만 나타납니다.
+ * [포스팅] 은 검사를 거쳐 통과하면 A23, 걸리면 A25 모달로 갑니다.
  */
 export default function PostWritePage() {
   const [category, setCategory] = useState<PostCategory | null>(null)

@@ -7,7 +7,7 @@ import type {
   BrandSearchParams,
 } from './types'
 
-// 경로에 '/api/v1' 을 붙이지 않습니다. http 인스턴스의 baseURL 이 이미 그것입니다.
+// 경로에 '/api/v1' 을 붙이지 않습니다 — http 의 baseURL 에 이미 있습니다
 
 /**
  * A34 브랜드 목록.
@@ -44,13 +44,9 @@ export async function getBrands(params: BrandSearchParams): Promise<Brand[]> {
  *   const { data } = await http.get<BrandDetail>(`/brands/${brandId}`)
  *   return data
  *
- * 없는 brandId 는 던집니다. 화면이 useQuery 의 isError 로 안내를 띄웁니다 —
- * null 을 돌려주면 "불러오지 못함" 과 "없는 브랜드" 를 화면에서 구분할 수 없습니다.
- *
- * 평범한 Error 가 아니라 404 ApiError 를 던지는 이유: 전역 QueryClient 의 재시도
- * 규칙이 4xx 만 즉시 실패로 처리합니다. Error 로 던지면 없는 브랜드인데도 두 번
- * 더 조회하느라 안내가 3초쯤 늦게 뜹니다. 백엔드가 붙으면 http 가 같은 모양의
- * ApiError 를 던지므로 화면 동작이 그대로 이어집니다.
+ * 없는 brandId 는 **404 ApiError** 로 던집니다. 평범한 Error 면 전역 재시도 규칙이
+ * 4xx 만 즉시 실패로 처리해서, 없는 브랜드인데도 두 번 더 조회하느라 안내가 늦게
+ * 뜹니다. 백엔드가 붙으면 http 가 같은 모양을 던지므로 화면 동작이 이어집니다.
  */
 export async function getBrandDetail(brandId: number): Promise<BrandDetail> {
   const brand = PLACEHOLDER_BRANDS.find((item) => item.brandId === brandId)

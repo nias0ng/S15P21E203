@@ -7,14 +7,8 @@ type ChipToggleProps<T extends string> = {
   label: string
   options: readonly Option<T>[]
   /**
-   * 눌린 칩의 색.
-   *
-   *   ink   먹색 (기본) — 분류처럼 목록을 좁히는 칩
-   *   warm  토프 — SegmentedFilter 의 눌린 칸과 같은 색
-   *
-   * `warm` 은 세그먼트 필터와 **같은 화면 흐름 안에 놓일 때** 씁니다. 후기 작성의
-   * 계절 평가가 그렇습니다. 두 색을 섞어 쓰는 게 아니라, 한 화면 안에서 "고른
-   * 것" 이 두 가지 색으로 보이지 않게 맞추는 것입니다.
+   * 눌린 칩의 색. `warm` 은 SegmentedFilter 와 같은 화면에 놓일 때 씁니다 —
+   * 한 화면에서 "고른 것" 이 두 가지 색으로 보이지 않게 맞추는 것입니다.
    */
   tone?: 'ink' | 'warm'
   className?: string
