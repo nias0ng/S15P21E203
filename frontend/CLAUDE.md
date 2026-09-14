@@ -265,18 +265,31 @@ variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 
 
 - 좌우 여백은 `--gutter` 를 씁니다(`styles/index.css`). 끝자리가 0 입니다 —
   1536~ 60 · 1280~ 50 · 1024~ 40 · 768~ 30 · 그 아래 20. 헤더와 본문이 같은 값이라 로고와 본문 왼쪽 끝이 맞습니다.
-- 본문 폭은 세 가지이고, 화면마다 `app/router` 의 `handle.width` 에 한 번만 적습니다(적지 않으면 `wide`).
+- 본문 폭은 네 가지이고, 화면마다 `app/router` 의 `handle.width` 에 한 번만 적습니다(적지 않으면 `wide`).
 
   | 폭 | 크기 | 쓰는 곳 |
   | --- | --- | --- |
   | `full` | 화면 틀 전체(1920 에서 1800) | 진열대 · 향 지도처럼 화면을 그림으로 쓰는 곳 |
   | `wide` | 1440 | 목록 · 격자 · 상세 |
   | `text` | 800 | 글 읽기 · 쓰기, 계정 폼 (한글 한 줄 40자 안팎) |
+  | `bleed` | 헤더 아래 화면 끝까지 (틀 · 여백 없음) | 3D 향 지도(A01) — 엔진이 화면 전체를 그림으로 씁니다 (`landing/`) |
 
   페이지 안에서 음수 마진으로 폭 제한을 깨고 나가지 않습니다. 넓게 써야 하면 라우트에 `full` 을 적습니다.
 - 요소 치수(폭 · 높이 · 간격)는 끝자리를 **0 또는 5** 로 맞춥니다. 1~3px 선 굵기 같은 세부는 예외입니다.
   **글자 크기는 이 규칙에서 뺍니다** — 활자 스케일(`@theme` 의 `--text-*`)과 기존 임의 크기를 그대로 둡니다.
 - 화면을 확인할 때는 **1920 x 1080 으로 먼저** 보고, 그다음 1440 · 1280 처럼 좁은 폭을 봅니다.
+
+## 3D 향 지도 엔진 (`landing/`)
+
+메인(`/`)의 3D 화면은 `landing/index.html` 을 iframe 으로 띄운 것입니다(`features/map/components/ScentScene.tsx`).
+엔진은 three.js 로 만든 프로토타입 **paperboat 의 원본 복사본**이고, Vite 의 두 번째 입구(`vite.config.ts` 의
+`build.rolldownOptions.input.landing`)로 앱과 같이 빌드됩니다.
+
+- React · TypeScript 가 아닌 순수 JS 입니다. **ESLint · Prettier 검사에서 뺐고**, 엔진 코드의 규칙은 `landing/CLAUDE.md` 를 따릅니다.
+- 배 모델 · 게이트 그림은 `public/landing/` 에 있습니다. 엔진이 페이지 기준 상대 경로로 부릅니다.
+- 앱과 주고받는 문은 엔진의 `landing/src/host.js` 하나입니다(자세히 보기 · 진열대에 저장 · 주변 향 탐색 · 검색창). 앱 쪽 연결은 `ScentScene` 에 모았습니다.
+- 개발 서버에서는 엔진의 개발 패널이 같이 뜨므로 `ScentScene` 이 `PB.solo(true)` 로 숨깁니다. 엔진만 따로 보려면 `/landing/index.html` 을 엽니다.
+- paperboat 저장소에서 바뀐 것을 가져올 때는 `index.html` · `src/` · `data/` · `scripts/` · 문서를 통째로 덮어씁니다(에셋이 바뀌면 `public/landing/` 도).
 
 ## 서버 상태 vs 클라이언트 상태
 

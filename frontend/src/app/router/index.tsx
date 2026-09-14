@@ -47,6 +47,8 @@ const withSuspense = (element: React.ReactNode) => (
  */
 const FULL = { width: 'full' } satisfies { width: PageWidth }
 const TEXT = { width: 'text' } satisfies { width: PageWidth }
+/** 헤더 아래 화면 끝까지 — 3D 향 지도(A01)가 씁니다 */
+const BLEED = { width: 'bleed' } satisfies { width: PageWidth }
 
 export const router = createBrowserRouter([
   {
@@ -54,7 +56,7 @@ export const router = createBrowserRouter([
     element: <RootLayout />,
     errorElement: <ErrorPage />,
     children: [
-      { index: true, element: withSuspense(<HomePage />), handle: FULL },
+      { index: true, element: withSuspense(<HomePage />), handle: BLEED },
       {
         path: ROUTES.RECOMMEND,
         element: withSuspense(<RecommendPage />),
