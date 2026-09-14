@@ -8,7 +8,7 @@
 
 무엇을 만드는가
 --------------
-    brands.csv             name                                   7,797행
+    brands.csv             name                                   7,793행
     accords.csv            name · is_new                             92행
     perfumes.csv.gz        fragrantica_id · name · brand_name ·  129,161행
                            people · already_in_db
@@ -29,7 +29,7 @@
   2. `rating_avg`(평점)는 넣지 않는다. 추천 정렬에 쓰지 않는다.
   3. `uk_perfumes_brand_name UNIQUE (brand_id, name)` 제약을 빼고
      `UNIQUE (fragrantica_id)` 만 남긴다. 그래서 **129,161개가 전부 들어간다.**
-     빼지 않으면 (브랜드, 이름) 이 겹치는 1,343행이 적재를 실패시킨다.
+     빼지 않으면 (브랜드, 이름) 이 겹치는 1,360행이 적재를 실패시킨다.
 
 주의
 ----
@@ -88,6 +88,17 @@ def build(source: Path = SOURCE, output_dir: Path = OUTPUT_DIR,
     df = pd.read_csv(source, usecols=["id", "name", "brand", "people", "accords"],
                      low_memory=False)
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    # 원본에 앞뒤 공백이 붙은 이름이 있다. 브랜드 6개와 향수 이름 917개다.
+    # 브랜드는 공백만 다른 4쌍이 서로 다른 행이 되어 구분할 수 없는 중복을 만든다
+    #   'Clash' / 'Clash '   ' The Dua Brand' / 'The Dua Brand'  ...
+    # 향수 이름은 중복을 만들지는 않지만 뒤 공백이 그대로 화면에 나간다("J'ose ").
+    #
+    # **SQL TRIM() 으로는 부족하다.** 'Arabian Wind\xa0' 의 끝은 NBSP(U+00A0) 라
+    # TRIM() 이 걷지 못한다. 파이썬 str.strip() 은 isspace() 기준이라 NBSP 를 걷는다.
+    # 그래서 여기서 털고 넘긴다 — 적재 쪽에서 다시 처리하지 않아도 된다.
+    df["brand"] = df["brand"].astype(str).str.strip()
+    df["name"] = df["name"].astype(str).str.strip()
 
     existing = set()
     if already_in_db and already_in_db.is_file():
