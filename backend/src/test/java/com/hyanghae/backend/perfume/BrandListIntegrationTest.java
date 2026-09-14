@@ -256,6 +256,58 @@ class BrandListIntegrationTest {
                 .andExpect(jsonPath("$.brands[*].name").value(Matchers.contains("Diptyque")));
     }
 
+    /**
+     * 검색어와 정렬을 <b>같이</b> 줘도 동작합니다.
+     *
+     * <p>정렬마다 SQL 이 다르게 조립됩니다. 이름순은 {@code FROM + WHERE} 이고 향수 많은 순은
+     * {@code FROM + JOIN + WHERE + GROUP BY} 입니다. 조각을 잘못된 차례로 이으면 문법 오류가
+     * 나는데, 검색어 없이 부르는 테스트로는 드러나지 않습니다. {@code WHERE} 가 {@code JOIN}
+     * 앞에 오면 그때 깨집니다.
+     *
+     * <p>검색어 {@code r} 은 Byredo 와 Dior 를 고릅니다. 내려간 Retired House 도 {@code r} 을
+     * 갖지만 브랜드가 비활성이라 빠집니다 — 검색어가 활성 조건을 밀어내지 않는지도 함께 봅니다.
+     *
+     * <p>세 정렬이 같은 답을 내지 않도록 고른 검색어입니다. 영어 이름순은 Byredo 가 먼저이고,
+     * 나머지 둘은 Dior 가 먼저입니다(Byredo 는 한국어 이름이 없어 뒤로 밀리고, 향수도 0개입니다).
+     * 답이 같으면 정렬이 실제로 걸렸는지 알 수 없습니다.
+     */
+    @Test
+    void combinesKeywordWithEverySort() throws Exception {
+        mockMvc.perform(get(BRANDS_URL).param("keyword", "r").param("sort", "NAME_EN"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.brands[*].name")
+                        .value(Matchers.contains("Byredo", "Dior")));
+
+        mockMvc.perform(get(BRANDS_URL).param("keyword", "r").param("sort", "NAME_KO"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.brands[*].name")
+                        .value(Matchers.contains("Dior", "Byredo")));
+
+        mockMvc.perform(get(BRANDS_URL).param("keyword", "r").param("sort", "PERFUME_COUNT"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.brands[*].name")
+                        .value(Matchers.contains("Dior", "Byredo")));
+    }
+
+    /**
+     * 한국어 검색어에도 정렬이 걸립니다.
+     *
+     * <p>{@code ILIKE} 두 개를 {@code OR} 로 묶어 두었는데, 괄호를 잘못 두면 한국어로 검색할 때
+     * 활성 조건이 풀려 내려간 브랜드까지 걸립니다.
+     */
+    @Test
+    void combinesKoreanKeywordWithSort() throws Exception {
+        mockMvc.perform(get(BRANDS_URL).param("keyword", "디").param("sort", "PERFUME_COUNT"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.brands[*].name")
+                        .value(Matchers.contains("Dior", "Diptyque")));
+
+        // '내려간 브랜드' 는 비활성이라 한국어로 찾아도 나오지 않습니다.
+        mockMvc.perform(get(BRANDS_URL).param("keyword", "내려간").param("sort", "NAME_KO"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.brands").isEmpty());
+    }
+
     /** 대소문자를 가리지 않고 부분 일치입니다. */
     @Test
     void searchesCaseInsensitively() throws Exception {
