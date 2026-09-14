@@ -69,7 +69,8 @@ export default function BrandDetailPage() {
     )
   }
 
-  const { name, romanizedName, logoUrl, perfumeCount, description } = brand.data
+  const { name, romanizedName, logoUrl, description } = brand.data
+  const items = perfumes.data ?? []
 
   return (
     <div className="space-y-6">
@@ -77,12 +78,11 @@ export default function BrandDetailPage() {
         ← 브랜드 목록
       </LinkButton>
 
-      <header className={cn(PANEL, 'flex flex-col gap-5 sm:flex-row')}>
-        <Thumbnail
-          src={logoUrl}
-          fallback="로고"
-          fit="contain"
-          className="h-28 w-44 shrink-0"
+      <header className={cn(PANEL, 'flex flex-col gap-6 sm:flex-row')}>
+        <BrandMark
+          name={name}
+          romanizedName={romanizedName}
+          logoUrl={logoUrl}
         />
 
         <div className="flex-1 space-y-3">
@@ -99,7 +99,11 @@ export default function BrandDetailPage() {
             </p>
           </div>
 
-          <p className="text-ink text-body">{description}</p>
+          {/*
+            글줄을 제한합니다. 콘텐츠 폭(1120px)을 꽉 채우면 한 줄이 100자 가까이
+            되어 눈이 다음 줄의 첫 글자를 찾지 못합니다.
+          */}
+          <p className="text-ink text-body max-w-prose">{description}</p>
         </div>
       </header>
 
@@ -109,18 +113,63 @@ export default function BrandDetailPage() {
             {name}의 향수
           </h2>
           {/*
-            ⚠️ perfumeCount 는 브랜드 자리표시자의 값이라 아래 카드 수와 다릅니다.
-            백엔드가 붙으면 같아집니다.
+            브랜드의 perfumeCount 가 아니라 실제로 그린 카드 수입니다. 둘은 백엔드가
+            붙으면 같아지지만, 지금은 각각 다른 자리표시자라 어긋납니다.
+            불러오는 중에는 아예 적지 않습니다 — 0 이 잠깐 보였다 바뀌면 눈에 띕니다.
           */}
-          <span className="text-ink-muted text-caption">{perfumeCount}개</span>
+          {!perfumes.isPending && (
+            <span className="text-ink-muted text-caption">
+              {items.length}개
+            </span>
+          )}
         </div>
 
-        <BrandPerfumeGrid
-          items={perfumes.data ?? []}
-          isPending={perfumes.isPending}
-        />
+        <BrandPerfumeGrid items={items} isPending={perfumes.isPending} />
       </section>
     </div>
+  )
+}
+
+/**
+ * 브랜드 표식. 로고가 있으면 로고를, 없으면 로마자 첫 글자를 씁니다.
+ *
+ * ⚠️ 지금은 모든 브랜드의 logoUrl 이 null 이라 늘 첫 글자가 나옵니다. 자리표시자
+ * 상자를 그대로 두면 열 개 브랜드가 전부 "로고" 라고 적힌 같은 회색 사각형이라,
+ * 어느 브랜드의 화면인지 상단만 봐서는 알 수 없습니다.
+ */
+function BrandMark({
+  name,
+  romanizedName,
+  logoUrl,
+}: {
+  name: string
+  romanizedName: string
+  logoUrl: string | null
+}) {
+  if (logoUrl) {
+    return (
+      <Thumbnail
+        src={logoUrl}
+        fallback="로고"
+        fit="contain"
+        className="h-28 w-44 shrink-0"
+      />
+    )
+  }
+
+  return (
+    <span
+      // 이름은 바로 옆에 글자로 있습니다. 낭독기가 첫 글자를 따로 읽으면
+      // "제이, 조 말론 런던" 이 됩니다.
+      aria-hidden
+      className={cn(
+        'border-line/50 bg-surface-sunken rounded-panel border',
+        'text-ink-muted text-display flex size-24 shrink-0',
+        'items-center justify-center font-serif',
+      )}
+    >
+      {(romanizedName || name).charAt(0)}
+    </span>
   )
 }
 

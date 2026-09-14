@@ -60,7 +60,9 @@ export function BrandGrid({ items, isPending = false, emptyAction }: Props) {
               />
             }
             title={brand.name}
-            caption={`향수 ${brand.perfumeCount}개`}
+            // 캡션은 로마자 표기입니다. 향수 개수를 적던 자리인데, 카드에서 궁금한
+            // 것은 "이 브랜드가 내가 아는 그 브랜드인가" 라서 철자를 보여 줍니다.
+            caption={brand.romanizedName}
           />
         </li>
       ))}
