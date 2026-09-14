@@ -20,6 +20,9 @@ const BODY_WIDTH = 'w-72'
  * 것이 아니라, 같은 카드가 왼쪽으로 물러나 있는 것입니다. 그래서 띠를 누르면
  * "숨어 있던 것이 나온다" 로 읽힙니다.
  *
+ * 띠 위쪽의 ✕ 로 카드를 아예 치울 수 있습니다. 묻지 않았는데 온 것이라 "지금은
+ * 됐다" 고 말할 방법이 있어야 합니다.
+ *
  * 왜 진열대를 가리지 않는가: 세로 가운데에 붙되 본문 폭을 차지하지 않습니다.
  * 진열대 화면은 머리말~하단 띠가 한 화면에 들어가야 해서 세로로 넣을 자리가
  * 없고, 가로로 겹쳐 두면 병을 고르는 동안 계속 걸립니다.
@@ -30,6 +33,14 @@ export function RecommendPeekCard({
   recommendation: PersonalRecommendation
 }) {
   const [open, setOpen] = useState(false)
+  /*
+   * 닫으면 이 화면을 떠날 때까지 다시 뜨지 않습니다.
+   *
+   * ⚠️ 기억해 두지는 않습니다 — 화면을 다시 들어오면 또 나타납니다. "이 추천 그만
+   * 보기" 를 계속 기억하려면 저장할 곳이 있어야 하는데, 그건 브라우저에 담을지
+   * 계정에 담을지 정해야 하는 문제라 추천 API 를 붙일 때 함께 정합니다.
+   */
+  const [dismissed, setDismissed] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
   const bodyId = useId()
@@ -67,6 +78,8 @@ export function RecommendPeekCard({
 
   const { perfumeId, name, brand, thumbnailUrl, headline, reasons } =
     recommendation
+
+  if (dismissed) return null
 
   return (
     // 세로 가운데. 헤더(z-10)보다 위이고 모달·토스트보다 아래입니다.
@@ -156,34 +169,70 @@ export function RecommendPeekCard({
         </div>
 
         {/*
-          손잡이. 접힌 상태에서 화면에 남는 것이 이 띠뿐이라, 여기 글이 카드의
+          손잡이 띠. 접힌 상태에서 화면에 남는 것이 이 띠뿐이라, 여기 글이 카드의
           첫인상입니다. 세로쓰기로 두는 이유는 띠 폭(48px)에 가로로는 두 글자밖에
           안 들어가서입니다.
+
+          닫기와 펼치기를 **따로 둡니다.** 한 단추에 두 뜻을 담으면 "치우려고 눌렀는데
+          펼쳐지는" 일이 생깁니다. 닫기가 위인 것은 접혀 있을 때도 이 띠가 화면에
+          그대로 보여서, 위쪽 끝이 사람이 먼저 찾는 자리이기 때문입니다.
         */}
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-controls={bodyId}
-          onClick={() => setOpen((prev) => !prev)}
-          className={cn(
-            'border-line/50 flex w-12 shrink-0 flex-col items-center justify-center gap-2 border-l py-6',
-            'text-ink-muted hover:text-ink transition-colors duration-120 ease-out',
-            'focus-visible:ring-accent outline-none focus-visible:ring-2 focus-visible:ring-inset',
-          )}
-        >
-          <span className="text-caption tracking-[0.1em] [writing-mode:vertical-rl]">
-            {open ? '접기' : '향수 추천이 왔어요!'}
-          </span>
-          <span
-            aria-hidden
+        <div className="border-line/50 flex w-12 shrink-0 flex-col border-l">
+          <button
+            type="button"
+            aria-label="향수 추천 카드 닫기"
+            onClick={() => setDismissed(true)}
             className={cn(
-              'text-body transition-transform duration-200 ease-out',
-              open && 'rotate-180',
+              'flex h-10 shrink-0 items-center justify-center',
+              // 카드에서 가장 조용해야 하는 단추입니다. 추천을 보여주는 것이 이
+              // 카드의 일이고 치우는 것은 그다음이라, 평소에는 물러나 있다가
+              // 가리키면 진해집니다.
+              //
+              // /70 이 옅게 갈 수 있는 한계입니다. 카드 바탕(#fefcf8) 위에서 대비가
+              // 3.19:1 이라 아이콘 기준 3:1 을 겨우 넘깁니다 — /65 는 2.88 로
+              // 미달입니다. 더 옅게 하려면 색을 바꾸지 말고 크기를 키우세요.
+              'text-ink-muted/70 hover:text-ink transition-colors duration-120 ease-out',
+              'focus-visible:ring-accent outline-none focus-visible:ring-2 focus-visible:ring-inset',
             )}
           >
-            ›
-          </span>
-        </button>
+            <svg
+              aria-hidden
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+              className="size-4"
+            >
+              <path d="m4 4 8 8M12 4l-8 8" />
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={bodyId}
+            onClick={() => setOpen((prev) => !prev)}
+            className={cn(
+              'flex flex-1 flex-col items-center justify-center gap-2 pb-6',
+              'text-ink-muted hover:text-ink transition-colors duration-120 ease-out',
+              'focus-visible:ring-accent outline-none focus-visible:ring-2 focus-visible:ring-inset',
+            )}
+          >
+            <span className="text-caption tracking-[0.1em] [writing-mode:vertical-rl]">
+              {open ? '접기' : '향수 추천이 왔어요!'}
+            </span>
+            <span
+              aria-hidden
+              className={cn(
+                'text-body transition-transform duration-200 ease-out',
+                open && 'rotate-180',
+              )}
+            >
+              ›
+            </span>
+          </button>
+        </div>
       </div>
     </div>
   )
