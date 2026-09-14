@@ -18,10 +18,6 @@ import org.springframework.stereotype.Repository;
  *
  * <p><b>목록과 개수만 네이티브 쿼리입니다.</b> 작성자 닉네임이 필요한데 사용자 엔티티가 없어
  * JPQL 로 {@code users} 를 조인할 수 없습니다. 게시글 목록과 같은 사정입니다.
- *
- * <p>부모가 글이냐 후기냐에 따라 목록 문장이 갈립니다. 컬럼 이름을 문자열로 이어 붙이지 않고 미리
- * 써 둔 상수를 둡니다. 지금은 안전해도 나중에 그 자리에 요청 값이 들어오면 그대로 뚫립니다.
- * 서비스가 {@link CommentParent} 를 보고 둘 중 하나를 고릅니다.
  */
 @Repository
 public interface CommentRepository extends JpaRepository<Comment, Long> {
@@ -38,11 +34,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
      * 놓고 11개만 보여주는 일이 생깁니다.
      */
     String OF_POST = """
-            WHERE c.post_id = :parentId
-            """;
-
-    String OF_REVIEW = """
-            WHERE c.review_id = :parentId
+            WHERE c.post_id = :postId
             """;
 
     /**
@@ -58,23 +50,13 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     @Query(value = SELECT_COLUMNS + OF_POST + ORDER_AND_PAGE, nativeQuery = true)
     List<CommentRow> findPageOfPost(
-            @Param("parentId") Long parentId,
-            @Param("limit") int limit,
-            @Param("offset") long offset
-    );
-
-    @Query(value = SELECT_COLUMNS + OF_REVIEW + ORDER_AND_PAGE, nativeQuery = true)
-    List<CommentRow> findPageOfReview(
-            @Param("parentId") Long parentId,
+            @Param("postId") Long postId,
             @Param("limit") int limit,
             @Param("offset") long offset
     );
 
     @Query(value = "SELECT COUNT(*) FROM comments c " + OF_POST, nativeQuery = true)
-    long countOfPost(@Param("parentId") Long parentId);
-
-    @Query(value = "SELECT COUNT(*) FROM comments c " + OF_REVIEW, nativeQuery = true)
-    long countOfReview(@Param("parentId") Long parentId);
+    long countOfPost(@Param("postId") Long postId);
 
     /**
      * 고치거나 지우기 전에 잠그고 읽습니다.
@@ -82,7 +64,6 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
      * <p>잠그지 않으면 주인을 확인한 뒤 실제로 고치는 사이에 다른 요청이 같은 댓글을 지울 수
      * 있습니다. 사용자가 탭 두 개를 열어 두면 실제로 일어납니다. 후기·조회 기록도 같은 방식으로
      * 막고 있습니다.
-     *
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

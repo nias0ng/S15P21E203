@@ -9,14 +9,11 @@ import com.hyanghae.backend.community.dto.response.CommentsResponse;
 import com.hyanghae.backend.community.entity.Comment;
 import com.hyanghae.backend.community.entity.Post;
 import com.hyanghae.backend.community.exception.CommunityErrorCode;
-import com.hyanghae.backend.community.repository.CommentParent;
 import com.hyanghae.backend.community.repository.CommentRepository;
 import com.hyanghae.backend.community.repository.CommentRow;
 import com.hyanghae.backend.community.repository.PostRepository;
 import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.global.security.CurrentUser;
-import com.hyanghae.backend.review.entity.PerfumeReview;
-import com.hyanghae.backend.review.repository.PerfumeReviewRepository;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -28,13 +25,13 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 댓글을 쓰고 고치고 지우고 읽습니다.
  *
- * <p>댓글은 <b>자유 게시판 글과 후기 두 곳</b>에 달립니다. 어느 쪽인지는 {@link CommentParent} 가
- * 알려주고, 규칙은 양쪽이 똑같습니다. 다른 것은 부모를 어디서 찾는지와 없을 때의 에러 코드뿐입니다.
+ * <p>댓글은 <b>자유 게시판 글에만</b> 달립니다. 후기에는 댓글을 쓰지 않고 좋아요만 있습니다
+ * (와이어프레임 A22a).
  *
  * <p>목록 조회는 로그인이 필요 없습니다. 다만 {@code mine} 은 보는 사람마다 달라지므로 로그인
  * 여부를 <b>참고</b>합니다. 로그인을 요구하는 것과 로그인 여부를 참고하는 것은 다릅니다.
  *
- * <p>수정과 삭제는 부모를 묻지 않습니다. 댓글 번호만으로 이미 하나가 정해집니다.
+ * <p>수정과 삭제는 글을 묻지 않습니다. 댓글 번호만으로 이미 하나가 정해집니다.
  */
 @Service
 public class CommentService {
@@ -43,41 +40,29 @@ public class CommentService {
 
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
-    private final PerfumeReviewRepository perfumeReviewRepository;
     private final CurrentUser currentUser;
 
     public CommentService(
             CommentRepository commentRepository,
             PostRepository postRepository,
-            PerfumeReviewRepository perfumeReviewRepository,
             CurrentUser currentUser
     ) {
         this.commentRepository = commentRepository;
         this.postRepository = postRepository;
-        this.perfumeReviewRepository = perfumeReviewRepository;
         this.currentUser = currentUser;
     }
 
     /**
-     * 댓글을 씁니다. 없는 글·후기에는 달 수 없습니다.
+     * 댓글을 씁니다. 없는 글에는 달 수 없습니다.
      *
-     * <p>부모를 번호만 확인하지 않고 실제로 읽어 옵니다. 어차피 댓글이 매달릴 대상이 필요하고,
+     * <p>글을 번호만 확인하지 않고 실제로 읽어 옵니다. 어차피 댓글이 매달릴 대상이 필요하고,
      * 읽어 오는 것으로 존재 확인까지 끝납니다.
      */
     @Transactional
-    public CommentCreateResponse create(
-            CommentParent parent,
-            Long parentId,
-            CommentCreateRequest request
-    ) {
+    public CommentCreateResponse create(Long postId, CommentCreateRequest request) {
         Long userId = requireLogin();
-        String content = request.content();
-        OffsetDateTime now = OffsetDateTime.now();
-
-        Comment comment = switch (parent) {
-            case POST -> Comment.onPost(requirePost(parentId), userId, content, now);
-            case REVIEW -> Comment.onReview(requireReview(parentId), userId, content, now);
-        };
+        Comment comment = Comment.onPost(
+                requirePost(postId), userId, request.content(), OffsetDateTime.now());
         commentRepository.save(comment);
 
         return new CommentCreateResponse(comment.getId(), comment.getCreatedAt());
@@ -86,30 +71,19 @@ public class CommentService {
     /**
      * 댓글 목록입니다. 오래된 순이고 페이지 크기는 1~100 으로 자릅니다.
      *
-     * <p>부모가 있는지 먼저 확인합니다. 확인하지 않으면 없는 글 번호로 조회해도 "댓글 0개" 가
+     * <p>글이 있는지 먼저 확인합니다. 확인하지 않으면 없는 글 번호로 조회해도 "댓글 0개" 가
      * 돌아가서, 화면이 "글이 없다" 와 "댓글이 없다" 를 구분하지 못합니다.
      */
     @Transactional(readOnly = true)
-    public CommentsResponse findPage(
-            CommentParent parent,
-            Long parentId,
-            int page,
-            int size
-    ) {
-        requireParent(parent, parentId);
+    public CommentsResponse findPage(Long postId, int page, int size) {
+        requirePost(postId);
 
         int pageNumber = Math.max(page, 0);
         int pageSize = Math.clamp(size, 1, MAX_PAGE_SIZE);
         long offset = (long) pageNumber * pageSize;
 
-        List<CommentRow> rows = switch (parent) {
-            case POST -> commentRepository.findPageOfPost(parentId, pageSize, offset);
-            case REVIEW -> commentRepository.findPageOfReview(parentId, pageSize, offset);
-        };
-        long total = switch (parent) {
-            case POST -> commentRepository.countOfPost(parentId);
-            case REVIEW -> commentRepository.countOfReview(parentId);
-        };
+        List<CommentRow> rows = commentRepository.findPageOfPost(postId, pageSize, offset);
+        long total = commentRepository.countOfPost(postId);
 
         return new CommentsResponse(
                 rows.stream().map(this::toResponse).toList(), pageNumber, pageSize, total);
@@ -161,29 +135,11 @@ public class CommentService {
         return authorId != null && currentUser.id().map(authorId::equals).orElse(false);
     }
 
-    /**
-     * 댓글을 달 글이나 후기가 있어야 합니다.
-     *
-     * <p>부모에 따라 에러 코드가 다릅니다. 화면이 "글이 지워졌다" 와 "후기가 지워졌다" 를 구분해
-     * 안내할 수 있어야 하기 때문입니다.
-     */
-    private void requireParent(CommentParent parent, Long parentId) {
-        switch (parent) {
-            case POST -> requirePost(parentId);
-            case REVIEW -> requireReview(parentId);
-        }
-    }
-
+    /** 댓글을 달 글이 있어야 합니다. */
     private Post requirePost(Long postId) {
         return postRepository.findById(postId)
                 .orElseThrow(() ->
                         new BusinessException(CommunityErrorCode.COMMUNITY_POST_NOT_FOUND));
-    }
-
-    private PerfumeReview requireReview(Long reviewId) {
-        return perfumeReviewRepository.findById(reviewId)
-                .orElseThrow(() ->
-                        new BusinessException(CommunityErrorCode.COMMUNITY_REVIEW_NOT_FOUND));
     }
 
     /**

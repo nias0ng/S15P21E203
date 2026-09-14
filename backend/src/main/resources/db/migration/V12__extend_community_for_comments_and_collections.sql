@@ -15,42 +15,27 @@ ALTER TABLE comments
     DROP COLUMN deleted_at;
 
 
--- 2. 댓글이 후기에도 달립니다.
---
--- 후기 게시판에 뜨는 글이 곧 후기(perfume_reviews)로 정해지면서, 그 글에 달리는 댓글을 저장할
--- 자리가 필요해졌습니다. comments 는 post_id 하나만 갖고 있어 자유 게시판 글에만 달 수 있습니다.
---
--- 표를 새로 만들지 않고 컬럼을 더합니다. 댓글의 내용·작성자·수정·삭제 규칙이 양쪽에서 똑같아서,
--- comments 와 review_comments 로 나누면 같은 코드와 같은 SQL 을 두 벌 갖게 됩니다.
---
--- CHECK 제약이 "둘 중 정확히 하나" 를 강제합니다. 애플리케이션 검사만 두면 동시 요청이나 다른
--- 경로의 삽입에 뚫립니다. 양쪽이 다 비어 있거나 다 차 있는 댓글은 어느 화면에도 나타나지 못하는
--- 유령 행이 되고, 나중에 원인을 찾기 어렵습니다.
---
--- 후기를 지우면 댓글도 함께 사라집니다. 게시글 쪽과 같은 규칙입니다.
-ALTER TABLE comments
-    ADD COLUMN review_id BIGINT,
-    ADD CONSTRAINT fk_comments_review
-        FOREIGN KEY (review_id) REFERENCES perfume_reviews (id) ON DELETE CASCADE,
-    ADD CONSTRAINT ck_comments_target CHECK (
-        (post_id IS NOT NULL AND review_id IS NULL)
-        OR (post_id IS NULL AND review_id IS NOT NULL)
-    );
-
-
--- 3. 댓글 조회 인덱스입니다.
+-- 2. 댓글 조회 인덱스입니다.
 --
 -- comments 에는 인덱스가 하나도 없어서 목록 조회가 매번 전체 스캔이었습니다. 게시글 목록이 세는
 -- 댓글 수도 같은 인덱스를 씁니다.
 --
 -- 정렬 컬럼까지 담은 이유는 목록이 오래된 순으로 나가기 때문입니다. 부모와 정렬 순서가 한 인덱스에
 -- 들어 있으면 정렬을 위해 따로 줄 세울 필요가 없습니다.
+--
+-- 댓글은 자유 게시판 글에만 달립니다. 후기에는 댓글을 쓰지 않기로 팀에서 정했습니다(와이어프레임
+-- A22a — 후기는 좋아요만). 그래서 comments 는 post_id 하나만 봅니다.
 CREATE INDEX idx_comments_post ON comments (post_id, created_at, comment_id);
 
-CREATE INDEX idx_comments_review ON comments (review_id, created_at, comment_id);
+-- 매달릴 글이 없는 댓글은 만들 수 없습니다.
+--
+-- post_id 가 비어 있으면 어느 화면에도 나타나지 못하는 유령 행이 됩니다. 나중에 목록이 비는 원인을
+-- 찾기가 어렵습니다. 애플리케이션 검사만 두면 다른 경로의 삽입에 뚫리므로 표가 직접 막습니다.
+ALTER TABLE comments
+    ALTER COLUMN post_id SET NOT NULL;
 
 
--- 4. 컬렉션 공유 글에 컬렉션을 첨부합니다.
+-- 3. 컬렉션 공유 글에 컬렉션을 첨부합니다.
 --
 -- 와이어프레임의 글쓰기 화면은 분류가 "컬렉션 공유" 일 때 컬렉션을 고르는 자리를 띄우고, 글 상세는
 -- 첨부된 컬렉션 이름을 보여줍니다. 그런데 posts 와 collections 를 잇는 자리가 없어 분류만 고를 수
@@ -67,7 +52,7 @@ ALTER TABLE posts
         FOREIGN KEY (collection_id) REFERENCES collections (collection_id) ON DELETE SET NULL;
 
 
--- 5. 게시글 목록 인덱스입니다.
+-- 4. 게시글 목록 인덱스입니다.
 --
 -- posts 에도 인덱스가 하나도 없어서 목록 조회가 전체 스캔이었습니다. 여기에 정렬까지 붙으니 매번
 -- 전부 읽고 전부 줄 세우고 있었습니다.

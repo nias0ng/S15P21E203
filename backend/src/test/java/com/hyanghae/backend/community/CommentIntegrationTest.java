@@ -38,11 +38,11 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * 댓글을 실제 PostgreSQL 위에서 검증합니다.
  *
- * <p>댓글은 자유 게시판 글과 후기 두 곳에 달립니다. 부모를 둘 다 심어 두고 양쪽을 확인합니다.
- * <b>글 1번과 후기 1번의 번호가 같으므로</b>, 두 목록이 서로 섞이지 않는지 보기에 좋습니다.
+ * <p>댓글은 자유 게시판 글에만 달립니다. 후기에는 댓글을 쓰지 않고 좋아요만 있습니다
+ * (와이어프레임 A22a).
  *
- * <p>부모는 API 가 아니라 SQL 로 직접 넣습니다. 게시글·후기 API 가 바뀌어도 댓글 테스트가
- * 흔들리지 않아야 합니다.
+ * <p>글은 API 가 아니라 SQL 로 직접 넣습니다. 게시글 API 가 바뀌어도 댓글 테스트가 흔들리지
+ * 않아야 합니다.
  */
 @IntegrationTest
 @AutoConfigureMockMvc
@@ -50,14 +50,12 @@ import org.springframework.test.web.servlet.MockMvc;
 class CommentIntegrationTest {
 
     private static final String POST_COMMENTS_URL = "/api/v1/posts/{postId}/comments";
-    private static final String REVIEW_COMMENTS_URL = "/api/v1/reviews/{reviewId}/comments";
     private static final String COMMENT_URL = "/api/v1/comments/{commentId}";
 
     private static final long WRITER_ID = 1;
     private static final long OTHER_WRITER_ID = 2;
 
     private static final long POST_ID = 1;
-    private static final long REVIEW_ID = 1;
     private static final long MISSING_ID = 999;
 
     @Autowired
@@ -79,13 +77,6 @@ class CommentIntegrationTest {
         insertUser(WRITER_ID, "writer@hyanghae.test", "글쓴이");
         insertUser(OTHER_WRITER_ID, "other@hyanghae.test", "다른 사람");
 
-        jdbcTemplate.update(
-                "INSERT INTO brands (brand_id, name, is_active) VALUES (1, 'Chanel', TRUE)");
-        jdbcTemplate.update("""
-                INSERT INTO perfumes (perfume_id, brand_id, name, is_active)
-                VALUES (1, 1, 'Base Scent', TRUE)
-                """);
-
         // 자유 게시판 글 하나. 분류는 마이그레이션이 심어 둔 것을 코드로 찾습니다.
         jdbcTemplate.update("""
                 INSERT INTO posts (post_id, user_id, category_id, title, content,
@@ -93,13 +84,6 @@ class CommentIntegrationTest {
                 VALUES (?, ?, (SELECT category_id FROM post_categories WHERE code = 'CHAT'),
                         '글 제목', '글 본문', NOW(), NOW())
                 """, POST_ID, WRITER_ID);
-
-        // 후기 하나. 한 사용자는 한 향수에 후기를 하나만 가질 수 있습니다(V5 유니크 제약).
-        jdbcTemplate.update("""
-                INSERT INTO perfume_reviews (id, user_id, perfume_id, title, content,
-                                             created_at, updated_at)
-                VALUES (?, ?, 1, '후기 제목', '후기 내용입니다.', NOW(), NOW())
-                """, REVIEW_ID, WRITER_ID);
 
         currentUser.login(WRITER_ID);
     }
@@ -134,50 +118,6 @@ class CommentIntegrationTest {
                 .andExpect(jsonPath("$.comments[0].mine").value(true))
                 .andExpect(jsonPath("$.comments[0].createdAt").isNotEmpty())
                 .andExpect(jsonPath("$.comments[0].updatedAt").isNotEmpty());
-    }
-
-    /** 후기에도 같은 방식으로 댓글이 달립니다. 응답 모양은 글 쪽과 같습니다. */
-    @Test
-    void writesCommentOnReviewAndListsIt() throws Exception {
-        long commentId = writeOnReview("후기에 단 댓글입니다.");
-
-        mockMvc.perform(get(REVIEW_COMMENTS_URL, REVIEW_ID))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.page").value(0))
-                .andExpect(jsonPath("$.size").value(20))
-                .andExpect(jsonPath("$.comments[0].commentId").value(commentId))
-                .andExpect(jsonPath("$.comments[0].content").value("후기에 단 댓글입니다."))
-                .andExpect(jsonPath("$.comments[0].nickname").value("글쓴이"))
-                .andExpect(jsonPath("$.comments[0].mine").value(true))
-                .andExpect(jsonPath("$.comments[0].createdAt").isNotEmpty())
-                .andExpect(jsonPath("$.comments[0].updatedAt").isNotEmpty());
-    }
-
-    /**
-     * 글의 댓글과 후기의 댓글은 서로의 목록에 나오지 않습니다.
-     *
-     * <p>글도 1번이고 후기도 1번입니다. 조회 SQL 이 부모 종류를 보지 않고 번호만 본다면 두 목록에
-     * 남의 댓글이 섞여 나옵니다. 번호를 일부러 같게 맞춘 이유입니다.
-     */
-    @Test
-    void keepsPostCommentsAndReviewCommentsApart() throws Exception {
-        writeOnPost("글에 단 댓글");
-        writeOnReview("후기에 단 댓글");
-
-        mockMvc.perform(get(POST_COMMENTS_URL, POST_ID))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.comments[*].content")
-                        .value(Matchers.contains("글에 단 댓글")));
-
-        mockMvc.perform(get(REVIEW_COMMENTS_URL, REVIEW_ID))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.comments[*].content")
-                        .value(Matchers.contains("후기에 단 댓글")));
-
-        assertThat(countRows("comments")).isEqualTo(2);
     }
 
     /**
@@ -215,13 +155,13 @@ class CommentIntegrationTest {
     }
 
     /**
-     * 없는 부모에는 댓글을 달 수도, 목록을 볼 수도 없습니다.
+     * 없는 글에는 댓글을 달 수도, 목록을 볼 수도 없습니다.
      *
-     * <p>글과 후기의 에러 코드가 다릅니다. 화면이 "글이 지워졌다" 와 "후기가 지워졌다" 를 구분해
-     * 안내할 수 있어야 합니다.
+     * <p>목록도 404 입니다. 확인하지 않으면 없는 글 번호로 조회해도 "댓글 0개" 가 돌아가서, 화면이
+     * "글이 없다" 와 "댓글이 없다" 를 구분하지 못합니다.
      */
     @Test
-    void rejectsMissingParent() throws Exception {
+    void rejectsMissingPost() throws Exception {
         mockMvc.perform(post(POST_COMMENTS_URL, MISSING_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(commentBody("없는 글에 답니다.")))
@@ -229,17 +169,10 @@ class CommentIntegrationTest {
                 .andExpect(jsonPath("$.code")
                         .value(CommunityErrorCode.COMMUNITY_POST_NOT_FOUND.code()));
 
-        mockMvc.perform(post(REVIEW_COMMENTS_URL, MISSING_ID)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(commentBody("없는 후기에 답니다.")))
+        mockMvc.perform(get(POST_COMMENTS_URL, MISSING_ID))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code")
-                        .value(CommunityErrorCode.COMMUNITY_REVIEW_NOT_FOUND.code()));
-
-        mockMvc.perform(get(POST_COMMENTS_URL, MISSING_ID))
-                .andExpect(status().isNotFound());
-        mockMvc.perform(get(REVIEW_COMMENTS_URL, MISSING_ID))
-                .andExpect(status().isNotFound());
+                        .value(CommunityErrorCode.COMMUNITY_POST_NOT_FOUND.code()));
 
         assertThat(countRows("comments")).isZero();
     }
@@ -304,7 +237,6 @@ class CommentIntegrationTest {
         currentUser.logout();
 
         mockMvc.perform(get(POST_COMMENTS_URL, POST_ID)).andExpect(status().isOk());
-        mockMvc.perform(get(REVIEW_COMMENTS_URL, REVIEW_ID)).andExpect(status().isOk());
 
         mockMvc.perform(post(POST_COMMENTS_URL, POST_ID)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -435,22 +367,13 @@ class CommentIntegrationTest {
     // 부모와 작성자가 사라질 때
     // ────────────────────────────────────────────────────────────────
 
-    /**
-     * 부모를 지우면 댓글도 함께 사라집니다.
-     *
-     * <p>외래키가 지웁니다. 글 쪽은 처음부터 그랬고 후기 쪽은 V12 가 건 제약입니다. 이번
-     * 마이그레이션이 실제로 동작하는지 확인하는 자리입니다.
-     */
+    /** 글을 지우면 댓글도 함께 사라집니다. 외래키가 지웁니다. */
     @Test
-    void deletesCommentsWhenTheParentGoesAway() throws Exception {
+    void deletesCommentsWhenThePostGoesAway() throws Exception {
         writeOnPost("글의 댓글");
-        writeOnReview("후기의 댓글");
-        assertThat(countRows("comments")).isEqualTo(2);
-
-        jdbcTemplate.update("DELETE FROM posts WHERE post_id = ?", POST_ID);
         assertThat(countRows("comments")).isEqualTo(1);
 
-        jdbcTemplate.update("DELETE FROM perfume_reviews WHERE id = ?", REVIEW_ID);
+        jdbcTemplate.update("DELETE FROM posts WHERE post_id = ?", POST_ID);
         assertThat(countRows("comments")).isZero();
     }
 
@@ -478,16 +401,15 @@ class CommentIntegrationTest {
     }
 
     /**
-     * 댓글은 글과 후기 중 <b>한쪽에만</b> 매달립니다.
+     * 매달릴 글이 없는 댓글은 만들 수 없습니다.
      *
-     * <p>V12 의 {@code CHECK} 제약이 지킵니다. 양쪽이 다 비거나 다 차 있는 댓글은 어느 화면에도
-     * 나타나지 못하는 유령이 됩니다. 애플리케이션을 거치지 않는 경로로도 막혀야 하므로 SQL 로
+     * <p>V12 가 {@code post_id} 에 건 {@code NOT NULL} 이 지킵니다. 비어 있으면 어느 화면에도
+     * 나타나지 못하는 유령 행이 됩니다. 애플리케이션을 거치지 않는 경로로도 막혀야 하므로 SQL 로
      * 직접 넣어 확인합니다.
      */
     @Test
-    void refusesCommentWithoutExactlyOneParent() {
-        assertThat(insertFails(null, null)).isTrue();
-        assertThat(insertFails(POST_ID, REVIEW_ID)).isTrue();
+    void refusesCommentWithoutAPost() {
+        assertThat(insertFails(null)).isTrue();
         assertThat(countRows("comments")).isZero();
     }
 
@@ -518,7 +440,7 @@ class CommentIntegrationTest {
     // ────────────────────────────────────────────────────────────────
 
     /**
-     * API 문서에 여섯 개가 모두 실립니다.
+     * API 문서에 네 개가 모두 실리고, 후기 쪽 경로는 남아 있지 않습니다.
      *
      * <p>문서 애노테이션은 코드와 달라져도 컴파일러가 잡아주지 않습니다. 엔드포인트를 지우거나
      * 옮겼는데 문서만 남는 일을 이 테스트가 막습니다.
@@ -529,10 +451,10 @@ class CommentIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/api/v1/posts/{postId}/comments'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/posts/{postId}/comments'].post").exists())
-                .andExpect(jsonPath("$.paths['/api/v1/reviews/{reviewId}/comments'].get").exists())
-                .andExpect(jsonPath("$.paths['/api/v1/reviews/{reviewId}/comments'].post").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/comments/{commentId}'].patch").exists())
-                .andExpect(jsonPath("$.paths['/api/v1/comments/{commentId}'].delete").exists());
+                .andExpect(jsonPath("$.paths['/api/v1/comments/{commentId}'].delete").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/reviews/{reviewId}/comments']")
+                        .doesNotExist());
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -575,15 +497,7 @@ class CommentIntegrationTest {
     }
 
     private long writeOnPost(String content) throws Exception {
-        return write(POST_COMMENTS_URL, POST_ID, content);
-    }
-
-    private long writeOnReview(String content) throws Exception {
-        return write(REVIEW_COMMENTS_URL, REVIEW_ID, content);
-    }
-
-    private long write(String url, long parentId, String content) throws Exception {
-        String body = mockMvc.perform(post(url, parentId)
+        String body = mockMvc.perform(post(POST_COMMENTS_URL, POST_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(commentBody(content)))
                 .andExpect(status().isCreated())
@@ -611,13 +525,12 @@ class CommentIntegrationTest {
     }
 
     /** 제약에 걸려 저장이 실패하면 참입니다. */
-    private boolean insertFails(Long postId, Long reviewId) {
+    private boolean insertFails(Long postId) {
         try {
             jdbcTemplate.update("""
-                    INSERT INTO comments (post_id, review_id, user_id, content,
-                                          created_at, updated_at)
-                    VALUES (?, ?, ?, '제약 확인', NOW(), NOW())
-                    """, postId, reviewId, WRITER_ID);
+                    INSERT INTO comments (post_id, user_id, content, created_at, updated_at)
+                    VALUES (?, ?, '제약 확인', NOW(), NOW())
+                    """, postId, WRITER_ID);
             return false;
         } catch (RuntimeException exception) {
             return true;
@@ -637,8 +550,8 @@ class CommentIntegrationTest {
     /**
      * 테스트가 넣은 것만 지웁니다. 지우는 순서가 중요합니다.
      *
-     * <p>외래키가 걸려 있어 자식부터 지워야 합니다. 댓글이 글·후기를 가리키고, 글·후기가 사용자와
-     * 향수를 가리킵니다. 순서를 바꾸면 제약 위반으로 실패합니다.
+     * <p>외래키가 걸려 있어 자식부터 지워야 합니다. 댓글이 글을 가리키고, 글이 사용자를 가리킵니다.
+     * 순서를 바꾸면 제약 위반으로 실패합니다.
      *
      * <p>{@code post_categories} 는 마이그레이션이 심은 분류 셋이라 건드리지 않습니다.
      */
@@ -647,10 +560,6 @@ class CommentIntegrationTest {
         jdbcTemplate.update("DELETE FROM post_images");
         jdbcTemplate.update("DELETE FROM post_perfumes");
         jdbcTemplate.update("DELETE FROM posts");
-        jdbcTemplate.update("DELETE FROM perfume_review_seasons");
-        jdbcTemplate.update("DELETE FROM perfume_reviews");
-        jdbcTemplate.update("DELETE FROM perfumes");
-        jdbcTemplate.update("DELETE FROM brands");
         jdbcTemplate.update("DELETE FROM users");
     }
 

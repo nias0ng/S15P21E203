@@ -1,6 +1,5 @@
 package com.hyanghae.backend.community.entity;
 
-import com.hyanghae.backend.review.entity.PerfumeReview;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -15,9 +14,8 @@ import java.time.OffsetDateTime;
 /**
  * {@code comments} 테이블 매핑입니다.
  *
- * <p><b>댓글은 자유 게시판 글과 후기 두 곳에 달립니다.</b> 한 표에 담고 {@code post} 와
- * {@code review} 중 하나만 채웁니다. 내용과 작성자, 수정·삭제 규칙이 양쪽에서 똑같아 표를 나누면
- * 같은 코드를 두 벌 갖게 됩니다. "둘 중 정확히 하나" 는 V12 의 {@code CHECK} 제약이 지킵니다.
+ * <p><b>댓글은 자유 게시판 글에만 답니다.</b> 후기에는 댓글을 쓰지 않고 좋아요만 있습니다
+ * (와이어프레임 A22a). 그래서 매달리는 자리가 {@code post} 하나입니다.
  *
  * <p>{@code userId} 를 연관이 아니라 번호로 둡니다. 사용자 엔티티가 아직 없기 때문입니다. 회원이
  * 탈퇴하면 {@code ON DELETE SET NULL} 로 비워지고 댓글은 남습니다. 그러면 주인이 없어 아무도
@@ -38,10 +36,6 @@ public class Comment {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "post_id")
     private Post post;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "review_id")
-    private PerfumeReview review;
 
     @Column(name = "user_id")
     private Long userId;
@@ -68,22 +62,6 @@ public class Comment {
     public static Comment onPost(Post post, Long userId, String content, OffsetDateTime now) {
         Comment comment = new Comment();
         comment.post = post;
-        comment.userId = userId;
-        comment.content = content;
-        comment.createdAt = now;
-        comment.updatedAt = now;
-        return comment;
-    }
-
-    /** 후기에 다는 댓글입니다. 규칙은 글 쪽과 같고 매달리는 자리만 다릅니다. */
-    public static Comment onReview(
-            PerfumeReview review,
-            Long userId,
-            String content,
-            OffsetDateTime now
-    ) {
-        Comment comment = new Comment();
-        comment.review = review;
         comment.userId = userId;
         comment.content = content;
         comment.createdAt = now;
