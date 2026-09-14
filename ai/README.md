@@ -123,7 +123,7 @@ unmatched_log.py   사전이 못 받은 표현을 기록합니다 (아래 참고
 build_data.py      원본 덤프에서 data/perfumes_nlr.csv.gz 를 다시 만듭니다
 data/
   perfumes_nlr.csv.gz        5.0MB  향수 129,161개 (id·이름·브랜드·accord·평가자수·평점)
-  domain_lexicon_v1_2.csv     19KB  한국어 향 표현 44행 -> accord
+  domain_lexicon_v1_8.csv     24KB  한국어 향 표현 53행 -> accord
   accord_dictionary.csv        7KB  accord 92개 마스터 (적재 시 검증용)
 docs/
   search_rules.md            검색 규칙 명세
@@ -195,7 +195,7 @@ Invoke-RestMethod -Uri "http://localhost:8000/nlr/recommend" -Method Post `
 | 이름 | 기본값 | 언제 씁니까 |
 |---|---|---|
 | `NLR_LOG_PATH` | `ai/logs/unmatched.jsonl` | 컨테이너에서 볼륨 경로를 줄 때 |
-| `NLR_LEXICON_PATH` | `data/domain_lexicon_v1_2.csv` | 사전 버전을 바꿔 비교할 때 |
+| `NLR_LEXICON_PATH` | `data/domain_lexicon_v1_8.csv` | 사전 버전을 바꿔 비교할 때 |
 | `NLR_PERFUMES_PATH` | `data/perfumes_nlr.csv.gz` | — |
 
 ### 아직 서버에 없는 것
