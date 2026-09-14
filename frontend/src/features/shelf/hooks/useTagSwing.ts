@@ -29,23 +29,55 @@ const DAMPING = 0.3
  * 뒤집힐 만큼 휘둘립니다. 기울기로 맞춘 값이라 태그가 커져도 같은 각도로 흔들리고, 매단 길이가
  * 긴 만큼 태그 아랫단은 더 크게 움직입니다. 창이 좁아 트랙이 덜 움직이면 흔들림도 작아집니다.
  *
- * 1920 x 1080 에서 휠 한 번(한 칸)에 2도 남짓, 화살표(세 칸)에 4도 남짓 흔들리고, 칩으로 여섯 칸 넘게
- * 옮기면 한도(6도)에 잠깐 닿습니다. 휠 · 칩 이동이 용수철 · 사인 곡선이 되면서(useShelfFlow) 여러 칸을
+ * 1920 x 1080 에서 휠 한 번에 흐르는 쪽 끝 태그가 2.5 ~ 4도, 반대쪽 끝 태그가 1 ~ 1.6도 남짓 흔들리고
+ * (아래 "끌려오는 쪽이 더 흔들립니다"), 칩으로 여러 칸을 옮기면 끝 태그가 한도(8도)에 잠깐 닿습니다.
+ * 휠 · 칩 이동이 용수철 · 사인 곡선이 되면서(useShelfFlow) 여러 칸을
  * 옮길 때 트랙이 세게 가속해서, 1/2400 은 휠을 다섯 번 연달아 굴리면 15도 · 벽 끝까지(스물여섯 칸)
  * 옮기면 24도로 밀려 늘 한도에 붙어 있었고, 1/4000 은 흔들림이 너무 얌전했습니다.
  */
 const GAIN = 1 / 3000
 
 /**
- * 아무리 세게 밀어도 이 기울기(6도)를 넘지 않습니다. 휠 한두 번 · 화살표에서는 닿지 않고, 휠을 연달아
- * 굴리거나 칩으로 여러 칸을 옮길 때만 잠깐 닿는 안전 한도입니다. 닿으면 바깥으로
- * 가던 속도를 버려서(swingStep) 한도에 붙어 버티다 뒤늦게 튕기지 않습니다.
+ * 아무리 세게 밀어도 이 기울기(8도)를 넘지 않습니다. 가운데 태그는 휠 한두 번 · 화살표에서 닿지 않고,
+ * 벽이 흐르는 쪽 끝 태그(PULL_MOST)가 여러 칸을 옮길 때 잠깐 닿는 안전 한도입니다. 닿으면 바깥으로
+ * 가던 속도를 버려서(swingStep) 한도에 붙어 버티다 뒤늦게 튕기지 않습니다. 끝 태그가 가운데보다 더
+ * 흔들리는 차이가 한도에 눌려 지워지지 않게 예전 6도에서 올렸습니다.
  *
  * 이웃한 두 태그가 서로 반대로 한도까지 기울어도 아랫모서리가 닿지 않는 값입니다 — 1920 에서
- * 모서리가 한쪽으로 12px 남짓 나오고 한쪽 여유는 23.8px, 390 에서 10px 남짓에 여유 13.3px 입니다
+ * 모서리가 한쪽으로 16px 남짓 나오고 한쪽 여유는 23.8px, 390 에서 12.8px 에 여유 13.3px 입니다
  * (lib.test.ts 의 swingStep).
  */
-const LIMIT = (6 * Math.PI) / 180
+const LIMIT = (8 * Math.PI) / 180
+
+/*
+ * ── 끌려오는 쪽이 더 흔들립니다 ─────────────────────────────
+ * 벽이 흐르는 쪽 끝(새 병이 끌려 들어오는 쪽)의 태그일수록 크게, 반대쪽 끝일수록 작게 흔들립니다.
+ * 휠을 아래로 굴리면(벽이 왼쪽으로 흘러 병이 오른쪽에서 들어옴) 오른쪽 끝이, 위로 굴리면 왼쪽 끝이
+ * 가장 크게 흔들립니다 — 먼 데서 끌려온 태그일수록 크게 출렁이는 모습입니다.
+ *
+ *   세기 PULL_LEAST ~ PULL_MOST   흐르는 반대쪽 끝(0)에서 흐르는 쪽 끝(1)까지 잰 자리의 제곱(PULL_CURVE)을
+ *                                 따라 늘어나고, 끝 너머(창 밖에서 들어오는 태그)는 가장 셉니다 — 흐르는
+ *                                 쪽 끝으로 갈수록 가파르게 세져 "제일 끝부터" 크게 흔들립니다
+ *
+ * 자리는 **보이는 창**으로 잽니다 — 한 장 배치에서는 상세 패널이 창 오른쪽을 덮어서 패널 왼쪽 끝까지입니다.
+ * 창 전체로 재면 패널 밑에 가린 태그가 오른쪽 끝이 되어, 보이는 오른쪽 끝 태그와 왼쪽 끝 태그의 차이가
+ * 거의 드러나지 않았습니다(휠을 올릴 때 2.0도 대 1.8도).
+ *
+ * 흐르는 쪽은 트랙 속도가 PULL_TURN(px/초)을 넘을 때 정하고, 그때 창 안 자리로 태그마다 세기를 셉니다.
+ * 멈추며 남는 잔떨림에 쪽이 뒤집히지 않게, 쪽이 바뀔 때만 다시 셉니다.
+ */
+const PULL_LEAST = 0.4
+const PULL_MOST = 1.6
+const PULL_CURVE = 2
+const PULL_TURN = 30
+
+/**
+ * 태그가 클수록 조금 더 흔들립니다. 매단 길이(줄 + 태그)가 1920 x 1080 의 120px 이면 1 배이고,
+ * 0.85 ~ 1.2 배 사이로 비례합니다 — 1562 x 914(110px)는 0.92 배, 휴대폰(95px)은 0.85 배입니다.
+ */
+const ARM_REFERENCE = 120
+const ARM_LEAST = 0.85
+const ARM_MOST = 1.2
 
 /** 이보다 작게 흔들리면 멈춘 것으로 봅니다(0.08도 — 태그 아랫단이 0.1px 도 안 움직임) */
 const REST = (0.08 * Math.PI) / 180
@@ -68,7 +100,7 @@ const MARGIN = 60
 
 /**
  * 기울기가 마지막으로 쓴 값에서 이만큼(도) 넘게 바뀔 때만 다시 씁니다. 1920 x 1080 에서 매단 길이
- * (줄 35 + 태그 130 = 165px)의 아랫단이 0.15px 도 안 움직이는 각도라, 그보다 작은 변화는 눈에 안
+ * (줄 35 + 태그 85 = 120px)의 아랫단이 0.1px 남짓 움직이는 각도라, 그보다 작은 변화는 눈에 안
  * 보이는데 태그를 다시 그리게만 합니다. 바람에 들린 기울기(--tag-lift)도 같은 값으로 거릅니다.
  */
 const WRITE_STEP = 0.05
@@ -156,6 +188,9 @@ const shiftOf = (element: HTMLElement) =>
  * 태그마다 주기를 ±10% 다르게 둡니다. 줄 길이가 조금씩 다른 것처럼 처음엔 같이
  * 흔들리다 점점 박자가 어긋나서, 판자 하나에 붙은 것처럼 한꺼번에 움직이지 않습니다.
  *
+ * 벽이 흐르는 쪽 끝의 태그일수록 크게 흔들립니다(위 "끌려오는 쪽이 더 흔들립니다"). 휠을 아래로 굴리면
+ * 오른쪽 끝부터, 위로 굴리면 왼쪽 끝부터 크게 출렁이고, 태그가 클수록 조금 더 흔들립니다(ARM_*).
+ *
  * **움직일 때만 돕니다.** kick · gust 로 시작하고, 트랙이 서고 창 가까운 태그가 모두 가라앉고 바람이
  * 그치면 멈춥니다. 도는 중에 또 부르면 흔들리던 그대로 이어 받습니다 — 처음부터 다시 흔들면
  * 연달아 흘려 보낼 때 태그가 뚝 끊겼다가 새로 출렁입니다.
@@ -214,6 +249,13 @@ export function useTagSwing(
       // 레이아웃은 시작할 때 한 번만 잽니다. 태그는 트랙과 함께 움직여 트랙 안 자리가 그대로입니다
       const trackBox = element.getBoundingClientRect()
       const viewBox = view.getBoundingClientRect()
+      // 보이는 창의 오른쪽 끝 — 패널이 창 오른쪽을 덮으면 패널 왼쪽 끝입니다(위 "끌려오는 쪽이 더 흔들립니다")
+      const panelBox = panel.current?.getBoundingClientRect()
+      const seenRight =
+        panelBox && panelBox.width > 0 && panelBox.left > viewBox.left
+          ? Math.min(viewBox.right, panelBox.left)
+          : viewBox.right
+      const seenWidth = seenRight - viewBox.left
       const startShift = shiftOf(element)
       const trackLeft = () => trackBox.left + shiftOf(element) - startShift
 
@@ -227,8 +269,12 @@ export function useTagSwing(
           hanger,
           left: box.left - trackBox.left,
           right: box.right - trackBox.left,
+          /** 매단 길이(줄 + 태그, px) — 크기에 따른 세기(ARM_*)를 셉니다 */
+          height: box.height,
           omega: ((2 * Math.PI) / PERIOD) * (0.9 + 0.2 * spread),
           swing: { angle: 0, speed: 0 } as Swing,
+          /** 흐르는 쪽 끝에 가까울수록 커지는 세기(PULL_*). 흐르는 쪽을 알기 전에는 1 입니다 */
+          pull: 1,
           /** 마지막으로 쓴 기울기(도). 흔들기 전에는 --tag-swing 이 없어 0 입니다 */
           written: 0,
           /** 앞으로 들린 기울기(라디안). 바람이 불 때만 움직입니다 */
@@ -246,6 +292,32 @@ export function useTagSwing(
         }
       })
       type Pendulum = (typeof pendulums)[number]
+
+      /** 태그 크기에 따른 세기(ARM_*). 매단 길이는 태그마다 같아서 첫 태그로 잽니다 */
+      const arm = pendulums[0]?.height ?? 0
+      const size =
+        arm > 0
+          ? Math.min(ARM_MOST, Math.max(ARM_LEAST, arm / ARM_REFERENCE))
+          : 1
+
+      /** 벽이 흐르는 쪽 — 트랙이 왼쪽으로 가면 −1(병이 오른쪽에서 들어옴), 오른쪽이면 1, 아직 모르면 0 */
+      let heading = 0
+      /** 흐르는 쪽 끝에 가까운 태그일수록 세게 — 태그마다 세기(pull)를 셉니다 */
+      const lean = (x: number) => {
+        for (const pendulum of pendulums) {
+          const center = x + (pendulum.left + pendulum.right) / 2
+          const ahead =
+            seenWidth <= 0
+              ? 0.5
+              : heading < 0
+                ? (center - viewBox.left) / seenWidth
+                : (seenRight - center) / seenWidth
+          pendulum.pull =
+            PULL_LEAST +
+            (PULL_MOST - PULL_LEAST) *
+              Math.min(1, Math.max(0, ahead)) ** PULL_CURVE
+        }
+      }
 
       /** 들림 표시(data-lift · --tag-lift · --tag-lit)를 뗍니다 */
       const unlift = (pendulum: Pendulum) => {
@@ -315,6 +387,11 @@ export function useTagSwing(
           const accel = (speed - lastSpeed) / elapsed
           lastX = x
           lastSpeed = speed
+          // 흐르는 쪽이 정해지거나 바뀌면 태그마다 세기를 다시 셉니다(위 "끌려오는 쪽이 더 흔들립니다")
+          if (Math.abs(speed) > PULL_TURN && Math.sign(speed) !== heading) {
+            heading = Math.sign(speed)
+            lean(x)
+          }
           const steps = Math.ceil(elapsed / STEP)
           const step = elapsed / steps
           /** 바람을 일으킨 뒤 이 프레임 첫 걸음 직전까지 흐른 시간(초). 바람보다 앞선 프레임이면 음수입니다 */
@@ -353,12 +430,17 @@ export function useTagSwing(
                     pendulum.lift.angle
                   ) / GAIN
               }
-              pendulum.swing = swingStep(pendulum.swing, accel + fan, step, {
-                omega: pendulum.omega,
-                damping: DAMPING,
-                gain: GAIN,
-                limit: LIMIT,
-              })
+              pendulum.swing = swingStep(
+                pendulum.swing,
+                accel * pendulum.pull * size + fan,
+                step,
+                {
+                  omega: pendulum.omega,
+                  damping: DAMPING,
+                  gain: GAIN,
+                  limit: LIMIT,
+                },
+              )
             }
             const { angle, speed: turning } = pendulum.swing
             const near =

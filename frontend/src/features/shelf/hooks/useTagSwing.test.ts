@@ -138,7 +138,69 @@ describe('useTagSwing — 옆 흔들림(kick)', () => {
     expect(now - settledAt).toBeLessThanOrEqual(3000)
     expect(swingOf(staying)).toBe('')
     expect(widest).toBeGreaterThan(0.5)
-    expect(widest).toBeLessThanOrEqual(6)
+    expect(widest).toBeLessThanOrEqual(8)
+  })
+
+  it('벽이 흐르는 쪽 끝의 태그가 더 크게 흔들린다 — 휠을 내리면 오른쪽 끝, 올리면 왼쪽 끝', () => {
+    const box = (left: number, width: number) => ({
+      left,
+      right: left + width,
+      width,
+      top: 0,
+      bottom: 0,
+      height: 0,
+      x: left,
+      y: 0,
+      toJSON: () => ({}),
+    })
+    /** 벽을 shift(px)만큼 400ms 에 흘리며 창 왼쪽 끝 · 오른쪽 끝 태그의 가장 큰 기울기(도)를 잽니다 */
+    const widestWhen = (shift: number) => {
+      const viewport = document.createElement('section')
+      viewport.getBoundingClientRect = () => box(0, 1800)
+      const track = document.createElement('div')
+      track.getBoundingClientRect = () => box(0, 6000)
+      viewport.append(track)
+      const [left, right] = [100, 1500].map((at) => {
+        const hanger = document.createElement('span')
+        hanger.className = 'shelf-tag-hanger'
+        hanger.getBoundingClientRect = () => box(at, 155)
+        track.append(hanger)
+        return hanger
+      })
+      if (!left || !right) throw new Error('태그가 없습니다')
+      const { result, unmount } = renderHook(() =>
+        useTagSwing(
+          { current: track },
+          { current: viewport },
+          { current: document.createElement('div') },
+        ),
+      )
+      const tilt = (hanger: HTMLElement) =>
+        Math.abs(
+          Number.parseFloat(hanger.style.getPropertyValue('--tag-swing')) || 0,
+        )
+      track.style.transform = 'translate3d(0.00px, 0, 0)'
+      result.current.kick()
+      const widest = { left: 0, right: 0 }
+      const started = now
+      while (now - started < 1000) {
+        const t = Math.min(1, (now - started + 16) / 400)
+        const moved = (shift * (1 - Math.cos(Math.PI * t))) / 2
+        track.style.transform = `translate3d(${moved.toFixed(2)}px, 0, 0)`
+        frame()
+        widest.left = Math.max(widest.left, tilt(left))
+        widest.right = Math.max(widest.right, tilt(right))
+      }
+      unmount()
+      return widest
+    }
+
+    // 휠을 내림 — 벽이 왼쪽으로 흘러 병이 오른쪽에서 들어옵니다
+    const down = widestWhen(-180)
+    expect(down.right).toBeGreaterThan(down.left * 1.5)
+    // 휠을 올림 — 벽이 오른쪽으로 흘러 병이 왼쪽에서 들어옵니다
+    const up = widestWhen(180)
+    expect(up.left).toBeGreaterThan(up.right * 1.5)
   })
 })
 

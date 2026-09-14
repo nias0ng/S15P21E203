@@ -89,7 +89,7 @@ describe('DisplayCase 이름표', () => {
 })
 
 describe('DisplayCase 창 밖 병', () => {
-  it('창 밖 병과 창 끝에 걸려 지운 병은 탭 순서 · 낭독기에서 빠진다(inert)', () => {
+  it('창 밖 병과 창 끝에 걸친 병은 탭 순서 · 낭독기에서 빠진다(inert)', () => {
     // 창이 칸 1 에서 시작해 칸 2 까지 걸치고, 칸 2 가 창 오른쪽 끝에 걸렸습니다
     renderCase(THREE, { winFrom: 1, winTo: 3, edgeFrom: 2 })
     expect(bottle('우드 세이지')).toHaveAttribute('inert')

@@ -123,13 +123,13 @@ type FirstScreen = { from: number; to: number; id: number | null }
  * plaqueMetrics). 그 값은 현판 단추에 따로 넣습니다(ShelfPlaque).
  *
  * ── 창 밖 병 ───────────────────────────────────────────────
- * 멈춘 칸을 기준으로 창 밖 병은 inert 로 탭 순서에서 빼고, 창 끝 페이드 구간에 걸리는 이웃만 투명하게
- * 지웁니다(lib.ts 의 slotView) — 창 왼쪽 바로 앞 칸, 창 오른쪽 끝(패널 밑)에 걸린 칸과 그다음 칸.
- * 지운 칸도 탭 순서에서 뺍니다. 이름표 벽 기둥은 두 칸 중 하나라도 지우는 칸이면 통째로 지웁니다.
+ * 멈춘 칸을 기준으로 창 밖 병과 창 끝에 걸친 병(창 왼쪽 바로 앞 칸, 창 오른쪽 끝(패널 밑)에 걸린 칸과
+ * 그다음 칸 — lib.ts 의 slotView)은 inert 로 탭 순서에서 뺍니다. 이름표 벽 기둥은 두 칸 중 하나라도
+ * 걸친 칸이면 탭으로 닿지 않습니다.
  *
- * 흐르는 동안에는 트랙에 data-moving 을 걸어, 지운 이웃을 CSS 가 **곧바로** 되살립니다 — 들어올 병이
- * 반쯤 투명한 채 미끄러져 들어오지 않습니다. 멈추면 새 칸 기준의 data-faded · inert 를 먼저 그린 뒤
- * data-moving 을 떼서, 새 이웃만 200ms 에 걸쳐 사라집니다(shelf-display.css 의 .shelf-slot[data-faded]).
+ * 걸친 병은 지우지 않습니다. 창 마스크의 페이드를 따라 걸친 채 비치고, 벽이 설 때는 용수철이 끝을
+ * 천천히 끌어당겨 칸에 붙입니다(useShelfFlow). 예전에는 멈추면 걸친 이웃을 200ms 에 걸쳐 투명하게
+ * 지워서 창 끝에서 병이 스르르 사라졌습니다.
  *
  * 흐르는 중이라는 표시(data-moving)는 React 상태가 아니라 트랙 · 창 · 패널 자리에 **직접** 씁니다.
  * 상태로 들었을 때는 흐르기 시작할 때와 설 때마다 벽 전체가 다시 그려져(병 칸 서른 개 남짓의 inert ·
@@ -313,8 +313,8 @@ export function ShelfWall({
         return
       }
       /*
-       * 새 칸 기준의 data-faded · inert 를 먼저 그린 뒤(flushSync) data-moving 을 뗍니다. 거꾸로 떼면
-       * 방금 창 안으로 들어온 병이 한 프레임 투명해졌다 돌아옵니다.
+       * 새 칸 기준의 inert 를 먼저 그린 뒤(flushSync) data-moving 을 뗍니다. 거꾸로 떼면 마우스를 올린
+       * 병이 커지는 효과(data-moving 이 없을 때만)가 옛 칸 기준으로 한 프레임 걸립니다.
        *
        * 마이크로태스크로 한 박자 미룹니다. 멈춤은 React 효과 안에서도 옵니다(흐르던 중에 검색어가
        * 바뀌어 맨 앞으로 옮김) — 거기서 flushSync 는 그리지 못하고 경고만 냅니다. 프레임 콜백에서 온
@@ -385,13 +385,8 @@ export function ShelfWall({
   )
 
   /*
-   * 벽 칸 하나(벽 첫 칸부터 센 순서)의 처지(lib.ts 의 slotView). **멈춘 칸 기준**입니다 — 흐르는 동안
-   * 지운 이웃을 되살리는 건 트랙의 data-moving 과 CSS 가 맡습니다(위 "창 밖 병").
-   *
-   * 창 밖 병 중 **창 끝 페이드 구간에 걸리는 이웃**만 투명하게 지웁니다. 그보다 먼 병은 창 마스크
-   * 밖이라 원래 보이지 않습니다. 예전에는 창 밖 병을 전부 지웠다가 움직이는 순간 한꺼번에 되살려서,
-   * 병 스무 개의 층 백여 개가 동시에 투명도 전환을 하며 다시 그려졌습니다 — 휠을 빠르게 굴릴 때
-   * 끊기던 주된 원인이었습니다.
+   * 벽 칸 하나(벽 첫 칸부터 센 순서)의 처지(lib.ts 의 slotView). **멈춘 칸 기준**입니다 — 창 밖 칸과
+   * 창 끝에 걸친 칸을 탭 순서에서 뺄 뿐, 어느 칸도 투명하게 지우지 않습니다(위 "창 밖 병").
    */
   const slotAt = (index: number): SlotView =>
     slotView(
@@ -402,15 +397,16 @@ export function ShelfWall({
     )
 
   /*
-   * 이름표 벽 기둥의 처지. 두 칸 중 하나라도 지우는 칸이면 통째로 지웁니다 — 현판 한 장을 반만 지울
-   * 수는 없습니다. 지우지 않은 기둥은 한 칸이라도 창 안이면 탭으로 닿습니다.
+   * 이름표 벽 기둥이 탭으로 닿는가. 두 칸 중 하나라도 창 끝에 걸친 칸이면 닿지 않고, 아니면 한 칸이라도
+   * 창 안일 때 닿습니다 — 현판 한 장은 반만 걸쳐도 반쯤 가려 있습니다.
    */
-  const columnAt = (column: number) => {
+  const focusableAt = (column: number) => {
     const slots = Array.from({ length: layout.plaqueSpan }, (_, k) =>
       slotAt(column + k),
     )
-    const faded = slots.some((slot) => slot.faded)
-    return { faded, focusable: !faded && slots.some((slot) => !slot.hidden) }
+    return (
+      !slots.some((slot) => slot.edge) && slots.some((slot) => !slot.hidden)
+    )
   }
 
   /*
@@ -499,7 +495,6 @@ export function ShelfWall({
               >
                 {layout.sections.map((section) => {
                   const headingId = `${idPrefix}-${section.category}`
-                  const column = columnAt(section.plaque)
                   return (
                     <section
                       key={section.category}
@@ -513,8 +508,7 @@ export function ShelfWall({
                         count={section.items.length}
                         plaque={plaque}
                         hintId={plaqueHintId}
-                        focusable={column.focusable}
-                        faded={column.faded}
+                        focusable={focusableAt(section.plaque)}
                         onShow={() =>
                           (onPlaqueSelect ?? showSection)(section.category)
                         }
@@ -553,7 +547,7 @@ export function ShelfWall({
                     count={first.items.length}
                     plaque={plaque}
                     hintId={returnHintId}
-                    {...columnAt(layout.back)}
+                    focusable={focusableAt(layout.back)}
                     onShow={() =>
                       (onPlaqueSelect ?? showSection)(first.category)
                     }

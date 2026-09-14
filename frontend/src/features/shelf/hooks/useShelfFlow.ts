@@ -18,16 +18,20 @@ const FLING_MS = 160
 /*
  * 멈출 칸에 붙는 용수철(lib.ts 의 springStep). 휠 · 끌기를 뗀 뒤에 씁니다.
  *
- *   고유 진동수 18 · 감쇠비 0.8   휠 한 번(1920 에서 한 칸 209px)이 0.19초에 95% 를 가고, 2px 남짓
- *                                 넘었다 돌아와 0.43초에 섭니다 — 자석에 딸깍 붙는 느낌입니다
- *   벽 양 끝(0 · max)으로는 1     넘어가면 벽 끝 너머 빈 곳이 비칩니다
- *   속도 한도 24 칸/초            여러 번 쌓아 굴려도 1920 에서 한 프레임 83px 남짓까지만 건너뜁니다
+ *   고유 진동수 14 · 감쇠비 1.25  휠 한 번(1920 에서 한 칸 182.5px)이 0.38초에 90% 를 가고, 남은 10% 를
+ *                                 0.5초에 걸쳐 천천히 들어가 0.9초에 섭니다. 넘지 않습니다
+ *   속도 한도 24 칸/초            여러 번 쌓아 굴려도 1920 에서 한 프레임 73px 남짓까지만 건너뜁니다
+ *
+ * 감쇠비를 1 보다 크게 둬서(과감쇠) 출발은 빠르고 끝은 느립니다 — 칸에 가까워질수록 자석에 끌려
+ * 들어가듯 천천히 붙어, 창 끝에 걸친 병이 걸친 채 스르르 당겨져 섭니다. 예전 고유 진동수 18 · 감쇠비
+ * 0.8 은 0.43초 만에 2px 넘었다 딸깍 붙어, 걸친 병이 휙 들어왔다 튕기듯 섰습니다. 벽 양 끝으로도
+ * 넘지 않아 따로 감쇠비를 올리지 않습니다.
  *
  * 예전에는 굴린 만큼 목표를 옮겨 따라가다 110ms 조용하면 칸 경계에 맞췄는데, 맞추는 순간 목표가
  * 멀어져 속도가 3.4 배로 튀었습니다. 용수철은 목적지가 바뀌어도 속도를 이어서 튀지 않습니다.
  */
-const SPRING_OMEGA = 18
-const SPRING_DAMPING = 0.8
+const SPRING_OMEGA = 14
+const SPRING_DAMPING = 1.25
 const SPRING_MAX_SPEED = 24
 /** 용수철을 굴리는 한 걸음(초). 프레임이 이보다 길면 여러 걸음으로 나눠 굴립니다 */
 const SPRING_STEP = 1 / 120
@@ -295,14 +299,16 @@ function createFlow() {
     } else {
       // 움직임을 줄인 사용자: 끌기를 뗀 뒤에도 멈출 자리로 바로 옮깁니다
       if (prefersReducedMotion()) return finish()
-      // 벽 끝으로 갈 때는 넘어가지 않게 감쇠비 1 로 붙입니다
-      const damping = dest <= 0 || dest >= max ? 1 : SPRING_DAMPING
       for (let left = elapsed; left > 1e-9; left -= SPRING_STEP) {
         const next = springStep(
           { position, velocity },
           dest,
           Math.min(SPRING_STEP, left),
-          { omega: SPRING_OMEGA, damping, maxSpeed: SPRING_MAX_SPEED },
+          {
+            omega: SPRING_OMEGA,
+            damping: SPRING_DAMPING,
+            maxSpeed: SPRING_MAX_SPEED,
+          },
         )
         position = next.position
         velocity = next.velocity

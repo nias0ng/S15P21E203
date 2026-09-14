@@ -50,30 +50,6 @@ type Props = {
 const BOTTLE_HEIGHT = 'var(--bottle-h)'
 
 /**
- * 마우스를 따라 벽감 안 조명이 몇 px 움직입니다.
- *
- * 위치를 -1~1 로 재서 CSS 변수(--px · --py)로만 넘기고, 얼마나 움직일지는
- * `shelf-display.css` 가 정합니다(조명 3px · 병 1.5px). 상태로 들지 않는 이유는
- * 마우스가 움직일 때마다 병 스물다섯 개가 다시 그려지기 때문입니다.
- *
- * 마우스만 따릅니다. 손가락으로 끄는 동안 조명이 따라오면 화면이 흔들려 보입니다.
- * 움직임을 줄이도록 설정한 사용자에게는 CSS 가 이 값을 무시합니다.
- */
-function followPointer(event: React.PointerEvent<HTMLElement>) {
-  if (event.pointerType !== 'mouse') return
-  const box = event.currentTarget.getBoundingClientRect()
-  const x = ((event.clientX - box.left) / box.width) * 2 - 1
-  const y = ((event.clientY - box.top) / box.height) * 2 - 1
-  event.currentTarget.style.setProperty('--px', x.toFixed(3))
-  event.currentTarget.style.setProperty('--py', y.toFixed(3))
-}
-
-function resetPointer(event: React.PointerEvent<HTMLElement>) {
-  event.currentTarget.style.setProperty('--px', '0')
-  event.currentTarget.style.setProperty('--py', '0')
-}
-
-/**
  * 벽감 하나 — 분류 하나의 병들이 서는 자리 (와이어프레임 A13 재디자인 시안)
  *
  * 벽을 파낸 벽감에 향수병을 세워 둡니다. 벽감은 **면 단위로** 나뉘어 있습니다 —
@@ -117,8 +93,6 @@ export const DisplayCase = memo(function DisplayCase({
     <div
       className="relative h-full shrink-0"
       style={{ width: `calc(var(--pitch) * ${span})` }}
-      onPointerMove={followPointer}
-      onPointerLeave={resetPointer}
     >
       {/*
         벽감 면들. 순서가 곧 겹치는 순서입니다 — 뒷벽과 그 조명이 먼저 깔리고,
@@ -158,7 +132,7 @@ export const DisplayCase = memo(function DisplayCase({
         >
           {items.map((item, at) => {
             const selected = item.shelfItemId === selectedId
-            const { hidden, faded } = slotView(at, winFrom, winTo, edgeFrom)
+            const { hidden, edge } = slotView(at, winFrom, winTo, edgeFrom)
             const firstScreen =
               (at >= priorityFrom && at <= priorityTo) ||
               item.shelfItemId === priorityId
@@ -169,14 +143,10 @@ export const DisplayCase = memo(function DisplayCase({
                 aria-pressed={selected}
                 onClick={() => onSelect(item)}
                 title={`${item.name} · ${item.brand}`}
-                // 창 밖 병과 투명하게 지운 병. 탭 순서와 낭독기에서 빼고 누르지도 못합니다 —
-                // 지운 병은 패널 밑 · 화면 여백에 있어, 보이지 않는 단추에 포커스가 가지 않게
-                inert={hidden || faded}
-                // 창 끝 페이드 구간에 걸리는 이웃 병만 CSS 가 **투명하게** 지웁니다
-                // (.shelf-slot[data-faded]). 잘라내면 창 경계에 걸친 그림자까지
-                // 같이 잘려 세로줄이 생깁니다. 벽이 흐르는 동안에는 트랙의
-                // data-moving 이 곧바로 되살립니다.
-                data-faded={faded || undefined}
+                // 창 밖 병과 창 끝에 걸친 병. 탭 순서와 낭독기에서 빼고 누르지도 못합니다 —
+                // 걸친 병은 패널 밑 · 화면 여백의 페이드에 반쯤 가려 있어 거기로 포커스가 가지 않게.
+                // 걸친 병을 지우지는 않습니다 — 창 마스크의 페이드를 따라 걸친 채 비칩니다
+                inert={hidden || edge}
                 // 겹치는 순위. 왼쪽 병일수록 앞이라 그 그림자가 오른쪽 병 위에
                 // 떨어집니다. 층마다의 z-index 는 shelf-display.css 의
                 // .shelf-slot 이 이 값으로 계산합니다.

@@ -347,7 +347,7 @@ const MIN_SLOT_PITCH = 110
  * 1440 · 1280 에서 병이 넷으로 줍니다.
  *
  * 창 오른쪽 끝(패널 밑)은 칸 경계에 오지 않습니다. 그래서 창에 걸치는 칸(visible)과 창 안에
- * 온전히 드는 칸(whole)을 따로 세고, 그 사이에 걸린 칸은 멈춰 있을 때 투명하게 지웁니다(slotView).
+ * 온전히 드는 칸(whole)을 따로 세고, 그 사이에 걸린 칸은 탭 순서에서 뺍니다(slotView).
  *
  *   1920 x 1080  패널 340 · 패널 왼쪽 끝 1460 → 가리지 않는 칸 여덟 · 칸 182.5 · 창에 걸치는 칸 열 · 온전한 칸 아홉
  *   1562 x 914   패널 289 · 패널 왼쪽 끝 1153 → 가리지 않는 칸 여덟 · 칸 144.13 · 열하나 · 열
@@ -873,8 +873,8 @@ export function nearStop(
 export type SlotView = {
   /** 창 밖 — 탭 순서와 낭독기에서 뺍니다 */
   hidden: boolean
-  /** 창 끝 페이드 구간에 걸리는 이웃 — 투명하게 지웁니다 */
-  faded: boolean
+  /** 창 끝에 걸친 칸 — 걸친 채 비치지만 탭 순서와 낭독기에서는 뺍니다 */
+  edge: boolean
 }
 
 /**
@@ -884,10 +884,9 @@ export type SlotView = {
  *   winTo     창에 걸치는 칸의 끝(winFrom + visible). 이 칸부터 창 밖입니다
  *   edgeFrom  창 오른쪽 끝에 걸린 칸(winFrom + whole). 걸린 칸이 없으면 winTo 와 같습니다
  *
- * 창 끝 페이드 구간의 이웃은 창 왼쪽 바로 앞 칸 하나와, 오른쪽 끝에 걸린 칸(패널 밑) · 그다음
- * 칸(여백의 페이드 구간)입니다 — 많아야 셋. **창 밖 병을 전부 지우지 않습니다.** 더 먼 병은 창
- * 마스크 밖이라 원래 보이지 않고, 전부 지우면 벽이 움직이는 순간 수십 개 층이 한꺼번에 되살아나며
- * 끊깁니다(ShelfWall).
+ * 창 끝에 걸친 칸은 창 왼쪽 바로 앞 칸 하나와, 오른쪽 끝에 걸린 칸(패널 밑) · 그다음 칸(여백의 페이드
+ * 구간)입니다 — 많아야 셋. 예전에는 이 칸들을 멈출 때 투명하게 지웠는데, 창 끝에서 병이 스르르
+ * 사라져 보여서 지금은 걸친 채 둡니다. 반쯤 가린 병에 포커스가 가지 않게만 합니다.
  */
 export function slotView(
   at: number,
@@ -897,7 +896,7 @@ export function slotView(
 ): SlotView {
   return {
     hidden: at < winFrom || at >= winTo,
-    faded: at === winFrom - 1 || (at >= edgeFrom && at <= winTo),
+    edge: at === winFrom - 1 || (at >= edgeFrom && at <= winTo),
   }
 }
 

@@ -178,13 +178,16 @@ describe('useShelfFlow 휠 — 한 번 = 한 칸', () => {
     expect(STOPS).toContain(rest)
   })
 
-  it('한 칸은 0.65초 안에 서고, 넘는 거리는 3px 이하 · 한 프레임에 90px 넘게 건너뛰지 않는다', () => {
+  it('한 칸은 넘지 않고 끝을 천천히 들어가 1초 안에 서고, 한 프레임에 90px 넘게 건너뛰지 않는다', () => {
     const { wheel, flow, positions } = setup()
     flow.go(3, true)
     positions.length = 0
     wheel(100)
-    expect(settle()).toBeLessThanOrEqual(650)
-    expect((Math.max(...positions) - 4) * PITCH).toBeLessThanOrEqual(3)
+    expect(settle()).toBeLessThanOrEqual(1000)
+    expect((Math.max(...positions) - 4) * PITCH).toBeLessThanOrEqual(0.5)
+    // 남은 한 칸의 10% 는 자석에 끌려가듯 천천히 — 스무 프레임(0.32초) 넘게 걸립니다
+    const close = positions.findIndex((position) => position >= 3.9)
+    expect(positions.length - close).toBeGreaterThan(20)
     const jumps = positions.map((position, at) =>
       Math.abs(position - (positions[at - 1] ?? 3)),
     )

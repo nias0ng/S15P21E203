@@ -87,12 +87,12 @@ describe('formatShelfDate', () => {
 })
 
 describe('swingStep', () => {
-  // useTagSwing 의 값 — 주기 0.95초 · 감쇠비 0.3 · 1/4000 · 한도 6도
+  // useTagSwing 의 값 — 주기 0.95초 · 감쇠비 0.3 · 1/3000 · 한도 8도
   const OPTIONS = {
     omega: (2 * Math.PI) / 0.95,
     damping: 0.3,
-    gain: 1 / 4000,
-    limit: (6 * Math.PI) / 180,
+    gain: 1 / 3000,
+    limit: (8 * Math.PI) / 180,
   }
   const STILL: Swing = { angle: 0, speed: 0 }
   const FRAME = 1 / 60
@@ -125,7 +125,7 @@ describe('swingStep', () => {
     expect(half.angle).toBeLessThan(0)
   })
 
-  it('아무리 세게 밀어도 한도(6도)를 넘지 않는다', () => {
+  it('아무리 세게 밀어도 한도(8도)를 넘지 않는다', () => {
     expect(swingStep(STILL, 1e9, FRAME, OPTIONS).angle).toBe(OPTIONS.limit)
     expect(swingStep(STILL, -1e9, FRAME, OPTIONS).angle).toBe(-OPTIONS.limit)
   })
@@ -292,8 +292,8 @@ describe('liftTarget · liftStep', () => {
 })
 
 describe('springStep', () => {
-  // useShelfFlow 의 값 — 고유 진동수 18 · 감쇠비 0.8 · 속도 한도 24 칸/초
-  const OPTIONS = { omega: 18, damping: 0.8, maxSpeed: 24 }
+  // useShelfFlow 의 값 — 고유 진동수 14 · 감쇠비 1.25 · 속도 한도 24 칸/초
+  const OPTIONS = { omega: 14, damping: 1.25, maxSpeed: 24 }
   const DT = 1 / 240
 
   /** 서 있던 벽(0)을 dest 로 몇 초 동안 끌어당기며 지나온 상태를 모읍니다 */
@@ -307,21 +307,26 @@ describe('springStep', () => {
     return trail
   }
 
-  it('휠 한 번(1920 칸 폭 208.6px)은 0.5초가 지나면 0.5px 안쪽에 붙어 있다', () => {
-    const settled = pull(1.5).slice(Math.round(0.5 / DT))
+  it('휠 한 번(1920 칸 폭 182.5px)은 1초가 지나면 0.5px 안쪽에 붙어 있다', () => {
+    const settled = pull(2).slice(Math.round(1 / DT))
     const farthest = Math.max(
       ...settled.map(({ position }) => Math.abs(1 - position)),
     )
-    expect(farthest * 208.6).toBeLessThan(0.5)
+    expect(farthest * 182.5).toBeLessThan(0.5)
   })
 
-  it('살짝 넘었다 돌아와 딸깍 걸리되, 넘는 거리는 한 칸의 2% 이하다', () => {
-    const peak = Math.max(...pull(1).map(({ position }) => position))
-    expect(peak).toBeGreaterThan(1)
-    expect(peak - 1).toBeLessThanOrEqual(0.02)
+  it('넘지 않고 끝을 천천히 들어간다 — 90% 까지는 0.4초 안, 남은 10% 에 0.4초 넘게', () => {
+    const trail = pull(2)
+    const peak = Math.max(...trail.map(({ position }) => position))
+    expect(peak).toBeLessThanOrEqual(1)
+    const ninety = trail.findIndex(({ position }) => position >= 0.9) * DT
+    const close =
+      trail.findIndex(({ position }) => (1 - position) * 182.5 < 0.5) * DT
+    expect(ninety).toBeLessThan(0.4)
+    expect(close - ninety).toBeGreaterThan(0.4)
   })
 
-  it('감쇠비 1 이면 넘어가지 않는다 — 벽 양 끝으로 갈 때', () => {
+  it('감쇠비 1 이어도 넘어가지 않는다', () => {
     const peak = Math.max(
       ...pull(1, { ...OPTIONS, damping: 1 }).map(({ position }) => position),
     )
@@ -866,22 +871,22 @@ describe('nextStop · nearStop', () => {
 })
 
 describe('slotView', () => {
-  it('창 오른쪽 끝에 걸린 칸이 있으면 — 창 밖은 감추고, 왼쪽 이웃 하나와 걸린 칸 · 그다음 칸만 지운다', () => {
+  it('창 오른쪽 끝에 걸린 칸이 있으면 — 창 밖은 감추고, 왼쪽 이웃 하나와 걸린 칸 · 그다음 칸을 창 끝에 걸친 칸으로 친다', () => {
     // 창 왼쪽 끝 3 · 창에 걸치는 칸 아홉(3 ~ 11) · 온전한 칸 여덟(3 ~ 10)
     const view = (at: number) => slotView(at, 3, 12, 11)
-    expect(view(2)).toEqual({ hidden: true, faded: true })
-    expect(view(3)).toEqual({ hidden: false, faded: false })
-    expect(view(10)).toEqual({ hidden: false, faded: false })
-    expect(view(11)).toEqual({ hidden: false, faded: true })
-    expect(view(12)).toEqual({ hidden: true, faded: true })
-    expect(view(13)).toEqual({ hidden: true, faded: false })
-    expect(view(1)).toEqual({ hidden: true, faded: false })
+    expect(view(2)).toEqual({ hidden: true, edge: true })
+    expect(view(3)).toEqual({ hidden: false, edge: false })
+    expect(view(10)).toEqual({ hidden: false, edge: false })
+    expect(view(11)).toEqual({ hidden: false, edge: true })
+    expect(view(12)).toEqual({ hidden: true, edge: true })
+    expect(view(13)).toEqual({ hidden: true, edge: false })
+    expect(view(1)).toEqual({ hidden: true, edge: false })
   })
 
-  it('창 밖 병을 전부 지우지 않는다 — 지우는 칸은 많아야 셋이다', () => {
+  it('창 끝에 걸친 칸은 많아야 셋이다', () => {
     const count = (winFrom: number, winTo: number, edgeFrom: number) =>
       Array.from({ length: 40 }, (_, at) => at - 5).filter(
-        (at) => slotView(at, winFrom, winTo, edgeFrom).faded,
+        (at) => slotView(at, winFrom, winTo, edgeFrom).edge,
       ).length
     expect(count(3, 12, 11)).toBe(3)
     // 걸린 칸이 없는 쌓는 배치(온전한 칸 = 창에 걸치는 칸)는 양옆 하나씩

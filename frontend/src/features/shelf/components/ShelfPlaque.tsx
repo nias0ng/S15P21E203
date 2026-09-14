@@ -22,10 +22,8 @@ type PlaqueProps = {
   plaque: PlaqueMetrics
   /** 누르면 어떻게 되는지 적은 설명 요소의 id */
   hintId: string
-  /** 창 안에 있어 탭으로 닿는가 */
+  /** 창 안에 있어 탭으로 닿는가. 창 끝에 걸친 기둥은 닿지 않습니다 */
   focusable: boolean
-  /** 창 끝 페이드 구간에 걸리는 기둥인가 — 병과 같은 규칙으로 투명하게 지웁니다 */
-  faded: boolean
   onShow: () => void
 }
 
@@ -127,9 +125,9 @@ function PlaqueBoard({
  * aria-label 을 달면 제목의 이름까지 바뀌니 달지 않고, 누르면 어떻게 되는지는 설명
  * (aria-describedby)으로 붙입니다.
  *
- * 창 밖 현판은 탭 순서에서만 뺍니다(tabIndex −1). inert 를 걸면 제목 글자까지 낭독기에서
- * 사라져, 제목으로 건너뛰며 분류를 찾을 수 없습니다. 페이드 구간에 걸려 투명하게 지운 현판은
- * 누르지도 못하게 CSS 가 막습니다 — 보이지 않는 단추가 화면 여백에 남지 않게.
+ * 창 밖 · 창 끝에 걸친 현판은 탭 순서에서만 뺍니다(tabIndex −1). inert 를 걸면 제목 글자까지
+ * 낭독기에서 사라져, 제목으로 건너뛰며 분류를 찾을 수 없습니다. 걸친 현판은 지우지 않고 걸친 채
+ * 비치며, 누르면 그 분류로 흐릅니다.
  *
  * ⚠️ 투명도 · 그림자 · 오리기는 현판 안쪽 요소에만 겁니다. 이 기둥은 병 칸(.shelf-slot)이
  * 아니라 걸어도 병 그림자의 겹침 순서에 끼지 않습니다.
@@ -142,7 +140,6 @@ export function ShelfPlaque({
   plaque,
   hintId,
   focusable,
-  faded,
   onShow,
 }: Props) {
   return (
@@ -158,7 +155,6 @@ export function ShelfPlaque({
           tabIndex={focusable ? undefined : -1}
           // 폭이 좁으면 적는 것을 줄입니다(CSS 의 .shelf-plaque[data-detail])
           data-detail={plaque.detail}
-          data-faded={faded || undefined}
           style={plaqueStyle(plaque)}
           className="shelf-plaque"
         >
@@ -191,7 +187,6 @@ export function ShelfReturnPlaque({
   plaque,
   hintId,
   focusable,
-  faded,
   onShow,
 }: PlaqueProps) {
   return (
@@ -203,7 +198,6 @@ export function ShelfReturnPlaque({
           aria-describedby={hintId}
           tabIndex={focusable ? undefined : -1}
           data-detail={plaque.detail}
-          data-faded={faded || undefined}
           style={plaqueStyle(plaque)}
           className="shelf-plaque"
         >
