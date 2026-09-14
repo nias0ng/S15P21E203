@@ -53,4 +53,8 @@ public class Perfume {
     protected Perfume() {
         // JPA 가 요구하는 기본 생성자입니다.
     }
+
+    public Long getId() {
+        return id;
+    }
 }

@@ -50,7 +50,7 @@ export function LoginForm() {
         </Button>
       </form>
 
-      <div className="flex items-center justify-between text-[10.5px]">
+      <div className="text-caption flex items-center justify-between">
         <Link to={ROUTES.SIGNUP} className="text-ink-muted hover:text-ink">
           회원가입 →
         </Link>

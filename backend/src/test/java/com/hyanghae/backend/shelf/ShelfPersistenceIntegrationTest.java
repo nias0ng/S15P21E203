@@ -3,15 +3,14 @@ package com.hyanghae.backend.shelf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.hyanghae.backend.shelf.entity.Memo;
 import com.hyanghae.backend.shelf.entity.OwnershipStatus;
-import com.hyanghae.backend.shelf.entity.PersonalRecord;
 import com.hyanghae.backend.shelf.entity.UserPerfume;
-import com.hyanghae.backend.shelf.repository.PersonalRecordRepository;
+import com.hyanghae.backend.shelf.repository.MemoRepository;
 import com.hyanghae.backend.shelf.repository.UserPerfumeRepository;
 import com.hyanghae.backend.support.IntegrationTest;
 import jakarta.persistence.EntityManagerFactory;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -29,18 +28,18 @@ class ShelfPersistenceIntegrationTest {
     private UserPerfumeRepository userPerfumeRepository;
 
     @Autowired
-    private PersonalRecordRepository personalRecordRepository;
+    private MemoRepository memoRepository;
 
     @Autowired
     private EntityManagerFactory entityManagerFactory;
 
     @Test
-    void mapsShelfItemAndPersonalRecordFromCurrentSchema() {
+    void mapsShelfItemAndMemoFromCurrentSchema() {
         ShelfFixture fixture = insertShelfItem();
-        Long recordId = insertPersonalRecord(fixture.shelfItemId(), "차분한 우디 향");
+        Long memoId = insertMemo(fixture.shelfItemId(), "차분한 우디 향");
 
         UserPerfume shelfItem = userPerfumeRepository.findById(fixture.shelfItemId()).orElseThrow();
-        PersonalRecord record = personalRecordRepository.findById(recordId).orElseThrow();
+        Memo memo = memoRepository.findById(memoId).orElseThrow();
 
         assertThat(shelfItem.getUserId()).isEqualTo(fixture.userId());
         assertThat(entityManagerFactory.getPersistenceUnitUtil().getIdentifier(shelfItem.getPerfume()))
@@ -51,19 +50,18 @@ class ShelfPersistenceIntegrationTest {
         assertThat(shelfItem.getCreatedAt()).isNotNull();
         assertThat(shelfItem.getUpdatedAt()).isNotNull();
 
-        assertThat(record.getUserPerfume().getId()).isEqualTo(fixture.shelfItemId());
-        assertThat(record.getContent()).isEqualTo("차분한 우디 향");
-        assertThat(record.getTestedAt()).isEqualTo(LocalDate.of(2026, 9, 9));
-        assertThat(record.getCreatedAt()).isNotNull();
-        assertThat(record.getUpdatedAt()).isNotNull();
+        assertThat(memo.getUserPerfume().getId()).isEqualTo(fixture.shelfItemId());
+        assertThat(memo.getContent()).isEqualTo("차분한 우디 향");
+        assertThat(memo.getCreatedAt()).isNotNull();
+        assertThat(memo.getUpdatedAt()).isNotNull();
     }
 
     @Test
-    void rejectsMoreThanOnePersonalRecordForSameShelfItem() {
+    void rejectsMoreThanOneMemoForSameShelfItem() {
         ShelfFixture fixture = insertShelfItem();
-        insertPersonalRecord(fixture.shelfItemId(), "첫 번째 기록");
+        insertMemo(fixture.shelfItemId(), "첫 번째 기록");
 
-        assertThatThrownBy(() -> insertPersonalRecord(fixture.shelfItemId(), "두 번째 기록"))
+        assertThatThrownBy(() -> insertMemo(fixture.shelfItemId(), "두 번째 기록"))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
@@ -85,16 +83,16 @@ class ShelfPersistenceIntegrationTest {
     }
 
     @Test
-    void deletingShelfItemCascadesToPersonalRecord() {
+    void deletingShelfItemCascadesToMemo() {
         ShelfFixture fixture = insertShelfItem();
-        Long recordId = insertPersonalRecord(fixture.shelfItemId(), "삭제될 기록");
+        Long memoId = insertMemo(fixture.shelfItemId(), "삭제될 기록");
 
         jdbcTemplate.update(
                 "DELETE FROM user_perfumes WHERE user_perfumes_id = ?",
                 fixture.shelfItemId()
         );
 
-        assertThat(personalRecordRepository.findById(recordId)).isEmpty();
+        assertThat(memoRepository.findById(memoId)).isEmpty();
     }
 
     private ShelfFixture insertShelfItem() {
@@ -131,11 +129,11 @@ class ShelfPersistenceIntegrationTest {
                 """, Long.class, userId, perfumeId, representative);
     }
 
-    private Long insertPersonalRecord(Long shelfItemId, String content) {
+    private Long insertMemo(Long shelfItemId, String content) {
         return jdbcTemplate.queryForObject("""
-                INSERT INTO personal_records (user_perfume_id, content, tested_at, created_at, updated_at)
-                VALUES (?, ?, DATE '2026-09-09', NOW(), NOW())
-                RETURNING id
+                INSERT INTO memos (user_perfume_id, content, created_at, updated_at)
+                VALUES (?, ?, NOW(), NOW())
+                RETURNING memo_id
                 """, Long.class, shelfItemId, content);
     }
 

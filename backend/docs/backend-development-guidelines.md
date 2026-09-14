@@ -240,3 +240,4 @@ CI는 `develop`과 `master`에서 Gradle 빌드와 테스트를 실행합니다.
 - [백엔드 개발 시작 가이드](../README.md)
 - [운영 모니터링 및 Grafana 사용 가이드](operational-logging.md)
 - [성능 테스트 가이드](performance-testing.md)
+- [후기 요약 배치 가이드](review-analysis-batch.md)

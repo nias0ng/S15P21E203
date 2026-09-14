@@ -28,7 +28,7 @@ export function SeasonRatingChart({ ratings }: Props) {
       {SEASONS.map((season) => (
         <li key={season.value} className="flex flex-col items-center gap-2">
           <SeasonDonut percentage={bySeason.get(season.value) ?? 0} />
-          <span className="text-ink text-xs">{season.label}</span>
+          <span className="text-ink text-caption">{season.label}</span>
         </li>
       ))}
     </ul>
@@ -79,7 +79,7 @@ function SeasonDonut({ percentage }: { percentage: number }) {
         )}
       </svg>
 
-      <span className="text-ink absolute inset-0 flex items-center justify-center text-xs font-bold">
+      <span className="text-ink text-caption absolute inset-0 flex items-center justify-center font-medium">
         {clamped}%
       </span>
     </div>

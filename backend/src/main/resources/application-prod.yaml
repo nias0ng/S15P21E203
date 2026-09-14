@@ -42,3 +42,15 @@ management:
         http.server.requests: 5ms
       maximum-expected-value:
         http.server.requests: 10s
+
+# 후기 요약 배치입니다. 기본값은 ReviewAnalysisProperties 에 있고 여기서는 운영에서
+# 바꿔야 하는 값만 덮어씁니다.
+#
+# 켜기 전에 GMS_API_KEY 를 배포 디렉터리의 .env 에 넣어야 합니다. 키 없이 켜면 애플리케이션이
+# 시작되지 않습니다. 매 주기마다 401 을 받으며 도는 것보다 배포 시점에 실패하는 편이 낫습니다.
+hyanghae:
+  review-analysis:
+    enabled: ${REVIEW_ANALYSIS_ENABLED:false}
+    gms:
+      api-key: ${GMS_API_KEY:}
+      model: ${GMS_MODEL:gpt-5-nano}

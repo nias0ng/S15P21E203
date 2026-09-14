@@ -36,13 +36,15 @@ export function PerfumeReviewDetail({ review, backTo, editTo }: Props) {
         <div className="flex items-center gap-3">
           {/* TODO: 프로필 이미지 연동 */}
           <Thumbnail className="size-8 shrink-0 rounded-full" />
-          <span className="text-ink text-xs">{review.nickname}</span>
-          <span className="text-ink-muted text-[10.5px]">
+          <span className="text-ink text-body font-medium">
+            {review.nickname}
+          </span>
+          <span className="text-ink-muted text-caption">
             · {formatRelativeTime(review.createdAt)}
           </span>
 
           {review.mine && (
-            <span className="ml-auto flex gap-1.5">
+            <span className="ml-auto flex gap-2">
               <LinkButton to={editTo} variant="outline" size="sm">
                 수정
               </LinkButton>
@@ -59,13 +61,13 @@ export function PerfumeReviewDetail({ review, backTo, editTo }: Props) {
 
         <hr className="border-line" />
 
-        <p className="text-ink text-xs leading-relaxed whitespace-pre-wrap">
+        <p className="text-ink text-body whitespace-pre-wrap">
           {review.content}
         </p>
 
         <hr className="border-line" />
 
-        <p className="text-ink-muted text-[10.5px]">
+        <p className="text-ink-muted text-caption">
           본인이 작성한 후기에만 수정 · 삭제가 보입니다.
         </p>
       </div>

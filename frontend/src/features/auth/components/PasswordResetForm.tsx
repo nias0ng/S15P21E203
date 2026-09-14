@@ -44,7 +44,7 @@ export function PasswordFindForm() {
         <p
           // 폼 제출 결과라 화면 낭독기에도 알려야 합니다
           aria-live="polite"
-          className="border-line text-ink border p-3 text-[11px]"
+          className="border-line text-ink text-body border p-3"
         >
           메일을 보냈습니다. 받은 메일함을 확인해주세요.
         </p>
