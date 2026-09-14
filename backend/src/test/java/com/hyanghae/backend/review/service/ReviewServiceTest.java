@@ -23,6 +23,7 @@ import com.hyanghae.backend.review.exception.ReviewErrorCode;
 import com.hyanghae.backend.review.repository.PerfumeReviewListRow;
 import com.hyanghae.backend.review.repository.PerfumeReviewRepository;
 import com.hyanghae.backend.review.repository.PerfumeReviewSeasonRepository;
+import com.hyanghae.backend.review.repository.ReviewLikeRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -37,12 +38,14 @@ class ReviewServiceTest {
             mock(PerfumeReviewRepository.class);
     private final PerfumeReviewSeasonRepository perfumeReviewSeasonRepository =
             mock(PerfumeReviewSeasonRepository.class);
+    private final ReviewLikeRepository reviewLikeRepository = mock(ReviewLikeRepository.class);
     private final PerfumeRepository perfumeRepository = mock(PerfumeRepository.class);
     private final SeasonRepository seasonRepository = mock(SeasonRepository.class);
     private final CurrentUser currentUser = () -> Optional.of(1L);
     private final ReviewService reviewService = new ReviewService(
             perfumeReviewRepository,
             perfumeReviewSeasonRepository,
+            reviewLikeRepository,
             perfumeRepository,
             seasonRepository,
             currentUser

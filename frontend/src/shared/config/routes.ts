@@ -22,6 +22,11 @@ export const ROUTES = {
   // 추천 (에픽 109)
   RECOMMEND: '/recommend', // A06 자연어 추천 결과 (지도 배경 + 결과 카드 + 미니맵)
 
+  // 취향 테스트 (요구사항 TST-03)
+  // 원래 자리는 회원가입 직후 온보딩 스텝입니다. 백엔드가 붙기 전까지 화면을 바로
+  // 열어볼 수 있도록 둔 임시 경로라, 가입이 동작하면 이 상수와 라우트를 지웁니다.
+  TASTE_TEST: '/test',
+
   // 진열대 · 컬렉션 (에픽 113)
   MY_SHELF: '/shelf', // A13 진열대 + 컬렉션 한 화면
   COLLECTION_DETAIL: '/collections/:collectionId', // A17 컬렉션 상세

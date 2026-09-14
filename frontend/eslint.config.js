@@ -23,6 +23,7 @@ const FEATURE_DOMAINS = [
   'community',
   'brand',
   'note',
+  'taste',
 ]
 
 export default tseslint.config([

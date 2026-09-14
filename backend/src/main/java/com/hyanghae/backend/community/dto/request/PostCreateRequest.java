@@ -23,6 +23,10 @@ import java.util.List;
  * <p>{@code collectionId} 는 컬렉션 공유 글에 붙이는 내 컬렉션입니다. 없어도 됩니다. 분류가
  * 컬렉션 공유가 아니어도 막지 않습니다. 화면이 그 분류에서만 첨부 자리를 보여줍니다.
  *
+ * <p><b>컬렉션을 붙이면 향수를 따로 보낼 수 없습니다.</b> 그 컬렉션에 담긴 향수가 그대로 글의
+ * 향수가 됩니다. 글 하나에 향수 목록이 하나라서 출처가 둘일 수 없습니다. 둘 다 보내면 400 입니다.
+ * 복사해 두는 것이라 나중에 컬렉션에서 향수를 빼도 글은 그대로입니다.
+ *
  * <p>{@code perfumeIds} 와 {@code imageUrls} 는 없어도 됩니다. 자유 게시판 글은 향수를 걸지 않을
  * 수 있고, 이미지도 선택입니다. 둘 다 보낸 순서를 그대로 보여줄 순서로 씁니다.
  *
@@ -43,11 +47,13 @@ public record PostCreateRequest(
         @NotBlank(message = "내용을 입력해야 합니다.")
         String content,
 
-        @Schema(description = "첨부할 컬렉션 ID. 컬렉션 공유 글에서 씁니다.", nullable = true)
+        @Schema(description = "첨부할 컬렉션 ID. 붙이면 그 컬렉션의 향수가 글의 향수가 되며"
+                + " perfumeIds 를 함께 보낼 수 없습니다.", nullable = true)
         @Positive
         Long collectionId,
 
-        @Schema(description = "글에 걸 향수 ID. 보낸 순서대로 표시됩니다.", nullable = true)
+        @Schema(description = "글에 걸 향수 ID. 보낸 순서대로 표시됩니다. collectionId 와 함께"
+                + " 보낼 수 없습니다.", nullable = true)
         List<@NotNull @Positive Long> perfumeIds,
 
         @Schema(description = "이미지 주소. 보낸 순서대로 표시됩니다.", nullable = true)
