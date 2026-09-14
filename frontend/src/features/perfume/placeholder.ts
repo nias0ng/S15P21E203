@@ -1,19 +1,12 @@
 /**
  * ⚠️ **개발 중 백엔드가 안 떠 있을 때만 쓰는 대체 데이터입니다.**
  *
- * 향수는 다른 도메인과 달리 백엔드에 이미 구현되어 있어(S15P21E203-128) 처음부터
- * 진짜 API 로 붙였습니다. 그래서 여기 있는 값은 **연동을 대신하는 것이 아니라**,
- * 백엔드를 띄우지 않고 시안을 눈으로 볼 때만 끼어듭니다.
+ * 향수는 백엔드가 이미 있어 진짜 API 를 부릅니다. 이 값은 연동을 대신하는 것이
+ * 아니라, 백엔드를 안 띄우고 시안을 볼 때만 끼어듭니다(조건은 api.ts 의
+ * `withDevFallback`). 지울 때는 이 파일과 그 함수를 함께 지우세요.
  *
- * 끼어드는 조건은 `api.ts` 의 `withDevFallback` 에 있습니다 — 개발 모드이고,
- * 요청이 백엔드에 닿지도 못했을 때(연결 실패 · 502 · 503 · 504)뿐입니다.
- * 400 이나 404 같은 "백엔드가 대답한" 오류는 그대로 화면까지 올라갑니다.
- *
- * **백엔드가 뜨면 이 파일은 한 번도 실행되지 않습니다.** 지울 때는 이 파일과
- * `api.ts` 의 `withDevFallback` 을 함께 지우면 됩니다.
- *
- * 브랜드명은 `features/brand` 의 자리표시자와 같은 이름을 씁니다. 브랜드 상세에서
- * 넘어왔을 때 이름이 어긋나면 필터가 빈 목록을 돌려주는 것처럼 보입니다.
+ * 브랜드명은 `features/brand` 자리표시자와 같은 이름을 씁니다 — 어긋나면 브랜드
+ * 상세에서 넘어왔을 때 빈 목록처럼 보입니다.
  */
 import { ApiError } from '@/shared/api/http'
 
@@ -149,12 +142,7 @@ const PERFUMES: PerfumeSummary[] = [
 
 const DEFAULT_SIZE = 20
 
-/**
- * 검색 대체값.
- *
- * keyword 와 brand 만 거릅니다. gender · shelf 는 백엔드가 전체 사용자 집계로
- * 판단하는 값이라 여기서 흉내 낼 근거가 없습니다 — 보내도 무시합니다.
- */
+/** 검색 대체값. gender · shelf 는 집계값이라 흉내 낼 근거가 없어 무시합니다 */
 export function placeholderSearch(
   params: PerfumeSearchParams,
 ): PerfumeSearchResponse {
@@ -183,12 +171,7 @@ export function placeholderSearch(
   }
 }
 
-/**
- * 상세 대체값.
- *
- * 없는 id 는 실제 백엔드와 같은 모양(404 PERFUME_NOT_FOUND)으로 던집니다.
- * 대체값이 끼어들었다고 해서 화면의 오류 처리 경로가 달라지면 안 됩니다.
- */
+/** 상세 대체값. 없는 id 는 실제 백엔드와 같은 404 PERFUME_NOT_FOUND 로 던집니다 */
 export function placeholderDetail(perfumeId: number): PerfumeDetail {
   const perfume = PERFUMES.find((item) => item.perfumeId === perfumeId)
   if (!perfume) {
