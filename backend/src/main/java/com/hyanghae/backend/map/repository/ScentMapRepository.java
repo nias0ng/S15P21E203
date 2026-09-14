@@ -81,6 +81,35 @@ public class ScentMapRepository {
 
     private static final String ORDER_BY_PERFUME_ID = "ORDER BY p.perfume_id\n";
 
+    /**
+     * 취향 테스트가 쓰는 계열 벡터입니다. 향수 하나에 계열 수만큼 줄이 나옵니다.
+     *
+     * <p>계열을 <b>안쪽 조인</b>으로 겁니다. 계열이 하나도 없는 향수는 어떤 취향과도 유사도가
+     * 0 이라 결과로 뽑힐 수 없습니다. 넣어 봐야 고를 수 없는 후보만 늘어납니다. 지도 조회가
+     * 왼쪽 조인인 것과 다른 이유는, 거기서는 계열이 없어도 점은 찍어야 하기 때문입니다.
+     *
+     * <p>계열도 <b>활성인 것만</b> 씁니다. 내려간 계열의 비중까지 세면 화면이 고를 수 없는 축이
+     * 유사도에 섞입니다.
+     *
+     * <p>{@code korea_selection_rank} 가 비어 있는 향수도 뺍니다. 유사도가 같을 때 이 값으로
+     * 가르는데, 비어 있으면 그 향수만 순서가 정해지지 않습니다.
+     *
+     * <p>정렬은 향수 번호와 계열 번호입니다. 묶는 쪽이 순서에 기대지는 않지만, 응답이 매번 같은
+     * 차례로 나가야 화면이 캐시한 결과와 어긋나지 않습니다.
+     */
+    private static final String SELECT_SCENT_VECTORS = """
+            SELECT p.perfume_id, mp.map_x, mp.map_y, p.korea_selection_rank,
+                   r.code AS family_code, f.weight
+            FROM perfume_map_points mp
+            JOIN perfumes p ON p.perfume_id = mp.perfume_id
+            JOIN perfume_scent_families f ON f.perfume_id = mp.perfume_id
+            JOIN scent_regions r ON r.scent_region_id = f.scent_region_id
+            WHERE p.is_active = TRUE
+              AND r.is_active = TRUE
+              AND p.korea_selection_rank IS NOT NULL
+            ORDER BY p.perfume_id, f.scent_region_id
+            """;
+
     private static final String SELECT_MAP_PERFUME = """
             SELECT p.perfume_id, p.name, p.name_ko, mp.map_x, mp.map_y,
                    dominant.scent_region_id,
@@ -120,6 +149,24 @@ public class ScentMapRepository {
     public List<MapPerfumeResponse> findPerfumes() {
         return jdbcClient.sql(SELECT_MAP_PERFUMES + ORDER_BY_PERFUME_ID)
                 .query(ScentMapRepository::toMapPerfume)
+                .list();
+    }
+
+    /**
+     * 취향 테스트가 쓰는 계열 벡터입니다. 향수 하나에 여러 줄이 나옵니다.
+     *
+     * <p>묶는 일은 서비스가 합니다. 저장소는 읽어 온 줄을 그대로 돌려줍니다.
+     */
+    public List<ScentVectorRow> findScentVectorRows() {
+        return jdbcClient.sql(SELECT_SCENT_VECTORS)
+                .query((rs, rowNum) -> new ScentVectorRow(
+                        rs.getLong("perfume_id"),
+                        rs.getDouble("map_x"),
+                        rs.getDouble("map_y"),
+                        rs.getInt("korea_selection_rank"),
+                        rs.getString("family_code"),
+                        rs.getDouble("weight")
+                ))
                 .list();
     }
 

@@ -7,10 +7,15 @@ import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.map.dto.response.MapPerfumeDetailResponse;
 import com.hyanghae.backend.map.dto.response.ScentMapResponse;
 import com.hyanghae.backend.map.dto.response.ScentRegionResponse;
+import com.hyanghae.backend.map.dto.response.ScentVectorResponse;
+import com.hyanghae.backend.map.dto.response.ScentVectorsResponse;
 import com.hyanghae.backend.map.exception.MapErrorCode;
 import com.hyanghae.backend.map.repository.ScentMapRepository;
 import com.hyanghae.backend.map.repository.ScentRegionRow;
+import com.hyanghae.backend.map.repository.ScentVectorRow;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,6 +51,30 @@ public class ScentMapService {
                 .toList();
 
         return new ScentMapResponse(regions, scentMapRepository.findPerfumes());
+    }
+
+    /**
+     * 취향 테스트가 향수를 고를 때 쓰는 계열 벡터입니다.
+     *
+     * <p>저장소가 향수 하나에 계열 수만큼 줄을 돌려주므로 여기서 향수별로 묶습니다. 한 질의로
+     * 읽고 자바에서 묶는 이유는, 향수마다 계열을 따로 조회하면 200번이 나가기 때문입니다.
+     *
+     * <p>{@link LinkedHashMap} 을 쓰는 이유는 계열 순서를 질의가 정한 대로 두기 위해서입니다.
+     * 매칭 결과는 순서와 무관하지만, 응답이 매번 같은 모양이어야 화면이 캐시한 값과 어긋나지
+     * 않습니다.
+     */
+    @Transactional(readOnly = true)
+    public ScentVectorsResponse getScentVectors() {
+        Map<Long, ScentVectorResponse> byPerfume = new LinkedHashMap<>();
+
+        for (ScentVectorRow row : scentMapRepository.findScentVectorRows()) {
+            byPerfume.computeIfAbsent(row.perfumeId(), id -> new ScentVectorResponse(
+                            id, row.x(), row.y(), row.rank(), new LinkedHashMap<>()))
+                    .families()
+                    .put(row.familyCode(), row.weight());
+        }
+
+        return new ScentVectorsResponse(List.copyOf(byPerfume.values()));
     }
 
     /**
