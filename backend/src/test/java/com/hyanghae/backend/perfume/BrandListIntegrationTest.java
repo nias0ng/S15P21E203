@@ -1,9 +1,12 @@
 package com.hyanghae.backend.perfume;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyanghae.backend.support.IntegrationTest;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
@@ -38,6 +41,9 @@ class BrandListIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @BeforeEach
     void insertFixtures() {
@@ -120,14 +126,30 @@ class BrandListIntegrationTest {
                 .andExpect(jsonPath("$.brands[0].perfumeCount").value(2));
     }
 
-    /** 한국어 이름과 로고가 없는 브랜드는 그 자리가 비어 나갑니다. */
+    /**
+     * 한국어 이름과 로고가 없는 브랜드는 그 자리가 <b>{@code null} 로</b> 나갑니다.
+     *
+     * <p>필드가 빠지는 것과 {@code null} 이 담기는 것은 다릅니다. 화면이 {@code 'nameKo' in brand}
+     * 로 확인한다면 두 경우의 답이 갈립니다. 그래서 "있는데 비었다" 를 못박아 둡니다.
+     *
+     * <p>{@code jsonPath(...).doesNotExist()} 로는 이것을 확인할 수 없습니다. 그 단언은 값이
+     * 없을 때와 {@code null} 일 때를 모두 통과시킵니다.
+     */
     @Test
-    void leavesKoreanNameAndLogoEmptyWhenMissing() throws Exception {
-        mockMvc.perform(get(BRANDS_URL).param("keyword", "Byredo"))
+    void leavesKoreanNameAndLogoNullWhenMissing() throws Exception {
+        String body = mockMvc.perform(get(BRANDS_URL).param("keyword", "Byredo"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.brands[0].name").value("Byredo"))
-                .andExpect(jsonPath("$.brands[0].nameKo").doesNotExist())
-                .andExpect(jsonPath("$.brands[0].logoUrl").doesNotExist());
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode brand = objectMapper.readTree(body).get("brands").get(0);
+
+        assertThat(brand.has("nameKo")).isTrue();
+        assertThat(brand.get("nameKo").isNull()).isTrue();
+        assertThat(brand.has("logoUrl")).isTrue();
+        assertThat(brand.get("logoUrl").isNull()).isTrue();
     }
 
     /** 브랜드가 없으면 빈 배열입니다. {@code null} 이 아닙니다. */
