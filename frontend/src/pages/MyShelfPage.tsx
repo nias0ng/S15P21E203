@@ -7,6 +7,11 @@ import {
   myCollectionsQuery,
 } from '@/features/collection'
 import {
+  personalRecommendationQuery,
+  RECOMMEND_MIN_SHELF_ITEMS,
+  RecommendPeekCard,
+} from '@/features/recommend'
+import {
   DisplayCase,
   ShelfDeck,
   ShelfDetailPanel,
@@ -78,6 +83,17 @@ export default function MyShelfPage() {
   // 칩 · 검색어 · 선택 커서는 서로 규칙이 걸려 있어 한 훅이 함께 들고 있습니다.
   const browser = useShelfBrowser(shelf.data ?? [])
 
+  /*
+   * 개인화 추천 카드. 담은 향수가 적으면 아예 묻지 않습니다 — 한두 개 담은 사람의
+   * 취향을 안다고 말하면 그 근거가 거짓이 되고, 쓸 수 없는 답을 받으려고 요청을
+   * 보낼 이유도 없습니다.
+   */
+  const shelfCount = shelf.data?.length ?? 0
+  const recommendation = useQuery({
+    ...personalRecommendationQuery(),
+    enabled: shelfCount >= RECOMMEND_MIN_SHELF_ITEMS,
+  })
+
   if (shelf.isPending) return <PageFallback />
 
   return (
@@ -95,6 +111,14 @@ export default function MyShelfPage() {
         aria-hidden
         className="shelf-paper shelf-grain fixed inset-0 -z-10"
       />
+
+      {/*
+        추천할 것이 없으면 카드를 그리지 않습니다. 빈 카드를 띄워 "추천이 없습니다"
+        라고 적으면, 사용자가 부르지도 않은 것이 나타나 아무 말도 안 하는 셈입니다.
+      */}
+      {recommendation.data && (
+        <RecommendPeekCard recommendation={recommendation.data} />
+      )}
 
       {/*
         여기부터 하단 문구까지가 시안의 "한 화면" 입니다. 화면이 남으면

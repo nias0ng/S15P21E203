@@ -32,3 +32,33 @@ export interface RecommendResult {
   query: string
   perfumes: RecommendedPerfume[]
 }
+
+/**
+ * 개인화 맞춤 추천 (REC-12 · REC-13) — 진열대 화면의 추천 카드가 쓰는 한 건.
+ *
+ * 자연어 추천과 다른 점은 **묻지 않았는데 온다**는 것입니다. 그래서 "무엇을
+ * 추천하는가" 만큼 "왜 나에게 이것을 주는가" 가 중요합니다. 이유 없이 향수만
+ * 들이밀면 광고로 읽힙니다.
+ *
+ * 이유는 자연어 추천의 RecommendReason 을 그대로 씁니다. 입력한 표현이 없으므로
+ * phrase 는 늘 null 이고 evidence 만 채웁니다
+ * ("담아 두신 향수 7개 중 4개가 우디 계열입니다").
+ */
+export interface PersonalRecommendation {
+  perfumeId: number
+  name: string
+  brand: string
+  thumbnailUrl: string | null
+  /** 접힌 카드와 펼친 카드 머리말에 쓰는 한 줄 */
+  headline: string
+  reasons: RecommendReason[]
+}
+
+/**
+ * 추천 카드가 나타나기 시작하는 진열대 향수 수.
+ *
+ * ⚠️ 임시값입니다. 추천 엔진이 붙으면 "몇 개부터 쓸 만한 추천이 나오는가" 를
+ * 그쪽 기준으로 다시 정합니다. 지금 이 값의 뜻은 "한두 개 담은 사람에게
+ * 개인화를 말하면 거짓말이 된다" 뿐입니다.
+ */
+export const RECOMMEND_MIN_SHELF_ITEMS = 3
