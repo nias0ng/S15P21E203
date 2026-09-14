@@ -29,6 +29,26 @@ public interface PerfumeReviewRepository extends JpaRepository<PerfumeReview, Lo
     boolean existsByIdAndUserId(Long id, Long userId);
 
     /**
+     * 내가 이 향수에 쓴 후기 번호입니다. 쓰지 않았으면 빈 {@link Optional} 입니다.
+     *
+     * <p>향수 상세가 [후기 쓰기] 와 [후기 수정] 중 무엇을 띄울지 정하는 데 씁니다. 한 사람은 한
+     * 향수에 후기를 하나만 가질 수 있어 결과도 하나뿐입니다.
+     *
+     * <p>V5 의 {@code uk_perfume_reviews_user_perfume} 이 정확히 이 두 컬럼이라, 색인에서 한 행을
+     * 바로 찾고 끝납니다.
+     */
+    @Query("""
+            SELECT r.id
+            FROM PerfumeReview r
+            WHERE r.perfume.id = :perfumeId
+              AND r.userId = :userId
+            """)
+    Optional<Long> findIdByPerfumeIdAndUserId(
+            @Param("perfumeId") Long perfumeId,
+            @Param("userId") Long userId
+    );
+
+    /**
      * 후기 게시판 한 줄에 실을 값입니다.
      *
      * <p>향수와 브랜드를 함께 읽습니다. 게시판은 여러 향수의 후기가 섞여 나오므로 줄마다 어느

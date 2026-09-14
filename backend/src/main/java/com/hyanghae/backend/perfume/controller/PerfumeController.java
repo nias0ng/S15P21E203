@@ -11,6 +11,9 @@ import com.hyanghae.backend.perfume.dto.response.PerfumeReviewSummaryResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSeasonStatisticsResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSearchResponse;
 import com.hyanghae.backend.perfume.service.PerfumeService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "향수", description = "향수 정보와 향조·후기 통계를 조회합니다.")
 @RestController
 @RequestMapping("/api/v1/perfumes")
 public class PerfumeController {
@@ -61,7 +65,18 @@ public class PerfumeController {
 
     /**
      * 향수 기본 정보 조회입니다. 향조·후기·통계는 명세상 별도 엔드포인트로 제공합니다.
+     *
+     * <p>로그인하면 {@code myReviewId} 가 함께 나갑니다. 화면이 [후기 쓰기] 와 [후기 수정] 중
+     * 무엇을 띄울지 정하는 값입니다. 한 사람은 한 향수에 후기를 하나만 가질 수 있어, 이미 쓴
+     * 향수에 또 쓰려 하면 409 가 납니다.
      */
+    @Operation(
+            summary = "향수 기본 정보 조회",
+            description = "로그인 없이 조회할 수 있습니다. 로그인한 경우 이 향수에 내가 쓴 후기가"
+                    + " 있으면 myReviewId 가 함께 나갑니다."
+    )
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "404", description = "향수 없음")
     @GetMapping("/{perfumeId}")
     public PerfumeDetailResponse getDetail(@PathVariable Long perfumeId) {
         return perfumeService.getDetail(perfumeId);
