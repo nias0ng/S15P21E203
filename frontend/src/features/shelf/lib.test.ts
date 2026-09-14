@@ -344,30 +344,31 @@ describe('springStep', () => {
 })
 
 describe('shelfMetrics', () => {
-  it('1920 x 1080 의 진열장 자리(1800 x 800, 가리지 않는 폭 1440)에서 벽감 605 · 병 420 · 칸 225 가 된다', () => {
+  it('1920 x 1080 의 진열장 자리(1800 x 800, 가리지 않는 폭 1440)에서 벽감 605 · 병 360 · 칸 200 이 된다', () => {
     const metrics = shelfMetrics(1800, 800, 1440)
     expect(metrics.caseHeight).toBe(605)
-    expect(metrics.bottle).toBe(420)
-    expect(metrics.visible).toBe(8)
-    expect(metrics.whole).toBe(8)
-    expect(metrics.pitch).toBe(225)
-    expect(metrics.clear).toBe(6)
+    expect(metrics.bottle).toBe(360)
+    expect(metrics.visible).toBe(9)
+    expect(metrics.whole).toBe(9)
+    expect(metrics.pitch).toBe(200)
+    expect(metrics.clear).toBe(7)
   })
 
-  it('1920 x 1080 자리를 패널 없이 세면(칸 폭 225) 이름표는 태그 170 x 110 · 줄 35 이고, 이름표 자리는 160 이다', () => {
+  it('1920 x 1080 자리를 패널 없이 세면(칸 폭 200) 이름표는 태그 150 x 95 · 줄 35 이고, 이름표 자리는 145 다', () => {
     const { tagWidth, tagHeight, cord, hang } = shelfMetrics(1800, 800, 1440)
-    expect(tagWidth).toBe(TAG_WIDTH)
-    expect(tagWidth).toBe(170)
-    expect(tagHeight).toBe(110)
+    // 태그 글자는 폭 170 태그를 기준으로 줄어듭니다(--tag-scale)
+    expect(TAG_WIDTH).toBe(170)
+    expect(tagWidth).toBe(150)
+    expect(tagHeight).toBe(95)
     expect(cord).toBe(35)
-    expect(hang).toBe(160)
+    expect(hang).toBe(145)
   })
 
-  it('병 사진은 벽감 높이의 70% 로 서고, 칸을 좁혀도 벽감 높이는 그대로다', () => {
+  it('병 사진은 벽감 높이의 60% 로 서고, 칸을 좁혀도 벽감 높이는 그대로다', () => {
     // 1440 x 900 의 진열장 자리(1340 x 600, 가리지 않는 폭 1020). 벽감 440 은 예전과 같은 값입니다
     const { caseHeight, bottle, hang } = shelfMetrics(1340, 600, 1020)
     expect(caseHeight).toBe(440)
-    expect(bottle).toBe(305)
+    expect(bottle).toBe(260)
     expect(hang).toBe(120)
   })
 
@@ -484,20 +485,20 @@ describe('shelfMetrics', () => {
 })
 
 describe('shelfLayout', () => {
-  it('1920 x 1080 의 진열장 자리(1800 x 800)에서 패널 340 왼쪽 끝(1460)까지 칸 일곱을 나누고, 이름표 아랫선까지 내려온다', () => {
+  it('1920 x 1080 의 진열장 자리(1800 x 800)에서 패널 340 왼쪽 끝(1460)까지 칸 여덟을 나누고, 이름표 아랫선까지 내려온다', () => {
     const layout = shelfLayout(1800, 800)
     expect(layout.panelWidth).toBe(340)
     expect(layout.panelScale).toBe(1)
-    expect(layout.clear).toBe(7)
-    expect(layout.pitch).toBeCloseTo(1460 / 7, 9)
-    expect(layout.visible).toBe(9)
-    expect(layout.whole).toBe(8)
+    expect(layout.clear).toBe(8)
+    expect(layout.pitch).toBeCloseTo(1460 / 8, 9)
+    expect(layout.visible).toBe(10)
+    expect(layout.whole).toBe(9)
     expect(layout.clearWidth).toBeCloseTo(1460, 6)
     expect(layout.caseHeight).toBe(605)
-    expect(layout.bottle).toBe(420)
-    expect(layout.hang).toBe(150)
-    expect([layout.tagWidth, layout.tagHeight]).toEqual([155, 100])
-    expect(layout.panelHeight).toBe(755)
+    expect(layout.bottle).toBe(360)
+    expect(layout.hang).toBe(135)
+    expect([layout.tagWidth, layout.tagHeight]).toEqual([135, 85])
+    expect(layout.panelHeight).toBe(740)
     expect(layout.plaqueSpan).toBe(2)
   })
 
@@ -538,23 +539,27 @@ describe('shelfLayout', () => {
 
   /** 한 장 배치의 진열장 자리 — [폭, 높이, 가리지 않는 칸] (1562 · 1645 · 1920 x 937 · 1440 · 1280 · 1280 스크롤 막대 · 1024) */
   const OVERLAY = [
-    [1442, 634, 7],
-    [1525, 634, 7],
-    [1800, 657, 8],
-    [1340, 620, 7],
-    [1180, 460, 7],
+    [1442, 634, 8],
+    [1525, 634, 8],
+    [1800, 657, 9],
+    [1340, 620, 8],
+    [1180, 460, 8],
     [1165, 460, 7],
     [944, 488, 5],
   ] as const
 
-  it('패널 왼쪽 끝이 칸 경계에 선다 — 칸 폭은 바라는 폭(병 x 0.55)을 넘지 않고 110 아래로 내려가지 않는다', () => {
+  it('패널 왼쪽 끝이 칸 경계에 선다 — 칸 폭은 바라는 폭(병 x 0.55)을 넘지 않고 110 아래로 내려가지 않는다 — 둘이 부딪히면 110 이 먼저다', () => {
     for (const [width, height, expected] of OVERLAY) {
       const { clear, pitch, bottle, panelWidth, clearWidth, visible, whole } =
         shelfLayout(width, height)
       expect(clear).toBe(expected)
       expect(Math.abs(clear * pitch - (width - panelWidth))).toBeLessThan(1e-6)
       expect(Math.abs(clearWidth - (width - panelWidth))).toBeLessThan(1e-6)
-      expect(pitch).toBeLessThanOrEqual(bottle * 0.55 + 1e-9)
+      // 바라는 폭보다 좁게 나누되, 그러면 110 아래로 내려가는 화면(1280 에 스크롤 막대)은 칸을 하나 덜 셉니다
+      const edge = width - panelWidth
+      expect(pitch).toBeLessThanOrEqual(
+        Math.max(bottle * 0.55, edge / Math.floor(edge / 110)) + 1e-9,
+      )
       expect(pitch).toBeGreaterThanOrEqual(110)
       expect(clear).toBeGreaterThanOrEqual(5)
       // 창에 걸치는 칸은 창을 다 덮고, 온전한 칸은 창 안에 듭니다
@@ -564,21 +569,16 @@ describe('shelfLayout', () => {
     }
   })
 
-  it('두 칸 기둥은 가리지 않는 칸이 다섯 이상일 때만 — 쌓는 배치도 칸이 다섯이면 두 칸(900), 768 · 휴대폰은 한 칸이다', () => {
+  it('두 칸 기둥은 가리지 않는 칸이 다섯 이상일 때만 — 쌓는 배치의 768 도 칸이 다섯이라 두 칸, 휴대폰은 한 칸이다', () => {
     for (const [width, height] of OVERLAY) {
       expect(shelfLayout(width, height).plaqueSpan).toBe(2)
     }
-    expect(shelfLayout(900, 600, { panel: false })).toMatchObject({
+    expect(shelfLayout(708, 553, { panel: false })).toMatchObject({
       visible: 5,
       clear: 5,
       plaqueSpan: 2,
     })
-    expect(shelfLayout(708, 553, { panel: false })).toMatchObject({
-      visible: 4,
-      clear: 4,
-      plaqueSpan: 1,
-    })
-    expect(shelfLayout(708, 553, { panel: false }).pitch).toBeCloseTo(177, 6)
+    expect(shelfLayout(708, 553, { panel: false }).pitch).toBeCloseTo(141.6, 6)
     expect(shelfLayout(350, 380, { panel: false })).toMatchObject({
       visible: 3,
       clear: 3,
@@ -666,7 +666,7 @@ describe('layoutWall', () => {
     expect(sections[1]?.plaque).toBe(2)
   })
 
-  it('두 칸 기둥 — 가리지 않는 칸 일곱(1920 x 1080 · 1562 · 1645)에서 병 [5, 17, 3] 은 빈 벽 없이 이어지고 처음으로 기둥이 31 에 선다', () => {
+  it('두 칸 기둥 — 가리지 않는 칸 일곱(1280 x 720 에 스크롤 막대)에서 병 [5, 17, 3] 은 빈 벽 없이 이어지고 처음으로 기둥이 31 에 선다', () => {
     const layout = layoutWall(SECTIONS, 7, 2)
     expect(
       layout.sections.map(({ plaque, start, gap }) => [plaque, start, gap]),
@@ -692,7 +692,7 @@ describe('layoutWall', () => {
   })
 
   it('병이 적은 분류의 첫머리에 서면 다음 기둥이 패널 바로 왼쪽에 붙는다', () => {
-    // 1645(가리지 않는 칸 일곱) · 병 [2, 17, 1] — 이름표 두 칸 · 병 둘 · 빈 벽 · 다음 이름표 두 칸
+    // 가리지 않는 칸 일곱 · 병 [2, 17, 1] — 이름표 두 칸 · 병 둘 · 빈 벽 · 다음 이름표 두 칸
     const layout = layoutWall(sized([2, 17, 1]), 7, 2)
     expect(layout.sections.map(({ gap }) => gap)).toEqual([1, 0, 2])
     expect(layout.sections[1]?.plaque).toBe(0 + 7 - 2)
@@ -1312,7 +1312,8 @@ describe('plaqueMetrics', () => {
     }
   })
 
-  it('한 장 배치의 모든 화면에서 현판은 다 적고, 옆벽과 40px 이상 떨어지며, 폭은 벽감의 29% 이하다', () => {
+  it('한 장 배치의 모든 화면에서 현판은 다 적고, 옆벽과 25px 이상 떨어지며, 폭은 벽감의 29% 이하다', () => {
+    // 병을 벽감의 60% 로 줄여 칸이 촘촘해진 뒤로 1440 x 900 은 36, 1280 x 720 은 28 입니다
     const areas = [
       [1800, 800],
       [1442, 634],
@@ -1327,7 +1328,7 @@ describe('plaqueMetrics', () => {
       const plaque = plaqueOf(width, height)
       expect(plaque.detail).toBe('full')
       expect((plaque.column - SIDES - plaque.width) / 2).toBeGreaterThanOrEqual(
-        40,
+        25,
       )
       expect(plaque.width).toBeLessThanOrEqual(plaque.caseHeight * 0.29)
       expect(plaque.width % 5).toBe(0)
@@ -1509,11 +1510,11 @@ describe('tagMetrics', () => {
     }
     // 1920 x 1080 · 1440 x 900 의 태그
     expect(tagOf(1800, 800, true)).toMatchObject({
-      tagWidth: 155,
-      tagHeight: 100,
+      tagWidth: 135,
+      tagHeight: 85,
     })
     expect(tagOf(1340, 620, true)).toMatchObject({
-      tagWidth: 115,
+      tagWidth: 100,
       tagHeight: 80,
     })
   })
