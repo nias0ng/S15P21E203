@@ -59,10 +59,11 @@ class PerfumeRelatedPerfumesIntegrationTest {
         insertImage(10, 2, SUB_IMAGE, 2);
         insertImage(11, 2, MAIN_IMAGE, 1);
 
-        insertNeighbor(1, 2);
-        insertNeighbor(1, 3);
-        insertNeighbor(1, 4);
-        insertNeighbor(1, 6);
+        // 닮은 순서는 6, 3, 2 입니다. 향수 번호순(2, 3, 6)과 일부러 다르게 두었습니다.
+        insertNeighbor(1, 6, 1);
+        insertNeighbor(1, 3, 2);
+        insertNeighbor(1, 2, 3);
+        insertNeighbor(1, 4, 4);
     }
 
     @AfterEach
@@ -83,26 +84,39 @@ class PerfumeRelatedPerfumesIntegrationTest {
         assertEquals(neighbors, similar);
     }
 
-    /** 비활성 향수 4 는 빠지고, 순서는 향수 id 오름차순으로 고정됩니다. */
+    /** 비활성 향수 4 는 빠지고, 순서는 적재된 닮은 순서를 따릅니다. */
     @ParameterizedTest
     @ValueSource(strings = {NEIGHBORS_URL, SIMILAR_URL})
-    void returnsActiveRelatedPerfumesOrderedByPerfumeId(String url) throws Exception {
+    void returnsActiveRelatedPerfumesOrderedByRank(String url) throws Exception {
         mockMvc.perform(get(url, 1))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfumes", Matchers.hasSize(3)))
-                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(2))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(6))
                 .andExpect(jsonPath("$.perfumes[1].perfumeId").value(3))
-                .andExpect(jsonPath("$.perfumes[2].perfumeId").value(6))
+                .andExpect(jsonPath("$.perfumes[2].perfumeId").value(2))
                 .andExpect(jsonPath("$.perfumes[1].name").value("Related Without Image"));
     }
 
-    /** 검색과 같은 규칙으로 display_order 가 작은 이미지가 대표입니다. */
+    /** rank 가 비어 있는 이웃은 뒤로 밀립니다. 적재가 일부만 순서를 채워도 앞을 어지럽히지 않습니다. */
+    @ParameterizedTest
+    @ValueSource(strings = {NEIGHBORS_URL, SIMILAR_URL})
+    void putsNeighborWithoutRankLast(String url) throws Exception {
+        insertPerfume(7, "Unranked Related", true);
+        insertNeighbor(1, 7, null);
+
+        mockMvc.perform(get(url, 1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(4)))
+                .andExpect(jsonPath("$.perfumes[3].perfumeId").value(7));
+    }
+
+    /** 검색과 같은 규칙으로 display_order 가 작은 이미지가 대표입니다. 향수 2 는 세 번째입니다. */
     @ParameterizedTest
     @ValueSource(strings = {NEIGHBORS_URL, SIMILAR_URL})
     void picksThumbnailByDisplayOrder(String url) throws Exception {
         mockMvc.perform(get(url, 1))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.perfumes[0].imageUrl").value(MAIN_IMAGE));
+                .andExpect(jsonPath("$.perfumes[2].imageUrl").value(MAIN_IMAGE));
     }
 
     @ParameterizedTest
@@ -129,7 +143,7 @@ class PerfumeRelatedPerfumesIntegrationTest {
         mockMvc.perform(get(url, 1).param("size", "2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfumes", Matchers.hasSize(2)))
-                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(2))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(6))
                 .andExpect(jsonPath("$.perfumes[1].perfumeId").value(3));
     }
 
@@ -218,10 +232,11 @@ class PerfumeRelatedPerfumesIntegrationTest {
                 id, perfumeId, imageUrl, displayOrder);
     }
 
-    private void insertNeighbor(long perfumeId, long neighborPerfumeId) {
+    private void insertNeighbor(long perfumeId, long neighborPerfumeId, Integer rank) {
         jdbcTemplate.update(
-                "INSERT INTO perfume_neighbors (perfume_id, neighbor_perfume_id) VALUES (?, ?)",
-                perfumeId, neighborPerfumeId);
+                "INSERT INTO perfume_neighbors (perfume_id, neighbor_perfume_id, rank)"
+                        + " VALUES (?, ?, ?)",
+                perfumeId, neighborPerfumeId, rank);
     }
 
     private void clearData() {

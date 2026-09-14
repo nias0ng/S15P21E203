@@ -1,13 +1,14 @@
 package com.hyanghae.backend.perfume.service;
 
 import com.hyanghae.backend.global.exception.BusinessException;
-import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.perfume.dto.request.PerfumeSearchCondition;
-import com.hyanghae.backend.perfume.dto.request.ShelfFilter;
+import com.hyanghae.backend.perfume.dto.request.RankingType;
 import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeNotesResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumePostResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumePostsResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumeReviewKeywordResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumeReviewKeywordsResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeReviewStatisticsResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeReviewSummaryResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSeasonStatisticResponse;
@@ -20,14 +21,15 @@ import com.hyanghae.backend.perfume.exception.PerfumeErrorCode;
 import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeScentFamilyRepository;
-import com.hyanghae.backend.perfume.repository.PerfumeShelfRepository;
+import com.hyanghae.backend.perfume.repository.PerfumeRankingRepository;
 import com.hyanghae.backend.perfume.dto.response.PerfumePriceResponse;
 import com.hyanghae.backend.perfume.repository.PerfumeAccordRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
 import com.hyanghae.backend.perfume.repository.PerfumeNeighborRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeNoteRepository;
 import com.hyanghae.backend.perfume.repository.PerfumePostRepository;
-import com.hyanghae.backend.perfume.repository.PerfumeReviewRepository;
+import com.hyanghae.backend.perfume.repository.PerfumeReviewKeywordRepository;
+import com.hyanghae.backend.review.repository.PerfumeReviewRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeReviewSummaryRepository;
 import com.hyanghae.backend.perfume.repository.PerfumePriceRepository;
 import java.math.BigDecimal;
@@ -35,7 +37,11 @@ import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -58,11 +64,11 @@ public class PerfumeService {
     private final PerfumeImageRepository perfumeImageRepository;
     private final PerfumePriceRepository perfumePriceRepository;
     private final PerfumeScentFamilyRepository perfumeScentFamilyRepository;
-    private final PerfumeShelfRepository perfumeShelfRepository;
-    private final CurrentUser currentUser;
+    private final PerfumeRankingRepository perfumeRankingRepository;
     private final PerfumeNoteRepository perfumeNoteRepository;
     private final PerfumeAccordRepository perfumeAccordRepository;
     private final PerfumeReviewRepository perfumeReviewRepository;
+    private final PerfumeReviewKeywordRepository perfumeReviewKeywordRepository;
     private final PerfumeReviewSummaryRepository perfumeReviewSummaryRepository;
     private final PerfumePostRepository perfumePostRepository;
     private final PerfumeNeighborRepository perfumeNeighborRepository;
@@ -72,11 +78,11 @@ public class PerfumeService {
             PerfumeImageRepository perfumeImageRepository,
             PerfumePriceRepository perfumePriceRepository,
             PerfumeScentFamilyRepository perfumeScentFamilyRepository,
-            PerfumeShelfRepository perfumeShelfRepository,
-            CurrentUser currentUser,
+            PerfumeRankingRepository perfumeRankingRepository,
             PerfumeNoteRepository perfumeNoteRepository,
             PerfumeAccordRepository perfumeAccordRepository,
             PerfumeReviewRepository perfumeReviewRepository,
+            PerfumeReviewKeywordRepository perfumeReviewKeywordRepository,
             PerfumeReviewSummaryRepository perfumeReviewSummaryRepository,
             PerfumePostRepository perfumePostRepository,
             PerfumeNeighborRepository perfumeNeighborRepository
@@ -85,11 +91,11 @@ public class PerfumeService {
         this.perfumeImageRepository = perfumeImageRepository;
         this.perfumePriceRepository = perfumePriceRepository;
         this.perfumeScentFamilyRepository = perfumeScentFamilyRepository;
-        this.perfumeShelfRepository = perfumeShelfRepository;
-        this.currentUser = currentUser;
+        this.perfumeRankingRepository = perfumeRankingRepository;
         this.perfumeNoteRepository = perfumeNoteRepository;
         this.perfumeAccordRepository = perfumeAccordRepository;
         this.perfumeReviewRepository = perfumeReviewRepository;
+        this.perfumeReviewKeywordRepository = perfumeReviewKeywordRepository;
         this.perfumeReviewSummaryRepository = perfumeReviewSummaryRepository;
         this.perfumePostRepository = perfumePostRepository;
         this.perfumeNeighborRepository = perfumeNeighborRepository;
@@ -105,17 +111,20 @@ public class PerfumeService {
      * <p>전체를 준다고 해서 카탈로그를 통째로 내려주는 것은 아닙니다. 페이지 크기가 걸려 있어
      * 한 번에 나가는 건수는 조건이 있을 때와 같습니다.
      *
-     * <p>진열대 필터만 다르게 다룹니다. 향수의 속성이 아니라 요청자와 향수의 관계라서, 요청자를
-     * 알 수 없으면 401 입니다. 조용히 전체를 돌려주면 필터가 걸린 것처럼 보이지만 남의 자료가
-     * 섞입니다.
+     * <p>진열대 필터는 전체 사용자 집계입니다. "내가 담은 향수"가 아니라 "사람들이 담은 향수"라서
+     * 로그인이 필요 없습니다.
+     *
+     * <p>격리 수준을 {@code REPEATABLE_READ} 로 올린 이유는 관련 게시글 조회와 같습니다. 목록과
+     * 전체 개수를 두 번의 쿼리로 얻는데, 기본값인 {@code READ COMMITTED} 는 문장마다 새 스냅샷을
+     * 잡아 두 값이 어긋날 수 있습니다.
      */
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public PerfumeSearchResponse search(PerfumeSearchCondition condition, Pageable pageable) {
         String keyword = normalize(condition.keyword());
         String brand = trimToNull(condition.brand());
         String gender = condition.gender() == null ? null : condition.gender().name();
 
-        Page<PerfumeSummaryResponse> found = findPage(condition.shelf(), keyword, brand, gender, pageable);
+        Page<PerfumeSummaryResponse> found = findPage(condition.ranking(), keyword, brand, gender, pageable);
         if (found.isEmpty()) {
             return PerfumeSearchResponse.from(found);
         }
@@ -171,6 +180,44 @@ public class PerfumeService {
     }
 
     /**
+     * 후기에서 자주 나온 향 표현과 그 비중입니다.
+     *
+     * <p>분모는 키워드가 하나라도 뽑힌 후기 수입니다. 후기 하나에서 키워드가 여러 개 나올 수 있어
+     * 백분율의 합이 100 을 넘을 수 있습니다. 계절 통계와 같은 성질입니다.
+     *
+     * <p>키워드가 없는 향수는 빈 배열입니다. 없는 향수와 구분해야 하므로 존재하지 않는 향수에만
+     * 404 를 반환합니다. 지금 키워드를 적재하는 코드가 없어 모든 향수가 빈 배열입니다. 화면의
+     * AI 요약 구역은 요약 문장을 쓰기로 정해졌고, 키워드 통계 구역을 채우는 일은 따로 남아
+     * 있습니다.
+     *
+     * <p>{@code size} 는 페이지 크기가 아니라 받을 최대 개수입니다. 화면이 상위 세 개만 쓰면
+     * {@code size=3} 으로 부릅니다. 많이 나온 순이고 같은 횟수면 이름순이라 앞에서 자른 결과가
+     * 매번 같습니다.
+     *
+     * <p>자르는 것은 표시 개수뿐입니다. 백분율의 분모는 따로 세므로 {@code size} 를 바꿔도 각
+     * 키워드의 값은 변하지 않습니다. 상위 세 개만 받아도 "전체 후기 중 몇 퍼센트"라는 의미가
+     * 그대로입니다.
+     */
+    @Transactional(readOnly = true)
+    public PerfumeReviewKeywordsResponse getReviewKeywords(Long perfumeId, int size) {
+        requireExistingPerfume(perfumeId);
+
+        long reviewsWithKeyword =
+                perfumeReviewKeywordRepository.countReviewsWithKeywordByPerfumeId(perfumeId);
+
+        return new PerfumeReviewKeywordsResponse(
+                perfumeReviewKeywordRepository.findKeywordCountsByPerfumeId(
+                                perfumeId, PageRequest.of(0, Math.clamp(size, 1, MAX_PAGE_SIZE)))
+                        .stream()
+                        .map(keyword -> new PerfumeReviewKeywordResponse(
+                                keyword.keyword(),
+                                percentageOf(keyword.count(), reviewsWithKeyword)
+                        ))
+                        .toList()
+        );
+    }
+
+    /**
      * 향수의 후기 수를 반환합니다.
      *
      * <p>이 수는 화면 표시용이면서, AI 후기 요약을 다시 만들 시점을 판단하는 기준입니다. 후기가
@@ -219,8 +266,8 @@ public class PerfumeService {
      * AI 가 생성한 후기 요약을 반환합니다.
      *
      * <p>요약이 없는 향수는 필드가 모두 {@code null} 인 200 응답입니다. 404 로 하면 향수 자체가
-     * 없는 경우와 구분되지 않습니다. 요약을 생성하는 파이프라인이 아직 없어 현재는 모든 향수가
-     * 빈 응답입니다.
+     * 없는 경우와 구분되지 않습니다. 요약은 후기 요약 배치가 적재하므로, 후기가 최소 개수만큼
+     * 쌓이기 전인 향수는 빈 응답입니다.
      */
     @Transactional(readOnly = true)
     public PerfumeReviewSummaryResponse getReviewSummary(Long perfumeId) {
@@ -351,29 +398,28 @@ public class PerfumeService {
      * 정규화하지 않으면 {@code ?keyword=} 같은 요청이 공백을 포함한 이름만 찾게 됩니다.
      */
     /**
-     * 진열대 필터가 있으면 사용자의 향수 번호로 범위를 좁혀 조회합니다.
+     * {@code ranking} 이 있으면 사람들이 담거나 열어 본 향수만 남겨 <b>기록이 많은 순</b>으로
+     * 조회합니다. OWNED·WISH 는 세 명 이상이 담은 향수만, VIEWED 는 한 번이라도 열어 본 향수가
+     * 모두 나옵니다.
      *
-     * <p>번호가 하나도 없으면 조회하지 않고 빈 페이지를 만듭니다. 결과를 이미 알기 때문이며,
-     * 목록과 개수 두 번의 질의를 아낍니다. 정확성을 위한 것은 아닙니다. 빈 컬렉션을 그대로
-     * 넘겨도 Hibernate 가 항상 거짓인 조건으로 바꿔 주어 같은 결과가 나옵니다. 이 분기를 지워도
-     * 실패하는 테스트가 없다는 것을 확인했습니다.
+     * <p>다른 정렬은 없습니다. 요청의 {@code sort} 는 보지 않습니다. 이 값이 답하는 질문 자체가
+     * "사람들이 많이 담은 향수"라서, 번호순이나 이름순으로 주면 지정한 이유가 사라집니다.
+     *
+     * <p>집계·정렬·페이징을 모두 DB 에 맡깁니다. 예전에는 담긴 향수 번호를 전부 받아 와서 여기서
+     * 잘랐는데, 향수 13만종에서 번호가 {@code IN} 절 파라미터 상한을 넘겨 요청이 실패했습니다.
+     * 지금은 한 페이지에 필요한 만큼만 오갑니다.
      */
     private Page<PerfumeSummaryResponse> findPage(
-            ShelfFilter shelf, String keyword, String brand, String gender, Pageable pageable) {
-        if (shelf == null) {
+            RankingType ranking, String keyword, String brand, String gender, Pageable pageable) {
+        if (ranking == null) {
             return perfumeRepository.search(keyword, brand, gender, pageable);
         }
 
-        Long userId = currentUser.id()
-                .orElseThrow(() -> new BusinessException(
-                        PerfumeErrorCode.PERFUME_SHELF_FILTER_REQUIRES_LOGIN));
+        List<PerfumeSummaryResponse> page = perfumeRankingRepository.findPage(
+                ranking, keyword, brand, gender, (int) pageable.getOffset(), pageable.getPageSize());
+        long total = perfumeRankingRepository.count(ranking, keyword, brand, gender);
 
-        List<Long> perfumeIds = perfumeShelfRepository.findPerfumeIds(userId, shelf);
-        if (perfumeIds.isEmpty()) {
-            return Page.empty(pageable);
-        }
-
-        return perfumeRepository.searchWithinPerfumeIds(keyword, brand, gender, perfumeIds, pageable);
+        return new PageImpl<>(page, pageable, total);
     }
 
     /**

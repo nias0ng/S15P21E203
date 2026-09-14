@@ -40,18 +40,20 @@ export function PerfumeOverview({ perfume, onSaveToShelf }: Props) {
 
       <div className="space-y-3">
         {/* 검색은 brandName 문자열, 상세는 brand 객체입니다 */}
-        <p className="text-ink-muted text-xs">{perfume.brand?.name}</p>
-        <h1 className="text-2xl font-bold">{perfume.nameKo ?? perfume.name}</h1>
+        <p className="text-ink-muted text-caption">{perfume.brand?.name}</p>
+        <h1 className="text-display font-serif font-semibold">
+          {perfume.nameKo ?? perfume.name}
+        </h1>
 
         {perfume.concentration && (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             <Badge tone="outline">{perfume.concentration}</Badge>
           </div>
         )}
 
         <div>
           <Button onClick={onSaveToShelf}>진열대에 저장</Button>
-          <p className="text-ink-muted mt-2 text-[10.5px]">
+          <p className="text-ink-muted text-caption mt-2">
             진열대 저장은 분류 선택이 필수입니다.
           </p>
         </div>

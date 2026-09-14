@@ -41,7 +41,7 @@ export function SignupForm() {
         }}
       >
         {/* 이메일 + 중복 확인 — 와이어프레임에서 한 줄에 붙어 있습니다 */}
-        <div className="flex items-start gap-1.5">
+        <div className="flex items-start gap-2">
           <div className="flex-1">
             <Input
               label="이메일"
@@ -54,7 +54,7 @@ export function SignupForm() {
           </div>
           <button
             type="button"
-            className="border-line text-ink hover:bg-line-soft h-10 shrink-0 border px-3 text-[11px]"
+            className="border-line text-ink hover:bg-line-soft text-body rounded-card h-10 shrink-0 border px-3 transition-colors duration-120 ease-out"
           >
             중복 확인
           </button>
