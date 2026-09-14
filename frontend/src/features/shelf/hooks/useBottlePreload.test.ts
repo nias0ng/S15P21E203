@@ -186,6 +186,41 @@ describe('useBottlePreload', () => {
     expect(boxOf(track, 3)).toHaveAttribute('data-ready')
   })
 
+  it('받는 중인 사진은 건너뛰고 받아 둔 사진부터 풀며, 받기가 끝나면 그때 줄에 세운다', async () => {
+    const track = buildTrack()
+    const imgs = [...track.querySelectorAll<HTMLImageElement>('img')]
+    // 칸 2 만 다 받았고 나머지는 받는 중입니다
+    for (const img of imgs) {
+      if (img.alt === '2') continue
+      Object.defineProperty(img, 'complete', {
+        configurable: true,
+        value: false,
+      })
+    }
+    preload(track)
+    vi.runAllTimers()
+    // 가운데 3 · 4 는 받는 중이라 자리를 쥐지 않고, 받아 둔 2 를 먼저 풉니다
+    expect(started).toEqual(['2'])
+    finish.get('2')?.(true)
+    await flush()
+    expect(boxOf(track, 2)).toHaveAttribute('data-ready')
+
+    const loaded = (slot: string) => {
+      const img = imgs.find((each) => each.alt === slot)
+      if (!img) throw new Error(`칸 ${slot} 이 없습니다`)
+      Object.defineProperty(img, 'complete', {
+        configurable: true,
+        value: true,
+      })
+      img.dispatchEvent(new Event('load'))
+    }
+    // 받기가 끝나는 대로 곧바로 풉니다 — 첫 화면 밖 칸 10 이 먼저 받아지면 그것부터
+    loaded('10')
+    expect(started).toEqual(['2', '10'])
+    loaded('4')
+    expect(started).toEqual(['2', '10', '4'])
+  })
+
   it('한가해지기 전에 벽이 사라지면 풀지 않는다', () => {
     const track = buildTrack()
     const { unmount } = preload(track)

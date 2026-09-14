@@ -100,6 +100,9 @@ export type SwingOptions = {
  * a > 0(오른쪽으로 가속)이면 θ 가 커져 아랫단이 왼쪽으로 뒤처집니다.
  * 속도를 먼저 갱신하고 그 속도로 각도를 옮깁니다(반암시적 오일러). 순서를 바꾸면
  * 프레임이 조금만 길어져도 흔들림이 점점 커져 발산합니다.
+ *
+ * 기울기는 `limit` 에서 멈추고, 그때 바깥으로 가던 속도는 버립니다. 버리지 않으면 한도에 붙어 있는
+ * 동안에도 속도가 계속 쌓여서, 미는 힘이 사라진 뒤에도 한참 한도에 붙어 버티다 뒤늦게 튕깁니다.
  */
 export function swingStep(
   swing: Swing,
@@ -112,8 +115,13 @@ export function swingStep(
     2 * damping * omega * swing.speed +
     gain * accel
   const speed = swing.speed + force * dt
-  const angle = Math.min(limit, Math.max(-limit, swing.angle + speed * dt))
-  return { angle, speed }
+  const angle = swing.angle + speed * dt
+  if (Math.abs(angle) <= limit) return { angle, speed }
+  const edge = Math.sign(angle) * limit
+  return {
+    angle: edge,
+    speed: Math.sign(speed) === Math.sign(edge) ? 0 : speed,
+  }
 }
 
 /** 무대가 바뀔 때 이름표를 들어 올리는 바람 — 진열대가 위로 빠질 때(leave) · 돌아올 때(arrive) */
@@ -627,7 +635,7 @@ export type ShelfLayout = ShelfMetrics & {
  * 진열장 자리의 크기로 벽 치수와 상세 패널 크기를 함께 정합니다.
  *
  *   1920 x 1080 → 자리 1800 x 800 → 패널 340 x 785 · 배율 1 · 가리지 않는 폭 1460(칸 일곱) · 벽감 605 + 이름표 자리 180
- *   1440 x 780  → 자리 1340 x 500 → 패널 289 x 500 · 배율 0.85(하한) · 벽감 375 + 이름표 자리 125
+ *   1440 x 780  → 자리 1340 x 500 → 패널 289 x 495 · 배율 0.85(하한) · 벽감 375 + 이름표 자리 120
  */
 export function shelfLayout(
   width: number,
@@ -1333,7 +1341,7 @@ export function plaqueMetrics(
  *   아일릿       지름 태그 폭 x 10/170 (최소 6). 윗변은 테두리선 간격의 두 배 — 테두리선 아래에 앉습니다
  *   선반 고리    폭 태그 폭 x 10/170 (짝수, 최소 6). 높이는 그 절반인 반구입니다
  *
- * 1920 x 1080(태그 170 x 140)에서 파임 10 · 테두리선 5 · 아일릿 10(윗변 10) · 고리 10 입니다.
+ * 1920 x 1080(태그 155 x 130)에서 파임 9 · 테두리선 5 · 아일릿 9(윗변 10) · 고리 10 입니다.
  *
  * 태그가 낮아지면 적는 줄을 줄입니다(TagDetail). 폭이 아니라 **높이**로 가릅니다 — 글자는
  * 태그 폭을 따라 줄다가 읽히는 하한(한글 이름 12px)에서 멈춰서, 좁은 태그에서 먼저 모자라는 것은

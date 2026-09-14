@@ -87,11 +87,11 @@ describe('formatShelfDate', () => {
 })
 
 describe('swingStep', () => {
-  // useTagSwing 의 값 — 주기 0.95초 · 감쇠비 0.2 · 1/2400 · 한도 6도
+  // useTagSwing 의 값 — 주기 0.95초 · 감쇠비 0.3 · 1/4000 · 한도 6도
   const OPTIONS = {
     omega: (2 * Math.PI) / 0.95,
-    damping: 0.2,
-    gain: 1 / 2400,
+    damping: 0.3,
+    gain: 1 / 4000,
     limit: (6 * Math.PI) / 180,
   }
   const STILL: Swing = { angle: 0, speed: 0 }
@@ -128,6 +128,19 @@ describe('swingStep', () => {
   it('아무리 세게 밀어도 한도(6도)를 넘지 않는다', () => {
     expect(swingStep(STILL, 1e9, FRAME, OPTIONS).angle).toBe(OPTIONS.limit)
     expect(swingStep(STILL, -1e9, FRAME, OPTIONS).angle).toBe(-OPTIONS.limit)
+  })
+
+  it('한도에 닿으면 바깥으로 가던 속도를 버린다 — 미는 힘이 사라지면 곧바로 한도에서 떨어진다', () => {
+    let swing = STILL
+    // 0.5초 동안 한도 너머로 세게 밉니다
+    for (let t = 0; t < 0.5; t += FRAME) {
+      swing = swingStep(swing, 1e6, FRAME, OPTIONS)
+    }
+    expect(swing.angle).toBe(OPTIONS.limit)
+    expect(swing.speed).toBe(0)
+    // 쌓인 속도가 없어서, 힘을 거두면 다음 프레임부터 되돌아옵니다
+    swing = swingStep(swing, 0, FRAME, OPTIONS)
+    expect(swing.angle).toBeLessThan(OPTIONS.limit)
   })
 
   it('이웃한 두 태그가 서로 반대로 한도까지 기울어도 아랫모서리가 닿지 않는다 — 1920 · 390', () => {

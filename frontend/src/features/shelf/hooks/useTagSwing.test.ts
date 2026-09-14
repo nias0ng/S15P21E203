@@ -70,6 +70,78 @@ const bare = (hanger: HTMLElement) =>
   hanger.style.getPropertyValue('--tag-lift') === '' &&
   hanger.style.getPropertyValue('--tag-lit') === ''
 
+describe('useTagSwing — 옆 흔들림(kick)', () => {
+  it('창을 벗어난 태그의 기울기는 곧바로 떼고, 벽이 서면 3초 안에 흔들기를 끝낸다', () => {
+    const box = (left: number, width: number) => ({
+      left,
+      right: left + width,
+      width,
+      top: 0,
+      bottom: 0,
+      height: 0,
+      x: left,
+      y: 0,
+      toJSON: () => ({}),
+    })
+    // 창 1800px, 태그 폭 155 — 칸 100 의 태그는 흐르다 창 왼쪽 밖으로 나가고, 1500 의 태그는 창에 남습니다
+    const viewport = document.createElement('section')
+    viewport.getBoundingClientRect = () => box(0, 1800)
+    const track = document.createElement('div')
+    track.getBoundingClientRect = () => box(0, 6000)
+    viewport.append(track)
+    const [leaving, staying] = [100, 1500].map((left) => {
+      const hanger = document.createElement('span')
+      hanger.className = 'shelf-tag-hanger'
+      hanger.getBoundingClientRect = () => box(left, 155)
+      track.append(hanger)
+      return hanger
+    })
+    if (!leaving || !staying) throw new Error('태그가 없습니다')
+    const { result } = renderHook(() =>
+      useTagSwing(
+        { current: track },
+        { current: viewport },
+        { current: document.createElement('div') },
+      ),
+    )
+    const swingOf = (hanger: HTMLElement) =>
+      hanger.style.getPropertyValue('--tag-swing')
+    /** 쓴 기울기의 크기(도). 쓰지 않았으면 0 입니다 */
+    const tilt = (hanger: HTMLElement) =>
+      Math.abs(Number.parseFloat(swingOf(hanger)) || 0)
+    const shiftTo = (shift: number) => {
+      track.style.transform = `translate3d(${shift.toFixed(2)}px, 0, 0)`
+    }
+
+    // 칩으로 여섯 칸(1250px)을 636ms 에 옮기듯 사인 곡선으로 흘립니다(useShelfFlow 의 glide)
+    const GLIDE_MS = 636
+    shiftTo(0)
+    result.current.kick()
+    let widest = 0
+    let leavingSwung = false
+    while (now < GLIDE_MS) {
+      const t = Math.min(1, (now + 16) / GLIDE_MS)
+      shiftTo((-1250 * (1 - Math.cos(Math.PI * t))) / 2)
+      frame()
+      if (swingOf(leaving) !== '') leavingSwung = true
+      widest = Math.max(widest, tilt(staying))
+    }
+    // 창 안에 있는 동안은 흔들렸고, 창을 벗어나자 기울기가 떨어져 나갔습니다
+    expect(leavingSwung).toBe(true)
+    expect(swingOf(leaving)).toBe('')
+
+    const settledAt = now
+    while (frames.size > 0 && now < settledAt + 5000) {
+      frame()
+      widest = Math.max(widest, tilt(staying))
+    }
+    expect(now - settledAt).toBeLessThanOrEqual(3000)
+    expect(swingOf(staying)).toBe('')
+    expect(widest).toBeGreaterThan(0.5)
+    expect(widest).toBeLessThanOrEqual(6)
+  })
+})
+
 describe('useTagSwing — 바람(gust)', () => {
   it('떠날 때: 부는 동안 패널 자리에 data-gust, 태그에 들림 · 빛을 쓰고, 무대가 빠진 뒤 전부 뗀다', () => {
     const { swing, hangers, panel } = setup()

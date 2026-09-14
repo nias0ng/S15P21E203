@@ -3,8 +3,8 @@ import { useEffect, useLayoutEffect, useState, type RefObject } from 'react'
 import type { WallSection } from '../lib'
 
 /**
- * 한꺼번에 풀기(decode)를 기다리는 사진 수. 스물다섯 장을 한꺼번에 맡기면 첫 화면 사진이 줄 뒤로
- * 밀리고, 한 장씩이면 받기가 느린 큰 사진 하나에 줄 전체가 막힙니다.
+ * 한꺼번에 풀기(decode)를 맡기는 사진 수. 스물다섯 장을 한꺼번에 맡기면 첫 화면 사진이 줄 뒤로
+ * 밀리고, 한 장씩이면 풀기가 늦는 큰 사진 하나에 줄이 밀립니다. 자리는 다 받은 사진만 쥡니다(pump).
  */
 const CONCURRENCY = 2
 
@@ -29,8 +29,10 @@ type Queued = {
  *      바뀌어 벽을 새로 그려도 받아 둔 병이 사라졌다 나타나지 않습니다.
  *   2. 브라우저가 한가해지면(requestIdleCallback) 나머지를 줄 세웁니다. 첫 화면 사진이 맨 앞이고, 그 뒤는
  *      가리지 않는 자리의 가운데에서 가까운 순서 — 오른쪽 · 왼쪽을 번갈아 — 입니다.
- *   3. 두 장씩 img.decode() 를 기다려, 풀리면 그 병 상자에 data-ready 를 겁니다. 떼어 낸 복사본이
- *      아니라 **화면의 그 img** 를 풀어서, 그릴 때 그 풀린 사진을 그대로 씁니다.
+ *   3. 다 받은 사진을 두 장씩 img.decode() 로 풀어, 풀리면 그 병 상자에 data-ready 를 겁니다. 떼어 낸
+ *      복사본이 아니라 **화면의 그 img** 를 풀어서, 그릴 때 그 풀린 사진을 그대로 씁니다. 아직 받는 중인
+ *      사진은 줄에서 건너뛰었다가 받기가 끝나면(load · error) 곧바로 풉니다 — 받기가 느린 사진 하나가
+ *      먼저 받은 병까지 붙잡아 투명하게 두지 않습니다.
  *   4. 벽이 다른 칸에 서면 남은 줄을 새 가운데 기준으로 다시 세웁니다.
  *
  * data-ready 는 React 가 그리지 않고 DOM 에 직접 씁니다. 다시 그려도 지워지지 않고, 지우는 길도
@@ -105,14 +107,27 @@ function createPreloader() {
   }
 
   const pump = () => {
-    while (busy.size < CONCURRENCY && waiting.length > 0) {
-      const [next, ...rest] = waiting
-      waiting = rest
-      // 기다리는 사이 벽에서 빠진 병(검색)은 건너뜁니다
-      if (!next || !next.img.isConnected) continue
+    let at = 0
+    while (busy.size < CONCURRENCY && at < waiting.length) {
+      const next = waiting[at]
+      // 기다리는 사이 벽에서 빠진 병(검색)은 줄에서 뺍니다
+      if (!next || !next.img.isConnected) {
+        waiting.splice(at, 1)
+        continue
+      }
+      /*
+       * 아직 받는 중인 사진은 건너뛰고 자리를 비워 둡니다. decode() 는 받기가 끝날 때까지 기다려서,
+       * 받기가 느린 사진이 자리를 쥐고 있으면 이미 받아 둔 병까지 그 뒤에 묶여 투명한 채 남습니다.
+       * 받기가 끝나면 scan 이 사진에 걸어 둔 load · error 가 줄을 다시 돌립니다.
+       */
+      if (!next.img.complete) {
+        at += 1
+        continue
+      }
+      waiting.splice(at, 1)
       const { img } = next
       busy.add(img)
-      // decode() 는 사진을 다 받을 때까지 기다렸다가 풉니다. 받기 · 풀기에 실패해도 줄은 이어 갑니다
+      // 받기 · 풀기에 실패해도 줄은 이어 갑니다
       const decoded =
         typeof img.decode === 'function' ? img.decode() : Promise.resolve()
       void decoded
@@ -137,6 +152,8 @@ function createPreloader() {
         section.items.map((_, at) => section.start + at),
       )
       const found: Queued[] = []
+      /** 받는 중인 사진에 건 load · error. 줄을 거둘 때 함께 뗍니다 */
+      const listening = new AbortController()
       root
         .querySelectorAll<HTMLElement>('.shelf-slot')
         .forEach((button, at) => {
@@ -144,6 +161,12 @@ function createPreloader() {
             button.querySelector<HTMLImageElement>('.shelf-bottle-img')
           if (!img || done.has(img) || busy.has(img)) return
           if (img.complete && img.naturalWidth > 0) reveal(img)
+          if (!img.complete) {
+            // 줄에서 건너뛰던(pump) 사진입니다. 받기가 끝나면 줄을 다시 돌려 곧바로 풉니다
+            const { signal } = listening
+            img.addEventListener('load', pump, { signal })
+            img.addEventListener('error', pump, { signal })
+          }
           found.push({
             img,
             slot: slots[at] ?? at,
@@ -158,6 +181,7 @@ function createPreloader() {
       })
       return () => {
         cancel()
+        listening.abort()
         waiting = []
       }
     },
