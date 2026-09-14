@@ -6,6 +6,7 @@ import com.hyanghae.backend.community.dto.response.PostCreateResponse;
 import com.hyanghae.backend.community.dto.response.PostDetailResponse;
 import com.hyanghae.backend.community.dto.response.PostUpdateResponse;
 import com.hyanghae.backend.community.dto.response.PostsResponse;
+import com.hyanghae.backend.community.repository.PostSort;
 import com.hyanghae.backend.community.service.PostService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -67,7 +68,7 @@ public class PostController {
     }
 
     /**
-     * 게시글 목록입니다. 최신순입니다.
+     * 게시글 목록입니다. 기본은 최신순이고 댓글 많은 순으로도 볼 수 있습니다.
      *
      * <p>{@code category} 에 분류 코드(COLLECTION · RECOMMEND · CHAT)를 주면 그 분류만, 주지 않으면
      * 전체입니다. 번호가 아니라 코드인 이유는 번호가 자동 증가라 환경마다 다르기 때문입니다. 페이지
@@ -75,13 +76,17 @@ public class PostController {
      */
     @Operation(
             summary = "자유 게시판 글 목록",
-            description = "최신순입니다. 로그인 없이 조회할 수 있습니다."
+            description = "기본은 최신순입니다. 로그인 없이 조회할 수 있습니다."
     )
     @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "400", description = "정렬 기준이 올바르지 않음")
     @GetMapping
     public PostsResponse getPosts(
             @Parameter(description = "분류 코드. 주지 않으면 전체", example = "CHAT")
             @RequestParam(required = false) String category,
+
+            @Parameter(description = "정렬 기준. RECENT(최신순) 또는 COMMENTS(댓글 많은 순)")
+            @RequestParam(defaultValue = "RECENT") PostSort sort,
 
             @Parameter(description = "페이지 번호. 0부터 시작합니다.", example = "0")
             @RequestParam(defaultValue = "0") int page,
@@ -89,7 +94,7 @@ public class PostController {
             @Parameter(description = "페이지 크기. 기본 20개, 최대 100개입니다.", example = "20")
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size
     ) {
-        return postService.findPage(category, page, size);
+        return postService.findPage(category, sort, page, size);
     }
 
     /**

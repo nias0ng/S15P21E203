@@ -15,6 +15,9 @@ import com.hyanghae.backend.community.repository.PostCategoryRepository;
 import com.hyanghae.backend.community.repository.PostListRow;
 import com.hyanghae.backend.community.repository.PostPerfumeRow;
 import com.hyanghae.backend.community.repository.PostRepository;
+import com.hyanghae.backend.community.repository.PostSort;
+import com.hyanghae.backend.collection.entity.Collection;
+import com.hyanghae.backend.collection.repository.CollectionRepository;
 import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.perfume.entity.Perfume;
@@ -50,17 +53,20 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final PostCategoryRepository postCategoryRepository;
+    private final CollectionRepository collectionRepository;
     private final PerfumeRepository perfumeRepository;
     private final CurrentUser currentUser;
 
     public PostService(
             PostRepository postRepository,
             PostCategoryRepository postCategoryRepository,
+            CollectionRepository collectionRepository,
             PerfumeRepository perfumeRepository,
             CurrentUser currentUser
     ) {
         this.postRepository = postRepository;
         this.postCategoryRepository = postCategoryRepository;
+        this.collectionRepository = collectionRepository;
         this.perfumeRepository = perfumeRepository;
         this.currentUser = currentUser;
     }
@@ -80,8 +86,9 @@ public class PostService {
         Post post = Post.create(
                 userId,
                 category,
-                request.title().strip(),
-                request.content().strip(),
+                request.title(),
+                request.content(),
+                findMyCollection(request.collectionId()),
                 OffsetDateTime.now()
         );
         post.addPerfumes(perfumes);
@@ -104,13 +111,16 @@ public class PostService {
         PostCategory category = request.isCategoryPresent()
                 ? requireActiveCategory(request.getCategory())
                 : post.getCategory();
-        String title = request.isTitlePresent() ? request.getTitle().strip() : post.getTitle();
+        String title = request.isTitlePresent() ? request.getTitle() : post.getTitle();
         String content = request.isContentPresent()
-                ? request.getContent().strip()
+                ? request.getContent()
                 : post.getContent();
 
         post.update(category, title, content, OffsetDateTime.now());
 
+        if (request.isCollectionPresent()) {
+            post.attachCollection(findMyCollection(request.getCollectionId()));
+        }
         if (request.isPerfumesPresent()) {
             replacePerfumes(post, request.getPerfumeIds());
         }
@@ -136,16 +146,22 @@ public class PostService {
      *
      * <p>분류를 주지 않으면 전체입니다. 페이지 크기는 1~100 으로 자릅니다.
      *
+     * <p>정렬은 최신순과 댓글 많은 순 둘입니다. 화면의 조회 순·좋아요 순은 저장할 자리가 없어
+     * 아직 없습니다.
+     *
      * <p>대표 향수는 한 번에 모아 읽습니다. 글마다 따로 조회하면 한 페이지에 쿼리가 스무 번
      * 나갑니다.
      */
     @Transactional(readOnly = true)
-    public PostsResponse findPage(String category, int page, int size) {
+    public PostsResponse findPage(String category, PostSort sort, int page, int size) {
         int pageNumber = Math.max(page, 0);
         int pageSize = Math.clamp(size, 1, MAX_PAGE_SIZE);
+        long offset = (long) pageNumber * pageSize;
 
-        List<PostListRow> rows =
-                postRepository.findPage(category, pageSize, (long) pageNumber * pageSize);
+        List<PostListRow> rows = switch (sort) {
+            case RECENT -> postRepository.findPageByRecent(category, pageSize, offset);
+            case COMMENTS -> postRepository.findPageByComments(category, pageSize, offset);
+        };
         Map<Long, PostPerfumeResponse> perfumes = representativePerfumes(rows);
 
         List<PostSummaryResponse> posts = rows.stream()
@@ -155,6 +171,7 @@ public class PostService {
                         row.getTitle(),
                         row.getNickname(),
                         perfumes.get(row.getPostId()),
+                        row.getCommentCount(),
                         OffsetDateTime.ofInstant(row.getCreatedAt(), ZoneId.systemDefault())
                 ))
                 .toList();
@@ -176,6 +193,9 @@ public class PostService {
                 post.getContent(),
                 postRepository.findImageUrls(postId),
                 postRepository.findPerfumes(postId),
+                collectionIdOf(post),
+                collectionTitleOf(post),
+                postRepository.countComments(postId),
                 isMine(post),
                 post.getCreatedAt(),
                 post.getUpdatedAt()
@@ -195,6 +215,31 @@ public class PostService {
         post.clearPerfumes();
         postRepository.flush();
         post.addPerfumes(perfumes);
+    }
+
+    /**
+     * 첨부할 컬렉션입니다. 보내지 않으면 첨부가 없습니다.
+     *
+     * <p><b>내 컬렉션만 붙일 수 있습니다.</b> 컬렉션은 사용자에게 매달린 자료라 남의 것을 내 글에
+     * 걸 수 없습니다. 없는 컬렉션과 남의 컬렉션을 같은 404 로 답합니다. 컬렉션은 누구나 볼 수 있는
+     * 자료가 아니라 존재를 숨기는 편이 맞습니다. 남의 글을 403 으로 답하는 것과 반대 이유입니다.
+     */
+    private Collection findMyCollection(Long collectionId) {
+        if (collectionId == null) {
+            return null;
+        }
+        return collectionRepository.findByIdAndUserId(collectionId, requireLogin())
+                .orElseThrow(() ->
+                        new BusinessException(CommunityErrorCode.COMMUNITY_COLLECTION_NOT_FOUND));
+    }
+
+    /** 첨부한 컬렉션이 지워졌으면 비어 있습니다. */
+    private Long collectionIdOf(Post post) {
+        return post.getCollection() == null ? null : post.getCollection().getId();
+    }
+
+    private String collectionTitleOf(Post post) {
+        return post.getCollection() == null ? null : post.getCollection().getName();
     }
 
     private Map<Long, PostPerfumeResponse> representativePerfumes(List<PostListRow> rows) {
