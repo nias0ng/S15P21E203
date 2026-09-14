@@ -184,13 +184,6 @@ export function RecommendPeekCard({
             onClick={() => setDismissed(true)}
             className={cn(
               'flex h-10 shrink-0 items-center justify-center',
-              // 카드에서 가장 조용해야 하는 단추입니다. 추천을 보여주는 것이 이
-              // 카드의 일이고 치우는 것은 그다음이라, 평소에는 물러나 있다가
-              // 가리키면 진해집니다.
-              //
-              // /70 이 옅게 갈 수 있는 한계입니다. 카드 바탕(#fefcf8) 위에서 대비가
-              // 3.19:1 이라 아이콘 기준 3:1 을 겨우 넘깁니다 — /65 는 2.88 로
-              // 미달입니다. 더 옅게 하려면 색을 바꾸지 말고 크기를 키우세요.
               'text-ink-muted/70 hover:text-ink transition-colors duration-120 ease-out',
               'focus-visible:ring-accent outline-none focus-visible:ring-2 focus-visible:ring-inset',
             )}
@@ -220,7 +213,7 @@ export function RecommendPeekCard({
             )}
           >
             <span className="text-caption tracking-[0.1em] [writing-mode:vertical-rl]">
-              {open ? '접기' : '향수 추천이 왔어요!'}
+              {open ? '접기' : '당신을 위한 향수 도착 :)'}
             </span>
             <span
               aria-hidden
