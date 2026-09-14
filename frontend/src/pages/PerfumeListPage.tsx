@@ -16,20 +16,11 @@ import { SearchField } from '@/shared/ui/SearchField'
 /**
  * 향수 (와이어프레임 A33 — 상단 메뉴 [향수] 목적지)
  *
- * 와이어프레임 주석:
- * - 아무 필터도 고르지 않은 상태가 기본 — 전체 향수를 보여준다
- * - 카드를 누르면 향수 상세(A10) · 스크롤하면 이어서 로드
+ * 필터를 고르기 전에는 "최근 인기 향수" 로 전체를 깔아 둡니다 — 빈 상태로 시작하면
+ * 무엇을 하는 화면인지 알 수 없습니다.
  *
- * 필터를 고르기 전에는 "최근 인기 향수" 라는 제목으로 전체를 깔아 둡니다.
- * 첫 화면이 빈 상태로 시작하면 무엇을 하는 화면인지 알 수 없기 때문입니다.
- *
- * 조건을 하나도 보내지 않으면 백엔드가 활성 향수 전체를 돌려줍니다.
- *
- * 위 줄 필터(shelf)는 **전체 사용자 집계** 기준입니다. 내 진열대가 아니라
- * 많은 사람이 진열대에 담은 순으로 좁힙니다. 로그인이 필요 없습니다.
- *
- * TODO: 스크롤 이어서 로드(무한 스크롤). 백엔드 페이지네이션은 이미 준비돼 있어
- * useInfiniteQuery 로 바꾸면 됩니다. 지금은 첫 페이지만 불러옵니다.
+ * TODO: 스크롤 이어서 로드. 백엔드 페이지네이션은 준비돼 있어 useInfiniteQuery 로
+ * 바꾸면 됩니다. 지금은 첫 페이지만 불러옵니다.
  */
 export default function PerfumeListPage() {
   const navigate = useNavigate()
@@ -50,8 +41,7 @@ export default function PerfumeListPage() {
 
   const items = data?.perfumes ?? []
 
-  // 검색어·필터로 걸러 0건이 됐을 때만 [초기화] 를 보여줍니다.
-  // 원래 데이터가 없는 경우에는 초기화해도 달라지지 않으니 버튼을 걸지 않습니다.
+  // 걸러서 0건일 때만 [초기화] 를 답니다 — 원래 없는 경우엔 눌러도 안 달라집니다
   const hasFilter = shelf !== null || gender !== null || brand !== null
 
   const resetFilters = () => {

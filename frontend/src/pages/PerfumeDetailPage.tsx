@@ -21,16 +21,12 @@ import { Toast } from '@/shared/ui/Toast'
 /**
  * 향수 상세 (와이어프레임 A10 — DTL-01 · 02 · 03 · 10 · 12 · 15)
  *
- * 다섯 개 구역을 조립합니다. 각 구역의 마크업과 자리표시자는
+ * 다섯 개 구역(개요 · 향조 · 계절 · AI 요약 · 후기)을 조립합니다. 마크업은
  * features/perfume/components/ 안에 있습니다.
- *   ① PerfumeOverview  ② PerfumeNotes  ③ PerfumeSeasonRatings
- *   ④ PerfumeReviewSummary  ⑤ PerfumeReviewList
+ * 계절 등록(DTL-16)은 이 화면이 아니라 후기 작성 화면(A24a)에 있습니다.
  *
- * 계절 등록(DTL-16)은 이 화면에 없습니다. 후기 작성 화면(A24a)의 한 항목입니다.
- *
- * 상세 응답은 기본 정보 · brand 객체 · images 배열 · prices 배열입니다.
- * ⚠️ 향조 · 계절 평가 · AI 요약 · 후기 목록은 아직 없어 각 구역이 안내 문구만
- * 보여줍니다. 각 구역 컴포넌트의 주석을 보세요.
+ * ⚠️ 향조 · 계절 평가 · AI 요약 · 후기 목록은 백엔드에 아직 없어 각 구역이 안내
+ * 문구만 보여줍니다.
  */
 export default function PerfumeDetailPage() {
   const { perfumeId } = useParams<{ perfumeId: string }>()

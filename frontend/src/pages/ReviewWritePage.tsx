@@ -20,12 +20,8 @@ import { Textarea } from '@/shared/ui/Textarea'
 /**
  * 후기 게시글 작성 · 수정 (와이어프레임 A24a — CMT-03 · CMT-06)
  *
- * 와이어프레임 주석:
- * - 분류를 고르지 않는다 — 후기 게시판 글은 전부 같은 종류다
- * - 대상 향수는 필수 · 한 개만 · 향수 상세(A10)에서 들어오면 이미 채워져 있다
- * - [포스팅] → 검사 → 통과하면 A23, 걸리면 A25 모달
- *
- * 향수 상세에서 오면 `?perfumeId=` 를 달고 옵니다.
+ * 분류가 없고(전부 후기라서) 대상 향수는 필수 · 한 개만입니다.
+ * 향수 상세에서 오면 `?perfumeId=` 를 달고 와서 이미 채워져 있습니다.
  */
 export default function ReviewWritePage() {
   const [searchParams] = useSearchParams()

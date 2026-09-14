@@ -13,13 +13,8 @@ import { Thumbnail } from '@/shared/ui/Thumbnail'
 /**
  * 노트 상세 (와이어프레임 A36 — A35 에서 노트를 누른 화면)
  *
- * 와이어프레임 주석:
- * - 노트 하나에 대분류 · 설명 · 그 노트가 들어간 향수 목록
- * - 향수 카드를 누르면 향수 상세(A10) · 향수가 많으면 스크롤로 이어 로드
- *
- * ⚠️ "이 노트가 들어간 향수" 목록은 백엔드 엔드포인트가 없습니다. 향수 도메인의
- * PerfumeGrid 를 그대로 쓰되 지금은 빈 배열이라 안내 문구가 나옵니다.
- * 노트별 향수 API 가 생기면 useQuery 결과를 items 에 넘겨주세요.
+ * ⚠️ "이 노트가 들어간 향수" 는 백엔드 엔드포인트가 없어 빈 배열입니다.
+ * API 가 생기면 useQuery 결과를 items 에 넘겨주세요.
  */
 export default function NoteDetailPage() {
   const { noteId } = useParams<{ noteId: string }>()
