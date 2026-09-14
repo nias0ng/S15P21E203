@@ -77,3 +77,26 @@ CREATE INDEX idx_perfume_reviews_views
 -- 향수가 선두라 이 목록에는 쓰이지 못합니다.
 CREATE INDEX idx_perfume_reviews_recent
     ON perfume_reviews (created_at DESC, id DESC);
+
+
+-- 4. 컬렉션 공유 글이 컬렉션 이름을 제 안에 들고 있습니다.
+--
+-- V12 가 posts.collection_id 를 넣었지만, 화면에 나가는 이름은 collections 를 그때그때 읽어
+-- 왔습니다. 그래서 컬렉션 이름을 바꾸면 몇 달 전에 쓴 소개 글의 이름까지 같이 바뀌고, 컬렉션을
+-- 지우면 글에 남는 것이 아무것도 없었습니다.
+--
+-- 팀에서 글 쓸 때의 모습을 박제하기로 정했습니다. 글은 그때 그 컬렉션을 소개한 기록이지
+-- 지금의 컬렉션을 비추는 창이 아닙니다.
+--
+-- 향수 목록은 따로 둘 필요가 없습니다. post_perfumes 가 이미 "이 글이 언급하는 향수"이고,
+-- 컬렉션을 붙일 때 그 컬렉션의 향수를 여기 복사합니다. 그러면 표가 늘지 않고 목록의 대표
+-- 향수도 그대로 동작합니다.
+--
+-- 이 복사가 탈퇴 문제까지 함께 풉니다. collection_perfumes 는 user_perfumes(진열대)를 가리켜
+-- 탈퇴하면 CASCADE 로 사라지지만, post_perfumes 는 perfumes 마스터를 가리켜 살아남습니다.
+-- 작성자가 탈퇴해도 글에 이름과 향수가 그대로 남습니다.
+--
+-- collection_id 는 그대로 둡니다. 원본으로 가는 링크가 아니라 "내가 어느 컬렉션을 소개했나"를
+-- 아는 값입니다. 컬렉션을 지우면 V12 대로 NULL 이 되고, 이름과 향수는 글에 남습니다.
+ALTER TABLE posts
+    ADD COLUMN collection_name VARCHAR(255);

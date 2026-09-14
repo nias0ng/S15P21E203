@@ -88,14 +88,15 @@ public class PostService {
     public PostCreateResponse create(PostCreateRequest request) {
         Long userId = requireLogin();
         PostCategory category = requireActiveCategory(request.category());
-        List<Perfume> perfumes = requireActivePerfumes(request.perfumeIds());
+        Collection collection = findMyCollection(request.collectionId());
+        List<Perfume> perfumes = perfumesFor(collection, request.perfumeIds());
 
         Post post = Post.create(
                 userId,
                 category,
                 request.title(),
                 request.content(),
-                findMyCollection(request.collectionId()),
+                collection,
                 OffsetDateTime.now()
         );
         post.addPerfumes(perfumes);
@@ -104,6 +105,26 @@ public class PostService {
         postRepository.save(post);
 
         return new PostCreateResponse(post.getId(), post.getCreatedAt());
+    }
+
+    /**
+     * 글에 걸 향수를 정합니다. <b>출처는 하나뿐입니다.</b>
+     *
+     * <p>컬렉션을 붙이면 그 컬렉션에 담긴 향수가 그대로 글의 향수가 됩니다. 글 하나에 향수 목록이
+     * 하나라서 직접 고른 목록과 컬렉션이 함께 오면 어느 쪽을 쓸지 정할 수 없습니다. 조용히 한쪽을
+     * 버리면 화면은 보낸 대로 저장됐다고 믿으므로 400 으로 돌려줍니다.
+     *
+     * <p>컬렉션의 향수를 <b>복사</b>합니다. 글을 쓸 때의 모습을 박제하는 것이라, 나중에 컬렉션에서
+     * 향수를 빼도 글은 그대로입니다.
+     */
+    private List<Perfume> perfumesFor(Collection collection, List<Long> perfumeIds) {
+        if (collection == null) {
+            return requireActivePerfumes(perfumeIds);
+        }
+        if (perfumeIds != null && !perfumeIds.isEmpty()) {
+            throw new BusinessException(CommunityErrorCode.COMMUNITY_PERFUMES_FROM_COLLECTION);
+        }
+        return requireActivePerfumes(collectionRepository.findPerfumeIds(collection.getId()));
     }
 
     /**
@@ -126,9 +147,18 @@ public class PostService {
         post.update(category, title, content, OffsetDateTime.now());
 
         if (request.isCollectionPresent()) {
-            post.attachCollection(findMyCollection(request.getCollectionId()));
+            Collection collection = findMyCollection(request.getCollectionId());
+            post.attachCollection(collection);
+            if (collection != null) {
+                replacePerfumes(post, collectionRepository.findPerfumeIds(collection.getId()));
+            }
         }
+        // 컬렉션을 먼저 처리했으므로, 여기서 컬렉션이 남아 있으면 향수 출처가 컬렉션입니다.
+        // 목록을 따로 보내려면 같은 요청에서 collectionId 를 null 로 보내 컬렉션을 떼야 합니다.
         if (request.isPerfumesPresent()) {
+            if (post.getCollection() != null) {
+                throw new BusinessException(CommunityErrorCode.COMMUNITY_PERFUMES_FROM_COLLECTION);
+            }
             replacePerfumes(post, request.getPerfumeIds());
         }
         if (request.isImagesPresent()) {
@@ -311,8 +341,14 @@ public class PostService {
         return post.getCollection() == null ? null : post.getCollection().getId();
     }
 
+    /**
+     * 글을 쓸 때 박제한 컬렉션 이름입니다.
+     *
+     * <p>컬렉션을 그때그때 읽지 않습니다. 이름을 바꾸면 몇 달 전 글의 이름까지 같이 바뀌고,
+     * 컬렉션을 지우면 글에 남는 것이 없어집니다. 글은 그때 그 컬렉션을 소개한 기록입니다.
+     */
     private String collectionTitleOf(Post post) {
-        return post.getCollection() == null ? null : post.getCollection().getName();
+        return post.getCollectionName();
     }
 
     private Map<Long, PostPerfumeResponse> representativePerfumes(List<PostListRow> rows) {

@@ -669,6 +669,194 @@ class PostIntegrationTest {
     }
 
     // ────────────────────────────────────────────────────────────────
+    // 컬렉션 박제
+    // ────────────────────────────────────────────────────────────────
+
+    /**
+     * 컬렉션을 붙이면 그 컬렉션의 향수가 글의 향수가 됩니다.
+     *
+     * <p>컬렉션에 담긴 순서 그대로입니다. 순서가 흔들리면 목록의 대표 향수가 매번 달라집니다.
+     */
+    @Test
+    void copiesCollectionPerfumesWhenAttaching() throws Exception {
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 100, 2, 1);
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 101, 1, 2);
+
+        long postId = writeWithCollection("COLLECTION", "컬렉션 공유 글", MY_COLLECTION_ID);
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.collectionId").value(MY_COLLECTION_ID))
+                .andExpect(jsonPath("$.collectionTitle").value("내 컬렉션"))
+                .andExpect(jsonPath("$.relatedPerfumes[*].perfumeId")
+                        .value(Matchers.contains(2, 1)));
+    }
+
+    /**
+     * 컬렉션을 <b>고쳐도</b> 글은 그대로입니다.
+     *
+     * <p>글은 그때 그 컬렉션을 소개한 기록이지 지금의 컬렉션을 비추는 창이 아닙니다. 이름을
+     * 그때그때 읽으면 이름을 바꾸는 순간 몇 달 전 글의 이름까지 바뀝니다.
+     */
+    @Test
+    void keepsTheSnapshotWhenTheCollectionChanges() throws Exception {
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 100, 1, 1);
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 101, 2, 2);
+        long postId = writeWithCollection("COLLECTION", "컬렉션 공유 글", MY_COLLECTION_ID);
+
+        jdbcTemplate.update("UPDATE collections SET name = '이름 바꿈' WHERE collection_id = ?",
+                MY_COLLECTION_ID);
+        jdbcTemplate.update("DELETE FROM collection_perfumes WHERE user_perfume_id = 101");
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.collectionTitle").value("내 컬렉션"))
+                .andExpect(jsonPath("$.relatedPerfumes[*].perfumeId")
+                        .value(Matchers.contains(1, 2)));
+    }
+
+    /**
+     * 컬렉션을 <b>지워도</b> 이름과 향수가 남습니다. 번호만 비워집니다.
+     *
+     * <p>번호는 원본으로 가는 값이라 원본이 없으면 의미가 없지만, 이름과 향수는 글의 내용이라
+     * 남아야 합니다. 컬렉션을 정리했다고 그것을 소개한 글이 껍데기가 되면 안 됩니다.
+     */
+    @Test
+    void keepsTheSnapshotWhenTheCollectionIsDeleted() throws Exception {
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 100, 1, 1);
+        long postId = writeWithCollection("COLLECTION", "컬렉션 공유 글", MY_COLLECTION_ID);
+
+        jdbcTemplate.update("DELETE FROM collection_perfumes WHERE collection_id = ?",
+                MY_COLLECTION_ID);
+        jdbcTemplate.update("DELETE FROM collections WHERE collection_id = ?", MY_COLLECTION_ID);
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.collectionId").doesNotExist())
+                .andExpect(jsonPath("$.collectionTitle").value("내 컬렉션"))
+                .andExpect(jsonPath("$.relatedPerfumes[*].perfumeId")
+                        .value(Matchers.contains(1)));
+    }
+
+    /**
+     * 작성자가 탈퇴해도 컬렉션 공유 글이 온전합니다.
+     *
+     * <p>탈퇴하면 컬렉션과 진열대가 함께 사라지지만, 글에 복사해 둔 향수는 마스터를 가리켜
+     * 살아남습니다. 복사하지 않았다면 이름도 향수도 없는 글만 남았을 것입니다.
+     */
+    @Test
+    void keepsTheSnapshotAfterTheWriterLeaves() throws Exception {
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 100, 1, 1);
+        long postId = writeWithCollection("COLLECTION", "컬렉션 공유 글", MY_COLLECTION_ID);
+
+        currentUser.logout();
+        jdbcTemplate.update("DELETE FROM users WHERE user_id = ?", WRITER_ID);
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nickname").doesNotExist())
+                .andExpect(jsonPath("$.collectionId").doesNotExist())
+                .andExpect(jsonPath("$.collectionTitle").value("내 컬렉션"))
+                .andExpect(jsonPath("$.relatedPerfumes[*].perfumeId")
+                        .value(Matchers.contains(1)));
+    }
+
+    /** 컬렉션과 향수를 함께 보내면 400 입니다. 글 하나에 향수 출처가 둘일 수 없습니다. */
+    @Test
+    void rejectsPerfumesSentWithACollection() throws Exception {
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 100, 1, 1);
+
+        mockMvc.perform(post(POSTS_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"category\": \"COLLECTION\", \"title\": \"글\","
+                                + " \"content\": \"본문\", \"collectionId\": " + MY_COLLECTION_ID
+                                + ", \"perfumeIds\": [2]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value(CommunityErrorCode.COMMUNITY_PERFUMES_FROM_COLLECTION.code()));
+
+        assertThat(countRows("posts")).isZero();
+    }
+
+    /**
+     * 제목만 고치면 향수는 그대로입니다.
+     *
+     * <p>수정할 때마다 컬렉션을 다시 읽으면 "제목만 고쳤는데 향수가 바뀌어 있다" 가 됩니다.
+     * 번호를 다시 보낼 때만 읽습니다.
+     */
+    @Test
+    void keepsTheSnapshotWhenUpdatingOnlyTheTitle() throws Exception {
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 100, 1, 1);
+        long postId = writeWithCollection("COLLECTION", "컬렉션 공유 글", MY_COLLECTION_ID);
+
+        jdbcTemplate.update("UPDATE collections SET name = '이름 바꿈' WHERE collection_id = ?",
+                MY_COLLECTION_ID);
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 101, 2, 2);
+
+        mockMvc.perform(patch(POST_URL, postId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\": \"제목만 고침\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(jsonPath("$.title").value("제목만 고침"))
+                .andExpect(jsonPath("$.collectionTitle").value("내 컬렉션"))
+                .andExpect(jsonPath("$.relatedPerfumes[*].perfumeId")
+                        .value(Matchers.contains(1)));
+    }
+
+    /** 같은 번호를 다시 보내면 지금의 컬렉션으로 맞춥니다. 그게 다시 읽으라는 뜻입니다. */
+    @Test
+    void refreshesTheSnapshotWhenTheCollectionIdIsResent() throws Exception {
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 100, 1, 1);
+        long postId = writeWithCollection("COLLECTION", "컬렉션 공유 글", MY_COLLECTION_ID);
+
+        jdbcTemplate.update("UPDATE collections SET name = '이름 바꿈' WHERE collection_id = ?",
+                MY_COLLECTION_ID);
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 101, 2, 2);
+
+        mockMvc.perform(patch(POST_URL, postId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"collectionId\": " + MY_COLLECTION_ID + "}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(jsonPath("$.collectionTitle").value("이름 바꿈"))
+                .andExpect(jsonPath("$.relatedPerfumes[*].perfumeId")
+                        .value(Matchers.contains(1, 2)));
+    }
+
+    /**
+     * 컬렉션이 붙은 글에는 향수를 따로 보낼 수 없고, 컬렉션을 떼면서 함께 보내면 됩니다.
+     *
+     * <p>박제한 목록을 조용히 덮어쓰지 않도록 막습니다. 목록을 직접 정하겠다는 뜻이면 컬렉션을
+     * 떼는 것이 먼저입니다.
+     */
+    @Test
+    void rejectsPerfumesUntilTheCollectionIsDetached() throws Exception {
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 100, 1, 1);
+        long postId = writeWithCollection("COLLECTION", "컬렉션 공유 글", MY_COLLECTION_ID);
+
+        mockMvc.perform(patch(POST_URL, postId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"perfumeIds\": [2]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value(CommunityErrorCode.COMMUNITY_PERFUMES_FROM_COLLECTION.code()));
+
+        mockMvc.perform(patch(POST_URL, postId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"collectionId\": null, \"perfumeIds\": [2]}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(jsonPath("$.collectionId").doesNotExist())
+                .andExpect(jsonPath("$.collectionTitle").doesNotExist())
+                .andExpect(jsonPath("$.relatedPerfumes[*].perfumeId")
+                        .value(Matchers.contains(2)));
+    }
+
+    // ────────────────────────────────────────────────────────────────
     // 좋아요와 조회수
     // ────────────────────────────────────────────────────────────────
 
@@ -917,6 +1105,24 @@ class PostIntegrationTest {
                 id, userId, name);
     }
 
+    /**
+     * 컬렉션에 향수를 담습니다.
+     *
+     * <p>컬렉션은 향수가 아니라 <b>진열대 항목</b>({@code user_perfumes})을 담으므로 한 칸을 거쳐
+     * 갑니다. 진열대 항목 번호는 향수 번호와 겹치지 않게 별도로 받습니다.
+     */
+    private void putInCollection(
+            long collectionId, long ownerId, long shelfItemId, long perfumeId, int order) {
+        jdbcTemplate.update("""
+                INSERT INTO user_perfumes (user_perfumes_id, user_id, perfume_id, ownership_status)
+                VALUES (?, ?, ?, 'OWNED')
+                """, shelfItemId, ownerId, perfumeId);
+        jdbcTemplate.update("""
+                INSERT INTO collection_perfumes (collection_id, user_perfume_id, display_order)
+                VALUES (?, ?, ?)
+                """, collectionId, shelfItemId, order);
+    }
+
     private int countRows(String table) {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class);
     }
@@ -951,6 +1157,7 @@ class PostIntegrationTest {
         jdbcTemplate.update("DELETE FROM posts");
         jdbcTemplate.update("DELETE FROM collection_perfumes");
         jdbcTemplate.update("DELETE FROM collections");
+        jdbcTemplate.update("DELETE FROM user_perfumes");
         jdbcTemplate.update("DELETE FROM perfumes");
         jdbcTemplate.update("DELETE FROM brands");
         jdbcTemplate.update("DELETE FROM users");

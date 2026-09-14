@@ -55,12 +55,21 @@ public class PostController {
      * <p>분류는 필수입니다. 향수와 이미지는 없어도 되고, 보낸 순서를 그대로 보여줄 순서로 씁니다.
      * 이미지는 주소만 받습니다. 파일을 올리는 방법은 아직 정해지지 않았습니다.
      *
+     * <p><b>컬렉션을 붙이면 그 컬렉션의 향수가 글의 향수가 됩니다.</b> 이름과 향수를 글에
+     * 복사해 두므로, 나중에 컬렉션을 고치거나 지워도 글은 그대로입니다. 향수를 따로 보내면
+     * 출처가 둘이 되어 400 입니다.
+     *
      * <p>없거나 내려간 분류·향수는 404, 제목이 50자를 넘거나 내용이 비면 400, 로그인하지 않았으면
      * 401 입니다.
      */
-    @Operation(summary = "자유 게시판 글 작성")
+    @Operation(
+            summary = "자유 게시판 글 작성",
+            description = "컬렉션을 붙이면 그 컬렉션의 이름과 향수를 글에 복사합니다. 이후"
+                    + " 컬렉션이 바뀌어도 글은 그대로입니다."
+    )
     @ApiResponse(responseCode = "201", description = "작성 성공")
-    @ApiResponse(responseCode = "400", description = "제목·내용이 비었거나 향수가 중복됨")
+    @ApiResponse(responseCode = "400",
+            description = "제목·내용이 비었거나, 향수가 중복되거나, 컬렉션과 향수를 함께 보냄")
     @ApiResponse(responseCode = "401", description = "로그인 필요")
     @ApiResponse(responseCode = "404", description = "분류 또는 향수 없음")
     @PostMapping
@@ -126,14 +135,20 @@ public class PostController {
      *
      * <p>향수와 이미지는 보낸 목록으로 통째로 바뀝니다. 빈 배열을 보내면 연결이 모두 지워집니다.
      *
+     * <p><b>컬렉션은 번호를 보낼 때만 다시 읽습니다.</b> 보내지 않으면 글을 쓸 때 박제한 이름과
+     * 향수가 그대로입니다. 컬렉션이 붙어 있는 글에 향수를 따로 보내면 400 입니다.
+     *
      * <p>남의 글은 403, 없는 글은 404 입니다.
      */
     @Operation(
             summary = "자유 게시판 글 수정",
-            description = "보낸 항목만 바뀝니다. 향수·이미지는 보낸 목록으로 통째로 교체됩니다."
+            description = "보낸 항목만 바뀝니다. 컬렉션은 번호를 보낼 때만 다시 읽고, 보내지"
+                    + " 않으면 글을 쓸 때 박제한 이름과 향수가 그대로입니다."
     )
     @ApiResponse(responseCode = "200", description = "수정 성공")
-    @ApiResponse(responseCode = "400", description = "고칠 항목이 없거나 분류·제목·내용을 비움")
+    @ApiResponse(responseCode = "400",
+            description = "고칠 항목이 없거나, 분류·제목·내용을 비우거나, 컬렉션이 붙은 글에"
+                    + " 향수를 따로 보냄")
     @ApiResponse(responseCode = "401", description = "로그인 필요")
     @ApiResponse(responseCode = "403", description = "본인 글이 아님")
     @ApiResponse(responseCode = "404", description = "글 또는 분류·향수 없음")
