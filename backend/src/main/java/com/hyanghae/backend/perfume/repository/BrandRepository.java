@@ -23,23 +23,38 @@ public interface BrandRepository extends JpaRepository<Brand, Long> {
     /**
      * 목록 한 줄에 실을 값입니다.
      *
-     * <p>향수 수는 왼쪽 조인으로 셉니다. 향수가 없는 브랜드도 목록에 나와야 하기 때문입니다.
-     * 안쪽 조인으로 두면 그런 브랜드가 통째로 사라집니다.
-     *
-     * <p><b>활성 향수만 셉니다.</b> 내려간 향수는 목록에도 상세에도 나오지 않으므로, 세어서
-     * 보여주면 눌러 들어갔을 때 수가 맞지 않습니다. 조건을 {@code ON} 에 두는 이유는 여기입니다 —
-     * {@code WHERE} 로 옮기면 활성 향수가 하나도 없는 브랜드가 왼쪽 조인과 무관하게 빠집니다.
+     * <p>향수 수가 없습니다. 화면이 카드에 그리지 않기로 했습니다. 브랜드가 7,793개라 필드 하나가
+     * 133KB 인데, 쓰지 않을 값에 낼 크기가 아닙니다.
      */
     String BRAND_COLUMNS = """
             SELECT b.brand_id AS brandId,
                    b.name AS name,
                    b.name_ko AS nameKo,
-                   b.logo_url AS logoUrl,
-                   COUNT(p.perfume_id) AS perfumeCount
+                   b.logo_url AS logoUrl
             """;
 
+    String BRAND_FROM = "FROM brands b\n";
+
     /**
-     * 목록이 보는 범위입니다.
+     * 향수 많은 순에만 붙이는 조인입니다.
+     *
+     * <p>세는 값이 응답에 나가지 않으므로 다른 정렬에서는 붙일 이유가 없습니다. 그냥 두면 이름순
+     * 조회가 쓰지도 않을 13만 행을 매번 붙입니다.
+     *
+     * <p>왼쪽 조인인 이유는 향수가 없는 브랜드도 목록에 나와야 하기 때문입니다. 안쪽 조인으로
+     * 두면 그런 브랜드가 통째로 사라집니다.
+     *
+     * <p><b>활성 향수만 셉니다.</b> 조건을 {@code ON} 에 두는 이유가 여기입니다 — {@code WHERE}
+     * 로 옮기면 활성 향수가 하나도 없는 브랜드가 왼쪽 조인과 무관하게 빠집니다.
+     */
+    String BRAND_COUNT_JOIN =
+            "LEFT JOIN perfumes p ON p.brand_id = b.brand_id AND p.is_active = TRUE\n";
+
+    /**
+     * 목록이 보는 범위입니다. <b>정렬 셋이 나눠 씁니다.</b>
+     *
+     * <p>따로 적어 두면 한쪽만 고쳤을 때 정렬에 따라 다른 브랜드가 나옵니다. 화면은 정렬 칩만
+     * 눌렀는데 목록이 바뀌는 셈입니다.
      *
      * <p>내려간 브랜드는 뺍니다. 검색어를 주면 <b>두 이름 모두</b>에서 부분 일치를 찾습니다.
      * 화면의 검색창 하나가 한국어와 영문을 모두 받아야 하기 때문입니다.
@@ -50,15 +65,15 @@ public interface BrandRepository extends JpaRepository<Brand, Long> {
      * <p>{@code ESCAPE '\\'} 를 붙입니다. 사용자가 {@code %} 나 {@code _} 를 치면 그것이 와일드
      * 카드로 해석되어 엉뚱하게 전체가 걸립니다. 서비스가 미리 막아 보내고 여기서 받습니다.
      */
-    String BRAND_FROM_AND_WHERE = """
-            FROM brands b
-            LEFT JOIN perfumes p ON p.brand_id = b.brand_id AND p.is_active = TRUE
+    String BRAND_WHERE = """
             WHERE b.is_active = TRUE
               AND (CAST(:keyword AS VARCHAR) IS NULL
                    OR b.name ILIKE :keyword ESCAPE '\\'
                    OR b.name_ko ILIKE :keyword ESCAPE '\\')
-            GROUP BY b.brand_id, b.name, b.name_ko, b.logo_url
             """;
+
+    /** 향수 많은 순만 묶습니다. 조인이 브랜드마다 향수 수만큼 줄을 만들기 때문입니다. */
+    String BRAND_GROUP_BY = "GROUP BY b.brand_id, b.name, b.name_ko, b.logo_url\n";
 
     /**
      * 한국어 이름 가나다순입니다.
@@ -86,13 +101,15 @@ public interface BrandRepository extends JpaRepository<Brand, Long> {
     String BRAND_ORDER_PERFUME_COUNT =
             "ORDER BY COUNT(p.perfume_id) DESC, b.name NULLS LAST, b.brand_id";
 
-    @Query(value = BRAND_COLUMNS + BRAND_FROM_AND_WHERE + BRAND_ORDER_NAME_KO, nativeQuery = true)
+    @Query(value = BRAND_COLUMNS + BRAND_FROM + BRAND_WHERE + BRAND_ORDER_NAME_KO,
+            nativeQuery = true)
     List<BrandSummaryRow> findAllByNameKo(@Param("keyword") String keyword);
 
-    @Query(value = BRAND_COLUMNS + BRAND_FROM_AND_WHERE + BRAND_ORDER_NAME_EN, nativeQuery = true)
+    @Query(value = BRAND_COLUMNS + BRAND_FROM + BRAND_WHERE + BRAND_ORDER_NAME_EN,
+            nativeQuery = true)
     List<BrandSummaryRow> findAllByNameEn(@Param("keyword") String keyword);
 
-    @Query(value = BRAND_COLUMNS + BRAND_FROM_AND_WHERE + BRAND_ORDER_PERFUME_COUNT,
-            nativeQuery = true)
+    @Query(value = BRAND_COLUMNS + BRAND_FROM + BRAND_COUNT_JOIN + BRAND_WHERE + BRAND_GROUP_BY
+            + BRAND_ORDER_PERFUME_COUNT, nativeQuery = true)
     List<BrandSummaryRow> findAllByPerfumeCount(@Param("keyword") String keyword);
 }

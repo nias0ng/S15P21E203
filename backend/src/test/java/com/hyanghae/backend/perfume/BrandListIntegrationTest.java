@@ -64,6 +64,11 @@ class BrandListIntegrationTest {
 
         insertPerfume(4, 2, "Do Son", true);
 
+        // Chanel 에 비활성만 둘. 이것이 세어지면 향수 많은 순에서 Chanel 이 Diptyque 를
+        // 앞지릅니다. 활성만 세면 0 이라 맨 뒤입니다.
+        insertPerfume(6, 3, "Chanel Retired A", false);
+        insertPerfume(7, 3, "Chanel Retired B", false);
+
         insertPerfume(5, 5, "Gone", true);
         // Chanel 과 Byredo 는 향수가 없습니다. 그래도 목록에 나와야 합니다.
     }
@@ -88,42 +93,38 @@ class BrandListIntegrationTest {
                 .andExpect(jsonPath("$.brands[0].nameKo").value("디올"))
                 .andExpect(jsonPath("$.brands[0].logoUrl")
                         .value("https://img.example.com/dior.png"))
-                .andExpect(jsonPath("$.brands[0].perfumeCount").value(2));
+                .andExpect(jsonPath("$.brands[0].perfumeCount").doesNotHaveJsonPath());
     }
 
     /**
      * 향수가 하나도 없는 브랜드도 목록에 나옵니다.
      *
      * <p>브랜드 페이지는 카탈로그입니다. 향수가 잠깐 0이 됐다고 브랜드가 사라지면 이상합니다.
-     * 안쪽 조인으로 두면 그런 브랜드가 통째로 빠집니다.
+     *
+     * <p><b>향수 많은 순에서도 확인합니다.</b> 그 정렬만 향수를 조인하는데, 안쪽 조인으로 두면
+     * 향수가 없는 브랜드가 통째로 빠집니다. 이름순은 아예 조인하지 않아 이 실수가 드러나지
+     * 않습니다.
      */
     @Test
     void keepsBrandsWithoutAnyPerfume() throws Exception {
-        mockMvc.perform(get(BRANDS_URL).param("sort", "NAME_EN"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.brands[*].name")
-                        .value(Matchers.hasItem("Chanel")))
-                .andExpect(jsonPath("$.brands[0].name").value("Byredo"))
-                .andExpect(jsonPath("$.brands[0].perfumeCount").value(0));
+        for (String sort : new String[]{"NAME_EN", "PERFUME_COUNT"}) {
+            mockMvc.perform(get(BRANDS_URL).param("sort", sort))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.brands.length()").value(4))
+                    .andExpect(jsonPath("$.brands[*].name")
+                            .value(Matchers.hasItems("Chanel", "Byredo")));
+        }
     }
 
-    /**
-     * 내려간 브랜드는 나오지 않고, 내려간 향수는 세지 않습니다.
-     *
-     * <p>내려간 향수는 목록에도 상세에도 나오지 않습니다. 세어서 보여주면 "향수 3개" 를 보고
-     * 눌러 들어갔는데 둘만 나옵니다.
-     */
+    /** 내려간 브랜드는 목록에 나오지 않습니다. */
     @Test
-    void hidesInactiveBrandsAndDoesNotCountInactivePerfumes() throws Exception {
+    void hidesInactiveBrands() throws Exception {
         mockMvc.perform(get(BRANDS_URL))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.brands.length()").value(4))
                 .andExpect(jsonPath("$.brands[*].name")
                         .value(Matchers.not(Matchers.hasItem("Retired House"))))
                 .andExpect(jsonPath("$.brands[*].name").value(Matchers.hasItem("Dior")));
-
-        mockMvc.perform(get(BRANDS_URL).param("keyword", "Dior"))
-                .andExpect(jsonPath("$.brands[0].perfumeCount").value(2));
     }
 
     /**
@@ -205,15 +206,22 @@ class BrandListIntegrationTest {
                                 "adidas", "Byredo", "Chanel", "Dior", "Diptyque", "Zara")));
     }
 
-    /** 향수 많은 순입니다. 같은 수는 영문 이름순으로 갈립니다. */
+    /**
+     * 향수 많은 순입니다. 같은 수는 영문 이름순으로 갈립니다.
+     *
+     * <p><b>내려간 향수는 세지 않습니다.</b> 응답에 수가 실리지 않으므로 순서로 확인합니다.
+     * Dior 는 활성 둘·비활성 하나, Chanel 은 비활성만 둘입니다. 비활성까지 세면 Chanel 이 2 가
+     * 되어 Diptyque(1) 를 앞지르는데, 활성만 세면 0 이라 맨 뒤로 갑니다.
+     *
+     * <p>0 인 브랜드가 둘이라 영문 이름으로 갈립니다. 뒤 기준이 없으면 이 둘의 순서가 요청마다
+     * 달라집니다.
+     */
     @Test
-    void sortsByPerfumeCount() throws Exception {
+    void sortsByPerfumeCountIgnoringInactivePerfumes() throws Exception {
         mockMvc.perform(get(BRANDS_URL).param("sort", "PERFUME_COUNT"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.brands[*].name")
-                        .value(Matchers.contains("Dior", "Diptyque", "Byredo", "Chanel")))
-                .andExpect(jsonPath("$.brands[*].perfumeCount")
-                        .value(Matchers.contains(2, 1, 0, 0)));
+                        .value(Matchers.contains("Dior", "Diptyque", "Byredo", "Chanel")));
     }
 
     /** 정렬을 주지 않으면 영어 이름순입니다. */
