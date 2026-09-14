@@ -139,10 +139,14 @@ describe('matchStartingPoint', () => {
     for (const picks of orderedPairs()) {
       const candidates = countCandidates(vectors, picks)
       const match = matchStartingPoint(vectors, picks)
+      // 기대값을 먼저 정하고 한 번만 단언합니다.
+      // expect 를 if/else 안에 두면 분기가 안 타도 테스트가 통과해버립니다.
+      const expected =
+        candidates === 0 ? 'NO_OVERLAP' : candidates === 1 ? 'RARE' : 'NORMAL'
 
-      if (candidates === 0) expect(match?.mode).toBe('NO_OVERLAP')
-      else if (candidates === 1) expect(match?.mode).toBe('RARE')
-      else expect(match?.mode).toBe('NORMAL')
+      expect(match?.mode, `${picks.join('>')} · 후보 ${candidates}개`).toBe(
+        expected,
+      )
     }
   })
 
