@@ -10,7 +10,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.review.exception.ReviewErrorCode;
 import com.hyanghae.backend.support.IntegrationTest;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -385,6 +392,50 @@ class ReviewBoardIntegrationTest {
                     .andExpect(jsonPath("$.likeCount").value(0));
         }
         assertThat(countRows("review_likes")).isZero();
+    }
+
+    /**
+     * 같은 사람이 동시에 여러 번 눌러도 좋아요는 하나입니다.
+     *
+     * <p>{@code review_likes} 에도 {@code ON CONFLICT DO NOTHING} 이 걸려 있는지 봅니다. 먼저
+     * 확인하고 없으면 넣는 식이었다면, 여덟 요청이 모두 "없음" 을 보고 모두 넣으려 해 일곱이
+     * 기본키 충돌로 500 을 받습니다.
+     *
+     * <p>글 좋아요는 {@code PostLikeConcurrencyIntegrationTest} 가 사람을 바꿔 가며 더 넓게
+     * 봅니다. 여기서는 후기 쪽 표에도 같은 장치가 걸려 있다는 것만 확인합니다. 한 사람으로
+     * 충분한 이유는 막아야 할 것이 <b>같은 사람의 중복</b>이기 때문입니다.
+     */
+    @Test
+    void keepsOneLikeWhenTheSamePersonPressesConcurrently() throws Exception {
+        insertReview(1, WRITER_ID, 1, "경합 대상 후기", "본문");
+
+        int concurrent = 8;
+        CyclicBarrier gate = new CyclicBarrier(concurrent);
+        ExecutorService pool = Executors.newFixedThreadPool(concurrent);
+        try {
+            List<Callable<Integer>> calls = new ArrayList<>();
+            for (int index = 0; index < concurrent; index++) {
+                calls.add(() -> {
+                    gate.await();
+                    return mockMvc.perform(put(LIKE_URL, 1L))
+                            .andReturn()
+                            .getResponse()
+                            .getStatus();
+                });
+            }
+
+            List<Integer> statuses = new ArrayList<>();
+            for (Future<Integer> future : pool.invokeAll(calls)) {
+                statuses.add(future.get());
+            }
+            assertThat(statuses).containsOnly(200);
+        } finally {
+            pool.shutdownNow();
+        }
+
+        assertThat(countRows("review_likes")).isEqualTo(1);
+        mockMvc.perform(get(BOARD_URL))
+                .andExpect(jsonPath("$.reviews[0].likeCount").value(1));
     }
 
     /** {@code liked} 는 보는 사람마다 다르고 {@code likeCount} 는 누구에게나 같습니다. */
