@@ -16,13 +16,10 @@ type SegmentedFilterProps<T extends string> = {
 /**
  * 한 줄 세그먼트 필터 (와이어프레임 A33 — 진열대 기준 / 성별 두 줄)
  *
- * 와이어프레임 주석 그대로입니다.
- * - 두 줄을 겹쳐 걸 수 있다 → 줄마다 이 컴포넌트를 하나씩 두고 상태를 따로 관리합니다
- * - 아무 필터도 고르지 않은 상태가 기본 → value 는 null 로 시작하고,
- *   선택된 것을 다시 누르면 해제됩니다
+ * 줄마다 하나씩 두고 상태를 따로 관리합니다. `value` 는 null 로 시작하고 선택된 것을
+ * 다시 누르면 해제됩니다.
  *
- * ⚠️ 한 줄 안에서 여러 개를 동시에 고를 수 있는지는 와이어프레임에 없습니다.
- * 지금은 한 줄에 하나만 고르는 것으로 두었습니다. 팀 확정 후 바꿔주세요.
+ * ⚠️ 한 줄에서 여러 개를 고를 수 있는지는 와이어프레임에 없습니다. 팀 확정 후 바꿔주세요.
  */
 export function SegmentedFilter<T extends string>({
   label,
@@ -53,11 +50,7 @@ export function SegmentedFilter<T extends string>({
             className={cn(
               'text-body rounded-card flex-1 py-2.5 text-center',
               'transition-colors duration-120 ease-out',
-              /*
-               * 칸 사이 세로줄을 뺐습니다. 눌린 칸이 색 면으로 칠해지므로 줄이
-               * 없어도 경계가 읽히고, 줄이 있으면 색 면 옆에서 이가 빠져 보입니다.
-               * 눌린 칸의 왼쪽 줄만 지우는 식으로 처리하면 조건이 네 갈래가 됩니다.
-               */
+              // 칸 사이 세로줄 없음 — 색 면 옆에 줄이 있으면 이가 빠져 보입니다
               selected
                 ? 'bg-accent-warm text-surface-card'
                 : 'text-ink hover:bg-line-soft/60 bg-transparent',

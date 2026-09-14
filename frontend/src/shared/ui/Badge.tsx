@@ -5,9 +5,8 @@ import { cn } from '@/shared/lib/cn'
 /**
  * 향 계열 · 노트 · 상태처럼 짧은 라벨.
  *
- * tone 은 색 이름이 아니라 뜻입니다. 팔레트가 또 바뀌어도 호출부를 고치지
- * 않으려는 것입니다. 강조 tone 은 화면을 채우지 말고 필요한 지점에만 씁니다.
- * 색으로 뜻을 구분할 때는 라벨 글자도 함께 달아야 합니다(색만으로 구분 금지).
+ * `tone` 은 색 이름이 아니라 뜻입니다 — 팔레트가 바뀌어도 호출부를 안 고칩니다.
+ * 색만으로 뜻을 구분하지 말고 라벨 글자를 함께 다세요.
  */
 const badgeVariants = cva(
   'text-caption inline-flex items-center rounded-full px-3 py-1 font-medium',
