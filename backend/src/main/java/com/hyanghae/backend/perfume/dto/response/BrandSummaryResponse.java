@@ -13,8 +13,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
  *
  * <p>{@code logoUrl} 도 비어 있을 수 있습니다. 화면이 "로고" 자리표시자를 대신 그립니다.
  *
- * <p>{@code perfumeCount} 는 <b>활성 향수</b>만 셉니다. 내려간 향수는 목록에도 상세에도 나오지
- * 않으므로, 세어서 보여주면 눌러 들어갔을 때 수가 맞지 않습니다.
+ * <p><b>향수 수는 담지 않습니다.</b> 화면이 카드에 그리지 않기로 했습니다. 향수 많은 순 정렬은
+ * 그대로 있는데, 세는 일과 줄 세우는 일이 모두 SQL 안에서 끝나 값이 밖으로 나올 필요가
+ * 없습니다.
+ *
+ * <p>뺀 이유는 크기입니다. 브랜드가 7,793개라 필드 하나가 133KB 입니다. 향 지도용 70개였을
+ * 때는 신경 쓸 값이 아니었는데, 향수 카탈로그를 적재하면서 전제가 바뀌었습니다.
  */
 public record BrandSummaryResponse(
         Long brandId,
@@ -28,9 +32,6 @@ public record BrandSummaryResponse(
 
         @Schema(description = "로고 이미지 주소. 없으면 화면이 자리표시자를 그립니다.",
                 nullable = true)
-        String logoUrl,
-
-        @Schema(description = "이 브랜드의 활성 향수 수", example = "9")
-        long perfumeCount
+        String logoUrl
 ) {
 }
