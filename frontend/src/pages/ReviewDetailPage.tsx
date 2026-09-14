@@ -33,7 +33,7 @@ export default function ReviewDetailPage() {
         backTo={toPerfumeDetail(1)}
         editTo={ROUTES.REVIEW_WRITE}
       />
-      <p className="text-ink-muted text-[10.5px]">
+      <p className="text-ink-muted text-caption">
         ⚠️ 후기 조회 API 가 없어 자리표시자를 보여주고 있습니다. (reviewId:{' '}
         {reviewId})
       </p>

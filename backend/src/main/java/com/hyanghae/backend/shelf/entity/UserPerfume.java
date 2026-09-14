@@ -21,8 +21,8 @@ import java.time.OffsetDateTime;
  * <p>사용자 도메인이 아직 구현되지 않아 {@code user_id}는 식별자 값으로 매핑합니다. 향수는 이미
  * 엔티티가 존재하므로 지연 로딩 연관관계를 사용합니다.
  *
- * <p>진열대 해제는 이 엔티티를 물리 삭제합니다. 연결된 시향 기록과 컬렉션 항목은 데이터베이스의
- * 외래 키 정책에 따라 함께 삭제됩니다. 대표 향수 변경 등 상태 변경 로직은 후속 기능에서 서비스
+ * <p>진열대 해제는 이 엔티티를 물리 삭제합니다. 연결된 메모와 컬렉션 항목은 데이터베이스의
+ * 외래 키 정책에 따라 함께 삭제됩니다. 대표 향수 변경 등 상태 변경 로직은 서비스
  * 트랜잭션과 함께 구현합니다.
  */
 @Entity
@@ -61,6 +61,22 @@ public class UserPerfume {
         // JPA 가 요구하는 기본 생성자입니다.
     }
 
+    public static UserPerfume create(
+            Long userId,
+            Perfume perfume,
+            OwnershipStatus ownershipStatus,
+            OffsetDateTime createdAt
+    ) {
+        UserPerfume shelfItem = new UserPerfume();
+        shelfItem.userId = userId;
+        shelfItem.perfume = perfume;
+        shelfItem.ownershipStatus = ownershipStatus;
+        shelfItem.representative = false;
+        shelfItem.createdAt = createdAt;
+        shelfItem.updatedAt = createdAt;
+        return shelfItem;
+    }
+
     public Long getId() {
         return id;
     }
@@ -91,6 +107,32 @@ public class UserPerfume {
 
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public void updateFitRating(BigDecimal fitRating, OffsetDateTime updatedAt) {
+        this.fitRating = fitRating;
+        this.updatedAt = updatedAt;
+    }
+
+    public void clearFitRating(OffsetDateTime updatedAt) {
+        this.fitRating = null;
+        this.updatedAt = updatedAt;
+    }
+
+    public void updateRepresentative(boolean representative, OffsetDateTime updatedAt) {
+        this.representative = representative;
+        this.updatedAt = updatedAt;
+    }
+
+    public void updateOwnershipStatus(
+            OwnershipStatus ownershipStatus,
+            OffsetDateTime updatedAt
+    ) {
+        this.ownershipStatus = ownershipStatus;
+        if (ownershipStatus != OwnershipStatus.OWNED) {
+            this.representative = false;
+        }
+        this.updatedAt = updatedAt;
     }
 
 }

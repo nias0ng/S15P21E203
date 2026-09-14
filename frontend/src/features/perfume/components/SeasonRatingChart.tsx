@@ -5,18 +5,10 @@ type Props = { ratings: SeasonRating[] }
 /**
  * 계절별 평가 (와이어프레임 A10 ③ — DTL-14)
  *
- * 와이어프레임 지시: "계절마다 도넛 하나, 막대 아님".
+ * 파이가 아니라 도넛 네 개인 이유: 계절을 여러 개 고를 수 있어 합이 100이 아닙니다.
+ * 부분-전체가 아니라 서로 독립인 비율 네 개라 단일값 미터가 맞습니다.
  *
- * 폼 선택 근거 — 계절은 여러 개 고를 수 있어(DTL-16 · DTL-24) 네 값의 합이 100이
- * 아닐 수 있습니다. 즉 부분-전체가 아니라 서로 독립인 비율 네 개라서, 누적 막대나
- * 파이가 아니라 단일값 미터 네 개가 맞습니다.
- *
- * 색 선택 근거 — 어느 계절인지는 도넛 아래 라벨이 이미 알려줍니다. 색으로 계절을
- * 구분하면 라벨과 중복이고, 팔레트의 "PEARL 5~10% MAX" 규칙에도 어긋납니다.
- * 그래서 네 개 모두 같은 ink 색을 쓰고 트랙만 연하게 둡니다. 색으로 구분하는 쌍이
- * 없으니 색약 대비를 따질 대상 자체가 없습니다.
- *
- * 수치가 링 안에 글자로 찍혀 있으므로 호버 툴팁을 붙이지 않았습니다.
+ * 넷 다 같은 색인 이유: 어느 계절인지는 아래 라벨이 이미 알려줍니다.
  */
 export function SeasonRatingChart({ ratings }: Props) {
   const bySeason = new Map(
@@ -28,7 +20,7 @@ export function SeasonRatingChart({ ratings }: Props) {
       {SEASONS.map((season) => (
         <li key={season.value} className="flex flex-col items-center gap-2.5">
           <SeasonDonut percentage={bySeason.get(season.value) ?? 0} />
-          <span className="text-ink text-xs">{season.label}</span>
+          <span className="text-ink text-caption">{season.label}</span>
         </li>
       ))}
     </ul>
@@ -79,7 +71,7 @@ function SeasonDonut({ percentage }: { percentage: number }) {
         )}
       </svg>
 
-      <span className="text-ink absolute inset-0 flex items-center justify-center text-xs font-bold">
+      <span className="text-ink text-caption absolute inset-0 flex items-center justify-center font-medium">
         {clamped}%
       </span>
     </div>

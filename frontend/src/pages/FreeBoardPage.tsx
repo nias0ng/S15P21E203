@@ -21,11 +21,7 @@ type CategoryFilter = PostCategory | 'ALL'
 /**
  * 자유 게시판 (와이어프레임 A22b — CMT-01)
  *
- * 와이어프레임 주석:
- * - 정렬 네 가지와 분류 필터 네 가지를 겹쳐 쓴다
- * - 자유 글에는 향수를 걸지 않아도 된다 — 걸면 후기와 같은 향수 블록이 붙는다
- * - 컬렉션 공유 글은 내 컬렉션(A17)을 첨부한 글 — 컬렉션을 남에게 보이는 유일한 길
- * - [글쓰기] → A24b
+ * 컬렉션 공유 글은 컬렉션을 남에게 보이는 **유일한 길**입니다.
  */
 export default function FreeBoardPage() {
   const [sort, setSort] = useState<PostSort>('RECENT')

@@ -18,6 +18,7 @@ const PerfumeDetailPage = lazy(() => import('@/pages/PerfumeDetailPage')) // A10
 const ReviewDetailPage = lazy(() => import('@/pages/ReviewDetailPage')) // A12  · 110
 
 const BrandListPage = lazy(() => import('@/pages/BrandListPage')) // A34  · 111
+const BrandDetailPage = lazy(() => import('@/pages/BrandDetailPage')) // 신규 · 111
 const NoteListPage = lazy(() => import('@/pages/NoteListPage')) // A35  · 112
 const NoteDetailPage = lazy(() => import('@/pages/NoteDetailPage')) // A36  · 112
 
@@ -76,6 +77,10 @@ export const router = createBrowserRouter([
       },
 
       { path: ROUTES.BRANDS, element: withSuspense(<BrandListPage />) },
+      {
+        path: ROUTES.BRAND_DETAIL,
+        element: withSuspense(<BrandDetailPage />),
+      },
       { path: ROUTES.NOTES, element: withSuspense(<NoteListPage />) },
       { path: ROUTES.NOTE_DETAIL, element: withSuspense(<NoteDetailPage />) },
 

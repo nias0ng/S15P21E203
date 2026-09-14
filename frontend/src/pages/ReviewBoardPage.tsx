@@ -14,15 +14,7 @@ import { ROUTES } from '@/shared/config/routes'
 import { ChipToggle } from '@/shared/ui/ChipToggle'
 import { LinkButton } from '@/shared/ui/LinkButton'
 
-/**
- * 후기 게시판 (와이어프레임 A22a — CMT-01)
- *
- * 와이어프레임 주석:
- * - 후기는 향수 한 개에 반드시 붙는다 — 향수 블록이 없는 후기는 없다
- * - 정렬은 최근 · 조회 순 · 좋아요 순 세 가지 · 분류 필터는 없다 (전부 후기라서)
- * - 점수 · 별점 없음 — 좋아요만
- * - [후기 쓰기] → A24a. 향수 상세(A10)의 [후기 쓰기]도 같은 화면으로 온다
- */
+/** 후기 게시판 (와이어프레임 A22a — CMT-01) */
 export default function ReviewBoardPage() {
   const [sort, setSort] = useState<PostSort>('RECENT')
 

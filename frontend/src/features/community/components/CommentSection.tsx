@@ -18,12 +18,8 @@ type Props = {
 /**
  * 댓글 (와이어프레임 A23 — CMT-08 · 09 · 10 · 11)
  *
- * 와이어프레임 주석: "본인 댓글에만 수정 · 삭제가 보인다 · 스크롤하면 이어서 로드".
- * 수정은 별도 화면이 아니라 그 자리에서 편집 상태로 바뀌고, 작성한 내용이
- * 그대로 들어온 채 시작합니다.
- *
- * 화면에서 숨기는 것만으로는 권한이 지켜지지 않으니 백엔드에서도 작성자를
- * 확인해야 합니다.
+ * 수정은 그 자리에서 편집 상태로 바뀝니다. 본인 댓글에만 보이지만, 화면에서 숨기는
+ * 것만으로는 권한이 지켜지지 않으니 백엔드에서도 작성자를 확인해야 합니다.
  */
 export function CommentSection({
   comments,
@@ -36,6 +32,10 @@ export function CommentSection({
   const [editDraft, setEditDraft] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null)
 
+  /*
+   * 댓글 묶음은 판에 올리지 않습니다 — 흰 칸이 입력창 하나뿐이어야 "쓰는 자리" 가
+   * 한눈에 보입니다. 위쪽 게시글 본문은 반대로 판에 올립니다(읽는 덩어리는 경계 필요).
+   */
   return (
     <section className="space-y-3.75">
       <h2 className="text-ink text-title font-serif font-bold">

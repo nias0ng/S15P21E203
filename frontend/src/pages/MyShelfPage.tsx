@@ -7,6 +7,11 @@ import {
   myCollectionsQuery,
 } from '@/features/collection'
 import {
+  personalRecommendationQuery,
+  RECOMMEND_MIN_SHELF_ITEMS,
+  RecommendPeekCard,
+} from '@/features/recommend'
+import {
   ShelfDeck,
   ShelfDetailPanel,
   ShelfFooterStrip,
@@ -107,6 +112,13 @@ export default function MyShelfPage() {
   // 검색어 · 선택 · 칩은 서로 규칙이 걸려 있어 한 훅이 함께 들고 있습니다.
   const browser = useShelfBrowser(shelf.data ?? [])
   const wall = useRef<ShelfWallHandle>(null)
+
+  // 담은 향수가 적으면 아예 묻지 않습니다 — 개인화를 말할 근거가 없습니다
+  const shelfCount = shelf.data?.length ?? 0
+  const recommendation = useQuery({
+    ...personalRecommendationQuery(),
+    enabled: shelfCount >= RECOMMEND_MIN_SHELF_ITEMS,
+  })
 
   if (shelf.isPending) return <PageFallback />
 
@@ -279,10 +291,20 @@ export default function MyShelfPage() {
     <div aria-hidden className="shelf-paper shelf-grain fixed inset-0 -z-10" />
   )
 
+  /*
+    추천할 것이 없으면 카드를 그리지 않습니다. 빈 카드를 띄워 "추천이 없습니다"
+    라고 적으면, 사용자가 부르지도 않은 것이 나타나 아무 말도 안 하는 셈입니다.
+    fixed 로 화면 왼쪽 가장자리에 붙으므로 두 배치 모두 무대 밖, 최상위 div 바로 안에 둡니다.
+  */
+  const recommendCard = recommendation.data && (
+    <RecommendPeekCard recommendation={recommendation.data} />
+  )
+
   if (arrangement === 'stacked') {
     return (
       <div className="shelf-scope flex flex-col">
         {paper}
+        {recommendCard}
 
         <div className="flex flex-col gap-5">
           <h1 className={STAGE_TITLE}>나의 진열대</h1>
@@ -330,6 +352,7 @@ export default function MyShelfPage() {
     */
     <div className="shelf-scope -mt-15 -mb-15 flex h-[calc(100dvh_-_90px)] min-h-162.5 flex-col">
       {paper}
+      {recommendCard}
 
       {/*
         무대는 좌우 여백까지 넓혀 둡니다(-mx-[var(--gutter)]). 무대가 위아래로 바뀔 때

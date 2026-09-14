@@ -59,7 +59,7 @@ export function PasswordChangeModal({ open, onClose }: Props) {
           placeholder="새 비밀번호 확인"
           required
         />
-        <p className="text-ink-muted text-[10.5px]">
+        <p className="text-ink-muted text-caption">
           비밀번호 정책 검증 — A28 회원가입과 같은 규칙
         </p>
       </form>

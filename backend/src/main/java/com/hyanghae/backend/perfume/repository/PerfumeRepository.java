@@ -4,6 +4,7 @@ import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse;
 import com.hyanghae.backend.perfume.entity.Perfume;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +21,9 @@ import org.springframework.data.repository.query.Param;
  * DTO 프로젝션은 목록·카운트 두 번의 쿼리로 끝납니다.
  */
 public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
+
+    /** 활성 향수만 찾습니다. 보낸 수와 결과 수가 다르면 없거나 내려간 향수가 섞인 것입니다. */
+    List<Perfume> findAllByIdInAndActiveTrue(Collection<Long> perfumeIds);
 
     /** LIKE 패턴의 이스케이프 문자입니다. {@link PerfumeService} 가 같은 값을 씁니다. */
     String LIKE_ESCAPE = "!";
@@ -50,12 +54,6 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
               AND (CAST(:brand AS String) IS NULL OR b.name = CAST(:brand AS String))
               AND (CAST(:gender AS String) IS NULL OR p.gender = CAST(:gender AS String))
             """;
-
-    /** 진열대 필터가 검색 조건 뒤에 덧붙이는 절입니다. */
-    String IN_PERFUME_IDS = """
-              AND p.id IN :perfumeIds
-            """;
-
     /**
      * 검색 조건에 맞는 활성 향수를 조회합니다. 조건이 여럿이면 AND 로 걸립니다.
      *
@@ -82,31 +80,6 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
             @Param("brand") String brand,
             @Param("gender") String gender,
             Pageable pageable);
-
-    /**
-     * 같은 조건에 향수 번호 목록까지 더해 조회합니다. 진열대 필터가 씁니다.
-     *
-     * <p>번호 목록은 {@link PerfumeShelfRepository} 가 사용자 기준으로 뽑아 옵니다.
-     *
-     * <p>{@link #search} 에 조건을 합치지 않고 메서드를 나눈 이유가 있습니다. 진열대 필터가 없는
-     * 요청에는 넘길 번호가 없는데, 컬렉션 파라미터는 {@code null} 로 두고 {@code IS NULL} 로
-     * 건너뛸 수 없습니다. 합치려면 필터가 없을 때 "아무것도 거르지 않는 가짜 목록"을 만들어야
-     * 하고, 그런 값은 언젠가 진짜 향수 번호와 겹칩니다.
-     *
-     * <p>빈 목록을 넘겨도 Hibernate 가 항상 거짓인 조건으로 바꿔 주므로 오류는 나지 않습니다.
-     * 다만 서비스가 그 전에 끊어 질의 두 번을 아낍니다.
-     */
-    @Query(value = """
-            SELECT new com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse(p.id, p.name, p.nameKo, b.name)
-            """ + SEARCH_CONDITION + IN_PERFUME_IDS,
-            countQuery = "SELECT COUNT(p) " + SEARCH_CONDITION + IN_PERFUME_IDS)
-    Page<PerfumeSummaryResponse> searchWithinPerfumeIds(
-            @Param("keyword") String keyword,
-            @Param("brand") String brand,
-            @Param("gender") String gender,
-            @Param("perfumeIds") Collection<Long> perfumeIds,
-            Pageable pageable);
-
     /**
      * 향수 기본 정보를 조회합니다. 향조·후기·통계는 명세상 별도 기능이라 포함하지 않습니다.
      *
@@ -129,4 +102,7 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
      * 없는 향수에 대해 404 를 내려면 존재 여부만 알면 됩니다.
      */
     boolean existsByIdAndActiveTrue(Long perfumeId);
+
+    /** 진열대에 저장할 수 있는 활성 향수 엔티티를 조회합니다. */
+    Optional<Perfume> findByIdAndActiveTrue(Long perfumeId);
 }

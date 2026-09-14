@@ -14,6 +14,24 @@ export interface Brand {
   perfumeCount: number
 }
 
+/** 브랜드 상세. 목록에 없는 것은 소개뿐이라 Brand 를 넓혀 씁니다 */
+export interface BrandDetail extends Brand {
+  /** ⚠️ 백엔드에 브랜드 소개 필드가 없습니다. api.ts 가 자리표시자를 채웁니다 */
+  description: string
+}
+
+/**
+ * 브랜드 상세의 향수 카드 한 장. PerfumeSummary 를 쓰지 않는 이유는 features 끼리
+ * import 할 수 없어서입니다 — 카드가 읽는 값만 정의합니다.
+ */
+export interface BrandPerfume {
+  perfumeId: number
+  name: string
+  /** 한글명. 없으면 null */
+  nameKo: string | null
+  imageUrl: string | null
+}
+
 /** A34 정렬. 기본은 abc 순입니다. */
 export type BrandSort = 'NAME' | 'PERFUME_COUNT'
 

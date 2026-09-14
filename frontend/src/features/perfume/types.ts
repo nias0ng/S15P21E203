@@ -18,15 +18,11 @@ export interface PerfumeSummary {
 /**
  * DTL-01 향수 기본 정보 조회
  *
- * **PerfumeSummary 를 상속하지 않습니다.** 검색 응답과 필드 모양이 다릅니다.
- *   검색  brandName: string | null    imageUrl: string | null
- *   상세  brand: { brandId, name }    images: string[]
- * 상속으로 묶으면 타입이 거짓말을 하게 됩니다.
+ * **PerfumeSummary 를 상속하지 않습니다** — 검색은 `brandName`·`imageUrl`, 상세는
+ * `brand` 객체·`images` 배열이라 상속으로 묶으면 타입이 거짓말을 합니다.
  *
- * ⚠️ 향조(notes)·후기 통계는 상세 응답에 없습니다. 별도 엔드포인트로 각각의
- * 이슈에서 붙습니다. 필수로 선언하면 타입은 통과하는데 런타임에 undefined 라
- * 화면이 죽습니다 — 실제로 그렇게 죽었습니다(S15P21E203-169).
- * 백엔드가 내려주기 시작하면 `?` 를 떼세요.
+ * ⚠️ 향조·후기 통계는 상세 응답에 없어 `?` 입니다. 필수로 선언하면 런타임에
+ * undefined 라 화면이 죽습니다(S15P21E203-169). 백엔드가 내려주면 `?` 를 떼세요.
  */
 export interface PerfumeDetail {
   perfumeId: number
@@ -64,26 +60,19 @@ export interface PerfumeSearchParams {
   /** 향수명·브랜드명 검색어 */
   keyword?: string
 
-  // ⚠️ scentFamily 는 응답 필드로만 있습니다. 검색 파라미터로는 아직 동작하지
-  // 않아 보내도 무시됩니다. 필요해지면 백엔드에 요청해야 합니다.
+  // ⚠️ 응답 필드로만 있습니다. 검색 파라미터로는 아직 안 먹어 보내도 무시됩니다
   scentFamily?: ScentFamily
 
   /**
-   * A33 위 줄 필터 — **전체 사용자 집계** 기준입니다.
-   *
-   * ⚠️ 백엔드가 수정 중입니다. 현재 구현은 개인 진열대 기준이라 비로그인이면
-   * 401(PERFUME_SHELF_FILTER_REQUIRES_LOGIN)이지만, 집계 기준으로 바뀌면
-   * 로그인 없이 동작합니다. 수정본이 나오면 이 주석을 지우세요.
+   * ⚠️ 백엔드 수정 중 — 현재 구현은 개인 진열대 기준이라 비로그인이면 401 입니다.
+   * 집계 기준 수정본이 나오면 이 주석을 지우세요.
    */
   shelf?: ShelfFilter
 
   /** A33 아래 줄 필터. 정의되지 않은 값을 보내면 400 입니다 */
   gender?: GenderFilter
 
-  /**
-   * 브랜드명 **완전 일치**. A34 브랜드 페이지에서 카드를 누르면 이 필터가 걸린 채로
-   * 옵니다. 부분 일치는 keyword 가 담당합니다.
-   */
+  /** 브랜드명 **완전 일치**. 부분 일치는 keyword 가 담당합니다 */
   brand?: string
 
   /** 0부터 시작합니다 (Spring Pageable 기준). 첫 페이지는 0 입니다. */
@@ -96,11 +85,8 @@ export interface PerfumeSearchParams {
 }
 
 /**
- * 향수 검색 응답. 백엔드 PerfumeSearchResponse 와 1:1 입니다.
- *
- * **공용 Page<T> 를 쓰지 않습니다.** 목록 필드명이 content 가 아니라 perfumes 이고
- * totalPages 도 없습니다. 마지막 페이지가 필요하면
- * `Math.ceil(totalElements / size)` 로 구하세요.
+ * 향수 검색 응답. 백엔드와 1:1 이라 **공용 Page<T> 를 쓰지 않습니다** — 목록 필드가
+ * content 가 아니라 perfumes 이고 totalPages 도 없습니다(`totalElements / size`).
  */
 export interface PerfumeSearchResponse {
   perfumes: PerfumeSummary[]
@@ -111,14 +97,8 @@ export interface PerfumeSearchResponse {
 }
 
 /**
- * A33 위 줄 필터 — 전체 사용자 집계 기준입니다. 로그인이 필요 없습니다.
- *
- *   OWNED   많은 사람이 "보유 중" 으로 담은 향수
- *   WISH    많은 사람이 "보유 희망" 으로 담은 향수
- *   VIEWED  많이 조회된 향수
- *
- * 이름이 개인 소유처럼 읽히지만 실제로는 집계값입니다. 백엔드 파라미터명이라
- * 그대로 두었습니다.
+ * A33 위 줄 필터. 이름이 개인 소유처럼 읽히지만 **전체 사용자 집계값**입니다
+ * (많은 사람이 담은 / 희망한 / 조회한 향수). 백엔드 파라미터명이라 그대로 둡니다.
  */
 export type ShelfFilter = 'OWNED' | 'WISH' | 'VIEWED'
 
@@ -158,13 +138,7 @@ export interface SeasonRating {
   percentage: number
 }
 
-/**
- * DTL-23 AI 후기 요약.
- *
- * 와이어프레임 주석: 후기를 AI가 요약해 문장으로 보여준다 — 퍼센트는 문장 안의
- * 수치로만 쓰고 막대는 쓰지 않는다. 호평 · 혹평 섞어 4문장까지.
- * 후기 수가 적으면 요약을 생성하지 않고 안내 문구를 보여줍니다.
- */
+/** DTL-23 AI 후기 요약. 호평·혹평 섞어 4문장까지, 막대 그래프는 쓰지 않습니다 */
 export interface ReviewSummary {
   /** 최대 4문장. 비어 있으면 후기가 부족한 것으로 보고 안내 문구를 띄웁니다. */
   sentences: string[]
