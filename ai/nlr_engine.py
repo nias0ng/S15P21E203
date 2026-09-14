@@ -113,7 +113,9 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
         by_expression.setdefault(row["expression"], []).append(row)
 
     surface = {}
+    entry_ids = {}
     for row in lex.to_dict("records"):
+        entry_ids.setdefault(row["expression"], row["entry_id"])
         variants = [row["expression"]] + [a for a in row["aliases"].split("|") if a]
         for form in variants:
             if form:
@@ -131,6 +133,7 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
         "rating": perf["rating_avg"].fillna(0).to_numpy(),
         "lexicon_by_expression": by_expression,
         "lexicon_surface": surface,
+        "lexicon_entry_id": entry_ids,
         "n_perfumes": len(perf),
     }
 
@@ -160,7 +163,11 @@ def understand(index, text, conditions=None):
     conditions : dict | None   LLM 구조화 결과. spec 3장 2-a 형식.
                                None 이면 사전 문자열 매칭만 쓴다.
 
-    반환: dict — core / avoid / matched_expressions / evidence / source
+    반환: dict — core / avoid / matched_expressions / evidence / source / unmatched
+
+    `unmatched` 는 LLM 이 뽑았으나 사전이 받지 못한 표현이다. `conditions` 가 없으면
+    표현을 뽑는 단계 자체가 없으므로 항상 빈 목록이다 — **미매칭 로그는 LLM 구조화가
+    있어야 작동한다.**
     """
     text = unicodedata.normalize("NFC", str(text))
     parts = [text]
@@ -196,7 +203,63 @@ def understand(index, text, conditions=None):
         "matched_expressions": sorted({e["from"] for e in evidence}),
         "evidence": evidence,
         "source": "llm+lexicon" if conditions else "lexicon_only",
+        "unmatched": _unmatched(index, conditions, haystack, evidence),
     }
+
+
+def _unmatched(index, conditions, haystack, evidence):
+    """LLM 이 뽑았으나 사전이 받지 못한 표현. list[dict].
+
+    조건이 잡힌 요청에서도 남은 표현을 전부 기록한다. 실측상 조건이 잡힌 쿼리 속에
+    숨은 미매칭이 합성 600건에서 1,339회 있었고, 조건 0건만 보면 그게 안 보인다.
+    """
+    if not conditions:
+        return []
+    matched = {e["from"] for e in evidence if e.get("from")}
+    out = []
+    for raw in (conditions.get("additional_requirements") or []):
+        expression = unicodedata.normalize("NFC", str(raw)).strip()
+        if not expression:
+            continue
+        if any(form in expression for form in matched):
+            continue          # 이 표현 안에서 사전이 무언가를 잡았다
+        reason, entry_id = _classify_unmatch(index, expression, haystack)
+        out.append({
+            "expression": expression,
+            "normalized_key": re.sub(r"\s+", " ", expression).lower(),
+            "unmatch_reason": reason,
+            "entry_id": entry_id,
+        })
+    return out
+
+
+def _classify_unmatch(index, expression, haystack):
+    """미매칭 원인을 셋으로 가른다. (str, str | None).
+
+    셋은 고쳐야 할 곳이 다르다. 한 칸으로 뭉개면 **이미 내린 결정을 다시 제안하게 된다** —
+    `포근한` 은 DECISIONS.md N5 가 측정으로 `optional` 로 강등한 표현이라 영영 안 걸린다.
+
+    NOT_IN_LEXICON     사전에 없다              -> 항목을 추가한다
+    CONDITION_NOT_MET  match_condition 이 탈락  -> 조건 토큰을 손본다
+    NOT_CORE           optional / NO_MAPPING    -> 판정 이력이 있다. 함부로 올리지 않는다
+    """
+    hit = set()
+    for form, expressions in index["lexicon_surface"].items():
+        if form and form in expression:
+            hit |= expressions
+    if not hit:
+        return "NOT_IN_LEXICON", None
+
+    entry_id, condition_failed = None, False
+    for name in sorted(hit):
+        entry_id = entry_id or index["lexicon_entry_id"].get(name)
+        for row in index["lexicon_by_expression"].get(name, []):
+            condition = row["match_condition"]
+            if condition.startswith("query_contains:"):
+                tokens = [t for t in condition.split(":", 1)[1].split(",") if t]
+                if not any(t in haystack for t in tokens):
+                    condition_failed = True
+    return ("CONDITION_NOT_MET" if condition_failed else "NOT_CORE"), entry_id
 
 
 def _lexicon_lookup(index, haystack):
@@ -260,6 +323,10 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
     if not cols:
         return {"rows": [], "stage": "NO_CONDITION", "candidate_count": 0,
                 "tie_at_last": 0, "relaxed": []}
+
+    # 부른 쪽이 원한 개수보다 많이 요구할 수는 없다. top_k=2 인데 min_results 가 3이면
+    # AND 가 2개를 다 찾아도 부족으로 보고 완화 사다리를 타 버린다.
+    min_results = min(min_results, top_k)
 
     base = index["people"] >= people_min
     for accord in avoid:
@@ -329,17 +396,26 @@ def _rank(index, mask, score, top_k, brand_cap):
 # ---------------------------------------------------------------------------
 # 3단계 — 근거 계산과 응답 조립
 # ---------------------------------------------------------------------------
-def recommend(index, text, conditions=None, top_k=TOP_K):
+def recommend(index, text, conditions=None, top_k=TOP_K, estimator=None):
     """문장 하나로 추천 응답을 만든다.
 
-    index      : dict          load_index() 결과
-    text       : str           사용자 원문
-    conditions : dict | None   LLM 구조화 결과. 없으면 사전만 쓴다.
+    index      : dict            load_index() 결과
+    text       : str             사용자 원문
+    conditions : dict | None     LLM 구조화 결과. 없으면 사전만 쓴다.
     top_k      : int
+    estimator  : callable | None 사전이 못 받은 표현 하나를 받아
+                                 {"accords": [...], "reasoning": str} 를 내는 함수.
+                                 **조건이 하나도 안 잡혔을 때만** 부른다.
 
-    반환: dict — status / query / conditions / results / diagnostics
+    반환: dict — status / query / conditions / results / diagnostics / unmatched
+
+    이 파일은 네트워크를 모른다. LLM 추정이 필요하면 `estimator` 로 넣는다. 그래야
+    DB 도 인터넷도 없이 테스트할 수 있고, 추정 없이도 서비스가 돈다.
     """
     understood = understand(index, text, conditions)
+    estimate = {}
+    if estimator and not understood["core"] and understood["unmatched"]:
+        estimate = _apply_estimates(index, understood, estimator)
     found = search(index, understood["core"], understood["avoid"], top_k=top_k)
 
     results = []
@@ -391,6 +467,8 @@ def recommend(index, text, conditions=None, top_k=TOP_K):
             "source": understood["source"],
         },
         "results": results,
+        "unmatched": understood["unmatched"],
+        "llm_estimate": estimate,
         "diagnostics": {
             "stage": found["stage"],
             "candidate_count": found["candidate_count"],
@@ -399,6 +477,39 @@ def recommend(index, text, conditions=None, top_k=TOP_K):
             "unmatched_hint": _unmatched_hint(status),
         },
     }
+
+
+def _apply_estimates(index, understood, estimator):
+    """사전이 못 받은 표현을 추정해 조건에 넣는다. dict[key, dict].
+
+    등급은 `LLM` 이고 **`rationale` 은 비운다.** 사전의 `rationale` 은 사람이 판단한 뒤
+    쓴 근거이고 LLM 이 붙인 설명은 사후 해석이다. 한 칸에 섞으면 나중에 구분할 수 없다
+    (spec 1장). 추정 설명은 `llm_reasoning` 에 따로 담는다.
+    """
+    estimate, core = {}, set(understood["core"])
+    for item in understood["unmatched"]:
+        guess = estimator(item["expression"]) or {}
+        accords = [a for a in (guess.get("accords") or []) if a in index["aidx"]]
+        if not accords:
+            continue
+        estimate[item["normalized_key"]] = {"accords": accords,
+                                            "reasoning": guess.get("reasoning")}
+        for accord in accords:
+            if accord in core:
+                continue
+            core.add(accord)
+            understood["evidence"].append({
+                "from": item["expression"],
+                "accord": accord,
+                "tier": "LLM",
+                "entry_id": None,
+                "rationale": None,
+                "llm_reasoning": guess.get("reasoning"),
+            })
+    understood["core"] = sorted(core - set(understood["avoid"]))
+    understood["matched_expressions"] = sorted(
+        {e["from"] for e in understood["evidence"] if e.get("from")})
+    return estimate
 
 
 def _unmatched_hint(status):

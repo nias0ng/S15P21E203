@@ -15,3 +15,12 @@ __pycache__/
 perfumes.csv
 perfumes.jsonl
 *.jsonl
+
+# 미매칭 로그는 저장소에 넣지 않습니다.
+#
+# unmatched_log.py 가 ai/logs/unmatched.jsonl 에 사용자가 입력한 원문을 저장합니다.
+# 설문 실측에 건강·신분 서술이 있었습니다("향에 민감해서 두통이 옴" 등).
+# 한 번 커밋해서 푸시하면 git 이력에서 지우기가 사실상 불가능합니다.
+#
+# 보관 기간이 지난 원문은 unmatched_log.purge_raw_text() 로 비웁니다.
+logs/
