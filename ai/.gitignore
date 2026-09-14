@@ -1,2 +1,17 @@
 ./venv
 venv/
+.venv/
+env/
+ENV/
+
+__pycache__/
+*.pyc
+
+# 원본 덤프는 저장소에 넣지 않습니다.
+#
+# build_data.py 의 --source 로 쓰려고 이 폴더에 복사해두기 쉬운데,
+# perfumes.csv 는 127MB 라 실수로 커밋하면 저장소가 망가집니다.
+# 서비스가 쓰는 것은 data/perfumes_nlr.csv.gz (5MB) 뿐입니다.
+perfumes.csv
+perfumes.jsonl
+*.jsonl

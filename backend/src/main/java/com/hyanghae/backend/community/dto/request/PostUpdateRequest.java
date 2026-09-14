@@ -18,6 +18,9 @@ import java.util.List;
  *
  * <p>컬렉션 도메인의 수정 요청이 같은 방식을 씁니다.
  *
+ * <p>{@code collectionId} 는 {@code null} 을 보내면 첨부를 뗍니다. 분류·제목·내용과 달리 글이
+ * 반드시 갖는 값이 아니라 비울 수 있습니다.
+ *
  * <p>{@code perfumeIds}·{@code imageUrls} 는 보낸 목록으로 통째로 바뀝니다. 빈 배열을 보내면
  * 연결을 모두 지웁니다. 일부만 더하거나 빼는 방법은 두지 않았습니다. 화면이 목록 전체를 들고
  * 있어서 그대로 보내면 되고, 부분 수정은 순서까지 맞추기 어렵습니다.
@@ -27,28 +30,35 @@ public class PostUpdateRequest {
     private String category;
     private String title;
     private String content;
+    private Long collectionId;
     private List<Long> perfumeIds;
     private List<String> imageUrls;
 
     private boolean categoryPresent;
     private boolean titlePresent;
     private boolean contentPresent;
+    private boolean collectionPresent;
     private boolean perfumesPresent;
     private boolean imagesPresent;
 
     public void setCategory(String category) {
-        this.category = category;
+        this.category = category == null ? null : category.strip();
         this.categoryPresent = true;
     }
 
     public void setTitle(String title) {
-        this.title = title;
+        this.title = title == null ? null : title.strip();
         this.titlePresent = true;
     }
 
     public void setContent(String content) {
-        this.content = content;
+        this.content = content == null ? null : content.strip();
         this.contentPresent = true;
+    }
+
+    public void setCollectionId(Long collectionId) {
+        this.collectionId = collectionId;
+        this.collectionPresent = true;
     }
 
     public void setPerfumeIds(List<Long> perfumeIds) {
@@ -76,6 +86,17 @@ public class PostUpdateRequest {
     @Schema(description = "바꿀 내용. 생략하면 유지")
     public String getContent() {
         return content;
+    }
+
+    @Schema(description = "바꿀 컬렉션 ID. 생략하면 유지하고 null 을 보내면 첨부를 뗍니다.",
+            nullable = true)
+    public Long getCollectionId() {
+        return collectionId;
+    }
+
+    @JsonIgnore
+    public boolean isCollectionPresent() {
+        return collectionPresent;
     }
 
     @Schema(description = "바꿀 향수 ID 목록. 통째로 교체되고 빈 배열이면 모두 지웁니다. 생략하면 유지")
@@ -124,7 +145,7 @@ public class PostUpdateRequest {
     @AssertTrue(message = "고칠 항목이 필요하며 분류·제목·내용은 비울 수 없습니다.")
     public boolean isValidPatch() {
         boolean hasSomething = categoryPresent || titlePresent || contentPresent
-                || perfumesPresent || imagesPresent;
+                || collectionPresent || perfumesPresent || imagesPresent;
         boolean keepsRequiredValues = (!categoryPresent || (category != null && !category.isBlank()))
                 && (!titlePresent || (title != null && !title.isBlank()))
                 && (!contentPresent || (content != null && !content.isBlank()))

@@ -24,6 +24,20 @@ import org.springframework.stereotype.Repository;
 public interface PostRepository extends JpaRepository<Post, Long> {
 
     /**
+     * 목록 한 줄에 실을 값입니다.
+     *
+     * <p>댓글 수는 딸린 쿼리로 셉니다. V12 가 넣은 {@code idx_comments_post} 가 글 번호로 시작해
+     * 표를 보지 않고 셀 수 있습니다.
+     */
+    String SELECT_COLUMNS = """
+            SELECT p.post_id AS postId, c.code AS category, p.title AS title,
+                   u.nickname AS nickname, p.created_at AS createdAt,
+                   (SELECT COUNT(*)
+                      FROM comments cm
+                     WHERE cm.post_id = p.post_id) AS commentCount
+            """;
+
+    /**
      * 목록과 개수가 같은 범위를 보도록 조건을 묶어 둡니다. 한쪽만 고치면 마지막 페이지가 비거나
      * 개수가 맞지 않습니다.
      *
@@ -42,14 +56,33 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      * 로 순서를 확정합니다. 순서가 흔들리면 페이지를 넘길 때 같은 글이 두 번 나오거나 어떤 글이
      * 아예 안 보입니다.
      */
-    @Query(value = """
-            SELECT p.post_id AS postId, c.code AS category, p.title AS title,
-                   u.nickname AS nickname, p.created_at AS createdAt
-            """ + FROM_AND_WHERE + """
+    String ORDER_RECENT = """
             ORDER BY p.created_at DESC NULLS LAST, p.post_id DESC
             LIMIT :limit OFFSET :offset
-            """, nativeQuery = true)
-    List<PostListRow> findPage(
+            """;
+
+    /**
+     * 댓글이 많은 순입니다.
+     *
+     * <p>댓글 수가 같은 글이 흔하므로 최신순과 글 번호까지 이어 붙여 순서를 확정합니다. 첫 기준만
+     * 두면 같은 글이 두 페이지에 나오거나 어떤 글이 아예 빠집니다.
+     *
+     * <p>{@code commentCount} 는 위에서 붙인 별칭입니다. 같은 딸린 쿼리를 두 번 쓰지 않습니다.
+     */
+    String ORDER_COMMENTS = """
+            ORDER BY commentCount DESC, p.created_at DESC NULLS LAST, p.post_id DESC
+            LIMIT :limit OFFSET :offset
+            """;
+
+    @Query(value = SELECT_COLUMNS + FROM_AND_WHERE + ORDER_RECENT, nativeQuery = true)
+    List<PostListRow> findPageByRecent(
+            @Param("category") String category,
+            @Param("limit") int limit,
+            @Param("offset") long offset
+    );
+
+    @Query(value = SELECT_COLUMNS + FROM_AND_WHERE + ORDER_COMMENTS, nativeQuery = true)
+    List<PostListRow> findPageByComments(
             @Param("category") String category,
             @Param("limit") int limit,
             @Param("offset") long offset
@@ -86,6 +119,14 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      */
     @Query(value = "SELECT nickname FROM users WHERE user_id = :userId", nativeQuery = true)
     Optional<String> findNickname(@Param("userId") Long userId);
+
+    /** 상세의 댓글 수입니다. */
+    @Query("""
+            SELECT COUNT(c)
+            FROM Comment c
+            WHERE c.post.id = :postId
+            """)
+    long countComments(@Param("postId") Long postId);
 
     /** 글에 걸어 둔 순서 그대로입니다. */
     @Query("""

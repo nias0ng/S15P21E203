@@ -12,6 +12,8 @@ import java.time.OffsetDateTime;
  * 하나만 들어가고, 여러 개를 보내면 화면이 매번 하나를 골라야 합니다. 고르는 규칙이 화면마다
  * 달라지지 않도록 서버가 정합니다. 향수를 걸지 않은 글은 비어 있습니다.
  *
+ * <p>{@code commentCount} 는 지운 댓글을 뺀 수입니다.
+ *
  * <p>{@code nickname} 이 비어 있을 수 있습니다. 회원이 탈퇴하면 글은 남고 작성자만 지워집니다
  * ({@code posts.user_id} 가 {@code ON DELETE SET NULL} 입니다).
  */
@@ -21,6 +23,7 @@ public record PostSummaryResponse(
         String title,
         String nickname,
         PostPerfumeResponse perfume,
+        long commentCount,
         OffsetDateTime createdAt
 ) {
 }

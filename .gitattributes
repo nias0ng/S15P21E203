@@ -11,3 +11,9 @@
 *.cmd text eol=crlf
 
 backend/gradlew text eol=lf
+
+# 압축 파일은 바이너리입니다.
+#
+# text=auto 가 붙으면 git 이 줄바꿈을 변환하려 들어 파일이 깨집니다.
+# ai/data 의 향수 데이터가 gzip CSV 라 이 설정이 필요합니다.
+*.gz binary

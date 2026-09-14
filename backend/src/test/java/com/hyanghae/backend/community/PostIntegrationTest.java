@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyanghae.backend.community.exception.CommunityErrorCode;
 import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.support.IntegrationTest;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.hamcrest.Matchers;
@@ -49,6 +50,10 @@ class PostIntegrationTest {
     private static final long WRITER_ID = 1;
     private static final long OTHER_WRITER_ID = 2;
 
+    private static final long MY_COLLECTION_ID = 1;
+    private static final long OTHER_COLLECTION_ID = 2;
+    private static final long MISSING_COLLECTION_ID = 999;
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -72,6 +77,9 @@ class PostIntegrationTest {
         insertPerfume(1, "Base Scent", true);
         insertPerfume(2, "Second Scent", true);
         insertPerfume(3, "Retired Scent", false);
+
+        insertCollection(MY_COLLECTION_ID, WRITER_ID, "내 컬렉션");
+        insertCollection(OTHER_COLLECTION_ID, OTHER_WRITER_ID, "남의 컬렉션");
 
         currentUser.login(WRITER_ID);
     }
@@ -165,6 +173,209 @@ class PostIntegrationTest {
                 .andExpect(jsonPath("$.posts[1].perfume.perfumeId").value(2))
                 .andExpect(jsonPath("$.posts[1].perfume.name").value("Second Scent"))
                 .andExpect(jsonPath("$.posts[1].perfume.brand").value("Chanel"));
+    }
+
+    /**
+     * 목록과 상세에 댓글 수가 실립니다.
+     *
+     * <p>화면이 한 줄마다 "댓글 N" 을 그립니다. 댓글을 지우면 수도 함께 줄어야 합니다.
+     */
+    @Test
+    void countsComments() throws Exception {
+        long postId = write("CHAT", "댓글 달린 글", "본문", null, null);
+        writeComment(postId, "첫 댓글");
+        writeComment(postId, "둘째 댓글");
+        long removed = writeComment(postId, "지울 댓글");
+
+        mockMvc.perform(get(POSTS_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts[0].commentCount").value(3));
+
+        jdbcTemplate.update("DELETE FROM comments WHERE comment_id = ?", removed);
+
+        mockMvc.perform(get(POSTS_URL))
+                .andExpect(jsonPath("$.posts[0].commentCount").value(2));
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.commentCount").value(2));
+    }
+
+    /**
+     * 댓글 많은 순으로도 볼 수 있습니다.
+     *
+     * <p>댓글 수가 같으면 최신순으로 갈립니다. 첫 기준만 두면 같은 글이 두 페이지에 나오거나
+     * 어떤 글이 아예 빠집니다.
+     */
+    @Test
+    void sortsByCommentCount() throws Exception {
+        long few = write("CHAT", "댓글 하나", "본문", null, null);
+        long many = write("CHAT", "댓글 셋", "본문", null, null);
+        long none = write("CHAT", "댓글 없음", "본문", null, null);
+
+        writeComment(few, "하나");
+        writeComment(many, "하나");
+        writeComment(many, "둘");
+        writeComment(many, "셋");
+
+        mockMvc.perform(get(POSTS_URL).param("sort", "COMMENTS"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts[*].title")
+                        .value(Matchers.contains("댓글 셋", "댓글 하나", "댓글 없음")));
+
+        mockMvc.perform(get(POSTS_URL))
+                .andExpect(jsonPath("$.posts[*].title")
+                        .value(Matchers.contains("댓글 없음", "댓글 셋", "댓글 하나")));
+
+        assertThat(none).isPositive();
+    }
+
+    /**
+     * 댓글 수가 모두 같아도 페이지를 넘길 때 겹치거나 빠지는 글이 없습니다.
+     *
+     * <p>정렬의 첫 기준만 두면 같은 값끼리의 순서를 데이터베이스가 그때그때 정합니다. 그러면
+     * 1페이지에 나온 글이 2페이지에 또 나오고 어떤 글은 아예 안 보입니다. 최신순과 글 번호까지
+     * 이어 붙여 순서를 확정한 이유입니다.
+     */
+    @Test
+    void keepsOrderStableWhenCommentCountsTie() throws Exception {
+        List<String> titles = List.of("하나", "둘", "셋", "넷", "다섯");
+        for (String title : titles) {
+            long postId = write("CHAT", title, "본문", null, null);
+            writeComment(postId, "댓글 하나씩");
+        }
+
+        List<String> seen = new ArrayList<>();
+        for (int page = 0; page < 3; page++) {
+            String body = mockMvc.perform(get(POSTS_URL)
+                            .param("sort", "COMMENTS")
+                            .param("size", "2")
+                            .param("page", String.valueOf(page)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.posts[*].commentCount")
+                            .value(Matchers.everyItem(Matchers.is(1))))
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString();
+
+            objectMapper.readTree(body).get("posts")
+                    .forEach(post -> seen.add(post.get("title").asText()));
+        }
+
+        assertThat(seen).doesNotHaveDuplicates();
+        assertThat(seen).containsExactlyInAnyOrderElementsOf(titles);
+    }
+
+    /** 목록에 없는 정렬 기준은 400 입니다. Spring 이 값을 못 바꿔 서비스까지 오지 않습니다. */
+    @Test
+    void rejectsUnknownSort() throws Exception {
+        mockMvc.perform(get(POSTS_URL).param("sort", "LIKES"))
+                .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * 컬렉션 공유 글에 내 컬렉션을 붙입니다.
+     *
+     * <p>상세에 번호와 이름이 함께 나갑니다. 이름만 주면 화면이 컬렉션 상세로 넘어갈 수 없습니다.
+     */
+    @Test
+    void attachesMyCollection() throws Exception {
+        long postId = writeWithCollection("COLLECTION", "컬렉션 공유 글", MY_COLLECTION_ID);
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.collectionId").value(MY_COLLECTION_ID))
+                .andExpect(jsonPath("$.collectionTitle").value("내 컬렉션"));
+    }
+
+    /** 첨부하지 않은 글은 둘 다 비어 나갑니다. */
+    @Test
+    void leavesCollectionEmptyWhenNotAttached() throws Exception {
+        long postId = write("CHAT", "그냥 글", "본문", null, null);
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(jsonPath("$.collectionId").doesNotExist())
+                .andExpect(jsonPath("$.collectionTitle").doesNotExist());
+    }
+
+    /**
+     * 없는 컬렉션과 남의 컬렉션은 같은 404 입니다.
+     *
+     * <p>컬렉션은 누구나 볼 수 있는 자료가 아니라 존재를 숨기는 편이 맞습니다. 남의 글을 403 으로
+     * 답하는 것과 반대 이유입니다.
+     */
+    @Test
+    void rejectsCollectionThatIsNotMine() throws Exception {
+        for (long collectionId : new long[]{MISSING_COLLECTION_ID, OTHER_COLLECTION_ID}) {
+            mockMvc.perform(post(POSTS_URL)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(collectionBody("COLLECTION", "가로채기", collectionId)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code")
+                            .value(CommunityErrorCode.COMMUNITY_COLLECTION_NOT_FOUND.code()));
+        }
+
+        assertThat(countRows("posts")).isZero();
+    }
+
+    /**
+     * 수정으로도 남의 컬렉션을 붙일 수 없습니다.
+     *
+     * <p>작성만 막으면 글을 쓴 뒤 수정으로 붙이는 길이 열립니다. 두 경로가 같은 규칙을 봐야
+     * 합니다.
+     */
+    @Test
+    void rejectsAttachingSomeoneElsesCollectionOnUpdate() throws Exception {
+        long postId = write("COLLECTION", "공유 글", "본문", null, null);
+
+        for (long collectionId : new long[]{MISSING_COLLECTION_ID, OTHER_COLLECTION_ID}) {
+            mockMvc.perform(patch(POST_URL, postId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"collectionId\": " + collectionId + "}"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code")
+                            .value(CommunityErrorCode.COMMUNITY_COLLECTION_NOT_FOUND.code()));
+        }
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(jsonPath("$.collectionId").doesNotExist());
+    }
+
+    /** 수정으로 첨부를 바꾸거나 뗄 수 있습니다. null 을 보내면 뗍니다. */
+    @Test
+    void changesAndDetachesCollection() throws Exception {
+        long postId = write("COLLECTION", "공유 글", "본문", null, null);
+
+        mockMvc.perform(patch(POST_URL, postId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"collectionId\": " + MY_COLLECTION_ID + "}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(jsonPath("$.collectionTitle").value("내 컬렉션"));
+
+        mockMvc.perform(patch(POST_URL, postId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"collectionId\": null}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(jsonPath("$.collectionId").doesNotExist());
+    }
+
+    /**
+     * 컬렉션을 지워도 글은 남고 첨부만 떨어집니다.
+     *
+     * <p>컬렉션을 정리했다고 그것을 소개한 글까지 사라지면 안 됩니다.
+     */
+    @Test
+    void keepsPostWhenTheCollectionIsDeleted() throws Exception {
+        long postId = writeWithCollection("COLLECTION", "공유 글", MY_COLLECTION_ID);
+
+        jdbcTemplate.update("DELETE FROM collections WHERE collection_id = ?", MY_COLLECTION_ID);
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("공유 글"))
+                .andExpect(jsonPath("$.collectionId").doesNotExist());
     }
 
     /** 페이지 크기는 1~100 으로 자릅니다. 총 개수는 자른 것과 무관하게 전체입니다. */
@@ -483,6 +694,44 @@ class PostIntegrationTest {
         return json.append("}").toString();
     }
 
+    /** 댓글을 SQL 로 답니다. 댓글 API 가 바뀌어도 게시글 테스트가 흔들리지 않아야 합니다. */
+    private long writeComment(long postId, String content) {
+        jdbcTemplate.update("""
+                INSERT INTO comments (post_id, user_id, content, created_at, updated_at)
+                VALUES (?, ?, ?, NOW(), NOW())
+                """, postId, WRITER_ID, content);
+
+        return jdbcTemplate.queryForObject(
+                "SELECT MAX(comment_id) FROM comments", Long.class);
+    }
+
+    private long writeWithCollection(String category, String title, long collectionId)
+            throws Exception {
+        String body = mockMvc.perform(post(POSTS_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(collectionBody(category, title, collectionId)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        return objectMapper.readTree(body).get("postId").asLong();
+    }
+
+    private String collectionBody(String category, String title, long collectionId)
+            throws Exception {
+        return "{\"category\": " + objectMapper.writeValueAsString(category)
+                + ", \"title\": " + objectMapper.writeValueAsString(title)
+                + ", \"content\": \"본문\""
+                + ", \"collectionId\": " + collectionId + "}";
+    }
+
+    private void insertCollection(long id, long userId, String name) {
+        jdbcTemplate.update(
+                "INSERT INTO collections (collection_id, user_id, name) VALUES (?, ?, ?)",
+                id, userId, name);
+    }
+
     private int countRows(String table) {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class);
     }
@@ -510,9 +759,12 @@ class PostIntegrationTest {
      * <p>{@code post_categories} 는 마이그레이션이 심은 분류 셋이라 건드리지 않습니다.
      */
     private void clearData() {
+        jdbcTemplate.update("DELETE FROM comments");
         jdbcTemplate.update("DELETE FROM post_images");
         jdbcTemplate.update("DELETE FROM post_perfumes");
         jdbcTemplate.update("DELETE FROM posts");
+        jdbcTemplate.update("DELETE FROM collection_perfumes");
+        jdbcTemplate.update("DELETE FROM collections");
         jdbcTemplate.update("DELETE FROM perfumes");
         jdbcTemplate.update("DELETE FROM brands");
         jdbcTemplate.update("DELETE FROM users");

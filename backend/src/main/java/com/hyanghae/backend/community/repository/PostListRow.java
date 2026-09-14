@@ -27,4 +27,6 @@ public interface PostListRow {
     String getNickname();
 
     Instant getCreatedAt();
+
+    long getCommentCount();
 }
