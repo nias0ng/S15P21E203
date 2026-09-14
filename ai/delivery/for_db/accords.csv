@@ -1,0 +1,93 @@
+name,is_new
+Champagne,True
+Pear,True
+alcohol,True
+aldehydic,False
+almond,False
+amber,False
+animalic,False
+anis,False
+aquatic,False
+aromatic,False
+asphault,True
+bacon,True
+balsamic,False
+bbq,True
+beeswax,False
+bitter,False
+brown scotch tape,True
+cacao,False
+camphor,False
+cannabis,True
+caramel,False
+cherry,False
+chocolate,False
+cinnamon,False
+citrus,False
+clay,True
+coca-cola,False
+coconut,False
+coffee,False
+conifer,False
+earthy,False
+floral,False
+foresty,True
+fresh,False
+fresh spicy,False
+fruity,False
+gasoline,True
+gourmand,True
+green,False
+herbal,False
+honey,False
+hot iron,True
+industrial glue,True
+iris,False
+lactonic,False
+lavender,False
+leather,False
+marine,False
+meat,True
+metallic,False
+milky,True
+mineral,False
+mossy,False
+musky,False
+nutty,False
+oily,True
+oud,False
+ozonic,False
+paper,True
+patchouli,False
+plastic,True
+powdery,False
+rose,False
+rubber,True
+rum,False
+sake,True
+salty,False
+sand,True
+savory,True
+smoky,False
+soapy,False
+soft spicy,False
+sour,False
+spice,True
+sweet,False
+tennis ball,True
+terpenic,True
+tobacco,False
+tropical,False
+tuberose,False
+vanilla,False
+varnish,True
+vinyl,True
+violet,False
+vodka,True
+warm spicy,False
+wet plaster,True
+whiskey,True
+white floral,False
+wine,True
+woody,False
+yellow floral,False
