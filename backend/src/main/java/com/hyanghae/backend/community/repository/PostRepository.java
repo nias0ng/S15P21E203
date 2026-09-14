@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -26,15 +27,22 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     /**
      * 목록 한 줄에 실을 값입니다.
      *
-     * <p>댓글 수는 딸린 쿼리로 셉니다. V12 가 넣은 {@code idx_comments_post} 가 글 번호로 시작해
-     * 표를 보지 않고 셀 수 있습니다.
+     * <p>댓글 수와 좋아요 수는 딸린 쿼리로 셉니다. {@code idx_comments_post}(V12)와
+     * {@code post_likes} 의 기본키가 모두 글 번호로 시작해 표를 보지 않고 셀 수 있습니다.
+     *
+     * <p>조회수만 저장된 값을 그대로 읽습니다. 좋아요는 누가 눌렀는지 기록이 있어 세면 되지만,
+     * 조회는 비로그인도 하는 일이라 기록할 표가 없습니다. 대신 숫자를 직접 올립니다.
      */
     String SELECT_COLUMNS = """
             SELECT p.post_id AS postId, c.code AS category, p.title AS title,
                    u.nickname AS nickname, p.created_at AS createdAt,
+                   p.view_count AS viewCount,
                    (SELECT COUNT(*)
                       FROM comments cm
-                     WHERE cm.post_id = p.post_id) AS commentCount
+                     WHERE cm.post_id = p.post_id) AS commentCount,
+                   (SELECT COUNT(*)
+                      FROM post_likes pl
+                     WHERE pl.post_id = p.post_id) AS likeCount
             """;
 
     /**
@@ -74,6 +82,27 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             LIMIT :limit OFFSET :offset
             """;
 
+    /**
+     * 좋아요가 많은 순입니다. 뒤에 최신순과 글 번호를 이어 붙이는 이유는 댓글 순과 같습니다.
+     *
+     * <p>{@code likeCount} 는 위에서 붙인 별칭입니다. 같은 딸린 쿼리를 두 번 쓰지 않습니다.
+     */
+    String ORDER_LIKES = """
+            ORDER BY likeCount DESC, p.created_at DESC NULLS LAST, p.post_id DESC
+            LIMIT :limit OFFSET :offset
+            """;
+
+    /**
+     * 조회가 많은 순입니다. 저장된 값이라 V13 의 {@code idx_posts_views} 를 그대로 훑습니다.
+     *
+     * <p>다만 분류를 걸면 그 인덱스를 쓰지 못합니다. 분류별 조회 순 인덱스까지 두지는 않았습니다.
+     * 글 수가 그만큼 늘면 그때 더합니다.
+     */
+    String ORDER_VIEWS = """
+            ORDER BY p.view_count DESC, p.created_at DESC NULLS LAST, p.post_id DESC
+            LIMIT :limit OFFSET :offset
+            """;
+
     @Query(value = SELECT_COLUMNS + FROM_AND_WHERE + ORDER_RECENT, nativeQuery = true)
     List<PostListRow> findPageByRecent(
             @Param("category") String category,
@@ -87,6 +116,30 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             @Param("limit") int limit,
             @Param("offset") long offset
     );
+
+    @Query(value = SELECT_COLUMNS + FROM_AND_WHERE + ORDER_LIKES, nativeQuery = true)
+    List<PostListRow> findPageByLikes(
+            @Param("category") String category,
+            @Param("limit") int limit,
+            @Param("offset") long offset
+    );
+
+    @Query(value = SELECT_COLUMNS + FROM_AND_WHERE + ORDER_VIEWS, nativeQuery = true)
+    List<PostListRow> findPageByViews(
+            @Param("category") String category,
+            @Param("limit") int limit,
+            @Param("offset") long offset
+    );
+
+    /**
+     * 조회수를 하나 올립니다.
+     *
+     * <p>읽어서 더하고 저장하지 않고 <b>표에게 더하라고 시킵니다.</b> 두 사람이 동시에 열면 둘 다
+     * 같은 값을 읽어 같은 값을 쓰게 되어 한 번이 사라집니다. 이 문장은 그런 틈이 없습니다.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Post p SET p.viewCount = p.viewCount + 1 WHERE p.id = :postId")
+    int increaseViewCount(@Param("postId") Long postId);
 
     @Query(value = "SELECT COUNT(*) " + FROM_AND_WHERE, nativeQuery = true)
     long countPage(@Param("category") String category);

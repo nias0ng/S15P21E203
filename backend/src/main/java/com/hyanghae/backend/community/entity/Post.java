@@ -64,6 +64,15 @@ public class Post {
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
 
+    /**
+     * 조회수입니다. 올리는 것은 이 엔티티가 아니라 저장소의 {@code UPDATE} 문장입니다.
+     *
+     * <p>읽어서 더하고 저장하면 두 사람이 동시에 열 때 한 번이 사라집니다. 여기서는 값을 읽기만
+     * 하고, 더하는 일은 표에게 맡깁니다.
+     */
+    @Column(name = "view_count", nullable = false)
+    private long viewCount;
+
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private final List<PostImage> images = new ArrayList<>();
 
@@ -180,5 +189,9 @@ public class Post {
 
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public long getViewCount() {
+        return viewCount;
     }
 }

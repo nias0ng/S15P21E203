@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -46,6 +47,7 @@ class PostIntegrationTest {
 
     private static final String POSTS_URL = "/api/v1/posts";
     private static final String POST_URL = "/api/v1/posts/{postId}";
+    private static final String LIKE_URL = "/api/v1/posts/{postId}/like";
 
     private static final long WRITER_ID = 1;
     private static final long OTHER_WRITER_ID = 2;
@@ -266,10 +268,19 @@ class PostIntegrationTest {
         assertThat(seen).containsExactlyInAnyOrderElementsOf(titles);
     }
 
+    /** 네 가지 정렬은 모두 받습니다. 화면의 정렬 칩과 하나씩 맞습니다. */
+    @Test
+    void acceptsEverySort() throws Exception {
+        for (String sort : new String[]{"RECENT", "VIEWS", "LIKES", "COMMENTS"}) {
+            mockMvc.perform(get(POSTS_URL).param("sort", sort))
+                    .andExpect(status().isOk());
+        }
+    }
+
     /** 목록에 없는 정렬 기준은 400 입니다. Spring 이 값을 못 바꿔 서비스까지 오지 않습니다. */
     @Test
     void rejectsUnknownSort() throws Exception {
-        mockMvc.perform(get(POSTS_URL).param("sort", "LIKES"))
+        mockMvc.perform(get(POSTS_URL).param("sort", "OLDEST"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -657,6 +668,180 @@ class PostIntegrationTest {
                 .andExpect(jsonPath("$.paths['/api/v1/posts/{postId}'].delete").exists());
     }
 
+    // ────────────────────────────────────────────────────────────────
+    // 좋아요와 조회수
+    // ────────────────────────────────────────────────────────────────
+
+    /**
+     * 좋아요를 <b>여러 번 눌러도 결과가 같습니다.</b>
+     *
+     * <p>{@code PUT} 으로 둔 이유입니다. 토글이면 두 번 누를 때 취소되는데, 네트워크가 끊겨 화면이
+     * 요청을 다시 보내는 것과 사용자가 두 번 누른 것을 서버가 구분할 수 없습니다.
+     */
+    @Test
+    void likesIdempotently() throws Exception {
+        long postId = write("CHAT", "좋아요 받을 글", "본문", null, null);
+
+        for (int attempt = 0; attempt < 3; attempt++) {
+            mockMvc.perform(put(LIKE_URL, postId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.postId").value(postId))
+                    .andExpect(jsonPath("$.liked").value(true))
+                    .andExpect(jsonPath("$.likeCount").value(1));
+        }
+
+        assertThat(countRows("post_likes")).isEqualTo(1);
+    }
+
+    /** 취소도 여러 번 해도 됩니다. 누르지 않은 글에 취소해도 오류가 아닙니다. */
+    @Test
+    void unlikesIdempotently() throws Exception {
+        long postId = write("CHAT", "좋아요 받을 글", "본문", null, null);
+        mockMvc.perform(put(LIKE_URL, postId)).andExpect(status().isOk());
+
+        for (int attempt = 0; attempt < 3; attempt++) {
+            mockMvc.perform(delete(LIKE_URL, postId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.liked").value(false))
+                    .andExpect(jsonPath("$.likeCount").value(0));
+        }
+
+        assertThat(countRows("post_likes")).isZero();
+    }
+
+    /**
+     * {@code liked} 는 보는 사람마다 다르고 {@code likeCount} 는 누구에게나 같습니다.
+     *
+     * <p>목록과 상세 양쪽을 봅니다. 목록은 번호를 모아 한 번에 읽고 상세는 하나만 확인하는, 서로
+     * 다른 길이라 한쪽만 맞는 일이 생길 수 있습니다.
+     */
+    @Test
+    void tellsWhetherILikedThePost() throws Exception {
+        long postId = write("CHAT", "좋아요 받을 글", "본문", null, null);
+        mockMvc.perform(put(LIKE_URL, postId)).andExpect(status().isOk());
+
+        currentUser.login(OTHER_WRITER_ID);
+        mockMvc.perform(put(LIKE_URL, postId)).andExpect(status().isOk());
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(jsonPath("$.likeCount").value(2))
+                .andExpect(jsonPath("$.liked").value(true));
+        mockMvc.perform(get(POSTS_URL))
+                .andExpect(jsonPath("$.posts[0].likeCount").value(2))
+                .andExpect(jsonPath("$.posts[0].liked").value(true));
+
+        currentUser.logout();
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.likeCount").value(2))
+                .andExpect(jsonPath("$.liked").value(false));
+        mockMvc.perform(get(POSTS_URL))
+                .andExpect(jsonPath("$.posts[0].likeCount").value(2))
+                .andExpect(jsonPath("$.posts[0].liked").value(false));
+    }
+
+    /** 좋아요는 로그인이 필요하고, 없는 글에는 누를 수 없습니다. */
+    @Test
+    void rejectsLikeWithoutLoginOrPost() throws Exception {
+        long postId = write("CHAT", "글", "본문", null, null);
+
+        mockMvc.perform(put(LIKE_URL, 999L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code")
+                        .value(CommunityErrorCode.COMMUNITY_POST_NOT_FOUND.code()));
+
+        currentUser.logout();
+        mockMvc.perform(put(LIKE_URL, postId))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(delete(LIKE_URL, postId))
+                .andExpect(status().isUnauthorized());
+
+        assertThat(countRows("post_likes")).isZero();
+    }
+
+    /**
+     * 글을 지우면 좋아요도 사라지고, 탈퇴해도 그 사람의 좋아요가 사라집니다.
+     *
+     * <p>글·댓글과 다른 규칙입니다. 글은 남겨야 대화가 이어지지만 좋아요는 그 사람이 눌렀다는
+     * 사실 자체라 사람이 없어지면 남을 이유가 없고, 좋아요 수도 그만큼 줄어야 맞습니다.
+     */
+    @Test
+    void removesLikesWhenThePostOrTheUserGoesAway() throws Exception {
+        long mine = write("CHAT", "내 글", "본문", null, null);
+        mockMvc.perform(put(LIKE_URL, mine)).andExpect(status().isOk());
+
+        currentUser.login(OTHER_WRITER_ID);
+        long theirs = write("CHAT", "남의 글", "본문", null, null);
+        mockMvc.perform(put(LIKE_URL, theirs)).andExpect(status().isOk());
+        assertThat(countRows("post_likes")).isEqualTo(2);
+
+        jdbcTemplate.update("DELETE FROM posts WHERE post_id = ?", mine);
+        assertThat(countRows("post_likes")).isEqualTo(1);
+
+        jdbcTemplate.update("DELETE FROM users WHERE user_id = ?", OTHER_WRITER_ID);
+        assertThat(countRows("post_likes")).isZero();
+    }
+
+    /** 상세를 열 때마다 조회수가 오릅니다. 응답의 값은 이번 조회를 포함합니다. */
+    @Test
+    void countsAViewEachTimeTheDetailOpens() throws Exception {
+        long postId = write("CHAT", "조회될 글", "본문", null, null);
+
+        mockMvc.perform(get(POSTS_URL))
+                .andExpect(jsonPath("$.posts[0].viewCount").value(0));
+
+        for (int expected = 1; expected <= 3; expected++) {
+            mockMvc.perform(get(POST_URL, postId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.viewCount").value(expected));
+        }
+
+        mockMvc.perform(get(POSTS_URL))
+                .andExpect(jsonPath("$.posts[0].viewCount").value(3));
+    }
+
+    /** 없는 글을 열어도 조회수가 생기지 않습니다. */
+    @Test
+    void doesNotCountAViewForAMissingPost() throws Exception {
+        mockMvc.perform(get(POST_URL, 999L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code")
+                        .value(CommunityErrorCode.COMMUNITY_POST_NOT_FOUND.code()));
+    }
+
+    /** 좋아요 순은 많이 받은 글이 먼저입니다. 같으면 최신순으로 갈립니다. */
+    @Test
+    void sortsByLikeCount() throws Exception {
+        long few = write("CHAT", "하나 받은 글", "본문", null, null);
+        long many = write("CHAT", "둘 받은 글", "본문", null, null);
+
+        mockMvc.perform(put(LIKE_URL, few)).andExpect(status().isOk());
+        mockMvc.perform(put(LIKE_URL, many)).andExpect(status().isOk());
+        currentUser.login(OTHER_WRITER_ID);
+        mockMvc.perform(put(LIKE_URL, many)).andExpect(status().isOk());
+
+        mockMvc.perform(get(POSTS_URL).param("sort", "LIKES"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts[*].title")
+                        .value(Matchers.contains("둘 받은 글", "하나 받은 글")));
+    }
+
+    /** 조회 순은 많이 열린 글이 먼저입니다. */
+    @Test
+    void sortsByViewCount() throws Exception {
+        long rarely = write("CHAT", "덜 열린 글", "본문", null, null);
+        long often = write("CHAT", "많이 열린 글", "본문", null, null);
+
+        mockMvc.perform(get(POST_URL, rarely)).andExpect(status().isOk());
+        mockMvc.perform(get(POST_URL, often)).andExpect(status().isOk());
+        mockMvc.perform(get(POST_URL, often)).andExpect(status().isOk());
+
+        mockMvc.perform(get(POSTS_URL).param("sort", "VIEWS"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts[*].title")
+                        .value(Matchers.contains("많이 열린 글", "덜 열린 글")));
+    }
+
     private long write(
             String category,
             String title,
@@ -759,6 +944,7 @@ class PostIntegrationTest {
      * <p>{@code post_categories} 는 마이그레이션이 심은 분류 셋이라 건드리지 않습니다.
      */
     private void clearData() {
+        jdbcTemplate.update("DELETE FROM post_likes");
         jdbcTemplate.update("DELETE FROM comments");
         jdbcTemplate.update("DELETE FROM post_images");
         jdbcTemplate.update("DELETE FROM post_perfumes");

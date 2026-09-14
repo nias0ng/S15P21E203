@@ -4,6 +4,7 @@ import com.hyanghae.backend.community.dto.request.PostCreateRequest;
 import com.hyanghae.backend.community.dto.request.PostUpdateRequest;
 import com.hyanghae.backend.community.dto.response.PostCreateResponse;
 import com.hyanghae.backend.community.dto.response.PostDetailResponse;
+import com.hyanghae.backend.community.dto.response.PostLikeResponse;
 import com.hyanghae.backend.community.dto.response.PostPerfumeResponse;
 import com.hyanghae.backend.community.dto.response.PostSummaryResponse;
 import com.hyanghae.backend.community.dto.response.PostUpdateResponse;
@@ -12,6 +13,7 @@ import com.hyanghae.backend.community.entity.Post;
 import com.hyanghae.backend.community.entity.PostCategory;
 import com.hyanghae.backend.community.exception.CommunityErrorCode;
 import com.hyanghae.backend.community.repository.PostCategoryRepository;
+import com.hyanghae.backend.community.repository.PostLikeRepository;
 import com.hyanghae.backend.community.repository.PostListRow;
 import com.hyanghae.backend.community.repository.PostPerfumeRow;
 import com.hyanghae.backend.community.repository.PostRepository;
@@ -28,6 +30,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -52,6 +56,7 @@ public class PostService {
     private static final int MAX_PAGE_SIZE = 100;
 
     private final PostRepository postRepository;
+    private final PostLikeRepository postLikeRepository;
     private final PostCategoryRepository postCategoryRepository;
     private final CollectionRepository collectionRepository;
     private final PerfumeRepository perfumeRepository;
@@ -59,12 +64,14 @@ public class PostService {
 
     public PostService(
             PostRepository postRepository,
+            PostLikeRepository postLikeRepository,
             PostCategoryRepository postCategoryRepository,
             CollectionRepository collectionRepository,
             PerfumeRepository perfumeRepository,
             CurrentUser currentUser
     ) {
         this.postRepository = postRepository;
+        this.postLikeRepository = postLikeRepository;
         this.postCategoryRepository = postCategoryRepository;
         this.collectionRepository = collectionRepository;
         this.perfumeRepository = perfumeRepository;
@@ -146,11 +153,10 @@ public class PostService {
      *
      * <p>분류를 주지 않으면 전체입니다. 페이지 크기는 1~100 으로 자릅니다.
      *
-     * <p>정렬은 최신순과 댓글 많은 순 둘입니다. 화면의 조회 순·좋아요 순은 저장할 자리가 없어
-     * 아직 없습니다.
+     * <p>정렬은 넷입니다 — 최신순·조회 순·좋아요 순·댓글 많은 순.
      *
-     * <p>대표 향수는 한 번에 모아 읽습니다. 글마다 따로 조회하면 한 페이지에 쿼리가 스무 번
-     * 나갑니다.
+     * <p>대표 향수와 내가 누른 좋아요는 각각 한 번에 모아 읽습니다. 글마다 따로 조회하면 한
+     * 페이지에 쿼리가 스무 번씩 나갑니다.
      */
     @Transactional(readOnly = true)
     public PostsResponse findPage(String category, PostSort sort, int page, int size) {
@@ -160,9 +166,12 @@ public class PostService {
 
         List<PostListRow> rows = switch (sort) {
             case RECENT -> postRepository.findPageByRecent(category, pageSize, offset);
+            case VIEWS -> postRepository.findPageByViews(category, pageSize, offset);
+            case LIKES -> postRepository.findPageByLikes(category, pageSize, offset);
             case COMMENTS -> postRepository.findPageByComments(category, pageSize, offset);
         };
         Map<Long, PostPerfumeResponse> perfumes = representativePerfumes(rows);
+        Set<Long> liked = likedAmong(rows);
 
         List<PostSummaryResponse> posts = rows.stream()
                 .map(row -> new PostSummaryResponse(
@@ -172,6 +181,9 @@ public class PostService {
                         row.getNickname(),
                         perfumes.get(row.getPostId()),
                         row.getCommentCount(),
+                        row.getLikeCount(),
+                        row.getViewCount(),
+                        liked.contains(row.getPostId()),
                         OffsetDateTime.ofInstant(row.getCreatedAt(), ZoneId.systemDefault())
                 ))
                 .toList();
@@ -180,9 +192,21 @@ public class PostService {
                 posts, pageNumber, pageSize, postRepository.countPage(category));
     }
 
-    /** 게시글 상세입니다. 없는 글은 404 입니다. */
-    @Transactional(readOnly = true)
+    /**
+     * 게시글 상세입니다. 없는 글은 404 입니다.
+     *
+     * <p><b>읽기 전용이 아닙니다.</b> 여는 것이 곧 조회이므로 여기서 조회수를 올립니다. 화면이
+     * 따로 "봤다" 고 알리게 하면 요청이 한 번 더 오가고, 그 요청을 빠뜨린 화면은 조회가 세지지
+     * 않습니다.
+     *
+     * <p>올린 뒤에 읽습니다. 순서를 바꾸면 방금 올린 것이 빠진 숫자가 나가서, 열었는데 그대로인
+     * 것처럼 보입니다.
+     */
+    @Transactional
     public PostDetailResponse findOne(Long postId) {
+        if (postRepository.increaseViewCount(postId) == 0) {
+            throw new BusinessException(CommunityErrorCode.COMMUNITY_POST_NOT_FOUND);
+        }
         Post post = requirePost(postId);
 
         return new PostDetailResponse(
@@ -196,10 +220,59 @@ public class PostService {
                 collectionIdOf(post),
                 collectionTitleOf(post),
                 postRepository.countComments(postId),
+                postLikeRepository.countOfPost(postId),
+                post.getViewCount(),
+                isLikedByMe(postId),
                 isMine(post),
                 post.getCreatedAt(),
                 post.getUpdatedAt()
         );
+    }
+
+    /**
+     * 좋아요를 누릅니다. 여러 번 눌러도 결과가 같습니다.
+     *
+     * <p>이미 누른 글에 또 누르면 아무 일도 일어나지 않고 지금 상태를 그대로 돌려줍니다. 오류가
+     * 아닙니다. 사용자가 원한 상태("좋아요가 눌려 있다")가 이미 이루어져 있기 때문입니다.
+     */
+    @Transactional
+    public PostLikeResponse like(Long postId) {
+        Long userId = requireLogin();
+        requirePost(postId);
+        postLikeRepository.like(postId, userId);
+
+        return new PostLikeResponse(postId, true, postLikeRepository.countOfPost(postId));
+    }
+
+    /** 좋아요를 취소합니다. 누르지 않은 글에 취소해도 오류가 아닙니다. */
+    @Transactional
+    public PostLikeResponse unlike(Long postId) {
+        Long userId = requireLogin();
+        requirePost(postId);
+        postLikeRepository.unlike(postId, userId);
+
+        return new PostLikeResponse(postId, false, postLikeRepository.countOfPost(postId));
+    }
+
+    /**
+     * 이 목록에서 내가 좋아요를 누른 글입니다.
+     *
+     * <p>비로그인이면 빈 집합입니다. 목록은 누구나 볼 수 있어야 하므로 로그인을 요구하지 않습니다.
+     */
+    private Set<Long> likedAmong(List<PostListRow> rows) {
+        Optional<Long> userId = currentUser.id();
+        if (userId.isEmpty() || rows.isEmpty()) {
+            return Set.of();
+        }
+        List<Long> postIds = rows.stream().map(PostListRow::getPostId).toList();
+        return Set.copyOf(postLikeRepository.findLikedPostIds(userId.get(), postIds));
+    }
+
+    /** 내가 좋아요를 눌렀는지입니다. 비로그인이면 거짓입니다. */
+    private boolean isLikedByMe(Long postId) {
+        return currentUser.id()
+                .map(userId -> postLikeRepository.isLikedBy(postId, userId))
+                .orElse(false);
     }
 
     /**

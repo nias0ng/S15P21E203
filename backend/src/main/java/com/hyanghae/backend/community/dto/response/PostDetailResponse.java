@@ -21,6 +21,12 @@ import java.util.List;
  *
  * <p>{@code imageUrls} 와 {@code relatedPerfumes} 는 글에 걸어 둔 순서 그대로입니다.
  *
+ * <p>{@code liked} 도 보는 사람마다 다릅니다. 하트를 칠할지 정하는 값이라 내가 누른 글에만
+ * 참이고, 비로그인에게는 항상 거짓입니다.
+ *
+ * <p>{@code viewCount} 는 <b>이번 조회를 포함한</b> 수입니다. 상세를 열 때 올리고 올린 값을
+ * 보냅니다. 열었는데 숫자가 그대로면 올라가지 않은 것처럼 보이기 때문입니다.
+ *
  * <p>명세에 있던 {@code status}·{@code holdReason} 은 없습니다. 게시글 보류 기능이 없어지면서
  * 두 컬럼이 V5 에서 삭제됐습니다. 글은 있거나 지워졌거나 둘 중 하나입니다.
  */
@@ -35,6 +41,9 @@ public record PostDetailResponse(
         Long collectionId,
         String collectionTitle,
         long commentCount,
+        long likeCount,
+        long viewCount,
+        boolean liked,
         boolean mine,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
