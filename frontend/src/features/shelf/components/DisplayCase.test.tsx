@@ -61,14 +61,14 @@ const bottle = (name: string) =>
   screen.getByRole('button', { name: `조말론 ${name}`, hidden: true })
 
 describe('DisplayCase 이름표', () => {
-  it('영문 줄은 화면에만 적고, 병 단추는 한글 브랜드 + 한글 이름으로 읽힌다', () => {
+  it('이름표는 브랜드와 한글 이름만 적는다 — 영문 브랜드는 화면에만, 병 단추는 한글 브랜드 + 한글 이름으로 읽힌다', () => {
     renderCase([WOOD_SAGE])
     expect(
       screen.getByRole('button', { name: '조말론 우드 세이지 앤 씨 솔트' }),
     ).toBeInTheDocument()
     expect(screen.getByText('Jo Malone')).toBeInTheDocument()
-    expect(screen.getByText('Wood Sage & Sea Salt')).toBeInTheDocument()
-    expect(screen.getByText('Eau de Cologne')).toBeInTheDocument()
+    expect(screen.queryByText('Wood Sage & Sea Salt')).not.toBeInTheDocument()
+    expect(screen.queryByText('Eau de Cologne')).not.toBeInTheDocument()
   })
 
   it('영문 줄이 없으면(백엔드가 아직 주지 않음) 한글 브랜드를 한 번만 적고 빈 줄을 두지 않는다', () => {

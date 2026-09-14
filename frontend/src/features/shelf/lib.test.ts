@@ -354,13 +354,13 @@ describe('shelfMetrics', () => {
     expect(metrics.clear).toBe(6)
   })
 
-  it('1920 x 1080 에서 이름표는 태그 170 x 140 · 줄 35 이고, 이름표 자리는 190 이다', () => {
+  it('1920 x 1080 자리를 패널 없이 세면(칸 폭 225) 이름표는 태그 170 x 110 · 줄 35 이고, 이름표 자리는 160 이다', () => {
     const { tagWidth, tagHeight, cord, hang } = shelfMetrics(1800, 800, 1440)
     expect(tagWidth).toBe(TAG_WIDTH)
     expect(tagWidth).toBe(170)
-    expect(tagHeight).toBe(140)
+    expect(tagHeight).toBe(110)
     expect(cord).toBe(35)
-    expect(hang).toBe(190)
+    expect(hang).toBe(160)
   })
 
   it('병 사진은 벽감 높이의 70% 로 서고, 칸을 좁혀도 벽감 높이는 그대로다', () => {
@@ -368,7 +368,7 @@ describe('shelfMetrics', () => {
     const { caseHeight, bottle, hang } = shelfMetrics(1340, 600, 1020)
     expect(caseHeight).toBe(440)
     expect(bottle).toBe(305)
-    expect(hang).toBe(145)
+    expect(hang).toBe(120)
   })
 
   it('가리지 않는 칸은 패널에 가리지 않는 폭 안에 온전히 들어간다', () => {
@@ -495,16 +495,16 @@ describe('shelfLayout', () => {
     expect(layout.clearWidth).toBeCloseTo(1460, 6)
     expect(layout.caseHeight).toBe(605)
     expect(layout.bottle).toBe(420)
-    expect(layout.hang).toBe(180)
-    expect([layout.tagWidth, layout.tagHeight]).toEqual([155, 130])
-    expect(layout.panelHeight).toBe(785)
+    expect(layout.hang).toBe(150)
+    expect([layout.tagWidth, layout.tagHeight]).toEqual([155, 100])
+    expect(layout.panelHeight).toBe(755)
     expect(layout.plaqueSpan).toBe(2)
   })
 
   it('화면이 작아지면 패널이 벽감 높이를 따라 줄어든다', () => {
-    // 1920 x 1080 보다 세로가 조금 긴 1800 x 780 자리 — 벽감이 605 아래로 내려옵니다
+    // 1920 x 950 의 1800 x 670 자리 — 벽감이 605 아래로 내려옵니다
     const { panelScale, panelWidth, panelHeight, caseHeight, hang } =
-      shelfLayout(1800, 780)
+      shelfLayout(1800, 670)
     expect(panelScale).toBeLessThan(1)
     expect(panelScale).toBeGreaterThan(0.85)
     expect(panelScale).toBeCloseTo(caseHeight / 605, 6)
@@ -564,16 +564,21 @@ describe('shelfLayout', () => {
     }
   })
 
-  it('두 칸 기둥은 가리지 않는 칸이 다섯 이상일 때만 — 쌓는 배치의 768 은 두 칸, 휴대폰은 한 칸이다', () => {
+  it('두 칸 기둥은 가리지 않는 칸이 다섯 이상일 때만 — 쌓는 배치도 칸이 다섯이면 두 칸(900), 768 · 휴대폰은 한 칸이다', () => {
     for (const [width, height] of OVERLAY) {
       expect(shelfLayout(width, height).plaqueSpan).toBe(2)
     }
-    expect(shelfLayout(708, 553, { panel: false })).toMatchObject({
+    expect(shelfLayout(900, 600, { panel: false })).toMatchObject({
       visible: 5,
       clear: 5,
       plaqueSpan: 2,
     })
-    expect(shelfLayout(708, 553, { panel: false }).pitch).toBeCloseTo(141.6, 6)
+    expect(shelfLayout(708, 553, { panel: false })).toMatchObject({
+      visible: 4,
+      clear: 4,
+      plaqueSpan: 1,
+    })
+    expect(shelfLayout(708, 553, { panel: false }).pitch).toBeCloseTo(177, 6)
     expect(shelfLayout(350, 380, { panel: false })).toMatchObject({
       visible: 3,
       clear: 3,
@@ -1481,7 +1486,7 @@ describe('tagMetrics', () => {
     return { tagWidth, tagHeight, ...tagMetrics(tagWidth, tagHeight) }
   }
 
-  it('태그 170 x 140 에서 파임 10 · 테두리선 5 · 아일릿 10 · 고리 10 이고 네 줄을 다 적는다', () => {
+  it('태그 170 x 140 에서 파임 10 · 테두리선 5 · 아일릿 10 · 고리 10 이고 두 줄 이름을 적는다', () => {
     const { notch, inset, eyelet, eyeletTop, bead, detail } = tagMetrics(
       170,
       140,
@@ -1492,35 +1497,30 @@ describe('tagMetrics', () => {
       eyelet: 10,
       eyeletTop: 10,
       bead: 10,
-      detail: 'full',
+      detail: 'two-line',
     })
   })
 
-  it('태그가 낮아지면 부향률부터, 그다음 영문 이름을 빼고, 더 낮으면 한글 이름을 한 줄로 줄인다', () => {
-    // 1920 x 1080 · 1562 · 1440 x 900 · 1440 x 780 · 1024 x 768 · 768 · 1366 x 650 · 1280 x 720 · 412 · 390 · 360 · 320
-    expect(tagOf(1800, 800, true).detail).toBe('full')
-    expect(tagOf(1442, 634, true).detail).toBe('full')
-    expect(tagOf(1340, 620, true).detail).toBe('no-kind')
-    expect(tagOf(1340, 500, true).detail).toBe('no-kind')
-    expect(tagOf(944, 488, true).detail).toBe('no-kind')
-    expect(tagOf(708, 553, false).detail).toBe('no-kind')
-    expect(tagOf(1266, 460, true).detail).toBe('brief')
-    expect(tagOf(1180, 460, true).detail).toBe('brief')
-    expect(tagOf(372, 380, false).detail).toBe('brief')
-    expect(tagOf(350, 380, false).detail).toBe('brief')
-    expect(tagOf(320, 380, false).detail).toBe('one-line')
-    expect(tagOf(280, 380, false).detail).toBe('one-line')
-  })
-
-  it('부향률까지 네 줄은 태그 105(폭 125)부터 적는다 — 100 · 95 에서는 둘째 줄 이름이 부향률 줄에 걸린다', () => {
-    expect(tagMetrics(125, 105).detail).toBe('full')
-    expect(tagMetrics(120, 100).detail).toBe('no-kind')
-    // 1440 x 900 의 태그
+  it('태그는 브랜드 한 줄 + 두 줄 이름이 드는 높이(최소 80)로 서서, 1920 x 1080 부터 320 휴대폰까지 두 줄 이름을 적는다', () => {
+    for (const [width, height, panel] of WALLS) {
+      const { tagHeight, detail } = tagOf(width, height, panel)
+      expect(tagHeight).toBeGreaterThanOrEqual(80)
+      expect(detail).toBe('two-line')
+    }
+    // 1920 x 1080 · 1440 x 900 의 태그
+    expect(tagOf(1800, 800, true)).toMatchObject({
+      tagWidth: 155,
+      tagHeight: 100,
+    })
     expect(tagOf(1340, 620, true)).toMatchObject({
       tagWidth: 115,
-      tagHeight: 95,
-      detail: 'no-kind',
+      tagHeight: 80,
     })
+  })
+
+  it('이름표 자리 한도에 걸려 태그가 70 아래로 줄어든 창에서만 이름을 한 줄로 줄인다', () => {
+    expect(tagMetrics(110, 70).detail).toBe('two-line')
+    expect(tagMetrics(100, 65).detail).toBe('one-line')
   })
 
   it('아일릿은 안쪽 테두리선 아래에 앉고, 고리 반구의 높이는 온 픽셀이다', () => {

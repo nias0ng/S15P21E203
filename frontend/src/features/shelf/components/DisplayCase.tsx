@@ -289,14 +289,15 @@ export const DisplayCase = memo(function DisplayCase({
                   모양(파낸 모서리)은 ShelfWall 이 넣는 clip-path 윤곽이고(lib.ts 의
                   "이름표 태그의 모양"), 칠은 shelf-display.css 가 합니다.
 
-                  글자는 위에서부터 브랜드 · 한글 이름 · 영문 이름 · 부향률입니다. 태그가
-                  낮으면 부향률 → 영문 이름 순으로 CSS 가 뺍니다(ShelfWall 이 트랙에 거는
-                  data-tag-detail). 영문 줄은 백엔드가 아직 주지 않아 없을 수 있습니다 —
-                  영문 브랜드가 없으면 그 자리에 한글 브랜드를 적고, 나머지는 줄째 뺍니다.
+                  글자는 브랜드와 한글 이름 두 가지만 적습니다. 예전에는 영문 이름 · 부향률까지
+                  네 줄이었는데 이름표가 병보다 눈에 띄어 간소화했습니다. 영문 브랜드는 백엔드가
+                  아직 주지 않아 없을 수 있어서, 없으면 그 자리에 한글 브랜드를 적습니다.
+                  아주 낮은 태그에서는 이름을 한 줄로 줄입니다(ShelfWall 이 트랙에 거는
+                  data-tag-detail).
 
-                  버튼의 이름(낭독기)은 "한글 브랜드 + 한글 이름" 입니다. 영문 줄은 한글을
-                  되풀이하는 장식이라 낭독기에서 빼고, 영문 브랜드 자리에는 한글 브랜드를
-                  보이지 않게 적어 둡니다.
+                  버튼의 이름(낭독기)은 "한글 브랜드 + 한글 이름" 입니다. 영문 브랜드는 한글을
+                  되풀이하는 장식이라 낭독기에서 빼고, 그 자리에 한글 브랜드를 보이지 않게
+                  적어 둡니다.
                 */}
                 <span aria-hidden className="shelf-tag-hook" />
                 <span className="shelf-tag-hanger">
@@ -333,17 +334,7 @@ export const DisplayCase = memo(function DisplayCase({
                       <span className="shelf-tag-name font-serif font-semibold">
                         {nameWithoutBrand(item.name, item.brand)}
                       </span>
-                      {item.nameEn && (
-                        <span aria-hidden lang="en" className="shelf-tag-en">
-                          {item.nameEn}
-                        </span>
-                      )}
                     </span>
-                    {item.concentration && (
-                      <span aria-hidden lang="en" className="shelf-tag-kind">
-                        {item.concentration}
-                      </span>
-                    )}
                   </span>
                   {/* 태그보다 뒤에 둡니다 — 아일릿 구멍까지 줄이 종이 앞으로 지나갑니다 */}
                   <span aria-hidden className="shelf-tag-cord" />

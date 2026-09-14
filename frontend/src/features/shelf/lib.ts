@@ -369,7 +369,7 @@ const PLAQUE_SPAN_MIN_CLEAR = 5
  * 벽감 높이에서 셉니다 — 시안(벽감 440)의 태그 150 x 125 · 줄 25 비율을 따릅니다.
  *
  *   태그 폭     = 칸 폭 x 0.75       이웃 태그와의 사이가 칸 폭의 1/4 남습니다
- *   태그 높이   = 태그 폭 x 0.83     시안 150 x 125 의 비율
+ *   태그 높이   = 태그 폭 x 0.64 (최소 80) — 브랜드 한 줄 + 한글 이름 두 줄이 드는 높이
  *   줄          = 벽감 높이 x 25/440 (최소 15) — 선반 아랫면에서 태그 윗변까지
  *   이름표 자리 = 줄 + 태그 높이 + 그림자 여유 15
  *
@@ -377,7 +377,7 @@ const PLAQUE_SPAN_MIN_CLEAR = 5
  * 쪽이 먼저 걸립니다. 1920 의 칸은 시안보다 촘촘해서(칸 폭 / 벽감 0.37, 시안 0.45) 벽감
  * 높이에 맞추면 태그 폭이 칸을 넘습니다.
  *
- * 1920 x 1080 에서 태그 155 x 130 · 줄 35 · 이름표 자리 180 이고, 벽감은 605 그대로입니다
+ * 1920 x 1080 에서 태그 155 x 100 · 줄 35 · 이름표 자리 150 이고, 벽감은 605 그대로입니다
  * (그 화면의 벽감 높이는 세로가 아니라 가리지 않는 폭에 걸려 있습니다).
  *
  * 이름표 자리와 벽감 높이는 서로를 정합니다. 이름표 자리가 크면 벽감이 낮아지고, 벽감이
@@ -386,11 +386,20 @@ const PLAQUE_SPAN_MIN_CLEAR = 5
  * 해서 값이 오가지 않습니다. 진열장 자리의 절반(MAX_HANG_SHARE)에 닿으면 더 늘리지 않고
  * 태그를 그 안에 줄여 넣습니다 — 가로로 아주 긴 창에서 태그가 벽감을 밀어내지 않게.
  *
- * 태그가 커진 만큼 세로가 짧은 화면에서는 벽감이 낮아집니다(1920 x 950 에서 585 → 495).
+ * 이름표 자리만큼 세로가 짧은 화면에서는 벽감이 낮아집니다(1920 x 950 에서 예전 고정 이름표 자리 85 일 때 585 → 535).
  * 벽감을 더 지키려면 TAG_PER_PITCH · CORD_PER_CASE 를 줄이거나 MAX_HANG_SHARE 를 낮춥니다.
  */
 const TAG_PER_PITCH = 0.75
-const TAG_ASPECT = 0.83
+/**
+ * 태그 높이 / 태그 폭. 브랜드 한 줄 + 한글 이름 두 줄이 드는 높이입니다. 예전에는 영문 이름 · 부향률까지
+ * 네 줄이라 0.83(시안 150 x 125)이었습니다.
+ */
+const TAG_ASPECT = 0.64
+/**
+ * 태그 높이의 하한. 좁은 태그는 글자가 하한(브랜드 10 · 이름 12)에서 멈춰 폭에 비례해 줄이면 두 줄 이름이
+ * 모자랍니다 — 폭 120 ~ 130 태그에 아일릿 · 테두리선 · 여백까지 77 ~ 80px 가 필요합니다.
+ */
+const TAG_MIN_HEIGHT = 80
 const CORD_PER_CASE = 25 / 440
 const MIN_CORD = 15
 /** 태그 아래 그림자가 진열장 자리 안에 들도록 비워 두는 높이 */
@@ -457,7 +466,7 @@ const UNMEASURED: WallMetrics = {
 /** 벽 치수에 맞는 이름표 크기와 그 자리 높이(위 "매달린 이름표 자리") */
 function hangFor({ pitch, caseHeight }: WallMetrics): HangMetrics {
   const tagWidth = round5(pitch * TAG_PER_PITCH)
-  const tagHeight = round5(tagWidth * TAG_ASPECT)
+  const tagHeight = Math.max(TAG_MIN_HEIGHT, round5(tagWidth * TAG_ASPECT))
   const cord = Math.max(MIN_CORD, round5(caseHeight * CORD_PER_CASE))
   return { hang: cord + tagHeight + HANG_SHADOW, cord, tagWidth, tagHeight }
 }
@@ -472,7 +481,7 @@ function hangFor({ pitch, caseHeight }: WallMetrics): HangMetrics {
  *               (위 "칸이 패널 경계에 섭니다"). 주지 않으면 창 전체를 나눕니다
  *
  * 1920 x 1080 → 1800 x 800 · 패널 340 → 벽감 605 · 병 420 · 칸 208.57 · 가리지 않는 칸 일곱 ·
- * 창에 걸치는 칸 아홉 · 이름표 자리 180(줄 35 + 태그 155 x 130 + 15).
+ * 창에 걸치는 칸 아홉 · 이름표 자리 150(줄 35 + 태그 155 x 100 + 15).
  * 병 · 벽감 높이는 끝자리를 5 로 맞춥니다. 칸 폭만은 폭을 나눈 값이라 그대로 둡니다
  * — 반올림하면 칸 수 x 칸 폭이 창 폭(패널 왼쪽 끝)과 어긋나 끝 병이 경계에 걸립니다.
  */
@@ -634,8 +643,8 @@ export type ShelfLayout = ShelfMetrics & {
 /**
  * 진열장 자리의 크기로 벽 치수와 상세 패널 크기를 함께 정합니다.
  *
- *   1920 x 1080 → 자리 1800 x 800 → 패널 340 x 785 · 배율 1 · 가리지 않는 폭 1460(칸 일곱) · 벽감 605 + 이름표 자리 180
- *   1440 x 780  → 자리 1340 x 500 → 패널 289 x 495 · 배율 0.85(하한) · 벽감 375 + 이름표 자리 120
+ *   1920 x 1080 → 자리 1800 x 800 → 패널 340 x 755 · 배율 1 · 가리지 않는 폭 1460(칸 일곱) · 벽감 605 + 이름표 자리 150
+ *   1440 x 780  → 자리 1340 x 500 → 패널 289 x 500 · 배율 0.85(하한) · 벽감 385 + 이름표 자리 115
  */
 export function shelfLayout(
   width: number,
@@ -1341,25 +1350,18 @@ export function plaqueMetrics(
  *   아일릿       지름 태그 폭 x 10/170 (최소 6). 윗변은 테두리선 간격의 두 배 — 테두리선 아래에 앉습니다
  *   선반 고리    폭 태그 폭 x 10/170 (짝수, 최소 6). 높이는 그 절반인 반구입니다
  *
- * 1920 x 1080(태그 155 x 130)에서 파임 9 · 테두리선 5 · 아일릿 9(윗변 10) · 고리 10 입니다.
+ * 1920 x 1080(태그 155 x 100)에서 파임 9 · 테두리선 5 · 아일릿 9(윗변 10) · 고리 10 입니다.
  *
- * 태그가 낮아지면 적는 줄을 줄입니다(TagDetail). 폭이 아니라 **높이**로 가릅니다 — 글자는
- * 태그 폭을 따라 줄다가 읽히는 하한(한글 이름 12px)에서 멈춰서, 좁은 태그에서 먼저 모자라는 것은
- * 줄을 쌓을 높이입니다.
+ * 글자는 브랜드와 한글 이름 두 가지입니다. 태그가 아주 낮아지면 한글 이름을 한 줄로 줄입니다
+ * (TagDetail). 폭이 아니라 **높이**로 가릅니다 — 글자는 태그 폭을 따라 줄다가 읽히는 하한(한글
+ * 이름 12px)에서 멈춰서, 좁은 태그에서 먼저 모자라는 것은 줄을 쌓을 높이입니다.
  *
- *   full      105 이상  브랜드 · 한글 이름(두 줄까지) · 영문 이름 · 부향률  1920 x 1080 · 1920 x 937 · 1562 · 1645
- *   no-kind   85 이상   부향률을 뺍니다                                    1440 x 900 · 1536 x 864 · 1440 x 780 · 1024 · 768
- *   brief     70 이상   영문 이름도 뺍니다 — 브랜드와 한글 이름만            1280 x 720 · 1366 x 650 · 412 · 390
- *   one-line  그 아래   한글 이름을 한 줄로 줄입니다(말줄임)                 360 · 320
+ *   two-line  70 이상   브랜드 · 한글 이름(두 줄까지) — 태그가 최소 80 으로 서서 거의 늘 이쪽입니다
+ *   one-line  그 아래   한글 이름을 한 줄로 줄입니다(말줄임) — 이름표 자리 한도에 걸려 태그를 줄여 넣은 창
  *
- * full 의 문턱을 105 아래로 내리지 않습니다. 태그가 105 아래면 글자가 이미 하한(브랜드 10 · 이름 12 ·
- * 영문 10 · 부향률 8, 줄 높이 1.3)에서 멈춰 있어서, 네 줄은 줄 사이까지 74.4 ~ 75px 가 필요합니다.
- * 태그 안에서 아일릿 · 테두리선 · 여백을 뺀 글자 자리는 태그 105(폭 125)가 78.7 이라 3.7px 남지만,
- * 100(폭 120)은 73.9 · 95(폭 115, 1440 x 900)는 72.2 라 둘째 줄 이름이 부향률 줄에 걸립니다.
- *
- * one-line 은 좁은 휴대폰(태그 80 x 65 · 70 x 60)을 위한 것입니다. 글자는 하한에서 멈췄는데
- * 브랜드 한 줄 + 두 줄 이름(50 남짓)이 들 높이가 40 남짓뿐이라, 두 줄 이름이 브랜드와 아래
- * 테두리선에 걸립니다.
+ * 예전에는 영문 이름 · 부향률까지 네 줄이라 태그 높이에 따라 네 단계(full · no-kind · brief · one-line)로
+ * 줄을 뺐습니다. 두 가지만 적으면서 태그 높이를 두 줄이 드는 높이로 잡아(TAG_MIN_HEIGHT) 단계가 둘로
+ * 줄었습니다.
  *
  * 모양 · 문턱을 바꿀 때는 아래 상수만 고칩니다. 1920 치수의 끝자리와 줄 수는 테스트가 봅니다.
  */
@@ -1367,12 +1369,10 @@ const TAG_NOTCH = 10 / TAG_WIDTH
 const TAG_INSET = 5 / TAG_WIDTH
 const TAG_EYELET = 10 / TAG_WIDTH
 const TAG_BEAD = 10 / TAG_WIDTH
-/** 적는 줄을 줄이는 태그 높이(위 TagDetail) */
-const TAG_FULL_MIN_HEIGHT = 105
-const TAG_EN_MIN_HEIGHT = 85
+/** 이름을 두 줄까지 적는 태그 높이(위 TagDetail) */
 const TAG_TWO_LINE_MIN_HEIGHT = 70
 
-export type TagDetail = 'full' | 'no-kind' | 'brief' | 'one-line'
+export type TagDetail = 'two-line' | 'one-line'
 
 /** 이름표 태그를 그리는 치수(px)와 모양 */
 export type TagMetrics = {
@@ -1445,14 +1445,7 @@ export function tagMetrics(width: number, height: number): TagMetrics {
     eyelet,
     eyeletTop: inset * 2,
     bead,
-    detail:
-      height >= TAG_FULL_MIN_HEIGHT
-        ? 'full'
-        : height >= TAG_EN_MIN_HEIGHT
-          ? 'no-kind'
-          : height >= TAG_TWO_LINE_MIN_HEIGHT
-            ? 'brief'
-            : 'one-line',
+    detail: height >= TAG_TWO_LINE_MIN_HEIGHT ? 'two-line' : 'one-line',
     shape: `path("${ticketPath(width, height, notch)}")`,
     edgeRing: ring(0, 1),
     lineRing: ring(inset, inset + 1),
