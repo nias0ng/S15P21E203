@@ -144,11 +144,39 @@ uvicorn server:app --host 0.0.0.0 --port 8000
 ```bash
 curl http://localhost:8000/health
 # {"status":"ok","perfumes":129161,"accords":92}
-
-curl -X POST http://localhost:8000/nlr/recommend \
-  -H 'Content-Type: application/json' \
-  -d '{"text":"빨래 냄새 나는 향수 찾고 있어"}'
 ```
+
+### 한글을 보낼 때 — Windows 에서 주의하십시오
+
+**한글을 명령줄 인자로 직접 넘기면 안 됩니다.** 셸이 인자의 한글을 깨뜨려 서버에
+잘못된 바이트가 도착합니다. **서버 문제가 아닙니다.** 두 셸의 증상이 다릅니다.
+
+| 셸 | `-d '{"text":"빨래"}'` 처럼 인자로 넘기면 |
+|---|---|
+| Git Bash | `400 {"detail":"There was an error parsing the body"}` 로 **터집니다** |
+| PowerShell | 에러 없이 **`NO_CONDITION` 이 나옵니다** — 서버가 한글을 못 읽는 것처럼 보입니다 |
+
+PowerShell 쪽이 더 위험합니다. 실패가 조용해서 **기능이 고장난 것으로 오해하기 쉽습니다.**
+
+**Git Bash — 표준입력으로 넘깁니다**
+
+```bash
+printf '%s' '{"text":"빨래 냄새 나는 향수 찾고 있어"}' | \
+  curl -s -X POST http://localhost:8000/nlr/recommend \
+       -H 'Content-Type: application/json' --data-binary @-
+```
+
+**PowerShell — UTF-8 바이트로 바꿔서 넘깁니다**
+
+```powershell
+$body = @{ text = "빨래 냄새 나는 향수 찾고 있어" } | ConvertTo-Json -Compress
+Invoke-RestMethod -Uri "http://localhost:8000/nlr/recommend" -Method Post `
+  -ContentType "application/json; charset=utf-8" `
+  -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
+```
+
+둘 다 `status` 가 `OK`, 조건이 `fresh`·`soapy`, 1위가 `Laundry` 면 정상입니다.
+한글이 없는 요청(`/health` 등)은 이 문제가 없습니다.
 
 | 엔드포인트 | 하는 일 |
 |---|---|
