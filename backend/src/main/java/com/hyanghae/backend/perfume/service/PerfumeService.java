@@ -1,6 +1,7 @@
 package com.hyanghae.backend.perfume.service;
 
 import com.hyanghae.backend.global.exception.BusinessException;
+import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.perfume.dto.request.PerfumeSearchCondition;
 import com.hyanghae.backend.perfume.dto.request.RankingType;
 import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
@@ -72,6 +73,7 @@ public class PerfumeService {
     private final PerfumeReviewSummaryRepository perfumeReviewSummaryRepository;
     private final PerfumePostRepository perfumePostRepository;
     private final PerfumeNeighborRepository perfumeNeighborRepository;
+    private final CurrentUser currentUser;
 
     public PerfumeService(
             PerfumeRepository perfumeRepository,
@@ -85,7 +87,8 @@ public class PerfumeService {
             PerfumeReviewKeywordRepository perfumeReviewKeywordRepository,
             PerfumeReviewSummaryRepository perfumeReviewSummaryRepository,
             PerfumePostRepository perfumePostRepository,
-            PerfumeNeighborRepository perfumeNeighborRepository
+            PerfumeNeighborRepository perfumeNeighborRepository,
+            CurrentUser currentUser
     ) {
         this.perfumeRepository = perfumeRepository;
         this.perfumeImageRepository = perfumeImageRepository;
@@ -99,6 +102,7 @@ public class PerfumeService {
         this.perfumeReviewSummaryRepository = perfumeReviewSummaryRepository;
         this.perfumePostRepository = perfumePostRepository;
         this.perfumeNeighborRepository = perfumeNeighborRepository;
+        this.currentUser = currentUser;
     }
 
     /**
@@ -153,10 +157,25 @@ public class PerfumeService {
         PerfumeDetailResponse detail = perfumeRepository.findDetailById(perfumeId)
                 .orElseThrow(() -> new BusinessException(PerfumeErrorCode.PERFUME_NOT_FOUND));
 
-        return detail.withImagesAndPrices(
-                loadImages(perfumeId),
-                perfumePriceRepository.findByPerfumeId(perfumeId)
-        );
+        return detail
+                .withImagesAndPrices(
+                        loadImages(perfumeId),
+                        perfumePriceRepository.findByPerfumeId(perfumeId))
+                .withMyReviewId(myReviewIdOf(perfumeId));
+    }
+
+    /**
+     * 내가 이 향수에 쓴 후기 번호입니다. 쓰지 않았거나 비로그인이면 {@code null} 입니다.
+     *
+     * <p>로그인을 <b>요구하지 않습니다.</b> 향수 상세는 누구나 볼 수 있어야 하므로 비로그인이라고
+     * 401 을 내면 안 됩니다. 그냥 비어 나가고, 화면은 [후기 쓰기] 를 띄운 뒤 누를 때 로그인을
+     * 요구하면 됩니다.
+     */
+    private Long myReviewIdOf(Long perfumeId) {
+        return currentUser.id()
+                .flatMap(userId ->
+                        perfumeReviewRepository.findIdByPerfumeIdAndUserId(perfumeId, userId))
+                .orElse(null);
     }
 
     /**

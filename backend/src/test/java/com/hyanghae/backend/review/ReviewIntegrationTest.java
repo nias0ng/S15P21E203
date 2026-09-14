@@ -75,6 +75,7 @@ class ReviewIntegrationTest {
 
     @AfterEach
     void clearData() {
+        jdbcTemplate.update("DELETE FROM review_likes");
         jdbcTemplate.update("DELETE FROM perfume_review_keywords");
         jdbcTemplate.update("DELETE FROM perfume_review_seasons");
         jdbcTemplate.update("DELETE FROM perfume_reviews");

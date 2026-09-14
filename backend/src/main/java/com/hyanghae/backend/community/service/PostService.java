@@ -4,6 +4,7 @@ import com.hyanghae.backend.community.dto.request.PostCreateRequest;
 import com.hyanghae.backend.community.dto.request.PostUpdateRequest;
 import com.hyanghae.backend.community.dto.response.PostCreateResponse;
 import com.hyanghae.backend.community.dto.response.PostDetailResponse;
+import com.hyanghae.backend.community.dto.response.PostLikeResponse;
 import com.hyanghae.backend.community.dto.response.PostPerfumeResponse;
 import com.hyanghae.backend.community.dto.response.PostSummaryResponse;
 import com.hyanghae.backend.community.dto.response.PostUpdateResponse;
@@ -12,6 +13,7 @@ import com.hyanghae.backend.community.entity.Post;
 import com.hyanghae.backend.community.entity.PostCategory;
 import com.hyanghae.backend.community.exception.CommunityErrorCode;
 import com.hyanghae.backend.community.repository.PostCategoryRepository;
+import com.hyanghae.backend.community.repository.PostLikeRepository;
 import com.hyanghae.backend.community.repository.PostListRow;
 import com.hyanghae.backend.community.repository.PostPerfumeRow;
 import com.hyanghae.backend.community.repository.PostRepository;
@@ -28,6 +30,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -52,6 +56,7 @@ public class PostService {
     private static final int MAX_PAGE_SIZE = 100;
 
     private final PostRepository postRepository;
+    private final PostLikeRepository postLikeRepository;
     private final PostCategoryRepository postCategoryRepository;
     private final CollectionRepository collectionRepository;
     private final PerfumeRepository perfumeRepository;
@@ -59,12 +64,14 @@ public class PostService {
 
     public PostService(
             PostRepository postRepository,
+            PostLikeRepository postLikeRepository,
             PostCategoryRepository postCategoryRepository,
             CollectionRepository collectionRepository,
             PerfumeRepository perfumeRepository,
             CurrentUser currentUser
     ) {
         this.postRepository = postRepository;
+        this.postLikeRepository = postLikeRepository;
         this.postCategoryRepository = postCategoryRepository;
         this.collectionRepository = collectionRepository;
         this.perfumeRepository = perfumeRepository;
@@ -81,14 +88,15 @@ public class PostService {
     public PostCreateResponse create(PostCreateRequest request) {
         Long userId = requireLogin();
         PostCategory category = requireActiveCategory(request.category());
-        List<Perfume> perfumes = requireActivePerfumes(request.perfumeIds());
+        Collection collection = findMyCollection(request.collectionId());
+        List<Perfume> perfumes = perfumesFor(collection, request.perfumeIds());
 
         Post post = Post.create(
                 userId,
                 category,
                 request.title(),
                 request.content(),
-                findMyCollection(request.collectionId()),
+                collection,
                 OffsetDateTime.now()
         );
         post.addPerfumes(perfumes);
@@ -97,6 +105,26 @@ public class PostService {
         postRepository.save(post);
 
         return new PostCreateResponse(post.getId(), post.getCreatedAt());
+    }
+
+    /**
+     * 글에 걸 향수를 정합니다. <b>출처는 하나뿐입니다.</b>
+     *
+     * <p>컬렉션을 붙이면 그 컬렉션에 담긴 향수가 그대로 글의 향수가 됩니다. 글 하나에 향수 목록이
+     * 하나라서 직접 고른 목록과 컬렉션이 함께 오면 어느 쪽을 쓸지 정할 수 없습니다. 조용히 한쪽을
+     * 버리면 화면은 보낸 대로 저장됐다고 믿으므로 400 으로 돌려줍니다.
+     *
+     * <p>컬렉션의 향수를 <b>복사</b>합니다. 글을 쓸 때의 모습을 박제하는 것이라, 나중에 컬렉션에서
+     * 향수를 빼도 글은 그대로입니다.
+     */
+    private List<Perfume> perfumesFor(Collection collection, List<Long> perfumeIds) {
+        if (collection == null) {
+            return requireActivePerfumes(perfumeIds);
+        }
+        if (perfumeIds != null && !perfumeIds.isEmpty()) {
+            throw new BusinessException(CommunityErrorCode.COMMUNITY_PERFUMES_FROM_COLLECTION);
+        }
+        return requireActivePerfumes(collectionRepository.findPerfumeIds(collection.getId()));
     }
 
     /**
@@ -119,9 +147,18 @@ public class PostService {
         post.update(category, title, content, OffsetDateTime.now());
 
         if (request.isCollectionPresent()) {
-            post.attachCollection(findMyCollection(request.getCollectionId()));
+            Collection collection = findMyCollection(request.getCollectionId());
+            post.attachCollection(collection);
+            if (collection != null) {
+                replacePerfumes(post, collectionRepository.findPerfumeIds(collection.getId()));
+            }
         }
+        // 컬렉션을 먼저 처리했으므로, 여기서 컬렉션이 남아 있으면 향수 출처가 컬렉션입니다.
+        // 목록을 따로 보내려면 같은 요청에서 collectionId 를 null 로 보내 컬렉션을 떼야 합니다.
         if (request.isPerfumesPresent()) {
+            if (post.getCollection() != null) {
+                throw new BusinessException(CommunityErrorCode.COMMUNITY_PERFUMES_FROM_COLLECTION);
+            }
             replacePerfumes(post, request.getPerfumeIds());
         }
         if (request.isImagesPresent()) {
@@ -146,11 +183,10 @@ public class PostService {
      *
      * <p>분류를 주지 않으면 전체입니다. 페이지 크기는 1~100 으로 자릅니다.
      *
-     * <p>정렬은 최신순과 댓글 많은 순 둘입니다. 화면의 조회 순·좋아요 순은 저장할 자리가 없어
-     * 아직 없습니다.
+     * <p>정렬은 넷입니다 — 최신순·조회 순·좋아요 순·댓글 많은 순.
      *
-     * <p>대표 향수는 한 번에 모아 읽습니다. 글마다 따로 조회하면 한 페이지에 쿼리가 스무 번
-     * 나갑니다.
+     * <p>대표 향수와 내가 누른 좋아요는 각각 한 번에 모아 읽습니다. 글마다 따로 조회하면 한
+     * 페이지에 쿼리가 스무 번씩 나갑니다.
      */
     @Transactional(readOnly = true)
     public PostsResponse findPage(String category, PostSort sort, int page, int size) {
@@ -160,9 +196,12 @@ public class PostService {
 
         List<PostListRow> rows = switch (sort) {
             case RECENT -> postRepository.findPageByRecent(category, pageSize, offset);
+            case VIEWS -> postRepository.findPageByViews(category, pageSize, offset);
+            case LIKES -> postRepository.findPageByLikes(category, pageSize, offset);
             case COMMENTS -> postRepository.findPageByComments(category, pageSize, offset);
         };
         Map<Long, PostPerfumeResponse> perfumes = representativePerfumes(rows);
+        Set<Long> liked = likedAmong(rows);
 
         List<PostSummaryResponse> posts = rows.stream()
                 .map(row -> new PostSummaryResponse(
@@ -172,6 +211,9 @@ public class PostService {
                         row.getNickname(),
                         perfumes.get(row.getPostId()),
                         row.getCommentCount(),
+                        row.getLikeCount(),
+                        row.getViewCount(),
+                        liked.contains(row.getPostId()),
                         OffsetDateTime.ofInstant(row.getCreatedAt(), ZoneId.systemDefault())
                 ))
                 .toList();
@@ -180,9 +222,21 @@ public class PostService {
                 posts, pageNumber, pageSize, postRepository.countPage(category));
     }
 
-    /** 게시글 상세입니다. 없는 글은 404 입니다. */
-    @Transactional(readOnly = true)
+    /**
+     * 게시글 상세입니다. 없는 글은 404 입니다.
+     *
+     * <p><b>읽기 전용이 아닙니다.</b> 여는 것이 곧 조회이므로 여기서 조회수를 올립니다. 화면이
+     * 따로 "봤다" 고 알리게 하면 요청이 한 번 더 오가고, 그 요청을 빠뜨린 화면은 조회가 세지지
+     * 않습니다.
+     *
+     * <p>올린 뒤에 읽습니다. 순서를 바꾸면 방금 올린 것이 빠진 숫자가 나가서, 열었는데 그대로인
+     * 것처럼 보입니다.
+     */
+    @Transactional
     public PostDetailResponse findOne(Long postId) {
+        if (postRepository.increaseViewCount(postId) == 0) {
+            throw new BusinessException(CommunityErrorCode.COMMUNITY_POST_NOT_FOUND);
+        }
         Post post = requirePost(postId);
 
         return new PostDetailResponse(
@@ -196,10 +250,63 @@ public class PostService {
                 collectionIdOf(post),
                 collectionTitleOf(post),
                 postRepository.countComments(postId),
+                postLikeRepository.countOfPost(postId),
+                post.getViewCount(),
+                isLikedByMe(postId),
                 isMine(post),
                 post.getCreatedAt(),
                 post.getUpdatedAt()
         );
+    }
+
+    /**
+     * 좋아요를 누릅니다. 여러 번 눌러도 결과가 같습니다.
+     *
+     * <p>이미 누른 글에 또 누르면 아무 일도 일어나지 않고 지금 상태를 그대로 돌려줍니다. 오류가
+     * 아닙니다. 사용자가 원한 상태("좋아요가 눌려 있다")가 이미 이루어져 있기 때문입니다.
+     */
+    @Transactional
+    public PostLikeResponse like(Long postId) {
+        Long userId = requireLogin();
+        requirePost(postId);
+
+        // 넣은 행 수를 일부러 버립니다. 처음 누른 것(1)과 이미 눌러 둔 것(0)의 응답이 같아야
+        // 하기 때문입니다. 여기서 갈라 다른 상태나 오류를 돌려주면, 응답이 끊겨 화면이 요청을
+        // 다시 보냈을 때 두 번째 요청만 다른 답을 받습니다. 그게 PUT 으로 둔 이유를 무너뜨립니다.
+        postLikeRepository.like(postId, userId);
+
+        return new PostLikeResponse(postId, true, postLikeRepository.countOfPost(postId));
+    }
+
+    /** 좋아요를 취소합니다. 누르지 않은 글에 취소해도 오류가 아닙니다. */
+    @Transactional
+    public PostLikeResponse unlike(Long postId) {
+        Long userId = requireLogin();
+        requirePost(postId);
+        postLikeRepository.unlike(postId, userId);
+
+        return new PostLikeResponse(postId, false, postLikeRepository.countOfPost(postId));
+    }
+
+    /**
+     * 이 목록에서 내가 좋아요를 누른 글입니다.
+     *
+     * <p>비로그인이면 빈 집합입니다. 목록은 누구나 볼 수 있어야 하므로 로그인을 요구하지 않습니다.
+     */
+    private Set<Long> likedAmong(List<PostListRow> rows) {
+        Optional<Long> userId = currentUser.id();
+        if (userId.isEmpty() || rows.isEmpty()) {
+            return Set.of();
+        }
+        List<Long> postIds = rows.stream().map(PostListRow::getPostId).toList();
+        return Set.copyOf(postLikeRepository.findLikedPostIds(userId.get(), postIds));
+    }
+
+    /** 내가 좋아요를 눌렀는지입니다. 비로그인이면 거짓입니다. */
+    private boolean isLikedByMe(Long postId) {
+        return currentUser.id()
+                .map(userId -> postLikeRepository.isLikedBy(postId, userId))
+                .orElse(false);
     }
 
     /**
@@ -238,8 +345,14 @@ public class PostService {
         return post.getCollection() == null ? null : post.getCollection().getId();
     }
 
+    /**
+     * 글을 쓸 때 박제한 컬렉션 이름입니다.
+     *
+     * <p>컬렉션을 그때그때 읽지 않습니다. 이름을 바꾸면 몇 달 전 글의 이름까지 같이 바뀌고,
+     * 컬렉션을 지우면 글에 남는 것이 없어집니다. 글은 그때 그 컬렉션을 소개한 기록입니다.
+     */
     private String collectionTitleOf(Post post) {
-        return post.getCollection() == null ? null : post.getCollection().getName();
+        return post.getCollectionName();
     }
 
     private Map<Long, PostPerfumeResponse> representativePerfumes(List<PostListRow> rows) {

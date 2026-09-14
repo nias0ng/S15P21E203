@@ -64,6 +64,25 @@ public class Post {
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
 
+    /**
+     * 조회수입니다. 올리는 것은 이 엔티티가 아니라 저장소의 {@code UPDATE} 문장입니다.
+     *
+     * <p>읽어서 더하고 저장하면 두 사람이 동시에 열 때 한 번이 사라집니다. 여기서는 값을 읽기만
+     * 하고, 더하는 일은 표에게 맡깁니다.
+     */
+    @Column(name = "view_count", nullable = false)
+    private long viewCount;
+
+    /**
+     * 글을 쓸 때 박제한 컬렉션 이름입니다. 첨부가 없으면 비어 있습니다.
+     *
+     * <p>{@code collection} 을 두고도 이름을 따로 들고 있는 이유는, 그쪽이 지금의 컬렉션이고
+     * 이쪽이 그때의 컬렉션이기 때문입니다. 컬렉션을 지우면 {@code collection} 은 비지만 이름은
+     * 남습니다.
+     */
+    @Column(name = "collection_name", length = 255)
+    private String collectionName;
+
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private final List<PostImage> images = new ArrayList<>();
 
@@ -91,7 +110,7 @@ public class Post {
         Post post = new Post();
         post.userId = userId;
         post.category = category;
-        post.collection = collection;
+        post.attachCollection(collection);
         post.title = title;
         post.content = content;
         post.createdAt = createdAt;
@@ -157,9 +176,16 @@ public class Post {
         return collection;
     }
 
-    /** 첨부를 바꾸거나 뗍니다. {@code null} 이면 떼는 것입니다. */
+    /**
+     * 첨부를 바꾸거나 뗍니다. {@code null} 이면 떼는 것입니다.
+     *
+     * <p>이름을 <b>복사해 둡니다.</b> 컬렉션을 그때그때 읽으면 이름을 바꿀 때 몇 달 전 글의
+     * 이름까지 같이 바뀌고, 컬렉션을 지우면 글에 남는 것이 없습니다. 글은 그때 그 컬렉션을
+     * 소개한 기록이지 지금의 컬렉션을 비추는 창이 아닙니다.
+     */
     public void attachCollection(Collection collection) {
         this.collection = collection;
+        this.collectionName = collection == null ? null : collection.getName();
     }
 
     public PostCategory getCategory() {
@@ -180,5 +206,13 @@ public class Post {
 
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public long getViewCount() {
+        return viewCount;
+    }
+
+    public String getCollectionName() {
+        return collectionName;
     }
 }

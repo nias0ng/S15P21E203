@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -46,6 +47,7 @@ class PostIntegrationTest {
 
     private static final String POSTS_URL = "/api/v1/posts";
     private static final String POST_URL = "/api/v1/posts/{postId}";
+    private static final String LIKE_URL = "/api/v1/posts/{postId}/like";
 
     private static final long WRITER_ID = 1;
     private static final long OTHER_WRITER_ID = 2;
@@ -266,10 +268,19 @@ class PostIntegrationTest {
         assertThat(seen).containsExactlyInAnyOrderElementsOf(titles);
     }
 
+    /** 네 가지 정렬은 모두 받습니다. 화면의 정렬 칩과 하나씩 맞습니다. */
+    @Test
+    void acceptsEverySort() throws Exception {
+        for (String sort : new String[]{"RECENT", "VIEWS", "LIKES", "COMMENTS"}) {
+            mockMvc.perform(get(POSTS_URL).param("sort", sort))
+                    .andExpect(status().isOk());
+        }
+    }
+
     /** 목록에 없는 정렬 기준은 400 입니다. Spring 이 값을 못 바꿔 서비스까지 오지 않습니다. */
     @Test
     void rejectsUnknownSort() throws Exception {
-        mockMvc.perform(get(POSTS_URL).param("sort", "LIKES"))
+        mockMvc.perform(get(POSTS_URL).param("sort", "OLDEST"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -657,6 +668,397 @@ class PostIntegrationTest {
                 .andExpect(jsonPath("$.paths['/api/v1/posts/{postId}'].delete").exists());
     }
 
+    // ────────────────────────────────────────────────────────────────
+    // 컬렉션 박제
+    // ────────────────────────────────────────────────────────────────
+
+    /**
+     * 컬렉션을 붙이면 그 컬렉션의 향수가 글의 향수가 됩니다.
+     *
+     * <p>컬렉션에 담긴 순서 그대로입니다. 순서가 흔들리면 목록의 대표 향수가 매번 달라집니다.
+     */
+    @Test
+    void copiesCollectionPerfumesWhenAttaching() throws Exception {
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 100, 2, 1);
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 101, 1, 2);
+
+        long postId = writeWithCollection("COLLECTION", "컬렉션 공유 글", MY_COLLECTION_ID);
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.collectionId").value(MY_COLLECTION_ID))
+                .andExpect(jsonPath("$.collectionTitle").value("내 컬렉션"))
+                .andExpect(jsonPath("$.relatedPerfumes[*].perfumeId")
+                        .value(Matchers.contains(2, 1)));
+    }
+
+    /**
+     * 컬렉션을 <b>고쳐도</b> 글은 그대로입니다.
+     *
+     * <p>글은 그때 그 컬렉션을 소개한 기록이지 지금의 컬렉션을 비추는 창이 아닙니다. 이름을
+     * 그때그때 읽으면 이름을 바꾸는 순간 몇 달 전 글의 이름까지 바뀝니다.
+     */
+    @Test
+    void keepsTheSnapshotWhenTheCollectionChanges() throws Exception {
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 100, 1, 1);
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 101, 2, 2);
+        long postId = writeWithCollection("COLLECTION", "컬렉션 공유 글", MY_COLLECTION_ID);
+
+        jdbcTemplate.update("UPDATE collections SET name = '이름 바꿈' WHERE collection_id = ?",
+                MY_COLLECTION_ID);
+        jdbcTemplate.update("DELETE FROM collection_perfumes WHERE user_perfume_id = 101");
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.collectionTitle").value("내 컬렉션"))
+                .andExpect(jsonPath("$.relatedPerfumes[*].perfumeId")
+                        .value(Matchers.contains(1, 2)));
+    }
+
+    /**
+     * 컬렉션을 <b>지워도</b> 이름과 향수가 남습니다. 번호만 비워집니다.
+     *
+     * <p>번호는 원본으로 가는 값이라 원본이 없으면 의미가 없지만, 이름과 향수는 글의 내용이라
+     * 남아야 합니다. 컬렉션을 정리했다고 그것을 소개한 글이 껍데기가 되면 안 됩니다.
+     */
+    @Test
+    void keepsTheSnapshotWhenTheCollectionIsDeleted() throws Exception {
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 100, 1, 1);
+        long postId = writeWithCollection("COLLECTION", "컬렉션 공유 글", MY_COLLECTION_ID);
+
+        jdbcTemplate.update("DELETE FROM collection_perfumes WHERE collection_id = ?",
+                MY_COLLECTION_ID);
+        jdbcTemplate.update("DELETE FROM collections WHERE collection_id = ?", MY_COLLECTION_ID);
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.collectionId").doesNotExist())
+                .andExpect(jsonPath("$.collectionTitle").value("내 컬렉션"))
+                .andExpect(jsonPath("$.relatedPerfumes[*].perfumeId")
+                        .value(Matchers.contains(1)));
+    }
+
+    /**
+     * 작성자가 탈퇴해도 컬렉션 공유 글이 온전합니다.
+     *
+     * <p>탈퇴하면 컬렉션과 진열대가 함께 사라지지만, 글에 복사해 둔 향수는 마스터를 가리켜
+     * 살아남습니다. 복사하지 않았다면 이름도 향수도 없는 글만 남았을 것입니다.
+     */
+    @Test
+    void keepsTheSnapshotAfterTheWriterLeaves() throws Exception {
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 100, 1, 1);
+        long postId = writeWithCollection("COLLECTION", "컬렉션 공유 글", MY_COLLECTION_ID);
+
+        currentUser.logout();
+        jdbcTemplate.update("DELETE FROM users WHERE user_id = ?", WRITER_ID);
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nickname").doesNotExist())
+                .andExpect(jsonPath("$.collectionId").doesNotExist())
+                .andExpect(jsonPath("$.collectionTitle").value("내 컬렉션"))
+                .andExpect(jsonPath("$.relatedPerfumes[*].perfumeId")
+                        .value(Matchers.contains(1)));
+    }
+
+    /** 컬렉션과 향수를 함께 보내면 400 입니다. 글 하나에 향수 출처가 둘일 수 없습니다. */
+    @Test
+    void rejectsPerfumesSentWithACollection() throws Exception {
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 100, 1, 1);
+
+        mockMvc.perform(post(POSTS_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"category\": \"COLLECTION\", \"title\": \"글\","
+                                + " \"content\": \"본문\", \"collectionId\": " + MY_COLLECTION_ID
+                                + ", \"perfumeIds\": [2]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value(CommunityErrorCode.COMMUNITY_PERFUMES_FROM_COLLECTION.code()));
+
+        assertThat(countRows("posts")).isZero();
+    }
+
+    /**
+     * 제목만 고치면 향수는 그대로입니다.
+     *
+     * <p>수정할 때마다 컬렉션을 다시 읽으면 "제목만 고쳤는데 향수가 바뀌어 있다" 가 됩니다.
+     * 번호를 다시 보낼 때만 읽습니다.
+     */
+    @Test
+    void keepsTheSnapshotWhenUpdatingOnlyTheTitle() throws Exception {
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 100, 1, 1);
+        long postId = writeWithCollection("COLLECTION", "컬렉션 공유 글", MY_COLLECTION_ID);
+
+        jdbcTemplate.update("UPDATE collections SET name = '이름 바꿈' WHERE collection_id = ?",
+                MY_COLLECTION_ID);
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 101, 2, 2);
+
+        mockMvc.perform(patch(POST_URL, postId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\": \"제목만 고침\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(jsonPath("$.title").value("제목만 고침"))
+                .andExpect(jsonPath("$.collectionTitle").value("내 컬렉션"))
+                .andExpect(jsonPath("$.relatedPerfumes[*].perfumeId")
+                        .value(Matchers.contains(1)));
+    }
+
+    /** 같은 번호를 다시 보내면 지금의 컬렉션으로 맞춥니다. 그게 다시 읽으라는 뜻입니다. */
+    @Test
+    void refreshesTheSnapshotWhenTheCollectionIdIsResent() throws Exception {
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 100, 1, 1);
+        long postId = writeWithCollection("COLLECTION", "컬렉션 공유 글", MY_COLLECTION_ID);
+
+        jdbcTemplate.update("UPDATE collections SET name = '이름 바꿈' WHERE collection_id = ?",
+                MY_COLLECTION_ID);
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 101, 2, 2);
+
+        mockMvc.perform(patch(POST_URL, postId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"collectionId\": " + MY_COLLECTION_ID + "}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(jsonPath("$.collectionTitle").value("이름 바꿈"))
+                .andExpect(jsonPath("$.relatedPerfumes[*].perfumeId")
+                        .value(Matchers.contains(1, 2)));
+    }
+
+    /**
+     * 컬렉션이 붙은 글에는 향수를 따로 보낼 수 없고, 컬렉션을 떼면서 함께 보내면 됩니다.
+     *
+     * <p>박제한 목록을 조용히 덮어쓰지 않도록 막습니다. 목록을 직접 정하겠다는 뜻이면 컬렉션을
+     * 떼는 것이 먼저입니다.
+     */
+    @Test
+    void rejectsPerfumesUntilTheCollectionIsDetached() throws Exception {
+        putInCollection(MY_COLLECTION_ID, WRITER_ID, 100, 1, 1);
+        long postId = writeWithCollection("COLLECTION", "컬렉션 공유 글", MY_COLLECTION_ID);
+
+        mockMvc.perform(patch(POST_URL, postId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"perfumeIds\": [2]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value(CommunityErrorCode.COMMUNITY_PERFUMES_FROM_COLLECTION.code()));
+
+        mockMvc.perform(patch(POST_URL, postId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"collectionId\": null, \"perfumeIds\": [2]}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(jsonPath("$.collectionId").doesNotExist())
+                .andExpect(jsonPath("$.collectionTitle").doesNotExist())
+                .andExpect(jsonPath("$.relatedPerfumes[*].perfumeId")
+                        .value(Matchers.contains(2)));
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // 좋아요와 조회수
+    // ────────────────────────────────────────────────────────────────
+
+    /**
+     * 좋아요를 <b>여러 번 눌러도 결과가 같습니다.</b>
+     *
+     * <p>{@code PUT} 으로 둔 이유입니다. 토글이면 두 번 누를 때 취소되는데, 네트워크가 끊겨 화면이
+     * 요청을 다시 보내는 것과 사용자가 두 번 누른 것을 서버가 구분할 수 없습니다.
+     */
+    @Test
+    void likesIdempotently() throws Exception {
+        long postId = write("CHAT", "좋아요 받을 글", "본문", null, null);
+
+        for (int attempt = 0; attempt < 3; attempt++) {
+            mockMvc.perform(put(LIKE_URL, postId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.postId").value(postId))
+                    .andExpect(jsonPath("$.liked").value(true))
+                    .andExpect(jsonPath("$.likeCount").value(1));
+        }
+
+        assertThat(countRows("post_likes")).isEqualTo(1);
+    }
+
+    /** 취소도 여러 번 해도 됩니다. 누르지 않은 글에 취소해도 오류가 아닙니다. */
+    @Test
+    void unlikesIdempotently() throws Exception {
+        long postId = write("CHAT", "좋아요 받을 글", "본문", null, null);
+        mockMvc.perform(put(LIKE_URL, postId)).andExpect(status().isOk());
+
+        for (int attempt = 0; attempt < 3; attempt++) {
+            mockMvc.perform(delete(LIKE_URL, postId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.liked").value(false))
+                    .andExpect(jsonPath("$.likeCount").value(0));
+        }
+
+        assertThat(countRows("post_likes")).isZero();
+    }
+
+    /**
+     * {@code liked} 는 보는 사람마다 다르고 {@code likeCount} 는 누구에게나 같습니다.
+     *
+     * <p>목록과 상세 양쪽을 봅니다. 목록은 번호를 모아 한 번에 읽고 상세는 하나만 확인하는, 서로
+     * 다른 길이라 한쪽만 맞는 일이 생길 수 있습니다.
+     */
+    @Test
+    void tellsWhetherILikedThePost() throws Exception {
+        long postId = write("CHAT", "좋아요 받을 글", "본문", null, null);
+        mockMvc.perform(put(LIKE_URL, postId)).andExpect(status().isOk());
+
+        currentUser.login(OTHER_WRITER_ID);
+        mockMvc.perform(put(LIKE_URL, postId)).andExpect(status().isOk());
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(jsonPath("$.likeCount").value(2))
+                .andExpect(jsonPath("$.liked").value(true));
+        mockMvc.perform(get(POSTS_URL))
+                .andExpect(jsonPath("$.posts[0].likeCount").value(2))
+                .andExpect(jsonPath("$.posts[0].liked").value(true));
+
+        currentUser.logout();
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.likeCount").value(2))
+                .andExpect(jsonPath("$.liked").value(false));
+        mockMvc.perform(get(POSTS_URL))
+                .andExpect(jsonPath("$.posts[0].likeCount").value(2))
+                .andExpect(jsonPath("$.posts[0].liked").value(false));
+    }
+
+    /** 좋아요는 로그인이 필요하고, 없는 글에는 누를 수 없습니다. */
+    @Test
+    void rejectsLikeWithoutLoginOrPost() throws Exception {
+        long postId = write("CHAT", "글", "본문", null, null);
+
+        mockMvc.perform(put(LIKE_URL, 999L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code")
+                        .value(CommunityErrorCode.COMMUNITY_POST_NOT_FOUND.code()));
+
+        currentUser.logout();
+        mockMvc.perform(put(LIKE_URL, postId))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(delete(LIKE_URL, postId))
+                .andExpect(status().isUnauthorized());
+
+        assertThat(countRows("post_likes")).isZero();
+    }
+
+    /**
+     * 글을 지우면 좋아요도 사라지고, 탈퇴해도 그 사람의 좋아요가 사라집니다.
+     *
+     * <p>글·댓글과 다른 규칙입니다. 글은 남겨야 대화가 이어지지만 좋아요는 그 사람이 눌렀다는
+     * 사실 자체라 사람이 없어지면 남을 이유가 없고, 좋아요 수도 그만큼 줄어야 맞습니다.
+     */
+    @Test
+    void removesLikesWhenThePostOrTheUserGoesAway() throws Exception {
+        long mine = write("CHAT", "내 글", "본문", null, null);
+        mockMvc.perform(put(LIKE_URL, mine)).andExpect(status().isOk());
+
+        currentUser.login(OTHER_WRITER_ID);
+        long theirs = write("CHAT", "남의 글", "본문", null, null);
+        mockMvc.perform(put(LIKE_URL, theirs)).andExpect(status().isOk());
+        assertThat(countRows("post_likes")).isEqualTo(2);
+
+        jdbcTemplate.update("DELETE FROM posts WHERE post_id = ?", mine);
+        assertThat(countRows("post_likes")).isEqualTo(1);
+
+        jdbcTemplate.update("DELETE FROM users WHERE user_id = ?", OTHER_WRITER_ID);
+        assertThat(countRows("post_likes")).isZero();
+    }
+
+    /** 상세를 열 때마다 조회수가 오릅니다. 응답의 값은 이번 조회를 포함합니다. */
+    @Test
+    void countsAViewEachTimeTheDetailOpens() throws Exception {
+        long postId = write("CHAT", "조회될 글", "본문", null, null);
+
+        mockMvc.perform(get(POSTS_URL))
+                .andExpect(jsonPath("$.posts[0].viewCount").value(0));
+
+        for (int expected = 1; expected <= 3; expected++) {
+            mockMvc.perform(get(POST_URL, postId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.viewCount").value(expected));
+        }
+
+        mockMvc.perform(get(POSTS_URL))
+                .andExpect(jsonPath("$.posts[0].viewCount").value(3));
+    }
+
+    /**
+     * 상세 응답의 조회수가 <b>표에 적힌 값과 같습니다.</b>
+     *
+     * <p>조회수를 올린 뒤 같은 트랜잭션에서 글을 읽습니다. 올리기 전에 읽어 둔 글이 없고
+     * {@code @Modifying(clearAutomatically = true)} 가 영속성 컨텍스트를 비우므로, 뒤따르는
+     * 조회는 표를 다시 봅니다. 그래서 방금 올린 값이 그대로 응답에 실립니다.
+     *
+     * <p>격리 수준과도 무관합니다. 어떤 수준이든 트랜잭션은 자기가 쓴 것을 봅니다.
+     *
+     * <p>{@code countsAViewEachTimeTheDetailOpens} 가 응답만 보는 데 비해 여기서는 두 값을 맞춰
+     * 봅니다. 캐시된 값을 읽는다면 응답만 뒤처져 둘이 어긋납니다.
+     */
+    @Test
+    void returnsTheViewCountThatWasJustStored() throws Exception {
+        long postId = write("CHAT", "조회될 글", "본문", null, null);
+
+        String body = mockMvc.perform(get(POST_URL, postId))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        long inResponse = objectMapper.readTree(body).get("viewCount").asLong();
+        long inTable = jdbcTemplate.queryForObject(
+                "SELECT view_count FROM posts WHERE post_id = ?", Long.class, postId);
+
+        assertThat(inResponse).isEqualTo(inTable).isEqualTo(1);
+    }
+
+    /** 없는 글을 열어도 조회수가 생기지 않습니다. */
+    @Test
+    void doesNotCountAViewForAMissingPost() throws Exception {
+        mockMvc.perform(get(POST_URL, 999L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code")
+                        .value(CommunityErrorCode.COMMUNITY_POST_NOT_FOUND.code()));
+    }
+
+    /** 좋아요 순은 많이 받은 글이 먼저입니다. 같으면 최신순으로 갈립니다. */
+    @Test
+    void sortsByLikeCount() throws Exception {
+        long few = write("CHAT", "하나 받은 글", "본문", null, null);
+        long many = write("CHAT", "둘 받은 글", "본문", null, null);
+
+        mockMvc.perform(put(LIKE_URL, few)).andExpect(status().isOk());
+        mockMvc.perform(put(LIKE_URL, many)).andExpect(status().isOk());
+        currentUser.login(OTHER_WRITER_ID);
+        mockMvc.perform(put(LIKE_URL, many)).andExpect(status().isOk());
+
+        mockMvc.perform(get(POSTS_URL).param("sort", "LIKES"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts[*].title")
+                        .value(Matchers.contains("둘 받은 글", "하나 받은 글")));
+    }
+
+    /** 조회 순은 많이 열린 글이 먼저입니다. */
+    @Test
+    void sortsByViewCount() throws Exception {
+        long rarely = write("CHAT", "덜 열린 글", "본문", null, null);
+        long often = write("CHAT", "많이 열린 글", "본문", null, null);
+
+        mockMvc.perform(get(POST_URL, rarely)).andExpect(status().isOk());
+        mockMvc.perform(get(POST_URL, often)).andExpect(status().isOk());
+        mockMvc.perform(get(POST_URL, often)).andExpect(status().isOk());
+
+        mockMvc.perform(get(POSTS_URL).param("sort", "VIEWS"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts[*].title")
+                        .value(Matchers.contains("많이 열린 글", "덜 열린 글")));
+    }
+
     private long write(
             String category,
             String title,
@@ -732,6 +1134,24 @@ class PostIntegrationTest {
                 id, userId, name);
     }
 
+    /**
+     * 컬렉션에 향수를 담습니다.
+     *
+     * <p>컬렉션은 향수가 아니라 <b>진열대 항목</b>({@code user_perfumes})을 담으므로 한 칸을 거쳐
+     * 갑니다. 진열대 항목 번호는 향수 번호와 겹치지 않게 별도로 받습니다.
+     */
+    private void putInCollection(
+            long collectionId, long ownerId, long shelfItemId, long perfumeId, int order) {
+        jdbcTemplate.update("""
+                INSERT INTO user_perfumes (user_perfumes_id, user_id, perfume_id, ownership_status)
+                VALUES (?, ?, ?, 'OWNED')
+                """, shelfItemId, ownerId, perfumeId);
+        jdbcTemplate.update("""
+                INSERT INTO collection_perfumes (collection_id, user_perfume_id, display_order)
+                VALUES (?, ?, ?)
+                """, collectionId, shelfItemId, order);
+    }
+
     private int countRows(String table) {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class);
     }
@@ -759,12 +1179,14 @@ class PostIntegrationTest {
      * <p>{@code post_categories} 는 마이그레이션이 심은 분류 셋이라 건드리지 않습니다.
      */
     private void clearData() {
+        jdbcTemplate.update("DELETE FROM post_likes");
         jdbcTemplate.update("DELETE FROM comments");
         jdbcTemplate.update("DELETE FROM post_images");
         jdbcTemplate.update("DELETE FROM post_perfumes");
         jdbcTemplate.update("DELETE FROM posts");
         jdbcTemplate.update("DELETE FROM collection_perfumes");
         jdbcTemplate.update("DELETE FROM collections");
+        jdbcTemplate.update("DELETE FROM user_perfumes");
         jdbcTemplate.update("DELETE FROM perfumes");
         jdbcTemplate.update("DELETE FROM brands");
         jdbcTemplate.update("DELETE FROM users");

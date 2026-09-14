@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -24,6 +25,118 @@ import org.springframework.data.repository.query.Param;
 public interface PerfumeReviewRepository extends JpaRepository<PerfumeReview, Long> {
 
     boolean existsByUserIdAndPerfumeId(Long userId, Long perfumeId);
+
+    boolean existsByIdAndUserId(Long id, Long userId);
+
+    /**
+     * 내가 이 향수에 쓴 후기 번호입니다. 쓰지 않았으면 빈 {@link Optional} 입니다.
+     *
+     * <p>향수 상세가 [후기 쓰기] 와 [후기 수정] 중 무엇을 띄울지 정하는 데 씁니다. 한 사람은 한
+     * 향수에 후기를 하나만 가질 수 있어 결과도 하나뿐입니다.
+     *
+     * <p>V5 의 {@code uk_perfume_reviews_user_perfume} 이 정확히 이 두 컬럼이라, 색인에서 한 행을
+     * 바로 찾고 끝납니다.
+     */
+    @Query("""
+            SELECT r.id
+            FROM PerfumeReview r
+            WHERE r.perfume.id = :perfumeId
+              AND r.userId = :userId
+            """)
+    Optional<Long> findIdByPerfumeIdAndUserId(
+            @Param("perfumeId") Long perfumeId,
+            @Param("userId") Long userId
+    );
+
+    /**
+     * 후기 게시판 한 줄에 실을 값입니다.
+     *
+     * <p>향수와 브랜드를 함께 읽습니다. 게시판은 여러 향수의 후기가 섞여 나오므로 줄마다 어느
+     * 향수 이야기인지 보여야 합니다. 후기마다 향수를 따로 조회하면 한 페이지에 쿼리가 스무 번
+     * 나갑니다.
+     *
+     * <p>왼쪽 조인인 이유가 셋입니다. 작성자는 탈퇴하면 비고, 브랜드가 없는 향수가 있으며,
+     * {@code perfume_id} 자체도 비어 있을 수 있는 컬럼입니다. 안쪽 조인으로 두면 그런 후기가
+     * 게시판에서 통째로 사라집니다.
+     *
+     * <p>좋아요 수는 딸린 쿼리로 셉니다. {@code review_likes} 의 기본키가 후기 번호로 시작해 표를
+     * 보지 않고 셀 수 있습니다. 조회수만 저장된 값을 그대로 읽습니다.
+     */
+    String BOARD_COLUMNS = """
+            SELECT r.id AS reviewId,
+                   r.title AS title,
+                   r.content AS content,
+                   u.nickname AS nickname,
+                   p.perfume_id AS perfumeId,
+                   p.name AS perfumeName,
+                   b.name AS brand,
+                   r.view_count AS viewCount,
+                   (SELECT COUNT(*)
+                      FROM review_likes rl
+                     WHERE rl.review_id = r.id) AS likeCount,
+                   r.created_at AS createdAt,
+                   COALESCE(r.updated_at, r.created_at) AS updatedAt
+            """;
+
+    /**
+     * 목록과 개수가 같은 범위를 보도록 조인을 묶어 둡니다.
+     *
+     * <p>지금은 거르는 조건이 없어 어느 쪽으로 세든 같은 수가 나옵니다. 그래도 묶어 두는 이유는,
+     * 나중에 여기에 조건이 붙을 때 <b>한쪽만 고치면 마지막 페이지가 비거나 개수가 맞지 않기</b>
+     * 때문입니다. 게시글 목록({@code PostRepository.FROM_AND_WHERE})도 같은 이유로 묶여 있습니다.
+     */
+    String BOARD_FROM = """
+            FROM perfume_reviews r
+            LEFT JOIN users u ON u.user_id = r.user_id
+            LEFT JOIN perfumes p ON p.perfume_id = r.perfume_id
+            LEFT JOIN brands b ON b.brand_id = p.brand_id
+            """;
+
+    String BOARD_SELECT = BOARD_COLUMNS + BOARD_FROM;
+
+    /**
+     * 최신순입니다. 시각이 같거나 비어 있어도 {@code id} 로 순서를 확정합니다. 순서가 흔들리면
+     * 페이지를 넘길 때 같은 후기가 두 번 나오거나 어떤 후기가 아예 빠집니다.
+     */
+    String BOARD_ORDER_RECENT = "ORDER BY r.created_at DESC NULLS LAST, r.id DESC";
+
+    /** 조회가 많은 순입니다. 저장된 값이라 V13 의 {@code idx_perfume_reviews_views} 를 씁니다. */
+    String BOARD_ORDER_VIEWS =
+            "ORDER BY r.view_count DESC, r.created_at DESC NULLS LAST, r.id DESC";
+
+    /**
+     * 좋아요가 많은 순입니다. 세어 봐야 나오는 값이라 인덱스로 받지 못합니다.
+     *
+     * <p>{@code likeCount} 는 위에서 붙인 별칭입니다. 같은 딸린 쿼리를 두 번 쓰지 않습니다.
+     */
+    String BOARD_ORDER_LIKES =
+            "ORDER BY likeCount DESC, r.created_at DESC NULLS LAST, r.id DESC";
+
+    String BOARD_COUNT = "SELECT COUNT(*) " + BOARD_FROM;
+
+    @Query(value = BOARD_SELECT + BOARD_ORDER_RECENT, countQuery = BOARD_COUNT,
+            nativeQuery = true)
+    Page<ReviewBoardRow> findBoardPageByRecent(Pageable pageable);
+
+    @Query(value = BOARD_SELECT + BOARD_ORDER_VIEWS, countQuery = BOARD_COUNT, nativeQuery = true)
+    Page<ReviewBoardRow> findBoardPageByViews(Pageable pageable);
+
+    @Query(value = BOARD_SELECT + BOARD_ORDER_LIKES, countQuery = BOARD_COUNT, nativeQuery = true)
+    Page<ReviewBoardRow> findBoardPageByLikes(Pageable pageable);
+
+    /** 후기 게시판의 단건입니다. 목록과 같은 값을 씁니다. */
+    @Query(value = BOARD_SELECT + "WHERE r.id = :reviewId", nativeQuery = true)
+    Optional<ReviewBoardRow> findBoardRow(@Param("reviewId") Long reviewId);
+
+    /**
+     * 조회수를 하나 올립니다.
+     *
+     * <p>읽어서 더하고 저장하지 않고 <b>표에게 더하라고 시킵니다.</b> 두 사람이 동시에 열면 둘 다
+     * 같은 값을 읽어 같은 값을 쓰게 되어 한 번이 사라집니다. 이 문장은 그런 틈이 없습니다.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE PerfumeReview r SET r.viewCount = r.viewCount + 1 WHERE r.id = :reviewId")
+    int increaseViewCount(@Param("reviewId") Long reviewId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
