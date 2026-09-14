@@ -8,9 +8,8 @@
  */
 
 /*
- * 진열대 전용 시각 처리. 규칙이 전부 `.shelf-scope` 아래로 한정되어 다른 화면에는
- * 영향이 없습니다. 컴포넌트가 아니라 도메인 입구에서 부르는 이유: 컴포넌트 안에
- * 두면 그 컴포넌트를 지우는 사람이 다른 컴포넌트의 스타일까지 떨어뜨립니다.
+ * 진열대 전용 시각 처리(`.shelf-scope` 아래로 한정). 컴포넌트가 아니라 도메인 입구에서
+ * 부르는 이유: 그 컴포넌트를 지우는 사람이 다른 컴포넌트 스타일까지 떨어뜨립니다.
  */
 import './shelf-display.css'
 export { ShelfDetailPanel } from './components/ShelfDetailPanel'

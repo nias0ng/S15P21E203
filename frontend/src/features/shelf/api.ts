@@ -3,15 +3,9 @@ import type { ShelfItem } from './types'
 /**
  * 진열대 자리표시자에 쓰는 향수병 사진.
  *
- * `src/assets/bottles/` 는 **커밋하지 않습니다**(브랜드 공식 제품 사진이라
- * 저작권이 브랜드에 있습니다). 그래서 정적 import 대신 glob 으로 읽습니다 —
- * 폴더가 비어 있거나 없으면 빈 배열이 되고 빌드는 그대로 통과합니다.
- * 사진이 없는 환경에서는 DisplayCase 가 병 실루엣을 대신 그립니다.
- *
- * png · webp 를 모두 받습니다. 지금 들어 있는 것은 webp 인데, 원본 PNG 297KB 를
- * 품질 90 으로 옮겨 73KB 가 됐습니다(75% 절감). 눈에 보이는 차이가 있는 픽셀은
- * 0.07% 로, 유리병 그러데이션에도 띠가 생기지 않습니다.
- * 팔레트 PNG 는 더 작지만(60KB) 256색이라 그러데이션이 끊깁니다.
+ * `src/assets/bottles/` 는 브랜드 저작물이라 커밋하지 않습니다. 정적 import 대신
+ * glob 으로 읽는 이유: 폴더가 비어 있어도 빈 배열이 되고 빌드가 통과합니다.
+ * 그 환경에서는 DisplayCase 가 병 실루엣을 대신 그립니다.
  */
 const BOTTLE_IMAGES = Object.values(
   import.meta.glob<{ default: string }>('../../assets/bottles/*.{png,webp}', {
