@@ -28,8 +28,13 @@ export function PerfumeFilters({
   onShelfChange,
   onGenderChange,
 }: PerfumeFiltersProps) {
+  /*
+   * 두 줄 다 본문 폭의 3분의 1로 묶습니다. 세 칸짜리 필터를 본문 폭(1120)까지
+   * 늘이면 칸 하나가 370px 이 되어, 두 글자 라벨이 허허벌판 한가운데 놓입니다.
+   * 검색창(max-w-lg)보다 좁게 두어 검색 > 필터 > 목록 순으로 단이 지게 합니다.
+   */
   return (
-    <div className="space-y-3.5">
+    <div className="max-w-92 space-y-2.5">
       <SegmentedFilter
         label="많은 사람이 담은 기준 필터"
         options={SHELF_FILTERS}

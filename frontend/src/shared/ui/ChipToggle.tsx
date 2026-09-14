@@ -6,6 +6,17 @@ type ChipToggleProps<T extends string> = {
   /** 무엇을 고르는 것인지 (화면에 보이지 않습니다) */
   label: string
   options: readonly Option<T>[]
+  /**
+   * 눌린 칩의 색.
+   *
+   *   ink   먹색 (기본) — 분류처럼 목록을 좁히는 칩
+   *   warm  토프 — SegmentedFilter 의 눌린 칸과 같은 색
+   *
+   * `warm` 은 세그먼트 필터와 **같은 화면 흐름 안에 놓일 때** 씁니다. 후기 작성의
+   * 계절 평가가 그렇습니다. 두 색을 섞어 쓰는 게 아니라, 한 화면 안에서 "고른
+   * 것" 이 두 가지 색으로 보이지 않게 맞추는 것입니다.
+   */
+  tone?: 'ink' | 'warm'
   className?: string
 } & (
   | {
@@ -30,7 +41,7 @@ type ChipToggleProps<T extends string> = {
  * - 계절(DTL-16 · DTL-24)은 여러 개 — "기존에 선택한 계절을 추가하거나 해제"
  */
 export function ChipToggle<T extends string>(props: ChipToggleProps<T>) {
-  const { label, options, className } = props
+  const { label, options, tone = 'ink', className } = props
 
   const isSelected = (value: T) =>
     props.multiple ? props.value.includes(value) : props.value === value
@@ -67,7 +78,9 @@ export function ChipToggle<T extends string>(props: ChipToggleProps<T>) {
               'transition-colors duration-120 ease-out',
               'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
               selected
-                ? 'bg-ink text-surface'
+                ? tone === 'warm'
+                  ? 'bg-accent-warm text-surface-card border-transparent'
+                  : 'bg-ink text-surface'
                 : 'text-ink hover:bg-line-soft bg-surface-card',
             )}
           >

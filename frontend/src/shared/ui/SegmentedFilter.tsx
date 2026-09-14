@@ -36,9 +36,12 @@ export function SegmentedFilter<T extends string>({
       // 눌린 상태를 aria-pressed 로 알려주므로 group 으로 묶어 이름을 붙입니다
       role="group"
       aria-label={label}
-      className={cn('border-line flex border p-px', className)}
+      className={cn(
+        'border-line/60 bg-surface-veil rounded-panel flex border p-1',
+        className,
+      )}
     >
-      {options.map((option, index) => {
+      {options.map((option) => {
         const selected = value === option.value
 
         return (
@@ -48,12 +51,16 @@ export function SegmentedFilter<T extends string>({
             aria-pressed={selected}
             onClick={() => onChange(selected ? null : option.value)}
             className={cn(
-              'text-body flex-1 py-3 text-center',
+              'text-body rounded-card flex-1 py-2.5 text-center',
               'transition-colors duration-120 ease-out',
-              index > 0 && 'border-line -ml-px border-l',
+              /*
+               * 칸 사이 세로줄을 뺐습니다. 눌린 칸이 색 면으로 칠해지므로 줄이
+               * 없어도 경계가 읽히고, 줄이 있으면 색 면 옆에서 이가 빠져 보입니다.
+               * 눌린 칸의 왼쪽 줄만 지우는 식으로 처리하면 조건이 네 갈래가 됩니다.
+               */
               selected
-                ? 'bg-ink text-surface'
-                : 'text-ink hover:bg-line-soft bg-transparent',
+                ? 'bg-accent-warm text-surface-card'
+                : 'text-ink hover:bg-line-soft/60 bg-transparent',
             )}
           >
             {option.label}

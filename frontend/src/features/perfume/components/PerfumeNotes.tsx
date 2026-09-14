@@ -1,4 +1,6 @@
+import { cn } from '@/shared/lib/cn'
 import { Badge } from '@/shared/ui/Badge'
+import { PANEL } from '@/shared/ui/panel'
 
 import type { PerfumeDetail } from '../types'
 
@@ -21,7 +23,7 @@ export function PerfumeNotes({ notes }: Props) {
   const isEmpty = rows.every(([, items]) => items.length === 0)
 
   return (
-    <section className="space-y-3 p-6">
+    <section className={cn(PANEL, 'space-y-3')}>
       <h2 className="text-ink-muted text-[10.5px]">향조</h2>
 
       {isEmpty ? (

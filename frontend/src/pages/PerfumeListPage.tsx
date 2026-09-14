@@ -66,10 +66,17 @@ export default function PerfumeListPage() {
     <div className="space-y-3.5">
       <h1 className="sr-only">향수</h1>
 
-      {/* 헤더에 검색창이 없고 검색은 각 페이지 안에 있다는 와이어프레임 규칙 */}
+      {/*
+        헤더에 검색창이 없고 검색은 각 페이지 안에 있다는 와이어프레임 규칙.
+
+        폭을 본문의 절반으로 묶습니다. 꽉 채우면 한 줄짜리 입력창이 카드 다섯 장
+        만큼 넓어져서, 화면에서 가장 먼저 눈에 들어오는 것이 향수가 아니라 빈 칸이
+        됩니다. 검색은 이 화면의 주인공이 아닙니다.
+      */}
       <SearchField
+        className="max-w-lg"
         label="향수명 또는 브랜드명으로 검색"
-        placeholder="향수명 · 브랜드로 검색"
+        placeholder="향수명 · 브랜드로 검색해주세요."
         onSearch={(keyword) => {
           const trimmed = keyword.trim()
           if (!trimmed) return
@@ -107,16 +114,20 @@ export default function PerfumeListPage() {
         onGenderChange={setGender}
       />
 
-      <hr className="border-line" />
-
-      <section className="space-y-3">
+      {/*
+        구분선을 뺐습니다. 종이 바탕으로 오면서 필터 판과 카드가 각자 경계를
+        갖게 되어, 그 사이 가로줄은 종이를 두 장으로 잘라 보이게 합니다.
+        구분은 선이 아니라 여백(pt-4)이 합니다.
+      */}
+      <section className="space-y-3 pt-4">
         <div className="flex items-baseline gap-2">
-          {/* 글자 크기·굵기는 S15P21E203-162 타이포 스케일에서 확정합니다 */}
-          <h2 className="text-ink font-serif text-lg">
+          <h2 className="text-ink text-title font-serif font-semibold">
             {hasFilter ? '조건에 맞는 향수' : '최근 인기 향수'}
           </h2>
           {items.length > 0 && (
-            <span className="text-ink-muted text-xs">{items.length}개</span>
+            <span className="text-ink-muted text-caption">
+              {items.length}개
+            </span>
           )}
         </div>
 
@@ -124,6 +135,9 @@ export default function PerfumeListPage() {
           items={items}
           isPending={isPending}
           columns={5}
+          // 번호는 조건 없는 "최근 인기 향수" 에서만 답니다. 걸러낸 목록의 1번은
+          // 인기 1위가 아니라 그냥 첫 줄이라 오해를 만듭니다.
+          numbered={!hasFilter}
           emptyAction={
             hasFilter && (
               <Button variant="outline" onClick={resetFilters}>

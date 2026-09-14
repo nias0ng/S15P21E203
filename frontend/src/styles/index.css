@@ -24,21 +24,48 @@
    * 팔레트 7색만으로는 본문 대비(4.5:1)가 안 나오는 자리가 있습니다.
    * 괄호 안은 ivory 바탕 기준 대비입니다.
    */
-  --color-charcoal-soft: #727170; /* 4.51:1 — charcoal 을 33% 밝힘 */
+  --color-charcoal-soft: #615f5e; /* 4.71:1 — 아래 paper-deep 기준 */
   --color-bronze-deep: #7f6f4d; /* 4.54:1 — bronze 를 어둡게 */
   --color-sage-deep: #556150; /* 6.06:1 — sage 를 어둡게 */
   --color-rust: #8f4632; /* 6.30:1 — 흙빛 러스트 */
 
+  /*
+   * ── 종이 3색 + 토프 ───────────────────────────────────
+   * 바탕이 평평한 ivory 한 색이던 것을 종이 한 장으로 바꿉니다. 가운데가 밝고
+   * 가장자리로 갈수록 어두워지는 그러데이션이라 세 단계가 필요합니다
+   * (진열대 시안의 --paper / --paper-soft / --paper-deep 과 같은 구성입니다).
+   *
+   * ⚠️ 대비 기준선은 **가장 어두운 paper-deep** 입니다. 밝은 가운데를 기준으로
+   * 잡으면 화면 네 귀퉁이에서 글자가 기준 미달이 됩니다. 그래서 위 charcoal-soft
+   * 를 #727170 -> #615f5e 로 내렸습니다 (paper-deep 위 3.61:1 -> 4.71:1).
+   */
+  --color-paper: #eae1d9;
+  --color-paper-soft: #f2ece6;
+  --color-paper-deep: #e7dcd3;
+
+  /*
+   * 토프. 눌린 필터·검색 버튼처럼 **면으로 칠하고 위에 흰 글자**를 얹는 자리입니다.
+   * bronze-deep(#7f6f4d)은 노란기가 돌아 종이 위에서 겨자색으로 보입니다.
+   * 흰 글자 대비 4.69:1.
+   */
+  --color-taupe: #7d7267;
+
   /* ── 역할 토큰: 이것만 화면에서 사용 ─────────────────── */
 
   /* 바탕 */
-  --color-surface: var(--color-ivory); /* 페이지 바탕 */
+  --color-surface: var(--color-paper); /* 페이지 바탕 (그러데이션은 body) */
   --color-surface-card: #fefcf8; /* 종이 위에 얹는 따뜻한 흰색 */
   --color-surface-sunken: var(--color-bone); /* 연한 채움 · 이미지 자리 */
+  /*
+   * 종이 위에 얹는 반투명 판. 카드·입력창이 종이 결을 비쳐 보이게 해서
+   * 흰 상자를 올려놓은 게 아니라 종이에서 떠오른 것처럼 보입니다.
+   */
+  --color-surface-veil: oklch(1 0 0 / 0.55);
+  --color-surface-veil-strong: oklch(1 0 0 / 0.78);
 
   /* 글자 */
-  --color-ink: var(--color-charcoal); /* 본문 · 주요 액션 바탕 (12.36:1) */
-  --color-ink-muted: var(--color-charcoal-soft); /* 보조 설명 · 라벨 (4.51:1) */
+  --color-ink: var(--color-charcoal); /* 본문 · 주요 액션 바탕 (9.90:1) */
+  --color-ink-muted: var(--color-charcoal-soft); /* 보조 설명 · 라벨 (4.71:1) */
 
   /* 선 */
   --color-line: var(--color-stonegray); /* 테두리 · 호버 배경 */
@@ -49,6 +76,11 @@
     --color-bronze
   ); /* 테두리 · 아이콘. 글자로는 쓰지 않습니다 (2.90:1) */
   --color-accent-deep: var(--color-bronze-deep); /* 버튼 바탕 · 포커스 링 */
+  /*
+   * 눌린 세그먼트 · 검색 버튼처럼 **면으로 칠하는** 자리.
+   * 글자는 surface-card(#fefcf8)를 얹습니다 (4.6:1). ink 는 얹지 마세요 — 2.1:1 입니다.
+   */
+  --color-accent-warm: var(--color-taupe);
 
   /* 상태 — 색만으로 뜻을 구분하지 말고 글자도 함께 답니다 */
   --color-success: var(--color-sage-deep);
@@ -97,15 +129,25 @@
   /*
    * ── 그림자 ────────────────────────────────────────────
    * 떠 있는 높이 = 그 요소가 얼마나 위에 있는가.
-   * 기본 상태의 카드에는 걸지 않습니다. 테두리로 충분하고,
-   * 그림자까지 있으면 목록 전체가 들떠 보입니다.
+   *
+   * 원래는 "기본 상태의 카드에는 걸지 않는다(테두리로 충분하다)" 였습니다.
+   * 종이 시안으로 오면서 카드 테두리를 거의 지웠기 때문에, 이제는 이 아주 옅은
+   * 한 겹이 카드의 경계입니다. 없으면 반투명 판이 종이에 녹아 사라집니다.
    */
+  --shadow-card: 0 1px 3px rgb(47 47 50 / 0.05); /* 카드 기본 */
   --shadow-raised: 0 6px 18px rgb(47 47 50 / 0.09); /* 카드 호버 */
   --shadow-overlay: 0 10px 26px rgb(47 47 50 / 0.14); /* 드롭다운 · 토스트 */
   --shadow-modal: 0 24px 60px rgb(47 47 50 / 0.22); /* 모달 */
 
   /* 컨셉아트의 카드는 거의 각져 있습니다. 미술관·아카이브 인상이 여기서 나옵니다. */
   --radius-card: 0.375rem;
+
+  /*
+   * 종이 위에 떠 있는 판(향수 카드 · 검색창 · 세그먼트 필터)만 이만큼 둥급니다.
+   * radius-card 를 키우지 않은 이유: 그 토큰은 배지 · 포커스 링 · 드롭다운까지
+   * 30곳 넘게 쓰여서, 키우면 각진 인상이 화면 전체에서 사라집니다.
+   */
+  --radius-panel: 0.75rem;
 
   /*
    * 콘텐츠 최대 폭. 와이어프레임 S01 규격이 "폭 1120 고정"입니다.
@@ -120,12 +162,66 @@
     -webkit-text-size-adjust: 100%;
   }
 
+  /*
+   * 종이 한 장. 가운데 위가 밝고 가장자리로 갈수록 어두워집니다.
+   * 균일한 단색이면 평평한 웹페이지로 보이고, 이 한 겹으로 인쇄물이 됩니다.
+   *
+   * `background-attachment: fixed` 는 뷰포트 기준으로 그리라는 뜻입니다. 스크롤해도
+   * 그러데이션이 따라 움직이지 않아야 종이 한 장 위를 훑는 것처럼 보입니다.
+   */
   body {
     @apply bg-surface text-ink font-sans antialiased;
     margin: 0;
+    background-image: radial-gradient(
+      115% 110% at 45% -12%,
+      var(--color-paper-soft),
+      var(--color-paper) 70%,
+      var(--color-paper-deep)
+    );
+    background-attachment: fixed;
   }
 
+  /*
+   * 종이 결. 아주 옅게 화면 전체에 얹습니다. 없으면 위 그러데이션이 종이가 아니라
+   * 디지털 그라데이션으로 보입니다.
+   *
+   * 두 겹인 이유: 촘촘한 알갱이만 얹으면 모래를 뿌린 것처럼 보입니다. 큰 얼룩을
+   * 겹쳐야 "떠서 만든 종이의 두께 차이" 로 읽힙니다. 타일 크기 180 과 700 을 배수
+   * 관계가 아니게 둔 것도 같은 이유입니다 — 배수면 두 겹이 같은 자리에서 반복돼
+   * 격자무늬가 보입니다.
+   *
+   * feColorMatrix 로 채도를 0 으로 만듭니다. feTurbulence 는 색이 있는 잡음이라
+   * 그대로 쓰면 알록달록한 점이 박혀 TV 노이즈처럼 보입니다.
+   *
+   * ⚠️ 진열대 화면의 `.shelf-grain` 과 같은 기법입니다. 지금은 그쪽이
+   * `.shelf-scope` 안으로 스코프돼 있어 전역에서 쓸 수 없습니다. 진열대 시안이
+   * 병합되면 둘을 이 전역 한 겹으로 합치세요.
+   */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.34;
+    mix-blend-mode: multiply;
+    background-image:
+      /* 종이 결 — 촘촘한 알갱이 */
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='.5'/%3E%3C/svg%3E"),
+      /* 큰 얼룩 — 종이를 뜰 때 생기는 두께 차이 */
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='700'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.011' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)' opacity='.34'/%3E%3C/svg%3E");
+    background-size:
+      180px 180px,
+      700px 700px;
+  }
+
+  /*
+   * 결이 fixed 로 화면을 덮고 있으므로 본문은 그 위에 서야 클릭이 막히지 않습니다
+   * (pointer-events 는 껐지만, z-index 를 안 주면 헤더의 sticky 와 쌓임 순서가 엉킵니다).
+   */
   #root {
+    position: relative;
+    z-index: 1;
     min-height: 100dvh;
   }
 

@@ -9,7 +9,6 @@ import {
   PerfumeReviewList,
   PerfumeReviewSummary,
   PerfumeSeasonRatings,
-  SeasonPickModal,
 } from '@/features/perfume'
 // 진열대 저장은 진열대 도메인의 어휘입니다. 화면에서 두 도메인을 조합합니다.
 import { ShelfSaveModal } from '@/features/shelf'
@@ -27,6 +26,8 @@ import { Toast } from '@/shared/ui/Toast'
  *   ① PerfumeOverview  ② PerfumeNotes  ③ PerfumeSeasonRatings
  *   ④ PerfumeReviewSummary  ⑤ PerfumeReviewList
  *
+ * 계절 등록(DTL-16)은 이 화면에 없습니다. 후기 작성 화면(A24a)의 한 항목입니다.
+ *
  * 상세 응답은 기본 정보 · brand 객체 · images 배열 · prices 배열입니다.
  * ⚠️ 향조 · 계절 평가 · AI 요약 · 후기 목록은 아직 없어 각 구역이 안내 문구만
  * 보여줍니다. 각 구역 컴포넌트의 주석을 보세요.
@@ -36,7 +37,6 @@ export default function PerfumeDetailPage() {
   const numericId = Number(perfumeId)
 
   const [shelfOpen, setShelfOpen] = useState(false)
-  const [seasonOpen, setSeasonOpen] = useState(false)
   const { showToast, toastProps } = useToast()
 
   const { data, isPending, isError, refetch } = useQuery({
@@ -60,13 +60,19 @@ export default function PerfumeDetailPage() {
   }
 
   return (
-    <div className="divide-line border-line divide-y border">
+    /*
+      구역마다 종이보다 밝은 판을 깔고 사이를 여백으로 띄웁니다. 예전에는 다섯
+      구역이 테두리 상자 하나 안에 가로줄로 나뉘어 있었는데(divide-y), 바탕이
+      종이가 되면서 상자 안팎이 같은 색이 되어 구분이 사라졌습니다.
+      판 모양은 features/perfume/components/detailSection.ts 에 있습니다.
+    */
+    <div className="space-y-4">
       <PerfumeOverview
         perfume={data}
         onSaveToShelf={() => setShelfOpen(true)}
       />
       <PerfumeNotes notes={data.notes} />
-      <PerfumeSeasonRatings onRegisterSeason={() => setSeasonOpen(true)} />
+      <PerfumeSeasonRatings />
       <PerfumeReviewSummary description={data.description} />
       <PerfumeReviewList />
 
@@ -77,15 +83,6 @@ export default function PerfumeDetailPage() {
           // TODO: SHF-01 저장 API 연결
           setShelfOpen(false)
           showToast('진열대에 저장했습니다')
-        }}
-      />
-      <SeasonPickModal
-        open={seasonOpen}
-        onClose={() => setSeasonOpen(false)}
-        onSubmit={() => {
-          // TODO: DTL-16 계절 등록 API 연결
-          setSeasonOpen(false)
-          showToast('계절을 등록했습니다')
         }}
       />
       <Toast {...toastProps} />

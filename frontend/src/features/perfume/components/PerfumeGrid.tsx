@@ -17,6 +17,14 @@ type PerfumeGridProps = {
   emptyAction?: React.ReactNode
   /** 와이어프레임 A33 은 5열, A09 검색 결과는 목록형이라 호출부에서 정합니다. */
   columns?: 4 | 5
+  /**
+   * 카드 좌상단에 1부터 번호를 답니다.
+   *
+   * 순위가 아니라 **서버가 돌려준 순서**입니다. "최근 인기 향수" 처럼 순서 자체가
+   * 뜻을 갖는 목록에서만 켭니다. 브랜드로 걸러 본 목록에 번호가 붙으면 그 브랜드
+   * 안의 순위처럼 읽혀서 없는 뜻이 생깁니다.
+   */
+  numbered?: boolean
 }
 
 /**
@@ -30,6 +38,7 @@ export function PerfumeGrid({
   isPending = false,
   empty,
   columns = 5,
+  numbered = false,
   emptyAction,
 }: PerfumeGridProps) {
   const gridClass =
@@ -41,7 +50,9 @@ export function PerfumeGrid({
     return (
       <div className={gridClass}>
         {Array.from({ length: columns * 2 }, (_, index) => (
-          <Skeleton key={index} className="h-44" />
+          // 카드 실물 높이(정사각 사진 + 이름 두 줄)와 맞춰야 로드된 순간 화면이
+          // 튀지 않습니다. 5열 기준 사진 한 변이 약 178px 입니다.
+          <Skeleton key={index} className="rounded-panel h-64" />
         ))}
       </div>
     )
@@ -61,13 +72,15 @@ export function PerfumeGrid({
 
   return (
     <ul className={gridClass}>
-      {items.map((perfume) => (
+      {items.map((perfume, index) => (
         <li key={perfume.perfumeId}>
           <PerfumeCard
             name={perfume.name}
             brand={perfume.brandName}
             // ⚠️ 백엔드가 아직 안 내려주는 필드입니다. 없으면 자리표시자가 나옵니다.
             thumbnailUrl={perfume.imageUrl}
+            // 서버가 돌려준 순서. 순위 필드가 아니라 "이 목록의 몇 번째" 입니다.
+            rank={numbered ? index + 1 : undefined}
             to={toPerfumeDetail(perfume.perfumeId)}
           />
         </li>
