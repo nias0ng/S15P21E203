@@ -40,7 +40,8 @@ const GATES = [
 export function createViewbar(stage, { tweaks, apply, freecam, phase }) {
   const box = document.createElement('div');
   box.style.cssText =
-    'position:absolute;top:150px;left:12px;z-index:51;padding:6px 8px;' +
+    // ⚠ 호스트 헤더(hostTop — 앱의 유리판 헤더 90px)가 무대 위를 가리므로 그만큼 내린다 (2026-09-16, D). 단독 실행이면 0 이라 예전 자리다
+    'position:absolute;top:calc(var(--pb-host-top,0px) + 150px);left:12px;z-index:51;padding:6px 8px;' +
     'background:rgba(248,247,243,0.86);border:1px solid rgba(26,26,26,0.18);border-radius:4px;' +
     'font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#1A1A1A;' +
     'display:flex;flex-direction:column;gap:4px;max-width:322px';

@@ -195,7 +195,8 @@ export function createTweaks(stage, { params, ranges, apply }) {
 
   const box = document.createElement('div');
   box.style.cssText =
-    'position:absolute;top:8px;right:8px;width:264px;max-height:calc(100vh - 24px);' +
+    // ⚠ 호스트 헤더(hostTop — 앱의 유리판 헤더 90px)가 무대 위를 가리므로 그만큼 내린다 (2026-09-16, D). 단독 실행이면 0 이라 예전 자리다
+    'position:absolute;top:calc(var(--pb-host-top,0px) + 8px);right:8px;width:264px;max-height:calc(100vh - 24px - var(--pb-host-top,0px));' +
     'display:flex;flex-direction:column;z-index:50;' +
     'font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#1A1A1A;' +
     'background:rgba(255,255,255,.86);backdrop-filter:blur(6px);' +
