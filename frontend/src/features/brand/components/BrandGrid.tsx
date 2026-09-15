@@ -59,10 +59,11 @@ export function BrandGrid({ items, isPending = false, emptyAction }: Props) {
                 className="h-23.75 w-full"
               />
             }
-            title={brand.name}
-            // 캡션은 로마자 표기입니다. 향수 개수를 적던 자리인데, 카드에서 궁금한
+            title={brand.nameKo ?? brand.name}
+            // 캡션은 영문 표기입니다. 향수 개수를 적던 자리인데, 카드에서 궁금한
             // 것은 "이 브랜드가 내가 아는 그 브랜드인가" 라서 철자를 보여 줍니다.
-            caption={brand.romanizedName}
+            // 한국어 이름이 없는 브랜드는 제목이 이미 영문이라 캡션을 비웁니다.
+            caption={brand.nameKo ? brand.name : undefined}
           />
         </li>
       ))}

@@ -5,6 +5,7 @@ import {
   BRAND_SORTS,
   BrandGrid,
   brandListQuery,
+  DEFAULT_BRAND_SORT,
   type BrandSort,
 } from '@/features/brand'
 import { Button } from '@/shared/ui/Button'
@@ -15,8 +16,8 @@ import { SearchField } from '@/shared/ui/SearchField'
  * 브랜드 (와이어프레임 A34 — 상단 메뉴 [브랜드] 목적지)
  *
  * 와이어프레임 주석:
- * - 기본 정렬은 abc 순 — 한글 브랜드는 로마자 표기 기준으로 끼워 넣는다
- * - 브랜드를 누르면 그 브랜드의 향수 목록 (A33 에 브랜드 필터가 걸린 상태)
+ * - 기본 정렬은 영문 abc 순 — 서버가 줄을 세웁니다
+ * - 브랜드를 누르면 브랜드 상세(`/brands/:brandId`)
  *
  * 검색어와 정렬을 URL 쿼리에 둡니다. 새로고침 · 뒤로가기 · 링크 공유가 같은
  * 결과를 보여주게 하려는 것입니다.
@@ -24,7 +25,8 @@ import { SearchField } from '@/shared/ui/SearchField'
 export default function BrandListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const keyword = searchParams.get('keyword') ?? ''
-  const sort = (searchParams.get('sort') as BrandSort | null) ?? 'NAME'
+  const sort =
+    (searchParams.get('sort') as BrandSort | null) ?? DEFAULT_BRAND_SORT
 
   const { data, isPending } = useQuery(brandListQuery({ keyword, sort }))
 
@@ -54,7 +56,7 @@ export default function BrandListPage() {
           options={BRAND_SORTS}
           value={sort}
           // 정렬은 항상 하나가 켜져 있어야 하므로 해제(null)를 기본값으로 되돌립니다
-          onChange={(next) => updateParam('sort', next ?? 'NAME')}
+          onChange={(next) => updateParam('sort', next ?? DEFAULT_BRAND_SORT)}
         />
       </div>
 
@@ -64,7 +66,7 @@ export default function BrandListPage() {
         items={data ?? []}
         isPending={isPending}
         emptyAction={
-          (keyword !== '' || sort !== 'NAME') && (
+          (keyword !== '' || sort !== DEFAULT_BRAND_SORT) && (
             <Button variant="outline" onClick={() => setSearchParams({})}>
               초기화
             </Button>
