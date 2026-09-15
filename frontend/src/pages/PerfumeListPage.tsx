@@ -7,7 +7,7 @@ import {
   PerfumeFilters,
   PerfumeGrid,
   type GenderFilter,
-  type ShelfFilter,
+  type RankingFilter,
 } from '@/features/perfume'
 import { ROUTES } from '@/shared/config/routes'
 import { Button } from '@/shared/ui/Button'
@@ -25,7 +25,7 @@ import { SearchField } from '@/shared/ui/SearchField'
  *
  * 조건을 하나도 보내지 않으면 백엔드가 활성 향수 전체를 돌려줍니다.
  *
- * 위 줄 필터(shelf)는 **전체 사용자 집계** 기준입니다. 내 진열대가 아니라
+ * 위 줄 필터(ranking)는 **전체 사용자 집계** 기준입니다. 내 진열대가 아니라
  * 많은 사람이 진열대에 담은 순으로 좁힙니다. 로그인이 필요 없습니다.
  *
  * TODO: 스크롤 이어서 로드(무한 스크롤). 백엔드 페이지네이션은 이미 준비돼 있어
@@ -34,7 +34,7 @@ import { SearchField } from '@/shared/ui/SearchField'
 export default function PerfumeListPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [shelf, setShelf] = useState<ShelfFilter | null>(null)
+  const [ranking, setRanking] = useState<RankingFilter | null>(null)
   const [gender, setGender] = useState<GenderFilter | null>(null)
 
   // A34 브랜드 페이지에서 카드를 누르면 ?brand= 를 달고 옵니다
@@ -42,7 +42,7 @@ export default function PerfumeListPage() {
 
   const { data, isPending } = useQuery(
     perfumeListQuery({
-      shelf: shelf ?? undefined,
+      ranking: ranking ?? undefined,
       gender: gender ?? undefined,
       brand: brand ?? undefined,
     }),
@@ -52,10 +52,10 @@ export default function PerfumeListPage() {
 
   // 검색어·필터로 걸러 0건이 됐을 때만 [초기화] 를 보여줍니다.
   // 원래 데이터가 없는 경우에는 초기화해도 달라지지 않으니 버튼을 걸지 않습니다.
-  const hasFilter = shelf !== null || gender !== null || brand !== null
+  const hasFilter = ranking !== null || gender !== null || brand !== null
 
   const resetFilters = () => {
-    setShelf(null)
+    setRanking(null)
     setGender(null)
     const next = new URLSearchParams(searchParams)
     next.delete('brand')
@@ -101,9 +101,9 @@ export default function PerfumeListPage() {
       )}
 
       <PerfumeFilters
-        shelf={shelf}
+        ranking={ranking}
         gender={gender}
-        onShelfChange={setShelf}
+        onRankingChange={setRanking}
         onGenderChange={setGender}
       />
 

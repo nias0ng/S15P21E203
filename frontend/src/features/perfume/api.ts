@@ -48,8 +48,7 @@ async function withDevFallback<T>(
 /**
  * COM-05 향수 검색. 조건은 모두 선택이고 함께 오면 AND 입니다.
  *
- * ⚠️ shelf 는 백엔드 수정 중 — 지금은 개인 진열대 기준이라 비로그인이면 401 입니다.
- * ⚠️ gender · shelf 에 정의되지 않은 값을 보내면 400 입니다.
+ * ⚠️ gender · ranking 에 정의되지 않은 값을 보내면 400 입니다.
  */
 export async function searchPerfumes(params: PerfumeSearchParams) {
   return withDevFallback(

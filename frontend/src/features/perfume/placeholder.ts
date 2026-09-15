@@ -142,7 +142,7 @@ const PERFUMES: PerfumeSummary[] = [
 
 const DEFAULT_SIZE = 20
 
-/** 검색 대체값. gender · shelf 는 집계값이라 흉내 낼 근거가 없어 무시합니다 */
+/** 검색 대체값. gender · ranking 은 집계값이라 흉내 낼 근거가 없어 무시합니다 */
 export function placeholderSearch(
   params: PerfumeSearchParams,
 ): PerfumeSearchResponse {

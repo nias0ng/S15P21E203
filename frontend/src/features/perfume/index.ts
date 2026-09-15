@@ -32,7 +32,7 @@ export {
 export {
   GENDER_FILTERS,
   SEASONS,
-  SHELF_FILTERS,
+  RANKING_FILTERS,
   type GenderFilter,
   type PerfumeAccord,
   type PerfumeDetail,
@@ -51,5 +51,5 @@ export {
   type Season,
   type SeasonStatistic,
   type SeasonStatisticsResponse,
-  type ShelfFilter,
+  type RankingFilter,
 } from './types'

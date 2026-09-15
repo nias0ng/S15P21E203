@@ -60,10 +60,14 @@ export interface PerfumeSearchParams {
   scentFamily?: ScentFamily
 
   /**
-   * ⚠️ 백엔드 수정 중 — 현재 구현은 개인 진열대 기준이라 비로그인이면 401 입니다.
-   * 집계 기준 수정본이 나오면 이 주석을 지우세요.
+   * A33 위 줄 필터. **이름이 shelf 였는데 ranking 으로 바뀌었습니다** —
+   * 이전 이름으로 보내면 @ModelAttribute 가 모르는 파라미터를 조용히 무시해
+   * 필터가 안 걸립니다(오류도 안 납니다).
+   *
+   * 전체 사용자 집계라 로그인이 필요 없습니다. 거르기도 합니다 — OWNED · WISH 는
+   * 세 명 이상이 담은 향수만 나오고, 이 값이 있으면 sort 는 무시됩니다.
    */
-  shelf?: ShelfFilter
+  ranking?: RankingFilter
 
   /** A33 아래 줄 필터. 정의되지 않은 값을 보내면 400 입니다 */
   gender?: GenderFilter
@@ -93,19 +97,20 @@ export interface PerfumeSearchResponse {
 }
 
 /**
- * A33 위 줄 필터. 이름이 개인 소유처럼 읽히지만 **전체 사용자 집계값**입니다
- * (많은 사람이 담은 / 희망한 / 조회한 향수). 백엔드 파라미터명이라 그대로 둡니다.
+ * A33 위 줄 필터 — **전체 사용자 집계**입니다(많은 사람이 담은 / 희망한 / 조회한
+ * 향수). 내 진열대가 아닙니다 — 백엔드도 같은 이유로 이름을 shelf 에서 ranking 으로
+ * 바꿨습니다.
  */
-export type ShelfFilter = 'OWNED' | 'WISH' | 'VIEWED'
+export type RankingFilter = 'OWNED' | 'WISH' | 'VIEWED'
 
 /** A33 아래 줄 필터 — 향의 성별 */
 export type GenderFilter = 'FEMALE' | 'MALE' | 'UNISEX'
 
-export const SHELF_FILTERS = [
+export const RANKING_FILTERS = [
   { value: 'OWNED', label: '보유' },
   { value: 'WISH', label: '희망' },
   { value: 'VIEWED', label: '조회' },
-] as const satisfies readonly { value: ShelfFilter; label: string }[]
+] as const satisfies readonly { value: RankingFilter; label: string }[]
 
 export const GENDER_FILTERS = [
   { value: 'FEMALE', label: '여성' },
