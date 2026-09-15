@@ -1,7 +1,11 @@
 # 데이터 적재
 
 - [향 지도 데이터](#향-지도-데이터-적재) — 향수 200개와 좌표·향 계열·닮은 향수·향 특성
+- [향수 카탈로그](#향수-카탈로그-적재) — 향수 129,161개와 브랜드·향 특성. **운영에도 들어갑니다**
 - [후기 시드](#후기-시드-적재) — 후기 요약 배치를 수동으로 확인할 때 쓰는 후기
+
+세 가지의 성격이 다릅니다. 향 지도와 향수 카탈로그는 **서비스가 실제로 쓰는 데이터**라 운영에도
+들어가야 하고, 후기 시드는 **개발용 가짜 데이터**라 운영에서 돌리면 안 됩니다.
 
 # 향 지도 데이터 적재
 
@@ -97,6 +101,69 @@ psql "postgresql://hyanghae:hyanghae_test@localhost:5432/hyanghae_test" -f load_
 - **지도 배경**(땅·바다·해안선) — 향수별 데이터가 아니라 지도를 128×108 칸으로 나눈 격자라
   DB에 넣지 않습니다. `scent_map_terrain.json`으로 따로 받아 정적 파일로 내려주기로 했는데
   아직 전달받지 못했습니다.
+
+# 향수 카탈로그 적재
+
+자연어 추천이 쓰는 향수 129,161개입니다. 브랜드 7,793개와 향 특성 100만 행이 함께 들어갑니다.
+데이터는 AI 쪽이 `ai/delivery/for_db/` 로 넘겨준 CSV 네 개이고, 만든 과정은
+[ai/docs/perfume_load_handoff.md](../../../ai/docs/perfume_load_handoff.md) 에 있습니다.
+
+향 지도 200개와 **겹칩니다.** 그 200개가 이 CSV 에 전부 들어 있어서, `fragrantica_id` 로 맞춰
+이미 있으면 갱신하고 없으면 넣습니다. 두 번 만들면 지도가 가리키는 향수와 추천이 가리키는
+향수가 갈립니다.
+
+## 먼저 확인할 것
+
+**스키마가 `V14` 까지 적용돼 있어야 합니다.** `V14` 가 `uk_perfumes_brand_name` 을 걷어내고
+`fragrantica_rating_count` 를 만듭니다. 안 되어 있으면 향수를 넣는 단계에서 컬럼 이름을
+알려주며 멈춥니다. 애플리케이션을 한 번 띄우면 Flyway 가 적용합니다.
+
+## 실행
+
+```bash
+cd backend/db/seed
+./load_perfume_catalog.sh
+```
+
+셸 스크립트가 두 가지를 대신합니다. 넘겨받은 CSV 둘이 gzip 이라 `\copy` 가 읽지 못해 풀어 주고,
+로컬에 psql 이 없으면 컨테이너 안에서 돌립니다(`\copy` 는 psql 이 도는 쪽의 파일을 읽습니다).
+
+접속 대상은 환경변수로 바꿉니다. 기본값은 `compose.manual-test.yaml` 의 것입니다.
+
+```bash
+DATABASE_URL="postgresql://..." ./load_perfume_catalog.sh   # 로컬에 psql 이 있을 때
+DB_NAME=... DB_USER=... PG_CONTAINER=... ./load_perfume_catalog.sh
+```
+
+몇 번을 다시 돌려도 결과가 같습니다. 전체가 한 트랜잭션이라 중간에 하나라도 어긋나면 아무것도
+반영되지 않습니다. 끝나면 아래와 같은지 확인하세요.
+
+```sql
+SELECT (SELECT count(*) FROM brands)          AS brands,          -- 7,793 이상
+       (SELECT count(*) FROM accords)         AS accords,         -- 92
+       (SELECT count(*) FROM perfumes)        AS perfumes,        -- 129,161 이상
+       (SELECT count(*) FROM perfume_accords) AS perfume_accords; -- 1,000,570
+```
+
+`perfumes` 가 129,161 보다 클 수 있습니다. 이 CSV 에 없는 향수가 이미 있으면 그대로 남습니다.
+
+## 운영에 넣기 전에
+
+- **`fragrantica_id` 가 없는 향수를 먼저 보십시오.** 손으로 넣어 둔 향수가 카탈로그에도 있으면
+  같은 이름이 두 줄로 남습니다. 적재가 만드는 중복이 아니라 짝지을 번호가 없어 생기는 일이고,
+  어느 쪽이 진짜인지는 사람이 정해야 합니다.
+
+  ```sql
+  SELECT perfume_id, name FROM perfumes WHERE fragrantica_id IS NULL;
+  ```
+
+- **100만 행을 한 트랜잭션으로 넣습니다.** 로컬에서 9초 걸렸습니다. 운영 사양에 따라 더 걸릴 수
+  있고 그동안 `perfume_accords` 에 잠금이 걸립니다. 서비스가 한가한 때를 고르십시오.
+- **표가 커집니다.** 적재 뒤 `perfume_accords` 88MB · `perfumes` 18MB · `brands` 1.8MB 입니다.
+- **건드리지 않는 값이 있습니다.** `name_ko` · `gender` · `description` · `concentration` 과
+  `is_active` 는 이 CSV 에 없어 그대로 둡니다. 운영에서 내린 향수를 적재가 되살리지 않습니다.
+- 마지막에 `ANALYZE` 를 돌립니다. 향수가 200개에서 13만 개로 늘어난 뒤 통계가 옛 크기를 들고
+  있으면 조회가 인덱스를 건너뜁니다.
 
 # 후기 시드 적재
 
