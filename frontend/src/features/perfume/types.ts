@@ -21,8 +21,8 @@ export interface PerfumeSummary {
  * **PerfumeSummary 를 상속하지 않습니다** — 검색은 `brandName`·`imageUrl`, 상세는
  * `brand` 객체·`images` 배열이라 상속으로 묶으면 타입이 거짓말을 합니다.
  *
- * ⚠️ 향조·후기 통계는 상세 응답에 없어 `?` 입니다. 필수로 선언하면 런타임에
- * undefined 라 화면이 죽습니다(S15P21E203-169). 백엔드가 내려주면 `?` 를 떼세요.
+ * 향조 · 계절 평가 · AI 요약 · 후기는 **각각 별도 엔드포인트**입니다. 상세 응답에
+ * 끼워 넣지 않고 아래 타입으로 따로 받습니다.
  */
 export interface PerfumeDetail {
   perfumeId: number
@@ -36,16 +36,12 @@ export interface PerfumeDetail {
   /** 대표 이미지는 첫 번째 원소입니다 */
   images: string[]
   prices: PerfumePrice[]
-
-  /** DTL-02 향조 정보 — 별도 엔드포인트에서 옵니다 */
-  notes?: {
-    top: string[]
-    middle: string[]
-    base: string[]
-  }
-  /** DTL-10 후기 통계 — 별도 엔드포인트에서 옵니다 */
-  reviewCount?: number
-  averageScore?: number
+  /**
+   * 이 향수에 내가 쓴 후기 번호. 안 썼거나 비로그인이면 null 입니다.
+   * 한 사람이 한 향수에 후기를 하나만 쓸 수 있어, 값이 있으면 [후기 쓰기] 대신
+   * [후기 수정] 을 띄웁니다. 모르고 또 쓰면 409 입니다.
+   */
+  myReviewId: number | null
 }
 
 export interface PerfumePrice {
@@ -131,26 +127,128 @@ export const SEASONS = [
 
 // 진열대 분류(ShelfCategory)는 진열대 도메인의 어휘라 features/shelf 에 있습니다.
 
-/** DTL-14 계절별 평가 비율. 계절을 여러 개 고를 수 있어 합이 100이 아닐 수 있습니다. */
-export interface SeasonRating {
-  season: Season
-  /** 0~100 */
+/* ── DTL-02 향조 (GET /perfumes/{id}/notes) ─────────────────── */
+
+/**
+ * 향수를 이루는 노트 한 건.
+ *
+ * `noteType` 은 컬럼에 값 제약이 없어 백엔드가 해석하지 않고 그대로 내려줍니다.
+ * 보통 TOP · MIDDLE · BASE 지만 다른 값도 올 수 있어 **묶는 일은 화면이 합니다**.
+ */
+export interface PerfumeNote {
+  noteId: number
+  name: string
+  noteType: string | null
+}
+
+/** 향수의 어코드 한 건. rank 가 작을수록 두드러집니다 */
+export interface PerfumeAccord {
+  accordId: number
+  name: string
+  rank: number | null
+  weight: number | null
+}
+
+/** 향조가 없는 향수는 두 목록이 빈 배열입니다 — 404 가 아닙니다 */
+export interface PerfumeNotesResponse {
+  notes: PerfumeNote[]
+  accords: PerfumeAccord[]
+}
+
+/* ── DTL-14 계절별 평가 (GET /perfumes/{id}/season-statistics) ─ */
+
+/**
+ * 계절 하나의 후기 통계.
+ *
+ * 후기 하나가 계절을 여러 개 고를 수 있어 **네 계절의 합이 100을 넘을 수 있습니다.**
+ * 비율을 그대로 쓰는 원형 차트나 누적 막대에는 맞지 않습니다.
+ */
+export interface SeasonStatistic {
+  seasonId: number
+  code: Season
+  /** 봄 · 여름 · 가을 · 겨울 */
+  name: string
+  count: number
+  /** 0~100, 소수점 한 자리 */
   percentage: number
 }
 
-/** DTL-23 AI 후기 요약. 호평·혹평 섞어 4문장까지, 막대 그래프는 쓰지 않습니다 */
-export interface ReviewSummary {
-  /** 최대 4문장. 비어 있으면 후기가 부족한 것으로 보고 안내 문구를 띄웁니다. */
-  sentences: string[]
+/** 계절 네 개가 항상 옵니다. 후기가 없는 향수도 0 으로 채워 내려줍니다. */
+export interface SeasonStatisticsResponse {
+  seasons: SeasonStatistic[]
 }
 
-/** DTL-03 후기 목록 항목 */
+/* ── DTL-23 AI 후기 요약 (GET /perfumes/{id}/review-summary) ─── */
+
+/**
+ * 요약이 아직 없는 향수는 **세 값이 모두 null 인 200** 입니다. 후기가 최소 개수만큼
+ * 쌓이기 전에는 배치가 요약을 만들지 않습니다.
+ */
+export interface ReviewSummary {
+  /** 문장 배열이 아니라 한 덩어리 글입니다 */
+  summary: string | null
+  /** 요약을 만들 때 쓴 후기 수. ReviewStatistics.reviewCount 와 비교하면 최신인지 압니다 */
+  sourceReviewCount: number | null
+  /** ISO 8601 */
+  updatedAt: string | null
+}
+
+/** DTL-10 후기 통계 (GET /perfumes/{id}/review-statistics). 평균 평점은 없습니다 */
+export interface ReviewStatistics {
+  reviewCount: number
+}
+
+/* ── DTL-03 후기 (GET /perfumes/{id}/reviews · /reviews/{id}) ── */
+
+/** 후기에 걸린 계절 한 건 */
+export interface ReviewSeason {
+  seasonId: number
+  code: Season
+  name: string
+}
+
+/** 향수 상세의 후기 목록 한 줄 */
 export interface Review {
   reviewId: number
-  nickname: string
+  /** 탈퇴한 회원의 후기는 글만 남고 작성자가 지워집니다 */
+  nickname: string | null
+  title: string
   content: string
-  /** ISO 8601 */
-  createdAt: string
+  /** 고르지 않았으면 빈 배열 */
+  seasons: ReviewSeason[]
   /** 내가 쓴 후기면 수정 · 삭제 버튼을 보여줍니다 (DTL-05 · DTL-06) */
   mine: boolean
+  /** ISO 8601 */
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ReviewsResponse {
+  reviews: Review[]
+  /** 0부터 시작합니다 */
+  page: number
+  size: number
+  totalElements: number
+}
+
+/**
+ * A12 후기 상세. 목록 한 줄과 달리 어느 향수의 후기인지와 좋아요 · 조회수가 함께 옵니다.
+ *
+ * `viewCount` 는 **이번 조회를 포함한** 수입니다 — 열었는데 숫자가 그대로면 안 오른
+ * 것처럼 보이기 때문입니다.
+ */
+export interface ReviewDetail {
+  reviewId: number
+  nickname: string | null
+  title: string
+  content: string
+  perfume: { perfumeId: number; name: string; brand: string | null }
+  seasons: ReviewSeason[]
+  likeCount: number
+  viewCount: number
+  /** 비로그인은 항상 false */
+  liked: boolean
+  mine: boolean
+  createdAt: string
+  updatedAt: string
 }

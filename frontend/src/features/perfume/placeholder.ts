@@ -5,8 +5,8 @@
  * 아니라, 백엔드를 안 띄우고 시안을 볼 때만 끼어듭니다(조건은 api.ts 의
  * `withDevFallback`). 지울 때는 이 파일과 그 함수를 함께 지우세요.
  *
- * 브랜드명은 `features/brand` 자리표시자와 같은 이름을 씁니다 — 어긋나면 브랜드
- * 상세에서 넘어왔을 때 빈 목록처럼 보입니다.
+ * 브랜드는 자리표시자가 없습니다 — 목록 API 가 붙어 실제 카탈로그(7,793개)를
+ * 받습니다. 그래서 여기 브랜드명은 브랜드 화면과 이어지지 않습니다.
  */
 import { ApiError } from '@/shared/api/http'
 
@@ -189,5 +189,6 @@ export function placeholderDetail(perfumeId: number): PerfumeDetail {
     brand: { brandId: 0, name: perfume.brandName ?? '' },
     images: [],
     prices: [],
+    myReviewId: null,
   }
 }

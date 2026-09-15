@@ -17,20 +17,39 @@ export { PerfumeSearchResult } from './components/PerfumeSearchResult'
 export { PerfumeSeasonRatings } from './components/PerfumeSeasonRatings'
 export { PerfumeReviewDetail } from './components/PerfumeReviewDetail'
 export { SeasonRatingChart } from './components/SeasonRatingChart'
-export { perfumeDetailQuery, perfumeKeys, perfumeListQuery } from './queries'
+export {
+  perfumeDetailQuery,
+  perfumeKeys,
+  perfumeListQuery,
+  perfumeNotesQuery,
+  perfumeReviewStatisticsQuery,
+  perfumeReviewSummaryQuery,
+  perfumeReviewsQuery,
+  perfumeSeasonStatisticsQuery,
+  reviewDetailQuery,
+  reviewKeys,
+} from './queries'
 export {
   GENDER_FILTERS,
   SEASONS,
   SHELF_FILTERS,
   type GenderFilter,
-  type PerfumeSearchResponse,
+  type PerfumeAccord,
   type PerfumeDetail,
+  type PerfumeNote,
+  type PerfumeNotesResponse,
   type PerfumeSearchParams,
+  type PerfumeSearchResponse,
   type PerfumeSummary,
   type Review,
+  type ReviewDetail,
+  type ReviewSeason,
+  type ReviewStatistics,
   type ReviewSummary,
+  type ReviewsResponse,
   type ScentFamily,
   type Season,
-  type SeasonRating,
+  type SeasonStatistic,
+  type SeasonStatisticsResponse,
   type ShelfFilter,
 } from './types'

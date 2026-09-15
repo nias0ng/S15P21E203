@@ -1,55 +1,65 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
+import type { PerfumeNote } from '../types'
+
 import { PerfumeNotes } from './PerfumeNotes'
 
+const note = (
+  noteId: number,
+  name: string,
+  noteType: string | null,
+): PerfumeNote => ({ noteId, name, noteType })
+
 /**
- * 백엔드가 향조를 안 내려주는 동안 화면이 죽지 않는지 지킵니다(S15P21E203-169).
- * 응답에 notes 가 생기면 이 테스트는 그대로 두고 값이 있는 경우만 추가하세요.
+ * `noteType` 은 컬럼에 값 제약이 없어 백엔드가 문자열 그대로 내려줍니다. 묶는 일이
+ * 화면 몫이라, 모르는 값이 와도 노트가 사라지지 않는지를 여기서 지킵니다.
  */
 describe('PerfumeNotes', () => {
-  it('향조가 없으면 죽지 않고 안내 문구를 보여준다', () => {
-    render(<PerfumeNotes notes={undefined} />)
+  it('향조가 없으면 안내 문구를 보여준다', () => {
+    render(<PerfumeNotes notes={[]} />)
 
     expect(
       screen.getByText('향조 정보가 아직 등록되지 않았습니다.'),
     ).toBeInTheDocument()
   })
 
-  it('세 구역이 모두 비어 있어도 안내 문구를 보여준다', () => {
-    render(<PerfumeNotes notes={{ top: [], middle: [], base: [] }} />)
-
-    expect(
-      screen.getByText('향조 정보가 아직 등록되지 않았습니다.'),
-    ).toBeInTheDocument()
-  })
-
-  it('향조가 있으면 구역별로 노트를 보여준다', () => {
+  it('탑 · 미들 · 베이스 순으로 묶어 보여준다', () => {
     render(
       <PerfumeNotes
-        notes={{
-          top: ['베르가못'],
-          middle: ['아이리스'],
-          base: ['샌달우드', '머스크'],
-        }}
+        notes={[
+          note(1, '샌달우드', 'BASE'),
+          note(2, '베르가못', 'TOP'),
+          note(3, '아이리스', 'MIDDLE'),
+        ]}
       />,
     )
 
+    const labels = screen
+      .getAllByText(/노트$/)
+      .map((element) => element.textContent)
+
+    expect(labels).toEqual(['탑 노트', '미들 노트', '베이스 노트'])
+  })
+
+  it('없는 구역은 줄을 만들지 않는다', () => {
+    render(<PerfumeNotes notes={[note(1, '레몬', 'TOP')]} />)
+
     expect(screen.getByText('탑 노트')).toBeInTheDocument()
-    expect(screen.getByText('베르가못')).toBeInTheDocument()
-    expect(screen.getByText('샌달우드')).toBeInTheDocument()
+    expect(screen.queryByText('미들 노트')).not.toBeInTheDocument()
+  })
+
+  it('모르는 구역이 와도 버리지 않고 제 이름으로 보여준다', () => {
+    render(<PerfumeNotes notes={[note(1, '머스크', 'DRYDOWN')]} />)
+
+    expect(screen.getByText('DRYDOWN')).toBeInTheDocument()
     expect(screen.getByText('머스크')).toBeInTheDocument()
   })
 
-  it('한 구역만 비어 있으면 그 구역만 대시로 표시한다', () => {
-    render(
-      <PerfumeNotes
-        notes={{ top: ['레몬'], middle: [], base: ['시더우드'] }}
-      />,
-    )
+  it('구역이 비어 있는 노트는 기타로 묶는다', () => {
+    render(<PerfumeNotes notes={[note(1, '앰버', null)]} />)
 
-    expect(screen.getByText('레몬')).toBeInTheDocument()
-    expect(screen.getByText('시더우드')).toBeInTheDocument()
-    expect(screen.getByText('—')).toBeInTheDocument()
+    expect(screen.getByText('기타')).toBeInTheDocument()
+    expect(screen.getByText('앰버')).toBeInTheDocument()
   })
 })
