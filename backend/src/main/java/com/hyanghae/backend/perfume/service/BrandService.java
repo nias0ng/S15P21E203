@@ -46,8 +46,7 @@ public class BrandService {
                         row.getBrandId(),
                         row.getName(),
                         row.getNameKo(),
-                        row.getLogoUrl(),
-                        row.getPerfumeCount()))
+                        row.getLogoUrl()))
                 .toList());
     }
 
