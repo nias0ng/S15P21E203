@@ -1,3 +1,5 @@
+import type { ScentFamilyKey } from '@/shared/config/scentFamilies'
+
 /**
  * 취향 테스트 도메인 타입 (요구사항 TST-03)
  *
@@ -7,22 +9,15 @@
  */
 
 /**
- * 향 계열 9개. 배열 순서가 곧 선택 화면의 타일 배치 순서입니다
- * (가벼운 향 → 무거운 향).
+ * 향 계열 9개는 취향 테스트만의 어휘가 아닙니다 — 향 지도가 지도를 이 아홉으로
+ * 나누고 향수 검색도 같은 코드를 내려주므로 `shared/config` 에 한 벌만 둡니다.
+ *
+ * 배열 순서가 곧 선택 화면의 타일 배치 순서입니다(가벼운 향 → 무거운 향).
  */
-export const SCENT_FAMILY_KEYS = [
-  'FLORAL',
-  'GREEN',
-  'CITRUS',
-  'FRUITY',
-  'AQUATIC',
-  'MUSK',
-  'GOURMAND',
-  'WOODY',
-  'AMBER',
-] as const
-
-export type ScentFamilyKey = (typeof SCENT_FAMILY_KEYS)[number]
+export {
+  SCENT_FAMILY_KEYS,
+  type ScentFamilyKey,
+} from '@/shared/config/scentFamilies'
 
 /** 화면에 쓰는 계열 이름. 기본은 형용사, 마우스를 올리면 계열명으로 바뀝니다. */
 export interface ScentFamilyLabel {

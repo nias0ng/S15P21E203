@@ -1,6 +1,4 @@
-/** 향 계열 (기능 명세 MAP-01 향 지도 조회 기준) */
-export type ScentFamily =
-  'FLORAL' | 'WOODY' | 'CITRUS' | 'ORIENTAL' | 'FRESH' | 'FOUGERE'
+import type { ScentFamilyKey } from '@/shared/config/scentFamilies'
 
 /** COM-05 검색 결과의 한 건. 목록·검색·그리드가 이 형태를 씁니다. */
 export interface PerfumeSummary {
@@ -12,7 +10,14 @@ export interface PerfumeSummary {
   brandName: string | null
   /** 대표 이미지. 등록된 이미지가 없으면 null */
   imageUrl: string | null
-  scentFamily: ScentFamily | null
+  /**
+   * 대표 계열 하나. 향수는 계열을 1~3개 갖는데 백엔드가 **비중이 가장 큰 하나**만
+   * 골라 보냅니다(`scent_regions.code`). 향 지도에 자리가 없는 향수는 null 입니다.
+   *
+   * 응답은 열린 문자열이라 여기 없는 값이 올 수 있습니다 — 배지를 그릴 때
+   * `scentFamilyName()` 을 거치면 모르는 값이 화면에 새지 않습니다.
+   */
+  scentFamily: ScentFamilyKey | null
 }
 
 /**
@@ -57,7 +62,7 @@ export interface PerfumeSearchParams {
   keyword?: string
 
   // ⚠️ 응답 필드로만 있습니다. 검색 파라미터로는 아직 안 먹어 보내도 무시됩니다
-  scentFamily?: ScentFamily
+  scentFamily?: ScentFamilyKey
 
   /**
    * A33 위 줄 필터. **이름이 shelf 였는데 ranking 으로 바뀌었습니다** —

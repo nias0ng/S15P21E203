@@ -24,7 +24,7 @@ const PERFUMES: PerfumeSummary[] = [
     nameKo: '우드 세이지 앤 씨 솔트',
     brandName: '조 말론 런던',
     imageUrl: null,
-    scentFamily: 'FRESH',
+    scentFamily: 'AQUATIC',
   },
   {
     perfumeId: 2,
@@ -80,7 +80,7 @@ const PERFUMES: PerfumeSummary[] = [
     nameKo: '어나더 13',
     brandName: '르 라보',
     imageUrl: null,
-    scentFamily: 'ORIENTAL',
+    scentFamily: 'MUSK',
   },
   {
     perfumeId: 9,
@@ -104,7 +104,7 @@ const PERFUMES: PerfumeSummary[] = [
     nameKo: '재즈 클럽',
     brandName: '메종 마르지엘라',
     imageUrl: null,
-    scentFamily: 'ORIENTAL',
+    scentFamily: 'AMBER',
   },
   {
     perfumeId: 12,
@@ -112,7 +112,7 @@ const PERFUMES: PerfumeSummary[] = [
     nameKo: '바이 더 파이어플레이스',
     brandName: '메종 마르지엘라',
     imageUrl: null,
-    scentFamily: 'ORIENTAL',
+    scentFamily: 'GOURMAND',
   },
   {
     perfumeId: 13,
@@ -128,7 +128,7 @@ const PERFUMES: PerfumeSummary[] = [
     nameKo: '블루 드 샤넬',
     brandName: '샤넬',
     imageUrl: null,
-    scentFamily: 'FOUGERE',
+    scentFamily: 'WOODY',
   },
   {
     perfumeId: 15,
