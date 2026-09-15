@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
 
-import { toPerfumeDetail, toPostDetail } from '@/shared/config/routes'
+import { toPerfumeDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { Badge } from '@/shared/ui/Badge'
@@ -9,10 +9,10 @@ import { EmptyState } from '@/shared/ui/EmptyState'
 import { Skeleton } from '@/shared/ui/Skeleton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
-import { POST_CATEGORIES, type PostSummary } from '../types'
+import { POST_CATEGORIES, type BoardItem } from '../types'
 
 type Props = {
-  posts: PostSummary[]
+  items: BoardItem[]
   isPending?: boolean
   emptyAction?: React.ReactNode
 }
@@ -20,12 +20,16 @@ type Props = {
 /**
  * 게시글 목록 (와이어프레임 A22a · A22b 공용)
  *
- * 두 게시판이 같은 컴포넌트를 씁니다. 향수 블록은 값이 있을 때만 그립니다 —
- * 후기는 향수가 반드시 붙고 자유 글은 걸어도 되고 안 걸어도 됩니다.
+ * 두 게시판이 같은 컴포넌트를 씁니다. 백엔드 응답은 서로 다르지만
+ * (`/posts` 와 `/reviews`) 카드 모양이 같아, 도메인에서 `BoardItem` 으로 맞춰
+ * 넘깁니다(types.ts 의 `postToBoardItem` · `reviewToBoardItem`).
+ *
+ * 값이 있을 때만 그리는 것 — 향수 블록(자유 글은 안 걸어도 됨), 분류 배지(후기에는
+ * 없음), 댓글 수(후기에는 댓글 자체가 없음).
  *
  * 제목이 맨 위인 이유: 게시판에서 훑는 것은 제목입니다.
  */
-export function PostList({ posts, isPending = false, emptyAction }: Props) {
+export function PostList({ items, isPending = false, emptyAction }: Props) {
   if (isPending) {
     return (
       <div className="space-y-3.75">
@@ -36,7 +40,7 @@ export function PostList({ posts, isPending = false, emptyAction }: Props) {
     )
   }
 
-  if (posts.length === 0) {
+  if (items.length === 0) {
     return (
       <EmptyState
         title="이 게시판에 글이 없습니다"
@@ -48,8 +52,8 @@ export function PostList({ posts, isPending = false, emptyAction }: Props) {
 
   return (
     <ul className="space-y-3.75">
-      {posts.map((post) => (
-        <li key={post.postId}>
+      {items.map((item) => (
+        <li key={item.id}>
           {/*
             카드 전체가 아니라 제목만 링크입니다. 카드를 통째로 링크로 감싸면 안에
             있는 향수 블록 링크가 링크 안의 링크가 되어 낭독기와 브라우저가 둘 다
@@ -59,28 +63,31 @@ export function PostList({ posts, isPending = false, emptyAction }: Props) {
           <Card interactive className="group space-y-2.5">
             <div className="space-y-2.5">
               <Link
-                to={toPostDetail(post.postId)}
+                to={item.to}
                 className={cn(
                   'text-ink text-heading block font-serif font-bold',
                   'underline-offset-4 group-hover:underline',
                   'focus-visible:ring-accent-deep rounded-card outline-none focus-visible:ring-2',
                 )}
               >
-                {post.title}
+                {item.title}
               </Link>
 
               <div className="text-caption flex flex-wrap items-center gap-2.5">
                 <Thumbnail className="size-5 shrink-0 rounded-full" />
-                <span className="text-ink">{post.nickname}</span>
+                {/* 탈퇴한 회원의 글은 글만 남고 작성자가 지워집니다 */}
+                <span className="text-ink">
+                  {item.nickname ?? '탈퇴한 회원'}
+                </span>
                 <span className="text-ink-muted">
-                  · {formatRelativeTime(post.createdAt)}
+                  · {formatRelativeTime(item.createdAt)}
                 </span>
                 {/* 자유 글에만 분류가 있습니다 */}
-                {post.category && (
+                {item.category && (
                   <Badge tone="neutral">
                     {
                       POST_CATEGORIES.find(
-                        (item) => item.value === post.category,
+                        (entry) => entry.value === item.category,
                       )?.label
                     }
                   </Badge>
@@ -89,9 +96,9 @@ export function PostList({ posts, isPending = false, emptyAction }: Props) {
             </div>
 
             {/* 향수 블록 — 후기는 항상, 자유 글은 걸었을 때만 */}
-            {post.perfume && (
+            {item.perfume && (
               <Link
-                to={toPerfumeDetail(post.perfume.perfumeId)}
+                to={toPerfumeDetail(item.perfume.perfumeId)}
                 className={cn(
                   'border-line-soft bg-surface-sunken hover:border-accent rounded-card',
                   // w-fit 으로 내용만큼만 차지합니다. 칸 전체를 채우면 향수 이름
@@ -102,22 +109,27 @@ export function PostList({ posts, isPending = false, emptyAction }: Props) {
                 )}
               >
                 <span className="text-ink text-body font-medium">
-                  {post.perfume.name}
+                  {item.perfume.name}
                 </span>
-                <span className="text-ink-muted text-caption">
-                  {post.perfume.brand}
-                </span>
+                {/* 브랜드가 없는 향수가 있습니다 */}
+                {item.perfume.brand && (
+                  <span className="text-ink-muted text-caption">
+                    {item.perfume.brand}
+                  </span>
+                )}
               </Link>
             )}
 
             {/* 점수나 별점은 없습니다. 좋아요만 있습니다. */}
             <div className="text-ink-muted text-caption flex items-center gap-3.75">
-              <span className={post.liked ? 'text-danger' : undefined}>
-                <span aria-hidden>{post.liked ? '♥' : '♡'}</span> 좋아요{' '}
-                {post.likeCount}
+              <span className={item.liked ? 'text-danger' : undefined}>
+                <span aria-hidden>{item.liked ? '♥' : '♡'}</span> 좋아요{' '}
+                {item.likeCount}
               </span>
-              <span>댓글 {post.commentCount}</span>
-              <span>조회 {post.viewCount}</span>
+              {item.commentCount !== null && (
+                <span>댓글 {item.commentCount}</span>
+              )}
+              <span>조회 {item.viewCount}</span>
             </div>
           </Card>
         </li>

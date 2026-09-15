@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
+import { Pagination } from '@/shared/ui/Pagination'
 import { Textarea } from '@/shared/ui/Textarea'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
@@ -10,6 +11,13 @@ import type { Comment } from '../types'
 
 type Props = {
   comments: Comment[]
+  /** 이 글의 전체 댓글 수. 보고 있는 쪽의 개수가 아닙니다 */
+  totalElements: number
+  /** 0부터 시작합니다 */
+  page: number
+  size: number
+  onPageChange: (page: number) => void
+  isPending?: boolean
   onCreate: (content: string) => void
   onUpdate: (commentId: number, content: string) => void
   onDelete: (commentId: number) => void
@@ -23,6 +31,11 @@ type Props = {
  */
 export function CommentSection({
   comments,
+  totalElements,
+  page,
+  size,
+  onPageChange,
+  isPending = false,
   onCreate,
   onUpdate,
   onDelete,
@@ -39,7 +52,7 @@ export function CommentSection({
   return (
     <section className="space-y-3.75">
       <h2 className="text-ink text-title font-serif font-bold">
-        댓글 {comments.length}
+        댓글 {totalElements}
       </h2>
 
       <form
@@ -73,12 +86,19 @@ export function CommentSection({
         길지 않고, 테두리를 두르면 본문보다 댓글 쪽이 더 무거워 보입니다.
         py-3.75 는 위아래 여백이고 가로 여백은 없습니다 — 본문과 왼쪽 선을 맞춥니다.
       */}
+      {isPending && (
+        <p className="text-ink-muted text-caption">댓글을 불러오는 중입니다.</p>
+      )}
+
       <ul className="divide-line-soft border-line-soft divide-y border-t">
         {comments.map((comment) => (
           <li key={comment.commentId} className="space-y-2.5 py-3.75">
             <div className="text-caption flex items-center gap-2.5">
               <Thumbnail className="size-6.25 shrink-0 rounded-full" />
-              <span className="text-ink">{comment.nickname}</span>
+              {/* 탈퇴한 회원의 댓글은 글만 남고 작성자가 지워집니다 */}
+              <span className="text-ink">
+                {comment.nickname ?? '탈퇴한 회원'}
+              </span>
               <span className="text-ink-muted">
                 · {formatRelativeTime(comment.createdAt)}
               </span>
@@ -149,9 +169,13 @@ export function CommentSection({
         ))}
       </ul>
 
-      <p className="text-ink-muted text-caption">
-        본인 댓글에만 수정 · 삭제가 보입니다.
-      </p>
+      <Pagination
+        label="댓글 페이지"
+        page={page}
+        size={size}
+        totalElements={totalElements}
+        onPageChange={onPageChange}
+      />
 
       <ConfirmDialog
         open={deleteTarget !== null}
