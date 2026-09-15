@@ -23,14 +23,20 @@ ALTER TABLE user_taste_tests
 -- taste_result 는 VARCHAR(30) 이라 향수를 가리킬 수 없고, 무엇을 담을 칸인지도 정해진 적이
 -- 없습니다. 0행이므로 지웁니다.
 --
--- 참조 대상이 perfumes 가 아니라 perfume_map_points 입니다. 결과는 지도에 점이 있는 향수여야
--- 합니다. 향수 129,163개 중 점이 있는 것은 200개뿐이라, perfumes 를 가리키면 지도에 없는
--- 향수가 배의 첫 위치가 되는 값을 표가 막지 못합니다. perfume_map_points 의 기본키가
--- perfume_id 라서 그대로 걸 수 있습니다.
+-- 참조 대상은 perfumes 입니다. perfume_map_points 가 아닙니다.
 --
--- 비워 둘 수 있습니다. 지도를 다시 만들면서 어떤 향수가 빠지면 ON DELETE SET NULL 로 이 칸만
--- 비고 응시 기록은 남습니다. 기록이 사라지면 그 회원이 테스트를 다시 치러야 하는데, 한 번만
--- 친다는 약속과 어긋납니다. 고른 계열은 3번 표에 남아 있으므로 첫 위치는 다시 구할 수 있습니다.
+-- "결과는 지도에 있는 향수" 를 표로 막고 싶어 한때 perfume_map_points 를 가리켰는데, 그렇게
+-- 두면 지도를 다시 적재할 때마다 모든 회원의 결과 향수가 비워집니다. load_scent_map.sql 이
+-- 좌표를 지우고 다시 넣기 때문입니다. 같은 향수 200개가 그대로 돌아와도 ON DELETE SET NULL 이
+-- 먼저 걸립니다. 바뀐 것이 없는데 전원의 배 출발점이 사라집니다.
+--
+-- 지도에 있다는 것은 쓰는 순간의 조건이지 계속 참인 성질이 아닙니다. 지도는 다시 만들어지고
+-- 향수는 들고 납니다. 계속 참이어야 하는 것에 거는 제약으로는 맞지 않아, 그 확인은 저장할 때
+-- TasteTestService 가 합니다 — 좌표가 없거나 내려간 향수면 400 입니다.
+--
+-- 비워 둘 수 있습니다. 향수가 정말로 지워지면 ON DELETE SET NULL 로 이 칸만 비고 응시 기록은
+-- 남습니다. 기록이 사라지면 그 회원이 테스트를 다시 치러야 하는데, 한 번만 친다는 약속과
+-- 어긋납니다. 고른 계열은 3번 표에 남아 있으므로 첫 위치는 다시 구할 수 있습니다.
 ALTER TABLE user_taste_tests
     DROP COLUMN taste_result;
 
@@ -39,7 +45,7 @@ ALTER TABLE user_taste_tests
 
 ALTER TABLE user_taste_tests
     ADD CONSTRAINT fk_user_taste_tests_matched_perfume
-        FOREIGN KEY (matched_perfume_id) REFERENCES perfume_map_points (perfume_id)
+        FOREIGN KEY (matched_perfume_id) REFERENCES perfumes (perfume_id)
         ON DELETE SET NULL;
 
 

@@ -141,14 +141,42 @@ class TasteTestIntegrationTest {
     }
 
     /**
-     * 출발점은 항해 일지에 남지 않습니다.
+     * 출발점이 항해 일지의 첫 줄로 남습니다.
      *
-     * <p>일지는 사용자가 움직인 자취입니다. 배를 놓아 준 자리를 "여기로 이동했다" 로 적으면
-     * 가지도 않은 곳을 다녀온 것으로 보입니다.
+     * <p>남기지 않으면 지도를 처음 연 회원의 일지가 비어 있는데 배는 어딘가에 떠 있습니다. 어떻게
+     * 거기 갔는지 일지가 말해 주지 않는 상태가 됩니다.
+     *
+     * <p>기록 한 줄이고 그 향수를 가리킵니다. 배를 놓은 자리와 일지에 적힌 자리가 같아야 하므로
+     * 좌표까지 봅니다.
      */
     @Test
-    void doesNotWriteVoyageLog() throws Exception {
+    void writesTheStartingPointToTheVoyageLog() throws Exception {
         complete("[\"FLORAL\"]", ON_MAP).andExpect(status().isCreated());
+
+        Integer logs = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM map_exploration_logs WHERE user_id = ?",
+                Integer.class, USER_ID);
+        assertThat(logs).isOne();
+
+        Long loggedPerfume = jdbcTemplate.queryForObject(
+                "SELECT perfume_id FROM map_exploration_logs WHERE user_id = ?",
+                Long.class, USER_ID);
+        assertThat(loggedPerfume).isEqualTo(ON_MAP);
+
+        Double loggedX = jdbcTemplate.queryForObject(
+                "SELECT x_coordinate FROM map_exploration_logs WHERE user_id = ?",
+                Double.class, USER_ID);
+        assertThat(loggedX).isEqualTo(ON_MAP_X);
+    }
+
+    /**
+     * 결과 향수를 거절하면 일지도 남지 않습니다.
+     *
+     * <p>일지는 남고 응시는 없는 상태가 되면, 가 본 적 없는 구역이 항해의 시작으로 적힙니다.
+     */
+    @Test
+    void writesNoVoyageLogWhenThePerfumeIsRejected() throws Exception {
+        complete("[\"FLORAL\"]", OFF_MAP).andExpect(status().isBadRequest());
 
         Integer logs = jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM map_exploration_logs WHERE user_id = ?",
@@ -293,16 +321,47 @@ class TasteTestIntegrationTest {
     }
 
     /**
-     * 지도에서 결과 향수가 빠져도 응시 기록은 남습니다.
+     * <b>지도를 다시 적재해도 결과 향수가 그대로입니다.</b>
      *
-     * <p>지도를 다시 만들면 향수가 바뀝니다. 그때 기록까지 지워지면 그 회원은 한 번만 치른다는
-     * 약속과 달리 다시 쳐야 합니다. 고른 계열은 남아 있어 자리를 다시 구할 수 있습니다.
+     * <p>{@code load_scent_map.sql} 은 좌표를 맞춰 고치지 않고 지운 뒤 다시 넣습니다. 같은 향수
+     * 200개가 그대로 돌아오는 평범한 재적재인데, 결과 향수를
+     * {@code perfume_map_points} 에 매달아 두면 그 사이에 전원의 배 출발점이 비워집니다. 바뀐
+     * 것이 없는데 사라지는 것이라 알아차리기도 어렵습니다.
+     *
+     * <p>그래서 결과 향수는 {@code perfumes} 를 가리킵니다. 지도에 있다는 것은 저장하는 순간의
+     * 조건이고, 그 확인은 서비스가 합니다.
      */
     @Test
-    void keepsTestWhenPerfumeLeavesTheMap() throws Exception {
+    void keepsMatchedPerfumeWhenTheMapIsReloaded() throws Exception {
+        complete("[\"FLORAL\", \"WOODY\"]", ON_MAP).andExpect(status().isCreated());
+
+        // 적재 스크립트 6번이 하는 그대로입니다.
+        jdbcTemplate.update("DELETE FROM perfume_map_points");
+        insertMapPoint(ON_MAP, ON_MAP_X, ON_MAP_Y);
+        insertMapPoint(ON_MAP_2, 0.5, 0.5);
+
+        mockMvc.perform(get(URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.completed").value(true))
+                .andExpect(jsonPath("$.matchedPerfumeId").value((int) ON_MAP))
+                .andExpect(jsonPath("$.x").value(ON_MAP_X));
+    }
+
+    /**
+     * 향수가 정말로 지워지면 결과 향수만 비고 응시 기록은 남습니다.
+     *
+     * <p>기록까지 지워지면 그 회원은 한 번만 치른다는 약속과 달리 다시 쳐야 합니다. 고른 계열은
+     * 남아 있어 자리를 다시 구할 수 있습니다.
+     *
+     * <p>앞의 재적재와 나눠 둔 이유가 있습니다. 좌표가 사라지는 것과 향수가 사라지는 것은 다른
+     * 일인데, 결과 향수를 좌표에 매달면 둘이 같은 일이 됩니다.
+     */
+    @Test
+    void keepsTestWhenPerfumeItselfIsDeleted() throws Exception {
         complete("[\"FLORAL\", \"WOODY\"]", ON_MAP).andExpect(status().isCreated());
 
         jdbcTemplate.update("DELETE FROM perfume_map_points WHERE perfume_id = ?", ON_MAP);
+        jdbcTemplate.update("DELETE FROM perfumes WHERE perfume_id = ?", ON_MAP);
 
         mockMvc.perform(get(URL))
                 .andExpect(status().isOk())

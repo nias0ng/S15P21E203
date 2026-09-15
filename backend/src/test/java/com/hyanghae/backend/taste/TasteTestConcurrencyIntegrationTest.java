@@ -115,6 +115,13 @@ class TasteTestConcurrencyIntegrationTest {
                 "SELECT count(*) FROM user_taste_test_selections", Integer.class);
         assertThat(selections).isOne();
 
+        // 진 요청들이 적은 일지도 함께 되돌아가야 합니다. 남아 있으면 가 본 적 없는 구역이
+        // 항해의 시작으로 여러 줄 적힙니다.
+        Integer logs = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM map_exploration_logs WHERE user_id = ?",
+                Integer.class, USER_ID);
+        assertThat(logs).isOne();
+
         Long winner = jdbcTemplate.queryForObject(
                 "SELECT matched_perfume_id FROM user_taste_tests WHERE user_id = ?",
                 Long.class, USER_ID);
