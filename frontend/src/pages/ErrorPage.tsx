@@ -12,7 +12,7 @@ export function ErrorPage() {
       : '알 수 없는 오류가 발생했습니다.'
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-4 text-center">
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-3.75 px-3.75 text-center">
       <h1 className="text-xl font-semibold">문제가 발생했어요</h1>
       <p className="text-ink-muted text-sm">{message}</p>
       <Link to={ROUTES.HOME} className="text-ink text-sm underline">

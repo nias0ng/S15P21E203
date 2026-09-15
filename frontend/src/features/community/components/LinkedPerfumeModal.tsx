@@ -18,19 +18,14 @@ type Props = {
 }
 
 /**
- * 향수 선택 모달 (와이어프레임 C02 — A24b 의 관련 향수 선택)
+ * 글에 연결할 향수 선택 모달 (와이어프레임 C02 — A24b 의 관련 향수 선택)
  *
- * 와이어프레임 C02 는 선택 모달 3종이지만 실제로 필요한 건 이것뿐입니다.
- * - 내 향 이미지 선택: 향 이미지 기능(X01 · X02)을 만들지 않기로 해서 제외
- * - 분류 변경: 진열대(A13)의 모달이라 진열대 도메인에 있습니다
+ * 이름이 커뮤니티의 `LinkedPerfume` 을 따라가는 이유: 향수 도메인을 가리키면 향수
+ * 검색 모달과 헷갈립니다. 여러 개 고를 수 있습니다.
  *
- * 와이어프레임 주석에 "A24b는 여러 개 · X01는 한 개만" 이라고 적혀 있고
- * X01 이 빠졌으므로 여러 개 선택으로 만들었습니다.
- *
- * 향수 데이터는 향수 도메인에 있는데 features 끼리는 import 할 수 없으므로
- * 후보 목록은 화면에서 넘겨받습니다.
+ * 후보 목록은 화면에서 넘겨받습니다 — features 끼리는 import 할 수 없습니다.
  */
-export function PerfumePickModal({
+export function LinkedPerfumeModal({
   open,
   onClose,
   candidates,
@@ -66,7 +61,7 @@ export function PerfumePickModal({
         </>
       }
     >
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <SearchField
           label="향수명 또는 브랜드명으로 검색"
           placeholder="향수명 · 브랜드 검색"
@@ -79,10 +74,10 @@ export function PerfumePickModal({
             description="검색어를 입력해 향수를 찾아보세요."
           />
         ) : (
-          <ul className="max-h-72 space-y-1 overflow-y-auto">
+          <ul className="max-h-72.5 space-y-1.25 overflow-y-auto">
             {candidates.map((candidate) => (
               <li key={candidate.perfumeId}>
-                <label className="hover:bg-line-soft flex cursor-pointer items-center gap-3 p-2">
+                <label className="hover:bg-line-soft flex cursor-pointer items-center gap-2.5 p-2.5">
                   <Checkbox
                     checked={picked.some(
                       (item) => item.perfumeId === candidate.perfumeId,
