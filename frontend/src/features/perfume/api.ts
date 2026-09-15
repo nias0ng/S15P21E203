@@ -1,5 +1,6 @@
 import { http, isApiError } from '@/shared/api/http'
 import { env } from '@/shared/config/env'
+import { toScentFamilyKey } from '@/shared/config/scentFamilies'
 
 import { placeholderDetail, placeholderSearch } from './placeholder'
 import type {
@@ -48,6 +49,10 @@ async function withDevFallback<T>(
 /**
  * COM-05 향수 검색. 조건은 모두 선택이고 함께 오면 AND 입니다.
  *
+ * **`scentFamily` 는 받는 자리에서 한 번 거릅니다.** 응답의 계열은 열린 문자열이라
+ * (`scent_regions` 에 행을 더하면 모르는 값이 옵니다) 타입만 좁혀 두면 거짓말이
+ * 됩니다. 모르는 값은 null 로 바꿔 계열 배지만 안 그리고 향수는 그대로 보여 줍니다.
+ *
  * ⚠️ gender · ranking 에 정의되지 않은 값을 보내면 400 입니다.
  */
 export async function searchPerfumes(params: PerfumeSearchParams) {
@@ -56,7 +61,13 @@ export async function searchPerfumes(params: PerfumeSearchParams) {
       const { data } = await http.get<PerfumeSearchResponse>('/perfumes', {
         params,
       })
-      return data
+      return {
+        ...data,
+        perfumes: data.perfumes.map((perfume) => ({
+          ...perfume,
+          scentFamily: toScentFamilyKey(perfume.scentFamily),
+        })),
+      }
     },
     () => placeholderSearch(params),
   )

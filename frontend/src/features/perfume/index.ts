@@ -47,7 +47,6 @@ export {
   type ReviewStatistics,
   type ReviewSummary,
   type ReviewsResponse,
-  type ScentFamily,
   type Season,
   type SeasonStatistic,
   type SeasonStatisticsResponse,
