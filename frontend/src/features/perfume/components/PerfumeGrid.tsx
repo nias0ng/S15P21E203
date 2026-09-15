@@ -66,7 +66,7 @@ export function PerfumeGrid({
           <PerfumeCard
             name={perfume.name}
             brand={perfume.brandName}
-            // ⚠️ 백엔드가 아직 안 내려주는 필드입니다. 없으면 자리표시자가 나옵니다.
+            // 이미지가 없는 향수가 있습니다. 그때는 Thumbnail 이 빈 상자를 그립니다.
             thumbnailUrl={perfume.imageUrl}
             to={toPerfumeDetail(perfume.perfumeId)}
           />
