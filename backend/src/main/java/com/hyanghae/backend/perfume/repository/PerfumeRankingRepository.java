@@ -92,6 +92,23 @@ public class PerfumeRankingRepository {
             GROUP BY perfume_id
             """;
 
+    /**
+     * 국내 선정 순위로 줄 세웁니다. 사용자 기록이 아니라 편집이 고른 목록입니다.
+     *
+     * <p><b>순위를 음수로 뒤집습니다.</b> 1위가 가장 앞에 와야 하는데 바깥 쿼리가
+     * {@code ORDER BY s.c DESC} 로 굳어 있습니다. 여기서 부호만 바꾸면 그 정렬을 그대로 쓰면서
+     * 1위가 맨 앞에 옵니다 — {@code 201 - rank} 처럼 상한을 적어 넣으면 순위가 200개를 넘는 날
+     * 조용히 뒤집힙니다.
+     *
+     * <p>하한이 없습니다. 순위가 있다는 것 자체가 이미 골랐다는 뜻이라 몇 위까지인지를 따로 정할
+     * 이유가 없습니다.
+     */
+    private static final String SELECTION_RANK = """
+            SELECT perfume_id, -korea_selection_rank AS c
+            FROM perfumes
+            WHERE korea_selection_rank IS NOT NULL
+            """;
+
     /** 동점은 향수 번호순입니다. 순서를 확정하지 않으면 페이지마다 다른 답이 나옵니다. */
     private static final String SELECT_PAGE = """
             SELECT p.perfume_id, p.name, p.name_ko, b.name AS brand_name, b.name_ko AS brand_name_ko
@@ -153,13 +170,18 @@ public class PerfumeRankingRepository {
                 .param("brand", brand)
                 .param("brandId", brandId)
                 .param("gender", gender);
-        if (ranking != RankingType.VIEWED) {
+        // VIEWED 와 POPULAR 는 진열대를 보지 않아 이 파라미터가 쿼리에 없습니다.
+        if (ranking == RankingType.OWNED || ranking == RankingType.WISH) {
             spec = spec.param("ownershipStatus", ranking.ownershipStatus());
         }
         return spec;
     }
 
     private String countSource(RankingType ranking) {
-        return ranking == RankingType.VIEWED ? VIEW_COUNT : SAVE_COUNT;
+        return switch (ranking) {
+            case VIEWED -> VIEW_COUNT;
+            case POPULAR -> SELECTION_RANK;
+            case OWNED, WISH -> SAVE_COUNT;
+        };
     }
 }

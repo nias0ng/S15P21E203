@@ -51,12 +51,20 @@ class ReviewServiceTest {
             currentUser
     );
 
+    /** 코드를 번호로 바꾸는 자리가 쓰는 값만 답하는 가짜 계절입니다. */
+    private static Season season(Long id, String code) {
+        Season season = mock(Season.class);
+        when(season.getId()).thenReturn(id);
+        when(season.getCode()).thenReturn(code);
+        return season;
+    }
+
     @Test
-    void rejectsDuplicateSeasonIdsBeforeRepositoryLookup() {
+    void rejectsDuplicateSeasonCodesBeforeRepositoryLookup() {
         ReviewCreateRequest request = new ReviewCreateRequest(
                 "제목",
                 "열 글자가 넘는 후기 내용입니다.",
-                List.of(1L, 1L)
+                List.of("SPRING", "SPRING")
         );
 
         assertThatThrownBy(() -> reviewService.create(1L, request))
@@ -72,10 +80,11 @@ class ReviewServiceTest {
         ReviewCreateRequest request = new ReviewCreateRequest(
                 "제목",
                 "열 글자가 넘는 후기 내용입니다.",
-                List.of(1L, 2L)
+                List.of("SPRING", "SUMMER")
         );
-        when(seasonRepository.findAllByIdInAndActiveTrue(request.seasonIds()))
-                .thenReturn(List.of(mock(Season.class)));
+        Season spring = season(1L, "SPRING");
+        when(seasonRepository.findAllByCodeInAndActiveTrue(request.seasonCodes()))
+                .thenReturn(List.of(spring));
 
         assertThatThrownBy(() -> reviewService.create(1L, request))
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
@@ -90,10 +99,11 @@ class ReviewServiceTest {
         ReviewCreateRequest request = new ReviewCreateRequest(
                 "제목",
                 "열 글자가 넘는 후기 내용입니다.",
-                List.of(1L)
+                List.of("SPRING")
         );
-        when(seasonRepository.findAllByIdInAndActiveTrue(request.seasonIds()))
-                .thenReturn(List.of(mock(Season.class)));
+        Season spring = season(1L, "SPRING");
+        when(seasonRepository.findAllByCodeInAndActiveTrue(request.seasonCodes()))
+                .thenReturn(List.of(spring));
         when(perfumeRepository.findByIdAndActiveTrue(1L))
                 .thenReturn(Optional.of(mock(Perfume.class)));
         when(perfumeReviewRepository.existsByUserIdAndPerfumeId(1L, 1L))
@@ -137,14 +147,16 @@ class ReviewServiceTest {
         when(review.getId()).thenReturn(10L);
         when(perfumeReviewRepository.findByIdAndUserIdForUpdate(10L, 1L))
                 .thenReturn(Optional.of(review));
-        when(seasonRepository.findAllByIdInAndActiveTrue(List.of(2L, 3L)))
-                .thenReturn(List.of(mock(Season.class), mock(Season.class)));
+        Season autumn = season(3L, "AUTUMN");
+        Season winter = season(4L, "WINTER");
+        when(seasonRepository.findAllByCodeInAndActiveTrue(List.of("AUTUMN", "WINTER")))
+                .thenReturn(List.of(autumn, winter));
 
-        var response = reviewService.replaceSeasons(10L, List.of(2L, 3L));
+        var response = reviewService.replaceSeasons(10L, List.of("AUTUMN", "WINTER"));
 
         verify(perfumeReviewSeasonRepository).deleteAllByReviewId(10L);
         verify(perfumeReviewSeasonRepository).saveAll(any());
-        assertThat(response.seasonIds()).containsExactly(2L, 3L);
+        assertThat(response.seasonCodes()).containsExactly("AUTUMN", "WINTER");
     }
 
     @Test
