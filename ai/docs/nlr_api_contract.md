@@ -180,10 +180,44 @@ Content-Type: application/json
 
 `/nlr/understand` 는 `topK` 만 없고 나머지는 같다.
 
-> **`conditions` 는 아직 AI 서버가 스스로 못 채운다.**
-> LLM 구조화 호출은 다음 스토리다. 그때까지 이 칸이 비면 사전 문자열 매칭만 쓰고,
-> 합성 평가셋 600건 기준 결과가 나오는 비율이 **77.7% → 35.7%** 로 떨어진다.
-> 붙고 나면 Spring 은 `text` 만 보내면 된다. **요청 형식은 그때도 안 바뀐다.**
+> **`conditions` 를 비워도 된다. AI 서버가 스스로 채운다.**
+> 비면 AI 서버가 ①단계 LLM 구조화를 직접 부른다. **Spring 은 `text` 만 보내면 된다.**
+> 넘기면 그대로 쓰고 LLM 을 부르지 않는다 — Spring 이 스스로 구조화하기로 바뀌어도
+> 요청 형식은 안 바뀐다.
+>
+> 사전 v1.8 기준 합성 600문장에서 조건을 뽑는 비율이 **75.5% → 86.7%** 로 오른다.
+> LLM 이 죽어도 사전 매칭으로 내려가므로 **서비스를 내리지 않는다.**
+
+### ⚠ `conditions` 라는 이름이 두 군데서 다른 뜻이다
+
+**요청**의 `conditions` 와 **`/nlr/understand` 응답**의 `conditions` 는 **다른 것이다.**
+
+| | 무엇 | 안에 든 것 |
+|---|---|---|
+| 요청의 `conditions` | ①단계 LLM 이 뽑은 **말** | `scent_preference` · `additional_requirements` · … |
+| 응답의 `conditions` | ②단계 사전이 바꾼 **accord** | `core` · `matchedExpressions` · … |
+
+**응답의 `conditions` 를 요청의 `conditions` 에 넣지 마십시오.** 에러가 나지 않고
+**조용히 조건 0개(`NO_CONDITION`)가 된다** — 엔진이 모르는 key 라 읽지 않는다.
+원문에 사전 표현이 그대로 있으면 우연히 성공하기도 해서 재현이 어렵다.
+
+**다시 넘길 값은 `/nlr/understand` 응답의 `structured` 다.**
+
+```
+POST /nlr/understand  { "text": "..." }
+   -> { "conditions": {...},     화면에 "이렇게 이해했습니다" 로 쓸 값
+        "structured": {...} }    다음 호출에 넘길 값
+
+POST /nlr/recommend   { "text": "...", "conditions": <위의 structured 그대로> }
+```
+
+이러면 **LLM 을 한 번만 부른다.** 실측 — `structured` 를 넘기면 10ms, `text` 만
+보내면 1.40초(LLM 재호출). 그리고 **두 응답의 해석이 같다는 것이 보장된다.**
+
+> **같은 문장을 두 번 부르면 다른 답이 나올 수 있다.** 한 문장을 6번 불렀더니
+> 4번은 `lavender`·`powdery` 를, 2번은 **조건 0개**를 냈다. 15문장으로 재현했을 때
+> 조건 집합이 같은 것이 9건, 상위 5개가 하나도 안 겹친 것이 5건이었다.
+> 그래서 **두 엔드포인트를 한 요청에 각각 부르면 화면의 해석과 결과가 어긋날 수 있다.**
 
 ### 응답 (200)
 
@@ -238,6 +272,31 @@ Content-Type: application/json
 > 그래서 `evidence` 를 무엇으로 채울지가 아직 미정이다 — 아래 「아직 없는 것」 참고.
 > **백엔드는 이 칸이 온다고 가정하고 코딩하지 마십시오.**
 
+### `/nlr/understand` 응답 (200)
+
+향수를 찾지 않는다. 향 조건까지만 낸다.
+
+```json
+{
+  "query": "빨래 냄새 나는 향수 찾고 있어",
+  "conditions": { "core": ["fresh", "soapy"], "avoid": [],
+                  "matchedExpressions": ["빨래"], "source": "llm+lexicon" },
+  "structured": { "scent_preference": [], "context": {"season": [], "daypart": [], "gender": []},
+                  "performance": {"intensity": "", "longevity": ""}, "avoid": [],
+                  "additional_requirements": ["빨래 냄새 나는 향수"] },
+  "evidence": [ { "accord": "soapy", "from": "빨래", "tier": "TEAM",
+                  "entryId": "kr.scene.laundry", "rationale": "...", "llmReasoning": null } ],
+  "unmatched": []
+}
+```
+
+| 필드 | 설명 |
+|---|---|
+| `conditions` | ②단계 결과. **화면에 보여줄 해석.** 요청에 되돌려 넣는 값이 아니다 |
+| `structured` | ①단계 결과. **`/nlr/recommend` 의 `conditions` 에 그대로 넣는 값.** LLM 이 꺼져 있거나 실패하면 `null` |
+| `evidence` | 어느 표현이 어느 accord 로 갔는지와 그 근거. `source` 가 `lexicon_only` 면 사전만 쓴 것 |
+| `unmatched` | 사전이 받지 못한 표현. AI 가 로그에 남긴다 |
+
 ### 백엔드가 하는 변환
 
 ```
@@ -278,8 +337,8 @@ reasons  [ { phrase:"빨래", evidence: ??? } ]
 |---|---|
 | **프론트엔드** | `features/recommend/api.ts` 의 목 함수를 실제 호출로 바꾼다. `status` 4종 분기를 만든다. 타입에서 `x`·`y` 를 뺀다 |
 | **백엔드** | `POST /api/v1/recommendations/natural-language` 를 만든다. AI 서버 클라이언트를 붙인다. 위 「백엔드가 하는 변환」 3단계를 구현한다. 호출량 제한을 건다 |
-| **AI** | ~~`POST /nlr/understand` · `/nlr/recommend` 를 만든다~~ (S15P21E203-202 에서 완료). LLM 구조화를 붙인다. 향 특성 92개에 한국어 이름을 단다 |
-| **인프라** | AI 서버를 배포에 태운다. 백엔드가 쓸 AI 서버 주소를 환경변수로 넣는다 |
+| **AI** | ~~`POST /nlr/understand` · `/nlr/recommend` 를 만든다~~ (S15P21E203-202 에서 완료). ~~LLM 구조화를 붙인다~~ (완료. `llm_stage1.py`). 미매칭 추정(⑤단계)을 붙인다. 향 특성 92개에 한국어 이름을 단다 |
+| **인프라** | AI 서버를 배포에 태운다. 백엔드가 쓸 AI 서버 주소를 환경변수로 넣는다. **AI 서버에도 `GMS_API_KEY` 를 넣는다** — 없으면 서버는 뜨지만 조건을 뽑는 비율이 86.7% → 75.5% 로 떨어진다 |
 
 ---
 
