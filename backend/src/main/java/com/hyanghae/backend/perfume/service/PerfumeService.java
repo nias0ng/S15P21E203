@@ -128,7 +128,8 @@ public class PerfumeService {
         String brand = trimToNull(condition.brand());
         String gender = condition.gender() == null ? null : condition.gender().name();
 
-        Page<PerfumeSummaryResponse> found = findPage(condition.ranking(), keyword, brand, gender, pageable);
+        Page<PerfumeSummaryResponse> found =
+                findPage(condition.ranking(), keyword, brand, condition.brandId(), gender, pageable);
         if (found.isEmpty()) {
             return PerfumeSearchResponse.from(found);
         }
@@ -429,14 +430,16 @@ public class PerfumeService {
      * 지금은 한 페이지에 필요한 만큼만 오갑니다.
      */
     private Page<PerfumeSummaryResponse> findPage(
-            RankingType ranking, String keyword, String brand, String gender, Pageable pageable) {
+            RankingType ranking, String keyword, String brand, Long brandId, String gender,
+            Pageable pageable) {
         if (ranking == null) {
-            return perfumeRepository.search(keyword, brand, gender, pageable);
+            return perfumeRepository.search(keyword, brand, brandId, gender, pageable);
         }
 
         List<PerfumeSummaryResponse> page = perfumeRankingRepository.findPage(
-                ranking, keyword, brand, gender, (int) pageable.getOffset(), pageable.getPageSize());
-        long total = perfumeRankingRepository.count(ranking, keyword, brand, gender);
+                ranking, keyword, brand, brandId, gender,
+                (int) pageable.getOffset(), pageable.getPageSize());
+        long total = perfumeRankingRepository.count(ranking, keyword, brand, brandId, gender);
 
         return new PageImpl<>(page, pageable, total);
     }

@@ -29,4 +29,18 @@ public class Season {
     protected Season() {
         // JPA 가 요구하는 기본 생성자입니다.
     }
+
+    /**
+     * 후기가 계절 코드를 번호로 바꿀 때 씁니다.
+     *
+     * <p>게터가 둘뿐인 이유는 지금까지 이 엔티티를 개수만 세는 데 썼기 때문입니다. 필요해진 것만
+     * 엽니다.
+     */
+    public Long getId() {
+        return id;
+    }
+
+    public String getCode() {
+        return code;
+    }
 }

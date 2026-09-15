@@ -3,6 +3,7 @@ package com.hyanghae.backend.review.service;
 import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.perfume.entity.Perfume;
+import com.hyanghae.backend.perfume.entity.Season;
 import com.hyanghae.backend.perfume.exception.PerfumeErrorCode;
 import com.hyanghae.backend.perfume.repository.PerfumeRepository;
 import com.hyanghae.backend.perfume.repository.SeasonRepository;
@@ -75,7 +76,7 @@ public class ReviewService {
             ReviewCreateRequest request
     ) {
         Long userId = currentUserId();
-        validateSeasonIds(request.seasonIds());
+        List<Long> seasonIds = toSeasonIds(request.seasonCodes());
         Perfume perfume = perfumeRepository.findByIdAndActiveTrue(perfumeId)
                 .orElseThrow(() -> new BusinessException(PerfumeErrorCode.PERFUME_NOT_FOUND));
 
@@ -97,12 +98,12 @@ public class ReviewService {
             throw new BusinessException(ReviewErrorCode.REVIEW_ALREADY_EXISTS);
         }
 
-        saveSeasons(review.getId(), request.seasonIds());
+        saveSeasons(review.getId(), seasonIds);
         return new ReviewCreateResponse(
                 review.getId(),
                 review.getTitle(),
                 review.getContent(),
-                request.seasonIds(),
+                request.seasonCodes(),
                 review.getCreatedAt()
         );
     }
@@ -130,13 +131,13 @@ public class ReviewService {
     @Transactional
     public ReviewSeasonsResponse replaceSeasons(
             Long reviewId,
-            List<Long> seasonIds
+            List<String> seasonCodes
     ) {
-        validateSeasonIds(seasonIds);
+        List<Long> seasonIds = toSeasonIds(seasonCodes);
         PerfumeReview review = findMineForUpdate(reviewId);
         perfumeReviewSeasonRepository.deleteAllByReviewId(review.getId());
         saveSeasons(review.getId(), seasonIds);
-        return new ReviewSeasonsResponse(reviewId, seasonIds);
+        return new ReviewSeasonsResponse(reviewId, seasonCodes);
     }
 
     @Transactional(readOnly = true)
@@ -194,13 +195,30 @@ public class ReviewService {
                 ));
     }
 
-    private void validateSeasonIds(List<Long> seasonIds) {
-        if (new HashSet<>(seasonIds).size() != seasonIds.size()) {
+    /**
+     * 계절 코드를 번호로 바꿉니다. 저장은 번호로 합니다.
+     *
+     * <p>화면과 주고받는 말은 코드이고 표를 잇는 것은 번호입니다. 그 사이를 여기 한 곳에서만
+     * 넘습니다 — 작성과 교체가 같은 규칙을 쓰게 하려는 것입니다.
+     *
+     * <p>같은 계절을 두 번 고르면 400 입니다. 표의 기본키도 막지만 여기서 걸러야 무엇이
+     * 잘못됐는지 알려줄 수 있습니다. 없는 코드는 404 입니다.
+     *
+     * <p><b>고른 순서를 지킵니다.</b> 화면이 보낸 차례가 응답에도 그대로 나가야 사용자가 누른
+     * 순서와 어긋나 보이지 않습니다.
+     */
+    private List<Long> toSeasonIds(List<String> seasonCodes) {
+        if (new HashSet<>(seasonCodes).size() != seasonCodes.size()) {
             throw new BusinessException(ReviewErrorCode.REVIEW_INVALID_SEASONS);
         }
-        if (seasonRepository.findAllByIdInAndActiveTrue(seasonIds).size() != seasonIds.size()) {
+
+        Map<String, Long> idByCode = seasonRepository.findAllByCodeInAndActiveTrue(seasonCodes)
+                .stream()
+                .collect(Collectors.toMap(Season::getCode, Season::getId));
+        if (idByCode.size() != seasonCodes.size()) {
             throw new BusinessException(ReviewErrorCode.REVIEW_SEASON_NOT_FOUND);
         }
+        return seasonCodes.stream().map(idByCode::get).toList();
     }
 
     private void saveSeasons(Long reviewId, List<Long> seasonIds) {
