@@ -43,7 +43,7 @@ psql의 현재 디렉터리에서 찾기 때문입니다.
 
 적재 전에 아래 두 가지가 끝나 있어야 합니다. **둘 다 저장소 루트에서** 하는 일입니다.
 
-1. PostgreSQL 실행 — `docker compose -f compose.manual-test.yaml up -d`
+1. PostgreSQL 실행 — `docker compose -f compose.manual-test.yaml up -d postgres`
    ([compose 파일은 저장소 루트에 있습니다](../../../compose.manual-test.yaml))
 2. 애플리케이션을 한 번 실행해 Flyway가 현재 스키마인 `V16`까지 적용
 

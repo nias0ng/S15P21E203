@@ -1,6 +1,19 @@
 name: hyanghae-manual-test
 
 services:
+  ai:
+    build:
+      context: ./ai
+    image: hyanghae-ai:local
+    environment:
+      GMS_API_KEY: ${GMS_API_KEY:-}
+      GMS_MODEL: ${NLR_GMS_MODEL:-gpt-5.4-nano}
+      NLR_LOG_PATH: /app/logs/unmatched.jsonl
+    expose:
+      - "8000"
+    volumes:
+      - nlr-logs:/app/logs
+
   postgres:
     image: postgres:17
     environment:
@@ -43,3 +56,4 @@ services:
 volumes:
   manual-test-postgres-data:
   manual-test-redis-data:
+  nlr-logs:

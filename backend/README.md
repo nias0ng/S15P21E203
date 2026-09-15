@@ -1,7 +1,7 @@
 # Backend 개발 시작 가이드
 
 이 문서는 백엔드 개발 환경을 처음 구성하는 팀원을 위한 안내서입니다.  
-PostgreSQL과 Redis는 개인 PC에 직접 설치하지 않고 Docker로 실행합니다.
+PostgreSQL, Redis와 자연어 추천 AI 서버는 개인 PC에 직접 설치하지 않고 Docker로 실행합니다.
 
 ## 기술 환경
 
@@ -12,6 +12,7 @@ PostgreSQL과 Redis는 개인 PC에 직접 설치하지 않고 Docker로 실행�
 | Gradle | Wrapper 사용 |
 | PostgreSQL | 17 |
 | Redis | 7.4 |
+| AI 서버 | Python 3.11 / FastAPI |
 
 ## 1. 필수 프로그램
 
@@ -27,6 +28,7 @@ PostgreSQL과 Redis는 개인 PC에 직접 설치하지 않고 Docker로 실행�
 - Gradle: 프로젝트에 포함된 Gradle Wrapper를 사용합니다.
 - PostgreSQL: Docker 컨테이너를 사용합니다.
 - Redis: Docker 컨테이너를 사용합니다.
+- Python: 자연어 추천 AI 서버의 Docker 이미지에 포함되어 있으므로 별도로 설치하지 않습니다.
 - Postman: 기본적인 API 확인은 Swagger UI를 사용합니다.
 
 선택적으로 DBeaver, pgAdmin 또는 Redis Insight를 사용할 수 있습니다.
@@ -67,16 +69,21 @@ git pull --ff-only origin develop
 
 ## 4. 백엔드 실행
 
-### PostgreSQL 및 Redis 실행
+### PostgreSQL, Redis 및 AI 서버 실행
 
 Docker Desktop을 실행한 뒤 저장소 루트에서 다음 명령을 실행합니다.
 
 ```bash
-docker compose -f compose.manual-test.yaml up -d
+docker compose -f compose.manual-test.yaml up -d --build
 docker compose -f compose.manual-test.yaml ps
 ```
 
-`postgres`와 `redis`의 상태가 `healthy`인지 확인합니다.
+`postgres`, `redis`, `ai`의 상태가 모두 `healthy`인지 확인합니다.
+
+AI 서버는 호스트에 포트를 공개하지 않고 Compose 내부 네트워크의 `http://ai:8000`에서만
+동작합니다. 현재처럼 백엔드를 IntelliJ에서 직접 실행하면 AI 서버를 호출할 수 없으며, 이 구성에서는
+AI 컨테이너가 정상적으로 기동되는지만 확인합니다. AI 서버의 환경변수와 API는
+[AI 서버 README](../ai/README.md)를 참고합니다.
 
 ### 애플리케이션 실행
 
@@ -173,7 +180,7 @@ docker exec -w /tmp/seed hyanghae-manual-test-postgres-1 \
 docker compose -f compose.manual-test.yaml down
 ```
 
-컨테이너를 종료해도 PostgreSQL과 Redis 데이터 볼륨은 유지됩니다.
+컨테이너를 종료해도 PostgreSQL·Redis 데이터와 AI 서버의 NLR 로그 볼륨은 유지됩니다.
 
 ## 5. 자동화 테스트
 
@@ -263,7 +270,7 @@ Gradle 프로젝트를 다시 불러옵니다. 문제가 계속되면 IntelliJ�
 
 ### 수동 테스트 데이터를 모두 초기화해야 하는 경우
 
-다음 명령은 수동 테스트용 PostgreSQL과 Redis 데이터를 모두 삭제합니다.
+다음 명령은 수동 테스트용 PostgreSQL·Redis 데이터와 AI 서버의 NLR 로그를 모두 삭제합니다.
 
 ```bash
 docker compose -f compose.manual-test.yaml down -v

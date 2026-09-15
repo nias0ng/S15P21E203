@@ -37,8 +37,8 @@
 Windows는 `.\gradlew.bat`, macOS/Linux는 `./gradlew`를 사용합니다. 아래 명령은 macOS/Linux 기준입니다.
 
 ```bash
-# 로컬 인프라: 저장소 루트에서 실행
-docker compose -f compose.manual-test.yaml up -d
+# 로컬 인프라(PostgreSQL, Redis, 자연어 추천 AI 서버): 저장소 루트에서 실행
+docker compose -f compose.manual-test.yaml up -d --build
 docker compose -f compose.manual-test.yaml ps
 docker compose -f compose.manual-test.yaml down
 
@@ -54,6 +54,9 @@ docker compose -f compose.manual-test.yaml down
 - Health: `http://localhost:8080/actuator/health`
 - Swagger UI: `http://localhost:8080/swagger-ui/index.html`
 - OpenAPI JSON: `http://localhost:8080/v3/api-docs`
+
+AI 서버는 호스트 포트를 공개하지 않으며 Compose 내부의 `http://ai:8000`에서 동작합니다.
+상세한 환경변수와 API는 [AI 서버 README](../../ai/README.md)를 참고합니다.
 
 ## 3. 코드 구조와 계층별 책임
 
