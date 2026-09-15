@@ -9,7 +9,12 @@
 -- 실행해야 합니다.
 --
 -- 스키마는 V14 까지 적용돼 있어야 합니다. V14 가 uk_perfumes_brand_name 을 걷어내고
--- fragrantica_rating_count 를 만듭니다. 그 전에 돌리면 이름이 겹치는 1,360행에서 멈춥니다.
+-- fragrantica_rating_count 를 만듭니다. 그 전에 돌리면 5번에서 다음처럼 멈춥니다.
+--
+--     ERROR: column "fragrantica_rating_count" of relation "perfumes" does not exist
+--
+-- 컬럼이 먼저 걸려서 유니크 제약까지 가지도 못합니다. 제약만 남아 있었다면 이름이 겹치는
+-- 1,360행에서 멈췄을 것입니다.
 --
 -- 몇 번을 다시 돌려도 결과가 같습니다. 향수는 fragrantica_id 로 맞춰 없으면 넣고 있으면
 -- 갱신하며, 향 특성은 이번에 적재하는 향수의 것만 지우고 다시 넣습니다. 전체가 한 트랜잭션이라
