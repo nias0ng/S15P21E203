@@ -38,11 +38,11 @@ describe('Button', () => {
   })
 
   it('className 으로 기본 스타일을 덮어쓸 수 있다', () => {
-    render(<Button className="px-8">저장</Button>)
+    render(<Button className="px-7.5">저장</Button>)
 
-    // cn() 이 twMerge 를 거치므로 기본값 px-4 는 사라지고 px-8 만 남습니다
+    // cn() 이 twMerge 를 거치므로 기본값 px-3.75 는 사라지고 px-7.5 만 남습니다
     const button = screen.getByRole('button', { name: '저장' })
-    expect(button.className).toContain('px-8')
-    expect(button.className).not.toContain('px-4')
+    expect(button.className).toContain('px-7.5')
+    expect(button.className).not.toContain('px-3.75')
   })
 })
