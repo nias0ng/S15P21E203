@@ -109,7 +109,7 @@ Content-Type: application/json
 | `status` | 뜻 | 화면에서 |
 |---|---|---|
 | `OK` | 조건을 **전부** 만족하는 향수를 찾음 | 그대로 보여준다 |
-| `OK_RELAXED` | 조건을 넓혀서 찾음 | **"조건을 넓혀 찾았습니다"** 를 함께 보여준다 |
+| `OK_RELAXED` | 조건을 넓혔거나(`RELAXED_OR`) **향 조건이 하나뿐이라 순위를 못 정함**(`SINGLE_BROAD`) | **"조건이 넓습니다"** 를 함께 보여주고 더 자세한 입력을 유도한다. 이유는 `diagnostics.relaxed` 에 있다 |
 | `NO_CONDITION` | 향 조건을 하나도 못 뽑음. `perfumes` 는 `[]` | 다시 입력하도록 유도한다 |
 | `NO_RESULT` | 조건은 찾았으나 결과가 없음. `perfumes` 는 `[]` | 현재 발생하지 않는다 |
 
@@ -231,6 +231,7 @@ Content-Type: application/json
 | `matched[].tier` | `VERIFIED`/`TEAM`/`LLM`. **내부 기록이라 사용자에게 노출하지 않는다** |
 | `matched[].rationale` | 사람이 쓴 근거 문장. **`tier` 가 `LLM` 이면 `null` 이다** (원칙 ②) |
 | `unmatched` | 사전이 받지 못한 표현. 백엔드는 안 써도 된다. AI 가 로그에 남긴다 |
+| `diagnostics.stage` | `AND` / **`SINGLE_BROAD`** / `RELAXED_OR` / `RELAXED_OR_NO_THRESHOLD` / `NO_CONDITION` |
 | `diagnostics` | 문제를 볼 때 쓴다. 응답에 그대로 넘기지 않는다 |
 
 > **`accordKo`(향 특성 한국어 이름)는 아직 없다.** 이 계약서 초안에는 있었는데 구현되지 않았다.

@@ -39,12 +39,12 @@ TOP_K = 5                 # [제안] 요구사항 NLR-01 의 "3~5개"
 MIN_RESULTS = 3           # [측정] 이 아래로 내려가면 완화 사다리를 탄다
 PEOPLE_MIN = 10           # [측정] 평가자 문턱. 커버리지 손실 0.3%p
 BRAND_CAP = 1             # [제안] 브랜드당 최대 개수
-MIN_CORE_FOR_AND = 2      # [측정] DECISIONS.md N2 — 단독 매핑 금지
+MIN_CORE_FOR_AND = 2      # AND 를 쓸 최소 조건 수. 하나뿐이면 SINGLE_BROAD 로 간다
 
 # 기본 데이터 경로. 인자로 덮어쓸 수 있다.
 _DATA_DIR = Path(__file__).resolve().parent / "data"
 DEFAULT_PERFUMES = _DATA_DIR / "perfumes_nlr.csv.gz"
-DEFAULT_LEXICON = _DATA_DIR / "domain_lexicon_v1_2.csv"
+DEFAULT_LEXICON = _DATA_DIR / "domain_lexicon_v1_8.csv"
 DEFAULT_ACCORDS = _DATA_DIR / "accord_dictionary.csv"
 
 # [측정] 한글 accord 표기 10종. 11_rule_lexicon.csv 가 인정한 외래어 음차다.
@@ -65,7 +65,7 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
     """향수 데이터와 사전을 읽어 조회용 인덱스를 만든다.
 
     perfumes_csv : str | Path | None   기본 data/perfumes_nlr.csv.gz
-    lexicon_csv  : str | Path | None   기본 data/domain_lexicon_v1_2.csv
+    lexicon_csv  : str | Path | None   기본 data/domain_lexicon_v1_8.csv
     accord_csv   : str | Path | None   기본 data/accord_dictionary.csv (accord 92개 마스터)
     verify       : bool                accord 보유 수를 마스터와 대조해 틀리면 RuntimeError
 
@@ -335,6 +335,22 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
             base &= ~index["has"][:, col]
 
     score = index["strength"][:, cols].sum(axis=1)
+
+    # 조건이 accord 하나뿐인 경우. AND 와 OR 이 같은 집합이라 넓힐 것이 없다.
+    # 예전에는 이 경우가 그대로 RELAXED_OR 로 떨어져 "조건을 넓혀 찾았습니다" 가 떴는데
+    # 넓힌 적이 없으므로 거짓이었다. 실측상 600문장 중 91건이 그렇게 표시됐다.
+    #
+    # 그렇다고 AND 로 적으면 안 된다. 넓은 accord 하나로는 향 조건이 순위를 정하지 못하고
+    # 인기도가 정한다(citrus 단독은 5위 동점이 17,736개). 사용자에게 알려야 할 상태다.
+    # 그래서 단계를 따로 두어 status 는 OK_RELAXED 로 유지하되 이유를 정직하게 적는다.
+    # DECISIONS.md N2 — 직역 대응(나무=woody)의 단독 매핑을 허용하며 이 표시를 조건으로 단다.
+    if len(cols) == 1:
+        mask = base & index["has"][:, cols[0]]
+        picked = _rank(index, mask, score, top_k, brand_cap)
+        if len(picked["rows"]) >= min_results:
+            picked["stage"] = "SINGLE_BROAD"
+            picked["relaxed"] = ["향 조건이 accord 하나뿐이라 순위를 정하지 못한다"]
+            return picked
 
     if len(cols) >= MIN_CORE_FOR_AND:
         mask = base.copy()
