@@ -7,10 +7,17 @@
  * api.ts 가 자리표시자 데이터를 돌려주고 있으니 API 가 붙으면 그 함수만 바꾸세요.
  */
 export { BrandGrid } from './components/BrandGrid'
-export { brandKeys, brandListQuery } from './queries'
+export {
+  brandDetailQuery,
+  brandKeys,
+  brandListQuery,
+  brandPerfumesQuery,
+} from './queries'
 export {
   BRAND_SORTS,
   type Brand,
+  type BrandDetail,
+  type BrandPerfume,
   type BrandSearchParams,
   type BrandSort,
 } from './types'

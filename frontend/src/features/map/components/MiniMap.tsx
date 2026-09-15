@@ -29,13 +29,13 @@ export function MiniMap({
   )
 
   return (
-    <div className={cn('border-line bg-surface-card border p-2', className)}>
-      <p className="text-ink-muted mb-1.5 text-[10.5px]">미니맵</p>
+    <div className={cn('border-line bg-surface-card border p-2.5', className)}>
+      <p className="text-ink-muted mb-1.25 text-[10.5px]">미니맵</p>
       <svg
         viewBox="0 0 100 100"
         role="img"
         aria-label="지도 전체에서 지금 보고 있는 범위"
-        className="border-line bg-surface-sunken h-32 w-full border"
+        className="border-line bg-surface-sunken h-32.5 w-full border"
       >
         {points.map((point) => {
           const label = numbers.get(point.perfumeId)

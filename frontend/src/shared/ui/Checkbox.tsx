@@ -7,7 +7,7 @@ import { cn } from '@/shared/lib/cn'
  * div 로 흉내내면 키보드 포커스와 스페이스바 토글을 잃습니다.
  *
  * 라벨은 호출하는 쪽에서 <label> 로 감싸주세요.
- *   <label className="flex items-center gap-2">
+ *   <label className="flex items-center gap-2.5">
  *     <Checkbox checked={x} onChange={...} />
  *     <span className="text-body">전체 동의</span>
  *   </label>
@@ -20,7 +20,7 @@ export function Checkbox({
     <input
       type="checkbox"
       className={cn(
-        'border-line bg-surface-card size-3.5 shrink-0 appearance-none border',
+        'border-line bg-surface-card size-3.75 shrink-0 appearance-none border',
         'checked:bg-ink',
         'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
         'disabled:opacity-50',

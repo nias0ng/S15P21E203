@@ -12,16 +12,8 @@ import { PageFallback } from '@/shared/ui/PageFallback'
 /**
  * 자연어 추천 결과 (와이어프레임 A06 — NLR-01 · NLR-06 · NLR-07)
  *
- * 와이어프레임 주석:
- * - 배경은 향 지도 — 결과 카드와 미니 맵이 그 위에 얹힌다 · 지도는 흐리게 깔고
- *   조작은 미니 맵에서
- * - 결과는 3~5개 가변 — 카드가 늘면 좌측 열이 스크롤된다 · 1번 카드만 펼친 상태
- * - 카드를 누르면 그 향수가 미니 맵에서 강조된다
- *
- * A04(지도로 크게 보기)는 이 화면으로 통합됐습니다.
- * 입력한 말은 URL 쿼리(?q=)에 둡니다. 링크를 공유하면 같은 결과가 나옵니다.
- *
- * 지도와 추천은 서로 다른 도메인이라 이 화면에서 조합합니다.
+ * 배경에 향 지도를 흐리게 깔고 결과 카드와 미니 맵을 그 위에 얹습니다.
+ * 입력한 말은 URL 쿼리(`?q=`)에 둡니다 — 링크를 공유하면 같은 결과가 나옵니다.
  */
 export default function RecommendPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -48,13 +40,13 @@ export default function RecommendPage() {
         <ScentMap points={points.data ?? []} zoom={1} dimmed />
       </div>
 
-      <div className="space-y-4 py-4">
+      <div className="space-y-3.75 py-3.75">
         {/* 입력한 말 */}
-        <div className="border-line bg-surface-card/95 space-y-2 border p-3 backdrop-blur">
+        <div className="border-line bg-surface-card/95 space-y-2.5 border p-2.5 backdrop-blur">
           <p className="text-ink-muted text-[10.5px]">입력한 말</p>
           {editing ? (
             <form
-              className="flex items-start gap-2"
+              className="flex items-start gap-2.5"
               onSubmit={(event) => {
                 event.preventDefault()
                 const trimmed = draft.trim()
@@ -75,7 +67,7 @@ export default function RecommendPage() {
               <Button type="submit">찾기</Button>
             </form>
           ) : (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               <p className="text-ink flex-1 text-sm">&ldquo;{query}&rdquo;</p>
               <Button
                 variant="outline"
@@ -110,14 +102,14 @@ export default function RecommendPage() {
           />
         ) : (
           query && (
-            <div className="grid gap-4 lg:grid-cols-[1fr_18rem]">
+            <div className="grid gap-3.75 lg:grid-cols-[1fr_290px]">
               <RecommendResultList
                 perfumes={perfumes}
                 selectedId={highlightedId}
                 onSelect={setHighlightedId}
               />
 
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {/* 조작은 미니 맵에서 합니다 */}
                 <MiniMap
                   points={perfumes.map((perfume) => ({

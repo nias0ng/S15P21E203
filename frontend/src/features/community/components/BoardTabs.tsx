@@ -21,7 +21,7 @@ export function BoardTabs() {
           to={tab.to}
           className={({ isActive }) =>
             cn(
-              'text-body px-4 py-3',
+              'text-body px-3.75 py-2.5',
               'transition-colors duration-120 ease-out',
               isActive
                 ? 'border-ink text-ink -mb-px border-b-2 font-bold'

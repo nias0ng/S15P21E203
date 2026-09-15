@@ -35,7 +35,7 @@ export function Button({
       {isLoading && (
         <span
           aria-hidden
-          className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+          className="size-3.75 animate-spin rounded-full border-2 border-current border-t-transparent"
         />
       )}
       {children}

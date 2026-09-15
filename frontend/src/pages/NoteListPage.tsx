@@ -19,7 +19,7 @@ export default function NoteListPage() {
   const { data, isPending } = useQuery(noteListQuery(keyword))
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6.25">
       <h1 className="sr-only">노트</h1>
 
       <SearchField

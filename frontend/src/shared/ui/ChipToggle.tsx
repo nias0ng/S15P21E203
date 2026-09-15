@@ -6,6 +6,11 @@ type ChipToggleProps<T extends string> = {
   /** 무엇을 고르는 것인지 (화면에 보이지 않습니다) */
   label: string
   options: readonly Option<T>[]
+  /**
+   * 눌린 칩의 색. `warm` 은 SegmentedFilter 와 같은 화면에 놓일 때 씁니다 —
+   * 한 화면에서 "고른 것" 이 두 가지 색으로 보이지 않게 맞추는 것입니다.
+   */
+  tone?: 'ink' | 'warm'
   className?: string
 } & (
   | {
@@ -30,7 +35,7 @@ type ChipToggleProps<T extends string> = {
  * - 계절(DTL-16 · DTL-24)은 여러 개 — "기존에 선택한 계절을 추가하거나 해제"
  */
 export function ChipToggle<T extends string>(props: ChipToggleProps<T>) {
-  const { label, options, className } = props
+  const { label, options, tone = 'ink', className } = props
 
   const isSelected = (value: T) =>
     props.multiple ? props.value.includes(value) : props.value === value
@@ -51,7 +56,7 @@ export function ChipToggle<T extends string>(props: ChipToggleProps<T>) {
     <div
       role="group"
       aria-label={label}
-      className={cn('flex flex-wrap gap-2', className)}
+      className={cn('flex flex-wrap gap-2.5', className)}
     >
       {options.map((option) => {
         const selected = isSelected(option.value)
@@ -63,11 +68,13 @@ export function ChipToggle<T extends string>(props: ChipToggleProps<T>) {
             aria-pressed={selected}
             onClick={() => toggle(option.value)}
             className={cn(
-              'border-line text-caption rounded-card border px-3 py-2',
+              'border-line text-caption rounded-card border px-2.5 py-2.5',
               'transition-colors duration-120 ease-out',
               'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
               selected
-                ? 'bg-ink text-surface'
+                ? tone === 'warm'
+                  ? 'bg-accent-warm text-surface-card border-transparent'
+                  : 'bg-ink text-surface'
                 : 'text-ink hover:bg-line-soft bg-surface-card',
             )}
           >

@@ -29,7 +29,7 @@ export function PerfumeFilters({
   onGenderChange,
 }: PerfumeFiltersProps) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3.75">
       <SegmentedFilter
         label="많은 사람이 담은 기준 필터"
         options={SHELF_FILTERS}

@@ -9,9 +9,9 @@ import { LinkButton } from '@/shared/ui/LinkButton'
  */
 export function PerfumeReviewList() {
   return (
-    <section className="space-y-3 p-6">
+    <section className="space-y-2.5 p-6.25">
       <LinkButton to={ROUTES.REVIEW_WRITE}>후기 쓰기</LinkButton>
-      <p className="text-ink-muted text-caption">
+      <p className="text-ink-muted text-[10.5px]">
         [후기 쓰기]는 모달이 아니라 후기 게시글 작성 화면으로 이동합니다. 이
         향수가 대상으로 걸린 채 열립니다.
       </p>

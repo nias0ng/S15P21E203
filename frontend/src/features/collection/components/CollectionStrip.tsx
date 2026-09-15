@@ -21,7 +21,7 @@ type Props = {
  * - 컬렉션 카드를 누르면 A17
  */
 export function CollectionStrip({ items, isPending = false, onCreate }: Props) {
-  const gridClass = 'grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4'
+  const gridClass = 'grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-4'
 
   if (isPending) {
     return (
@@ -40,14 +40,14 @@ export function CollectionStrip({ items, isPending = false, onCreate }: Props) {
           key={collection.collectionId}
           to={toCollectionDetail(collection.collectionId)}
           media={
-            <span className="flex gap-2">
+            <span className="flex gap-2.5">
               {collection.previewThumbnails
                 .slice(0, 3)
                 .map((thumbnail, index) => (
                   <Thumbnail
                     key={index}
                     src={thumbnail}
-                    className="h-14 flex-1"
+                    className="h-13.75 flex-1"
                   />
                 ))}
             </span>
@@ -60,7 +60,7 @@ export function CollectionStrip({ items, isPending = false, onCreate }: Props) {
       <button
         type="button"
         onClick={onCreate}
-        className="border-line text-ink-muted hover:bg-line-soft hover:text-ink rounded-card flex min-h-40 flex-col items-center justify-center gap-1 border border-dashed transition-colors duration-120 ease-out"
+        className="border-line text-ink-muted hover:bg-line-soft hover:text-ink rounded-card flex min-h-40 flex-col items-center justify-center gap-1.25 border border-dashed transition-colors duration-120 ease-out"
       >
         <span aria-hidden className="text-title">
           +

@@ -39,7 +39,7 @@ export function PerfumeSearchResult({ keyword, onResetKeyword }: Props) {
 
   if (isPending) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {Array.from({ length: 6 }, (_, index) => (
           <Skeleton key={index} className="h-20" />
         ))}
@@ -78,8 +78,8 @@ export function PerfumeSearchResult({ keyword, onResetKeyword }: Props) {
   }
 
   return (
-    <div className="space-y-3">
-      <p className="text-ink-muted text-caption">
+    <div className="space-y-2.5">
+      <p className="text-ink-muted text-xs">
         검색 결과{' '}
         <span className="text-ink font-bold">{data.totalElements}</span>
       </p>
@@ -89,19 +89,19 @@ export function PerfumeSearchResult({ keyword, onResetKeyword }: Props) {
           <li key={perfume.perfumeId}>
             <Link
               to={toPerfumeDetail(perfume.perfumeId)}
-              className="hover:bg-line-soft flex items-center gap-3 p-3 transition-colors duration-120 ease-out"
+              className="hover:bg-line-soft flex items-center gap-2.5 p-2.5 transition-colors"
             >
               <Thumbnail
                 src={perfume.imageUrl}
                 fallback="이미지"
-                className="size-14 shrink-0"
+                className="size-13.75 shrink-0"
               />
 
               <span className="min-w-0 flex-1">
-                <span className="text-ink text-heading block truncate font-serif font-semibold">
+                <span className="text-ink block truncate text-xs font-bold">
                   {perfume.name}
                 </span>
-                <span className="text-ink-muted text-caption block truncate">
+                <span className="text-ink-muted block truncate text-[10.5px]">
                   {perfume.brandName}
                 </span>
               </span>

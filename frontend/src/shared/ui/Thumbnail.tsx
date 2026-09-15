@@ -13,7 +13,7 @@ type ThumbnailProps = {
   /** 잘리면 안 되는 이미지(브랜드 로고)는 'contain'. 기본은 꽉 채우는 'cover'. */
   fit?: 'cover' | 'contain'
   /**
-   * 크기·배치. 사용처마다 달라서(size-14 · h-24 w-full · flex-1 …) 여기서 받습니다.
+   * 크기·배치. 사용처마다 달라서(size-13.75 · h-23.75 w-full · flex-1 …) 여기서 받습니다.
    * 크기를 prop enum 으로 두지 않은 이유는 실제로 13가지가 쓰이고 있어서입니다.
    */
   className?: string
@@ -30,12 +30,12 @@ type ThumbnailProps = {
  * 이걸 만들기 전에는 `border-line bg-surface-sunken border` 상자와 그 fallback 분기가
  * 16개 파일에 흩어져 있었습니다. 백엔드가 이미지를 붙이는 시점에 16곳을 고쳐야 했습니다.
  *
- * 아바타(`size-6 rounded-full`)도 같은 상자라서 이걸 씁니다. 나중에 아바타에 이니셜이나
+ * 아바타(`size-6.25 rounded-full`)도 같은 상자라서 이걸 씁니다. 나중에 아바타에 이니셜이나
  * 기본 아이콘이 필요해지면 그때 Avatar 를 따로 만듭니다(미리 만들지 않습니다).
  *
- *   <Thumbnail src={perfume.thumbnailUrl} fallback="이미지" className="size-14 shrink-0" />
- *   <Thumbnail src={brand.logoUrl} fallback="로고" fit="contain" className="h-24 w-full" />
- *   <Thumbnail className="size-6 shrink-0 rounded-full" />
+ *   <Thumbnail src={perfume.thumbnailUrl} fallback="이미지" className="size-13.75 shrink-0" />
+ *   <Thumbnail src={brand.logoUrl} fallback="로고" fit="contain" className="h-23.75 w-full" />
+ *   <Thumbnail className="size-6.25 shrink-0 rounded-full" />
  */
 export function Thumbnail({
   src,
