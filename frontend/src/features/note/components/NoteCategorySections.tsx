@@ -28,13 +28,13 @@ export function NoteCategorySections({
 }: Props) {
   if (isPending) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6.25">
         {Array.from({ length: 2 }, (_, section) => (
-          <div key={section} className="space-y-3">
-            <Skeleton className="h-5 w-24" />
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          <div key={section} className="space-y-2.5">
+            <Skeleton className="h-5 w-23.75" />
+            <div className="grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-5">
               {Array.from({ length: 5 }, (_, index) => (
-                <Skeleton key={index} className="h-32" />
+                <Skeleton key={index} className="h-32.5" />
               ))}
             </div>
           </div>
@@ -54,17 +54,17 @@ export function NoteCategorySections({
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-7.5">
       {NOTE_CATEGORIES.map((category) => {
         const items = notes.filter((note) => note.category === category)
         if (items.length === 0) return null
 
         return (
-          <section key={category} className="space-y-3">
+          <section key={category} className="space-y-2.5">
             <h2 className="text-ink text-title font-serif font-semibold">
               {category}
             </h2>
-            <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            <ul className="grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-5">
               {items.map((note) => (
                 <li key={note.noteId}>
                   <TileCard

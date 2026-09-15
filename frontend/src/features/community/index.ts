@@ -7,10 +7,11 @@
  *
  * ⚠️ 백엔드 커뮤니티 API 가 아직 없습니다. api.ts 가 자리표시자를 돌려줍니다.
  */
-export { BoardTabs } from './components/BoardTabs'
+export { BoardHeader } from './components/BoardHeader'
+export { ImageAttachField, WriteForm } from './components/WriteForm'
 export { CommentSection } from './components/CommentSection'
 export { ModerationRejectedModal } from './components/ModerationRejectedModal'
-export { PerfumePickModal } from './components/PerfumePickModal'
+export { LinkedPerfumeModal } from './components/LinkedPerfumeModal'
 export { PostList } from './components/PostList'
 export { TrendingPerfumes } from './components/TrendingPerfumes'
 export {

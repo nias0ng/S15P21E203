@@ -6,7 +6,7 @@
  *
  * ⚠️ 백엔드 컬렉션 API 가 아직 없습니다. api.ts 가 자리표시자를 돌려줍니다.
  */
-export { AddPerfumeModal } from './components/AddPerfumeModal'
+export { AddToCollectionModal } from './components/AddToCollectionModal'
 export { CollectionFormModal } from './components/CollectionFormModal'
 export { CollectionStrip } from './components/CollectionStrip'
 export {

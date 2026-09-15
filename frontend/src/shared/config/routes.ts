@@ -16,6 +16,7 @@ export const ROUTES = {
 
   // 브랜드 (에픽 111) · 노트 (에픽 112)
   BRANDS: '/brands', // A34 브랜드 페이지
+  BRAND_DETAIL: '/brands/:brandId', // 브랜드 상세 (와이어프레임에 없는 신규 화면)
   NOTES: '/notes', // A35 노트 목록
   NOTE_DETAIL: '/notes/:noteId', // A36 노트 상세
 
@@ -50,6 +51,7 @@ export const toPerfumeDetail = (perfumeId: number | string) =>
   `/perfumes/${perfumeId}`
 export const toReviewDetail = (reviewId: number | string) =>
   `/reviews/${reviewId}`
+export const toBrandDetail = (brandId: number | string) => `/brands/${brandId}`
 export const toNoteDetail = (noteId: number | string) => `/notes/${noteId}`
 export const toCollectionDetail = (collectionId: number | string) =>
   `/collections/${collectionId}`

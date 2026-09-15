@@ -1,14 +1,5 @@
-/**
- * "3시간 전" 처럼 상대 시간 문자열을 만듭니다.
- * 와이어프레임 A12 · A22a · A22b · A23 이 모두 이 표기를 씁니다.
- *
- * 브라우저 기본 Intl.RelativeTimeFormat 을 씁니다. 직접 계산하면 단수/복수와
- * 언어별 표현을 손으로 관리해야 합니다.
- *
- * 훅을 쓰지 않는 순수 함수라 shared/lib 에 둡니다(렌더링 없이 테스트 가능).
- */
-// numeric: 'always' 를 씁니다. 'auto' 로 두면 -1일이 "어제", -2일이 "그저께" 가 되는데
-// 와이어프레임 표기는 "12분 전 · 3시간 전 · 2일 전" 형태입니다.
+/** "3시간 전" 처럼 상대 시간 문자열을 만듭니다 (A12 · A22 · A23 공통 표기) */
+// numeric: 'always' — 'auto' 면 -1일이 "어제" 가 되는데 표기는 "2일 전" 형태입니다
 const formatter = new Intl.RelativeTimeFormat('ko', { numeric: 'always' })
 
 const UNITS = [

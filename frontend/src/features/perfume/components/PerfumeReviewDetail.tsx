@@ -23,28 +23,26 @@ type Props = {
  * 그래서 review.mine 일 때만 두 버튼을 그립니다. 화면에서 숨기는 것만으로는
  * 권한이 지켜지지 않으니 백엔드에서도 작성자를 확인해야 합니다.
  */
-export function ReviewDetail({ review, backTo, editTo }: Props) {
+export function PerfumeReviewDetail({ review, backTo, editTo }: Props) {
   const [deleteOpen, setDeleteOpen] = useState(false)
 
   return (
     <article className="border-line bg-surface-card border">
-      <div className="space-y-4 p-6">
+      <div className="space-y-3.75 p-6.25">
         <LinkButton to={backTo} variant="outline" size="sm">
           ← 향수 상세
         </LinkButton>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {/* TODO: 프로필 이미지 연동 */}
-          <Thumbnail className="size-8 shrink-0 rounded-full" />
-          <span className="text-ink text-body font-medium">
-            {review.nickname}
-          </span>
-          <span className="text-ink-muted text-caption">
+          <Thumbnail className="size-7.5 shrink-0 rounded-full" />
+          <span className="text-ink text-xs">{review.nickname}</span>
+          <span className="text-ink-muted text-[10.5px]">
             · {formatRelativeTime(review.createdAt)}
           </span>
 
           {review.mine && (
-            <span className="ml-auto flex gap-2">
+            <span className="ml-auto flex gap-1.25">
               <LinkButton to={editTo} variant="outline" size="sm">
                 수정
               </LinkButton>
@@ -61,13 +59,13 @@ export function ReviewDetail({ review, backTo, editTo }: Props) {
 
         <hr className="border-line" />
 
-        <p className="text-ink text-body whitespace-pre-wrap">
+        <p className="text-ink text-xs leading-relaxed whitespace-pre-wrap">
           {review.content}
         </p>
 
         <hr className="border-line" />
 
-        <p className="text-ink-muted text-caption">
+        <p className="text-ink-muted text-[10.5px]">
           본인이 작성한 후기에만 수정 · 삭제가 보입니다.
         </p>
       </div>

@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ko" data-site-header>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>향을 찾는 종이배</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<!-- 대형 타이포 전용 (title.js, [6단계]). ⚠⚠ **라틴 대문자 26자만 서브셋**(&text=) —
+     전체 파일은 수백 KB 지만 이건 10KB 아래다. 한글 본문은 위 Pretendard 가 맡는다.
+     ⚠⚠ **폰트 이름에 공백이 있으면 URL 에서 `+` 다** (Cormorant+Garamond). title.js 쪽은
+       따옴표로 감싸므로 공백 그대로다 — 두 표기가 다른 것이 정상이다.
+     ⚠ Cormorant Garamond 는 300~700 이 따로 있는 static 폰트다. 링크의 `wght@400` 과
+       title.js 의 WEIGHT 가 **같은 숫자**라야 한다 — 다르면 브라우저가 합성한다.
+     ⚠ 이 폰트가 늦게 도착하면 캔버스가 폴백으로 구워진다 — title.js 가 document.fonts.ready
+       뒤에 **한 번 더 굽는** 이유다 (docs/무대와-존-연출.md §6). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&display=swap&text=ABCDEFGHIJKLMNOPQRSTUVWXYZ" rel="stylesheet">
+<!-- ⭐ DOM UI 폰트 (2026-09-12 저녁, 사용자 : *"폰트도 noto serif korean 으로 변경해보고
+     연출되어있는 수면 타이포 폰트는 유지"*). ⚠⚠ 위 Cormorant 링크는 **수면 타이포(title.js)** 의 것이라
+     그대로 둔다 — 영문 대문자 서브셋(text=)이라 가볍고, 3D 층이 그 글꼴로 글자를 굽는다.
+     ⚠ 한글 세리프는 무겁다 — Google 의 unicode-range 자동 서브셋에 맡기고 swap 을 준다 -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: var(--pb-paper, #F6F5F2); }
+  * { box-sizing: border-box; }
+  canvas { display: block; }
+  a { color: #1A1A1A; text-decoration: none; }
+  a:hover { color: #5A8B6A; }
+  input::placeholder { color: var(--pb-placeholder, #A8A49B); }
+  /* ⚠ 검색창은 **자기 바탕(종이)** 이 있다 — 시간대를 타는 --pb-placeholder 를 쓰면 저녁에 밝은 바탕
+     위 밝은 글자가 된다 (v0.44.0 카드와 같은 실수). 그래서 표면 글자색 계열로 따로 준다 */
+  #search-input::placeholder { color: var(--pb-on-surface-2, rgba(47,47,50,0.62)); }
+  input:focus { outline: none; }
+
+  /* ⭐⭐ 팔레트 토큰 (2026-09-12 저녁 — docs/UI-디자인-개정.md). 레퍼런스 'Museum Archive' 의 조용한
+     뉴트럴을 **저녁 바다** 위에 올린다. ⚠⚠ 아래 것들은 **시간대를 타지 않는다** — 자기 바탕이 있는
+     표면(카드 · 검색창 · 미니맵 판)의 색이기 때문이다. 화면 위에 바로 앉는 글자는 `--pb-ink` 쪽이고
+     그건 data-time 이 바꾼다. 이 둘을 안 갈라서 v0.44.0 에 카드 제목이 통째로 사라졌다 (불변식 25) */
+  :root {
+    --pb-surface: #F9F6EF;                    /* IVORY  — 표면 바탕 */
+    --pb-surface-2: #E8E1D6;                  /* BONE   — 표면 보조 면 */
+    --pb-surface-glass: rgba(249,246,239,0.88);
+    --pb-line-soft: #C9C4BB;                  /* STONE GRAY — 얇은 선 */
+    --pb-on-surface: #2F2F32;                 /* CHARCOAL — 표면 위 글자 */
+    --pb-on-surface-2: rgba(47,47,50,0.62);
+    --pb-accent: #A68F5B;                     /* AGED BRONZE — 주 강조 (저녁 하늘과 맞는다) */
+    --pb-accent-2: #8C7647;
+    --pb-sage: #7F8A7A;
+    --pb-shimmer: #A7C8DB;                    /* SEA SHIMMER — 물빛 */
+    /* ⭐ 갈 수 없는 바다 (2026-09-13 — 해도 · 미니맵 공용 토큰). 사용자 : *"영역밖은 완전한 검은색 보다 계열이 좀 낮은 색상"*.
+       CHARCOAL 72% + SEA SHIMMER 28% — 먹색에 물빛을 섞은 깊은 청회색이다 (검정이면 지도에 구멍이 뚫린 것처럼 읽힌다) */
+    --pb-void: #515A61;
+    --pb-lift: 0 10px 30px rgba(24,18,34,0.20);   /* 표면이 바다 위에 뜬 그림자 */
+    /* 전체 화면 해도 (chart.js) — 바다를 덮는 너울과 그 위 종이. ⚠ 시간대를 타지 않는다 (표면이다) */
+    --pb-chart-veil: rgba(24,18,34,0.58);
+    --pb-chart-bg: rgba(249,246,239,0.96);
+  }
+
+  /* ⭐⭐ 저녁 카드 (2026-09-13 저녁 — params.cardEve 가 <html data-card-eve> 를 단다). 사용자 : *"향수 마우스 클릭했을때의 그 디자인도
+     옛날 껄로 되어있는데 약간만 분위기를 지금 저녁 느낌으로"* · 호버 카드가 *"투명도가 설정없어서 다음 부표가 어디떠있는지 가리는"*.
+     낮의 종이 카드(불투명 0.95 · 먹 테두리 · 먹 버튼) → **저녁 유리** — 뒤의 부표가 비친다.
+     ⚠ 이 카드는 **자기 바탕이 있다** — 글자는 아래 카드 토큰이지 `--pb-ink`(시간대)가 아니다 (불변식 25 · v0.44.0 사고).
+     ⚠ 바탕의 불투명도는 `--pb-card-a` 다 (main.js 가 params.cardGlassA 를 넣는다 — v0.65.0 부터 0.86 · v0.64.0 0.74 · 그 전 0.58). 속성이 없으면 인라인의 예전 값이다 */
+  html[data-card-eve] {
+    --pb-card-bg: rgba(44,38,62,var(--pb-card-a,0.86));
+    --pb-card-border: 1px solid rgba(255,244,236,0.16);
+    --pb-card-radius: 10px;
+    --pb-card-blur: blur(5px);
+    --pb-card-shadow: 0 14px 34px rgba(16,10,28,0.32);
+    --pb-card-ink: #FBF3EA;
+    --pb-card-ink-2: rgba(251,243,234,0.72);
+    --pb-card-ink-3: rgba(251,243,234,0.50);
+    --pb-card-rule: #FBF3EA;                         /* 구분선 — 불투명 (v0.53.2). ⚠ opacity 로 옅게 하지 않는다 — 등장 애니메이션이 덮는다 */
+    --pb-card-btn: #1E2947;                          /* 짙은 남색 (2026-09-13 저녁 사용자 요청 — 첫 시안 브론즈는 아래 data-card-btn-bronze) */
+    --pb-card-btn-line: rgba(255,244,236,0.18);
+    --pb-card-btn-ink: #FFF9F0;
+    --pb-card-btn-radius: 999px;                     /* 검색창 알약과 같은 말투 */
+    --pb-card-tail-line: rgba(255,244,236,0.16);
+    --pb-card-tail-blur: blur(5px);
+    --pb-card-img-bg: rgba(251,243,234,0.06);        /* 이미지 자리 받침 (v0.64.0) — 투명 PNG 뒤에 옅게. ⚠ 색 알파다 (줄의 opacity 는 등장 애니메이션이 덮는다 — v0.53.2) */
+    --pb-card-img-line: rgba(255,244,236,0.16);
+  }
+  /* ⭐ 호버 미리보기 (#scent-card[data-peek] — ui.js setScentPeek 가 단다). 훑어보는 동안은 **더 비치고 덜 흐리게** —
+     작은 부표(반지름 6px 안팎)는 흐림 5px 뒤에서 자리가 안 읽혔다 (1440×780 화면 확인). 누른 향수의 카드는 위의 진하기 그대로다.
+     ⚠ 변수만 바꾼다 (불변식 23) — 배율은 `--pb-card-peek` (main.js 가 params.cardPeekA 를 넣는다) */
+  html[data-card-eve] #scent-card[data-peek] {
+    --pb-card-bg: rgba(44,38,62,calc(var(--pb-card-a,0.86) * var(--pb-card-peek,0.65)));
+    --pb-card-blur: blur(1.5px);
+    --pb-card-tail-blur: blur(1.5px);
+  }
+  /* 카드 버튼 — 브론즈 (v0.53.0 첫 시안). params.cardBtnNavy 0 이면 main.js 가 <html data-card-btn-bronze> 를 단다 (비교 패널 '카드 버튼' [원본]).
+     ⚠ 상아색 글자와 대비가 약 3.0:1 이라 글자가 흐리다 — 짙은 남색은 약 13.7:1 (두 색만으로 계산) */
+  html[data-card-eve][data-card-btn-bronze] {
+    --pb-card-btn: rgba(166,143,91,0.86);
+    --pb-card-btn-line: rgba(233,208,160,0.50);
+  }
+  /* 카드 구분선 — 옅게 (v0.53.0 의 상아색 18%). params.cardRuleSolid 0 이면 main.js 가 <html data-card-rule-faint> 를 단다 (비교 패널 '카드 구분선' [원본]) */
+  html[data-card-eve][data-card-rule-faint] {
+    --pb-card-rule: rgba(251,243,234,0.18);
+  }
+  /* ⭐ 카드의 향수 이미지 자리 (2026-09-14, v0.64.0 — params.cardImg 가 <html data-card-img> 를 단다). 사용자 : *"카드에 이미지 자리 넣고"*.
+     향조 줄과 제목 사이 · 안쪽 폭 가득 · 높이 `--pb-card-img-h` (넓은 창 150px · 반응형은 아래 미디어 쿼리). 그림은 contain 이라 비율이 안 깨진다.
+     ⚠ 자리를 켜고 끄는 것도 **변수**다 (display — 불변식 7 · 23). 속성이 없으면 자리가 없다 = v0.63.0 카드 */
+  html[data-card-img] { --pb-card-img-d: flex; }
+  /* ⭐ 카드의 서비스 동작 세 가지 (2026-09-15, v0.68.0 — params.cardActions 가 <html data-card-actions> 를 단다). 프론트 HomePage 팝오버(A02)와 같은 셋 —
+     [자세히 보기] · [진열대에 저장] · [주변 향 탐색]. ⚠ 디자인 전 자리다 — 글자 단추 한 줄 · 색은 카드 토큰 그대로. 동작은 main.js cardAction → host.js */
+  html[data-card-actions] { --pb-card-actions-d: flex; }
+  #scent-actions button:disabled { opacity: 0.4; cursor: default !important; }
+  /* ⭐⭐ 사이트 헤더 자리 (2026-09-15, v0.66.0 — params.siteHeader 가 <html data-site-header> 를 단다 · 첫 칠이 튀지 않게 <html> 에 미리 적어 두었다).
+     사용자 : *"90px 정도의 헤더가 추가될 예정임 그래서 해당 공간 만큼 채팅 및 연출 문구를 아래로 내려서 해당 헤더 공간을 확보해야함 …
+     1차 시안을 보기위해서 다른 프론트, 백엔드 작업물들과 결합을 해야함"*.
+     ⚠⚠ 헤더는 #stage **바깥 위**에 서고 #stage 는 **남은 높이**만 갖는다 — 검색창 · 정보 블록 · 수면 타이포 · 카드 · 경고 · 해도가 전부 #stage 기준이라
+       한꺼번에 내려가고, 3D 구도(창 비율)와 12개 배치의 화면 안 검사도 남은 높이로 다시 선다. 호스트의 sticky 헤더 아래에 엔진을 두는 모양과 같다
+       (docs/프론트-이식-검토.md §2 의 2 — '헤더 아래 남은 높이').
+     ⚠ #site-header 는 **자리표시**다 (사용자가 준 시안 그림을 옮겼다 · 누르면 아무 일도 없다) — 이식할 때 가져가지 않는다.
+     ⚠ 자리 · 크기 · 켜고 끄기는 변수만 바꾼다 (불변식 7 · 23) */
+  html[data-site-header] { --pb-header-h: 90px; --pb-header-d: grid; }
+  @media (max-width: 1180px) { html[data-site-header] { --pb-header-tag-d: none; --pb-header-pad: 0 40px; } }
+  @media (max-width: 760px) { html[data-site-header] { --pb-header-h: 64px; --pb-header-nav-d: none; --pb-header-pad: 0 16px; --pb-header-logo: 22px; } }
+  /* ⭐⭐ 저녁 미니맵 (2026-09-13 저녁 — params.minimapEve 가 <html data-mini-eve> 를 단다). 사용자 : *"미니맵도 마찬가지"*.
+     상아색 종이 판(v0.47.0) → **저녁 유리 판**. ⚠ 캔버스 안의 색은 minimap.js 가 `--pb-mini-c-*` 를 읽는다 — 없으면 예전 표면 토큰 그대로.
+     ⚠ `--pb-mini-edge` · `--pb-mini-w` · `--pb-mini-pad` 는 **자리 · 크기**다 (반응형) — 색 토큰과 이름을 섞지 않는다 */
+  html[data-mini-eve] {
+    --pb-mini-bg: rgba(44,38,62,0.60);
+    --pb-mini-line: rgba(255,244,236,0.16);
+    --pb-mini-ink: #FBF3EA;
+    --pb-mini-ink-2: rgba(251,243,234,0.62);
+    --pb-mini-accent: #D9BE86;
+    --pb-mini-shadow: 0 12px 32px rgba(16,10,28,0.30);
+    --pb-mini-c-halo: #2C263E;     /* 점 · 이름 · 배의 테두리 (예전 IVORY) — 어두운 판이라 어두운 테두리 */
+    --pb-mini-c-label: #FBF3EA;    /* 해역 이름 (예전 CHARCOAL) */
+    --pb-mini-c-fog: #0E0B16;      /* 안개 (예전 CHARCOAL) */
+    --pb-mini-c-fog-a: 0.42;
+    --pb-mini-c-rim: #FBF3EA;      /* 갈 수 있는 바다의 끝선 (예전 IVORY) */
+    --pb-mini-c-accent: #D9BE86;   /* 배 · 가는 곳 (예전 AGED BRONZE — 어두운 판에서 한 단 밝힌다) */
+    --pb-mini-c-void: #2B3038;     /* 갈 수 없는 바다 (예전 --pb-void) — 판이 어두워 한 단 더 내린다 */
+  }
+  /* ⭐⭐ 저녁 경고 토스트 (2026-09-13 — params.warnEve 가 <html data-warn-eve> 를 단다). 사용자 : *"다음 핸드오프 작업은 출력되었을때의
+     토스트 디자인도 현재 디자인에 맞게 제작해야함"*. 낮의 종이 한 줄(불투명 0.95 · 먹 테두리 · 각진 모서리) → **저녁 유리 알약** —
+     검색창 알약 · 카드 버튼과 같은 말투. 표지는 검색창 돋보기와 같은 선 굵기, 브론즈는 레퍼런스의 쓰임(표지 · 밑줄) 그대로다.
+     ⚠⚠ 이 토스트가 앉는 바탕은 **둘이다** — 검색바 밑의 저녁 하늘(어둠)과, 해도를 열고 범위 밖을 눌렀을 때의 상아색 지도(종이).
+       그래서 카드(0.58)보다 **진하게** 둔다 (⚠ v0.65.0 부터 카드가 0.86 이라 거꾸로 카드가 이 토스트 0.80 보다 진하다) — 0.58 이면 상아색 위에서 바탕이 #827D88 급 회색이 되어 상아색 글자가 흐리다 (0.80 이면 #554F62 급).
+     ⚠ 자기 바탕이 있다 — 글자는 아래 토큰이지 `--pb-ink`(시간대)가 아니다 (불변식 25). 옅은 색은 opacity 가 아니라 **색 알파**다 (v0.53.2 교훈)
+     ⚠ `--pb-warn-top` 은 **자리**다 (반응형) — 아래 색 · 모양 토큰과 섞지 않는다.
+       자리 내림 `--pb-warn-drop`(params.warnDrop · v0.58.0)은 main.js 가 <html> 인라인으로 넣고 ui.js 가 top 에 더한다 */
+  html[data-warn-eve] {
+    --pb-warn-bg: rgba(44,38,62,0.80);
+    --pb-warn-border: 1px solid rgba(255,244,236,0.18);
+    --pb-warn-radius: 999px;
+    --pb-warn-blur: blur(6px);
+    --pb-warn-shadow: 0 12px 30px rgba(16,10,28,0.32);
+    --pb-warn-pad: 9px 22px 9px 16px;
+    --pb-warn-gap: 11px;
+    --pb-warn-title: #FBF3EA;
+    --pb-warn-title-w: 600;
+    --pb-warn-rule: rgba(251,243,234,0.26);
+    --pb-warn-ink-2: rgba(251,243,234,0.76);
+    --pb-warn-accent: #D9BE86;     /* 표지 · 밑줄 — 미니맵 저녁 판의 브론즈와 같다 (어두운 유리에서 한 단 밝힌 AGED BRONZE) */
+    --pb-warn-icon-d: block;
+    --pb-warn-line-d: block;
+  }
+  /* 남은 시간 밑줄 끄기 — params.warnLine 0 이면 main.js 가 <html data-warn-noline> 를 단다 (비교 패널 '경고 토스트' 의 '밑줄 없음') */
+  html[data-warn-eve][data-warn-noline] { --pb-warn-line-d: none; }
+
+  /* ⭐ 시간대 (2026-09-11 밤 — 시안, params.sceneTime). main.js 가 <html data-time="dusk|night"> 을 단다 — 표는 CONFIG.times (times.js).
+     ⚠ 화면 위에 바로 앉는 글자(검색바 · 우측 정보 블록 · DRIFT · 이름표 · 이동 안개)의 인라인 색이 var(--pb-…, 예전 값) 을 읽는다 —
+       data-time 이 없으면(낮) 예전 값 그대로다 (반응형과 같은 규약, 불변식 23). 카드 · 미니맵은 자기 바탕이 있어 그대로 둔다.
+     ⚠ 저녁도 글자를 밝힌다 — 정보 블록 자리(화면 위쪽)는 수평선보다 높아 이미 보랏빛 남색 쪽이다 */
+  html[data-time="dusk"] {
+    --pb-ink: #FFF4EC; --pb-ink-2: #F2E2DC; --pb-ink-3: #E6D2CE; --pb-ink-4: #DCC6C4; --pb-ink-line: rgba(255,244,236,0.45);
+    --pb-paper: #5E5670; --pb-glass: rgba(60,52,84,0.38); --pb-placeholder: #E2CFCB;
+    --pb-halo: rgba(60,52,84,0.9); --pb-halo-2: rgba(60,52,84,0.7);
+    --pb-fog-0: rgba(238,206,196,1); --pb-fog-1: rgba(228,196,190,0.97); --pb-fog-2: rgba(206,178,182,0.9);
+  }
+  html[data-time="night"] {
+    --pb-ink: #EEF1F8; --pb-ink-2: #CDD4E2; --pb-ink-3: #A9B2C6; --pb-ink-4: #98A2B6; --pb-ink-line: rgba(238,241,248,0.38);
+    --pb-paper: #141A2C; --pb-glass: rgba(18,24,42,0.55); --pb-placeholder: #8E97AC;
+    --pb-halo: rgba(16,22,38,0.92); --pb-halo-2: rgba(16,22,38,0.75);
+    --pb-fog-0: rgba(52,60,86,1); --pb-fog-1: rgba(44,52,78,0.97); --pb-fog-2: rgba(32,40,62,0.9);
+  }
+
+  /* ⭐⭐ 반응형 (2026-09-11 오후, 사용자 : *"작은 창 같은 경우에는 글자 크기에 상한 두고 반응형 웹으로 변경 · 다른 창들도"*).
+     ⚠ 스타일은 여전히 **요소에 인라인**이다 (CLAUDE.md 불변식 7 — 클래스 체계를 새로 만들지 않는다).
+       인라인 스타일의 자리·크기 숫자가 `var(--pb-…, 예전 px)` 를 읽고, 여기서는 **변수만** 단계별로 바꾼다.
+       그래서 변수가 없으면(아래 data-fixed) 예전 px 이 그대로 나온다 — 비교 패널 '반응형' [원본] 이 그것이다.
+     ⚠ 단계 : 폭 1280 · 1024 · 760 / 높이 700 · 560. 숫자는 겹침을 재서 골랐다 (CHANGELOG).
+     ⚠ 3D 쪽 반응형(향수 고르기 슬롯 · 존 구도)은 main.js 가 창 비율로 한다 — CSS 는 DOM 만 맡는다 */
+  /* 바탕 — 창이 560 보다 낮아도 스크롤이 생기지 않게 · 휴대폰 주소창이 접혔다 펴져도 화면이 안 튀게 (dvh) */
+  :root:not([data-fixed]) { --pb-stage-min: 320px; }
+  @supports (height: 100dvh) { :root:not([data-fixed]) { --pb-stage-h: 100dvh; } }
+  @media (max-width: 1280px) { :root:not([data-fixed]) {
+    --pb-edge: 40px; --pb-info-w: 280px; --pb-mini-w: 214px; --pb-search-w: 480px;
+    --pb-chart-edge: 28px; --pb-chart-legend: 208px;
+  } }
+  @media (max-width: 1024px) { :root:not([data-fixed]) {
+    --pb-edge: 28px; --pb-info-top: 112px; --pb-info-w: 250px; --pb-mini-w: 190px; --pb-mini-edge: 18px;
+    --pb-search-w: 400px; --pb-card-w: 272px; --pb-drift-w: 200px;
+    /* 해도 — 좁은 창에서는 범례를 접는다 (지도에 폭을 다 준다). ⚠ display 도 변수로 끈다 (클래스를 새로 만들지 않는다, 불변식 7) */
+    --pb-chart-edge: 18px; --pb-chart-legend-d: none; --pb-chart-title: 20px;
+  } }
+  /* 휴대폰 · 좁은 창 — 정보 블록이 검색바 밑에 **가로로 꽉** 선다. 3D 글자는 그 아래끝이 천장이다 (title.js titleCeil) */
+  @media (max-width: 760px) { :root:not([data-fixed]) {
+    --pb-search-top: 12px; --pb-search-w: calc(100vw - 104px); --pb-search-h: 42px; --pb-search-fs: 14px; --pb-search-pad: 0 14px; --pb-btn-pad: 0 16px;
+    --pb-edge: 16px; --pb-info-top: 66px; --pb-info-w: calc(100vw - 32px); --pb-info-title: 13px; --pb-info-desc: 12px; --pb-info-lh: 1.7;
+    --pb-mini-w: 148px; --pb-mini-edge: 10px; --pb-mini-pad: 6px 8px 8px;
+    --pb-card-w: min(280px, calc(100vw - 32px)); --pb-card-pad: 16px 18px 16px; --pb-card-name: 18px; --pb-card-img-h: 120px;
+    --pb-drift-w: 72px; --pb-drift-bottom: 18px; --pb-help: none; --pb-drift-align: flex-start; --pb-drift-pad: 0 0 0 16px;
+    --pb-warn-top: 64px; --pb-mark-bottom: 58px; --pb-mark-no: 18px;
+    --pb-chart-edge: 10px; --pb-chart-pad: 12px 13px 14px; --pb-chart-title: 17px; --pb-chart-name: 10px; --pb-chart-gap: 0px;
+  } }
+  /* 낮은 창 (노트북 1366×650 급) — 위아래 여백을 줄인다. 폭 단계와 **겹쳐 쓴다** (나중에 온 값이 이긴다) */
+  @media (max-height: 700px) { :root:not([data-fixed]) {
+    --pb-search-top: 22px; --pb-info-top: 84px; --pb-warn-top: 88px;
+    --pb-chart-edge: 20px; --pb-chart-pad: 14px 18px 18px;
+    --pb-mark-bottom: 64px; --pb-drift-bottom: 22px; --pb-card-img-h: 112px;
+  } }
+  /* ⚠ 미니맵 폭은 **넓은** 낮은 창에서만 줄인다 — 좁은 창(760 아래)은 위 휴대폰 단계의 더 작은 값이 이미 있다 */
+  @media (max-height: 700px) and (min-width: 761px) { :root:not([data-fixed]) { --pb-mini-w: 200px; } }
+  @media (max-height: 560px) { :root:not([data-fixed]) {
+    --pb-search-top: 10px; --pb-search-h: 40px; --pb-info-top: 60px; --pb-info-desc: 11.5px; --pb-info-lh: 1.6;
+    --pb-mini-w: 150px; --pb-mini-edge: 10px; --pb-mini-pad: 6px 8px 8px; --pb-warn-top: 58px; --pb-help: none; --pb-drift-bottom: 12px;
+    --pb-chart-edge: 10px; --pb-chart-pad: 9px 12px 12px; --pb-chart-title: 16px;
+    --pb-card-pad: 14px 16px 14px; --pb-card-img-h: 84px;
+  } }
+  /* 손가락으로 쓰는 기기에는 키보드 안내가 뜻이 없다 */
+  @media (pointer: coarse) { :root:not([data-fixed]) { --pb-help: none; } }
+
+  /* ⭐⭐ 향조 정보 블록을 수면 타이포 **위 가운데**로 (2026-09-13 저녁 — params.zoneInfoCenter 가 <html data-info-center> 를 단다). 사용자 :
+     *"향 설명이 폰트 위에 나타났다가 사라지게 해야할듯 좀 더 잘보이게? 오른쪽 위에 UI 가 만들어질 것 같아서"*.
+     ⚠ 자리 · 크기 · 정렬만 바꾼다 (불변식 23 — 변수). 휴대폰 폭(760 이하)은 이미 검색바 밑 가로 꽉이라 그대로 둔다.
+     ⚠ 세로 자리는 **검색바 아래 + 36px 로 고정**한다 — 타이포는 솟는 동안(outBack) 움직여서, 거기에 붙이면 블록이 같이 흔들린다.
+       타이포는 여전히 이 블록 아래끝 + 18px 을 천장으로 받는다 (titleCeil) — 좁고 낮은 창에서는 글자가 줄어든다.
+     ⚠ 이 규칙은 반응형 미디어 쿼리 **뒤**에 둔다 — 같은 특정도(:root + 속성)라 뒤에 있는 쪽이 이긴다 */
+  @media (min-width: 761px) {
+    :root[data-info-center] {
+      --pb-info-top: calc(var(--pb-search-top, 44px) + var(--pb-search-h, 56px) + 36px);
+      --pb-info-left: 0px; --pb-info-right: 0px;
+      --pb-info-w: min(560px, calc(100vw - 2 * var(--pb-edge, 56px)));
+      --pb-info-align: center; --pb-info-dir: column; --pb-info-gap: 10px;
+      --pb-info-line-flex: none; --pb-info-line-w: 120px; --pb-info-timer-origin: center;
+      --pb-info-title-pad: 0.34em;                                      /* 자간(0.34em)이 글자 뒤에만 붙어 가운데에서 비껴 보이는 몫 */
+      --pb-info-shadow: 0 1px 10px var(--pb-halo-2, transparent);       /* 저녁 · 밤 하늘 위 글자 그늘 (낮은 없음) */
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ⭐⭐ 자리표시 사이트 헤더 (2026-09-15, v0.66.0 — params.siteHeader · <html data-site-header>). 사용자가 준 시안 그림 그대로 옮겼다 :
+     로고 '향해 / SCENT JOURNEY' · 가운데 메뉴 넷 · 오른쪽 찾기 · 로그인 · 한 줄 인사. ⚠ **누르면 아무 일도 없는 그림**이다 — 헤더만큼 무대가 어떻게 앉는지 보려는 것.
+     ⚠ 이식할 때 가져가지 않는다 — 호스트의 진짜 헤더가 이 자리에 온다 (#stage 는 헤더 아래 남은 높이 — <style> 의 사이트 헤더 주석).
+     ⚠ #stage 의 형제다 — 여기를 눌러도 조타 · 부표 누르기로 새지 않는다 (input.js 는 #mount 에만 붙어 있다) -->
+<header id="site-header" style="display:var(--pb-header-d,none);grid-template-columns:1fr auto 1fr;align-items:center;column-gap:24px;position:relative;z-index:60;height:var(--pb-header-h,90px);padding:var(--pb-header-pad,0 72px);background:#F7F5F0;border-bottom:1px solid rgba(26,26,26,0.08);color:#2A2A2C;font-family:'Noto Serif KR',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,serif;user-select:none;">
+  <div style="grid-column:1;justify-self:start;display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0;">
+    <span style="font-size:var(--pb-header-logo,30px);font-weight:600;letter-spacing:0.06em;line-height:1.05;">향해</span>
+    <span style="font-size:10.5px;letter-spacing:0.34em;line-height:1;color:#6A6A6E;white-space:nowrap;">SCENT JOURNEY</span>
+  </div>
+  <nav aria-label="사이트 메뉴 (자리표시)" style="grid-column:2;display:var(--pb-header-nav-d,flex);align-items:center;gap:clamp(36px,5vw,96px);font-size:15px;letter-spacing:0.02em;white-space:nowrap;">
+    <span>향수</span><span>브랜드</span><span>노트</span><span>커뮤니티<span aria-hidden="true" style="margin-left:8px;font-size:10px;vertical-align:1px;">▾</span></span>
+  </nav>
+  <div style="grid-column:3;justify-self:end;display:flex;align-items:center;gap:26px;">
+    <svg role="img" aria-label="찾기 (자리표시)" width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="9.5" cy="9.5" r="6.5"/><path d="M14.4 14.4 20 20"/></svg>
+    <span style="display:inline-flex;align-items:center;height:36px;padding:0 14px;border:1px solid #D6D1C7;border-radius:8px;background:#F2EFE9;font-size:14px;white-space:nowrap;">로그인</span>
+    <span aria-hidden="true" style="display:var(--pb-header-tag-d,block);width:1px;height:40px;margin:0 10px;background:#D6D1C7;"></span>
+    <span style="display:var(--pb-header-tag-d,block);font-size:13px;line-height:1.7;color:#5C5C60;white-space:nowrap;">오늘도,<br>좋은 향과 함께.</span>
+  </div>
+</header>
+
+<div id="stage" style="position:relative;width:100%;height:calc(var(--pb-stage-h,100vh) - var(--pb-header-h,0px));min-height:var(--pb-stage-min,560px);overflow:hidden;background:var(--pb-paper,#F6F5F2);color:var(--pb-ink,#1A1A1A);font-family:'Noto Serif KR',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,serif;cursor:grab;user-select:none;">
+
+  <div id="mount" style="position:absolute;inset:0;"></div>
+
+  <!-- ── 먼 곳 이동의 흰 안개 (2026-09-11, travel.js). ⚠ #mount 바로 뒤다 — DOM 순서가 곧 쌓임 순서라
+       3D 위 · 검색바·카드·미니맵 아래에 깔린다. 안개가 덮여도 UI 는 보인다.
+       ⚠ pointer-events:none — 걷히는 동안에도 UI 를 누를 수 있어야 한다.
+       ⚠ 가운데가 짙고 가장자리가 조금 옅은 타원 — 평평한 흰 화면이면 '안개' 가 아니라 '끊김' 으로 읽힌다 -->
+  <div id="fog" style="position:absolute;inset:0;opacity:0;visibility:hidden;pointer-events:none;background:radial-gradient(ellipse 85% 75% at 50% 52%, var(--pb-fog-0,rgba(247,246,243,1)) 0%, var(--pb-fog-1,rgba(246,245,242,0.97)) 55%, var(--pb-fog-2,rgba(240,239,235,0.9)) 100%);"></div>
+
+  <!-- 향수 고르기 라벨 (2026-09-11, marks.js focus). 떠오른 12개 밑에 이름을 붙인다 — ui.js 가 채운다.
+       ⚠ pointer-events:none — 라벨이 부표 클릭을 가로채면 안 된다 (클릭은 3D 히트박스가 받는다) -->
+  <div id="focus-labels" style="position:absolute;inset:0;pointer-events:none;"></div>
+
+  <!-- ⚠ 자리·크기 숫자는 `var(--pb-…, 예전 px)` 다 (반응형, <style> 의 주석) -->
+  <!-- ⭐ v0.67.0 : 검색창 · 정보 블록 · 경고 토스트가 --pb-search-drop(params.searchDrop) 만큼 더 아래다 — main.js applyUiEve 가 <html> 인라인으로 넣고, 반응형 단계 값에 더한다 -->
+  <div style="position:absolute;top:calc(var(--pb-search-top,44px) + var(--pb-search-drop,0px));left:0;right:0;display:flex;justify-content:center;gap:0;pointer-events:none;">
+    <!-- ⭐⭐ 검색창 (2026-09-12 저녁 개정 — docs/UI-디자인-개정.md §3-2). 사용자 :
+         *"검색창을 첫번째 시안에 있는 느낌으로"*. 레퍼런스의 **알약 + 돋보기 + 원형 버튼**을 가져오되
+         색은 저녁 바다에 맞춘 팔레트 토큰이다.
+         ⚠⚠ 이 표면은 **자기 바탕이 있다** — 글자는 `--pb-on-surface`(CHARCOAL) 이지 `--pb-ink` 가 아니다.
+           v0.44.0 에 카드가 그 둘을 안 갈라 저녁에 제목이 사라졌다 (불변식 25).
+         ⚠ 그래도 **바다가 비친다** — 불투명하지 않고 blur 를 준다. 물 위에 놓인 종이여야 한다.
+         ⚠ id 둘(`search-input` · `search-button`)은 ui.js 가 잡으므로 **이름을 바꾸지 않는다** -->
+    <div style="pointer-events:auto;position:relative;display:flex;align-items:center;width:var(--pb-search-w,520px);height:var(--pb-search-h,56px);padding:0 7px 0 20px;border-radius:999px;background:var(--pb-surface-glass,rgba(249,246,239,0.88));border:1px solid var(--pb-line-soft,#C9C4BB);box-shadow:var(--pb-lift,0 10px 30px rgba(24,18,34,0.20));backdrop-filter:blur(7px);">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" style="color:var(--pb-on-surface-2,rgba(47,47,50,0.62));flex:none;margin-right:12px;">
+        <circle cx="10.5" cy="10.5" r="6.8"/><line x1="15.6" y1="15.6" x2="20.5" y2="20.5"/>
+      </svg>
+      <input id="search-input" placeholder="어떤 향을 찾고 계신가요?" style="flex:1;min-width:0;height:100%;padding:0;border:none;background:none;outline:none;font-family:inherit;font-size:var(--pb-search-fs,15px);color:var(--pb-on-surface,#2F2F32);">
+      <button id="search-button" aria-label="찾기" style="flex:none;display:flex;align-items:center;justify-content:center;width:var(--pb-search-btn,42px);height:var(--pb-search-btn,42px);padding:0;border:none;border-radius:50%;background:linear-gradient(140deg,var(--pb-shimmer,#A7C8DB),var(--pb-accent,#A68F5B));color:#F9F6EF;cursor:pointer;box-shadow:0 2px 8px rgba(24,18,34,0.18);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="4.5" y1="12" x2="18.5" y2="12"/><polyline points="13,6.5 18.5,12 13,17.5"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 존 정보 블록 (2026-09-10). 존에 들어가면 우측에 뜬다. `cue.ui` 가 페이드를 민다.
+       ⚠⚠ **수면 타이포(title.js)는 장식이다.** 같은 글자가 여기 DOM 제목으로 한 번 더 있어야
+       한다 — CLAUDE.md 의 *"텍스트는 전부 DOM 에 둔다"* 이고 설계 §6 접근성이다.
+       캔버스에만 있으면 SEO·스크린리더·복사·번역·확대를 전부 잃는다.
+       ⚠ 자리는 09-09 레퍼런스 그대로 — 배가 왼쪽 아래에 앉으면서 비는 쪽이다 (§23-4).
+       ⭐ 2026-09-11 오후 : `pointer-events:auto` — **호버를 받는다.** 올려 둔 동안 도착 연출의 머묾 시계가 선다
+         (사용자 : *"마우스를 올린 동안에는 머물게"*). 조타로는 안 샌다 — input.js 는 #mount 에만 붙어 있다.
+         안 보일 때(visibility:hidden)는 브라우저가 알아서 이벤트를 안 준다
+       ⭐ 제목 옆 머리카락 선이 **남은 시간**이다 (#zone-timer). 짙은 선이 왼쪽으로 줄어들고, 멈추면 선다 -->
+  <div id="zone-info" aria-live="polite" style="position:absolute;top:calc(var(--pb-info-top,104px) + var(--pb-search-drop,0px));left:var(--pb-info-left,auto);right:var(--pb-info-right,var(--pb-edge,56px));margin:0 auto;width:var(--pb-info-w,300px);text-align:var(--pb-info-align,left);text-shadow:var(--pb-info-shadow,none);opacity:0;visibility:hidden;transform:translateX(16px);pointer-events:auto;">
+    <div style="display:flex;flex-direction:var(--pb-info-dir,row);align-items:center;gap:var(--pb-info-gap,14px);">
+      <h2 id="zone-title" style="margin:0;padding-left:var(--pb-info-title-pad,0);font-size:var(--pb-info-title,15px);font-weight:600;letter-spacing:0.34em;color:var(--pb-ink,#1A1A1A);">—</h2>
+      <span style="position:relative;flex:var(--pb-info-line-flex,1);width:var(--pb-info-line-w,auto);height:1px;background:var(--pb-ink-line,rgba(26,26,26,0.30));">
+        <span id="zone-timer" style="position:absolute;left:0;top:0;width:100%;height:1px;background:var(--pb-ink,#1A1A1A);transform-origin:var(--pb-info-timer-origin,left center);transform:scaleX(0);"></span>
+      </span>
+    </div>
+    <p id="zone-desc" style="margin:16px 0 0;font-size:calc(var(--pb-info-desc,13px) * var(--pb-info-desc-k,1));line-height:var(--pb-info-lh,1.85);color:var(--pb-ink-2,#3A3A3A);white-space:pre-line;">—</p>
+    <p id="zone-notes" style="margin:18px 0 0;font-size:10.5px;letter-spacing:0.16em;color:var(--pb-ink-4,#6A6A6A);">—</p>
+  </div>
+
+  <!-- 좌하단 존 표시. ⚠ 개발 중에는 dock(z 52)이 이 자리를 덮는다 — PB.solo(true) 로 본다.
+       ⚠⚠ **여기만 글자가 밝다.** 이 자리는 좌측 암석(gate.js)이 덮는 어두운 면이라 본문 색
+       (#1A1A1A)으로 두면 통째로 안 읽힌다 — 첫 화면에서 실제로 안 보였다. 09-09 레퍼런스도
+       이 자리를 흰 글자로 쓴다. ⚠ 우측 정보 블록은 반대다 (밝은 하늘 위라 검정이 맞다).
+       ⚠ 그림자를 깐 이유 : 암석의 밝은 능선과 겹칠 때를 위한 보험이다
+       ⭐ 여기도 호버를 받는다 (우측 정보 블록과 같이 머묾 시계를 세운다, 2026-09-11 오후) -->
+  <div id="zone-mark" style="position:absolute;left:var(--pb-edge,56px);bottom:var(--pb-mark-bottom,76px);opacity:0;visibility:hidden;transform:translateY(10px);pointer-events:auto;text-shadow:0 1px 3px rgba(26,26,26,0.45);">
+    <div id="zone-no" style="font-size:var(--pb-mark-no,22px);font-weight:600;letter-spacing:0.06em;color:#F6F5F2;">—</div>
+    <div style="width:34px;height:1px;margin:10px 0 12px;background:rgba(246,245,242,0.55);"></div>
+    <div id="zone-sub" style="font-size:10.5px;letter-spacing:0.22em;color:rgba(246,245,242,0.92);">—</div>
+    <div style="margin-top:5px;font-size:10.5px;letter-spacing:0.22em;color:rgba(246,245,242,0.62);">FIND YOUR SCENT</div>
+  </div>
+
+  <!-- 향수 카드 (MAP-05). 부표를 클릭하면 그 향수의 기본 정보가 여기 뜬다.
+       ⚠ 텍스트는 전부 DOM 에 둔다 — 캔버스에 그리면 SEO·스크린리더·복사·번역·확대를 전부 잃는다.
+       ⚠ #mount 의 형제다. 입력은 #mount 에만 붙어 있으므로 카드를 눌러도 조타로 새지 않는다 -->
+  <!-- ⚠ 왼쪽 **최하단**이다 (2026-09-07). 예전에는 top:50% 세로 중앙이라 개발 바(viewbar,
+       top:150px 부터 아래로 자란다)와 겹쳤다. bottom 96px 은 DRIFT 슬라이더(bottom:34px)와
+       그 안내문 위에 선다. ⚠ 자리를 다시 옮기면 ui.js 의 transform 두 줄도 같이 고친다 —
+       예전 translateY(-50%) 는 top:50% 를 중앙에 맞추던 짝이라 여기서는 빼야 한다 -->
+  <!-- ⭐⭐ 2026-09-11 오후 : **말풍선이다.** 누른 부표 바로 옆에 붙어 따라다닌다 (사용자 : *"해당 향수 오브젝트
+       바로 옆에 향수 모달창이 떠야함 말풍선 형태로 간단한 모션그래픽과 함께"*).
+       ⚠ 세 겹이다 — 겹마다 맡은 transform 이 하나씩이라 서로 안 싸운다 :
+         #scent-card   = **자리** (ui.placeScent 가 매 프레임 translate3d 로 민다 — 트랜지션을 걸지 않는다)
+         #scent-bubble = **등장·퇴장** (Web Animations 로 꼬리 쪽에서 튀어나온다. transform-origin 을 꼬리에 둔다)
+         #scent-tail   = 꼬리 (부표 쪽 가장자리. 위치는 ui.js 가 정한다)
+       ⚠ cardBubble 0 이면 예전 자리(왼쪽 최하단)로 돌아간다 — ui.js 가 left/bottom 을 되돌린다.
+       ⚠ 배경을 거의 불투명(0.95)으로 둔 이유 : 꼬리가 상자 테두리를 **덮어서** 이음매를 지운다 (반투명이면 겹친 자리가 짙어진다)
+       ⭐ 2026-09-13 저녁 카드(<html data-card-eve>)는 바탕이 **비친다** — 그래서 꼬리를 바깥 삼각형으로 잘라 상자와 안 겹치게 한다 (ui.js setTail).
+         색은 전부 `var(--pb-card-…, 예전 값)` 이라 속성이 없으면 예전 종이 카드 그대로다 -->
+  <div id="scent-card" style="position:absolute;left:0;top:0;z-index:20;width:var(--pb-card-w,296px);opacity:0;visibility:hidden;pointer-events:none;will-change:transform;">
+    <div id="scent-bubble" style="position:relative;transform-origin:0 50%;">
+      <!-- ⚠⚠ color 를 **여기서 끊는다** (2026-09-12 저녁). 이 상자는 자기 바탕(종이색)이 있으므로
+           화면 잉크(`--pb-ink`)를 상속하면 안 된다 — 저녁이 기본이 되자(sceneTime 1) 밝은 바탕에
+           밝은 글자가 되어 제목이 통째로 안 읽혔다. 불변식 25 가 *"카드·미니맵은 자기 바탕이 있어
+           그대로다"* 라고 적어 두었지만 상속을 막는 줄이 없었다. -->
+      <div style="position:relative;padding:var(--pb-card-pad,22px 24px 22px);border:var(--pb-card-border,1px solid #1A1A1A);border-radius:var(--pb-card-radius,5px);background:var(--pb-card-bg,rgba(246,245,242,0.95));color:var(--pb-card-ink,#1A1A1A);backdrop-filter:var(--pb-card-blur,blur(3px));box-shadow:var(--pb-card-shadow,0 10px 28px rgba(26,26,26,0.10));pointer-events:auto;">
+        <button id="scent-close" aria-label="닫기" style="position:absolute;top:10px;right:12px;width:24px;height:24px;padding:0;border:none;background:none;font-family:inherit;font-size:17px;line-height:1;color:var(--pb-card-ink-2,#555555);cursor:pointer;">×</button>
+        <div data-row style="display:flex;align-items:center;gap:8px;">
+          <span id="scent-zone-dot" style="width:7px;height:7px;border-radius:50%;background:#D9738F;"></span>
+          <span id="scent-zone" style="font-size:10px;font-weight:600;letter-spacing:0.2em;color:#D9738F;">FLORAL</span>
+        </div>
+        <!-- ⭐ 향수 이미지 자리 (2026-09-14, v0.64.0 — params.cardImg · <html data-card-img>). 안쪽 폭 가득 × 높이 --pb-card-img-h (넓은 창 150px).
+             ⚠ 높이를 고정한다 — 그림이 늦게 떠도 카드 높이가 안 튄다 (ui.js 는 카드를 띄울 때 한 번만 높이를 잰다 — measureAvoid).
+             그림은 ui.js showScent 가 향수 데이터의 `img` 주소로 넣는다. 없거나 못 불러오면 자리표시(병 윤곽 · IMAGE)가 뜬다.
+             ⚠ 투명 PNG · 정사각 512px 권장 (넓은 창에서 약 128px 로 줄어 배율 2 화면에서도 선명하다) -->
+        <div data-row id="scent-img-slot" style="display:var(--pb-card-img-d,none);position:relative;box-sizing:border-box;margin-top:12px;height:var(--pb-card-img-h,150px);padding:10px;align-items:center;justify-content:center;overflow:hidden;border:1px solid var(--pb-card-img-line,rgba(26,26,26,0.14));border-radius:6px;background:var(--pb-card-img-bg,rgba(26,26,26,0.04));">
+          <img id="scent-img" alt="" decoding="async" draggable="false" style="display:none;width:100%;height:100%;object-fit:contain;">
+          <div id="scent-img-ph" aria-hidden="true" style="display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--pb-card-ink-3,#8A8A8A);">
+            <svg width="22" height="34" viewBox="0 0 22 34" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" aria-hidden="true"><rect x="7.5" y="1" width="7" height="5" rx="1"/><path d="M9 6v3M13 6v3"/><rect x="2" y="9" width="18" height="24" rx="4"/><path d="M6 21h10"/></svg>
+            <span style="font-size:9.5px;letter-spacing:0.18em;">IMAGE</span>
+          </div>
+        </div>
+        <div data-row id="scent-name" style="margin-top:12px;font-size:var(--pb-card-name,21px);font-weight:600;letter-spacing:-0.01em;">—</div>
+        <!-- 영문 원명 (2026-09-12) — 제목이 한글 판매명이 되면서 원래 이름을 작게 남긴다 (ui.js showScent). markNameKo 0 이면 숨는다 -->
+        <div data-row id="scent-en" lang="en" style="margin-top:2px;font-size:11px;letter-spacing:0.02em;color:var(--pb-card-ink-3,#8A8A8A);display:none;">—</div>
+        <div data-row id="scent-sub" style="margin-top:3px;font-size:12px;letter-spacing:0.04em;color:var(--pb-card-ink-2,#555555);">—</div>
+        <div data-row style="margin-top:16px;height:1px;background:var(--pb-card-rule,rgba(26,26,26,0.16));"></div>
+        <div data-row style="margin-top:14px;font-size:10px;letter-spacing:0.18em;color:var(--pb-card-ink-2,#555555);">NOTES</div>
+        <div data-row id="scent-notes" style="margin-top:6px;font-size:13px;line-height:1.6;">—</div>
+        <!-- ⭐ 서비스 동작 세 가지 (2026-09-15, v0.68.0 — cardActions · <html data-card-actions>). [자세히 보기] · [진열대에 저장]은 앱(호스트)으로 나가고
+             [주변 향 탐색]은 이 향을 새 중심으로 12개를 다시 띄운다. ⚠ 디자인 전 자리 — 글자 단추 한 줄. ui.js 는 data-act 만 넘긴다 (main.js cardAction · host.js) -->
+        <div data-row id="scent-actions" style="display:var(--pb-card-actions-d,none);margin-top:14px;flex-wrap:wrap;gap:2px 14px;">
+          <button type="button" data-act="detail" style="padding:4px 0;border:none;background:none;font-family:inherit;font-size:12px;color:var(--pb-card-ink-2,#555555);text-decoration:underline;text-underline-offset:3px;cursor:pointer;">자세히 보기</button>
+          <button type="button" data-act="save" style="padding:4px 0;border:none;background:none;font-family:inherit;font-size:12px;color:var(--pb-card-ink-2,#555555);text-decoration:underline;text-underline-offset:3px;cursor:pointer;">진열대에 저장</button>
+          <button type="button" data-act="explore" style="padding:4px 0;border:none;background:none;font-family:inherit;font-size:12px;color:var(--pb-card-ink-2,#555555);text-decoration:underline;text-underline-offset:3px;cursor:pointer;">주변 향 탐색</button>
+        </div>
+        <button data-row id="scent-sail" style="margin-top:18px;width:100%;height:40px;border:1px solid var(--pb-card-btn-line,#1A1A1A);border-radius:var(--pb-card-btn-radius,5px);background:var(--pb-card-btn,#1A1A1A);color:var(--pb-card-btn-ink,#F6F5F2);font-family:inherit;font-size:13px;font-weight:600;letter-spacing:0.02em;cursor:pointer;">이 향의 해역으로</button>
+      </div>
+      <!-- 꼬리 : 45° 돌린 정사각형의 **바깥 두 변**만 긋는다. 상자 **위에** 얹어 안쪽 절반이 상자 테두리를 덮는다 -->
+      <span id="scent-tail" aria-hidden="true" style="position:absolute;left:-7px;top:50%;width:13px;height:13px;margin-top:-6.5px;background:var(--pb-card-bg,rgba(246,245,242,0.95));backdrop-filter:var(--pb-card-tail-blur,none);border-left:1px solid #1A1A1A;border-bottom:1px solid #1A1A1A;transform:rotate(45deg);pointer-events:none;"></span>
+    </div>
+  </div>
+
+  <!-- ── 미니맵 (2026-09-11, minimap.js). 향수 지도를 위에서 본 **추상 지도** — 3D 바다를 줄여 그리지 않는다
+       (사용자 : *"미니맵과 화면의 연출은 조금 달라야"*). 해역 이름이나 빈 바다를 누르면 그리로 간다 (travel.js).
+       ⚠ 우하단이다 — 좌하단은 향수 카드, 우상단은 존 정보 블록, 아래 가운데는 DRIFT 가 쓴다.
+       ⚠ #mount 의 형제라 여기를 눌러도 조타·부표 고르기로 새지 않는다 (input.js 는 #mount 에만 붙어 있다).
+       ⚠ 향수 지도(markMap 1)가 아니면 숨는다 -->
+  <!-- ⭐⭐ 미니맵 (2026-09-12 저녁 개정 — docs/UI-디자인-개정.md §3-3).
+       ⚠ 이 판도 **자기 바탕이 있다** — 글자는 `--pb-on-surface` 이지 `--pb-ink` 가 아니다 (불변식 25).
+       ⚠ 캔버스 안의 색은 `minimap.js` 가 **이 파일의 :root 를 읽어** 쓴다 — 색을 두 곳에 적지 않는다 -->
+  <div id="minimap" style="position:absolute;right:var(--pb-mini-edge,28px);bottom:var(--pb-mini-edge,28px);width:var(--pb-mini-w,236px);padding:var(--pb-mini-pad,11px 13px 13px);border:1px solid var(--pb-mini-line,var(--pb-line-soft,#C9C4BB));border-radius:9px;background:var(--pb-mini-bg,var(--pb-surface-glass,rgba(249,246,239,0.88)));box-shadow:var(--pb-mini-shadow,var(--pb-lift,0 10px 30px rgba(24,18,34,0.20)));backdrop-filter:blur(6px);transition:opacity var(--pb-mini-fade,0.45s) ease;visibility:hidden;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:7px;margin-bottom:9px;border-bottom:1px solid var(--pb-mini-line,var(--pb-line-soft,#C9C4BB));">
+      <span style="font-size:10px;font-weight:600;letter-spacing:0.2em;color:var(--pb-mini-ink,var(--pb-on-surface,#2F2F32));">SCENT MAP</span>
+      <span style="display:flex;align-items:center;gap:7px;">
+        <span id="minimap-hint" style="font-size:10px;letter-spacing:0.12em;color:var(--pb-mini-ink-2,var(--pb-on-surface-2,rgba(47,47,50,0.62)));">—</span>
+        <!-- ⭐ 해도 열기 (2026-09-12 저녁, v0.48.0 — chart.js 가 붙잡는다).
+             ⚠ 판을 누르면 '그리로 간다' 는 뜻이 이미 있다 (minimap.js onClick) — 그래서 **머리말 옆의 작은 버튼**이
+               확대를 맡는다 (사용자 지시). 아이콘은 네 귀퉁임쇠 하나짜리 인라인 SVG 다 — 이미지를 받지 않는다 -->
+        <button id="minimap-zoom" title="해도 열기" aria-label="해도 열기" style="flex:none;display:flex;align-items:center;justify-content:center;width:18px;height:18px;padding:0;border:1px solid var(--pb-mini-line,var(--pb-line-soft,#C9C4BB));border-radius:4px;background:none;color:var(--pb-mini-accent,var(--pb-accent,#A68F5B));cursor:pointer;">
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 4.3V1h3.3M7.7 1H11v3.3M11 7.7V11H7.7M4.3 11H1V7.7"/></svg>
+        </button>
+      </span>
+    </div>
+    <canvas id="minimap-canvas" style="display:block;width:100%;border-radius:5px;cursor:crosshair;"></canvas>
+  </div>
+
+  <!-- ⭐⭐⭐ 전체 화면 해도 (2026-09-12 저녁, v0.48.0 — src/chart.js · docs/UI-디자인-개정.md §3-4).
+       미니맵 머리말의 [확대] 로 열린다. 향조·향수 이름이 다 보이고, 누르면 그 해역으로 떠난다.
+       ⚠⚠ **여기는 껍데기만 있다** — 지도는 `chart.js` 가 SVG 로 그리고 범례 아홉 줄도 거기서 만든다
+         (향조는 데이터에서 온다 — 여기 또 적으면 갈라진다, 불변식 2 · 21).
+       ⚠ 캔버스가 아니라 **SVG** 다. 미니맵은 층마다 비트맵을 구워 합성하는데(drawImage 다섯 층),
+         그 방식을 전체 화면으로 키우면 층당 1920×1080×dpr² 비트맵이고 확대하면 뭉갠다. 자세한 것은 chart.js 머리말.
+       ⚠ z 40 — 서비스 UI(카드 20) 위, 개발 바(51) 아래다. 열려 있는 동안 미니맵·검색창을 덮는 것이 맞다 (모달이다).
+       ⚠ 색은 `:root` 에서, 자리·크기는 `var(--pb-…, 예전 px)` 에서 받는다 (불변식 7 · 23). -->
+  <div id="chart" style="position:absolute;inset:0;z-index:40;display:none;align-items:center;justify-content:center;">
+    <!-- 바다를 덮는 너울. ⚠ 흐림(backdrop-filter)을 주지 않는다 — 전체 화면 흐림은 물 시뮬과 겹쳐 비싸고,
+         어두운 너울만으로도 바다가 아래에서 은은히 비친다 (그게 더 해도답다) -->
+    <div id="chart-veil" style="position:absolute;inset:0;background:var(--pb-chart-veil,rgba(24,18,34,0.58));"></div>
+    <!-- ⚠ 높이는 정해 두고 **폭은 내용이 정한다** (fit-content) — 지도가 세로 기준이라 폭을 화면 가득 두면
+         양옆에 빈 띠가 남는다. 지도의 비는 chart.js 가 #chart-stage 에 aspect-ratio 로 건다 -->
+    <div id="chart-panel" style="position:relative;height:calc(100% - 2 * var(--pb-chart-edge,40px));width:fit-content;max-width:calc(100% - 2 * var(--pb-chart-edge,40px));display:flex;flex-direction:column;padding:var(--pb-chart-pad,18px 22px 22px);border:1px solid var(--pb-line-soft,#C9C4BB);border-radius:10px;background:var(--pb-chart-bg,rgba(249,246,239,0.96));box-shadow:var(--pb-lift,0 10px 30px rgba(24,18,34,0.20));">
+      <div style="flex:none;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;padding-bottom:11px;border-bottom:1px solid var(--pb-line-soft,#C9C4BB);">
+        <div style="min-width:0;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:0.22em;color:var(--pb-on-surface-2,rgba(47,47,50,0.62));">SCENT CHART</div>
+          <div style="margin-top:4px;font-size:var(--pb-chart-title,23px);line-height:1.1;color:var(--pb-on-surface,#2F2F32);">해도</div>
+        </div>
+        <div style="flex:none;display:flex;align-items:center;gap:9px;">
+          <span id="chart-hint" style="font-size:11px;letter-spacing:0.04em;color:var(--pb-on-surface-2,rgba(47,47,50,0.62));">—</span>
+          <button id="chart-reset" style="display:none;height:24px;padding:0 10px;border:1px solid var(--pb-line-soft,#C9C4BB);border-radius:999px;background:none;font-family:inherit;font-size:10.5px;letter-spacing:0.1em;color:var(--pb-on-surface-2,rgba(47,47,50,0.62));cursor:pointer;">처음 배율</button>
+          <button id="chart-close" title="닫기 (ESC)" aria-label="닫기" style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--pb-line-soft,#C9C4BB);border-radius:50%;background:none;font-family:inherit;font-size:16px;line-height:1;color:var(--pb-on-surface,#2F2F32);cursor:pointer;">×</button>
+        </div>
+      </div>
+      <div style="flex:1;min-height:0;display:flex;gap:var(--pb-chart-gap,18px);">
+        <!-- 지도가 앉는 자리. SVG 가 이 상자를 꽉 채우고, 지도 비율은 chart.js 가 안에서 맞춘다 -->
+        <div id="chart-stage" style="position:relative;height:100%;flex:none;overflow:hidden;border-radius:6px;cursor:crosshair;"></div>
+        <!-- 향조 범례 아홉 — chart.js 가 채운다. 누르면 그 향조의 대표 향수 자리로 떠난다 -->
+        <div id="chart-legend" style="display:var(--pb-chart-legend-d,flex);flex-direction:column;flex:none;width:var(--pb-chart-legend,232px);padding-top:14px;overflow:hidden;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⚠ 휴대폰 폭에서는 **왼쪽으로 붙인다** — 가운데 두면 우하단 미니맵과 겹쳤다 (375×812 에서 83×13px, 실측) -->
+  <div style="position:absolute;left:0;right:0;bottom:var(--pb-drift-bottom,34px);display:flex;flex-direction:column;align-items:var(--pb-drift-align,center);padding:var(--pb-drift-pad,0);gap:14px;pointer-events:none;">
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div style="font-size:10px;letter-spacing:0.2em;color:var(--pb-ink-3,#555555);">DRIFT</div>
+      <div style="position:relative;width:var(--pb-drift-w,260px);height:1px;background:var(--pb-ink-3,#555555);opacity:1;">
+        <div style="position:absolute;inset:0;background:var(--pb-ink-3,#555555);opacity:0.28;"></div>
+        <div id="drift-fill" style="position:absolute;left:0;top:0;height:1px;width:15%;background:var(--pb-ink,#1A1A1A);"></div>
+        <div id="drift-knob" style="position:absolute;top:-3px;left:15%;width:7px;height:7px;margin-left:-3.5px;border-radius:50%;background:var(--pb-ink,#1A1A1A);"></div>
+      </div>
+      <div id="drift-num" style="width:36px;font-size:11px;letter-spacing:0.06em;color:var(--pb-ink,#1A1A1A);font-variant-numeric:tabular-nums;">0.15</div>
+    </div>
+    <div id="drift-help" style="display:var(--pb-help,block);font-size:11px;letter-spacing:0.04em;color:var(--pb-ink-3,#555555);opacity:0.65;">← → 로 방향 &nbsp;·&nbsp; Shift 또는 휠 ↑ 로 가속</div>
+  </div>
+
+</div>
+
+<!-- 스크립트 경로는 상대다 (2026-09-15) — 팀 프론트가 이 페이지를 /landing/ 아래 두 번째 입구로 같이 빌드한다. 이 저장소에서도(base './') 그대로 뜬다 -->
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

@@ -20,6 +20,18 @@ public class Note {
     @Column(name = "name", length = 100)
     private String name;
 
+    @Column(name = "name_ko", length = 100)
+    private String nameKo;
+
+    @Column(name = "accord_family", length = 30)
+    private String accordFamily;
+
+    @Column(name = "image_url")
+    private String imageUrl;
+
+    @Column(name = "popularity_rank")
+    private Integer popularityRank;
+
     @Column(name = "is_active", nullable = false)
     private boolean active;
 

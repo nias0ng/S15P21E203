@@ -42,7 +42,7 @@ export function SearchField({
         name={name}
         type="search"
         className={cn(
-          'border-line text-ink placeholder:text-ink-muted text-body min-w-0 flex-1 border px-3 py-3',
+          'border-line text-ink placeholder:text-ink-muted text-body min-w-0 flex-1 border px-2.5 py-2.5',
           'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
         )}
         {...props}
@@ -50,7 +50,7 @@ export function SearchField({
       <button
         type="submit"
         aria-label="검색"
-        className="border-line text-ink hover:bg-line-soft text-body -ml-px w-11 shrink-0 border transition-colors duration-120 ease-out"
+        className="border-line text-ink hover:bg-line-soft text-body -ml-px w-11.25 shrink-0 border transition-colors duration-120 ease-out"
       >
         <span aria-hidden>⌕</span>
       </button>
