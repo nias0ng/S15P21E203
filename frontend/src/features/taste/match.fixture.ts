@@ -1,21 +1,27 @@
 /**
- * 향 지도 향수 200개의 계열 벡터 스냅샷.
+ * 매칭 테스트용 향수 200개 고정값. **앱 코드가 아니라 `match.test.ts` 전용입니다.**
  *
- * ⚠️ 백엔드 향 지도 API 가 아직 없어, `backend/db/seed` 의 시드 CSV 두 개
- * (`perfume_map_points.csv` · `perfume_map_families.csv`) 에서 뽑아 둔 임시 데이터입니다.
- * API 가 붙으면 이 파일을 통째로 지우고 `api.ts` 의 함수 본문만 바꾸면 됩니다.
+ * 매칭 로직은 데이터의 모양에 기대는 성질을 여럿 가집니다 — 두 계열을 다 가진 향수가
+ * 없는 조합이 실제로 있는지, 유사도 동점이 대량으로 생기는지, 1·2순위를 바꾸면 결과가
+ * 달라지는 조합이 있는지. 손으로 지어낸 열 줄짜리 데이터로는 그걸 확인할 수 없어
+ * 실제 200개를 그대로 둡니다.
  *
- * - 생성 기준: 시드 CSV (V6 스키마 적용본)
- * - `fragranticaId` 는 `perfumes` 테이블의 `perfume_id` 가 아닙니다. 시드 적재 스크립트가
- *   조인해서 바꿔 넣으므로, 실제 향수 상세로 이어가려면 API 에서 내려주는 id 가 필요합니다.
+ * 화면은 이 파일을 쓰지 않습니다. `api.ts` 가 `GET /map/scent-vectors` 로 받습니다.
+ * 그래서 이 값이 서버와 조금 어긋나도 사용자에게 보이지 않습니다 — 여기서 지키는 것은
+ * 데이터의 최신성이 아니라 **알고리즘의 성질**입니다.
+ *
+ * - 출처: `backend/db/seed` 의 `perfume_map_points.csv` · `perfume_map_families.csv`
+ * - `perfumeId` 자리에 `fragrantica_id` 가 들어 있습니다. 테스트는 값이 서로 다르기만
+ *   하면 되므로 그대로 씁니다
  * - `families` 의 합은 1 이 아닙니다(향수별 0.2~1.0). 기준 미달 계열이 빠진 뒤 정규화하지
- *   않았기 때문이라, `1 - 합` 을 "기타 계열" 로 읽으면 안 됩니다.
- * - `x` 는 0~100, `y` 는 0~83.056 입니다. 지도 컴포넌트의 viewBox 와 같은 스케일입니다.
- * - `rank` 는 국내 선정 순위(1~200, 유일)입니다. 유사도 동점을 가르는 데 씁니다.
+ *   않았기 때문이라, `1 - 합` 을 "기타 계열" 로 읽으면 안 됩니다
+ * - `x` 는 0~100, `y` 는 0~83.056 — `api.ts` 가 응답(0~1)을 100배 한 것과 같은 스케일입니다
  */
-import type { ScentVectorSnapshotRow } from '../types'
+import type { ScentVector } from './types'
 
-export const SCENT_VECTOR_SNAPSHOT: readonly ScentVectorSnapshotRow[] = [
+type FixtureRow = Omit<ScentVector, 'perfumeId'> & { fragranticaId: number }
+
+const ROWS: readonly FixtureRow[] = [
   {
     fragranticaId: 65738,
     rank: 1,
@@ -1417,3 +1423,11 @@ export const SCENT_VECTOR_SNAPSHOT: readonly ScentVectorSnapshotRow[] = [
     families: { FLORAL: 0.3561, CITRUS: 0.273 },
   },
 ]
+
+export const SCENT_VECTORS_FIXTURE: ScentVector[] = ROWS.map((row) => ({
+  perfumeId: row.fragranticaId,
+  x: row.x,
+  y: row.y,
+  rank: row.rank,
+  families: row.families,
+}))
