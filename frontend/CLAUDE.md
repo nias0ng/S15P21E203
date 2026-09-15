@@ -338,7 +338,10 @@ React 를 처음 다룰 때 가장 많이 틀리는 지점입니다.
 
 ## 백엔드가 아직 없는 엔드포인트
 
-`features/perfume/api.ts`와 `types.ts` 주석에 적혀 있듯 일부 엔드포인트·필드가 아직 없습니다
-(예: `GET /perfumes/{id}` 는 404, `PerfumeSummary.thumbnailUrl`·`scentFamily` 는 undefined 로 옴).
-**타입이 필수라고 믿고 바로 접근하면 화면이 죽습니다.** 값 없는 경우를 먼저 처리하고,
-새로 API 를 붙일 때는 백엔드 구현 여부를 먼저 확인한 뒤 없으면 같은 형식의 주석을 남깁니다.
+**주석을 믿지 말고 백엔드 소스를 먼저 확인하세요.** 향수·브랜드·후기는 대부분 붙어 있습니다.
+아직 없는 것은 인증·회원, 노트(`features/note` 전체), 게시글 이미지 업로드입니다.
+
+붙어 있는 API 도 **값이 비는 필드가 많습니다** — `nameKo`·`imageUrl`·`scentFamily`·`logoUrl` 은
+null 로 옵니다. **타입이 필수라고 믿고 바로 접근하면 화면이 죽습니다.** 값 없는 경우를 먼저
+처리하고, 없는 API 를 임시로 채울 때는 `features/perfume/api.ts` 의 `withDevFallback` 처럼
+개발 환경에서만 끼어들게 하세요. 운영에서 자리표시자가 나가면 버그가 가려집니다.
