@@ -9,7 +9,12 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
 
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      // landing/ 는 React 가 아닌 3D 엔진(순수 JS)이라 React Refresh 변환에서 뺍니다.
+      // exclude 를 주면 기본값(node_modules)이 사라지므로 같이 적습니다
+      react({ exclude: [/\/node_modules\//, /\/landing\//] }),
+      tailwindcss(),
+    ],
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -29,6 +34,15 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       sourcemap: mode !== 'production',
+      rolldownOptions: {
+        // 두 번째 입구 — 메인(/)이 iframe 으로 띄우는 3D 향 지도 엔진 (landing/ · ScentScene)
+        input: {
+          main: fileURLToPath(new URL('./index.html', import.meta.url)),
+          landing: fileURLToPath(
+            new URL('./landing/index.html', import.meta.url),
+          ),
+        },
+      },
     },
 
     test: {
