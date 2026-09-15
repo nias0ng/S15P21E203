@@ -210,6 +210,40 @@ class ReviewIntegrationTest {
         assertThat(count("perfumes")).isEqualTo(2);
     }
 
+    /**
+     * 계절 교체도 작성과 같은 기준으로 거릅니다.
+     *
+     * <p>작성만 막고 교체를 열어 두면, 제대로 쓴 뒤 교체로 없는 계절을 넣을 수 있습니다. 두
+     * 경로가 같은 {@code toSeasonIds} 를 쓰지만 부르는 자리가 달라 따로 확인합니다.
+     *
+     * <p><b>거절된 뒤에도 원래 계절이 그대로 있어야 합니다.</b> 교체는 지우고 다시 넣는 순서라,
+     * 검증이 지우기보다 늦으면 거절해 놓고 계절이 비어 버립니다.
+     */
+    @Test
+    void rejectsBadSeasonCodesOnReplaceAndKeepsExisting() throws Exception {
+        long reviewId = createReview("계절 교체", "계절을 잘못 바꾸려는 후기입니다.", "[\"SPRING\"]");
+
+        mockMvc.perform(put(REVIEWS_URL + "/" + reviewId + "/seasons")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"seasonCodes\":[\"NOT_A_SEASON\"]}"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(put(REVIEWS_URL + "/" + reviewId + "/seasons")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"seasonCodes\":[\"OLD\"]}"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(put(REVIEWS_URL + "/" + reviewId + "/seasons")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"seasonCodes\":[\"SUMMER\",\"SUMMER\"]}"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get(REVIEWS_URL + "/" + reviewId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.seasons.length()").value(1))
+                .andExpect(jsonPath("$.seasons[0].code").value("SPRING"));
+    }
+
     @Test
     void protectsReviewMutationsByLoginAndOwner() throws Exception {
         long reviewId = createReview("비공개 변경", "작성자만 변경할 수 있는 후기입니다.", "[\"SPRING\"]");

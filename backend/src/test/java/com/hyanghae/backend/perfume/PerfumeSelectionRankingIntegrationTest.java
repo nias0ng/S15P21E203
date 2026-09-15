@@ -137,6 +137,81 @@ class PerfumeSelectionRankingIntegrationTest {
                 .andExpect(jsonPath("$.perfumes[0].name").value("Third Pick"));
     }
 
+    /**
+     * 순위가 200 을 넘어도 뒤집히지 않습니다.
+     *
+     * <p>{@code korea_selection_rank} 에는 <b>어떤 제약도 없습니다</b> — {@code INTEGER} 일
+     * 뿐이라 200 초과도 들어갑니다. 지금은 적재가 1~200 만 넣지만 그건 데이터의 사정이지 표의
+     * 약속이 아닙니다.
+     *
+     * <p>이 테스트는 순서가 맞는지만 봅니다. 뒤집는 방법({@code -rank} 인지 {@code 201 - rank}
+     * 인지)은 구분하지 못합니다 — 둘 다 순위에 대해 단조감소라 결과가 같습니다. 방법을 고른
+     * 이유는 저장소 주석에 적었습니다.
+     */
+    @Test
+    void keepsOrderWhenRankExceedsTwoHundred() {
+        insertPerfume(6, "Rank Five Hundred", 500, true);
+        insertPerfume(7, "Rank Two Hundred One", 201, true);
+
+        assertSelectionOrder(
+                "First Pick",            // 1
+                "Second Pick",           // 2
+                "Third Pick",            // 3
+                "Rank Two Hundred One",  // 201
+                "Rank Five Hundred");    // 500
+    }
+
+    /**
+     * 같은 순위가 여럿이어도 순서가 흔들리지 않습니다.
+     *
+     * <p>순위에 유니크 제약이 없어 적재가 실수하면 같은 값이 둘 생깁니다. 그때 순서가 매번
+     * 달라지면 <b>페이지를 넘길 때 같은 향수가 다시 나오거나 아예 빠집니다.</b> 동점은 향수
+     * 번호순으로 확정합니다.
+     */
+    @Test
+    void breaksRankTiesByPerfumeId() {
+        insertPerfume(6, "Also Rank One B", 1, true);
+        insertPerfume(7, "Also Rank One C", 1, true);
+
+        // 향수 2 가 순위 1 이고 6·7 도 순위 1 입니다. 번호가 작은 2 가 먼저입니다.
+        assertSelectionOrder(
+                "First Pick",       // 향수 2, 순위 1
+                "Also Rank One B",  // 향수 6, 순위 1
+                "Also Rank One C",  // 향수 7, 순위 1
+                "Second Pick",      // 향수 3, 순위 2
+                "Third Pick");      // 향수 1, 순위 3
+    }
+
+    /** 같은 요청을 두 번 보내도 같은 순서입니다. 동점이 있어도 그렇습니다. */
+    @Test
+    void repeatsTheSameOrder() throws Exception {
+        insertPerfume(6, "Also Rank One B", 1, true);
+
+        String first = fetchNames();
+        String second = fetchNames();
+        org.assertj.core.api.Assertions.assertThat(first).isEqualTo(second);
+    }
+
+    private void assertSelectionOrder(String... names) {
+        try {
+            var request = mockMvc.perform(get(SEARCH_URL).param("ranking", "POPULAR"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.perfumes.length()").value(names.length));
+            for (int index = 0; index < names.length; index++) {
+                request.andExpect(jsonPath("$.perfumes[" + index + "].name").value(names[index]));
+            }
+        } catch (Exception exception) {
+            throw new IllegalStateException(exception);
+        }
+    }
+
+    private String fetchNames() throws Exception {
+        return mockMvc.perform(get(SEARCH_URL).param("ranking", "POPULAR"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+    }
+
     private void insertPerfume(long id, String name, Integer rank, boolean active) {
         jdbcTemplate.update("""
                 INSERT INTO perfumes (perfume_id, brand_id, name, korea_selection_rank, is_active)

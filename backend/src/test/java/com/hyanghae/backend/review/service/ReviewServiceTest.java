@@ -159,6 +159,41 @@ class ReviewServiceTest {
         assertThat(response.seasonCodes()).containsExactly("AUTUMN", "WINTER");
     }
 
+    /**
+     * 없는 계절 코드로 교체하면 <b>지우기 전에</b> 멈춥니다.
+     *
+     * <p>교체는 지우고 다시 넣는 순서라, 검증이 지우기보다 늦으면 거절해 놓고 계절이 비어
+     * 버립니다. 통합 테스트가 결과를 보고 여기서는 <b>지우기를 아예 부르지 않는 것</b>을 봅니다 —
+     * 트랜잭션이 되돌려서 그렇게 보이는 것과 애초에 안 부르는 것은 다릅니다.
+     *
+     * <p>내려간 계절도 같은 자리에서 걸립니다. 저장소가 활성만 돌려주므로 없는 코드와 구분되지
+     * 않고, 둘 다 화면이 내놓지 않는 값이라 같은 답이 맞습니다.
+     */
+    @Test
+    void rejectsUnknownSeasonCodeBeforeDeletingExisting() {
+        when(seasonRepository.findAllByCodeInAndActiveTrue(List.of("NOT_A_SEASON")))
+                .thenReturn(List.of());
+
+        assertThatThrownBy(() -> reviewService.replaceSeasons(10L, List.of("NOT_A_SEASON")))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.errorCode()).isEqualTo(
+                                ReviewErrorCode.REVIEW_SEASON_NOT_FOUND
+                        ));
+        verifyNoInteractions(perfumeReviewSeasonRepository, perfumeReviewRepository);
+    }
+
+    /** 같은 계절을 두 번 고르면 저장소를 찾아보기도 전에 400 입니다. */
+    @Test
+    void rejectsDuplicateSeasonCodesOnReplace() {
+        assertThatThrownBy(() -> reviewService.replaceSeasons(10L, List.of("SUMMER", "SUMMER")))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.errorCode()).isEqualTo(
+                                ReviewErrorCode.REVIEW_INVALID_SEASONS
+                        ));
+        verifyNoInteractions(
+                seasonRepository, perfumeReviewSeasonRepository, perfumeReviewRepository);
+    }
+
     @Test
     void emptyReviewPagePreservesMetadataAndClampsSize() {
         PageRequest pageRequest = PageRequest.of(5, 100);
