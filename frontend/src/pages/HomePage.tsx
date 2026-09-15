@@ -2,9 +2,15 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 
-import { ScentScene, VoyageLog, voyageLogQuery } from '@/features/map'
+import {
+  ScentScene,
+  VoyageLog,
+  voyageLogQuery,
+  type VoyageLogStatus,
+} from '@/features/map'
 // 진열대 저장은 진열대 도메인의 어휘입니다. 화면에서 두 도메인을 조합합니다.
 import { ShelfSaveModal } from '@/features/shelf'
+import { isApiError } from '@/shared/api/http'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
 import { useSceneSkyStore } from '@/shared/store/sceneSkyStore'
@@ -27,6 +33,14 @@ import { Toast } from '@/shared/ui/Toast'
 export default function HomePage() {
   const navigate = useNavigate()
   const log = useQuery(voyageLogQuery())
+  // 향해 일지 상태 — 비로그인(401)이면 로그인 안내. 개발 중 서버가 없으면 api 가 대체 일지를 줍니다
+  const logStatus: VoyageLogStatus = log.isPending
+    ? 'loading'
+    : log.isError
+      ? isApiError(log.error) && log.error.status === 401
+        ? 'guest'
+        : 'error'
+      : 'ready'
 
   const [shelfSaveOpen, setShelfSaveOpen] = useState(false)
   // 엔진이 기다리는 저장 모달의 끝. 모달이 닫히면(취소 · 저장) 불러 3D 입력 잠금을 풉니다
@@ -80,9 +94,12 @@ export default function HomePage() {
         }}
       />
 
-      {/* 향해 일지 — 3D 위 왼쪽 위에 계속 떠 있습니다. 유리판 헤더(90px) 아래 20px */}
-      <div className="absolute top-27.5 left-5">
-        <VoyageLog entries={log.data ?? []} />
+      {/*
+        향해 일지 — 3D 위 왼쪽 위에 계속 떠 있습니다. 유리판 헤더(90px) 아래 30 · 왼쪽 30 —
+        엔진 미니맵(SCENT MAP)이 오른쪽 아래 28px 에 서는 것과 마주 보게 둡니다
+      */}
+      <div className="absolute top-30 left-7.5">
+        <VoyageLog entries={log.data ?? []} status={logStatus} />
       </div>
 
       <ShelfSaveModal

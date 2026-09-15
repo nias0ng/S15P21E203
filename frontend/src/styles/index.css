@@ -37,6 +37,13 @@
    * 팔레트 7색 밖이라 3D 위에서만 씁니다. 그 위 글자는 상아색(surface)입니다.
    */
   --color-navy: #1e2947;
+  /*
+   * 3D 지도 위에 떠 있는 작은 판(향해 일지)은 엔진 미니맵(SCENT MAP)의 저녁 유리와 한 벌입니다 —
+   * paperboat index.html `html[data-mini-eve]` 의 --pb-mini-bg(60%) · --pb-mini-accent 와 같은 값.
+   * 판은 bg-dusk/60, 글자는 상아색(surface), 강조(단추 · 펼침 표시)는 dusk-gold 입니다.
+   */
+  --color-dusk: #2c263e;
+  --color-dusk-gold: #d9be86;
 
   /* ── 역할 토큰: 이것만 화면에서 사용 ─────────────────── */
 
@@ -114,8 +121,10 @@
   --shadow-raised: 0 6px 18px rgb(47 47 50 / 0.09); /* 카드 호버 */
   --shadow-overlay: 0 10px 26px rgb(47 47 50 / 0.14); /* 드롭다운 · 토스트 */
   --shadow-modal: 0 24px 60px rgb(47 47 50 / 0.22); /* 모달 */
+  --shadow-glass: 0 12px 32px rgb(16 10 28 / 0.3); /* 3D 지도 위 떠 있는 판 — 엔진 미니맵과 같은 값 */
 
   /* 컨셉아트의 카드는 거의 각져 있습니다. 미술관·아카이브 인상이 여기서 나옵니다. */
+  --radius-glass: 0.5625rem; /* 9px — 3D 지도 위 떠 있는 판 · 엔진 미니맵과 같은 값 */
   --radius-card: 0.375rem;
 
   /*
