@@ -40,7 +40,12 @@ export type ScentWeights = Partial<Record<ScentFamilyKey, number>>
 /** 매칭에 쓰는 향수 한 개. 이름 · 브랜드는 결과 화면에 쓰지 않아 담지 않습니다. */
 export interface ScentVector {
   perfumeId: number
-  /** 지도 좌표 (x 0~100, y 0~83.056) */
+  /**
+   * 지도 좌표 (x 0~100, y 0~83.056).
+   *
+   * **응답은 0~1 인데 `api.ts` 가 100배 해서 넘깁니다.** 지도 컴포넌트의 viewBox 가
+   * 100x100 이라 같은 스케일이어야 같은 자리에 찍힙니다.
+   */
   x: number
   y: number
   /** 국내 선정 순위 1~200. 유사도가 같을 때 이 값이 작은 향수를 씁니다. */
@@ -48,13 +53,25 @@ export interface ScentVector {
   families: ScentWeights
 }
 
-/** `data/scentVectors.ts` 스냅샷의 한 줄. ⚠️ API 가 붙으면 이 타입은 사라집니다. */
-export interface ScentVectorSnapshotRow {
-  fragranticaId: number
-  rank: number
-  x: number
-  y: number
-  families: ScentWeights
+/**
+ * `GET /map/scent-vectors` 응답 그대로.
+ *
+ * 배열이 아니라 `perfumes` 를 감싼 객체입니다 — 나중에 이 자리에 값을 더해도 응답
+ * 모양이 통째로 바뀌지 않게 하려는 백엔드 쪽 판단입니다.
+ *
+ * `families` 의 키는 `scent_regions.code` 라 **열린 문자열**입니다. 받는 자리에서
+ * 아는 계열만 남깁니다(`api.ts`).
+ */
+export interface ScentVectorsResponse {
+  perfumes: {
+    perfumeId: number
+    /** 0~1 */
+    x: number
+    /** 0~0.83056 */
+    y: number
+    rank: number
+    families: Record<string, number>
+  }[]
 }
 
 /**

@@ -1,32 +1,54 @@
-import type { ScentVector } from './types'
+import { http } from '@/shared/api/http'
+import { isScentFamilyKey } from '@/shared/config/scentFamilies'
+
+import type { ScentVector, ScentVectorsResponse, ScentWeights } from './types'
 
 /**
- * ⚠️ 백엔드 향 지도 API 가 아직 없습니다.
+ * 백엔드는 **0~1 로 저장된 좌표를 그대로** 줍니다(`x` 0~1, `y` 0~0.83056).
+ * 화면은 `viewBox="0 0 100 100"` 이라 100배 해서 넘깁니다 — 지도 컴포넌트가 쓰는
+ * 스케일과 같아야 같은 자리에 찍힙니다.
  *
- * 향수 200개의 계열 벡터와 좌표는 `backend/db/seed` 에 이미 들어와 있지만
- * (`perfume_map_points` · `perfume_map_families`, V6 스키마) 이를 내려주는
- * 엔드포인트가 없어 `data/scentVectors.ts` 스냅샷을 대신 씁니다.
+ * 향 지도(`GET /map`)도 같은 0~1 스케일이라, 그쪽을 붙일 때 같은 변환이 필요합니다.
+ */
+const MAP_SCALE = 100
+
+// 경로에 '/api/v1' 을 붙이지 않습니다 — http 의 baseURL 에 이미 있습니다
+
+/**
+ * 취향 테스트가 쓰는 향수 200개의 계열 벡터 (TST-03).
  *
- * API 가 생기면 아래 함수 본문만 바꾸면 됩니다. 화면과 `queries.ts` 는 그대로입니다.
+ * 로그인이 필요 없습니다. 페이지도 없습니다 — 화면이 200개를 모두 받아 두고
+ * 브라우저에서 코사인 유사도를 재기 때문입니다. 나눠 받으면 전부 모일 때까지
+ * 매칭을 시작할 수 없어 왕복만 늘어납니다.
  *
- *   export async function getScentVectors(): Promise<ScentVector[]> {
- *     const { data } = await http.get<ScentVector[]>('/map/scent-vectors')
- *     return data
- *   }
- *
- * ⚠️ 그때까지 `perfumeId` 는 진짜 향수 id 가 아니라 `fragrantica_id` 입니다.
- * 시드 적재 스크립트가 `perfumes` 와 조인해 바꿔 넣는 값이라 프런트에서는 알 수 없습니다.
- * 지도에서 이 id 로 향수를 찾지 못해도 화면이 죽지 않게 처리해야 합니다.
+ * 지도 조회(`GET /map`)와 다릅니다. 거기는 점을 찍고 이름을 띄우는 값이라 대표 계열
+ * **하나**만 담지만, 여기는 아홉 계열의 비중이 **전부** 필요합니다.
  */
 export async function getScentVectors(): Promise<ScentVector[]> {
-  // 온보딩에서만 쓰는 20KB 짜리 데이터라 첫 진입 번들에서 떼어냅니다.
-  const { SCENT_VECTOR_SNAPSHOT } = await import('./data/scentVectors')
+  const { data } = await http.get<ScentVectorsResponse>('/map/scent-vectors')
 
-  return SCENT_VECTOR_SNAPSHOT.map((row) => ({
-    perfumeId: row.fragranticaId,
-    x: row.x,
-    y: row.y,
+  return data.perfumes.map((row) => ({
+    perfumeId: row.perfumeId,
+    x: row.x * MAP_SCALE,
+    y: row.y * MAP_SCALE,
     rank: row.rank,
-    families: row.families,
+    families: toScentWeights(row.families),
   }))
+}
+
+/**
+ * 계열 비중에서 **우리가 아는 계열만** 남깁니다.
+ *
+ * 키는 `scent_regions.code` 라서 열려 있습니다 — 행이 더해지면 여기 없는 값이 옵니다.
+ * 그대로 들고 있으면 코사인 유사도가 사용자가 고를 수 없는 축까지 세게 되고, 고른
+ * 계열이 같아도 결과가 달라집니다. 모르는 축은 빼는 편이 덜 틀립니다.
+ */
+function toScentWeights(families: Record<string, number>): ScentWeights {
+  const weights: ScentWeights = {}
+
+  for (const [key, weight] of Object.entries(families)) {
+    if (isScentFamilyKey(key)) weights[key] = weight
+  }
+
+  return weights
 }
