@@ -14,11 +14,20 @@ Spring 이 호출하는 내부 API 다. **외부에 열지 않는다** — 호�
 `/nlr/recommend` 는 AI 가 검색까지 하는 경로다. DB 에 향수가 채워지면 Spring 이 SQL 로
 같은 일을 할 수도 있고, 그때는 이 엔드포인트를 안 쓰게 된다.
 
+①단계 LLM 구조화
+----------------
+`conditions` 가 요청에 없으면 **이 서버가 직접 LLM 을 부른다**(`llm_stage1.py`).
+백엔드가 이미 넘겼으면 그대로 쓴다 — **요청 형식은 바뀌지 않는다.**
+
+    있음 -> 그대로 쓴다          Spring 이 스스로 구조화하게 되어도 이 파일은 안 바뀐다
+    없음 -> llm_stage1.structure()   실패하면 None 이라 사전 매칭으로 내려간다
+
+`GMS_API_KEY` 가 없으면 구조화를 건너뛰고 **서버는 그대로 뜬다.** 사전 매칭만으로도
+합성 600문장의 75.5% 는 조건을 뽑는다(사전 v1.8). 키가 있으면 86.7% 다.
+
 이번 범위가 아닌 것
 ------------------
-**LLM 구조화 호출이 없다.** `conditions` 를 요청으로 받기만 한다. 사전 문자열 매칭만 쓰면
-합성 평가셋 600건 기준 결과가 나오는 비율이 77.7% -> 35.7% 로 떨어지지만 서비스는 죽지 않는다.
-LLM 연결은 다음 스토리다. 붙는 자리는 `nlr_engine.recommend(..., estimator=)` 다.
+**미매칭 추정(⑤단계)이 없다.** 붙는 자리는 `nlr_engine.recommend(..., estimator=)` 다.
 
 **추천 이유 문장화가 없다.** `matched[].rationale` 이 재료다.
 
@@ -27,6 +36,7 @@ LLM 연결은 다음 스토리다. 붙는 자리는 `nlr_engine.recommend(..., e
 from __future__ import annotations
 
 import contextlib
+import logging
 import os
 import pathlib
 
@@ -35,8 +45,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+import llm_stage1
 import nlr_engine
 import unmatched_log
+
+LOGGER = logging.getLogger(__name__)
 
 # 입력 상한. unmatched_log.MAX_RAW_CHARS 와 같은 값이어야 원문이 잘리지 않는다.
 MAX_TEXT_CHARS = unmatched_log.MAX_RAW_CHARS
@@ -66,9 +79,18 @@ async def lifespan(app: FastAPI):
 
     13만 x 92 행렬(약 48MB)을 만들므로 요청마다 부르면 안 된다. 적재는 1초 안팎이고
     추천 한 번은 4ms 다. 적재에 실패하면 기동을 중단한다 — 반쯤 뜬 서버가 더 나쁘다.
+
+    **LLM 구조화는 실패해도 기동을 막지 않는다.** 키가 없으면 사전 매칭으로 돈다.
+    어느 쪽인지 로그로 남긴다 — 배포된 서버가 75.5% 로 도는지 86.7% 로 도는지는
+    응답만 봐서는 알 수 없다.
     """
+    logging.basicConfig(level=logging.INFO)   # 이미 설정돼 있으면 아무 일도 하지 않는다
     app.state.index = nlr_engine.load_index(perfumes_csv=PERFUMES_PATH,
                                             lexicon_csv=LEXICON_PATH)
+    llm = llm_stage1.status()
+    LOGGER.info("①단계 LLM 구조화 %s (model=%s prompt=%s)",
+                "켜짐" if llm["enabled"] else "꺼짐 — GMS_API_KEY 가 없다",
+                llm["model"], llm["prompt_sha256"])
     yield
     app.state.index = None
 
@@ -114,8 +136,54 @@ def _camel_unmatched(unmatched):
     } for u in unmatched]
 
 
+def _structure(body):
+    """요청에 `conditions` 가 없으면 ①단계 LLM 구조화로 채운다. dict 또는 None.
+
+    **백엔드가 이미 넘겼으면 부르지 않는다.** 계약서가 `conditions` 를 선택 항목으로
+    두었고, Spring 이 스스로 구조화하기로 바뀌어도 이 조건만으로 호출이 사라진다.
+
+    빈 dict(`{}`)도 없는 것으로 본다. 엔진에 넘겨도 기여하는 바가 없어서다.
+    실패하면 None 이고, 엔진은 사전 문자열 매칭으로 내려간다.
+    """
+    if body.conditions:
+        return body.conditions
+    return llm_stage1.structure(body.text)
+
+
+def _record_unmatched(result):
+    """미매칭 표현을 로그에 남긴다. None.
+
+    **로그 실패가 요청을 죽이지 않게 감싼다.** 미매칭 로그는 사전을 키우는 재료이지
+    응답을 만드는 데 필요한 것이 아니다. 감싸지 않으면 로그를 못 쓰는 순간
+    **미매칭 표현이 있는 요청마다 500 이 난다** — 쓸 수 없는 경로를 주고 확인했다.
+
+    컨테이너에서 실제로 생기는 조건이다. 볼륨 소유자가 컨테이너 사용자와 안 맞으면
+    쓰기가 막힌다(`Dockerfile` 의 `/app/logs` 주석).
+
+    **예외를 삼키지 않는다.** 원인을 `ERROR` 로 남긴다. 파일에 못 쓴 사실을 파일에
+    남길 수는 없으니 표준 로그로 간다.
+
+    잡는 것은 `OSError` 뿐이다 — 권한·경로·디스크처럼 **환경이 만드는 실패**다.
+    그 밖의 예외는 코드의 버그이므로 그대로 올라가게 둔다.
+    """
+    try:
+        unmatched_log.record(result, path=LOG_PATH)
+    except OSError as exc:
+        LOGGER.error("미매칭 로그를 쓰지 못했다. 추천은 그대로 돌려준다 — %s: %s (경로 %s)",
+                     type(exc).__name__, exc, LOG_PATH)
+
+
 def _camel_conditions(understood):
-    """조건 묶음. dict."""
+    """사전이 바꿔 낸 향 조건. dict. **이건 검색 결과지 요청에 넣는 값이 아니다.**
+
+    `/nlr/recommend` 요청의 `conditions` 와 **이름만 같고 다른 것이다.**
+
+        요청의 conditions   ①단계 LLM 이 뽑은 '말'   scent_preference · additional_requirements
+        이 함수의 결과      ②단계 사전이 바꾼 accord  core · matchedExpressions
+
+    이걸 `/nlr/recommend` 의 `conditions` 에 넣으면 **에러 없이 조건 0개가 된다** —
+    엔진이 모르는 key 라 읽지 않는다. 다시 넘길 값은 응답의 `structured` 다.
+    """
     return {
         "core": understood["core"],
         "avoid": understood["avoid"],
@@ -133,7 +201,8 @@ def health(request: Request):
     index = getattr(request.app.state, "index", None)
     if index is None:
         return _error(503, "NLR_NOT_READY", "데이터를 아직 적재하지 못했습니다.")
-    return {"status": "ok", "perfumes": index["n_perfumes"], "accords": len(index["accords"])}
+    return {"status": "ok", "perfumes": index["n_perfumes"], "accords": len(index["accords"]),
+            "llm": llm_stage1.status()["enabled"]}
 
 
 @app.post("/nlr/understand")
@@ -142,19 +211,25 @@ def understand(body: UnderstandRequest, request: Request):
 
     향수를 찾지 않는다. DB 에 향수가 채워져 Spring 이 SQL 로 검색하게 되어도
     이 엔드포인트는 그대로 쓴다.
+
+    **이어서 `/nlr/recommend` 를 부를 거면 응답의 `structured` 를 그 요청의
+    `conditions` 에 그대로 넣으십시오.** 그러면 LLM 을 한 번만 부른다. 다시 부르면
+    같은 문장이라도 다른 조건이 나올 수 있어(실측: 15문장 중 6문장) 화면에 띄운
+    해석과 결과가 어긋난다.
     """
     index = request.app.state.index
-    understood = nlr_engine.understand(index, body.text, body.conditions)
+    structured = _structure(body)
+    understood = nlr_engine.understand(index, body.text, structured)
     result = {
         "query": body.text,
         "conditions": _camel_conditions(understood),
+        "structured": structured,
         "evidence": _camel_evidence(understood["evidence"]),
         "unmatched": _camel_unmatched(understood["unmatched"]),
     }
-    unmatched_log.record({"query": body.text,
-                          "unmatched": understood["unmatched"],
-                          "conditions": {"core": understood["core"]}},
-                         path=LOG_PATH)
+    _record_unmatched({"query": body.text,
+                       "unmatched": understood["unmatched"],
+                       "conditions": {"core": understood["core"]}})
     return result
 
 
@@ -166,8 +241,8 @@ def recommend(body: RecommendRequest, request: Request):
     **인기 향수를 대신 보여주면 안 된다** — 추천처럼 보이지만 근거가 없다.
     """
     index = request.app.state.index
-    out = nlr_engine.recommend(index, body.text, body.conditions, top_k=body.topK)
-    unmatched_log.record(out, path=LOG_PATH)
+    out = nlr_engine.recommend(index, body.text, _structure(body), top_k=body.topK)
+    _record_unmatched(out)
     return {
         "status": out["status"],
         "query": out["query"],
