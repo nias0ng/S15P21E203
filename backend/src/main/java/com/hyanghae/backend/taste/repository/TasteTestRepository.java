@@ -1,5 +1,6 @@
 package com.hyanghae.backend.taste.repository;
 
+import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
@@ -140,14 +141,31 @@ public class TasteTestRepository {
     }
 
     private static TasteTestRow toRow(ResultSet rs, int rowNum) throws SQLException {
-        String[] picks = (String[]) rs.getArray("picks").getArray();
         return new TasteTestRow(
-                List.of(picks),
+                toPicks(rs.getArray("picks")),
                 rs.getObject("matched_perfume_id", Long.class),
                 rs.getObject("map_x", Double.class),
                 rs.getObject("map_y", Double.class),
                 rs.getObject("completed_at", OffsetDateTime.class)
         );
+    }
+
+    /**
+     * 계열 코드 배열을 목록으로 옮깁니다. 순서가 곧 순위입니다.
+     *
+     * <p>{@code Object[]} 로 받습니다. {@link Array#getArray()} 가 무엇을 돌려줄지는
+     * 드라이버가 정합니다 — 지금 쓰는 PostgreSQL 드라이버는 {@code String[]} 을 주지만 그것은
+     * 계약이 아닙니다. {@code String[]} 로 바로 받으면 드라이버나 열 타입이 바뀌는 날
+     * {@code ClassCastException} 이 납니다. 배열 통째로가 아니라 원소를 하나씩 옮기면 그 사정과
+     * 무관해집니다.
+     */
+    private static List<String> toPicks(Array array) throws SQLException {
+        Object[] codes = (Object[]) array.getArray();
+        List<String> picks = new ArrayList<>(codes.length);
+        for (Object code : codes) {
+            picks.add((String) code);
+        }
+        return List.copyOf(picks);
     }
 
     /** 방금 넣은 응시 줄입니다. 고른 계열을 이어 넣을 때 번호가 필요합니다. */

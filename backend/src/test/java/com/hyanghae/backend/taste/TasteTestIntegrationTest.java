@@ -198,6 +198,41 @@ class TasteTestIntegrationTest {
         assertThat(states).isZero();
     }
 
+    /**
+     * 아예 없는 향수 번호도 400 입니다.
+     *
+     * <p>지도에 없는 향수와 같은 답입니다. 화면이 받은 후보 밖의 값을 보낸 것이라, 없는
+     * 향수인지 지도 밖 향수인지 구분해 줄 이유가 없습니다.
+     */
+    @Test
+    void rejectsPerfumeThatDoesNotExist() throws Exception {
+        complete("[\"FLORAL\"]", 999_999)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("TASTE_PERFUME_NOT_ON_MAP"));
+
+        mockMvc.perform(get(URL)).andExpect(jsonPath("$.completed").value(false));
+    }
+
+    /**
+     * 내려간 향수는 지도에 점이 남아 있어도 400 입니다.
+     *
+     * <p>운영에서 내린 향수를 배의 첫 자리로 삼으면, 화면이 그 향수를 보여줄 수 없는데 배는 거기
+     * 떠 있게 됩니다. 좌표만 보고 통과시키지 않도록 조회가 {@code is_active} 를 함께 봅니다.
+     */
+    @Test
+    void rejectsInactivePerfumeEvenWhenItHasAPoint() throws Exception {
+        jdbcTemplate.update("UPDATE perfumes SET is_active = FALSE WHERE perfume_id = ?", ON_MAP);
+
+        complete("[\"FLORAL\"]", ON_MAP)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("TASTE_PERFUME_NOT_ON_MAP"));
+
+        Integer states = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM map_exploration_states WHERE user_id = ?",
+                Integer.class, USER_ID);
+        assertThat(states).isZero();
+    }
+
     /** 고른 계열이 1~2개가 아니면 400 입니다. 0개는 유사도를 잴 수 없고 3개는 화면에 없습니다. */
     @Test
     void rejectsWrongPickCount() throws Exception {
