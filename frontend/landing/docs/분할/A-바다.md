@@ -22,6 +22,7 @@
 - **C** : 자연어 검색창(`#search-input` 을 감싼 막대)을 조금 줄이기 (2026-09-15, 사용자 요청). 지금 넓은 창 기본값 520 × 56 (`index.html` 인라인 `var(--pb-search-w,520px)` · `var(--pb-search-h,56px)`), 1280 단계 480. 크기 값은 0 · 5 로 끝나게.
 - **D** : 앱 헤더(`src/app/layouts/GlobalHeader.tsx`)를 **거의 투명한 유리**로 (2026-09-15, 사용자 요청). 지금은 짙은 밤색 반투명 그라데이션(`from-surface-night/60 to-surface-night/45`) · `backdrop-blur-xl` · 그림자 · 아래 선 때문에 3D 와 구분된 띠로 보인다 → 뒤 색이 그대로 비치고 경계가 드러나지 않게.
 - **D** : 앱 헤더가 엔진의 개발자 패널(비교 패널 · `tweaks.js` · `perf.js` · `viewbar.js` 등)을 가린다 (2026-09-15, 사용자 요청). 헤더는 iframe 바깥이라 패널 z-index 로는 못 넘는다 → 패널을 `hostTop`(`--pb-host-top`)만큼 내리거나 개발 모드에서 헤더를 숨긴다. 이 패널 파일들은 분할 표에 주인이 없다. 임시로는 `/landing/index.html` 로 연다.
+- **D** : 왼쪽 위 **항해 일지**(`src/features/map/components/VoyageLog.tsx`) 디자인 변경 (2026-09-16, 사용자 요청). 지도 API 를 연결해 실제 데이터로 보면서 고친다 — 구체 디자인은 D 세션에서 사용자와 정한다.
 
 ## 롤백
 
