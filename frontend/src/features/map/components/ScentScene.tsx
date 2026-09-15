@@ -58,6 +58,11 @@ type Props = {
    * 향수 고르기의 12개를 그 띠에 세우지 않습니다 (paperboat `hostTop`).
    */
   coveredTop?: number
+  /**
+   * 엔진의 하늘이 밤인지 알려 줍니다 — 엔진이 붙을 때 한 번, 시간대가 바뀔 때마다.
+   * 엔진은 iframe 문서에 `<html data-time="dusk|night">` 을 답니다 (없으면 낮 · paperboat 불변식 25).
+   */
+  onNightChange?: (night: boolean) => void
   className?: string
 }
 
@@ -83,15 +88,28 @@ export function ScentScene({
   onSaveToShelf,
   onSearch,
   coveredTop = 0,
+  onNightChange,
   className,
 }: Props) {
   const frame = useRef<HTMLIFrameElement>(null)
   const [ready, setReady] = useState(false)
 
   // 엔진에는 처리기를 한 번만 꽂습니다. 렌더마다 새로 만들어지는 props 는 여기서 최신 것으로 부릅니다
-  const latest = useRef({ onOpenDetail, onSaveToShelf, onSearch, coveredTop })
+  const latest = useRef({
+    onOpenDetail,
+    onSaveToShelf,
+    onSearch,
+    coveredTop,
+    onNightChange,
+  })
   useEffect(() => {
-    latest.current = { onOpenDetail, onSaveToShelf, onSearch, coveredTop }
+    latest.current = {
+      onOpenDetail,
+      onSaveToShelf,
+      onSearch,
+      coveredTop,
+      onNightChange,
+    }
   })
 
   useEffect(() => {
@@ -101,6 +119,7 @@ export function ScentScene({
     let timer = 0
     let tries = 0
     let attached: EngineHandle | null = null
+    let timeWatch: MutationObserver | null = null
 
     // iframe 이 다시 불러오면 엔진도 새로 뜨고 PB 도 새것이라, 불러올 때마다 다시 찾습니다
     const attach = () => {
@@ -129,6 +148,19 @@ export function ScentScene({
         },
         search: (query) => latest.current.onSearch(query),
       })
+      // 시간대 — 엔진이 iframe 문서의 <html data-time> 을 바꿉니다. 그 속성 하나만 지켜봅니다
+      timeWatch?.disconnect()
+      const html = el.contentDocument?.documentElement
+      if (html) {
+        const report = () =>
+          latest.current.onNightChange?.(html.dataset.time === 'night')
+        report()
+        timeWatch = new MutationObserver(report)
+        timeWatch.observe(html, {
+          attributes: true,
+          attributeFilter: ['data-time'],
+        })
+      }
       setReady(true)
       // 들어오자마자 방향키로 배를 몰 수 있게 포커스를 엔진으로 넘깁니다
       el.contentWindow?.focus()
@@ -144,6 +176,7 @@ export function ScentScene({
     return () => {
       el.removeEventListener('load', onLoad)
       window.clearTimeout(timer)
+      timeWatch?.disconnect()
       attached?.setHost(null)
     }
   }, [])

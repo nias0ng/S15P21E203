@@ -8,26 +8,28 @@ import { useAuthStore } from '@/shared/store/authStore'
 /**
  * 헤더가 앉는 바탕 — 어느 화면 위인지는 껍데기(RootLayout)가 정합니다.
  *
- *   surface  종이 한 장(ivory) — 기본
- *   paper    진열대의 종이 결 — 본문과 같은 종이
- *   glass    3D 향 지도 위의 유리판 — 뒤의 3D 가 흐리게 비치고 짙은 남색이 살짝 깔립니다
+ *   surface     종이 한 장(ivory) — 기본
+ *   paper       진열대의 종이 결 — 본문과 같은 종이
+ *   glass       3D 향 지도 위의 거의 투명한 유리 — 밤하늘 위라 상아색 글자
+ *   glassLight  같은 유리 — 밝은 하늘(낮 · 저녁) 위라 먹색 글자
  */
-export type HeaderTone = 'surface' | 'paper' | 'glass'
+export type HeaderTone = 'surface' | 'paper' | 'glass' | 'glassLight'
 
 /*
- * 유리판 (3D 향 지도 위)
+ * 유리판 (3D 향 지도 위) — 거의 투명한 유리입니다
  * - fixed: 흐름에서 빠져 3D 가 헤더 뒤(화면 맨 위)까지 깔립니다
- * - 짙은 남색을 위 60% → 아래 45% 로 깔아 판에 두께를 줍니다. 한 가지 알파로 깔면 색 띠로 읽힙니다
- * - 뒤를 흐리고(24px) 채도를 조금만 올립니다(125%). 더 올리면 하늘의 살구 · 보랏빛이 살아나
- *   남색이 아니라 자줏빛 판으로 보입니다
- * - 아래 끝 상아색 실선(20%)이 판의 모서리입니다. 테두리로 그으면 헤더가 91px 이 되어 3D 에 알린
- *   90px 과 어긋나므로, 판 안쪽 맨 아래에 1px 을 긋습니다. 옅은 그림자는 판이 떠 있는 높이입니다
+ * - 판의 옅은 색(25%)과 흐림(4px)은 before 층에 깔고, 아래로 갈수록 0 으로 녹입니다(mask).
+ *   아래 끝에서 딱 끊기면 그 선이 곧 판의 경계로 읽혀 3D 와 따로 떨어진 띠가 됩니다
+ * - 예전의 짙은 남색(60% → 45%) · 흐림 24px · 그림자 · 아래 상아색 실선을 걷었습니다 — 뒤의 하늘 ·
+ *   바다 색이 그대로 비쳐야 헤더와 3D 가 한 화면으로 읽힙니다
+ * - 판이 옅어져 글자가 뒤의 하늘 위에 바로 앉습니다 — 그래서 판의 색 · 글자색 · 글자 그림자가 하늘을
+ *   따릅니다 (아래 GLASS_INK · GLASS_LIGHT_INK 의 tint · text · shadow). 그림자는 상속되므로 헤더에 한 번 겁니다
  */
 const GLASS = cn(
   'fixed inset-x-0',
-  'from-surface-night/60 to-surface-night/45 bg-linear-to-b',
-  'after:bg-surface/20 after:absolute after:inset-x-0 after:bottom-0 after:h-px',
-  'shadow-overlay backdrop-blur-xl backdrop-saturate-125',
+  'before:pointer-events-none before:absolute before:inset-0 before:-z-10',
+  'before:bg-linear-to-b before:to-transparent before:backdrop-blur-xs',
+  'before:[mask-image:linear-gradient(to_bottom,black_40%,transparent)]',
 )
 
 /*
@@ -40,25 +42,52 @@ const PAPER_INK = {
   hover: 'hover:text-ink-muted',
   muted: 'text-ink-muted',
   open: 'text-ink-muted',
-  rule: 'bg-line',
   ring: 'focus-visible:ring-accent-deep',
   menu: 'border-line bg-surface-card',
   item: 'text-ink hover:bg-line-soft',
   itemRule: 'border-line',
   login: 'border-line text-ink hover:bg-line-soft',
+  tint: '',
+  shadow: '',
 }
+/*
+ * 밤하늘 위 유리 — 남색 판 · 상아색 글자 · 남색 그림자.
+ * 2026-09-16 실측 (헤더 띠의 밤하늘) : 상아색 최저 7.4:1 · 옅은 글자(85%) 5.9:1. 먹색으로 두면 1.2:1 이라 꼭 바꿔야 합니다
+ */
 const GLASS_INK: typeof PAPER_INK = {
+  tint: 'before:from-surface-night/25',
+  shadow: 'text-shadow-xs text-shadow-surface-night/40',
   text: 'text-surface',
   hover: 'hover:text-surface/70',
   muted: 'text-surface/85',
   open: 'text-surface/70',
-  rule: 'bg-surface/25',
   ring: 'focus-visible:ring-surface focus-visible:ring-offset-surface-night',
   // 펼침 메뉴는 판보다 짙게 깝니다. 판 밖으로 내려와 3D 위에 바로 앉아서, 옅으면 뒤의 부표 · 글자와 섞입니다
   menu: 'border-surface/15 bg-surface-night/90 shadow-overlay',
   item: 'text-surface hover:bg-surface/10',
   itemRule: 'border-surface/15',
   login: 'border-surface/40 text-surface hover:bg-surface/10',
+}
+/*
+ * 밝은 하늘(낮 · 저녁) 위 유리 — 상아색 판 · 먹색 글자 · 상아색 그림자.
+ * 거의 투명한 판 뒤로 살구색 하늘이 그대로 비쳐 상아색 글자는 대비가 1.7:1 까지 떨어졌습니다.
+ * 2026-09-16 실측 (헤더 띠 저녁 하늘의 상대 휘도 0.38 ~ 0.56) :
+ *   먹색 + 남색 판 최저 4.3:1 → 먹색 + 상아색 판(25%) 최저 6.4:1 · 옅은 글자(먹색 85%) 4.7:1 (80% 면 4.3:1)
+ * 남색 판은 먹색 글자 뒤를 더 어둡게 해서 오히려 대비를 깎습니다 — 그래서 판의 색도 하늘을 따릅니다.
+ * 펼침 메뉴는 판 밖 3D 위에 바로 앉으므로 종이 카드로 깝니다.
+ */
+const GLASS_LIGHT_INK: typeof PAPER_INK = {
+  tint: 'before:from-surface/25',
+  shadow: 'text-shadow-xs text-shadow-surface/40',
+  text: 'text-ink',
+  hover: 'hover:text-ink/70',
+  muted: 'text-ink/85',
+  open: 'text-ink/70',
+  ring: 'focus-visible:ring-accent-deep',
+  menu: 'border-line bg-surface-card shadow-overlay',
+  item: 'text-ink hover:bg-line-soft',
+  itemRule: 'border-line',
+  login: 'border-ink/40 text-ink hover:bg-surface/40',
 }
 type Ink = typeof PAPER_INK
 
@@ -81,7 +110,7 @@ const FOCUS =
  *   좌우 여백       --gutter (1920 에서 60) — 본문과 같은 값이라 로고가 본문 왼쪽 끝
  *                  (진열장 모서리 · 제목) 바로 위에 섭니다
  *   메뉴 다섯 개    항목 사이 60, 로고와 우측 도구 사이의 정중앙
- *   우측 도구       돋보기 · 계정 · 구분선 · 문구, 사이 30
+ *   우측 도구       돋보기 · 계정, 사이 30
  *
  * 세 덩어리라 `grid-cols-[auto_1fr_auto]` 입니다. flex + ml-auto 로 하면 메뉴가 좌우
  * 덩어리 폭에 밀려서, 로그인 여부로 오른쪽 폭이 바뀔 때 메뉴가 함께 움직입니다.
@@ -93,13 +122,19 @@ const FOCUS =
  * 아래 테두리를 뺐습니다. 시안은 헤더와 본문이 같은 종이 한 장이고, 선을 그으면
  * 진열대 화면에서 종이가 두 장으로 잘려 보입니다.
  *
- * 3D 향 지도(메인) 위에서만 유리판(glass)입니다. 거기는 종이가 아니라 저녁 바다라,
- * 헤더가 3D 위에 뜬 얇은 유리로 읽혀야 화면 한 장이 됩니다. 유리판에는 모서리 실선이 있습니다.
+ * 3D 향 지도(메인) 위에서만 유리판(glass · glassLight)입니다. 거기는 종이가 아니라 저녁 바다라,
+ * 헤더가 3D 위에 뜬 거의 투명한 유리로 읽혀야 화면 한 장이 됩니다. 판의 경계선은 두지 않습니다.
  */
 export function GlobalHeader({ tone = 'surface' }: { tone?: HeaderTone }) {
   const accessToken = useAuthStore((state) => state.accessToken)
   const isLoggedIn = Boolean(accessToken)
-  const ink = tone === 'glass' ? GLASS_INK : PAPER_INK
+  const onGlass = tone === 'glass' || tone === 'glassLight'
+  const ink =
+    tone === 'glass'
+      ? GLASS_INK
+      : tone === 'glassLight'
+        ? GLASS_LIGHT_INK
+        : PAPER_INK
 
   return (
     /*
@@ -110,7 +145,7 @@ export function GlobalHeader({ tone = 'surface' }: { tone?: HeaderTone }) {
     <header
       className={cn(
         'top-0 z-20',
-        tone === 'glass' ? GLASS : 'sticky',
+        onGlass ? cn(GLASS, ink.tint, ink.shadow) : 'sticky',
         tone === 'paper' && 'shelf-scope shelf-paper shelf-grain',
         tone === 'surface' && 'bg-surface',
       )}
@@ -119,7 +154,7 @@ export function GlobalHeader({ tone = 'surface' }: { tone?: HeaderTone }) {
         <BrandMark ink={ink} />
         <PrimaryNav isLoggedIn={isLoggedIn} ink={ink} />
 
-        {/* 돋보기 · 계정 · 구분선 · 문구 (시안 우측 묶음) */}
+        {/* 돋보기 · 계정 (시안 우측 묶음 — 구분선 · '오늘도, 좋은 향과 함께.' 문구는 2026-09-16 에 뺐습니다) */}
         <div className="flex shrink-0 items-center gap-7.5">
           <Link
             to={ROUTES.PERFUME_SEARCH}
@@ -136,25 +171,6 @@ export function GlobalHeader({ tone = 'surface' }: { tone?: HeaderTone }) {
           </Link>
 
           {isLoggedIn ? <AccountMenu ink={ink} /> : <LoginButton ink={ink} />}
-
-          {/*
-            구분선과 문구는 넓은 화면에서만 나옵니다. 좁아지면 가운데 메뉴가 먼저
-            찌그러지는데, 문구는 읽을거리가 아니라 장식이라 먼저 자리를 내주는 쪽입니다.
-          */}
-          <span
-            aria-hidden
-            className={cn('hidden h-7.5 w-px xl:block', ink.rule)}
-          />
-          <p
-            className={cn(
-              'text-caption hidden leading-relaxed xl:block',
-              ink.muted,
-            )}
-          >
-            오늘도,
-            <br />
-            좋은 향과 함께.
-          </p>
         </div>
       </div>
     </header>

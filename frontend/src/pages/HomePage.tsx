@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 
 import { ScentScene, VoyageLog, voyageLogQuery } from '@/features/map'
@@ -7,6 +7,7 @@ import { ScentScene, VoyageLog, voyageLogQuery } from '@/features/map'
 import { ShelfSaveModal } from '@/features/shelf'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
+import { useSceneSkyStore } from '@/shared/store/sceneSkyStore'
 import { Toast } from '@/shared/ui/Toast'
 
 /**
@@ -32,6 +33,11 @@ export default function HomePage() {
   const releaseSave = useRef<(() => void) | null>(null)
   const { showToast, toastProps } = useToast()
 
+  // 유리판 헤더의 글자색은 3D 하늘을 따릅니다 (밝은 하늘 먹색 · 밤하늘 상아색).
+  // 화면을 떠나면 기본(dark — 3D 가 뜨기 전 남색 바탕에 맞는 상아색)으로 돌려놓습니다
+  const setSky = useSceneSkyStore((state) => state.setSky)
+  useEffect(() => () => setSky('dark'), [setSky])
+
   const closeShelfSave = () => {
     setShelfSaveOpen(false)
     releaseSave.current?.()
@@ -51,6 +57,7 @@ export default function HomePage() {
         className="absolute inset-0"
         // 유리판 헤더(GlobalHeader 의 h-22.5 = 90px)가 3D 위를 가리는 높이 — 엔진이 검색창 · 해도를 그 아래로 내립니다
         coveredTop={90}
+        onNightChange={(night) => setSky(night ? 'dark' : 'light')}
         onOpenDetail={(perfume) => {
           // ⚠️ 엔진 데이터에는 아직 DB perfumeId 가 없습니다(fragrantica_id 뿐). 없으면 이름으로 검색 결과(A09)에 보냅니다
           navigate(

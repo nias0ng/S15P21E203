@@ -3,6 +3,7 @@ import { Outlet, useLocation, useMatches } from 'react-router'
 import { GlobalHeader, type HeaderTone } from '@/app/layouts/GlobalHeader'
 import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
+import { useSceneSkyStore } from '@/shared/store/sceneSkyStore'
 
 /**
  * 화면이 쓰는 본문 폭. 라우트 설정(app/router)의 `handle.width` 로 정합니다.
@@ -68,15 +69,20 @@ export function RootLayout() {
    */
   const onPaper = useLocation().pathname === ROUTES.MY_SHELF
   const width = usePageWidth()
+  const sky = useSceneSkyStore((state) => state.sky)
   /*
    * bleed(3D 향 지도)는 화면 전체가 그림이라 헤더가 그 위에 유리판으로 뜹니다.
    * 유리판 헤더는 흐름에서 빠지므로(fixed) 본문이 화면 맨 위부터 섭니다 — 헤더가
    * 가리는 높이는 화면(HomePage)이 3D 엔진에 알려 줍니다.
+   * 유리가 거의 투명해 글자색은 뒤의 하늘을 따릅니다 — 밝은 하늘 glassLight(먹색) · 밤하늘 glass(상아색).
+   * 하늘은 화면(HomePage)이 엔진의 시간대를 보고 sceneSkyStore 에 적습니다.
    */
   const tone: HeaderTone = onPaper
     ? 'paper'
     : width === 'bleed'
-      ? 'glass'
+      ? sky === 'light'
+        ? 'glassLight'
+        : 'glass'
       : 'surface'
 
   return (
