@@ -44,6 +44,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import llm_stage1
 import nlr_engine
@@ -54,6 +55,15 @@ LOGGER = logging.getLogger(__name__)
 # 입력 상한. unmatched_log.MAX_RAW_CHARS 와 같은 값이어야 원문이 잘리지 않는다.
 MAX_TEXT_CHARS = unmatched_log.MAX_RAW_CHARS
 
+# FastAPI 가 직접 내는 에러를 백엔드 공통 형식의 code 로 옮긴다.
+_HTTP_ERROR_CODES = {400: "NLR_INVALID_REQUEST",
+                     404: "NLR_NOT_FOUND",
+                     405: "NLR_METHOD_NOT_ALLOWED"}
+
+# 본문 디코딩 실패 때 FastAPI 가 넣는 문구다(`fastapi/routing.py`). 이것만 한국어로 바꾼다.
+_BODY_PARSE_DETAIL = "There was an error parsing the body"
+_BODY_PARSE_MESSAGE = "요청 본문을 읽지 못했습니다. UTF-8 로 인코딩했는지 확인하십시오."
+
 # 환경마다 다를 수 있는 값은 환경변수로 받는다. 컨테이너에서는 볼륨 경로를 넣는다.
 LOG_PATH = pathlib.Path(os.environ.get("NLR_LOG_PATH", unmatched_log.DEFAULT_LOG))
 LEXICON_PATH = os.environ.get("NLR_LEXICON_PATH") or None
@@ -61,10 +71,16 @@ PERFUMES_PATH = os.environ.get("NLR_PERFUMES_PATH") or None
 
 
 class UnderstandRequest(BaseModel):
-    """문장 하나와 (있으면) LLM 구조화 결과."""
+    """문장 하나와 (있으면) ①단계 구조화 결과.
+
+    **칸 이름이 `conditions` 가 아니라 `structured` 다.** 응답에도 `conditions` 가
+    있는데 그건 ②단계에서 사전이 바꾼 accord 라 **모양이 다르다.** 이름이 같으면
+    응답의 것을 요청에 되돌려 넣게 되고, 그러면 에러 없이 조건 0개가 된다.
+    이름을 다르게 두어 그 실수 자체를 없앤다.
+    """
 
     text: str = Field(min_length=1, max_length=MAX_TEXT_CHARS)
-    conditions: dict | None = None
+    structured: dict | None = None
 
 
 class RecommendRequest(UnderstandRequest):
@@ -109,9 +125,48 @@ def _error(status, code, message):
 
 @app.exception_handler(RequestValidationError)
 async def _on_validation_error(request: Request, exc: RequestValidationError):
-    """입력이 형식에 안 맞으면 400 으로 낸다. FastAPI 기본은 422 다."""
+    """입력이 형식에 안 맞으면 400 으로 낸다. JSONResponse. FastAPI 기본은 422 다.
+
+    **어느 칸이 틀렸는지 적는다.** 예전에는 무엇이 틀렸든 "text 는 1~500자여야 합니다"
+    가 나가서, JSON 문법이 깨진 요청에도 길이 문제처럼 보였다.
+
+    **값은 싣지 않는다.** 사용자가 쓴 원문이 들어올 수 있고 에러 응답은 그대로 로그에
+    남는다. 칸 이름과 사유만 적는다.
+    """
+    errors = exc.errors()
+    if any(error.get("type") == "json_invalid" for error in errors):
+        # loc 에 칸 이름이 아니라 깨진 위치(정수)가 들어온다. 칸 이름처럼 적으면 헷갈린다.
+        return _error(400, "NLR_INVALID_REQUEST", "JSON 형식이 올바르지 않습니다.")
+
+    fields = sorted({".".join(part for part in error.get("loc", ())
+                              if isinstance(part, str) and part != "body")
+                     for error in errors} - {""})
+    where = f" ({', '.join(fields)})" if fields else ""
+    hint = f" text 는 1~{MAX_TEXT_CHARS}자여야 합니다." if "text" in fields else ""
     return _error(400, "NLR_INVALID_REQUEST",
-                  f"text 는 1~{MAX_TEXT_CHARS}자여야 합니다.")
+                  f"요청 형식이 올바르지 않습니다{where}.{hint}")
+
+
+@app.exception_handler(StarletteHTTPException)
+async def _on_http_exception(request: Request, exc: StarletteHTTPException):
+    """FastAPI 가 직접 내는 에러도 공통 형식으로 바꾼다. JSONResponse.
+
+    **본문을 디코딩하지 못하면 여기로 온다.** FastAPI 는 본문 파싱이 JSONDecodeError
+    가 아닌 이유로 실패하면 `HTTPException(400, "There was an error parsing the body")`
+    를 던지고(`fastapi/routing.py`), Starlette 기본 핸들러가 `{"detail": ...}` 로 낸다.
+    핸들러가 라우트보다 앞이라 `RequestValidationError` 로는 안 걸린다.
+
+    실제로 걸리는 경우 — Windows 셸이 인자의 한글을 깨뜨려 UTF-8 이 아닌 바이트가
+    도착할 때다(`README.md`). Spring 은 정상 UTF-8 을 보내므로 운영 위험은 낮지만,
+    계약서가 "에러는 전부 공통 형식" 이라고 적어 둔 것과 어긋나 있었다.
+
+    FastAPI 의 영어 문구만 한국어로 바꾸고 나머지 `detail` 은 그대로 싣는다.
+    문구가 바뀌어도 형식은 공통 형식으로 유지된다.
+    """
+    message = (_BODY_PARSE_MESSAGE if exc.detail == _BODY_PARSE_DETAIL
+               else str(exc.detail))
+    return _error(exc.status_code,
+                  _HTTP_ERROR_CODES.get(exc.status_code, "NLR_ERROR"), message)
 
 
 def _camel_evidence(evidence):
@@ -137,17 +192,29 @@ def _camel_unmatched(unmatched):
 
 
 def _structure(body):
-    """요청에 `conditions` 가 없으면 ①단계 LLM 구조화로 채운다. dict 또는 None.
+    """요청에 `structured` 가 없으면 ①단계 LLM 구조화로 채운다. dict 또는 None.
 
-    **백엔드가 이미 넘겼으면 부르지 않는다.** 계약서가 `conditions` 를 선택 항목으로
-    두었고, Spring 이 스스로 구조화하기로 바뀌어도 이 조건만으로 호출이 사라진다.
+    **백엔드가 이미 넘겼으면 부르지 않는다.** Spring 이 스스로 구조화하기로 바뀌어도
+    이 조건만으로 호출이 사라진다.
 
     빈 dict(`{}`)도 없는 것으로 본다. 엔진에 넘겨도 기여하는 바가 없어서다.
-    실패하면 None 이고, 엔진은 사전 문자열 매칭으로 내려간다.
+    LLM 호출이 실패하면 None 이고, 엔진은 사전 문자열 매칭으로 내려간다.
+
+    **넘어온 값이 ①단계 모양인지 검사한다.** 엔진이 읽는 세 칸이 없으면 400 을 낸다.
+    이걸 안 하면 응답의 `conditions`(②단계 결과)를 되돌려 넣었을 때 **에러 없이
+    조건 0개**가 나오고, 원문에 사전 표현이 있으면 우연히 성공하기도 해서 재현이
+    어렵다. 조용히 틀리는 것보다 시끄럽게 틀리는 편이 낫다.
     """
-    if body.conditions:
-        return body.conditions
-    return llm_stage1.structure(body.text)
+    if not body.structured:
+        return llm_stage1.structure(body.text)
+    try:
+        return llm_stage1.validate(body.structured)
+    except llm_stage1.Stage1Error as exc:
+        raise StarletteHTTPException(
+            status_code=400,
+            detail=f"structured 가 ①단계 구조화 결과가 아닙니다 ({exc.code}). "
+                   f"응답의 conditions 를 그대로 넣지 마십시오 — "
+                   f"넘길 값은 /nlr/understand 응답의 structured 입니다.") from exc
 
 
 def _record_unmatched(result):

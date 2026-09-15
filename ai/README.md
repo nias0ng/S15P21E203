@@ -216,7 +216,7 @@ Invoke-RestMethod -Uri "http://localhost:8000/nlr/recommend" -Method Post `
 `[GMS 에러] Invalid or expired GMS key` 가 오고 **재시도로 풀리지 않습니다** — 포털에서
 재발급받아야 합니다. 그동안에도 서버는 사전 매칭으로 계속 돕니다.
 
-### ①단계 LLM 구조화 — 요청에 `conditions` 가 없으면 서버가 부릅니다
+### ①단계 LLM 구조화 — 요청에 `structured` 가 없으면 서버가 부릅니다
 
 ```
 있음 -> 그대로 씁니다. LLM 을 부르지 않습니다
@@ -229,13 +229,23 @@ Invoke-RestMethod -Uri "http://localhost:8000/nlr/recommend" -Method Post `
 | 사전만 | 453/600 = 75.5% |
 
 **`/nlr/understand` 를 부른 뒤 `/nlr/recommend` 를 이어 부를 거면 첫 응답의
-`structured` 를 두 번째 요청의 `conditions` 에 넣으십시오.** 그래야 LLM 을 한 번만
+`structured` 를 두 번째 요청의 `structured` 에 넣으십시오.** 그래야 LLM 을 한 번만
 부르고, 두 응답의 해석이 같습니다. 실측 — 넘기면 10ms, 안 넘기면 1.40초.
 
+> **요청 칸은 `structured`, 응답 칸은 `conditions` 입니다.** 응답의 `conditions` 는
+> 사전이 바꾼 accord 라 모양이 다릅니다. 요청에 되돌려 넣으면 **`400`** 이 납니다.
+> 자세한 것은 계약서의 「요청은 `structured`, 응답은 `conditions`」.
+
 > **같은 문장이라도 다시 부르면 답이 다를 수 있습니다.** 한 문장을 6번 불렀더니 4번은
-> `lavender`·`powdery` 를, 2번은 **조건 0개**를 냈습니다. 응답의 `conditions`(사전이 바꾼
-> accord)를 `conditions` 요청 칸에 되돌려 넣으면 **에러 없이 조건 0개가 됩니다** — 이름만
-> 같고 다른 값입니다. 자세한 것은 계약서의 「`conditions` 라는 이름이 두 군데서 다른 뜻이다」.
+> `lavender`·`powdery` 를, 2번은 **조건 0개**를 냈습니다.
+
+`conditions.source` 는 **"구조화 결과가 있었나" 가 아니라 "조건을 바꿨나"** 를 말합니다.
+
+| 값 | 뜻 |
+|---|---|
+| `lexicon_only` | 구조화 결과가 없었습니다. 키가 없거나 호출이 실패했습니다 |
+| `llm+lexicon` | 구조화 결과가 조건을 바꿨습니다 — 합성 600문장에서 **338건(56.3%)** |
+| `llm_no_effect` | 구조화 결과가 있었지만 원문만으로 잡은 것과 같습니다 — **262건(43.7%)** |
 
 ### 아직 서버에 없는 것
 

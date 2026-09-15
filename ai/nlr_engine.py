@@ -175,13 +175,7 @@ def understand(index, text, conditions=None):
         parts += [str(v) for v in (conditions.get("additional_requirements") or [])]
     haystack = " ".join(parts)
 
-    core, evidence = _lexicon_lookup(index, haystack)
-
-    for korean, accord in KOREAN_ACCORD.items():
-        if korean in haystack and accord in index["aidx"]:
-            core.add(accord)
-            evidence.append({"from": korean, "accord": accord,
-                             "tier": "TEAM", "rationale": "한글 accord 표기"})
+    core, evidence = _extract(index, haystack)
 
     if conditions:
         for raw in (conditions.get("scent_preference") or []):
@@ -202,9 +196,42 @@ def understand(index, text, conditions=None):
         "avoid": sorted(avoid),
         "matched_expressions": sorted({e["from"] for e in evidence}),
         "evidence": evidence,
-        "source": "llm+lexicon" if conditions else "lexicon_only",
+        "source": _source(index, text, conditions, core - avoid),
         "unmatched": _unmatched(index, conditions, haystack, evidence),
     }
+
+
+def _extract(index, haystack):
+    """건초더미에서 core accord 와 근거를 뽑는다. (set, list).
+
+    사전 표현과 한글 accord 표기 둘 다 본다. `understand()` 가 두 번 부른다 —
+    한 번은 원문+구조화, 한 번은 원문만. 둘을 비교해 `source` 를 정한다.
+    """
+    core, evidence = _lexicon_lookup(index, haystack)
+    for korean, accord in KOREAN_ACCORD.items():
+        if korean in haystack and accord in index["aidx"]:
+            core.add(accord)
+            evidence.append({"from": korean, "accord": accord,
+                             "tier": "TEAM", "rationale": "한글 accord 표기"})
+    return core, evidence
+
+
+def _source(index, text, conditions, final_core):
+    """조건을 무엇이 만들었는지. str.
+
+    lexicon_only   구조화 입력이 없었다
+    llm+lexicon    구조화 입력이 조건을 바꿨다
+    llm_no_effect  구조화 입력이 있었지만 원문만으로 잡은 것과 결과가 같다
+
+    **"구조화 입력이 있었나" 가 아니라 "조건을 바꿨나" 로 센다.** 예전에는 dict 가
+    넘어오기만 하면 `llm+lexicon` 이라, 응답의 `conditions` 를 잘못 되돌려 넣어
+    조건이 0개가 된 경우에도 LLM 이 기여했다고 말했다. 이 값으로 지표를 만들면
+    잘 도는 것처럼 보인다 — 202 MR 리뷰에서 지적된 문제다.
+    """
+    if not conditions:
+        return "lexicon_only"
+    text_only, _ = _extract(index, text)
+    return "llm+lexicon" if final_core != text_only else "llm_no_effect"
 
 
 def _unmatched(index, conditions, haystack, evidence):
@@ -432,6 +459,10 @@ def recommend(index, text, conditions=None, top_k=TOP_K, estimator=None):
     estimate = {}
     if estimator and not understood["core"] and understood["unmatched"]:
         estimate = _apply_estimates(index, understood, estimator)
+        if estimate:
+            # 추정이 조건을 만들었으므로 source 를 다시 적는다. understand() 가 계산한
+            # 값은 추정 전 기준이라 그대로 두면 기여를 빠뜨린다.
+            understood["source"] = "llm+lexicon"
     found = search(index, understood["core"], understood["avoid"], top_k=top_k)
 
     results = []
