@@ -1,6 +1,6 @@
 import { Outlet, useLocation, useMatches } from 'react-router'
 
-import { GlobalHeader } from '@/app/layouts/GlobalHeader'
+import { GlobalHeader, type HeaderTone } from '@/app/layouts/GlobalHeader'
 import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 
@@ -10,7 +10,8 @@ import { cn } from '@/shared/lib/cn'
  *   full  화면 틀 전체(1920 에서 1800) — 진열대 · 향 지도처럼 화면을 그림으로 쓰는 곳
  *   wide  1440 — 목록 · 격자 · 상세 (적지 않으면 이것)
  *   text  800 — 글을 읽고 쓰는 곳 · 계정 폼
- *   bleed 헤더 아래 화면 끝까지 — 틀 · 좌우 여백 · 위아래 숨 없이 (3D 향 지도 A01)
+ *   bleed 화면 끝까지, 헤더 뒤까지 — 틀 · 좌우 여백 · 위아래 숨 없이. 헤더는 그 위에
+ *         유리판으로 뜹니다 (3D 향 지도 A01)
  *
  * 폭의 근거는 styles/index.css 의 --container-* 주석에 있습니다.
  */
@@ -67,10 +68,20 @@ export function RootLayout() {
    */
   const onPaper = useLocation().pathname === ROUTES.MY_SHELF
   const width = usePageWidth()
+  /*
+   * bleed(3D 향 지도)는 화면 전체가 그림이라 헤더가 그 위에 유리판으로 뜹니다.
+   * 유리판 헤더는 흐름에서 빠지므로(fixed) 본문이 화면 맨 위부터 섭니다 — 헤더가
+   * 가리는 높이는 화면(HomePage)이 3D 엔진에 알려 줍니다.
+   */
+  const tone: HeaderTone = onPaper
+    ? 'paper'
+    : width === 'bleed'
+      ? 'glass'
+      : 'surface'
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <GlobalHeader onPaper={onPaper} />
+      <GlobalHeader tone={tone} />
 
       {/*
         위 60px 은 헤더(90px) 아래 숨입니다. 진열대 화면도 같은 값을 씁니다 —

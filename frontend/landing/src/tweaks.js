@@ -103,7 +103,7 @@ const GROUPS = [
    '배가 남기는 것. 항적은 거품과 함께 기억을 갖는 채널(.z) 이다'],
   // ⚠ 시간 계약을 맨 앞에 둔다 — 배의 속도가 파도의 위상속도에서 나오므로 여기 손잡이는
   //   배만의 값이 아니라 **배와 파도의 관계**다 (ocean-clock.js). 만지기 전에 clock.report()
-  ['배 · 움직임과 시계', ['boatModel', 'boatGlbLift', 'boatPaperTone', 'sailWind', 'sailWindFreq', 'sailWindSpeed', 'sailWindGust', 'sailFlip', 'sailSpec', 'sailTone', 'boatMetal', 'boatRough', 'metalAmount', 'metalMetalness', 'metalRough', 'boatNormal', 'paperAmount', 'paperScale', 'paperShade', 'paperVary', 'clockUnified', 'driftCp', 'boostCp', 'driftSpeed', 'turnRadius', 'turnRate',
+  ['배 · 움직임과 시계', ['boatModel', 'boatGlbLift', 'boatPaperTone', 'sailWind', 'sailWindRest', 'sailWindFreq', 'sailWindSpeed', 'sailWindGust', 'sailWindDir', 'sailWindCross', 'sailWindTilt', 'sailFlip', 'sailSpec', 'sailTone', 'boatMetal', 'boatRough', 'metalAmount', 'metalMetalness', 'metalRough', 'boatNormal', 'paperAmount', 'paperScale', 'paperShade', 'paperVary', 'clockUnified', 'driftCp', 'boostCp', 'driftSpeed', 'turnRadius', 'turnRate',
                  'turnFloor', 'buoyancy', 'rightLimit', 'rightLead', 'rightDamp', 'boatFps'],
    '속도는 월드/초가 아니라 **위상속도의 배수**다. ⚠ 속도를 줄이면 선회 반경을 보존한다'],
   ['카메라', ['camYaw', 'camPitch', 'camDist'],

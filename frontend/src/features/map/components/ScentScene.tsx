@@ -52,6 +52,12 @@ type Props = {
   onSaveToShelf: (perfume: ScenePerfumeRef) => Promise<void>
   /** 엔진 화면 위의 검색창 */
   onSearch: (query: string) => void
+  /**
+   * 앱이 3D 위에 겹쳐 올린 것(유리판 헤더)이 가리는 위쪽 높이(px).
+   * 엔진은 3D 를 그 뒤까지 그대로 그리고, 검색창 · 정보 블록 · 해도만 그 아래로 내리며
+   * 향수 고르기의 12개를 그 띠에 세우지 않습니다 (paperboat `hostTop`).
+   */
+  coveredTop?: number
   className?: string
 }
 
@@ -76,15 +82,16 @@ export function ScentScene({
   onOpenDetail,
   onSaveToShelf,
   onSearch,
+  coveredTop = 0,
   className,
 }: Props) {
   const frame = useRef<HTMLIFrameElement>(null)
   const [ready, setReady] = useState(false)
 
   // 엔진에는 처리기를 한 번만 꽂습니다. 렌더마다 새로 만들어지는 props 는 여기서 최신 것으로 부릅니다
-  const latest = useRef({ onOpenDetail, onSaveToShelf, onSearch })
+  const latest = useRef({ onOpenDetail, onSaveToShelf, onSearch, coveredTop })
   useEffect(() => {
-    latest.current = { onOpenDetail, onSaveToShelf, onSearch }
+    latest.current = { onOpenDetail, onSaveToShelf, onSearch, coveredTop }
   })
 
   useEffect(() => {
@@ -107,8 +114,10 @@ export function ScentScene({
       if (engine === attached) return
       attached = engine
 
-      // 앱의 GlobalHeader 가 iframe 위에 있으므로 엔진의 자리표시 헤더(v0.66.0)는 끕니다
+      // 엔진의 자리표시 헤더(v0.66.0)는 끕니다 — 무대를 헤더만큼 줄이는 방식이라 3D 가 앱의 유리판 헤더
+      // 뒤까지 안 깔립니다. 대신 앱 헤더가 가리는 높이를 알려 검색창 · 해도를 그 아래로 내립니다
       engine.params.siteHeader = 0
+      engine.params.hostTop = latest.current.coveredTop
       engine.apply()
       // 개발 서버에서는 엔진의 개발 패널도 같이 뜹니다 — 서비스 화면만 남깁니다
       engine.solo?.(true)

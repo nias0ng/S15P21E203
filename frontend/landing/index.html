@@ -430,7 +430,7 @@
          그 방식을 전체 화면으로 키우면 층당 1920×1080×dpr² 비트맵이고 확대하면 뭉갠다. 자세한 것은 chart.js 머리말.
        ⚠ z 40 — 서비스 UI(카드 20) 위, 개발 바(51) 아래다. 열려 있는 동안 미니맵·검색창을 덮는 것이 맞다 (모달이다).
        ⚠ 색은 `:root` 에서, 자리·크기는 `var(--pb-…, 예전 px)` 에서 받는다 (불변식 7 · 23). -->
-  <div id="chart" style="position:absolute;inset:0;z-index:40;display:none;align-items:center;justify-content:center;">
+  <div id="chart" style="position:absolute;inset:0;z-index:40;display:none;align-items:center;justify-content:center;box-sizing:border-box;padding-top:var(--pb-host-top,0px);">
     <!-- 바다를 덮는 너울. ⚠ 흐림(backdrop-filter)을 주지 않는다 — 전체 화면 흐림은 물 시뮬과 겹쳐 비싸고,
          어두운 너울만으로도 바다가 아래에서 은은히 비친다 (그게 더 해도답다) -->
     <div id="chart-veil" style="position:absolute;inset:0;background:var(--pb-chart-veil,rgba(24,18,34,0.58));"></div>

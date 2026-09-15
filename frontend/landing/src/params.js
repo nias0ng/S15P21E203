@@ -1124,6 +1124,12 @@ export const PARAMS = {
   //   사용자 : *"지금 이 검색창과 문구가 더 아래 왔으면 좋곘고 설명문구 크기가 조금 더 커졌으면 좋겠음"*. 반응형 단계 값에 **더하고 · 곱한다** (단계마다 같은 만큼).
   //   ⚠ 경고 토스트도 같이 내린다 (검색창 밑 간격 유지) · 정보 블록 아래끝이 수면 타이포의 천장이라 너무 내리면 큰 글자가 작아진다
   searchDrop: 40,     // px · 0 = v0.66.0
+  // ⭐⭐ **호스트 헤더가 무대 위에 겹친다** (2026-09-15, v0.69.0 — main.js applyUiEve · focusKeepBoxes · 깊이 배치 · index.html #chart 의 --pb-host-top).
+  //   사용자 (팀 프론트 세션) : *"메인페이지인 향지도 부분 상단 헤더는 … 얇은 유리판 처럼 만들어줘 Glassmorphism UI 처럼 … 약간의 불투명한 남색"*.
+  //   유리판이 비치려면 3D 가 헤더 **뒤까지** 깔려야 한다 — 그래서 siteHeader(무대를 줄인다)와 달리 **무대를 안 줄이고** 헤더가 가리는 높이(px)만 받는다.
+  //   그만큼 검색창 · 정보 블록 · 경고 토스트를 더 내리고(searchDrop 에 더한다) · 해도 판을 그 아래에 세우고 · 향수 고르기의 12개를 그 띠에 안 세운다.
+  //   0 = v0.68.0 · ⚠ siteHeader 와 같이 켜지 않는다 (둘 다 켜면 두 번 내려간다)
+  hostTop: 0,         // px — 팀 프론트는 유리판 헤더 높이 90 을 넣는다 (ScentScene coveredTop)
   infoDescK: 1.15,    // 설명 글자 배율 (넓은 창 13 → 15px) · 1 = v0.66.0
   // ⭐ 전체 화면 해도 (chart.js, v0.48.0). 향수 이름을 지도에 적는다.
   //   **0 없음 · 1 지나온 바다만(기본) · 2 전부**. 1 은 2026-09-12 저녁 사용자 지시다 —
@@ -1908,7 +1914,10 @@ export const PARAMS = {
   //   ⚠⚠ 아래 둘은 **돛 크기에 대한 비율**이다 (boat.js 가 돛의 바운딩박스로 정규화한다).
   //     그래서 모델을 바꿔도 뜻이 안 변한다 — 로컬 단위로 적었을 때는 6.0 이 돛 크기의
   //     겨우 1.6% 라 거의 안 움직였고, 모델을 새로 뽑을 때마다 뜻이 조용히 달라졌다.
-  sailWind: 0.030,      // 흔드는 폭 = 돛 길이의 몇 배. 0 이면 꺼진다. 0.15 넘으면 천이 아니라 깃발이다
+  // ⭐ v0.71.0 (2026-09-15) : 흔드는 폭이 **배 속도를 따라 오른다** — 멈춤 sailWindRest → 최대 속도(부스트) sailWind, 최대에서는 sailWind 에 머문다.
+  //   사용자 : *"배가 점점 빨라지면서 값이 같이 올라가게 만들고 최대 속도 일때 해당 값을 유지"* (조절 패널에서 고른 0.065). 둘을 같게 두면 속도와 무관하다 (v0.70.0)
+  sailWind: 0.065,      // 최대 속도에서 흔드는 폭 = 돛 길이의 몇 배. 0 이면 꺼진다. 0.15 넘으면 천이 아니라 깃발이다
+  sailWindRest: 0.030,  // 멈춰 있을 때의 폭 (v0.70.0 까지의 sailWind 기본값)
   sailWindFreq: 1.9,    // 돛을 가로지르는 물결의 개수. 올리면 잔주름이 많아진다
   sailWindSpeed: 1.9,   // 멈춰 있을 때 나부끼는 속도 (물의 시계 sim.qT 를 적분한다)
   // 배가 나아가면 겉보기 바람이 세진다. 이 값 × nav.speed 만큼 나부낌이 빨라진다.
@@ -1916,6 +1925,13 @@ export const PARAMS = {
   //   따로 감속·가속 곡선을 안 만든다 (정지 0 · 순항 0.45 · 부스트 1.0).
   sailWindGust: 1.2,
   sailFlip: 1,          // 고정단은 boat.js 가 **마스트와의 거리로 실측**한다. 그게 반대로 보이면 1
+  // ⭐ 돛 물결이 **흐르는 방향** (2026-09-15, v0.70.0 — boat.js setupSail 의 정점 셰이더). 사용자 : *"지금 위아래 아래로 방향이 되어있는데
+  //   돛의 천이 반대 방향으로 옆으로 흘러야할 것같은데"*. 예전에는 겹친 둘째 물결이 돛의 **세로축**으로 흘러(이 모델은 아래로) 천이 위아래로 흐르는 것처럼 보였다.
+  //   이제 두 물결 다 **고정단 → 자유단**(앞 가장자리 → 뒤 가장자리, 바람이 빠져나가는 쪽)으로 옆으로 흐른다. 흔드는 방향(천의 면)은 그대로다.
+  //   ⚠ 고정단은 sailFlip 을 따른다 — 고정단을 뒤집으면 흐르는 방향도 같이 뒤집힌다
+  sailWindDir: 1,       // 1 = 고정단 → 자유단 · −1 = 반대 (자유단 → 고정단)
+  sailWindCross: 0.55,  // 겹친 둘째 물결의 세기 (첫 물결 대비). 0 이면 한 줄 물결만 남아 기계적으로 보인다
+  sailWindTilt: 20,     // 둘째 물결이 세로로 기운 각도(°). 0 = 옆으로만 · 90 = v0.69.0 (세로로만 흐른다)
   // ── 돛(천)의 반사와 톤 (2026-09-11, 사용자 : *"돛 천부분이 햇빛을 받아 반사가 심한 경우가 있는
   //   … 반사되는걸 끌 수 있나? 너무 흰색을 표현하고 있어서"*). 적용은 boat.js 의 syncGlbMat.
   //   실측 (1440×731 · 항해 구도 · HDR · 돛 픽셀만) — 배 방향 60° / 240° / 330° :
@@ -1936,7 +1952,7 @@ export const PARAMS = {
   //   밝은 쪽 p10~p95 1.12~1.26 이 0.92~0.94 로 뭉친다 (톤 0.78 은 0.88~0.98 로 폭이 남는다).
   // ⚠ 선체(Boat)도 같은 이유로 15~35% 잘린다 (같은 실측). 이 두 값은 **돛만** 만진다.
   sailSpec: 0,          // 돛의 정반사. 0 = 무광 (번쩍임·블룸 없음) · 1 = 예전 (선체와 같은 금속기·정반사)
-  sailTone: 0.78,       // 돛의 밝기(알베도 배율). 1 = 예전 순백. 0.78 이면 배를 한 바퀴 돌려도 잘림이 최대 6%
+  sailTone: 1,          // 돛의 밝기(알베도 배율). 1 = 순백 (2026-09-15 사용자 : *"sailtone 을 평소에도 1로"*) · 0.78 = 09-11 값 — 배를 한 바퀴 돌려도 잘림이 최대 6%
   // ⭐ 선체(Boat)도 돛과 같은 두 손잡이 (2026-09-11 오후). ⚠ 반사만 끄면 더 하얘진다 — 둘은 한 묶음이다 (boat.js)
   //   실측 (1024×768 HDR 선형 · 항해 구도 · 30° 간격 12방향 · 배 밖 투명 층을 숨기고 선체 픽셀만) :
   //     예전 1/1      잘림 최악 42.7% · 평균 20.8% · 블룸 최악 0.68%
@@ -2465,7 +2481,7 @@ export const PARAM_RANGES = {
   cardEve: [0, 1, 1], cardGlassA: [0.2, 1, 0.01], cardPeek: [0, 1, 1], cardPeekA: [0.2, 1, 0.01], cardBtnNavy: [0, 1, 1], cardRuleSolid: [0, 1, 1], cardImg: [0, 1, 1], cardHoverBridge: [0, 1, 1], cardHoverGrace: [0, 1.5, 0.05], cardActions: [0, 1, 1], minimapEve: [0, 1, 1],
   warnEve: [0, 1, 1], warnLine: [0, 1, 1], warnDrop: [0, 80, 2],
   markHitFit: [0, 1, 1], markHitK: [1, 4, 0.05], markHitMinPx: [4, 40, 1],
-  zoneMiniHide: [0, 1, 1], zoneInfoCenter: [0, 1, 1], siteHeader: [0, 1, 1], searchDrop: [0, 160, 2], infoDescK: [0.8, 1.6, 0.05],
+  zoneMiniHide: [0, 1, 1], zoneInfoCenter: [0, 1, 1], siteHeader: [0, 1, 1], searchDrop: [0, 160, 2], infoDescK: [0.8, 1.6, 0.05], hostTop: [0, 160, 5],
   navReach: [16, 120, 1],
   focusLinks: [0, 1, 1], focusLinkBasis: [0, 1, 1], focusLinkMode: [0, 1, 1], focusLinkMax: [2, 8, 1], focusLinkCut: [0.2, 4, 0.05],
   focusLinkW: [0.5, 6, 0.1], focusLinkA: [0, 1, 0.01], focusLinkSrc: [0, 1, 1],
@@ -2489,7 +2505,7 @@ export const PARAM_RANGES = {
   microRot: [-180, 180, 1], microSpread: [0, 2, 0.05], microScale: [0.4, 2.5, 0.05],
   sunRot: [-180, 180, 1], sunTilt: [-12, 60, 0.5],
   waterTheme: [0, 5, 1], boatModel: [0, 1, 1], sceneTime: [0, 2, 1],
-  boatGlbLift: [-0.8, 1.2, 0.01], sailWind: [0, 0.3, 0.005], sailWindFreq: [0.2, 4, 0.1], sailWindSpeed: [0, 5, 0.1], sailWindGust: [0, 3, 0.1], sailFlip: [0, 1, 1], boatPaperTone: [0, 1, 0.05], boatMetal: [0, 1, 0.05], boatRough: [0.05, 1, 0.05], boatNormal: [0, 3, 0.1], boatShadow: [0, 1, 1], paperAmount: [0, 1, 1], paperScale: [2, 80, 1], paperShade: [0, 1.5, 0.05], paperVary: [0, 1.5, 0.05], metalAmount: [0, 1, 0.05], metalMetalness: [0, 1, 0.05], metalRough: [0.05, 1, 0.02],
+  boatGlbLift: [-0.8, 1.2, 0.01], sailWind: [0, 0.3, 0.005], sailWindRest: [0, 0.3, 0.005], sailWindFreq: [0.2, 4, 0.1], sailWindSpeed: [0, 5, 0.1], sailWindGust: [0, 3, 0.1], sailFlip: [0, 1, 1], sailWindDir: [-1, 1, 2], sailWindCross: [0, 1, 0.05], sailWindTilt: [0, 90, 5], boatPaperTone: [0, 1, 0.05], boatMetal: [0, 1, 0.05], boatRough: [0.05, 1, 0.05], boatNormal: [0, 3, 0.1], boatShadow: [0, 1, 1], paperAmount: [0, 1, 1], paperScale: [2, 80, 1], paperShade: [0, 1.5, 0.05], paperVary: [0, 1.5, 0.05], metalAmount: [0, 1, 0.05], metalMetalness: [0, 1, 0.05], metalRough: [0.05, 1, 0.02],
   boatReflect: [0, 3, 0.05], reflectSharp: [0, 6, 0.1], reflectBlur: [0, 0.06, 0.001], reflectMirror: [0, 1, 0.05],
   reflectFill: [0, 5, 0.1],
   reflectFade: [3, 160, 1], reflectRise: [0, 1.5, 0.02], reflectRipple: [0, 3, 0.05],

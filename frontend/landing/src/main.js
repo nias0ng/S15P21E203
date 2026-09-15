@@ -678,10 +678,16 @@ function focusSlots(fc) {
 //   ⚠ 짝짓기(marks.focusOn)는 그대로 **화면 x 순서**다 — 슬롯의 sx 가 곧 방위각 비율이다
 const _v3s = new THREE.Vector3();
 const _box = new THREE.Box3();   // 배의 경계 상자 (focusAvoidBoat — 누를 때마다 다시 잰다)
+// 호스트 헤더가 무대 위에 겹친 높이 (CSS px, 2026-09-15 v0.69.0 — hostTop). 3D 는 그 뒤까지 그리지만 그 띠의 UI · 부표는 가려지고 못 누른다
+function hostTopPx() { return clamp(P.hostTop === undefined ? 0 : P.hostTop, 0, 240); }
 // 피할 상자 (CSS px) — 흩기와 깊이 배치가 **같이** 쓴다 (2026-09-13 에 흩기에서 꺼냈다 — 두 곳에 적지 않는다)
 function focusKeepBoxes(fc, W0, H0) {
   // 피할 상자 (CSS px) — 미니맵 · 검색바. 이름표가 부표 위로 뜨므로 위쪽 여유를 더 둔다
   const keep = [];
+  // ⭐ 호스트 헤더 띠 (v0.69.0, hostTop) — 화면 폭 전체 · 헤더 아래 40px(이름표 몫)까지. 흩기는 부표 중심을 이 띠에서 뺀다.
+  //   `band` — 깊이 배치는 이 상자를 겹침 벌점으로 안 본다 (옆으로 비켜서는 못 벗어나는 띠라 비끼기 후보만 헛돈다) · 화면 밖 검사가 위 끝으로 본다
+  const ht = hostTopPx();
+  if (ht > 0) keep.push({ x0: -1e5, x1: W0 + 1e5, y0: -1e5, y1: ht + 40, band: true });
   const st = ui.stage.getBoundingClientRect();
   for (const id of ['minimap', 'search-input']) {
     const el = document.getElementById(id);
@@ -967,6 +973,7 @@ function focusDepthPlace(fc, set, clicked, seed, boatX, boatZ) {
   const fit = (P.focusDepthFit === undefined ? 1 : P.focusDepthFit) >= 0.5;
   const spreadK = fit ? Math.max(0.5, num(P.focusDepthSpread, 1.25)) : 1;
   const mg = Math.max(6, num(P.focusDepthMargin, 12) * W0 / 1440);
+  const topBand = hostTopPx();   // 화면 밖 검사의 위 끝 — 호스트 헤더가 가린 띠 (v0.69.0 · 0 이면 예전 그대로)
   const koName = (P.markNameKo === undefined ? 1 : P.markNameKo) >= 0.5;
   // 이름표 크기 — 이름표 겹침 판정(tick 의 labelItems → ui.labelWidth · labelHeight)과 **같은 식**이다. 가운데 정렬 · 몸통 꼭대기(r × 1.1) 위
   const lab = set.map(q => {
@@ -1043,8 +1050,8 @@ function focusDepthPlace(fc, set, clicked, seed, boatX, boatZ) {
           if (!moved) bad += 60;
         }
         const e = ext(i, px, py, r);
-        if (e.x0 < mg - 1 || e.x1 > W0 - mg + 1 || e.y0 < 0 || e.y1 > H0) bad += 100;               // 화면 밖
-        for (const k of keep) if (k !== boatK && boxHit(e, k)) { bad += 40; conflict = conflict || k; }   // 검색창 · 미니맵
+        if (e.x0 < mg - 1 || e.x1 > W0 - mg + 1 || e.y0 < topBand || e.y1 > H0) bad += 100;         // 화면 밖 (위 끝 = 호스트 헤더 아래)
+        for (const k of keep) if (k !== boatK && !k.band && boxHit(e, k)) { bad += 40; conflict = conflict || k; }   // 검색창 · 미니맵 (헤더 띠는 위 줄이 본다)
         const lb = labBox(i, px, py, r), bb = bodyBox(px, py, r);
         let sep = 4;
         for (const q of placed) {
@@ -1745,7 +1752,7 @@ applyResponsive();
 //   ⚠ 속성이 없으면 인라인의 예전 값이다 (반응형 · 시간대와 같은 규약 — 불변식 23 · 25). 카드 바탕의 불투명도(cardGlassA)는 CSS 변수로 넣는다.
 //   미니맵 캔버스는 minimap.js 가 속성이 바뀐 것을 보고 색을 다시 읽는다
 let _cardEveOn = null, _miniEveOn = null, _cardGlassA = null, _cardPeekA = null, _cardBtnNavy = null, _cardRuleSolid = null, _cardImg = null, _infoCenter = null, _siteHeader = null, _cardActions = null;
-let _warnEveOn = null, _warnLine = null, _warnDrop = null, _searchDrop = null, _infoDescK = null;
+let _warnEveOn = null, _warnLine = null, _warnDrop = null, _searchDrop = null, _infoDescK = null, _hostTop = null;
 function applyUiEve() {
   const root = document.documentElement;
   const ce = (P.cardEve === undefined ? 1 : P.cardEve) >= 0.5;
@@ -1789,7 +1796,11 @@ function applyUiEve() {
   if (wd !== _warnDrop) { _warnDrop = wd; root.style.setProperty('--pb-warn-drop', wd + 'px'); }
   // ⭐ 검색창 · 정보 블록 · 경고 토스트 내림 · 설명 글자 배율 (2026-09-15, v0.67.0 — searchDrop · infoDescK). 반응형 단계 값에 **더하고 · 곱한다** (단계마다 같은 만큼).
   //   ⚠ 정보 블록 아래끝 + 18px 이 수면 타이포의 천장이다 — 자리 · 크기가 바뀌면 창 크기 변화처럼 알려 천장과 말풍선 피할 자리를 다시 잰다 (처음 한 번은 안 알린다)
-  const sd = clamp(P.searchDrop === undefined ? 40 : P.searchDrop, 0, 240);
+  // ⭐⭐ 호스트 헤더 (2026-09-15, v0.69.0 — hostTop) : 앱 헤더가 무대 위에 겹친 높이만큼 **더 내린다** (searchDrop 에 더한다 — 검색창 · 정보 블록 · 경고 토스트가 같이 간다).
+  //   해도 판은 --pb-host-top 으로 그 아래에 서고, 향수 고르기는 focusKeepBoxes · 깊이 배치의 화면 검사가 그 띠를 뺀다. ⚠ 무대 크기는 안 바뀐다 (siteHeader 와 다르다)
+  const ht = hostTopPx();
+  if (ht !== _hostTop) { _hostTop = ht; root.style.setProperty('--pb-host-top', ht + 'px'); }
+  const sd = clamp(P.searchDrop === undefined ? 40 : P.searchDrop, 0, 240) + ht;
   if (sd !== _searchDrop) { const first = _searchDrop === null; _searchDrop = sd; root.style.setProperty('--pb-search-drop', sd + 'px'); if (!first) window.dispatchEvent(new Event('resize')); }
   const dk = clamp(P.infoDescK === undefined ? 1.15 : P.infoDescK, 0.5, 2);
   if (dk !== _infoDescK) { const first = _infoDescK === null; _infoDescK = dk; root.style.setProperty('--pb-info-desc-k', String(dk)); if (!first) window.dispatchEvent(new Event('resize')); }

@@ -29,12 +29,23 @@
   --color-sage-deep: #556150; /* 6.06:1 — sage 를 어둡게 */
   --color-rust: #8f4632; /* 6.30:1 — 흙빛 러스트 */
 
+  /*
+   * ── 3D 향 지도(저녁 바다) 위 ─────────────────────────
+   * 메인(A01)은 헤더 뒤까지 3D 가 깔리고, 헤더가 그 위에 유리판으로 뜹니다.
+   * 짙은 남색은 3D 엔진 카드 단추(paperboat --pb-card-btn)와 같은 색입니다 —
+   * 사용자가 그 단추에 고른 남색이라 헤더도 같은 색을 비칩니다.
+   * 팔레트 7색 밖이라 3D 위에서만 씁니다. 그 위 글자는 상아색(surface)입니다.
+   */
+  --color-navy: #1e2947;
+
   /* ── 역할 토큰: 이것만 화면에서 사용 ─────────────────── */
 
   /* 바탕 */
   --color-surface: var(--color-ivory); /* 페이지 바탕 */
   --color-surface-card: #fefcf8; /* 종이 위에 얹는 따뜻한 흰색 */
   --color-surface-sunken: var(--color-bone); /* 연한 채움 · 이미지 자리 */
+  /* 3D 저녁 바다 위 — 유리판 헤더의 바탕 · 3D 가 뜨기 전 자리. 알파는 쓰는 곳에서 줍니다 */
+  --color-surface-night: var(--color-navy);
 
   /* 글자 */
   --color-ink: var(--color-charcoal); /* 본문 · 주요 액션 바탕 (12.36:1) */

@@ -39,12 +39,18 @@ export default function HomePage() {
   }
 
   return (
-    // 헤더(GlobalHeader 의 h-22.5 = 90px) 아래 남은 높이를 3D 가 채웁니다
-    <div className="relative h-[calc(100dvh_-_90px)] min-h-120">
+    /*
+     * 3D 가 화면 맨 위부터 끝까지 채웁니다 — 헤더(GlobalHeader)는 그 위에 유리판으로 뜹니다.
+     * 바탕의 남색은 3D 가 뜨기 전 자리입니다. 비워 두면 종이(ivory) 위에 남색 유리판이 앉아
+     * 헤더의 상아색 글자가 흐려집니다.
+     */
+    <div className="bg-surface-night relative h-dvh min-h-120">
       <h1 className="sr-only">향 지도</h1>
 
       <ScentScene
         className="absolute inset-0"
+        // 유리판 헤더(GlobalHeader 의 h-22.5 = 90px)가 3D 위를 가리는 높이 — 엔진이 검색창 · 해도를 그 아래로 내립니다
+        coveredTop={90}
         onOpenDetail={(perfume) => {
           // ⚠️ 엔진 데이터에는 아직 DB perfumeId 가 없습니다(fragrantica_id 뿐). 없으면 이름으로 검색 결과(A09)에 보냅니다
           navigate(
@@ -67,8 +73,8 @@ export default function HomePage() {
         }}
       />
 
-      {/* 향해 일지 — 3D 위 왼쪽 위에 계속 떠 있습니다 */}
-      <div className="absolute top-5 left-5">
+      {/* 향해 일지 — 3D 위 왼쪽 위에 계속 떠 있습니다. 유리판 헤더(90px) 아래 20px */}
+      <div className="absolute top-27.5 left-5">
         <VoyageLog entries={log.data ?? []} />
       </div>
 
