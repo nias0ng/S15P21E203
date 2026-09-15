@@ -67,7 +67,12 @@ export interface ShelfItem {
   category: ShelfCategory
   /** 대표 향수는 한 번에 하나. 보유 중 칸에만 표시됩니다 (A13 주석). */
   representative: boolean
-  /** 내 취향 적합도 1~5 (SHF-12 · DTL-18 · DTL-19). 선택 항목입니다. */
+  /**
+   * 내 취향 적합도 (SHF-12 · DTL-18 · DTL-19). 선택 항목입니다.
+   *
+   * **1.0~5.0 을 0.5 단위**로 받습니다(백엔드 `@DecimalMin("1.0") @DecimalMax("5.0")`,
+   * 컬럼은 `NUMERIC(2, 1)`). 0.5 는 받지 않아 고를 수 있는 값은 아홉 개입니다.
+   */
   rating: number | null
   /** 개인 메모. 선택 항목이고 향수당 하나입니다. */
   memo: string | null
