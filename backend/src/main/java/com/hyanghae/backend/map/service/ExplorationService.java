@@ -120,6 +120,33 @@ public class ExplorationService {
     }
 
     /**
+     * 배를 처음 띄웁니다. 취향 테스트가 정한 향수 자리입니다.
+     *
+     * <p><b>일지에도 남깁니다.</b> 배가 실제로 그 향수에 떠 있으므로 일지의 첫 줄이 그 구역
+     * 진입이 됩니다. 남기지 않으면 지도를 처음 연 회원의 일지가 비어 있는데, 배는 어딘가에 떠
+     * 있으면서 어떻게 거기 갔는지는 일지가 말해 주지 않는 상태가 됩니다.
+     *
+     * <p>{@link #move} 와 달리 "구역이 바뀌었는지" 를 따지지 않습니다. 첫 기록이라 견줄 이전
+     * 자리가 없습니다.
+     *
+     * <p>지도에 없는 향수면 비어 있고 <b>배도 일지도 건드리지 않습니다.</b> 좌표가 없으니 놓을
+     * 자리가 없습니다. 오류로 답하는 대신 비워 돌려주는 이유는 부르는 쪽이 자기 도메인의 코드로
+     * 답해야 하기 때문입니다 — 취향 테스트에서는 결과 향수가 잘못된 것이라 400 입니다.
+     *
+     * <p>사용자 번호를 받습니다. 여기만 {@link CurrentUser} 를 쓰지 않는 이유는 부르는 쪽이 이미
+     * 로그인을 확인하고 자기 도메인의 코드로 401 을 냈기 때문입니다.
+     */
+    @Transactional
+    public Optional<ExplorationPoint> placeStartingPoint(Long userId, Long perfumeId) {
+        Optional<ExplorationPoint> point = explorationLogRepository.findMapPoint(perfumeId);
+        point.ifPresent(start -> {
+            explorationLogRepository.insert(userId, perfumeId, start);
+            explorationStateRepository.save(userId, start);
+        });
+        return point;
+    }
+
+    /**
      * 배가 지금 있는 자리입니다. 한 번도 움직인 적이 없으면 세 필드가 모두 {@code null} 입니다.
      */
     @Transactional(readOnly = true)
