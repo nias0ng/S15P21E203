@@ -120,6 +120,27 @@ public class ExplorationService {
     }
 
     /**
+     * 배를 처음 띄웁니다. 취향 테스트가 정한 향수 자리입니다.
+     *
+     * <p>{@link #move} 와 달리 일지에 남기지 않습니다. 일지는 사용자가 움직인 자취이고 출발점은
+     * 움직인 것이 아닙니다. 배를 처음 띄운 시각은 {@code map_exploration_states.created_at} 에
+     * 남습니다.
+     *
+     * <p>지도에 없는 향수면 비어 있고 <b>배도 움직이지 않습니다.</b> 좌표가 없으니 놓을 자리가
+     * 없습니다. 오류로 답하는 대신 비워 돌려주는 이유는 부르는 쪽이 자기 도메인의 코드로 답해야
+     * 하기 때문입니다 — 취향 테스트에서는 결과 향수가 잘못된 것이라 400 입니다.
+     *
+     * <p>사용자 번호를 받습니다. 여기만 {@link CurrentUser} 를 쓰지 않는 이유는 부르는 쪽이 이미
+     * 로그인을 확인하고 자기 도메인의 코드로 401 을 냈기 때문입니다.
+     */
+    @Transactional
+    public Optional<ExplorationPoint> placeStartingPoint(Long userId, Long perfumeId) {
+        Optional<ExplorationPoint> point = explorationLogRepository.findMapPoint(perfumeId);
+        point.ifPresent(start -> explorationStateRepository.save(userId, start));
+        return point;
+    }
+
+    /**
      * 배가 지금 있는 자리입니다. 한 번도 움직인 적이 없으면 세 필드가 모두 {@code null} 입니다.
      */
     @Transactional(readOnly = true)
