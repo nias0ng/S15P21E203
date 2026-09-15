@@ -31,7 +31,7 @@ export function SimilarExplorer({ center, similar, onPick }: Props) {
   }
 
   return (
-    <div className="border-line bg-surface-card space-y-3 border p-4">
+    <div className="border-line bg-surface-card space-y-2.5 border p-3.75">
       <h2 className="text-ink text-xs font-bold">향 계열 기준 유사 향수</h2>
 
       <div className="relative mx-auto aspect-square w-full max-w-80">
@@ -39,7 +39,7 @@ export function SimilarExplorer({ center, similar, onPick }: Props) {
         <div className="border-line absolute inset-0 rounded-full border border-dashed" />
 
         {/* 중심 향수 */}
-        <div className="bg-ink absolute top-1/2 left-1/2 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full p-3 text-center">
+        <div className="bg-ink absolute top-1/2 left-1/2 w-27.5 -translate-x-1/2 -translate-y-1/2 rounded-full p-2.5 text-center">
           <span className="text-surface block truncate text-[10.5px]">
             {center.name}
           </span>
@@ -56,7 +56,7 @@ export function SimilarExplorer({ center, similar, onPick }: Props) {
               type="button"
               onClick={() => onPick(point)}
               title={`${point.name} · ${point.brand}`}
-              className="border-line bg-line-soft hover:bg-ink hover:text-surface absolute w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border p-2 transition-colors"
+              className="border-line bg-line-soft hover:bg-ink hover:text-surface absolute w-23.75 -translate-x-1/2 -translate-y-1/2 rounded-full border p-2.5 transition-colors"
               style={{
                 left: `${50 + Math.cos(angle) * radius}%`,
                 top: `${50 + Math.sin(angle) * radius}%`,
