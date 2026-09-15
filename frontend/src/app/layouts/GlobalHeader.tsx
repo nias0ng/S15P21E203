@@ -35,12 +35,10 @@ const GLASS = cn(
 /*
  * 헤더 위 글자 · 선 · 펼침 메뉴의 색.
  * 유리판(남색) 위에서는 상아색으로 뒤집습니다 — 종이의 먹색은 남색 위에서 읽히지 않습니다.
- * 옅은 글자도 85% 까지만 내립니다. 판 뒤로 밝은 하늘이 비치는 자리가 있어서입니다.
  */
 const PAPER_INK = {
   text: 'text-ink',
   hover: 'hover:text-ink-muted',
-  muted: 'text-ink-muted',
   open: 'text-ink-muted',
   ring: 'focus-visible:ring-accent-deep',
   menu: 'border-line bg-surface-card',
@@ -52,14 +50,13 @@ const PAPER_INK = {
 }
 /*
  * 밤하늘 위 유리 — 남색 판 · 상아색 글자 · 남색 그림자.
- * 2026-09-16 실측 (헤더 띠의 밤하늘) : 상아색 최저 7.4:1 · 옅은 글자(85%) 5.9:1. 먹색으로 두면 1.2:1 이라 꼭 바꿔야 합니다
+ * 2026-09-16 실측 (헤더 띠의 밤하늘) : 상아색 최저 7.4:1. 먹색으로 두면 1.2:1 이라 꼭 바꿔야 합니다
  */
 const GLASS_INK: typeof PAPER_INK = {
   tint: 'before:from-surface-night/25',
   shadow: 'text-shadow-xs text-shadow-surface-night/40',
   text: 'text-surface',
   hover: 'hover:text-surface/70',
-  muted: 'text-surface/85',
   open: 'text-surface/70',
   ring: 'focus-visible:ring-surface focus-visible:ring-offset-surface-night',
   // 펼침 메뉴는 판보다 짙게 깝니다. 판 밖으로 내려와 3D 위에 바로 앉아서, 옅으면 뒤의 부표 · 글자와 섞입니다
@@ -72,7 +69,7 @@ const GLASS_INK: typeof PAPER_INK = {
  * 밝은 하늘(낮 · 저녁) 위 유리 — 상아색 판 · 먹색 글자 · 상아색 그림자.
  * 거의 투명한 판 뒤로 살구색 하늘이 그대로 비쳐 상아색 글자는 대비가 1.7:1 까지 떨어졌습니다.
  * 2026-09-16 실측 (헤더 띠 저녁 하늘의 상대 휘도 0.38 ~ 0.56) :
- *   먹색 + 남색 판 최저 4.3:1 → 먹색 + 상아색 판(25%) 최저 6.4:1 · 옅은 글자(먹색 85%) 4.7:1 (80% 면 4.3:1)
+ *   먹색 + 남색 판 최저 4.3:1 → 먹색 + 상아색 판(25%) 최저 6.4:1
  * 남색 판은 먹색 글자 뒤를 더 어둡게 해서 오히려 대비를 깎습니다 — 그래서 판의 색도 하늘을 따릅니다.
  * 펼침 메뉴는 판 밖 3D 위에 바로 앉으므로 종이 카드로 깝니다.
  */
@@ -81,7 +78,6 @@ const GLASS_LIGHT_INK: typeof PAPER_INK = {
   shadow: 'text-shadow-xs text-shadow-surface/40',
   text: 'text-ink',
   hover: 'hover:text-ink/70',
-  muted: 'text-ink/85',
   open: 'text-ink/70',
   ring: 'focus-visible:ring-accent-deep',
   menu: 'border-line bg-surface-card shadow-overlay',
@@ -180,11 +176,9 @@ export function GlobalHeader({ tone = 'surface' }: { tone?: HeaderTone }) {
 /* ------------------------------------------------------------------ */
 
 /**
- * 로고 묶음 — 이름 아래 영문 한 줄.
+ * 로고 — 이름 한 줄.
  *
- * 두 줄이 한 링크입니다. 영문 줄을 링크 밖으로 빼면 낭독기의 링크 목록에 뜻이 반쯤
- * 잘린 항목이 하나 더 생깁니다. 영문 줄에 aria-hidden 을 다는 것도 같은 이유입니다 —
- * 자간을 크게 벌린 대문자는 낭독기가 한 글자씩 읽는 일이 있습니다.
+ * 이름 아래의 영문 한 줄(SCENT JOURNEY)은 2026-09-16 에 모든 화면에서 뺐습니다.
  */
 function BrandMark({ ink }: { ink: Ink }) {
   return (
@@ -194,15 +188,6 @@ function BrandMark({ ink }: { ink: Ink }) {
     >
       <span className="block font-serif text-[26px] leading-none font-semibold tracking-[0.12em]">
         향해
-      </span>
-      <span
-        aria-hidden
-        className={cn(
-          'mt-1.25 block text-[10px] leading-none tracking-[0.28em]',
-          ink.muted,
-        )}
-      >
-        SCENT JOURNEY
       </span>
     </Link>
   )
