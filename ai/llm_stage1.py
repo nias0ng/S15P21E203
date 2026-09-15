@@ -1,11 +1,11 @@
 """①단계 LLM 구조화 — 한국어 문장을 향 조건 dict 로 바꾼다.
 
-`nlr_engine.recommend(index, text, conditions)` 의 `conditions` 를 채우는 모듈이다.
+`nlr_engine.recommend(index, text, structured)` 의 `structured` 를 채우는 모듈이다.
 
     import llm_stage1, nlr_engine
 
-    conditions = llm_stage1.structure("빨래 냄새 나는 향수 찾고 있어")
-    out = nlr_engine.recommend(index, text, conditions)
+    structured = llm_stage1.structure("빨래 냄새 나는 향수 찾고 있어")
+    out = nlr_engine.recommend(index, text, structured)
 
 **네트워크를 아는 유일한 파일이다.** 엔진과 사전과 미매칭 로그는 이 파일을 모른다.
 그래야 DB 도 인터넷도 없이 `python nlr_engine.py "빨래"` 로 검증할 수 있고,
@@ -64,7 +64,7 @@ DEFAULT_TIMEOUT = 5.0
 
 PROMPT_PATH = pathlib.Path(__file__).resolve().parent / "data" / "stage1_prompt_v1.txt"
 
-# 프롬프트가 요구하는 출력 형태. 엔진의 `conditions` 가 이것과 같은 모양이라 변환이 없다.
+# 프롬프트가 요구하는 출력 형태. 엔진의 `structured` 가 이것과 같은 모양이라 변환이 없다.
 EMPTY_STAGE1 = {
     "scent_preference": [],
     "context": {"season": [], "daypart": [], "gender": []},

@@ -109,7 +109,7 @@ out = recommend(index, "빨래 냄새 나는 향수 찾고 있어")
 LLM 구조화 결과가 있으면 세 번째 인자로 넘깁니다.
 
 ```python
-out = recommend(index, text, conditions)   # 없으면 사전 문자열 매칭만 씁니다
+out = recommend(index, text, structured)   # 없으면 사전 문자열 매칭만 씁니다
 ```
 
 ---
@@ -272,7 +272,7 @@ for row in ulog.review_queue(top_n=20):   # 자주 나온 순으로 검토 후�
     print(row["normalized_key"], row["occurrence_count"], row["reasons"])
 ```
 
-**`conditions` 가 있어야 작동합니다.** 표현을 뽑는 단계가 LLM 구조화이기 때문입니다.
+**`structured` 가 있어야 작동합니다.** 표현을 뽑는 단계가 ①단계 구조화이기 때문입니다.
 HTTP 서버로 쓰면 `GMS_API_KEY` 만 있으면 서버가 알아서 채우므로 저절로 쌓입니다.
 엔진을 직접 부를 때는 `llm_stage1.structure(text)` 결과를 함께 넘기십시오.
 
@@ -290,7 +290,7 @@ HTTP 서버로 쓰면 `GMS_API_KEY` 만 있으면 서버가 알아서 채우므�
 
 ```python
 estimate = ulog.cached_estimator(my_gms_call)   # 같은 표현은 한 번만 부릅니다
-out = recommend(index, text, conditions, estimator=estimate)
+out = recommend(index, text, structured, estimator=estimate)
 ```
 
 조건이 **하나도 안 잡혔을 때만** 부릅니다. 추정으로 나온 조건은 등급이 `LLM` 이고
