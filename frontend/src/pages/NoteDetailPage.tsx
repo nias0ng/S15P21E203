@@ -46,42 +46,37 @@ export default function NoteDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6.25">
       <LinkButton to={ROUTES.NOTES} variant="outline" size="sm">
         ← 뒤로 가기
       </LinkButton>
 
-      <div className="flex flex-col gap-4 sm:flex-row">
+      <div className="flex flex-col gap-3.75 sm:flex-row">
         <Thumbnail
           src={data.imageUrl}
           fallback="노트 이미지"
-          className="h-40 w-56 shrink-0"
+          className="h-40 w-56.25 shrink-0"
         />
 
-        <div className="flex-1 space-y-2">
-          <div className="border-line rounded-card flex items-center gap-3 border px-3 py-3">
-            <span className="text-ink-muted text-caption">대분류</span>
-            <span className="text-ink text-body font-medium">
-              {data.category}
-            </span>
-            <span className="text-ink-muted text-caption">· {data.name}</span>
+        <div className="flex-1 space-y-2.5">
+          <div className="border-line flex items-center gap-2.5 border px-2.5 py-2.5">
+            <span className="text-ink-muted text-[10.5px]">대분류</span>
+            <span className="text-ink text-xs font-bold">{data.category}</span>
+            <span className="text-ink-muted text-[10.5px]">· {data.name}</span>
           </div>
 
-          <div className="border-line rounded-card space-y-2 border p-3">
-            <p className="text-ink-muted text-caption">설명</p>
-            <p className="text-ink text-body">{data.description}</p>
+          <div className="border-line space-y-2.5 border p-2.5">
+            <p className="text-ink-muted text-[10.5px]">설명</p>
+            <p className="text-ink text-xs leading-relaxed">
+              {data.description}
+            </p>
           </div>
         </div>
       </div>
 
-      <section className="space-y-3">
-        {/*
-          ⚠️ 개수(data.perfumeCount)는 자리표시자가 늘 42 를 돌려줍니다. 목록도 아직
-          없어서 "42" 라고 써 두면 진짜 데이터로 읽힙니다. 노트별 향수 API 가 붙으면
-          그때 개수를 답니다.
-        */}
-        <h2 className="text-ink text-title font-serif font-semibold">
-          이 노트가 들어간 향수
+      <section className="space-y-2.5">
+        <h2 className="text-ink text-sm font-bold">
+          이 노트가 들어간 향수 {data.perfumeCount}
         </h2>
         {/* TODO: 노트별 향수 목록 API 연결 (스크롤로 이어 로드도 함께) */}
         <PerfumeGrid

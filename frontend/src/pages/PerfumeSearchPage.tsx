@@ -14,7 +14,7 @@ export default function PerfumeSearchPage() {
   const keyword = searchParams.get('keyword') ?? ''
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3.75">
       <h1 className="sr-only">향수 검색 결과</h1>
 
       <SearchField

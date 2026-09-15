@@ -1,5 +1,3 @@
-import { Button } from '@/shared/ui/Button'
-
 import type { SeasonRating } from '../types'
 
 import { SeasonRatingChart } from './SeasonRatingChart'
@@ -19,21 +17,19 @@ const PLACEHOLDER_SEASON_RATINGS: SeasonRating[] = [
 type Props = {
   /** 없으면 와이어프레임 자리표시자 수치를 씁니다. 백엔드 연결 시 넘겨주세요. */
   ratings?: SeasonRating[]
-  /** [계절 등록] — 화면이 계절 선택 모달을 엽니다 */
-  onRegisterSeason: () => void
 }
 
-/** 향수 상세 ③ 계절별 평가 (와이어프레임 A10 — DTL-14 · DTL-16) */
-export function PerfumeSeasonRatings({ ratings, onRegisterSeason }: Props) {
+/**
+ * 향수 상세 ③ 계절별 평가 (와이어프레임 A10 — DTL-14)
+ *
+ * **읽기 전용입니다.** 계절 등록은 후기 작성 화면으로 옮겼습니다(DTL-16) —
+ * 남들의 집계를 보는 이 구역에 등록까지 두면 입구가 둘이 됩니다.
+ */
+export function PerfumeSeasonRatings({ ratings }: Props) {
   return (
-    <section className="space-y-4 p-6">
-      <h2 className="text-ink text-heading font-serif font-semibold">
-        계절별 평가
-      </h2>
+    <section className="space-y-3.75 p-6.25">
+      <h2 className="text-ink text-sm font-bold">계절별 평가</h2>
       <SeasonRatingChart ratings={ratings ?? PLACEHOLDER_SEASON_RATINGS} />
-      <Button variant="outline" size="sm" onClick={onRegisterSeason}>
-        계절 등록
-      </Button>
     </section>
   )
 }
