@@ -1,7 +1,11 @@
 # Backend 개발 시작 가이드
 
 이 문서는 백엔드 개발 환경을 처음 구성하는 팀원을 위한 안내서입니다.  
-PostgreSQL, Redis와 자연어 추천 AI 서버는 개인 PC에 직접 설치하지 않고 Docker로 실행합니다.
+백엔드를 포함한 전체 환경은 Docker로 실행할 수 있습니다. 백엔드 코드를 직접 개발할 때는
+PostgreSQL과 Redis만 Docker로 실행하고 애플리케이션은 IntelliJ에서 실행합니다.
+
+실행 방법만 빠르게 확인하려면 [로컬 개발 환경 빠른 시작](../docs/local-development-guide.md)을
+참고합니다.
 
 ## 기술 환경
 
@@ -69,23 +73,32 @@ git pull --ff-only origin develop
 
 ## 4. 백엔드 실행
 
-### PostgreSQL, Redis 및 AI 서버 실행
+### 전체 환경을 Docker로 실행
 
 Docker Desktop을 실행한 뒤 저장소 루트에서 다음 명령을 실행합니다.
 
 ```bash
-docker compose -f compose.manual-test.yaml up -d --build
+docker compose -f compose.manual-test.yaml up -d --build --wait
 docker compose -f compose.manual-test.yaml ps
 ```
 
-`postgres`, `redis`, `ai`의 상태가 모두 `healthy`인지 확인합니다.
+`postgres`, `redis`, `ai`, `backend`의 상태가 모두 `healthy`인지 확인합니다. 백엔드 Health와
+Swagger UI는 다음 주소에서 확인합니다.
+
+- Health Check: http://localhost:8080/actuator/health
+- Swagger UI: http://localhost:8080/swagger-ui/index.html
+- OpenAPI JSON: http://localhost:8080/v3/api-docs
 
 AI 서버는 호스트에 포트를 공개하지 않고 Compose 내부 네트워크의 `http://ai:8000`에서만
-동작합니다. 현재처럼 백엔드를 IntelliJ에서 직접 실행하면 AI 서버를 호출할 수 없으며, 이 구성에서는
-AI 컨테이너가 정상적으로 기동되는지만 확인합니다. AI 서버의 환경변수와 API는
-[AI 서버 README](../ai/README.md)를 참고합니다.
+동작합니다. AI 서버의 환경변수와 API는 [AI 서버 README](../ai/README.md)를 참고합니다.
 
-### 애플리케이션 실행
+### 백엔드 코드를 IntelliJ에서 개발
+
+백엔드 코드를 수정하고 디버깅할 때는 저장소 루트에서 PostgreSQL과 Redis만 실행합니다.
+
+```bash
+docker compose -f compose.manual-test.yaml up -d postgres redis
+```
 
 IntelliJ에서 Active profiles를 `manual-test`로 설정하고 `BackendApplication`을 실행합니다.
 
@@ -105,56 +118,22 @@ cd backend
 ./gradlew bootRun --args="--spring.profiles.active=manual-test"
 ```
 
-정상적으로 실행되면 다음 주소를 확인합니다.
+정상적으로 실행되면 앞의 Health Check와 Swagger UI 주소를 확인합니다.
 
-- Health Check: http://localhost:8080/actuator/health
-- Swagger UI: http://localhost:8080/swagger-ui/index.html
-- OpenAPI JSON: http://localhost:8080/v3/api-docs
+Swagger는 `manual-test` 프로필에서만 활성화됩니다. IntelliJ 실행 방식에서는 AI 서버를 실행하지
+않으므로 자연어 추천까지 확인하려면 전체 환경을 Docker로 실행합니다.
 
-Swagger는 `manual-test` 프로필에서만 활성화됩니다.
+### 로컬 초기 데이터 적재
 
-### 향 지도 초기 데이터 적재
-
-**Flyway와 애플리케이션 실행은 향 지도 데이터를 넣지 않습니다.** 마이그레이션은 표만 만들고,
-국내 대표 향수 200개의 좌표·향 계열·닮은 향수·향 특성은 아래 스크립트를 직접 실행해야 들어갑니다.
-
-적재하지 않아도 애플리케이션은 정상 실행됩니다. 대신 향수 검색 결과에 향 계열 뱃지가 없고,
-주변·유사 향수와 향 지도 관련 응답이 전부 빈 목록입니다. **화면이 비어 보이면 이 단계를 건너뛴
-것인지 먼저 확인하세요.**
-
-스키마가 최신 버전까지 적용된 뒤에 실행합니다. 애플리케이션을 한 번 띄우면 Flyway가 적용합니다.
-
-**`backend/db/seed`로 이동한 뒤** 실행합니다. `\copy`가 CSV를 psql의 현재 디렉터리에서 찾으므로
-다른 곳에서 실행하면 파일을 찾지 못합니다. 바로 앞의 `docker compose` 명령이 저장소 루트 기준이니
-디렉터리가 바뀐다는 점에 주의하세요.
+전체 환경을 실행한 뒤 저장소 최상위 폴더에서 다음 명령 하나를 실행합니다.
 
 ```bash
-cd backend/db/seed
-
-docker cp . hyanghae-manual-test-postgres-1:/tmp/seed
-docker exec -w /tmp/seed hyanghae-manual-test-postgres-1 \
-  psql -U hyanghae -d hyanghae_test -f load_scent_map.sql
+docker compose -f compose.manual-test.yaml run --rm seed
 ```
 
-컨테이너 안의 psql을 씁니다. 로컬에 psql이 설치돼 있지 않아도 되고, 접속 정보를 적을 필요도
-없습니다. `docker cp .` 는 이 디렉터리의 내용을 컨테이너로 복사하며, 여러 번 실행해도 덮어쓰기만
-합니다.
-
-로컬에 `psql`이 설치돼 있다면 같은 디렉터리에서 이 한 줄로도 됩니다.
-
-```bash
-psql "postgresql://hyanghae:hyanghae_test@localhost:5432/hyanghae_test" -f load_scent_map.sql
-```
-
-몇 번을 다시 실행해도 결과가 같습니다. 전체가 한 트랜잭션이라 중간에 하나라도 어긋나면 아무것도
-반영되지 않고, 마지막에 적재된 행 수를 출력합니다. 아래와 같이 나오면 정상입니다.
-
-```
- perfumes | map_points | scent_families | neighbors | perfume_accords | accords | regions_with_polygon
-      200 |        200 |            303 |      2000 |            1598 |      60 |                    9
-```
-
-데이터의 형태와 주의할 점은 [backend/db/seed/README.md](db/seed/README.md)에 있습니다.
+향 지도, 향수 카탈로그, 노트 메타데이터와 향수 이미지를 Docker 안에서 순서대로 적재합니다.
+Git Bash, 로컬 `psql`, `docker cp`는 필요 없습니다. 자세한 실행 방법과 정상 결과는
+[로컬 개발 환경 빠른 시작](../docs/local-development-guide.md)을 확인합니다.
 
 ### 후기 시드 적재
 
@@ -174,7 +153,7 @@ docker exec -w /tmp/seed hyanghae-manual-test-postgres-1 \
 
 ### 서비스 종료
 
-애플리케이션을 종료한 뒤 저장소 루트에서 다음 명령을 실행합니다.
+저장소 루트에서 다음 명령을 실행합니다. IntelliJ로 백엔드를 실행했다면 애플리케이션도 종료합니다.
 
 ```bash
 docker compose -f compose.manual-test.yaml down
