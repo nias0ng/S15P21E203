@@ -41,12 +41,13 @@ public record PerfumeDetailResponse(
 
     /**
      * JPQL 생성자 표현식이 사용합니다. 생성자 표현식으로는 중첩 객체를 만들 수 없어 브랜드를
-     * 두 인자로 받아 여기서 조립합니다. 브랜드가 없는 향수는 {@code brand} 가 {@code null} 입니다.
+     * 세 인자로 받아 여기서 조립합니다. 브랜드가 없는 향수는 {@code brand} 가 {@code null} 입니다.
      */
     public PerfumeDetailResponse(
             Long perfumeId,
             Long brandId,
             String brandName,
+            String brandNameKo,
             String name,
             String nameKo,
             String gender,
@@ -55,7 +56,7 @@ public record PerfumeDetailResponse(
     ) {
         this(
                 perfumeId,
-                brandId == null ? null : new BrandResponse(brandId, brandName),
+                brandId == null ? null : new BrandResponse(brandId, brandName, brandNameKo),
                 name,
                 nameKo,
                 gender,

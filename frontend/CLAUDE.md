@@ -36,7 +36,7 @@ MR      [S15P21E203-42][feat] 자연어 기반 향수 추천 기능 구현
 ```
 
 - 커밋 타입: `feat` `fix` `refactor` `design` `docs` `test` `chore` `remove`
-- Jira Story 제목: `[FE][작업종류] 작업 내용` (작업종류는 `Feature` `Fix` `Refactor` `Test` `Docs` `Chore` — `Design` 은 없습니다)
+- Jira Story 제목: `[FE][작업종류] 작업 내용` (작업종류는 `Feature` `Fix` `Refactor` `Test` `Docs` `Chore` `Design`)
 - 모든 작업 브랜치는 **최신 `develop`에서** 생성합니다. 1 Jira 이슈 = 1 브랜치 = 1 MR.
 - `master`·`develop`에 **직접 push 하지 않습니다.** 둘 다 Protected(push No one, force push 불가,
   파이프라인 성공 후 병합 필수, MR 승인 1명 이상)입니다.
@@ -45,6 +45,88 @@ MR      [S15P21E203-42][feat] 자연어 기반 향수 추천 기능 구현
 - **커밋은 사용자가 요청할 때만** 만듭니다.
 - MR 본문은 `../.gitlab/merge_request_templates/Default.md` 템플릿을 채웁니다(읽기만 합니다).
   MR 올리기 전 `npm run verify` 통과가 조건입니다.
+
+## 프로토타입 브랜치 (`design/fe/S15P21E203-prototype`)
+
+진열대·컬렉션·커뮤니티 재설계 시안을 프론트 팀원들이 함께 다듬는 **공유 기준선**입니다.
+`develop` 에 병합할 상태가 아니라 따로 둡니다. 이 브랜치와 그 하위 브랜치에서 작업하는
+동안만 위 협업 규약의 네 항목이 아래로 대체되고, **나머지는 전부 그대로입니다**
+(커밋 타입, `merge` 통일, `npm run verify` 통과, 커밋은 사용자가 요청할 때만).
+
+| 항목 | 평소 | 프로토타입 작업 중 |
+| --- | --- | --- |
+| 분기 기준 | 최신 `develop` | `origin/design/fe/S15P21E203-prototype` |
+| MR 타겟 | `develop` | `design/fe/S15P21E203-prototype` |
+| 브랜치명 | `{타입}/fe/S15P21E203-{번호}-{기능명}` | `design/fe/S15P21E203-prototype-{작업단위}` |
+| 커밋 | `{타입}: S15P21E203-{번호} {내용}` | `{타입}: {내용}` — 대응 Jira 이슈가 없어 키를 뺍니다 |
+
+작업 단위는 **사람 이름이 아니라 무엇을 고치는지**로 짓습니다(`-shelf-spacing`, `-community-cards`).
+사람 이름으로 파면 한 사람의 여러 작업이 한 브랜치에 쌓여 MR 이 리뷰 불가능해집니다.
+
+### 가지 치기
+
+```bash
+git fetch origin && git switch -c design/fe/S15P21E203-prototype-shelf-spacing origin/design/fe/S15P21E203-prototype
+```
+
+### push 와 MR 생성 — 첫 push 에 같이 합니다
+
+```bash
+npm run verify   # 먼저 통과시킵니다
+git push -u origin design/fe/S15P21E203-prototype-shelf-spacing -o merge_request.create -o merge_request.target=design/fe/S15P21E203-prototype -o "merge_request.title=[S15P21E203][design] 진열대 벽감 여백 조정" -o merge_request.remove_source_branch
+```
+
+- **`merge_request.target` 을 빠뜨리면 타겟이 `develop` 으로 잡힙니다.** 시안 코드가 `develop` MR 로
+  올라갑니다. 매번 명시하고, MR 페이지에서 타겟을 눈으로 한 번 더 확인합니다.
+- push option 은 **ref 업데이트가 있을 때만** 서버로 갑니다. 이미 push 한 브랜치에 옵션만 다시
+  붙여 push 하면 `Everything up-to-date` 로 끝나고 MR 이 안 생깁니다. 그래서 첫 push 에 붙입니다.
+- push option 값에는 개행을 넣을 수 없습니다. MR 본문
+  (`../.gitlab/merge_request_templates/Default.md`)은 웹 Edit → Description 에 붙여넣습니다.
+
+### 기준선 따라잡기
+
+남의 MR 이 병합되면 기준선이 앞서갑니다. 규약대로 **`merge` 를 씁니다.**
+
+```bash
+git fetch origin && git merge origin/design/fe/S15P21E203-prototype
+```
+
+`rebase` 는 히스토리를 다시 써서 force push 가 필요해지고, force push 는 아래 사고를 냅니다.
+
+### 히스토리 정리는 첫 push 전에만
+
+아직 원격에 없는 브랜치는 `rebase -i` 로 커밋 메시지를 고쳐도 안전합니다. **한 번 push 한 뒤에는
+손대지 않습니다** — 고치려면 force push 가 필요하고 그게 아래 사고를 냅니다. 그래서 순서가
+중요합니다: 커밋 정리 → 기준선 merge → `npm run verify` → 첫 push(+MR). push 한 뒤에 오타를
+발견했으면 그냥 두고, 고칠 내용은 MR 본문에 적습니다.
+
+### 하지 말 것
+
+- **`--force` / `--force-with-lease` push** — MR 이 열려 있으면 **MR 이 Closed 됩니다**
+  (MR !78 에서 실제로 발생). 되돌릴 커밋이 있으면 히스토리를 고치지 말고 `git revert` 로 새 커밋을
+  쌓습니다. MR 이 없어도 공유 브랜치라 남의 커밋이 날아갑니다.
+- **MR 타겟을 `develop` 으로 두기** — 위 옵션을 빠뜨리면 이렇게 됩니다.
+- **`design/fe/S15P21E203-prototype` 자체를 `develop` 에 병합** — 커밋에 Jira 키가 없고 시안 과정이
+  다 남아 있어 컨벤션에 맞지 않습니다.
+
+### `develop` 으로 넘길 때
+
+프로토타입 브랜치로 MR 을 열지 않습니다. Jira 이슈를 먼저 만들어 번호를 받고, `develop` 에서 새
+브랜치를 파서 **정리된 파일 상태만** 옮겨 담습니다.
+
+```bash
+git switch -c design/fe/S15P21E203-{번호}-shelf-redesign develop
+git checkout design/fe/S15P21E203-prototype -- src/features/shelf
+git commit -m "design: S15P21E203-{번호} 진열대를 컬렉션 진열장 시안으로 재구성"
+```
+
+`git checkout {브랜치} -- {경로}` 는 파일 상태만 가져오고 커밋 히스토리는 따라오지 않습니다.
+화면 단위로 반복해 의미 있는 커밋만 새로 쌓습니다.
+
+### 향수병 사진은 저장소에 없습니다
+
+`src/assets/bottles/` 는 브랜드 공식 제품 사진이라 `.gitignore` 에 있습니다. 브랜치를 받아도 병
+실루엣만 보이는 게 정상입니다. 사진은 저장소 밖(드라이브·노션)에서 받아 그 경로에 풉니다.
 
 ## 명령어
 
@@ -177,6 +259,38 @@ variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 
   문자열을 이어붙이면 호출하는 쪽이 기본 스타일을 덮어쓸 수 없습니다.
 - 클래스 순서는 `prettier-plugin-tailwindcss`가 정리합니다. 손으로 맞추지 않습니다.
 
+### 화면 폭 · 치수는 1920 x 1080 기준입니다
+
+1920 이 가장 넓은 규격이고(피그마 "1920w" 아트보드), 거기서 줄어드는 방향으로 반응형을 맞춥니다.
+
+- 좌우 여백은 `--gutter` 를 씁니다(`styles/index.css`). 끝자리가 0 입니다 —
+  1536~ 60 · 1280~ 50 · 1024~ 40 · 768~ 30 · 그 아래 20. 헤더와 본문이 같은 값이라 로고와 본문 왼쪽 끝이 맞습니다.
+- 본문 폭은 네 가지이고, 화면마다 `app/router` 의 `handle.width` 에 한 번만 적습니다(적지 않으면 `wide`).
+
+  | 폭 | 크기 | 쓰는 곳 |
+  | --- | --- | --- |
+  | `full` | 화면 틀 전체(1920 에서 1800) | 진열대 · 향 지도처럼 화면을 그림으로 쓰는 곳 |
+  | `wide` | 1440 | 목록 · 격자 · 상세 |
+  | `text` | 800 | 글 읽기 · 쓰기, 계정 폼 (한글 한 줄 40자 안팎) |
+  | `bleed` | 헤더 아래 화면 끝까지 (틀 · 여백 없음) | 3D 향 지도(A01) — 엔진이 화면 전체를 그림으로 씁니다 (`landing/`) |
+
+  페이지 안에서 음수 마진으로 폭 제한을 깨고 나가지 않습니다. 넓게 써야 하면 라우트에 `full` 을 적습니다.
+- 요소 치수(폭 · 높이 · 간격)는 끝자리를 **0 또는 5** 로 맞춥니다. 1~3px 선 굵기 같은 세부는 예외입니다.
+  **글자 크기는 이 규칙에서 뺍니다** — 활자 스케일(`@theme` 의 `--text-*`)과 기존 임의 크기를 그대로 둡니다.
+- 화면을 확인할 때는 **1920 x 1080 으로 먼저** 보고, 그다음 1440 · 1280 처럼 좁은 폭을 봅니다.
+
+## 3D 향 지도 엔진 (`landing/`)
+
+메인(`/`)의 3D 화면은 `landing/index.html` 을 iframe 으로 띄운 것입니다(`features/map/components/ScentScene.tsx`).
+엔진은 three.js 로 만든 프로토타입 **paperboat 의 원본 복사본**이고, Vite 의 두 번째 입구(`vite.config.ts` 의
+`build.rolldownOptions.input.landing`)로 앱과 같이 빌드됩니다.
+
+- React · TypeScript 가 아닌 순수 JS 입니다. **ESLint · Prettier 검사에서 뺐고**, 엔진 코드의 규칙은 `landing/CLAUDE.md` 를 따릅니다.
+- 배 모델 · 게이트 그림은 `public/landing/` 에 있습니다. 엔진이 페이지 기준 상대 경로로 부릅니다.
+- 앱과 주고받는 문은 엔진의 `landing/src/host.js` 하나입니다(자세히 보기 · 진열대에 저장 · 주변 향 탐색 · 검색창). 앱 쪽 연결은 `ScentScene` 에 모았습니다.
+- 개발 서버에서는 엔진의 개발 패널이 같이 뜨므로 `ScentScene` 이 `PB.solo(true)` 로 숨깁니다. 엔진만 따로 보려면 `/landing/index.html` 을 엽니다.
+- paperboat 저장소에서 바뀐 것을 가져올 때는 `index.html` · `src/` · `data/` · `scripts/` · 문서를 통째로 덮어씁니다(에셋이 바뀌면 `public/landing/` 도).
+
 ## 서버 상태 vs 클라이언트 상태
 
 React 를 처음 다룰 때 가장 많이 틀리는 지점입니다.
@@ -224,7 +338,10 @@ React 를 처음 다룰 때 가장 많이 틀리는 지점입니다.
 
 ## 백엔드가 아직 없는 엔드포인트
 
-`features/perfume/api.ts`와 `types.ts` 주석에 적혀 있듯 일부 엔드포인트·필드가 아직 없습니다
-(예: `GET /perfumes/{id}` 는 404, `PerfumeSummary.thumbnailUrl`·`scentFamily` 는 undefined 로 옴).
-**타입이 필수라고 믿고 바로 접근하면 화면이 죽습니다.** 값 없는 경우를 먼저 처리하고,
-새로 API 를 붙일 때는 백엔드 구현 여부를 먼저 확인한 뒤 없으면 같은 형식의 주석을 남깁니다.
+**주석을 믿지 말고 백엔드 소스를 먼저 확인하세요.** 향수·브랜드·후기는 대부분 붙어 있습니다.
+아직 없는 것은 인증·회원, 노트(`features/note` 전체), 게시글 이미지 업로드입니다.
+
+붙어 있는 API 도 **값이 비는 필드가 많습니다** — `nameKo`·`imageUrl`·`scentFamily`·`logoUrl` 은
+null 로 옵니다. **타입이 필수라고 믿고 바로 접근하면 화면이 죽습니다.** 값 없는 경우를 먼저
+처리하고, 없는 API 를 임시로 채울 때는 `features/perfume/api.ts` 의 `withDevFallback` 처럼
+개발 환경에서만 끼어들게 하세요. 운영에서 자리표시자가 나가면 버그가 가려집니다.

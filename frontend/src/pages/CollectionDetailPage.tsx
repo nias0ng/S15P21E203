@@ -3,11 +3,11 @@ import { useState } from 'react'
 import { useParams } from 'react-router'
 
 import {
-  AddPerfumeModal,
+  AddToCollectionModal,
   CollectionFormModal,
   collectionDetailQuery,
 } from '@/features/collection'
-import { shelfItemsQuery } from '@/features/shelf'
+import { shelfItemsQuery, toPerfumeOption } from '@/features/shelf'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
 import { Button } from '@/shared/ui/Button'
@@ -21,13 +21,11 @@ import { Toast } from '@/shared/ui/Toast'
 /**
  * 컬렉션 상세 (와이어프레임 A17 — COL-04 · COL-07)
  *
- * 와이어프레임 주석:
- * - 향수를 제거해도 진열대 저장은 유지된다
- * - 컬렉션은 공개 · 비공개 구분이 없다 — 남에게 보이는 길은 자유 게시판의
- *   컬렉션 공유 글뿐이다
+ * 컬렉션은 공개·비공개 구분이 없습니다 — 남에게 보이는 길은 자유 게시판의
+ * 컬렉션 공유 글뿐입니다.
  *
- * 향수 추가 후보는 진열대에 있는 향수뿐이라(A19 주석) 이 화면에서 진열대 데이터를
- * 함께 불러 모달에 넘깁니다. features 끼리는 import 할 수 없으므로 조합은 여기서 합니다.
+ * 향수 추가 후보가 진열대에 있는 향수뿐이라(A19) 여기서 진열대 데이터를 함께
+ * 불러 모달에 넘깁니다.
  */
 export default function CollectionDetailPage() {
   const { collectionId } = useParams<{ collectionId: string }>()
@@ -68,17 +66,17 @@ export default function CollectionDetailPage() {
   )?.name
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6.25">
       <LinkButton to={ROUTES.MY_SHELF} variant="outline" size="sm">
         ← 진열대
       </LinkButton>
 
-      <header className="space-y-2">
-        <div className="flex items-start gap-3">
+      <header className="space-y-2.5">
+        <div className="flex items-start gap-2.5">
           <h1 className="text-ink text-display font-serif font-semibold">
             {data.title}
           </h1>
-          <span className="ml-auto flex shrink-0 gap-2">
+          <span className="ml-auto flex shrink-0 gap-2.5">
             <Button
               variant="outline"
               size="sm"
@@ -111,7 +109,7 @@ export default function CollectionDetailPage() {
           description="진열대에 저장한 향수를 컬렉션에 넣어보세요."
         />
       ) : (
-        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <ul className="grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-6">
           {data.perfumes.map((perfume) => (
             <li key={perfume.perfumeId} className="relative">
               <PerfumeCard
@@ -125,7 +123,7 @@ export default function CollectionDetailPage() {
                 type="button"
                 aria-label={`${perfume.name} 컬렉션에서 제거`}
                 onClick={() => setRemoveTarget(perfume.perfumeId)}
-                className="border-line bg-surface-card text-ink-muted hover:text-ink text-caption rounded-card absolute top-4 right-4 border px-2 transition-colors duration-120 ease-out"
+                className="border-line bg-surface-card text-ink-muted hover:text-ink text-caption rounded-card absolute top-3.75 right-3.75 border px-2.5 transition-colors duration-120 ease-out"
               >
                 <span aria-hidden>×</span>
               </button>
@@ -150,18 +148,13 @@ export default function CollectionDetailPage() {
         }}
       />
 
-      <AddPerfumeModal
+      <AddToCollectionModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
         // 진열대에 있고 아직 이 컬렉션에 없는 향수만 후보입니다
         candidates={(shelf.data ?? [])
           .filter((item) => !inCollection.has(item.perfumeId))
-          .map((item) => ({
-            perfumeId: item.perfumeId,
-            name: item.name,
-            brand: item.brand,
-            thumbnailUrl: item.thumbnailUrl,
-          }))}
+          .map(toPerfumeOption)}
         onSearch={() => {
           // TODO: 진열대 내 검색 연결
         }}

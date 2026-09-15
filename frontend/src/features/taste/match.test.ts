@@ -1,6 +1,5 @@
-import { beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
-import { getScentVectors } from './api'
 import {
   PRIMARY_WEIGHT,
   buildTasteVector,
@@ -8,6 +7,7 @@ import {
   countCandidates,
   matchStartingPoint,
 } from './match'
+import { SCENT_VECTORS_FIXTURE } from './match.fixture'
 import {
   SCENT_FAMILY_KEYS,
   type ScentFamilyKey,
@@ -22,11 +22,14 @@ import {
  * - 유사도 동점일 때 결과가 배열 순서에 좌우되지 않는가
  */
 
-let vectors: ScentVector[]
-
-beforeAll(async () => {
-  vectors = await getScentVectors()
-})
+/**
+ * 실제 200개를 그대로 씁니다(`match.fixture.ts`). 아래 검사들은 데이터의 모양에
+ * 기대는 것이라 — 겹치지 않는 조합이 있는지, 동점이 생기는지 — 지어낸 몇 줄로는
+ * 확인할 수 없습니다.
+ *
+ * 앱은 이 값을 쓰지 않습니다. 화면은 `GET /map/scent-vectors` 로 받습니다.
+ */
+const vectors: ScentVector[] = SCENT_VECTORS_FIXTURE
 
 /** 두 계열을 고르는 모든 순서쌍 (9 × 8 = 72가지) */
 function orderedPairs(): [ScentFamilyKey, ScentFamilyKey][] {

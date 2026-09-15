@@ -14,12 +14,15 @@ export const tasteKeys = {
 /**
  * 향수 200개의 계열 벡터.
  *
- * 지금은 정적 스냅샷이라 바뀌지 않습니다. 온보딩을 오가며 다시 받지 않도록
- * `staleTime` 을 넉넉히 둡니다. API 가 붙으면 이 값만 조정하면 됩니다.
+ * 지도를 다시 적재할 때만 바뀝니다. 온보딩에서 계열을 고르고 뒤로 갔다 다시 오는
+ * 동안 200개를 또 받지 않도록 `staleTime` 을 길게 둡니다.
+ *
+ * 스냅샷을 쓰던 때는 `Infinity` 였는데, 이제 서버 값이라 한 시간으로 줄입니다 —
+ * 적재가 돌았는데도 한 번 받은 값을 영원히 들고 있을 이유가 없습니다.
  */
 export const scentVectorsQuery = () =>
   queryOptions({
     queryKey: tasteKeys.scentVectors(),
     queryFn: getScentVectors,
-    staleTime: Infinity,
+    staleTime: 1000 * 60 * 60,
   })

@@ -87,7 +87,7 @@ class ReviewIntegrationTest {
 
     @Test
     void createsAndListsReviewWithSeasons() throws Exception {
-        long reviewId = createReview("첫 후기", "향이 은은하고 잔향이 오래 남습니다.", "[1,2]");
+        long reviewId = createReview("첫 후기", "향이 은은하고 잔향이 오래 남습니다.", "[\"SPRING\",\"SUMMER\"]");
 
         mockMvc.perform(get(PERFUME_REVIEWS_URL))
                 .andExpect(status().isOk())
@@ -108,27 +108,27 @@ class ReviewIntegrationTest {
 
     @Test
     void rejectsSecondReviewForSameUserAndPerfume() throws Exception {
-        createReview("첫 후기", "처음 작성한 향수 후기입니다.", "[1]");
+        createReview("첫 후기", "처음 작성한 향수 후기입니다.", "[\"SPRING\"]");
 
         mockMvc.perform(post(PERFUME_REVIEWS_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(reviewBody("두 번째", "다시 작성하려는 향수 후기입니다.", "[2]")))
+                        .content(reviewBody("두 번째", "다시 작성하려는 향수 후기입니다.", "[\"SUMMER\"]")))
                 .andExpect(status().isConflict());
 
         fakeCurrentUser.login(2L);
         mockMvc.perform(post(PERFUME_REVIEWS_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(reviewBody("다른 사용자", "다른 사용자의 향수 후기입니다.", "[2]")))
+                        .content(reviewBody("다른 사용자", "다른 사용자의 향수 후기입니다.", "[\"SUMMER\"]")))
                 .andExpect(status().isCreated());
     }
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "{\"title\":\"\",\"content\":\"충분히 긴 후기 내용입니다.\",\"seasonIds\":[1]}",
-            "{\"title\":\"제목\",\"content\":\"짧음\",\"seasonIds\":[1]}",
-            "{\"title\":\"제목\",\"content\":\"충분히 긴 후기 내용입니다.\",\"seasonIds\":[]}",
-            "{\"title\":\"제목\",\"content\":\"충분히 긴 후기 내용입니다.\",\"seasonIds\":[1,2,3,4,5]}",
-            "{\"title\":\"제목\",\"content\":\"충분히 긴 후기 내용입니다.\",\"seasonIds\":[1,1]}"
+            "{\"title\":\"\",\"content\":\"충분히 긴 후기 내용입니다.\",\"seasonCodes\":[\"SPRING\"]}",
+            "{\"title\":\"제목\",\"content\":\"짧음\",\"seasonCodes\":[\"SPRING\"]}",
+            "{\"title\":\"제목\",\"content\":\"충분히 긴 후기 내용입니다.\",\"seasonCodes\":[]}",
+            "{\"title\":\"제목\",\"content\":\"충분히 긴 후기 내용입니다.\",\"seasonCodes\":[\"SPRING\",\"SUMMER\",\"AUTUMN\",\"WINTER\",\"SPRING\"]}",
+            "{\"title\":\"제목\",\"content\":\"충분히 긴 후기 내용입니다.\",\"seasonCodes\":[\"SPRING\",\"SPRING\"]}"
     })
     void rejectsInvalidCreateRequest(String body) throws Exception {
         mockMvc.perform(post(PERFUME_REVIEWS_URL)
@@ -139,20 +139,22 @@ class ReviewIntegrationTest {
 
     @Test
     void rejectsMissingOrInactiveSeason() throws Exception {
+        // 없는 코드입니다. 화면이 내놓지 않는 값이라 오타이거나 옛 코드입니다.
         mockMvc.perform(post(PERFUME_REVIEWS_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(reviewBody("제목", "충분히 긴 후기 내용입니다.", "[99]")))
+                        .content(reviewBody("제목", "충분히 긴 후기 내용입니다.", "[\"NOT_A_SEASON\"]")))
                 .andExpect(status().isNotFound());
 
+        // 내려간 계절입니다. 표에는 있지만 고를 수 없어야 합니다.
         mockMvc.perform(post(PERFUME_REVIEWS_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(reviewBody("제목", "충분히 긴 후기 내용입니다.", "[5]")))
+                        .content(reviewBody("제목", "충분히 긴 후기 내용입니다.", "[\"OLD\"]")))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void updatesReviewAndKeepsExistingSummary() throws Exception {
-        long reviewId = createReview("수정 전", "수정하기 전의 후기 내용입니다.", "[1]");
+        long reviewId = createReview("수정 전", "수정하기 전의 후기 내용입니다.", "[\"SPRING\"]");
         insertSummary();
 
         mockMvc.perform(patch(REVIEWS_URL + "/" + reviewId)
@@ -176,15 +178,15 @@ class ReviewIntegrationTest {
 
     @Test
     void replacesSeasonsAndKeepsExistingSummary() throws Exception {
-        long reviewId = createReview("계절", "계절을 변경하기 위한 후기입니다.", "[1,2]");
+        long reviewId = createReview("계절", "계절을 변경하기 위한 후기입니다.", "[\"SPRING\",\"SUMMER\"]");
         insertSummary();
 
         mockMvc.perform(put(REVIEWS_URL + "/" + reviewId + "/seasons")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"seasonIds\":[3,4]}"))
+                        .content("{\"seasonCodes\":[\"AUTUMN\",\"WINTER\"]}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.seasonIds[0]").value(3))
-                .andExpect(jsonPath("$.seasonIds[1]").value(4));
+                .andExpect(jsonPath("$.seasonCodes[0]").value("AUTUMN"))
+                .andExpect(jsonPath("$.seasonCodes[1]").value("WINTER"));
 
         assertThat(jdbcTemplate.queryForList(
                 "SELECT season_id FROM perfume_review_seasons WHERE review_id = ? ORDER BY season_id",
@@ -196,7 +198,7 @@ class ReviewIntegrationTest {
 
     @Test
     void deletesOwnReviewAndDependentDataWhileKeepingExistingSummary() throws Exception {
-        long reviewId = createReview("삭제", "삭제할 향수 후기 내용입니다.", "[1,2]");
+        long reviewId = createReview("삭제", "삭제할 향수 후기 내용입니다.", "[\"SPRING\",\"SUMMER\"]");
         insertSummary();
 
         mockMvc.perform(delete(REVIEWS_URL + "/" + reviewId))
@@ -208,9 +210,43 @@ class ReviewIntegrationTest {
         assertThat(count("perfumes")).isEqualTo(2);
     }
 
+    /**
+     * 계절 교체도 작성과 같은 기준으로 거릅니다.
+     *
+     * <p>작성만 막고 교체를 열어 두면, 제대로 쓴 뒤 교체로 없는 계절을 넣을 수 있습니다. 두
+     * 경로가 같은 {@code toSeasonIds} 를 쓰지만 부르는 자리가 달라 따로 확인합니다.
+     *
+     * <p><b>거절된 뒤에도 원래 계절이 그대로 있어야 합니다.</b> 교체는 지우고 다시 넣는 순서라,
+     * 검증이 지우기보다 늦으면 거절해 놓고 계절이 비어 버립니다.
+     */
+    @Test
+    void rejectsBadSeasonCodesOnReplaceAndKeepsExisting() throws Exception {
+        long reviewId = createReview("계절 교체", "계절을 잘못 바꾸려는 후기입니다.", "[\"SPRING\"]");
+
+        mockMvc.perform(put(REVIEWS_URL + "/" + reviewId + "/seasons")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"seasonCodes\":[\"NOT_A_SEASON\"]}"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(put(REVIEWS_URL + "/" + reviewId + "/seasons")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"seasonCodes\":[\"OLD\"]}"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(put(REVIEWS_URL + "/" + reviewId + "/seasons")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"seasonCodes\":[\"SUMMER\",\"SUMMER\"]}"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get(REVIEWS_URL + "/" + reviewId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.seasons.length()").value(1))
+                .andExpect(jsonPath("$.seasons[0].code").value("SPRING"));
+    }
+
     @Test
     void protectsReviewMutationsByLoginAndOwner() throws Exception {
-        long reviewId = createReview("비공개 변경", "작성자만 변경할 수 있는 후기입니다.", "[1]");
+        long reviewId = createReview("비공개 변경", "작성자만 변경할 수 있는 후기입니다.", "[\"SPRING\"]");
 
         fakeCurrentUser.login(2L);
         mockMvc.perform(patch(REVIEWS_URL + "/" + reviewId)
@@ -221,13 +257,13 @@ class ReviewIntegrationTest {
                 .andExpect(status().isNotFound());
         mockMvc.perform(put(REVIEWS_URL + "/" + reviewId + "/seasons")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"seasonIds\":[2]}"))
+                        .content("{\"seasonCodes\":[\"SUMMER\"]}"))
                 .andExpect(status().isNotFound());
 
         fakeCurrentUser.logout();
         mockMvc.perform(post(PERFUME_REVIEWS_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(reviewBody("제목", "충분히 긴 후기 내용입니다.", "[1]")))
+                        .content(reviewBody("제목", "충분히 긴 후기 내용입니다.", "[\"SPRING\"]")))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(delete(REVIEWS_URL + "/" + reviewId))
                 .andExpect(status().isUnauthorized());
@@ -241,7 +277,7 @@ class ReviewIntegrationTest {
                 .andExpect(status().isNotFound());
         mockMvc.perform(post("/api/v1/perfumes/2/reviews")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(reviewBody("제목", "충분히 긴 후기 내용입니다.", "[1]")))
+                        .content(reviewBody("제목", "충분히 긴 후기 내용입니다.", "[\"SPRING\"]")))
                 .andExpect(status().isNotFound());
     }
 
@@ -256,21 +292,21 @@ class ReviewIntegrationTest {
                 .andExpect(jsonPath("$.paths['/api/v1/reviews/{reviewId}/seasons'].put").exists());
     }
 
-    private long createReview(String title, String content, String seasonIds) throws Exception {
+    private long createReview(String title, String content, String seasonCodes) throws Exception {
         MvcResult result = mockMvc.perform(post(PERFUME_REVIEWS_URL)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(reviewBody(title, content, seasonIds)))
+                        .content(reviewBody(title, content, seasonCodes)))
                 .andExpect(status().isCreated())
                 .andReturn();
         JsonNode response = objectMapper.readTree(result.getResponse().getContentAsString());
         return response.get("reviewId").asLong();
     }
 
-    private String reviewBody(String title, String content, String seasonIds) throws Exception {
+    private String reviewBody(String title, String content, String seasonCodes) throws Exception {
         return objectMapper.writeValueAsString(new ReviewBody(
                 title,
                 content,
-                objectMapper.readValue(seasonIds, Long[].class)
+                objectMapper.readValue(seasonCodes, String[].class)
         ));
     }
 
@@ -286,7 +322,7 @@ class ReviewIntegrationTest {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM " + table, Long.class);
     }
 
-    private record ReviewBody(String title, String content, Long[] seasonIds) {
+    private record ReviewBody(String title, String content, String[] seasonCodes) {
     }
 
     @TestConfiguration

@@ -2,15 +2,15 @@ import { SegmentedFilter } from '@/shared/ui/SegmentedFilter'
 
 import {
   GENDER_FILTERS,
-  SHELF_FILTERS,
+  RANKING_FILTERS,
   type GenderFilter,
-  type ShelfFilter,
+  type RankingFilter,
 } from '../types'
 
 type PerfumeFiltersProps = {
-  shelf: ShelfFilter | null
+  ranking: RankingFilter | null
   gender: GenderFilter | null
-  onShelfChange: (next: ShelfFilter | null) => void
+  onRankingChange: (next: RankingFilter | null) => void
   onGenderChange: (next: GenderFilter | null) => void
 }
 
@@ -23,18 +23,18 @@ type PerfumeFiltersProps = {
  * - 아무 필터도 고르지 않은 상태가 기본 → 둘 다 null 로 시작합니다
  */
 export function PerfumeFilters({
-  shelf,
+  ranking,
   gender,
-  onShelfChange,
+  onRankingChange,
   onGenderChange,
 }: PerfumeFiltersProps) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3.75">
       <SegmentedFilter
         label="많은 사람이 담은 기준 필터"
-        options={SHELF_FILTERS}
-        value={shelf}
-        onChange={onShelfChange}
+        options={RANKING_FILTERS}
+        value={ranking}
+        onChange={onRankingChange}
       />
       <SegmentedFilter
         label="향의 성별"

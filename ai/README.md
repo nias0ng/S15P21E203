@@ -109,7 +109,7 @@ out = recommend(index, "빨래 냄새 나는 향수 찾고 있어")
 LLM 구조화 결과가 있으면 세 번째 인자로 넘깁니다.
 
 ```python
-out = recommend(index, text, conditions)   # 없으면 사전 문자열 매칭만 씁니다
+out = recommend(index, text, structured)   # 없으면 사전 문자열 매칭만 씁니다
 ```
 
 ---
@@ -118,13 +118,15 @@ out = recommend(index, text, conditions)   # 없으면 사전 문자열 매칭�
 
 ```
 nlr_engine.py      검색·정렬 엔진. 규칙은 이 파일이 기준입니다
+llm_stage1.py      문장 -> 향 조건 구조화. **네트워크를 아는 유일한 파일입니다**
 server.py          HTTP 서버 (아래 참고)
 unmatched_log.py   사전이 못 받은 표현을 기록합니다 (아래 참고)
 build_data.py      원본 덤프에서 data/perfumes_nlr.csv.gz 를 다시 만듭니다
 data/
   perfumes_nlr.csv.gz        5.0MB  향수 129,161개 (id·이름·브랜드·accord·평가자수·평점)
-  domain_lexicon_v1_2.csv     19KB  한국어 향 표현 44행 -> accord
+  domain_lexicon_v1_8.csv     24KB  한국어 향 표현 53행 -> accord
   accord_dictionary.csv        7KB  accord 92개 마스터 (적재 시 검증용)
+  stage1_prompt_v1.txt        2KB   ①단계 구조화 프롬프트 (sha256 앞자리 4f0a368d)
 docs/
   search_rules.md            검색 규칙 명세
   nlr_api_contract.md        프론트·백엔드와 주고받을 형식
@@ -143,7 +145,16 @@ uvicorn server:app --host 0.0.0.0 --port 8000
 
 ```bash
 curl http://localhost:8000/health
-# {"status":"ok","perfumes":129161,"accords":92}
+# {"status":"ok","perfumes":129161,"accords":92,"llm":true}
+```
+
+`"llm"` 이 ①단계 LLM 구조화를 쓸 수 있는 상태인지 알려줍니다. `false` 면 `GMS_API_KEY`
+가 없는 것이고, 서버는 정상으로 돌지만 **조건을 뽑는 비율이 86.7% → 75.5% 로 떨어집니다.**
+응답만 봐서는 구분이 안 되니 배포 후 이 칸을 확인하십시오. 기동 로그에도 남습니다.
+
+```
+INFO:llm_stage1:stage1 프롬프트 적재 stage1_prompt_v1.txt sha256=4f0a368d98b41338
+INFO:server:①단계 LLM 구조화 켜짐 (model=gpt-5.4-nano prompt=4f0a368d98b41338)
 ```
 
 ### 한글을 보낼 때 — Windows 에서 주의하십시오
@@ -194,14 +205,53 @@ Invoke-RestMethod -Uri "http://localhost:8000/nlr/recommend" -Method Post `
 
 | 이름 | 기본값 | 언제 씁니까 |
 |---|---|---|
+| **`GMS_API_KEY`** | **없음** | **①단계 LLM 구조화에 필요합니다. 없으면 구조화를 건너뜁니다** |
+| `GMS_MODEL` | `gpt-5.4-nano` | 모델을 바꿔 비교할 때 |
+| `GMS_ENDPOINT` | SSAFY GMS 게이트웨이 | — |
 | `NLR_LOG_PATH` | `ai/logs/unmatched.jsonl` | 컨테이너에서 볼륨 경로를 줄 때 |
-| `NLR_LEXICON_PATH` | `data/domain_lexicon_v1_2.csv` | 사전 버전을 바꿔 비교할 때 |
+| `NLR_LEXICON_PATH` | `data/domain_lexicon_v1_8.csv` | 사전 버전을 바꿔 비교할 때 |
 | `NLR_PERFUMES_PATH` | `data/perfumes_nlr.csv.gz` | — |
+
+**키를 코드나 파일에 적지 마십시오.** 환경변수로만 받습니다. 만료되면 HTTP 401 로
+`[GMS 에러] Invalid or expired GMS key` 가 오고 **재시도로 풀리지 않습니다** — 포털에서
+재발급받아야 합니다. 그동안에도 서버는 사전 매칭으로 계속 돕니다.
+
+### ①단계 LLM 구조화 — 요청에 `structured` 가 없으면 서버가 부릅니다
+
+```
+있음 -> 그대로 씁니다. LLM 을 부르지 않습니다
+없음 -> llm_stage1.structure() 로 채웁니다. 실패하면 사전 매칭으로 내려갑니다
+```
+
+| | 조건을 뽑는 비율 (합성 600문장 · 사전 v1.8) |
+|---|---|
+| 구조화 + 사전 | **520/600 = 86.7%** |
+| 사전만 | 453/600 = 75.5% |
+
+**`/nlr/understand` 를 부른 뒤 `/nlr/recommend` 를 이어 부를 거면 첫 응답의
+`structured` 를 두 번째 요청의 `structured` 에 넣으십시오.** 그래야 LLM 을 한 번만
+부르고, 두 응답의 해석이 같습니다. 실측 — 넘기면 10ms, 안 넘기면 1.40초.
+
+> **요청 칸은 `structured`, 응답 칸은 `conditions` 입니다.** 응답의 `conditions` 는
+> 사전이 바꾼 accord 라 모양이 다릅니다. 요청에 되돌려 넣으면 **`400`** 이 납니다.
+> 자세한 것은 계약서의 「요청은 `structured`, 응답은 `conditions`」.
+
+> **같은 문장이라도 다시 부르면 답이 다를 수 있습니다.** 한 문장을 6번 불렀더니 4번은
+> `lavender`·`powdery` 를, 2번은 **조건 0개**를 냈습니다.
+
+`conditions.source` 는 **"구조화 결과가 있었나" 가 아니라 "조건을 바꿨나"** 를 말합니다.
+
+| 값 | 뜻 |
+|---|---|
+| `lexicon_only` | 구조화 결과가 없었습니다. 키가 없거나 호출이 실패했습니다 |
+| `llm+lexicon` | 구조화 결과가 조건을 바꿨습니다 — 합성 600문장에서 **338건(56.3%)** |
+| `llm_no_effect` | 구조화 결과가 있었지만 원문만으로 잡은 것과 같습니다 — **262건(43.7%)** |
 
 ### 아직 서버에 없는 것
 
-- **LLM 구조화 호출.** `conditions` 를 요청으로 받기만 합니다. 안 넘기면 사전 문자열
-  매칭만 써서 결과가 나오는 비율이 **77.7% → 35.7%** 로 떨어집니다
+- **미매칭 추정(⑤단계).** 사전에 없는 표현을 LLM 이 추측하는 경로입니다. 붙는 자리는
+  `nlr_engine.recommend(..., estimator=)` 이고 캐시는 미매칭 로그를 씁니다
+- **추천 이유 문장화.** `matched[].rationale` 까지만 만듭니다
 - **호출량 제한과 인증.** Spring 이 합니다. 이 서버는 외부에 열지 마십시오
 - **Dockerfile.** 배포는 별도 작업입니다
 
@@ -222,7 +272,9 @@ for row in ulog.review_queue(top_n=20):   # 자주 나온 순으로 검토 후�
     print(row["normalized_key"], row["occurrence_count"], row["reasons"])
 ```
 
-**`conditions` 를 함께 넘겨야 작동합니다.** 표현을 뽑는 단계가 LLM 구조화이기 때문입니다.
+**`structured` 가 있어야 작동합니다.** 표현을 뽑는 단계가 ①단계 구조화이기 때문입니다.
+HTTP 서버로 쓰면 `GMS_API_KEY` 만 있으면 서버가 알아서 채우므로 저절로 쌓입니다.
+엔진을 직접 부를 때는 `llm_stage1.structure(text)` 결과를 함께 넘기십시오.
 
 미매칭 원인을 셋으로 가릅니다. **고쳐야 할 곳이 다릅니다.**
 
@@ -238,7 +290,7 @@ for row in ulog.review_queue(top_n=20):   # 자주 나온 순으로 검토 후�
 
 ```python
 estimate = ulog.cached_estimator(my_gms_call)   # 같은 표현은 한 번만 부릅니다
-out = recommend(index, text, conditions, estimator=estimate)
+out = recommend(index, text, structured, estimator=estimate)
 ```
 
 조건이 **하나도 안 잡혔을 때만** 부릅니다. 추정으로 나온 조건은 등급이 `LLM` 이고
@@ -284,17 +336,22 @@ python build_data.py --source /경로/perfumes.csv
 
 ## 지금 어느 정도 되나 — 실측
 
-합성 평가셋 600건 기준, **결과가 나오는 비율**입니다.
+합성 평가셋 600건 · **사전 v1.8** 기준, **결과가 나오는 비율**입니다.
 
-| | 비율 |
-|---|---|
-| **LLM 구조화 + 사전** | **466/600 = 77.7%** (AND 350 · 완화 116) |
-| **사전만 (LLM 없이)** | **214/600 = 35.7%** (AND 167 · 완화 47) |
+| | 비율 | 검색 단계 |
+|---|---|---|
+| **LLM 구조화 + 사전** | **520/600 = 86.7%** | AND 391 · SINGLE_BROAD 91 · 완화 38 |
+| **사전만 (LLM 없이)** | **453/600 = 75.5%** | AND 286 · SINGLE_BROAD 164 · 완화 3 |
 
 조건을 하나라도 뽑으면 **결과가 0개인 경우는 없습니다.**
 
-LLM 구조화 결과를 `recommend(index, text, conditions)` 로 넘기면 커버리지가 두 배가 됩니다.
-**없어도 돌아가므로 LLM API 가 죽어도 서비스를 내리지 마십시오.**
+**LLM 이 없어도 돌아가므로 API 가 죽어도 서비스를 내리지 마십시오.** 다만 사전만 쓰면
+`SINGLE_BROAD` 가 91 → 164 로 늘어납니다 — 향 조건이 하나뿐이라 **순위를 향이 아니라
+인기도가 정하는 상태**입니다. 비율뿐 아니라 이 분포도 같이 보십시오.
+
+> 이 표는 사전 v1.8 의 값입니다. 이전 판에는 v1.2 기준 `77.7% / 35.7%` 가 적혀 있었습니다.
+> 사전만 쓰는 쪽이 35.7% → 75.5% 로 오른 것은 LLM 이 아니라 **사전 확장의 몫**입니다
+> (`DECISIONS.md` N10).
 
 ---
 

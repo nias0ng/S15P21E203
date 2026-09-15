@@ -154,6 +154,70 @@ class ScentMapSchemaIntegrationTest {
         assertThat(columns).isZero();
     }
 
+    /**
+     * 같은 브랜드가 같은 이름을 여러 번 쓸 수 있습니다.
+     *
+     * <p>V5 가 {@code (brand_id, name)} 에 유니크를 걸어 두었는데, 원본 13만 건 중 1,343행이
+     * 여기 걸립니다. 농도(EDP/EDT)나 출시 연도만 다른 같은 이름들입니다. V14 가 그 제약을
+     * 걷어냈습니다.
+     *
+     * <p>버렸다면 추천에는 나오는데 표에 없는 향수가 생기고, 이름에 구분자를 붙였다면 사용자에게
+     * 없는 이름이 보입니다. 둘 다 자료를 거짓으로 만듭니다.
+     */
+    @Test
+    void allowsTheSameNameTwiceUnderOneBrand() {
+        assertThatCode(() -> insertPerfume(9101L, "Tattoo", 900101L))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> insertPerfume(9102L, "Tattoo", 900102L))
+                .doesNotThrowAnyException();
+
+        Integer sameName = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM perfumes WHERE brand_id = ? AND name = 'Tattoo'",
+                Integer.class, BRAND_ID);
+
+        assertThat(sameName).isEqualTo(2);
+    }
+
+    /**
+     * 향수를 하나로 지목하는 일은 {@code fragrantica_id} 가 계속 맡습니다.
+     *
+     * <p>이름 제약을 걷어낸 뒤에도 같은 향수가 두 줄이 되지는 않아야 합니다. 적재 스크립트의
+     * {@code ON CONFLICT} 가 이 제약에 기대고 있어, 없어지면 다시 돌릴 때마다 13만 건이 새로
+     * 쌓입니다.
+     */
+    @Test
+    void stillRefusesTheSameFragranticaId() {
+        assertThatThrownBy(() -> insertPerfume(9103L, "Another Name", 900001L))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    /**
+     * 평가자 수는 비지 않고 0 으로 시작합니다.
+     *
+     * <p>자연어 추천의 정렬 2순위입니다. PostgreSQL 의 {@code DESC} 는 {@code NULL} 을 가장 큰
+     * 값으로 보아 맨 앞에 놓으므로, 비워 두면 평가자 수를 모르는 향수가 매번 1위로 올라옵니다.
+     * 이 규칙이 막으려던 바로 그 일입니다.
+     *
+     * <p>측정 범위는 0 ~ 35,695 입니다. {@code INTEGER} 로 충분합니다.
+     */
+    @Test
+    void startsTheRatingCountAtZeroAndAcceptsTheMeasuredRange() {
+        insertPerfume(9104L, "Rating Probe", 900104L);
+
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT fragrantica_rating_count FROM perfumes WHERE perfume_id = 9104",
+                Integer.class);
+        assertThat(count).isZero();
+
+        assertThatCode(() -> jdbcTemplate.update(
+                "UPDATE perfumes SET fragrantica_rating_count = 35695 WHERE perfume_id = 9104"))
+                .doesNotThrowAnyException();
+
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                "UPDATE perfumes SET fragrantica_rating_count = NULL WHERE perfume_id = 9104"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
     private void insertPerfume(long perfumeId, String name, long fragranticaId) {
         jdbcTemplate.update(
                 "INSERT INTO perfumes (perfume_id, brand_id, name, fragrantica_id, is_active)"
@@ -195,8 +259,10 @@ class ScentMapSchemaIntegrationTest {
                 PERFUME_ID, OTHER_PERFUME_ID);
         jdbcTemplate.update("DELETE FROM perfume_map_points WHERE perfume_id IN (?, ?)",
                 PERFUME_ID, OTHER_PERFUME_ID);
-        jdbcTemplate.update("DELETE FROM perfumes WHERE perfume_id IN (?, ?)",
-                PERFUME_ID, OTHER_PERFUME_ID);
+        // 번호를 하나씩 적지 않고 이 브랜드에 달린 향수를 모두 지웁니다. 유니크 제약을 확인하는
+        // 테스트들이 향수를 더 만드는데, 남겨 두면 fk_perfumes_brand 가 RESTRICT 라 브랜드를
+        // 지우지 못하고 다음 테스트의 픽스처가 통째로 실패합니다.
+        jdbcTemplate.update("DELETE FROM perfumes WHERE brand_id = ?", BRAND_ID);
         jdbcTemplate.update("DELETE FROM brands WHERE brand_id = ?", BRAND_ID);
         jdbcTemplate.update("DELETE FROM scent_regions WHERE scent_region_id IN (?, ?)",
                 REGION_ID, OTHER_REGION_ID);

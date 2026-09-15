@@ -52,6 +52,7 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
                 OR LOWER(p.nameKo) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!'
                 OR LOWER(b.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!')
               AND (CAST(:brand AS String) IS NULL OR b.name = CAST(:brand AS String))
+              AND (:brandId IS NULL OR b.id = :brandId)
               AND (CAST(:gender AS String) IS NULL OR p.gender = CAST(:gender AS String))
             """;
     /**
@@ -72,12 +73,14 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
      * <p>{@code brand} 는 완전 일치입니다. 브랜드명 부분 일치는 {@code keyword} 가 담당합니다.
      */
     @Query(value = """
-            SELECT new com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse(p.id, p.name, p.nameKo, b.name)
+            SELECT new com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse(
+                       p.id, p.name, p.nameKo, b.name, b.nameKo)
             """ + SEARCH_CONDITION,
             countQuery = "SELECT COUNT(p) " + SEARCH_CONDITION)
     Page<PerfumeSummaryResponse> search(
             @Param("keyword") String keyword,
             @Param("brand") String brand,
+            @Param("brandId") Long brandId,
             @Param("gender") String gender,
             Pageable pageable);
     /**
@@ -89,7 +92,8 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
      */
     @Query("""
             SELECT new com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse(
-                       p.id, b.id, b.name, p.name, p.nameKo, p.gender, p.description, p.concentration)
+                       p.id, b.id, b.name, b.nameKo, p.name, p.nameKo, p.gender,
+                       p.description, p.concentration)
             FROM Perfume p
             LEFT JOIN p.brand b
             WHERE p.id = :perfumeId

@@ -14,7 +14,7 @@ export default function PasswordResetPage() {
   const hasToken = Boolean(searchParams.get('token'))
 
   return (
-    <div className="flex justify-center py-6">
+    <div className="flex justify-center py-6.25">
       {hasToken ? <PasswordResetForm /> : <PasswordFindForm />}
     </div>
   )

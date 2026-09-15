@@ -33,8 +33,8 @@ export function VoyageLog({ entries }: Props) {
   }
 
   return (
-    <section className="border-line bg-surface-card/95 w-56 border p-2.5 backdrop-blur">
-      <div className="flex items-center gap-2">
+    <section className="border-line bg-surface-card/95 w-56.25 border p-2.5 backdrop-blur">
+      <div className="flex items-center gap-2.5">
         <h2 className="text-ink text-[11px] font-bold">향해 일지</h2>
         <button
           type="button"
@@ -47,7 +47,7 @@ export function VoyageLog({ entries }: Props) {
       </div>
 
       {!collapsed && (
-        <ul className="mt-2 space-y-1.5">
+        <ul className="mt-2.5 space-y-1.25">
           {entries.map((entry) => {
             const open = openIds.includes(entry.entryId)
             const regionLabel = SCENT_REGIONS.find(
@@ -60,7 +60,7 @@ export function VoyageLog({ entries }: Props) {
                   type="button"
                   aria-expanded={open}
                   onClick={() => toggle(entry.entryId)}
-                  className="hover:bg-line-soft flex w-full items-center gap-1.5 px-1 py-1 text-left"
+                  className="hover:bg-line-soft flex w-full items-center gap-1.25 px-1.25 py-1.25 text-left"
                 >
                   <span aria-hidden className="text-ink-muted text-[10px]">
                     {open ? '▾' : '▸'}

@@ -1,3 +1,5 @@
+import type { ScentFamilyKey } from '@/shared/config/scentFamilies'
+
 /**
  * 취향 테스트 도메인 타입 (요구사항 TST-03)
  *
@@ -7,22 +9,15 @@
  */
 
 /**
- * 향 계열 9개. 배열 순서가 곧 선택 화면의 타일 배치 순서입니다
- * (가벼운 향 → 무거운 향).
+ * 향 계열 9개는 취향 테스트만의 어휘가 아닙니다 — 향 지도가 지도를 이 아홉으로
+ * 나누고 향수 검색도 같은 코드를 내려주므로 `shared/config` 에 한 벌만 둡니다.
+ *
+ * 배열 순서가 곧 선택 화면의 타일 배치 순서입니다(가벼운 향 → 무거운 향).
  */
-export const SCENT_FAMILY_KEYS = [
-  'FLORAL',
-  'GREEN',
-  'CITRUS',
-  'FRUITY',
-  'AQUATIC',
-  'MUSK',
-  'GOURMAND',
-  'WOODY',
-  'AMBER',
-] as const
-
-export type ScentFamilyKey = (typeof SCENT_FAMILY_KEYS)[number]
+export {
+  SCENT_FAMILY_KEYS,
+  type ScentFamilyKey,
+} from '@/shared/config/scentFamilies'
 
 /** 화면에 쓰는 계열 이름. 기본은 형용사, 마우스를 올리면 계열명으로 바뀝니다. */
 export interface ScentFamilyLabel {
@@ -45,7 +40,12 @@ export type ScentWeights = Partial<Record<ScentFamilyKey, number>>
 /** 매칭에 쓰는 향수 한 개. 이름 · 브랜드는 결과 화면에 쓰지 않아 담지 않습니다. */
 export interface ScentVector {
   perfumeId: number
-  /** 지도 좌표 (x 0~100, y 0~83.056) */
+  /**
+   * 지도 좌표 (x 0~100, y 0~83.056).
+   *
+   * **응답은 0~1 인데 `api.ts` 가 100배 해서 넘깁니다.** 지도 컴포넌트의 viewBox 가
+   * 100x100 이라 같은 스케일이어야 같은 자리에 찍힙니다.
+   */
   x: number
   y: number
   /** 국내 선정 순위 1~200. 유사도가 같을 때 이 값이 작은 향수를 씁니다. */
@@ -53,13 +53,25 @@ export interface ScentVector {
   families: ScentWeights
 }
 
-/** `data/scentVectors.ts` 스냅샷의 한 줄. ⚠️ API 가 붙으면 이 타입은 사라집니다. */
-export interface ScentVectorSnapshotRow {
-  fragranticaId: number
-  rank: number
-  x: number
-  y: number
-  families: ScentWeights
+/**
+ * `GET /map/scent-vectors` 응답 그대로.
+ *
+ * 배열이 아니라 `perfumes` 를 감싼 객체입니다 — 나중에 이 자리에 값을 더해도 응답
+ * 모양이 통째로 바뀌지 않게 하려는 백엔드 쪽 판단입니다.
+ *
+ * `families` 의 키는 `scent_regions.code` 라 **열린 문자열**입니다. 받는 자리에서
+ * 아는 계열만 남깁니다(`api.ts`).
+ */
+export interface ScentVectorsResponse {
+  perfumes: {
+    perfumeId: number
+    /** 0~1 */
+    x: number
+    /** 0~0.83056 */
+    y: number
+    rank: number
+    families: Record<string, number>
+  }[]
 }
 
 /**

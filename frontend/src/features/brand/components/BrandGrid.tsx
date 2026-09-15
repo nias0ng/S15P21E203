@@ -1,4 +1,4 @@
-import { ROUTES } from '@/shared/config/routes'
+import { toBrandDetail } from '@/shared/config/routes'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Skeleton } from '@/shared/ui/Skeleton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
@@ -16,12 +16,14 @@ type Props = {
 /**
  * 브랜드 카드 그리드 (와이어프레임 A34 — 5열)
  *
- * 와이어프레임 주석: "브랜드를 누르면 그 브랜드의 향수 목록
- * (A33 향수 페이지에 브랜드 필터가 걸린 상태)". 그래서 브랜드 상세 화면이 아니라
- * 향수 페이지로 브랜드를 쿼리에 실어 보냅니다.
+ * 브랜드를 누르면 **브랜드 상세**(`/brands/:brandId`)로 갑니다. 와이어프레임은
+ * 향수 페이지에 브랜드 필터를 건 상태로 보내라고 되어 있었지만, 그러면 브랜드의
+ * 이름과 소개를 놓을 자리가 없어서 상세 화면을 따로 두었습니다.
+ * 향수 페이지의 `?brand=` 필터는 그대로 살아 있습니다 — 향수를 검색해서 브랜드로
+ * 좁히는 흐름은 그쪽입니다.
  */
 export function BrandGrid({ items, isPending = false, emptyAction }: Props) {
-  const gridClass = 'grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5'
+  const gridClass = 'grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-5'
 
   if (isPending) {
     return (
@@ -48,17 +50,20 @@ export function BrandGrid({ items, isPending = false, emptyAction }: Props) {
       {items.map((brand) => (
         <li key={brand.brandId}>
           <TileCard
-            to={`${ROUTES.PERFUMES}?brand=${encodeURIComponent(brand.name)}`}
+            to={toBrandDetail(brand.brandId)}
             media={
               <Thumbnail
                 src={brand.logoUrl}
                 fallback="로고"
                 fit="contain"
-                className="h-24 w-full"
+                className="h-23.75 w-full"
               />
             }
-            title={brand.name}
-            caption={`향수 ${brand.perfumeCount}개`}
+            title={brand.nameKo ?? brand.name}
+            // 캡션은 영문 표기입니다. 향수 개수를 적던 자리인데, 카드에서 궁금한
+            // 것은 "이 브랜드가 내가 아는 그 브랜드인가" 라서 철자를 보여 줍니다.
+            // 한국어 이름이 없는 브랜드는 제목이 이미 영문이라 캡션을 비웁니다.
+            caption={brand.nameKo ? brand.name : undefined}
           />
         </li>
       ))}

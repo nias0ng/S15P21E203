@@ -1,16 +1,18 @@
 import { Link } from 'react-router'
 
-import { toPerfumeDetail, toPostDetail } from '@/shared/config/routes'
+import { toPerfumeDetail } from '@/shared/config/routes'
+import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { Badge } from '@/shared/ui/Badge'
+import { Card } from '@/shared/ui/Card'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Skeleton } from '@/shared/ui/Skeleton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
-import { POST_CATEGORIES, type PostSummary } from '../types'
+import { POST_CATEGORIES, type BoardItem } from '../types'
 
 type Props = {
-  posts: PostSummary[]
+  items: BoardItem[]
   isPending?: boolean
   emptyAction?: React.ReactNode
 }
@@ -18,25 +20,27 @@ type Props = {
 /**
  * 게시글 목록 (와이어프레임 A22a · A22b 공용)
  *
- * 와이어프레임 주석:
- * - 점수 · 별점 없음 — 좋아요만. 카드마다 좋아요 · 댓글 · 조회 수를 함께 보여준다
- * - 후기는 향수 한 개에 반드시 붙는다 — 향수 블록이 없는 후기는 없다
- * - 자유 글에는 향수를 걸지 않아도 된다 — 걸면 후기와 같은 향수 블록이 붙는다
+ * 두 게시판이 같은 컴포넌트를 씁니다. 백엔드 응답은 서로 다르지만
+ * (`/posts` 와 `/reviews`) 카드 모양이 같아, 도메인에서 `BoardItem` 으로 맞춰
+ * 넘깁니다(types.ts 의 `postToBoardItem` · `reviewToBoardItem`).
  *
- * 그래서 향수 블록은 값이 있을 때만 그리고, 두 게시판이 같은 컴포넌트를 씁니다.
+ * 값이 있을 때만 그리는 것 — 향수 블록(자유 글은 안 걸어도 됨), 분류 배지(후기에는
+ * 없음), 댓글 수(후기에는 댓글 자체가 없음).
+ *
+ * 제목이 맨 위인 이유: 게시판에서 훑는 것은 제목입니다.
  */
-export function PostList({ posts, isPending = false, emptyAction }: Props) {
+export function PostList({ items, isPending = false, emptyAction }: Props) {
   if (isPending) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-3.75">
         {Array.from({ length: 4 }, (_, index) => (
-          <Skeleton key={index} className="h-24" />
+          <Skeleton key={index} className="rounded-card h-32.5" />
         ))}
       </div>
     )
   }
 
-  if (posts.length === 0) {
+  if (items.length === 0) {
     return (
       <EmptyState
         title="이 게시판에 글이 없습니다"
@@ -47,57 +51,87 @@ export function PostList({ posts, isPending = false, emptyAction }: Props) {
   }
 
   return (
-    <ul className="border-line divide-line divide-y border">
-      {posts.map((post) => (
-        <li key={post.postId} className="p-4">
-          <div className="text-caption flex items-center gap-2">
-            <Thumbnail className="size-6 shrink-0 rounded-full" />
-            <span className="text-ink">{post.nickname}</span>
-            <span className="text-ink-muted">
-              · {formatRelativeTime(post.createdAt)}
-            </span>
-            {/* 자유 글에만 분류가 있습니다 */}
-            {post.category && (
-              <Badge tone="neutral">
-                {
-                  POST_CATEGORIES.find((item) => item.value === post.category)
-                    ?.label
-                }
-              </Badge>
+    <ul className="space-y-3.75">
+      {items.map((item) => (
+        <li key={item.id}>
+          {/*
+            카드 전체가 아니라 제목만 링크입니다. 카드를 통째로 링크로 감싸면 안에
+            있는 향수 블록 링크가 링크 안의 링크가 되어 낭독기와 브라우저가 둘 다
+            헷갈립니다. 대신 카드에 group 을 걸어 어디에 마우스를 올리든 제목에
+            밑줄이 들어옵니다.
+          */}
+          <Card interactive className="group space-y-2.5">
+            <div className="space-y-2.5">
+              <Link
+                to={item.to}
+                className={cn(
+                  'text-ink text-heading block font-serif font-bold',
+                  'underline-offset-4 group-hover:underline',
+                  'focus-visible:ring-accent-deep rounded-card outline-none focus-visible:ring-2',
+                )}
+              >
+                {item.title}
+              </Link>
+
+              <div className="text-caption flex flex-wrap items-center gap-2.5">
+                <Thumbnail className="size-5 shrink-0 rounded-full" />
+                {/* 탈퇴한 회원의 글은 글만 남고 작성자가 지워집니다 */}
+                <span className="text-ink">
+                  {item.nickname ?? '탈퇴한 회원'}
+                </span>
+                <span className="text-ink-muted">
+                  · {formatRelativeTime(item.createdAt)}
+                </span>
+                {/* 자유 글에만 분류가 있습니다 */}
+                {item.category && (
+                  <Badge tone="neutral">
+                    {
+                      POST_CATEGORIES.find(
+                        (entry) => entry.value === item.category,
+                      )?.label
+                    }
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            {/* 향수 블록 — 후기는 항상, 자유 글은 걸었을 때만 */}
+            {item.perfume && (
+              <Link
+                to={toPerfumeDetail(item.perfume.perfumeId)}
+                className={cn(
+                  'border-line-soft bg-surface-sunken hover:border-accent rounded-card',
+                  // w-fit 으로 내용만큼만 차지합니다. 칸 전체를 채우면 향수 이름
+                  // 하나가 제목만큼 넓은 띠가 되어 무엇이 제목인지 흐려집니다.
+                  'inline-flex w-fit max-w-full items-baseline gap-2.5 border px-2.5 py-2.5',
+                  'transition-colors duration-120 ease-out',
+                  'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
+                )}
+              >
+                <span className="text-ink text-body font-medium">
+                  {item.perfume.name}
+                </span>
+                {/* 브랜드가 없는 향수가 있습니다 */}
+                {item.perfume.brand && (
+                  <span className="text-ink-muted text-caption">
+                    {item.perfume.brand}
+                  </span>
+                )}
+              </Link>
             )}
-          </div>
 
-          {/* 향수 블록 — 후기는 항상, 자유 글은 걸었을 때만 */}
-          {post.perfume && (
-            <Link
-              to={toPerfumeDetail(post.perfume.perfumeId)}
-              className="border-line hover:bg-line-soft mt-2 flex items-center gap-2 border px-3 py-2"
-            >
-              <span className="text-ink text-body font-medium">
-                {post.perfume.name}
+            {/* 점수나 별점은 없습니다. 좋아요만 있습니다. */}
+            <div className="text-ink-muted text-caption flex items-center gap-3.75">
+              <span className={item.liked ? 'text-danger' : undefined}>
+                <span aria-hidden>{item.liked ? '♥' : '♡'}</span> 좋아요{' '}
+                {item.likeCount}
               </span>
-              <span className="text-ink-muted text-caption">
-                {post.perfume.brand}
-              </span>
-            </Link>
-          )}
-
-          <Link
-            to={toPostDetail(post.postId)}
-            className="text-ink text-heading mt-2 block font-serif font-semibold hover:underline"
-          >
-            {post.title}
-          </Link>
-
-          {/* 점수나 별점은 없습니다. 좋아요만 있습니다. */}
-          <div className="text-ink-muted text-caption mt-2 flex items-center gap-4">
-            <span>
-              <span aria-hidden>{post.liked ? '♥' : '♡'}</span> 좋아요{' '}
-              {post.likeCount}
-            </span>
-            <span>댓글 {post.commentCount}</span>
-            <span>조회 {post.viewCount}</span>
-          </div>
+              {item.commentCount !== null && (
+                <span>댓글 {item.commentCount}</span>
+              )}
+              <span>조회 {item.viewCount}</span>
+            </div>
+          </Card>
         </li>
       ))}
     </ul>

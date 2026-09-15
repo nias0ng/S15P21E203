@@ -1,0 +1,154 @@
+import { useEffect, useRef, useState } from 'react'
+
+import { cn } from '@/shared/lib/cn'
+
+/**
+ * 3D 향 지도가 카드 · 검색창에서 앱으로 넘기는 향수 한 개
+ * (paperboat `src/host.js` 의 perfumeRef).
+ *
+ * ⚠️ 엔진의 향수 id 는 fragrantica_id 입니다. DB 의 perfumeId 는 백엔드 지도 API 를
+ * 엔진 데이터로 넣어 주기 전까지 null 입니다.
+ */
+export interface ScenePerfumeRef {
+  fragranticaId: number
+  perfumeId: number | null
+  name: string
+  nameKo: string
+  brand: string
+  brandKo: string
+  /** 향 계열 9코드 (CITRUS · FLORAL · WOODY …) */
+  family: string
+  /** 향 지도 좌표 0~1 */
+  mx: number
+  my: number
+  /** 닮은 향수 10개 — 백엔드 /perfumes/{id}/neighbors 와 같은 목록 */
+  neighbors: { fragranticaId: number; similarity: number }[]
+}
+
+/** 엔진에 꽂는 처리기 (host.js 의 setHost) */
+interface EngineHost {
+  openDetail: (perfume: ScenePerfumeRef) => void
+  saveToShelf: (perfume: ScenePerfumeRef) => Promise<void>
+  exploreSimilar: (perfume: ScenePerfumeRef) => void
+  search: (query: string) => void
+}
+
+/** iframe 안 엔진이 여는 손잡이 — paperboat main.js 의 window.PB 중 여기서 쓰는 것만 */
+interface EngineHandle {
+  setHost: (host: EngineHost | null) => void
+  params: Record<string, number>
+  apply: () => void
+  /** 개발 패널(계측 · 슬라이더 · 비교)을 한꺼번에 숨깁니다 — 개발 서버에서만 뜹니다 */
+  solo?: (on: boolean) => void
+}
+
+type Props = {
+  /** [자세히 보기] */
+  onOpenDetail: (perfume: ScenePerfumeRef) => void
+  /**
+   * [진열대에 저장]. 돌려준 Promise 가 끝날 때까지 엔진이 입력을 잠급니다 —
+   * 모달 위에서 누른 방향키가 배를 돌리지 않게, 모달이 닫히면(취소 · 저장) resolve 하세요.
+   */
+  onSaveToShelf: (perfume: ScenePerfumeRef) => Promise<void>
+  /** 엔진 화면 위의 검색창 */
+  onSearch: (query: string) => void
+  className?: string
+}
+
+/** 엔진 페이지 — landing/index.html (vite.config.ts 의 두 번째 입구 · 원본은 paperboat 에서 옮겼습니다) */
+const ENGINE_SRC = '/landing/index.html'
+/** 엔진이 window.PB 를 열 때까지 다시 보는 간격(ms) · 횟수 — 배 모델(8MB)을 받는 동안 기다립니다 */
+const POLL_MS = 100
+const POLL_LIMIT = 600
+
+/**
+ * 3D 향 지도 (A01 · A02 · A03 — paperboat 엔진)
+ *
+ * ⚠️ 엔진을 **iframe 으로** 띄웁니다. 엔진이 페이지 전역 CSS · `<html>` 속성 · window 키
+ * 입력 · WebGL 렌더러를 직접 잡고 있어서, 앱 문서에 섞으면 헤더 · 모달 · 포커스 링과
+ * 부딪칩니다. 엔진에 켜고 끄는 입구(mountPaperboat)가 생기면 이 컴포넌트 안만 바꾸면
+ * 됩니다 — 바깥 props 는 그대로 둡니다.
+ *
+ * 같은 출처라 iframe 의 window.PB 에 처리기를 바로 꽂습니다(host.js 경계). 엔진이 준비될
+ * 때까지는 투명하게 두어, 엔진의 자리표시 헤더가 한 번 비치는 것을 막습니다.
+ */
+export function ScentScene({
+  onOpenDetail,
+  onSaveToShelf,
+  onSearch,
+  className,
+}: Props) {
+  const frame = useRef<HTMLIFrameElement>(null)
+  const [ready, setReady] = useState(false)
+
+  // 엔진에는 처리기를 한 번만 꽂습니다. 렌더마다 새로 만들어지는 props 는 여기서 최신 것으로 부릅니다
+  const latest = useRef({ onOpenDetail, onSaveToShelf, onSearch })
+  useEffect(() => {
+    latest.current = { onOpenDetail, onSaveToShelf, onSearch }
+  })
+
+  useEffect(() => {
+    const el = frame.current
+    if (!el) return
+
+    let timer = 0
+    let tries = 0
+    let attached: EngineHandle | null = null
+
+    // iframe 이 다시 불러오면 엔진도 새로 뜨고 PB 도 새것이라, 불러올 때마다 다시 찾습니다
+    const attach = () => {
+      const engine = (
+        el.contentWindow as (Window & { PB?: EngineHandle }) | null
+      )?.PB
+      if (!engine) {
+        if (tries++ < POLL_LIMIT) timer = window.setTimeout(attach, POLL_MS)
+        return
+      }
+      if (engine === attached) return
+      attached = engine
+
+      // 앱의 GlobalHeader 가 iframe 위에 있으므로 엔진의 자리표시 헤더(v0.66.0)는 끕니다
+      engine.params.siteHeader = 0
+      engine.apply()
+      // 개발 서버에서는 엔진의 개발 패널도 같이 뜹니다 — 서비스 화면만 남깁니다
+      engine.solo?.(true)
+      engine.setHost({
+        openDetail: (perfume) => latest.current.onOpenDetail(perfume),
+        saveToShelf: (perfume) => latest.current.onSaveToShelf(perfume),
+        exploreSimilar: () => {
+          // 엔진이 카드의 향을 새 중심으로 12개를 다시 띄웁니다 — 앱이 더 할 일은 없습니다
+        },
+        search: (query) => latest.current.onSearch(query),
+      })
+      setReady(true)
+      // 들어오자마자 방향키로 배를 몰 수 있게 포커스를 엔진으로 넘깁니다
+      el.contentWindow?.focus()
+    }
+    const onLoad = () => {
+      window.clearTimeout(timer)
+      tries = 0
+      attach()
+    }
+
+    el.addEventListener('load', onLoad)
+    timer = window.setTimeout(attach, POLL_MS)
+    return () => {
+      el.removeEventListener('load', onLoad)
+      window.clearTimeout(timer)
+      attached?.setHost(null)
+    }
+  }, [])
+
+  return (
+    <iframe
+      ref={frame}
+      src={ENGINE_SRC}
+      title="향 지도"
+      className={cn(
+        'block size-full border-0',
+        ready ? 'opacity-100' : 'opacity-0',
+        className,
+      )}
+    />
+  )
+}

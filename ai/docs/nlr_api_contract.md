@@ -109,7 +109,7 @@ Content-Type: application/json
 | `status` | 뜻 | 화면에서 |
 |---|---|---|
 | `OK` | 조건을 **전부** 만족하는 향수를 찾음 | 그대로 보여준다 |
-| `OK_RELAXED` | 조건을 넓혀서 찾음 | **"조건을 넓혀 찾았습니다"** 를 함께 보여준다 |
+| `OK_RELAXED` | 조건을 넓혔거나(`RELAXED_OR`) **향 조건이 하나뿐이라 순위를 못 정함**(`SINGLE_BROAD`) | **"조건이 넓습니다"** 를 함께 보여주고 더 자세한 입력을 유도한다. 이유는 `diagnostics.relaxed` 에 있다 |
 | `NO_CONDITION` | 향 조건을 하나도 못 뽑음. `perfumes` 는 `[]` | 다시 입력하도록 유도한다 |
 | `NO_RESULT` | 조건은 찾았으나 결과가 없음. `perfumes` 는 `[]` | 현재 발생하지 않는다 |
 
@@ -169,21 +169,62 @@ LLM 호출 횟수           1회. 향 조건을 못 뽑으면 추정 호출이 �
 POST /nlr/recommend
 Content-Type: application/json
 
-{ "text": "빨래 냄새 나는 향수 찾고 있어", "conditions": null, "topK": 5 }
+{ "text": "빨래 냄새 나는 향수 찾고 있어", "structured": null, "topK": 5 }
 ```
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `text` | string | 예 | 사용자 원문. **1~500자.** 벗어나면 `400` |
-| `conditions` | object \| null | 아니오 | LLM 구조화 결과. 아래 참고 |
+| `structured` | object \| null | 아니오 | ①단계 구조화 결과. 아래 참고 |
 | `topK` | number | 아니오 | 기본 5. 1~20 |
 
 `/nlr/understand` 는 `topK` 만 없고 나머지는 같다.
 
-> **`conditions` 는 아직 AI 서버가 스스로 못 채운다.**
-> LLM 구조화 호출은 다음 스토리다. 그때까지 이 칸이 비면 사전 문자열 매칭만 쓰고,
-> 합성 평가셋 600건 기준 결과가 나오는 비율이 **77.7% → 35.7%** 로 떨어진다.
-> 붙고 나면 Spring 은 `text` 만 보내면 된다. **요청 형식은 그때도 안 바뀐다.**
+> **`structured` 를 비워도 된다. AI 서버가 스스로 채운다.**
+> 비면 AI 서버가 ①단계 LLM 구조화를 직접 부른다. **Spring 은 `text` 만 보내면 된다.**
+> 넘기면 그대로 쓰고 LLM 을 부르지 않는다 — Spring 이 스스로 구조화하기로 바뀌어도
+> 요청 형식은 안 바뀐다.
+>
+> 사전 v1.8 기준 합성 600문장에서 조건을 뽑는 비율이 **75.5% → 86.7%** 로 오른다.
+> LLM 이 죽어도 사전 매칭으로 내려가므로 **서비스를 내리지 않는다.**
+
+### 요청은 `structured`, 응답은 `conditions` — 다른 것이다
+
+**요청 칸의 이름이 `conditions` 가 아니다.** 응답에도 `conditions` 가 있는데 모양이
+달라서, 이름이 같으면 응답의 것을 요청에 되돌려 넣게 된다. 그래서 이름을 나눴다.
+
+| | 무엇 | 안에 든 것 |
+|---|---|---|
+| **요청**의 `structured` | ①단계 LLM 이 뽑은 **말** | `scent_preference` · `additional_requirements` · … |
+| **응답**의 `conditions` | ②단계 사전이 바꾼 **accord** | `core` · `matchedExpressions` · … |
+
+**응답의 `conditions` 를 요청에 넣으면 `400` 이 난다.**
+
+```json
+{ "code": "NLR_INVALID_REQUEST",
+  "message": "structured 가 ①단계 구조화 결과가 아닙니다 (MISSING_KEY). …" }
+```
+
+예전에는 **에러 없이 조건 0개**가 됐고, 원문에 사전 표현이 있으면 우연히 성공하기도
+해서 재현이 어려웠다. 지금은 시끄럽게 실패한다.
+
+**다시 넘길 값은 `/nlr/understand` 응답의 `structured` 다.**
+
+```
+POST /nlr/understand  { "text": "..." }
+   -> { "conditions": {...},     화면에 "이렇게 이해했습니다" 로 쓸 값
+        "structured": {...} }    다음 호출에 넘길 값
+
+POST /nlr/recommend   { "text": "...", "structured": <위의 structured 그대로> }
+```
+
+이러면 **LLM 을 한 번만 부른다.** 실측 — `structured` 를 넘기면 10ms, `text` 만
+보내면 1.40초(LLM 재호출). 그리고 **두 응답의 해석이 같다는 것이 보장된다.**
+
+> **같은 문장을 두 번 부르면 다른 답이 나올 수 있다.** 한 문장을 6번 불렀더니
+> 4번은 `lavender`·`powdery` 를, 2번은 **조건 0개**를 냈다. 15문장으로 재현했을 때
+> 조건 집합이 같은 것이 9건, 상위 5개가 하나도 안 겹친 것이 5건이었다.
+> 그래서 **두 엔드포인트를 한 요청에 각각 부르면 화면의 해석과 결과가 어긋날 수 있다.**
 
 ### 응답 (200)
 
@@ -231,11 +272,58 @@ Content-Type: application/json
 | `matched[].tier` | `VERIFIED`/`TEAM`/`LLM`. **내부 기록이라 사용자에게 노출하지 않는다** |
 | `matched[].rationale` | 사람이 쓴 근거 문장. **`tier` 가 `LLM` 이면 `null` 이다** (원칙 ②) |
 | `unmatched` | 사전이 받지 못한 표현. 백엔드는 안 써도 된다. AI 가 로그에 남긴다 |
+| `diagnostics.stage` | `AND` / **`SINGLE_BROAD`** / `RELAXED_OR` / `RELAXED_OR_NO_THRESHOLD` / `NO_CONDITION` |
 | `diagnostics` | 문제를 볼 때 쓴다. 응답에 그대로 넘기지 않는다 |
+
+#### `conditions.source` 3종 — 지표로 쓸 때 주의하십시오
+
+**"구조화 입력이 있었나" 가 아니라 "조건을 바꿨나" 를 말한다.**
+
+| 값 | 뜻 |
+|---|---|
+| `lexicon_only` | 구조화 결과가 없었다. 키가 없거나 LLM 호출이 실패했다 |
+| `llm+lexicon` | 구조화 결과가 조건을 바꿨다 |
+| `llm_no_effect` | 구조화 결과가 있었지만 **원문만으로 잡은 것과 같다** |
+
+합성 600문장에 구조화 결과를 넘겨 재면 이렇게 나온다.
+
+```
+llm+lexicon     338건 (56.3%)
+llm_no_effect   262건 (43.7%)   그중 조건이 나온 문장 182건
+```
+
+> **예전에는 600건 전부 `llm+lexicon` 이었다.** dict 가 넘어오기만 하면 그렇게 적었기
+> 때문이다. 이 값으로 "LLM 이 일하고 있다" 를 세면 **43.7% 를 부풀려 세게 된다.**
+> `llm_no_effect` 가 늘어난다는 것은 사전이 이미 받아내고 있다는 뜻이기도 하다.
 
 > **`accordKo`(향 특성 한국어 이름)는 아직 없다.** 이 계약서 초안에는 있었는데 구현되지 않았다.
 > 그래서 `evidence` 를 무엇으로 채울지가 아직 미정이다 — 아래 「아직 없는 것」 참고.
 > **백엔드는 이 칸이 온다고 가정하고 코딩하지 마십시오.**
+
+### `/nlr/understand` 응답 (200)
+
+향수를 찾지 않는다. 향 조건까지만 낸다.
+
+```json
+{
+  "query": "빨래 냄새 나는 향수 찾고 있어",
+  "conditions": { "core": ["fresh", "soapy"], "avoid": [],
+                  "matchedExpressions": ["빨래"], "source": "llm+lexicon" },
+  "structured": { "scent_preference": [], "context": {"season": [], "daypart": [], "gender": []},
+                  "performance": {"intensity": "", "longevity": ""}, "avoid": [],
+                  "additional_requirements": ["빨래 냄새 나는 향수"] },
+  "evidence": [ { "accord": "soapy", "from": "빨래", "tier": "TEAM",
+                  "entryId": "kr.scene.laundry", "rationale": "...", "llmReasoning": null } ],
+  "unmatched": []
+}
+```
+
+| 필드 | 설명 |
+|---|---|
+| `conditions` | ②단계 결과. **화면에 보여줄 해석.** 요청에 되돌려 넣으면 `400` 이다 |
+| `structured` | ①단계 결과. **`/nlr/recommend` 의 `structured` 에 그대로 넣는 값.** LLM 이 꺼져 있거나 실패하면 `null` |
+| `evidence` | 어느 표현이 어느 accord 로 갔는지와 그 근거. `source` 가 `lexicon_only` 면 사전만 쓴 것 |
+| `unmatched` | 사전이 받지 못한 표현. AI 가 로그에 남긴다 |
 
 ### 백엔드가 하는 변환
 
@@ -257,6 +345,28 @@ reasons  [ { phrase:"빨래", evidence: ??? } ]
 보여줄 수 없고, `rationale` 은 "팀 문서의 생활 비유에…" 로 시작하는 내부 근거 문투다.
 향 특성 92개에 한국어 표기를 붙이기로 정했으나 **아직 구현되지 않았다.**
 
+### 에러 — **전부** 공통 형식이다
+
+```json
+{ "code": "NLR_INVALID_REQUEST", "message": "..." }
+```
+
+| 상황 | HTTP | `code` |
+|---|---|---|
+| `text` 가 없거나 1~500자를 벗어남 | `400` | `NLR_INVALID_REQUEST` |
+| JSON 문법 오류 | `400` | `NLR_INVALID_REQUEST` |
+| **본문이 UTF-8 이 아님** | `400` | `NLR_INVALID_REQUEST` |
+| `structured` 가 ①단계 모양이 아님 | `400` | `NLR_INVALID_REQUEST` |
+| 없는 경로 | `404` | `NLR_NOT_FOUND` |
+| 적재 전 `/health` | `503` | `NLR_NOT_READY` |
+
+> **본문 디코딩 실패만 `{"detail": ...}` 로 나가던 문제를 고쳤다.** FastAPI 가 본문을
+> 읽지 못하면 라우트보다 앞 단계에서 `HTTPException` 을 던져 Starlette 기본 형식으로
+> 나갔다. 핸들러를 달아 공통 형식으로 맞췄다. 254 MR 리뷰에서 지적된 항목이다.
+
+**`message` 에 요청 값을 싣지 않는다.** 사용자가 쓴 원문이 들어올 수 있고 에러 응답은
+그대로 로그에 남는다. 어느 칸이 틀렸는지와 사유만 적는다.
+
 ---
 
 ## 아직 없는 것 — 팀이 알아야 할 제약
@@ -277,8 +387,8 @@ reasons  [ { phrase:"빨래", evidence: ??? } ]
 |---|---|
 | **프론트엔드** | `features/recommend/api.ts` 의 목 함수를 실제 호출로 바꾼다. `status` 4종 분기를 만든다. 타입에서 `x`·`y` 를 뺀다 |
 | **백엔드** | `POST /api/v1/recommendations/natural-language` 를 만든다. AI 서버 클라이언트를 붙인다. 위 「백엔드가 하는 변환」 3단계를 구현한다. 호출량 제한을 건다 |
-| **AI** | ~~`POST /nlr/understand` · `/nlr/recommend` 를 만든다~~ (S15P21E203-202 에서 완료). LLM 구조화를 붙인다. 향 특성 92개에 한국어 이름을 단다 |
-| **인프라** | AI 서버를 배포에 태운다. 백엔드가 쓸 AI 서버 주소를 환경변수로 넣는다 |
+| **AI** | ~~`POST /nlr/understand` · `/nlr/recommend` 를 만든다~~ (S15P21E203-202 에서 완료). ~~LLM 구조화를 붙인다~~ (완료. `llm_stage1.py`). 미매칭 추정(⑤단계)을 붙인다. 향 특성 92개에 한국어 이름을 단다 |
+| **인프라** | AI 서버를 배포에 태운다. 백엔드가 쓸 AI 서버 주소를 환경변수로 넣는다. **AI 서버에도 `GMS_API_KEY` 를 넣는다** — 없으면 서버는 뜨지만 조건을 뽑는 비율이 86.7% → 75.5% 로 떨어진다 |
 
 ---
 

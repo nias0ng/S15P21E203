@@ -150,7 +150,7 @@ public class ReviewController {
             @PathVariable Long reviewId,
             @Valid @RequestBody ReviewSeasonsRequest request
     ) {
-        return reviewService.replaceSeasons(reviewId, request.seasonIds());
+        return reviewService.replaceSeasons(reviewId, request.seasonCodes());
     }
 
     /**
