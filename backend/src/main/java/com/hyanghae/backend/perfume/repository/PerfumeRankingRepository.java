@@ -60,6 +60,7 @@ public class PerfumeRankingRepository {
                 OR LOWER(p.name_ko) LIKE LOWER(CONCAT('%', CAST(:keyword AS varchar), '%')) ESCAPE '!'
                 OR LOWER(b.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS varchar), '%')) ESCAPE '!')
               AND (CAST(:brand AS varchar) IS NULL OR b.name = CAST(:brand AS varchar))
+              AND (CAST(:brandId AS bigint) IS NULL OR b.brand_id = CAST(:brandId AS bigint))
               AND (CAST(:gender AS varchar) IS NULL OR p.gender = CAST(:gender AS varchar))
             """;
 
@@ -93,7 +94,7 @@ public class PerfumeRankingRepository {
 
     /** 동점은 향수 번호순입니다. 순서를 확정하지 않으면 페이지마다 다른 답이 나옵니다. */
     private static final String SELECT_PAGE = """
-            SELECT p.perfume_id, p.name, p.name_ko, b.name AS brand_name
+            SELECT p.perfume_id, p.name, p.name_ko, b.name AS brand_name, b.name_ko AS brand_name_ko
             FROM perfumes p
             LEFT JOIN brands b ON b.brand_id = p.brand_id
             JOIN (%s) s ON s.perfume_id = p.perfume_id
@@ -120,30 +121,37 @@ public class PerfumeRankingRepository {
 
     /** 한 페이지 분량입니다. 기준에 못 미치는 향수는 조인에서 빠집니다. */
     public List<PerfumeSummaryResponse> findPage(
-            RankingType ranking, String keyword, String brand, String gender, int offset, int limit) {
-        return bind(SELECT_PAGE.formatted(countSource(ranking), CONDITION), ranking, keyword, brand, gender)
+            RankingType ranking, String keyword, String brand, Long brandId, String gender,
+            int offset, int limit) {
+        return bind(SELECT_PAGE.formatted(countSource(ranking), CONDITION),
+                ranking, keyword, brand, brandId, gender)
                 .param("limit", limit)
                 .param("offset", offset)
                 .query((rs, rowNum) -> new PerfumeSummaryResponse(
                         rs.getLong("perfume_id"),
                         rs.getString("name"),
                         rs.getString("name_ko"),
-                        rs.getString("brand_name")))
+                        rs.getString("brand_name"),
+                        rs.getString("brand_name_ko")))
                 .list();
     }
 
     /** 조건에 맞는 전체 개수입니다. 목록과 같은 조건을 써야 마지막 페이지가 비지 않습니다. */
-    public long count(RankingType ranking, String keyword, String brand, String gender) {
-        return bind(SELECT_COUNT.formatted(countSource(ranking), CONDITION), ranking, keyword, brand, gender)
+    public long count(
+            RankingType ranking, String keyword, String brand, Long brandId, String gender) {
+        return bind(SELECT_COUNT.formatted(countSource(ranking), CONDITION),
+                ranking, keyword, brand, brandId, gender)
                 .query(Long.class)
                 .single();
     }
 
     private JdbcClient.StatementSpec bind(
-            String sql, RankingType ranking, String keyword, String brand, String gender) {
+            String sql, RankingType ranking, String keyword, String brand, Long brandId,
+            String gender) {
         JdbcClient.StatementSpec spec = jdbcClient.sql(sql)
                 .param("keyword", keyword)
                 .param("brand", brand)
+                .param("brandId", brandId)
                 .param("gender", gender);
         if (ranking != RankingType.VIEWED) {
             spec = spec.param("ownershipStatus", ranking.ownershipStatus());

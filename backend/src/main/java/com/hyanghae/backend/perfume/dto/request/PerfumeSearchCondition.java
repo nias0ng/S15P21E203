@@ -14,10 +14,25 @@ import com.hyanghae.backend.perfume.entity.Gender;
  * <p>{@code gender} 를 문자열이 아니라 enum 으로 받습니다. 값이 잘못되면 조용히 0건이 나가는 대신
  * 400 이 됩니다. 필터가 안 걸린 것인지 해당하는 향수가 없는 것인지 구분할 수 있어야 합니다.
  *
+ * <p>{@code brandId} 는 브랜드 번호로 거릅니다. {@code brand}(이름 완전 일치)와 같은 일을 하지만
+ * 이쪽이 안전합니다 — 브랜드 이름은 한글과 영문이 섞여 있고 표기만 다른 중복도 있어, 화면이
+ * 가진 이름이 저장된 이름과 어긋날 수 있습니다. 둘 다 주면 AND 로 걸립니다.
+ *
+ * <p>{@code brandId} 는 브랜드 번호로 거릅니다. {@code brand}(이름 완전 일치)와 같은 일을 하지만
+ * 이쪽이 안전합니다 — 브랜드 이름은 한글과 영문이 섞여 있고 표기만 다른 중복도 있어, 화면이 가진
+ * 이름이 저장된 이름과 어긋날 수 있습니다. 브랜드 목록이 번호를 함께 주므로 화면은 그것을 그대로
+ * 넘기면 됩니다. 둘 다 주면 AND 로 걸립니다.
+ *
  * <p>{@code ranking} 만 성격이 다릅니다. 향수의 속성이 아니라 사람들이 담거나 열어 본 기록이고,
  * 전체 사용자 집계라 로그인이 필요 없습니다. 이 값이 있으면 <b>기준에 못 미치는 향수가 결과에서
  * 빠지고</b>, 남은 향수가 기록이 많은 순으로 나갑니다. OWNED·WISH 는 세 명 이상이 담은 향수만,
  * VIEWED 는 한 번이라도 열어 본 향수가 모두 나옵니다. {@code sort} 는 무시됩니다.
  */
-public record PerfumeSearchCondition(String keyword, String brand, Gender gender, RankingType ranking) {
+public record PerfumeSearchCondition(
+        String keyword,
+        String brand,
+        Long brandId,
+        Gender gender,
+        RankingType ranking
+) {
 }
