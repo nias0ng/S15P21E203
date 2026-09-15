@@ -3,8 +3,11 @@
  */
 
 /**
- * 진열대 분류. 와이어프레임 A13 주석대로 "칸이 세 개로 고정" 이고,
- * A11 · A15 에서 저장할 때 필수입니다.
+ * 진열대 분류. A11 · A15 에서 저장할 때 필수입니다.
+ *
+ * 여기 적힌 라벨이 이 분류의 **유일한 이름**입니다. 저장 모달도 진열대 도구 줄도
+ * 이 값을 끌어다 씁니다 — 화면마다 다른 낱말로 부르면 사용자가 "시향해 봄" 으로
+ * 담은 향수를 "시향 기록" 에서 찾아야 합니다.
  *
  * 이 어휘가 진열대 도메인에 있는 이유: 향수 상세(A10)의 저장 모달도 이 값을 쓰는데
  * features 끼리는 import 할 수 없으므로, 분류를 소유한 진열대 도메인에 두고
@@ -18,12 +21,22 @@ export const SHELF_CATEGORIES = [
   { value: 'WISH', label: '보유 희망' },
 ] as const satisfies readonly { value: ShelfCategory; label: string }[]
 
-/** A13 의 진열대 세 칸 제목 (분류명 그대로 씁니다) */
-export const SHELF_SLOTS = [
-  { category: 'OWNED', title: '진열대 1 · 보유 중' },
-  { category: 'TRIED', title: '진열대 2 · 시향해 봄' },
-  { category: 'WISH', title: '진열대 3 · 보유 희망' },
-] as const satisfies readonly { category: ShelfCategory; title: string }[]
+/**
+ * 분류 칩에 붙는 개수. **검색어를 적용한 뒤**의 수입니다 —
+ * 검색 중에는 칩 숫자가 "이 칸에 몇 개가 걸렸나" 를 알려주는 쪽이 쓸모 있습니다.
+ *
+ * Record 로 두면 분류가 늘 때 컴파일러가 빠진 칸을 잡아줍니다. 예전에는
+ * `{ all, owned, tried, wish }` 라 분류와 칸 이름을 잇는 표를 따로 들고 있었고,
+ * 그 표가 곧 어긋날 자리였습니다.
+ */
+export type ShelfCounts = Record<ShelfCategory, number>
+
+/** 진열장 한 칸 — 분류 하나와 거기 선 향수들 */
+export type ShelfSection = {
+  category: ShelfCategory
+  label: string
+  items: ShelfItem[]
+}
 
 /**
  * 진열대에 담긴 향수 한 개.
@@ -36,6 +49,20 @@ export interface ShelfItem {
   perfumeId: number
   name: string
   brand: string
+  /*
+   * 영문 표기 셋. 사람이 읽는 대소문자 그대로 두고, 대문자는 CSS 가 입힙니다.
+   *
+   * ⚠️ 백엔드가 아직 주지 않습니다 — 지금은 자리표시자(api.ts)에만 채워 두었습니다. 필수로
+   * 선언하면 타입은 통과하는데 런타임에 undefined 라 빈 줄이 생깁니다. 영문 브랜드가 없으면
+   * 이름표가 그 자리에 한글 브랜드를 적습니다(DisplayCase).
+   * 백엔드가 내려주기 시작하면 `?` 를 떼세요.
+   */
+  /** 영문 브랜드 (Jo Malone). 이름표 첫 줄에 자간을 넓힌 대문자로 적습니다 */
+  brandEn?: string
+  /** 영문 향수 이름 (Wood Sage & Sea Salt). 이름표를 간소화하면서 지금은 화면에 적지 않습니다 */
+  nameEn?: string
+  /** 부향률 (Eau de Cologne). 이름표를 간소화하면서 지금은 화면에 적지 않습니다 */
+  concentration?: string
   thumbnailUrl: string | null
   category: ShelfCategory
   /** 대표 향수는 한 번에 하나. 보유 중 칸에만 표시됩니다 (A13 주석). */

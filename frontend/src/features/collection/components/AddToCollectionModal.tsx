@@ -30,8 +30,12 @@ type Props = {
  * 컬렉션에 향수 추가 모달 (와이어프레임 A19 우 — COL-03)
  *
  * 여러 개를 고를 수 있습니다. 진열대에 없는 향수는 애초에 후보에 들어오지 않습니다.
+ *
+ * 앱에 "향수를 고르는 모달" 이 셋이라 이름에 목적지를 넣었습니다 —
+ * 여기(컬렉션), `ShelfRegisterModal` 1단계(진열대), `LinkedPerfumeModal`(글).
+ * 셋 다 향수를 고르지만 고른 뒤에 벌어지는 일이 전혀 다릅니다.
  */
-export function AddPerfumeModal({
+export function AddToCollectionModal({
   open,
   onClose,
   candidates,
@@ -67,7 +71,7 @@ export function AddPerfumeModal({
         </>
       }
     >
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <SearchField
           label="향수명 또는 브랜드명으로 검색"
           placeholder="향수명 · 브랜드 검색"
@@ -80,10 +84,10 @@ export function AddPerfumeModal({
             description="진열대에 저장한 향수만 컬렉션에 넣을 수 있습니다."
           />
         ) : (
-          <ul className="max-h-72 space-y-1 overflow-y-auto">
+          <ul className="max-h-72.5 space-y-1.25 overflow-y-auto">
             {candidates.map((candidate) => (
               <li key={candidate.perfumeId}>
-                <label className="hover:bg-line-soft flex cursor-pointer items-center gap-3 p-2">
+                <label className="hover:bg-line-soft flex cursor-pointer items-center gap-2.5 p-2.5">
                   <Checkbox
                     checked={picked.includes(candidate.perfumeId)}
                     onChange={() => toggle(candidate.perfumeId)}

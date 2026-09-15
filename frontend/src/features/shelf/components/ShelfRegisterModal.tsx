@@ -35,17 +35,15 @@ type Props = {
 }
 
 /**
- * 향수 등록 모달 2단계 (와이어프레임 A15 — SHF-01 · SHF-08 · SHF-10 · DTL-18 · DTL-19)
+ * 진열대 등록 모달 2단계 (와이어프레임 A15 — SHF-01 · SHF-08 · SHF-10 · DTL-18 · DTL-19)
  *
- * 1단계 향수 고르기 → 2단계 등록 정보 입력.
- * 와이어프레임 주석을 그대로 지켰습니다.
- * - A13 [+ 향수 등록]에서만 1단계가 뜬다. 향수 상세에서 담을 때는 2단계로 바로 간다
- * - 한 번에 한 개만 고른다 (2단계 입력이 향수 한 개 기준)
- * - 이미 진열대에 있는 향수는 담김 표시 · 선택 불가
- * - 적합도와 메모는 선택. 분류만 고르면 담긴다
- * - 메모는 향수 한 개당 하나 — 시향 기록(SHF-08 · SHF-10)이 이 모달로 흡수됐다
+ * 1단계 향수 고르기 → 2단계 등록 정보 입력. 한 번에 한 개만 고릅니다.
+ *
+ * `ShelfSaveModal`(A11)과 다른 점: 저쪽은 향수가 정해진 채로 분류만 고르는 빠른
+ * 저장이고, 이쪽은 향수 고르기부터 적합도 · 메모까지 받는 전체 등록입니다.
+ * 그래서 A13 의 [+ 향수 등록]만 이 모달을 엽니다.
  */
-export function PerfumeRegisterModal({
+export function ShelfRegisterModal({
   open,
   onClose,
   options,
@@ -103,7 +101,7 @@ export function PerfumeRegisterModal({
       }
     >
       {step === 1 ? (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <SearchField
             label="향수명 또는 브랜드명으로 검색"
             placeholder="향수명 · 브랜드 검색"
@@ -116,7 +114,7 @@ export function PerfumeRegisterModal({
               description="검색어를 바꿔 보세요."
             />
           ) : (
-            <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
               {options.map((option) => (
                 <li key={option.perfumeId}>
                   <button
@@ -125,7 +123,7 @@ export function PerfumeRegisterModal({
                     disabled={option.alreadyInShelf}
                     onClick={() => setPicked(option)}
                     className={cn(
-                      'border-line w-full border p-2 text-left transition-colors duration-120 ease-out',
+                      'border-line w-full border p-2.5 text-left transition-colors duration-120 ease-out',
                       option.alreadyInShelf
                         ? 'bg-line-soft cursor-not-allowed opacity-60'
                         : 'hover:border-accent',
@@ -133,7 +131,7 @@ export function PerfumeRegisterModal({
                   >
                     <Thumbnail
                       fallback={option.alreadyInShelf ? '담김' : '이미지'}
-                      className="text-caption mb-2 h-16 w-full"
+                      className="text-caption mb-2.5 h-16.25 w-full"
                     />
                     <span className="text-ink text-body block truncate font-medium">
                       {option.name}
@@ -148,8 +146,8 @@ export function PerfumeRegisterModal({
           )}
         </div>
       ) : (
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-2.5">
             <span className="text-ink text-body font-medium">
               {picked?.name}
             </span>
@@ -173,7 +171,7 @@ export function PerfumeRegisterModal({
             onChange={setCategory}
           />
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <span className="text-ink-muted text-caption">내 취향 적합도</span>
             <StarRating
               label="내 취향 적합도"

@@ -60,7 +60,7 @@ export function CollectionFormModal({
         </>
       }
     >
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <Input
           label="제목"
           hideLabel
