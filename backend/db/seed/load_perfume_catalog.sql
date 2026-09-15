@@ -115,6 +115,11 @@ ON CONFLICT (name) DO NOTHING;
 -- 않습니다. 향 지도 적재가 채운 값을 지우면 안 됩니다.
 --
 -- is_active 도 건드리지 않습니다. 운영에서 내린 향수를 적재가 되살리면 안 됩니다.
+--
+-- fragrantica_id 가 비어 있는 향수는 짝지을 수 없어 그대로 남습니다. NULL 은 무엇과도 같지
+-- 않기 때문입니다. 손으로 넣어 둔 향수가 카탈로그에도 있으면 같은 이름이 두 줄이 됩니다.
+-- 적재가 만든 중복이 아니라 원래 있던 행이고, 어느 쪽이 진짜인지는 사람이 정해야 합니다.
+-- 운영에 적재하기 전에 SELECT * FROM perfumes WHERE fragrantica_id IS NULL 로 확인하십시오.
 -- ---------------------------------------------------------------------------
 INSERT INTO perfumes (fragrantica_id, name, brand_id, fragrantica_rating_count)
 SELECT s.fragrantica_id::bigint,
@@ -164,6 +169,11 @@ JOIN accords a ON a.name = s.accord_name;
 --
 -- 조인이 조용히 행을 떨어뜨렸는지 여기서 걸립니다. 브랜드 이름이 한 글자라도 다르면 그 향수가
 -- 통째로 빠지는데, 커밋한 뒤에는 무엇이 빠졌는지 찾기 어렵습니다.
+--
+-- 세는 것은 perfumes 전체가 아니라 loaded_perfumes, 즉 이번 CSV 로 들어온 향수뿐입니다.
+-- 두 수는 다릅니다. 다른 경로로 들어온 향수가 있으면 perfumes 는 129,161 보다 큽니다.
+-- loaded_perfumes 는 fragrantica_id 로 안쪽 조인해 만들었고 NULL 은 무엇과도 같지 않으므로,
+-- 그 번호가 없는 향수는 애초에 들어오지 않습니다. 그래서 이 수는 CSV 행 수와 정확히 같습니다.
 -- ---------------------------------------------------------------------------
 DO $$
 DECLARE
