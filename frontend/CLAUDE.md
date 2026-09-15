@@ -282,7 +282,7 @@ variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 
 ## 3D 향 지도 엔진 (`landing/`)
 
 메인(`/`)의 3D 화면은 `landing/index.html` 을 iframe 으로 띄운 것입니다(`features/map/components/ScentScene.tsx`).
-엔진은 three.js 로 만든 프로토타입 **paperboat 의 원본 복사본**이고, Vite 의 두 번째 입구(`vite.config.ts` 의
+엔진은 three.js 로 만든 프로토타입 paperboat 에서 옮겨 온 것이고(**원본은 이제 이 폴더입니다** — 아래 참고), Vite 의 두 번째 입구(`vite.config.ts` 의
 `build.rolldownOptions.input.landing`)로 앱과 같이 빌드됩니다.
 
 - React · TypeScript 가 아닌 순수 JS 입니다. **ESLint · Prettier 검사에서 뺐고**, 엔진 코드의 규칙은 `landing/CLAUDE.md` 를 따릅니다.
@@ -292,7 +292,8 @@ variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 
 - 메인의 헤더는 **유리판**입니다 — `bleed` 화면이면 `RootLayout` 이 `GlobalHeader` 에 `tone="glass"` 를 줍니다(짙은 남색 토큰 `surface-night` · 뒤 흐림).
   3D 가 헤더 뒤까지 깔리고, 헤더가 가리는 90px 은 `ScentScene` 의 `coveredTop` → 엔진 `hostTop` 으로 알립니다. 엔진은 검색창 · 정보 블록 · 해도를 그 아래로 내리고 향수 고르기의 12개를 그 띠에 세우지 않습니다.
   엔진의 자리표시 헤더(`siteHeader`)는 끕니다 — 무대를 헤더만큼 줄이는 방식이라 유리판 뒤가 비어 버립니다. 헤더 높이를 바꾸면 `coveredTop` 도 같이 바꿉니다.
-- paperboat 저장소에서 바뀐 것을 가져올 때는 `index.html` · `src/` · `data/` · `scripts/` · 문서를 통째로 덮어씁니다(에셋이 바뀌면 `public/landing/` 도).
+- **원본은 이 폴더(`landing/`)입니다** (2026-09-15 결정). paperboat 저장소는 v0.63.0 에서 멈췄고 v0.64 부터는 여기에만 있으므로, paperboat 에서 가져와 덮어쓰지 않습니다.
+- 메인 3D 를 여러 워크트리로 나눠 작업할 때의 갈래 · 맡는 파일 · 통합 순서는 `landing/docs/워크트리-분할.md` 를 따릅니다.
 
 ## 서버 상태 vs 클라이언트 상태
 
