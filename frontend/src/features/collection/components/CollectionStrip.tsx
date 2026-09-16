@@ -44,9 +44,11 @@ export function CollectionStrip({ items, isPending = false, onCreate }: Props) {
               {collection.previewThumbnails
                 .slice(0, 3)
                 .map((thumbnail, index) => (
+                  // 병 사진이라 잘리지 않게 담습니다 (빈 칸은 자리표시자 상자)
                   <Thumbnail
                     key={index}
                     src={thumbnail}
+                    fit="contain"
                     className="h-13.75 flex-1"
                   />
                 ))}

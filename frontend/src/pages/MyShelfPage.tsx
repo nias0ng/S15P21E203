@@ -1,10 +1,13 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState, type ReactNode } from 'react'
 
 import {
   CollectionFormModal,
+  collectionKeys,
   CollectionStrip,
   myCollectionsQuery,
+  useCollectionActions,
+  type CollectionCandidate,
 } from '@/features/collection'
 import { perfumeListQuery } from '@/features/perfume'
 import {
@@ -114,6 +117,8 @@ export default function MyShelfPage() {
   const arrangement = useShelfArrangement()
   // 낙관적 갱신과 되돌리기는 도메인 훅이 들고 있습니다. 토스트만 여기서 붙입니다
   const actions = useShelfActions()
+  const collectionActions = useCollectionActions()
+  const queryClient = useQueryClient()
 
   const [stage, setStage] = useState<Stage>('shelf')
   const [registerOpen, setRegisterOpen] = useState(false)
@@ -121,6 +126,8 @@ export default function MyShelfPage() {
   const [loginOpen, setLoginOpen] = useState(false)
   const isLoggedIn = useIsLoggedIn()
   const [createCollectionOpen, setCreateCollectionOpen] = useState(false)
+  // 컬렉션 만들기 모달을 열 때마다 새로 그려 앞서 적은 제목 · 고른 향수를 비웁니다
+  const [createCollectionKey, setCreateCollectionKey] = useState(0)
   const [editOpen, setEditOpen] = useState(false)
   const [removeOpen, setRemoveOpen] = useState(false)
   const { showToast, toastProps } = useToast()
@@ -360,12 +367,25 @@ export default function MyShelfPage() {
     <CollectionStrip
       items={collections.data ?? []}
       isPending={collections.isPending}
-      onCreate={() => setCreateCollectionOpen(true)}
+      onCreate={() => {
+        setCreateCollectionKey((key) => key + 1)
+        setCreateCollectionOpen(true)
+      }}
     />
   )
 
   /** 이미 담은 향수 번호. 등록 모달이 중복 선택을 막는 데 씁니다 */
   const inShelf = new Set((shelf.data ?? []).map((item) => item.perfumeId))
+
+  /** 컬렉션에 넣을 수 있는 향수 — 진열대 전부를 컬렉션 도메인이 아는 모양으로 옮깁니다 */
+  const collectionCandidates: CollectionCandidate[] = (shelf.data ?? []).map(
+    (item) => ({
+      shelfItemId: item.shelfItemId,
+      name: item.name,
+      brand: item.brand,
+      thumbnailUrl: item.thumbnailUrl,
+    }),
+  )
 
   const dialogs = (
     <>
@@ -403,12 +423,30 @@ export default function MyShelfPage() {
         }}
       />
       <CollectionFormModal
+        key={createCollectionKey}
+        mode="create"
         open={createCollectionOpen}
         onClose={() => setCreateCollectionOpen(false)}
-        onSubmit={() => {
-          setCreateCollectionOpen(false)
-          showToast('컬렉션을 만들었습니다')
-        }}
+        candidates={collectionCandidates}
+        isSubmitting={collectionActions.create.isPending}
+        onSubmit={(input) =>
+          collectionActions.create.mutate(input, {
+            onSuccess: () => {
+              setCreateCollectionOpen(false)
+              showToast('컬렉션을 만들었습니다')
+            },
+            /*
+              이름이 겹치면 409 입니다. 모달을 닫지 않아 적은 제목 · 고른 향수를
+              그대로 두고 제목만 고칠 수 있게 합니다.
+            */
+            onError: (error) =>
+              showToast(
+                isApiError(error)
+                  ? error.message
+                  : '컬렉션을 만들지 못했습니다',
+              ),
+          })
+        }
       />
       {/*
         변경하기 (C02). 분류만 고치던 모달이었는데 카드에서 고칠 수 있는 값이
@@ -450,7 +488,16 @@ export default function MyShelfPage() {
           actions.remove.mutate(
             { shelfItemId: selectedId },
             {
-              onSuccess: () => showToast('진열대에서 뺐습니다'),
+              onSuccess: () => {
+                showToast('진열대에서 뺐습니다')
+                /*
+                  진열대에서 빼면 서버가 그 향수를 담은 컬렉션에서도 함께 뺍니다
+                  (ON DELETE CASCADE). 컬렉션 카드의 향수 수 · 사진도 다시 받습니다.
+                */
+                void queryClient.invalidateQueries({
+                  queryKey: collectionKeys.all,
+                })
+              },
               onError: () => showToast('진열대에서 빼지 못했습니다'),
             },
           )
