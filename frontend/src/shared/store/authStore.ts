@@ -11,6 +11,11 @@ interface AuthState {
   accessToken: string | null
   user: AuthUser | null
   setAuth: (payload: { accessToken: string; user: AuthUser }) => void
+  /**
+   * 토큰만 갈아끼웁니다. 재발급과 로그인 첫 단계가 쓰는데,
+   * 둘 다 사용자 정보를 아직 모르거나 바뀔 필요가 없는 자리입니다.
+   */
+  setAccessToken: (accessToken: string) => void
   clear: () => void
 }
 
@@ -24,6 +29,7 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       user: null,
       setAuth: ({ accessToken, user }) => set({ accessToken, user }),
+      setAccessToken: (accessToken) => set({ accessToken }),
       clear: () => set({ accessToken: null, user: null }),
     }),
     { name: 'hyanghae-auth' },
