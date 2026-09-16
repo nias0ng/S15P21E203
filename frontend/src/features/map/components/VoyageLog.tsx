@@ -59,8 +59,44 @@ const familyLabel = (code: string) =>
  * 토큰(dusk · dusk-gold · radius-glass · shadow-glass)으로 옮겨 맞췄습니다.
  * 판이 작고 어두운 유리 위라 공용 Skeleton · EmptyState 대신 한 줄 안내를 씁니다.
  */
+/**
+ * 좁은 창에서는 접은 채로 시작합니다 (2026-09-16).
+ *
+ * 이 판은 앱 DOM 이라 `left 30 · w 240`(오른끝 270)으로 **고정**인데, 엔진 검색창은 iframe 안에서
+ * **가운데 정렬**이라 창이 좁아지면 왼끝이 왼쪽으로 내려옵니다. 둘은 서로를 모릅니다 —
+ * 엔진의 `PB.layout()` 은 iframe 안만 보고, 호스트가 넘기는 것은 `hostTop`(헤더 높이) 하나뿐입니다.
+ * 실측 : 폭 **940** 아래부터 가로로 물리고, 펼친 판(아래끝 385)은 검색창 띠를 통째로 덮습니다.
+ * 경위 · 수치는 `landing/docs/분할/C-연출UI.md`.
+ *
+ * ⚠ 1024 는 엔진(`landing/index.html` 의 `@media (max-width:1024px)`)과 앱(`--gutter` 단계)이
+ *   이미 함께 쓰는 문턱이라 새 숫자를 만들지 않았습니다. 940 보다 넉넉한 쪽입니다.
+ */
+const NARROW_QUERY = '(max-width: 1024px)'
+
+function useNarrow() {
+  const [narrow, setNarrow] = useState(
+    () => window.matchMedia(NARROW_QUERY).matches,
+  )
+  useEffect(() => {
+    const mq = window.matchMedia(NARROW_QUERY)
+    const onChange = (e: MediaQueryListEvent) => setNarrow(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  return narrow
+}
+
 export function VoyageLog({ entries, status }: Props) {
-  const [open, setOpen] = useState(true)
+  const narrow = useNarrow()
+  // 기본값은 폭이 정하고(좁으면 접힘), 사용자가 누르면 **누른 단계와 함께** 기억합니다.
+  // 문턱을 넘으면 기억해 둔 단계가 안 맞으므로 저절로 기본값으로 돌아갑니다 —
+  // 한 단계 안에서 접거나 편 것은 리사이즈 중에도 그대로 남습니다.
+  // ⚠ effect 로 state 를 맞추지 않습니다 (`react-hooks/set-state-in-effect` — 연쇄 렌더).
+  const [choice, setChoice] = useState<{
+    narrow: boolean
+    open: boolean
+  } | null>(null)
+  const open = choice?.narrow === narrow ? choice.open : !narrow
   // 처음 뜰 때도 위에서부터 열리게 — 닫힌 모양을 한 번 칠한 뒤(두 프레임 뒤) 엽니다
   const [painted, setPainted] = useState(false)
   useEffect(() => {
@@ -84,7 +120,7 @@ export function VoyageLog({ entries, status }: Props) {
         <h2 className="text-body text-surface font-semibold">향해 일지</h2>
         <button
           type="button"
-          onClick={() => setOpen(!open)}
+          onClick={() => setChoice({ narrow, open: !open })}
           aria-expanded={open}
           aria-label={open ? '향해 일지 접기' : '향해 일지 펼치기'}
           className={cn(
