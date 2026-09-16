@@ -8,13 +8,16 @@ type PerfumeCardProps = {
   /** 크게 적는 이름. 한국어 이름이 있으면 그걸 넘기세요 */
   name: string
   /**
-   * 큰 이름 아래 작게 적는 원어 이름.
+   * 큰 이름 바로 아래 작게 적는 다른 이름.
    *
-   * `name` 과 같으면 안 적습니다 — 한국어 이름이 없는 향수는 부르는 쪽이
-   * `name={nameKo ?? name} nameOriginal={name}` 으로 넘기게 되는데, 그때 두 값이
-   * 같아져 같은 글자가 두 줄로 겹칩니다. 그 판정을 여기서 한 번만 합니다.
+   * 무엇이 위로 갈지는 **부르는 쪽이 정합니다** — 향수 목록은 영문을 크게, 한국어를
+   * 여기 적습니다. 그래서 이름이 `nameOriginal`(원어)이 아니라 중립입니다.
+   *
+   * `name` 과 같으면 안 적습니다 — 한쪽 이름이 없는 향수는 부르는 쪽이
+   * `name={a ?? b} subName={b}` 으로 넘기게 되는데, 그때 두 값이 같아져 같은
+   * 글자가 두 줄로 겹칩니다. 그 판정을 여기서 한 번만 합니다.
    */
-  nameOriginal?: string | null
+  subName?: string | null
   /** 브랜드명. 브랜드가 없는 향수는 null 이라 줄을 그리지 않습니다 */
   brand?: string | null
   /**
@@ -64,7 +67,7 @@ const SLOT = 'aspect-square w-full px-7.5 pt-3.75 pb-5'
 
 export function PerfumeCard({
   name,
-  nameOriginal,
+  subName,
   brand,
   rank,
   thumbnailUrl,
@@ -173,7 +176,7 @@ export function PerfumeCard({
         )}
       </div>
 
-      <div className="w-full space-y-0.5">
+      <div className="min-h-13.5 w-full space-y-0.5">
         {/*
           한 줄로 자르지 않고 두 줄까지 받습니다(line-clamp-2). 한국어 향수명은
           "우드 세이지 앤 씨 솔트" 처럼 긴 것이 많아, 카드 폭(1440 에서 5열이면
@@ -189,7 +192,7 @@ export function PerfumeCard({
           나가고, 스케일 주석이 바로 그런 임의값을 쓰지 말라고 못 박아 두었습니다.
           1px 차이라 body 를 씁니다.
         */}
-        <p className="text-ink text-body line-clamp-2 min-h-8.75 font-serif leading-tight font-semibold">
+        <p className="text-ink text-body line-clamp-2 font-serif leading-tight font-semibold">
           {name}
         </p>
 
@@ -198,10 +201,8 @@ export function PerfumeCard({
           활자 스케일이 "body 와 caption 은 1px 차이라 크기로 위계를 만들지 않는다 —
           위계는 색이 만든다" 라고 정해 두어서, 이 둘의 구분도 색으로 합니다.
         */}
-        {nameOriginal && nameOriginal !== name && (
-          <p className="text-ink-muted text-caption truncate" lang="en">
-            {nameOriginal}
-          </p>
+        {subName && subName !== name && (
+          <p className="text-ink-muted text-caption truncate">{subName}</p>
         )}
 
         {brand && <p className="text-ink text-caption truncate">{brand}</p>}

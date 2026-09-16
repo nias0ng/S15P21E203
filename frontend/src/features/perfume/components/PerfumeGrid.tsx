@@ -88,9 +88,12 @@ export function PerfumeGrid({
         <li key={perfume.perfumeId}>
           <PerfumeCard
             /*
-              한국어 이름을 크게, 원어 이름을 그 아래 작게 적습니다. 백엔드는 둘 다
-              보내고 **무엇을 크게 적을지는 화면이 정합니다**(DTO 주석).
-              한국어 이름이 없는 향수는 원어 이름이 큰 줄로 올라가고, 그때 같은 글자가
+              **영문 이름을 크게, 한국어 이름을 그 아래 작게** 적습니다. 백엔드는 둘 다
+              보내고 무엇을 크게 적을지는 화면이 정합니다(DTO 주석). 영문 이름은 병에
+              적힌 글자라 사진과 바로 맞춰 읽히고, 한국어 이름이 그 아래에서 "무슨
+              향수인지" 를 받아 줍니다.
+
+              한국어 이름이 없는 향수는 아랫줄이 비고, 두 값이 같을 때 같은 글자가
               두 줄로 겹치지 않게 거르는 일은 PerfumeCard 가 합니다.
             */
             /*
@@ -99,8 +102,8 @@ export function PerfumeGrid({
               불러옵니다.
             */
             rank={rankable ? index + 1 : undefined}
-            name={perfume.nameKo ?? perfume.name}
-            nameOriginal={perfume.name}
+            name={perfume.name}
+            subName={perfume.nameKo}
             /*
               브랜드는 **일부러 넘기지 않습니다.** 목록에서는 향수를 고르는 것이지
               브랜드를 고르는 것이 아니라, 줄이 늘어나 카드만 길어졌습니다.
