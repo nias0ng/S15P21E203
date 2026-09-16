@@ -64,6 +64,14 @@ public class SecurityConfig {
                                         "/api/v1/map/exploration-logs"
                                 ).authenticated()
                                 .requestMatchers(HttpMethod.GET, "/api/v1/**").permitAll()
+                                // HEAD 는 본문 없는 GET 입니다. Spring MVC 가 @GetMapping
+                                // 핸들러로 처리하므로 GET 을 연 곳은 HEAD 도 열어야 짝이
+                                // 맞습니다. 닫아 두면 게시글 이미지처럼 크기·형식만 확인하려는
+                                // 쪽(링크 미리보기 수집기, 캐시 앞단)이 401 을 받습니다.
+                                //
+                                // 위의 authenticated() 뒤에 두는 순서가 중요합니다. 앞에 두면
+                                // HEAD /api/v1/users/me 가 인증 없이 열립니다.
+                                .requestMatchers(HttpMethod.HEAD, "/api/v1/**").permitAll()
                                 .requestMatchers(HttpMethod.POST, "/api/v1/recommendations/**")
                                 .permitAll()
                                 .anyRequest().authenticated();

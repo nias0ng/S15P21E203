@@ -96,6 +96,52 @@ public class PostImageService {
     }
 
     /**
+     * 주소가 가리키는 파일을 지웁니다. 글이 지워지거나 이미지가 교체될 때 부릅니다.
+     *
+     * <p><b>이 주소를 아직 쓰는 글이 없다는 것은 부르는 쪽이 확인해야 합니다.</b> 여기서는
+     * 세지 않습니다. 파일만 아는 자리가 게시글 테이블을 뒤지기 시작하면 저장소를 S3 로 옮길 때
+     * 같이 끌려옵니다.
+     *
+     * <p>우리가 만들지 않은 주소는 조용히 지나갑니다. {@code imageUrls} 는 문자열이라 외부
+     * 주소나 옛 경로가 들어 있을 수 있고, 그런 주소로 디스크를 건드리면 안 됩니다.
+     *
+     * <p>지우지 못해도 예외를 던지지 않습니다. 부르는 쪽은 이미 글을 지운 뒤라, 여기서 실패를
+     * 올리면 사용자는 지워진 글에 대해 오류를 받습니다. 파일이 남는 것은 나중에 치울 수
+     * 있지만 그 오류는 되돌릴 수 없습니다.
+     */
+    public void delete(String imageUrl) {
+        Path target = resolveStoredFile(imageUrl);
+        if (target == null) {
+            return;
+        }
+        try {
+            boolean deleted = Files.deleteIfExists(target);
+            log.debug("Post image deleted: deleted={}, url={}", deleted, imageUrl);
+        } catch (IOException exception) {
+            log.warn("Failed to delete post image: url={}", imageUrl, exception);
+        }
+    }
+
+    /**
+     * 주소를 우리 저장 디렉터리 안의 파일로 바꿉니다. 우리 것이 아니면 {@code null} 입니다.
+     *
+     * <p>{@code normalize()} 뒤에 다시 루트 안인지 확인하는 것이 핵심입니다. 주소는 결국
+     * 문자열이고 {@code imageUrls} 는 화면이 보내는 값이라, {@code ../} 가 섞인 주소를 글에
+     * 넣어 두고 그 글을 지우는 것만으로 서버의 다른 파일을 지울 수 있습니다.
+     */
+    private Path resolveStoredFile(String imageUrl) {
+        if (imageUrl == null) {
+            return null;
+        }
+        String prefix = properties.urlPath() + "/";
+        if (!imageUrl.startsWith(prefix)) {
+            return null;
+        }
+        Path target = root.resolve(imageUrl.substring(prefix.length())).normalize();
+        return target.startsWith(root) ? target : null;
+    }
+
+    /**
      * 형식 판별에 필요한 앞부분만 읽습니다. 5MB 파일을 통째로 메모리에 올릴 이유가 없습니다.
      *
      * <p>{@code read} 한 번이 요청한 만큼 다 준다는 보장이 없어 {@code readNBytes} 를 씁니다.

@@ -1,8 +1,13 @@
 package com.hyanghae.backend.community;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -17,7 +22,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -32,6 +40,7 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -56,6 +65,7 @@ class PostImageUploadIntegrationTest {
     private static final String UPLOAD_URL = "/api/v1/posts/images";
 
     private static final long UPLOADER_ID = 1;
+    private static final long OTHER_USER_ID = 2;
 
     /**
      * {@code @TempDir} 대신 직접 만듭니다. 저장 위치는 스프링 컨텍스트가 만들어질 때 이미
@@ -78,14 +88,35 @@ class PostImageUploadIntegrationTest {
     @Autowired
     private FakeCurrentUser currentUser;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @BeforeEach
     void login() {
+        clearPosts();
+        // posts.user_id 에 외래키가 걸려 있어 글을 쓰려면 사용자 행이 먼저 있어야 합니다.
+        insertUser(UPLOADER_ID, "uploader@hyanghae.test", "올린이");
+        insertUser(OTHER_USER_ID, "other@hyanghae.test", "다른 사람");
         currentUser.login(UPLOADER_ID);
     }
 
     @AfterEach
     void logout() {
         currentUser.logout();
+        clearPosts();
+    }
+
+    private void clearPosts() {
+        jdbcTemplate.update("DELETE FROM post_images");
+        jdbcTemplate.update("DELETE FROM post_perfumes");
+        jdbcTemplate.update("DELETE FROM posts");
+        jdbcTemplate.update("DELETE FROM users");
+    }
+
+    private void insertUser(long id, String email, String nickname) {
+        jdbcTemplate.update(
+                "INSERT INTO users (user_id, email, password_hash, nickname) VALUES (?, ?, 'x', ?)",
+                id, email, nickname);
     }
 
     @AfterAll
@@ -237,6 +268,110 @@ class PostImageUploadIntegrationTest {
     }
 
     /**
+     * HEAD 는 본문 없는 GET 입니다. 크기와 형식만 확인하려는 쪽(링크 미리보기 수집기, 캐시
+     * 앞단)이 쓰므로 GET 이 열린 곳은 HEAD 도 열려 있어야 합니다.
+     */
+    @Test
+    void servesHeadRequestsForImages() throws Exception {
+        String imageUrl = upload(new MockMultipartFile("file", "photo.png",
+                MediaType.IMAGE_PNG_VALUE, png()));
+
+        mockMvc.perform(head(imageUrl))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", MediaType.IMAGE_PNG_VALUE));
+    }
+
+    /**
+     * 글을 지우면 그 글이 쓰던 파일도 지워집니다. 행만 지우면 파일이 디스크에 영영 남습니다.
+     */
+    @Test
+    void deletesImageFileWhenPostIsDeleted() throws Exception {
+        String imageUrl = upload(new MockMultipartFile("file", "photo.png",
+                MediaType.IMAGE_PNG_VALUE, png()));
+        long postId = writePost(List.of(imageUrl));
+
+        assertThat(storedFile(imageUrl)).exists();
+
+        mockMvc.perform(delete("/api/v1/posts/{postId}", postId))
+                .andExpect(status().isNoContent());
+
+        assertThat(storedFile(imageUrl)).doesNotExist();
+    }
+
+    /**
+     * <b>다른 글이 같은 주소를 쓰고 있으면 파일을 남깁니다.</b>
+     *
+     * <p>주소는 문자열이라 남의 글에 있는 주소를 복사해 자기 글에 붙일 수 있습니다. 세어 보지
+     * 않고 지우면 자기 글을 지우는 것만으로 남의 글 이미지를 깨뜨릴 수 있습니다.
+     */
+    @Test
+    void keepsImageFileWhileAnotherPostStillUsesIt() throws Exception {
+        String imageUrl = upload(new MockMultipartFile("file", "photo.png",
+                MediaType.IMAGE_PNG_VALUE, png()));
+        long mine = writePost(List.of(imageUrl));
+
+        currentUser.login(OTHER_USER_ID);
+        long theirs = writePost(List.of(imageUrl));
+
+        currentUser.login(UPLOADER_ID);
+        mockMvc.perform(delete("/api/v1/posts/{postId}", mine))
+                .andExpect(status().isNoContent());
+
+        assertThat(storedFile(imageUrl)).exists();
+
+        currentUser.login(OTHER_USER_ID);
+        mockMvc.perform(delete("/api/v1/posts/{postId}", theirs))
+                .andExpect(status().isNoContent());
+
+        assertThat(storedFile(imageUrl)).doesNotExist();
+    }
+
+    /**
+     * 이미지를 교체하면 빠진 파일만 지우고 그대로 남는 파일은 건드리지 않습니다.
+     */
+    @Test
+    void deletesOnlyTheImagesDroppedByAnUpdate() throws Exception {
+        String kept = upload(new MockMultipartFile("file", "kept.png",
+                MediaType.IMAGE_PNG_VALUE, png()));
+        String dropped = upload(new MockMultipartFile("file", "dropped.png",
+                MediaType.IMAGE_PNG_VALUE, png()));
+        long postId = writePost(List.of(kept, dropped));
+
+        mockMvc.perform(patch("/api/v1/posts/{postId}", postId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"imageUrls\":[\"" + kept + "\"]}"))
+                .andExpect(status().isOk());
+
+        assertThat(storedFile(kept)).exists();
+        assertThat(storedFile(dropped)).doesNotExist();
+    }
+
+    /**
+     * 우리가 만들지 않은 주소가 글에 들어 있어도 조용히 지나가야 합니다.
+     *
+     * <p>{@code imageUrls} 는 문자열이라 외부 주소나 {@code ../} 가 섞인 주소가 들어올 수
+     * 있습니다. 그 주소로 디스크를 건드리면 글을 지우는 것만으로 서버의 다른 파일을 지울 수
+     * 있습니다.
+     */
+    @Test
+    void ignoresImageUrlsItDidNotStore() throws Exception {
+        Path outsider = IMAGE_ROOT.getParent().resolve("outsider-" + UUID.randomUUID() + ".png");
+        Files.write(outsider, png());
+        try {
+            long postId = writePost(List.of(
+                    "https://example.test/photo.png",
+                    UPLOAD_URL + "/../" + outsider.getFileName()));
+
+            mockMvc.perform(delete("/api/v1/posts/{postId}", postId))
+                    .andExpect(status().isNoContent());
+
+            assertThat(outsider).exists();
+        } finally {
+            Files.deleteIfExists(outsider);
+        }
+    }
+
+    /**
      * 저장 위치를 벗어나는 주소로는 아무것도 내주지 않아야 합니다. 이 경로가 열리면 서버의
      * 어떤 파일이든 읽을 수 있습니다.
      *
@@ -248,6 +383,36 @@ class PostImageUploadIntegrationTest {
     void doesNotServeFilesOutsideTheImageDirectory() throws Exception {
         mockMvc.perform(get(UPLOAD_URL + "/../../../../etc/passwd"))
                 .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * 글을 하나 씁니다. 이미지 주소를 붙이는 것 말고는 이 테스트가 신경 쓸 값이 없어
+     * 분류·제목·본문은 고정합니다.
+     */
+    private long writePost(List<String> imageUrls) throws Exception {
+        String body = objectMapper.writeValueAsString(Map.of(
+                "category", "CHAT",
+                "title", "이미지 있는 글",
+                "content", "본문입니다.",
+                "imageUrls", imageUrls
+        ));
+
+        String response = mockMvc.perform(post("/api/v1/posts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+
+        return objectMapper.readTree(response).get("postId").asLong();
+    }
+
+    /**
+     * 주소가 가리키는 실제 파일입니다. 저장 위치는 임시 디렉터리로 바꿔 두었습니다.
+     */
+    private Path storedFile(String imageUrl) {
+        return IMAGE_ROOT.resolve(imageUrl.substring(UPLOAD_URL.length() + 1));
     }
 
     private String upload(MockMultipartFile file) throws Exception {

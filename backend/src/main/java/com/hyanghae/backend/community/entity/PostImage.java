@@ -42,6 +42,14 @@ public class PostImage {
         // JPA 가 요구하는 기본 생성자입니다.
     }
 
+    /**
+     * 저장된 주소입니다. 글이 지워지거나 이미지가 교체될 때 어떤 파일을 지울지 정하는 데
+     * 씁니다. 같은 패키지의 {@link Post} 만 읽습니다.
+     */
+    String imageUrl() {
+        return imageUrl;
+    }
+
     static PostImage create(Post post, String imageUrl, int displayOrder) {
         PostImage image = new PostImage();
         image.post = post;
