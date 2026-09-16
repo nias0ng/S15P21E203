@@ -1,17 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router'
 
-import { toPerfumeDetail } from '@/shared/config/routes'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Pagination } from '@/shared/ui/Pagination'
-import { Skeleton } from '@/shared/ui/Skeleton'
-import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import { perfumeListQuery } from '../queries'
 
-/** 백엔드 기본값과 같습니다. 최대는 100 입니다. */
-const PAGE_SIZE = 20
+import { PerfumeGrid } from './PerfumeGrid'
+
+/** 향수 목록(A33)과 같은 수. 6열이라 다섯 줄로 떨어집니다. 백엔드 최대는 100 입니다. */
+const PAGE_SIZE = 30
 
 type Props = {
   keyword: string
@@ -25,8 +23,15 @@ type Props = {
 /**
  * 향수 검색 결과 목록 (와이어프레임 A09 — COM-05)
  *
- * A33 의 그리드와 달리 한 줄에 하나씩 쌓는 목록형입니다.
+ * **A33 향수 목록과 같은 카드 격자를 씁니다.** 예전에는 한 줄에 하나씩 쌓는
+ * 목록형이었는데, 같은 향수가 화면마다 다른 모양으로 나왔습니다 — 목록형은 사진이
+ * 55px 짜리 네모라 어느 병인지 알아볼 수 없었고, 글자도 활자 스케일 밖의 임의값
+ * (`text-xs` · `text-[10.5px]`)을 쓰고 있었습니다.
  * 와이어프레임에 "검색 결과 128" 처럼 총 건수가 표시됩니다.
+ *
+ * **순위 숫자는 붙이지 않습니다**(rankable 기본값 false). 검색 결과의 순서는
+ * 인기순이 아니라 검색 적합도라, 숫자를 붙이면 "검색어와 상관없는 전체 순위" 로
+ * 잘못 읽힙니다.
  *
  * **쪽을 넘길 수 있어야 합니다.** 검색은 인기 200개가 아니라 카탈로그 전체를 뒤져서
  * 수백 건이 나옵니다. 예전에는 첫 쪽만 부르면서 "검색 결과 1,284" 라고 적어 놓고
@@ -53,15 +58,8 @@ export function PerfumeSearchResult({
     )
   }
 
-  if (isPending) {
-    return (
-      <div className="space-y-2.5">
-        {Array.from({ length: 6 }, (_, index) => (
-          <Skeleton key={index} className="h-20" />
-        ))}
-      </div>
-    )
-  }
+  // 자리 잡기도 격자에 맡깁니다 — 카드와 같은 크기여야 자료가 도착할 때 안 튑니다
+  if (isPending) return <PerfumeGrid items={[]} isPending columns={6} />
 
   if (isError) {
     return (
@@ -97,9 +95,9 @@ export function PerfumeSearchResult({
 
   return (
     <div className="space-y-2.5">
-      <p className="text-ink-muted text-xs">
+      <p className="text-ink-muted text-caption">
         검색 결과{' '}
-        <span className="text-ink font-bold">{data.totalElements}</span>
+        <span className="text-ink font-medium">{data.totalElements}</span>
       </p>
 
       {/* 범위를 넘은 쪽. 앞쪽으로 돌아갈 수 있게 아래 쪽 번호는 그대로 둡니다 */}
@@ -111,31 +109,7 @@ export function PerfumeSearchResult({
       )}
 
       {data.perfumes.length > 0 && (
-        <ul className="border-line divide-line divide-y border">
-          {data.perfumes.map((perfume) => (
-            <li key={perfume.perfumeId}>
-              <Link
-                to={toPerfumeDetail(perfume.perfumeId)}
-                className="hover:bg-line-soft flex items-center gap-2.5 p-2.5 transition-colors"
-              >
-                <Thumbnail
-                  src={perfume.imageUrl}
-                  fallback="이미지"
-                  className="size-13.75 shrink-0"
-                />
-
-                <span className="min-w-0 flex-1">
-                  <span className="text-ink block truncate text-xs font-bold">
-                    {perfume.name}
-                  </span>
-                  <span className="text-ink-muted block truncate text-[10.5px]">
-                    {perfume.brandName}
-                  </span>
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <PerfumeGrid items={data.perfumes} columns={6} />
       )}
 
       <Pagination
