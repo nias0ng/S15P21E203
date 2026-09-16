@@ -1,6 +1,7 @@
 import { Link } from 'react-router'
 
 import { cn } from '@/shared/lib/cn'
+import { BottleSilhouette } from '@/shared/ui/BottleSilhouette'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 type PerfumeCardProps = {
@@ -47,6 +48,24 @@ type PerfumeCardProps = {
  * 못 읽었습니다. 원어 이름을 지우지 않는 이유는 병에 적힌 글자가 그것이라
  * 매장·검색 결과와 맞춰 보는 단서이기 때문입니다.
  */
+/**
+ * 사진이 놓이는 칸.
+ *
+ * 사진과 실루엣이 **같은 값을 써야** 합니다. 다르면 사진 있는 카드와 없는 카드의
+ * 높이가 갈려 격자 한 줄이 들쭉날쭉해집니다.
+ *
+ * 좌우는 30 씩 들여 병을 작게 세웁니다. 병이 칸을 꽉 채우면 카드가 "사진 한 장" 이
+ * 되어 병이 놓인 자리라는 인상이 사라지는데, 그건 좌우만으로 충분합니다.
+ *
+ * **위 15 · 아래 20 으로 아래가 더 넓습니다.** 병은 바닥에 놓인 물건이라 아래에
+ * 자리가 조금 더 있어야 서 있는 것으로 읽힙니다 — 위아래가 같으면 공중에 뜬
+ * 것처럼 보입니다. 그림자도 아래로 지므로 그 자리이기도 합니다. 위도 순위
+ * 동그라미가 모서리에 앉을 자리만큼은 있어야 합니다.
+ *
+ * 칸이 정사각인 이유는 아래 사진 주석에 있습니다.
+ */
+const SLOT = 'aspect-square w-full px-7.5 pt-3.75 pb-5'
+
 export function PerfumeCard({
   name,
   nameOriginal,
@@ -67,10 +86,14 @@ export function PerfumeCard({
         사진(카탈로그가 전부 432 x 577 입니다)의 위아래가 잘려 병목과 바닥만 남았습니다.
         어느 향순지 알아볼 수 없는 그림이었습니다.
 
-        `aspect-[3/4]` 로 사진과 같은 비를 잡고 `contain` 으로 담습니다. 비가 같아
-        여백이 거의 안 생기고, 3:4 가 아닌 사진이 섞여 들어와도 잘리는 대신 남는
-        자리가 바탕으로 보입니다. 고정 px 이 아니라 비율이라 열 수(4열 · 5열)나
-        화면 폭이 달라져도 따라갑니다.
+        `contain` 으로 담아 잘리지 않게 하고, 칸 비율은 `aspect-square` 입니다.
+
+        ⚠️ **사진과 같은 3:4 로 두면 안 됩니다.** 병을 작게 세우려고 좌우를 30 씩
+        들여놨는데, 그러면 병이 폭에 갇혀 3:4 칸 안에서 위아래로 남는 자리가 크게
+        생깁니다 — 칸은 3:4 여도 그 안의 **병**은 훨씬 홀쭉해집니다. 칸을 정사각으로
+        잡으면 좌우 여백은 그대로 두면서 위아래 빈 띠만 걷힙니다.
+
+        고정 px 이 아니라 비율이라 열 수(4열 · 5열)나 화면 폭이 달라져도 따라갑니다.
 
         `bare` 로 사진 뒤 상자를 지웁니다 — 카드 바탕 하나만 남습니다. 예전에는
         사진 자리에 bone(#E8E1D6) 바탕이 깔려 카드 안에 또 다른 네모가 있었습니다.
@@ -85,31 +108,50 @@ export function PerfumeCard({
         로 끌고 와야 합니다. 여기서는 "병 모양 그림자" 라는 결과만 맞춥니다.
       */}
       <div className="relative w-full">
-        <Thumbnail
-          src={thumbnailUrl}
-          fallback="이미지"
-          fit="contain"
-          bare
-          className={cn(
-            'aspect-[3/4] w-full',
-            /*
-              칸 안쪽으로 15 들여 병을 조금 작게 세웁니다. `object-contain` 은 안쪽
-              여백을 뺀 자리에 맞추므로, 칸 크기(= 카드 높이)는 그대로 두고 병만
-              줄어듭니다. 병이 칸 끝까지 닿으면 옆 카드의 병과 맞붙어 격자가
-              빽빽해 보였습니다.
-            */
-            'p-3.75',
-            /*
-              그림자는 **사진일 때만** 겁니다. 자리표시자는 네모난 상자라 drop-shadow 가
-              병 실루엣이 아니라 네모 둘레에 져서, 빈 상자가 종이 위에 떠 보입니다.
+        {/*
+          사진이 없으면 **병 실루엣**을 대신 세웁니다. "이미지" 라고 적힌 네모를
+          두면 화면이 고장 난 것처럼 읽히는데, 사진 없는 향수는 드문 일이 아닙니다 —
+          카탈로그 표본 600건 중 88건에만 사진이 있습니다.
 
+          Thumbnail 의 자리표시자(상자 + "이미지")를 쓰지 않는 이유가 그것입니다.
+          자리 크기는 사진과 **똑같이** 둡니다(아래 SLOT) — 다르면 사진 있는 카드와
+          없는 카드의 격자가 어긋납니다.
+        */}
+        {thumbnailUrl ? (
+          <Thumbnail
+            src={thumbnailUrl}
+            fit="contain"
+            bare
+            className={cn(
+              SLOT,
+              /*
+              좌우는 30 씩 들여 병을 작게 세웁니다. 병이 칸을 꽉 채우면 카드가
+              "사진 한 장" 이 되어 병이 놓인 자리라는 인상이 사라지는데, 그건
+              좌우만으로 충분합니다. 위아래까지 30 을 두면 칸 안에 빈 띠가 생겨
+              카드만 길어집니다.
+
+              **위 15 · 아래 20 으로 아래가 더 넓습니다.** 병은 바닥에 놓인 물건이라
+              아래에 자리가 조금 더 있어야 서 있는 것으로 읽힙니다 — 위아래가 같으면
+              공중에 뜬 것처럼 보입니다. 그림자도 아래로 지므로 그 자리이기도 합니다.
+              위도 순위 동그라미가 모서리에 앉을 자리만큼은 있어야 합니다.
+            */
+              /*
               값을 직접 적는 이유: Tailwind 눈금에 "lg 보다 멀리 지면서 조금만 더
               진한" 칸이 없습니다. xl 은 멀리 지는 대신 알파가 0.15 에서 0.1 로
               오히려 옅어집니다. 그래서 거리(6/8)와 진하기(0.18)를 따로 적습니다.
             */
-            thumbnailUrl && 'drop-shadow-[0_6px_8px_rgb(0_0_0/0.18)]',
-          )}
-        />
+              'drop-shadow-[0_6px_8px_rgb(0_0_0/0.18)]',
+            )}
+          />
+        ) : (
+          /*
+            실루엣에는 그림자를 걸지 않습니다. 실루엣 자체가 그림자처럼 읽히는
+            모양이라, 거기에 또 그림자를 지우면 무엇이 물체인지 흐려집니다.
+            색은 옅은 먹색입니다 — 어두운 유리판 위에서도 밝은 종이 위에서도
+            같은 자리(ink-muted)를 물려받습니다.
+          */
+          <BottleSilhouette className={cn(SLOT, 'text-ink-muted/30')} />
+        )}
 
         {/*
           순위 동그라미.
@@ -129,10 +171,12 @@ export function PerfumeCard({
         */}
         {rank != null && (
           <span
+            // 화면 테마가 광택을 얹을 수 있게 자리 이름을 답니다(아래 data-slot 설명)
+            data-slot="rank"
             className={cn(
               // 사진 칸의 왼쪽 위 모서리에 붙입니다. 카드 안쪽 여백(10)만큼만
               // 카드 테두리에서 떨어지고, 병은 사진 칸 안에서 15 들어와 있어 안 가립니다.
-              'absolute top-0 left-0 flex size-8.75 items-center justify-center',
+              'absolute top-0 left-0 flex size-7.5 items-center justify-center',
               'bg-line-soft/85 text-ink text-caption rounded-full font-medium backdrop-blur-sm',
             )}
           >
@@ -150,9 +194,15 @@ export function PerfumeCard({
 
           **이름이 한 줄이어도 두 줄 높이를 차지합니다**(min-h). 이름 길이에 따라
           아래 원어명·브랜드 줄이 카드마다 다른 높이에 서면 격자 한 줄이 들쭉날쭉해
-          보입니다. 20px x leading-tight(1.25) = 25px, 두 줄이라 50 입니다.
+          보입니다. 13px x leading-tight(1.25) = 17px, 두 줄이라 35 입니다.
+
+          크기는 body(13)입니다. title(20) → caption(12) → heading(16) 을 거쳐
+          내려온 값입니다. 노리던 것은 14 인데 활자 스케일이 다섯 단계로 끝나고
+          그 사이에 칸이 없습니다 — `text-[14px]` 로 적으면 이 화면만 스케일 밖으로
+          나가고, 스케일 주석이 바로 그런 임의값을 쓰지 말라고 못 박아 두었습니다.
+          1px 차이라 body 를 씁니다.
         */}
-        <p className="text-ink text-title line-clamp-2 min-h-12.5 font-serif leading-tight font-semibold">
+        <p className="text-ink text-body line-clamp-2 min-h-8.75 font-serif leading-tight font-semibold">
           {name}
         </p>
 
@@ -182,16 +232,30 @@ export function PerfumeCard({
     줄에서 그 카드만 테두리가 길어져 크기가 제각각으로 보였습니다.
   */
   const shell = cn(
-    'border-line bg-surface-card rounded-card flex h-full flex-col gap-2.5 border p-2.5',
+    'border-line bg-surface-card rounded-card flex h-full flex-col gap-1.25 border p-2.5',
     className,
   )
 
+  /*
+   * `data-slot` 은 **화면 테마가 붙잡을 자리 이름**입니다.
+   *
+   * 이 카드는 여러 화면에서 쓰는 공용이고, 화면마다 결이 다릅니다 — 향수 목록은
+   * 어두운 방의 유리판 위라 카드도 유리여야 하고, 컬렉션은 종이 위라 그대로입니다.
+   * 화면별 모양을 prop 으로 받으면 화면이 늘 때마다 이 파일을 고치게 됩니다.
+   * 이름만 달아 두면 각 화면의 CSS 가 자기 결에 맞게 덮습니다
+   * (features/perfume/perfume-display.css 의 .scent-glass).
+   */
+
   return (
     // 하단 동작 영역이 있으면 카드가 그 위를 채웁니다 — h-full 만 주면 footer 가 넘칩니다
-    <article className={cn('flex h-full flex-col', !to && shell)}>
+    <article
+      data-slot="card-root"
+      className={cn('flex h-full flex-col', !to && shell)}
+    >
       {to ? (
         <Link
           to={to}
+          data-slot="card"
           className={cn(
             shell,
             'flex-1',
