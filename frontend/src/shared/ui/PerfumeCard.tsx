@@ -16,6 +16,13 @@ type PerfumeCardProps = {
   nameOriginal?: string | null
   /** 브랜드명. 브랜드가 없는 향수는 null 이라 줄을 그리지 않습니다 */
   brand?: string | null
+  /**
+   * 사진 왼쪽 위에 얹는 순위(1부터). 없으면 안 그립니다.
+   *
+   * "최근 인기 향수" 처럼 **줄 세운 목록에서만** 뜻이 있습니다. 검색 결과나 컬렉션은
+   * 순서에 뜻이 없으므로 넘기지 마세요 — 숫자가 붙는 순간 사람은 순위로 읽습니다.
+   */
+  rank?: number
   /** 대표 이미지. 없으면 와이어프레임처럼 "이미지" 자리표시자를 그립니다. */
   thumbnailUrl?: string | null
   /** 카드를 누르면 갈 곳. 없으면 링크가 아닌 그냥 카드가 됩니다. */
@@ -44,6 +51,7 @@ export function PerfumeCard({
   name,
   nameOriginal,
   brand,
+  rank,
   thumbnailUrl,
   to,
   badges,
@@ -76,18 +84,61 @@ export function PerfumeCard({
         평평한 카드에는 바닥이 없어 그 장치가 성립하지 않고, 도메인 CSS 를 shared
         로 끌고 와야 합니다. 여기서는 "병 모양 그림자" 라는 결과만 맞춥니다.
       */}
-      <Thumbnail
-        src={thumbnailUrl}
-        fallback="이미지"
-        fit="contain"
-        bare
-        className={cn(
-          'aspect-[3/4] w-full',
-          // 그림자는 **사진일 때만** 겁니다. 자리표시자는 네모난 상자라 drop-shadow 가
-          // 병 실루엣이 아니라 네모 둘레에 져서, 빈 상자가 종이 위에 떠 보입니다.
-          thumbnailUrl && 'drop-shadow-lg',
+      <div className="relative w-full">
+        <Thumbnail
+          src={thumbnailUrl}
+          fallback="이미지"
+          fit="contain"
+          bare
+          className={cn(
+            'aspect-[3/4] w-full',
+            /*
+              칸 안쪽으로 15 들여 병을 조금 작게 세웁니다. `object-contain` 은 안쪽
+              여백을 뺀 자리에 맞추므로, 칸 크기(= 카드 높이)는 그대로 두고 병만
+              줄어듭니다. 병이 칸 끝까지 닿으면 옆 카드의 병과 맞붙어 격자가
+              빽빽해 보였습니다.
+            */
+            'p-3.75',
+            /*
+              그림자는 **사진일 때만** 겁니다. 자리표시자는 네모난 상자라 drop-shadow 가
+              병 실루엣이 아니라 네모 둘레에 져서, 빈 상자가 종이 위에 떠 보입니다.
+
+              값을 직접 적는 이유: Tailwind 의 drop-shadow-xl 은 lg 보다 멀리 지지만
+              알파가 0.15 에서 0.1 로 **옅어집니다**. "더 진하게" 와 반대 방향이라
+              눈금 대신 값을 씁니다.
+            */
+            thumbnailUrl && 'drop-shadow-[0_6px_8px_rgb(0_0_0/0.3)]',
+          )}
+        />
+
+        {/*
+          순위 동그라미.
+
+          반투명입니다(backdrop-blur) — 불투명하게 채우면 병 위에 스티커를 붙인
+          것처럼 보이고, 병이 왼쪽으로 치우친 사진에서는 병을 가립니다.
+          비쳐 보이면 "사진 위에 얹힌 표시" 로 읽힙니다.
+
+          색은 line-soft(bone)입니다. 처음에 surface-card(#fefcf8)로 깔았는데
+          **카드 바탕이 같은 흰색이라 동그라미가 아예 안 보였습니다** — 사진이 없거나
+          병이 가운데에만 있는 카드에서는 흰 위의 흰색이 됩니다. 종이 계열에서 한
+          단 어두운 bone 이면 흰 카드 위에서도 테두리 없이 형태가 읽히고, 병 위에
+          얹혀도 사진을 덮지 않습니다.
+
+          숫자만 두면 낭독기가 "1" 이라고만 읽어 무엇의 1 인지 알 수 없습니다.
+          보이는 숫자는 장식으로 감추고 뜻을 글자로 따로 적습니다.
+        */}
+        {rank != null && (
+          <span
+            className={cn(
+              'absolute top-2.5 left-2.5 flex size-8.75 items-center justify-center',
+              'bg-line-soft/85 text-ink text-caption rounded-full font-medium backdrop-blur-sm',
+            )}
+          >
+            <span aria-hidden>{rank}</span>
+            <span className="sr-only">인기 {rank}위</span>
+          </span>
         )}
-      />
+      </div>
 
       <div className="w-full space-y-0.5">
         {/*
