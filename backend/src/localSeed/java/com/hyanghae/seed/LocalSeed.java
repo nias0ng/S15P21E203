@@ -92,7 +92,7 @@ public final class LocalSeed {
                         seed.store.inserted, seed.store.restored);
                 System.out.println("활동 계정: demo41@demo.hyanghae.test / 다른 사용자: demo42@demo.hyanghae.test");
                 System.out.println("빈 계정: demo43@demo.hyanghae.test (직접 활동했다면 그 기록은 유지됩니다)");
-                System.out.println("비밀번호는 최초 생성 시의 SEED_LOGIN_PASSWORD입니다. 인증 MR 병합 후 로그인할 수 있습니다.");
+                System.out.println("비밀번호는 최초 생성 시의 SEED_LOGIN_PASSWORD입니다.");
             } catch (Exception failure) {
                 db.rollback();
                 // JDBC 오류 원문에는 행/비밀번호 해시가 포함될 수 있어 출력하지 않습니다.
