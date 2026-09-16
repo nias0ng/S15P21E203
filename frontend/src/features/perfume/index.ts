@@ -7,6 +7,9 @@
  *
  * 화면: A33 향수 목록 / A09 검색 결과 / A10 상세 / A12 후기 상세
  */
+// 향수 목록 화면의 어두운 방 · 유리판 (진열대의 shelf-display.css 와 같은 구성)
+import './perfume-display.css'
+
 export { PerfumeFilters } from './components/PerfumeFilters'
 export { PerfumeGrid } from './components/PerfumeGrid'
 export { PerfumeNotes } from './components/PerfumeNotes'
@@ -16,21 +19,53 @@ export { PerfumeReviewSummary } from './components/PerfumeReviewSummary'
 export { PerfumeSearchResult } from './components/PerfumeSearchResult'
 export { PerfumeSeasonRatings } from './components/PerfumeSeasonRatings'
 export { PerfumeReviewDetail } from './components/PerfumeReviewDetail'
-export { SeasonRatingChart } from './components/SeasonRatingChart'
-export { perfumeDetailQuery, perfumeKeys, perfumeListQuery } from './queries'
+export {
+  perfumeDetailQuery,
+  perfumeKeys,
+  perfumeListQuery,
+  perfumeNotesQuery,
+  perfumeReviewStatisticsQuery,
+  perfumeReviewSummaryQuery,
+  perfumeReviewsQuery,
+  perfumeSeasonStatisticsQuery,
+  reviewDetailQuery,
+  reviewKeys,
+} from './queries'
+export {
+  createReview,
+  deleteReview,
+  likeReview,
+  replaceReviewSeasons,
+  unlikeReview,
+  updateReview,
+} from './api'
 export {
   GENDER_FILTERS,
+  REVIEW_CONTENT_MAX_LENGTH,
+  REVIEW_CONTENT_MIN_LENGTH,
+  REVIEW_SEASON_MIN_COUNT,
+  REVIEW_TITLE_MAX_LENGTH,
   SEASONS,
-  SHELF_FILTERS,
+  RANKING_FILTERS,
+  type ReviewCreateInput,
+  type ReviewLikeResponse,
+  type ReviewUpdateInput,
   type GenderFilter,
-  type PerfumeSearchResponse,
+  type PerfumeAccord,
   type PerfumeDetail,
+  type PerfumeNote,
+  type PerfumeNotesResponse,
   type PerfumeSearchParams,
+  type PerfumeSearchResponse,
   type PerfumeSummary,
   type Review,
+  type ReviewDetail,
+  type ReviewSeason,
+  type ReviewStatistics,
   type ReviewSummary,
-  type ScentFamily,
+  type ReviewsResponse,
   type Season,
-  type SeasonRating,
-  type ShelfFilter,
+  type SeasonStatistic,
+  type SeasonStatisticsResponse,
+  type RankingFilter,
 } from './types'

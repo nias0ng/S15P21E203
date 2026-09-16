@@ -16,9 +16,6 @@ const WOOD_SAGE: ShelfItem = {
   thumbnailUrl: null,
   category: 'OWNED',
   representative: true,
-  rating: null,
-  memo: null,
-  memoUpdatedAt: null,
 }
 
 /** 이름이 다른 병 셋 — 칸 0 · 1 · 2 */

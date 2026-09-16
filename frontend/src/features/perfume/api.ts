@@ -1,11 +1,24 @@
 import { http, isApiError } from '@/shared/api/http'
 import { env } from '@/shared/config/env'
+import { toScentFamilyKey } from '@/shared/config/scentFamilies'
 
 import { placeholderDetail, placeholderSearch } from './placeholder'
 import type {
   PerfumeDetail,
+  PerfumeNotesResponse,
   PerfumeSearchParams,
   PerfumeSearchResponse,
+  ReviewCreateInput,
+  ReviewCreateResponse,
+  ReviewDetail,
+  ReviewLikeResponse,
+  ReviewSeasonsResponse,
+  ReviewStatistics,
+  ReviewSummary,
+  ReviewsResponse,
+  ReviewUpdateInput,
+  Season,
+  SeasonStatisticsResponse,
 } from './types'
 
 /**
@@ -42,8 +55,11 @@ async function withDevFallback<T>(
 /**
  * COM-05 향수 검색. 조건은 모두 선택이고 함께 오면 AND 입니다.
  *
- * ⚠️ shelf 는 백엔드 수정 중 — 지금은 개인 진열대 기준이라 비로그인이면 401 입니다.
- * ⚠️ gender · shelf 에 정의되지 않은 값을 보내면 400 입니다.
+ * **`scentFamily` 는 받는 자리에서 한 번 거릅니다.** 응답의 계열은 열린 문자열이라
+ * (`scent_regions` 에 행을 더하면 모르는 값이 옵니다) 타입만 좁혀 두면 거짓말이
+ * 됩니다. 모르는 값은 null 로 바꿔 계열 배지만 안 그리고 향수는 그대로 보여 줍니다.
+ *
+ * ⚠️ gender · ranking 에 정의되지 않은 값을 보내면 400 입니다.
  */
 export async function searchPerfumes(params: PerfumeSearchParams) {
   return withDevFallback(
@@ -51,7 +67,13 @@ export async function searchPerfumes(params: PerfumeSearchParams) {
       const { data } = await http.get<PerfumeSearchResponse>('/perfumes', {
         params,
       })
-      return data
+      return {
+        ...data,
+        perfumes: data.perfumes.map((perfume) => ({
+          ...perfume,
+          scentFamily: toScentFamilyKey(perfume.scentFamily),
+        })),
+      }
     },
     () => placeholderSearch(params),
   )
@@ -60,7 +82,7 @@ export async function searchPerfumes(params: PerfumeSearchParams) {
 /**
  * DTL-01 향수 기본 정보 조회. 없는 향수는 404 `PERFUME_NOT_FOUND` 입니다.
  *
- * ⚠️ 향조·후기 통계는 상세에 없습니다. 별도 엔드포인트로 각각의 이슈에서 붙습니다.
+ * 향조 · 계절 · 요약 · 후기는 아래 함수들이 각각 따로 부릅니다.
  */
 export async function getPerfumeDetail(perfumeId: number) {
   return withDevFallback(
@@ -70,4 +92,176 @@ export async function getPerfumeDetail(perfumeId: number) {
     },
     () => placeholderDetail(perfumeId),
   )
+}
+
+/**
+ * DTL-02 향조. 노트와 어코드를 함께 돌려줍니다.
+ *
+ * 향조가 없는 향수도 200 이고 두 목록이 빈 배열입니다. 없는 향수만 404 입니다.
+ */
+export async function getPerfumeNotes(perfumeId: number) {
+  return withDevFallback(
+    async () => {
+      const { data } = await http.get<PerfumeNotesResponse>(
+        `/perfumes/${perfumeId}/notes`,
+      )
+      return data
+    },
+    () => ({ notes: [], accords: [] }),
+  )
+}
+
+/** DTL-14 계절별 평가. 후기가 없는 향수도 네 계절이 0 으로 채워져 옵니다. */
+export async function getPerfumeSeasonStatistics(perfumeId: number) {
+  return withDevFallback(
+    async () => {
+      const { data } = await http.get<SeasonStatisticsResponse>(
+        `/perfumes/${perfumeId}/season-statistics`,
+      )
+      return data
+    },
+    () => ({ seasons: [] }),
+  )
+}
+
+/** DTL-23 AI 후기 요약. 요약이 없으면 세 값이 모두 null 인 200 입니다. */
+export async function getPerfumeReviewSummary(perfumeId: number) {
+  return withDevFallback(
+    async () => {
+      const { data } = await http.get<ReviewSummary>(
+        `/perfumes/${perfumeId}/review-summary`,
+      )
+      return data
+    },
+    () => ({ summary: null, sourceReviewCount: null, updatedAt: null }),
+  )
+}
+
+/** DTL-10 후기 통계. 후기 수만 있고 평균 평점은 없습니다. */
+export async function getPerfumeReviewStatistics(perfumeId: number) {
+  return withDevFallback(
+    async () => {
+      const { data } = await http.get<ReviewStatistics>(
+        `/perfumes/${perfumeId}/review-statistics`,
+      )
+      return data
+    },
+    () => ({ reviewCount: 0 }),
+  )
+}
+
+/**
+ * DTL-03 후기 목록. 최신 작성 순이고 비로그인도 볼 수 있습니다.
+ *
+ * 백엔드 기본 size 는 10 이고 최대 100 입니다.
+ */
+export async function getPerfumeReviews(
+  perfumeId: number,
+  params: { page?: number; size?: number } = {},
+) {
+  return withDevFallback(
+    async () => {
+      const { data } = await http.get<ReviewsResponse>(
+        `/perfumes/${perfumeId}/reviews`,
+        { params },
+      )
+      return data
+    },
+    () => ({
+      reviews: [],
+      page: params.page ?? 0,
+      size: params.size ?? 10,
+      totalElements: 0,
+    }),
+  )
+}
+
+/**
+ * A12 후기 상세. 비로그인도 볼 수 있고, **여는 것이 곧 조회라 조회수가 하나 오릅니다.**
+ * 그래서 화면에서 staleTime 을 길게 두지 않습니다 — 다시 부르면 또 오릅니다.
+ */
+export async function getReviewDetail(reviewId: number) {
+  const { data } = await http.get<ReviewDetail>(`/reviews/${reviewId}`)
+  return data
+}
+
+/*
+ * ── 후기 쓰기 ───────────────────────────────────────────────
+ *
+ * 전부 로그인이 필요합니다(401). `withDevFallback` 을 쓰지 않습니다 — 읽기와 달리
+ * 실패를 자리표시자로 덮으면 저장되지 않은 것을 저장된 것처럼 보여주게 됩니다.
+ */
+
+/**
+ * 후기 작성. 대상 향수는 **경로로** 정해지고 나중에 바꿀 수 없습니다.
+ *
+ * 한 사람이 같은 향수에 후기를 두 개 쓸 수 없어, 이미 썼으면 409 입니다
+ * (`REVIEW_ALREADY_EXISTS`).
+ */
+export async function createReview(
+  perfumeId: number,
+  input: ReviewCreateInput,
+): Promise<ReviewCreateResponse> {
+  const { data } = await http.post<ReviewCreateResponse>(
+    `/perfumes/${perfumeId}/reviews`,
+    input,
+  )
+  return data
+}
+
+/**
+ * 후기 수정. 제목 · 내용만 바뀝니다.
+ *
+ * 보내지 않은 항목은 그대로 유지되지만, **둘 다 비우면 400** 입니다. 부르는 쪽이
+ * 바뀐 것만 담아 보내고, 담을 게 없으면 아예 부르지 않습니다.
+ */
+export async function updateReview(
+  reviewId: number,
+  input: ReviewUpdateInput,
+): Promise<void> {
+  await http.patch(`/reviews/${reviewId}`, input)
+}
+
+/**
+ * 후기의 계절을 통째로 바꿉니다. 더하기 · 빼기가 아니라 교체입니다.
+ *
+ * 빈 배열은 400 이라, 계절을 지우기만 할 수는 없습니다.
+ */
+export async function replaceReviewSeasons(
+  reviewId: number,
+  seasonCodes: Season[],
+): Promise<ReviewSeasonsResponse> {
+  const { data } = await http.put<ReviewSeasonsResponse>(
+    `/reviews/${reviewId}/seasons`,
+    { seasonCodes },
+  )
+  return data
+}
+
+/** 후기 삭제. 본인 것이 아니면 404 입니다 */
+export async function deleteReview(reviewId: number): Promise<void> {
+  await http.delete(`/reviews/${reviewId}`)
+}
+
+/**
+ * 후기 좋아요. **여러 번 눌러도 같은 결과입니다** — 이미 누른 후기에 또 눌러도
+ * 오류가 아니고 숫자도 오르지 않아, 따닥 누름을 화면에서 막지 않아도 됩니다.
+ */
+export async function likeReview(
+  reviewId: number,
+): Promise<ReviewLikeResponse> {
+  const { data } = await http.put<ReviewLikeResponse>(
+    `/reviews/${reviewId}/like`,
+  )
+  return data
+}
+
+/** 좋아요 취소. 누르지 않은 후기에 취소해도 오류가 아닙니다 */
+export async function unlikeReview(
+  reviewId: number,
+): Promise<ReviewLikeResponse> {
+  const { data } = await http.delete<ReviewLikeResponse>(
+    `/reviews/${reviewId}/like`,
+  )
+  return data
 }

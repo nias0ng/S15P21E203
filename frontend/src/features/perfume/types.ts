@@ -1,6 +1,4 @@
-/** 향 계열 (기능 명세 MAP-01 향 지도 조회 기준) */
-export type ScentFamily =
-  'FLORAL' | 'WOODY' | 'CITRUS' | 'ORIENTAL' | 'FRESH' | 'FOUGERE'
+import type { ScentFamilyKey } from '@/shared/config/scentFamilies'
 
 /** COM-05 검색 결과의 한 건. 목록·검색·그리드가 이 형태를 씁니다. */
 export interface PerfumeSummary {
@@ -8,11 +6,23 @@ export interface PerfumeSummary {
   name: string
   /** 한글명. 없는 향수는 null */
   nameKo: string | null
-  /** 브랜드명(문자열). 브랜드가 없는 향수는 null */
+  /** 브랜드 **영문** 이름. 브랜드가 없는 향수는 null */
   brandName: string | null
+  /**
+   * 브랜드 한국어 이름. 아직 채워지지 않은 브랜드가 많아 자주 null 입니다 —
+   * 카드는 null 이면 `brandName`(영문)으로 대신합니다(백엔드 DTO 주석과 같은 약속).
+   */
+  brandNameKo: string | null
   /** 대표 이미지. 등록된 이미지가 없으면 null */
   imageUrl: string | null
-  scentFamily: ScentFamily | null
+  /**
+   * 대표 계열 하나. 향수는 계열을 1~3개 갖는데 백엔드가 **비중이 가장 큰 하나**만
+   * 골라 보냅니다(`scent_regions.code`). 향 지도에 자리가 없는 향수는 null 입니다.
+   *
+   * 응답은 열린 문자열이라 여기 없는 값이 올 수 있습니다 — 배지를 그릴 때
+   * `scentFamilyName()` 을 거치면 모르는 값이 화면에 새지 않습니다.
+   */
+  scentFamily: ScentFamilyKey | null
 }
 
 /**
@@ -21,8 +31,8 @@ export interface PerfumeSummary {
  * **PerfumeSummary 를 상속하지 않습니다** — 검색은 `brandName`·`imageUrl`, 상세는
  * `brand` 객체·`images` 배열이라 상속으로 묶으면 타입이 거짓말을 합니다.
  *
- * ⚠️ 향조·후기 통계는 상세 응답에 없어 `?` 입니다. 필수로 선언하면 런타임에
- * undefined 라 화면이 죽습니다(S15P21E203-169). 백엔드가 내려주면 `?` 를 떼세요.
+ * 향조 · 계절 평가 · AI 요약 · 후기는 **각각 별도 엔드포인트**입니다. 상세 응답에
+ * 끼워 넣지 않고 아래 타입으로 따로 받습니다.
  */
 export interface PerfumeDetail {
   perfumeId: number
@@ -36,16 +46,12 @@ export interface PerfumeDetail {
   /** 대표 이미지는 첫 번째 원소입니다 */
   images: string[]
   prices: PerfumePrice[]
-
-  /** DTL-02 향조 정보 — 별도 엔드포인트에서 옵니다 */
-  notes?: {
-    top: string[]
-    middle: string[]
-    base: string[]
-  }
-  /** DTL-10 후기 통계 — 별도 엔드포인트에서 옵니다 */
-  reviewCount?: number
-  averageScore?: number
+  /**
+   * 이 향수에 내가 쓴 후기 번호. 안 썼거나 비로그인이면 null 입니다.
+   * 한 사람이 한 향수에 후기를 하나만 쓸 수 있어, 값이 있으면 [후기 쓰기] 대신
+   * [후기 수정] 을 띄웁니다. 모르고 또 쓰면 409 입니다.
+   */
+  myReviewId: number | null
 }
 
 export interface PerfumePrice {
@@ -61,13 +67,17 @@ export interface PerfumeSearchParams {
   keyword?: string
 
   // ⚠️ 응답 필드로만 있습니다. 검색 파라미터로는 아직 안 먹어 보내도 무시됩니다
-  scentFamily?: ScentFamily
+  scentFamily?: ScentFamilyKey
 
   /**
-   * ⚠️ 백엔드 수정 중 — 현재 구현은 개인 진열대 기준이라 비로그인이면 401 입니다.
-   * 집계 기준 수정본이 나오면 이 주석을 지우세요.
+   * A33 위 줄 필터. **이름이 shelf 였는데 ranking 으로 바뀌었습니다** —
+   * 이전 이름으로 보내면 @ModelAttribute 가 모르는 파라미터를 조용히 무시해
+   * 필터가 안 걸립니다(오류도 안 납니다).
+   *
+   * 전체 사용자 집계라 로그인이 필요 없습니다. 거르기도 합니다 — OWNED · WISH 는
+   * 세 명 이상이 담은 향수만 나오고, 이 값이 있으면 sort 는 무시됩니다.
    */
-  shelf?: ShelfFilter
+  ranking?: RankingFilter
 
   /** A33 아래 줄 필터. 정의되지 않은 값을 보내면 400 입니다 */
   gender?: GenderFilter
@@ -97,19 +107,20 @@ export interface PerfumeSearchResponse {
 }
 
 /**
- * A33 위 줄 필터. 이름이 개인 소유처럼 읽히지만 **전체 사용자 집계값**입니다
- * (많은 사람이 담은 / 희망한 / 조회한 향수). 백엔드 파라미터명이라 그대로 둡니다.
+ * A33 위 줄 필터 — **전체 사용자 집계**입니다(많은 사람이 담은 / 희망한 / 조회한
+ * 향수). 내 진열대가 아닙니다 — 백엔드도 같은 이유로 이름을 shelf 에서 ranking 으로
+ * 바꿨습니다.
  */
-export type ShelfFilter = 'OWNED' | 'WISH' | 'VIEWED'
+export type RankingFilter = 'OWNED' | 'WISH' | 'VIEWED'
 
 /** A33 아래 줄 필터 — 향의 성별 */
 export type GenderFilter = 'FEMALE' | 'MALE' | 'UNISEX'
 
-export const SHELF_FILTERS = [
+export const RANKING_FILTERS = [
   { value: 'OWNED', label: '보유' },
   { value: 'WISH', label: '희망' },
   { value: 'VIEWED', label: '조회' },
-] as const satisfies readonly { value: ShelfFilter; label: string }[]
+] as const satisfies readonly { value: RankingFilter; label: string }[]
 
 export const GENDER_FILTERS = [
   { value: 'FEMALE', label: '여성' },
@@ -131,26 +142,191 @@ export const SEASONS = [
 
 // 진열대 분류(ShelfCategory)는 진열대 도메인의 어휘라 features/shelf 에 있습니다.
 
-/** DTL-14 계절별 평가 비율. 계절을 여러 개 고를 수 있어 합이 100이 아닐 수 있습니다. */
-export interface SeasonRating {
-  season: Season
-  /** 0~100 */
+/* ── DTL-02 향조 (GET /perfumes/{id}/notes) ─────────────────── */
+
+/**
+ * 향수를 이루는 노트 한 건.
+ *
+ * `noteType` 은 컬럼에 값 제약이 없어 백엔드가 해석하지 않고 그대로 내려줍니다.
+ * 보통 TOP · MIDDLE · BASE 지만 다른 값도 올 수 있어 **묶는 일은 화면이 합니다**.
+ */
+export interface PerfumeNote {
+  noteId: number
+  name: string
+  noteType: string | null
+}
+
+/** 향수의 어코드 한 건. rank 가 작을수록 두드러집니다 */
+export interface PerfumeAccord {
+  accordId: number
+  name: string
+  rank: number | null
+  weight: number | null
+}
+
+/** 향조가 없는 향수는 두 목록이 빈 배열입니다 — 404 가 아닙니다 */
+export interface PerfumeNotesResponse {
+  notes: PerfumeNote[]
+  accords: PerfumeAccord[]
+}
+
+/* ── DTL-14 계절별 평가 (GET /perfumes/{id}/season-statistics) ─ */
+
+/**
+ * 계절 하나의 후기 통계.
+ *
+ * 후기 하나가 계절을 여러 개 고를 수 있어 **네 계절의 합이 100을 넘을 수 있습니다.**
+ * 비율을 그대로 쓰는 원형 차트나 누적 막대에는 맞지 않습니다.
+ */
+export interface SeasonStatistic {
+  seasonId: number
+  code: Season
+  /** 봄 · 여름 · 가을 · 겨울 */
+  name: string
+  count: number
+  /** 0~100, 소수점 한 자리 */
   percentage: number
 }
 
-/** DTL-23 AI 후기 요약. 호평·혹평 섞어 4문장까지, 막대 그래프는 쓰지 않습니다 */
-export interface ReviewSummary {
-  /** 최대 4문장. 비어 있으면 후기가 부족한 것으로 보고 안내 문구를 띄웁니다. */
-  sentences: string[]
+/** 계절 네 개가 항상 옵니다. 후기가 없는 향수도 0 으로 채워 내려줍니다. */
+export interface SeasonStatisticsResponse {
+  seasons: SeasonStatistic[]
 }
 
-/** DTL-03 후기 목록 항목 */
+/* ── DTL-23 AI 후기 요약 (GET /perfumes/{id}/review-summary) ─── */
+
+/**
+ * 요약이 아직 없는 향수는 **세 값이 모두 null 인 200** 입니다. 후기가 최소 개수만큼
+ * 쌓이기 전에는 배치가 요약을 만들지 않습니다.
+ */
+export interface ReviewSummary {
+  /** 문장 배열이 아니라 한 덩어리 글입니다 */
+  summary: string | null
+  /** 요약을 만들 때 쓴 후기 수. ReviewStatistics.reviewCount 와 비교하면 최신인지 압니다 */
+  sourceReviewCount: number | null
+  /** ISO 8601 */
+  updatedAt: string | null
+}
+
+/** DTL-10 후기 통계 (GET /perfumes/{id}/review-statistics). 평균 평점은 없습니다 */
+export interface ReviewStatistics {
+  reviewCount: number
+}
+
+/* ── DTL-03 후기 (GET /perfumes/{id}/reviews · /reviews/{id}) ── */
+
+/** 후기에 걸린 계절 한 건 */
+export interface ReviewSeason {
+  seasonId: number
+  code: Season
+  name: string
+}
+
+/** 향수 상세의 후기 목록 한 줄 */
 export interface Review {
   reviewId: number
-  nickname: string
+  /** 탈퇴한 회원의 후기는 글만 남고 작성자가 지워집니다 */
+  nickname: string | null
+  title: string
   content: string
-  /** ISO 8601 */
-  createdAt: string
+  /** 고르지 않았으면 빈 배열 */
+  seasons: ReviewSeason[]
   /** 내가 쓴 후기면 수정 · 삭제 버튼을 보여줍니다 (DTL-05 · DTL-06) */
   mine: boolean
+  /** ISO 8601 */
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ReviewsResponse {
+  reviews: Review[]
+  /** 0부터 시작합니다 */
+  page: number
+  size: number
+  totalElements: number
+}
+
+/**
+ * A12 후기 상세. 목록 한 줄과 달리 어느 향수의 후기인지와 좋아요 · 조회수가 함께 옵니다.
+ *
+ * `viewCount` 는 **이번 조회를 포함한** 수입니다 — 열었는데 숫자가 그대로면 안 오른
+ * 것처럼 보이기 때문입니다.
+ */
+export interface ReviewDetail {
+  reviewId: number
+  nickname: string | null
+  title: string
+  content: string
+  perfume: { perfumeId: number; name: string; brand: string | null }
+  seasons: ReviewSeason[]
+  likeCount: number
+  viewCount: number
+  /** 비로그인은 항상 false */
+  liked: boolean
+  mine: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+/* ── 후기 쓰기 (CMT-03 · DTL-05 · DTL-06 · DTL-16) ──────────── */
+
+/**
+ * 후기 작성 요청 (POST /perfumes/{perfumeId}/reviews)
+ *
+ * 길이 제약은 백엔드 `ReviewCreateRequest` 의 검증 애너테이션 그대로입니다.
+ * **계절은 1개 이상 필수입니다**(`@NotEmpty`) — 화면 문구가 "선택"이면 안 됩니다.
+ *
+ * 계절을 번호가 아니라 **코드**로 보냅니다. `season_id` 는 자동 증가라 환경마다
+ * 값이 달라지는데, 코드는 마이그레이션 V18 이 고정했습니다.
+ */
+export interface ReviewCreateInput {
+  title: string
+  content: string
+  seasonCodes: Season[]
+}
+
+export const REVIEW_TITLE_MAX_LENGTH = 50
+export const REVIEW_CONTENT_MIN_LENGTH = 10
+export const REVIEW_CONTENT_MAX_LENGTH = 1000
+export const REVIEW_SEASON_MIN_COUNT = 1
+
+/**
+ * 후기 수정 요청 (PATCH /reviews/{reviewId})
+ *
+ * **둘 다 생략할 수 없습니다.** 서버가 `@AssertTrue` 로 "제목이나 내용 중 하나는
+ * 있어야 한다"를 강제하므로, 바뀐 게 없으면 아예 부르지 않습니다.
+ *
+ * **대상 향수와 계절은 여기로 못 바꿉니다.** 향수는 바꾸는 경로 자체가 없고,
+ * 계절은 `PUT /reviews/{reviewId}/seasons` 로 따로 갑니다.
+ */
+export interface ReviewUpdateInput {
+  title?: string
+  content?: string
+}
+
+/** POST /perfumes/{perfumeId}/reviews 응답 */
+export interface ReviewCreateResponse {
+  reviewId: number
+  title: string
+  content: string
+  seasonCodes: Season[]
+  createdAt: string
+}
+
+/** PUT /reviews/{reviewId}/seasons 응답 */
+export interface ReviewSeasonsResponse {
+  reviewId: number
+  seasonCodes: Season[]
+}
+
+/**
+ * PUT · DELETE /reviews/{reviewId}/like 응답
+ *
+ * `liked` 와 `likeCount` 가 함께 옵니다. 화면이 숫자를 직접 더하고 빼지 않아도
+ * 되고, 그 사이 다른 사람이 누른 것도 같이 반영됩니다.
+ */
+export interface ReviewLikeResponse {
+  reviewId: number
+  liked: boolean
+  likeCount: number
 }

@@ -1,6 +1,8 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router'
 
+import { logout } from '@/features/auth'
 import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { useAuthStore } from '@/shared/store/authStore'
@@ -311,8 +313,25 @@ function CommunityMenu({ ink }: { ink: Ink }) {
  */
 function AccountMenu({ ink }: { ink: Ink }) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const clear = useAuthStore((state) => state.clear)
   const { open, setOpen, containerRef } = useDismissable()
+
+  /*
+   * 스토어를 비우는 것만으로는 로그아웃이 아닙니다. refresh 토큰은 httpOnly
+   * 쿠키라 화면이 지울 수 없고, 서버에 알리지 않으면 그 쿠키로 다시 액세스
+   * 토큰을 받을 수 있습니다.
+   *
+   * 요청이 실패해도 이 브라우저에서는 반드시 나가지도록 `onSettled` 에서 비웁니다.
+   * 캐시도 함께 비워야 다음 사람이 앞 사람의 화면을 보지 않습니다.
+   */
+  const logoutMutation = useMutation({
+    mutationFn: logout,
+    onSettled: () => {
+      clear()
+      queryClient.clear()
+    },
+  })
 
   return (
     <div ref={containerRef} className="relative">
@@ -363,7 +382,9 @@ function AccountMenu({ ink }: { ink: Ink }) {
               role="menuitem"
               type="button"
               onClick={() => {
-                clear()
+                // 토큰을 비우는 것은 onSettled 입니다 — 먼저 비우면 이 요청에
+                // Authorization 이 안 붙어 서버 세션이 남습니다
+                logoutMutation.mutate()
                 setOpen(false)
                 navigate(ROUTES.HOME)
               }}

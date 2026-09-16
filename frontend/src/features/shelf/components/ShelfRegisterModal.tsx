@@ -2,20 +2,14 @@ import { useState } from 'react'
 
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
-import { ChipToggle } from '@/shared/ui/ChipToggle'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Modal } from '@/shared/ui/Modal'
 import { SearchField } from '@/shared/ui/SearchField'
-import { StarRating } from '@/shared/ui/StarRating'
-import { Textarea } from '@/shared/ui/Textarea'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
-import {
-  SHELF_CATEGORIES,
-  type PerfumeOption,
-  type ShelfCategory,
-  type ShelfRegisterInput,
-} from '../types'
+import type { PerfumeOption, ShelfCategory, ShelfRegisterInput } from '../types'
+
+import { ShelfItemFields } from './ShelfItemFields'
 
 type Props = {
   open: boolean
@@ -39,9 +33,10 @@ type Props = {
  *
  * 1단계 향수 고르기 → 2단계 등록 정보 입력. 한 번에 한 개만 고릅니다.
  *
- * `ShelfSaveModal`(A11)과 다른 점: 저쪽은 향수가 정해진 채로 분류만 고르는 빠른
- * 저장이고, 이쪽은 향수 고르기부터 적합도 · 메모까지 받는 전체 등록입니다.
- * 그래서 A13 의 [+ 향수 등록]만 이 모달을 엽니다.
+ * **진열대에 담는 세 입구가 모두 이 모달을 씁니다** — 진열대 화면의 [+ 향수 등록],
+ * 향수 상세와 향 지도 카드의 [진열대에 저장]. 뒤 둘은 어떤 향수인지 이미 알고 있어
+ * `preselected` 로 1단계를 건너뜁니다. 분류만 고르는 빠른 저장 모달이 따로 있었는데,
+ * 같은 "담기" 인데 입구에 따라 적을 수 있는 값이 달라 지웠습니다.
  */
 export function ShelfRegisterModal({
   open,
@@ -164,35 +159,15 @@ export function ShelfRegisterModal({
             )}
           </div>
 
-          <ChipToggle
-            label="진열대 분류"
-            options={SHELF_CATEGORIES}
-            value={category}
-            onChange={setCategory}
+          <ShelfItemFields
+            category={category}
+            onCategoryChange={setCategory}
+            rating={rating}
+            onRatingChange={setRating}
+            memo={memo}
+            onMemoChange={setMemo}
+            hint="적합도와 메모는 선택입니다. 분류만 고르면 담깁니다. 메모는 향수 한 개당 하나이고 진열대에서 수정할 수 있습니다."
           />
-
-          <div className="flex items-center gap-2.5">
-            <span className="text-ink-muted text-caption">내 취향 적합도</span>
-            <StarRating
-              label="내 취향 적합도"
-              value={rating}
-              onChange={setRating}
-            />
-          </div>
-
-          <Textarea
-            label="메모"
-            hideLabel
-            placeholder="메모"
-            rows={5}
-            value={memo}
-            onChange={(event) => setMemo(event.target.value)}
-          />
-
-          <p className="text-ink-muted text-caption leading-relaxed">
-            적합도와 메모는 선택입니다. 분류만 고르면 담깁니다. 메모는 향수 한
-            개당 하나이고 진열대에서 수정할 수 있습니다.
-          </p>
         </div>
       )}
     </Modal>

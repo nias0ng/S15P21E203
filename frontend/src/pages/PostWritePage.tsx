@@ -3,11 +3,9 @@ import { useState } from 'react'
 import {
   ImageAttachField,
   LinkedPerfumeModal,
-  ModerationRejectedModal,
   POST_CATEGORIES,
   WriteForm,
   type LinkedPerfume,
-  type ModerationRejection,
   type PostCategory,
 } from '@/features/community'
 import { ROUTES } from '@/shared/config/routes'
@@ -21,7 +19,7 @@ import { Textarea } from '@/shared/ui/Textarea'
  * 자유 게시글 작성 · 수정 (와이어프레임 A24b — CMT-03 · CMT-06 · CMT-16)
  *
  * 분류는 필수이고, 컬렉션 첨부는 "컬렉션 공유" 를 골랐을 때만 나타납니다.
- * [포스팅] 은 검사를 거쳐 통과하면 A23, 걸리면 A25 모달로 갑니다.
+ * [포스팅] 하면 게시글 상세(A23)로 갑니다.
  */
 export default function PostWritePage() {
   const [category, setCategory] = useState<PostCategory | null>(null)
@@ -29,7 +27,6 @@ export default function PostWritePage() {
   const [content, setContent] = useState('')
   const [perfumes, setPerfumes] = useState<LinkedPerfume[]>([])
   const [pickOpen, setPickOpen] = useState(false)
-  const [rejection, setRejection] = useState<ModerationRejection | null>(null)
 
   return (
     <>
@@ -42,10 +39,6 @@ export default function PostWritePage() {
         submitDisabled={category === null || title.trim().length === 0}
         onSubmit={() => {
           // TODO: CMT-03 포스팅 API 연결
-          setRejection({
-            reasons: ['부적절한 표현이 포함되어 있습니다'],
-            requestedChange: '향수 관련 내용으로 수정해주세요',
-          })
         }}
       >
         {/*
@@ -163,12 +156,6 @@ export default function PostWritePage() {
           ])
           setPickOpen(false)
         }}
-      />
-
-      <ModerationRejectedModal
-        open={rejection !== null}
-        onClose={() => setRejection(null)}
-        rejection={rejection}
       />
     </>
   )

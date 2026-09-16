@@ -39,21 +39,24 @@ export type ShelfSection = {
 }
 
 /**
- * 진열대에 담긴 향수 한 개.
+ * 진열대에 담긴 향수 한 개 — **벽에 세우는 데 필요한 값만** 있습니다.
  *
- * 메모는 향수 한 개당 하나입니다(와이어프레임 A15 주석 — 시향 기록 SHF-08 · SHF-10 이
- * 등록 모달로 흡수됐고, 향수 상세의 후기와는 별개입니다).
+ * 목록 응답(`GET /users/me/shelf-items`)이 주는 만큼입니다. 적합도 · 메모 · 향조는
+ * 여기 없습니다 — 서버가 상세(`/{shelfItemId}`)에서만 내려줍니다. 한 화면에 병이
+ * 스물다섯 개씩 서는데 그 전부의 메모를 미리 받을 이유가 없어서입니다.
+ * 고른 한 병의 값은 {@link ShelfItemDetail} 로 따로 받습니다.
  */
 export interface ShelfItem {
   shelfItemId: number
   perfumeId: number
   name: string
-  brand: string
+  /** 브랜드가 비어 있는 향수가 있습니다. 이름표는 그 자리를 비웁니다 */
+  brand: string | null
   /*
    * 영문 표기 셋. 사람이 읽는 대소문자 그대로 두고, 대문자는 CSS 가 입힙니다.
    *
-   * ⚠️ 백엔드가 아직 주지 않습니다 — 지금은 자리표시자(api.ts)에만 채워 두었습니다. 필수로
-   * 선언하면 타입은 통과하는데 런타임에 undefined 라 빈 줄이 생깁니다. 영문 브랜드가 없으면
+   * ⚠️ 백엔드가 주지 않습니다 — 목록에도 상세에도 없습니다. 필수로 선언하면 타입은
+   * 통과하는데 런타임에 undefined 라 빈 줄이 생깁니다. 영문 브랜드가 없으면
    * 이름표가 그 자리에 한글 브랜드를 적습니다(DisplayCase).
    * 백엔드가 내려주기 시작하면 `?` 를 떼세요.
    */
@@ -67,12 +70,40 @@ export interface ShelfItem {
   category: ShelfCategory
   /** 대표 향수는 한 번에 하나. 보유 중 칸에만 표시됩니다 (A13 주석). */
   representative: boolean
-  /** 내 취향 적합도 1~5 (SHF-12 · DTL-18 · DTL-19). 선택 항목입니다. */
+}
+
+/**
+ * 고른 한 병의 전부 (`GET /users/me/shelf-items/{shelfItemId}`).
+ *
+ * 메모는 향수 한 개당 하나입니다(와이어프레임 A15 주석 — 시향 기록 SHF-08 · SHF-10 이
+ * 등록 모달로 흡수됐고, 향수 상세의 후기와는 별개입니다).
+ */
+export interface ShelfItemDetail extends ShelfItem {
+  /** 한국어 이름. 없는 향수가 많습니다 */
+  nameKo: string | null
+  /**
+   * 내 취향 적합도 (SHF-12 · DTL-18 · DTL-19). 선택 항목입니다.
+   *
+   * **1.0~5.0 을 0.5 단위**로 받습니다(백엔드 `@DecimalMin("1.0") @DecimalMax("5.0")`,
+   * 컬럼은 `NUMERIC(2, 1)`). 0.5 는 받지 않아 고를 수 있는 값은 아홉 개입니다.
+   */
   rating: number | null
   /** 개인 메모. 선택 항목이고 향수당 하나입니다. */
   memo: string | null
   /** 메모를 마지막으로 쓴 날 (YYYY.MM.DD 표기용 ISO) */
   memoUpdatedAt: string | null
+  /**
+   * 향조. 탑 · 미들 · 베이스로 나누지 않고 그대로 옵니다 — `noteType` 에 값 제약이
+   * 없어 서버가 세 칸에 나누면 예상 못 한 값이 조용히 버려집니다. 묶는 일은 화면 몫입니다.
+   */
+  scentNotes: ShelfScentNote[]
+}
+
+/** 향조 한 건. 향수 도메인의 `PerfumeNote` 와 같은 모양이지만 도메인끼리 타입을 빌리지 않습니다 */
+export interface ShelfScentNote {
+  noteId: number
+  name: string
+  noteType: string | null
 }
 
 /**
@@ -84,7 +115,8 @@ export interface ShelfItem {
 export interface PerfumeOption {
   perfumeId: number
   name: string
-  brand: string
+  /** 브랜드가 비어 있는 향수가 있습니다 */
+  brand: string | null
   thumbnailUrl?: string | null
   /** 이미 진열대에 있으면 카드에 담김 표시가 붙고 선택할 수 없습니다 (A15 주석). */
   alreadyInShelf?: boolean

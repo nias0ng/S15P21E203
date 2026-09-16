@@ -440,6 +440,7 @@ export function ShelfWall({
           '--pitch': `${metrics.pitch}px`,
           '--clear-w': `${Math.max(0, metrics.clearWidth)}px`,
           '--panel-scale': metrics.panelScale,
+          '--panel-inset': '5px',
           '--plaque-span': metrics.plaqueSpan,
           // 매달린 이름표(lib.ts 의 "매달린 이름표 자리")
           '--hang-h': `${metrics.hang}px`,
@@ -565,12 +566,20 @@ export function ShelfWall({
                 onClick={() => flow.go(flow.destination() - step)}
                 className="left-1.25"
               />
-              {/* 오른쪽 화살표는 패널 밑이 아니라 패널 바로 왼쪽에 둡니다 */}
+              {/*
+                오른쪽 화살표는 패널 밑이 아니라 패널 바로 왼쪽에 둡니다.
+
+                **자리를 패널에 매지 않습니다.** `--panel-inset` 을 따라가게 두면 카드를
+                옮길 때마다 화살표가 같이 움직여, 벽을 넘기는 손잡이가 자리를 못 잡습니다.
+                `--clear-w` 는 패널이 벽 오른쪽 끝에 붙어 있다고 치고 센 값이라 50 을
+                빼 두면 카드가 10 물러난 지금 자리에서 5px 떨어져 섭니다.
+                ⚠️ 카드를 더 왼쪽으로 옮기면(`--panel-inset` 을 키우면) 다시 겹칩니다.
+              */}
               <PageArrow
                 direction={1}
                 disabled={view.start >= max}
                 onClick={() => flow.go(flow.destination() + step)}
-                className="left-[calc(var(--clear-w)-40px)]"
+                className="left-[calc(var(--clear-w)-70px)]"
               />
             </>
           )}
@@ -594,7 +603,8 @@ export function ShelfWall({
             // 크기를 재기 전에는 숨깁니다. 기본 벽감 높이(345)로 한 프레임 그려졌다가
             // 늘어나면 패널이 튀어 보입니다
             className={cn(
-              'absolute top-0 right-0 flex flex-col',
+              // 벽 오른쪽 끝에 딱 붙이지 않고 한 칸 띄웁니다
+              'absolute top-0 right-[var(--panel-inset)] flex flex-col',
               !measured && 'invisible',
             )}
             style={{

@@ -1,6 +1,6 @@
-import { SEASONS, type SeasonRating } from '../types'
+import { SEASONS, type SeasonStatistic } from '../types'
 
-type Props = { ratings: SeasonRating[] }
+type Props = { seasons: SeasonStatistic[] }
 
 /**
  * 계절별 평가 (와이어프레임 A10 ③ — DTL-14)
@@ -9,11 +9,12 @@ type Props = { ratings: SeasonRating[] }
  * 부분-전체가 아니라 서로 독립인 비율 네 개라 단일값 미터가 맞습니다.
  *
  * 넷 다 같은 색인 이유: 어느 계절인지는 아래 라벨이 이미 알려줍니다.
+ *
+ * 응답에 네 계절이 항상 들어 있지만 화면은 SEASONS 순서로 그립니다 — 응답 순서에
+ * 기대면 정렬이 바뀌는 날 봄 · 여름 · 가을 · 겨울 자리가 뒤섞입니다.
  */
-export function SeasonRatingChart({ ratings }: Props) {
-  const bySeason = new Map(
-    ratings.map((item) => [item.season, item.percentage]),
-  )
+export function SeasonRatingChart({ seasons }: Props) {
+  const bySeason = new Map(seasons.map((item) => [item.code, item.percentage]))
 
   return (
     <ul className="flex flex-wrap gap-6.25">
@@ -34,7 +35,8 @@ const RADIUS = (SIZE - STROKE) / 2
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 
 function SeasonDonut({ percentage }: { percentage: number }) {
-  const clamped = Math.min(100, Math.max(0, percentage))
+  // 소수점 한 자리까지 옵니다. 40.0 은 "40%" 로, 33.3 은 그대로 보여줍니다.
+  const clamped = Number(Math.min(100, Math.max(0, percentage)).toFixed(1))
   const filled = (clamped / 100) * CIRCUMFERENCE
 
   return (

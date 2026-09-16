@@ -1,42 +1,74 @@
-import { useParams } from 'react-router'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate, useParams } from 'react-router'
 
-import { PerfumeReviewDetail, type Review } from '@/features/perfume'
-import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
+import { communityKeys } from '@/features/community'
+import { PerfumeReviewDetail, reviewDetailQuery } from '@/features/perfume'
+import { ROUTES, toPerfumeDetail, toReviewEdit } from '@/shared/config/routes'
+import { Button } from '@/shared/ui/Button'
+import { EmptyState } from '@/shared/ui/EmptyState'
+import { LinkButton } from '@/shared/ui/LinkButton'
+import { PageFallback } from '@/shared/ui/PageFallback'
 
 /**
  * 후기 상세 (와이어프레임 A12 — DTL-03 · DTL-05 · DTL-06)
  *
- * ⚠️ 백엔드에 후기 조회 API 가 아직 없습니다. 와이어프레임을 눈으로 확인할 수 있도록
- * 아래 자리표시자를 쓰고 있습니다. API 가 준비되면 PLACEHOLDER 를 지우고
- * useQuery(reviewDetailQuery(reviewId)) 로 바꿔주세요.
+ * 비로그인도 볼 수 있습니다. **여는 것이 곧 조회라 조회수가 하나 오릅니다** —
+ * 그래서 쿼리에서 창 포커스 · 재연결 재요청을 꺼 두었습니다(queries.ts).
  */
-const PLACEHOLDER_REVIEW: Review = {
-  reviewId: 0,
-  nickname: '유저닉네임',
-  content:
-    '처음 뿌렸을 때 바다 냄새가 났다. 시간이 지나면서 나무 향이 올라오는데 여름 저녁에 특히 잘 맞았다.',
-  createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-  mine: true,
-}
-
 export default function ReviewDetailPage() {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { reviewId } = useParams<{ reviewId: string }>()
+  const numericId = Number(reviewId)
+  const valid = Number.isFinite(numericId)
 
-  // TODO: DTL-03 후기 조회 API 연결
-  const review = PLACEHOLDER_REVIEW
+  const { data, isPending, isError, refetch } = useQuery({
+    ...reviewDetailQuery(numericId),
+    enabled: valid,
+  })
+
+  if (valid && isPending) return <PageFallback />
+
+  // 없는 reviewId 와 불러오기 실패를 같은 안내로 묶습니다 — 할 일이 같습니다
+  if (!valid || isError || !data) {
+    return (
+      <EmptyState
+        title="후기를 찾을 수 없습니다"
+        description="주소가 잘못되었거나 삭제된 후기입니다."
+        action={
+          <div className="flex gap-2.5">
+            <LinkButton
+              to={ROUTES.COMMUNITY_REVIEWS}
+              variant="outline"
+              size="sm"
+            >
+              후기 게시판으로
+            </LinkButton>
+            {valid && (
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                다시 시도
+              </Button>
+            )}
+          </div>
+        }
+      />
+    )
+  }
 
   return (
-    <div className="space-y-2.5">
-      <PerfumeReviewDetail
-        review={review}
-        // TODO: 후기가 달린 향수 id 로 바꿔주세요 (응답에 포함될 예정)
-        backTo={toPerfumeDetail(1)}
-        editTo={ROUTES.REVIEW_WRITE}
-      />
-      <p className="text-ink-muted text-caption">
-        ⚠️ 후기 조회 API 가 없어 자리표시자를 보여주고 있습니다. (reviewId:{' '}
-        {reviewId})
-      </p>
-    </div>
+    <PerfumeReviewDetail
+      review={data}
+      backTo={toPerfumeDetail(data.perfume.perfumeId)}
+      // 같은 후기 작성 화면입니다 — 주소로 수정 모드가 켜집니다
+      editTo={toReviewEdit(data.reviewId)}
+      /*
+       * 삭제 뒤 정리는 여기서 합니다. 게시판 목록(community)과 후기(perfume)는
+       * 서로 import 할 수 없는 두 도메인이라, 둘 다 아는 화면이 맡습니다.
+       */
+      onDeleted={() => {
+        void queryClient.invalidateQueries({ queryKey: communityKeys.all })
+        navigate(toPerfumeDetail(data.perfume.perfumeId), { replace: true })
+      }}
+    />
   )
 }

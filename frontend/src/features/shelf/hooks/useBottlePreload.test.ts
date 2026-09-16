@@ -14,9 +14,6 @@ const item = (id: number): ShelfItem => ({
   thumbnailUrl: `/bottles/${id}.png`,
   category: 'OWNED',
   representative: false,
-  rating: null,
-  memo: null,
-  memoUpdatedAt: null,
 })
 
 /*

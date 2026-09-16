@@ -3,21 +3,17 @@
  *
  * 이 폴더 밖에서는 `@/features/brand` 만 import 합니다.
  *
- * ⚠️ 기능 명세서에 요구사항 ID 가 없는 신규 화면이고 백엔드 API 도 아직 없습니다.
- * api.ts 가 자리표시자 데이터를 돌려주고 있으니 API 가 붙으면 그 함수만 바꾸세요.
+ * 브랜드 상세 엔드포인트가 없어 상세 화면은 목록에서 한 곳을 골라 씁니다
+ * (queries.ts). 그 브랜드의 향수는 향수 검색 API 의 `brand` 필터가 돌려주므로
+ * 화면(`pages/BrandDetailPage`)에서 향수 도메인을 직접 부릅니다.
  */
 export { BrandGrid } from './components/BrandGrid'
-export {
-  brandDetailQuery,
-  brandKeys,
-  brandListQuery,
-  brandPerfumesQuery,
-} from './queries'
+export { brandDetailQuery, brandKeys, brandListQuery } from './queries'
 export {
   BRAND_SORTS,
+  DEFAULT_BRAND_SORT,
   type Brand,
-  type BrandDetail,
-  type BrandPerfume,
   type BrandSearchParams,
   type BrandSort,
+  type BrandsResponse,
 } from './types'
