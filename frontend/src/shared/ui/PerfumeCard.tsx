@@ -130,7 +130,9 @@ export function PerfumeCard({
         {rank != null && (
           <span
             className={cn(
-              'absolute top-2.5 left-2.5 flex size-8.75 items-center justify-center',
+              // 사진 칸의 왼쪽 위 모서리에 붙입니다. 카드 안쪽 여백(10)만큼만
+              // 카드 테두리에서 떨어지고, 병은 사진 칸 안에서 15 들어와 있어 안 가립니다.
+              'absolute top-0 left-0 flex size-8.75 items-center justify-center',
               'bg-line-soft/85 text-ink text-caption rounded-full font-medium backdrop-blur-sm',
             )}
           >
