@@ -1,261 +1,240 @@
-# 로컬 개발 환경 빠른 시작
+# 로컬에서 향해 실행하기
 
-처음 프로젝트를 실행하는 팀원을 위한 최소 절차입니다. 백엔드, PostgreSQL, Redis와 자연어 추천
-AI 서버를 Docker Desktop으로 한 번에 실행할 수 있습니다.
+팀원이 자신의 PC에서 향해 화면을 열고 기능을 확인하기 위한 안내입니다.
+**Windows PowerShell 기준**이며, 처음에는 1~4번을 순서대로 따라 하면 됩니다.
 
-## 먼저: 프로젝트 폴더에서 터미널 열기
+| 순서 | 하는 일 |
+| --- | --- |
+| 1 | 서버 켜기 |
+| 2 | 향수·이미지 같은 기본 데이터 넣기 |
+| 3 | 테스트 사용자·진열대·게시글 넣기 |
+| 4 | 웹 화면 열기 |
 
-프로젝트를 저장한 위치는 사람마다 다릅니다. 아래 순서로 시작하면 저장 경로를 직접 입력할 필요가
-없습니다.
+## 시작 전에 준비할 것
 
-1. Windows 파일 탐색기에서 내려받은 프로젝트 폴더를 엽니다.
-2. `compose.manual-test.yaml` 파일과 `backend`, `frontend`, `ai` 폴더가 함께 보이는지 확인합니다.
-3. 탐색기 위쪽 주소 표시줄을 클릭하고 `powershell`을 입력한 뒤 Enter를 누릅니다.
-4. 열린 PowerShell 창에 아래 명령을 입력합니다.
+다음 프로그램이 필요합니다.
+
+- **Git**: 프로젝트 코드를 내려받을 때 사용합니다.
+- **Docker Desktop**: 서버와 데이터 저장소를 실행합니다.
+- **Node.js 22.12 이상 / npm 10.9 이상**: 웹 화면을 실행합니다. npm은 Node.js 설치 시 함께 설치됩니다.
+
+JDK나 IntelliJ는 **백엔드 코드를 직접 수정하는 팀원만** 필요합니다.
+화면을 열어 테스트하는 경우에는 설치하지 않아도 됩니다.
+
+### 프로젝트 폴더에서 PowerShell 열기
+
+1. 파일 탐색기에서 프로젝트 폴더를 엽니다.
+2. `compose.manual-test.yaml` 파일과 `backend`, `frontend`, `ai` 폴더가 보이는지 확인합니다.
+3. 탐색기 위쪽 주소 표시줄에 `powershell`을 입력하고 Enter를 누릅니다.
+4. 열린 창에 다음 명령을 입력합니다.
 
 ```powershell
 Test-Path .\compose.manual-test.yaml
 ```
 
-`True`가 나오면 준비됐습니다. `False`가 나오면 2번의 파일이 보이는 폴더에서 다시 열어주세요.
+`True`가 나오면 올바른 위치입니다. `False`라면 2번의 파일이 보이는 폴더에서 다시 열어주세요.
+이 문서에서 **프로젝트 폴더**는 이 위치를 뜻합니다.
 
-이 문서에서 **프로젝트 폴더** 또는 **저장소 최상위 폴더**는 바로 이 폴더를 뜻합니다.
-폴더 이름이나 앞에 붙는 경로는 팀원마다 달라도 됩니다.
+## 1. 서버 켜기
 
-## 처음 실행할 때는 아래 두 명령만 실행하세요
-
-Docker Desktop을 켜고, 앞에서 연 PowerShell 창에 아래 두 명령을 위에서부터 한 줄씩 실행하면
-됩니다.
+Docker Desktop을 먼저 켜고 실행 준비가 끝날 때까지 기다립니다.
+앞에서 연 PowerShell에 다음 명령을 입력합니다.
 
 ```powershell
 docker compose -f compose.manual-test.yaml up -d --build --wait
-docker compose -f compose.manual-test.yaml run --rm seed
 ```
 
-- 첫 번째 명령은 백엔드, AI 서버, PostgreSQL, Redis를 실행합니다.
-- 두 번째 명령은 향 지도, 향수 카탈로그, 노트, 향수 이미지 데이터를 DB에 넣습니다.
+처음에는 프로그램을 내려받고 준비하느라 몇 분 걸릴 수 있습니다.
+명령이 끝나면 다음 명령으로 상태를 확인합니다.
 
-두 명령이 오류 없이 끝나면 로컬 실행 준비가 완료된 것입니다. 이 문서의 아래 내용은 각 명령이
-하는 일, 개발 방식별 실행 방법, 오류가 발생했을 때 해결하는 방법을 자세히 설명합니다. 처음 실행할
-때 아래 내용을 전부 따라 할 필요는 없습니다.
-
-## 1. 필요한 프로그램
-
-- Git
-- Docker Desktop
-
-백엔드 코드를 직접 개발하는 팀원만 다음 프로그램도 설치합니다.
-
-- JDK 21
-- IntelliJ IDEA
-
-터미널에서 다음 명령이 실행되는지 확인합니다.
-
-```bash
-git --version
-docker --version
-docker compose version
-```
-
-백엔드 개발자는 `java -version`의 결과가 21인지 추가로 확인합니다. 아래 작업을 시작하기 전에
-Docker Desktop을 실행합니다. Gradle과 Python은 이미지에 포함되므로 전체 환경을 실행하기 위해
-별도로 설치할 필요가 없습니다.
-
-## 2. 전체 환경 실행
-
-**저장소 최상위 폴더**에서 실행합니다.
-
-```bash
-docker compose -f compose.manual-test.yaml up -d --build --wait
+```powershell
 docker compose -f compose.manual-test.yaml ps
 ```
 
-처음 실행하거나 백엔드·AI 코드가 변경됐을 때 `--build`가 이미지를 새로 만듭니다. `--wait`는 네
-서비스가 준비될 때까지 기다립니다. 변경된 것이 없다면 다음 실행부터 `--build`를 생략해도 됩니다.
+`postgres`, `redis`, `ai`, `backend`가 모두 `healthy`로 표시되면 준비된 상태입니다.
 
-`postgres`, `redis`, `ai`, `backend`가 모두 `healthy`이면 준비된 것입니다.
+- `backend`: 화면의 요청을 처리하는 서버
+- `postgres`: 사용자·향수·게시글 등을 저장하는 곳(DB)
+- `redis`: 로그인 상태 등 빠르게 조회할 정보를 보관하는 곳
+- `ai`: 자연어로 향수를 찾는 데 사용하는 서버
 
-- 백엔드: `http://localhost:8080`
-- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
-- 상태 확인: `http://localhost:8080/actuator/health`
+아직 웹 화면은 열리지 않습니다. 화면은 4번에서 실행합니다.
 
-백엔드는 로컬 PC에서만 접근할 수 있도록 `127.0.0.1:8080`으로 연결합니다. AI 서버는 호스트에
-8000번 포트를 공개하지 않으며 Compose 내부의 백엔드는 `http://ai:8000`으로 접근할 수 있습니다.
+## 2. 기본 데이터 넣기
 
-AI 서버 상태는 다음 명령으로 직접 확인할 수 있습니다.
-
-```bash
-docker compose -f compose.manual-test.yaml exec -T ai python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/health').read().decode())"
-```
-
-`"status":"ok"`가 포함된 JSON이 출력되면 정상입니다. `"llm":false`는 AI 서버가 고장 난 것이
-아니라 `GMS_API_KEY`가 없어 사전 매칭 모드로 실행 중이라는 뜻입니다.
-
-LLM까지 확인해야 할 때만 저장소 최상위에 커밋하지 않는 `.env` 파일을 만들고 값을 넣습니다.
-
-```dotenv
-GMS_API_KEY=발급받은_GMS_키
-BACKEND_GMS_MODEL=gpt-5-nano
-NLR_GMS_MODEL=gpt-5.4-nano
-```
-
-백엔드와 AI 서버가 사용할 수 있는 모델이 다를 수 있으므로 각각 `BACKEND_GMS_MODEL`과
-`NLR_GMS_MODEL`로 구분합니다.
-
-## 3. 백엔드 코드를 IntelliJ에서 개발할 때
-
-백엔드 코드를 직접 수정하고 디버깅할 때는 백엔드 컨테이너를 실행하지 않습니다. PostgreSQL과
-Redis만 실행합니다.
-
-```bash
-docker compose -f compose.manual-test.yaml up -d postgres redis
-```
-
-그다음 다음 순서로 백엔드를 실행합니다.
-
-1. `backend/build.gradle`을 Gradle 프로젝트로 엽니다.
-2. Project SDK와 Gradle JVM을 JDK 21로 설정합니다.
-3. `BackendApplication` 실행 설정의 Active profiles에 `manual-test`를 입력합니다.
-4. `BackendApplication`을 실행합니다.
-
-터미널에서 직접 실행할 수도 있습니다. Windows PowerShell에서는 다음 명령을 사용합니다.
-
-```powershell
-cd backend
-.\gradlew.bat bootRun --args="--spring.profiles.active=manual-test"
-```
-
-macOS 또는 Linux에서는 다음 명령을 사용합니다.
-
-```bash
-cd backend
-./gradlew bootRun --args="--spring.profiles.active=manual-test"
-```
-
-처음 실행하면 Flyway가 DB 테이블을 최신 상태로 자동 생성합니다. 이 방식에서는 AI 서버를 실행하지
-않습니다. 자연어 추천까지 확인할 때는 2번의 전체 환경을 사용합니다.
-
-## 4. DB 초기 데이터 넣기
-
-전체 환경을 실행한 뒤 **저장소 최상위 폴더**에서 아래 명령 하나만 실행합니다.
+**같은 PowerShell 창**에서 실행합니다.
 
 ```powershell
 docker compose -f compose.manual-test.yaml run --rm seed
 ```
 
-이 명령이 Docker 안에서 다음 데이터를 순서대로 넣습니다.
+향 지도, 향수 목록, 노트, 향수 이미지를 넣는 명령입니다.
+마지막에 `모든 초기 데이터 적재가 끝났습니다`가 나오면 완료입니다.
 
-1. 향 지도
-2. 향수 카탈로그
-3. 노트 메타데이터
-4. 향수 이미지
+이 명령만으로는 테스트 사용자나 진열대, 커뮤니티 게시글이 만들어지지 않습니다.
+그 데이터는 다음 단계에서 넣습니다.
 
-Git Bash, `docker cp`, `cd backend/db/seed`는 필요 없습니다. 여러 번 실행해도 같은 데이터를
-갱신하므로 중복이 늘어나지 않습니다. 마지막에 `모든 초기 데이터 적재가 끝났습니다`가 나오면
-성공입니다.
+## 3. 테스트 사용자·진열대·게시글 넣기
 
-### 데이터가 실제로 들어갔는지 확인
+미리 준비한 테스트 데이터를 **seed(시드)**라고 부릅니다.
+이 단계는 직접 회원과 게시글을 하나씩 만들지 않아도 화면을 확인할 수 있도록 데이터를 준비합니다.
 
-AI 상태 응답에 나오는 `"perfumes":129161`은 AI가 가지고 있는 검색 데이터 수입니다.
-PostgreSQL에 들어간 향수 수가 아닙니다. 데이터 적재가 끝나면 PowerShell에서 다음 명령으로 DB를
-직접 확인하세요. 앞에서 사용한 PowerShell 창에서 그대로 실행하면 됩니다.
+### 테스트 계정 비밀번호 입력
+
+같은 PowerShell 창에 아래 줄을 입력합니다. 비밀번호를 물으면 사용할 값을 입력하고 Enter를 누릅니다.
+입력 내용은 화면에 그대로 표시되지 않습니다.
 
 ```powershell
-docker exec hyanghae-manual-test-postgres-1 psql -U hyanghae -d hyanghae_test -c "SELECT (SELECT count(*) FROM brands) AS brands, (SELECT count(*) FROM accords) AS accords, (SELECT count(*) FROM perfumes) AS perfumes, (SELECT count(*) FROM perfume_accords) AS perfume_accords, (SELECT count(*) FROM notes WHERE image_url IS NOT NULL) AS notes_with_image, (SELECT count(*) FROM perfume_images WHERE image_type = 'ORIGINAL') AS original_images, (SELECT count(*) FROM perfume_images WHERE image_type = 'PAPER_TEXTURE') AS paper_texture_images;"
+$env:SEED_LOGIN_PASSWORD = [System.Net.NetworkCredential]::new('', (Read-Host '테스트 계정 비밀번호' -AsSecureString)).Password
 ```
 
-정상 적재 후 값은 다음과 같습니다.
+로컬 테스트용으로만 사용할 비밀번호를 정해주세요. 영문·숫자 기준 8~64자로 정하면 됩니다.
 
-| 항목 | 기대값 |
-| --- | ---: |
-| brands | 7,793 이상 |
-| accords | 92 |
-| perfumes | 129,161 이상 |
-| perfume_accords | 1,000,570 |
-| notes_with_image | 246 |
-| original_images | 156 |
-| paper_texture_images | 156 |
+### 데이터 넣기
 
-세부 적재 순서와 운영 데이터 주의사항은
-[DB 데이터 적재 문서](../backend/db/seed/README.md)를 확인합니다.
+```powershell
+docker compose -f compose.manual-test.yaml run --build --rm seed-local
+```
 
-## 5. 종료와 다시 실행
+`로컬 seed 완료`가 나오면 성공입니다. 기존 향수 목록은 유지하며,
+**이미지가 있는 156개 향수 중심으로** 보유·위시·조회 기록과 후기를 넣습니다.
+컬렉션, 게시글, 댓글, 좋아요도 함께 준비됩니다.
 
-**저장소 최상위 폴더**에서 실행합니다. IntelliJ로 백엔드를 실행했다면 애플리케이션도 종료합니다.
+| 확인할 상황 | 테스트 계정 |
+| --- | --- |
+| 향수가 많이 담긴 진열대와 컬렉션 | `demo41@demo.hyanghae.test` |
+| 다른 사용자의 글과 진열대 | `demo42@demo.hyanghae.test` |
+| 처음 시작하는 빈 상태 | `demo43@demo.hyanghae.test` |
 
-```bash
+비밀번호는 **계정을 처음 만들 때 입력한 값**입니다.
+일반 실행 때 다른 비밀번호를 입력해도 기존 계정의 비밀번호가 바뀌지는 않습니다.
+빈 계정으로 직접 활동했다면 그 기록도 유지됩니다.
+
+이 명령은 다시 실행해도 직접 만든 데이터를 유지하면서 빠진 테스트 데이터를 채웁니다.
+테스트하며 수정한 seed 기록을 되돌리는 방법은 아래 **6번**에 따로 있습니다.
+
+## 4. 웹 화면 열기
+
+지금까지 사용한 PowerShell 창은 그대로 두고,
+**프로젝트 폴더에서 PowerShell 창을 하나 더 엽니다.**
+새 창에서 다음 명령을 한 줄씩 실행합니다.
+
+```powershell
+cd frontend
+if (-not (Test-Path .env.local)) { Copy-Item .env.example .env.local }
+npm ci
+npm run dev
+```
+
+- 환경 설정 파일이 없을 때만 예시 파일을 복사합니다. 이미 설정한 파일은 유지됩니다.
+- `npm ci`는 화면 실행에 필요한 프로그램을 설치합니다.
+- `npm run dev`는 화면을 실행합니다. **이 창은 실행 중인 상태로 열어두세요.**
+
+브라우저에서 [http://localhost:5173](http://localhost:5173)을 엽니다.
+터미널의 `Local:`에 다른 주소가 나오면 그 주소를 사용하세요.
+
+서버 상태를 확인할 때는 다음 주소도 사용할 수 있습니다.
+
+- [서버 상태](http://localhost:8080/actuator/health)
+- [API 확인 화면(Swagger)](http://localhost:8080/swagger-ui/index.html)
+
+## 5. 다음 날 다시 켜거나 종료하기
+
+### 다시 켜기
+
+Docker Desktop을 켜고 **프로젝트 폴더**의 PowerShell에서 실행합니다.
+
+```powershell
+docker compose -f compose.manual-test.yaml up -d --wait
+```
+
+새 PowerShell 창을 프로젝트 폴더에서 열고 화면을 실행합니다.
+
+```powershell
+cd frontend
+npm run dev
+```
+
+데이터를 지우지 않았다면 2번과 3번을 매번 다시 할 필요는 없습니다.
+백엔드·AI 코드가 바뀌었다면 서버 실행 명령에 `--build`를 추가합니다.
+화면 쪽 설치 목록이 바뀌었다면 `npm ci`를 다시 실행합니다.
+
+### 종료하기
+
+1. `npm run dev`를 실행한 창에서 `Ctrl+C`를 누릅니다.
+2. **프로젝트 폴더**의 PowerShell에서 다음 명령을 실행합니다.
+
+```powershell
 docker compose -f compose.manual-test.yaml down
 ```
 
-이 명령은 컨테이너만 종료하므로 DB 데이터와 AI 서버의 NLR 로그는 유지됩니다. 다음 개발 때 필요한
-실행 방식에 따라 2번 또는 3번만 다시 진행하면 됩니다.
+서버가 종료되며, 입력한 데이터는 다음 실행 때도 남아 있습니다.
 
-DB 데이터를 전부 지우고 처음부터 시작해야 할 때만 다음 명령을 사용합니다.
+## 6. 데이터 보충과 초기화의 차이
 
-```bash
+### 부족한 테스트 데이터만 채우기
+
+3번에서 비밀번호를 입력한 PowerShell 창에서 실행합니다.
+새 창을 열었다면 비밀번호 입력 명령을 먼저 실행하세요.
+
+```powershell
+docker compose -f compose.manual-test.yaml run --rm seed-local
+```
+
+이미 있는 데이터를 유지하고 빠진 테스트 데이터를 채웁니다.
+
+### 테스트하며 바꾼 seed 기록 되돌리기
+
+```powershell
+docker compose -f compose.manual-test.yaml run --rm -e SEED_MODE=reset seed-local
+```
+
+예를 들어 처음에 향수 A가 **보유**로 들어 있었는데 테스트하면서 **위시**로 바꿨다면,
+이 명령으로 다시 **보유** 상태가 됩니다. 삭제한 seed 기록도 복원합니다.
+
+- seed가 만든 기록의 수정 내용은 처음 값으로 돌아갑니다.
+- 사람이 새로 추가한 게시글·댓글·컬렉션은 남습니다.
+- 기존 향수·이미지와 기존 후기 테스트 22건은 초기화 대상이 아닙니다.
+- 수동으로 만든 데이터와 이름 등이 충돌하면 변경을 취소하고 오류를 알립니다.
+
+### 모든 로컬 데이터를 삭제하는 명령 — 위 초기화와 다릅니다
+
+```powershell
 docker compose -f compose.manual-test.yaml down -v
 ```
 
-`-v`를 사용하면 입력한 DB 데이터와 NLR 로그가 모두 삭제됩니다. 필요한 데이터가 없는지 확인한 뒤
-실행합니다.
+**직접 작성한 데이터를 포함해 DB, Redis 데이터, AI 로그가 모두 삭제됩니다.**
+모든 로컬 데이터를 버려도 될 때만 사용합니다. 실행한 뒤에는 1번부터 다시 준비해야 합니다.
 
-## 6. 자주 발생하는 문제
+## 7. 막혔을 때 확인하기
 
-### 컨테이너가 실행되지 않음
+| 상황 | 먼저 확인할 것 |
+| --- | --- |
+| `compose.manual-test.yaml`을 찾지 못함 | 프로젝트 폴더에서 PowerShell을 열었는지 확인합니다. |
+| Docker 연결 오류 | Docker Desktop을 켜고 준비가 끝난 뒤 다시 실행합니다. |
+| `node` 또는 `npm`을 찾지 못함 | Node.js 설치 후 PowerShell을 새로 엽니다. |
+| `SEED_LOGIN_PASSWORD`가 필요하다고 나옴 | 3번 비밀번호 입력과 seed 명령을 같은 창에서 실행합니다. |
+| 향수 목록이 비어 있음 | 2번 기본 데이터 적재가 성공했는지 확인합니다. |
+| 진열대·게시글이 비어 있음 | 3번 활동 데이터 적재와 선택한 테스트 계정을 확인합니다. |
+| 화면은 열리지만 API 요청이 실패함 | 1번 서버 상태와 아래 포트 설정을 확인합니다. |
+| 로그인이나 내 정보 조회가 실패함 | 최신 코드로 서버를 다시 실행했는지, 계정과 비밀번호가 맞는지 확인합니다. |
 
-Docker Desktop이 실행 중인지 확인하고 로그를 봅니다.
-
-```bash
-docker compose -f compose.manual-test.yaml logs postgres
-docker compose -f compose.manual-test.yaml logs redis
-docker compose -f compose.manual-test.yaml logs ai
-docker compose -f compose.manual-test.yaml logs backend
-```
-
-### 8080 포트를 사용할 수 없다고 나옴
-
-다음과 비슷한 오류입니다.
-
-```text
-ports are not available
-listen tcp4 127.0.0.1:8080: bind
-```
-
-다른 프로그램이 8080 포트를 쓰고 있는지 확인합니다.
+서버가 준비되지 않으면 아래 명령으로 오류 내용을 확인하고 담당자에게 전달해주세요.
 
 ```powershell
-netstat -ano -p tcp | Select-String ':8080'
+docker compose -f compose.manual-test.yaml logs --tail=80 backend ai postgres redis
 ```
 
-`LISTENING`이 나오면 출력 맨 오른쪽 숫자가 프로그램의 PID입니다. 예를 들어 PID가 `11404`라면
-다음처럼 확인합니다.
+`Flyway`, `migration` 같은 DB 구조 변경 오류가 나면 데이터 삭제부터 하지 말고 담당자에게
+오류 내용을 전달해주세요. 기존 데이터를 유지하면서 해결할 수 있는지 먼저 확인해야 합니다.
 
-```powershell
-Get-Process -Id 11404
-```
+### 8080 포트를 이미 사용 중이라고 나오는 경우
 
-IntelliJ에서 실행한 백엔드처럼 종료해도 되는 프로그램이 맞을 때만 종료합니다.
+IntelliJ에서 켠 백엔드와 Docker 백엔드를 동시에 실행하면 같은 포트를 사용해 충돌할 수 있습니다.
+IntelliJ로 실행할 때는 아래 8번의 전환 순서를 따르세요.
 
-```powershell
-Stop-Process -Id 11404 -Force
-```
-
-포트가 비었는데 실패한 backend 컨테이너가 그대로 남아 있으면 다시 만듭니다.
-
-```powershell
-docker compose -f compose.manual-test.yaml up -d --force-recreate backend
-docker compose -f compose.manual-test.yaml ps
-```
-
-PID는 실행할 때마다 달라집니다. 예시의 `11404`를 그대로 사용하지 말고, 본인의 `netstat` 결과를
-사용해야 합니다.
-
-### 5432 또는 6379 포트를 이미 사용 중이라고 나옴
-
-PC에서 같은 포트를 사용하는 프로그램을 종료한 뒤 다시 실행합니다. IntelliJ에서 백엔드를 이미
-실행했다면 8080번을 사용하므로 종료해야 합니다.
-
-기존 프로그램을 유지해야 한다면 저장소 최상위의 `.env`에서 로컬 포트를 변경할 수 있습니다.
+다른 프로그램 때문에 기본 포트를 쓸 수 없다면 프로젝트 폴더의 `.env`에 다음처럼 설정할 수 있습니다.
+이미 파일이 있다면 필요한 항목만 수정합니다.
 
 ```dotenv
 MANUAL_TEST_POSTGRES_PORT=55432
@@ -263,107 +242,89 @@ MANUAL_TEST_REDIS_PORT=56379
 MANUAL_TEST_BACKEND_PORT=18080
 ```
 
-이 예시에서는 백엔드 주소도 `http://localhost:18080`으로 바뀝니다.
+이 경우 서버 주소는 `http://localhost:18080`이 됩니다.
+**`frontend/.env.local`의 아래 값도 함께 바꾸고 화면 실행을 다시 시작해야 합니다.**
 
-### `Detected resolved migration not applied to database` 오류
+```dotenv
+VITE_API_PROXY_TARGET=http://localhost:18080
+```
 
-예를 들어 다음 오류가 나올 수 있습니다.
+위 숫자는 예시입니다. 다른 포트를 사용했다면 같은 숫자로 맞춰주세요.
+
+## 8. 백엔드를 IntelliJ에서 직접 실행할 때만
+
+화면 테스트만 하는 팀원은 이 부분을 따라 할 필요가 없습니다.
+백엔드 코드를 수정하는 경우 JDK 21과 IntelliJ를 준비합니다.
+
+### Docker 백엔드에서 IntelliJ로 전환
+
+프로젝트 폴더에서 실행합니다.
+
+```powershell
+docker compose -f compose.manual-test.yaml stop backend
+docker compose -f compose.manual-test.yaml up -d postgres redis
+```
+
+`up -d postgres redis`만 실행해서는 기존 백엔드 컨테이너가 꺼지지 않으므로,
+위의 `stop backend`도 필요합니다.
+
+1. IntelliJ에서 `backend/build.gradle`을 Gradle 프로젝트로 엽니다.
+2. Project SDK와 Gradle JVM을 JDK 21로 설정합니다.
+3. `BackendApplication` 실행 설정의 Active profiles에 `manual-test`를 입력합니다.
+4. 실행 버튼을 누릅니다.
+
+처음 실행하면 서버가 필요한 DB 테이블을 준비합니다.
+IntelliJ로 실행한 서버에 기본 데이터를 처음 넣을 때는 서버 기동 후 프로젝트 폴더에서 실행합니다.
+
+```powershell
+docker compose -f compose.manual-test.yaml run --rm --no-deps seed
+```
+
+여기서 `--no-deps`는 데이터 적재 명령이 Docker 백엔드를 다시 켜지 않도록 하는 옵션입니다.
+활동 seed는 3번의 명령을 사용할 수 있습니다.
+
+### 환경 설정 파일의 적용 범위
+
+| 설정 위치 | 읽는 프로그램 |
+| --- | --- |
+| 프로젝트 폴더의 `.env` | Docker Compose |
+| `frontend/.env.local` | 화면 개발 서버 |
+| IntelliJ 실행 설정의 Environment variables | IntelliJ로 실행하는 백엔드 |
+
+**프로젝트 폴더의 `.env`는 IntelliJ에 자동 적용되지 않습니다.**
+DB와 Redis 포트를 바꿨다면 IntelliJ의 Environment variables에도 같은 값을 지정합니다.
 
 ```text
-Detected resolved migration not applied to database: 10
+MANUAL_TEST_POSTGRES_PORT=55432
+MANUAL_TEST_REDIS_PORT=56379
 ```
 
-이 오류는 예전에 만든 DB에는 V11이 적용돼 있는데, 현재 코드에는 그보다 번호가 작은 V10 파일이
-추가돼 있을 때 발생합니다.
+Docker용 `MANUAL_TEST_BACKEND_PORT`는 IntelliJ 서버의 포트를 바꾸지 않습니다.
+IntelliJ 서버도 18080으로 실행하려면 `SERVER_PORT=18080`을 별도로 지정하고,
+화면의 `VITE_API_PROXY_TARGET`도 같은 주소로 맞춥니다.
+DB 이름·계정·비밀번호도 바꿨다면 IntelliJ에서는 `SPRING_DATASOURCE_URL`,
+`SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`로 접속 정보를 지정합니다.
 
-테스트 DB의 데이터가 필요 없다면 아래 방법이 가장 쉽습니다. **DB와 Redis의 기존 데이터가 모두
-삭제됩니다.**
+Docker 방식으로 돌아갈 때는 IntelliJ 서버를 종료하고 1번의 명령을 실행합니다.
 
-```powershell
-docker compose -f compose.manual-test.yaml down -v
-docker compose -f compose.manual-test.yaml up -d --build --wait
+## 9. AI 기능과 자세한 안내
+
+AI 서버는 API 키가 없어도 사전에 등록된 표현을 이용해 검색할 수 있습니다.
+외부 AI 모델 호출까지 확인해야 할 때만 담당자에게 받은 키를 프로젝트 폴더의 `.env`에 넣습니다.
+
+```dotenv
+GMS_API_KEY=발급받은_GMS_키
+BACKEND_GMS_MODEL=gpt-5-nano
+NLR_GMS_MODEL=gpt-5.4-nano
 ```
 
-기존 DB 데이터를 살려야 한다면 아래 명령으로 빠진 마이그레이션을 한 번만 적용합니다.
+설정한 뒤 1번 서버 실행 명령을 다시 실행합니다. 키가 들어 있는 파일은 Git에 올리지 않습니다.
+AI 서버가 켜졌다는 것과 화면에서 자연어 추천을 끝까지 사용할 수 있다는 것은 별개입니다.
+화면·백엔드의 연결 상태도 함께 확인해야 합니다.
 
-```powershell
-docker compose -f compose.manual-test.yaml run -d --name hyanghae-migration-repair -e SPRING_FLYWAY_OUT_OF_ORDER=true backend
-docker logs -f hyanghae-migration-repair
-```
+- [화면 실행 안내](../frontend/README.md)
+- [백엔드 개발 안내](../backend/README.md)
+- [기본 데이터 적재 안내](../backend/db/seed/README.md)
 
-로그에 `Successfully applied`와 `Started BackendApplication`이 나오면 `Ctrl+C`로 로그 보기를 끝내고
-다음 명령을 실행합니다.
-
-```powershell
-docker rm -f hyanghae-migration-repair
-docker compose -f compose.manual-test.yaml up -d --force-recreate backend
-docker compose -f compose.manual-test.yaml ps
-```
-
-이 방법은 로컬 수동 테스트 DB에서만 사용하세요. 운영 DB에서는 임의로 실행하면 안 됩니다.
-
-### `/tmp/seed` 폴더가 없다고 나옴
-
-```text
-chdir to cwd ("/tmp/seed") failed: no such file or directory
-```
-
-예전 방식으로 `docker cp`와 `docker exec`를 따로 실행해서 생긴 오류입니다. 이제 두 명령을 직접
-사용하지 말고 저장소 최상위 폴더에서 새 명령 하나만 실행합니다.
-
-```powershell
-docker compose -f compose.manual-test.yaml run --rm seed
-```
-
-### `GetFileAttributesEx ... backend` 경로 오류
-
-예전 방식에서 현재 폴더와 복사 경로가 맞지 않아 생긴 오류입니다. 문서 맨 위의
-**프로젝트 폴더에서 터미널 열기**를 따라 PowerShell을 다시 열고 아래 명령을 실행하세요.
-
-```powershell
-docker compose -f compose.manual-test.yaml run --rm seed
-```
-
-### `cd backend/db/seed` 경로가 없다고 나옴
-
-PowerShell 프롬프트가 이미 `...\backend\db\seed>`로 끝나는데 `cd backend/db/seed`를 한 번 더
-실행해서 생긴 오류입니다. 이미 해당 폴더에 있으므로 `cd`를 다시 실행하지 마세요.
-
-문서 맨 위의 **프로젝트 폴더에서 터미널 열기**를 따라 PowerShell을 다시 열어주세요.
-새 데이터 넣기 명령은 프로젝트 폴더에서 실행하므로 `backend/db/seed`로 이동할 필요가 없습니다.
-
-### `.sh` 파일을 실행할 수 없다고 나옴
-
-```text
-load_perfume_catalog.sh 용어가 ... 인식되지 않습니다
-```
-
-`.sh`는 PowerShell 파일이 아닙니다. 개별 스크립트를 직접 실행할 필요가 없어졌으므로 저장소
-최상위 폴더에서 다음 명령만 실행합니다. 현재 위치가 헷갈리면 문서 맨 위의
-**프로젝트 폴더에서 터미널 열기**부터 다시 따라주세요.
-
-```powershell
-docker compose -f compose.manual-test.yaml run --rm seed
-```
-
-### 복사한 명령에 `\_`나 `[http://...]`가 들어 있음
-
-메신저나 Markdown 문서에서 명령을 복사하면서 표시용 문자가 섞인 것입니다. 터미널에는 아래처럼
-입력해야 합니다.
-
-- `hyanghae\_test`가 아니라 `hyanghae_test`
-- `load\_scent\_map.sql`이 아니라 `load_scent_map.sql`
-- `[http://주소](http://주소)`가 아니라 `http://주소`
-- PowerShell에서는 Bash 명령의 줄 끝에 있는 `\`를 복사하지 말고 한 줄로 실행
-
-### 테이블이 없다는 오류가 나옴
-
-백엔드를 `manual-test` 프로필로 한 번 실행해 Flyway가 테이블을 생성하게 합니다.
-
-### 화면이나 조회 결과가 비어 있음
-
-4번의 초기 데이터 적재를 했는지 확인합니다. 애플리케이션 실행만으로 향수와 향 지도 데이터가
-자동 입력되지는 않습니다. 특히 AI 상태 응답의 `perfumes` 수와 PostgreSQL의 향수 수는 서로 다른
-값이므로, 4번의 DB 확인 명령으로 실제 적재 여부를 확인하세요.
-
-더 자세한 백엔드 설정은 [백엔드 개발 시작 가이드](../backend/README.md)를 참고합니다.
+활동 seed의 상세 구성과 검증 방법은
+`backend/db/seed/README.md`에서 확인할 수 있습니다.
