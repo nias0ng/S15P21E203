@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.support.IntegrationTest;
 import com.hyanghae.backend.user.exception.UserErrorCode;
+import com.hyanghae.backend.user.service.UserProfileImageService;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -36,6 +37,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * 프로필 사진 올리기·바꾸기·내리기를 실제 파일 시스템 위에서 검증합니다.
@@ -76,6 +79,12 @@ class UserProfileImageIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private UserProfileImageService profileImageService;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     @BeforeEach
     void login() {
@@ -229,6 +238,46 @@ class UserProfileImageIntegrationTest {
                         .file(new MockMultipartFile("file", "avatar.png",
                                 MediaType.IMAGE_PNG_VALUE, png())))
                 .andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * <b>트랜잭션이 롤백되면 쓰던 사진 파일이 살아 있어야 합니다.</b>
+     *
+     * <p>파일 삭제를 트랜잭션 안에서 하면 여기서 사고가 납니다 — 컬럼은 롤백되어 옛 주소를
+     * 가리키는데 그 파일은 이미 지워져, 사용자의 프로필 사진이 통째로 깨집니다. 커밋된 뒤에만
+     * 지우는 설계가 실제로 그것을 막는지 확인합니다.
+     *
+     * <p>새로 올린 파일은 남습니다(고아). 파일이 남는 것은 나중에 치울 수 있지만 쓰던 사진이
+     * 사라지는 것은 되돌릴 수 없어, 둘 중 되돌릴 수 있는 쪽을 택한 결과입니다.
+     */
+    @Test
+    void keepsTheOldFileWhenTheTransactionRollsBack() {
+        String oldUrl = new TransactionTemplate(transactionManager)
+                .execute(status -> profileImageService.upload(imageFile(png())));
+
+        byte[] newContent = png();
+        newContent[newContent.length - 1] = 0x02;
+
+        String newUrl = new TransactionTemplate(transactionManager).execute(status -> {
+            String uploaded = profileImageService.upload(imageFile(newContent));
+            status.setRollbackOnly();
+            return uploaded;
+        });
+
+        assertThat(storedFile(oldUrl))
+                .as("롤백됐으므로 쓰던 사진은 지워지지 않아야 합니다")
+                .exists();
+        assertThat(storedFile(newUrl))
+                .as("새로 올린 파일은 고아로 남습니다 — 문서에 적은 한계입니다")
+                .exists();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT profile_image_url FROM users WHERE user_id = ?", String.class, USER_ID))
+                .as("컬럼도 롤백되어 옛 주소를 가리켜야 합니다")
+                .isEqualTo(oldUrl);
+    }
+
+    private MockMultipartFile imageFile(byte[] content) {
+        return new MockMultipartFile("file", "avatar.png", MediaType.IMAGE_PNG_VALUE, content);
     }
 
     /**

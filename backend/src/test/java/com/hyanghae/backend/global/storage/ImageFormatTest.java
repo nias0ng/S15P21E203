@@ -3,6 +3,7 @@ package com.hyanghae.backend.global.storage;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -78,6 +79,50 @@ class ImageFormatTest {
     void rejectsTooShortContent() {
         assertThat(ImageFormat.detect(new byte[]{(byte) 0xFF})).isEmpty();
         assertThat(ImageFormat.detect(new byte[0])).isEmpty();
+    }
+
+    /**
+     * <b>읽어 온 앞부분이 가장 긴 시그니처보다 짧아도 짧은 형식은 알아봐야 합니다.</b>
+     *
+     * <p>저장소는 {@code readNBytes(SIGNATURE_LENGTH)} 로 12바이트를 요청하지만, 파일이 그보다
+     * 짧으면 있는 만큼만 돌아옵니다. 길이 비교를 가장 긴 시그니처(WEBP, 12바이트) 기준으로
+     * 하면 6바이트짜리 GIF 가 통째로 거절됩니다.
+     */
+    @Test
+    void detectsShortFormatsEvenWhenContentIsShorterThanTheLongestSignature() {
+        byte[] sixByteGif = "GIF89a".getBytes(StandardCharsets.US_ASCII);
+
+        assertThat(sixByteGif.length).isLessThan(ImageFormat.SIGNATURE_LENGTH);
+        assertThat(ImageFormat.detect(sixByteGif)).contains(ImageFormat.GIF);
+    }
+
+    /**
+     * WEBP 시그니처 중간의 와일드카드 뒤쪽까지 닿지 못하는 길이면 맞지 않는 것으로 봅니다.
+     *
+     * <p>와일드카드가 있다고 길이 확인을 건너뛰면 여기서 배열 범위를 넘습니다. {@code RIFF}
+     * 까지만 있고 {@code WEBP} 자리가 없는 10바이트로 그 경계를 짚습니다.
+     */
+    @Test
+    void rejectsRiffTooShortToReachTheWildcardTail() {
+        byte[] truncatedRiff = Arrays.copyOf(riff("WEBP"), 10);
+
+        assertThat(ImageFormat.detect(truncatedRiff)).isEmpty();
+    }
+
+    /**
+     * 와일드카드 자리에는 무엇이 와도 됩니다. RIFF 의 그 4바이트는 파일 길이라 파일마다
+     * 다릅니다 — 특정 값에 맞춰 두면 그 크기의 WebP 만 통과합니다.
+     */
+    @Test
+    void acceptsAnyBytesInTheWildcardPositions() {
+        byte[] zeroLength = riff("WEBP");
+        Arrays.fill(zeroLength, 4, 8, (byte) 0x00);
+
+        byte[] maxLength = riff("WEBP");
+        Arrays.fill(maxLength, 4, 8, (byte) 0xFF);
+
+        assertThat(ImageFormat.detect(zeroLength)).contains(ImageFormat.WEBP);
+        assertThat(ImageFormat.detect(maxLength)).contains(ImageFormat.WEBP);
     }
 
     private byte[] riff(String type) {

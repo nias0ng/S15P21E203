@@ -32,6 +32,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -154,6 +157,64 @@ class PostImageUploadIntegrationTest {
                 .getContentAsByteArray();
 
         assertThat(served).isEqualTo(content);
+    }
+
+    /**
+     * 받는 네 형식이 모두 올라가고, <b>내용에서 알아낸 형식대로 확장자가 붙어</b> 브라우저가
+     * 맞는 타입으로 받아야 합니다.
+     *
+     * <p>형식 판별 자체는 단위 테스트가 봅니다. 여기서 보는 것은 그 결과가 확장자와 응답의
+     * {@code Content-Type} 까지 제대로 이어지는지입니다. 판별은 맞는데 확장자를 잘못 붙이면
+     * 화면에서 깨집니다.
+     */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("supportedImages")
+    void storesEverySupportedFormatWithItsOwnExtension(
+            String label, byte[] content, String extension, String contentType
+    ) throws Exception {
+        String imageUrl = upload(new MockMultipartFile("file", "upload.bin",
+                MediaType.APPLICATION_OCTET_STREAM_VALUE, content));
+
+        assertThat(imageUrl).endsWith("." + extension);
+
+        mockMvc.perform(get(imageUrl))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", contentType));
+    }
+
+    /**
+     * 보낸 {@code Content-Type} 을 일부러 {@code application/octet-stream} 으로 두었습니다.
+     * 판별이 내용만 보고 이뤄지는지 확인하려면 헤더가 도움이 되지 않아야 합니다.
+     */
+    static Stream<Arguments> supportedImages() {
+        return Stream.of(
+                Arguments.of("JPEG", bytesStartingWith(
+                        new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0}),
+                        "jpg", MediaType.IMAGE_JPEG_VALUE),
+                Arguments.of("PNG", bytesStartingWith(
+                        new byte[]{(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}),
+                        "png", MediaType.IMAGE_PNG_VALUE),
+                Arguments.of("GIF", bytesStartingWith(
+                        "GIF89a".getBytes(StandardCharsets.US_ASCII)),
+                        "gif", MediaType.IMAGE_GIF_VALUE),
+                Arguments.of("WEBP", bytesStartingWith(webpHeader()),
+                        "webp", "image/webp")
+        );
+    }
+
+    private static byte[] webpHeader() {
+        byte[] head = new byte[12];
+        System.arraycopy("RIFF".getBytes(StandardCharsets.US_ASCII), 0, head, 0, 4);
+        head[4] = 0x20;
+        System.arraycopy("WEBP".getBytes(StandardCharsets.US_ASCII), 0, head, 8, 4);
+        return head;
+    }
+
+    private static byte[] bytesStartingWith(byte[] signature) {
+        byte[] content = new byte[64];
+        System.arraycopy(signature, 0, content, 0, signature.length);
+        Arrays.fill(content, signature.length, content.length, (byte) 0x01);
+        return content;
     }
 
     /**
