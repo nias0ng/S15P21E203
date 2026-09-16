@@ -33,11 +33,12 @@ services:
       NLR_AI_BASE_URL: http://ai:8000
     ports:
       - "127.0.0.1:${MANUAL_TEST_BACKEND_PORT:-8080}:8080"
-    # 게시글 이미지를 쌓는 곳입니다. 볼륨이 없으면 --build 로 다시 올릴 때마다 그동안 올린
-    # 이미지가 사라지고 게시글에는 깨진 주소만 남습니다. 배포 서버의 compose.yaml 에도 같은
+    # 올라온 이미지를 쌓는 곳입니다. 게시글 이미지와 프로필 사진이 이 아래의 서로 다른
+    # 하위 디렉터리를 쓰므로 볼륨은 하나면 됩니다. 볼륨이 없으면 --build 로 다시 올릴 때마다
+    # 그동안 올린 이미지가 사라지고 깨진 주소만 남습니다. 배포 서버의 compose.yaml 에도 같은
     # 볼륨이 있어야 합니다.
     volumes:
-      - manual-test-post-images:/app/uploads
+      - manual-test-uploaded-images:/app/uploads
     depends_on:
       ai:
         condition: service_healthy
@@ -145,5 +146,5 @@ services:
 volumes:
   manual-test-postgres-data:
   manual-test-redis-data:
-  manual-test-post-images:
+  manual-test-uploaded-images:
   nlr-logs:

@@ -319,6 +319,9 @@ class PostImageUploadIntegrationTest {
                 .andExpect(status().isNoContent());
 
         assertThat(storedFile(imageUrl)).exists();
+        // 파일이 남아 있는 것만으로는 부족합니다. 남은 글을 보는 사람에게 이미지가 실제로
+        // 내려가야 합니다.
+        mockMvc.perform(get(imageUrl)).andExpect(status().isOk());
 
         currentUser.login(OTHER_USER_ID);
         mockMvc.perform(delete("/api/v1/posts/{postId}", theirs))
