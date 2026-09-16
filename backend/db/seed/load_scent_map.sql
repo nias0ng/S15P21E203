@@ -126,7 +126,7 @@ INSERT INTO perfumes (brand_id, name, gender, fragrantica_id, release_year,
                       korea_selection_rank, korea_selection_basis)
 SELECT b.brand_id,
        s.name,
-       s.gender,
+       UPPER(TRIM(s.gender)),
        s.fragrantica_id::bigint,
        NULLIF(s.year, '')::int,
        s.korea_selection_rank::int,

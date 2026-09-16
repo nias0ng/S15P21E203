@@ -76,6 +76,25 @@ services:
         bash ./load_perfume_images.sh
         echo "모든 초기 데이터 적재가 끝났습니다."
 
+  seed-local:
+    build:
+      context: ./backend
+      dockerfile: db/seed/Dockerfile.local
+    profiles:
+      - tools
+    environment:
+      SEED_ENV: manual-test
+      SEED_JDBC_URL: jdbc:postgresql://postgres:5432/${MANUAL_TEST_POSTGRES_DB:-hyanghae_test}
+      SEED_DB_USER: ${MANUAL_TEST_POSTGRES_USER:-hyanghae}
+      SEED_DB_PASSWORD: ${MANUAL_TEST_POSTGRES_PASSWORD:-hyanghae_test}
+      SEED_LOGIN_PASSWORD: ${SEED_LOGIN_PASSWORD:-}
+      SEED_MODE: fill
+    volumes:
+      - ./backend/db/seed:/workspace/backend/db/seed:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   postgres:
     image: postgres:17
     environment:
