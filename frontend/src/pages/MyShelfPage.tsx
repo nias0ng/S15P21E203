@@ -418,6 +418,7 @@ export default function MyShelfPage() {
         open={editOpen}
         onClose={() => setEditOpen(false)}
         item={panelItem}
+        ready={detailReady}
         onSave={(next) => {
           if (selectedId === undefined || panelItem === null) return
           setEditOpen(false)
