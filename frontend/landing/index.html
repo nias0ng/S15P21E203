@@ -189,8 +189,18 @@
   /* 바탕 — 창이 560 보다 낮아도 스크롤이 생기지 않게 · 휴대폰 주소창이 접혔다 펴져도 화면이 안 튀게 (dvh) */
   :root:not([data-fixed]) { --pb-stage-min: 320px; }
   @supports (height: 100dvh) { :root:not([data-fixed]) { --pb-stage-h: 100dvh; } }
+  /* ⭐ 검색창 기본 크기 — 1280 보다 넓은 창 몫 (2026-09-16, A 메모의 요청 · 사용자 : *"자연어 검색창을 조금 줄이기"*).
+     ⚠ 인라인 fallback(520 × 56 · 버튼 42)은 **안 고친다** — data-fixed 일 때 나오는 비교 패널 '반응형' [원본] 이 그 값이다.
+     ⚠ 높이와 버튼은 묶여 있다 — 오른쪽 여백(7px)과 같은 테가 위아래에 남으려면 h = btn + 14 (50 = 36 + 14)
+
+     ⭐ `--pb-search-top` 30 — **앱의 향해 일지 판 윗변에 맞춘다** (2026-09-16 사용자). 판은 헤더(90) 아래 30 이므로 무대 기준 top 120 이고,
+       검색창은 `top = --pb-search-top + --pb-search-drop` 인데 drop = `params.searchDrop` + hostTop 이다.
+       ⚠ `searchDrop` 은 `clamp(0, 240)` 이라 **음수가 안 된다** — 그래서 40 → 0 (params.js)으로 내리고 남은 14 를 여기서 44 → 30 으로 준다. 90 + 0 + 30 = 120.
+       ⚠⚠ 설명문구(`#zone-info`)와 존 향 폰트(수면 타이포)는 **손대지 않는다 — 저절로 따라온다.**
+         `--pb-info-top` 이 이 값과 `--pb-search-h` 를 읽고(아래 data-info-center), 타이포 천장은 그 블록 아래끝 + 18px 이다 (main.js 가 `ui.zoneInfoRect()` 로 재서 title.js 에 넘긴다). */
+  :root:not([data-fixed]) { --pb-search-w: 450px; --pb-search-h: 50px; --pb-search-btn: 36px; --pb-search-top: 30px; }
   @media (max-width: 1280px) { :root:not([data-fixed]) {
-    --pb-edge: 40px; --pb-info-w: 280px; --pb-mini-w: 214px; --pb-search-w: 480px;
+    --pb-edge: 40px; --pb-info-w: 280px; --pb-mini-w: 214px; --pb-search-w: 420px;
     --pb-chart-edge: 28px; --pb-chart-legend: 208px;
   } }
   @media (max-width: 1024px) { :root:not([data-fixed]) {
@@ -290,13 +300,20 @@
          ⚠⚠ 이 표면은 **자기 바탕이 있다** — 글자는 `--pb-on-surface`(CHARCOAL) 이지 `--pb-ink` 가 아니다.
            v0.44.0 에 카드가 그 둘을 안 갈라 저녁에 제목이 사라졌다 (불변식 25).
          ⚠ 그래도 **바다가 비친다** — 불투명하지 않고 blur 를 준다. 물 위에 놓인 종이여야 한다.
-         ⚠ id 둘(`search-input` · `search-button`)은 ui.js 가 잡으므로 **이름을 바꾸지 않는다** -->
-    <div style="pointer-events:auto;position:relative;display:flex;align-items:center;width:var(--pb-search-w,520px);height:var(--pb-search-h,56px);padding:0 7px 0 20px;border-radius:999px;background:var(--pb-surface-glass,rgba(249,246,239,0.88));border:1px solid var(--pb-line-soft,#C9C4BB);box-shadow:var(--pb-lift,0 10px 30px rgba(24,18,34,0.20));backdrop-filter:blur(7px);">
+         ⚠ id 둘(`search-input` · `search-button`)은 ui.js 가 잡으므로 **이름을 바꾸지 않는다**
+
+         ⭐ 2026-09-16 (사용자) — 둘을 같이 바꿨다 :
+         · **막대 그림자를 뺐다** ("일단 삭제"). 예전 값은 `box-shadow:var(--pb-lift,0 10px 30px rgba(24,18,34,0.20))` — 되살리려면 그 한 조각을 다시 넣는다.
+           ⚠ 막대는 여전히 `backdrop-filter: blur(7px)` 과 상아색 테두리로 물 위에 뜬다 — 그림자만 뺀 것이지 판을 없앤 게 아니다.
+         · **버튼을 남색 → 주황 그라데이션으로** (`--pb-search-btn-a` #1E2947 · `--pb-search-btn-b` #E2833C).
+           예전은 물빛 → 브론즈 `linear-gradient(140deg,var(--pb-shimmer,#A7C8DB),var(--pb-accent,#A68F5B))` 였다.
+           ⚠ 남색은 말풍선 카드 단추와 같은 값이다 (`--pb-card-btn` #1E2947) — 그쪽을 바꾸면 여기도 같이 본다. 주황은 저녁 하늘(살구색)에 맞춘 새 값이라 팔레트 토큰이 아직 없다. -->
+    <div style="pointer-events:auto;position:relative;display:flex;align-items:center;width:var(--pb-search-w,520px);height:var(--pb-search-h,56px);padding:0 7px 0 20px;border-radius:999px;background:var(--pb-surface-glass,rgba(249,246,239,0.88));border:1px solid var(--pb-line-soft,#C9C4BB);backdrop-filter:blur(7px);">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" style="color:var(--pb-on-surface-2,rgba(47,47,50,0.62));flex:none;margin-right:12px;">
         <circle cx="10.5" cy="10.5" r="6.8"/><line x1="15.6" y1="15.6" x2="20.5" y2="20.5"/>
       </svg>
       <input id="search-input" placeholder="어떤 향을 찾고 계신가요?" style="flex:1;min-width:0;height:100%;padding:0;border:none;background:none;outline:none;font-family:inherit;font-size:var(--pb-search-fs,15px);color:var(--pb-on-surface,#2F2F32);">
-      <button id="search-button" aria-label="찾기" style="flex:none;display:flex;align-items:center;justify-content:center;width:var(--pb-search-btn,42px);height:var(--pb-search-btn,42px);padding:0;border:none;border-radius:50%;background:linear-gradient(140deg,var(--pb-shimmer,#A7C8DB),var(--pb-accent,#A68F5B));color:#F9F6EF;cursor:pointer;box-shadow:0 2px 8px rgba(24,18,34,0.18);">
+      <button id="search-button" aria-label="찾기" style="flex:none;display:flex;align-items:center;justify-content:center;width:var(--pb-search-btn,42px);height:var(--pb-search-btn,42px);padding:0;border:none;border-radius:50%;background:linear-gradient(140deg,var(--pb-search-btn-a,#1E2947),var(--pb-search-btn-b,#E2833C));color:#F9F6EF;cursor:pointer;box-shadow:0 2px 8px rgba(24,18,34,0.18);">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="4.5" y1="12" x2="18.5" y2="12"/><polyline points="13,6.5 18.5,12 13,17.5"/>
         </svg>

@@ -840,13 +840,16 @@ const BASELINES = [
   {
     name: '검색창 · 정보 블록 자리 · 설명 글자',
     hint: '2026-09-15 (v0.67.0) 이전 — 검색창이 무대 위끝에서 44px(헤더 바로 밑) · 정보 블록은 그 36px 아래 · 설명 13px 였다. 사용자 : "지금 이 검색창과 문구가 더 아래 왔으면 좋곘고 설명문구 크기가 조금 더 커졌으면 좋겠음". ' +
-          '지금은 검색창 · 정보 블록 · 경고 토스트가 40px 더 아래 · 설명 × 1.15 (13 → 15px). ⚠ 정보 블록 아래끝이 수면 타이포의 천장이라 너무 내리면 큰 글자가 작아진다 (보려면 존에 들어간다)',
+          '⭐ 2026-09-16 에 내림을 **0 으로 되돌렸다** — 검색창을 앱의 향해 일지 판 윗변(무대 기준 120)에 맞췄다. v0.67.0 의 40 은 hostTop 90 이 더해지면서 두 번 내려간 셈이었다. ' +
+          '남은 몫은 index.html 의 --pb-search-top 44 → 30 이 맡는다 (이 값은 음수가 안 된다). 그래서 지금 이 묶음이 [원본] 과 다른 것은 **설명 글자 배율뿐**이다 (× 1.15 = 13 → 15px). ' +
+          '⚠ 정보 블록 아래끝이 수면 타이포의 천장이라 내리면 큰 글자가 작아진다 (보려면 존에 들어간다)',
     label: '위 · 13px',
     values: { searchDrop: 0, infoDescK: 1 },
     presets: [
-      { label: '기본', hint: '✅ 지금 값 — 40px 내림 · 설명 × 1.15', values: { searchDrop: 40, infoDescK: 1.15 } },
+      { label: '기본', hint: '✅ 지금 값 — 안 내림(향해 일지 판 윗변에 맞춤) · 설명 × 1.15', values: { searchDrop: 0, infoDescK: 1.15 } },
+      { label: '40px 내림', hint: 'v0.67.0 ~ v0.72.0 의 자리 — hostTop 과 합쳐 130px 내려가 있었다', values: { searchDrop: 40, infoDescK: 1.15 } },
       { label: '더 아래', hint: '64px 내림 · 설명 × 1.15', values: { searchDrop: 64, infoDescK: 1.15 } },
-      { label: '더 크게', hint: '40px 내림 · 설명 × 1.3 (17px)', values: { searchDrop: 40, infoDescK: 1.3 } }
+      { label: '더 크게', hint: '안 내림 · 설명 × 1.3 (17px)', values: { searchDrop: 0, infoDescK: 1.3 } }
     ]
   },
   {
