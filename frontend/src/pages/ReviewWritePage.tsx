@@ -34,6 +34,40 @@ import { PageFallback } from '@/shared/ui/PageFallback'
 import { Textarea } from '@/shared/ui/Textarea'
 
 /**
+ * 수정이 절반만 저장된 경우.
+ *
+ * 제목 · 본문(`PATCH`)과 계절(`PUT .../seasons`)이 **서버에서 각자 트랜잭션**이라,
+ * 앞이 커밋된 뒤 뒤가 실패할 수 있습니다. 화면이 되돌릴 수는 없으니 무엇이
+ * 남았는지라도 정확히 알려주려고 원인 오류를 감싸 둡니다.
+ *
+ * 한 번의 `PATCH` 로 합치려면 백엔드가 `seasonCodes` 를 받아야 합니다(별도 이슈).
+ */
+class PartialSaveError extends Error {
+  readonly textSaved: boolean
+  readonly reason: unknown
+
+  constructor(textSaved: boolean, reason: unknown) {
+    super('계절을 저장하지 못했습니다')
+    this.name = 'PartialSaveError'
+    this.textSaved = textSaved
+    this.reason = reason
+  }
+}
+
+/** 저장 실패를 사용자가 다음에 뭘 해야 할지 아는 문장으로 옮깁니다 */
+function saveErrorMessage(error: unknown): string {
+  if (error instanceof PartialSaveError) {
+    const detail = isApiError(error.reason) ? ` (${error.reason.message})` : ''
+    return error.textSaved
+      ? `제목과 본문은 저장됐지만 계절을 저장하지 못했습니다${detail}. [수정] 을 다시 눌러주세요.`
+      : `계절을 저장하지 못했습니다${detail}. 잠시 후 다시 시도해주세요.`
+  }
+  return isApiError(error)
+    ? error.message
+    : '저장하지 못했습니다. 잠시 후 다시 시도해주세요.'
+}
+
+/**
  * 후기 게시글 작성 · 수정 (와이어프레임 A24a — CMT-03 · CMT-06 · DTL-05 · DTL-16)
  *
  * **한 화면이 두 모드입니다.** 주소로 가릅니다.
@@ -145,8 +179,10 @@ export default function ReviewWritePage() {
             : {}),
         }
 
+        let textSaved = false
         if (Object.keys(changed).length > 0) {
           await updateReview(reviewId, changed)
+          textSaved = true
         }
 
         const before = loaded?.seasons.map((season) => season.code) ?? []
@@ -155,7 +191,17 @@ export default function ReviewWritePage() {
           seasons.some((code) => !before.includes(code))
 
         if (seasonsChanged) {
-          await replaceReviewSeasons(reviewId, seasons)
+          try {
+            await replaceReviewSeasons(reviewId, seasons)
+          } catch (error) {
+            /*
+             * 두 요청은 서버에서 **각자 다른 트랜잭션**입니다(`update` ·
+             * `replaceSeasons` 가 각각 `@Transactional`). 앞이 커밋된 뒤 뒤가
+             * 실패하면 되돌릴 방법이 없으므로, 무엇이 남았는지 알려주기라도 합니다.
+             * 그냥 "저장 실패"라고만 하면 이미 바뀐 제목을 사용자가 모릅니다.
+             */
+            throw new PartialSaveError(textSaved, error)
+          }
         }
 
         return reviewId
@@ -189,6 +235,26 @@ export default function ReviewWritePage() {
       void queryClient.invalidateQueries({ queryKey: communityKeys.all })
 
       navigate(toReviewDetail(savedId), { replace: true })
+    },
+    onSettled: () => {
+      if (!isEdit) return
+
+      /*
+       * **성공이든 실패든** 이 후기를 낡은 것으로 표시합니다.
+       *
+       * 수정은 요청이 둘로 갈려서 앞만 성공하고 뒤가 실패할 수 있습니다. 그때
+       * 캐시를 그대로 두면 사용자가 상세로 돌아갔을 때 옛 제목이 보여 "아무것도
+       * 저장 안 됐구나" 하고 떠납니다 — 서버에는 이미 바뀌어 있는데도요.
+       *
+       * `refetchType: 'none'` 인 이유: `GET /reviews/{id}` 는 부를 때마다
+       * 조회수가 오릅니다. 여기서 바로 다시 부르면 저장에 실패한 사람이 자기
+       * 후기 조회수를 올리게 됩니다. 표시만 해두면 다음에 상세를 열 때 —
+       * 어차피 조회인 그 순간에 — 새로 읽습니다.
+       */
+      void queryClient.invalidateQueries({
+        queryKey: reviewKeys.detail(reviewId),
+        refetchType: 'none',
+      })
     },
   })
 
@@ -363,9 +429,7 @@ export default function ReviewWritePage() {
 
       {mutation.error !== null && (
         <p className="text-danger text-caption" role="alert">
-          {isApiError(mutation.error)
-            ? mutation.error.message
-            : '저장하지 못했습니다. 잠시 후 다시 시도해주세요.'}
+          {saveErrorMessage(mutation.error)}
         </p>
       )}
     </WriteForm>
