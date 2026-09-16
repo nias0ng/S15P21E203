@@ -24,7 +24,13 @@ interface CollectionSummaryResponse {
 
 interface CollectionsResponse {
   collections: CollectionSummaryResponse[]
+  page: number
+  size: number
+  totalElements: number
 }
+
+/** 백엔드 `MAX_PAGE_SIZE`. 더 큰 값을 보내도 서버가 여기로 깎습니다 */
+const MAX_PAGE_SIZE = 100
 
 /** 컬렉션에 담긴 향수 한 건. 지우는 데 쓰는 번호는 `shelfItemId` 입니다 */
 interface CollectionPerfumeResponse {
@@ -76,11 +82,34 @@ function toCollectionPerfume(
 /**
  * 내 컬렉션 목록 (COL-01). 로그인이 필요합니다.
  *
- * 진열대와 달리 페이지가 없습니다 — 서버가 `collections` 배열 하나로 줍니다.
+ * **페이지로 나뉩니다.** 기본 10개라 그냥 부르면 열한 번째부터 조용히 사라집니다 —
+ * 진열대 하단 띠는 내 컬렉션을 **전부** 보여주는 자리라 끝까지 받아옵니다.
+ * 대부분 한 번으로 끝납니다(100개까지).
  */
 export async function getMyCollections(): Promise<CollectionSummary[]> {
-  const { data } = await http.get<CollectionsResponse>('/users/me/collections')
-  return data.collections.map(toCollectionSummary)
+  const first = await fetchCollectionPage(0)
+  const collections = [...first.collections]
+
+  // 서버가 size 를 깎을 수 있으므로 **응답이 알려준 size** 로 남은 장수를 셉니다
+  const pageSize = first.size > 0 ? first.size : MAX_PAGE_SIZE
+  const pages = Math.ceil(first.totalElements / pageSize)
+
+  for (let page = 1; page < pages; page += 1) {
+    const next = await fetchCollectionPage(page)
+    collections.push(...next.collections)
+  }
+
+  return collections.map(toCollectionSummary)
+}
+
+async function fetchCollectionPage(page: number) {
+  const { data } = await http.get<CollectionsResponse>(
+    '/users/me/collections',
+    {
+      params: { page, size: MAX_PAGE_SIZE },
+    },
+  )
+  return data
 }
 
 /** 컬렉션 상세 (A17 · COL-02). 담긴 향수가 함께 옵니다 */
