@@ -1,4 +1,5 @@
--- 향수 카탈로그 적재. 자연어 추천이 쓰는 향수 129,161개와 향 특성 100만 행을 넣습니다.
+-- 향수 카탈로그 적재. 자연어 추천이 쓰는 향수 129,161개와 향 특성 100만 행을 넣고
+-- perfume_ko.csv의 한국어 이름을 보충합니다.
 --
 -- 실행 (이 디렉터리에서):
 --     ./load_perfume_catalog.sh
@@ -24,6 +25,7 @@
 -- 향 지도용 200개가 이 데이터에도 들어 있고, 양쪽 다 fragrantica_id 로 맞추기 때문입니다.
 
 \set ON_ERROR_STOP on
+\pset pager off
 \timing on
 
 BEGIN;
@@ -38,6 +40,15 @@ CREATE TEMP TABLE stg_brands (
     name TEXT
 ) ON COMMIT DROP;
 
+CREATE TEMP TABLE stg_brands_ko (
+    name TEXT,
+    name_ko TEXT,
+    note TEXT,
+    logo_domain TEXT,
+    n_perfumes TEXT,
+    logo_override TEXT
+) ON COMMIT DROP;
+
 CREATE TEMP TABLE stg_accords (
     name TEXT, is_new TEXT
 ) ON COMMIT DROP;
@@ -50,13 +61,19 @@ CREATE TEMP TABLE stg_perfume_accords (
     fragrantica_id TEXT, accord_name TEXT, rank TEXT, weight TEXT
 ) ON COMMIT DROP;
 
--- 네 파일을 psql 의 현재 디렉터리에서 읽습니다. ai/delivery/for_db 에서 바로 읽지 않는 이유는
--- 둘이 gzip 이고 \copy 가 압축을 풀지 못하기 때문입니다. load_perfume_catalog.sh 가 네 파일을
+CREATE TEMP TABLE stg_perfume_ko (
+    name TEXT, translated_name TEXT
+) ON COMMIT DROP;
+
+-- 다섯 파일을 psql 의 현재 디렉터리에서 읽습니다. ai/delivery/for_db 에서 바로 읽지 않는 이유는
+-- 둘이 gzip 이고 \copy 가 압축을 풀지 못하기 때문입니다. load_perfume_catalog.sh 가 다섯 파일을
 -- 한곳에 모아 두고 이 스크립트를 부릅니다.
 \copy stg_brands          FROM 'brands.csv'          WITH (FORMAT csv, HEADER true)
+\copy stg_brands_ko       FROM 'brands_ko.csv'       WITH (FORMAT csv, HEADER true)
 \copy stg_accords         FROM 'accords.csv'         WITH (FORMAT csv, HEADER true)
 \copy stg_perfumes        FROM 'perfumes.csv'        WITH (FORMAT csv, HEADER true)
 \copy stg_perfume_accords FROM 'perfume_accords.csv' WITH (FORMAT csv, HEADER true)
+\copy stg_perfume_ko      FROM 'perfume_ko.csv'      WITH (FORMAT csv, HEADER true)
 
 -- ---------------------------------------------------------------------------
 -- 2. 넘겨받은 수가 맞는지 먼저 봅니다.
@@ -86,6 +103,20 @@ BEGIN
     END IF;
 END $$;
 
+-- 영문 이름 하나에 번역이 하나로 정해지는 값만 미리 모읍니다. 이 임시 표를 분석해 두면
+-- 13만 건을 이름으로 맞출 때 PostgreSQL이 전체 표를 반복해서 훑지 않습니다.
+CREATE TEMP TABLE stg_perfume_ko_unique ON COMMIT DROP AS
+SELECT name, min(NULLIF(btrim(translated_name), '')) AS translated_name
+FROM stg_perfume_ko
+WHERE NULLIF(btrim(name), '') IS NOT NULL
+  AND NULLIF(btrim(translated_name), '') IS NOT NULL
+GROUP BY name
+HAVING count(DISTINCT btrim(translated_name)) = 1;
+
+CREATE UNIQUE INDEX ON stg_perfume_ko_unique (name);
+ANALYZE stg_perfumes;
+ANALYZE stg_perfume_ko_unique;
+
 -- ---------------------------------------------------------------------------
 -- 3. 브랜드. 이름으로 맞춰 없는 것만 넣습니다.
 --
@@ -98,6 +129,48 @@ END $$;
 INSERT INTO brands (name)
 SELECT name FROM stg_brands
 ON CONFLICT (name) DO NOTHING;
+
+-- 브랜드 한국어 이름과 로고를 보충합니다. 같은 영문 이름에 번역이 여러 개인 경우에는
+-- 한국어 이름만 건너뛰고, 로고 정보는 사용할 수 있으면 별도로 반영합니다.
+-- logo_override가 있으면 그대로 쓰고, 없으면 logo_domain으로 img.logo.dev 주소를 만듭니다.
+WITH brand_meta AS (
+    SELECT name,
+           CASE WHEN count(DISTINCT NULLIF(btrim(name_ko), '')) = 1
+                THEN min(NULLIF(btrim(name_ko), '')) END AS name_ko,
+           max(NULLIF(btrim(logo_domain), '')) AS logo_domain,
+           max(NULLIF(btrim(logo_override), '')) AS logo_override
+    FROM stg_brands_ko
+    WHERE NULLIF(btrim(name), '') IS NOT NULL
+    GROUP BY name
+), ranked_brand_meta AS (
+    SELECT brand_meta.*,
+           count(*) OVER (PARTITION BY name_ko) AS name_ko_count
+    FROM brand_meta
+)
+UPDATE brands b
+SET name_ko = COALESCE(
+        NULLIF(btrim(b.name_ko), ''),
+        CASE
+            WHEN m.name_ko IS NOT NULL
+             AND m.name_ko_count = 1
+             AND NOT EXISTS (
+                 SELECT 1
+                 FROM brands existing
+                 WHERE existing.name_ko = m.name_ko
+                   AND existing.brand_id <> b.brand_id
+             )
+            THEN m.name_ko
+        END
+    ),
+    logo_url = COALESCE(
+        m.logo_override,
+        NULLIF(btrim(b.logo_url), ''),
+        CASE WHEN m.logo_domain IS NOT NULL
+             THEN 'https://img.logo.dev/' || m.logo_domain END
+    )
+FROM ranked_brand_meta m
+WHERE b.name = m.name
+  AND (m.name_ko IS NOT NULL OR m.logo_override IS NOT NULL OR m.logo_domain IS NOT NULL);
 
 -- ---------------------------------------------------------------------------
 -- 4. accord 마스터. 92개 중 없는 것만 들어갑니다.
@@ -116,8 +189,8 @@ ON CONFLICT (name) DO NOTHING;
 -- 지도가 가리키는 향수와 추천이 가리키는 향수가 갈립니다.
 --
 -- 갱신할 때 이름과 브랜드도 바꿉니다. 이름이 열쇠가 아니므로 원본에서 이름이 바뀌어도 같은
--- 행을 따라갑니다. 반대로 name_ko·gender·description 처럼 이 CSV 에 없는 값은 건드리지
--- 않습니다. 향 지도 적재가 채운 값을 지우면 안 됩니다.
+-- 행을 따라갑니다. 반대로 gender·description 처럼 원본 CSV 에 없는 값은 건드리지 않습니다.
+-- name_ko 는 별도 한국어 이름 CSV로 빈 값만 보충합니다.
 --
 -- is_active 도 건드리지 않습니다. 운영에서 내린 향수를 적재가 되살리면 안 됩니다.
 --
@@ -126,15 +199,18 @@ ON CONFLICT (name) DO NOTHING;
 -- 적재가 만든 중복이 아니라 원래 있던 행이고, 어느 쪽이 진짜인지는 사람이 정해야 합니다.
 -- 운영에 적재하기 전에 SELECT * FROM perfumes WHERE fragrantica_id IS NULL 로 확인하십시오.
 -- ---------------------------------------------------------------------------
-INSERT INTO perfumes (fragrantica_id, name, brand_id, fragrantica_rating_count)
+INSERT INTO perfumes AS target (fragrantica_id, name, name_ko, brand_id, fragrantica_rating_count)
 SELECT s.fragrantica_id::bigint,
        s.name,
+       ko.translated_name,
        b.brand_id,
        s.people::int
 FROM stg_perfumes s
 JOIN brands b ON b.name = s.brand_name
+LEFT JOIN stg_perfume_ko_unique ko ON ko.name = s.name
 ON CONFLICT (fragrantica_id) DO UPDATE SET
     name                     = EXCLUDED.name,
+    name_ko                  = COALESCE(NULLIF(btrim(target.name_ko), ''), EXCLUDED.name_ko),
     brand_id                 = EXCLUDED.brand_id,
     fragrantica_rating_count = EXCLUDED.fragrantica_rating_count;
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# 향수 카탈로그 적재. load_perfume_catalog.sql 이 읽을 CSV 네 개를 한곳에 모은 뒤 psql 을 부릅니다.
+# 향수 카탈로그 적재. load_perfume_catalog.sql 이 읽을 CSV 다섯 개를 한곳에 모은 뒤 psql 을 부릅니다.
 #
 # 실행 (이 디렉터리에서):
 #     ./load_perfume_catalog.sh
@@ -38,7 +38,8 @@ STAGE_DIR="$(mktemp -d)"
 trap 'rm -rf "$STAGE_DIR"' EXIT
 
 echo "CSV 를 준비합니다..."
-cp "$DELIVERY_DIR/brands.csv" "$DELIVERY_DIR/accords.csv" "$STAGE_DIR/"
+cp "$DELIVERY_DIR/brands.csv" "$DELIVERY_DIR/accords.csv" \
+   "$SEED_DIR/brands_ko.csv" "$SEED_DIR/perfume_ko.csv" "$STAGE_DIR/"
 gzip -dc "$DELIVERY_DIR/perfumes.csv.gz"        > "$STAGE_DIR/perfumes.csv"
 gzip -dc "$DELIVERY_DIR/perfume_accords.csv.gz" > "$STAGE_DIR/perfume_accords.csv"
 cp "$SEED_DIR/load_perfume_catalog.sql" "$STAGE_DIR/"

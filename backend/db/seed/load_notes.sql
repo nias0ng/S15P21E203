@@ -11,6 +11,7 @@
 -- 반영하지 않습니다. CSV 에 없는 기존 노트의 활성 상태와 메타데이터는 건드리지 않습니다.
 
 \set ON_ERROR_STOP on
+\pset pager off
 \timing on
 
 BEGIN;

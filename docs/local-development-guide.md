@@ -10,6 +10,41 @@
 | 3 | 테스트 사용자·진열대·게시글 넣기 |
 | 4 | 웹 화면 열기 |
 
+## 이미 실행한 적이 있는 팀원: seed가 업데이트됐을 때
+
+최신 코드를 받은 뒤 seed 관련 파일이 변경됐다면 아래 순서로 다시 실행합니다.
+기존 DB를 삭제하지 않고 변경된 기본 데이터와 테스트 데이터를 반영합니다.
+프로젝트를 처음 실행하는 팀원은 이 부분을 건너뛰고 아래 **시작 전에 준비할 것**부터 진행하세요.
+
+### 1. 서버와 DB 구조 업데이트
+
+```powershell
+docker compose -f compose.manual-test.yaml up -d --build --wait
+```
+
+### 2. 향수·브랜드·노트 등 기본 데이터 업데이트
+
+```powershell
+docker compose -f compose.manual-test.yaml run --rm seed
+```
+
+### 3. 테스트 사용자·진열대·커뮤니티 데이터 업데이트
+
+```powershell
+$env:SEED_LOGIN_PASSWORD = [System.Net.NetworkCredential]::new('', (Read-Host '테스트 계정 비밀번호' -AsSecureString)).Password
+docker compose -f compose.manual-test.yaml run --build --rm seed-local
+```
+
+`seed-local` 코드가 변경될 수 있으므로 `--build`를 붙여 실행합니다.
+
+일반적인 seed 업데이트에는 아래 명령을 사용하지 않습니다.
+
+```powershell
+docker compose -f compose.manual-test.yaml down -v
+```
+
+이 명령은 직접 작성한 데이터를 포함해 로컬 DB 전체를 삭제합니다.
+
 ## 시작 전에 준비할 것
 
 다음 프로그램이 필요합니다.
