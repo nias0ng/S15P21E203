@@ -108,8 +108,7 @@
    * 가장 밝습니다)와 테두리 전체를 도는 옅은 흰 링. 유리는 두께가 있어 모서리에서
    * 빛이 한 번 더 꺾입니다. 테두리 하나만으로는 종이 카드에 선을 그은 것과 같습니다.
    */
-  .scent-glass [data-slot='card'],
-  .scent-glass [data-slot='card-root'] > :not([data-slot]) {
+  .scent-glass [data-slot='card'] {
     background: linear-gradient(
       180deg,
       rgb(255 255 255 / 0.6) 0%,
@@ -282,8 +281,7 @@
  * 유리는 모서리가 둥글어야 두께가 읽혀서 이 화면에서만 키웁니다.
  * 컬렉션 화면의 같은 카드는 6px 그대로입니다.
  */
-.scent-glass [data-slot='card'],
-.scent-glass [data-slot='card-root'] > :not([data-slot]) {
+.scent-glass [data-slot='card'] {
   border-radius: 18px;
   /* 유리 그러데이션만 보이게 — 바탕색이 깔리면 뒤가 안 비칩니다 */
   background-color: transparent;

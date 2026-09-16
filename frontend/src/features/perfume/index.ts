@@ -19,7 +19,6 @@ export { PerfumeReviewSummary } from './components/PerfumeReviewSummary'
 export { PerfumeSearchResult } from './components/PerfumeSearchResult'
 export { PerfumeSeasonRatings } from './components/PerfumeSeasonRatings'
 export { PerfumeReviewDetail } from './components/PerfumeReviewDetail'
-export { SeasonRatingChart } from './components/SeasonRatingChart'
 export {
   perfumeDetailQuery,
   perfumeKeys,

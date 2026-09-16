@@ -28,10 +28,6 @@ type PerfumeCardProps = {
   thumbnailUrl?: string | null
   /** 카드를 누르면 갈 곳. 없으면 링크가 아닌 그냥 카드가 됩니다. */
   to?: string
-  /** 향 계열 · 보유 중 같은 배지 (Badge 컴포넌트를 넘겨주세요) */
-  badges?: React.ReactNode
-  /** 카드 하단 동작 영역 — 진열대의 [대표 향수로 지정] 같은 것 */
-  footer?: React.ReactNode
   className?: string
 }
 
@@ -73,8 +69,6 @@ export function PerfumeCard({
   rank,
   thumbnailUrl,
   to,
-  badges,
-  footer,
   className,
 }: PerfumeCardProps) {
   const body = (
@@ -219,8 +213,6 @@ export function PerfumeCard({
 
         {brand && <p className="text-ink text-caption truncate">{brand}</p>}
       </div>
-
-      {badges && <div className="flex flex-wrap gap-1.25">{badges}</div>}
     </>
   )
 
@@ -247,11 +239,7 @@ export function PerfumeCard({
    */
 
   return (
-    // 하단 동작 영역이 있으면 카드가 그 위를 채웁니다 — h-full 만 주면 footer 가 넘칩니다
-    <article
-      data-slot="card-root"
-      className={cn('flex h-full flex-col', !to && shell)}
-    >
+    <article className={cn('flex h-full flex-col', !to && shell)}>
       {to ? (
         <Link
           to={to}
@@ -268,7 +256,6 @@ export function PerfumeCard({
       ) : (
         body
       )}
-      {footer && <div className="mt-2.5">{footer}</div>}
     </article>
   )
 }

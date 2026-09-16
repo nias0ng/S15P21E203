@@ -16,7 +16,7 @@ type PerfumeGridProps = {
    */
   emptyAction?: React.ReactNode
   /** 와이어프레임 A33 은 5열, A09 검색 결과는 목록형이라 호출부에서 정합니다. */
-  columns?: 4 | 5 | 6
+  columns?: 5 | 6
   /**
    * 카드에 순위 숫자를 얹을지. 인기순으로 줄 세운 목록에서만 켜세요 —
    * 조건으로 거른 결과에 숫자가 붙으면 그 조건 안의 순위로 잘못 읽힙니다.
@@ -45,7 +45,6 @@ export function PerfumeGrid({
     깔아 봤더니(8열 166) 병이 무엇인지 알아보기 어려웠습니다.
   */
   const gridClass = {
-    4: 'grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-4',
     5: 'grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-5',
     6: 'grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-6',
   }[columns]
