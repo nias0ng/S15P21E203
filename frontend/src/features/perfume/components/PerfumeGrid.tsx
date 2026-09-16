@@ -55,11 +55,11 @@ export function PerfumeGrid({
       <div className={gridClass}>
         {/*
           카드와 같은 높이여야 자료가 도착할 때 격자가 안 튑니다. 카드는 사진 칸이
-          3:4 라 폭에 따라 높이가 변하므로 고정 px 대신 같은 방식으로 셉니다 —
-          사진(폭 x 4/3) + 안쪽 여백 · 사이 간격 · 글 세 줄 자리.
+          정사각이라 폭에 따라 높이가 변하므로 고정 px 대신 같은 방식으로 셉니다 —
+          사진(폭과 같은 높이) + 안쪽 여백 · 사이 간격 · 이름 두 줄 자리.
         */}
         {Array.from({ length: columns * 2 }, (_, index) => (
-          <Skeleton key={index} className="aspect-[3/4.65] w-full" />
+          <Skeleton key={index} className="aspect-[1/1.29] w-full" />
         ))}
       </div>
     )

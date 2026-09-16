@@ -10,6 +10,7 @@ import {
   type RankingFilter,
 } from '@/features/perfume'
 import { ROUTES } from '@/shared/config/routes'
+import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
 
@@ -82,7 +83,7 @@ export default function PerfumeListPage() {
         위쪽을 가로지르는 가장 큰 덩이가 되어, 아래 향수 격자보다 먼저 눈에 듭니다.
       */}
       <SearchField
-        className={SEARCH_FIELD_LIST_WIDTH}
+        className={cn(SEARCH_FIELD_LIST_WIDTH, 'scent-search rounded-full')}
         label="향수명 또는 브랜드명으로 검색"
         placeholder="향수명 · 브랜드로 검색해주세요."
         onSearch={(keyword) => {
@@ -122,16 +123,24 @@ export default function PerfumeListPage() {
         onGenderChange={setGender}
       />
 
-      <hr className="border-line" />
+      {/*
+        유리판. 향수 격자는 이 판 위에 놓입니다 — 어두운 방 안의 밝은 표면이라
+        판 안쪽은 색 토큰이 다시 밝은 화면 값으로 돌아갑니다
+        (features/perfume/perfume-display.css 의 .scent-glass).
 
-      <section className="space-y-2.5">
-        <div className="flex items-baseline gap-2.5">
+        구분선(hr)을 걷어냈습니다. 판 테두리가 이미 "여기서부터 목록" 을 긋고 있어
+        선을 또 그으면 경계가 두 겹이 됩니다.
+      */}
+      <section className="scent-glass rounded-[36px] p-7.5 pt-6.25">
+        <div className="mb-6.25 flex items-baseline gap-2.5">
           {/* 글자 크기·굵기는 S15P21E203-162 타이포 스케일에서 확정합니다 */}
           <h2 className="text-ink font-serif text-lg">
             {hasFilter ? '조건에 맞는 향수' : '최근 인기 향수'}
           </h2>
           {items.length > 0 && (
-            <span className="text-ink-muted text-xs">{items.length}개</span>
+            <span className="text-ink-muted text-caption">
+              {items.length}개
+            </span>
           )}
         </div>
 
