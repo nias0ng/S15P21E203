@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState, type ReactNode } from 'react'
 
 import {
@@ -21,10 +21,12 @@ import {
   ShelfToolbar,
   ShelfWall,
   shelfItemsQuery,
+  shelfKeys,
   toPerfumeOption,
   useShelfArrangement,
   useShelfBrowser,
   type ShelfCategory,
+  type ShelfItem,
   type ShelfWallHandle,
 } from '@/features/shelf'
 import { useToast } from '@/shared/hooks/useToast'
@@ -101,6 +103,7 @@ export default function MyShelfPage() {
   const shelf = useQuery(shelfItemsQuery())
   const collections = useQuery(myCollectionsQuery())
   const arrangement = useShelfArrangement()
+  const queryClient = useQueryClient()
 
   const [stage, setStage] = useState<Stage>('shelf')
   const [registerOpen, setRegisterOpen] = useState(false)
@@ -168,6 +171,26 @@ export default function MyShelfPage() {
     />
   )
 
+  /*
+   * 고른 향수 한 개를 고쳐 씁니다.
+   *
+   * ⚠️ 백엔드 진열대 API 가 아직 없어서(features/shelf 의 api.ts) 고친 값이 **쿼리
+   * 캐시에만** 남습니다 — 새로고침하면 사라집니다. 그래도 화면에 반영은 해야 합니다.
+   * 토스트만 띄우고 끝내면 별을 눌러도 별이 안 채워지고 원을 눌러도 원이 안 차서,
+   * 눌러 본 사람이 "고장났다" 고 읽습니다.
+   *
+   * 서버 데이터라 Zustand 가 아니라 쿼리 캐시에 씁니다(CLAUDE.md 의 서버 상태 vs
+   * 클라이언트 상태). API 가 붙으면 이 함수가 useMutation 의 낙관적 갱신(onMutate)
+   * 자리로 그대로 옮겨갑니다.
+   */
+  const patchSelected = (patch: (item: ShelfItem) => ShelfItem) => {
+    const id = browser.selected?.shelfItemId
+    if (id === undefined) return
+    queryClient.setQueryData<ShelfItem[]>(shelfKeys.items(), (items) =>
+      items?.map((item) => (item.shelfItemId === id ? patch(item) : item)),
+    )
+  }
+
   const detail = (className?: string) => (
     /*
       key 로 향수마다 패널을 새로 만듭니다. 안 그러면 메모 입력칸이 이전
@@ -179,12 +202,35 @@ export default function MyShelfPage() {
       item={browser.selected}
       onSetRepresentative={() => {
         // TODO: SHF-05 대표 향수 지정 API 연결
+        const id = browser.selected?.shelfItemId
+        if (id === undefined) return
+        // 대표는 한 번에 하나라, 고른 향수만 켜고 나머지는 전부 내립니다
+        queryClient.setQueryData<ShelfItem[]>(shelfKeys.items(), (items) =>
+          items?.map((item) => ({
+            ...item,
+            representative: item.shelfItemId === id,
+          })),
+        )
         showToast('대표 향수로 지정했습니다')
+      }}
+      onChangeRating={(rating) => {
+        // TODO: SHF-12 취향 적합도 저장 API 연결
+        /*
+          여기만 토스트를 띄우지 않습니다 — 원이 차는 것이 이미 답이고, 점수를
+          맞춰 보느라 여러 번 누르게 되어 토스트가 연달아 뜹니다.
+        */
+        patchSelected((item) => ({ ...item, rating }))
       }}
       onChangeCategory={() => setChangeCategoryOpen(true)}
       onRemove={() => setRemoveOpen(true)}
-      onSaveMemo={() => {
+      onSaveMemo={(memo) => {
         // TODO: SHF-10 메모 저장 API 연결
+        patchSelected((item) => ({
+          ...item,
+          // 빈 글은 "메모 없음" 입니다 — 빈 문자열을 남기면 날짜만 붙은 빈 메모가 됩니다
+          memo: memo || null,
+          memoUpdatedAt: memo ? new Date().toISOString() : null,
+        }))
         showToast('메모를 저장했습니다')
       }}
       className={className}

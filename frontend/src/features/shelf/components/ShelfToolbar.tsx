@@ -20,7 +20,7 @@ type Props = {
 /**
  * 칩 · 검색창의 공통 치수. 시안 실측(높이 42px · 모서리 8px)입니다.
  *
- * 높이를 h-10 로 못 박은 이유: 칩·드롭다운·검색창이 한 줄에 서는데 각자
+ * 높이를 h-10 로 못 박은 이유: 칩과 검색창이 한 줄에 서는데 각자
  * 안쪽 여백으로 높이를 만들면 글자 길이에 따라 1~2px 씩 어긋나 줄이 흔들립니다.
  *
  * 색·그림자는 `../shelf-display.css` 의 `.shelf-field` 가 냅니다 —
@@ -35,9 +35,12 @@ const FIELD =
 /**
  * 진열대 머리말 옆 도구 줄 (와이어프레임 A13 — 진열장 시안)
  *
- * 왼쪽부터 분류 칩 → 구분선 → 드롭다운 → 검색창 순으로 한 줄에 놓입니다.
- * 진열대를 다루는 줄이라 이름이 Filters 가 아니라 Toolbar 입니다 — 칸으로 가기(칩),
- * 거르기(검색)와 정렬이 한 줄에 같이 있습니다.
+ * 분류 칩과 검색창이 한 줄에 놓입니다. 진열대를 다루는 줄이라 이름이 Filters 가
+ * 아니라 Toolbar 입니다 — 칸으로 가기(칩)와 거르기(검색)가 한 줄에 같이 있습니다.
+ *
+ * 향 계열 · 정렬 드롭다운이 여기 있었는데 걷어냈습니다. 진열대 API 에 두 파라미터가
+ * 없어 열어도 고를 게 없는 disabled 단추였고, 자리만 차지했습니다. 거르기와 정렬이
+ * 실제로 붙어 있는 곳은 향수 목록(`features/perfume`)이라 거기 것을 참고하면 됩니다.
  * 검색창만 flex-1 이라 창 폭이 변해도 칩은 안 밀리고 검색창이 늘고 줄어듭니다.
  * 칩이 밀리면 "지금 벽의 어느 칸을 보고 있는지"가 화면 밖으로 나가버립니다.
  */
@@ -59,12 +62,19 @@ export function ShelfToolbar({
       )}
     >
       {/*
-        칩 · 드롭다운 줄. 넓은 화면에서는 검색창과 한 줄에 서고, 좁은 화면(쌓는 배치)에서는
+        칩 줄. 넓은 화면에서는 검색창과 한 줄에 서고, 좁은 화면(쌓는 배치)에서는
         검색창 위 한 줄로 올라가 넘치면 옆으로 밉니다. 칩을 두 줄로 접으면 "벽의 세 칸" 이
         한눈에 안 읽힙니다. 옆으로 밀리는 줄은 포커스 링(4px)을 자르므로 그만큼 안쪽 여백을
         두고 바깥 여백으로 되돌립니다.
+
+        **넓은 화면에서 폭을 510 으로 못 박고 칩을 오른쪽 끝에 붙입니다.**
+        검색창이 `lg:flex-1` 이라 이 줄이 좁아진 만큼 그대로 왼쪽으로 자랍니다 —
+        여기 있던 향 계열 · 정렬 드롭다운을 걷어내자 검색창이 150px 앞으로 나와
+        머리말 쪽으로 밀려났습니다. 이 줄이 그 폭(드롭다운이 있던 508 을 0/5 로 맞춘
+        510)을 계속 차지하면 검색창은 있던 자리에 그대로 섭니다. 칩은 그 안에서
+        오른쪽 끝, 즉 검색창 옆에 붙습니다.
       */}
-      <div className="-m-1 flex [scrollbar-width:none] items-center gap-2.5 overflow-x-auto p-1 lg:m-0 lg:overflow-visible lg:p-0">
+      <div className="-m-1 flex [scrollbar-width:none] items-center gap-2.5 overflow-x-auto p-1 lg:m-0 lg:w-[510px] lg:justify-end lg:overflow-visible lg:p-0">
         {/*
         칩이 곧 진열대 벽의 세 칸입니다. 라벨을 여기 적지 않고 SHELF_CATEGORIES 에서
         끌어옵니다 — 예전에는 목업 문구를 옮겨 적어서 저장 모달의 "시향해 봄" 을
@@ -96,7 +106,9 @@ export function ShelfToolbar({
                 onClick={() => onChange(chip.value)}
                 className={cn(
                   FIELD,
-                  'text-caption flex shrink-0 items-center gap-2.5 px-3.75 whitespace-nowrap',
+                  // 좌우 25 — 시안은 15 인데, 옆에 있던 드롭다운이 빠지면서 이 셋만
+                  // 남아 줄이 헐거워 보입니다. 한 단 넓혀 칩이 검색창과 무게를 맞춥니다.
+                  'text-caption flex shrink-0 items-center gap-2.5 px-6.25 whitespace-nowrap',
                   // 켜진 칩은 테두리가 아니라 **채움**으로 표시합니다. 시안의 종이
                   // 위에서 테두리 한 줄은 눈에 안 띄고, 무엇보다 켜질 때만 테두리가
                   // 생기면 칩 높이가 뛰면서 줄 전체가 흔들립니다.
@@ -116,14 +128,22 @@ export function ShelfToolbar({
           })}
         </div>
 
-        {/* 거르는 것(칩)과 정렬·검색을 눈으로 갈라주는 선 */}
+        {/*
+          칩과 검색창을 눈으로 갈라주는 선. "어느 칸을 보는가"(칩)와 "무엇을
+          찾는가"(검색)는 하는 일이 달라서, 둘이 10px 만 띄고 붙어 있으면 네 번째
+          칩처럼 읽힙니다.
+
+          좌우 20 씩 띄워 선이 두 덩이 한가운데 섭니다 — 줄의 flex gap(10)이 더해져
+          실제로는 칩에서 30, 검색창에서 30 입니다. 이 선도 칩 줄(510) 안에 들어가
+          있어서 검색창은 있던 자리에 그대로 서고, 칩만 그만큼 왼쪽으로 물러납니다.
+
+          좁은 화면에서는 칩 줄이 검색창 **위**로 올라가 둘이 위아래로 서므로 세로선이
+          가를 것이 없습니다. 그때는 숨깁니다.
+        */}
         <span
           aria-hidden
-          className="shelf-hairline mx-2.5 h-6.25 w-px shrink-0"
+          className="shelf-hairline mx-5 hidden h-6.25 w-px shrink-0 lg:block"
         />
-
-        <FilterDropdown label="향 계열" />
-        <FilterDropdown label="정렬" />
       </div>
 
       {/*
@@ -154,40 +174,6 @@ export function ShelfToolbar({
         />
       </label>
     </div>
-  )
-}
-
-/**
- * 향 계열 · 정렬 드롭다운.
- *
- * **눌러도 아무것도 열리지 않게 disabled 로 두었습니다.** 목록 API 에 향 계열
- * 필터와 정렬 파라미터가 아직 없어서(진열대 API 자체가 자리표시자입니다) 열어도
- * 고를 것이 없기 때문입니다. 그래도 자리를 비우지 않는 이유는, 나중에 칸이
- * 생기면서 검색창 폭이 줄어드는 레이아웃 변화를 지금 미리 확인하기 위해서입니다.
- * 파라미터가 생기면 disabled 를 걷고 목록만 붙이면 됩니다.
- *
- * 그래서 켜졌을 때의 모양(기본·호버·포커스)까지 미리 적어두고, 꺼진 모양만
- * disabled: 로 덮습니다. 꺼진 모양을 바탕 클래스에 직접 박아두면 disabled 를
- * 걷는 사람이 스타일까지 새로 짜야 하고, 그때 포커스 링이 조용히 빠집니다.
- */
-function FilterDropdown({ label }: { label: string }) {
-  return (
-    <button
-      type="button"
-      disabled
-      aria-haspopup="listbox"
-      aria-expanded={false}
-      className={cn(
-        FIELD,
-        'text-caption flex shrink-0 items-center gap-2.5 px-3.75 whitespace-nowrap',
-        // 공통 Disabled 규칙(UI 명세 2장) — 채움을 없애고 윤곽만 남깁니다.
-        // "누를 수 없다"가 색이 아니라 형태로 드러납니다.
-        'disabled:pointer-events-none disabled:bg-transparent disabled:opacity-40 disabled:shadow-none',
-      )}
-    >
-      {label}
-      <span aria-hidden>▾</span>
-    </button>
   )
 }
 

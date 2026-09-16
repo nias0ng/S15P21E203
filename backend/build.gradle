@@ -51,3 +51,33 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+// 로컬 데이터 도구는 서버 JAR에 포함하지 않습니다.
+sourceSets {
+    localSeed
+}
+
+configurations {
+    localSeedImplementation.extendsFrom implementation
+    localSeedRuntimeOnly.extendsFrom runtimeOnly
+}
+
+dependencies {
+    localSeedImplementation 'org.springframework.security:spring-security-crypto'
+    testImplementation sourceSets.localSeed.output
+    testImplementation 'org.springframework.security:spring-security-crypto'
+}
+
+tasks.register('seedLocal', JavaExec) {
+    group = 'application'
+    description = '로컬 활동 데이터 보충 (SEED_MODE=reset으로 초기화)'
+    classpath = sourceSets.localSeed.runtimeClasspath
+    mainClass = 'com.hyanghae.seed.LocalSeed'
+}
+
+tasks.register('localSeedDist', Sync) {
+    dependsOn tasks.named('localSeedClasses')
+    into layout.buildDirectory.dir('local-seed')
+    from(sourceSets.localSeed.output) { into 'classes' }
+    from(configurations.localSeedRuntimeClasspath) { into 'lib' }
+}
