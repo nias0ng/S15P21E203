@@ -43,9 +43,23 @@ springdoc:
 #
 # 운영과 달리 주기가 1분입니다. 확인하려고 한 시간을 기다릴 수는 없습니다.
 hyanghae:
+  auth:
+    jwt-secret: ${JWT_SECRET:local-manual-test-secret-must-be-at-least-32-bytes}
+    cookie:
+      secure: false
   review-analysis:
     enabled: ${REVIEW_ANALYSIS_ENABLED:false}
     cron: ${REVIEW_ANALYSIS_CRON:0 * * * * *}
     gms:
       api-key: ${GMS_API_KEY:}
       model: ${GMS_MODEL:gpt-5-nano}
+
+  # 자연어 추천이 부르는 AI 서버 주소입니다. 붙는 곳이 둘이라 환경변수로 갈립니다.
+  #
+  #   ./gradlew bootRun 으로 백엔드만 띄울 때  -> 기본값. AI 서버도 로컬에서 직접 띄웁니다
+  #   compose 로 전체를 띄울 때                -> compose 가 http://ai:8000 으로 덮어씁니다
+  #
+  # AI 서버가 없어도 백엔드는 정상으로 뜹니다. 추천 요청만 503 이 나갑니다.
+  recommendation:
+    ai:
+      base-url: ${NLR_AI_BASE_URL:http://localhost:8000}

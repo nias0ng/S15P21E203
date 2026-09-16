@@ -13,6 +13,7 @@
 -- 않습니다. 구분 근거는 사용자의 이메일 도메인(@seed.hyanghae.test)뿐입니다.
 
 \set ON_ERROR_STOP on
+\pset pager off
 \timing off
 
 BEGIN;

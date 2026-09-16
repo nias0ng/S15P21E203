@@ -11,6 +11,7 @@
 -- 전체가 한 트랜잭션이라 중간에 하나라도 어긋나면 아무것도 반영되지 않습니다.
 
 \set ON_ERROR_STOP on
+\pset pager off
 \timing off
 
 BEGIN;
@@ -126,16 +127,24 @@ INSERT INTO perfumes (brand_id, name, gender, fragrantica_id, release_year,
                       korea_selection_rank, korea_selection_basis)
 SELECT b.brand_id,
        s.name,
-       s.gender,
+       UPPER(TRIM(s.gender)),
        s.fragrantica_id::bigint,
        NULLIF(s.year, '')::int,
        s.korea_selection_rank::int,
        s.korea_selection_basis
 FROM stg_points s
 JOIN brands b ON b.name = s.brand
-ON CONFLICT (brand_id, name) DO UPDATE SET
+-- 같은 향수인지 fragrantica_id 로 가립니다. 전에는 (brand_id, name) 으로 맞췄는데, 같은 브랜드가
+-- 농도나 출시 연도만 다른 같은 이름을 여러 번 쓰기 때문에 정확하지 않았습니다. V14 가 그 유니크
+-- 제약을 걷어내면서 여기도 함께 옮깁니다.
+--
+-- 이름과 브랜드도 갱신 대상에 넣습니다. 이제 이름이 열쇠가 아니므로, 지도를 다시 만들면서 향수
+-- 이름이 바뀌거나 브랜드가 옮겨가도 같은 행을 따라갑니다. 전에는 그런 경우 같은 향수가 새로
+-- 만들어졌습니다.
+ON CONFLICT (fragrantica_id) DO UPDATE SET
+    brand_id              = EXCLUDED.brand_id,
+    name                  = EXCLUDED.name,
     gender                = EXCLUDED.gender,
-    fragrantica_id        = EXCLUDED.fragrantica_id,
     release_year          = EXCLUDED.release_year,
     korea_selection_rank  = EXCLUDED.korea_selection_rank,
     korea_selection_basis = EXCLUDED.korea_selection_basis;

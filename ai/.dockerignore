@@ -1,0 +1,30 @@
+# 이미지에 넣지 않을 것
+#
+# 빌드 컨텍스트는 `ai/` 입니다 — `docker build --tag hyanghae-ai:latest ai`
+
+# 가상환경. 177MB 이고 Windows 에서 만든 것이라 Linux 이미지에서는 동작하지도 않습니다.
+venv/
+.venv/
+env/
+ENV/
+
+# 플랫폼별 바이트코드. 이미지 안에서 다시 만들어집니다.
+__pycache__/
+*.pyc
+
+# 미매칭 로그. **사용자가 입력한 원문이 들어 있습니다.**
+# 이미지에 구워 넣으면 이미지를 받는 모든 사람에게 퍼집니다.
+logs/
+*.jsonl
+
+# 원본 덤프. perfumes.csv 는 127MB, perfumes.jsonl 은 509MB 입니다.
+# 서버가 쓰는 것은 data/perfumes_nlr.csv.gz (5MB) 뿐입니다.
+perfumes.csv
+perfumes.jsonl
+
+# DB 적재용 산출물 6.2MB. 백엔드가 한 번 쓰고 끝나는 것이라 서버는 읽지 않습니다.
+delivery/
+
+.gitignore
+.dockerignore
+Dockerfile

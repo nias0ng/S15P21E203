@@ -3,10 +3,14 @@ package com.hyanghae.backend.review.controller;
 import com.hyanghae.backend.review.dto.request.ReviewCreateRequest;
 import com.hyanghae.backend.review.dto.request.ReviewSeasonsRequest;
 import com.hyanghae.backend.review.dto.request.ReviewUpdateRequest;
+import com.hyanghae.backend.review.dto.response.ReviewBoardResponse;
 import com.hyanghae.backend.review.dto.response.ReviewCreateResponse;
+import com.hyanghae.backend.review.dto.response.ReviewDetailResponse;
+import com.hyanghae.backend.review.dto.response.ReviewLikeResponse;
 import com.hyanghae.backend.review.dto.response.ReviewsResponse;
 import com.hyanghae.backend.review.dto.response.ReviewSeasonsResponse;
 import com.hyanghae.backend.review.dto.response.ReviewUpdateResponse;
+import com.hyanghae.backend.review.repository.ReviewSort;
 import com.hyanghae.backend.review.service.ReviewService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -146,6 +150,121 @@ public class ReviewController {
             @PathVariable Long reviewId,
             @Valid @RequestBody ReviewSeasonsRequest request
     ) {
-        return reviewService.replaceSeasons(reviewId, request.seasonIds());
+        return reviewService.replaceSeasons(reviewId, request.seasonCodes());
+    }
+
+    /**
+     * 후기 게시판 목록입니다. 향수를 가리지 않고 전체를 봅니다.
+     *
+     * <p>향수 상세의 후기 목록({@code /perfumes/{perfumeId}/reviews})과 다릅니다. 거기서는 향수
+     * 하나의 후기만 보고, 여기서는 여러 향수의 후기가 섞여 나옵니다. 그래서 줄마다 향수가 함께
+     * 실립니다.
+     *
+     * <p>분류 필터가 없습니다. 후기는 전부 같은 종류입니다(와이어프레임 A22a).
+     */
+    @Operation(
+            summary = "후기 게시판 목록",
+            description = "향수를 가리지 않은 전체 후기입니다. 기본은 최신순이고 로그인 없이"
+                    + " 조회할 수 있습니다. 로그인한 경우 내가 좋아요를 누른 후기는 liked 가"
+                    + " 참입니다."
+    )
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "400", description = "정렬 기준이 올바르지 않음")
+    @GetMapping("/reviews")
+    public ReviewBoardResponse getReviewBoard(
+            @Parameter(description = "정렬 기준. RECENT(최신순) · VIEWS(조회 순) · LIKES(좋아요 순)."
+                    + " 후기에는 댓글이 없어 댓글 순이 없습니다.")
+            @RequestParam(defaultValue = "RECENT") ReviewSort sort,
+
+            @Parameter(description = "페이지 번호. 0부터 시작합니다.", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+
+            @Parameter(description = "페이지 크기. 기본 10개, 최대 100개입니다.", example = "10")
+            @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size
+    ) {
+        return reviewService.findBoardPage(sort, page, size);
+    }
+
+    /**
+     * 후기 상세입니다. 로그인하지 않아도 볼 수 있습니다.
+     *
+     * <p>여는 것이 곧 조회라 조회수가 하나 오릅니다. 응답의 {@code viewCount} 는 이번 조회를
+     * 포함한 수입니다.
+     */
+    @Operation(
+            summary = "후기 상세",
+            description = "로그인 없이 조회할 수 있습니다. 조회수가 하나 오르고, 응답의 viewCount"
+                    + " 는 이번 조회를 포함한 수입니다."
+    )
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "404", description = "후기 없음")
+    @GetMapping("/reviews/{reviewId}")
+    public ReviewDetailResponse getReview(
+            @Parameter(
+                    name = "reviewId",
+                    description = "후기 ID",
+                    in = ParameterIn.PATH,
+                    required = true,
+                    schema = @Schema(type = "integer", format = "int64")
+            )
+            @PathVariable Long reviewId
+    ) {
+        return reviewService.findOne(reviewId);
+    }
+
+    /**
+     * 좋아요를 누릅니다. <b>여러 번 눌러도 결과가 같습니다.</b>
+     *
+     * <p>{@code PUT} 인 이유가 있습니다. 토글({@code POST})로 두면 네트워크가 끊겨 화면이 요청을
+     * 다시 보낼 때 상태가 뒤집힙니다. 사용자는 한 번 눌렀는데 좋아요가 취소되는 것이죠. 누르기와
+     * 취소를 서로 다른 메서드로 나누면 몇 번을 보내도 결과가 하나로 정해집니다.
+     */
+    @Operation(
+            summary = "후기 좋아요",
+            description = "여러 번 눌러도 결과가 같습니다. 이미 누른 후기면 상태만 돌려줍니다."
+    )
+    @ApiResponse(responseCode = "200", description = "좋아요 상태")
+    @ApiResponse(responseCode = "401", description = "로그인 필요")
+    @ApiResponse(responseCode = "404", description = "후기 없음")
+    @PutMapping("/reviews/{reviewId}/like")
+    public ReviewLikeResponse likeReview(
+            @Parameter(
+                    name = "reviewId",
+                    description = "후기 ID",
+                    in = ParameterIn.PATH,
+                    required = true,
+                    schema = @Schema(type = "integer", format = "int64")
+            )
+            @PathVariable Long reviewId
+    ) {
+        return reviewService.like(reviewId);
+    }
+
+    /**
+     * 좋아요를 취소합니다. 누르지 않은 후기에 취소해도 오류가 아닙니다.
+     *
+     * <p>응답 본문이 있어 {@code 204} 가 아니라 {@code 200} 입니다. 화면이 하트와 옆의 숫자를
+     * 함께 갱신해야 하는데, 숫자를 안 보내면 화면이 스스로 빼야 하고 그 사이 다른 사람이 누른
+     * 것이 반영되지 않습니다.
+     */
+    @Operation(
+            summary = "후기 좋아요 취소",
+            description = "누르지 않은 후기에 취소해도 오류가 아닙니다."
+    )
+    @ApiResponse(responseCode = "200", description = "좋아요 상태")
+    @ApiResponse(responseCode = "401", description = "로그인 필요")
+    @ApiResponse(responseCode = "404", description = "후기 없음")
+    @DeleteMapping("/reviews/{reviewId}/like")
+    public ReviewLikeResponse unlikeReview(
+            @Parameter(
+                    name = "reviewId",
+                    description = "후기 ID",
+                    in = ParameterIn.PATH,
+                    required = true,
+                    schema = @Schema(type = "integer", format = "int64")
+            )
+            @PathVariable Long reviewId
+    ) {
+        return reviewService.unlike(reviewId);
     }
 }

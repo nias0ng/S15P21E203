@@ -52,6 +52,7 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
                 OR LOWER(p.nameKo) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!'
                 OR LOWER(b.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!')
               AND (CAST(:brand AS String) IS NULL OR b.name = CAST(:brand AS String))
+              AND (:brandId IS NULL OR b.id = :brandId)
               AND (CAST(:gender AS String) IS NULL OR p.gender = CAST(:gender AS String))
             """;
     /**
@@ -72,12 +73,14 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
      * <p>{@code brand} 는 완전 일치입니다. 브랜드명 부분 일치는 {@code keyword} 가 담당합니다.
      */
     @Query(value = """
-            SELECT new com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse(p.id, p.name, p.nameKo, b.name)
+            SELECT new com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse(
+                       p.id, p.name, p.nameKo, b.name, b.nameKo)
             """ + SEARCH_CONDITION,
             countQuery = "SELECT COUNT(p) " + SEARCH_CONDITION)
     Page<PerfumeSummaryResponse> search(
             @Param("keyword") String keyword,
             @Param("brand") String brand,
+            @Param("brandId") Long brandId,
             @Param("gender") String gender,
             Pageable pageable);
     /**
@@ -89,7 +92,8 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
      */
     @Query("""
             SELECT new com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse(
-                       p.id, b.id, b.name, p.name, p.nameKo, p.gender, p.description, p.concentration)
+                       p.id, b.id, b.name, b.nameKo, p.name, p.nameKo, p.gender,
+                       p.description, p.concentration)
             FROM Perfume p
             LEFT JOIN p.brand b
             WHERE p.id = :perfumeId
@@ -105,4 +109,31 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
 
     /** 진열대에 저장할 수 있는 활성 향수 엔티티를 조회합니다. */
     Optional<Perfume> findByIdAndActiveTrue(Long perfumeId);
+
+    /**
+     * Fragrantica 번호로 향수의 표시 정보를 한 번에 조회합니다. 자연어 추천이 씁니다.
+     *
+     * <p>AI 서버는 우리 DB 를 모르고 자기 데이터의 원본 번호로 향수를 지목합니다. 그 번호를
+     * {@code perfume_id} 로 바꾸고 이름·브랜드를 채우는 것이 백엔드 몫입니다.
+     *
+     * <p><b>결과 순서에 기대지 마십시오.</b> {@code IN} 절은 보낸 순서를 지키지 않습니다.
+     * 추천은 순위가 곧 의미라 호출한 쪽이 AI 가 정한 순서대로 다시 세워야 합니다. 쿼리에
+     * {@code ORDER BY} 를 걸어 해결할 수 없어서 {@code fragranticaId} 를 함께 돌려줍니다.
+     *
+     * <p>비활성 향수는 빠집니다. 검색·상세와 같은 기준입니다. 적재되지 않은 향수도 없는
+     * 것으로 나오므로, 보낸 수와 결과 수가 다른 것은 정상입니다.
+     *
+     * <p>{@code brand_id} 가 nullable 이라 {@code LEFT JOIN} 입니다. {@code INNER JOIN} 을
+     * 쓰면 브랜드가 없는 향수가 추천 결과에서 조용히 사라집니다.
+     */
+    @Query("""
+            SELECT new com.hyanghae.backend.perfume.repository.PerfumeIdentity(
+                       p.fragranticaId, p.id, p.name, p.nameKo, b.name, b.nameKo)
+            FROM Perfume p
+            LEFT JOIN p.brand b
+            WHERE p.fragranticaId IN :fragranticaIds
+              AND p.active = true
+            """)
+    List<PerfumeIdentity> findIdentitiesByFragranticaIds(
+            @Param("fragranticaIds") Collection<Long> fragranticaIds);
 }

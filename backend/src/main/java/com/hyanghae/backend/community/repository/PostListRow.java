@@ -29,4 +29,8 @@ public interface PostListRow {
     Instant getCreatedAt();
 
     long getCommentCount();
+
+    long getLikeCount();
+
+    long getViewCount();
 }

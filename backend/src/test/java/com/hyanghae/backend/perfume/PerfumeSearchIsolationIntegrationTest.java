@@ -70,7 +70,7 @@ class PerfumeSearchIsolationIntegrationTest {
         }).when(perfumeScentFamilyRepository).findByPerfumeIds(any());
 
         perfumeService.search(
-                new PerfumeSearchCondition("bleu", null, null, null), PageRequest.of(0, 20));
+                new PerfumeSearchCondition("bleu", null, null, null, null), PageRequest.of(0, 20));
 
         assertThat(isolation.get())
                 .as("감시 지점이 호출되지 않았거나 격리 수준이 다릅니다")

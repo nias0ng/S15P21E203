@@ -19,7 +19,9 @@ public enum CommunityErrorCode implements ErrorCode {
     COMMUNITY_POST_INVALID(HttpStatus.BAD_REQUEST, "게시글 요청을 확인해주세요."),
     COMMUNITY_COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다."),
     COMMUNITY_COMMENT_NOT_OWNED(HttpStatus.FORBIDDEN, "본인이 쓴 댓글만 고치거나 지울 수 있습니다."),
-    COMMUNITY_COLLECTION_NOT_FOUND(HttpStatus.NOT_FOUND, "첨부할 컬렉션을 찾을 수 없습니다.");
+    COMMUNITY_COLLECTION_NOT_FOUND(HttpStatus.NOT_FOUND, "첨부할 컬렉션을 찾을 수 없습니다."),
+    COMMUNITY_PERFUMES_FROM_COLLECTION(HttpStatus.BAD_REQUEST,
+            "컬렉션을 붙인 글의 향수는 컬렉션에서 가져옵니다. 향수를 따로 보낼 수 없습니다.");
 
     private final HttpStatus status;
     private final String message;
