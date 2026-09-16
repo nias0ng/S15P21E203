@@ -3,6 +3,22 @@ spring:
     activate:
       on-profile: prod
 
+# ⚠ 자연어 추천의 호출량 제한이 이 값에 걸려 있습니다. 배포 구성을 아는 쪽이 정해야 합니다.
+#
+# 비회원은 IP 로 셉니다. 앞에 리버스 프록시(nginx 등)가 있으면 getRemoteAddr() 가 전부
+# 프록시 IP 가 되어 **비회원 전체가 한 바구니를 나눠 씁니다.** 몇 명만 불러도 나머지가
+# 429 를 받습니다.
+#
+#   프록시가 있고, 백엔드 포트가 프록시를 통해서만 닿는다  -> framework 로 켜십시오.
+#                                                            X-Forwarded-For 를 읽습니다
+#   백엔드 포트가 외부에 직접 열려 있다                    -> none 그대로 두십시오.
+#                                                            켜면 헤더를 넣어 제한을 우회합니다
+#
+# 켤 때는 프록시가 X-Forwarded-For 를 직접 덮어쓰는지(클라이언트가 보낸 값을 그대로
+# 넘기지 않는지) 함께 확인해야 합니다.
+server:
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:none}
+
   jpa:
     open-in-view: false
     hibernate:

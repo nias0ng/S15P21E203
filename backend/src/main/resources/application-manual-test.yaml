@@ -53,3 +53,13 @@ hyanghae:
     gms:
       api-key: ${GMS_API_KEY:}
       model: ${GMS_MODEL:gpt-5-nano}
+
+  # 자연어 추천이 부르는 AI 서버 주소입니다. 붙는 곳이 둘이라 환경변수로 갈립니다.
+  #
+  #   ./gradlew bootRun 으로 백엔드만 띄울 때  -> 기본값. AI 서버도 로컬에서 직접 띄웁니다
+  #   compose 로 전체를 띄울 때                -> compose 가 http://ai:8000 으로 덮어씁니다
+  #
+  # AI 서버가 없어도 백엔드는 정상으로 뜹니다. 추천 요청만 503 이 나갑니다.
+  recommendation:
+    ai:
+      base-url: ${NLR_AI_BASE_URL:http://localhost:8000}
