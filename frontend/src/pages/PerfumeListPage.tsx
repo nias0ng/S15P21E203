@@ -31,6 +31,14 @@ import { SearchField } from '@/shared/ui/SearchField'
  * TODO: 스크롤 이어서 로드(무한 스크롤). 백엔드 페이지네이션은 이미 준비돼 있어
  * useInfiniteQuery 로 바꾸면 됩니다. 지금은 첫 페이지만 불러옵니다.
  */
+/**
+ * 한 화면에 깔 향수 수. 백엔드 기본값은 20 입니다.
+ *
+ * 6열이라 30이면 정확히 다섯 줄로 떨어집니다 — 20이면 마지막 줄에 두 장만 남아
+ * 격자 오른쪽이 비어 끝이 잘린 것처럼 보였습니다.
+ */
+const PAGE_SIZE = 30
+
 export default function PerfumeListPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -45,6 +53,7 @@ export default function PerfumeListPage() {
       ranking: ranking ?? undefined,
       gender: gender ?? undefined,
       brand: brand ?? undefined,
+      size: PAGE_SIZE,
     }),
   )
 
@@ -66,10 +75,16 @@ export default function PerfumeListPage() {
     <div className="space-y-3.75">
       <h1 className="sr-only">향수</h1>
 
-      {/* 헤더에 검색창이 없고 검색은 각 페이지 안에 있다는 와이어프레임 규칙 */}
+      {/*
+        헤더에 검색창이 없고 검색은 각 페이지 안에 있다는 와이어프레임 규칙.
+
+        폭을 본문 끝까지 늘리지 않습니다 — 1440 에서 꽉 채우면 입력칸 하나가 화면
+        위쪽을 가로지르는 가장 큰 덩이가 되어, 아래 향수 격자보다 먼저 눈에 듭니다.
+      */}
       <SearchField
+        className="max-w-[530px]"
         label="향수명 또는 브랜드명으로 검색"
-        placeholder="향수명 · 브랜드로 검색"
+        placeholder="향수명 · 브랜드로 검색해주세요."
         onSearch={(keyword) => {
           const trimmed = keyword.trim()
           if (!trimmed) return
@@ -124,6 +139,7 @@ export default function PerfumeListPage() {
           items={items}
           isPending={isPending}
           columns={6}
+          rankable={!hasFilter}
           emptyAction={
             hasFilter && (
               <Button variant="outline" onClick={resetFilters}>

@@ -17,6 +17,11 @@ type PerfumeGridProps = {
   emptyAction?: React.ReactNode
   /** 와이어프레임 A33 은 5열, A09 검색 결과는 목록형이라 호출부에서 정합니다. */
   columns?: 4 | 5 | 6
+  /**
+   * 카드에 순위 숫자를 얹을지. 인기순으로 줄 세운 목록에서만 켜세요 —
+   * 조건으로 거른 결과에 숫자가 붙으면 그 조건 안의 순위로 잘못 읽힙니다.
+   */
+  rankable?: boolean
 }
 
 /**
@@ -30,6 +35,7 @@ export function PerfumeGrid({
   isPending = false,
   empty,
   columns = 5,
+  rankable = false,
   emptyAction,
 }: PerfumeGridProps) {
   /*
@@ -73,7 +79,7 @@ export function PerfumeGrid({
 
   return (
     <ul className={gridClass}>
-      {items.map((perfume) => (
+      {items.map((perfume, index) => (
         <li key={perfume.perfumeId}>
           <PerfumeCard
             /*
@@ -82,6 +88,13 @@ export function PerfumeGrid({
               한국어 이름이 없는 향수는 원어 이름이 큰 줄로 올라가고, 그때 같은 글자가
               두 줄로 겹치지 않게 거르는 일은 PerfumeCard 가 합니다.
             */
+            /*
+              순위는 목록에 **줄 세운 뜻이 있을 때만** 답니다. 지금 화면은 첫 쪽만
+              불러오는 "최근 인기 향수" 라 화면 순서가 곧 순위입니다.
+              ⚠️ 쪽 넘김이 붙으면 2쪽도 1번부터 시작합니다 — 그때는 쪽 번호를 곱해
+              실제 순위로 바꾸거나, 조건을 걸어 거른 목록에서는 빼야 합니다.
+            */
+            rank={rankable ? index + 1 : undefined}
             name={perfume.nameKo ?? perfume.name}
             nameOriginal={perfume.name}
             /*

@@ -29,14 +29,21 @@ export function PerfumeFilters({
   onGenderChange,
 }: PerfumeFiltersProps) {
   return (
-    <div className="space-y-3.75">
+    /*
+      두 줄 다 폭을 본문 끝까지 늘리지 않습니다. 고를 것이 셋뿐이라 1440 을 다 쓰면
+      칸 하나가 480px 이 되어, 누르는 자리보다 빈 자리가 훨씬 넓어집니다.
+      같은 폭으로 맞춰 두 줄이 왼쪽에서 나란히 섭니다.
+    */
+    <div className="space-y-2.5">
       <SegmentedFilter
+        className="max-w-[390px]"
         label="많은 사람이 담은 기준 필터"
         options={RANKING_FILTERS}
         value={ranking}
         onChange={onRankingChange}
       />
       <SegmentedFilter
+        className="max-w-[390px]"
         label="향의 성별"
         options={GENDER_FILTERS}
         value={gender}
