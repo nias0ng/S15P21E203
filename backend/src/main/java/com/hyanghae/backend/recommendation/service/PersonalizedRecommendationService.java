@@ -40,6 +40,7 @@ public class PersonalizedRecommendationService {
         Long userId = currentUser.id()
                 .orElseThrow(() -> new BusinessException(
                         RecommendationErrorCode.RECOMMENDATION_LOGIN_REQUIRED));
+        recommendationRepository.lockForUser(userId);
         List<PersonalizedRecommendationCandidate> candidates =
                 recommendationRepository.findTopCandidates(userId, CANDIDATE_LIMIT);
         if (candidates.isEmpty()) {

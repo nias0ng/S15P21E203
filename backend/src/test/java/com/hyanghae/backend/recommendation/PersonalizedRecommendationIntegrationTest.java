@@ -154,7 +154,12 @@ class PersonalizedRecommendationIntegrationTest {
     }
 
     @Test
-    void returnsNotFoundWhenThereIsNoPreferenceSignal() throws Exception {
+    void requiresTasteTestEvenWhenFitRatingExists() throws Exception {
+        jdbcTemplate.update(
+                "UPDATE user_perfumes SET fit_rating = 5.0 "
+                        + "WHERE user_id = ? AND perfume_id = ?",
+                USER_ID,
+                TASTE_PERFUME);
         jdbcTemplate.update("DELETE FROM user_taste_tests WHERE user_id = ?", USER_ID);
 
         mockMvc.perform(get(URL))

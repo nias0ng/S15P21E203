@@ -9,6 +9,10 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class PersonalizedRecommendationRepository {
 
+    private static final String LOCK_USER_RECOMMENDATION = """
+            SELECT pg_advisory_xact_lock(:userId)
+            """;
+
     /**
      * 세 신호를 각각 코사인 유사도로 계산해 합칩니다.
      *
@@ -147,20 +151,39 @@ public class PersonalizedRecommendationRepository {
                 SELECT perfume_id, SUM(contribution) AS score
                 FROM contributions
                 GROUP BY perfume_id
+            ),
+            top_candidates AS (
+                SELECT s.perfume_id,
+                       COALESCE(NULLIF(p.name_ko, ''), p.name) AS display_name,
+                       s.score
+                FROM scored s
+                JOIN perfumes p ON p.perfume_id = s.perfume_id
+                WHERE EXISTS (SELECT 1 FROM taste_profile)
+                  AND p.is_active = TRUE
+                  AND s.score > 0.0
+                  AND COALESCE(NULLIF(p.name_ko, ''), p.name) IS NOT NULL
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM user_perfumes owned
+                      WHERE owned.user_id = :userId
+                        AND owned.perfume_id = s.perfume_id
+                        AND owned.ownership_status = 'OWNED'
+                  )
+                ORDER BY s.score DESC, s.perfume_id
+                LIMIT :limit
             )
-            SELECT s.perfume_id,
-                   COALESCE(NULLIF(p.name_ko, ''), p.name) AS display_name,
+            SELECT candidate.perfume_id,
+                   candidate.display_name,
                    image.image_url,
-                   s.score,
+                   candidate.score,
                    evidence.source AS evidence_source,
                    evidence.evidence_name,
                    exposure.last_recommended_at
-            FROM scored s
-            JOIN perfumes p ON p.perfume_id = s.perfume_id
+            FROM top_candidates candidate
             JOIN LATERAL (
                 SELECT source, evidence_name
                 FROM contributions
-                WHERE perfume_id = s.perfume_id
+                WHERE perfume_id = candidate.perfume_id
                   AND contribution > 0.0
                   AND evidence_name IS NOT NULL
                 ORDER BY contribution DESC, evidence_name, source
@@ -169,7 +192,7 @@ public class PersonalizedRecommendationRepository {
             LEFT JOIN LATERAL (
                 SELECT i.image_url
                 FROM perfume_images i
-                WHERE i.perfume_id = s.perfume_id
+                WHERE i.perfume_id = candidate.perfume_id
                 ORDER BY CASE WHEN i.image_type = 'ORIGINAL' THEN 0 ELSE 1 END,
                          i.display_order NULLS LAST,
                          i.image_id
@@ -179,20 +202,9 @@ public class PersonalizedRecommendationRepository {
                 SELECT MAX(e.recommended_at) AS last_recommended_at
                 FROM personalized_recommendation_exposures e
                 WHERE e.user_id = :userId
-                  AND e.perfume_id = s.perfume_id
+                  AND e.perfume_id = candidate.perfume_id
             ) exposure ON TRUE
-            WHERE p.is_active = TRUE
-              AND s.score > 0.0
-              AND COALESCE(NULLIF(p.name_ko, ''), p.name) IS NOT NULL
-              AND NOT EXISTS (
-                  SELECT 1
-                  FROM user_perfumes owned
-                  WHERE owned.user_id = :userId
-                    AND owned.perfume_id = s.perfume_id
-                    AND owned.ownership_status = 'OWNED'
-              )
-            ORDER BY s.score DESC, s.perfume_id
-            LIMIT :limit
+            ORDER BY candidate.score DESC, candidate.perfume_id
             """;
 
     private static final String INSERT_EXPOSURE = """
@@ -205,6 +217,14 @@ public class PersonalizedRecommendationRepository {
 
     public PersonalizedRecommendationRepository(JdbcClient jdbcClient) {
         this.jdbcClient = jdbcClient;
+    }
+
+    /** 같은 사용자의 동시 요청이 동일한 노출 이력을 보고 중복 추천하지 않도록 직렬화합니다. */
+    public void lockForUser(Long userId) {
+        jdbcClient.sql(LOCK_USER_RECOMMENDATION)
+                .param("userId", userId)
+                .query((rs, rowNum) -> Boolean.TRUE)
+                .single();
     }
 
     public List<PersonalizedRecommendationCandidate> findTopCandidates(
