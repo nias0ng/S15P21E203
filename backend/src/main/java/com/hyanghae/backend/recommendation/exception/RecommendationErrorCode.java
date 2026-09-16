@@ -4,14 +4,20 @@ import com.hyanghae.backend.global.exception.ErrorCode;
 import org.springframework.http.HttpStatus;
 
 /**
- * 자연어 추천 도메인의 에러 코드입니다.
+ * 추천 도메인의 에러 코드입니다.
  *
  * <p>상수 이름이 그대로 응답의 {@code code} 가 되므로 {@code RECOMMENDATION_} 접두사를 붙입니다.
  *
- * <p>요청 형식 오류(빈 {@code query}, 500자 초과)는 여기 없습니다. 요청 DTO 의 Bean Validation
- * 이 잡아 {@code GlobalExceptionHandler} 가 {@code BAD_REQUEST} 로 내보냅니다.
+ * <p>자연어 추천 요청의 형식 오류(빈 {@code query}, 500자 초과)는 여기 없습니다. 요청 DTO 의
+ * Bean Validation 이 잡아 {@code GlobalExceptionHandler} 가 {@code BAD_REQUEST} 로 내보냅니다.
  */
 public enum RecommendationErrorCode implements ErrorCode {
+
+    RECOMMENDATION_LOGIN_REQUIRED(HttpStatus.UNAUTHORIZED,
+            "로그인이 필요합니다."),
+
+    RECOMMENDATION_NOT_FOUND(HttpStatus.NOT_FOUND,
+            "현재 추천할 수 있는 향수가 없습니다."),
 
     /**
      * AI 서버가 응답하지 않거나 제한 시간을 넘겼습니다.
