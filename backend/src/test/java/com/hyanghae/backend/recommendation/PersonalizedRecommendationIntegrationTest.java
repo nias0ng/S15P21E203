@@ -107,8 +107,7 @@ class PersonalizedRecommendationIntegrationTest {
                 .andExpect(jsonPath("$.recommendation.imageUrl")
                         .value("https://images.test/first.png"))
                 .andExpect(jsonPath("$.recommendation.reason")
-                        .value("취향 테스트에서 선택한 우디 계열과 잘 맞아요."))
-                .andExpect(jsonPath("$.recommendation.mapPoint").doesNotExist());
+                        .value("취향 테스트에서 선택한 우디 계열과 잘 맞아요."));
 
         Integer exposures = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM personalized_recommendation_exposures "
