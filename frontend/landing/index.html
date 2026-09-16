@@ -114,8 +114,8 @@
      ⭐⭐ 같은 날 : **[주변 향 탐색] 단추를 뺐다** (사용자 : *"주변 향 탐색은 부표를 눌렸을때 뜨게하고 버튼은 빼야겠네"*).
        ⚠ 동작이 없어진 게 아니다 — **부표를 누르는 것이 곧 그 동작**이다 (불변식 32 : *"[주변 향 탐색] 은 엔진이 한다 — 부표를 새 클릭한 길 pickSail → startFocus 와 같다"*).
          단추는 같은 일을 두 번 내놓고 있었다.
-       ⚠⚠ 그래서 `main.js` 의 `cardAction` 의 `explore` 갈래 · `canExplore` · `exploreAround` 와 호스트 문 `exploreSimilar` 를 **부르는 곳이 없어졌다.**
-         앱(`ScentScene.tsx`)이 아직 그 핸들러를 들고 있는데 그건 D 몫이라 안 건드렸다 — `docs/분할/C-연출UI.md` 의 D 요청에 적었다.
+       ⭐ 그래서 `cardAction` 의 `explore` 갈래 · `canExplore` · `exploreAround` 는 걷었고, 호스트 문 `exploreSimilar` 는
+         **`onPick` 의 부표 갈래**(`startFocus` 옆)에서 알린다 — 앱(`ScentScene.tsx`)의 핸들러는 그대로 산다 (불변식 32).
      ⚠ 둘이 남아 **한 줄에 들어간다** (84 + 5 + 95 = 184 ≤ 246). 셋일 때는 266px 이라 두 줄이었다. */
   html[data-card-actions] { --pb-card-actions-d: flex; }
   #scent-actions button:disabled { opacity: 0.4; cursor: default !important; }

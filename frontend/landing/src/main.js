@@ -281,6 +281,12 @@ const input = createInput(ui.mount, {
     if ((P.focusOn === undefined ? 1 : P.focusOn) >= 0.5 && m.src === 'map' && !phase.cue.zone) {
       pickSail(m);   // ⭐ v0.65.0 — 가속을 멈추고 누른 향수 곁으로 (연출보다 먼저 — 12개 자리는 속도 0 카메라로 잡는다)
       startFocus(m);
+      // ⭐⭐ **앱에 알린다 — 이 향을 새 중심으로 12개를 다시 띄웠다** (2026-09-16, host.js `exploreSimilar` · 불변식 32).
+      //   v0.74.2 에서 카드의 [주변 향 탐색] 단추를 뺐다 (부표 누르기가 곧 그 동작이라 같은 일을 두 번 내놓고 있었다) — 그래서 알림도 **여기서** 나간다.
+      //   ⚠ 12개 **안**의 부표를 누른 것은 위에서 먼저 return 한다 (고르기만 하고 중심은 안 바뀐다) — 그때는 안 알린다. 알림의 뜻이 '새 중심' 이라야 앱이 셀 수 있다.
+      //   ⚠ **알림만이다** — 앱이 Promise 를 줘도 `holdWhile` 로 입력을 잠그지 않는다. 엔진이 이미 한 일이라 기다릴 것이 없다 ([진열대에 저장]과 다른 점).
+      const exRef = perfumeRef(m);
+      if (exRef) callHost('exploreSimilar', exRef);
     }
   }
 });
@@ -1227,15 +1233,15 @@ function startFocus(m) {
 //   대상은 카드가 비추는 향수(marks.selected)다 — '이 향의 해역으로'(onSail)와 같다
 //   · [자세히 보기]  → 앱으로 (A10 화면 이동). 엔진은 아무것도 안 바꾼다
 //   · [진열대에 저장] → 앱으로 (A11 분류 모달). 카드 · 고른 향수 · 12개는 그대로 — 앱이 Promise 를 돌려주면 닫힐 때까지 입력을 잠근다 (holdWhile)
-//   · [주변 향 탐색] → **엔진이** 카드의 향을 새 중심으로 12개를 다시 띄운다 (exploreAround) · 앱에는 알림만.
-//     사용자 선택 : *"지금 3D 클릭 유지"* — 부표를 누르면 바로 12개가 뜨는 것은 그대로다. 12개 안의 부표를 누르면 고르기만 하므로 **새 중심은 이 단추가 연다**
+//   ⚠⚠ **[주변 향 탐색] 은 2026-09-16 에 카드에서 뺐다** (v0.74.2). 부표를 누르는 것이 곧 그 동작이라 같은 일을 두 번 내놓고 있었다 —
+//     엔진이 12개를 다시 띄우는 것도, 앱에 `exploreSimilar` 를 알리는 것도 이제 **onPick 의 부표 갈래**가 한다 (위 startFocus 옆).
+//     그래서 여기 있던 `explore` 갈래와 `canExplore` · `exploreAround` 도 같이 걷었다 — 부를 곳이 없어졌다.
 function cardAction(act) {
   if ((P.cardActions === undefined ? 1 : P.cardActions) < 0.5 || hostHold) return;
   const m = marks.selected, ref = perfumeRef(m);
   if (!ref) return;
   if (act === 'detail') callHost('openDetail', ref);
   else if (act === 'save') holdWhile(callHost('saveToShelf', ref));
-  else if (act === 'explore' && exploreAround(m)) callHost('exploreSimilar', ref);
 }
 // 앱이 띄운 창이 닫힐 때까지 입력(방향키 · Shift · 휠 · 누르기)을 잠근다 — 호버 · ESC · 스페이스는 hostHold 를 본다.
 //   ⚠ 모달 위 방향키가 새면 onManual 이 12개와 고른 향수를 거둔다 — 프론트는 *"취소하면 고른 포인트가 그대로 남습니다"* 다
@@ -1247,21 +1253,6 @@ function holdWhile(ret) {
   const done = () => { hostHold = Math.max(0, hostHold - 1); if (!hostHold) input.setHold(false); };
   ret.then(done, done);
 }
-// [주변 향 탐색]을 지금 누를 수 있는가 — 누르기(onPick)와 같은 가드 (§9-4 · 존 연출 중에는 안 한다) · 이미 그 향이 중심이면 할 일이 없다
-function canExplore(m) {
-  return !!m && m.src === 'map' && !!m.perfume && !hostHold && !phase.cue.busy && !travel.busy && !phase.cue.zone && marks.focusCenter !== m;
-}
-// 부표를 새로 누른 것과 같은 길이다 (onPick 끝의 pickSail → startFocus).
-//   ⚠ 12개가 떠 있는 채로 들어가면 앞 슬롯의 부표는 그 자리에서 잠긴 뒤 새 자리로 솟는다 (marks.js focusOn 의 prev)
-function exploreAround(m) {
-  if (!canExplore(m)) return false;
-  marks.select(m);
-  clickMark = m; hoverMark = m;
-  pickSail(m);
-  startFocus(m);
-  return true;
-}
-
 // 미니맵의 '지금 화면' 부채꼴 (배 기준 월드 x·z). 화면 테두리 16점을 부표 높이 평면에 투영하고
 //   부표 거리 페이드(38) 밖은 잘라 낸다 — 부표가 뜰 수 있는 곳이 곧 '보이는 바다' 다
 const _footPts = [];
@@ -1806,8 +1797,9 @@ function tick() {
     shownMark = wantCard;
     if (shownMark) ui.showScent(shownMark); else ui.hideScent();
   }
-  // 카드의 서비스 동작 단추 (v0.68.0) — 지도 향수가 아니면 셋 다 쉬고, [주변 향 탐색]은 지금 누를 수 없으면 쉰다 (canExplore). ⚠ ui 가 바뀔 때만 쓴다
-  if (shownMark) ui.setScentActions(shownMark.src === 'map' && !!shownMark.perfume && !hostHold, canExplore(shownMark));
+  // 카드의 서비스 동작 단추 (v0.68.0) — 지도 향수가 아니면 둘 다 쉰다. ⚠ ui 가 바뀔 때만 쓴다
+  //   ⚠ [주변 향 탐색]이 빠지면서(v0.74.2) 인자가 하나가 됐다 — 남은 둘은 같은 조건이다
+  if (shownMark) ui.setScentActions(shownMark.src === 'map' && !!shownMark.perfume && !hostHold);
   // ⭐ 호버 미리보기 카드는 마우스를 통과시킨다 (2026-09-13 저녁, cardPeek) — 카드 밑에 가린 부표에도 바로 마우스를 올릴 수 있게.
   //   ⚠ 누른 향수의 카드(clickMark)는 그대로 받는다 — × · '이 향의 해역으로' 를 눌러야 하고, 통과시키면 카드 누름이 빈 바다 누름이 된다
   //   ⭐ v0.65.0 : 마우스가 그 카드 위에 올라오면 통과를 끄고 진하게 — × · '이 향의 해역으로' 를 누를 수 있다 (updateHover 의 hoverOnCard).

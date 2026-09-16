@@ -149,7 +149,12 @@
 
 ## 다른 갈래에 요청
 
-- **D** : **앱의 `exploreSimilar` 핸들러를 어떻게 할지** (2026-09-16). 카드에서 [주변 향 탐색] 단추를 뺐다
+- ✅ **D** (2026-09-16 같은 날 사용자 결정 : ②) — **부표를 누를 때 엔진이 `exploreSimilar` 를 알린다.** 앱 `ScentScene.tsx` 의 핸들러는 **그대로 산다** (고칠 것 없음).
+  엔진 쪽은 `onPick` 의 `startFocus` 옆 한 줄이고, `cardAction` 의 `explore` 갈래 · `canExplore` · `exploreAround` 는 걷었다. 불변식 32 를 그렇게 고쳤다.
+  ⚠ **새 중심을 여는 갈래에서만** 알린다 — 12개 안의 부표를 누른 것은 그 앞에서 return 한다(고르기만 한다). 그래야 앱이 세는 수가 새 중심의 수와 같다.
+  아래는 그때의 질문 기록이다 :
+
+- ~~**D** : **앱의 `exploreSimilar` 핸들러를 어떻게 할지** (2026-09-16). 카드에서 [주변 향 탐색] 단추를 뺐다~~
   (사용자 : *"주변 향 탐색은 부표를 눌렸을때 뜨게하고 버튼은 빼야겠네"*) — 동작이 사라진 게 아니라 **부표 누르기가 곧 그 동작**이라 단추가 같은 일을 두 번 내놓고 있었다 (불변식 32).
   그래서 엔진 쪽 `cardAction` 의 `explore` 갈래 · `canExplore` · `exploreAround` 와 호스트 문 `exploreSimilar` 를 **부르는 곳이 없어졌다.**
   앱 `features/map/components/ScentScene.tsx` 가 아직 `exploreSimilar` 를 구현하고 있는데 그건 D 파일이라 안 건드렸다.

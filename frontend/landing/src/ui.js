@@ -222,12 +222,11 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
       }
     },
 
-    // 카드의 서비스 동작 단추를 켜고 끈다 (v0.68.0 — main.js 가 매 프레임 부른다). service = [자세히 보기] · [진열대에 저장] · explore = [주변 향 탐색]. ⚠ 바뀔 때만 쓴다
-    setScentActions(service, explore) {
-      for (const b of actBtns) {
-        const off = !(b.dataset.act === 'explore' ? explore : service);
-        if (b.disabled !== off) b.disabled = off;
-      }
+    // 카드의 서비스 동작 단추를 켜고 끈다 (v0.68.0 — main.js 가 매 프레임 부른다). 지금은 [자세히 보기] · [진열대에 저장] 둘. ⚠ 바뀔 때만 쓴다
+    //   ⚠ v0.74.2 에서 [주변 향 탐색]이 빠지면서 인자가 하나가 됐다 — 남은 둘은 같은 조건이라 갈래가 필요 없다
+    setScentActions(service) {
+      const off = !service;
+      for (const b of actBtns) if (b.disabled !== off) b.disabled = off;
     },
 
     hideScent() {
