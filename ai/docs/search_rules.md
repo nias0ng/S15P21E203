@@ -49,6 +49,33 @@
 | 2 | `target_field` 가 `NO_MAPPING` 인 행은 **건너뜁니다** | 매핑 근거가 없다고 판정된 표현 |
 | 3 | `match_condition` 이 `query_contains:a,b,c` 면 그 단어가 문장에 있을 때만 적용 | 뜻이 갈리는 표현 (`깨끗한` = 비누냐 물이냐) |
 
+### `scent_preference` 의 노트 이름 — 노트 브리지
+
+①단계 LLM 이 `scent_preference` 에 accord 이름이 아니라 **노트(향 원료) 이름**을 넣는 일이
+잦습니다. 예전에는 알아듣지 못해 버렸고, 지금은 `note_accord_bridge.csv` 로 바꿉니다.
+
+```
+scent_preference: ["mint"]   ->   aromatic · fresh spicy · green
+scent_preference: ["lemon"]  ->   aromatic · citrus
+scent_preference: ["flower"] ->   (표에 없습니다. 노트가 아니라 형용사입니다)
+```
+
+**[측정] 규칙 2가지**
+
+| | 규칙 | 근거 |
+|---|---|---|
+| 1 | `p >= 0.5` — 그 노트를 가진 향수의 **절반 이상**이 그 accord 를 가질 때만 씁니다 | |
+| 2 | `lift >= 1.4` — 그 비율이 accord 기저율의 **1.4배 이상**일 때만 씁니다 | `woody` 는 전체 향수의 61.7% 가 가지고 있어 `p` 만 보면 아무 노트에나 붙습니다. `peony → woody` 는 `p` 0.536 인데 `lift` 0.87 로 **오히려 덜 나온다**는 뜻입니다 |
+
+문턱 `1.4` 는 `DECISIONS.md` N4 의 통제군 값입니다. `load_index(bridge_lift_min=)` 으로
+바꿀 수 있습니다.
+
+합성 600문장에서 조건을 뽑는 비율이 **86.7% → 88.2%** 로 오르고, 조건이 하나뿐인
+`SINGLE_BROAD` 가 **91 → 75** 로 줍니다 (`DECISIONS.md` N14).
+
+**`ai/data/note_accord_bridge.csv` 가 없으면** 기동 로그에 경고가 남고 이 단계를
+건너뜁니다. 서버는 정상으로 돕니다.
+
 **[측정] 한글 accord 표기 10종**도 직접 잡습니다 — `바닐라`·`스위트`·`시트러스`·`아로마틱`·`앰버`·`우디`·`파우더리`·`프레시`·`프루티`·`플로럴`. 합성 평가셋 600건에서 80건이 여기 걸립니다(대부분 `바닐라`).
 
 ### LLM 구조화는 선택입니다
