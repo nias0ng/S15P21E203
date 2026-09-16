@@ -1,4 +1,4 @@
-package com.hyanghae.backend.community.service;
+package com.hyanghae.backend.global.storage;
 
 import java.util.Arrays;
 import java.util.Optional;
@@ -12,10 +12,13 @@ import java.util.Optional;
  * 도메인에서 내주는 순간 저장형 XSS 가 됩니다. 브라우저는 우리가 붙인 확장자를 보고 형식을
  * 정하므로, 확장자는 <b>내용에서 알아낸 형식</b>으로 우리가 붙여야 합니다.
  *
+ * <p>도메인마다 쓰는 자리가 달라도(게시글 이미지, 프로필 이미지) 판별 규칙은 같아야 해서
+ * {@code global} 에 둡니다. 어느 한쪽만 느슨해지면 그쪽이 구멍이 됩니다.
+ *
  * <p>SVG 는 일부러 넣지 않았습니다. SVG 는 그림이지만 스크립트를 품을 수 있는 XML 문서라
  * 같은 문제가 그대로 남습니다. 시그니처도 없어 내용으로 판별할 수도 없습니다.
  */
-enum PostImageFormat {
+public enum ImageFormat {
 
     /** {@code FF D8 FF} 로 시작합니다. 뒤 한 바이트는 세그먼트 종류라 보지 않습니다. */
     JPEG("jpg", "image/jpeg", new int[]{0xFF, 0xD8, 0xFF}),
@@ -36,7 +39,7 @@ enum PostImageFormat {
      * 형식을 알아내는 데 필요한 최대 바이트 수입니다. 파일 전체를 메모리에 올리지 않고
      * 이만큼만 읽어 판별합니다.
      */
-    static final int SIGNATURE_LENGTH = Arrays.stream(values())
+    public static final int SIGNATURE_LENGTH = Arrays.stream(values())
             .mapToInt(format -> format.signature.length)
             .max()
             .orElseThrow();
@@ -47,7 +50,7 @@ enum PostImageFormat {
     /** 값이 {@code -1} 인 자리는 무엇이 와도 되는 자리입니다. */
     private final int[] signature;
 
-    PostImageFormat(String extension, String contentType, int[] signature) {
+    ImageFormat(String extension, String contentType, int[] signature) {
         this.extension = extension;
         this.contentType = contentType;
         this.signature = signature;
@@ -56,17 +59,17 @@ enum PostImageFormat {
     /**
      * 앞부분 바이트로 형식을 찾습니다. 아는 형식이 없으면 빈 값입니다.
      */
-    static Optional<PostImageFormat> detect(byte[] head) {
+    public static Optional<ImageFormat> detect(byte[] head) {
         return Arrays.stream(values())
                 .filter(format -> format.matches(head))
                 .findFirst();
     }
 
-    String extension() {
+    public String extension() {
         return extension;
     }
 
-    String contentType() {
+    public String contentType() {
         return contentType;
     }
 

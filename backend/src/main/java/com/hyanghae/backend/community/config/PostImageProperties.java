@@ -16,8 +16,12 @@ import org.springframework.validation.annotation.Validated;
  * 적게 되고, 한 곳을 빼먹으면 그 프로필만 다르게 동작합니다. yaml 은 바꿀 값만 적습니다.
  *
  * @param directory 파일을 쌓을 디렉터리입니다. 상대 경로면 프로세스의 작업 디렉터리를 기준으로
- *                  풉니다. 컨테이너에서는 {@code /app/uploads}, {@code ./gradlew bootRun} 으로
- *                  직접 띄우면 {@code backend/uploads} 가 됩니다.
+ *                  풉니다. 컨테이너에서는 {@code /app/uploads/posts},
+ *                  {@code ./gradlew bootRun} 으로 직접 띄우면 {@code backend/uploads/posts} 가
+ *                  됩니다.
+ *                  <p><b>프로필 이미지와 디렉터리를 겹치면 안 됩니다.</b> 같은 트리를 두
+ *                  저장소가 함께 보면, 게시글 주소로 프로필 파일을 가리킬 수 있게 되고 그 글을
+ *                  지우는 것만으로 남의 프로필 사진이 지워집니다.
  *                  <p><b>컨테이너를 다시 만들면 이 디렉터리는 사라집니다.</b> 배포 서버에서는
  *                  반드시 볼륨을 붙여야 합니다. 붙이지 않으면 다음 배포에서 그동안 올라온
  *                  이미지가 전부 없어지고 게시글에는 깨진 주소만 남습니다.
@@ -35,7 +39,7 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties(prefix = "hyanghae.community.post-image")
 public record PostImageProperties(
-        @DefaultValue("uploads") @NotBlank String directory,
+        @DefaultValue("uploads/posts") @NotBlank String directory,
         @DefaultValue("/api/v1/posts/images") @NotBlank String urlPath,
         @DefaultValue("5MB") @NotNull DataSize maxSize
 ) {

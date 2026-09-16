@@ -1,4 +1,4 @@
-package com.hyanghae.backend.community.service;
+package com.hyanghae.backend.global.storage;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -11,33 +11,33 @@ import org.junit.jupiter.api.Test;
  * <p>이 판별이 뚫리면 이미지가 아닌 파일이 우리 도메인에서 내려갑니다. HTML 이 통과하면
  * 저장형 XSS 가 되므로, 통과해야 하는 것만큼 <b>막아야 하는 것</b>도 함께 확인합니다.
  */
-class PostImageFormatTest {
+class ImageFormatTest {
 
     @Test
     void detectsJpeg() {
         byte[] head = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0};
 
-        assertThat(PostImageFormat.detect(head)).contains(PostImageFormat.JPEG);
+        assertThat(ImageFormat.detect(head)).contains(ImageFormat.JPEG);
     }
 
     @Test
     void detectsPng() {
         byte[] head = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
 
-        assertThat(PostImageFormat.detect(head)).contains(PostImageFormat.PNG);
+        assertThat(ImageFormat.detect(head)).contains(ImageFormat.PNG);
     }
 
     @Test
     void detectsGif() {
-        assertThat(PostImageFormat.detect("GIF89a".getBytes(StandardCharsets.US_ASCII)))
-                .contains(PostImageFormat.GIF);
-        assertThat(PostImageFormat.detect("GIF87a".getBytes(StandardCharsets.US_ASCII)))
-                .contains(PostImageFormat.GIF);
+        assertThat(ImageFormat.detect("GIF89a".getBytes(StandardCharsets.US_ASCII)))
+                .contains(ImageFormat.GIF);
+        assertThat(ImageFormat.detect("GIF87a".getBytes(StandardCharsets.US_ASCII)))
+                .contains(ImageFormat.GIF);
     }
 
     @Test
     void detectsWebp() {
-        assertThat(PostImageFormat.detect(riff("WEBP"))).contains(PostImageFormat.WEBP);
+        assertThat(ImageFormat.detect(riff("WEBP"))).contains(ImageFormat.WEBP);
     }
 
     /**
@@ -46,7 +46,7 @@ class PostImageFormatTest {
      */
     @Test
     void rejectsOtherRiffContainers() {
-        assertThat(PostImageFormat.detect(riff("WAVE"))).isEmpty();
+        assertThat(ImageFormat.detect(riff("WAVE"))).isEmpty();
     }
 
     /**
@@ -57,7 +57,7 @@ class PostImageFormatTest {
     void rejectsHtmlDisguisedAsImage() {
         byte[] head = "<html><script>alert(1)</script>".getBytes(StandardCharsets.UTF_8);
 
-        assertThat(PostImageFormat.detect(head)).isEmpty();
+        assertThat(ImageFormat.detect(head)).isEmpty();
     }
 
     /**
@@ -67,7 +67,7 @@ class PostImageFormatTest {
     void rejectsSvg() {
         byte[] head = "<svg xmlns=\"http://www.w3.org/2000/svg\">".getBytes(StandardCharsets.UTF_8);
 
-        assertThat(PostImageFormat.detect(head)).isEmpty();
+        assertThat(ImageFormat.detect(head)).isEmpty();
     }
 
     /**
@@ -76,8 +76,8 @@ class PostImageFormatTest {
      */
     @Test
     void rejectsTooShortContent() {
-        assertThat(PostImageFormat.detect(new byte[]{(byte) 0xFF})).isEmpty();
-        assertThat(PostImageFormat.detect(new byte[0])).isEmpty();
+        assertThat(ImageFormat.detect(new byte[]{(byte) 0xFF})).isEmpty();
+        assertThat(ImageFormat.detect(new byte[0])).isEmpty();
     }
 
     private byte[] riff(String type) {

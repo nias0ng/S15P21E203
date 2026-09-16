@@ -252,7 +252,8 @@ class PostImageUploadIntegrationTest {
         upload(new MockMultipartFile("file", "my-private-photo.png",
                 MediaType.IMAGE_PNG_VALUE, png()));
 
-        assertThat(output).contains("Post image stored");
+        assertThat(output).contains("Image stored");
+        assertThat(output).contains("urlPath=" + UPLOAD_URL);
         assertThat(output).contains("format=PNG");
         assertThat(output).doesNotContain("userId");
         assertThat(output).doesNotContain("my-private-photo");

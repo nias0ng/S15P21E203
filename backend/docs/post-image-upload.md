@@ -57,7 +57,7 @@ XML 이고, 시그니처가 없어 내용으로 걸러낼 수도 없습니다.
 
 | 키 | 기본값 | 뜻 |
 | --- | --- | --- |
-| `hyanghae.community.post-image.directory` | `uploads` | 파일을 쌓을 디렉터리 |
+| `hyanghae.community.post-image.directory` | `uploads/posts` | 파일을 쌓을 디렉터리 |
 | `hyanghae.community.post-image.url-path` | `/api/v1/posts/images` | 돌려줄 주소의 앞부분 |
 | `hyanghae.community.post-image.max-size` | `5MB` | 파일 하나의 최대 크기 |
 | `spring.servlet.multipart.max-file-size` | `8MB` | 바깥 울타리 |
@@ -66,8 +66,13 @@ XML 이고, 시그니처가 없어 내용으로 걸러낼 수도 없습니다.
 
 `directory` 가 상대 경로면 프로세스의 작업 디렉터리를 기준으로 풉니다.
 
-- `./gradlew bootRun` 으로 직접 띄우면 `backend/uploads` (`.gitignore` 에 있습니다)
-- 컨테이너에서는 `/app/uploads` (`Dockerfile` 이 `spring` 사용자 소유로 만들어 둡니다)
+- `./gradlew bootRun` 으로 직접 띄우면 `backend/uploads/posts` (`.gitignore` 에 있습니다)
+- 컨테이너에서는 `/app/uploads/posts` (`Dockerfile` 이 `/app/uploads` 를 `spring` 사용자
+  소유로 만들어 두고, 하위 디렉터리는 시작할 때 만들어집니다)
+
+**다른 이미지 저장소와 디렉터리를 겹치면 안 됩니다.** 같은 트리를 두 저장소가 함께 보면
+게시글 주소로 다른 쪽 파일을 가리킬 수 있게 되고, 그 글을 지우는 것만으로 남의 파일이
+지워집니다. 저장 규칙 자체는 `global/storage/ImageFileStorage` 가 공통으로 갖고 있습니다.
 
 시작할 때 이 디렉터리를 만들지 못하면 **애플리케이션이 뜨지 않습니다.** 첫 업로드에서 500 을
 보고 알아채는 것보다 배포 시점에 실패하는 편이 낫습니다.
