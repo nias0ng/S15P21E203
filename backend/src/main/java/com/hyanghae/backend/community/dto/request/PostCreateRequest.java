@@ -30,7 +30,9 @@ import java.util.List;
  * <p>{@code perfumeIds} 와 {@code imageUrls} 는 없어도 됩니다. 자유 게시판 글은 향수를 걸지 않을
  * 수 있고, 이미지도 선택입니다. 둘 다 보낸 순서를 그대로 보여줄 순서로 씁니다.
  *
- * <p>이미지는 주소만 받습니다. 파일을 올리는 방법은 아직 정해지지 않았습니다.
+ * <p>이미지는 주소만 받습니다. 파일은 {@code POST /api/v1/posts/images} 로 먼저 올리고, 거기서
+ * 받은 {@code imageUrl} 을 여기 담아 보냅니다. 글이 만들어지기 전에 미리보기를 보여줘야 해서
+ * 두 단계로 나뉩니다.
  */
 public record PostCreateRequest(
         @Schema(description = "분류 코드", example = "CHAT",

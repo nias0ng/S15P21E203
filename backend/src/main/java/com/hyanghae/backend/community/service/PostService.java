@@ -47,8 +47,8 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code mine} 은 보는 사람에 따라 달라지므로 로그인 여부를 <b>참고</b>합니다. 로그인을
  * 요구하는 것과 로그인 여부를 참고하는 것은 다릅니다. 쓰기 셋은 로그인이 필요합니다.
  *
- * <p>이미지는 주소만 받습니다. 파일을 올리는 방법이 정해지면 그 API 가 주소를 돌려주고, 화면이
- * 그것을 여기로 보내면 됩니다. 이 서비스는 바뀔 일이 없습니다.
+ * <p>이미지는 주소만 받습니다. 파일은 {@link PostImageService} 가 따로 받아 저장하고 주소를
+ * 돌려주며, 화면이 그 주소를 여기로 보냅니다. 저장소를 어디로 옮기든 이 서비스는 바뀌지 않습니다.
  */
 @Service
 public class PostService {

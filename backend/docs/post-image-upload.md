@@ -1,0 +1,143 @@
+# 게시글 이미지 업로드 가이드
+
+게시글에 붙일 이미지 파일을 받아 서버에 저장하고 주소를 돌려주는 기능입니다.
+이 문서의 모든 상대 경로는 `backend/`를 기준으로 합니다.
+
+## 1. 흐름
+
+화면은 두 번 부릅니다.
+
+1. `POST /api/v1/posts/images` 로 파일을 올리고 `imageUrl` 을 받습니다.
+2. 글을 저장할 때 그 주소를 `POST /api/v1/posts` 의 `imageUrls` 에 담아 보냅니다.
+
+한 번에 합치지 않은 이유는 순서입니다. 글이 만들어지기 전에 미리보기를 보여줘야 하는데,
+그 시점에는 이미지를 매달 글이 아직 없습니다.
+
+한 번에 한 장입니다. 여러 장은 화면이 이 API 를 여러 번 부릅니다. 그래야 한 장이 실패해도
+나머지가 살아남고, 어느 장이 실패했는지 화면이 압니다.
+
+## 2. API
+
+| 항목 | 값 |
+| --- | --- |
+| 경로 | `POST /api/v1/posts/images` |
+| 요청 형식 | `multipart/form-data`, 파일 자리 이름은 `file` |
+| 인증 | 필요 |
+| 성공 | `201 Created`, 본문 `{"imageUrl": "/api/v1/posts/images/2026/09/<uuid>.png"}` |
+
+### 거절 규칙
+
+| 상태 | 코드 | 언제 |
+| --- | --- | --- |
+| 400 | `COMMUNITY_IMAGE_EMPTY` | 파일이 비었음 |
+| 400 | `BAD_REQUEST` | `file` 자리를 보내지 않음 |
+| 401 | `COMMUNITY_LOGIN_REQUIRED` | 로그인하지 않음 |
+| 413 | `COMMUNITY_IMAGE_TOO_LARGE` | `hyanghae.community.post-image.max-size` 초과 |
+| 413 | `PAYLOAD_TOO_LARGE` | `spring.servlet.multipart.max-file-size` 초과 |
+| 415 | `COMMUNITY_IMAGE_TYPE_NOT_ALLOWED` | JPG · PNG · GIF · WEBP 가 아님 |
+
+두 개의 413 은 제한이 두 겹이라 나뉩니다. 안쪽(기본 5MB)이 애플리케이션 제한이고 이유가
+있는 에러 코드를 돌려줍니다. 바깥쪽(기본 8MB)은 Spring 이 요청 본문을 다 읽기 전에 끊는
+울타리라 공용 413 만 나갑니다. **바깥쪽을 안쪽보다 작게 두면 도메인 에러 코드가 영영
+나가지 않습니다.**
+
+### 형식 판별
+
+파일 이름의 확장자나 `Content-Type` 헤더는 보내는 쪽이 마음대로 적을 수 있어 쓰지 않습니다.
+**파일 내용의 앞부분(시그니처)으로 판별하고, 확장자는 거기서 알아낸 형식으로 새로 붙입니다.**
+
+확장자만 믿으면 `.png` 라고 적힌 HTML 파일이 들어오고, 그것을 우리 도메인에서 내주는 순간
+저장형 XSS 가 됩니다. SVG 를 받지 않는 이유도 같습니다 — 그림이지만 스크립트를 품을 수 있는
+XML 이고, 시그니처가 없어 내용으로 걸러낼 수도 없습니다.
+
+파일 이름도 우리가 UUID 로 새로 짓습니다. 보낸 이름을 쓰면 같은 이름을 올린 다른 사람의
+파일을 덮어쓰고, `../` 가 든 이름으로 저장 위치를 벗어날 수 있습니다.
+
+## 3. 저장 위치와 설정
+
+| 키 | 기본값 | 뜻 |
+| --- | --- | --- |
+| `hyanghae.community.post-image.directory` | `uploads` | 파일을 쌓을 디렉터리 |
+| `hyanghae.community.post-image.url-path` | `/api/v1/posts/images` | 돌려줄 주소의 앞부분 |
+| `hyanghae.community.post-image.max-size` | `5MB` | 파일 하나의 최대 크기 |
+| `spring.servlet.multipart.max-file-size` | `8MB` | 바깥 울타리 |
+
+기본값은 `PostImageProperties` 에 있습니다. yaml 에는 바꿀 값만 적습니다.
+
+`directory` 가 상대 경로면 프로세스의 작업 디렉터리를 기준으로 풉니다.
+
+- `./gradlew bootRun` 으로 직접 띄우면 `backend/uploads` (`.gitignore` 에 있습니다)
+- 컨테이너에서는 `/app/uploads` (`Dockerfile` 이 `spring` 사용자 소유로 만들어 둡니다)
+
+시작할 때 이 디렉터리를 만들지 못하면 **애플리케이션이 뜨지 않습니다.** 첫 업로드에서 500 을
+보고 알아채는 것보다 배포 시점에 실패하는 편이 낫습니다.
+
+### 주소가 `/api/v1` 아래인 이유
+
+배포 nginx 는 `/api` 만 백엔드로 넘기고 나머지는 정적 파일 디렉터리에서 찾습니다.
+`/uploads/...` 같은 주소를 쓰면 nginx 설정을 함께 고치기 전까지 이미지가 404 가 됩니다.
+`/api/v1` 아래에 두면 이미 열려 있는 길로 들어오므로 서버 설정을 건드리지 않고 동작하고,
+로컬에서 백엔드만 띄웠을 때도 똑같이 동작합니다.
+
+파일을 내주는 것은 컨트롤러가 아니라 리소스 핸들러입니다(`PostImageWebConfig`). 그래서
+Swagger 에는 올리는 쪽만 나옵니다. 받은 주소로 GET 하면 로그인 없이 이미지가 나옵니다.
+
+## 4. ⚠ 배포 서버에서 해야 하는 일
+
+**저장 디렉터리는 컨테이너 안에 있습니다. 볼륨을 붙이지 않으면 다음 배포에서 그동안 올라온
+이미지가 전부 사라지고 게시글에는 깨진 주소만 남습니다.**
+
+배포 디렉터리(`/home/ubuntu/hyanghae`)의 `compose.yaml` 은 저장소에 없으므로 서버에서
+직접 고쳐야 합니다. backend 서비스에 볼륨을 붙입니다.
+
+```yaml
+services:
+  backend:
+    volumes:
+      - post-images:/app/uploads
+
+volumes:
+  post-images:
+```
+
+적용은 평소 배포와 같습니다.
+
+```bash
+cd /home/ubuntu/hyanghae
+docker compose -f compose.yaml up -d
+```
+
+`compose.manual-test.yaml` 에는 같은 볼륨이 이미 들어 있습니다.
+
+### 디스크
+
+이미지는 계속 쌓이기만 합니다. 배포 서버의 여유 공간을 한 번은 확인해 두는 편이 좋습니다.
+
+```bash
+df -h /var/lib/docker
+docker system df -v | grep post-images
+```
+
+## 5. 알려진 한계
+
+- **고아 파일**: 올리기만 하고 글을 쓰지 않으면 파일이 남습니다. 지우려면 어떤 파일이 어느
+  글에 쓰였는지 추적해야 하는데, 글 작성 전에는 그 연결이 없어 "아무 글도 안 쓴 파일"과
+  "방금 올려 곧 쓸 파일"을 구분할 수 없습니다. 먼저 쌓이는 양을 보고 정하는 편이 낫습니다.
+- **글을 지워도 파일은 남습니다**: 같은 이유입니다. `post_images` 행은 사라지지만 디스크의
+  파일은 그대로입니다.
+- **서버가 하나라는 전제**: 파일이 그 서버의 디스크에 있으므로 백엔드를 여러 대로 늘리면
+  A 에 올린 이미지를 B 가 내주지 못합니다. 늘릴 때는 저장소를 먼저 옮겨야 합니다.
+
+## 6. 나중에 옮길 때
+
+- **nginx 가 직접 내주게 하기**: 같은 경로를 nginx 가 디스크에서 바로 내주도록 가로챕니다.
+  저장된 주소는 그대로 두고 앞단만 바뀌므로 데이터는 손댈 필요가 없습니다.
+- **S3 같은 외부 저장소로 옮기기**: `PostImageService` 의 저장 부분과 `url-path` 만 바꿉니다.
+  `PostService` 와 `post_images` 는 주소 문자열만 알고 있어 바뀌지 않습니다.
+  **이미 저장된 게시글의 주소는 옛 경로 그대로이므로, 옮긴 뒤에도 그 주소가 계속 닿는지
+  확인해야 합니다.**
+
+## 7. 참고 문서
+
+- [백엔드 개발 가이드라인](backend-development-guidelines.md)
+- [운영 모니터링 및 Grafana 사용 가이드](operational-logging.md)
