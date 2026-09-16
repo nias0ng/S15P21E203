@@ -16,10 +16,18 @@ import {
   perfumeSeasonStatisticsQuery,
 } from '@/features/perfume'
 // 진열대 저장은 진열대 도메인의 어휘입니다. 화면에서 두 도메인을 조합합니다.
-import { ShelfSaveModal } from '@/features/shelf'
+import {
+  ShelfRegisterModal,
+  ShelfRegisterPartialError,
+  useShelfActions,
+} from '@/features/shelf'
+import { isApiError } from '@/shared/api/http'
+import { toPerfumeDetail } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
+import { useIsLoggedIn } from '@/shared/store/authStore'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
+import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { PageFallback } from '@/shared/ui/PageFallback'
 import { Toast } from '@/shared/ui/Toast'
 
@@ -43,6 +51,17 @@ export default function PerfumeDetailPage() {
   const enabled = Number.isFinite(numericId)
 
   const [shelfOpen, setShelfOpen] = useState(false)
+  const [loginOpen, setLoginOpen] = useState(false)
+  const isLoggedIn = useIsLoggedIn()
+
+  /**
+   * 진열대에 담기 (SHF-01) — 향수 상세의 입구입니다.
+   *
+   * 대상 향수는 이 화면이 이미 알고 있어 분류만 받으면 됩니다. 적합도 · 메모는
+   * 여기서 받지 않습니다(진열대 화면의 등록 모달에만 있습니다) — 그래서 요청이
+   * 하나로 끝나고, 나눠 보낼 때 생기는 부분 실패가 없습니다.
+   */
+  const actions = useShelfActions()
   const [reviewPage, setReviewPage] = useState(0)
   const { showToast, toastProps } = useToast()
 
@@ -97,7 +116,13 @@ export default function PerfumeDetailPage() {
     <div className="space-y-4">
       <PerfumeOverview
         perfume={data}
-        onSaveToShelf={() => setShelfOpen(true)}
+        /*
+          비로그인이면 저장 모달 대신 로그인 유도 모달을 띄웁니다 (공통 규칙 C01).
+          그냥 열어 두면 분류까지 고른 뒤 401 로 튕겨, 사용자가 한 일이 버려집니다.
+        */
+        onSaveToShelf={() =>
+          isLoggedIn ? setShelfOpen(true) : setLoginOpen(true)
+        }
       />
 
       <PerfumeNotes
@@ -131,14 +156,45 @@ export default function PerfumeDetailPage() {
         myReviewId={data.myReviewId}
       />
 
-      <ShelfSaveModal
+      {/*
+        진열대 화면(A15)과 **같은 등록 모달**입니다. `preselected` 를 넘기면 1단계
+        (향수 고르기)를 건너뛰고 분류 · 적합도 · 메모를 적는 2단계로 바로 엽니다 —
+        이 화면은 어떤 향수인지 이미 알고 있습니다.
+
+        예전에는 분류만 고르는 모달이었는데, 같은 "진열대에 담기" 인데 들어온 입구에
+        따라 적을 수 있는 값이 달라지면 사용자가 둘을 다른 기능으로 읽습니다.
+      */}
+      <ShelfRegisterModal
         open={shelfOpen}
         onClose={() => setShelfOpen(false)}
-        onSave={() => {
-          // TODO: SHF-01 저장 API 연결 (로그인 필요)
-          setShelfOpen(false)
-          showToast('진열대에 저장했습니다')
+        options={[]}
+        onSearch={() => {}}
+        preselected={{
+          perfumeId: data.perfumeId,
+          name: data.nameKo ?? data.name,
+          // 상세는 브랜드가 객체이고 사진은 배열의 첫 장입니다
+          brand: data.brand?.name ?? null,
+          thumbnailUrl: data.images[0] ?? null,
         }}
+        onSubmit={(input) => {
+          setShelfOpen(false)
+          actions.register.mutate(input, {
+            onSuccess: () => showToast('진열대에 저장했습니다'),
+            onError: (error) =>
+              showToast(
+                error instanceof ShelfRegisterPartialError
+                  ? `진열대에 담았지만 ${error.missing.join(' · ')}은(는) 저장하지 못했습니다`
+                  : isApiError(error)
+                    ? error.message
+                    : '진열대에 저장하지 못했습니다.',
+              ),
+          })
+        }}
+      />
+      <LoginRequiredDialog
+        open={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        redirectTo={toPerfumeDetail(numericId)}
       />
       <Toast {...toastProps} />
     </div>

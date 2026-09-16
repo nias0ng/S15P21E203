@@ -1,24 +1,31 @@
-import { useState } from 'react'
-
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { StarRating } from '@/shared/ui/StarRating'
-import { Textarea } from '@/shared/ui/Textarea'
 
 import { formatShelfDate } from '../lib'
-import type { ShelfItem } from '../types'
+import type { ShelfItemDetail } from '../types'
 
 type Props = {
-  item: ShelfItem | null
+  /**
+   * 고른 한 병. 적합도 · 메모가 상세 응답에만 있어 목록 타입이 아니라 상세를 받습니다.
+   *
+   * 화면은 목록이 아는 값(이름 · 브랜드 · 사진)으로 먼저 채운 것을 넘기고, 상세가
+   * 도착하면 그걸로 바꿔 넘깁니다 — 카드를 넘길 때마다 패널이 비지 않습니다.
+   */
+  item: ShelfItemDetail | null
   /** 대표 향수로 지정 (보유 중 칸에서만 뜻이 있습니다 — 아래 주석) */
   onSetRepresentative: () => void
-  /** 취향 적합도 매기기. 1.0~5.0 을 0.5 단위로 넘깁니다 */
+  /**
+   * 취향 적합도 매기기. 1.0~5.0 을 0.5 단위로 넘깁니다.
+   *
+   * 지우는 길은 여기 없습니다 — 해제는 [변경하기] 모달에서 합니다. 메모와 같은
+   * 이유로, 같은 값을 고치는 입구가 둘이면 한쪽만 쓰이고 다른 쪽은 잊힙니다.
+   */
   onChangeRating: (rating: number) => void
-  /** 분류 변경 모달 열기 */
-  onChangeCategory: () => void
+  /** 변경 모달 열기 — 분류 · 적합도 · 메모를 한 자리에서 고칩니다 */
+  onEdit: () => void
   /** 진열대에서 빼기. 되돌릴 수 없어서 화면이 확인창을 띄웁니다 */
   onRemove: () => void
-  onSaveMemo: (memo: string) => void
   className?: string
 }
 
@@ -103,7 +110,7 @@ const SCENT_NOTES = [
  *
  * 진열대에서 병을 고르면 그 향수의 얼굴을 크게 보여주는 패널입니다.
  * 위에서 아래로 — 대표 향수 별(왼쪽 위 모서리) · 사진 · 브랜드 · 이름 ·
- * 취향 적합도 · 향조 · 조작(분류 변경 · 저장 해제) · 메모 순입니다.
+ * 취향 적합도 · 향조 · 조작(변경하기 · 저장 해제) · 메모 순입니다.
  *
  * 카드 폭은 정하지 않습니다 — 진열장과 나란히 놓이는 자리라 화면(pages)이 정합니다.
  */
@@ -111,9 +118,8 @@ export function ShelfDetailPanel({
   item,
   onSetRepresentative,
   onChangeRating,
-  onChangeCategory,
+  onEdit,
   onRemove,
-  onSaveMemo,
   className,
 }: Props) {
   if (!item) {
@@ -299,14 +305,14 @@ export function ShelfDetailPanel({
                 variant="outline"
                 size="sm"
                 fullWidth
-                onClick={onChangeCategory}
+                onClick={onEdit}
                 className={cn('h-10 rounded-md', FOCUS_RING)}
               >
-                분류 변경
+                변경하기
               </Button>
               {/*
                 되돌릴 수 없는 조작이라 danger 입니다. 시안은 이 자리가 진한 먹색
-                단추인데, 그러면 옆의 "분류 변경"(되돌릴 수 있음)과 무게만 다를 뿐
+                단추인데, 그러면 옆의 "변경하기"(되돌릴 수 있음)와 무게만 다를 뿐
                 **성격이 같아 보입니다.** 색이 유일한 경고라서 시안보다 규약을
                 따릅니다. 확인창은 화면(pages)이 띄웁니다 — 지운 뒤 무엇을 고를지는
                 목록을 들고 있는 쪽만 알 수 있습니다.
@@ -322,7 +328,7 @@ export function ShelfDetailPanel({
               </Button>
             </div>
 
-            <MemoField item={item} onSave={onSaveMemo} />
+            <MemoField item={item} />
           </div>
         </div>
       </div>
@@ -349,7 +355,7 @@ function RepresentativeStar({
   item,
   onSet,
 }: {
-  item: ShelfItem
+  item: ShelfItemDetail
   onSet: () => void
 }) {
   const settable = item.category === 'OWNED' && !item.representative
@@ -399,153 +405,48 @@ function RepresentativeStar({
 }
 
 /**
- * 개인 메모.
+ * 개인 메모 — **읽기 전용**입니다.
  *
  * ⚠️ 메모는 향수 한 개당 하나입니다(와이어프레임 A15 주석). 향수 상세의 후기와는
  * 별개고, 남에게 보이지 않습니다.
  *
- * 평소에는 **읽기 상태**이고 "수정" 을 눌러야 입력칸이 열립니다(시안). 입력칸을 늘
- * 펼쳐 두면 카드 아래가 빈 상자로 남아서, 메모가 없는 향수에서는 카드가 "무언가
- * 적어야 하는 화면" 처럼 보입니다.
+ * 예전에는 여기 "수정" 단추가 있어 카드 안에서 바로 고쳤습니다. 지금은 분류 ·
+ * 적합도 · 메모를 [변경하기] 모달 한 자리에서 고치므로 입구를 하나로 모았습니다 —
+ * 같은 값을 고치는 길이 둘이면 한쪽만 쓰이고 다른 쪽은 잊힙니다.
  *
- * 저장 단추를 따로 둔 이유: 포커스가 빠질 때 조용히 저장하면, 지우다 만 글이
- * 그대로 저장되는 일이 생깁니다. 고치지 않았을 때는 꺼 두어서 "아직 안 바뀌었다" 를
- * 단추 상태로 알려줍니다.
+ * 세 줄에서 자릅니다(line-clamp-3). 카드 높이가 벽감에 맞춰져 있어서 긴 메모를 다
+ * 펼치면 카드가 벽감 아래로 흘러내려 옆 병의 이름표를 덮습니다. 잘린 뒷부분은
+ * [변경하기] 를 열면 입력칸에서 전부 보입니다.
  *
- * 값을 props 로 받지 않고 여기서 들고 있는 이유: 향수를 바꾸면 화면이 key 로 이
- * 컴포넌트를 다시 만들어서 초깃값이 새로 잡힙니다. useEffect 로 맞추면 저장 실패로
- * 되돌아오는 값과 사용자가 지금 치고 있는 글이 싸웁니다.
+ * **글자는 caption(12) 이 아니라 heading(16) 입니다.** 이 카드는 통째로
+ * `zoom: var(--panel-scale)` 로 줄어서, 1920 에서도 12px 이 11.5px 로 그려집니다.
+ * 활자 스케일의 하한(12px — 한글은 그 아래로 급격히 읽기 힘들어집니다)을 화면에서
+ * 이미 밑돌던 자리라, 카드가 줄어드는 만큼 한 단 위에서 시작합니다.
+ *
+ * Memo 라벨과 날짜는 caption 그대로입니다. 둘은 메모가 아니라 메모에 붙은 꼬리표라
+ * 같이 키우면 무엇이 본문인지 안 읽힙니다.
  */
-function MemoField({
-  item,
-  onSave,
-}: {
-  item: ShelfItem
-  onSave: (memo: string) => void
-}) {
-  const initial = item.memo ?? ''
-  const [draft, setDraft] = useState(initial)
-  const [editing, setEditing] = useState(false)
-  const dirty = draft.trim() !== initial.trim()
+function MemoField({ item }: { item: ShelfItemDetail }) {
+  const memo = item.memo ?? ''
   const writtenAt = formatShelfDate(item.memoUpdatedAt)
 
   return (
     <div className="flex flex-col gap-1.25">
       <div className="flex items-center justify-between gap-2.5">
         <span className="shelf-label">Memo</span>
-
-        <span className="flex items-center gap-2.5">
-          {editing ? (
-            <>
-              <MemoAction
-                onClick={() => {
-                  setDraft(initial)
-                  setEditing(false)
-                }}
-              >
-                취소
-              </MemoAction>
-              <MemoAction
-                disabled={!dirty}
-                onClick={() => {
-                  onSave(draft.trim())
-                  setEditing(false)
-                }}
-              >
-                저장
-              </MemoAction>
-            </>
-          ) : (
-            <>
-              {writtenAt && (
-                <span className="shelf-muted text-caption">{writtenAt}</span>
-              )}
-              <MemoAction onClick={() => setEditing(true)}>
-                {initial ? '수정' : '추가'}
-              </MemoAction>
-            </>
-          )}
-        </span>
+        {writtenAt && (
+          <span className="shelf-muted text-caption">{writtenAt}</span>
+        )}
       </div>
 
-      {editing ? (
-        /*
-          "수정" 을 눌러 방금 나타난 입력칸이라 커서가 여기 있어야 합니다. 누른 뒤
-          한 번 더 눌러야 글을 칠 수 있으면 단추를 두 번 누르게 됩니다.
-
-          autoFocus 대신 ref 로 직접 잡는 이유: autoFocus 는 커서를 글 **맨 앞**에
-          세웁니다. 고치려고 누른 사람이 이어 쓰려다 글머리에 글자를 끼워 넣게 되어,
-          커서를 끝으로 옮겨 둡니다.
-        */
-        <Textarea
-          label="개인 메모"
-          hideLabel
-          rows={3}
-          ref={(node) => {
-            if (!node) return
-            node.focus()
-            node.setSelectionRange(node.value.length, node.value.length)
-          }}
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder="이 향을 어디서 언제 맡았는지 적어두세요."
-          className="shelf-field text-heading rounded-md border-0 bg-[var(--chip)]"
-        />
-      ) : (
-        /*
-          읽기 상태는 세 줄에서 자릅니다(line-clamp-3). 카드 높이가 벽감에 맞춰져
-          있어서 긴 메모를 다 펼치면 카드가 벽감 아래로 흘러내려 옆 병의 이름표를
-          덮습니다. 잘린 뒷부분은 "수정" 을 누르면 입력칸에서 전부 보입니다.
-          줄바꿈은 whitespace-pre-line 으로 적은 그대로 둡니다.
-
-          **글자는 caption(12) 이 아니라 heading(16) 입니다.** 이 카드는 통째로
-          `zoom: var(--panel-scale)` 로 줄어서, 1920 에서도 12px 이 11.5px 로 그려집니다.
-          활자 스케일의 하한(12px — 한글은 그 아래로 급격히 읽기 힘들어집니다)을 화면에서
-          이미 밑돌던 자리라, 카드가 줄어드는 만큼 한 단 위에서 시작합니다. heading 은
-          스케일에 "serif 소제목" 으로 적혀 있지만 크기 토큰이라 서체는 따라오지 않습니다 —
-          여기서는 sans 본문 크기로만 씁니다. 세 줄 메모(64px)까지 넣어도 카드 안에
-          42px 이 남는 것을 확인했습니다.
-
-          Memo 라벨과 날짜는 caption 그대로입니다. 둘은 메모가 아니라 메모에 붙은 꼬리표라
-          같이 키우면 무엇이 본문인지 안 읽힙니다. 다만 "수정" 은 눌러야 하는 것이라
-          body(13) 로 한 단만 올렸습니다.
-        */
-        <p
-          className={cn(
-            'text-heading line-clamp-3 whitespace-pre-line',
-            !initial && 'shelf-muted',
-          )}
-        >
-          {initial || '이 향을 어디서 언제 맡았는지 적어두세요.'}
-        </p>
-      )}
+      <p
+        className={cn(
+          'text-heading line-clamp-3 whitespace-pre-line',
+          !memo && 'shelf-muted',
+        )}
+      >
+        {memo || '이 향을 어디서 언제 맡았는지 적어두세요.'}
+      </p>
     </div>
-  )
-}
-
-/** 메모 줄 오른쪽의 글자 단추 (수정 · 추가 · 저장 · 취소) */
-function MemoAction({
-  children,
-  disabled,
-  onClick,
-}: {
-  children: React.ReactNode
-  disabled?: boolean
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={cn(
-        'text-body underline underline-offset-2',
-        'transition-opacity duration-120 ease-out',
-        disabled ? 'shelf-muted opacity-40' : 'hover:opacity-70',
-        FOCUS_RING,
-      )}
-    >
-      {children}
-    </button>
   )
 }

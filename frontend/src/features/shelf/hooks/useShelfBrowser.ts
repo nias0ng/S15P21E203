@@ -56,7 +56,8 @@ export function useShelfBrowser(items: ShelfItem[]): ShelfBrowser {
     const matches = (item: ShelfItem) =>
       !needle ||
       item.name.toLowerCase().includes(needle) ||
-      item.brand.toLowerCase().includes(needle)
+      // 브랜드가 비어 있는 향수가 있습니다 — 이름만으로 걸립니다
+      (item.brand?.toLowerCase().includes(needle) ?? false)
 
     return SHELF_CATEGORIES.map(({ value, label }) => ({
       category: value,
