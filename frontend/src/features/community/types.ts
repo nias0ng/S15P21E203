@@ -1,6 +1,6 @@
 /**
- * 커뮤니티 도메인 타입 (와이어프레임 A22a · A22b · A23 · A24a · A24b · A25)
- * CMT-01 · 02 · 03 · 06 · 07 · 08 · 09 · 10 · 11 · 13
+ * 커뮤니티 도메인 타입 (와이어프레임 A22a · A22b · A23 · A24a · A24b)
+ * CMT-01 · 02 · 03 · 06 · 07 · 08 · 09 · 10 · 11
  *
  * **두 게시판은 백엔드에서 서로 다른 자원입니다.** 자유 게시판은 `/posts`, 후기
  * 게시판은 `/reviews` 이고 응답 모양도 다릅니다(후기에는 분류와 댓글이 없습니다).
@@ -225,16 +225,4 @@ export interface TrendingPerfume {
   perfumeId: number
   name: string
   postCount: number
-}
-
-/**
- * CMT-13 검수 보류 결과 (A25). 작성한 제목·본문은 유지합니다 — 다시 쓰게 하지 않습니다
- *
- * ⚠️ 검수 API 가 없습니다. 글 작성이 붙을 때 함께 확인해야 합니다.
- */
-export interface ModerationRejection {
-  /** 보류 사유들 */
-  reasons: string[]
-  /** 어떻게 고치면 되는지 */
-  requestedChange: string
 }
