@@ -846,10 +846,10 @@ const BASELINES = [
     label: '위 · 13px',
     values: { searchDrop: 0, infoDescK: 1 },
     presets: [
-      { label: '기본', hint: '✅ 지금 값 — 안 내림(향해 일지 판 윗변에 맞춤) · 설명 × 1.15', values: { searchDrop: 0, infoDescK: 1.15 } },
+      { label: '기본', hint: '✅ 지금 값 — 안 내림(향해 일지 판 윗변에 맞춤) · 설명 × 1.35 (17.5px)', values: { searchDrop: 0, infoDescK: 1.35 } },
+      { label: '설명 15px', hint: 'v0.67.0 ~ v0.73.0 의 설명 크기 (× 1.15)', values: { searchDrop: 0, infoDescK: 1.15 } },
       { label: '40px 내림', hint: 'v0.67.0 ~ v0.72.0 의 자리 — hostTop 과 합쳐 130px 내려가 있었다', values: { searchDrop: 40, infoDescK: 1.15 } },
-      { label: '더 아래', hint: '64px 내림 · 설명 × 1.15', values: { searchDrop: 64, infoDescK: 1.15 } },
-      { label: '더 크게', hint: '안 내림 · 설명 × 1.3 (17px)', values: { searchDrop: 0, infoDescK: 1.3 } }
+      { label: '더 아래', hint: '64px 내림 · 설명 × 1.35', values: { searchDrop: 64, infoDescK: 1.35 } }
     ]
   },
   {

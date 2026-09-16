@@ -250,7 +250,12 @@
       --pb-info-align: center; --pb-info-dir: column; --pb-info-gap: 10px;
       --pb-info-line-flex: none; --pb-info-line-w: 120px; --pb-info-timer-origin: center;
       --pb-info-title-pad: 0.34em;                                      /* 자간(0.34em)이 글자 뒤에만 붙어 가운데에서 비껴 보이는 몫 */
-      --pb-info-shadow: 0 1px 10px var(--pb-halo-2, transparent);       /* 저녁 · 밤 하늘 위 글자 그늘 (낮은 없음) */
+      /* 저녁 · 밤 하늘 위 글자 그늘 (낮은 없음).
+         ⭐ 2026-09-16 : **두 겹으로 바꿨다** (사용자 : *"설명 문구가 너무 지금 안보임"*). 한 겹 `0 1px 10px`(옅은 halo-2)으로는
+           밝은 살구색 하늘 위의 상아색 글자가 안 잡혔다 — 넓게만 퍼져서 획의 가장자리를 못 세운다.
+           좁고 진한 겹(halo 0.9)이 획을 세우고, 넓고 옅은 겹이 바탕에서 떼어낸다. 글자색은 안 바꿨다 —
+           밤에는 상아색이 맞고(불변식 25), 하늘을 따라 뒤집는 것은 앱 헤더가 하는 큰 장치다. */
+      --pb-info-shadow: 0 1px 2px var(--pb-halo, transparent), 0 2px 14px var(--pb-halo-2, transparent);
     }
   }
 </style>
@@ -277,7 +282,7 @@
   </div>
 </header>
 
-<div id="stage" style="position:relative;width:100%;height:calc(var(--pb-stage-h,100vh) - var(--pb-header-h,0px));min-height:var(--pb-stage-min,560px);overflow:hidden;background:var(--pb-paper,#F6F5F2);color:var(--pb-ink,#1A1A1A);font-family:'Noto Serif KR',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,serif;cursor:grab;user-select:none;">
+<div id="stage" style="position:relative;width:100%;height:calc(var(--pb-stage-h,100vh) - var(--pb-header-h,0px));min-height:var(--pb-stage-min,560px);overflow:hidden;background:var(--pb-paper,#F6F5F2);color:var(--pb-ink,#1A1A1A);font-family:'Noto Serif KR',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,serif;cursor:default;user-select:none;">
 
   <div id="mount" style="position:absolute;inset:0;"></div>
 
