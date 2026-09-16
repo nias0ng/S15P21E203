@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router'
 
 import { NoteCategorySections, noteListQuery } from '@/features/note'
 import { Button } from '@/shared/ui/Button'
-import { SearchField } from '@/shared/ui/SearchField'
+import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
 
 /**
  * 노트 (와이어프레임 A35 — 상단 메뉴 [노트] 목적지)
@@ -23,6 +23,8 @@ export default function NoteListPage() {
       <h1 className="sr-only">노트</h1>
 
       <SearchField
+        // 향수 목록 · 향수 검색과 같은 폭. 목록 화면 사이를 오갈 때 검색창이 제자리에 있어야 합니다
+        className={SEARCH_FIELD_LIST_WIDTH}
         label="노트명으로 검색"
         placeholder="노트명으로 검색"
         defaultValue={keyword}

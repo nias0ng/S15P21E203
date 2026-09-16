@@ -65,11 +65,21 @@ export function RootLayout() {
    * 하면 화면이 늘 때마다 헤더를 고치게 됩니다. 껍데기가 화면을 아는 건 껍데기의
    * 일이라 여기 둡니다.
    */
-  const onPaper = useLocation().pathname === ROUTES.MY_SHELF
+  const pathname = useLocation().pathname
+  const onPaper = pathname === ROUTES.MY_SHELF
+  /*
+   * 향수 목록은 어두운 방에 유리판이 떠 있는 구성입니다(A33 시안). 어둠이 헤더까지
+   * 덮어야 한 장으로 읽혀서 진열대 종이와 같은 자리에서 정합니다.
+   *
+   * `.scent-night` 는 색 토큰(ink · line · surface-card)을 어둠 기준으로 다시
+   * 정의하기만 합니다 — 헤더도 그 토큰을 쓰고 있어 컴포넌트를 고치지 않습니다.
+   * 자세한 설명은 features/perfume/perfume-display.css 에 있습니다.
+   */
+  const onNight = pathname === ROUTES.PERFUMES
   const width = usePageWidth()
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className={cn('flex min-h-dvh flex-col', onNight && 'scent-night')}>
       <GlobalHeader onPaper={onPaper} />
 
       {/*

@@ -7,6 +7,9 @@
  *
  * 화면: A33 향수 목록 / A09 검색 결과 / A10 상세 / A12 후기 상세
  */
+// 향수 목록 화면의 어두운 방 · 유리판 (진열대의 shelf-display.css 와 같은 구성)
+import './perfume-display.css'
+
 export { PerfumeFilters } from './components/PerfumeFilters'
 export { PerfumeGrid } from './components/PerfumeGrid'
 export { PerfumeNotes } from './components/PerfumeNotes'
@@ -16,7 +19,6 @@ export { PerfumeReviewSummary } from './components/PerfumeReviewSummary'
 export { PerfumeSearchResult } from './components/PerfumeSearchResult'
 export { PerfumeSeasonRatings } from './components/PerfumeSeasonRatings'
 export { PerfumeReviewDetail } from './components/PerfumeReviewDetail'
-export { SeasonRatingChart } from './components/SeasonRatingChart'
 export {
   perfumeDetailQuery,
   perfumeKeys,
