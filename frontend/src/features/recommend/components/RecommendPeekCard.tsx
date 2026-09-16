@@ -72,10 +72,22 @@ export function RecommendPeekCard({
   if (dismissed) return null
 
   return (
-    // 세로 가운데. 헤더(z-10)보다 위이고 모달·토스트보다 아래입니다.
-    <div ref={rootRef} className="fixed top-1/2 left-0 z-20 -translate-y-1/2">
+    /*
+      세로 가운데. 헤더(z-10)보다 위이고 모달·토스트보다 아래입니다.
+
+      **빈 자리는 클릭을 먹지 않습니다.** 접혀 있을 때 안쪽이 `-translate-x-72` 로
+      화면 밖에 나가도 바깥 상자는 그대로 337px 을 차지합니다 — transform 은 그림만
+      옮기고 자리는 안 옮기기 때문입니다. 그래서 진열대 왼쪽 화살표와 병이 이
+      보이지 않는 상자에 가려 안 눌렸습니다. 바깥은 통과시키고, 실제로 누를 수 있는
+      안쪽만 다시 받게 합니다.
+    */
+    <div
+      ref={rootRef}
+      className="pointer-events-none fixed top-1/2 left-0 z-20 -translate-y-1/2"
+    >
       <div
         className={cn(
+          'pointer-events-auto',
           'border-line/50 bg-surface-card shadow-raised flex items-stretch',
           'rounded-r-panel overflow-hidden border border-l-0',
           'transition-transform duration-200 ease-out',

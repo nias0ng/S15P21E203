@@ -11,7 +11,17 @@ type StarRatingProps = {
   onChange?: (next: number) => void
   /** 숫자를 옆에 적을지. 카드처럼 원만 보여주는 자리에서는 끕니다 */
   showValue?: boolean
+  /** 원 지름. 기본 md(15px) / lg(20px) — 카드 한 장을 크게 보여주는 자리 */
+  size?: RatingSize
   className?: string
+}
+
+type RatingSize = 'md' | 'lg'
+
+/** 원 지름. 활자가 아니라 그림이라 활자 스케일이 아니고, 끝자리 0/5 규칙을 따릅니다 */
+const CIRCLE_SIZE: Record<RatingSize, string> = {
+  md: 'size-3.75',
+  lg: 'size-5',
 }
 
 /** 원 개수. 백엔드가 1.0~5.0 만 받습니다(`@DecimalMin("1.0") @DecimalMax("5.0")`) */
@@ -43,6 +53,7 @@ export function StarRating({
   value,
   onChange,
   showValue = true,
+  size = 'md',
   className,
 }: StarRatingProps) {
   if (!onChange) {
@@ -50,7 +61,7 @@ export function StarRating({
       <span className={cn('inline-flex items-center gap-1.25', className)}>
         <span aria-hidden className="flex items-center gap-1.25">
           {Array.from({ length: CIRCLES }, (_, index) => (
-            <RatingCircle key={index} fill={fillOf(value, index)} />
+            <RatingCircle key={index} fill={fillOf(value, index)} size={size} />
           ))}
         </span>
         {/* 그림이 aria-hidden 이라 값은 글자로 한 번 읽힙니다 */}
@@ -69,6 +80,7 @@ export function StarRating({
       value={value}
       onChange={onChange}
       showValue={showValue}
+      size={size}
       className={className}
     />
   )
@@ -79,8 +91,11 @@ function EditableRating({
   value,
   onChange,
   showValue,
+  size,
   className,
-}: Required<Pick<StarRatingProps, 'label' | 'onChange' | 'showValue'>> & {
+}: Required<
+  Pick<StarRatingProps, 'label' | 'onChange' | 'showValue' | 'size'>
+> & {
   value: number | null
   className?: string
 }) {
@@ -138,7 +153,7 @@ function EditableRating({
 
           return (
             <span key={index} className="relative inline-flex">
-              <RatingCircle fill={fill} />
+              <RatingCircle fill={fill} size={size} />
 
               {half !== null && (
                 <HitArea
@@ -241,23 +256,40 @@ function fillOf(
  *
  * 글자(`●`)가 아니라 SVG 입니다. 반만 채우려면 도형을 잘라야 하는데 글자는 못 자릅니다.
  * 반원은 위에서 아래로 **왼쪽을 지나는** 호입니다(sweep 0).
+ *
+ * 색을 `currentColor`(fill-current · stroke-current)로 두는 이유: 이 원은 놓이는
+ * 화면의 글자색을 따라야 합니다. 예전에는 `fill-ink` 로 못 박혀 있어서, 색을 따로
+ * 쓰는 화면(진열대 상세 카드 — 따뜻한 먹색)에 얹으면 원만 차가운 먹색으로 떠
+ * 보였습니다. 부르는 쪽이 색을 정할 수 있게 하면 진열대는 감싸는 곳의 색을 그대로
+ * 물려받고, 기본 화면(body 가 text-ink)에서는 예전과 같은 색이 나옵니다.
+ * 빈 원은 그 색을 옅게 깐 테두리입니다 — line 토큰(stonegray)과 거의 같은 명도입니다.
  */
-function RatingCircle({ fill }: { fill: 'full' | 'half' | 'empty' }) {
+function RatingCircle({
+  fill,
+  size,
+}: {
+  fill: 'full' | 'half' | 'empty'
+  size: RatingSize
+}) {
   return (
-    <svg viewBox="0 0 20 20" aria-hidden className="size-3.75 shrink-0">
+    <svg
+      viewBox="0 0 20 20"
+      aria-hidden
+      className={cn('shrink-0', CIRCLE_SIZE[size])}
+    >
       {fill === 'full' ? (
-        <circle cx="10" cy="10" r="8" className="fill-ink" />
+        <circle cx="10" cy="10" r="8" className="fill-current" />
       ) : (
         <>
           <circle
             cx="10"
             cy="10"
             r="7.25"
-            className="stroke-line fill-none"
+            className="fill-none stroke-current opacity-30"
             strokeWidth="1.5"
           />
           {fill === 'half' && (
-            <path d="M10 2 A8 8 0 0 0 10 18 Z" className="fill-ink" />
+            <path d="M10 2 A8 8 0 0 0 10 18 Z" className="fill-current" />
           )}
         </>
       )}

@@ -1678,12 +1678,14 @@
    * 자간은 색·크기와 달리 시안이 확정돼도 함께 갈아끼울 대상이 아니라, 토큰을
    * 새로 파는 대신 이 화면 전용 클래스 하나로 모았습니다.
    *
-   * 크기까지 여기서 정하는 이유: 호출하는 쪽이 `shelf-label text-caption` 두 개를
-   * 적어야 하면 결국 한쪽을 빠뜨립니다. 값은 활자 스케일의 caption 토큰 그대로입니다.
+   * 크기까지 여기서 정하는 이유: 호출하는 쪽이 `shelf-label text-body` 두 개를
+   * 적어야 하면 결국 한쪽을 빠뜨립니다. 값은 활자 스케일의 body 토큰 그대로입니다 —
+   * caption(12) 이었는데, 자간을 0.18em 이나 벌린 대문자라 같은 크기의 본문보다
+   * 작아 보여서 한 단 올렸습니다. 이 클래스는 상세 카드 안에서만 씁니다.
    */
   .shelf-label {
     color: var(--shelf-ink-soft);
-    font-size: var(--text-caption);
+    font-size: var(--text-body);
     line-height: var(--text-caption--line-height);
     letter-spacing: 0.18em;
     text-transform: uppercase;
