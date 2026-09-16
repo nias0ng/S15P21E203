@@ -213,8 +213,14 @@ export function createSim(renderer) {
     get adv() { return { x: acc.x, z: acc.z }; },
     get texture() { return rtA.texture; },
 
-    update(dt, t, { vX, vZ, mv, scrollX, scrollZ }) {
-      const [bu, bv] = toUv(0, BOW_Z);
+    // ⭐⭐ `boatX` · `boatZ` — 배가 씬 원점을 **벗어난 양**(존 연출의 등장 · 정박, 2026-09-16). 기본 0 이면 예전과 비트 단위로 같다.
+    //   ⚠⚠ 이것이 불변식 0-2 의 *"배는 씬 원점"* 전제를 처음으로 흔드는 자리다. 그래서 **읽는 곳 전부에 같이 넘긴다** —
+    //     여기(뱃머리 그립) · `sampler()`(부력 프로브 창) · `boat.js` 의 해석적 너울(swellCPU). 한 곳만 옮기면 배와 물이 갈라진다.
+    //   ⚠⚠ 스펀지가 중심에서 반경 uv **0.29** 부터 진폭을 깎는다 — 오프셋이 `domain × 0.29 = 31.9월드` 를 넘으면 **항적이 태어나자마자 먹힌다.**
+    //     실측 (2026-09-16 · 1920×1080) : 정박 자리는 5.3월드라 넉넉하지만, 등장 시작점(화면 밖)은 **32.8월드**로 이 선을 살짝 넘는다.
+    //     그 구간은 배가 화면 밖이라 눈에 안 띈다 — 화면에 드는 동안은 안쪽이다. `zoneShipOut` 을 더 키우면 여기부터 다시 본다.
+    update(dt, t, { vX, vZ, mv, scrollX, scrollZ, boatX = 0, boatZ = 0 }) {
+      const [bu, bv] = toUv(boatX, BOW_Z + boatZ);
       uni.uBow.value.set(bu, bv, S.bowR / S.domain, S.bowGrip);
       // 멈춰 있으면 흘수만 살짝, 움직일수록 깊게 누른다
       uni.uBowDepth.value = P.bowDepth * (0.12 + 0.88 * mv);
@@ -347,10 +353,12 @@ export function createSim(renderer) {
 
     // 부력용. 선수 주변 16×16 텍셀을 한 번 읽고, 월드 오프셋 → 높이 함수를 돌려준다.
     // 읽기가 막힌 환경(일부 드라이버)에서는 null — 호출부는 너울만으로 자세를 잡는다.
-    sampler() {
+    // ⚠ `boatX` · `boatZ` 는 update 와 **같은 값**을 넘긴다 (배가 씬 원점을 벗어난 양) — 창이 배를 안 따라가면
+    //   배는 옮겨졌는데 부력만 옛 자리의 물을 읽어 잠기거나 뜬다. 돌려주는 함수의 `(ox, oz)` 는 그대로 **배 기준 상대**다.
+    sampler(boatX = 0, boatZ = 0) {
       if (!probeOK) return null;
       const PB = 16;
-      const [bu, bv] = toUv(0, BOW_Z);
+      const [bu, bv] = toUv(boatX, BOW_Z + boatZ);
       const cx = bu * S.res, cy = bv * S.res;
       const px = clamp(Math.round(cx) - PB / 2, 0, S.res - PB);
       const py = clamp(Math.round(cy) - PB / 2, 0, S.res - PB);

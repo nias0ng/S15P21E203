@@ -627,7 +627,9 @@ export function createBoat(scene) {
     probes: [[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],
     stepped: false,   // 이번 프레임에 배가 갱신됐는가 (sim.stepped 와 짝. perf.js 가 본다)
 
-    update(sim, { t, s, mv, head, headV }) {
+    // ⚠ `offX` · `offZ` — 배가 씬 원점을 벗어난 양 (존 연출). 0 이면 예전과 비트 단위로 같다.
+    //   자리를 놓는 것은 main.js 다 (pivot.position) — 여기는 **물을 어디서 읽을지**에만 쓴다.
+    update(sim, { t, s, mv, head, headV, offX = 0, offZ = 0 }) {
       syncModel();   // 종이배 ↔ GLB (값이 바뀔 때만 실제로 만진다)
       // 돛의 바람. ⚠ 물의 시계(sim.qT)를 쓴다 — 실시간 t 로 흔들면 파도와 따로 논다.
       //   ⚠ 이 갱신만은 boatFps 게이트 **밖**이다. 게이트에 걸면 천이 덜덜 떤다
@@ -673,7 +675,9 @@ export function createBoat(scene) {
         const aXx = B.armX * ch, aXz = -B.armX * sh;   // 선체 폭방향 (roll 을 만든다)
         const aZx = B.armZ * sh, aZz = B.armZ * ch;    // 선체 길이방향 (pitch 를 만든다)
         let hC = 0, hXp = 0, hXm = 0, hZp = 0, hZm = 0;
-        const at = sim.sampler();
+        // ⚠⚠ 배가 씬 원점을 벗어나 있으면(존 연출의 등장 · 정박) **물을 읽는 자리도 같이 옮긴다** (2026-09-16).
+        //   시뮬 프로브 창과 해석적 너울 **둘 다** 옮겨야 한다 — 한쪽만 옮기면 GPU 와 CPU 가 갈라져 배가 잠기거나 뜬다 (불변식 2 의 실패 모양).
+        const at = sim.sampler(offX, offZ);
         if (at) {
           hC = at(0, 0); hXp = at(aXx, aXz); hXm = at(-aXx, -aXz);
           hZp = at(aZx, aZz); hZm = at(-aZx, -aZz);
@@ -681,7 +685,8 @@ export function createBoat(scene) {
         // 부력도 물과 같은 양자화된 시각·위치를 봐야 한다 — 아니면 배가 잠기거나 뜬다
         // gerstner 를 같이 넘겨야 한다 — 켜면 GPU 는 정점을 옆으로도 밀고, CPU 는 그 역을 풀어
         // '이 월드 좌표의 수면 높이'를 낸다. 안 넘기면 배가 파도와 어긋난 자리에서 뜬다
-        const sw = (ox, oz) => swellCPU(ox + sim.qScroll.x, oz - sim.qScroll.z, sim.qT * P.waveSpeed, P.oceanSwell, P.ripple, P.gerstner);
+        //   ⚠ 씬 오프셋 → 월드는 `(x + scroll.x, z − scroll.z)` 규약이다 (불변식 0-2) — offX · offZ 도 같은 자리에 더한다
+        const sw = (ox, oz) => swellCPU(offX + ox + sim.qScroll.x, offZ + oz - sim.qScroll.z, sim.qT * P.waveSpeed, P.oceanSwell, P.ripple, P.gerstner);
         hC += sw(0, 0);
         hXp += sw(aXx, aXz); hXm += sw(-aXx, -aXz);
         hZp += sw(aZx, aZz); hZm += sw(-aZx, -aZz);
