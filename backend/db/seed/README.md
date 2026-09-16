@@ -1,5 +1,98 @@
 # 데이터 적재
 
+## 로컬 화면 테스트 데이터
+
+기존 향수 데이터를 유지하면서 이미지가 있는 156개 향수 중심으로 사용자 활동을 채웁니다.
+서버와 분리된 도구이며 운영 서버 JAR에는 포함되지 않습니다.
+
+### 실행 명령
+
+먼저 프로젝트 루트에서 기존 환경과 기준 데이터를 준비합니다. 이미 준비했다면 생략합니다.
+
+```powershell
+docker compose -f compose.manual-test.yaml up -d --build --wait
+docker compose -f compose.manual-test.yaml run --rm seed
+```
+
+비밀번호를 숨겨서 입력한 뒤 활동 데이터를 넣습니다. 비밀번호는 8~64자, UTF-8 기준 72바이트
+이하이며 저장소에 기록하지 않습니다.
+
+```powershell
+$env:SEED_LOGIN_PASSWORD = [System.Net.NetworkCredential]::new('', (Read-Host '테스트 계정 비밀번호' -AsSecureString)).Password
+docker compose -f compose.manual-test.yaml run --build --rm seed-local
+```
+
+일반 실행은 기존 행을 수정하지 않고 빠진 seed 행을 복원합니다. 보유/위시가 3명 미만이면 아직
+그 향수를 담지 않은 집계용 사용자로 보충합니다. 충분한 상태에서는 반복해도 행이 늘지 않습니다.
+
+테스트하며 수정한 seed 데이터를 처음 값으로 되돌릴 때만 아래 명령을 사용합니다.
+
+```powershell
+docker compose -f compose.manual-test.yaml run --rm -e SEED_MODE=reset seed-local
+```
+
+예: seed가 만든 향수 A를 보유에서 위시로 바꿨다면, 초기화 후 다시 보유가 됩니다.
+전체 DB 삭제가 아닙니다. 기존 seed 행은 같은 번호로 갱신하고 삭제된 행은 복원합니다.
+사람이 새로 만든 글·댓글·컬렉션과 연결은 삭제하지 않습니다. 수동 데이터가 남으므로 전체 DB가
+완전히 처음과 같아지는 것은 아닙니다. 기존 후기 seed는 초기화 대상이 아닙니다.
+
+복원할 컬렉션 이름이나 대표 향수가 수동 데이터와 충돌하면 **활동 적재 전체를 취소**합니다.
+충돌을 해결한 뒤 다시 실행하세요. 수동 데이터를 강제로 삭제하거나 seed 소유로 바꾸지 않습니다.
+DB 전체를 지우는 `down -v`는 이 명령과 다르며 수동 데이터도 삭제합니다.
+
+### 구성과 계정
+
+| 항목 | 구성 |
+| --- | --- |
+| 향수 | 전체 카탈로그 유지, 이미지 manifest의 156개를 활동 대상으로 사용 |
+| 보유·위시 | 대상마다 각각 최소 3명, 향수별 기록 수 차이와 동점 포함 |
+| 조회 | 대상마다 1~30건 |
+| 국내 선정 | 기존 200개 순위 유지 |
+| 신규 테스트 사용자 | 43명 (`demo01`~`demo43`) |
+| 활동 많은 사용자 | `demo41@demo.hyanghae.test`: 진열대 156개, 컬렉션 30개, 메모 52개 |
+| 다른 사용자 | `demo42@demo.hyanghae.test`: 진열대 8개, 잡담 작성자 |
+| 빈 사용자 | `demo43@demo.hyanghae.test`: 최초 생성 시 활동 없음 |
+| 후기 | 보호 대상 외 향수마다 0~7건, 계절·좋아요 포함 |
+| 커뮤니티 | 카테고리별 30개씩 총 90개, 컬렉션 공유·댓글·좋아요 포함 |
+
+계정 비밀번호는 **처음 생성할 때 입력한 값**입니다. 일반 실행 시 다른 값을 입력해도 기존
+비밀번호는 유지합니다. 초기화 시에는 장부에 기록된 최초 해시로 돌아갑니다.
+
+기존 `load_review_seed.sql`은 해당 사용자가 없을 때 한 번 실행합니다. 이미 있으면 재실행하지
+않습니다. 기존 향수 3개의 후기 **6·12·4건**을 보존하며 새 후기를 추가하지 않습니다. 새 사용자
+도메인도 기존 `@seed.hyanghae.test`와 다릅니다. 기존 후기 수가 바뀌어 있으면 임의로 고치지 않고
+중단하므로 해당 시나리오부터 확인하세요. 외부 AI 호출이나 가짜 분석 결과 생성은 하지 않습니다.
+
+### 구현과 검증
+
+- 앱 스키마는 기존 Flyway를 사용합니다. 생성 행의 번호와 최초 값은 별도 `local_seed` 스키마에
+  기록하며 이 장부도 로컬 도구 전용 Flyway로 관리합니다. 운영 마이그레이션과 별개입니다.
+- 장부만 지우면 생성 데이터의 소유 관계를 잃습니다. `local_seed`를 따로 삭제하지 마세요.
+- 일반 실행은 사람이 수정한 seed 행도 유지합니다. 초기화는 그 수정 내용을 최초 값으로 되돌립니다.
+- 쓰기 작업은 실행 중 잠시 대기하며 읽기는 가능합니다. 실패 시 활동 데이터 변경은 함께 롤백됩니다.
+- `SEED_ENV=manual-test`이고 DB 이름이 `_test`로 끝날 때만 실행합니다.
+- 생성 시각은 2026-09-01을 기준으로 고정합니다. 현재 순위는 전체 기간 집계입니다.
+- 향수 선택에는 환경마다 달라지는 DB 번호 대신 CSV의 `fragrantica_id`를 사용합니다.
+- 도구는 이미지의 DB 연결과 URL 존재를 검증합니다. 실제 CDN 접근은 별도 확인이 필요합니다.
+
+백엔드를 직접 실행하는 경우에는 `backend`에서 다음 환경변수를 설정하고 Gradle로 실행합니다.
+DB 접속 값은 본인의 로컬 환경에 맞게 바꾸세요.
+
+```powershell
+$env:SEED_ENV = 'manual-test'
+$env:SEED_JDBC_URL = 'jdbc:postgresql://localhost:5432/hyanghae_test'
+$env:SEED_DB_USER = 'hyanghae'
+$env:SEED_DB_PASSWORD = [System.Net.NetworkCredential]::new('', (Read-Host '로컬 DB 비밀번호' -AsSecureString)).Password
+$env:SEED_LOGIN_PASSWORD = [System.Net.NetworkCredential]::new('', (Read-Host '테스트 계정 비밀번호' -AsSecureString)).Password
+$env:SEED_MODE = 'fill' # 초기화할 때만 reset
+.\gradlew.bat seedLocal
+```
+
+검증: `.\gradlew.bat test --tests com.hyanghae.seed.LocalSeedIntegrationTest` (Docker 필요).
+별도 Testcontainers DB를 사용하므로 개발 중인 DB는 변경하지 않습니다.
+
+## 기준 데이터와 기존 후기 seed
+
 - [향 지도 데이터](#향-지도-데이터-적재) — 향수 200개와 좌표·향 계열·닮은 향수·향 특성
 - [노트 메타데이터](#노트-메타데이터-적재) — 노트 246개의 한국어명·분류·이미지·인기 순위
 - [향수 이미지](#향수-이미지-적재) — 향 지도 향수 156개의 일반·종이 질감 이미지
