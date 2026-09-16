@@ -11,6 +11,7 @@
 -- 전체가 한 트랜잭션이라 중간에 하나라도 어긋나면 아무것도 반영되지 않습니다.
 
 \set ON_ERROR_STOP on
+\pset pager off
 \timing off
 
 BEGIN;

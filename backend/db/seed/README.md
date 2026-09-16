@@ -44,7 +44,7 @@ DB 전체를 지우는 `down -v`는 이 명령과 다르며 수동 데이터도 
 
 | 항목 | 구성 |
 | --- | --- |
-| 향수 | 전체 카탈로그 유지, 이미지 manifest의 156개를 활동 대상으로 사용 |
+| 향수·브랜드 | 전체 카탈로그, `perfume_ko.csv` 향수 한국어 이름, `brands_ko.csv` 브랜드 이름·로고 유지 |
 | 보유·위시 | 대상마다 각각 최소 3명, 향수별 기록 수 차이와 동점 포함 |
 | 조회 | 대상마다 1~30건 |
 | 국내 선정 | 기존 200개 순위 유지 |
@@ -305,7 +305,8 @@ cd backend/db/seed
 # 향수 카탈로그 적재
 
 자연어 추천이 쓰는 향수 129,161개입니다. 브랜드 7,793개와 향 특성 100만 행이 함께 들어갑니다.
-데이터는 AI 쪽이 `ai/delivery/for_db/` 로 넘겨준 CSV 네 개이고, 만든 과정은
+데이터는 AI 쪽이 `ai/delivery/for_db/` 로 넘겨준 CSV와 이 디렉터리의 `perfume_ko.csv`,
+`brands_ko.csv`이며, 만든 과정은
 [ai/docs/perfume_load_handoff.md](../../../ai/docs/perfume_load_handoff.md) 에 있습니다.
 
 향 지도 200개와 **겹칩니다.** 그 200개가 이 CSV 에 전부 들어 있어서, `fragrantica_id` 로 맞춰
@@ -335,6 +336,18 @@ DATABASE_URL="postgresql://..." ./load_perfume_catalog.sh   # 로컬에 psql 이
 DB_NAME=... DB_USER=... PG_CONTAINER=... ./load_perfume_catalog.sh
 ```
 
+`perfume_ko.csv`는 영문 원이름과 한국어 번역명을 담습니다. 같은 영문 이름에 번역이 하나로
+정해지는 향수의 빈 `name_ko`만 보충하며, 이미 사람이 입력한 이름이나 번역이 서로 다른 동명이
+향수는 덮어쓰지 않습니다.
+
+`brands_ko.csv`는 브랜드의 `name_ko`, `logo_domain`, `logo_override`를 담습니다. 브랜드의 빈
+한국어 이름만 보충합니다. 같은 영문 이름에 번역이 여러 개이거나 여러 브랜드가 같은
+한국어 이름을 쓰는 경우에는 어느 브랜드인지 확정하기 어려우므로 해당 한국어 이름을 모두
+건너뜁니다. 로고는
+`logo_override`가 있으면 기존 값보다 우선해 저장합니다.
+`logo_override`가 없으면 기존 로고를 유지하고, 기존 로고도 없을 때만
+`https://img.logo.dev/{logo_domain}`으로 만들어 저장합니다.
+
 몇 번을 다시 돌려도 결과가 같습니다. 전체가 한 트랜잭션이라 중간에 하나라도 어긋나면 아무것도
 반영되지 않습니다. 끝나면 아래와 같은지 확인하세요.
 
@@ -360,7 +373,7 @@ SELECT (SELECT count(*) FROM brands)          AS brands,          -- 7,793 이�
 - **100만 행을 한 트랜잭션으로 넣습니다.** 로컬에서 9초 걸렸습니다. 운영 사양에 따라 더 걸릴 수
   있고 그동안 `perfume_accords` 에 잠금이 걸립니다. 서비스가 한가한 때를 고르십시오.
 - **표가 커집니다.** 적재 뒤 `perfume_accords` 88MB · `perfumes` 18MB · `brands` 1.8MB 입니다.
-- **건드리지 않는 값이 있습니다.** `name_ko` · `gender` · `description` · `concentration` 과
+- **건드리지 않는 값이 있습니다.** `gender` · `description` · `concentration` 과
   `is_active` 는 이 CSV 에 없어 그대로 둡니다. 운영에서 내린 향수를 적재가 되살리지 않습니다.
 - 마지막에 `ANALYZE` 를 돌립니다. 향수가 200개에서 13만 개로 늘어난 뒤 통계가 옛 크기를 들고
   있으면 조회가 인덱스를 건너뜁니다.
