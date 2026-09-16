@@ -39,15 +39,17 @@ public class PersonalizedRecommendationRepository {
                 FROM perfume_scent_families psf
                 GROUP BY psf.perfume_id
             ),
-            family_scores AS (
+            family_contributions AS (
                 SELECT psf.perfume_id,
-                       SUM(psf.weight::double precision * tp.preference)
+                       'TASTE' AS source,
+                       r.name AS evidence_name,
+                       psf.weight::double precision * tp.preference
                        / NULLIF(fn.value * (SELECT value FROM taste_norm), 0.0)
-                       * 0.35 AS score
+                       * 0.35 AS contribution
                 FROM perfume_scent_families psf
                 JOIN taste_profile tp ON tp.scent_region_id = psf.scent_region_id
+                JOIN scent_regions r ON r.scent_region_id = psf.scent_region_id
                 JOIN family_norm fn ON fn.perfume_id = psf.perfume_id
-                GROUP BY psf.perfume_id, fn.value
             ),
             rating_denominator AS (
                 SELECT SUM(ABS((up.fit_rating::double precision - 3.0) / 2.0)) AS value
@@ -107,42 +109,44 @@ public class PersonalizedRecommendationRepository {
                 FROM perfume_accords pa
                 GROUP BY pa.perfume_id
             ),
-            rating_scores AS (
+            rating_contributions AS (
                 SELECT pa.perfume_id,
-                       SUM(pa.weight::double precision * rp.preference)
+                       'FIT' AS source,
+                       a.name AS evidence_name,
+                       pa.weight::double precision * rp.preference
                        / NULLIF(an.value * (SELECT value FROM rating_norm), 0.0)
-                       * 0.50 AS score
+                       * 0.50 AS contribution
                 FROM perfume_accords pa
                 JOIN rating_profile rp ON rp.accord_id = pa.accord_id
+                JOIN accords a ON a.accord_id = pa.accord_id
                 JOIN accord_norm an ON an.perfume_id = pa.perfume_id
-                GROUP BY pa.perfume_id, an.value
             ),
-            recent_scores AS (
+            recent_contributions AS (
                 SELECT pa.perfume_id,
-                       SUM(pa.weight::double precision * rp.preference)
+                       'RECENT' AS source,
+                       a.name AS evidence_name,
+                       pa.weight::double precision * rp.preference
                        / NULLIF(an.value * (SELECT value FROM recent_norm), 0.0)
-                       * 0.15 AS score
+                       * 0.15 AS contribution
                 FROM perfume_accords pa
                 JOIN recent_profile_raw rp ON rp.accord_id = pa.accord_id
+                JOIN accords a ON a.accord_id = pa.accord_id
                 JOIN accord_norm an ON an.perfume_id = pa.perfume_id
-                GROUP BY pa.perfume_id, an.value
             ),
-            candidate_ids AS (
-                SELECT perfume_id FROM family_scores
-                UNION
-                SELECT perfume_id FROM rating_scores
-                UNION
-                SELECT perfume_id FROM recent_scores
+            contributions AS (
+                SELECT perfume_id, source, evidence_name, contribution
+                FROM family_contributions
+                UNION ALL
+                SELECT perfume_id, source, evidence_name, contribution
+                FROM rating_contributions
+                UNION ALL
+                SELECT perfume_id, source, evidence_name, contribution
+                FROM recent_contributions
             ),
             scored AS (
-                SELECT candidate_ids.perfume_id,
-                       COALESCE(fs.score, 0.0)
-                       + COALESCE(rs.score, 0.0)
-                       + COALESCE(recent.score, 0.0) AS score
-                FROM candidate_ids
-                LEFT JOIN family_scores fs USING (perfume_id)
-                LEFT JOIN rating_scores rs USING (perfume_id)
-                LEFT JOIN recent_scores recent USING (perfume_id)
+                SELECT perfume_id, SUM(contribution) AS score
+                FROM contributions
+                GROUP BY perfume_id
             )
             SELECT s.perfume_id,
                    COALESCE(NULLIF(p.name_ko, ''), p.name) AS display_name,
@@ -155,40 +159,9 @@ public class PersonalizedRecommendationRepository {
             JOIN perfumes p ON p.perfume_id = s.perfume_id
             JOIN LATERAL (
                 SELECT source, evidence_name
-                FROM (
-                    SELECT 'TASTE' AS source,
-                           r.name AS evidence_name,
-                           psf.weight::double precision * tp.preference
-                           / NULLIF(fn.value * (SELECT value FROM taste_norm), 0.0)
-                           * 0.35 AS contribution
-                    FROM perfume_scent_families psf
-                    JOIN taste_profile tp ON tp.scent_region_id = psf.scent_region_id
-                    JOIN scent_regions r ON r.scent_region_id = psf.scent_region_id
-                    JOIN family_norm fn ON fn.perfume_id = psf.perfume_id
-                    WHERE psf.perfume_id = s.perfume_id
-                    UNION ALL
-                    SELECT 'FIT', a.name,
-                           pa.weight::double precision * rp.preference
-                           / NULLIF(an.value * (SELECT value FROM rating_norm), 0.0)
-                           * 0.50
-                    FROM perfume_accords pa
-                    JOIN rating_profile rp ON rp.accord_id = pa.accord_id
-                    JOIN accords a ON a.accord_id = pa.accord_id
-                    JOIN accord_norm an ON an.perfume_id = pa.perfume_id
-                    WHERE pa.perfume_id = s.perfume_id
-                      AND rp.preference > 0.0
-                    UNION ALL
-                    SELECT 'RECENT', a.name,
-                           pa.weight::double precision * rp.preference
-                           / NULLIF(an.value * (SELECT value FROM recent_norm), 0.0)
-                           * 0.15
-                    FROM perfume_accords pa
-                    JOIN recent_profile_raw rp ON rp.accord_id = pa.accord_id
-                    JOIN accords a ON a.accord_id = pa.accord_id
-                    JOIN accord_norm an ON an.perfume_id = pa.perfume_id
-                    WHERE pa.perfume_id = s.perfume_id
-                ) contributions
-                WHERE contribution > 0.0
+                FROM contributions
+                WHERE perfume_id = s.perfume_id
+                  AND contribution > 0.0
                   AND evidence_name IS NOT NULL
                 ORDER BY contribution DESC, evidence_name, source
                 LIMIT 1
