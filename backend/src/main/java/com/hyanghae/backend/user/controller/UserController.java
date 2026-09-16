@@ -10,10 +10,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -24,7 +21,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "사용자", description = "사용자 계정과 내 정보를 관리합니다.")
-@Validated
 @RestController
 @RequestMapping("/api/v1/users")
 public class UserController {
@@ -40,10 +36,8 @@ public class UserController {
     @ApiResponse(responseCode = "400", description = "닉네임 형식 오류")
     @GetMapping("/nickname-availability")
     public NicknameAvailabilityResponse nicknameAvailability(
-            @Parameter(description = "확인할 닉네임", example = "향해자")
+            @Parameter(description = "확인할 닉네임. 앞뒤 공백을 제거한 뒤 2~20자", example = "향해자")
             @RequestParam
-            @NotBlank
-            @Size(min = 2, max = 20)
             String nickname
     ) {
         return userService.nicknameAvailability(nickname);

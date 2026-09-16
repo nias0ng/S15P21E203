@@ -24,6 +24,8 @@ import jakarta.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -217,6 +219,16 @@ class AuthIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code")
                         .value(AuthErrorCode.AUTH_EMAIL_ALREADY_EXISTS.code()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"a", "abcdefghijklmnopqrstu", "   ", "  a  "})
+    void rejectsInvalidNicknameAvailabilityQueries(String nickname) throws Exception {
+        mockMvc.perform(get("/api/v1/users/nickname-availability")
+                        .param("nickname", nickname))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value(AuthErrorCode.AUTH_INVALID_NICKNAME.code()));
     }
 
     private void signup() throws Exception {
