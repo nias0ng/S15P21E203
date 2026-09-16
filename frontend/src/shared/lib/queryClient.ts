@@ -1,6 +1,6 @@
 import { QueryClient } from '@tanstack/react-query'
 
-import { isApiError } from '@/shared/api/http'
+import { isApiError, setSessionExpiredHandler } from '@/shared/api/http'
 
 /**
  * 전역 QueryClient.
@@ -24,4 +24,13 @@ export const queryClient = new QueryClient({
       retry: 0,
     },
   },
+})
+
+/*
+ * 토큰이 만료돼 응답 인터셉터가 로그아웃시킬 때 캐시도 함께 비웁니다.
+ * 수동 로그아웃(GlobalHeader)과 탈퇴(WithdrawModal)는 각자 비우고 있었는데,
+ * 세션이 저절로 끊기는 이 경로에만 빠져 있었습니다.
+ */
+setSessionExpiredHandler(() => {
+  queryClient.clear()
 })

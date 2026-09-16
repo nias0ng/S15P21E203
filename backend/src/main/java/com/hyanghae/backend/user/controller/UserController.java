@@ -1,5 +1,6 @@
 package com.hyanghae.backend.user.controller;
 
+import com.hyanghae.backend.user.dto.request.NicknameChangeRequest;
 import com.hyanghae.backend.user.dto.request.PasswordChangeRequest;
 import com.hyanghae.backend.user.dto.request.UserDeleteRequest;
 import com.hyanghae.backend.user.dto.response.NicknameAvailabilityResponse;
@@ -49,6 +50,20 @@ public class UserController {
     @GetMapping("/me")
     public UserResponse findMe() {
         return userService.findMe();
+    }
+
+    @Operation(
+            summary = "닉네임 변경",
+            description = "지금 쓰고 있는 닉네임을 그대로 보내면 바꾸지 않고 성공합니다. "
+                    + "로그인 세션은 유지됩니다."
+    )
+    @ApiResponse(responseCode = "200", description = "변경 성공")
+    @ApiResponse(responseCode = "400", description = "닉네임 형식 오류")
+    @ApiResponse(responseCode = "401", description = "로그인 필요")
+    @ApiResponse(responseCode = "409", description = "이미 사용 중인 닉네임")
+    @PatchMapping("/me/nickname")
+    public UserResponse changeNickname(@Valid @RequestBody NicknameChangeRequest request) {
+        return userService.changeNickname(request);
     }
 
     @Operation(
