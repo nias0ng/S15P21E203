@@ -211,6 +211,12 @@ def _load_note_bridge(path, aidx, p_min, lift_min):
         raise RuntimeError(f"노트 브리지에 필요한 칸이 없다: {missing} ({path})")
 
     total = len(table)
+    table = table.dropna(subset=["note", "accord"])
+    empty = total - len(table)
+    if empty:
+        LOGGER.warning("노트 브리지에서 note·accord 가 비어 있는 %d행을 버렸다 (%s)",
+                       empty, path)
+
     table = table[table["accord"].isin(aidx)]
     table = table[(pd.to_numeric(table["p"], errors="coerce") >= p_min)
                   & (pd.to_numeric(table["lift"], errors="coerce") >= lift_min)]
@@ -218,13 +224,19 @@ def _load_note_bridge(path, aidx, p_min, lift_min):
     bridge = {}
     for note, accord in zip(table["note"], table["accord"]):
         key = re.sub(r"\s+", " ", str(note).strip().lower())
-        if key:
-            bridge.setdefault(key, [])
-            if accord not in bridge[key]:
-                bridge[key].append(accord)
+        # 공백뿐인 노트는 `""` 가 되어 걸러진다. `"nan"` 은 pandas 가 결측을 글자로
+        # 남겼을 때 나오는데 `dropna` 를 통과하므로 여기서 한 번 더 막는다
+        # (`_parse_accords` 도 같은 방식으로 막는다).
+        if not key or key == "nan":
+            continue
+        bridge.setdefault(key, [])
+        if accord not in bridge[key]:
+            bridge[key].append(accord)
     LOGGER.info("노트 브리지 %d행 중 p>=%.2f · lift>=%.2f 를 통과한 %d행 "
                 "-> 노트 %d개", total, p_min, lift_min, len(table), len(bridge))
-    return bridge
+    # 값을 tuple 로 굳힌다. `_bridge_lookup` 이 이 객체를 그대로 돌려주므로 list 면
+    # 부른 쪽이 고쳤을 때 표가 망가진다.
+    return {k: tuple(v) for k, v in bridge.items()}
 
 
 def _parse_accords(value):
@@ -444,17 +456,25 @@ def _normalize_accord(index, raw):
 
 
 def _bridge_lookup(index, raw):
-    """노트(원료) 이름 하나가 부르는 accord 목록. list[str].
+    """노트(원료) 이름 하나가 부르는 accord 목록. tuple[str, ...].
 
-    `_normalize_accord` 가 못 푼 값에만 쓴다. 표에 없으면 빈 목록이다.
-    표를 못 읽었으면(파일 없음) 항상 빈 목록이라 이전과 같이 동작한다.
+    `_normalize_accord` 가 못 푼 값에만 쓴다. 표에 없으면 빈 tuple 이다.
+    표를 못 읽었으면(파일 없음) 항상 빈 tuple 이라 이전과 같이 동작한다.
 
-        "Mint"   -> ["aromatic", "fresh spicy", "green"]
-        "lemon"  -> ["aromatic", "citrus"]
-        "flower" -> []          표에 없다. 노트가 아니라 형용사다
+        "Mint"   -> ("aromatic", "fresh spicy", "green")
+        "lemon"  -> ("aromatic", "citrus")
+        "flower" -> ()          표에 없다. 노트가 아니라 형용사다
+
+    **표의 값을 그대로 돌려준다. 복사하지 않는다.** 그래서 `_load_note_bridge` 가
+    tuple 로 굳혀 둔다 — list 면 부른 쪽이 고쳤을 때 표가 망가진다.
+
+    `index` 에 `note_bridge` 키가 없어도 동작한다. 이 기능을 얹기 전 `load_index()` 가
+    만든 인덱스가 들어올 수 있다 — 그때는 이전과 똑같이 노트를 해석하지 않는다.
     """
-    key = re.sub(r"\s+", " ", str(raw).strip().lower())
-    return index.get("note_bridge", {}).get(key, [])
+    bridge = index.get("note_bridge")
+    if not bridge:
+        return ()
+    return bridge.get(re.sub(r"\s+", " ", str(raw).strip().lower()), ())
 
 
 # ---------------------------------------------------------------------------
