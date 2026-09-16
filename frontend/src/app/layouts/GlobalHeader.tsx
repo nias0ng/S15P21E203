@@ -38,23 +38,26 @@ const GLASS = cn(
  * 헤더 위 글자 · 선 · 펼침 메뉴의 색.
  * 유리판(남색) 위에서는 상아색으로 뒤집습니다 — 종이의 먹색은 남색 위에서 읽히지 않습니다.
  */
-const PAPER_INK = {
-  text: 'text-ink',
-  hover: 'hover:text-ink-muted',
-  open: 'text-ink-muted',
-  ring: 'focus-visible:ring-accent-deep',
-  menu: 'border-line bg-surface-card',
-  item: 'text-ink hover:bg-line-soft',
-  itemRule: 'border-line',
-  login: 'border-line text-ink hover:bg-line-soft',
-  tint: '',
-  shadow: '',
+type Ink = {
+  /** 유리판의 옅은 색 — 유리(glass · glassLight)에만 씁니다 */
+  tint: string
+  /** 글자 그림자. 상속되므로 헤더에 한 번 겁니다 */
+  shadow: string
+  text: string
+  hover: string
+  open: string
+  ring: string
+  menu: string
+  item: string
+  itemRule: string
+  login: string
 }
+
 /*
  * 밤하늘 위 유리 — 남색 판 · 상아색 글자 · 남색 그림자.
  * 2026-09-16 실측 (헤더 띠의 밤하늘) : 상아색 최저 7.4:1. 먹색으로 두면 1.2:1 이라 꼭 바꿔야 합니다
  */
-const GLASS_INK: typeof PAPER_INK = {
+const GLASS_INK: Ink = {
   tint: 'before:from-surface-night/25',
   shadow: 'text-shadow-xs text-shadow-surface-night/40',
   text: 'text-surface',
@@ -75,7 +78,7 @@ const GLASS_INK: typeof PAPER_INK = {
  * 남색 판은 먹색 글자 뒤를 더 어둡게 해서 오히려 대비를 깎습니다 — 그래서 판의 색도 하늘을 따릅니다.
  * 펼침 메뉴는 판 밖 3D 위에 바로 앉으므로 종이 카드로 깝니다.
  */
-const GLASS_LIGHT_INK: typeof PAPER_INK = {
+const GLASS_LIGHT_INK: Ink = {
   tint: 'before:from-surface/25',
   shadow: 'text-shadow-xs text-shadow-surface/40',
   text: 'text-ink',
@@ -87,7 +90,26 @@ const GLASS_LIGHT_INK: typeof PAPER_INK = {
   itemRule: 'border-line',
   login: 'border-ink/40 text-ink hover:bg-surface/40',
 }
-type Ink = typeof PAPER_INK
+
+/*
+ * 종이 화면(surface · paper) — **메인의 밝은 하늘(GLASS_LIGHT_INK)과 같은 값**입니다.
+ *
+ * 2026-09-16 사용자 : "상단 헤더 통일화 · 메인페이지 기준으로 전체 페이지". 예전에는 종이 화면이
+ * 제 값을 따로 들고 있어서 글자 그림자 · 마우스를 올린 색(ink-muted) · 펼침 메뉴 그림자 ·
+ * [로그인] 테두리가 메인과 조금씩 달랐습니다.
+ *
+ * 다른 것은 둘뿐입니다.
+ * - 판의 옅은 색(tint)이 없습니다 — 종이 화면은 헤더가 본문과 같은 종이를 깝니다(아래 GlobalHeader)
+ * - [로그인]에 마우스를 올린 바탕 — 메인의 상아색 40% 는 종이 위에서 안 보여 누를 수 있다는 표시가 사라집니다
+ *
+ * 향수 목록의 어두운 방(`.scent-night`)은 ink · surface 토큰을 어둠 기준으로 다시 정의하므로,
+ * 같은 값이 그대로 상아색 글자 · 어두운 그림자가 됩니다 — 메인의 밤하늘(GLASS_INK)과 같은 짝입니다.
+ */
+const PAPER_INK: Ink = {
+  ...GLASS_LIGHT_INK,
+  tint: '',
+  login: 'border-ink/40 text-ink hover:bg-line-soft',
+}
 
 /** 포커스 링 — 링 색은 바탕마다 ink.ring 으로 더합니다 */
 const FOCUS =
@@ -139,11 +161,22 @@ export function GlobalHeader({ tone = 'surface' }: { tone?: HeaderTone }) {
      * paper 인 화면(진열대)에서는 헤더도 본문과 같은 종이를 깝니다. 투명하게
      * 두지 않는 이유: 스크롤한 내용이 로고와 메뉴 밑으로 비쳐 지나갑니다.
      * `.shelf-paper` 가 뷰포트 기준으로 그려져서 본문과 결이 이어집니다.
+     *
+     * ⚠ 폭은 **화면 폭(100vw)** 입니다 (`w-screen`). 스크롤바를 뺀 폭으로 두면 세로
+     * 스크롤이 생기는 화면(목록 · 상세)에서 1920 기준 메뉴가 7.5px, 돋보기 · 계정이 15px
+     * 왼쪽으로 밀려, 스크롤이 없는 메인과 헤더가 어긋났습니다(2026-09-16 실측).
+     * 스크롤바 밑으로 나간 15px 은 RootLayout 이 잘라냅니다(`overflow-x-clip`).
+     * 로고는 왼쪽 여백에 붙어 있어 본문 왼쪽 끝과 그대로 맞습니다.
+     *
+     * ⚠⚠ `sm`(640) 부터입니다. 그보다 좁으면 헤더 내용(390 에서 458px)이 화면보다 넓어
+     *   돋보기 · 계정이 오른쪽 밖으로 나갑니다 — 잘라내면 아예 못 누릅니다. 휴대폰은 스크롤바가
+     *   화면 위에 떠서 밀림도 없습니다. 좁은 화면의 헤더는 배치를 바꿔야 할 자리입니다.
      */
     <header
       className={cn(
-        'top-0 z-20',
-        onGlass ? cn(GLASS, ink.tint, ink.shadow) : 'sticky',
+        'top-0 z-20 sm:w-screen',
+        ink.shadow,
+        onGlass ? cn(GLASS, ink.tint) : 'sticky',
         tone === 'paper' && 'shelf-scope shelf-paper shelf-grain',
         tone === 'surface' && 'bg-surface',
       )}
@@ -236,6 +269,10 @@ function PrimaryNav({ isLoggedIn, ink }: { isLoggedIn: boolean; ink: Ink }) {
  * 배경 대신 글자색만 옅어지고, 지금 보고 있는 화면만 밑줄로 표시됩니다.
  * 좌우 padding 을 걷어낸 이유: 항목 간격을 60px 로 잡았는데 패딩이 남아 있으면
  * 글자 사이가 시안보다 그만큼 더 벌어집니다.
+ *
+ * ⚠ 지금 화면은 **밑줄만** 긋고 굵게 하지 않습니다 (2026-09-16 헤더 통일). 굵게 하면 그 글자
+ * 폭이 늘어 정중앙에 선 메뉴 다섯 개가 화면마다 조금씩 옮겨 가고, 굵은 메뉴가 없는 메인과
+ * 글자 무게가 달라집니다. 밑줄은 자리를 차지하지 않습니다.
  */
 const navLinkClass =
   (ink: Ink) =>
@@ -246,7 +283,7 @@ const navLinkClass =
       ink.hover,
       FOCUS,
       ink.ring,
-      isActive && 'font-semibold underline underline-offset-[6px]',
+      isActive && 'underline underline-offset-[6px]',
     )
 
 /** 커뮤니티 ▾ — 하위가 있는 유일한 메뉴 */

@@ -96,7 +96,19 @@ export function RootLayout() {
       : 'surface'
 
   return (
-    <div className={cn('flex min-h-dvh flex-col', onNight && 'scent-night')}>
+    /*
+      overflow-x-clip : 헤더는 스크롤바가 있어도 메인과 같은 자리에 서도록 화면 폭(100vw)이라
+      스크롤바 밑으로 15px 나갑니다(GlobalHeader). 그 조각이 가로 스크롤을 만들지 않게 자릅니다.
+      ⚠ hidden 이 아니라 clip 입니다 — hidden 은 스크롤 상자를 만들어 헤더의 sticky 가 풀립니다.
+      ⚠ 헤더의 100vw 와 같은 `sm`(640) 부터입니다. 더 좁으면 헤더가 화면보다 넓어 잘라내면
+        돋보기 · 계정을 못 누릅니다.
+    */
+    <div
+      className={cn(
+        'flex min-h-dvh flex-col sm:overflow-x-clip',
+        onNight && 'scent-night',
+      )}
+    >
       <GlobalHeader tone={tone} />
 
       {/*
