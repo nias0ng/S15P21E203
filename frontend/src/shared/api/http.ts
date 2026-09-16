@@ -85,6 +85,32 @@ const NO_REFRESH_PATHS = [
   '/auth/logout',
 ]
 
+/**
+ * 서버에 **닿지도 못한** 상태들.
+ *
+ *   0        요청 자체가 나가지 못했습니다 (네트워크 끊김 · CORS · 타임아웃)
+ *   502~504  중간의 프록시 · 게이트웨이가 백엔드에 못 닿았습니다
+ *
+ * 이때는 백엔드가 우리 형식(`{ code, message }`)으로 답한 것이 아니라서 axios 의
+ * 원문("Request failed with status code 502")이 그대로 화면에 나갑니다. 사용자에게
+ * 아무 뜻이 없고, 개발 중에도 원인이 안 읽힙니다 — 로컬에서는 대개 백엔드가 꺼진
+ * 것입니다. 그래서 여기서만 우리 문구로 바꿔 답니다.
+ *
+ * 400 · 404 처럼 **백엔드가 대답한 오류는 건드리지 않습니다.** 그 문구가 사정을
+ * 훨씬 정확히 설명합니다.
+ */
+function isUnreachable(status: number): boolean {
+  return status === 0 || status === 502 || status === 503 || status === 504
+}
+
+const unreachableCode = (status: number) =>
+  isUnreachable(status) ? 'SERVER_UNREACHABLE' : undefined
+
+const unreachableMessage = (status: number) =>
+  isUnreachable(status)
+    ? '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.'
+    : undefined
+
 /** 한 번 재발급하고 다시 보낸 요청인지. 같은 요청을 무한히 재시도하지 않게 합니다 */
 type RetriedConfig = InternalAxiosRequestConfig & { _retried?: boolean }
 
@@ -154,8 +180,8 @@ http.interceptors.response.use(
       return Promise.reject(
         new ApiError(
           status,
-          data?.code ?? 'UNKNOWN',
-          data?.message ?? error.message,
+          data?.code ?? unreachableCode(status) ?? 'UNKNOWN',
+          data?.message ?? unreachableMessage(status) ?? error.message,
         ),
       )
     }
