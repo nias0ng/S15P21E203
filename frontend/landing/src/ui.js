@@ -316,11 +316,14 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
         if (below + ch <= bot0) { y = below; dir = 'T'; }
         else if (above >= top0) { y = above; dir = 'B'; }
         else { y = Math.min(bot0 - ch, Math.max(top0, below)); dir = 'T'; }
-        const x = Math.round(Math.min(W - M - cw, Math.max(M, a.x - cw * 0.5)));
-        y = Math.round(y);
-        const key = x + ',' + y;
-        if (key !== bub.key) { bub.key = key; card.style.transform = `translate3d(${x}px, ${y}px, 0)`; }
+        // ⚠ 이름표와 **같은 이유로 반올림하지 않는다** (아래 showMarkLabels 의 긴 주석). 카드도 부표에 붙어 다니므로
+        //   정수 스냅은 부표가 천천히 흐를 때 카드만 1px 씩 튀게 만든다 — 꼬리가 부표를 못 따라간다.
+        const x = Math.min(W - M - cw, Math.max(M, a.x - cw * 0.5));
+        const key = x.toFixed(2) + ',' + y.toFixed(2);
+        if (key !== bub.key) { bub.key = key; card.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0)`; }
         bub.x = x; bub.y = y; bub.ax = a.x; bub.ay = a.y; bub.ar = a.r || 0;
+        // ⚠ 꼬리는 반올림을 **남긴다** — top/left 라 레이아웃을 다시 태운다 (transform 이 아니다).
+        //   카드가 부표를 정확히 따라가면 이 오프셋은 거의 안 변하므로 1px 양자가 안 보인다.
         setTail(dir, Math.round(Math.min(cw - 18, Math.max(18, a.x - x))), cw, ch);
         return;
       }
@@ -358,10 +361,11 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
       if (better) { f = g; bub.side = -bub.side; bub.flipAt = now; }
       // 둘 다 미니맵에 걸리면 미니맵 위로 올린다
       if (f.hitMini && avoid.mini) f.y = Math.max(top0, avoid.mini.y0 - ch);
-      const x = Math.round(Math.min(W - M - cw, Math.max(M, f.x)));
-      const y = Math.round(f.y);
-      const key = x + ',' + y;
-      if (key !== bub.key) { bub.key = key; card.style.transform = `translate3d(${x}px, ${y}px, 0)`; }
+      // ⚠ 반올림하지 않는다 (위 좁은 창 갈래와 같은 이유)
+      const x = Math.min(W - M - cw, Math.max(M, f.x));
+      const y = f.y;
+      const key = x.toFixed(2) + ',' + y.toFixed(2);
+      if (key !== bub.key) { bub.key = key; card.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0)`; }
       bub.x = x; bub.y = y; bub.ax = a.x; bub.ay = a.y; bub.ar = a.r || 0;
       // 꼬리 — 부표 쪽 가장자리, 부표 높이에. ⚠ 둥근 모서리(5px) 안으로 물린다
       setTail(bub.side > 0 ? 'L' : 'R', Math.round(Math.min(ch - 18, Math.max(18, a.y - y))), cw, ch);
@@ -510,23 +514,42 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
             'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
           focusBox.appendChild(el);
           focusEls[i] = el;
-          el._name = ''; el._q = ''; el._s = '';
+          el._name = ''; el._q = ''; el._s = ''; el._a = -1;
         }
         const it = items[i];
         if (el._name !== it.text) { el.textContent = it.text; el._name = it.text; }
         const s = it.top ? 't' : 'n';
         if (el._s !== s) { el._s = s; el.style.fontSize = (it.top ? LABEL_FS_TOP : LABEL_FS) + 'px'; el.style.fontWeight = it.top ? '600' : '400'; }
-        const q = Math.round(it.x) + ',' + Math.round(it.y) + ',' + Math.round(it.a * 50) + (it.up ? 'u' : 'd');
+        // ⚠⚠⚠ **자리를 반올림하지 않는다** (2026-09-16). 사용자 : *"속도가 빠르면 빠르게 따라가지 못하고 약간 떨림"*.
+        //   예전에는 `Math.round` 로 정수 픽셀에 스냅했는데, **양자 1px 이 실제 이동보다 훨씬 컸다.**
+        //   실측 (순항 · 60fps 환산한 프레임당 화면 이동) :
+        //     Blue Talisman x **0.14px** · y 0.07px   │  Sicily x 0.28 · y 0.16  │  God of Fire x 1.12 · y 0.38
+        //   0.14px 로 가는 이름표는 **일곱 프레임을 제자리에 있다가 1px 을 통째로 튄다.** 부표는 GPU 가
+        //   서브픽셀로 미끄러지는데 글자만 계단으로 가니, 둘이 붙어 있지 않고 **떠는 것으로 보인다.**
+        //   세로가 더 나쁘다 — 부표의 너울 부유가 프레임당 0.1px 안팎이라 스냅이 그걸 깜빡임으로 만든다.
+        //   ⚠ GPU 와 무관한 문제다 (양자화라 프레임률·가속과 상관없다) — 크롬에서 가속을 켜도 남아 있던 이유다.
+        // ⚠⚠ **translate3d 라야 한다.** 2D translate 는 글자를 픽셀 격자에 맞춰 **다시 래스터**하므로
+        //   소수를 줘도 글자꼴이 프레임마다 미세하게 달라진다 (그 자체가 떨림이다). 3d 는 층을 하나 만들어
+        //   **한 번 래스터한 글자를 옮기기만** 한다 — 위 will-change:transform 과 짝이다.
+        // ⚠ 자리와 투명도의 문을 갈랐다 — 자리는 매 프레임 바뀌지만 투명도는 거의 안 바뀐다.
+        //   예전처럼 한 열쇠에 묶으면 자리가 바뀔 때마다 opacity·visibility 까지 다시 쓴다.
+        const q = it.x.toFixed(2) + ',' + it.y.toFixed(2) + (it.up ? 'u' : 'd');
         if (el._q !== q) {
           el._q = q;
-          el.style.transform = 'translate(' + Math.round(it.x) + 'px,' + Math.round(it.y) + 'px) translate(-50%,' + (it.up ? '-100%' : '0') + ')';
+          el.style.transform = 'translate3d(' + it.x.toFixed(2) + 'px,' + it.y.toFixed(2) + 'px,0) translate(-50%,' + (it.up ? '-100%' : '0') + ')';
+        }
+        const av = Math.round(it.a * 50);
+        if (el._a !== av) {
+          el._a = av;
           el.style.opacity = it.a.toFixed(2);
           el.style.visibility = it.a > 0.01 ? 'visible' : 'hidden';
         }
       }
       for (let i = items.length; i < focusEls.length; i++) {
         const el = focusEls[i];
-        if (el._q !== 'off') { el._q = 'off'; el.style.visibility = 'hidden'; }
+        // ⚠ _a 도 같이 되돌린다 — 안 그러면 이 자리가 다시 쓰일 때 투명도 문이 '같다' 고 보고
+        //   visibility 를 visible 로 안 돌려놔 **이름표가 안 보인다** (자리·투명도 문을 가르면서 생기는 함정).
+        if (el._q !== 'off') { el._q = 'off'; el._a = -1; el.style.visibility = 'hidden'; }
       }
     },
     // 예전 이름 (향수 고르기의 12개 밑) — markLabels 0 에서 main.js 가 부른다
