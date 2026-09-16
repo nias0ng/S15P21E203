@@ -62,6 +62,15 @@ public class User {
         this.updatedAt = updatedAt;
     }
 
+    public void changeNickname(String nickname, OffsetDateTime updatedAt) {
+        this.nickname = nickname;
+        this.updatedAt = updatedAt;
+    }
+
+    public boolean hasNickname(String nickname) {
+        return this.nickname.equals(nickname);
+    }
+
     public Long getId() {
         return id;
     }
