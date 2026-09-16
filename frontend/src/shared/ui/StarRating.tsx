@@ -11,7 +11,17 @@ type StarRatingProps = {
   onChange?: (next: number) => void
   /** 숫자를 옆에 적을지. 카드처럼 원만 보여주는 자리에서는 끕니다 */
   showValue?: boolean
+  /** 원 지름. 기본 md(15px) / lg(20px) — 카드 한 장을 크게 보여주는 자리 */
+  size?: RatingSize
   className?: string
+}
+
+type RatingSize = 'md' | 'lg'
+
+/** 원 지름. 활자가 아니라 그림이라 활자 스케일이 아니고, 끝자리 0/5 규칙을 따릅니다 */
+const CIRCLE_SIZE: Record<RatingSize, string> = {
+  md: 'size-3.75',
+  lg: 'size-5',
 }
 
 /** 원 개수. 백엔드가 1.0~5.0 만 받습니다(`@DecimalMin("1.0") @DecimalMax("5.0")`) */
@@ -43,6 +53,7 @@ export function StarRating({
   value,
   onChange,
   showValue = true,
+  size = 'md',
   className,
 }: StarRatingProps) {
   if (!onChange) {
@@ -50,7 +61,7 @@ export function StarRating({
       <span className={cn('inline-flex items-center gap-1.25', className)}>
         <span aria-hidden className="flex items-center gap-1.25">
           {Array.from({ length: CIRCLES }, (_, index) => (
-            <RatingCircle key={index} fill={fillOf(value, index)} />
+            <RatingCircle key={index} fill={fillOf(value, index)} size={size} />
           ))}
         </span>
         {/* 그림이 aria-hidden 이라 값은 글자로 한 번 읽힙니다 */}
@@ -69,6 +80,7 @@ export function StarRating({
       value={value}
       onChange={onChange}
       showValue={showValue}
+      size={size}
       className={className}
     />
   )
@@ -79,8 +91,11 @@ function EditableRating({
   value,
   onChange,
   showValue,
+  size,
   className,
-}: Required<Pick<StarRatingProps, 'label' | 'onChange' | 'showValue'>> & {
+}: Required<
+  Pick<StarRatingProps, 'label' | 'onChange' | 'showValue' | 'size'>
+> & {
   value: number | null
   className?: string
 }) {
@@ -138,7 +153,7 @@ function EditableRating({
 
           return (
             <span key={index} className="relative inline-flex">
-              <RatingCircle fill={fill} />
+              <RatingCircle fill={fill} size={size} />
 
               {half !== null && (
                 <HitArea
@@ -249,9 +264,19 @@ function fillOf(
  * 물려받고, 기본 화면(body 가 text-ink)에서는 예전과 같은 색이 나옵니다.
  * 빈 원은 그 색을 옅게 깐 테두리입니다 — line 토큰(stonegray)과 거의 같은 명도입니다.
  */
-function RatingCircle({ fill }: { fill: 'full' | 'half' | 'empty' }) {
+function RatingCircle({
+  fill,
+  size,
+}: {
+  fill: 'full' | 'half' | 'empty'
+  size: RatingSize
+}) {
   return (
-    <svg viewBox="0 0 20 20" aria-hidden className="size-3.75 shrink-0">
+    <svg
+      viewBox="0 0 20 20"
+      aria-hidden
+      className={cn('shrink-0', CIRCLE_SIZE[size])}
+    >
       {fill === 'full' ? (
         <circle cx="10" cy="10" r="8" className="fill-current" />
       ) : (
