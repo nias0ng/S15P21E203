@@ -43,6 +43,10 @@ springdoc:
 #
 # 운영과 달리 주기가 1분입니다. 확인하려고 한 시간을 기다릴 수는 없습니다.
 hyanghae:
+  auth:
+    jwt-secret: ${JWT_SECRET:local-manual-test-secret-must-be-at-least-32-bytes}
+    cookie:
+      secure: false
   review-analysis:
     enabled: ${REVIEW_ANALYSIS_ENABLED:false}
     cron: ${REVIEW_ANALYSIS_CRON:0 * * * * *}

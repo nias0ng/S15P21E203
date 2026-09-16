@@ -7,3 +7,10 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+
+hyanghae:
+  auth:
+    jwt-secret: test-jwt-secret-must-be-at-least-thirty-two-bytes
+    enforce-http-authorization: false
+    cookie:
+      secure: false

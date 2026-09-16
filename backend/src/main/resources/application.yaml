@@ -7,3 +7,16 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
+
+hyanghae:
+  auth:
+    access-token-ttl: 30m
+    refresh-token-ttl: 7d
+    max-sessions-per-user: 2
+    issuer: hyanghae
+    jwt-secret: ${JWT_SECRET:}
+    enforce-http-authorization: true
+    cookie:
+      name: refresh_token
+      secure: true
+      same-site: Strict
