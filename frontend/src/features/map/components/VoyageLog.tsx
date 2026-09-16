@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
@@ -23,19 +23,24 @@ type Props = {
 const NOTE = 'text-caption text-surface/95 leading-relaxed'
 
 /*
- * 열고 닫는 움직임 (2026-09-16 사용자 : "위에서부터 하나씩 창도 열리듯 내려가고 · ease 결로 부드럽게 ·
- * 글자도 거의 동시에 · 튀어나오면 안 됨").
- * - 판은 grid-template-rows 0fr → 1fr 로 위에서부터 내려 열립니다 (내용 높이를 몰라도 부드럽게 늘어납니다)
- * - 줄은 위에서부터 한 줄씩 옅게 떠오릅니다 — 4px 만 내려오고(-translate-y-1) 크기는 안 바뀝니다
- * - 판이 열리기 시작하고 곧(80ms) 첫 줄이 따라옵니다. 닫을 때는 줄이 먼저 짧게 사라지고 판이 접힙니다
- * - 곡선은 CSS ease 그대로 · 움직임 줄이기 설정이면 움직이지 않습니다
+ * 열고 닫는 움직임 — **족자** (2026-09-17 사용자 : "지도 · 종이를 열듯 두루마리가 열리는 모션 · 위→아래 족자").
+ *
+ * - 머리줄(향해 일지)이 족자의 위 축이고, 그 아래 종이가 위에서부터 풀려 내려옵니다. 접으면 머리줄 밑으로 말려 올라갑니다
+ * - ⚠ 판은 **내용 높이를 재서 px 로** 늘립니다(ResizeObserver). 예전 grid-template-rows 0fr → 1fr 는 판(바깥)이
+ *   글자가 보이는 칸보다 앞서 내려갔습니다 — 자동 높이 격자에서 1 보다 작은 fr 이 두 번 곱해져, 280ms 에
+ *   판 219px · 글자 116px 로 판 아래 100px 가 빈 채 내려왔습니다(09-17 실측). 줄마다 떠오르던 효과가 그걸 가렸습니다
+ * - 글자는 **제자리에서** 판 아래끝이 지나가며 드러납니다. 예전(09-16)처럼 줄마다 떠오르지 않습니다 —
+ *   종이에 적힌 글자는 움직이지 않고, 말아 올릴 때도 글자가 먼저 사라지지 않습니다
+ * - 풀 때는 천천히 떼어 끝에서 조용히 멈춥니다(튀지 않음 — 09-16 "튀어나오면 안 됨"). 말아 올릴 때는 조금 빠르게
+ * - 판 아래끝의 말린 축 · 그늘 그림은 넣었다가 뺐습니다 (09-17 사용자 : "하단 두루마리 디자인 빼고") — 움직임만 족자입니다
+ * - 움직임 줄이기 설정이면 움직이지 않습니다
  */
-const PANEL_MOTION =
-  'transition-[grid-template-rows] duration-500 ease-[ease] motion-reduce:transition-none'
-const LINE_MOTION =
-  'transition-[opacity,translate] ease-[ease] motion-reduce:transition-none'
-const LINE_FIRST_MS = 80
-const LINE_STEP_MS = 50
+const SCROLL_CURVE = 'ease-[cubic-bezier(0.45,0,0.2,1)]'
+const UNROLL = `duration-700 ${SCROLL_CURVE}`
+const ROLL_UP = `duration-450 ${SCROLL_CURVE}`
+
+/** 내용 높이를 잴 수 있는 환경인지 — 못 재면(테스트의 jsdom 등) 움직임 없이 내용 높이로 엽니다 */
+const CAN_MEASURE = typeof ResizeObserver !== 'undefined'
 
 const familyLabel = (code: string) =>
   SCENT_FAMILIES.find((family) => family.code === code)?.label ?? code
@@ -111,6 +116,19 @@ export function VoyageLog({ entries, status }: Props) {
   }, [])
   const expanded = open && painted
 
+  // 풀릴 종이의 높이. 일지가 늦게 오거나 줄이 늘면 다시 재서, 펼친 판도 그 길이만큼 이어서 풀립니다
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const [bodyHeight, setBodyHeight] = useState(0)
+  useEffect(() => {
+    const body = bodyRef.current
+    if (!body || !CAN_MEASURE) return
+    const observer = new ResizeObserver(() =>
+      setBodyHeight(Math.ceil(body.getBoundingClientRect().height)),
+    )
+    observer.observe(body)
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <section
       aria-label="향해 일지"
@@ -129,11 +147,12 @@ export function VoyageLog({ entries, status }: Props) {
             'focus-visible:ring-dusk-gold outline-none focus-visible:ring-1',
           )}
         >
-          {/* 접기 표시 — 닫히면 옆을 봅니다. 판과 같은 곡선으로 돕니다 */}
+          {/* 접기 표시 — 닫히면 옆을 봅니다. 족자와 같은 시간 · 곡선으로 돕니다 */}
           <span
             aria-hidden
             className={cn(
-              'transition-transform duration-500 ease-[ease] motion-reduce:transition-none',
+              'transition-transform motion-reduce:transition-none',
+              expanded ? UNROLL : ROLL_UP,
               !expanded && '-rotate-90',
             )}
           >
@@ -144,19 +163,16 @@ export function VoyageLog({ entries, status }: Props) {
 
       <div
         className={cn(
-          'grid',
-          PANEL_MOTION,
-          expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+          'overflow-hidden transition-[height] motion-reduce:transition-none',
+          expanded ? UNROLL : ROLL_UP,
         )}
+        style={{ height: expanded ? (CAN_MEASURE ? bodyHeight : 'auto') : 0 }}
         inert={!expanded}
       >
-        <div className="min-h-0 overflow-hidden">
-          <div className="border-surface/15 mt-2.5 border-t pt-2.5 pb-1.25">
-            <VoyageLogBody
-              entries={entries}
-              status={status}
-              expanded={expanded}
-            />
+        {/* 위 여백을 margin 이 아니라 padding 으로 — 잰 높이에 들어가야 판 끝이 글자 끝과 맞습니다 */}
+        <div ref={bodyRef} className="pt-2.5">
+          <div className="border-surface/15 border-t pt-2.5 pb-1.25">
+            <VoyageLogBody entries={entries} status={status} />
           </div>
         </div>
       </div>
@@ -165,52 +181,19 @@ export function VoyageLog({ entries, status }: Props) {
 }
 
 /**
- * 판 안의 내용. 일지가 늦게 도착해도 줄이 위에서부터 떠오르도록, 이 조각이 뜰 때마다
- * 한 번 숨긴 모양을 칠한 뒤 드러냅니다 (불러오는 중 → 목록으로 바뀌는 순간에도 같은 움직임).
+ * 판 안의 내용. 글자는 움직이지 않습니다 — 판 아래끝이 지나가며 제자리에서 드러납니다(위 족자 주석).
  */
-function VoyageLogBody({
-  entries,
-  status,
-  expanded,
-}: Props & { expanded: boolean }) {
-  const [painted, setPainted] = useState(false)
-  useEffect(() => {
-    let inner = 0
-    const outer = requestAnimationFrame(() => {
-      inner = requestAnimationFrame(() => setPainted(true))
-    })
-    return () => {
-      cancelAnimationFrame(outer)
-      cancelAnimationFrame(inner)
-    }
-  }, [status])
-
-  const visible = expanded && painted
-  // 줄마다 위에서부터 조금씩 늦게 — 닫을 때는 한꺼번에 짧게 사라집니다
-  const line = (index: number) => ({
-    className: cn(
-      LINE_MOTION,
-      visible
-        ? 'translate-y-0 opacity-100 duration-400'
-        : '-translate-y-1 opacity-0 duration-200',
-    ),
-    style: {
-      transitionDelay: visible
-        ? `${LINE_FIRST_MS + index * LINE_STEP_MS}ms`
-        : '0ms',
-    },
-  })
-
+function VoyageLogBody({ entries, status }: Props) {
   if (status === 'loading') {
     return (
-      <p {...line(0)}>
+      <p>
         <span className={NOTE}>일지를 불러오는 중입니다</span>
       </p>
     )
   }
   if (status === 'guest') {
     return (
-      <p {...line(0)}>
+      <p>
         <span className={NOTE}>
           로그인하면 지나온 해역이 쌓입니다.{' '}
           <Link
@@ -225,7 +208,7 @@ function VoyageLogBody({
   }
   if (status === 'error') {
     return (
-      <p {...line(0)}>
+      <p>
         <span className={NOTE}>일지를 불러오지 못했습니다</span>
       </p>
     )
@@ -234,29 +217,18 @@ function VoyageLogBody({
   const shown = entries.slice(0, VOYAGE_LOG_SIZE)
   if (shown.length === 0) {
     return (
-      <p {...line(0)}>
+      <p>
         <span className={NOTE}>아직 들어간 해역이 없습니다</span>
       </p>
     )
   }
 
-  // 해역 줄과 향수 줄을 위에서부터 한 줄씩 셉니다 — 그 순서대로 떠오릅니다
-  let order = 0
-
   return (
     <ul className="max-h-120 space-y-2.5 overflow-y-auto">
       {shown.map((entry) => {
-        const entryLine = line(order++)
-
         return (
           <li key={entry.entryId}>
-            <p
-              className={cn(
-                'flex items-center gap-2.5 px-1.25',
-                entryLine.className,
-              )}
-              style={entryLine.style}
-            >
+            <p className="flex items-center gap-2.5 px-1.25">
               {/* 줄 앞 표시 — 작은 아래 세모 (들른 향수가 늘 펼쳐져 있다는 뜻) */}
               <span aria-hidden className="flex w-2.5 justify-center">
                 <svg viewBox="0 0 6 4" className="fill-dusk-gold h-1 w-1.5">
@@ -274,14 +246,8 @@ function VoyageLogBody({
             {entry.visited.length > 0 && (
               <ul className="mt-1.25 ml-6.25 space-y-0.5">
                 {entry.visited.map((perfume) => {
-                  const perfumeLine = line(order++)
-
                   return (
-                    <li
-                      key={perfume.perfumeId}
-                      className={perfumeLine.className}
-                      style={perfumeLine.style}
-                    >
+                    <li key={perfume.perfumeId}>
                       <Link
                         to={toPerfumeDetail(perfume.perfumeId)}
                         className="text-caption text-surface/95 hover:text-surface block truncate transition-colors duration-120 ease-out"
