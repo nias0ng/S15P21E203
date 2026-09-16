@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useRef, useState, type ReactNode } from 'react'
 
 import {
@@ -6,6 +6,7 @@ import {
   CollectionStrip,
   myCollectionsQuery,
 } from '@/features/collection'
+import { perfumeListQuery } from '@/features/perfume'
 import {
   personalRecommendationQuery,
   RECOMMEND_MIN_SHELF_ITEMS,
@@ -17,21 +18,29 @@ import {
   ShelfFooterStrip,
   ShelfPager,
   ShelfRegisterModal,
-  ShelfSaveModal,
   ShelfToolbar,
   ShelfWall,
+  shelfItemDetailQuery,
   shelfItemsQuery,
-  shelfKeys,
-  toPerfumeOption,
+  ShelfEditModal,
+  ShelfEditPartialError,
+  ShelfRegisterPartialError,
+  useShelfActions,
   useShelfArrangement,
   useShelfBrowser,
   type ShelfCategory,
-  type ShelfItem,
+  type ShelfItemDetail,
   type ShelfWallHandle,
 } from '@/features/shelf'
+import { isApiError } from '@/shared/api/http'
+import { ROUTES } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
+import { useIsLoggedIn } from '@/shared/store/authStore'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
+import { EmptyState } from '@/shared/ui/EmptyState'
+import { LinkButton } from '@/shared/ui/LinkButton'
+import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { PageFallback } from '@/shared/ui/PageFallback'
 import { Toast } from '@/shared/ui/Toast'
 
@@ -103,18 +112,66 @@ export default function MyShelfPage() {
   const shelf = useQuery(shelfItemsQuery())
   const collections = useQuery(myCollectionsQuery())
   const arrangement = useShelfArrangement()
-  const queryClient = useQueryClient()
+  // 낙관적 갱신과 되돌리기는 도메인 훅이 들고 있습니다. 토스트만 여기서 붙입니다
+  const actions = useShelfActions()
 
   const [stage, setStage] = useState<Stage>('shelf')
   const [registerOpen, setRegisterOpen] = useState(false)
+  const [registerKeyword, setRegisterKeyword] = useState('')
+  const [loginOpen, setLoginOpen] = useState(false)
+  const isLoggedIn = useIsLoggedIn()
   const [createCollectionOpen, setCreateCollectionOpen] = useState(false)
-  const [changeCategoryOpen, setChangeCategoryOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const [removeOpen, setRemoveOpen] = useState(false)
   const { showToast, toastProps } = useToast()
 
   // 검색어 · 선택 · 칩은 서로 규칙이 걸려 있어 한 훅이 함께 들고 있습니다.
   const browser = useShelfBrowser(shelf.data ?? [])
   const wall = useRef<ShelfWallHandle>(null)
+
+  /*
+   * 고른 한 병의 상세. 적합도 · 메모 · 향조는 목록에 없고 여기에만 있습니다.
+   *
+   * 카드를 넘길 때마다 한 번씩 부르지만 병마다 캐시가 따로 남아 오가면 즉시 뜹니다.
+   */
+  const selectedId = browser.selected?.shelfItemId
+  const selectedDetail = useQuery({
+    ...shelfItemDetailQuery(selectedId ?? 0),
+    enabled: selectedId !== undefined,
+  })
+
+  /*
+   * 패널에 넘길 값. **상세가 오기 전에는 목록이 아는 만큼으로 채웁니다** — 이름 ·
+   * 브랜드 · 사진은 목록에 이미 있어 그대로 보이고, 적합도 · 메모만 뒤늦게 찹니다.
+   * 상세를 기다렸다 그리면 카드를 넘길 때마다 패널이 통째로 비어 번쩍입니다.
+   */
+  const detailReady =
+    selectedDetail.data !== undefined &&
+    selectedDetail.data.shelfItemId === selectedId
+  const panelItem: ShelfItemDetail | null =
+    browser.selected === null
+      ? null
+      : detailReady
+        ? selectedDetail.data
+        : {
+            ...browser.selected,
+            nameKo: null,
+            rating: null,
+            memo: null,
+            memoUpdatedAt: null,
+            scentNotes: [],
+          }
+
+  /*
+   * 등록 모달 1단계의 후보 (SHF-01).
+   *
+   * 향수 도메인과 진열대 도메인은 서로 import 할 수 없어 **화면이 조합합니다.**
+   * 검색어가 비어 있을 때도 부릅니다 — 모달을 열자마자 고를 것이 있어야 합니다.
+   */
+  const candidates = useQuery({
+    ...perfumeListQuery({ keyword: registerKeyword || undefined, size: 20 }),
+    enabled: registerOpen,
+  })
 
   // 담은 향수가 적으면 아예 묻지 않습니다 — 개인화를 말할 근거가 없습니다
   const shelfCount = shelf.data?.length ?? 0
@@ -124,6 +181,55 @@ export default function MyShelfPage() {
   })
 
   if (shelf.isPending) return <PageFallback />
+
+  /*
+   * 목록을 못 받았으면 **빈 진열대로 그리지 않습니다.**
+   *
+   * 예전에는 `shelf.data ?? []` 로 넘어가 아무 말 없이 빈 벽이 나왔습니다. 방금
+   * 등록한 사람은 "등록했습니다" 토스트를 보고 빈 벽을 보게 되어, 저장이 안 된
+   * 것으로 읽습니다 — 실제로는 저장됐고 못 읽어 온 것뿐입니다.
+   *
+   * 분류 세 칸을 한꺼번에 받기 때문에(api.ts) 하나만 실패해도 여기로 옵니다.
+   */
+  if (shelf.isError) {
+    /*
+      비로그인은 "실패" 가 아니라 아직 안 한 일입니다. 같은 에러 문구로 묶으면
+      로그인만 하면 될 사람에게 고장난 것처럼 보입니다.
+    */
+    if (!isLoggedIn) {
+      return (
+        <EmptyState
+          title="로그인하면 진열대를 볼 수 있습니다"
+          description="담아 둔 향수와 메모는 계정에 저장됩니다."
+          action={
+            <LinkButton to={ROUTES.LOGIN} variant="outline" size="sm">
+              로그인하러 가기
+            </LinkButton>
+          }
+        />
+      )
+    }
+
+    return (
+      <EmptyState
+        title="진열대를 불러오지 못했습니다"
+        description={
+          isApiError(shelf.error)
+            ? shelf.error.message
+            : '잠시 후 다시 시도해주세요.'
+        }
+        action={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void shelf.refetch()}
+          >
+            다시 시도
+          </Button>
+        }
+      />
+    )
+  }
 
   const collectionCount = collections.data?.length ?? 0
 
@@ -141,6 +247,33 @@ export default function MyShelfPage() {
    * 두 배치가 같은 조각을 다른 자리에 놓습니다. 조각은 여기서 한 번만 적습니다 —
    * 배치마다 따로 적으면 한쪽만 고쳐져 두 배치가 조용히 달라집니다.
    */
+  /*
+    진열대에 담는 단추라 진열대 도구 줄에 섭니다 (와이어프레임 A13).
+    "내 컬렉션" 머리말에 있던 것을 옮겼습니다 — 그쪽은 무대를 바꿔야 나오는 자리라
+    진열대를 보는 동안에는 담을 방법이 화면에 없었습니다.
+
+    굵기 · 오프셋 폭은 공용 버튼 규칙 그대로이고 링과 오프셋 **색**만 더합니다.
+    `ring-offset-*` 의 기본색은 흰색이라, 이 크림 바탕 위에서는 링과 버튼 사이
+    2px 이 흰 줄로 떠서 종이에 흰 자국이 난 것처럼 보입니다. 바탕을 토큰 밖 색으로
+    바꾼 이 화면에서만 생기는 문제라 여기서 색을 맞춥니다 —
+    ShelfDetailPanel 이 자기 카드 바탕에 대해 하는 것과 같습니다.
+  */
+  const registerButton = (
+    <Button
+      variant="outline"
+      size="sm"
+      className="focus-visible:ring-[var(--shelf-ink)] focus-visible:ring-offset-[var(--paper)]"
+      /*
+        비로그인이면 등록 모달 대신 로그인 유도 모달입니다 (공통 규칙 C01).
+        진열대 API 는 전부 로그인이 필요해, 그냥 열면 향수를 고르고 분류까지
+        정한 뒤 401 로 튕깁니다.
+      */
+      onClick={() => (isLoggedIn ? setRegisterOpen(true) : setLoginOpen(true))}
+    >
+      + 향수 등록
+    </Button>
+  )
+
   const toolbar = (className?: string) => (
     <ShelfToolbar
       counts={browser.counts}
@@ -148,6 +281,7 @@ export default function MyShelfPage() {
       onChange={showCategory}
       keyword={browser.keyword}
       onKeywordChange={browser.changeKeyword}
+      action={registerButton}
       className={className}
     />
   )
@@ -171,26 +305,6 @@ export default function MyShelfPage() {
     />
   )
 
-  /*
-   * 고른 향수 한 개를 고쳐 씁니다.
-   *
-   * ⚠️ 백엔드 진열대 API 가 아직 없어서(features/shelf 의 api.ts) 고친 값이 **쿼리
-   * 캐시에만** 남습니다 — 새로고침하면 사라집니다. 그래도 화면에 반영은 해야 합니다.
-   * 토스트만 띄우고 끝내면 별을 눌러도 별이 안 채워지고 원을 눌러도 원이 안 차서,
-   * 눌러 본 사람이 "고장났다" 고 읽습니다.
-   *
-   * 서버 데이터라 Zustand 가 아니라 쿼리 캐시에 씁니다(CLAUDE.md 의 서버 상태 vs
-   * 클라이언트 상태). API 가 붙으면 이 함수가 useMutation 의 낙관적 갱신(onMutate)
-   * 자리로 그대로 옮겨갑니다.
-   */
-  const patchSelected = (patch: (item: ShelfItem) => ShelfItem) => {
-    const id = browser.selected?.shelfItemId
-    if (id === undefined) return
-    queryClient.setQueryData<ShelfItem[]>(shelfKeys.items(), (items) =>
-      items?.map((item) => (item.shelfItemId === id ? patch(item) : item)),
-    )
-  }
-
   const detail = (className?: string) => (
     /*
       key 로 향수마다 패널을 새로 만듭니다. 안 그러면 메모 입력칸이 이전
@@ -198,41 +312,37 @@ export default function MyShelfPage() {
       됩니다.
     */
     <ShelfDetailPanel
-      key={browser.selected?.shelfItemId ?? 'empty'}
-      item={browser.selected}
+      /*
+        상세가 도착하면 key 가 바뀌어 한 번 다시 만들어집니다. 메모 입력칸이
+        첫 렌더의 값을 useState 초기값으로 들고 있어서, 안 바꾸면 목록만 알던
+        때의 빈 메모가 그대로 남습니다.
+      */
+      key={`${browser.selected?.shelfItemId ?? 'empty'}:${detailReady ? 'full' : 'lite'}`}
+      item={panelItem}
       onSetRepresentative={() => {
-        // TODO: SHF-05 대표 향수 지정 API 연결
-        const id = browser.selected?.shelfItemId
-        if (id === undefined) return
-        // 대표는 한 번에 하나라, 고른 향수만 켜고 나머지는 전부 내립니다
-        queryClient.setQueryData<ShelfItem[]>(shelfKeys.items(), (items) =>
-          items?.map((item) => ({
-            ...item,
-            representative: item.shelfItemId === id,
-          })),
+        if (selectedId === undefined) return
+        actions.representative.mutate(
+          { shelfItemId: selectedId },
+          {
+            onSuccess: () => showToast('대표 향수로 지정했습니다'),
+            onError: () => showToast('대표 향수로 지정하지 못했습니다'),
+          },
         )
-        showToast('대표 향수로 지정했습니다')
       }}
       onChangeRating={(rating) => {
-        // TODO: SHF-12 취향 적합도 저장 API 연결
+        if (selectedId === undefined) return
         /*
-          여기만 토스트를 띄우지 않습니다 — 원이 차는 것이 이미 답이고, 점수를
+          성공 토스트를 띄우지 않습니다 — 원이 차는 것이 이미 답이고, 점수를
           맞춰 보느라 여러 번 누르게 되어 토스트가 연달아 뜹니다.
+          실패는 원이 되돌아가는 것만으로는 읽히지 않아 말해 줍니다.
         */
-        patchSelected((item) => ({ ...item, rating }))
+        actions.rating.mutate(
+          { shelfItemId: selectedId, rating },
+          { onError: () => showToast('적합도를 저장하지 못했습니다') },
+        )
       }}
-      onChangeCategory={() => setChangeCategoryOpen(true)}
+      onEdit={() => setEditOpen(true)}
       onRemove={() => setRemoveOpen(true)}
-      onSaveMemo={(memo) => {
-        // TODO: SHF-10 메모 저장 API 연결
-        patchSelected((item) => ({
-          ...item,
-          // 빈 글은 "메모 없음" 입니다 — 빈 문자열을 남기면 날짜만 붙은 빈 메모가 됩니다
-          memo: memo || null,
-          memoUpdatedAt: memo ? new Date().toISOString() : null,
-        }))
-        showToast('메모를 저장했습니다')
-      }}
       className={className}
     />
   )
@@ -243,21 +353,6 @@ export default function MyShelfPage() {
       <span className="shelf-muted text-body tabular-nums">
         {collectionCount}개
       </span>
-      {/*
-        굵기 · 오프셋 폭은 공용 버튼 규칙 그대로이고 링과 오프셋 **색**만 더합니다.
-        `ring-offset-*` 의 기본색은 흰색이라, 이 크림 바탕 위에서는 링과 버튼 사이
-        2px 이 흰 줄로 떠서 종이에 흰 자국이 난 것처럼 보입니다. 바탕을 토큰 밖 색으로
-        바꾼 이 화면에서만 생기는 문제라 여기서 색을 맞춥니다 —
-        ShelfDetailPanel 이 자기 카드 바탕에 대해 하는 것과 같습니다.
-      */}
-      <Button
-        variant="outline"
-        size="sm"
-        className="ml-auto focus-visible:ring-[var(--shelf-ink)] focus-visible:ring-offset-[var(--paper)]"
-        onClick={() => setRegisterOpen(true)}
-      >
-        + 향수 등록
-      </Button>
     </div>
   )
 
@@ -269,19 +364,42 @@ export default function MyShelfPage() {
     />
   )
 
+  /** 이미 담은 향수 번호. 등록 모달이 중복 선택을 막는 데 씁니다 */
+  const inShelf = new Set((shelf.data ?? []).map((item) => item.perfumeId))
+
   const dialogs = (
     <>
       <ShelfRegisterModal
         open={registerOpen}
         onClose={() => setRegisterOpen(false)}
-        // ⚠️ 아직 향수 검색 API 를 붙이지 않아 진열대에 있는 향수를 그대로 씁니다.
-        options={(shelf.data ?? []).map(toPerfumeOption)}
-        onSearch={() => {
-          // TODO: SHF-01 향수 검색 연결
-        }}
-        onSubmit={() => {
+        /*
+          향수 검색 결과를 진열대가 아는 모양으로 옮깁니다. 이미 담은 향수는
+          `alreadyInShelf` 로 표시돼 고를 수 없습니다 — 골라 봐야 409 입니다.
+        */
+        options={(candidates.data?.perfumes ?? []).map((perfume) => ({
+          perfumeId: perfume.perfumeId,
+          name: perfume.nameKo ?? perfume.name,
+          brand: perfume.brandName,
+          thumbnailUrl: perfume.imageUrl,
+          alreadyInShelf: inShelf.has(perfume.perfumeId),
+        }))}
+        onSearch={setRegisterKeyword}
+        onSubmit={(input) => {
           setRegisterOpen(false)
-          showToast('진열대에 등록했습니다')
+          actions.register.mutate(input, {
+            onSuccess: () => showToast('진열대에 등록했습니다'),
+            /*
+              담기는 됐는데 적합도 · 메모만 실패할 수 있습니다(요청이 셋으로
+              갈립니다). 그때는 무엇이 빠졌는지 말해 줍니다 — "등록 실패" 라고만
+              하면 이미 진열대에 선 향수를 보고 혼란스럽습니다.
+            */
+            onError: (error) =>
+              showToast(
+                error instanceof ShelfRegisterPartialError
+                  ? `진열대에 등록했지만 ${error.missing.join(' · ')}은(는) 저장하지 못했습니다`
+                  : '진열대에 등록하지 못했습니다',
+              ),
+          })
         }}
       />
       <CollectionFormModal
@@ -293,17 +411,28 @@ export default function MyShelfPage() {
         }}
       />
       {/*
-        분류 변경. initialCategory 를 넘기면 같은 모달이 "저장" 이 아니라 "변경" 으로
-        열립니다 (와이어프레임 C02 — "분류 변경은 A11 과 같은 구성").
+        변경하기 (C02). 분류만 고치던 모달이었는데 카드에서 고칠 수 있는 값이
+        분류 · 적합도 · 메모 셋이라 한 자리에 모았습니다.
       */}
-      <ShelfSaveModal
-        open={changeCategoryOpen}
-        onClose={() => setChangeCategoryOpen(false)}
-        initialCategory={browser.selected?.category ?? null}
-        onSave={() => {
-          // TODO: SHF-03 분류 변경 API 연결
-          setChangeCategoryOpen(false)
-          showToast('분류를 바꿨습니다')
+      <ShelfEditModal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        item={panelItem}
+        onSave={(next) => {
+          if (selectedId === undefined || panelItem === null) return
+          setEditOpen(false)
+          actions.edit.mutate(
+            { shelfItemId: selectedId, before: panelItem, next },
+            {
+              onSuccess: () => showToast('변경했습니다'),
+              onError: (error) =>
+                showToast(
+                  error instanceof ShelfEditPartialError
+                    ? `${error.missing.join(' · ')}은(는) 바꾸지 못했습니다`
+                    : '변경하지 못했습니다',
+                ),
+            },
+          )
         }}
       />
 
@@ -315,10 +444,21 @@ export default function MyShelfPage() {
         description="적어둔 메모와 적합도도 함께 사라지고, 되돌릴 수 없습니다."
         confirmLabel="저장 해제"
         onConfirm={() => {
-          // TODO: SHF-04 진열대 저장 해제 API 연결
+          if (selectedId === undefined) return
           setRemoveOpen(false)
-          showToast('진열대에서 뺐습니다')
+          actions.remove.mutate(
+            { shelfItemId: selectedId },
+            {
+              onSuccess: () => showToast('진열대에서 뺐습니다'),
+              onError: () => showToast('진열대에서 빼지 못했습니다'),
+            },
+          )
         }}
+      />
+      <LoginRequiredDialog
+        open={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        redirectTo={ROUTES.MY_SHELF}
       />
       <Toast {...toastProps} />
     </>
