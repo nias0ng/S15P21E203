@@ -351,6 +351,81 @@ class PostImageUploadIntegrationTest {
     }
 
     /**
+     * 이미지를 통째로 갈아 끼우면 옛 것은 전부 지우고 새 것은 전부 남깁니다.
+     *
+     * <p>일부만 바꾸는 경우와 경로가 다릅니다. 남는 주소가 하나도 없어 "그대로 두는 것"을
+     * 판단할 기회 자체가 없습니다. 참조 수를 잘못 세면 새로 넣은 파일까지 지워질 수 있는
+     * 자리입니다.
+     */
+    @Test
+    void replacesEveryImageAtOnce() throws Exception {
+        String oldFirst = upload(new MockMultipartFile("file", "old1.png",
+                MediaType.IMAGE_PNG_VALUE, png()));
+        String oldSecond = upload(new MockMultipartFile("file", "old2.png",
+                MediaType.IMAGE_PNG_VALUE, png()));
+        long postId = writePost(List.of(oldFirst, oldSecond));
+
+        String newFirst = upload(new MockMultipartFile("file", "new1.png",
+                MediaType.IMAGE_PNG_VALUE, png()));
+        String newSecond = upload(new MockMultipartFile("file", "new2.png",
+                MediaType.IMAGE_PNG_VALUE, png()));
+
+        mockMvc.perform(patch("/api/v1/posts/{postId}", postId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                Map.of("imageUrls", List.of(newFirst, newSecond)))))
+                .andExpect(status().isOk());
+
+        assertThat(storedFile(oldFirst)).doesNotExist();
+        assertThat(storedFile(oldSecond)).doesNotExist();
+        assertThat(storedFile(newFirst)).exists();
+        assertThat(storedFile(newSecond)).exists();
+        mockMvc.perform(get(newFirst)).andExpect(status().isOk());
+        mockMvc.perform(get(newSecond)).andExpect(status().isOk());
+    }
+
+    /**
+     * 빈 배열을 보내면 이미지를 모두 떼는 것이고, 그 파일들도 지워집니다.
+     *
+     * <p>"보내지 않음"(유지)과 "빈 배열"(모두 제거)은 다릅니다. 둘을 헷갈리면 이미지를 그냥
+     * 두려던 수정에서 파일이 사라집니다.
+     */
+    @Test
+    void clearingImagesWithAnEmptyArrayDeletesTheFiles() throws Exception {
+        String imageUrl = upload(new MockMultipartFile("file", "only.png",
+                MediaType.IMAGE_PNG_VALUE, png()));
+        long postId = writePost(List.of(imageUrl));
+
+        mockMvc.perform(patch("/api/v1/posts/{postId}", postId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"imageUrls\":[]}"))
+                .andExpect(status().isOk());
+
+        assertThat(storedFile(imageUrl)).doesNotExist();
+    }
+
+    /**
+     * 이미지를 보내지 않은 수정은 이미지를 건드리지 않습니다.
+     *
+     * <p>제목만 고쳤는데 사진이 사라지면 안 됩니다. 위의 빈 배열과 짝이 되는 경우라 함께
+     * 고정합니다.
+     */
+    @Test
+    void keepsImagesWhenAnUpdateDoesNotMentionThem() throws Exception {
+        String imageUrl = upload(new MockMultipartFile("file", "keep.png",
+                MediaType.IMAGE_PNG_VALUE, png()));
+        long postId = writePost(List.of(imageUrl));
+
+        mockMvc.perform(patch("/api/v1/posts/{postId}", postId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"제목만 고침\"}"))
+                .andExpect(status().isOk());
+
+        assertThat(storedFile(imageUrl)).exists();
+        mockMvc.perform(get(imageUrl)).andExpect(status().isOk());
+    }
+
+    /**
      * 우리가 만들지 않은 주소가 글에 들어 있어도 조용히 지나가야 합니다.
      *
      * <p>{@code imageUrls} 는 문자열이라 외부 주소나 {@code ../} 가 섞인 주소가 들어올 수
