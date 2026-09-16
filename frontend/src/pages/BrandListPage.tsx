@@ -10,7 +10,7 @@ import {
 } from '@/features/brand'
 import { Button } from '@/shared/ui/Button'
 import { ChipToggle } from '@/shared/ui/ChipToggle'
-import { SearchField } from '@/shared/ui/SearchField'
+import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
 
 /**
  * 브랜드 (와이어프레임 A34 — 상단 메뉴 [브랜드] 목적지)
@@ -42,6 +42,8 @@ export default function BrandListPage() {
       <h1 className="sr-only">브랜드</h1>
 
       <SearchField
+        // 향수 목록 · 향수 검색과 같은 폭. 목록 화면 사이를 오갈 때 검색창이 제자리에 있어야 합니다
+        className={SEARCH_FIELD_LIST_WIDTH}
         label="브랜드명으로 검색"
         placeholder="브랜드명으로 검색"
         defaultValue={keyword}

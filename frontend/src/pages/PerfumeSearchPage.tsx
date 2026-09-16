@@ -1,7 +1,7 @@
 import { useSearchParams } from 'react-router'
 
 import { PerfumeSearchResult } from '@/features/perfume'
-import { SearchField } from '@/shared/ui/SearchField'
+import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
 
 /**
  * 향수 검색 결과 (와이어프레임 A09 — COM-05)
@@ -21,7 +21,7 @@ export default function PerfumeSearchPage() {
 
       <SearchField
         // 향수 목록과 같은 폭 — 두 화면을 오갈 때 검색창이 제자리에 있어야 합니다
-        className="max-w-[530px]"
+        className={SEARCH_FIELD_LIST_WIDTH}
         label="향수명 또는 브랜드명으로 검색"
         placeholder="향수명 · 브랜드로 검색해주세요."
         defaultValue={keyword}
