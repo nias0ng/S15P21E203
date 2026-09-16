@@ -59,19 +59,26 @@ export function PerfumeSearchResult({
   }
 
   // 자리 잡기도 격자에 맡깁니다 — 카드와 같은 크기여야 자료가 도착할 때 안 튑니다
-  if (isPending) return <PerfumeGrid items={[]} isPending columns={6} />
+  if (isPending)
+    return (
+      <Board>
+        <PerfumeGrid items={[]} isPending columns={6} />
+      </Board>
+    )
 
   if (isError) {
     return (
-      <EmptyState
-        title="검색에 실패했습니다"
-        description="다시 시도해주세요."
-        action={
-          <Button variant="outline" onClick={() => refetch()}>
-            다시 시도
-          </Button>
-        }
-      />
+      <Board>
+        <EmptyState
+          title="검색에 실패했습니다"
+          description="다시 시도해주세요."
+          action={
+            <Button variant="outline" onClick={() => refetch()}>
+              다시 시도
+            </Button>
+          }
+        />
+      </Board>
     )
   }
 
@@ -79,27 +86,33 @@ export function PerfumeSearchResult({
   // "검색 결과가 없습니다" 가 떠서, 결과가 있는데 없다고 말하게 됩니다.
   if (data.totalElements === 0) {
     return (
-      <EmptyState
-        title="검색 결과가 없습니다"
-        description={`'${keyword}' 와 일치하는 향수를 찾지 못했습니다.`}
-        action={
-          onResetKeyword && (
-            <Button variant="outline" onClick={onResetKeyword}>
-              초기화
-            </Button>
-          )
-        }
-      />
+      <Board>
+        <EmptyState
+          title="검색 결과가 없습니다"
+          description={`'${keyword}' 와 일치하는 향수를 찾지 못했습니다.`}
+          action={
+            onResetKeyword && (
+              <Button variant="outline" onClick={onResetKeyword}>
+                초기화
+              </Button>
+            )
+          }
+        />
+      </Board>
     )
   }
 
   return (
-    <div className="space-y-2.5">
-      <p className="text-ink-muted text-caption">
-        검색 결과{' '}
-        <span className="text-ink font-medium">{data.totalElements}</span>
-      </p>
-
+    <Board
+      heading={
+        <>
+          검색 결과{' '}
+          <span className="text-ink-muted text-caption font-normal">
+            {data.totalElements}개
+          </span>
+        </>
+      }
+    >
       {/* 범위를 넘은 쪽. 앞쪽으로 돌아갈 수 있게 아래 쪽 번호는 그대로 둡니다 */}
       {data.perfumes.length === 0 && (
         <EmptyState
@@ -113,12 +126,39 @@ export function PerfumeSearchResult({
       )}
 
       <Pagination
+        className="mt-6.25"
         label="검색 결과 페이지"
         page={page}
         size={PAGE_SIZE}
         totalElements={data.totalElements}
         onPageChange={onPageChange}
       />
-    </div>
+    </Board>
+  )
+}
+
+/**
+ * 향수 목록(A33)과 같은 유리판.
+ *
+ * **모든 갈래를 이 안에 넣습니다** — 결과가 있을 때만 판을 씌우면, 로딩 중이나
+ * 0건일 때 판이 사라졌다 나타나 화면이 한 번 껌뻑입니다.
+ *
+ * 판 자체는 `features/perfume/perfume-display.css` 의 `.scent-glass` 가 그리고,
+ * 어두운 방은 RootLayout 이 이 경로에도 깔아 줍니다.
+ */
+function Board({
+  heading,
+  children,
+}: {
+  heading?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <section className="scent-glass rounded-[36px] p-7.5 pt-6.25">
+      {heading && (
+        <h2 className="text-ink mb-6.25 font-serif text-lg">{heading}</h2>
+      )}
+      {children}
+    </section>
   )
 }
