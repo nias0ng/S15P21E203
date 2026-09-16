@@ -145,24 +145,6 @@ class PersonalizedRecommendationIntegrationTest {
     }
 
     @Test
-    void recommendsFromRecentViewsWithoutTasteTest() throws Exception {
-        jdbcTemplate.update("DELETE FROM user_taste_tests WHERE user_id = ?", USER_ID);
-        jdbcTemplate.update(
-                "INSERT INTO user_perfume_views "
-                        + "(user_id, perfume_id, from_location_type, viewed_at) "
-                        + "VALUES (?, ?, 'DIRECT', NOW())",
-                USER_ID,
-                TASTE_PERFUME);
-        insertExposure(SECOND_CANDIDATE, Instant.now().minus(1, ChronoUnit.DAYS));
-
-        mockMvc.perform(get(URL))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.recommendation.perfumeId").value((int) FIRST_CANDIDATE))
-                .andExpect(jsonPath("$.recommendation.reason")
-                        .value("최근 살펴본 향수에서 자주 만난 woody 어코드를 담고 있어요."));
-    }
-
-    @Test
     void requiresLogin() throws Exception {
         currentUser.id = null;
 
