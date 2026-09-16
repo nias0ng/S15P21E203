@@ -37,7 +37,7 @@ export function PerfumeFilters({
   onGenderChange,
 }: PerfumeFiltersProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2.5">
+    <div className="flex flex-wrap items-center justify-center gap-2.5">
       <FilterGroup
         label="많은 사람이 담은 기준 필터"
         options={RANKING_FILTERS}

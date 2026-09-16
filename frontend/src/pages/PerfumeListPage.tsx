@@ -79,11 +79,12 @@ export default function PerfumeListPage() {
       {/*
         헤더에 검색창이 없고 검색은 각 페이지 안에 있다는 와이어프레임 규칙.
 
-        폭을 본문 끝까지 늘리지 않습니다 — 1440 에서 꽉 채우면 입력칸 하나가 화면
-        위쪽을 가로지르는 가장 큰 덩이가 되어, 아래 향수 격자보다 먼저 눈에 듭니다.
+        폭을 본문 끝까지 늘리지 않고 **가운데**에 둡니다 — 1440 에서 꽉 채우면
+        입력칸 하나가 화면 위쪽을 가로지르는 가장 큰 덩이가 되어, 아래 향수 격자보다
+        먼저 눈에 듭니다. 가운데에 두는 것은 메인(3D 향 지도)과 같은 자리입니다.
       */}
       <SearchField
-        className={cn(SEARCH_FIELD_LIST_WIDTH, 'scent-search rounded-full')}
+        className={cn(SEARCH_FIELD_LIST_WIDTH, 'mx-auto w-full')}
         label="향수명 또는 브랜드명으로 검색"
         placeholder="향수명 · 브랜드로 검색해주세요."
         onSearch={(keyword) => {
