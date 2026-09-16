@@ -18,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -55,12 +56,16 @@ class NaturalLanguageRecommendationIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
     @MockitoBean
     private NlrClient nlrClient;
 
     @BeforeEach
     void insertFixtures() {
         clearPerfumeData();
+        clearRateLimit();
 
         insertBrand(1, "Ostrikov Beauty Publishing");
 
@@ -282,5 +287,16 @@ class NaturalLanguageRecommendationIntegrationTest {
         jdbcTemplate.update("DELETE FROM perfume_images");
         jdbcTemplate.update("DELETE FROM perfumes");
         jdbcTemplate.update("DELETE FROM brands");
+    }
+
+    /**
+     * 호출량 제한의 셈을 비웁니다.
+     *
+     * <p>이 클래스의 테스트가 전부 같은 IP 의 비회원으로 호출합니다. 비우지 않으면 앞선
+     * 테스트가 쓴 횟수가 쌓여 뒤쪽 테스트가 429 를 받습니다 — 검증하려던 것과 무관한
+     * 이유로 깨집니다. 제한 자체는 {@code RecommendationRateLimitIntegrationTest} 가 봅니다.
+     */
+    private void clearRateLimit() {
+        redisTemplate.delete(redisTemplate.keys("recommendation:rate:*"));
     }
 }

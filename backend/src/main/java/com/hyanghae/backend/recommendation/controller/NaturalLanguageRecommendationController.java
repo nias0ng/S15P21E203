@@ -3,9 +3,11 @@ package com.hyanghae.backend.recommendation.controller;
 import com.hyanghae.backend.recommendation.dto.request.NaturalLanguageRecommendationRequest;
 import com.hyanghae.backend.recommendation.dto.response.NaturalLanguageRecommendationResponse;
 import com.hyanghae.backend.recommendation.service.NaturalLanguageRecommendationService;
+import com.hyanghae.backend.recommendation.service.RecommendationRateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -33,10 +35,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class NaturalLanguageRecommendationController {
 
     private final NaturalLanguageRecommendationService recommendationService;
+    private final RecommendationRateLimiter rateLimiter;
 
     public NaturalLanguageRecommendationController(
-            NaturalLanguageRecommendationService recommendationService) {
+            NaturalLanguageRecommendationService recommendationService,
+            RecommendationRateLimiter rateLimiter
+    ) {
         this.recommendationService = recommendationService;
+        this.rateLimiter = rateLimiter;
     }
 
     /**
@@ -49,6 +55,10 @@ public class NaturalLanguageRecommendationController {
      * 없어 요구사항 NLR-07(추천 이유 제공)을 어깁니다.
      *
      * <p>AI 서버가 죽으면 이 엔드포인트만 503 입니다. 다른 기능은 그대로 동작합니다.
+     *
+     * <p>호출량 제한을 여기서 겁니다. 서비스가 아니라 컨트롤러인 이유는 비회원을 IP 로
+     * 구분해야 해서입니다 — {@link HttpServletRequest} 는 웹 계층의 타입이고, 서비스까지
+     * 내려보내면 그 아래가 전부 HTTP 를 알게 됩니다.
      */
     @Operation(summary = "자연어 추천",
             description = "한국어 문장을 받아 향수 5개까지와 각각의 추천 이유를 돌려줍니다. "
@@ -56,10 +66,14 @@ public class NaturalLanguageRecommendationController {
     @ApiResponse(responseCode = "200",
             description = "추천 결과입니다. 향수가 0개일 수 있으며 status 로 구분합니다.")
     @ApiResponse(responseCode = "400", description = "query 가 비었거나 500자를 넘었습니다.")
+    @ApiResponse(responseCode = "429", description = "호출량 제한을 넘었습니다.")
     @ApiResponse(responseCode = "503", description = "AI 서버가 응답하지 않습니다.")
     @PostMapping("/natural-language")
     public NaturalLanguageRecommendationResponse recommend(
-            @Valid @RequestBody NaturalLanguageRecommendationRequest request) {
+            @Valid @RequestBody NaturalLanguageRecommendationRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        rateLimiter.check(httpRequest.getRemoteAddr());
         return recommendationService.recommend(request.query());
     }
 }

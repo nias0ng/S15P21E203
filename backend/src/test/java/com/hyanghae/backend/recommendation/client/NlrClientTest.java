@@ -201,7 +201,8 @@ class NlrClientTest {
                         "http://localhost:" + server.getAddress().getPort(),
                         Duration.ofSeconds(2),
                         readTimeout
-                )
+                ),
+                new RecommendationProperties.RateLimit(Duration.ofMinutes(1), 30, 10)
         ));
     }
 

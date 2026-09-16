@@ -16,14 +16,16 @@ import org.springframework.validation.annotation.Validated;
  * <p>기본값을 yaml 이 아니라 여기에 둡니다. 프로필이 세 개라 yaml 에 두면 같은 값을 세 곳에
  * 적게 되고, 한 곳을 빼먹으면 그 프로필만 다르게 동작합니다. yaml 은 바꿀 값만 적습니다.
  *
- * @param topK 한 번에 받을 향수 수입니다. AI 서버가 1~20 만 받습니다.
- * @param ai   AI 서버 접속 정보입니다.
+ * @param topK      한 번에 받을 향수 수입니다. AI 서버가 1~20 만 받습니다.
+ * @param ai        AI 서버 접속 정보입니다.
+ * @param rateLimit 호출량 제한입니다.
  */
 @Validated
 @ConfigurationProperties(prefix = "hyanghae.recommendation")
 public record RecommendationProperties(
         @DefaultValue("5") @Min(1) @Max(20) int topK,
-        @DefaultValue @Valid @NotNull Ai ai
+        @DefaultValue @Valid @NotNull Ai ai,
+        @DefaultValue @Valid @NotNull RateLimit rateLimit
 ) {
 
     /**
@@ -48,6 +50,28 @@ public record RecommendationProperties(
             @DefaultValue("http://localhost:8000") @NotBlank String baseUrl,
             @DefaultValue("2s") @NotNull Duration connectTimeout,
             @DefaultValue("8s") @NotNull Duration readTimeout
+    ) {
+    }
+
+    /**
+     * 호출량 제한입니다.
+     *
+     * <p>추천 한 번이 AI 서버의 LLM 호출로 이어집니다. 비용이 나가고, 실측 중앙값이 1.47초라
+     * 동시에 몰리면 AI 서버가 먼저 막힙니다. AI 서버는 외부에 열려 있지 않고 스스로를 지키지
+     * 않으므로 <b>여기서 막지 않으면 막는 곳이 없습니다.</b>
+     *
+     * <p>회원과 비회원의 한도가 다릅니다. 계약서가 정한 유일한 차이입니다 — 결과는 같습니다.
+     *
+     * @param window    한도를 세는 구간입니다. 첫 호출에서 구간이 시작됩니다.
+     * @param member    로그인한 회원이 한 구간에 부를 수 있는 횟수입니다.
+     * @param anonymous 비회원이 한 구간에 부를 수 있는 횟수입니다. <b>같은 IP 를 함께 셉니다</b>
+     *                  — 공유 회선 뒤의 여러 사람이 한 바구니를 씁니다. 그래서 회원보다 적게
+     *                  두되 너무 조이지 않습니다.
+     */
+    public record RateLimit(
+            @DefaultValue("1m") @NotNull Duration window,
+            @DefaultValue("30") @Min(1) int member,
+            @DefaultValue("10") @Min(1) int anonymous
     ) {
     }
 }
