@@ -1458,6 +1458,15 @@ export const PARAMS = {
   // 호버 미리보기 카드는 **마우스를 통과시킨다** — 카드 밑에 가린 부표에도 바로 마우스를 올린다. 누른 향수의 카드는 그대로 누를 수 있다. 0 = 예전
   cardPeek: 1,
   cardPeekA: 0.65,    // 호버 미리보기 카드의 진하기 배율 (저녁 카드 불투명도 × 이 값 · 흐림 5px → 1.5px). 1 이면 누른 카드와 같다
+  // ⭐ 미리보기 ↔ 진한 카드가 **서서히** 바뀌는 시간 (2026-09-16, ms). 사용자 : *"갑자기 색상이 바뀌는게 아니라 서서히 지금 설정한 색상으로 바뀌었으면"*.
+  //   ⚠ 트랜지션은 **커스텀 속성이 아니라 그걸 쓰는 속성**(`background-color` · `backdrop-filter`)에 걸려 있다 — index.html 의 카드 상자 · 꼬리 인라인. 여기서는 길이만 준다.
+  //   0 이면 예전처럼 즉시 바뀐다.
+  cardPeekMs: 200,
+  // ⭐⭐ **카드가 제 부표의 잠김 · 솟음을 같이 탄다** (2026-09-16, main.js 틱). 부표의 `fade` 가 이 값 아래면 카드를 접고, 넘으면 같이 띄운다.
+  //   사용자 : *"12개 씬에 부표가 내려갈때 같이 내려갔다가 같이 올라오게"* · *"너무 창이 억지로 이동한게 보이니까 연관성이 떨어짐"*.
+  //   고르기에 들고 날 때 부표는 한 번 잠겼다가 새 슬롯에서 솟는데(불변식 31), 카드를 두면 그동안 화면을 가로질러 미끄러진다.
+  //   ⚠ `marks.selected` 는 그대로다 (선택 링 · 이름표 우선순위가 읽는다) — 카드만 따라간다. 0 = 예전 (안 따라간다)
+  cardFollowFade: 0.35,
   // 저녁 카드의 "이 향의 해역으로" 버튼 색 (2026-09-13 저녁, 사용자 : *"이부분 버튼 색상을 짙은 남색으로 만들어볼래?"*).
   //   1 = 짙은 남색 #1E2947 · 0 = 브론즈 (v0.53.0 첫 시안 — <html data-card-btn-bronze>). 색은 index.html 의 카드 토큰 한 곳
   cardBtnNavy: 1,
@@ -2546,7 +2555,7 @@ export const PARAM_RANGES = {
   focusAvoidBoat: [0, 2, 0.05],
   focusBoatClear: [0, 1, 1], focusBoatPad: [0, 120, 1], focusDepthX0: [0, 0.5, 0.01], focusDepthX1: [0.5, 1, 0.01],
   focusDepthFit: [0, 1, 1], focusDepthMargin: [0, 60, 1], focusDepthSpread: [0.5, 2.5, 0.05],
-  cardEve: [0, 1, 1], cardGlassA: [0.2, 1, 0.01], cardPeek: [0, 1, 1], cardPeekA: [0.2, 1, 0.01], cardBtnNavy: [0, 1, 1], cardRuleSolid: [0, 1, 1], cardImg: [0, 1, 1], cardHoverBridge: [0, 1, 1], cardHoverGrace: [0, 1.5, 0.05], cardActions: [0, 1, 1], minimapEve: [0, 1, 1],
+  cardEve: [0, 1, 1], cardGlassA: [0.2, 1, 0.01], cardPeek: [0, 1, 1], cardPeekA: [0.2, 1, 0.01], cardPeekMs: [0, 800, 10], cardFollowFade: [0, 1, 0.05], cardBtnNavy: [0, 1, 1], cardRuleSolid: [0, 1, 1], cardImg: [0, 1, 1], cardHoverBridge: [0, 1, 1], cardHoverGrace: [0, 1.5, 0.05], cardActions: [0, 1, 1], minimapEve: [0, 1, 1],
   warnEve: [0, 1, 1], warnLine: [0, 1, 1], warnDrop: [0, 80, 2],
   markHitFit: [0, 1, 1], markHitK: [1, 4, 0.05], markHitMinPx: [4, 40, 1],
   zoneMiniHide: [0, 1, 1], zoneInfoCenter: [0, 1, 1], siteHeader: [0, 1, 1], searchDrop: [0, 160, 2], infoDescK: [0.8, 1.6, 0.05], hostTop: [0, 160, 5],

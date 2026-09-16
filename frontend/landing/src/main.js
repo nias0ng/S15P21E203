@@ -1793,8 +1793,17 @@ function tick() {
   // ⭐ 마우스 호버 → 말풍선 (2026-09-12 저녁). ⚠ 아래 카드 갱신 **바로 앞**이라야 같은 프레임에 반영된다
   updateHover(view);
   // 고른 부표가 멀어져 사라지면 marks 가 선택을 스스로 놓는다. 카드도 여기서 같이 닫힌다
-  if (marks.selected !== shownMark) {
-    shownMark = marks.selected;
+  // ⭐⭐ **카드는 제 부표의 잠김 · 솟음을 같이 탄다** (2026-09-16, `cardFollowFade`).
+  //   사용자 : *"12개 씬에 부표가 내려갈때 같이 내려갔다가 같이 올라오게"* · *"너무 창이 억지로 이동한게 보이니까 연관성이 떨어짐"*.
+  //   고르기에 들고 날 때 부표는 한 번 **잠겼다가 새 슬롯에서 솟는다** (불변식 31). 카드를 그대로 두면 그동안
+  //   화면을 **가로질러 새 자리로 미끄러진다** — 무엇에 딸린 창인지 흐려진다. 그래서 부표가 잠기면 카드도 접고, 다시 솟으면 같이 뜬다.
+  //   ⚠ `marks.selected` 는 안 건드린다 (선택 링 · 이름표 우선순위가 그걸 읽는다) — **카드만** 따라간다.
+  //   ⚠ 잠김 · 솟음은 한 방향으로만 가므로 문턱 하나로 충분하다 (되돌아오며 깜빡일 구간이 없다). 0 이면 예전처럼 안 따라간다
+  const fMin = P.cardFollowFade === undefined ? 0.35 : P.cardFollowFade;
+  const selM = marks.selected;
+  const wantCard = (selM && (fMin <= 0 || (selM.on && selM.fade >= fMin))) ? selM : null;
+  if (wantCard !== shownMark) {
+    shownMark = wantCard;
     if (shownMark) ui.showScent(shownMark); else ui.hideScent();
   }
   // 카드의 서비스 동작 단추 (v0.68.0) — 지도 향수가 아니면 셋 다 쉬고, [주변 향 탐색]은 지금 누를 수 없으면 쉰다 (canExplore). ⚠ ui 가 바뀔 때만 쓴다
@@ -1891,7 +1900,7 @@ applyResponsive();
 // ⭐⭐ 저녁 카드 · 저녁 미니맵 (2026-09-13 저녁, cardEve · minimapEve). <html data-card-eve> · <html data-mini-eve> 가 index.html 의 토큰을 켠다.
 //   ⚠ 속성이 없으면 인라인의 예전 값이다 (반응형 · 시간대와 같은 규약 — 불변식 23 · 25). 카드 바탕의 불투명도(cardGlassA)는 CSS 변수로 넣는다.
 //   미니맵 캔버스는 minimap.js 가 속성이 바뀐 것을 보고 색을 다시 읽는다
-let _cardEveOn = null, _miniEveOn = null, _cardGlassA = null, _cardPeekA = null, _cardBtnNavy = null, _cardRuleSolid = null, _cardImg = null, _infoCenter = null, _siteHeader = null, _cardActions = null;
+let _cardEveOn = null, _miniEveOn = null, _cardGlassA = null, _cardPeekA = null, _cardPeekMs = null, _cardBtnNavy = null, _cardRuleSolid = null, _cardImg = null, _infoCenter = null, _siteHeader = null, _cardActions = null;
 let _warnEveOn = null, _warnLine = null, _warnDrop = null, _searchDrop = null, _infoDescK = null, _hostTop = null;
 function applyUiEve() {
   const root = document.documentElement;
@@ -1901,6 +1910,9 @@ function applyUiEve() {
   if (a !== _cardGlassA) { _cardGlassA = a; root.style.setProperty('--pb-card-a', String(a)); }
   const pa = clamp(P.cardPeekA === undefined ? 0.65 : P.cardPeekA, 0, 1);
   if (pa !== _cardPeekA) { _cardPeekA = pa; root.style.setProperty('--pb-card-peek', String(pa)); }
+  // ⭐ 미리보기 ↔ 진한 카드가 **서서히** 바뀌는 시간 (2026-09-16). 트랜지션은 카드 상자 · 꼬리의 인라인에 걸려 있고 길이만 여기서 준다
+  const pms = Math.round(clamp(P.cardPeekMs === undefined ? 200 : P.cardPeekMs, 0, 1200));
+  if (pms !== _cardPeekMs) { _cardPeekMs = pms; root.style.setProperty('--pb-card-peek-ms', pms + 'ms'); }
   // 해역 버튼 색 (2026-09-13 저녁) — 1 짙은 남색 · 0 브론즈 (v0.53.0 첫 시안). ⚠ 색을 인라인으로 넣지 않는다 — <html> 인라인은 종이 카드([원본])까지 덮는다
   const navy = (P.cardBtnNavy === undefined ? 1 : P.cardBtnNavy) >= 0.5;
   if (navy !== _cardBtnNavy) { _cardBtnNavy = navy; root.toggleAttribute('data-card-btn-bronze', !navy); }

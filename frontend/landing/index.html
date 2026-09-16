@@ -83,7 +83,11 @@
   }
   /* ⭐ 호버 미리보기 (#scent-card[data-peek] — ui.js setScentPeek 가 단다). 훑어보는 동안은 **더 비치고 덜 흐리게** —
      작은 부표(반지름 6px 안팎)는 흐림 5px 뒤에서 자리가 안 읽혔다 (1440×780 화면 확인). 누른 향수의 카드는 위의 진하기 그대로다.
-     ⚠ 변수만 바꾼다 (불변식 23) — 배율은 `--pb-card-peek` (main.js 가 params.cardPeekA 를 넣는다) */
+     ⚠ 변수만 바꾼다 (불변식 23) — 배율은 `--pb-card-peek` (main.js 가 params.cardPeekA 를 넣는다)
+     ⭐⭐ 2026-09-16 : 이 속성이 **서서히** 바뀐다 (사용자 : *"갑자기 색상이 바뀌는게 아니라 서서히 지금 설정한 색상으로"*).
+       ⚠⚠ 트랜지션은 **변수가 아니라 그 변수를 쓰는 속성**에 건다 — CSS 커스텀 속성은 `@property` 로 등록하지 않으면 보간되지 않는다.
+         그래서 카드 상자 · 꼬리의 인라인에 `background-color` · `backdrop-filter` 트랜지션을 뒀다 (길이는 `--pb-card-peek-ms`).
+       ⚠ 자리(translate3d)에는 여전히 트랜지션을 안 건다 — 매 프레임 미는 값이라 걸면 카드가 배를 따라 늘어진다 (아래 #scent-card 주석) */
   html[data-card-eve] #scent-card[data-peek] {
     --pb-card-bg: rgba(44,38,62,calc(var(--pb-card-a,0.86) * var(--pb-card-peek,0.65)));
     --pb-card-blur: blur(1.5px);
@@ -382,7 +386,7 @@
            화면 잉크(`--pb-ink`)를 상속하면 안 된다 — 저녁이 기본이 되자(sceneTime 1) 밝은 바탕에
            밝은 글자가 되어 제목이 통째로 안 읽혔다. 불변식 25 가 *"카드·미니맵은 자기 바탕이 있어
            그대로다"* 라고 적어 두었지만 상속을 막는 줄이 없었다. -->
-      <div style="position:relative;padding:var(--pb-card-pad,22px 24px 22px);border:var(--pb-card-border,1px solid #1A1A1A);border-radius:var(--pb-card-radius,5px);background:var(--pb-card-bg,rgba(246,245,242,0.95));color:var(--pb-card-ink,#1A1A1A);backdrop-filter:var(--pb-card-blur,blur(3px));box-shadow:var(--pb-card-shadow,0 10px 28px rgba(26,26,26,0.10));pointer-events:auto;">
+      <div style="position:relative;padding:var(--pb-card-pad,22px 24px 22px);border:var(--pb-card-border,1px solid #1A1A1A);border-radius:var(--pb-card-radius,5px);background:var(--pb-card-bg,rgba(246,245,242,0.95));color:var(--pb-card-ink,#1A1A1A);backdrop-filter:var(--pb-card-blur,blur(3px));box-shadow:var(--pb-card-shadow,0 10px 28px rgba(26,26,26,0.10));pointer-events:auto;transition:background-color var(--pb-card-peek-ms,200ms) ease, backdrop-filter var(--pb-card-peek-ms,200ms) ease;">
         <button id="scent-close" aria-label="닫기" style="position:absolute;top:10px;right:12px;width:24px;height:24px;padding:0;border:none;background:none;font-family:inherit;font-size:17px;line-height:1;color:var(--pb-card-ink-2,#555555);cursor:pointer;">×</button>
         <div data-row style="display:flex;align-items:center;gap:8px;">
           <span id="scent-zone-dot" style="width:7px;height:7px;border-radius:50%;background:#D9738F;"></span>
@@ -416,7 +420,7 @@
         <button data-row id="scent-sail" style="margin-top:18px;width:100%;height:40px;border:1px solid var(--pb-card-btn-line,#1A1A1A);border-radius:var(--pb-card-btn-radius,5px);background:var(--pb-card-btn,#1A1A1A);color:var(--pb-card-btn-ink,#F6F5F2);font-family:inherit;font-size:13px;font-weight:600;letter-spacing:0.02em;cursor:pointer;">이 향의 해역으로</button>
       </div>
       <!-- 꼬리 : 45° 돌린 정사각형의 **바깥 두 변**만 긋는다. 상자 **위에** 얹어 안쪽 절반이 상자 테두리를 덮는다 -->
-      <span id="scent-tail" aria-hidden="true" style="position:absolute;left:-7px;top:50%;width:13px;height:13px;margin-top:-6.5px;background:var(--pb-card-bg,rgba(246,245,242,0.95));backdrop-filter:var(--pb-card-tail-blur,none);border-left:1px solid #1A1A1A;border-bottom:1px solid #1A1A1A;transform:rotate(45deg);pointer-events:none;"></span>
+      <span id="scent-tail" aria-hidden="true" style="position:absolute;left:-7px;top:50%;width:13px;height:13px;margin-top:-6.5px;background:var(--pb-card-bg,rgba(246,245,242,0.95));backdrop-filter:var(--pb-card-tail-blur,none);border-left:1px solid #1A1A1A;border-bottom:1px solid #1A1A1A;transform:rotate(45deg);pointer-events:none;transition:background-color var(--pb-card-peek-ms,200ms) ease, backdrop-filter var(--pb-card-peek-ms,200ms) ease;"></span>
     </div>
   </div>
 

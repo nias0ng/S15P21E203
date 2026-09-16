@@ -241,6 +241,11 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
     //   ⚠ 상자(인라인 pointer-events:auto)까지 같이 끈다 — 바깥 겹만 끄면 안쪽이 여전히 받는다
     setScentPeek(peek) {
       if (!card || bub.peek === peek) return;
+      // ⚠⚠ **사라지는 중에는 안 바꾼다** (2026-09-16). 호버가 벗어나면 같은 프레임에 `hideScent()` 가 페이드를 걸고
+      //   틱이 곧바로 `setScentPeek(false)` 를 부른다 — 그러면 카드가 **짙은 남색으로 튄 채** 사라진다
+      //   (사용자 : *"부표 마우스 호버를 다른 곳에 놓았을때 순간적으로 검게 변했다가 사라짐"*).
+      //   `hideScent` 가 `bub.on` 을 먼저 내리므로 여기서 걸러진다. 다시 뜰 때는 `showScent` 뒤에 틱이 같은 프레임에 제 값을 넣는다.
+      if (!bub.on) return;
       bub.peek = peek;
       // 저녁 카드면 미리보기가 더 비치고 덜 흐리다 (index.html 의 #scent-card[data-peek] — 변수만 바꾼다)
       if (peek) card.dataset.peek = '1'; else delete card.dataset.peek;
