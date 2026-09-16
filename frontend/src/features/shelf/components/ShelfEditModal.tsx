@@ -91,7 +91,7 @@ export function ShelfEditModal({ open, onClose, item, onSave }: Props) {
           onRatingChange={setRating}
           memo={memo}
           onMemoChange={setMemo}
-          hint="메모를 비우면 지워집니다. 적합도는 한 번 매기면 다른 점수로만 바꿀 수 있습니다."
+          hint="메모와 적합도는 비울 수 있습니다."
         />
       </div>
     </Modal>

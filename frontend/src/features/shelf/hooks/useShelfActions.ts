@@ -6,6 +6,7 @@ import {
   createShelfMemo,
   deleteShelfItem,
   deleteShelfMemo,
+  removeShelfFitRating,
   setShelfFitRating,
   setShelfRepresentative,
   updateShelfMemo,
@@ -74,6 +75,9 @@ export function useShelfActions() {
    * 적합도는 **상세에만** 있는 값이라 목록은 건드리지 않습니다. 점수를 맞춰 보느라
    * 여러 번 누르게 되므로 누르는 즉시 원이 차야 합니다 — 응답을 기다리면 손가락보다
    * 느리게 반응합니다.
+   *
+   * 해제(`DELETE .../fit-rating`)는 여기 없습니다 — [변경하기] 모달에서만 하므로
+   * `edit` 이 처리합니다.
    */
   const rating = useMutation({
     mutationFn: ({
@@ -269,9 +273,11 @@ export function useShelfActions() {
         }
       }
 
-      if (next.rating !== null && next.rating !== before.rating) {
+      if (next.rating !== before.rating) {
         try {
-          await setShelfFitRating(shelfItemId, next.rating)
+          // null 은 [해제] — 매긴 것을 지웁니다
+          if (next.rating === null) await removeShelfFitRating(shelfItemId)
+          else await setShelfFitRating(shelfItemId, next.rating)
         } catch {
           missing.push('적합도')
         }

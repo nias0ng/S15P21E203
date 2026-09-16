@@ -8,7 +8,8 @@ type Props = {
   category: ShelfCategory | null
   onCategoryChange: (next: ShelfCategory | null) => void
   rating: number | null
-  onRatingChange: (next: number) => void
+  /** `null` 은 해제입니다 — 서버에서는 `DELETE .../fit-rating` 이 됩니다 */
+  onRatingChange: (next: number | null) => void
   memo: string
   onMemoChange: (next: string) => void
   /** 아래 안내 문구. 담을 때와 고칠 때 할 말이 다릅니다 */
@@ -25,9 +26,9 @@ type Props = {
  * 값을 들고 있지 않습니다(controlled) — 담는 것과 고치는 것은 저장하는 방법이
  * 달라서(POST 셋 · PATCH 셋) 그 판단은 부르는 쪽에 둡니다.
  *
- * **적합도를 지우는 길은 없습니다.** `StarRating` 이 라디오 그룹이라 한 번 매기면
- * 다른 점수로만 바꿀 수 있습니다. 서버에는 `DELETE .../fit-rating` 이 있으니
- * 해제 UI 를 붙이기로 하면 그때 이어집니다.
+ * **적합도는 [해제] 로 지웁니다.** `StarRating` 이 라디오 그룹이라 한 번 매기면
+ * 다른 점수로만 바꿀 수 있어서, 지우는 길을 따로 둡니다. 매기지 않았을 때는
+ * 지울 것이 없으므로 단추도 없습니다.
  */
 export function ShelfItemFields({
   category,
@@ -54,6 +55,15 @@ export function ShelfItemFields({
           value={rating}
           onChange={onRatingChange}
         />
+        {rating !== null && (
+          <button
+            type="button"
+            onClick={() => onRatingChange(null)}
+            className="text-ink-muted hover:text-ink text-caption underline underline-offset-2"
+          >
+            해제
+          </button>
+        )}
       </div>
 
       <Textarea
