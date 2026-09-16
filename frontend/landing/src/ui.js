@@ -39,6 +39,9 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
   }
   // 움직임을 줄이라는 설정이면 튀어나오지 않고 **옅어지기만** 한다 (접근성)
   const calm = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  // 양끝이 느린 곡선. ⚠ phase.js 의 `inOutCubic` 과 **같은 곡선**이다 (그쪽은 함수, 여기는 WAAPI 라 베지어로 적는다) —
+  //   연출과 카드가 다른 결로 움직이면 한 화면에서 두 손이 민 것처럼 보인다
+  const EASE_IO = 'cubic-bezier(0.65, 0, 0.35, 1)';
   // #RRGGBB 두 색을 t 만큼 섞는다 (저녁 카드의 향조 글자색 — 부표 색을 상아색 쪽으로)
   const mixHex = (a, b, t) => {
     const p = (h) => { const n = parseInt(h.replace('#', ''), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
@@ -198,19 +201,24 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
       bub.on = true; bub.m = m; bub.key = ''; bub.tailKey = ''; bub.fresh = true;
       measureAvoid();   // ⚠ 글자가 바뀌면 높이가 바뀐다 — 자리 잡기 전에 잰다
       // ── 등장. ⚠ transform-origin 은 **꼬리 끝**이다 — 말이 부표에서 뿜어져 나오는 것처럼 보여야 한다
+      // ⭐⭐ 2026-09-16 : **오버슈트를 뺐다** (사용자 : *"너무 통통 튀듯이 함 약간 정적이듯이 해야할듯 양쪽 ease in out"*).
+      //   예전은 `scale` 0.35 → **1.035**(제 크기를 넘겼다가) → 1 이라 튀어 올랐고, 커브도 `cubic-bezier(0.22, 0.9, 0.3, 1)` 로 **앞이 빨랐다**.
+      //   지금은 시작 배율에서 1 로 **곧게** 가고 커브는 양끝이 느리다 (`EASE_IO` = phase.js 의 `inOutCubic` 과 같은 곡선).
+      //   ⚠ 시작 배율도 0.35 → 0.92 다 — 작은 데서 확 커지는 것 자체가 '통통' 으로 읽힌다. 뿜어져 나오는 느낌은 transform-origin(꼬리 끝)이 계속 낸다.
       if (bub.anim) bub.anim.cancel();
       if (bubble && bubble.animate) {
+        const oMs = P.cardOpenMs === undefined ? 300 : P.cardOpenMs;
+        const oS = P.cardOpenScale === undefined ? 0.92 : P.cardOpenScale;
         bub.anim = calm()
           ? bubble.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' })
           : bubble.animate([
-              { opacity: 0, transform: 'scale(0.35)' },
-              { opacity: 1, transform: 'scale(1.035)', offset: 0.62 },
+              { opacity: 0, transform: `scale(${oS})` },
               { opacity: 1, transform: 'scale(1)' }
-            ], { duration: 380, easing: 'cubic-bezier(0.22, 0.9, 0.3, 1)' });
+            ], { duration: oMs, easing: EASE_IO });
         // 내용은 한 줄씩 떠오른다 (45ms 간격). ⚠ fill:'backwards' — 기다리는 동안 안 보여야 한다
         if (!calm()) rows.forEach((r, i) => r.animate(
-          [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }],
-          { duration: 260, delay: 110 + i * 45, easing: 'ease-out', fill: 'backwards' }));
+          [{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }],
+          { duration: 260, delay: 110 + i * 45, easing: EASE_IO, fill: 'backwards' }));
       }
     },
 
@@ -227,9 +235,10 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
       bub.on = false; bub.m = null;
       if (hideTimer) clearTimeout(hideTimer);
       if (bub.anim) bub.anim.cancel();
+      // ⭐ 2026-09-16 : 나갈 때도 **양끝이 느린 같은 곡선**이다 (예전 `ease-in` 은 끝에서 가속해 툭 끊겼다) · 줄어드는 폭도 0.9 → 0.96 으로 줄였다
       if (bubble && bubble.animate && card.style.visibility === 'visible') {
-        bub.anim = bubble.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(0.9)' }],
-          { duration: calm() ? 120 : 170, easing: 'ease-in', fill: 'forwards' });
+        bub.anim = bubble.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(0.96)' }],
+          { duration: calm() ? 120 : (P.cardOpenMs === undefined ? 300 : P.cardOpenMs) * 0.6, easing: EASE_IO, fill: 'forwards' });
       } else card.style.opacity = '0';
       hideTimer = setTimeout(() => {
         card.style.visibility = 'hidden'; card.style.opacity = '0'; hideTimer = 0;

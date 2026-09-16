@@ -1462,6 +1462,13 @@ export const PARAMS = {
   //   ⚠ 트랜지션은 **커스텀 속성이 아니라 그걸 쓰는 속성**(`background-color` · `backdrop-filter`)에 걸려 있다 — index.html 의 카드 상자 · 꼬리 인라인. 여기서는 길이만 준다.
   //   0 이면 예전처럼 즉시 바뀐다.
   cardPeekMs: 200,
+  // ⭐⭐ 카드가 **열리는 결** (2026-09-16, ui.js showScent · hideScent). 사용자 : *"너무 통통 튀듯이 함 약간 정적이듯이 해야할듯 양쪽 ease in out"*.
+  //   예전은 `scale` 0.35 → **1.035**(제 크기를 넘겼다가) → 1 인 오버슈트였다. 지금은 시작 배율에서 1 로 곧게 가고
+  //   커브는 `cubic-bezier(0.65, 0, 0.35, 1)` — phase.js 의 `inOutCubic` 과 **같은 곡선**이라 연출과 카드가 한 결로 움직인다.
+  //   ⚠ 나가는 것은 이 값의 0.6 배다 (들어올 때보다 짧아야 '치운다' 로 읽힌다).
+  cardOpenMs: 300,     // ms
+  cardOpenScale: 0.92, // 시작 배율. 낮을수록 확 커진다 — 0.35 가 예전의 '통통' 이었다
+
   // ⭐⭐ **카드가 제 부표의 잠김 · 솟음을 같이 탄다** (2026-09-16, main.js 틱). 부표의 `fade` 가 이 값 아래면 카드를 접고, 넘으면 같이 띄운다.
   //   사용자 : *"12개 씬에 부표가 내려갈때 같이 내려갔다가 같이 올라오게"* · *"너무 창이 억지로 이동한게 보이니까 연관성이 떨어짐"*.
   //   고르기에 들고 날 때 부표는 한 번 잠겼다가 새 슬롯에서 솟는데(불변식 31), 카드를 두면 그동안 화면을 가로질러 미끄러진다.
@@ -2555,7 +2562,7 @@ export const PARAM_RANGES = {
   focusAvoidBoat: [0, 2, 0.05],
   focusBoatClear: [0, 1, 1], focusBoatPad: [0, 120, 1], focusDepthX0: [0, 0.5, 0.01], focusDepthX1: [0.5, 1, 0.01],
   focusDepthFit: [0, 1, 1], focusDepthMargin: [0, 60, 1], focusDepthSpread: [0.5, 2.5, 0.05],
-  cardEve: [0, 1, 1], cardGlassA: [0.2, 1, 0.01], cardPeek: [0, 1, 1], cardPeekA: [0.2, 1, 0.01], cardPeekMs: [0, 800, 10], cardFollowFade: [0, 1, 0.05], cardBtnNavy: [0, 1, 1], cardRuleSolid: [0, 1, 1], cardImg: [0, 1, 1], cardHoverBridge: [0, 1, 1], cardHoverGrace: [0, 1.5, 0.05], cardActions: [0, 1, 1], minimapEve: [0, 1, 1],
+  cardEve: [0, 1, 1], cardGlassA: [0.2, 1, 0.01], cardPeek: [0, 1, 1], cardPeekA: [0.2, 1, 0.01], cardPeekMs: [0, 800, 10], cardOpenMs: [0, 900, 10], cardOpenScale: [0.2, 1, 0.01], cardFollowFade: [0, 1, 0.05], cardBtnNavy: [0, 1, 1], cardRuleSolid: [0, 1, 1], cardImg: [0, 1, 1], cardHoverBridge: [0, 1, 1], cardHoverGrace: [0, 1.5, 0.05], cardActions: [0, 1, 1], minimapEve: [0, 1, 1],
   warnEve: [0, 1, 1], warnLine: [0, 1, 1], warnDrop: [0, 80, 2],
   markHitFit: [0, 1, 1], markHitK: [1, 4, 0.05], markHitMinPx: [4, 40, 1],
   zoneMiniHide: [0, 1, 1], zoneInfoCenter: [0, 1, 1], siteHeader: [0, 1, 1], searchDrop: [0, 160, 2], infoDescK: [0.8, 1.6, 0.05], hostTop: [0, 160, 5],
