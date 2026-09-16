@@ -1,8 +1,9 @@
-import { useQuery } from '@tanstack/react-query'
-import { useParams } from 'react-router'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate, useParams } from 'react-router'
 
+import { communityKeys } from '@/features/community'
 import { PerfumeReviewDetail, reviewDetailQuery } from '@/features/perfume'
-import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
+import { ROUTES, toPerfumeDetail, toReviewEdit } from '@/shared/config/routes'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { LinkButton } from '@/shared/ui/LinkButton'
@@ -15,6 +16,8 @@ import { PageFallback } from '@/shared/ui/PageFallback'
  * 그래서 쿼리에서 창 포커스 · 재연결 재요청을 꺼 두었습니다(queries.ts).
  */
 export default function ReviewDetailPage() {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { reviewId } = useParams<{ reviewId: string }>()
   const numericId = Number(reviewId)
   const valid = Number.isFinite(numericId)
@@ -56,8 +59,16 @@ export default function ReviewDetailPage() {
     <PerfumeReviewDetail
       review={data}
       backTo={toPerfumeDetail(data.perfume.perfumeId)}
-      // TODO: 작성 화면에 수정할 후기를 실어 보내기 — A24a 연결 시
-      editTo={ROUTES.REVIEW_WRITE}
+      // 같은 후기 작성 화면입니다 — 주소로 수정 모드가 켜집니다
+      editTo={toReviewEdit(data.reviewId)}
+      /*
+       * 삭제 뒤 정리는 여기서 합니다. 게시판 목록(community)과 후기(perfume)는
+       * 서로 import 할 수 없는 두 도메인이라, 둘 다 아는 화면이 맡습니다.
+       */
+      onDeleted={() => {
+        void queryClient.invalidateQueries({ queryKey: communityKeys.all })
+        navigate(toPerfumeDetail(data.perfume.perfumeId), { replace: true })
+      }}
     />
   )
 }

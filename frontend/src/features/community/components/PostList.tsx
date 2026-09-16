@@ -15,6 +15,14 @@ type Props = {
   items: BoardItem[]
   isPending?: boolean
   emptyAction?: React.ReactNode
+  /**
+   * 넘기면 좋아요가 **누를 수 있는 버튼**이 됩니다. 안 넘기면 지금처럼 숫자만
+   * 보여줍니다 — 자유 게시판은 아직 좋아요 API 를 붙이지 않아 표시만 합니다.
+   *
+   * 누를 수 없을 때 버튼으로 두지 않는 이유: 눌러도 아무 일이 없으면 고장난
+   * 것으로 보입니다. 붙지 않은 기능은 아예 버튼이 아니어야 합니다.
+   */
+  onToggleLike?: (item: BoardItem) => void
 }
 
 /**
@@ -29,7 +37,12 @@ type Props = {
  *
  * 제목이 맨 위인 이유: 게시판에서 훑는 것은 제목입니다.
  */
-export function PostList({ items, isPending = false, emptyAction }: Props) {
+export function PostList({
+  items,
+  isPending = false,
+  emptyAction,
+  onToggleLike,
+}: Props) {
   if (isPending) {
     return (
       <div className="space-y-3.75">
@@ -122,10 +135,27 @@ export function PostList({ items, isPending = false, emptyAction }: Props) {
 
             {/* 점수나 별점은 없습니다. 좋아요만 있습니다. */}
             <div className="text-ink-muted text-caption flex items-center gap-3.75">
-              <span className={item.liked ? 'text-danger' : undefined}>
-                <span aria-hidden>{item.liked ? '♥' : '♡'}</span> 좋아요{' '}
-                {item.likeCount}
-              </span>
+              {onToggleLike ? (
+                <button
+                  type="button"
+                  aria-pressed={item.liked}
+                  aria-label={`좋아요 ${item.likeCount}`}
+                  onClick={() => onToggleLike(item)}
+                  className={cn(
+                    'hover:text-danger rounded-card transition-colors duration-120 ease-out',
+                    'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
+                    item.liked && 'text-danger',
+                  )}
+                >
+                  <span aria-hidden>{item.liked ? '♥' : '♡'}</span> 좋아요{' '}
+                  {item.likeCount}
+                </button>
+              ) : (
+                <span className={item.liked ? 'text-danger' : undefined}>
+                  <span aria-hidden>{item.liked ? '♥' : '♡'}</span> 좋아요{' '}
+                  {item.likeCount}
+                </span>
+              )}
               {item.commentCount !== null && (
                 <span>댓글 {item.commentCount}</span>
               )}

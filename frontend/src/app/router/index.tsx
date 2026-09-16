@@ -117,6 +117,12 @@ export const router = createBrowserRouter([
         handle: TEXT,
       },
       {
+        // 수정도 같은 화면입니다 — 주소로 모드를 가릅니다
+        path: ROUTES.REVIEW_EDIT,
+        element: withSuspense(<ReviewWritePage />),
+        handle: TEXT,
+      },
+      {
         path: ROUTES.POST_WRITE,
         element: withSuspense(<PostWritePage />),
         handle: TEXT,
