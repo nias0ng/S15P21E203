@@ -28,6 +28,18 @@ public class Perfume {
     @Column(name = "perfume_id")
     private Long id;
 
+    /**
+     * Fragrantica 원본 향수 번호입니다. {@code uk_perfumes_fragrantica_id} 로 유일합니다.
+     *
+     * <p>자연어 추천이 이 값을 씁니다. AI 서버는 우리 DB 를 모르고 자기 데이터의 원본 번호로
+     * 향수를 지목하므로, 그 번호를 {@code perfume_id} 로 바꾸는 일이 백엔드 몫입니다.
+     *
+     * <p>{@code NULL} 일 수 있습니다. 적재 스크립트가 짝지어 주지 못한 향수가 남습니다.
+     * {@code NULL} 은 무엇과도 같지 않으므로 이 값으로 찾는 쿼리에는 걸리지 않습니다.
+     */
+    @Column(name = "fragrantica_id")
+    private Long fragranticaId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "brand_id")
     private Brand brand;
