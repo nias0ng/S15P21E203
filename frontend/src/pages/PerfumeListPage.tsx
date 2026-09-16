@@ -123,7 +123,7 @@ export default function PerfumeListPage() {
         <PerfumeGrid
           items={items}
           isPending={isPending}
-          columns={5}
+          columns={6}
           emptyAction={
             hasFilter && (
               <Button variant="outline" onClick={resetFilters}>
