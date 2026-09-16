@@ -34,7 +34,7 @@ type Props = {
  * ⚠️ 이 카드는 1920 규격 크기로 짜고, 작은 화면에서는 통째로 줄입니다.
  *
  * 진열대 화면은 스크롤하지 않는 한 장이고, 이 카드는 벽감과 윗선 · 높이를 맞춥니다.
- * 안쪽 치수(여백 · 사진 · 글자 · 단추)는 전부 1920 x 1080 기준(폭 340 · 벽감 605)으로 적고,
+ * 안쪽 치수(여백 · 사진 · 글자 · 단추)는 전부 1920 x 1080 기준(폭 390 · 벽감 605)으로 적고,
  * 화면이 작아져 벽감이 낮아지면 카드가 `zoom: var(--panel-scale)` 로 같은 비율만큼
  * 줄어듭니다(배율은 lib.ts 의 shelfLayout 이 정하고 ShelfWall 이 넣습니다).
  * 그래서 **1920 에서 내용이 벽감(605) 안에 들면 작은 화면에서도 벽감을 넘지 않습니다.**
@@ -49,7 +49,12 @@ type Props = {
  * 카드 껍데기. 향수를 고르기 전과 후 두 상태가 같은 모양이어야 해서 한 곳에 둡니다.
  *
  * `rounded-[14px]` 과 여백은 시안 실측을 치수 끝자리 0/5 로 맞춘 값입니다
- * (위 20 · 좌우 25 · 아래 10). rounded-card(6px)는 "각진 아카이브"
+ * (위 20 · 좌우 25 · 아래 20). 좌우는 한때 40 이었습니다 — 카드가 435 로 넓던 시절
+ * 글이 폭을 다 써서 향조 세 덩이가 양끝으로 벌어지던 것을 안쪽에서 좁힌 값입니다.
+ * 카드를 390 으로 줄이면서 시안값 25 로 돌렸습니다. **더 넓히면 안 됩니다** —
+ * 가장 긴 향수명(`Eau de Parfum Orpheon`)이 28px 에서 323px 이라, 안쪽 폭 340 에서
+ * 8px 차이로 겨우 한 줄에 섭니다. 아래 20 은 메모가 카드 밑선에 붙어서 10 에서
+ * 올린 값입니다. rounded-card(6px)는 "각진 아카이브"
  * 인상을 만드는 값이라 시안의 둥근 카드와 성격이 다릅니다.
  *
  * 높이는 ShelfWall 이 자리를 벽감 + 이름표 자리 높이로 잡고 이 카드를 flex-1 로 채워 정합니다. 선택 전후
@@ -65,7 +70,7 @@ type Props = {
  * 살짝 비쳐서 "종이 위에 얹힌 카드" 로 읽힙니다.
  */
 const CARD =
-  'shelf-panel relative rounded-[14px] px-6.25 pt-5 pb-2.5 [zoom:var(--panel-scale,1)]'
+  'shelf-panel relative rounded-[14px] px-6.25 pt-5 pb-5 [zoom:var(--panel-scale,1)]'
 
 /**
  * 이 카드 위 버튼의 포커스 링.
@@ -143,12 +148,19 @@ export function ShelfDetailPanel({
             병 이미지는 배경이 투명한 PNG 로 들어옵니다(DisplayCase 와 같은 소스).
             그래서 Thumbnail 을 쓰지 않습니다 — 자리표시자 상자의 테두리·배경이
             투명 영역을 네모로 드러내 병이 상자에 든 것처럼 보입니다.
-            높이는 시안이 180px 인데 125px 로 줄였습니다. 시안에 없던 조작(분류 변경 ·
-            저장 해제 · 메모 수정)이 아래에 들어오면서, 벽감 높이 안에 다 담으려면
-            어딘가를 줄여야 했습니다. 사진은 줄여도 무엇인지 알아볼 수 있지만 조작은 줄이면
-            못 누릅니다. (폭을 다 쓰던 대표 향수 단추를 왼쪽 위 별로 바꾸고 고정 소개
-            문구를 걷어내면서 100 에서 125 로 되돌렸습니다.)
-            두 단으로 넓게 설 때(쌓는 배치)는 세로 자리가 넉넉해 시안의 180px 로 둡니다.
+            **높이 255px 은 카드가 제 자리(벽감 + 이름표 - PANEL_TRIM, 1920 에서 710)를
+            넘지 않는 최댓값입니다.** 사진은 세로로 긴 병이라 `object-contain` 에서
+            높이가 그대로 크기를 정합니다 — 125px 이던 시절 병은 폭 55px 짜리
+            조각이었습니다. 255 면 폭 110px 로 섭니다.
+
+            ⚠️ **메모 세 줄까지 재고 정한 값입니다.** 아래 조작과 메모는 `mt-auto` 라
+            바닥에 붙는데, 사진이 커지면 그만큼 위에서 눌러 내려 메모가 세 줄이 되는
+            향수에서 카드가 제 자리를 넘습니다(잘리지는 않고 이름표 아랫선을 넘어
+            길어집니다). 290 에서 22px, 265 에서 4px 넘었습니다. 씨앗 데이터의 메모는
+            전부 두 줄이라 화면만 보면 안 드러납니다 — 사진을 키우려면 `line-clamp-3`
+            을 두 줄로 줄이거나 카드 높이(PANEL_TRIM)를 같이 만져야 합니다.
+            두 단으로 넓게 설 때(쌓는 배치)는 사진과 글이 좌우로 갈라져 세로 자리가 이만큼
+            안 남으므로 시안의 180px 그대로 둡니다.
             이미지가 없을 때도 같은 높이를 비워 둬야 아래 글이 위아래로 튀지 않습니다.
 
             고른 병의 사진이라 먼저 받고(fetchPriority high) 그 자리에서 풀어 그립니다(decoding sync).
@@ -161,13 +173,13 @@ export function ShelfDetailPanel({
               alt=""
               fetchPriority="high"
               decoding="sync"
-              className="shelf-bottle-img h-[125px] w-full object-contain @xl:h-[180px]"
+              className="shelf-bottle-img h-[255px] w-full object-contain @xl:h-[180px]"
             />
           ) : (
-            <div aria-hidden className="h-[125px] @xl:h-[180px]" />
+            <div aria-hidden className="h-[255px] @xl:h-[180px]" />
           )}
 
-          <div className="flex flex-col items-center gap-1.25">
+          <div className="flex flex-col items-start gap-1.25">
             {/*
               시안의 브랜드명은 자간 넓은 대문자입니다. 영문 브랜드가 있으면 그걸 적고
               (한글 브랜드는 uppercase 가 무시됩니다), 없으면 한글 브랜드를 적습니다.
@@ -192,12 +204,15 @@ export function ShelfDetailPanel({
               백엔드가 아직 주지 않아 없을 수 있으므로, 없으면 국문 이름 한 줄만 크게
               적습니다 — 빈 줄을 남기지 않습니다.
 
-              향수명 크기는 활자 스케일의 title(20px)이 시안 실측과 같습니다.
+              향수명은 활자 스케일의 display(28px)입니다. title(20px)로 적어 두고
+              "시안 실측과 같다" 고 믿고 있었는데, 시안을 카드 폭 기준으로 다시 재 보니
+              이름이 카드 가로의 70% 를 넘는 **가장 큰 글자**였습니다. 20px 은 그 절반
+              남짓이라 이름이 브랜드·국문 이름에 묻혀 있었습니다.
               향수명을 heading 태그로 두지 않은 것은 이 패널이 놓이는 자리에 따라
               제목 단계가 달라지기 때문입니다. 대신 aside 에 aria-label 을 달아
               낭독기가 영역을 찾을 수 있게 했습니다.
             */}
-            <p className="text-title text-center font-serif leading-tight font-semibold">
+            <p className="text-display font-serif leading-tight font-semibold">
               {item.nameEn ? (
                 <span aria-hidden lang="en">
                   {item.nameEn}
@@ -207,9 +222,7 @@ export function ShelfDetailPanel({
               )}
             </p>
             {item.nameEn && (
-              <p className="shelf-muted text-caption text-center">
-                {item.name}
-              </p>
+              <p className="shelf-muted text-body">{item.name}</p>
             )}
           </div>
 
@@ -218,22 +231,27 @@ export function ShelfDetailPanel({
             1.0 ~ 5.0 을 0.5 단위로 고릅니다 — 첫 원만 반이 없습니다(0.5 는 백엔드가
             받지 않습니다). 그 규칙과 화살표 키 이동은 공용 StarRating 이 들고 있습니다.
 
-            숫자는 끕니다(showValue={false}). 시안이 원만 보여주고, 카드 안쪽 폭 290 에서
+            숫자는 끕니다(showValue={false}). 시안이 원만 보여주고, 카드 안쪽 폭 340 에서
             "3.5 / 5" 가 옆에 붙으면 원 다섯 개가 가운데에서 밀립니다. 값은 낭독기에
             글자로 남습니다.
+
+            size="lg"(20px) 는 이 카드 전용입니다. 기본 15px 은 목록·모달에서 쓰는
+            크기인데, 여기서는 향수 한 장을 크게 보여주는 자리라 시안에서도 원이
+            큽니다.
           */}
-          <div className="flex justify-center">
+          <div className="flex justify-start">
             <StarRating
               label="내 취향 적합도"
               value={item.rating}
               onChange={onChangeRating}
               showValue={false}
+              size="lg"
             />
           </div>
         </div>
 
         <div className="flex flex-1 flex-col gap-2.5">
-          <div className="flex flex-col items-center gap-2.5">
+          <div className="flex flex-col items-start gap-2.5">
             <p className="shelf-label">Scent Note</p>
 
             {/*
@@ -241,9 +259,10 @@ export function ShelfDetailPanel({
               "베르가못" 4자)에 따라 칸이 서로 달라져 원 세 개가 가운데 정렬에서
               어긋납니다. 그리드면 이름이 무엇이든 원의 간격이 같습니다.
 
-              원 지름 30px 은 시안 실측(36px)을 이 카드 높이에 맞춰 한 단 줄인 값입니다.
-              패널 안쪽 폭 290px(1920 기준 — 작은 화면에서는 카드째 줄어 비율이 같습니다)을
-              셋으로 나눈 95px 남짓 안에 원과 라벨이 함께 들어갑니다.
+              원 지름 40px 은 시안 실측(36px)보다 한 단 큽니다 — 시안보다 카드가 넓어서
+              (390 대 326) 같은 36px 이면 카드 안에서 더 작아 보입니다.
+              패널 안쪽 폭 340px(1920 기준 — 작은 화면에서는 카드째 줄어 비율이 같습니다)을
+              셋으로 나눈 113px 안에 원과 라벨이 함께 들어갑니다.
             */}
             <ul className="grid w-full grid-cols-3">
               {SCENT_NOTES.map((note) => (
@@ -254,12 +273,12 @@ export function ShelfDetailPanel({
                   <span
                     aria-hidden
                     className={cn(
-                      'shelf-note-swatch size-7.5 rounded-full',
+                      'shelf-note-swatch size-10 rounded-full',
                       note.tone,
                     )}
                   />
                   <span className="shelf-label">{note.stage}</span>
-                  <span className="text-caption">{note.name}</span>
+                  <span className="text-body">{note.name}</span>
                 </li>
               ))}
             </ul>
@@ -274,7 +293,7 @@ export function ShelfDetailPanel({
             시안의 바탕색과 모서리(6px)·높이만 덮습니다 — cn(twMerge)이 variant·size 의
             bg·rounded·h 를 걷어냅니다.
           */}
-          <div className="mt-auto flex flex-col gap-3.75">
+          <div className="mt-auto flex flex-col gap-6.25">
             <div className="flex gap-2.5">
               <Button
                 variant="outline"
@@ -357,7 +376,7 @@ function RepresentativeStar({
       aria-label={label}
       title={label}
       className={cn(
-        'absolute top-3.75 left-3.75 flex size-8.75 items-center justify-center rounded-full',
+        'absolute top-3.75 left-3.75 flex size-11.25 items-center justify-center rounded-full',
         'transition-opacity duration-120 ease-out',
         // 지정할 수 있을 때만 눌리는 느낌을 줍니다. 끈 별은 표시로만 남깁니다
         settable ? 'hover:opacity-70' : 'cursor-default',
@@ -366,7 +385,7 @@ function RepresentativeStar({
         FOCUS_RING,
       )}
     >
-      <svg viewBox="0 0 24 24" aria-hidden className="size-5">
+      <svg viewBox="0 0 24 24" aria-hidden className="size-7.5">
         <path
           d="M12 2.5l2.9 6.1 6.6.9-4.8 4.7 1.2 6.6L12 17.7 6.1 20.8l1.2-6.6L2.5 9.5l6.6-.9L12 2.5Z"
           fill={item.representative ? 'currentColor' : 'none'}
@@ -470,7 +489,7 @@ function MemoField({
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           placeholder="이 향을 어디서 언제 맡았는지 적어두세요."
-          className="shelf-field text-caption rounded-md border-0 bg-[var(--chip)]"
+          className="shelf-field text-heading rounded-md border-0 bg-[var(--chip)]"
         />
       ) : (
         /*
@@ -478,10 +497,22 @@ function MemoField({
           있어서 긴 메모를 다 펼치면 카드가 벽감 아래로 흘러내려 옆 병의 이름표를
           덮습니다. 잘린 뒷부분은 "수정" 을 누르면 입력칸에서 전부 보입니다.
           줄바꿈은 whitespace-pre-line 으로 적은 그대로 둡니다.
+
+          **글자는 caption(12) 이 아니라 heading(16) 입니다.** 이 카드는 통째로
+          `zoom: var(--panel-scale)` 로 줄어서, 1920 에서도 12px 이 11.5px 로 그려집니다.
+          활자 스케일의 하한(12px — 한글은 그 아래로 급격히 읽기 힘들어집니다)을 화면에서
+          이미 밑돌던 자리라, 카드가 줄어드는 만큼 한 단 위에서 시작합니다. heading 은
+          스케일에 "serif 소제목" 으로 적혀 있지만 크기 토큰이라 서체는 따라오지 않습니다 —
+          여기서는 sans 본문 크기로만 씁니다. 세 줄 메모(64px)까지 넣어도 카드 안에
+          42px 이 남는 것을 확인했습니다.
+
+          Memo 라벨과 날짜는 caption 그대로입니다. 둘은 메모가 아니라 메모에 붙은 꼬리표라
+          같이 키우면 무엇이 본문인지 안 읽힙니다. 다만 "수정" 은 눌러야 하는 것이라
+          body(13) 로 한 단만 올렸습니다.
         */
         <p
           className={cn(
-            'text-caption line-clamp-3 whitespace-pre-line',
+            'text-heading line-clamp-3 whitespace-pre-line',
             !initial && 'shelf-muted',
           )}
         >
@@ -508,7 +539,7 @@ function MemoAction({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        'text-caption underline underline-offset-2',
+        'text-body underline underline-offset-2',
         'transition-opacity duration-120 ease-out',
         disabled ? 'shelf-muted opacity-40' : 'hover:opacity-70',
         FOCUS_RING,

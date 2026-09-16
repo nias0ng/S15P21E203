@@ -596,13 +596,43 @@ function measureWall(
  * 두 값 사이를 오갈 수 있어서 네 번까지만 맞춥니다. 배율은 마지막에 센 벽감 높이로 정하므로
  * 그때도 패널 높이는 벽감과 맞습니다.
  */
-const PANEL_WIDTH = 340
+/**
+ * 패널 폭. **시안과 눈으로 맞춘 값입니다.**
+ *
+ * 시안은 카드가 화면 폭의 17%(1920 에서 326)에 가로 : 세로 1 : 2.26 인 가늘고 긴
+ * 모양입니다. 그 비만 좇아 340 까지 줄였더니 이번에는 안쪽이 좁아 글자와 원을 시안
+ * 크기로 못 키웠습니다 — 시안은 카드가 좁은 대신 안쪽 요소가 큽니다. 390 은 그 둘의
+ * 절충입니다(비 1 : 1.9).
+ *
+ * ⚠️ 한때 455 였습니다. "패널 폭 = 매달린 이름표(현판)의 세로 길이"
+ * (605 x 0.75 = 454 → 0/5 규칙으로 455)로 맞춰 두면 화면이 작아져도 두 길이가 같이
+ * 간다는 규칙이었는데, 눈으로 보면 카드가 벽을 반쯤 덮었습니다.
+ * **그 규칙은 이제 성립하지 않습니다** — 현판과 패널은 서로 다른 길이입니다.
+ * 폭을 다시 만질 때 현판을 맞춰야 한다고 생각하지 마세요.
+ *
+ * 폭을 줄일 때의 바닥은 375 근처입니다. 그 아래로는 카드 안쪽 폭이 가장 긴 향수명
+ * (`Eau de Parfum Orpheon`)보다 좁아져 이름이 두 줄로 꺾입니다.
+ */
+const PANEL_WIDTH = 390
 const PANEL_CASE = 605
 /**
  * 벽감 높이를 셀 때 패널 옆에 비워 두는 간격. 벽감 높이에만 씁니다 — 칸은 패널 왼쪽 끝까지
  * 나눕니다(위 "칸이 패널 경계에 섭니다").
  */
 const PANEL_GAP = 20
+
+/**
+ * 패널을 이름표 아랫선보다 이만큼 짧게 끊습니다.
+ *
+ * 원래는 벽감 + 이름표 자리를 꽉 채웠는데, 그러면 카드가 이름표 아랫선까지 내려와
+ * 세로로 길어 보입니다. 조금 덜어 내면 옆 이름표의 아래 끝만 살짝 드러나고 카드는
+ * 한 단 짧아집니다.
+ *
+ * 처음에 30 이었는데 15 로 줄였습니다 — 카드 안에 병 사진을 크게 넣으면서 세로가
+ * 더 필요해졌고, 이 값이 곧 카드 높이라 여기서 15 를 돌려주는 게 유일한 방법입니다.
+ * 이름표 끝은 여전히 드러납니다.
+ */
+const PANEL_TRIM = 15
 const PANEL_PASSES = 4
 /** 글자가 읽히는 하한. 이보다 작게 줄여야 하는 화면은 배치를 바꿉니다 */
 export const PANEL_MIN_SCALE = 0.85
@@ -660,7 +690,7 @@ export function shelfLayout(
       ...metrics,
       panelWidth: PANEL_WIDTH,
       panelScale: 1,
-      panelHeight: metrics.caseHeight + metrics.hang,
+      panelHeight: metrics.caseHeight + metrics.hang - PANEL_TRIM,
       clearWidth: Math.max(0, width - PANEL_WIDTH),
       plaqueSpan: spanOf(metrics.clear),
     }
@@ -687,7 +717,7 @@ export function shelfLayout(
     ...metrics,
     panelWidth,
     panelScale,
-    panelHeight: metrics.caseHeight + metrics.hang,
+    panelHeight: metrics.caseHeight + metrics.hang - PANEL_TRIM,
     clearWidth: metrics.clear * metrics.pitch,
     plaqueSpan: spanOf(metrics.clear),
   }
