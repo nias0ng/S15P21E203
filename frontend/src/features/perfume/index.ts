@@ -33,9 +33,24 @@ export {
   reviewKeys,
 } from './queries'
 export {
+  createReview,
+  deleteReview,
+  likeReview,
+  replaceReviewSeasons,
+  unlikeReview,
+  updateReview,
+} from './api'
+export {
   GENDER_FILTERS,
+  REVIEW_CONTENT_MAX_LENGTH,
+  REVIEW_CONTENT_MIN_LENGTH,
+  REVIEW_SEASON_MIN_COUNT,
+  REVIEW_TITLE_MAX_LENGTH,
   SEASONS,
   RANKING_FILTERS,
+  type ReviewCreateInput,
+  type ReviewLikeResponse,
+  type ReviewUpdateInput,
   type GenderFilter,
   type PerfumeAccord,
   type PerfumeDetail,

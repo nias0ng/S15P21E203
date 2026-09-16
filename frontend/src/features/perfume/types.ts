@@ -267,3 +267,66 @@ export interface ReviewDetail {
   createdAt: string
   updatedAt: string
 }
+
+/* ── 후기 쓰기 (CMT-03 · DTL-05 · DTL-06 · DTL-16) ──────────── */
+
+/**
+ * 후기 작성 요청 (POST /perfumes/{perfumeId}/reviews)
+ *
+ * 길이 제약은 백엔드 `ReviewCreateRequest` 의 검증 애너테이션 그대로입니다.
+ * **계절은 1개 이상 필수입니다**(`@NotEmpty`) — 화면 문구가 "선택"이면 안 됩니다.
+ *
+ * 계절을 번호가 아니라 **코드**로 보냅니다. `season_id` 는 자동 증가라 환경마다
+ * 값이 달라지는데, 코드는 마이그레이션 V18 이 고정했습니다.
+ */
+export interface ReviewCreateInput {
+  title: string
+  content: string
+  seasonCodes: Season[]
+}
+
+export const REVIEW_TITLE_MAX_LENGTH = 50
+export const REVIEW_CONTENT_MIN_LENGTH = 10
+export const REVIEW_CONTENT_MAX_LENGTH = 1000
+export const REVIEW_SEASON_MIN_COUNT = 1
+
+/**
+ * 후기 수정 요청 (PATCH /reviews/{reviewId})
+ *
+ * **둘 다 생략할 수 없습니다.** 서버가 `@AssertTrue` 로 "제목이나 내용 중 하나는
+ * 있어야 한다"를 강제하므로, 바뀐 게 없으면 아예 부르지 않습니다.
+ *
+ * **대상 향수와 계절은 여기로 못 바꿉니다.** 향수는 바꾸는 경로 자체가 없고,
+ * 계절은 `PUT /reviews/{reviewId}/seasons` 로 따로 갑니다.
+ */
+export interface ReviewUpdateInput {
+  title?: string
+  content?: string
+}
+
+/** POST /perfumes/{perfumeId}/reviews 응답 */
+export interface ReviewCreateResponse {
+  reviewId: number
+  title: string
+  content: string
+  seasonCodes: Season[]
+  createdAt: string
+}
+
+/** PUT /reviews/{reviewId}/seasons 응답 */
+export interface ReviewSeasonsResponse {
+  reviewId: number
+  seasonCodes: Season[]
+}
+
+/**
+ * PUT · DELETE /reviews/{reviewId}/like 응답
+ *
+ * `liked` 와 `likeCount` 가 함께 옵니다. 화면이 숫자를 직접 더하고 빼지 않아도
+ * 되고, 그 사이 다른 사람이 누른 것도 같이 반영됩니다.
+ */
+export interface ReviewLikeResponse {
+  reviewId: number
+  liked: boolean
+  likeCount: number
+}

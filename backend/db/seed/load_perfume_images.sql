@@ -8,6 +8,7 @@
 -- fragrantica_id 를 사용합니다.
 
 \set ON_ERROR_STOP on
+\pset pager off
 \timing on
 
 BEGIN;

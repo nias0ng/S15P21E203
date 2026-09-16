@@ -1,5 +1,7 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
+import { isApiError } from '@/shared/api/http'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
@@ -7,6 +9,8 @@ import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
+import { deleteReview } from '../api'
+import { perfumeKeys, reviewKeys } from '../queries'
 import type { ReviewDetail } from '../types'
 
 type Props = {
@@ -15,6 +19,15 @@ type Props = {
   backTo: string
   /** 후기 수정 화면 경로 (A24a 가 후기 대상을 걸고 열립니다) */
   editTo: string
+  /**
+   * 삭제가 끝난 뒤 화면을 옮기는 일은 부르는 쪽이 합니다.
+   *
+   * 여기서 직접 하지 않는 이유: 삭제하면 커뮤니티 게시판 목록도 낡는데,
+   * `features/perfume` 은 `features/community` 를 import 할 수 없습니다. 키를
+   * 문자열로 적어 넘어갈 수는 있지만 그건 린트만 피하고 경계는 넘는 것입니다.
+   * 두 도메인을 다 아는 곳은 화면(`pages/`)이라 거기서 정리합니다.
+   */
+  onDeleted?: () => void
 }
 
 /**
@@ -24,8 +37,33 @@ type Props = {
  * 그래서 review.mine 일 때만 두 버튼을 그립니다. 화면에서 숨기는 것만으로는
  * 권한이 지켜지지 않으니 백엔드도 수정 · 삭제 때 작성자를 다시 확인합니다.
  */
-export function PerfumeReviewDetail({ review, backTo, editTo }: Props) {
+export function PerfumeReviewDetail({
+  review,
+  backTo,
+  editTo,
+  onDeleted,
+}: Props) {
+  const queryClient = useQueryClient()
   const [deleteOpen, setDeleteOpen] = useState(false)
+
+  const removal = useMutation({
+    mutationFn: () => deleteReview(review.reviewId),
+    onSuccess: () => {
+      setDeleteOpen(false)
+      /*
+       * 지운 후기의 캐시를 남겨두면 뒤로가기로 그 화면이 다시 뜹니다.
+       * 향수 상세의 후기 목록 · 계절 통계 · 요약도 함께 낡습니다.
+       */
+      queryClient.removeQueries({
+        queryKey: reviewKeys.detail(review.reviewId),
+      })
+      void queryClient.invalidateQueries({
+        queryKey: perfumeKeys.detail(review.perfume.perfumeId),
+      })
+
+      onDeleted?.()
+    },
+  })
 
   return (
     <article className="border-line bg-surface-card border">
@@ -57,9 +95,10 @@ export function PerfumeReviewDetail({ review, backTo, editTo }: Props) {
               <Button
                 variant="outline"
                 size="sm"
+                disabled={removal.isPending}
                 onClick={() => setDeleteOpen(true)}
               >
-                삭제
+                {removal.isPending ? '삭제 중' : '삭제'}
               </Button>
             </span>
           )}
@@ -84,21 +123,26 @@ export function PerfumeReviewDetail({ review, backTo, editTo }: Props) {
         <hr className="border-line" />
 
         {/*
-          조회수는 이번 조회를 포함한 수입니다. 좋아요 누르기는 로그인이 필요해
-          아직 붙이지 않았습니다 — 지금은 숫자만 읽습니다.
+          조회수는 이번 조회를 포함한 수입니다. **상세에서는 읽기 전용입니다** —
+          좋아요를 누르는 것은 후기 게시판(A22a)에서만 합니다.
         */}
         <p className="text-ink-muted text-[10.5px]">
           좋아요 {review.likeCount} · 조회 {review.viewCount}
         </p>
+
+        {removal.error !== null && (
+          <p className="text-danger text-caption" role="alert">
+            {isApiError(removal.error)
+              ? removal.error.message
+              : '삭제하지 못했습니다. 잠시 후 다시 시도해주세요.'}
+          </p>
+        )}
       </div>
 
       <ConfirmDialog
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
-        onConfirm={() => {
-          // TODO: DTL-06 후기 삭제 API 연결 후 향수 상세로 이동 (로그인 필요)
-          setDeleteOpen(false)
-        }}
+        onConfirm={() => removal.mutate()}
       />
     </article>
   )

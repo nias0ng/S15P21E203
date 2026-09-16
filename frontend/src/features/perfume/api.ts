@@ -8,10 +8,16 @@ import type {
   PerfumeNotesResponse,
   PerfumeSearchParams,
   PerfumeSearchResponse,
+  ReviewCreateInput,
+  ReviewCreateResponse,
   ReviewDetail,
+  ReviewLikeResponse,
+  ReviewSeasonsResponse,
   ReviewStatistics,
   ReviewSummary,
   ReviewsResponse,
+  ReviewUpdateInput,
+  Season,
   SeasonStatisticsResponse,
 } from './types'
 
@@ -176,5 +182,86 @@ export async function getPerfumeReviews(
  */
 export async function getReviewDetail(reviewId: number) {
   const { data } = await http.get<ReviewDetail>(`/reviews/${reviewId}`)
+  return data
+}
+
+/*
+ * ── 후기 쓰기 ───────────────────────────────────────────────
+ *
+ * 전부 로그인이 필요합니다(401). `withDevFallback` 을 쓰지 않습니다 — 읽기와 달리
+ * 실패를 자리표시자로 덮으면 저장되지 않은 것을 저장된 것처럼 보여주게 됩니다.
+ */
+
+/**
+ * 후기 작성. 대상 향수는 **경로로** 정해지고 나중에 바꿀 수 없습니다.
+ *
+ * 한 사람이 같은 향수에 후기를 두 개 쓸 수 없어, 이미 썼으면 409 입니다
+ * (`REVIEW_ALREADY_EXISTS`).
+ */
+export async function createReview(
+  perfumeId: number,
+  input: ReviewCreateInput,
+): Promise<ReviewCreateResponse> {
+  const { data } = await http.post<ReviewCreateResponse>(
+    `/perfumes/${perfumeId}/reviews`,
+    input,
+  )
+  return data
+}
+
+/**
+ * 후기 수정. 제목 · 내용만 바뀝니다.
+ *
+ * 보내지 않은 항목은 그대로 유지되지만, **둘 다 비우면 400** 입니다. 부르는 쪽이
+ * 바뀐 것만 담아 보내고, 담을 게 없으면 아예 부르지 않습니다.
+ */
+export async function updateReview(
+  reviewId: number,
+  input: ReviewUpdateInput,
+): Promise<void> {
+  await http.patch(`/reviews/${reviewId}`, input)
+}
+
+/**
+ * 후기의 계절을 통째로 바꿉니다. 더하기 · 빼기가 아니라 교체입니다.
+ *
+ * 빈 배열은 400 이라, 계절을 지우기만 할 수는 없습니다.
+ */
+export async function replaceReviewSeasons(
+  reviewId: number,
+  seasonCodes: Season[],
+): Promise<ReviewSeasonsResponse> {
+  const { data } = await http.put<ReviewSeasonsResponse>(
+    `/reviews/${reviewId}/seasons`,
+    { seasonCodes },
+  )
+  return data
+}
+
+/** 후기 삭제. 본인 것이 아니면 404 입니다 */
+export async function deleteReview(reviewId: number): Promise<void> {
+  await http.delete(`/reviews/${reviewId}`)
+}
+
+/**
+ * 후기 좋아요. **여러 번 눌러도 같은 결과입니다** — 이미 누른 후기에 또 눌러도
+ * 오류가 아니고 숫자도 오르지 않아, 따닥 누름을 화면에서 막지 않아도 됩니다.
+ */
+export async function likeReview(
+  reviewId: number,
+): Promise<ReviewLikeResponse> {
+  const { data } = await http.put<ReviewLikeResponse>(
+    `/reviews/${reviewId}/like`,
+  )
+  return data
+}
+
+/** 좋아요 취소. 누르지 않은 후기에 취소해도 오류가 아닙니다 */
+export async function unlikeReview(
+  reviewId: number,
+): Promise<ReviewLikeResponse> {
+  const { data } = await http.delete<ReviewLikeResponse>(
+    `/reviews/${reviewId}/like`,
+  )
   return data
 }
