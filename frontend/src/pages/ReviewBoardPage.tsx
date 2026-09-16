@@ -1,8 +1,9 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router'
 
 import {
   BoardHeader,
+  communityKeys,
   PostList,
   REVIEW_SORTS,
   reviewBoardQuery,
@@ -11,6 +12,9 @@ import {
   trendingPerfumesQuery,
   type ReviewSort,
 } from '@/features/community'
+// 좋아요는 후기 자원(`/reviews/{id}/like`)이라 향수 도메인에 있습니다.
+// 두 도메인은 서로 import 할 수 없으므로 화면에서 조합합니다.
+import { likeReview, reviewKeys, unlikeReview } from '@/features/perfume'
 import { ROUTES } from '@/shared/config/routes'
 import { ChipToggle } from '@/shared/ui/ChipToggle'
 import { LinkButton } from '@/shared/ui/LinkButton'
@@ -36,6 +40,44 @@ export default function ReviewBoardPage() {
 
   const reviews = useQuery(reviewBoardQuery({ sort, page, size: PAGE_SIZE }))
   const trending = useQuery(trendingPerfumesQuery())
+
+  const queryClient = useQueryClient()
+  const boardKey = communityKeys.reviewBoard({ sort, page, size: PAGE_SIZE })
+
+  /**
+   * 좋아요 토글 (CMT-05).
+   *
+   * 응답에 `liked` 와 `likeCount` 가 함께 오므로 화면이 숫자를 직접 더하고 빼지
+   * 않습니다 — 그 사이 다른 사람이 누른 것도 같이 반영됩니다. 그래서 무효화 대신
+   * **응답 값을 그 줄에만 덮어씁니다.** 목록 전체를 다시 부르면 보고 있던 자리가
+   * 흔들리고, 정렬이 '좋아요순'이면 방금 누른 줄이 눈앞에서 이동합니다.
+   *
+   * 서버가 멱등이라(이미 누른 것에 또 눌러도 같은 결과) 따닥 누름을 막지 않습니다.
+   */
+  const toggleLike = useMutation({
+    mutationFn: ({ id, liked }: { id: number; liked: boolean }) =>
+      liked ? unlikeReview(id) : likeReview(id),
+    onSuccess: (result) => {
+      queryClient.setQueryData(boardKey, (old: typeof reviews.data) =>
+        old === undefined
+          ? old
+          : {
+              ...old,
+              reviews: old.reviews.map((review) =>
+                review.reviewId === result.reviewId
+                  ? {
+                      ...review,
+                      liked: result.liked,
+                      likeCount: result.likeCount,
+                    }
+                  : review,
+              ),
+            },
+      )
+      // 후기 상세는 숫자를 읽기만 하므로, 다음에 열 때 맞는 값이 보이게 비웁니다
+      void queryClient.invalidateQueries({ queryKey: reviewKeys.all })
+    },
+  })
 
   const updateParams = (next: { sort?: ReviewSort; page?: number }) => {
     const params = new URLSearchParams(searchParams)
@@ -72,6 +114,9 @@ export default function ReviewBoardPage() {
           <PostList
             items={(reviews.data?.reviews ?? []).map(reviewToBoardItem)}
             isPending={reviews.isPending}
+            onToggleLike={(item) =>
+              toggleLike.mutate({ id: item.id, liked: item.liked })
+            }
             emptyAction={
               <LinkButton to={ROUTES.REVIEW_WRITE} size="sm">
                 후기 쓰기
