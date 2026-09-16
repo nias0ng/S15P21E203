@@ -23,6 +23,13 @@ type SegmentedFilterProps<T extends string> = {
  *
  * ⚠️ 한 줄 안에서 여러 개를 동시에 고를 수 있는지는 와이어프레임에 없습니다.
  * 지금은 한 줄에 하나만 고르는 것으로 두었습니다. 팀 확정 후 바꿔주세요.
+ *
+ * **모양은 알약 안에 알약입니다** — 바깥 테두리가 한 덩이를 만들고, 고른 칸만
+ * 채워집니다. 예전에는 각진 네모를 칸마다 테두리로 나눴는데(`-ml-px border-l`),
+ * 고른 칸이 먹색으로 꽉 차서 화면에서 가장 무거운 덩이가 되었습니다. 필터는
+ * 향수보다 뒤에 있어야 합니다.
+ *
+ * 폭은 정하지 않습니다 — 칸이 `flex-1` 이라 부르는 쪽이 준 폭을 고르게 나눕니다.
  */
 export function SegmentedFilter<T extends string>({
   label,
@@ -36,9 +43,12 @@ export function SegmentedFilter<T extends string>({
       // 눌린 상태를 aria-pressed 로 알려주므로 group 으로 묶어 이름을 붙입니다
       role="group"
       aria-label={label}
-      className={cn('border-line flex border p-px', className)}
+      className={cn(
+        'border-line bg-surface-card flex rounded-full border p-1.25',
+        className,
+      )}
     >
-      {options.map((option, index) => {
+      {options.map((option) => {
         const selected = value === option.value
 
         return (
@@ -48,11 +58,11 @@ export function SegmentedFilter<T extends string>({
             aria-pressed={selected}
             onClick={() => onChange(selected ? null : option.value)}
             className={cn(
-              'text-body flex-1 py-2.5 text-center',
+              'text-body flex-1 rounded-full py-1.75 text-center',
               'transition-colors duration-120 ease-out',
-              index > 0 && 'border-line -ml-px border-l',
+              'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
               selected
-                ? 'bg-ink text-surface'
+                ? 'bg-accent-deep text-surface'
                 : 'text-ink hover:bg-line-soft bg-transparent',
             )}
           >
