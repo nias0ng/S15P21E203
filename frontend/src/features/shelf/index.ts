@@ -7,7 +7,7 @@
  * 진열대는 분류마다 벽감을 하나씩 가로로 이어 붙인 벽(ShelfWall)이고, 벽감 하나가
  * DisplayCase 입니다. ShelfDeck 은 진열대와 내 컬렉션을 위아래로 바꾸는 무대입니다.
  *
- * ⚠️ 백엔드 진열대 API 가 아직 없습니다. api.ts 가 자리표시자를 돌려줍니다.
+ * 백엔드 진열대 API 12개가 전부 붙어 있습니다(api.ts). 전부 로그인이 필요합니다.
  */
 
 /*
@@ -20,27 +20,45 @@
  * 조용히 떨어뜨립니다.
  */
 import './shelf-display.css'
+export {
+  createShelfItem,
+  createShelfMemo,
+  deleteShelfItem,
+  deleteShelfMemo,
+  updateShelfMemo,
+} from './api'
 export { ShelfDetailPanel } from './components/ShelfDetailPanel'
+export {
+  ShelfEditModal,
+  type ShelfEditInput,
+} from './components/ShelfEditModal'
+export { ShelfItemFields } from './components/ShelfItemFields'
 export { ShelfToolbar } from './components/ShelfToolbar'
 export { ShelfFooterStrip } from './components/ShelfFooterStrip'
 export { ShelfPager } from './components/ShelfPager'
 export { ShelfWall, type ShelfWallHandle } from './components/ShelfWall'
 export { ShelfDeck } from './components/ShelfDeck'
 export { ShelfRegisterModal } from './components/ShelfRegisterModal'
-export { ShelfSaveModal } from './components/ShelfSaveModal'
 export {
   useShelfArrangement,
   type ShelfArrangement,
 } from './hooks/useShelfArrangement'
+export {
+  ShelfEditPartialError,
+  ShelfRegisterPartialError,
+  useShelfActions,
+} from './hooks/useShelfActions'
 export { useShelfBrowser } from './hooks/useShelfBrowser'
 export { toPerfumeOption } from './lib'
-export { shelfItemsQuery, shelfKeys } from './queries'
+export { shelfItemDetailQuery, shelfItemsQuery, shelfKeys } from './queries'
 export {
   SHELF_CATEGORIES,
   type PerfumeOption,
   type ShelfCategory,
   type ShelfCounts,
   type ShelfItem,
+  type ShelfItemDetail,
+  type ShelfScentNote,
   type ShelfRegisterInput,
   type ShelfSection,
 } from './types'

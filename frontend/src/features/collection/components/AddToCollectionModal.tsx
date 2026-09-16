@@ -10,7 +10,8 @@ import { Thumbnail } from '@/shared/ui/Thumbnail'
 type Candidate = {
   perfumeId: number
   name: string
-  brand: string
+  /** 브랜드가 비어 있는 향수가 있습니다 */
+  brand: string | null
   thumbnailUrl?: string | null
 }
 

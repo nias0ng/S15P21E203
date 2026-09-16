@@ -14,6 +14,17 @@ type Props = {
   onChange: (next: ShelfCategory) => void
   keyword: string
   onKeywordChange: (next: string) => void
+  /**
+   * 줄 오른쪽 끝에 붙는 조작. 지금은 [+ 향수 등록] 입니다.
+   *
+   * 진열대에 담는 단추라 진열대를 다루는 이 줄에 섭니다. 예전에는 "내 컬렉션"
+   * 머리말에 있었는데, 그쪽은 무대를 바꿔야 나오는 자리라 진열대를 보는 동안에는
+   * 화면에 없었습니다 — 담을 방법이 안 보이는 진열대였습니다.
+   *
+   * 도메인이 아니라 화면에서 넘기는 이유: 누를 때 무엇을 할지(로그인 유도냐 등록
+   * 모달이냐)는 화면이 아는 일입니다.
+   */
+  action?: React.ReactNode
   className?: string
 }
 
@@ -50,6 +61,7 @@ export function ShelfToolbar({
   onChange,
   keyword,
   onKeywordChange,
+  action,
   className,
 }: Props) {
   const searchInputId = useId()
@@ -173,6 +185,12 @@ export function ShelfToolbar({
           className="text-body w-full min-w-0 bg-transparent outline-none placeholder:text-[var(--shelf-ink-soft)]"
         />
       </label>
+
+      {/*
+        검색창(flex-1) 다음에 두어 줄 오른쪽 끝에 섭니다. shrink-0 이라 창이 좁아져도
+        글자가 접히지 않고, 좁은 화면에서는 줄이 세로로 쌓이며 맨 아래로 갑니다.
+      */}
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   )
 }
