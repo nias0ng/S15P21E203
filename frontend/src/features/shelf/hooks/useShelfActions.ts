@@ -283,10 +283,19 @@ export function useShelfActions() {
         }
       }
 
-      if (next.memo !== before.memo) {
+      /*
+       * **양쪽을 같은 방법으로 다듬어 견줍니다.** 보내는 값은 화면이 `trim()` 한
+       * 것인데 서버가 준 값은 다듬지 않은 원본입니다 — 백엔드 `MemoRequest` 에
+       * trim 이 없어 앞뒤 공백이 그대로 저장됩니다. 그대로 비교하면 저장된 메모가
+       * "출근용 " 일 때 손대지 않고 [변경] 만 눌러도 달라 보여서, 같은 글을 다시
+       * 쓰는 요청이 나가고 "마지막으로 쓴 날" 까지 갱신됩니다.
+       */
+      const beforeMemo = before.memo?.trim() || null
+
+      if (next.memo !== beforeMemo) {
         try {
           if (next.memo === null) await deleteShelfMemo(shelfItemId)
-          else if (before.memo === null)
+          else if (beforeMemo === null)
             await createShelfMemo(shelfItemId, next.memo)
           else await updateShelfMemo(shelfItemId, next.memo)
         } catch {
