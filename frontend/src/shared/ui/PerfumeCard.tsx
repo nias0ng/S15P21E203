@@ -8,13 +8,16 @@ type PerfumeCardProps = {
   /** 크게 적는 이름. 한국어 이름이 있으면 그걸 넘기세요 */
   name: string
   /**
-   * 큰 이름 아래 작게 적는 원어 이름.
+   * 큰 이름 바로 아래 작게 적는 다른 이름.
    *
-   * `name` 과 같으면 안 적습니다 — 한국어 이름이 없는 향수는 부르는 쪽이
-   * `name={nameKo ?? name} nameOriginal={name}` 으로 넘기게 되는데, 그때 두 값이
-   * 같아져 같은 글자가 두 줄로 겹칩니다. 그 판정을 여기서 한 번만 합니다.
+   * 무엇이 위로 갈지는 **부르는 쪽이 정합니다** — 향수 목록은 영문을 크게, 한국어를
+   * 여기 적습니다. 그래서 이름이 `nameOriginal`(원어)이 아니라 중립입니다.
+   *
+   * `name` 과 같으면 안 적습니다 — 한쪽 이름이 없는 향수는 부르는 쪽이
+   * `name={a ?? b} subName={b}` 으로 넘기게 되는데, 그때 두 값이 같아져 같은
+   * 글자가 두 줄로 겹칩니다. 그 판정을 여기서 한 번만 합니다.
    */
-  nameOriginal?: string | null
+  subName?: string | null
   /** 브랜드명. 브랜드가 없는 향수는 null 이라 줄을 그리지 않습니다 */
   brand?: string | null
   /**
@@ -64,7 +67,7 @@ const SLOT = 'aspect-square w-full px-7.5 pt-3.75 pb-5'
 
 export function PerfumeCard({
   name,
-  nameOriginal,
+  subName,
   brand,
   rank,
   thumbnailUrl,
@@ -119,22 +122,15 @@ export function PerfumeCard({
             className={cn(
               SLOT,
               /*
-              좌우는 30 씩 들여 병을 작게 세웁니다. 병이 칸을 꽉 채우면 카드가
-              "사진 한 장" 이 되어 병이 놓인 자리라는 인상이 사라지는데, 그건
-              좌우만으로 충분합니다. 위아래까지 30 을 두면 칸 안에 빈 띠가 생겨
-              카드만 길어집니다.
+                카탈로그 사진이 흰 배경에서 찍혀 옅은 편입니다. 밝은 카드 위에 얹으면
+                병 색이 더 빠져 보여서 채도를 한 단 올립니다.
 
-              **위 15 · 아래 20 으로 아래가 더 넓습니다.** 병은 바닥에 놓인 물건이라
-              아래에 자리가 조금 더 있어야 서 있는 것으로 읽힙니다 — 위아래가 같으면
-              공중에 뜬 것처럼 보입니다. 그림자도 아래로 지므로 그 자리이기도 합니다.
-              위도 순위 동그라미가 모서리에 앉을 자리만큼은 있어야 합니다.
-            */
-              /*
-              값을 직접 적는 이유: Tailwind 눈금에 "lg 보다 멀리 지면서 조금만 더
-              진한" 칸이 없습니다. xl 은 멀리 지는 대신 알파가 0.15 에서 0.1 로
-              오히려 옅어집니다. 그래서 거리(6/8)와 진하기(0.18)를 따로 적습니다.
-            */
-              'drop-shadow-[0_6px_8px_rgb(0_0_0/0.18)]',
+                그림자 값을 직접 적는 이유: Tailwind 눈금에 "lg 보다 멀리 지면서
+                조금만 더 진한" 칸이 없습니다. xl 은 멀리 지는 대신 알파가 0.15 에서
+                0.1 로 오히려 옅어집니다. 그래서 거리(6/8)와 진하기(0.18)를 따로
+                적습니다. 두 filter 유틸리티는 서로 덮지 않고 합쳐집니다.
+              */
+              'drop-shadow-[0_6px_8px_rgb(0_0_0/0.18)] saturate-125',
             )}
           />
         ) : (
@@ -180,7 +176,7 @@ export function PerfumeCard({
         )}
       </div>
 
-      <div className="w-full space-y-0.5">
+      <div className="min-h-13.5 w-full space-y-0.5">
         {/*
           한 줄로 자르지 않고 두 줄까지 받습니다(line-clamp-2). 한국어 향수명은
           "우드 세이지 앤 씨 솔트" 처럼 긴 것이 많아, 카드 폭(1440 에서 5열이면
@@ -196,7 +192,7 @@ export function PerfumeCard({
           나가고, 스케일 주석이 바로 그런 임의값을 쓰지 말라고 못 박아 두었습니다.
           1px 차이라 body 를 씁니다.
         */}
-        <p className="text-ink text-body line-clamp-2 min-h-8.75 font-serif leading-tight font-semibold">
+        <p className="text-ink text-body line-clamp-2 font-serif leading-tight font-semibold">
           {name}
         </p>
 
@@ -205,10 +201,8 @@ export function PerfumeCard({
           활자 스케일이 "body 와 caption 은 1px 차이라 크기로 위계를 만들지 않는다 —
           위계는 색이 만든다" 라고 정해 두어서, 이 둘의 구분도 색으로 합니다.
         */}
-        {nameOriginal && nameOriginal !== name && (
-          <p className="text-ink-muted text-caption truncate" lang="en">
-            {nameOriginal}
-          </p>
+        {subName && subName !== name && (
+          <p className="text-ink-muted text-caption truncate">{subName}</p>
         )}
 
         {brand && <p className="text-ink text-caption truncate">{brand}</p>}

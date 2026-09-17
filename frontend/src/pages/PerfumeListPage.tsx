@@ -149,7 +149,7 @@ export default function PerfumeListPage() {
           items={items}
           isPending={isPending}
           columns={6}
-          rankable={!hasFilter}
+          rankable
           emptyAction={
             hasFilter && (
               <Button variant="outline" onClick={resetFilters}>
