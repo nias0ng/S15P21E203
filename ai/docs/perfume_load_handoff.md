@@ -243,6 +243,15 @@ python build_load_files.py
 
 원본 `data/perfumes_nlr.csv.gz` 를 읽어 다시 만듭니다. **입력은 읽기만 합니다.**
 
+> **⚠ 다시 만들면 두 열의 값이 달라집니다** (2026-09-17 · `S15P21E203-306`).
+> `already_in_db` 는 전부 `false`, `is_new` 는 전부 `true` 가 됩니다. DB 에 무엇이
+> 있는지 미리 계산해 두던 스냅샷 파일(`ai/data/*_already_in_db.csv`)을 지웠기
+> 때문입니다.
+>
+> **적재 결과는 같습니다.** `backend/db/seed/load_perfume_catalog.sql` 이 두 열을
+> 읽지 않고 `ON CONFLICT` 로 삽입과 갱신을 가릅니다. 아래 "적재 순서" 의 `32개` ·
+> `200개` 는 **지금 전달된 CSV 의 값**이고, 다시 만든 파일에는 해당하지 않습니다.
+
 ---
 
 ## 적재 순서

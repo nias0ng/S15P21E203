@@ -17,7 +17,7 @@
 
 큰 둘만 gzip 으로 둔다. 압축하지 않으면 저장소에 넣기에 크고(각각 5.7MB·20MB),
 `ai/.gitignore` 의 `perfumes.csv` 규칙에 걸려 조용히 빠진다. 작은 둘은 눈으로 열어
-확인할 일이 많아 그대로 둔다 — 특히 `accords.csv` 는 새로 넣을 32개를 봐야 한다.
+확인할 일이 많아 그대로 둔다.
 
 `brand_id` · `accord_id` · `perfume_id` 는 DB 가 만드는 번호라 여기서 채우지 않는다.
 이름으로 넘기고 적재하는 쪽에서 이어 붙인다. 향 지도 인계 때와 같은 방식이다.
@@ -34,8 +34,13 @@
 주의
 ----
 **향 지도용 200개가 이 데이터에 전부 들어 있다.** 그대로 INSERT 하면 중복되거나
-유니크 제약에 걸린다. `already_in_db` 가 `true` 인 행은 삽입이 아니라 갱신이다.
+유니크 제약에 걸린다. `fragrantica_id` 로 맞춰 없으면 넣고 있으면 갱신해야 한다.
 두 번 생기면 향 지도가 가리키는 향수와 추천이 가리키는 향수가 갈린다.
+
+`already_in_db` 와 `is_new` 열은 **적재하는 쪽이 보지 않는다.**
+`backend/db/seed/load_perfume_catalog.sql` 이 `ON CONFLICT` 로 가른다. 열은 CSV 의
+열 수를 맞추려고 남겨 둔 것이고, 값은 각각 전부 `false` · 전부 `true` 다 — DB 에
+무엇이 있는지 미리 계산해 두던 스냅샷 파일을 지웠기 때문이다.
 """
 from __future__ import annotations
 
@@ -48,11 +53,6 @@ HERE = Path(__file__).resolve().parent
 SOURCE = HERE / "data" / "perfumes_nlr.csv.gz"
 ACCORD_MASTER = HERE / "data" / "accord_dictionary.csv"
 OUTPUT_DIR = HERE / "delivery" / "for_db"
-
-# DB 에 이미 들어 있는 것. 향 지도 인계본에서 뜬 값이라 **DB 의 실제 상태와 다를 수 있다.**
-# 적재 전에 한 번 대조하는 것이 안전하다.
-MAP_ACCORDS = HERE / "data" / "accords_already_in_db.csv"       # 60개
-MAP_PERFUMES = HERE / "data" / "perfumes_already_in_db.csv"     # 200개
 
 
 def parse_accords(value):
@@ -79,9 +79,8 @@ def build(source: Path = SOURCE, output_dir: Path = OUTPUT_DIR,
     source        : Path         data/perfumes_nlr.csv.gz
     output_dir    : Path         여기 아래에만 쓴다
     already_in_db : Path | None  DB 에 이미 있는 fragrantica_id 목록(1열 CSV).
-                                 기본은 data/perfumes_already_in_db.csv 다.
+                                 주지 않으면 모든 행이 false 가 된다.
     """
-    already_in_db = already_in_db or MAP_PERFUMES
     if not source.is_file():
         raise FileNotFoundError(f"원본이 없습니다: {source}")
 
@@ -113,13 +112,9 @@ def build(source: Path = SOURCE, output_dir: Path = OUTPUT_DIR,
 
     # --- accords ----------------------------------------------------------
     master = pd.read_csv(ACCORD_MASTER)["accord"].astype(str)
-    in_db = set()
-    if MAP_ACCORDS.is_file():
-        col = pd.read_csv(MAP_ACCORDS)
-        col.columns = [c.lstrip("﻿") for c in col.columns]
-        in_db = {str(v) for v in col.iloc[:, 0]}
     accords = pd.DataFrame({"name": sorted(master)})
-    accords["is_new"] = ~accords["name"].isin(in_db)
+    # DB 에 무엇이 있는지 여기서는 모른다. 적재하는 쪽이 ON CONFLICT 로 가른다.
+    accords["is_new"] = True
     accords.to_csv(output_dir / "accords.csv", index=False)
 
     # --- perfumes ---------------------------------------------------------
@@ -172,9 +167,9 @@ def main() -> None:
     print(f"출력        {s['output_dir']}\n")
     print(f"  brands.csv           {s['brands']:>9,}행  {s['brands_mb']:>6}MB")
     print(f"  accords.csv          {s['accords']:>9,}행  {s['accords_mb']:>6}MB"
-          f"   (새로 추가할 것 {s['accords_new']}개)")
+          f"   (is_new=true {s['accords_new']}개 — DB 대조는 적재 쪽이 한다)")
     print(f"  perfumes.csv.gz         {s['perfumes']:>9,}행  {s['perfumes_mb']:>6}MB"
-          f"   (이미 DB 에 있는 것 {s['already_in_db']}개)")
+          f"   (already_in_db=true {s['already_in_db']}개)")
     print(f"  perfume_accords.csv.gz  {s['perfume_accords']:>9,}행  "
           f"{s['perfume_accords_mb']:>6}MB")
 
