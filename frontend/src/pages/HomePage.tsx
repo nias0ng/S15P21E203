@@ -15,6 +15,7 @@ import {
   useShelfActions,
 } from '@/features/shelf'
 import { isApiError } from '@/shared/api/http'
+import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
 import { useIsLoggedIn } from '@/shared/store/authStore'
@@ -72,6 +73,10 @@ export default function HomePage() {
             perfume.perfumeId === null
               ? `${ROUTES.PERFUME_SEARCH}?keyword=${encodeURIComponent(perfume.nameKo)}`
               : toPerfumeDetail(perfume.perfumeId),
+            // 검색으로 돌려보내는 쪽은 향수 상세가 아니라 기록할 것이 없습니다
+            perfume.perfumeId === null
+              ? undefined
+              : { state: perfumeViewState('SCENT_MAP') },
           )
         }}
         onSaveToShelf={(perfume) =>

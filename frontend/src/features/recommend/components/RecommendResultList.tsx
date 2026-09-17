@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { toPerfumeDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { LinkButton } from '@/shared/ui/LinkButton'
@@ -91,6 +92,7 @@ export function RecommendResultList({ perfumes, selectedId, onSelect }: Props) {
                   </ul>
                   <LinkButton
                     to={toPerfumeDetail(perfume.perfumeId)}
+                    state={perfumeViewState('NATURAL_LANGUAGE_RECOMMENDATION')}
                     variant="outline"
                     size="sm"
                   >

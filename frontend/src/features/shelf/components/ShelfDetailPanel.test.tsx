@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { ShelfItemDetail } from '../types'
@@ -9,14 +10,14 @@ import { ShelfDetailPanel } from './ShelfDetailPanel'
 const WOOD_SAGE: ShelfItemDetail = {
   shelfItemId: 1,
   perfumeId: 1,
-  name: '조 말론 우드 세이지 앤 씨 솔트',
+  /* 백엔드는 `name` 에 영문, `nameKo` 에 국문을 줍니다 */
+  name: 'Wood Sage & Sea Salt',
+  nameKo: '우드 세이지 앤 씨 솔트',
   brand: '조말론',
   brandEn: 'Jo Malone',
-  nameEn: 'Wood Sage & Sea Salt',
   concentration: 'Eau de Cologne',
   thumbnailUrl: null,
   category: 'OWNED',
-  nameKo: null,
   scentNotes: [],
   rating: 4,
   memo: '출근용으로 제일 자주 쓴다.',
@@ -28,14 +29,17 @@ function renderPanel(
   item: ShelfItemDetail | null,
   props: Partial<Parameters<typeof ShelfDetailPanel>[0]> = {},
 ) {
+  /* 이름이 링크라 라우터 안에서 그려야 합니다 */
   return render(
-    <ShelfDetailPanel
-      item={item}
-      onChangeRating={vi.fn()}
-      onEdit={vi.fn()}
-      onRemove={vi.fn()}
-      {...props}
-    />,
+    <MemoryRouter>
+      <ShelfDetailPanel
+        item={item}
+        onChangeRating={vi.fn()}
+        onEdit={vi.fn()}
+        onRemove={vi.fn()}
+        {...props}
+      />
+    </MemoryRouter>,
   )
 }
 
@@ -86,21 +90,22 @@ describe('ShelfDetailPanel 메모', () => {
 })
 
 describe('ShelfDetailPanel 이름', () => {
-  it('영문 이름이 있으면 크게 적고 국문 이름을 아래 줄에 단다', () => {
+  it('국문 이름을 크게 적고 영문 이름을 아래 줄에 단다', () => {
     renderPanel(WOOD_SAGE)
 
+    expect(screen.getByText('우드 세이지 앤 씨 솔트')).toBeInTheDocument()
     expect(screen.getByText('Wood Sage & Sea Salt')).toBeInTheDocument()
-    expect(
-      screen.getByText('조 말론 우드 세이지 앤 씨 솔트'),
-    ).toBeInTheDocument()
   })
 
-  it('영문 줄이 없으면(백엔드가 아직 주지 않음) 국문 이름만 한 번 적고 빈 줄을 두지 않는다', () => {
-    renderPanel({ ...WOOD_SAGE, brandEn: undefined, nameEn: undefined })
+  it('국문 이름이 없는 향수는 영문만 한 번 적고 빈 줄을 두지 않는다', () => {
+    renderPanel({ ...WOOD_SAGE, nameKo: null })
 
-    expect(screen.getAllByText('조 말론 우드 세이지 앤 씨 솔트')).toHaveLength(
-      1,
-    )
+    expect(screen.getAllByText('Wood Sage & Sea Salt')).toHaveLength(1)
+  })
+
+  it('영문 브랜드가 없으면 국문 브랜드를 한 번만 적는다', () => {
+    renderPanel({ ...WOOD_SAGE, brandEn: undefined })
+
     expect(screen.getAllByText('조말론')).toHaveLength(1)
   })
 })
@@ -113,5 +118,26 @@ describe('ShelfDetailPanel 선택 전', () => {
       screen.getByText('진열대에서 향수를 선택하면 여기에 정보가 표시됩니다'),
     ).toBeInTheDocument()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+})
+
+describe('ShelfDetailPanel 향수 이름 링크', () => {
+  it('이름을 누르면 향수 상세로 간다', () => {
+    renderPanel(WOOD_SAGE)
+
+    /*
+      영문 줄은 낭독기에서 빼 두어(aria-hidden) 링크 이름이 국문으로 잡힙니다.
+      이름 없는 링크가 되지 않는지 함께 보는 검사입니다.
+    */
+    const link = screen.getByRole('link', { name: '우드 세이지 앤 씨 솔트' })
+    expect(link).toHaveAttribute('href', '/perfumes/1')
+  })
+
+  it('국문 이름이 없는 향수도 링크 이름이 남는다', () => {
+    renderPanel({ ...WOOD_SAGE, nameKo: null })
+
+    expect(
+      screen.getByRole('link', { name: 'Wood Sage & Sea Salt' }),
+    ).toHaveAttribute('href', '/perfumes/1')
   })
 })
