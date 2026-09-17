@@ -288,7 +288,7 @@ variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 
 - React · TypeScript 가 아닌 순수 JS 입니다. **ESLint · Prettier 검사에서 뺐고**, 엔진 코드의 규칙은 `landing/CLAUDE.md` 를 따릅니다.
 - 배 모델 · 게이트 그림은 `public/landing/` 에 있습니다. 엔진이 페이지 기준 상대 경로로 부릅니다.
 - 앱과 주고받는 문은 엔진의 `landing/src/host.js` 하나입니다(자세히 보기 · 진열대에 저장 · 주변 향 탐색 · 검색창). 앱 쪽 연결은 `ScentScene` 에 모았습니다.
-- 개발 서버에서는 엔진의 개발 패널이 같이 뜨므로 `ScentScene` 이 `PB.solo(true)` 로 숨깁니다. H 키로 켜면 헤더(90px) 아래에 섭니다. 엔진만 따로 보려면 `/landing/index.html` 을 엽니다. develop 으로 넘길 때는 개발 패널을 뺍니다.
+- 엔진의 개발 패널(계측 HUD · 파라미터 슬라이더 · 조작 바 · 시점 · 원본 비교 · 자유 시점 · 부력 프로브 · 프레임 잡기)은 **develop 에 넣지 않습니다** — 개발 서버에서도 노출되지 않게 모듈째 뺐고, 엔진 작업자의 작업 브랜치에만 있습니다. 엔진만 따로 보려면 `/landing/index.html` 을 엽니다.
 - 메인의 헤더는 **거의 투명한 유리**입니다 — `bleed` 화면이면 `RootLayout` 이 3D 하늘에 따라 `GlobalHeader` 에 `tone="glassLight"`(밝은 하늘 · 상아색 판 · 먹색 글자) 또는 `tone="glass"`(밤 · 남색 판 · 상아색 글자)를 줍니다. 하늘은 `HomePage` 가 엔진의 `<html data-time>` 을 받아(`ScentScene` 의 `onNightChange`) `shared/store/sceneSkyStore` 에 적습니다.
   3D 가 헤더 뒤까지 깔리고, 헤더가 가리는 90px 은 `ScentScene` 의 `coveredTop` → 엔진 `hostTop` 으로 알립니다. 엔진은 검색창 · 정보 블록 · 해도를 그 아래로 내리고 향수 고르기의 12개를 그 띠에 세우지 않습니다.
   엔진의 자리표시 헤더(`siteHeader`)는 끕니다 — 무대를 헤더만큼 줄이는 방식이라 유리판 뒤가 비어 버립니다. 헤더 높이를 바꾸면 `coveredTop` 도 같이 바꿉니다.
