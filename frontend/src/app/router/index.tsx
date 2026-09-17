@@ -103,6 +103,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.BRAND_DETAIL,
         element: withSuspense(<BrandDetailPage />),
+        handle: NIGHT,
       },
       {
         path: ROUTES.NOTES,
