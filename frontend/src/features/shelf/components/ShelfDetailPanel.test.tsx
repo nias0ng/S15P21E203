@@ -16,7 +16,6 @@ const WOOD_SAGE: ShelfItemDetail = {
   concentration: 'Eau de Cologne',
   thumbnailUrl: null,
   category: 'OWNED',
-  representative: false,
   nameKo: null,
   scentNotes: [],
   rating: 4,
@@ -32,7 +31,6 @@ function renderPanel(
   return render(
     <ShelfDetailPanel
       item={item}
-      onSetRepresentative={vi.fn()}
       onChangeRating={vi.fn()}
       onEdit={vi.fn()}
       onRemove={vi.fn()}
@@ -40,36 +38,6 @@ function renderPanel(
     />,
   )
 }
-
-describe('ShelfDetailPanel 대표 향수 별', () => {
-  it('보유 중이고 아직 대표가 아니면 누를 수 있다', async () => {
-    const onSetRepresentative = vi.fn()
-    renderPanel(WOOD_SAGE, { onSetRepresentative })
-
-    await userEvent.click(
-      screen.getByRole('button', { name: '대표 향수로 지정' }),
-    )
-    expect(onSetRepresentative).toHaveBeenCalled()
-  })
-
-  it('이미 대표면 채운 별로 남고 누를 수 없다 — 대표는 한 번에 하나라 여기서 풀 곳이 없다', () => {
-    renderPanel({ ...WOOD_SAGE, representative: true })
-
-    const star = screen.getByRole('button', { name: '대표 향수입니다' })
-    expect(star).toBeDisabled()
-    expect(star).toHaveAttribute('aria-pressed', 'true')
-  })
-
-  it('보유 중이 아니면 왜 못 누르는지 이름에 적힌 채로 꺼진다 (A13 — 대표는 보유 중만)', () => {
-    renderPanel({ ...WOOD_SAGE, category: 'TRIED' })
-
-    expect(
-      screen.getByRole('button', {
-        name: '대표 향수는 보유 중 향수만 지정할 수 있습니다',
-      }),
-    ).toBeDisabled()
-  })
-})
 
 describe('ShelfDetailPanel 취향 적합도', () => {
   it('원의 반쪽을 누르면 0.5 단위로 올라간다', async () => {

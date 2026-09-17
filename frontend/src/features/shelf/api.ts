@@ -97,21 +97,14 @@ export async function getShelfItemDetail(
  * 계산하지 않고 이 값을 쓰면 서버와 어긋날 일이 없습니다.
  *
  * ⚠️ 응답의 항목 id 이름이 엔드포인트마다 다릅니다 — 분류 변경은 `shelfItemId`,
- * 대표 지정과 적합도는 `userPerfumeId` 입니다. 같은 값이고 우리는 보낸 id 를
- * 이미 알고 있어서 쓰지 않지만, 응답을 그대로 믿고 꺼내 쓰면 undefined 가 됩니다.
+ * 적합도는 `userPerfumeId` 입니다. 같은 값이고 우리는 보낸 id 를 이미 알고 있어서
+ * 쓰지 않지만, 응답을 그대로 믿고 꺼내 쓰면 undefined 가 됩니다.
  */
 
 /** PATCH /users/me/shelf-items/{id}/ownership 응답 */
 export interface OwnershipChangeResponse {
   shelfItemId: number
   ownershipStatus: ShelfCategory
-  updatedAt: string
-}
-
-/** PATCH /users/me/shelf-items/{id}/representative 응답 */
-export interface RepresentativeChangeResponse {
-  userPerfumeId: number
-  representative: boolean
   updatedAt: string
 }
 
@@ -122,13 +115,7 @@ export interface FitRatingResponse {
   updatedAt: string
 }
 
-/**
- * 분류 변경 (SHF-03).
- *
- * **대표 향수를 보유 중 밖으로 옮기면 서버가 대표 지정을 함께 풉니다.** 그래서
- * 이 요청 뒤에는 목록을 다시 받아야 합니다 — 화면이 분류만 고쳐 두면 벽에
- * 대표 표시가 남습니다.
- */
+/** 분류 변경 (SHF-03). */
 export async function changeShelfCategory(
   shelfItemId: number,
   category: ShelfCategory,
@@ -136,23 +123,6 @@ export async function changeShelfCategory(
   const { data } = await http.patch<OwnershipChangeResponse>(
     `/users/me/shelf-items/${shelfItemId}/ownership`,
     { ownershipStatus: category },
-  )
-  return data
-}
-
-/**
- * 대표 향수 지정 · 해제 (SHF-05).
- *
- * 지정하면 서버가 **먼저 있던 대표를 풉니다.** 대표는 한 번에 하나입니다.
- * 보유 중이 아닌 향수를 대표로 지정하면 400 입니다.
- */
-export async function setShelfRepresentative(
-  shelfItemId: number,
-  representative: boolean,
-): Promise<RepresentativeChangeResponse> {
-  const { data } = await http.patch<RepresentativeChangeResponse>(
-    `/users/me/shelf-items/${shelfItemId}/representative`,
-    { representative },
   )
   return data
 }

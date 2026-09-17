@@ -15,7 +15,6 @@ const WOOD_SAGE: ShelfItem = {
   concentration: 'Eau de Cologne',
   thumbnailUrl: null,
   category: 'OWNED',
-  representative: true,
 }
 
 /** 이름이 다른 병 셋 — 칸 0 · 1 · 2 */

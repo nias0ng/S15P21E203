@@ -621,7 +621,6 @@ const bottles = (n: number, category: ShelfItem['category']): ShelfItem[] =>
     brand: '브랜드',
     thumbnailUrl: null,
     category,
-    representative: false,
     rating: null,
     memo: null,
     memoUpdatedAt: null,
