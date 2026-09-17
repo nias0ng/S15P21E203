@@ -3,9 +3,9 @@
 백엔드 컨트롤러의 매핑을 전부 뽑고, 프론트의 `http.get/post/put/patch/delete` 호출을 전부 뽑아
 맞대 본 결과입니다. 주석이 아니라 **양쪽 소스가 근거**입니다.
 
-- 기준 시점: 2026-09-17 · 브랜치 `feature/fe/S15P21E203-292-collection-api` (`76fa0b1`)
+- 기준 시점: 2026-09-17 · 브랜치 `feature/fe/S15P21E203-272-note-api`
 - 백엔드 컨트롤러 15개 · 엔드포인트 **73개**
-- 프론트가 실제로 부르는 것 **46개 (63%)** · 안 부르는 것 **27개**
+- 프론트가 실제로 부르는 것 **49개 (67%)** · 안 부르는 것 **24개**
 
 ## 한눈에
 
@@ -20,7 +20,7 @@
 | 컬렉션 (`/users/me/collections`) | 7 / 7 | 완료 (이번 브랜치 작업) |
 | 게시글 (`/posts`) | 2 / 7 | **읽기만 붙음. 쓰기·좋아요·삭제 전부 미연결** |
 | 댓글 (`/comments`) | 1 / 4 | **목록만 붙음. 작성·수정·삭제 미연결** |
-| 노트 (`/notes`) | 0 / 3 | **FE가 자리표시자 배열을 돌려주는 중** |
+| 노트 (`/notes`) | 3 / 3 | 완료 |
 | 향 지도 (`/map`) | 1 / 6 | 취향 테스트용 벡터만 붙음 |
 | 향수 조회 기록 (`/perfume-views`) | 0 / 2 | 미연결 |
 | 취향 테스트 (`/users/me/taste-test`) | 0 / 2 | **결과를 서버에 저장하지 않는 중** |
@@ -79,7 +79,7 @@
 
 ## 2. 백엔드는 있는데 FE 가 안 붙인 것 — 지금 바로 할 수 있는 일
 
-우선순위 순입니다. 27개 중 **화면이 이미 있고 API 만 꽂으면 되는** 것들입니다.
+우선순위 순입니다. 24개 중 **화면이 이미 있고 API 만 꽂으면 되는** 것들입니다.
 
 | 순위 | 엔드포인트 | 지금 FE 상태 | 붙일 자리 |
 | --- | --- | --- | --- |
@@ -89,13 +89,12 @@
 | 4 | `PATCH /comments/{id}` · `DELETE /comments/{id}` | `TODO` | `pages/PostDetailPage.tsx:201,204` |
 | 5 | `DELETE /posts/{id}` · `PATCH /posts/{id}` | `TODO` | `pages/PostDetailPage.tsx:103,213` |
 | 6 | `PUT·DELETE /posts/{id}/like` | 좋아요 버튼이 서버로 안 감 | `features/community/api.ts` |
-| 7 | `GET /notes` · `GET /notes/{id}` · `GET /notes/{id}/perfumes` | `PLACEHOLDER_NOTES` 19개 하드코딩 | `features/note/api.ts` 통째로 · `pages/NoteDetailPage.tsx:81` |
-| 8 | `PATCH /users/me/nickname` | "엔드포인트가 없다" 는 `TODO` 주석 (**틀린 주석**) | `features/auth/components/AccountForm.tsx:24,94` |
-| 9 | `POST·GET /users/me/taste-test` | 테스트 결과를 브라우저에서 계산만 하고 **버립니다** | `features/taste/` |
-| 10 | `GET /map/exploration-logs` | 향해 일지가 자리표시자 3건 | `features/map/api.ts` `getVoyageLog()` |
-| 11 | `PUT·GET /map/exploration/me` | 미사용 | 3D 엔진과 위치를 주고받을지 먼저 결정 필요 |
-| 12 | `GET /map` · `GET /map/perfumes/{id}` | 3D 엔진이 정적 CSV/JSON 사용 | 엔진 데이터를 서버로 옮길지 결정 필요 |
-| 13 | `POST /perfume-views` · `PATCH /perfume-views/{id}/exit` | 미사용 | 상세 진입·이탈 기록. 화면 변화 없음 |
+| 7 | `PATCH /users/me/nickname` | "엔드포인트가 없다" 는 `TODO` 주석 (**틀린 주석**) | `features/auth/components/AccountForm.tsx:24,94` |
+| 8 | `POST·GET /users/me/taste-test` | 테스트 결과를 브라우저에서 계산만 하고 **버립니다** | `features/taste/` |
+| 9 | `GET /map/exploration-logs` | 향해 일지가 자리표시자 3건 | `features/map/api.ts` `getVoyageLog()` |
+| 10 | `PUT·GET /map/exploration/me` | 미사용 | 3D 엔진과 위치를 주고받을지 먼저 결정 필요 |
+| 11 | `GET /map` · `GET /map/perfumes/{id}` | 3D 엔진이 정적 CSV/JSON 사용 | 엔진 데이터를 서버로 옮길지 결정 필요 |
+| 12 | `POST /perfume-views` · `PATCH /perfume-views/{id}/exit` | 미사용 | 상세 진입·이탈 기록. 화면 변화 없음 |
 
 가장 아까운 건 **1번**입니다. `ai/server.py` 의 `/nlr/understand` · `/nlr/recommend` 와
 백엔드 `NaturalLanguageRecommendationController` 가 이미 다 붙어 있고, 호출량 제한 · 429 · 503 ·
@@ -133,6 +132,9 @@
 - **`withDevFallback`** — `features/perfume/api.ts` 의 읽기 7종은 개발 환경에서 요청이 실패하면
   자리표시자로 덮습니다. 운영에서는 끼어들지 않지만, 로컬에서 "붙은 것처럼 보이는" 착시를 만듭니다.
   붙었는지 확인할 때는 네트워크 탭을 보세요.
+- **노트별 향수는 지금 어느 노트든 0건입니다.** API 연결 문제가 아니라 **로컬 DB 의
+  `perfume_notes` 연결이 비어 있어서**입니다 — 향수 상세의 향조(`GET /perfumes/{id}/notes`)도
+  같은 이유로 전부 빈 배열입니다(accords 는 옵니다). 데이터가 적재되면 화면은 그대로 동작합니다.
 - **비는 필드** — `nameKo` · `imageUrl` · `scentFamily` · `logoUrl` 은 null 로 옵니다.
   타입이 필수라고 믿고 접근하면 화면이 죽습니다.
 - **좌표 스케일** — 백엔드는 0~1 (`y` 는 0~0.83056), 화면은 0~100. `features/taste/api.ts` 가
@@ -146,7 +148,6 @@
 
 | 위치 | 뭐라고 쓰여 있나 | 사실 |
 | --- | --- | --- |
-| `features/note/api.ts:4` | "백엔드에 노트 엔드포인트가 아직 없습니다" | `GET /notes` · `/{id}` · `/{id}/perfumes` 전부 있습니다 |
 | `features/recommend/api.ts:5` | "백엔드 · AI 추천 API 가 아직 없습니다" | `POST /recommendations/natural-language` 가 있습니다 |
 | `features/auth/components/AccountForm.tsx:24` | "`PATCH /users/me` 같은 수정 경로가 없습니다" | `PATCH /users/me/nickname` 이 있습니다 (프로필 이미지는 여전히 없음) |
 | `features/map/api.ts:4` | "백엔드 향 지도 API 가 아직 없습니다" | `GET /map` · `/map/perfumes/{id}` · 탐색 기록 3종이 있습니다 |
