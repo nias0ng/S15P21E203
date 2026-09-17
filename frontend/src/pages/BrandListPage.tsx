@@ -118,7 +118,7 @@ export default function BrandListPage() {
       */}
       <section className="scent-glass rounded-[36px] p-7.5 pt-6.25">
         <div className="mb-6.25 flex items-baseline gap-2.5">
-          <h2 className="text-ink font-serif text-lg">
+          <h2 className="text-ink font-serif text-2xl">
             {keyword ? `'${keyword}' 검색 결과` : '전체 브랜드'}
           </h2>
           {/* 불러오는 중에는 아예 적지 않습니다 — 0 이 잠깐 보였다 바뀌면 눈에 띕니다 */}

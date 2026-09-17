@@ -255,10 +255,12 @@
   /*
    * 고른 필터. 채움이 밝아지므로 글자는 먹색으로 뒤집습니다 — 테두리만 밝히면
    * 꺼진 것과 구분이 약합니다.
+   *
+   * ⚠️ **글자색은 여기가 아니라 레이어 밖에 있습니다**(파일 맨 아래). 여기 적으면
+   * 유틸리티에 밀립니다.
    */
   .scent-pill[aria-pressed='true'] {
     background: rgb(250 247 241 / 0.9);
-    color: #2f2f32;
   }
   .scent-pill[aria-pressed='true']::before {
     background: linear-gradient(
@@ -308,4 +310,19 @@
 /* 동그라미도 같은 이유로 바탕색을 비웁니다 */
 .scent-glass [data-slot='rank'] {
   background-color: transparent;
+}
+
+/*
+ * 고른 알약의 글자색.
+ *
+ * 채움(위 `@layer components`)은 유틸리티와 다투지 않아 그대로 먹지만, 글자색은
+ * 밀립니다 — `PillFilter` 가 단추에 `text-ink` 를 달고 있고 유틸리티 레이어가
+ * 컴포넌트 레이어를 이깁니다. 그래서 **흰 알약에 흰 글자**가 됐습니다
+ * (어두운 방의 `--color-ink` 는 밝은 색입니다). 대비가 1:1 이라 고른 필터가 통째로
+ * 안 보였습니다.
+ *
+ * 위 카드 `border-radius` · `background-color` 와 같은 이유로 레이어 밖에 둡니다.
+ */
+.scent-pill[aria-pressed='true'] {
+  color: #2f2f32;
 }

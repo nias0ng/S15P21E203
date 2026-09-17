@@ -50,6 +50,13 @@ const withSuspense = (element: React.ReactNode) => (
  */
 const FULL = { width: 'full' } satisfies { width: PageWidth }
 const TEXT = { width: 'text' } satisfies { width: PageWidth }
+/**
+ * 어두운 방 + 유리판 화면 (A33 향수 목록 · A09 검색 결과 · A34 브랜드 · A35 · A36 노트).
+ *
+ * 폭은 적지 않습니다 — 넷 다 기본 wide(1440)입니다. 생김새는
+ * styles/scent-display.css, 켜는 자리는 app/layouts/RootLayout 의 `useIsNight`.
+ */
+const NIGHT = { night: true } satisfies { night: boolean }
 /** 헤더 아래 화면 끝까지 — 3D 향 지도(A01)가 씁니다 */
 const BLEED = { width: 'bleed' } satisfies { width: PageWidth }
 
@@ -66,10 +73,15 @@ export const router = createBrowserRouter([
         handle: FULL,
       },
 
-      { path: ROUTES.PERFUMES, element: withSuspense(<PerfumeListPage />) },
+      {
+        path: ROUTES.PERFUMES,
+        element: withSuspense(<PerfumeListPage />),
+        handle: NIGHT,
+      },
       {
         path: ROUTES.PERFUME_SEARCH,
         element: withSuspense(<PerfumeSearchPage />),
+        handle: NIGHT,
       },
       {
         path: ROUTES.PERFUME_DETAIL,
@@ -81,13 +93,25 @@ export const router = createBrowserRouter([
         handle: TEXT,
       },
 
-      { path: ROUTES.BRANDS, element: withSuspense(<BrandListPage />) },
+      {
+        path: ROUTES.BRANDS,
+        element: withSuspense(<BrandListPage />),
+        handle: NIGHT,
+      },
       {
         path: ROUTES.BRAND_DETAIL,
         element: withSuspense(<BrandDetailPage />),
       },
-      { path: ROUTES.NOTES, element: withSuspense(<NoteListPage />) },
-      { path: ROUTES.NOTE_DETAIL, element: withSuspense(<NoteDetailPage />) },
+      {
+        path: ROUTES.NOTES,
+        element: withSuspense(<NoteListPage />),
+        handle: NIGHT,
+      },
+      {
+        path: ROUTES.NOTE_DETAIL,
+        element: withSuspense(<NoteDetailPage />),
+        handle: NIGHT,
+      },
 
       { path: ROUTES.TASTE_TEST, element: withSuspense(<TasteTestPage />) },
 
