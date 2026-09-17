@@ -11,6 +11,7 @@ import {
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { Pagination } from '@/shared/ui/Pagination'
+import { GLASS_PANEL } from '@/shared/ui/panel'
 import { PillFilter } from '@/shared/ui/PillFilter'
 import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
 
@@ -116,7 +117,7 @@ export default function BrandListPage() {
         판 안쪽은 색 토큰이 다시 밝은 화면 값으로 돌아갑니다
         (styles/scent-display.css 의 .scent-glass).
       */}
-      <section className="scent-glass rounded-[36px] p-7.5 pt-6.25">
+      <section className={GLASS_PANEL}>
         <div className="mb-6.25 flex items-baseline gap-2.5">
           <h2 className="text-ink font-serif text-2xl">
             {keyword ? `'${keyword}' 검색 결과` : '전체 브랜드'}
