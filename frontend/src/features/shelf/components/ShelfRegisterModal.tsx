@@ -46,12 +46,30 @@ export function ShelfRegisterModal({
   onSubmit,
   preselected,
 }: Props) {
-  const [picked, setPicked] = useState<PerfumeOption | null>(
-    preselected ?? null,
-  )
+  const [picked, setPicked] = useState<PerfumeOption | null>(null)
   const [category, setCategory] = useState<ShelfCategory | null>(null)
   const [rating, setRating] = useState<number | null>(null)
   const [memo, setMemo] = useState('')
+
+  /*
+   * 열릴 때마다 칸을 처음 값으로 되돌립니다.
+   *
+   * `Modal` 이 `<dialog>` 라 **닫아도 언마운트되지 않습니다.** 그냥 두면 담기를
+   * 취소하고 다시 열었을 때 앞서 고른 향수 · 분류 · 적합도 · 메모가 그대로 남습니다.
+   * 향수 상세와 향 지도에서 다른 향수로 들어와도 앞 향수가 골라진 채로 뜹니다.
+   *
+   * `useEffect` 가 아니라 렌더 중에 맞추는 이유: 한 박자 늦게 맞추면 첫 프레임에
+   * 옛 값이 보입니다. `preselected` 는 매 렌더 새 객체일 수 있어 값으로 비교합니다.
+   */
+  const openedKey = open ? JSON.stringify(preselected ?? null) : null
+  const [openedFor, setOpenedFor] = useState<string | null>(null)
+  if (openedKey !== openedFor) {
+    setOpenedFor(openedKey)
+    setPicked(preselected ?? null)
+    setCategory(null)
+    setRating(null)
+    setMemo('')
+  }
 
   // 상세에서 들어오면 1단계가 없습니다
   const step: 1 | 2 = picked ? 2 : 1
