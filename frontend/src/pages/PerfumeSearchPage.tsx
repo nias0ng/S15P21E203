@@ -1,6 +1,7 @@
-import { useSearchParams } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 
 import { PerfumeSearchResult } from '@/features/perfume'
+import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
 
@@ -12,6 +13,7 @@ import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
  * 여기서 한 번 바꿉니다 — 주소창에 `page=0` 이 보이면 사람이 읽기 어렵습니다.
  */
 export default function PerfumeSearchPage() {
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const keyword = searchParams.get('keyword') ?? ''
   const page = Math.max(0, Number(searchParams.get('page') ?? 1) - 1)
@@ -43,7 +45,8 @@ export default function PerfumeSearchPage() {
           params.set('page', String(next + 1))
           setSearchParams(params)
         }}
-        onResetKeyword={() => setSearchParams({})}
+        // 찾는 것이 없으면 검색어만 지우는 게 아니라 향수 목록으로 돌려보냅니다
+        onBrowseAll={() => navigate(ROUTES.PERFUMES)}
       />
     </div>
   )

@@ -16,8 +16,15 @@ type Props = {
   /** 0부터 시작합니다 (백엔드와 같습니다) */
   page: number
   onPageChange: (page: number) => void
-  /** 검색어를 비웁니다. 검색 결과 0건일 때 [초기화] 버튼에 씁니다. */
-  onResetKeyword?: () => void
+  /**
+   * 검색 결과 0건일 때 [향수 목록 보기] 를 눌렀을 때.
+   *
+   * **검색어만 비우지 않습니다.** 예전에는 그렇게 두었는데, 같은 화면에 남아
+   * "검색어를 입력해주세요" 라는 또 다른 빈 화면으로 바뀔 뿐이었습니다 — 찾는 것이
+   * 없어 빠져나가려는 사람을 빈 화면에서 빈 화면으로 옮긴 셈입니다.
+   * 향수 목록으로 보내는 일은 화면(pages)이 합니다.
+   */
+  onBrowseAll?: () => void
 }
 
 /**
@@ -41,7 +48,7 @@ export function PerfumeSearchResult({
   keyword,
   page,
   onPageChange,
-  onResetKeyword,
+  onBrowseAll,
 }: Props) {
   const { data, isPending, isError, refetch } = useQuery({
     ...perfumeListQuery({ keyword, page, size: PAGE_SIZE }),
@@ -91,9 +98,9 @@ export function PerfumeSearchResult({
           title="검색 결과가 없습니다"
           description={`'${keyword}' 와 일치하는 향수를 찾지 못했습니다.`}
           action={
-            onResetKeyword && (
-              <Button variant="outline" onClick={onResetKeyword}>
-                초기화
+            onBrowseAll && (
+              <Button variant="outline" onClick={onBrowseAll}>
+                향수 목록 보기
               </Button>
             )
           }
