@@ -187,6 +187,43 @@ IAM 액세스 키 방식이라면 `AWS_ACCESS_KEY_ID` 와 `AWS_SECRET_ACCESS_KEY
 서버 디스크 방식이 그대로 동작합니다(기본값). 그 상태로 배포한다면 `image-upload.md` §5 의
 볼륨 작업이 필요합니다. 전환이 먼저 끝나면 그 작업은 건너뛰어도 됩니다.
 
+### 로컬에서 미리 확인하기
+
+두 가지 방법이 있고, **대부분은 첫 번째로 충분합니다.**
+
+**1) 테스트로 확인** — 웹 계층 없이 저장소만 실제 AWS 에 붙여 봅니다.
+
+```powershell
+$env:AWS_ACCESS_KEY_ID = "..."        # 이 셸에서만. 파일에 적지 않습니다.
+$env:AWS_SECRET_ACCESS_KEY = "..."
+$env:HYANGHAE_REAL_S3_CHECK = "true"
+./gradlew test --tests '*RealS3ConnectivityTest*'
+```
+
+업로드 · CloudFront 전달 · 삭제를 확인합니다. 끝나면
+`Remove-Item Env:AWS_ACCESS_KEY_ID, Env:AWS_SECRET_ACCESS_KEY, Env:HYANGHAE_REAL_S3_CHECK`.
+
+**2) 수동 테스트 스택으로 확인** — Swagger 로 직접 쏴 보고 싶을 때입니다.
+
+```powershell
+$env:IMAGE_STORAGE_S3_ENABLED = "true"
+$env:AWS_ACCESS_KEY_ID = "..."
+$env:AWS_SECRET_ACCESS_KEY = "..."
+docker compose -f compose.manual-test.yaml up -d --build backend
+```
+
+응답의 `imageUrl` · `profileImageUrl` 이 `/api/v1/...` 대신 CloudFront 주소로 바뀝니다.
+끄려면 `IMAGE_STORAGE_S3_ENABLED` 를 지우고 다시 올립니다.
+
+**⚠ 둘 다 `uploads/dev` 에만 씁니다.** `IMAGE_STORAGE_S3_KEY_PREFIX` 를 `uploads` 로 바꾸지
+마십시오. 확인용으로 올린 사진이 실제 사용자 이미지 틈에 쌓이고, 이름이 UUID 라 나중에 어느
+것이 시험용이었는지 골라낼 수 없습니다. 테스트 쪽은 프리픽스에 `dev` 가 없으면 아예 돌지
+않게 막아 두었지만, compose 쪽은 값을 그대로 씁니다.
+
+**⚠ 백엔드 키에 `s3:GetObject` 가 없습니다 — 그대로 두십시오.** `S3ImageStorage` 가 부르는
+것은 `putObject` 와 `deleteObject` 둘뿐이고 읽기는 CloudFront 가 OAC 로 합니다. 확인 중
+403 을 보더라도 권한 추가를 요청하지 마십시오. 최소 권한이 제대로 잡힌 것입니다.
+
 ## 7. 참고 문서
 
 - [이미지 업로드 가이드](image-upload.md)
