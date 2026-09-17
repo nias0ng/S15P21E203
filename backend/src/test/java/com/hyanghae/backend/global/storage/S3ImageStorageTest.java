@@ -253,6 +253,79 @@ class S3ImageStorageTest {
                 .isTrue();
     }
 
+    /**
+     * <b>실제로 받은 설정 그대로</b> 확인합니다 — 버킷 하나에 운영 {@code uploads},
+     * 개발 {@code uploads/dev}, CloudFront 는 버킷 뿌리를 서빙합니다.
+     *
+     * <p>카탈로그 이미지가 {@code .../perfumes/65738/original.png} 로 열리는 것이 뿌리 서빙의
+     * 증거입니다. 그래서 주소에 환경 프리픽스가 그대로 나옵니다.
+     */
+    @Test
+    void matchesTheRealDeploymentLayout() {
+        S3ImageStorage prod = storageFor("uploads/posts");
+        S3ImageStorage dev = storageFor("uploads/dev/posts");
+
+        String prodUrl = prod.save(pngFile());
+        String devUrl = dev.save(pngFile());
+
+        assertThat(prodUrl).startsWith(PUBLIC_BASE_URL + "/uploads/posts/");
+        assertThat(devUrl).startsWith(PUBLIC_BASE_URL + "/uploads/dev/posts/");
+        assertThat(objectExists(keyOf(prodUrl))).isTrue();
+        assertThat(objectExists(keyOf(devUrl))).isTrue();
+    }
+
+    /**
+     * <b>개발은 운영 객체를 건드리지 못합니다.</b> 이 방향이 중요합니다 — 개발에서 실수해도
+     * 운영 사진이 사라지면 안 됩니다.
+     *
+     * <p>개발 프리픽스({@code uploads/dev})가 운영({@code uploads})보다 길어서, 운영 주소는
+     * 개발 저장소의 접두사와 맞지 않습니다.
+     */
+    @Test
+    void devCannotTouchProdObjects() {
+        S3ImageStorage prod = storageFor("uploads/posts");
+        S3ImageStorage dev = storageFor("uploads/dev/posts");
+
+        String prodUrl = prod.save(pngFile());
+
+        dev.delete(prodUrl);
+
+        assertThat(objectExists(keyOf(prodUrl)))
+                .as("개발 저장소가 운영 객체를 지우면 안 됩니다")
+                .isTrue();
+    }
+
+    /**
+     * <b>운영도 개발 객체를 건드리지 못합니다.</b> 프리픽스가 겹쳐 보이지만 실제로는 안
+     * 겹칩니다.
+     *
+     * <p>개발 프리픽스({@code uploads/dev})가 운영({@code uploads}) 안에 있어 위험해 보이는데,
+     * 도메인 부분이 뒤에 붙어 최종 경로가 {@code uploads/posts/} 와 {@code uploads/dev/posts/}
+     * 가 됩니다. 문자열로 한쪽이 다른 쪽의 접두사가 아니라 서로를 알아보지 못합니다.
+     *
+     * <p><b>다만 나중에 만들 청소 배치는 다릅니다.</b> 운영에서 {@code uploads/} 아래를 통째로
+     * 훑으면 개발 객체까지 걸립니다. 그 배치를 만들 때는 개발 경로를 빼야 합니다.
+     */
+    @Test
+    void prodCannotTouchDevObjectsEither() {
+        S3ImageStorage prod = storageFor("uploads/posts");
+        S3ImageStorage dev = storageFor("uploads/dev/posts");
+
+        String devUrl = dev.save(pngFile());
+
+        prod.delete(devUrl);
+
+        assertThat(objectExists(keyOf(devUrl)))
+                .as("운영 저장소가 개발 객체를 지우면 안 됩니다")
+                .isTrue();
+    }
+
+    private S3ImageStorage storageFor(String prefix) {
+        return new S3ImageStorage(
+                client, BUCKET, prefix, prefix, PUBLIC_BASE_URL, CACHE_CONTROL,
+                DataSize.ofMegabytes(5));
+    }
+
     private String keyOf(String imageUrl) {
         return imageUrl.substring(PUBLIC_BASE_URL.length() + 1);
     }

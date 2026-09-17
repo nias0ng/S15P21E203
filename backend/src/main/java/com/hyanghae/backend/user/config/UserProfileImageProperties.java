@@ -25,7 +25,10 @@ import org.springframework.validation.annotation.Validated;
  *                  <p><b>{@code /api/v1/users/me} 아래로 두면 안 됩니다.</b> SecurityConfig 가
  *                  그 경로를 인증 필요로 막고 있어, 프로필 사진이 로그인한 사람에게만 보입니다.
  *                  남의 글 옆에 붙은 프로필 사진이 비회원에게 깨져 보입니다.
- * @param keyPrefix S3 에 쌓을 때의 키 앞부분입니다. 게시글 이미지와 겹치면 안 됩니다.
+ * @param keyPrefix S3 에 쌓을 때의 키 중 <b>도메인 부분</b>입니다. 앞에 환경 프리픽스
+ *                  ({@code hyanghae.storage.s3.key-prefix})가 붙어 최종 키가 됩니다 —
+ *                  예: {@code uploads} + {@code profiles} → {@code uploads/profiles/...}.
+ *                  여기에 환경 부분을 적으면 두 번 들어갑니다. 게시글 이미지와 겹치면 안 됩니다.
  *                  S3 를 쓰지 않으면 무시됩니다.
  * @param maxSize   파일 하나의 최대 크기입니다. 게시글 이미지(5MB)보다 작게 잡았습니다.
  *                  아바타는 화면에서 작게 보여주므로 그만한 원본이 필요 없고, 글마다 여러 개가
@@ -36,7 +39,7 @@ import org.springframework.validation.annotation.Validated;
 public record UserProfileImageProperties(
         @DefaultValue("uploads/profiles") @NotBlank String directory,
         @DefaultValue("/api/v1/users/profile-images") @NotBlank String urlPath,
-        @DefaultValue("uploads/profiles") @NotBlank String keyPrefix,
+        @DefaultValue("profiles") @NotBlank String keyPrefix,
         @DefaultValue("1MB") @NotNull DataSize maxSize
 ) {
 

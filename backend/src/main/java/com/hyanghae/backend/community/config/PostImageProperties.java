@@ -31,7 +31,10 @@ import org.springframework.validation.annotation.Validated;
  *                  <p>나중에 nginx 가 파일을 직접 내주게 되거나 저장소를 S3 로 옮기면 이 값만
  *                  바꿉니다. 이미 저장된 게시글의 주소는 그대로 두므로, 옮길 때는 기존 주소도
  *                  계속 닿는지 확인해야 합니다.
- * @param keyPrefix S3 에 쌓을 때의 키 앞부분입니다. {@code directory} 의 S3 판이고,
+ * @param keyPrefix S3 에 쌓을 때의 키 중 <b>도메인 부분</b>입니다. 앞에 환경 프리픽스
+ *                  ({@code hyanghae.storage.s3.key-prefix})가 붙어 최종 키가 됩니다 —
+ *                  예: {@code uploads} + {@code posts} → {@code uploads/posts/...}.
+ *                  여기에 환경 부분을 적으면 두 번 들어갑니다. {@code directory} 의 S3 판이고,
  *                  마찬가지로 다른 저장소와 겹치면 안 됩니다. S3 를 쓰지 않으면 무시됩니다.
  * @param maxSize   파일 하나의 최대 크기입니다. {@code spring.servlet.multipart.max-file-size}
  *                  가 이 값보다 커야 합니다. 그래야 크기 초과를 이 애플리케이션이 먼저 잡아
@@ -43,7 +46,7 @@ import org.springframework.validation.annotation.Validated;
 public record PostImageProperties(
         @DefaultValue("uploads/posts") @NotBlank String directory,
         @DefaultValue("/api/v1/posts/images") @NotBlank String urlPath,
-        @DefaultValue("uploads/posts") @NotBlank String keyPrefix,
+        @DefaultValue("posts") @NotBlank String keyPrefix,
         @DefaultValue("5MB") @NotNull DataSize maxSize
 ) {
 

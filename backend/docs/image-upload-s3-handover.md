@@ -1,11 +1,65 @@
-# 사용자 업로드 이미지 S3 전환 — 인프라 요청서
+# 사용자 업로드 이미지 S3 전환
 
 지금 사용자 업로드 이미지(게시글 이미지 · 프로필 사진)는 **서버 로컬 디스크**에 쌓고 백엔드가
 직접 내줍니다. 카탈로그 이미지(노트 · 향수)가 이미 S3 + CloudFront 를 쓰고 있으므로 같은
 경로로 합치려 합니다.
 
-이 문서는 **AWS 를 관리하는 쪽에 요청하는 작업 목록**입니다. 백엔드 코드 변경은 이 작업이
-끝나야 실제로 검증할 수 있습니다.
+**인프라 값을 받아 반영을 마쳤습니다.** 아래 §0 의 네 줄을 배포 디렉터리의 `.env` 에 넣으면
+코드 배포 없이 켜집니다. §2 는 인프라 쪽에 요청했던 내용이고 기록으로 남깁니다.
+
+## 0. 받은 값과 켜는 방법
+
+| 항목 | 값 |
+| --- | --- |
+| 버킷 | `hyanghae-images-prod-s15p21e203` |
+| 리전 | `ap-northeast-2` |
+| CloudFront | `https://djpgc0m2v54q1.cloudfront.net` |
+| 운영 프리픽스 | `uploads` |
+| 개발 프리픽스 | `uploads/dev` |
+
+**운영 서버** `/home/ubuntu/hyanghae/.env`
+
+```
+IMAGE_STORAGE_S3_ENABLED=true
+IMAGE_STORAGE_S3_BUCKET=hyanghae-images-prod-s15p21e203
+IMAGE_STORAGE_S3_REGION=ap-northeast-2
+IMAGE_STORAGE_S3_PUBLIC_BASE_URL=https://djpgc0m2v54q1.cloudfront.net
+IMAGE_STORAGE_S3_KEY_PREFIX=uploads
+```
+
+**개발 서버**는 마지막 줄만 `IMAGE_STORAGE_S3_KEY_PREFIX=uploads/dev` 로 바꿉니다.
+
+자격 증명은 여기 넣지 않습니다. EC2 인스턴스 역할을 쓰면 아무것도 넣지 않아도 되고, IAM
+액세스 키를 쓴다면 `AWS_ACCESS_KEY_ID` 와 `AWS_SECRET_ACCESS_KEY` 를 같은 `.env` 에 넣습니다.
+**저장소에는 절대 커밋하지 않습니다.**
+
+### 만들어지는 경로
+
+```
+운영   uploads/posts/2026/09/<uuid>.png       → https://djpgc0m2v54q1.cloudfront.net/uploads/posts/2026/09/<uuid>.png
+개발   uploads/dev/posts/2026/09/<uuid>.png   → https://djpgc0m2v54q1.cloudfront.net/uploads/dev/posts/2026/09/<uuid>.png
+```
+
+프로필 사진은 `posts` 자리가 `profiles` 로 바뀝니다.
+
+### `IMAGE_STORAGE_S3_PUBLIC_PATH_PREFIX` 는 넣지 않습니다
+
+CloudFront 배포가 **버킷 뿌리를 서빙**하므로 주소에 프리픽스가 그대로 나와야 합니다. 카탈로그
+이미지가 그 증거입니다 — `https://djpgc0m2v54q1.cloudfront.net/perfumes/65738/original.png`
+이 200 으로 열리고, 이것은 S3 키 `perfumes/65738/original.png` 와 같습니다. 오리진 경로가
+있었다면 주소와 키가 달랐을 것입니다.
+
+배포 설정이 나중에 바뀌어 주소에서 프리픽스를 빼야 하면 그때
+`IMAGE_STORAGE_S3_PUBLIC_PATH_PREFIX=-` 를 추가합니다. 안 넣고 바뀌면 주소에 프리픽스가 두 번
+들어가 404 가 납니다.
+
+### ⚠ 개발 경로가 운영 경로 안에 있습니다
+
+`uploads/dev` 가 `uploads` 아래에 있습니다. 저장·삭제는 최종 경로가
+`uploads/posts/` 와 `uploads/dev/posts/` 로 갈려 서로를 건드리지 못합니다(테스트로 고정).
+
+**다만 나중에 만들 청소 배치는 다릅니다.** 운영에서 `uploads/` 아래를 통째로 훑으면 개발
+객체까지 걸립니다. 그 배치를 만들 때 개발 경로를 빼야 합니다.
 
 ## 1. 지금과 무엇이 달라지는가
 

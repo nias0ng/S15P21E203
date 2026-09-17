@@ -16,7 +16,7 @@
 | 저장 자리 | `post_images` 테이블 | `users.profile_image_url` 컬럼 |
 | 크기 제한 | 5MB | 1MB |
 | 조회 권한 | 로그인 불필요 | 로그인 불필요 |
-| S3 키 앞부분 | `uploads/posts` | `uploads/profiles` |
+| S3 키 (운영) | `uploads/posts/…` | `uploads/profiles/…` |
 
 **게시글만 2단계인 이유는 순서입니다.** 글이 만들어지기 전에 미리보기를 보여줘야 하는데 그
 시점에는 이미지를 매달 글이 없습니다. 프로필은 매달 사용자가 이미 있어 나눌 이유가 없고,
@@ -109,11 +109,15 @@ XML 이고, 시그니처가 없어 내용으로 걸러낼 수도 없습니다.
 | --- | --- |
 | `hyanghae.storage.s3.enabled` | `false` |
 | `hyanghae.storage.s3.bucket` · `.region` · `.public-base-url` | 비어 있음 (켜면 필수) |
+| `hyanghae.storage.s3.key-prefix` | 비어 있음 (환경 구분 — 운영 `uploads`, 개발 `uploads/dev`) |
+| `hyanghae.storage.s3.public-path-prefix` | 비어 있음 (= `key-prefix`) |
 | `hyanghae.storage.s3.cache-control` | `public, max-age=2592000` |
-| `hyanghae.community.post-image.directory` · `.key-prefix` | `uploads/posts` |
+| `hyanghae.community.post-image.directory` | `uploads/posts` |
+| `hyanghae.community.post-image.key-prefix` | `posts` (앞에 환경 프리픽스가 붙습니다) |
 | `hyanghae.community.post-image.url-path` | `/api/v1/posts/images` |
 | `hyanghae.community.post-image.max-size` | `5MB` |
-| `hyanghae.user.profile-image.directory` · `.key-prefix` | `uploads/profiles` |
+| `hyanghae.user.profile-image.directory` | `uploads/profiles` |
+| `hyanghae.user.profile-image.key-prefix` | `profiles` (앞에 환경 프리픽스가 붙습니다) |
 | `hyanghae.user.profile-image.url-path` | `/api/v1/users/profile-images` |
 | `hyanghae.user.profile-image.max-size` | `1MB` |
 | `spring.servlet.multipart.max-file-size` | `8MB` |
