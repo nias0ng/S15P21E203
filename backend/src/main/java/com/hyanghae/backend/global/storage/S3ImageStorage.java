@@ -29,7 +29,13 @@ public class S3ImageStorage extends ImageStorage {
 
     private final S3Client client;
     private final String bucket;
+
+    /** S3 키의 앞부분입니다. 환경 프리픽스와 도메인 프리픽스를 이어 붙인 값입니다. */
     private final String keyPrefix;
+
+    /** 주소의 앞부분입니다. 보통 {@link #keyPrefix} 와 같지만 다를 수 있습니다 — 아래 설명. */
+    private final String publicPathPrefix;
+
     private final String publicBaseUrl;
     private final String cacheControl;
 
@@ -43,6 +49,7 @@ public class S3ImageStorage extends ImageStorage {
             S3Client client,
             String bucket,
             String keyPrefix,
+            String publicPathPrefix,
             String publicBaseUrl,
             String cacheControl,
             DataSize maxSize
@@ -51,6 +58,7 @@ public class S3ImageStorage extends ImageStorage {
         this.client = client;
         this.bucket = bucket;
         this.keyPrefix = trimSlashes(keyPrefix);
+        this.publicPathPrefix = trimSlashes(publicPathPrefix);
         this.publicBaseUrl = stripTrailingSlash(publicBaseUrl);
         this.cacheControl = cacheControl;
     }
@@ -104,9 +112,17 @@ public class S3ImageStorage extends ImageStorage {
         }
     }
 
+    /**
+     * 화면이 쓸 주소입니다.
+     *
+     * <p><b>키와 주소가 다를 수 있습니다.</b> CloudFront 배포가 버킷 뿌리를 가리키면 주소에도
+     * 환경 프리픽스가 그대로 나와야 하고, 배포의 오리진 경로가 이미 그 프리픽스를 가리키면
+     * 주소에는 나오면 안 됩니다. 나오면 안 될 때 주소에 넣으면 프리픽스가 두 번 들어가 404 가
+     * 납니다.
+     */
     @Override
     protected String publicUrl(String relativePath) {
-        return publicBaseUrl + "/" + keyOf(relativePath);
+        return join(publicBaseUrl, publicPathPrefix, relativePath);
     }
 
     /**
@@ -120,7 +136,7 @@ public class S3ImageStorage extends ImageStorage {
         if (imageUrl == null) {
             return null;
         }
-        String prefix = publicBaseUrl + "/" + keyPrefix + "/";
+        String prefix = join(publicBaseUrl, publicPathPrefix, "");
         if (!imageUrl.startsWith(prefix)) {
             return null;
         }
@@ -129,7 +145,24 @@ public class S3ImageStorage extends ImageStorage {
     }
 
     private String keyOf(String relativePath) {
-        return keyPrefix + "/" + relativePath;
+        return keyPrefix.isEmpty() ? relativePath : keyPrefix + "/" + relativePath;
+    }
+
+    /**
+     * 빈 조각을 건너뛰고 {@code /} 로 잇습니다. 프리픽스가 비었을 때 {@code //} 가 생기면
+     * S3 는 이름이 빈 폴더로 보고, 주소는 다른 경로가 됩니다.
+     */
+    private static String join(String base, String prefix, String rest) {
+        StringBuilder joined = new StringBuilder(base);
+        if (!prefix.isEmpty()) {
+            joined.append('/').append(prefix);
+        }
+        if (!rest.isEmpty()) {
+            joined.append('/').append(rest);
+        } else {
+            joined.append('/');
+        }
+        return joined.toString();
     }
 
     private static String trimSlashes(String value) {

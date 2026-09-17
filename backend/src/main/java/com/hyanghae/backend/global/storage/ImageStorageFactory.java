@@ -42,10 +42,13 @@ public class ImageStorageFactory {
         if (!s3.enabled()) {
             return new LocalImageStorage(localDirectory, localUrlPath, maxSize);
         }
+        // 환경 프리픽스(prod · dev)를 도메인 프리픽스(uploads/posts) 앞에 붙입니다.
+        // 한 버킷을 두 환경이 나눠 쓰므로, 이것이 없으면 개발 사진이 운영 이미지 틈에 쌓입니다.
         return new S3ImageStorage(
                 s3ClientProvider.client(),
                 s3.bucket(),
-                s3KeyPrefix,
+                joinPrefix(s3.keyPrefix(), s3KeyPrefix),
+                joinPrefix(s3.publicPathPrefixOrKeyPrefix(), s3KeyPrefix),
                 s3.publicBaseUrl(),
                 s3.cacheControl(),
                 maxSize
@@ -55,5 +58,11 @@ public class ImageStorageFactory {
     /** 지금 S3 에 쌓고 있는지입니다. 리소스 핸들러 등록 여부를 정하는 데 씁니다. */
     public boolean usesS3() {
         return properties.s3().enabled();
+    }
+
+    /** 환경 프리픽스가 비어 있으면 도메인 프리픽스만 씁니다. */
+    private static String joinPrefix(String environmentPrefix, String domainPrefix) {
+        String environment = environmentPrefix == null ? "" : environmentPrefix.strip();
+        return environment.isEmpty() ? domainPrefix : environment + "/" + domainPrefix;
     }
 }

@@ -66,8 +66,8 @@ class S3ImageStorageTest {
                 .build();
         client.createBucket(CreateBucketRequest.builder().bucket(BUCKET).build());
 
-        storage = new S3ImageStorage(
-                client, BUCKET, KEY_PREFIX, PUBLIC_BASE_URL, CACHE_CONTROL, DataSize.ofMegabytes(5));
+        storage = new S3ImageStorage(client, BUCKET, KEY_PREFIX, KEY_PREFIX,
+                PUBLIC_BASE_URL, CACHE_CONTROL, DataSize.ofMegabytes(5));
     }
 
     @AfterAll
@@ -181,6 +181,76 @@ class S3ImageStorageTest {
         assertThat(first).isNotEqualTo(second);
         assertThat(objectExists(keyOf(first))).isTrue();
         assertThat(objectExists(keyOf(second))).isTrue();
+    }
+
+    /**
+     * <b>배포가 버킷 뿌리를 가리키는 경우</b>입니다. 환경 프리픽스가 키에도, 주소에도 나옵니다.
+     *
+     * <p>개발과 운영이 CloudFront 주소를 같이 쓰고 경로로 나누는 구성입니다.
+     */
+    @Test
+    void putsEnvironmentPrefixInBothKeyAndUrlWhenDistributionServesBucketRoot() {
+        S3ImageStorage prod = new S3ImageStorage(
+                client, BUCKET, "prod/uploads/posts", "prod/uploads/posts",
+                PUBLIC_BASE_URL, CACHE_CONTROL, DataSize.ofMegabytes(5));
+
+        String imageUrl = prod.save(pngFile());
+
+        assertThat(imageUrl).startsWith(PUBLIC_BASE_URL + "/prod/uploads/posts/");
+        assertThat(objectExists(imageUrl.substring(PUBLIC_BASE_URL.length() + 1))).isTrue();
+
+        prod.delete(imageUrl);
+        assertThat(objectExists(imageUrl.substring(PUBLIC_BASE_URL.length() + 1))).isFalse();
+    }
+
+    /**
+     * <b>배포의 오리진 경로가 이미 환경 프리픽스를 가리키는 경우</b>입니다. 키에는 넣되
+     * 주소에는 넣지 않아야 합니다.
+     *
+     * <p>주소에 넣으면 프리픽스가 두 번 들어가({@code /prod/prod/...}) 404 가 납니다. 반대로
+     * 키에서 빼면 다른 환경의 객체를 건드립니다.
+     */
+    @Test
+    void keepsEnvironmentPrefixOutOfUrlWhenDistributionOriginPathCoversIt() {
+        S3ImageStorage prod = new S3ImageStorage(
+                client, BUCKET, "prod/uploads/posts", "uploads/posts",
+                PUBLIC_BASE_URL, CACHE_CONTROL, DataSize.ofMegabytes(5));
+
+        String imageUrl = prod.save(pngFile());
+
+        assertThat(imageUrl).startsWith(PUBLIC_BASE_URL + "/uploads/posts/");
+        assertThat(imageUrl).doesNotContain("/prod/");
+
+        // 주소에는 없지만 객체는 prod/ 아래에 있어야 합니다.
+        String relative = imageUrl.substring((PUBLIC_BASE_URL + "/uploads/posts/").length());
+        assertThat(objectExists("prod/uploads/posts/" + relative)).isTrue();
+
+        prod.delete(imageUrl);
+        assertThat(objectExists("prod/uploads/posts/" + relative)).isFalse();
+    }
+
+    /**
+     * 환경이 다르면 서로의 객체를 건드리지 못합니다. 개발에서 지운다고 운영 사진이 사라지면
+     * 안 됩니다.
+     */
+    @Test
+    void keepsEnvironmentsIsolated() {
+        S3ImageStorage prod = new S3ImageStorage(
+                client, BUCKET, "prod/uploads/posts", "prod/uploads/posts",
+                PUBLIC_BASE_URL, CACHE_CONTROL, DataSize.ofMegabytes(5));
+        S3ImageStorage dev = new S3ImageStorage(
+                client, BUCKET, "dev/uploads/posts", "dev/uploads/posts",
+                PUBLIC_BASE_URL, CACHE_CONTROL, DataSize.ofMegabytes(5));
+
+        String prodUrl = prod.save(pngFile());
+        String prodKey = prodUrl.substring(PUBLIC_BASE_URL.length() + 1);
+
+        // 운영 주소를 개발 저장소에 넘겨도 무시해야 합니다 — 프리픽스가 다릅니다.
+        dev.delete(prodUrl);
+
+        assertThat(objectExists(prodKey))
+                .as("개발 저장소가 운영 객체를 지우면 안 됩니다")
+                .isTrue();
     }
 
     private String keyOf(String imageUrl) {
