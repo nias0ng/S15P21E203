@@ -134,6 +134,16 @@ export function ShelfRegisterModal({
                     type="button"
                     // 이미 진열대에 있으면 선택할 수 없습니다
                     disabled={option.alreadyInShelf}
+                    /*
+                      꺼진 이유는 **낭독기에만** 남깁니다. 눈으로는 흐려진 카드로
+                      충분하지만, 낭독기에는 그 흐림이 전해지지 않아 "왜 안 눌리는
+                      단추인지" 를 알 길이 없습니다.
+                    */
+                    aria-label={
+                      option.alreadyInShelf
+                        ? `${option.name} · 이미 진열대에 담은 향수입니다`
+                        : undefined
+                    }
                     onClick={() => setPicked(option)}
                     className={cn(
                       'border-line w-full border p-2.5 text-left transition-colors duration-120 ease-out',
@@ -142,8 +152,10 @@ export function ShelfRegisterModal({
                         : 'hover:border-accent',
                     )}
                   >
+                    {/* 사진이 없는 향수가 많습니다 — 그때는 빈 상자를 그립니다 */}
                     <Thumbnail
-                      fallback={option.alreadyInShelf ? '담김' : '이미지'}
+                      src={option.thumbnailUrl}
+                      fallback="이미지"
                       className="text-caption mb-2.5 h-16.25 w-full"
                     />
                     <span className="text-ink text-body block truncate font-medium">

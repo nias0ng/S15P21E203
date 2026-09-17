@@ -5,7 +5,9 @@ import { useNavigate, useParams, useSearchParams } from 'react-router'
 import {
   communityKeys,
   ImageAttachField,
+  LinkedPerfumeModal,
   WriteForm,
+  type LinkedPerfume,
 } from '@/features/community'
 // 계절은 향수 도메인의 어휘입니다. features/community 는 features/perfume 를
 // import 할 수 없으므로(ESLint) 화면에서 두 도메인을 조합합니다.
@@ -16,6 +18,8 @@ import {
   REVIEW_CONTENT_MAX_LENGTH,
   REVIEW_CONTENT_MIN_LENGTH,
   REVIEW_TITLE_MAX_LENGTH,
+  perfumeDetailQuery,
+  perfumeListQuery,
   reviewDetailQuery,
   reviewKeys,
   SEASONS,
@@ -25,11 +29,13 @@ import {
 import { isApiError } from '@/shared/api/http'
 import { ROUTES, toReviewDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
+import { useIsLoggedIn } from '@/shared/store/authStore'
 import { Button } from '@/shared/ui/Button'
 import { ChipToggle } from '@/shared/ui/ChipToggle'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Input } from '@/shared/ui/Input'
 import { LinkButton } from '@/shared/ui/LinkButton'
+import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { PageFallback } from '@/shared/ui/PageFallback'
 import { Textarea } from '@/shared/ui/Textarea'
 
@@ -84,6 +90,7 @@ function saveErrorMessage(error: unknown): string {
  */
 export default function ReviewWritePage() {
   const navigate = useNavigate()
+  const isLoggedIn = useIsLoggedIn()
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
   const { reviewId: reviewIdParam } = useParams<{ reviewId: string }>()
@@ -131,16 +138,59 @@ export default function ReviewWritePage() {
     return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null
   })()
 
-  const perfumeId = isEdit ? loaded?.perfume.perfumeId : preselectedId
+  /*
+    작성 모드에서 고른 향수. 주소로 실려 온 향수(`?perfumeId=`)가 첫 값이고,
+    [향수 선택] 으로 바꾸면 이 값이 이깁니다.
 
-  // TODO: 작성 모드에서 perfumeId 로 향수를 조회해 이름 · 브랜드를 채우세요
+    향수 상세에서 [후기 쓰기] 로 들어오면 그 향수가 이미 골라져 있습니다.
+  */
+  const [pickedPerfume, setPickedPerfume] = useState<LinkedPerfume | null>(null)
+  const [pickOpen, setPickOpen] = useState(false)
+  const [keyword, setKeyword] = useState('')
+
+  const perfumeId = isEdit
+    ? loaded?.perfume.perfumeId
+    : (pickedPerfume?.perfumeId ?? preselectedId)
+
+  /*
+    주소로 실려 온 향수의 이름 · 브랜드는 서버에 물어봅니다. 예전에는 고정값을
+    적어 두어서, 어느 향수로 들어오든 같은 이름이 보였습니다.
+  */
+  const preselected = useQuery({
+    ...perfumeDetailQuery(preselectedId ?? Number.NaN),
+    enabled: !isEdit && preselectedId !== null && pickedPerfume === null,
+  })
+
   const targetPerfume = isEdit
     ? loaded
       ? { name: loaded.perfume.name, brand: loaded.perfume.brand }
       : null
-    : preselectedId !== null
-      ? { name: '조 말론 우드 세이지', brand: '조 말론 런던' }
-      : null
+    : pickedPerfume
+      ? { name: pickedPerfume.name, brand: pickedPerfume.brand }
+      : preselected.data
+        ? {
+            name: preselected.data.nameKo ?? preselected.data.name,
+            brand: preselected.data.brand?.name ?? null,
+          }
+        : null
+
+  /*
+    후보는 이 화면이 만듭니다 — 모달은 `features/community` 에 있어 향수 도메인을
+    import 할 수 없습니다. 검색어를 치기 전에는 부르지 않습니다.
+  */
+  const perfumeSearch = useQuery({
+    ...perfumeListQuery({ keyword, size: 20 }),
+    enabled: keyword.trim().length > 0,
+  })
+
+  const candidates: LinkedPerfume[] = (perfumeSearch.data?.perfumes ?? []).map(
+    (perfume) => ({
+      perfumeId: perfume.perfumeId,
+      name: perfume.nameKo ?? perfume.name,
+      brand: perfume.brandName ?? perfume.brandNameKo,
+      thumbnailUrl: perfume.imageUrl,
+    }),
+  )
 
   const trimmedTitle = title.trim()
   const trimmedContent = content.trim()
@@ -304,95 +354,113 @@ export default function ReviewWritePage() {
     )
   }
 
+  /*
+    주소로 바로 들어오거나 즐겨찾기로 열면 단추를 거치지 않습니다. 다 쓰고 [등록]
+    에서야 막히면 쓴 것을 잃으므로 여기서도 한 번 더 봅니다.
+  */
+  if (!isLoggedIn) {
+    return (
+      <LoginRequiredDialog
+        open
+        onClose={() => navigate(ROUTES.COMMUNITY_REVIEWS, { replace: true })}
+        description="후기는 로그인한 뒤에 쓸 수 있습니다."
+      />
+    )
+  }
+
   return (
-    <WriteForm
-      title={isEdit ? '후기 수정' : '후기 쓰기'}
-      description={
-        isEdit
-          ? '제목 · 본문 · 계절을 고칠 수 있습니다. 대상 향수는 바꿀 수 없습니다.'
-          : '대상 향수는 필수이고 한 개만 답니다. 후기에는 분류가 없습니다.'
-      }
-      cancelTo={isEdit ? toReviewDetail(reviewId) : ROUTES.COMMUNITY_REVIEWS}
-      submitLabel={mutation.isPending ? '저장 중' : isEdit ? '수정' : '포스팅'}
-      submitDisabled={!canSubmit}
-      onSubmit={() => mutation.mutate()}
-    >
-      {/*
+    <>
+      <WriteForm
+        title={isEdit ? '후기 수정' : '후기 쓰기'}
+        description={
+          isEdit
+            ? '제목 · 본문 · 계절을 고칠 수 있습니다. 대상 향수는 바꿀 수 없습니다.'
+            : '대상 향수는 필수이고 한 개만 답니다. 후기에는 분류가 없습니다.'
+        }
+        cancelTo={isEdit ? toReviewDetail(reviewId) : ROUTES.COMMUNITY_REVIEWS}
+        submitLabel={
+          mutation.isPending ? '저장 중' : isEdit ? '수정' : '포스팅'
+        }
+        submitDisabled={!canSubmit}
+        onSubmit={() => mutation.mutate()}
+      >
+        {/*
           대상 향수는 필수이고 한 개만 답니다. 이 화면에서 가장 먼저 정해야 하는
           값이라 다른 항목과 달리 칸으로 감싸 무게를 줍니다 — 고르지 않으면
           [포스팅] 이 꺼져 있는데, 그 이유가 눈에 보여야 합니다.
         */}
-      <fieldset
-        className={cn(
-          'rounded-card border p-3.75',
-          targetPerfume
-            ? 'border-line-soft bg-surface-sunken'
-            : 'border-danger bg-surface-card',
-        )}
-      >
-        <legend className="text-ink text-caption px-1.25 font-medium">
-          대상 향수 <span className="text-danger">*</span>
-        </legend>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          {targetPerfume ? (
-            <>
-              <span className="text-ink text-body font-medium">
-                {targetPerfume.name}
-              </span>
-              <span className="text-ink-muted text-caption">
-                {targetPerfume.brand}
-              </span>
-            </>
-          ) : (
-            <span className="text-ink-muted text-body">
-              향수를 선택해야 후기를 쓸 수 있습니다
-            </span>
+        <fieldset
+          className={cn(
+            'rounded-card border p-3.75',
+            targetPerfume
+              ? 'border-line-soft bg-surface-sunken'
+              : 'border-danger bg-surface-card',
           )}
-          {/* TODO: 향수 검색 연결 (화면에서 향수 도메인과 조합) */}
-          <Button
-            variant="outline"
-            size="sm"
-            type="button"
-            className="ml-auto"
-            disabled={isEdit}
-          >
-            {isEdit ? '변경 불가' : targetPerfume ? '변경' : '향수 선택'}
-          </Button>
-        </div>
+        >
+          <legend className="text-ink text-caption px-1.25 font-medium">
+            대상 향수 <span className="text-danger">*</span>
+          </legend>
 
-        {isEdit && (
-          <p className="text-ink-muted text-caption mt-2">
-            대상 향수는 바꿀 수 없습니다. 다른 향수에 쓰시려면 이 후기를 지우고
-            새로 작성해주세요.
-          </p>
-        )}
-      </fieldset>
+          <div className="flex flex-wrap items-center gap-2.5">
+            {targetPerfume ? (
+              <>
+                <span className="text-ink text-body font-medium">
+                  {targetPerfume.name}
+                </span>
+                <span className="text-ink-muted text-caption">
+                  {targetPerfume.brand}
+                </span>
+              </>
+            ) : (
+              <span className="text-ink-muted text-body">
+                향수를 선택해야 후기를 쓸 수 있습니다
+              </span>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              className="ml-auto"
+              // 수정할 때는 대상을 바꿀 수 없습니다 — 다른 향수의 후기가 되어 버립니다
+              disabled={isEdit}
+              onClick={() => setPickOpen(true)}
+            >
+              {isEdit ? '변경 불가' : targetPerfume ? '변경' : '향수 선택'}
+            </Button>
+          </div>
 
-      {/*
+          {isEdit && (
+            <p className="text-ink-muted text-caption mt-2">
+              대상 향수는 바꿀 수 없습니다. 다른 향수에 쓰시려면 이 후기를
+              지우고 새로 작성해주세요.
+            </p>
+          )}
+        </fieldset>
+
+        {/*
           라벨을 보이게 두었습니다. placeholder 로만 알려주면 한 글자라도 치는
           순간 무엇을 적는 칸인지 사라집니다.
         */}
-      <Input
-        label="제목"
-        placeholder="제목을 입력하세요"
-        required
-        value={title}
-        onChange={(event) => setTitleDraft(event.target.value)}
-        error={titleError}
-      />
+        <Input
+          label="제목"
+          placeholder="제목을 입력하세요"
+          required
+          value={title}
+          onChange={(event) => setTitleDraft(event.target.value)}
+          error={titleError}
+        />
 
-      <Textarea
-        label="본문"
-        placeholder="이 향을 어떻게 맡았는지 적어주세요"
-        rows={12}
-        required
-        value={content}
-        onChange={(event) => setContentDraft(event.target.value)}
-        error={contentError}
-      />
+        <Textarea
+          label="본문"
+          placeholder="이 향을 어떻게 맡았는지 적어주세요"
+          rows={12}
+          required
+          value={content}
+          onChange={(event) => setContentDraft(event.target.value)}
+          error={contentError}
+        />
 
-      {/*
+        {/*
           계절별 평가 (DTL-16). 예전에는 향수 상세의 [계절 등록] 단추가 모달을
           띄웠는데, 이 향을 어느 계절에 맡았는지는 후기와 같은 순간에 남기는
           값이라 여기로 옮겼습니다. 입구가 둘이면 한쪽만 쓰이고 다른 쪽은
@@ -407,31 +475,45 @@ export default function ReviewWritePage() {
           **필수입니다.** 예전에 "(선택)" 이라고 적혀 있었는데 서버는 1개 이상을
           요구합니다(`@NotEmpty`). 그대로 두면 아무것도 안 고르고 저장할 때 400 입니다.
         */}
-      <fieldset className="space-y-2">
-        <legend className="text-ink text-caption font-medium">
-          계절별 평가 <span className="text-danger">*</span>
-        </legend>
-        <ChipToggle
-          label="이 향이 잘 어울리는 계절"
-          multiple
-          tone="warm"
-          options={SEASONS}
-          value={seasons}
-          onChange={(next) => setSeasonsDraft(next)}
-          className="grid grid-cols-4 gap-2"
-        />
-        <p className="text-ink-muted text-caption">
-          최소 한 개는 골라주세요. 여러 개 고를 수 있습니다.
-        </p>
-      </fieldset>
+        <fieldset className="space-y-2">
+          <legend className="text-ink text-caption font-medium">
+            계절별 평가 <span className="text-danger">*</span>
+          </legend>
+          <ChipToggle
+            label="이 향이 잘 어울리는 계절"
+            multiple
+            tone="warm"
+            options={SEASONS}
+            value={seasons}
+            onChange={(next) => setSeasonsDraft(next)}
+            className="grid grid-cols-4 gap-2"
+          />
+          <p className="text-ink-muted text-caption">
+            최소 한 개는 골라주세요. 여러 개 고를 수 있습니다.
+          </p>
+        </fieldset>
 
-      <ImageAttachField />
+        <ImageAttachField />
 
-      {mutation.error !== null && (
-        <p className="text-danger text-caption" role="alert">
-          {saveErrorMessage(mutation.error)}
-        </p>
-      )}
-    </WriteForm>
+        {mutation.error !== null && (
+          <p className="text-danger text-caption" role="alert">
+            {saveErrorMessage(mutation.error)}
+          </p>
+        )}
+      </WriteForm>
+      <LinkedPerfumeModal
+        open={pickOpen}
+        onClose={() => setPickOpen(false)}
+        candidates={candidates}
+        isPending={perfumeSearch.isFetching}
+        onSearch={setKeyword}
+        /* 후기는 향수 한 개에 씁니다 */
+        single
+        onSubmit={(picked) => {
+          if (picked[0]) setPickedPerfume(picked[0])
+          setPickOpen(false)
+        }}
+      />
+    </>
   )
 }
