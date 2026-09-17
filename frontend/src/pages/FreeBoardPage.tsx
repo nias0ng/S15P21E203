@@ -19,8 +19,8 @@ import {
 } from '@/features/community'
 import { ROUTES } from '@/shared/config/routes'
 import { useIsLoggedIn } from '@/shared/store/authStore'
+import { AuthLinkButton } from '@/shared/ui/AuthLinkButton'
 import { ChipToggle } from '@/shared/ui/ChipToggle'
-import { LinkButton } from '@/shared/ui/LinkButton'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { Pagination } from '@/shared/ui/Pagination'
 
@@ -122,9 +122,13 @@ export default function FreeBoardPage() {
       <BoardHeader
         description="향수 이야기를 자유롭게 나눕니다. 컬렉션을 남에게 보이는 유일한 길이기도 합니다."
         action={
-          <LinkButton to={ROUTES.POST_WRITE} size="sm">
+          <AuthLinkButton
+            to={ROUTES.POST_WRITE}
+            size="sm"
+            description="글은 로그인한 뒤에 쓸 수 있습니다."
+          >
             글쓰기
-          </LinkButton>
+          </AuthLinkButton>
         }
       />
 
@@ -158,9 +162,13 @@ export default function FreeBoardPage() {
             items={(posts.data?.posts ?? []).map(postToBoardItem)}
             isPending={posts.isPending}
             emptyAction={
-              <LinkButton to={ROUTES.POST_WRITE} size="sm">
+              <AuthLinkButton
+                to={ROUTES.POST_WRITE}
+                size="sm"
+                description="글은 로그인한 뒤에 쓸 수 있습니다."
+              >
                 글쓰기
-              </LinkButton>
+              </AuthLinkButton>
             }
             onToggleLike={(item) => {
               // 비로그인은 401 이라, 보내 보는 대신 먼저 안내합니다

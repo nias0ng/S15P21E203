@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 
 import {
@@ -16,8 +17,10 @@ import {
 // 두 도메인은 서로 import 할 수 없으므로 화면에서 조합합니다.
 import { likeReview, reviewKeys, unlikeReview } from '@/features/perfume'
 import { ROUTES } from '@/shared/config/routes'
+import { useIsLoggedIn } from '@/shared/store/authStore'
+import { AuthLinkButton } from '@/shared/ui/AuthLinkButton'
 import { ChipToggle } from '@/shared/ui/ChipToggle'
-import { LinkButton } from '@/shared/ui/LinkButton'
+import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { Pagination } from '@/shared/ui/Pagination'
 
 /** 백엔드 기본값과 같습니다 */
@@ -42,6 +45,8 @@ export default function ReviewBoardPage() {
   const trending = useQuery(trendingPerfumesQuery())
 
   const queryClient = useQueryClient()
+  const isLoggedIn = useIsLoggedIn()
+  const [loginOpen, setLoginOpen] = useState(false)
   const boardKey = communityKeys.reviewBoard({ sort, page, size: PAGE_SIZE })
 
   /**
@@ -95,9 +100,13 @@ export default function ReviewBoardPage() {
       <BoardHeader
         description="향수 한 개에 대한 시향 기록입니다. 점수나 별점 없이 좋아요만 있습니다."
         action={
-          <LinkButton to={ROUTES.REVIEW_WRITE} size="sm">
+          <AuthLinkButton
+            to={ROUTES.REVIEW_WRITE}
+            size="sm"
+            description="후기는 로그인한 뒤에 쓸 수 있습니다."
+          >
             후기 쓰기
-          </LinkButton>
+          </AuthLinkButton>
         }
       />
 
@@ -114,13 +123,22 @@ export default function ReviewBoardPage() {
           <PostList
             items={(reviews.data?.reviews ?? []).map(reviewToBoardItem)}
             isPending={reviews.isPending}
-            onToggleLike={(item) =>
+            onToggleLike={(item) => {
+              // 비로그인은 401 이라, 보내 보는 대신 먼저 안내합니다
+              if (!isLoggedIn) {
+                setLoginOpen(true)
+                return
+              }
               toggleLike.mutate({ id: item.id, liked: item.liked })
-            }
+            }}
             emptyAction={
-              <LinkButton to={ROUTES.REVIEW_WRITE} size="sm">
+              <AuthLinkButton
+                to={ROUTES.REVIEW_WRITE}
+                size="sm"
+                description="후기는 로그인한 뒤에 쓸 수 있습니다."
+              >
                 후기 쓰기
-              </LinkButton>
+              </AuthLinkButton>
             }
           />
 
@@ -138,6 +156,13 @@ export default function ReviewBoardPage() {
           days={trending.data?.days}
         />
       </div>
+
+      <LoginRequiredDialog
+        open={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        redirectTo={ROUTES.COMMUNITY_REVIEWS}
+        description="좋아요는 로그인한 뒤에 누를 수 있습니다. 글은 로그인 없이도 읽을 수 있습니다."
+      />
     </div>
   )
 }

@@ -29,11 +29,13 @@ import {
 import { isApiError } from '@/shared/api/http'
 import { ROUTES, toReviewDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
+import { useIsLoggedIn } from '@/shared/store/authStore'
 import { Button } from '@/shared/ui/Button'
 import { ChipToggle } from '@/shared/ui/ChipToggle'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Input } from '@/shared/ui/Input'
 import { LinkButton } from '@/shared/ui/LinkButton'
+import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { PageFallback } from '@/shared/ui/PageFallback'
 import { Textarea } from '@/shared/ui/Textarea'
 
@@ -88,6 +90,7 @@ function saveErrorMessage(error: unknown): string {
  */
 export default function ReviewWritePage() {
   const navigate = useNavigate()
+  const isLoggedIn = useIsLoggedIn()
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
   const { reviewId: reviewIdParam } = useParams<{ reviewId: string }>()
@@ -347,6 +350,20 @@ export default function ReviewWritePage() {
             </Button>
           </div>
         }
+      />
+    )
+  }
+
+  /*
+    주소로 바로 들어오거나 즐겨찾기로 열면 단추를 거치지 않습니다. 다 쓰고 [등록]
+    에서야 막히면 쓴 것을 잃으므로 여기서도 한 번 더 봅니다.
+  */
+  if (!isLoggedIn) {
+    return (
+      <LoginRequiredDialog
+        open
+        onClose={() => navigate(ROUTES.COMMUNITY_REVIEWS, { replace: true })}
+        description="후기는 로그인한 뒤에 쓸 수 있습니다."
       />
     )
   }

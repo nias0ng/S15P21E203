@@ -2,9 +2,9 @@ import { Link } from 'react-router'
 
 import { ROUTES, toReviewEdit, toReviewDetail } from '@/shared/config/routes'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
+import { AuthLinkButton } from '@/shared/ui/AuthLinkButton'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
-import { LinkButton } from '@/shared/ui/LinkButton'
 import { Skeleton } from '@/shared/ui/Skeleton'
 
 import type { Review } from '../types'
@@ -58,7 +58,7 @@ export function PerfumeReviewList({
           미리 골라 둡니다. 이미 쓴 후기가 있으면 수정으로 보냅니다(한 향수에 후기는
           하나라, 모르고 또 쓰면 409 로 막힙니다).
         */}
-        <LinkButton
+        <AuthLinkButton
           to={
             myReviewId === null
               ? `${ROUTES.REVIEW_WRITE}?perfumeId=${perfumeId}`
@@ -66,9 +66,10 @@ export function PerfumeReviewList({
           }
           size="sm"
           className="ml-auto"
+          description="후기는 로그인한 뒤에 쓸 수 있습니다."
         >
           {myReviewId === null ? '후기 쓰기' : '내 후기 수정'}
-        </LinkButton>
+        </AuthLinkButton>
       </div>
 
       {isPending ? (

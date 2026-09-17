@@ -16,12 +16,14 @@ import {
   type PostCategory,
 } from '@/features/community'
 import { perfumeListQuery } from '@/features/perfume'
-import { ROUTES, toPostDetail } from '@/shared/config/routes'
+import { ROUTES, toPostDetail, toPostEdit } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
+import { useIsLoggedIn } from '@/shared/store/authStore'
 import { Button } from '@/shared/ui/Button'
 import { ChipToggle } from '@/shared/ui/ChipToggle'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Input } from '@/shared/ui/Input'
+import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { Modal } from '@/shared/ui/Modal'
 import { PageFallback } from '@/shared/ui/PageFallback'
 import { Skeleton } from '@/shared/ui/Skeleton'
@@ -39,6 +41,7 @@ import { Textarea } from '@/shared/ui/Textarea'
 export default function PostWritePage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const isLoggedIn = useIsLoggedIn()
 
   const { postId } = useParams<{ postId: string }>()
   const editingId = postId === undefined ? null : Number(postId)
@@ -157,6 +160,21 @@ export default function PostWritePage() {
       navigate(toPostDetail(savedId), { replace: true })
     },
   })
+
+  /*
+    주소로 바로 들어오거나 즐겨찾기로 열면 단추를 거치지 않습니다. 빈 칸을 다 채우고
+    [포스팅] 에서야 막히면 쓴 것을 잃으므로 여기서도 한 번 더 봅니다.
+  */
+  if (!isLoggedIn) {
+    return (
+      <LoginRequiredDialog
+        open
+        onClose={() => navigate(ROUTES.COMMUNITY_FREE, { replace: true })}
+        redirectTo={editing ? toPostEdit(editingId) : ROUTES.POST_WRITE}
+        description="글은 로그인한 뒤에 쓸 수 있습니다."
+      />
+    )
+  }
 
   // 고칠 글을 받아오는 동안은 빈 칸을 보여주지 않습니다
   if (editing && post.isPending) return <PageFallback />

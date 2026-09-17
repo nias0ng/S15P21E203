@@ -296,7 +296,7 @@ export default function PostDetailPage() {
         open={loginOpen}
         onClose={() => setLoginOpen(false)}
         redirectTo={toPostDetail(numericId)}
-        description="댓글은 로그인한 뒤에 쓸 수 있습니다. 글과 댓글은 로그인 없이도 읽을 수 있습니다."
+        description="댓글은 로그인한 뒤에 쓸 수 있습니다."
       />
 
       <Toast {...toastProps} />
