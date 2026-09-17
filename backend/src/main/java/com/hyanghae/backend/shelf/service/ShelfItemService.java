@@ -3,6 +3,7 @@ package com.hyanghae.backend.shelf.service;
 import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.perfume.entity.Perfume;
+import com.hyanghae.backend.perfume.entity.PerfumeImageType;
 import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
 import com.hyanghae.backend.perfume.repository.PerfumeNoteRepository;
@@ -146,8 +147,13 @@ public class ShelfItemService {
         );
     }
 
+    /**
+     * 진열대는 <b>종이 질감 이미지</b>를 씁니다. 화면 배경이 종이라 투명 배경의 일반
+     * 이미지를 얹으면 어울리지 않습니다. 종이 질감이 없는 향수는 일반 이미지로 넘어갑니다.
+     */
     private Map<Long, String> loadThumbnails(List<Long> perfumeIds) {
-        return perfumeImageRepository.findOrderedByPerfumeIds(perfumeIds)
+        return perfumeImageRepository
+                .findOrderedByPerfumeIdsPreferring(perfumeIds, PerfumeImageType.PAPER_TEXTURE)
                 .stream()
                 .filter(image -> image.imageUrl() != null)
                 .collect(Collectors.toMap(

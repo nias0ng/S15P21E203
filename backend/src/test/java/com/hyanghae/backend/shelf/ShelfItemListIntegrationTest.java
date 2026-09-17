@@ -90,6 +90,45 @@ class ShelfItemListIntegrationTest {
                 .andExpect(jsonPath("$.totalElements").value(2));
     }
 
+    /**
+     * <b>진열대는 종이 질감 이미지를 받아야 합니다.</b>
+     *
+     * <p>화면 배경이 종이라 투명 배경의 일반 이미지를 얹으면 어울리지 않습니다. 고치기 전에는
+     * {@code display_order} 만 봐서 일반 이미지(1번)가 항상 뽑혔습니다.
+     *
+     * <p>일반 이미지를 1번, 종이 질감을 2번으로 심습니다 — 실제 적재와 같은 순서라, 종류를
+     * 보지 않으면 일반 이미지가 나옵니다.
+     */
+    @Test
+    void servesPaperTextureImageOnTheShelf() throws Exception {
+        jdbcTemplate.update("DELETE FROM perfume_images");
+        insertImage(1L, 1L, "original.png", 1, "ORIGINAL");
+        insertImage(2L, 1L, "paper-texture.png", 2, "PAPER_TEXTURE");
+
+        fakeCurrentUser.login(LOGGED_IN_USER);
+
+        mockMvc.perform(get(URL).param("category", "OWNED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
+                .andExpect(jsonPath("$.perfumes[0].thumbnailUrl").value("paper-texture.png"));
+    }
+
+    /**
+     * 종이 질감이 없는 향수는 일반 이미지로 넘어갑니다. 156개 향수에만 두 장이 다 있어,
+     * 넘어가지 않으면 나머지가 전부 빈칸이 됩니다.
+     */
+    @Test
+    void fallsBackToOriginalWhenPaperTextureIsMissing() throws Exception {
+        jdbcTemplate.update("DELETE FROM perfume_images");
+        insertImage(1L, 1L, "original-only.png", 1, "ORIGINAL");
+
+        fakeCurrentUser.login(LOGGED_IN_USER);
+
+        mockMvc.perform(get(URL).param("category", "OWNED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes[0].thumbnailUrl").value("original-only.png"));
+    }
+
     @Test
     void pagesShelfItemsInStableOrder() throws Exception {
         fakeCurrentUser.login(LOGGED_IN_USER);
@@ -166,6 +205,19 @@ class ShelfItemListIntegrationTest {
                 id,
                 brandId,
                 name
+        );
+    }
+
+    private void insertImage(
+            long id, long perfumeId, String imageUrl, int displayOrder, String imageType) {
+        jdbcTemplate.update(
+                "INSERT INTO perfume_images (image_id, perfume_id, image_url, display_order, image_type) "
+                        + "VALUES (?, ?, ?, ?, ?)",
+                id,
+                perfumeId,
+                imageUrl,
+                displayOrder,
+                imageType
         );
     }
 
