@@ -13,10 +13,6 @@ const item = (id: number): ShelfItem => ({
   brand: '브랜드',
   thumbnailUrl: `/bottles/${id}.png`,
   category: 'OWNED',
-  representative: false,
-  rating: null,
-  memo: null,
-  memoUpdatedAt: null,
 })
 
 /*

@@ -60,6 +60,29 @@ describe('Thumbnail', () => {
     expect(container.querySelector('img')?.className).toContain('size-14')
   })
 
+  /*
+    배경이 투명한 PNG(향수병)를 넣는 자리용입니다. 상자를 그대로 두면 투명한 영역이
+    네모로 드러나 병이 상자에 담긴 것처럼 보입니다.
+  */
+  it('bare 면 이미지 뒤 상자를 그리지 않는다', () => {
+    const { container } = render(
+      <Thumbnail src="https://example.test/bottle.png" bare />,
+    )
+
+    const image = container.querySelector('img')
+    expect(image?.className).not.toContain('bg-surface-sunken')
+    expect(image?.className).not.toContain('border-line')
+  })
+
+  /* 자리표시자까지 상자를 지우면 "이미지" 라는 글자만 허공에 뜹니다 */
+  it('bare 여도 이미지가 없으면 자리표시자 상자는 그대로 그린다', () => {
+    const { container } = render(<Thumbnail bare fallback="이미지" />)
+
+    const box = container.firstElementChild
+    expect(box?.className).toContain('bg-surface-sunken')
+    expect(screen.getByText('이미지')).toBeInTheDocument()
+  })
+
   it('자리표시자에도 className 이 적용된다', () => {
     const { container } = render(<Thumbnail className="size-20 rounded-full" />)
 

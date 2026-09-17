@@ -6,8 +6,13 @@ export interface PerfumeSummary {
   name: string
   /** 한글명. 없는 향수는 null */
   nameKo: string | null
-  /** 브랜드명(문자열). 브랜드가 없는 향수는 null */
+  /** 브랜드 **영문** 이름. 브랜드가 없는 향수는 null */
   brandName: string | null
+  /**
+   * 브랜드 한국어 이름. 아직 채워지지 않은 브랜드가 많아 자주 null 입니다 —
+   * 카드는 null 이면 `brandName`(영문)으로 대신합니다(백엔드 DTO 주석과 같은 약속).
+   */
+  brandNameKo: string | null
   /** 대표 이미지. 등록된 이미지가 없으면 null */
   imageUrl: string | null
   /**

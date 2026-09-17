@@ -13,6 +13,18 @@ type ThumbnailProps = {
   /** 잘리면 안 되는 이미지(브랜드 로고)는 'contain'. 기본은 꽉 채우는 'cover'. */
   fit?: 'cover' | 'contain'
   /**
+   * 이미지가 있을 때 상자(테두리 · 바탕)를 그리지 않습니다.
+   *
+   * 배경이 투명한 PNG(향수병)를 넣는 자리용입니다. 상자를 그대로 두면 투명한
+   * 영역이 네모로 드러나 **병이 상자에 담긴 것처럼** 보입니다. 진열대 상세 패널은
+   * 이것 때문에 Thumbnail 을 안 쓰고 `<img>` 를 직접 적고 있었습니다.
+   *
+   * 이미지가 **없을 때는 상자를 그대로 그립니다** — 자리표시자는 "여기에 무언가
+   * 들어온다" 를 상자로 알려주는 것이라, 상자를 지우면 "이미지" 라는 글자만 허공에
+   * 뜹니다.
+   */
+  bare?: boolean
+  /**
    * 크기·배치. 사용처마다 달라서(size-13.75 · h-23.75 w-full · flex-1 …) 여기서 받습니다.
    * 크기를 prop enum 으로 두지 않은 이유는 실제로 13가지가 쓰이고 있어서입니다.
    */
@@ -41,6 +53,7 @@ export function Thumbnail({
   src,
   fallback,
   fit = 'cover',
+  bare = false,
   className,
   alt = '',
 }: ThumbnailProps) {
@@ -52,7 +65,7 @@ export function Thumbnail({
         src={src}
         alt={alt}
         className={cn(
-          box,
+          !bare && box,
           fit === 'contain' ? 'object-contain' : 'object-cover',
           className,
         )}

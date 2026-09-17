@@ -374,6 +374,66 @@ class BrandListIntegrationTest {
     // 도우미
     // ────────────────────────────────────────────────────────────────
 
+    // ────────────────────────────────────────────────────────────────
+    // 상세
+    // ────────────────────────────────────────────────────────────────
+
+    /**
+     * 상세는 목록에 없는 <b>향수 수</b>를 담습니다. 목록에서 뺀 이유는 크기였는데(브랜드가
+     * 7,793개라 필드 하나가 133KB), 한 건에는 그 사정이 없습니다.
+     *
+     * <p>Dior 에 활성 둘·비활성 하나를 심어 뒀습니다. 비활성이 세어지면 3 이 됩니다.
+     */
+    @Test
+    void returnsBrandDetailWithActivePerfumeCount() throws Exception {
+        mockMvc.perform(get(BRANDS_URL + "/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.brandId").value(1))
+                .andExpect(jsonPath("$.name").value("Dior"))
+                .andExpect(jsonPath("$.nameKo").value("디올"))
+                .andExpect(jsonPath("$.logoUrl").value("https://img.example.com/dior.png"))
+                .andExpect(jsonPath("$.perfumeCount").value(2));
+    }
+
+    /**
+     * 향수가 하나도 없는 브랜드도 상세가 나옵니다. 목록과 같은 이유입니다 — 브랜드 페이지는
+     * 카탈로그라 향수가 0이어도 브랜드는 있습니다.
+     *
+     * <p>Chanel 은 비활성 향수만 둘입니다. 왼쪽 조인이 아니거나 활성 조건이 {@code WHERE} 에
+     * 있으면 여기서 404 가 납니다.
+     */
+    @Test
+    void returnsBrandDetailWithZeroPerfumes() throws Exception {
+        mockMvc.perform(get(BRANDS_URL + "/3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Chanel"))
+                .andExpect(jsonPath("$.perfumeCount").value(0));
+
+        mockMvc.perform(get(BRANDS_URL + "/4"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Byredo"))
+                .andExpect(jsonPath("$.nameKo").doesNotExist())
+                .andExpect(jsonPath("$.perfumeCount").value(0));
+    }
+
+    /**
+     * 내려간 브랜드는 없는 것으로 봅니다. 목록에서 빠지는 것과 같은 규칙이라, 한쪽만 보이면
+     * 화면이 어긋납니다.
+     */
+    @Test
+    void hidesInactiveBrandFromDetail() throws Exception {
+        mockMvc.perform(get(BRANDS_URL + "/5"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PERFUME_BRAND_NOT_FOUND"));
+    }
+
+    @Test
+    void returnsNotFoundForMissingBrand() throws Exception {
+        mockMvc.perform(get(BRANDS_URL + "/999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PERFUME_BRAND_NOT_FOUND"));
+    }
+
     private void insertBrand(long id, String name, String nameKo, String logoUrl, boolean active) {
         jdbcTemplate.update("""
                 INSERT INTO brands (brand_id, name, name_ko, logo_url, is_active)

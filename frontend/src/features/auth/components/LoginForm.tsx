@@ -27,7 +27,20 @@ type LoginLocationState = {
  * `GET /users/me` 를 이어 부릅니다 — 토큰이 들어가야 그 요청에 Authorization 이
  * 붙습니다.
  */
-export function LoginForm() {
+type LoginFormProps = {
+  /**
+   * 로그인이 끝난 뒤 어디로 보낼지 화면(pages)이 정할 때 씁니다.
+   *
+   * 첫 로그인에는 취향 테스트로 보내야 하는데, 그 판단에 `features/taste` 의 쿼리가
+   * 필요합니다. **`features/a` 는 `features/b` 를 import 할 수 없어서**(ESLint 레이어
+   * 규칙) 여기서 부르지 못하고, 두 도메인을 아는 `pages/LoginPage` 가 정합니다.
+   *
+   * 넘기지 않으면 예전처럼 이 컴포넌트가 `from`(없으면 홈)으로 보냅니다.
+   */
+  onLoggedIn?: () => void
+}
+
+export function LoginForm({ onLoggedIn }: LoginFormProps = {}) {
   const navigate = useNavigate()
   const location = useLocation()
   const setAuth = useAuthStore((state) => state.setAuth)
@@ -62,7 +75,9 @@ export function LoginForm() {
     },
     onSuccess: ({ accessToken, user }) => {
       setAuth({ accessToken, user })
-      navigate(from, { replace: true })
+
+      if (onLoggedIn) onLoggedIn()
+      else navigate(from, { replace: true })
     },
     // 토큰만 든 반쪽 상태로 두지 않습니다 — 로그인한 것처럼 보이는데 내가 누군지 모릅니다
     onError: () => useAuthStore.getState().clear(),

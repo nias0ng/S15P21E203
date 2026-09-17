@@ -3,6 +3,7 @@ package com.hyanghae.backend.review.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -127,7 +128,7 @@ class ReviewServiceTest {
 
         var response = reviewService.update(
                 10L,
-                new ReviewUpdateRequest("새 제목", null)
+                new ReviewUpdateRequest("새 제목", null, null)
         );
 
         ArgumentCaptor<Instant> updatedAt = ArgumentCaptor.forClass(Instant.class);
@@ -139,6 +140,8 @@ class ReviewServiceTest {
         assertThat(response.title()).isEqualTo("새 제목");
         assertThat(response.content()).isEqualTo("기존 후기 내용입니다.");
         assertThat(response.updatedAt()).isEqualTo(updatedAt.getValue());
+        // 계절을 보내지 않았으므로 바꾸지 않습니다. 응답에 담을 값만 읽어 옵니다.
+        verify(perfumeReviewSeasonRepository, never()).deleteAllByReviewId(anyLong());
     }
 
     @Test

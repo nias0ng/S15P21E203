@@ -1,6 +1,6 @@
 import { memo } from 'react'
 
-import { cn } from '@/shared/lib/cn'
+import { BottleSilhouette } from '@/shared/ui/BottleSilhouette'
 
 import { nameWithoutBrand, slotView } from '../lib'
 import type { ShelfItem } from '../types'
@@ -241,7 +241,7 @@ export const DisplayCase = memo(function DisplayCase({
                       />
                     </>
                   ) : (
-                    <BottleSilhouette className="shelf-bottle-layer relative h-full max-w-full" />
+                    <BottleSilhouette className="shelf-bottle-layer relative h-full max-w-full text-[var(--niche-floor)]" />
                   )}
                 </span>
                 {/*
@@ -325,18 +325,3 @@ export const DisplayCase = memo(function DisplayCase({
  * 이 자리에 들어올 것이 배경 투명 PNG 라서입니다 — 네모를 그려 두면 사진이 들어온
  * 뒤와 없을 때의 인상이 완전히 달라집니다.
  */
-function BottleSilhouette({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 32 64"
-      preserveAspectRatio="xMidYMax meet"
-      aria-hidden
-      className={cn('text-[var(--niche-floor)]', className)}
-    >
-      <path
-        fill="currentColor"
-        d="M13 2h6v7c0 2 6 4 6 9v44a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V18c0-5 6-7 6-9V2Z"
-      />
-    </svg>
-  )
-}

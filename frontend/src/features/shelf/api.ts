@@ -1,424 +1,217 @@
-import type { ShelfItem } from './types'
+import { http } from '@/shared/api/http'
+
+import {
+  SHELF_CATEGORIES,
+  type ShelfCategory,
+  type ShelfItem,
+  type ShelfItemDetail,
+} from './types'
+
+/*
+ * `src/assets/bottles/` 의 향수병 사진을 glob 으로 읽던 코드가 여기 있었습니다.
+ * 자리표시자 향수에 손으로 짝지어 둔 것이라 실제 데이터에는 맞출 수 없어
+ * 자리표시자와 함께 지웠습니다 — 파일 이름이 `브랜드_-_향수명` 인데 서버가 주는
+ * 이름("Wood Sage & Sea Salt")과 폴더의 이름("Wood_Sage")이 다릅니다.
+ *
+ * 이제 병 사진은 서버의 `thumbnailUrl` 을 씁니다. 값이 없으면 DisplayCase 가
+ * 병 실루엣을 그립니다.
+ */
 
 /**
- * 진열대 자리표시자에 쓰는 향수병 사진.
+ * 백엔드가 페이지에 담아 주는 목록 응답.
  *
- * `src/assets/bottles/` 는 **커밋하지 않습니다**(브랜드 공식 제품 사진이라
- * 저작권이 브랜드에 있습니다). 그래서 정적 import 대신 glob 으로 읽습니다 —
- * 폴더가 비어 있거나 없으면 빈 배열이 되고 빌드는 그대로 통과합니다.
- * 사진이 없는 환경에서는 DisplayCase 가 병 실루엣을 대신 그립니다.
- *
- * png · webp 를 모두 받습니다. 지금 들어 있는 것은 webp 인데, 원본 PNG 297KB 를
- * 품질 90 으로 옮겨 73KB 가 됐습니다(75% 절감). 눈에 보이는 차이가 있는 픽셀은
- * 0.07% 로, 유리병 그러데이션에도 띠가 생기지 않습니다.
- * 팔레트 PNG 는 더 작지만(60KB) 256색이라 그러데이션이 끊깁니다.
- *
- * 사진은 **투명 여백을 잘라낸 것**이어야 합니다. removebg 원본은 1505x1360 캔버스
- * 가운데에 병이 폭의 40% 안팎으로 앉아 있어서, object-contain 이 캔버스째 칸 폭에
- * 맞추느라 병이 1/3 크기로 줄어듭니다.
+ * `totalElements` 는 **그 분류의 전체 개수**입니다(검색어와 무관).
  */
-const BOTTLE_IMAGES = Object.entries(
-  import.meta.glob<{ default: string }>('../../assets/bottles/*.{png,webp}', {
-    eager: true,
-  }),
-)
-
-/**
- * 파일 이름에 `name` 이 들어간 사진. 없으면 null
- *
- * 순서로 돌려 쓰지 않고 이름으로 찾습니다 — 순서로 붙이면 폴더에 어떤 사진이
- * 들었느냐에 따라 조 말론 자리에 딥티크 병이 섭니다. `name` 은 파일 이름의
- * `브랜드_-_향수명` 부분입니다. 앞 번호와 removebg 가 붙인 꼬리는 받은 곳마다
- * 다를 수 있어서 빼고 적습니다.
- */
-const bottle = (name: string) =>
-  BOTTLE_IMAGES.find(([path]) => path.includes(name))?.[1].default ?? null
-
-/**
- * ⚠️ 백엔드에 진열대 엔드포인트가 아직 없습니다. 화면을 눈으로 확인할 수 있도록
- * 자리표시자를 돌려줍니다. API 가 준비되면 이 함수 본문만 http.get 으로 바꾸세요.
- *
- *   const { data } = await http.get<ShelfItem[]>('/me/shelf')
- */
-export async function getShelfItems(): Promise<ShelfItem[]> {
-  return PLACEHOLDER_SHELF
+interface ShelfItemsResponse {
+  perfumes: ShelfItem[]
+  page: number
+  size: number
+  totalElements: number
 }
 
-/** ⚠️ 백엔드 API 가 붙으면 이 배열을 통째로 지우세요. */
-const PLACEHOLDER_SHELF: ShelfItem[] = [
-  {
-    shelfItemId: 1,
-    perfumeId: 1,
-    name: '조 말론 우드 세이지 앤 씨 솔트',
-    brand: '조말론',
-    brandEn: 'Jo Malone',
-    nameEn: 'Wood Sage & Sea Salt',
-    concentration: 'Eau de Cologne',
-    thumbnailUrl: bottle('Jo_Malone_London_-_Wood_Sage'),
-    category: 'OWNED',
-    representative: true,
-    rating: 4,
-    memo: '출근용으로 제일 자주 쓴다. 두 번 뿌리면 과하고 한 번이 딱 맞다.',
-    memoUpdatedAt: '2026-08-20T00:00:00Z',
-  },
-  {
-    shelfItemId: 2,
-    perfumeId: 2,
-    name: '딥티크 오 드 퍼퓸 오르페옹',
-    brand: '딥티크',
-    brandEn: 'Diptyque',
-    nameEn: 'Orphéon',
-    concentration: 'Eau de Parfum',
-    thumbnailUrl: bottle('Diptyque_-_Orpheon'),
-    category: 'OWNED',
-    representative: false,
-    rating: 5,
-    memo: null,
-    memoUpdatedAt: null,
-  },
-  {
-    shelfItemId: 3,
-    perfumeId: 3,
-    name: '르라보 상탈 33',
-    brand: '르라보',
-    brandEn: 'Le Labo',
-    nameEn: 'Santal 33',
-    concentration: 'Eau de Parfum',
-    thumbnailUrl: bottle('Le_Labo_-_Santal_33'),
-    category: 'OWNED',
-    representative: false,
-    rating: 3,
-    memo: '여름에만 손이 간다. 지속력이 짧아서 오후에 다시 뿌려야 한다.',
-    memoUpdatedAt: '2026-08-28T00:00:00Z',
-  },
-  {
-    shelfItemId: 4,
-    perfumeId: 4,
-    name: '바이레도 블랑쉬',
-    brand: '바이레도',
-    brandEn: 'Byredo',
-    nameEn: 'Blanche',
-    concentration: 'Eau de Parfum',
-    thumbnailUrl: bottle('Byredo_-_Blanche'),
-    category: 'OWNED',
-    representative: false,
-    rating: 4,
-    memo: null,
-    memoUpdatedAt: null,
-  },
-  {
-    shelfItemId: 5,
-    perfumeId: 5,
-    name: '메종 마르지엘라 레이지 선데이 모닝',
-    brand: '메종 마르지엘라',
-    brandEn: 'Maison Margiela',
-    nameEn: 'Lazy Sunday Morning',
-    concentration: 'Eau de Toilette',
-    thumbnailUrl: bottle('Maison_Martin_Margiela_-_Lazy_Sunday_Morning'),
-    category: 'OWNED',
-    representative: false,
-    rating: 5,
-    memo: null,
-    memoUpdatedAt: null,
-  },
-  {
-    shelfItemId: 6,
-    perfumeId: 6,
-    name: '딥티크 필로시코스',
-    brand: '딥티크',
-    brandEn: 'Diptyque',
-    nameEn: 'Philosykos',
-    concentration: 'Eau de Toilette',
-    thumbnailUrl: bottle('Diptyque_-_Philosykos_Eau_de_Toilette'),
-    category: 'TRIED',
-    representative: false,
-    rating: 4,
-    memo: null,
-    memoUpdatedAt: null,
-  },
-  {
-    shelfItemId: 7,
-    perfumeId: 7,
-    name: '샤넬 코코 마드모아젤',
-    brand: '샤넬',
-    brandEn: 'Chanel',
-    nameEn: 'Coco Mademoiselle',
-    concentration: 'Eau de Parfum',
-    thumbnailUrl: bottle('Chanel_-_Coco_Mademoiselle'),
-    category: 'TRIED',
-    representative: false,
-    rating: 3,
-    memo: '시향지에서는 좋았는데 피부에 올리니 소나무가 세게 나온다.',
-    memoUpdatedAt: '2026-09-01T00:00:00Z',
-  },
-  {
-    shelfItemId: 8,
-    perfumeId: 8,
-    name: '디올 미스 디올',
-    brand: '디올',
-    brandEn: 'Dior',
-    nameEn: 'Miss Dior',
-    concentration: 'Eau de Parfum',
-    thumbnailUrl: bottle('Dior_-_Miss_Dior_Eau_de_Parfum'),
-    category: 'TRIED',
-    representative: false,
-    rating: 5,
-    memo: null,
-    memoUpdatedAt: null,
-  },
-  {
-    shelfItemId: 9,
-    perfumeId: 9,
-    name: '이솝 테싯',
-    brand: '이솝',
-    brandEn: 'Aesop',
-    nameEn: 'Tacit',
-    concentration: 'Eau de Parfum',
-    thumbnailUrl: bottle('Aesop_-_Tacit'),
-    category: 'TRIED',
-    representative: false,
-    rating: 4,
-    memo: null,
-    memoUpdatedAt: null,
-  },
-  {
-    shelfItemId: 10,
-    perfumeId: 10,
-    name: '바이레도 집시 워터',
-    brand: '바이레도',
-    brandEn: 'Byredo',
-    nameEn: 'Gypsy Water',
-    concentration: 'Eau de Parfum',
-    thumbnailUrl: bottle('Byredo_-_Gypsy_Water'),
-    category: 'TRIED',
-    representative: false,
-    rating: 3,
-    memo: null,
-    memoUpdatedAt: null,
-  },
-  {
-    shelfItemId: 11,
-    perfumeId: 11,
-    name: '톰포드 네롤리 포르토피노',
-    brand: '톰포드',
-    brandEn: 'Tom Ford',
-    nameEn: 'Neroli Portofino',
-    concentration: 'Eau de Parfum',
-    thumbnailUrl: bottle('Tom_Ford_-_Neroli_Portofino'),
-    category: 'TRIED',
-    representative: false,
-    rating: 4,
-    memo: null,
-    memoUpdatedAt: null,
-  },
-  {
-    shelfItemId: 12,
-    perfumeId: 12,
-    name: '조말론 블랙베리 앤 베이',
-    brand: '조말론',
-    brandEn: 'Jo Malone',
-    nameEn: 'Blackberry & Bay',
-    concentration: 'Eau de Cologne',
-    thumbnailUrl: bottle('Jo_Malone_London_-_Blackberry'),
-    category: 'TRIED',
-    representative: false,
-    rating: 5,
-    memo: '겨울 저녁에 맞다. 낮에 뿌리면 혼자 무겁다.',
-    memoUpdatedAt: '2026-09-03T00:00:00Z',
-  },
-  {
-    shelfItemId: 13,
-    perfumeId: 13,
-    name: '랑방 에끌라 드 아르페쥬',
-    brand: '랑방',
-    brandEn: 'Lanvin',
-    nameEn: "Éclat d'Arpège",
-    concentration: 'Eau de Parfum',
-    thumbnailUrl: bottle('Lanvin_-_Eclat_d_Arpege'),
-    category: 'TRIED',
-    representative: false,
-    rating: 3,
-    memo: null,
-    memoUpdatedAt: null,
-  },
-  {
-    shelfItemId: 14,
-    perfumeId: 14,
-    name: '구찌 블룸',
-    brand: '구찌',
-    brandEn: 'Gucci',
-    nameEn: 'Bloom',
-    concentration: 'Eau de Parfum',
-    thumbnailUrl: bottle('Gucci_-_Gucci_Bloom'),
-    category: 'TRIED',
-    representative: false,
-    rating: 4,
-    memo: null,
-    memoUpdatedAt: null,
-  },
-  {
-    shelfItemId: 15,
-    perfumeId: 15,
-    name: '에르메스 운 자르뎅 수르닐',
-    brand: '에르메스',
-    brandEn: 'Hermès',
-    nameEn: 'Un Jardin sur le Nil',
-    concentration: 'Eau de Toilette',
-    thumbnailUrl: bottle('Hermes_-_Un_Jardin_Sur_Le_Nil'),
-    category: 'TRIED',
-    representative: false,
-    rating: 4,
-    memo: null,
-    memoUpdatedAt: null,
-  },
-  {
-    shelfItemId: 16,
-    perfumeId: 16,
-    name: '에센셜 퍼퓸 나이스 베르가못',
-    brand: '에센셜 퍼퓸',
-    brandEn: 'Essential Parfums',
-    nameEn: 'Nice Bergamote',
-    concentration: 'Eau de Parfum',
-    thumbnailUrl: bottle('Essential_Parfums_-_Nice_Bergamote'),
-    category: 'TRIED',
-    representative: false,
-    rating: 3,
-    memo: null,
-    memoUpdatedAt: null,
-  },
-  {
-    shelfItemId: 17,
-    perfumeId: 17,
-    name: '입생로랑 리브르',
-    brand: '입생로랑뷰티',
-    brandEn: 'Yves Saint Laurent',
-    nameEn: 'Libre',
-    concentration: 'Eau de Parfum',
-    thumbnailUrl: bottle('Yves_Saint_Laurent_-_Libre'),
-    category: 'TRIED',
-    representative: false,
-    rating: 5,
-    memo: null,
-    memoUpdatedAt: null,
-  },
-  {
-    shelfItemId: 18,
-    perfumeId: 18,
-    name: '끌로에 로즈 탄제린',
-    brand: '끌로에',
-    brandEn: 'Chloé',
-    nameEn: 'Rose Tangerine',
-    concentration: 'Eau de Toilette',
-    thumbnailUrl: bottle('Chloe_-_Rose_Tangerine'),
-    category: 'TRIED',
-    representative: false,
-    rating: 4,
-    memo: null,
-    memoUpdatedAt: null,
-  },
-  {
-    shelfItemId: 19,
-    perfumeId: 19,
-    name: '클린 웜 코튼',
-    brand: '클린',
-    brandEn: 'Clean',
-    nameEn: 'Warm Cotton',
-    concentration: 'Eau de Parfum',
-    thumbnailUrl: bottle('Clean_-_Clean_Warm_Cotton'),
-    category: 'TRIED',
-    representative: false,
-    rating: 3,
-    memo: null,
-    memoUpdatedAt: null,
-  },
-  {
-    shelfItemId: 20,
-    perfumeId: 20,
-    name: '산타마리아노벨라 안젤리 디 피렌체',
-    brand: '산타마리아노벨라',
-    brandEn: 'Santa Maria Novella',
-    nameEn: 'Angeli di Firenze',
-    concentration: 'Eau de Cologne',
-    thumbnailUrl: bottle('Santa_Maria_Novella_-_Angeli_di_Firenze'),
-    category: 'TRIED',
-    representative: false,
-    rating: 4,
-    memo: null,
-    memoUpdatedAt: null,
-  },
-  {
-    shelfItemId: 21,
-    perfumeId: 21,
-    name: '르라보 어나더 13',
-    brand: '르라보',
-    brandEn: 'Le Labo',
-    nameEn: 'Another 13',
-    concentration: 'Eau de Parfum',
-    thumbnailUrl: bottle('Le_Labo_-_Another_13'),
-    category: 'TRIED',
-    representative: false,
-    rating: 5,
-    memo: null,
-    memoUpdatedAt: null,
-  },
-  {
-    shelfItemId: 22,
-    perfumeId: 22,
-    name: '몽블랑 레전드',
-    brand: '몽블랑',
-    brandEn: 'Montblanc',
-    nameEn: 'Legend',
-    concentration: 'Eau de Toilette',
-    thumbnailUrl: bottle('Montblanc_-_Legend'),
-    category: 'TRIED',
-    representative: false,
-    rating: 2,
-    memo: null,
-    memoUpdatedAt: null,
-  },
-  {
-    shelfItemId: 23,
-    perfumeId: 23,
-    name: '프라다 캔디',
-    brand: '프라다',
-    brandEn: 'Prada',
-    nameEn: 'Candy',
-    concentration: 'Eau de Parfum',
-    thumbnailUrl: bottle('Prada_-_Prada_Candy'),
-    category: 'WISH',
-    representative: false,
-    rating: null,
-    memo: null,
-    memoUpdatedAt: null,
-  },
-  {
-    shelfItemId: 24,
-    perfumeId: 24,
-    name: '에센셜 퍼퓸 피그 인퓨전',
-    brand: '에센셜 퍼퓸',
-    brandEn: 'Essential Parfums',
-    nameEn: 'Fig Infusion',
-    concentration: 'Eau de Parfum',
-    thumbnailUrl: bottle('Essential_Parfums_-_Fig_Infusion'),
-    category: 'WISH',
-    representative: false,
-    rating: null,
-    memo: null,
-    memoUpdatedAt: null,
-  },
-  {
-    shelfItemId: 25,
-    perfumeId: 25,
-    name: '에센셜 퍼퓸 더 머스크',
-    brand: '에센셜 퍼퓸',
-    brandEn: 'Essential Parfums',
-    nameEn: 'The Musc',
-    concentration: 'Eau de Parfum',
-    thumbnailUrl: bottle('Essential_Parfums_-_The_Musc'),
-    category: 'WISH',
-    representative: false,
-    rating: null,
-    memo: null,
-    memoUpdatedAt: null,
-  },
-]
+/** 백엔드 `MAX_PAGE_SIZE`. 더 큰 값을 보내도 서버가 여기로 깎습니다 */
+const MAX_PAGE_SIZE = 100
+
+/**
+ * 내 진열대 전부 (SHF-02).
+ *
+ * **분류마다 한 번씩, 세 번 부릅니다.** 서버는 `category` 를 필수로 받아 한 분류씩만
+ * 주는데, 진열대 화면은 세 칸을 한 벽에 이어 놓고 검색도 세 칸에 함께 겁니다.
+ *
+ * 서버 페이지네이션을 그대로 쓰지 않는 이유가 그 검색입니다 — **목록 API 에 검색어
+ * 파라미터가 없습니다.** 페이지 단위로 받아 오면 지금 페이지 안에서만 걸러져,
+ * 다른 쪽에 있는 결과가 조용히 사라집니다. 그래서 한 분류를 통째로 받아 두고
+ * 거르는 일은 화면이 합니다(`useShelfBrowser`).
+ *
+ * 한 분류가 100개를 넘으면 뒷장을 이어 받습니다. 대부분 한 번으로 끝납니다.
+ */
+export async function getShelfItems(): Promise<ShelfItem[]> {
+  const perCategory = await Promise.all(
+    SHELF_CATEGORIES.map(({ value }) => fetchCategory(value)),
+  )
+  return perCategory.flat()
+}
+
+async function fetchCategory(category: ShelfCategory): Promise<ShelfItem[]> {
+  const first = await fetchPage(category, 0)
+  const items = [...first.perfumes]
+
+  // 서버가 size 를 깎을 수 있으므로 **응답이 알려준 size** 로 남은 장수를 셉니다
+  const pageSize = first.size > 0 ? first.size : MAX_PAGE_SIZE
+  const pages = Math.ceil(first.totalElements / pageSize)
+
+  for (let page = 1; page < pages; page += 1) {
+    const next = await fetchPage(category, page)
+    items.push(...next.perfumes)
+  }
+
+  return items
+}
+
+async function fetchPage(category: ShelfCategory, page: number) {
+  const { data } = await http.get<ShelfItemsResponse>('/users/me/shelf-items', {
+    params: { category, page, size: MAX_PAGE_SIZE },
+  })
+  return data
+}
+
+/**
+ * 고른 한 병의 전부 (SHF-09). 적합도 · 메모 · 향조는 여기에만 있습니다.
+ *
+ * 목록이 준 값(이름 · 브랜드 · 사진)은 그대로 다시 오므로, 화면은 목록 값을 먼저
+ * 그려 두고 이 응답이 오면 덮어씁니다 — 카드를 넘길 때마다 패널이 비지 않습니다.
+ */
+export async function getShelfItemDetail(
+  shelfItemId: number,
+): Promise<ShelfItemDetail> {
+  const { data } = await http.get<ShelfItemDetail>(
+    `/users/me/shelf-items/${shelfItemId}`,
+  )
+  return data
+}
+
+/*
+ * ── 항목 하나짜리 변경 (SHF-03 · SHF-05 · SHF-12) ────────────
+ *
+ * 전부 로그인이 필요하고, 응답에 바꾼 값이 그대로 실려 옵니다. 화면이 스스로
+ * 계산하지 않고 이 값을 쓰면 서버와 어긋날 일이 없습니다.
+ *
+ * ⚠️ 응답의 항목 id 이름이 엔드포인트마다 다릅니다 — 분류 변경은 `shelfItemId`,
+ * 적합도는 `userPerfumeId` 입니다. 같은 값이고 우리는 보낸 id 를 이미 알고 있어서
+ * 쓰지 않지만, 응답을 그대로 믿고 꺼내 쓰면 undefined 가 됩니다.
+ */
+
+/** PATCH /users/me/shelf-items/{id}/ownership 응답 */
+export interface OwnershipChangeResponse {
+  shelfItemId: number
+  ownershipStatus: ShelfCategory
+  updatedAt: string
+}
+
+/** PUT /users/me/shelf-items/{id}/fit-rating 응답 */
+export interface FitRatingResponse {
+  userPerfumeId: number
+  fitRating: number
+  updatedAt: string
+}
+
+/** 분류 변경 (SHF-03). */
+export async function changeShelfCategory(
+  shelfItemId: number,
+  category: ShelfCategory,
+): Promise<OwnershipChangeResponse> {
+  const { data } = await http.patch<OwnershipChangeResponse>(
+    `/users/me/shelf-items/${shelfItemId}/ownership`,
+    { ownershipStatus: category },
+  )
+  return data
+}
+
+/**
+ * 취향 적합도 등록 · 수정 (SHF-12). 1.0~5.0 을 0.5 단위로 보냅니다.
+ *
+ * 등록과 수정이 같은 요청입니다(`PUT`) — 화면이 "처음인지" 를 알 필요가 없습니다.
+ */
+export async function setShelfFitRating(
+  shelfItemId: number,
+  rating: number,
+): Promise<FitRatingResponse> {
+  const { data } = await http.put<FitRatingResponse>(
+    `/users/me/shelf-items/${shelfItemId}/fit-rating`,
+    { fitRating: rating },
+  )
+  return data
+}
+
+/** 취향 적합도 지우기. 본문 없이 204 로 답합니다 */
+export async function removeShelfFitRating(shelfItemId: number): Promise<void> {
+  await http.delete(`/users/me/shelf-items/${shelfItemId}/fit-rating`)
+}
+
+/*
+ * ── 등록 · 저장 해제 · 메모 (SHF-01 · SHF-04 · SHF-10) ───────
+ */
+
+/** POST /users/me/shelf-items 응답 */
+export interface ShelfItemCreateResponse {
+  shelfItemId: number
+  perfumeId: number
+  ownershipStatus: ShelfCategory
+  createdAt: string
+}
+
+/**
+ * 진열대에 향수 담기 (SHF-01).
+ *
+ * **분류만 함께 보냅니다.** 적합도 · 메모는 각자 다른 엔드포인트라 등록 화면이
+ * 한 번에 받은 값이라도 요청이 나뉩니다 — `registerShelfItem` 을 쓰는 쪽(`useShelfActions`)이
+ * 순서대로 보냅니다.
+ *
+ * 이미 담은 향수면 409 입니다.
+ */
+export async function createShelfItem(
+  perfumeId: number,
+  category: ShelfCategory,
+): Promise<ShelfItemCreateResponse> {
+  const { data } = await http.post<ShelfItemCreateResponse>(
+    '/users/me/shelf-items',
+    { perfumeId, ownershipStatus: category },
+  )
+  return data
+}
+
+/** 진열대에서 빼기 (SHF-04). 본문 없이 204 로 답합니다 */
+export async function deleteShelfItem(shelfItemId: number): Promise<void> {
+  await http.delete(`/users/me/shelf-items/${shelfItemId}`)
+}
+
+/**
+ * 메모 작성 (SHF-10). **이미 메모가 있으면 409** 입니다.
+ *
+ * 작성과 수정이 다른 요청이라 부르는 쪽이 어느 쪽인지 알아야 합니다. 상세 응답의
+ * `memo` 가 `null` 인지로 가릅니다 — 따로 `GET .../memo` 를 부를 필요는 없습니다.
+ */
+export async function createShelfMemo(
+  shelfItemId: number,
+  content: string,
+): Promise<void> {
+  await http.post(`/users/me/shelf-items/${shelfItemId}/memo`, { content })
+}
+
+/** 메모 수정. **메모가 없으면 404** 입니다 */
+export async function updateShelfMemo(
+  shelfItemId: number,
+  content: string,
+): Promise<void> {
+  await http.patch(`/users/me/shelf-items/${shelfItemId}/memo`, { content })
+}
+
+/**
+ * 메모 지우기.
+ *
+ * 빈 글을 저장하는 길이 없습니다 — 서버가 `@NotBlank` 로 막습니다. 그래서 화면에서
+ * 메모를 비우는 것은 저장이 아니라 **삭제**입니다.
+ */
+export async function deleteShelfMemo(shelfItemId: number): Promise<void> {
+  await http.delete(`/users/me/shelf-items/${shelfItemId}/memo`)
+}

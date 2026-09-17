@@ -1,9 +1,12 @@
 package com.hyanghae.backend.perfume.service;
 
+import com.hyanghae.backend.global.exception.BusinessException;
+import com.hyanghae.backend.perfume.dto.response.BrandDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.BrandSummaryResponse;
 import com.hyanghae.backend.perfume.dto.response.BrandsResponse;
 import com.hyanghae.backend.perfume.repository.BrandRepository;
 import com.hyanghae.backend.perfume.repository.BrandSort;
+import com.hyanghae.backend.perfume.exception.PerfumeErrorCode;
 import com.hyanghae.backend.perfume.repository.BrandSummaryRow;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -48,6 +51,24 @@ public class BrandService {
                         row.getNameKo(),
                         row.getLogoUrl()))
                 .toList());
+    }
+
+    /**
+     * 브랜드 한 곳입니다. 없거나 내려간 브랜드는 404 입니다.
+     *
+     * <p>목록에서 골라 쓰지 않고 따로 두는 이유는 크기입니다. 브랜드가 7,793개라 상세 화면
+     * 하나를 그리려고 전체 목록을 받아 오게 됩니다.
+     */
+    @Transactional(readOnly = true)
+    public BrandDetailResponse findOne(Long brandId) {
+        return brandRepository.findDetailById(brandId)
+                .map(row -> new BrandDetailResponse(
+                        row.getBrandId(),
+                        row.getName(),
+                        row.getNameKo(),
+                        row.getLogoUrl(),
+                        row.getPerfumeCount()))
+                .orElseThrow(() -> new BusinessException(PerfumeErrorCode.PERFUME_BRAND_NOT_FOUND));
     }
 
     /**

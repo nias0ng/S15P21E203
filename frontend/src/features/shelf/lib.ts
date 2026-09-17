@@ -43,7 +43,10 @@ export function formatShelfDate(iso: string | null): string | null {
  * (최소 두 글자) 이상일 때만 뗍니다. 한두 글자가 우연히 겹친 이름까지 자르지 않으려는 것입니다.
  * 이름이 브랜드뿐이면 비우지 않고 그대로 둡니다.
  */
-export function nameWithoutBrand(name: string, brand: string): string {
+export function nameWithoutBrand(name: string, brand: string | null): string {
+  // 브랜드를 모르면 뗄 것도 없습니다
+  if (brand === null) return name
+
   const key = brand.replace(/\s+/g, '').toLowerCase()
   const words = name.trim().split(/\s+/)
   const least = Math.max(2, Math.ceil(key.length / 2))

@@ -16,7 +16,18 @@ type PerfumeGridProps = {
    */
   emptyAction?: React.ReactNode
   /** 와이어프레임 A33 은 5열, A09 검색 결과는 목록형이라 호출부에서 정합니다. */
-  columns?: 4 | 5
+  columns?: 5 | 6
+  /**
+   * 카드에 순위 숫자를 얹을지.
+   *
+   * 향수 목록(A33)은 **필터를 걸든 안 걸든 켭니다.** `보유` · `희망` · `조회` 를
+   * 고르면 백엔드가 "기록이 많은 순" 으로 줄 세워 주고, 성별은 그 순위 안에서
+   * 걸러 내기만 하므로 `보유 + 여성` 의 1번도 그 조건 안의 1위입니다.
+   *
+   * 검색 결과(A09)는 켜지 않습니다 — 순서가 인기가 아니라 검색 적합도라,
+   * 숫자가 붙으면 "검색어와 상관없는 전체 순위" 로 잘못 읽힙니다.
+   */
+  rankable?: boolean
 }
 
 /**
@@ -30,18 +41,30 @@ export function PerfumeGrid({
   isPending = false,
   empty,
   columns = 5,
+  rankable = false,
   emptyAction,
 }: PerfumeGridProps) {
-  const gridClass =
-    columns === 5
-      ? 'grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-5'
-      : 'grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-4'
+  /*
+    열 수가 곧 카드 크기입니다 — 카드는 폭을 격자에서 받고, 사진 칸이 3:4 라
+    높이가 폭을 따라옵니다. 그래서 카드를 줄이려면 열을 늘립니다.
+    1440 기준 5열 276 · 6열 228 입니다. **6열이 상한입니다** — 더 촘촘하게
+    깔아 봤더니(8열 166) 병이 무엇인지 알아보기 어려웠습니다.
+  */
+  const gridClass = {
+    5: 'grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-5',
+    6: 'grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-6',
+  }[columns]
 
   if (isPending) {
     return (
       <div className={gridClass}>
+        {/*
+          카드와 같은 높이여야 자료가 도착할 때 격자가 안 튑니다. 카드는 사진 칸이
+          정사각이라 폭에 따라 높이가 변하므로 고정 px 대신 같은 방식으로 셉니다 —
+          사진(폭과 같은 높이) + 안쪽 여백 · 사이 간격 · 이름 두 줄 자리.
+        */}
         {Array.from({ length: columns * 2 }, (_, index) => (
-          <Skeleton key={index} className="h-43.75" />
+          <Skeleton key={index} className="aspect-[1/1.29] w-full" />
         ))}
       </div>
     )
@@ -61,11 +84,32 @@ export function PerfumeGrid({
 
   return (
     <ul className={gridClass}>
-      {items.map((perfume) => (
+      {items.map((perfume, index) => (
         <li key={perfume.perfumeId}>
           <PerfumeCard
+            /*
+              **영문 이름을 크게, 한국어 이름을 그 아래 작게** 적습니다. 백엔드는 둘 다
+              보내고 무엇을 크게 적을지는 화면이 정합니다(DTO 주석). 영문 이름은 병에
+              적힌 글자라 사진과 바로 맞춰 읽히고, 한국어 이름이 그 아래에서 "무슨
+              향수인지" 를 받아 줍니다.
+
+              한국어 이름이 없는 향수는 아랫줄이 비고, 두 값이 같을 때 같은 글자가
+              두 줄로 겹치지 않게 거르는 일은 PerfumeCard 가 합니다.
+            */
+            /*
+              ⚠️ 쪽 넘김이 붙으면 2쪽도 1번부터 시작합니다 — 그때는 쪽 번호를 곱해
+              실제 순위로 바꿔야 합니다. 지금 순위를 다는 화면(향수 목록)은 첫 쪽만
+              불러옵니다.
+            */
+            rank={rankable ? index + 1 : undefined}
             name={perfume.name}
-            brand={perfume.brandName}
+            subName={perfume.nameKo}
+            /*
+              브랜드는 **일부러 넘기지 않습니다.** 목록에서는 향수를 고르는 것이지
+              브랜드를 고르는 것이 아니라, 줄이 늘어나 카드만 길어졌습니다.
+              브랜드로 좁히는 길은 위 필터(`?brand=`)와 브랜드 화면에 따로 있습니다.
+              PerfumeCard 는 brand 를 그대로 받을 수 있습니다 — 컬렉션 상세는 씁니다.
+            */
             // 이미지가 없는 향수가 있습니다. 그때는 Thumbnail 이 빈 상자를 그립니다.
             thumbnailUrl={perfume.imageUrl}
             to={toPerfumeDetail(perfume.perfumeId)}

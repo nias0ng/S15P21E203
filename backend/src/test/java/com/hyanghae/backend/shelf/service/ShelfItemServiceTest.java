@@ -11,6 +11,7 @@ import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.perfume.dto.response.PerfumeNoteResponse;
 import com.hyanghae.backend.perfume.entity.Perfume;
+import com.hyanghae.backend.perfume.entity.PerfumeImageType;
 import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
 import com.hyanghae.backend.perfume.repository.PerfumeNoteRepository;
@@ -202,7 +203,8 @@ class ShelfItemServiceTest {
                 pageRequest
         ))
                 .thenReturn(new PageImpl<>(List.of(shelfItem), pageRequest, 3));
-        when(perfumeImageRepository.findOrderedByPerfumeIds(List.of(PERFUME_ID)))
+        when(perfumeImageRepository.findOrderedByPerfumeIdsPreferring(
+                List.of(PERFUME_ID), PerfumeImageType.PAPER_TEXTURE))
                 .thenReturn(List.of(new PerfumeImageUrl(PERFUME_ID, "thumbnail.jpg")));
 
         ShelfItemsResponse response = shelfItemService.findMine(OwnershipStatus.OWNED, 1, 2);
@@ -279,7 +281,8 @@ class ShelfItemServiceTest {
         when(currentUser.id()).thenReturn(Optional.of(USER_ID));
         when(userPerfumeRepository.findDetailByIdAndUserId(SHELF_ITEM_ID, USER_ID))
                 .thenReturn(Optional.of(baseDetail));
-        when(perfumeImageRepository.findOrderedByPerfumeIds(List.of(PERFUME_ID)))
+        when(perfumeImageRepository.findOrderedByPerfumeIdsPreferring(
+                List.of(PERFUME_ID), PerfumeImageType.PAPER_TEXTURE))
                 .thenReturn(List.of(new PerfumeImageUrl(PERFUME_ID, "thumbnail.jpg")));
         when(perfumeNoteRepository.findByPerfumeId(PERFUME_ID)).thenReturn(scentNotes);
         when(memoRepository.findByUserPerfumeId(SHELF_ITEM_ID))

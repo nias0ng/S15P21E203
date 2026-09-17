@@ -10,8 +10,17 @@ import {
   type RankingFilter,
 } from '@/features/perfume'
 import { ROUTES } from '@/shared/config/routes'
+import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
-import { SearchField } from '@/shared/ui/SearchField'
+import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
+
+/**
+ * 한 화면에 깔 향수 수. 백엔드 기본값은 20 입니다.
+ *
+ * 6열이라 30이면 정확히 다섯 줄로 떨어집니다 — 20이면 마지막 줄에 두 장만 남아
+ * 격자 오른쪽이 비어 끝이 잘린 것처럼 보였습니다.
+ */
+const PAGE_SIZE = 30
 
 /**
  * 향수 (와이어프레임 A33 — 상단 메뉴 [향수] 목적지)
@@ -45,6 +54,7 @@ export default function PerfumeListPage() {
       ranking: ranking ?? undefined,
       gender: gender ?? undefined,
       brand: brand ?? undefined,
+      size: PAGE_SIZE,
     }),
   )
 
@@ -66,10 +76,17 @@ export default function PerfumeListPage() {
     <div className="space-y-3.75">
       <h1 className="sr-only">향수</h1>
 
-      {/* 헤더에 검색창이 없고 검색은 각 페이지 안에 있다는 와이어프레임 규칙 */}
+      {/*
+        헤더에 검색창이 없고 검색은 각 페이지 안에 있다는 와이어프레임 규칙.
+
+        폭을 본문 끝까지 늘리지 않고 **가운데**에 둡니다 — 1440 에서 꽉 채우면
+        입력칸 하나가 화면 위쪽을 가로지르는 가장 큰 덩이가 되어, 아래 향수 격자보다
+        먼저 눈에 듭니다. 가운데에 두는 것은 메인(3D 향 지도)과 같은 자리입니다.
+      */}
       <SearchField
+        className={cn(SEARCH_FIELD_LIST_WIDTH, 'mx-auto w-full')}
         label="향수명 또는 브랜드명으로 검색"
-        placeholder="향수명 · 브랜드로 검색"
+        placeholder="향수명 · 브랜드로 검색해주세요."
         onSearch={(keyword) => {
           const trimmed = keyword.trim()
           if (!trimmed) return
@@ -107,23 +124,32 @@ export default function PerfumeListPage() {
         onGenderChange={setGender}
       />
 
-      <hr className="border-line" />
+      {/*
+        유리판. 향수 격자는 이 판 위에 놓입니다 — 어두운 방 안의 밝은 표면이라
+        판 안쪽은 색 토큰이 다시 밝은 화면 값으로 돌아갑니다
+        (styles/scent-display.css 의 .scent-glass).
 
-      <section className="space-y-2.5">
-        <div className="flex items-baseline gap-2.5">
+        구분선(hr)을 걷어냈습니다. 판 테두리가 이미 "여기서부터 목록" 을 긋고 있어
+        선을 또 그으면 경계가 두 겹이 됩니다.
+      */}
+      <section className="scent-glass rounded-[36px] p-7.5 pt-6.25">
+        <div className="mb-6.25 flex items-baseline gap-2.5">
           {/* 글자 크기·굵기는 S15P21E203-162 타이포 스케일에서 확정합니다 */}
           <h2 className="text-ink font-serif text-lg">
             {hasFilter ? '조건에 맞는 향수' : '최근 인기 향수'}
           </h2>
           {items.length > 0 && (
-            <span className="text-ink-muted text-xs">{items.length}개</span>
+            <span className="text-ink-muted text-caption">
+              {items.length}개
+            </span>
           )}
         </div>
 
         <PerfumeGrid
           items={items}
           isPending={isPending}
-          columns={5}
+          columns={6}
+          rankable
           emptyAction={
             hasFilter && (
               <Button variant="outline" onClick={resetFilters}>
