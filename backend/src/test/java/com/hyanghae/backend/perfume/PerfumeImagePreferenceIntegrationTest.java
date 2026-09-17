@@ -117,6 +117,97 @@ class PerfumeImagePreferenceIntegrationTest {
     }
 
     /**
+     * 같은 종류가 여러 장이면 {@code display_order} 가 작은 것이 뽑힙니다.
+     *
+     * <p>향수 한 건에 종이 질감이 두 장 이상 올 수 있습니다. 순서를 정하지 않으면 매번 다른
+     * 사진이 나와 새로 고칠 때마다 화면이 바뀝니다.
+     */
+    @Test
+    void picksTheLowestDisplayOrderAmongTheSameType() {
+        long perfumeId = 10;
+        insertPerfume(perfumeId, "종이 질감이 여러 장인 향수");
+        insertImage(perfumeId, "paper-later.png", 5, "PAPER_TEXTURE");
+        insertImage(perfumeId, "paper-first.png", 2, "PAPER_TEXTURE");
+        insertImage(perfumeId, "original.png", 1, "ORIGINAL");
+
+        assertThat(pickOne(perfumeId, PerfumeImageType.PAPER_TEXTURE))
+                .isEqualTo("paper-first.png");
+    }
+
+    /**
+     * <b>종류가 {@code display_order} 보다 먼저입니다.</b> 종이 질감의 순서가 아무리 뒤여도
+     * 일반 이미지보다 앞서야 합니다.
+     *
+     * <p>두 조건의 우선순위가 뒤바뀌면 실제 데이터(일반 1번 · 종이 질감 2번)에서 고친 적이
+     * 없는 것처럼 보입니다.
+     */
+    @Test
+    void prefersTypeOverDisplayOrder() {
+        long perfumeId = 11;
+        insertPerfume(perfumeId, "종이 질감이 한참 뒤인 향수");
+        insertImage(perfumeId, "original.png", 1, "ORIGINAL");
+        insertImage(perfumeId, "paper.png", 99, "PAPER_TEXTURE");
+
+        assertThat(pickOne(perfumeId, PerfumeImageType.PAPER_TEXTURE)).isEqualTo("paper.png");
+    }
+
+    /**
+     * {@code display_order} 가 비어 있는 행은 뒤로 밀립니다({@code NULLS LAST}).
+     *
+     * <p>PostgreSQL 은 기본적으로 {@code NULL} 을 오름차순의 <b>마지막</b>에 두지만, 그 기본값에
+     * 기대지 않고 쿼리에 적어 두었습니다. 여기서 확인합니다.
+     */
+    @Test
+    void pushesRowsWithoutDisplayOrderToTheBack() {
+        long perfumeId = 12;
+        insertPerfume(perfumeId, "순서가 빈 행이 있는 향수");
+        insertImage(perfumeId, "paper-no-order.png", null, "PAPER_TEXTURE");
+        insertImage(perfumeId, "paper-ordered.png", 3, "PAPER_TEXTURE");
+
+        assertThat(pickOne(perfumeId, PerfumeImageType.PAPER_TEXTURE))
+                .isEqualTo("paper-ordered.png");
+    }
+
+    /**
+     * 종류도 순서도 같으면 {@code image_id} 로 확정합니다. 정하지 않으면 매번 다른 사진이
+     * 나올 수 있습니다.
+     */
+    @Test
+    void breaksTiesByImageId() {
+        long perfumeId = 13;
+        insertPerfume(perfumeId, "완전히 같은 두 행인 향수");
+        long firstId = insertImage(perfumeId, "paper-a.png", 2, "PAPER_TEXTURE");
+        insertImage(perfumeId, "paper-b.png", 2, "PAPER_TEXTURE");
+
+        assertThat(pickOne(perfumeId, PerfumeImageType.PAPER_TEXTURE)).isEqualTo("paper-a.png");
+        assertThat(firstId).isPositive();
+    }
+
+    /**
+     * 향수 번호를 하나도 주지 않으면 빈 결과입니다. 부르는 쪽들이 미리 걸러 내지만, 저장소가
+     * 스스로 터지지 않아야 합니다.
+     */
+    @Test
+    void returnsNothingForAnEmptyIdList() {
+        assertThat(perfumeImageRepository
+                .findOrderedByPerfumeIdsPreferring(List.of(), PerfumeImageType.PAPER_TEXTURE))
+                .isEmpty();
+    }
+
+    /**
+     * 부르는 쪽이 하는 것과 같은 방식으로 향수 한 건의 첫 행을 고릅니다.
+     */
+    private String pickOne(long perfumeId, PerfumeImageType preferred) {
+        return perfumeImageRepository
+                .findOrderedByPerfumeIdsPreferring(List.of(perfumeId), preferred)
+                .stream()
+                .filter(image -> image.imageUrl() != null)
+                .map(PerfumeImageUrl::imageUrl)
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
      * 부르는 쪽들은 향수별 <b>첫 행</b>만 취합니다. 같은 방식으로 추립니다.
      */
     private Map<Long, String> pick(PerfumeImageType preferred) {
@@ -136,11 +227,13 @@ class PerfumeImagePreferenceIntegrationTest {
                 "INSERT INTO perfumes (perfume_id, name, is_active) VALUES (?, ?, TRUE)", id, name);
     }
 
-    private void insertImage(long perfumeId, String url, int displayOrder, String type) {
-        jdbcTemplate.update("""
+    /** 넣은 {@code image_id} 를 돌려줍니다. 동점일 때의 순서를 확인하는 데 씁니다. */
+    private long insertImage(long perfumeId, String url, Integer displayOrder, String type) {
+        return jdbcTemplate.queryForObject("""
                 INSERT INTO perfume_images (perfume_id, image_url, display_order, image_type)
                 VALUES (?, ?, ?, ?)
-                """, perfumeId, url, displayOrder, type);
+                RETURNING image_id
+                """, Long.class, perfumeId, url, displayOrder, type);
     }
 
     private void clearData() {
