@@ -68,8 +68,6 @@ export interface ShelfItem {
   concentration?: string
   thumbnailUrl: string | null
   category: ShelfCategory
-  /** 대표 향수는 한 번에 하나. 보유 중 칸에만 표시됩니다 (A13 주석). */
-  representative: boolean
 }
 
 /**

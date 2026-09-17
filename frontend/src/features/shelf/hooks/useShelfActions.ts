@@ -8,13 +8,11 @@ import {
   deleteShelfMemo,
   removeShelfFitRating,
   setShelfFitRating,
-  setShelfRepresentative,
   updateShelfMemo,
 } from '../api'
 import { shelfKeys } from '../queries'
 import type {
   ShelfCategory,
-  ShelfItem,
   ShelfItemDetail,
   ShelfRegisterInput,
 } from '../types'
@@ -118,47 +116,11 @@ export function useShelfActions() {
   })
 
   /**
-   * 대표 향수 지정 (SHF-05).
-   *
-   * 대표는 한 번에 하나라 **다른 향수의 표시도 함께 내려야** 합니다. 서버가 먼저
-   * 있던 대표를 풀어 주는데, 화면도 같은 규칙으로 미리 그려 둡니다.
-   */
-  const representative = useMutation({
-    mutationFn: ({ shelfItemId }: { shelfItemId: number }) =>
-      setShelfRepresentative(shelfItemId, true),
-
-    onMutate: async ({ shelfItemId }) => {
-      await queryClient.cancelQueries({ queryKey: shelfKeys.all })
-      const previousItems = queryClient.getQueryData<ShelfItem[]>(
-        shelfKeys.items(),
-      )
-
-      queryClient.setQueryData<ShelfItem[]>(shelfKeys.items(), (items) =>
-        items?.map((item) => ({
-          ...item,
-          representative: item.shelfItemId === shelfItemId,
-        })),
-      )
-      patchDetail(shelfItemId, (item) => ({ ...item, representative: true }))
-
-      return { previousItems }
-    },
-
-    onError: (_error, { shelfItemId }, context) => {
-      if (context?.previousItems !== undefined) {
-        queryClient.setQueryData(shelfKeys.items(), context.previousItems)
-      }
-      patchDetail(shelfItemId, (item) => ({ ...item, representative: false }))
-    },
-  })
-
-  /**
    * 분류 변경 (SHF-03).
    *
    * 여기만 낙관적으로 그리지 않고 **목록을 다시 받습니다.** 분류를 옮기면 향수가
-   * 다른 칸으로 걸어가고, 대표였다면 서버가 대표 지정까지 풉니다. 두 가지가 겹쳐서
-   * 화면이 미리 계산하면 어긋날 자리가 생깁니다. 모달을 닫고 벽이 다시 그려지는
-   * 동작이라 한 박자 늦어도 어색하지 않습니다.
+   * 다른 칸으로 걸어가서, 화면이 미리 계산하면 어긋날 자리가 생깁니다. 모달을 닫고
+   * 벽이 다시 그려지는 동작이라 한 박자 늦어도 어색하지 않습니다.
    */
   const category = useMutation({
     mutationFn: ({
@@ -307,9 +269,8 @@ export function useShelfActions() {
     },
 
     /*
-     * 성공이든 실패든 다시 받습니다. 분류를 옮기면 향수가 다른 칸으로 걸어가고
-     * 대표 지정이 풀릴 수 있으며, 절반만 반영된 경우에는 화면이 무엇이 남았는지
-     * 스스로 알 수 없습니다.
+     * 성공이든 실패든 다시 받습니다. 분류를 옮기면 향수가 다른 칸으로 걸어가고,
+     * 절반만 반영된 경우에는 화면이 무엇이 남았는지 스스로 알 수 없습니다.
      */
     onSettled: (_data, _error, { shelfItemId }) => {
       void queryClient.invalidateQueries({ queryKey: shelfKeys.items() })
@@ -319,5 +280,5 @@ export function useShelfActions() {
     },
   })
 
-  return { rating, representative, category, register, remove, edit }
+  return { rating, category, register, remove, edit }
 }
