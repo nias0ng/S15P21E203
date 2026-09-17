@@ -263,3 +263,77 @@ def structure(text, *, timeout=DEFAULT_TIMEOUT, prompt_path=PROMPT_PATH, post=No
     except (KeyError, IndexError, TypeError) as exc:
         LOGGER.error("GMS 응답에 choices[0].message.content 가 없다: %s", exc)
     return None
+
+
+# ---------------------------------------------------------------------------
+# ⑤단계 — 사전이 못 받은 표현을 accord 로 추정
+# ---------------------------------------------------------------------------
+ESTIMATOR_PROMPT_PATH = pathlib.Path(__file__).resolve().parent / "data" / "estimator_prompt_v1.txt"
+ESTIMATOR_TOP_N = 3          # 표현 하나가 만들 accord 개수 상한. 측정 기록 20번의 E3
+ESTIMATOR_TIMEOUT = 8.0      # [측정] 호출 지연 중앙 1.16s · 최대 3.43s (측정 기록 20번)
+
+
+def estimate_accords(expression, accords, *, top_n=ESTIMATOR_TOP_N,
+                     timeout=ESTIMATOR_TIMEOUT, prompt_path=ESTIMATOR_PROMPT_PATH,
+                     post=None):
+    """한국어 향 표현 하나를 accord 로 추정한다. dict 또는 None.
+
+    expression : str            사전이 못 받은 표현 하나
+    accords    : list[str]      고를 수 있는 accord 이름. 목록 밖은 버린다
+    top_n      : int            돌려줄 최대 개수. LLM 이 확신 순으로 낸다
+    post       : callable|None  네트워크를 대신할 함수. 검증 스크립트가 쓴다
+
+    반환 — `{"accords": [...], "reasoning": str}`. **엔진의 `estimator` 계약이다.**
+    향과 무관한 표현이면 `accords` 가 비고, 그때 엔진은 그 표현을 건너뛴다.
+
+    **실패하면 None 이다.** `structure()` 와 같은 관례다 — 예외를 올리지 않고 로그만
+    남긴다. 부른 쪽은 그 표현을 못 푼 것으로 두고 넘어가면 된다.
+
+    **이 함수는 `spec.md` 1장의 예외다.** 1장은 *"매핑은 사전이 하고 LLM 은 구조화만
+    한다"* 인데 여기서는 LLM 이 매핑을 한다. 근거와 한계는 `DECISIONS.md` N15 ·
+    측정 기록 20번에 있다. 그래서 결과에 `tier="LLM"` 이 붙고 `rationale` 은 비며
+    설명은 `llm_reasoning` 으로 따로 나간다 — 사전의 근거와 섞이지 않는다.
+    """
+    api_key = os.environ.get("GMS_API_KEY")
+    if not api_key:
+        LOGGER.warning("GMS_API_KEY 가 없어 ⑤단계 추정을 건너뛴다")
+        return None
+
+    body = (load_prompt(prompt_path)
+            .replace("%ACCORDS%", "\n".join(f"- {a}" for a in accords))
+            .replace("%EXPRESSION%", str(expression)))
+    payload = {"model": os.environ.get("GMS_MODEL", DEFAULT_MODEL),
+               "messages": [{"role": "user", "content": body}]}
+    endpoint = os.environ.get("GMS_ENDPOINT", DEFAULT_ENDPOINT)
+    send = post or _post_json
+
+    try:
+        response = send(endpoint, payload, api_key, timeout)
+        parsed = parse_content(response["choices"][0]["message"]["content"])
+        if not isinstance(parsed, dict):
+            raise Stage1Error("NOT_OBJECT", f"객체가 아니다: {type(parsed).__name__}")
+        allowed = set(accords)
+        got = [a for a in (parsed.get("accords") or []) if a in allowed][:top_n]
+        return {"accords": got, "reasoning": str(parsed.get("reasoning") or "")}
+    except urllib.error.HTTPError as exc:
+        LOGGER.error("⑤단계 추정 HTTP %s — 이 표현은 못 푼 것으로 둔다", exc.code)
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        LOGGER.error("⑤단계 추정 호출 실패 %s: %s", type(exc).__name__, exc)
+    except Stage1Error as exc:
+        LOGGER.error("⑤단계 추정 출력이 형식에 안 맞는다 %s: %s", exc.code, exc)
+    except (KeyError, IndexError, TypeError) as exc:
+        LOGGER.error("⑤단계 추정 응답에 choices[0].message.content 가 없다: %s", exc)
+    return None
+
+
+def make_estimator(index, **kwargs):
+    """엔진이 바로 넣을 수 있는 `estimator` 를 만든다. callable.
+
+        out = nlr_engine.recommend(index, text, structured,
+                                   estimator=llm_stage1.make_estimator(index))
+
+    accord 목록을 인덱스에서 꺼내 고정해 둔다. 엔진은 accord 이름을 모르는 함수를
+    원하지 않는다 — 목록 밖 값은 어차피 버려진다.
+    """
+    accords = list(index["accords"])
+    return lambda expression: estimate_accords(expression, accords, **kwargs)

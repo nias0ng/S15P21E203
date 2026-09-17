@@ -33,6 +33,7 @@ import json
 import logging
 import re
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -48,6 +49,13 @@ MIN_RESULTS = 3           # [측정] 이 아래로 내려가면 완화 사다리
 PEOPLE_MIN = 10           # [측정] 평가자 문턱. 커버리지 손실 0.3%p
 BRAND_CAP = 1             # [제안] 브랜드당 최대 개수
 MIN_CORE_FOR_AND = 2      # AND 를 쓸 최소 조건 수. 하나뿐이면 SINGLE_BROAD 로 간다
+
+# ⑤단계 미매칭 추정을 동시에 몇 개까지 부를지. 표현 하나당 호출 하나다.
+# [측정] 한 문장의 미매칭 표현은 중앙 2~3개 · 최대 7개였다(측정 기록 20번).
+# 순차로 부르면 문장당 중앙 2.3~3.5초가 붙어 실사용 2.1% 가 8초 예산을 넘었다.
+# GMS 한도는 분당 30,000요청(= 초당 500)이라 이 동시성은 1.4% 수준이다 [측정 2026-09-17].
+# 1 로 두면 순차로 돈다 — 결과는 같고 지연만 늘어난다.
+ESTIMATE_MAX_WORKERS = 8
 
 # ①단계 구조화 결과에서 이 엔진이 실제로 읽는 칸. 나머지(context·performance)는 안 읽는다 —
 # 계절 데이터가 0건이라 아직 검색에 못 쓴다(spec 6장 제약 1).
@@ -675,21 +683,45 @@ def recommend(index, text, structured=None, top_k=TOP_K, estimator=None):
     }
 
 
-def _apply_estimates(index, understood, estimator):
+def _apply_estimates(index, understood, estimator, max_workers=ESTIMATE_MAX_WORKERS):
     """사전이 못 받은 표현을 추정해 조건에 넣는다. dict[key, dict].
 
     등급은 `LLM` 이고 **`rationale` 은 비운다.** 사전의 `rationale` 은 사람이 판단한 뒤
     쓴 근거이고 LLM 이 붙인 설명은 사후 해석이다. 한 칸에 섞으면 나중에 구분할 수 없다
     (spec 1장). 추정 설명은 `llm_reasoning` 에 따로 담는다.
     """
+    items = understood["unmatched"]
+    if not items:
+        return {}
+
+    # **호출만 동시에 한다. 적용은 입력 순서 그대로다.**
+    # `ThreadPoolExecutor.map` 이 입력 순서를 지키므로 `guesses[i]` 가 `items[i]` 에
+    # 대응한다. 그래서 `core` 도 `evidence` 도 순차로 부를 때와 똑같이 나온다.
+    # **결과가 달라지면 이 함수가 잘못된 것이다** — 병렬은 "언제 부르나" 만 바꾼다.
+    #
+    # 예외를 삼키지 않는다. `llm_stage1` 의 추정 함수가 실패 시 `None` 을 돌려주므로
+    # 정상 경로에서는 예외가 올라오지 않는다. 그래도 올라오면 요청을 실패시킨다.
+    workers = min(max_workers, len(items))
+    if workers > 1:
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            guesses = list(pool.map(lambda it: estimator(it["expression"]), items))
+    else:
+        guesses = [estimator(it["expression"]) for it in items]
+
     estimate, core = {}, set(understood["core"])
-    for item in understood["unmatched"]:
-        guess = estimator(item["expression"]) or {}
-        accords = [a for a in (guess.get("accords") or []) if a in index["aidx"]]
-        if not accords:
+    for item, guess in zip(items, guesses):
+        # **`None` 은 호출 실패이고 `{"accords": []}` 는 "향이 아니다" 라는 판정이다.**
+        # 둘을 섞으면 네트워크가 한 번 끊긴 표현이 영영 "향이 아님" 으로 굳는다.
+        # 실패는 기록하지 않는다 — 다음 요청에서 다시 묻는다.
+        if guess is None:
             continue
+        accords = [a for a in (guess.get("accords") or []) if a in index["aidx"]]
+        # 빈 판정도 기록한다. 그래야 `unmatched_log` 가 캐시로 살려내고
+        # 재시작 뒤에도 같은 답이 된다 (전체 표현의 38% 가 여기 해당한다).
         estimate[item["normalized_key"]] = {"accords": accords,
                                             "reasoning": guess.get("reasoning")}
+        if not accords:
+            continue
         for accord in accords:
             if accord in core:
                 continue

@@ -179,7 +179,10 @@ def load_estimates(path=DEFAULT_LOG):
     """
     out = {}
     for row in read(path):
-        if row.get("llm_accords"):
+        # **`[]` 와 `null` 을 구분한다.** `[]` 는 "LLM 이 향이 아니라고 답했다" 이고
+        # `null` 은 "아직 묻지 않았다" 다. 빈 것도 캐시로 살려야 재시작 뒤에 같은
+        # 답이 나오고 같은 표현을 다시 묻지 않는다 (전체의 38%).
+        if row.get("llm_accords") is not None:
             out[row["normalized_key"]] = {"accords": row["llm_accords"],
                                           "reasoning": row.get("llm_reasoning")}
     return out
@@ -195,13 +198,31 @@ def cached_estimator(estimate, path=DEFAULT_LOG):
     표현마다 값이 여러 개가 되어 검토할 수 없다.
 
     캐시는 별도 파일이 아니라 **이 로그 자체**다. 기동 시 한 번 읽어 메모리에 둔다.
+
+    **읽기와 쓰기가 나뉘어 있다.** 이 함수는 읽기만 하고 파일에 쓰지 않는다.
+
+        읽기   기동 시 `load_estimates(path)` 한 번 (아래 `cache = ...`)
+        쓰기   `server.py` 가 매 요청 뒤 `unmatched_log.record()` 를 부른다.
+               `recommend()` 가 돌려준 `llm_estimate` 가 `llm_accords` 로 들어간다
+
+    그래서 `wrapped()` 안에서 `cache[key] = ...` 만 보고 "파일에 안 쓴다" 로 읽기 쉽다.
+    실제로는 그 요청의 응답이 기록될 때 함께 남고, 재시작하면 위 읽기로 복구된다.
+
+    **⚠ 키는 사용자 원문이 아니라 ①단계가 뽑은 표현이다.** ①단계는 같은 문장에서도
+    매번 조금 다른 표현을 뽑는다(`포근한 향` · `포근한 느낌` · `cozy`). 표현이 달라지면
+    키가 안 맞아 캐시에 있어도 다시 묻는다. **같은 표현의 흔들림만 막고 표현 자체의
+    흔들림은 막지 못한다** [측정 2026-09-17 · 측정 기록 21번].
     """
     cache = load_estimates(path)
 
     def wrapped(expression):
         key = normalize_key(expression)
         if key not in cache:
-            guess = estimate(expression) or {}
+            guess = estimate(expression)
+            # **실패(`None`)를 캐시에 넣지 않는다.** 넣으면 네트워크가 한 번 끊긴
+            # 표현이 "향이 아님" 으로 굳어 영영 안 풀린다. 다음 요청에서 다시 묻는다.
+            if guess is None:
+                return None
             cache[key] = {"accords": list(guess.get("accords") or []),
                           "reasoning": guess.get("reasoning")}
         return cache[key]

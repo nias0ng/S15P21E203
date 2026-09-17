@@ -66,6 +66,10 @@ _BODY_PARSE_MESSAGE = "요청 본문을 읽지 못했습니다. UTF-8 로 인코
 
 # 환경마다 다를 수 있는 값은 환경변수로 받는다. 컨테이너에서는 볼륨 경로를 넣는다.
 LOG_PATH = pathlib.Path(os.environ.get("NLR_LOG_PATH", unmatched_log.DEFAULT_LOG))
+
+# ⑤단계 미매칭 추정 스위치. 끄면 이 기능을 얹기 전과 똑같이 돈다.
+# 요청마다 GMS 호출이 붙을 수 있어(캐시에 없을 때만) 끌 수 있게 둔다.
+ESTIMATOR_ENABLED = os.environ.get("NLR_ESTIMATOR", "on").lower() not in ("0", "off", "false")
 LEXICON_PATH = os.environ.get("NLR_LEXICON_PATH") or None
 PERFUMES_PATH = os.environ.get("NLR_PERFUMES_PATH") or None
 
@@ -107,8 +111,24 @@ async def lifespan(app: FastAPI):
     LOGGER.info("①단계 LLM 구조화 %s (model=%s prompt=%s)",
                 "켜짐" if llm["enabled"] else "꺼짐 — GMS_API_KEY 가 없다",
                 llm["model"], llm["prompt_sha256"])
+
+    # ⑤단계 미매칭 추정. **조건이 하나도 안 잡혔을 때만** 돈다.
+    # `cached_estimator` 가 미매칭 로그를 캐시로 쓴다 — 같은 표현은 항상 같은 답이고
+    # 재시작해도 파일에서 다시 채운다. 캐시가 없으면 같은 문장에 매번 다른 향수가
+    # 나온다 [측정 2026-09-17 · 같은 설정으로 두 번 불러 5문장 중 5문장이 달랐다].
+    if ESTIMATOR_ENABLED and llm["enabled"]:
+        app.state.estimator = unmatched_log.cached_estimator(
+            llm_stage1.make_estimator(app.state.index), path=LOG_PATH)
+        LOGGER.info("⑤단계 미매칭 추정 켜짐 — 캐시 %d개를 %s 에서 읽었다",
+                    len(app.state.estimator.cache), LOG_PATH)
+    else:
+        app.state.estimator = None
+        LOGGER.info("⑤단계 미매칭 추정 꺼짐 (NLR_ESTIMATOR=%s · GMS 키 %s)",
+                    os.environ.get("NLR_ESTIMATOR", "on"),
+                    "있음" if llm["enabled"] else "없음")
     yield
     app.state.index = None
+    app.state.estimator = None
 
 
 app = FastAPI(title="향해 자연어 추천", lifespan=lifespan)
@@ -308,7 +328,8 @@ def recommend(body: RecommendRequest, request: Request):
     **인기 향수를 대신 보여주면 안 된다** — 추천처럼 보이지만 근거가 없다.
     """
     index = request.app.state.index
-    out = nlr_engine.recommend(index, body.text, _structure(body), top_k=body.topK)
+    out = nlr_engine.recommend(index, body.text, _structure(body), top_k=body.topK,
+                               estimator=request.app.state.estimator)
     _record_unmatched(out)
     return {
         "status": out["status"],
