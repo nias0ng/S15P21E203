@@ -1,6 +1,7 @@
 import { queryOptions } from '@tanstack/react-query'
 
 import { getNote, getNotePerfumes, getNotes } from './api'
+import { noteFamilies } from './grouping'
 import type { Note } from './types'
 
 export const noteKeys = {
@@ -44,6 +45,23 @@ function filterNotes(notes: Note[], keyword: string): Note[] {
       (note.nameKo?.toLowerCase().includes(needle) ?? false),
   )
 }
+
+/**
+ * 알약 필터에 쓸 대분류 목록.
+ *
+ * 목록과 **같은 캐시를 봅니다**(같은 `queryKey`, 거르는 방식만 다른 `select`) —
+ * 요청이 한 번 더 가지 않습니다.
+ *
+ * **검색 결과가 아니라 전체 노트에서 뽑습니다.** 검색어에 걸린 것만으로 만들면
+ * 글자를 칠 때마다 알약이 사라졌다 나타나 줄 수가 오르내리고, 그 바람에 아래
+ * 유리판이 위아래로 밀립니다.
+ */
+export const noteFamiliesQuery = queryOptions({
+  queryKey: noteKeys.lists(),
+  queryFn: getNotes,
+  staleTime: CATALOG_STALE_TIME,
+  select: noteFamilies,
+})
 
 /**
  * 노트 하나.
