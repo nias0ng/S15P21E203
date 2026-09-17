@@ -1,4 +1,12 @@
-import type { MapPoint, VoyageLogEntry } from './types'
+import { http, isApiError } from '@/shared/api/http'
+import { env } from '@/shared/config/env'
+
+import {
+  VOYAGE_LOG_SIZE,
+  type MapPoint,
+  type VoyageLogEntry,
+  type VoyageLogResponse,
+} from './types'
 
 /**
  * ⚠️ 백엔드 향 지도 API 가 아직 없습니다. 화면을 눈으로 확인할 수 있도록
@@ -11,8 +19,51 @@ export async function getMapPoints(): Promise<MapPoint[]> {
   return PLACEHOLDER_POINTS
 }
 
+/**
+ * ⚠️ 개발 중 백엔드가 안 떠 있을 때만 대체값으로 넘어갑니다 — `features/perfume/api.ts` 와 같은 규칙입니다.
+ * **요청이 백엔드에 닿지도 못했을 때만**(status 0 · 502~504) 끼어들고, 401 처럼 백엔드가 대답한 오류는
+ * 그대로 올려보냅니다. 운영에서는 끼어들지 않습니다.
+ *
+ * ⚠️ 두 번째 사용처라 `shared/api` 로 올릴 후보입니다 (frontend/CLAUDE.md 의 공용화 시점).
+ * perfume 도메인을 같이 고쳐야 해서 D 갈래에서는 복사해 두고, 통합할 때 올립니다.
+ */
+async function withDevFallback<T>(
+  request: () => Promise<T>,
+  fallback: () => T,
+): Promise<T> {
+  try {
+    return await request()
+  } catch (error) {
+    const unreachable =
+      isApiError(error) &&
+      (error.status === 0 || (error.status >= 502 && error.status <= 504))
+
+    if (!env.isDev || !unreachable) throw error
+
+    console.warn(
+      '[map] 백엔드에 닿지 못해 개발용 대체 향해 일지를 씁니다. 실제 값이 아닙니다.',
+    )
+    return fallback()
+  }
+}
+
+/**
+ * MAP-24 향해 일지 — 최근 해역 진입부터 다섯 줄 (VOYAGE_LOG_SIZE — 판에 싣는 수와 같습니다).
+ * 로그인해야 읽을 수 있습니다 (비로그인 401 — 화면은 로그인 안내를 띄웁니다).
+ *
+ * ⚠️ 일지가 쌓이려면 배를 옮길 때 `PUT /api/v1/map/exploration/me` 를 불러야 합니다 — 아직 엔진이 부르지 않습니다.
+ */
 export async function getVoyageLog(): Promise<VoyageLogEntry[]> {
-  return PLACEHOLDER_LOG
+  return withDevFallback(
+    async () => {
+      const { data } = await http.get<VoyageLogResponse>(
+        '/map/exploration-logs',
+        { params: { size: VOYAGE_LOG_SIZE } },
+      )
+      return data.entries
+    },
+    () => PLACEHOLDER_LOG,
+  )
 }
 
 /**
@@ -111,6 +162,7 @@ const PLACEHOLDER_LOG: VoyageLogEntry[] = [
   {
     entryId: 1,
     enteredAt: '2026-08-24T00:00:00Z',
+    scentRegionId: 6,
     region: 'WOODY',
     visited: [
       { perfumeId: 1, name: '조 말론 우드 세이지' },
@@ -121,12 +173,14 @@ const PLACEHOLDER_LOG: VoyageLogEntry[] = [
   {
     entryId: 2,
     enteredAt: '2026-08-19T00:00:00Z',
+    scentRegionId: 1,
     region: 'CITRUS',
     visited: [{ perfumeId: 6, name: '아쿠아 디 파르마 콜로니아' }],
   },
   {
     entryId: 3,
     enteredAt: '2026-08-11T00:00:00Z',
+    scentRegionId: 3,
     region: 'FLORAL',
     visited: [{ perfumeId: 4, name: '바이레도 블랑쉬' }],
   },

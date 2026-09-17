@@ -55,7 +55,15 @@ const TL = {
     openR: [0.22, 1.40, 'outCubic'],     // 우 윙 — ⚠ 0.22s 시차
     dim:   [0.15, 1.00, 'outQuad'],      // 원경 안개가 짙어진다
     rise:  [0.55, 1.45, 'outBack'],      // 수면 타이포
-    ui:    [1.20, 1.85, 'outQuad']       // 우측 향조 정보 · 좌하단 03 ZONE
+    ui:    [1.20, 1.85, 'outQuad'],      // 우측 향조 정보 · 좌하단 03 ZONE
+    // ⭐⭐ 배 (2026-09-16, `zoneBoatEnter`). 사용자 : *"왼쪽 하단에서 대각선으로 등장"* · *"뱃머리가 글자를 바라보며 들어와야함"*.
+    //   이 트랙은 배를 **시작 자리에 놓기만** 한다 (0.30s). 그 뒤의 움직임은 타임라인이 아니라 **속도**다 —
+    //   main.js 가 뱃머리 방향으로 `zoneShipSpeed`(부스트 대비 비율)만큼 매 프레임 민다. **끝나는 지점이 없다.**
+    //   ⚠⚠ 예전에는 `dock` 트랙이 정박 자리까지 `inOutCubic` 으로 데려갔는데, 그 곡선은 끝에서 **감속해 서고**
+    //     머무는 5초 동안 완전히 멈춰 있었다 (2026-09-16 사용자 : *"시간 맞추기 위해 중간에 멈추는데 … 시간 제한 두지 말고 앞으로 움직여"*).
+    //     타임라인으로 자리를 정하면 **반드시** 끝점에서 선다 — 그래서 자리를 타임라인에서 뺐다.
+    //   ⭐ 그 덕에 ENTER_DUR 이 2.00s 그대로다 (`look` 이 가장 늦다) — 연출은 2초에 서고 배는 머무는 동안에도 계속 나아간다.
+    swing: [0.00, 0.30, 'outCubic']
   },
   // 존 → 항해. 총 1.90s (2026-09-10 에 1.30 → 1.90)
   // ⚠⚠ **들어온 순서의 역순이 아니다** (§3). 역순으로 재생하면 "되감기" 로 읽힌다.
@@ -67,11 +75,15 @@ const TL = {
     openL: [0.25, 1.20, 'inCubic'],
     openR: [0.25, 1.20, 'inCubic'],
     dim:   [0.25, 1.10, 'outQuad'],
-    look:  [0.45, 1.90, 'inOutCubic']
+    look:  [0.45, 1.90, 'inOutCubic'],
+    // ⚠ 배 — 나아간 만큼(main.js 가 쌓아 둔 오프셋)을 이 값으로 곱해 **0 으로 되돌린다.** 끝(1.90s)이 `look` 과 같아서
+    //   카메라가 항해 구도로 돌아오는 것과 배가 제자리에 서는 것이 함께 끝난다 (2026-09-16 사용자 : *"끝날때 쯤에 맞춰서 배를 중앙으로"*).
+    //   ⚠ 시차를 두면 배가 밖으로 다시 나갔다가 돌아와 '튕겨 돌아가는' 것으로 보였다 — 한 트랙으로 곧장 온다.
+    swing: [0.30, 1.90, 'inOutCubic']
   }
 };
 
-const KEYS = ['look', 'openL', 'openR', 'dim', 'rise', 'ui'];
+const KEYS = ['look', 'openL', 'openR', 'dim', 'rise', 'ui', 'swing'];
 // ⭐ 머묾 시계를 멈췄다가 다시 흐를 때 **최소한 남겨 두는 초** (2026-09-11 오후, `pauseHold`).
 //   정보 블록을 다 읽고 마우스를 떼는 순간 닫히면 쫓겨나는 느낌이다 — 뗀 뒤에도 이만큼은 머문다.
 //   ⚠ 남은 시간이 이미 더 길면 건드리지 않는다 (호버가 시계를 **늘리지는** 않는다)
@@ -104,7 +116,9 @@ export function createPhase() {
     // 머묾 시계가 멈춰 있는가 (2026-09-11 오후). 사용자 : *"마우스를 올린 동안에는 머물게하고 5초 뒤에는 걷히게"*.
     //   ⚠ 이 층은 DOM 을 모른다 — 누가 멈추는지(main.js 가 ui 의 호버를 보고) 모르고 **멈춤만** 받는다
     holdPaused: false,
-    look: 0, openL: 0, openR: 0, dim: 0, rise: 0, ui: 0
+    look: 0, openL: 0, openR: 0, dim: 0, rise: 0, ui: 0,
+    // 배 — swing 1 = 시작 자리에 놓였다 (그 뒤 움직임은 main.js 가 속도로 민다) · 0 = 항해 자리
+    swing: 0
   };
 
   const setAll = (v) => { for (const k of KEYS) cue[k] = v; };
@@ -199,7 +213,8 @@ export function createPhase() {
       const f = (v) => v.toFixed(3);
       return `${cue.phase}${cue.zone ? ' · ' + cue.zone : ''}  t=${f(cue.t)} p=${f(cue.p)}  ` +
              `look=${f(cue.look)} open=${f(cue.openL)}/${f(cue.openR)} ` +
-             `dim=${f(cue.dim)} rise=${f(cue.rise)} ui=${f(cue.ui)}` +
+             `dim=${f(cue.dim)} rise=${f(cue.rise)} ui=${f(cue.ui)} ` +
+             `swing=${f(cue.swing)}` +
              (cue.hold > 0 ? `  hold ${f(cue.holdT)}/${f(cue.hold)}${cue.holdPaused ? ' (멈춤)' : ''}` : '');
     },
 

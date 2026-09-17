@@ -1,11 +1,11 @@
 import { Link } from 'react-router'
 
-import { ROUTES, toReviewDetail } from '@/shared/config/routes'
+import { ROUTES, toReviewEdit, toReviewDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
+import { AuthLinkButton } from '@/shared/ui/AuthLinkButton'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
-import { LinkButton } from '@/shared/ui/LinkButton'
 import { GLASS_PANEL } from '@/shared/ui/panel'
 import { Skeleton } from '@/shared/ui/Skeleton'
 
@@ -25,6 +25,8 @@ type Props = {
    * 한 사람은 한 향수에 후기를 하나만 쓸 수 있어, 모르고 또 쓰면 409 로 막힙니다.
    */
   myReviewId: number | null
+  /** 이 후기 목록이 달린 향수. 작성 화면에 실어 보내 미리 골라 둡니다 */
+  perfumeId: number
 }
 
 /**
@@ -40,6 +42,7 @@ export function PerfumeReviewList({
   onPageChange,
   isPending = false,
   myReviewId,
+  perfumeId,
 }: Props) {
   const lastPage = Math.max(0, Math.ceil(totalElements / size) - 1)
 
@@ -50,10 +53,23 @@ export function PerfumeReviewList({
         {!isPending && (
           <span className="text-ink-muted text-caption">{totalElements}개</span>
         )}
-        {/* TODO: 작성 화면에 이 향수(와 수정할 후기)를 실어 보내기 — A24a 연결 시 */}
-        <LinkButton to={ROUTES.REVIEW_WRITE} size="sm" className="ml-auto">
+        {/*
+          작성으로 갈 때는 이 향수를 주소에 실어 보냅니다 — 작성 화면이 그 향수를
+          미리 골라 둡니다. 이미 쓴 후기가 있으면 수정으로 보냅니다(한 향수에 후기는
+          하나라, 모르고 또 쓰면 409 로 막힙니다).
+        */}
+        <AuthLinkButton
+          to={
+            myReviewId === null
+              ? `${ROUTES.REVIEW_WRITE}?perfumeId=${perfumeId}`
+              : toReviewEdit(myReviewId)
+          }
+          size="sm"
+          className="ml-auto"
+          description="후기는 로그인한 뒤에 쓸 수 있습니다."
+        >
           {myReviewId === null ? '후기 쓰기' : '내 후기 수정'}
-        </LinkButton>
+        </AuthLinkButton>
       </div>
 
       {isPending ? (

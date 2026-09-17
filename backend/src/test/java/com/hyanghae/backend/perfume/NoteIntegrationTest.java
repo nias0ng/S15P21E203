@@ -1,5 +1,6 @@
 package com.hyanghae.backend.perfume;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -53,6 +54,8 @@ class NoteIntegrationTest {
         clearData();
 
         insertNote(MUSK, "Musk", "머스크", "MUSK", 1, true);
+        jdbcTemplate.update("UPDATE notes SET description = ? WHERE note_id = ?",
+                "포근하고 관능적인 잔향으로, 베이스를 오래 붙잡아 둡니다.", MUSK);
         insertNote(ROSE, "Rose", "로즈", "FLORAL", 8, true);
         insertNote(JASMINE, "Jasmine", "자스민", "FLORAL", 6, true);
         insertNote(AMBER, "Amber", "앰버", "AMBER", null, true);
@@ -125,14 +128,49 @@ class NoteIntegrationTest {
                 .andExpect(jsonPath("$.code").value("PERFUME_NOTE_NOT_FOUND"));
     }
 
-    /** 상세는 목록 한 줄과 같은 모양입니다. */
+    /** 상세는 목록 한 줄에 <b>설명</b>이 더해진 모양입니다. */
     @Test
     void answersNoteDetail() throws Exception {
         mockMvc.perform(get(NOTE_URL, MUSK))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.noteId").value((int) MUSK))
                 .andExpect(jsonPath("$.nameKo").value("머스크"))
-                .andExpect(jsonPath("$.accordFamily").value("MUSK"));
+                .andExpect(jsonPath("$.accordFamily").value("MUSK"))
+                .andExpect(jsonPath("$.description")
+                        .value("포근하고 관능적인 잔향으로, 베이스를 오래 붙잡아 둡니다."));
+    }
+
+    /**
+     * 설명이 없는 노트는 {@code null} 입니다. 노트가 수백 개인데 설명은 채워지는 대로
+     * 들어옵니다 — 화면은 비면 설명 영역을 그리지 않습니다.
+     */
+    @Test
+    void answersNullDescriptionWhenNotWrittenYet() throws Exception {
+        String body = mockMvc.perform(get(NOTE_URL, ROSE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nameKo").value("로즈"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+
+        com.fasterxml.jackson.databind.JsonNode note =
+                new com.fasterxml.jackson.databind.ObjectMapper().readTree(body);
+
+        // 키가 빠지는 것과 값이 null 인 것은 다릅니다. jsonPath 의 doesNotExist() 로는
+        // 둘을 구분하지 못해 실제 모양을 직접 봅니다.
+        assertThat(note.has("description")).as("키 자체는 있어야 합니다").isTrue();
+        assertThat(note.get("description").isNull()).as("값은 null 이어야 합니다").isTrue();
+    }
+
+    /**
+     * <b>목록에는 설명이 나가지 않습니다.</b> 활성 노트 전체를 한 번에 돌려주는 응답이라
+     * 설명까지 실으면 크게 무거워지고, 화면도 목록 카드에는 이름과 이미지만 그립니다.
+     */
+    @Test
+    void keepsDescriptionOutOfTheList() throws Exception {
+        mockMvc.perform(get(NOTES_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.notes[*].description").doesNotExist());
     }
 
     /** 없는 노트는 404 입니다. */

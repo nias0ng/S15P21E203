@@ -72,8 +72,14 @@ export const reviewBoardQuery = (params: ReviewBoardParams) =>
     queryFn: () => getReviewBoard(params),
   })
 
+/**
+ * 지금 많이 언급되는 향수.
+ *
+ * `queryFn` 에 함수를 그대로 넘기지 않습니다 — TanStack 이 첫 인자로 컨텍스트를
+ * 넘겨서, 그게 `limit` 자리에 들어갑니다.
+ */
 export const trendingPerfumesQuery = () =>
   queryOptions({
     queryKey: communityKeys.trending(),
-    queryFn: getTrendingPerfumes,
+    queryFn: () => getTrendingPerfumes(),
   })

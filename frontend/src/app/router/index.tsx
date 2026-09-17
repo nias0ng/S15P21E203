@@ -153,6 +153,12 @@ export const router = createBrowserRouter([
         element: withSuspense(<PostWritePage />),
         handle: TEXT,
       },
+      {
+        // 수정도 같은 화면입니다 — 주소로 모드를 가릅니다
+        path: ROUTES.POST_EDIT,
+        element: withSuspense(<PostWritePage />),
+        handle: TEXT,
+      },
 
       {
         path: ROUTES.LOGIN,

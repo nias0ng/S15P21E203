@@ -12,7 +12,7 @@ export { MiniMap } from './components/MiniMap'
 export { ScentMap } from './components/ScentMap'
 export { ScentScene, type ScenePerfumeRef } from './components/ScentScene'
 export { SimilarExplorer } from './components/SimilarExplorer'
-export { VoyageLog } from './components/VoyageLog'
+export { VoyageLog, type VoyageLogStatus } from './components/VoyageLog'
 export {
   mapKeys,
   mapPointsQuery,

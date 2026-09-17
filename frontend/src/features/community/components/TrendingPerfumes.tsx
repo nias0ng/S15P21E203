@@ -6,7 +6,11 @@ import { cn } from '@/shared/lib/cn'
 
 import type { TrendingPerfume } from '../types'
 
-type Props = { items: TrendingPerfume[] }
+type Props = {
+  items: TrendingPerfume[]
+  /** 집계한 기간(일). 서버가 알려준 값을 그대로 적습니다 */
+  days?: number
+}
 
 /**
  * 지금 많이 언급되는 향수 (와이어프레임 A22a · A22b 우측)
@@ -16,7 +20,7 @@ type Props = { items: TrendingPerfume[] }
  *
  * 순위 숫자를 붙인 이유: 숫자가 없으면 그냥 향수 세 개를 나열한 것으로 읽힙니다.
  */
-export function TrendingPerfumes({ items }: Props) {
+export function TrendingPerfumes({ items, days }: Props) {
   if (items.length === 0) return null
 
   return (
@@ -45,7 +49,7 @@ export function TrendingPerfumes({ items }: Props) {
                 {item.name}
               </span>
               <span className="text-ink-muted text-caption shrink-0">
-                {item.postCount}
+                {item.mentionCount}
               </span>
             </Link>
           </li>
@@ -54,7 +58,9 @@ export function TrendingPerfumes({ items }: Props) {
 
       {/* 오른쪽 숫자가 무엇인지 한 번만 말해 둡니다 — 줄마다 "글" 을 붙이면 시끄럽습니다 */}
       <p className="text-ink-muted text-caption border-line-soft mt-2.5 border-t pt-2.5">
-        최근 한 주 동안 언급된 글 수
+        {days === undefined
+          ? '언급된 글 수'
+          : `최근 ${days}일 동안 언급된 글 수`}
       </p>
     </aside>
   )

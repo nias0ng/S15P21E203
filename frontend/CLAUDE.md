@@ -272,7 +272,7 @@ variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 
   | `full` | 화면 틀 전체(1920 에서 1800) | 진열대 · 향 지도처럼 화면을 그림으로 쓰는 곳 |
   | `wide` | 1440 | 목록 · 격자 · 상세 |
   | `text` | 800 | 글 읽기 · 쓰기, 계정 폼 (한글 한 줄 40자 안팎) |
-  | `bleed` | 헤더 아래 화면 끝까지 (틀 · 여백 없음) | 3D 향 지도(A01) — 엔진이 화면 전체를 그림으로 씁니다 (`landing/`) |
+  | `bleed` | 화면 끝까지 · 헤더 뒤까지 (틀 · 여백 없음). 헤더는 그 위에 유리판으로 뜹니다 | 3D 향 지도(A01) — 엔진이 화면 전체를 그림으로 씁니다 (`landing/`) |
 
   페이지 안에서 음수 마진으로 폭 제한을 깨고 나가지 않습니다. 넓게 써야 하면 라우트에 `full` 을 적습니다.
 - 요소 치수(폭 · 높이 · 간격)는 끝자리를 **0 또는 5** 로 맞춥니다. 1~3px 선 굵기 같은 세부는 예외입니다.
@@ -282,14 +282,18 @@ variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 
 ## 3D 향 지도 엔진 (`landing/`)
 
 메인(`/`)의 3D 화면은 `landing/index.html` 을 iframe 으로 띄운 것입니다(`features/map/components/ScentScene.tsx`).
-엔진은 three.js 로 만든 프로토타입 **paperboat 의 원본 복사본**이고, Vite 의 두 번째 입구(`vite.config.ts` 의
+엔진은 three.js 로 만든 프로토타입 paperboat 에서 옮겨 온 것이고(**원본은 이제 이 폴더입니다** — 아래 참고), Vite 의 두 번째 입구(`vite.config.ts` 의
 `build.rolldownOptions.input.landing`)로 앱과 같이 빌드됩니다.
 
 - React · TypeScript 가 아닌 순수 JS 입니다. **ESLint · Prettier 검사에서 뺐고**, 엔진 코드의 규칙은 `landing/CLAUDE.md` 를 따릅니다.
 - 배 모델 · 게이트 그림은 `public/landing/` 에 있습니다. 엔진이 페이지 기준 상대 경로로 부릅니다.
 - 앱과 주고받는 문은 엔진의 `landing/src/host.js` 하나입니다(자세히 보기 · 진열대에 저장 · 주변 향 탐색 · 검색창). 앱 쪽 연결은 `ScentScene` 에 모았습니다.
-- 개발 서버에서는 엔진의 개발 패널이 같이 뜨므로 `ScentScene` 이 `PB.solo(true)` 로 숨깁니다. 엔진만 따로 보려면 `/landing/index.html` 을 엽니다.
-- paperboat 저장소에서 바뀐 것을 가져올 때는 `index.html` · `src/` · `data/` · `scripts/` · 문서를 통째로 덮어씁니다(에셋이 바뀌면 `public/landing/` 도).
+- 엔진의 개발 패널(계측 HUD · 파라미터 슬라이더 · 조작 바 · 시점 · 원본 비교 · 자유 시점 · 부력 프로브 · 프레임 잡기)은 **develop 에 넣지 않습니다** — 개발 서버에서도 노출되지 않게 모듈째 뺐고, 엔진 작업자의 작업 브랜치에만 있습니다. 엔진만 따로 보려면 `/landing/index.html` 을 엽니다.
+- 메인의 헤더는 **거의 투명한 유리**입니다 — `bleed` 화면이면 `RootLayout` 이 3D 하늘에 따라 `GlobalHeader` 에 `tone="glassLight"`(밝은 하늘 · 상아색 판 · 먹색 글자) 또는 `tone="glass"`(밤 · 남색 판 · 상아색 글자)를 줍니다. 하늘은 `HomePage` 가 엔진의 `<html data-time>` 을 받아(`ScentScene` 의 `onNightChange`) `shared/store/sceneSkyStore` 에 적습니다.
+  3D 가 헤더 뒤까지 깔리고, 헤더가 가리는 90px 은 `ScentScene` 의 `coveredTop` → 엔진 `hostTop` 으로 알립니다. 엔진은 검색창 · 정보 블록 · 해도를 그 아래로 내리고 향수 고르기의 12개를 그 띠에 세우지 않습니다.
+  엔진의 자리표시 헤더(`siteHeader`)는 끕니다 — 무대를 헤더만큼 줄이는 방식이라 유리판 뒤가 비어 버립니다. 헤더 높이를 바꾸면 `coveredTop` 도 같이 바꿉니다.
+- **원본은 이 폴더(`landing/`)입니다** (2026-09-15 결정). paperboat 저장소는 v0.63.0 에서 멈췄고 v0.64 부터는 여기에만 있으므로, paperboat 에서 가져와 덮어쓰지 않습니다.
+- 메인 3D 를 여러 워크트리로 나눠 작업할 때의 갈래 · 맡는 파일 · 통합 순서는 `landing/docs/워크트리-분할.md` 를 따릅니다.
 
 ## 서버 상태 vs 클라이언트 상태
 

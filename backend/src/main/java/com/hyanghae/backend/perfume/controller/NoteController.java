@@ -1,6 +1,6 @@
 package com.hyanghae.backend.perfume.controller;
 
-import com.hyanghae.backend.perfume.dto.response.NoteSummaryResponse;
+import com.hyanghae.backend.perfume.dto.response.NoteDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.NotesResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSearchResponse;
 import com.hyanghae.backend.perfume.service.NoteService;
@@ -60,11 +60,14 @@ public class NoteController {
     }
 
     /** 노트 하나입니다. 이름·대분류·이미지·인기 순위가 나갑니다. */
-    @Operation(summary = "노트 상세", description = "노트 하나의 이름과 대분류, 이미지를 돌려줍니다.")
+    @Operation(summary = "노트 상세",
+            description = "노트 하나의 이름 · 대분류 · 이미지 · 설명을 돌려줍니다. 설명은"
+                    + " 채워지는 대로 들어오므로 비어 있을 수 있습니다. 목록에는 설명이"
+                    + " 나가지 않습니다 — 활성 노트 전체를 돌려주는 응답이라 무거워집니다.")
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @ApiResponse(responseCode = "404", description = "노트 없음")
     @GetMapping("/{noteId}")
-    public NoteSummaryResponse getNote(@PathVariable Long noteId) {
+    public NoteDetailResponse getNote(@PathVariable Long noteId) {
         return noteService.findById(noteId);
     }
 

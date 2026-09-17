@@ -182,6 +182,7 @@ export default function PerfumeDetailPage() {
         onPageChange={setReviewPage}
         isPending={reviews.isPending}
         myReviewId={data.myReviewId}
+        perfumeId={numericId}
       />
 
       {/*
