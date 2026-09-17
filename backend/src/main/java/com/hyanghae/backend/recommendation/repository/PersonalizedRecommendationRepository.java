@@ -13,6 +13,15 @@ public class PersonalizedRecommendationRepository {
             SELECT pg_advisory_xact_lock(:userId)
             """;
 
+    private static final String EXISTS_TASTE_PROFILE = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM user_taste_tests t
+                JOIN user_taste_test_selections s ON s.user_test_id = t.user_test_id
+                WHERE t.user_id = :userId
+            ) AS completed
+            """;
+
     /**
      * 세 신호를 각각 코사인 유사도로 계산해 합칩니다.
      *
@@ -217,6 +226,14 @@ public class PersonalizedRecommendationRepository {
 
     public PersonalizedRecommendationRepository(JdbcClient jdbcClient) {
         this.jdbcClient = jdbcClient;
+    }
+
+    /** 응시 기록과 한 개 이상의 선택이 모두 있어야 완료된 취향 테스트로 봅니다. */
+    public boolean hasTasteProfile(Long userId) {
+        return jdbcClient.sql(EXISTS_TASTE_PROFILE)
+                .param("userId", userId)
+                .query((rs, rowNum) -> rs.getBoolean("completed"))
+                .single();
     }
 
     /** 같은 사용자의 동시 요청이 동일한 노출 이력을 보고 중복 추천하지 않도록 직렬화합니다. */

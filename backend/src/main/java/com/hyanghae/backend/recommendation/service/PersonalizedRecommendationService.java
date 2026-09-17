@@ -40,6 +40,10 @@ public class PersonalizedRecommendationService {
         Long userId = currentUser.id()
                 .orElseThrow(() -> new BusinessException(
                         RecommendationErrorCode.RECOMMENDATION_LOGIN_REQUIRED));
+        if (!recommendationRepository.hasTasteProfile(userId)) {
+            throw new BusinessException(
+                    RecommendationErrorCode.RECOMMENDATION_TASTE_TEST_REQUIRED);
+        }
         recommendationRepository.lockForUser(userId);
         List<PersonalizedRecommendationCandidate> candidates =
                 recommendationRepository.findTopCandidates(userId, CANDIDATE_LIMIT);

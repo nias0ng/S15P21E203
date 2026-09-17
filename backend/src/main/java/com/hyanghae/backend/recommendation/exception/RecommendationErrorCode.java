@@ -16,6 +16,9 @@ public enum RecommendationErrorCode implements ErrorCode {
     RECOMMENDATION_LOGIN_REQUIRED(HttpStatus.UNAUTHORIZED,
             "로그인이 필요합니다."),
 
+    RECOMMENDATION_TASTE_TEST_REQUIRED(HttpStatus.BAD_REQUEST,
+            "개인화 추천을 받으려면 취향 테스트를 먼저 완료해야 합니다."),
+
     RECOMMENDATION_NOT_FOUND(HttpStatus.NOT_FOUND,
             "현재 추천할 수 있는 향수가 없습니다."),
 

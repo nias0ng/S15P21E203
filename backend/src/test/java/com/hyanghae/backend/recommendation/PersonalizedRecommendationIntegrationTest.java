@@ -163,8 +163,9 @@ class PersonalizedRecommendationIntegrationTest {
         jdbcTemplate.update("DELETE FROM user_taste_tests WHERE user_id = ?", USER_ID);
 
         mockMvc.perform(get(URL))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("RECOMMENDATION_NOT_FOUND"));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value("RECOMMENDATION_TASTE_TEST_REQUIRED"));
     }
 
     private void insertPerfume(long perfumeId, String name) {

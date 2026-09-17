@@ -27,6 +27,7 @@ public class PersonalizedRecommendationController {
             description = "취향 테스트, 적합도 평가, 최근 조회를 반영해 향수 하나를 추천하고 "
                     + "노출 기록을 저장합니다.")
     @ApiResponse(responseCode = "200", description = "개인화 추천 한 건입니다.")
+    @ApiResponse(responseCode = "400", description = "취향 테스트를 먼저 완료해야 합니다.")
     @ApiResponse(responseCode = "401", description = "로그인이 필요합니다.")
     @ApiResponse(responseCode = "404", description = "추천할 수 있는 향수가 없습니다.")
     @GetMapping("/personalized")
