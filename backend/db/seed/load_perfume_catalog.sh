@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# 향수 카탈로그 적재. load_perfume_catalog.sql 이 읽을 CSV 다섯 개를 한곳에 모은 뒤 psql 을 부릅니다.
+# 향수 카탈로그 적재. load_perfume_catalog.sql 이 읽을 CSV 여섯 개를 한곳에 모은 뒤 psql 을 부릅니다.
 #
 # 실행 (이 디렉터리에서):
 #     ./load_perfume_catalog.sh

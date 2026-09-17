@@ -1,5 +1,5 @@
 -- 향수 카탈로그 적재. 자연어 추천이 쓰는 향수 129,161개와 향 특성 100만 행을 넣고
--- perfume_ko.csv의 한국어 이름을 보충합니다.
+-- perfume_ko.csv의 한국어 이름을 갱신합니다.
 --
 -- 실행 (이 디렉터리에서):
 --     ./load_perfume_catalog.sh
@@ -9,8 +9,9 @@
 -- 로 실행하십시오. \copy 가 상대 경로를 psql 의 현재 디렉터리에서 찾으므로 이 디렉터리에서
 -- 실행해야 합니다.
 --
--- 스키마는 V14 까지 적용돼 있어야 합니다. V14 가 uk_perfumes_brand_name 을 걷어내고
--- fragrantica_rating_count 를 만듭니다. 그 전에 돌리면 5번에서 다음처럼 멈춥니다.
+-- 스키마는 V21 까지 적용돼 있어야 합니다. V14 가 uk_perfumes_brand_name 을 걷어내고
+-- fragrantica_rating_count 를 만들며, V21 이 브랜드 한국어 이름의 UNIQUE 제약을 제거합니다.
+-- V14 전에 돌리면 5번에서 다음처럼 멈춥니다.
 --
 --     ERROR: column "fragrantica_rating_count" of relation "perfumes" does not exist
 --
@@ -65,8 +66,8 @@ CREATE TEMP TABLE stg_perfume_ko (
     name TEXT, translated_name TEXT
 ) ON COMMIT DROP;
 
--- 다섯 파일을 psql 의 현재 디렉터리에서 읽습니다. ai/delivery/for_db 에서 바로 읽지 않는 이유는
--- 둘이 gzip 이고 \copy 가 압축을 풀지 못하기 때문입니다. load_perfume_catalog.sh 가 다섯 파일을
+-- 여섯 파일을 psql 의 현재 디렉터리에서 읽습니다. ai/delivery/for_db 에서 바로 읽지 않는 이유는
+-- 둘이 gzip 이고 \copy 가 압축을 풀지 못하기 때문입니다. load_perfume_catalog.sh 가 여섯 파일을
 -- 한곳에 모아 두고 이 스크립트를 부릅니다.
 \copy stg_brands          FROM 'brands.csv'          WITH (FORMAT csv, HEADER true)
 \copy stg_brands_ko       FROM 'brands_ko.csv'       WITH (FORMAT csv, HEADER true)
@@ -88,6 +89,24 @@ DECLARE
     accord_count  bigint := (SELECT count(*) FROM stg_accords);
     perfume_count bigint := (SELECT count(*) FROM stg_perfumes);
     pa_count      bigint := (SELECT count(*) FROM stg_perfume_accords);
+    unmapped_perfume_count bigint := (
+        SELECT count(*)
+        FROM (
+            SELECT DISTINCT p.name
+            FROM stg_perfumes p
+            WHERE NOT EXISTS (
+                SELECT 1 FROM stg_perfume_ko k WHERE k.name = p.name
+            )
+        ) missing
+    );
+    unmapped_brand_count bigint := (
+        SELECT count(*)
+        FROM stg_brands b
+        WHERE b.name <> '-DIS'
+          AND NOT EXISTS (
+              SELECT 1 FROM stg_brands_ko k WHERE k.name = b.name
+          )
+    );
 BEGIN
     IF brand_count <> 7793 THEN
         RAISE EXCEPTION '브랜드 수가 다릅니다: 기대 7793, 실제 %', brand_count;
@@ -100,6 +119,12 @@ BEGIN
     END IF;
     IF pa_count <> 1000570 THEN
         RAISE EXCEPTION '향 특성 수가 다릅니다: 기대 1000570, 실제 %', pa_count;
+    END IF;
+    IF unmapped_perfume_count <> 0 THEN
+        RAISE EXCEPTION '한국어 이름 CSV에서 찾을 수 없는 향수 원이름이 %개입니다', unmapped_perfume_count;
+    END IF;
+    IF unmapped_brand_count <> 0 THEN
+        RAISE EXCEPTION '한국어 이름 CSV에서 찾을 수 없는 브랜드 원이름이 %개입니다', unmapped_brand_count;
     END IF;
 END $$;
 
@@ -130,7 +155,7 @@ INSERT INTO brands (name)
 SELECT name FROM stg_brands
 ON CONFLICT (name) DO NOTHING;
 
--- 브랜드 한국어 이름과 로고를 보충합니다. 같은 영문 이름에 번역이 여러 개인 경우에는
+-- 브랜드 한국어 이름과 로고를 갱신합니다. 같은 영문 이름에 번역이 여러 개인 경우에는
 -- 한국어 이름만 건너뛰고, 로고 정보는 사용할 수 있으면 별도로 반영합니다.
 -- logo_override가 있으면 그대로 쓰고, 없으면 logo_domain으로 img.logo.dev 주소를 만듭니다.
 --
@@ -153,12 +178,12 @@ WITH brand_meta AS (
     GROUP BY name
 )
 UPDATE brands b
-SET name_ko = COALESCE(NULLIF(btrim(b.name_ko), ''), m.name_ko),
+SET name_ko = COALESCE(m.name_ko, NULLIF(btrim(b.name_ko), '')),
     logo_url = COALESCE(
         m.logo_override,
-        NULLIF(btrim(b.logo_url), ''),
         CASE WHEN m.logo_domain IS NOT NULL
-             THEN 'https://img.logo.dev/' || m.logo_domain END
+             THEN 'https://img.logo.dev/' || m.logo_domain END,
+        NULLIF(btrim(b.logo_url), '')
     )
 FROM brand_meta m
 WHERE b.name = m.name
@@ -182,7 +207,7 @@ ON CONFLICT (name) DO NOTHING;
 --
 -- 갱신할 때 이름과 브랜드도 바꿉니다. 이름이 열쇠가 아니므로 원본에서 이름이 바뀌어도 같은
 -- 행을 따라갑니다. 반대로 gender·description 처럼 원본 CSV 에 없는 값은 건드리지 않습니다.
--- name_ko 는 별도 한국어 이름 CSV로 빈 값만 보충합니다.
+-- name_ko 는 별도 한국어 이름 CSV의 값으로 갱신합니다. CSV가 비어 있을 때만 기존 값을 유지합니다.
 --
 -- is_active 도 건드리지 않습니다. 운영에서 내린 향수를 적재가 되살리면 안 됩니다.
 --
@@ -202,7 +227,7 @@ JOIN brands b ON b.name = s.brand_name
 LEFT JOIN stg_perfume_ko_unique ko ON ko.name = s.name
 ON CONFLICT (fragrantica_id) DO UPDATE SET
     name                     = EXCLUDED.name,
-    name_ko                  = COALESCE(NULLIF(btrim(target.name_ko), ''), EXCLUDED.name_ko),
+    name_ko                  = COALESCE(EXCLUDED.name_ko, NULLIF(btrim(target.name_ko), '')),
     brand_id                 = EXCLUDED.brand_id,
     fragrantica_rating_count = EXCLUDED.fragrantica_rating_count;
 
