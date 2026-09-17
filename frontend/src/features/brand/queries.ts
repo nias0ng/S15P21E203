@@ -1,6 +1,6 @@
 import { queryOptions } from '@tanstack/react-query'
 
-import { getBrands } from './api'
+import { getBrand, getBrands } from './api'
 import { DEFAULT_BRAND_SORT, type BrandSearchParams } from './types'
 
 /**
@@ -23,6 +23,7 @@ export const brandKeys = {
   lists: () => [...brandKeys.all, 'list'] as const,
   list: (params: BrandSearchParams) =>
     [...brandKeys.lists(), normalize(params)] as const,
+  detail: (brandId: number) => [...brandKeys.all, 'detail', brandId] as const,
 }
 
 /**
@@ -39,19 +40,16 @@ export const brandListQuery = (params: BrandSearchParams) =>
   })
 
 /**
- * 브랜드 한 곳. **브랜드 상세 엔드포인트가 없어 목록에서 골라냅니다.**
+ * 브랜드 한 곳.
  *
- * 목록이 페이지 없이 전부 오기 때문에 가능한 방법입니다. 조건 없는 목록과 키가
- * 같아서, 브랜드 페이지에서 카드를 눌러 들어오면 이미 받아 둔 목록을 그대로 씁니다
- * (요청이 안 나갑니다). 주소로 바로 열었을 때만 한 번 받습니다.
+ * 예전에는 상세 엔드포인트가 없어 **목록에서 골라냈습니다**. 화면 하나를 그리려고
+ * 브랜드 7,793개를 받아 오는 방식이라, 엔드포인트가 생기면서 그만뒀습니다.
  *
- * 없는 brandId 는 null 입니다. 화면이 "찾을 수 없습니다" 로 안내합니다.
+ * 없는 브랜드는 404 입니다 — `null` 이 아니라 오류로 옵니다.
  */
 export const brandDetailQuery = (brandId: number) =>
   queryOptions({
-    queryKey: brandKeys.list({}),
-    queryFn: () => getBrands({}),
+    queryKey: brandKeys.detail(brandId),
+    queryFn: () => getBrand(brandId),
     staleTime: CATALOG_STALE_TIME,
-    select: (brands) =>
-      brands.find((brand) => brand.brandId === brandId) ?? null,
   })

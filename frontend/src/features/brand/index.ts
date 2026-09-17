@@ -13,6 +13,7 @@ export {
   BRAND_SORTS,
   DEFAULT_BRAND_SORT,
   type Brand,
+  type BrandDetail,
   type BrandSearchParams,
   type BrandSort,
   type BrandsResponse,
