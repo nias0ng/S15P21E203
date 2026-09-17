@@ -12,21 +12,17 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.util.unit.DataSize;
-import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
-import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 
 /**
  * <b>실제 AWS 를 칩니다.</b> {@link S3ImageStorageTest} 가 LocalStack 으로 확인하지 못하는 것만
@@ -40,9 +36,20 @@ import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
  * ({@code AWS_ACCESS_KEY_ID}/{@code AWS_SECRET_ACCESS_KEY} 환경변수 · {@code ~/.aws/credentials}
  * · EC2 인스턴스 역할). 키가 코드나 설정 파일을 거치지 않아 저장소에 커밋될 길이 없습니다.
  *
- * <p><b>개발 프리픽스에서만 돕니다.</b> 아래 {@link #refuseToRunOutsideTheDevPrefix()} 가
- * 프리픽스에 {@code dev} 가 없으면 시작을 막습니다. 오타 하나로 운영 경로에 시험용 객체가
- * 쌓이는 것을 코드로 막아 둡니다.
+ * <h2>⚠ 백엔드 키로는 객체를 읽을 수 없습니다 — 그게 맞습니다</h2>
+ *
+ * <p>{@code hyanghae-backend-dev} 에는 {@code s3:GetObject} 가 없습니다. {@link S3ImageStorage}
+ * 가 {@code putObject} 와 {@code deleteObject} 만 부르기 때문입니다 — 읽기는 CloudFront 가 OAC
+ * 로 합니다. 최소 권한이 제대로 잡혀 있는 것입니다.
+ *
+ * <p>그래서 <b>이 테스트는 S3 로 결과를 확인하지 않습니다.</b> {@code getObject} 나
+ * {@code headObject} 로 확인하면(둘 다 {@code s3:GetObject} 가 필요합니다) 인프라가 멀쩡한데도
+ * 403 으로 실패합니다. 확인은 전부 <b>CloudFront 를 통해</b> 합니다 — 브라우저가 보는 것과 같은
+ * 경로라 오히려 이쪽이 실제에 가깝습니다.
+ *
+ * <p><b>개발 프리픽스에서만 돕니다.</b> {@link #refuseToRunOutsideTheDevPrefix()} 가 프리픽스에
+ * {@code dev} 가 없으면 막습니다. 오타 하나로 운영 이미지 틈에 시험용 객체가 쌓이면 다시 찾아
+ * 지우기 어렵습니다.
  *
  * <h2>실행</h2>
  *
@@ -118,7 +125,7 @@ class RealS3ConnectivityTest {
                 client.deleteObject(DeleteObjectRequest.builder()
                         .bucket(BUCKET).key(key).build());
             } catch (RuntimeException ignored) {
-                // 이미 지워진 객체입니다. 정리 실패가 검증 결과를 덮지 않게 둡니다.
+                // 이미 지워졌거나 권한이 없습니다. 정리 실패가 검증 결과를 덮지 않게 둡니다.
             }
         }
         createdKeys.clear();
@@ -141,6 +148,10 @@ class RealS3ConnectivityTest {
      *
      * <p>403 이면 CloudFront 가 버킷을 읽지 못하는 것이고, 404 면 주소와 키가 어긋난 것입니다
      * (오리진 경로 설정 — {@code IMAGE_STORAGE_S3_PUBLIC_PATH_PREFIX} 를 보십시오).
+     *
+     * <p>헤더도 여기서 함께 봅니다. S3 에 무엇이 저장됐는지가 아니라 <b>브라우저가 무엇을
+     * 받는지</b>가 실제로 중요한 것이고, 백엔드 키로는 어차피 S3 를 읽을 수 없습니다.
+     * {@code Content-Type} 이 빠지면 화면에 이미지 대신 내려받기가 뜹니다.
      */
     @Test
     void servesTheUploadedObjectThroughCloudFront() throws Exception {
@@ -159,42 +170,32 @@ class RealS3ConnectivityTest {
         assertThat(response.headers().firstValue("content-type"))
                 .as("Content-Type 이 image/png 가 아니면 브라우저가 내려받기를 띄웁니다")
                 .hasValue("image/png");
+        assertThat(response.headers().firstValue("cache-control")).hasValue(CACHE_CONTROL);
         assertThat(response.body()).isEqualTo(PNG);
-    }
-
-    /** 올린 그대로가 S3 에 있고, {@code Content-Type} 이 붙어 있어야 합니다. */
-    @Test
-    void writesTheObjectWithItsContentType() {
-        assumeThat(KEY_PREFIX).contains("dev");
-
-        String key = keyOf(save());
-
-        GetObjectResponse stored = headOf(key);
-
-        assertThat(stored.contentType()).isEqualTo("image/png");
-        assertThat(stored.cacheControl()).isEqualTo(CACHE_CONTROL);
     }
 
     /**
      * <b>지우기 권한을 확인합니다.</b> 이것이 없으면 글에서 뗀 사진이 버킷에 영원히 남습니다.
      *
-     * <p>CloudFront 가 아니라 S3 를 확인합니다. 캐시 수명이 30일이라 지운 뒤에도 엣지는 한동안
-     * 그대로 내려줍니다 — CloudFront 가 404 가 되기를 기다리면 이 테스트는 절대 통과하지
-     * 못합니다.
+     * <p><b>지운 뒤에 처음으로 주소를 부릅니다.</b> 순서가 중요합니다 — 캐시 수명이 30일이라,
+     * 지우기 전에 한 번이라도 부르면 엣지가 사본을 쥐고 지운 뒤에도 그대로 내려줍니다. 업로드마다
+     * UUID 라 주소가 매번 새것이고, 그래서 이 첫 요청은 반드시 오리진까지 갑니다.
+     *
+     * <p>{@code deleteObject} 는 없는 키에도 성공합니다. 예외가 안 났다는 것만으로는 지워졌다고
+     * 할 수 없어, 주소가 실제로 닫혔는지까지 봅니다.
      */
     @Test
-    void deletesTheObjectFromTheBucket() {
+    void deletesTheObjectSoItStopsServing() throws Exception {
         assumeThat(KEY_PREFIX).contains("dev");
 
         String imageUrl = save();
-        String key = keyOf(imageUrl);
-        assertThat(objectExists(key)).isTrue();
 
         storage.delete(imageUrl);
 
-        assertThat(objectExists(key))
-                .as("DeleteObject 권한이 없으면 뗀 사진이 버킷에 영원히 남습니다")
-                .isFalse();
+        assertThat(get(imageUrl).statusCode())
+                .as("지웠는데 %s 가 아직 열립니다."
+                        + " DeleteObject 권한이 없으면 뗀 사진이 버킷에 영원히 남습니다.", imageUrl)
+                .isIn(403, 404);
     }
 
     private String save() {
@@ -213,24 +214,6 @@ class RealS3ConnectivityTest {
 
     private String keyOf(String imageUrl) {
         return imageUrl.substring(PUBLIC_BASE_URL.length() + 1);
-    }
-
-    private GetObjectResponse headOf(String key) {
-        try (ResponseInputStream<GetObjectResponse> object = client.getObject(
-                GetObjectRequest.builder().bucket(BUCKET).key(key).build())) {
-            return object.response();
-        } catch (IOException exception) {
-            throw new IllegalStateException("cannot read " + key, exception);
-        }
-    }
-
-    private boolean objectExists(String key) {
-        try {
-            headOf(key);
-            return true;
-        } catch (NoSuchKeyException exception) {
-            return false;
-        }
     }
 
     private static String env(String name, String fallback) {
