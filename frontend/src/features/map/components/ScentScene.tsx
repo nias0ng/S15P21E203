@@ -2,6 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 
 import { cn } from '@/shared/lib/cn'
 
+import {
+  parseBootMessage,
+  snapshotEvents,
+  type SceneBootEvent,
+  type SceneBootSnapshot,
+} from '../lib/bootProgress'
+
 /**
  * 3D 향 지도가 카드 · 검색창에서 앱으로 넘기는 향수 한 개
  * (paperboat `src/host.js` 의 perfumeRef).
@@ -40,6 +47,8 @@ interface EngineHandle {
   apply: () => void
   /** 개발 패널(계측 · 슬라이더 · 비교)을 한꺼번에 숨깁니다 — 개발 서버에서만 뜹니다 */
   solo?: (on: boolean) => void
+  /** 지금까지의 부팅 단계 — postMessage 를 놓친 앱이 따라잡습니다 (host.js bootNow) */
+  boot?: () => SceneBootSnapshot
 }
 
 type Props = {
@@ -63,6 +72,11 @@ type Props = {
    * 엔진은 iframe 문서에 `<html data-time="dusk|night">` 을 답니다 (없으면 낮 · paperboat 불변식 25).
    */
   onNightChange?: (night: boolean) => void
+  /**
+   * 엔진의 부팅 단계 (host.js `bootReport` — html → script → frame → boat-bytes → boat).
+   * 로딩 커튼(SceneBootCurtain)이 퍼센트를 미는 데 씁니다. 배 GLB 진행은 초당 수십 번 옵니다.
+   */
+  onBoot?: (event: SceneBootEvent) => void
   className?: string
 }
 
@@ -89,6 +103,7 @@ export function ScentScene({
   onSearch,
   coveredTop = 0,
   onNightChange,
+  onBoot,
   className,
 }: Props) {
   const frame = useRef<HTMLIFrameElement>(null)
@@ -101,6 +116,7 @@ export function ScentScene({
     onSearch,
     coveredTop,
     onNightChange,
+    onBoot,
   })
   useEffect(() => {
     latest.current = {
@@ -109,6 +125,7 @@ export function ScentScene({
       onSearch,
       coveredTop,
       onNightChange,
+      onBoot,
     }
   })
 
@@ -121,6 +138,20 @@ export function ScentScene({
     let attached: EngineHandle | null = null
     let timeWatch: MutationObserver | null = null
 
+    // 부팅 신호 — 엔진이 window.PB 를 열기 **전**(html · script · frame)에도 오므로 postMessage 로 받습니다.
+    // 같은 출처의, 이 iframe 이 보낸 것만 듣습니다 (Vite HMR 등 다른 메시지는 모양이 달라 걸러집니다)
+    const onMessage = (event: MessageEvent) => {
+      if (
+        event.source !== el.contentWindow ||
+        event.origin !== window.location.origin
+      ) {
+        return
+      }
+      const boot = parseBootMessage(event.data)
+      if (boot) latest.current.onBoot?.(boot)
+    }
+    window.addEventListener('message', onMessage)
+
     // iframe 이 다시 불러오면 엔진도 새로 뜨고 PB 도 새것이라, 불러올 때마다 다시 찾습니다
     const attach = () => {
       const engine = (
@@ -132,6 +163,14 @@ export function ScentScene({
       }
       if (engine === attached) return
       attached = engine
+
+      // 놓친 부팅 신호 따라잡기 — 이미 받은 단계는 커튼 쪽에서 무시하므로 겹쳐도 됩니다
+      const snapshot = engine.boot?.()
+      if (snapshot) {
+        for (const boot of snapshotEvents(snapshot)) {
+          latest.current.onBoot?.(boot)
+        }
+      }
 
       // 엔진의 자리표시 헤더(v0.66.0)는 끕니다 — 무대를 헤더만큼 줄이는 방식이라 3D 가 앱의 유리판 헤더
       // 뒤까지 안 깔립니다. 대신 앱 헤더가 가리는 높이를 알려 검색창 · 해도를 그 아래로 내립니다
@@ -173,7 +212,16 @@ export function ScentScene({
 
     el.addEventListener('load', onLoad)
     timer = window.setTimeout(attach, POLL_MS)
+    // 엔진은 두 장 뒤에 부릅니다 — 로딩 커튼(원 · 퍼센트)이 먼저 한 번 칠해져 합성 스레드로 넘어가야, 엔진이 뜨며
+    // 메인 스레드를 1~3초 막는 동안에도 커튼이 움직입니다. 늦어지는 건 30ms 남짓입니다 (2026-09-17 실측)
+    let raf = requestAnimationFrame(() => {
+      raf = requestAnimationFrame(() => {
+        el.src = ENGINE_SRC
+      })
+    })
     return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('message', onMessage)
       el.removeEventListener('load', onLoad)
       window.clearTimeout(timer)
       timeWatch?.disconnect()
@@ -182,12 +230,13 @@ export function ScentScene({
   }, [])
 
   return (
+    // 준비되면 짧게 드러납니다 — 로딩 커튼이 걷힐 때 그 뒤에서 이미 그려져 있고, 커튼 없이 뜰 때도 툭 나타나지 않습니다
+    // 주소(src)는 위 effect 가 두 장 뒤에 넣습니다
     <iframe
       ref={frame}
-      src={ENGINE_SRC}
       title="향 지도"
       className={cn(
-        'block size-full border-0',
+        'block size-full border-0 transition-opacity duration-300',
         ready ? 'opacity-100' : 'opacity-0',
         className,
       )}
