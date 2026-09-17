@@ -235,7 +235,7 @@ export function PerfumeCard({
    * 어두운 방의 유리판 위라 카드도 유리여야 하고, 컬렉션은 종이 위라 그대로입니다.
    * 화면별 모양을 prop 으로 받으면 화면이 늘 때마다 이 파일을 고치게 됩니다.
    * 이름만 달아 두면 각 화면의 CSS 가 자기 결에 맞게 덮습니다
-   * (features/perfume/perfume-display.css 의 .scent-glass).
+   * (styles/scent-display.css 의 .scent-glass).
    */
 
   return (
