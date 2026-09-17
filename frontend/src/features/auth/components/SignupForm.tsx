@@ -12,7 +12,11 @@ import { ROUTES } from '@/shared/config/routes'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
 
-import { checkNicknameAvailability, signup } from '../api'
+import {
+  checkEmailAvailability,
+  checkNicknameAvailability,
+  signup,
+} from '../api'
 import {
   NICKNAME_MAX_LENGTH,
   NICKNAME_MIN_LENGTH,
@@ -25,8 +29,9 @@ import { TermsAgreement } from './TermsAgreement'
 /**
  * 회원가입 (와이어프레임 A28 우측 카드 + A32 동의 블록 — COM-01)
  *
- * **[중복 확인] 은 닉네임에만 답니다.** 이메일 중복 확인 엔드포인트가 없어서,
- * 이메일이 겹치는지는 [가입하기] 를 눌러 409 를 받아야 알 수 있습니다.
+ * 이메일 · 닉네임 **둘 다 [중복 확인]** 이 있습니다. 둘 다 "쓸 수 있다" 고 해도 가입이
+ * 반드시 되는 것은 아닙니다 — 확인과 가입 사이에 다른 사람이 가져갈 수 있어, 가입
+ * 시점에 409 로 한 번 더 걸립니다.
  *
  * 가입해도 로그인은 되지 않습니다 — 응답에 토큰이 없어 로그인 화면으로 보냅니다.
  */
@@ -39,10 +44,11 @@ export function SignupForm() {
   const [nickname, setNickname] = useState('')
   const [terms, setTerms] = useState<TermsState>(EMPTY_TERMS)
 
-  /** 중복 확인 결과. 닉네임을 고치면 지웁니다 — 옛 답이 남으면 거짓말이 됩니다 */
+  /** 중복 확인 결과. 값을 고치면 지웁니다 — 옛 답이 남으면 거짓말이 됩니다 */
   const [nicknameAvailable, setNicknameAvailable] = useState<boolean | null>(
     null,
   )
+  const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null)
 
   // 서버가 앞뒤 공백을 지우고 검사하므로 화면도 같은 값으로 셉니다
   const trimmedNickname = nickname.trim()
@@ -67,6 +73,15 @@ export function SignupForm() {
   const nicknameCheck = useMutation({
     mutationFn: () => checkNicknameAvailability(trimmedNickname),
     onSuccess: (available) => setNicknameAvailable(available),
+  })
+
+  /*
+    서버가 앞뒤 공백을 떼고 소문자로 바꿔 검사합니다. 화면이 다르게 다듬으면
+    "쓸 수 있다" 고 해 놓고 가입에서 막힙니다 — 보낼 때도 같은 값을 씁니다.
+  */
+  const emailCheck = useMutation({
+    mutationFn: () => checkEmailAvailability(email.trim()),
+    onSuccess: (available) => setEmailAvailable(available),
   })
 
   const signupMutation = useMutation({
@@ -102,16 +117,42 @@ export function SignupForm() {
           signupMutation.mutate()
         }}
       >
-        <Input
-          label="이메일"
-          hideLabel
-          type="email"
-          autoComplete="email"
-          placeholder="이메일"
-          required
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-        />
+        {/* 닉네임과 같은 모양 — 입력칸 옆에 [중복 확인] 이 붙습니다 */}
+        <div className="flex items-start gap-1.25">
+          <div className="flex-1">
+            <Input
+              label="이메일"
+              hideLabel
+              type="email"
+              autoComplete="email"
+              placeholder="이메일"
+              required
+              value={email}
+              onChange={(event) => {
+                setEmail(event.target.value)
+                setEmailAvailable(null)
+              }}
+              error={
+                emailAvailable === false
+                  ? '이미 사용 중인 이메일입니다'
+                  : undefined
+              }
+              hint={
+                emailAvailable === true
+                  ? '사용할 수 있는 이메일입니다'
+                  : undefined
+              }
+            />
+          </div>
+          <button
+            type="button"
+            disabled={email.trim().length === 0 || emailCheck.isPending}
+            onClick={() => emailCheck.mutate()}
+            className="border-line text-ink hover:bg-line-soft h-10 shrink-0 border px-2.5 text-[11px] disabled:opacity-50"
+          >
+            중복 확인
+          </button>
+        </div>
 
         <Input
           label="비밀번호"
@@ -136,7 +177,7 @@ export function SignupForm() {
           error={passwordConfirmError}
         />
 
-        {/* 중복 확인은 닉네임에만 답니다 — 와이어프레임에서 한 줄에 붙어 있습니다 */}
+        {/* 와이어프레임에서 입력칸과 [중복 확인] 이 한 줄에 붙어 있습니다 */}
         <div className="flex items-start gap-1.25">
           <div className="flex-1">
             <Input
