@@ -179,7 +179,10 @@ def load_estimates(path=DEFAULT_LOG):
     """
     out = {}
     for row in read(path):
-        if row.get("llm_accords"):
+        # **`[]` 와 `null` 을 구분한다.** `[]` 는 "LLM 이 향이 아니라고 답했다" 이고
+        # `null` 은 "아직 묻지 않았다" 다. 빈 것도 캐시로 살려야 재시작 뒤에 같은
+        # 답이 나오고 같은 표현을 다시 묻지 않는다 (전체의 38%).
+        if row.get("llm_accords") is not None:
             out[row["normalized_key"]] = {"accords": row["llm_accords"],
                                           "reasoning": row.get("llm_reasoning")}
     return out
@@ -201,7 +204,11 @@ def cached_estimator(estimate, path=DEFAULT_LOG):
     def wrapped(expression):
         key = normalize_key(expression)
         if key not in cache:
-            guess = estimate(expression) or {}
+            guess = estimate(expression)
+            # **실패(`None`)를 캐시에 넣지 않는다.** 넣으면 네트워크가 한 번 끊긴
+            # 표현이 "향이 아님" 으로 굳어 영영 안 풀린다. 다음 요청에서 다시 묻는다.
+            if guess is None:
+                return None
             cache[key] = {"accords": list(guess.get("accords") or []),
                           "reasoning": guess.get("reasoning")}
         return cache[key]
