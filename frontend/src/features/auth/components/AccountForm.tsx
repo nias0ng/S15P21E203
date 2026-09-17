@@ -1,11 +1,14 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
-import { useIsLoggedIn } from '@/shared/store/authStore'
+import { isApiError } from '@/shared/api/http'
+import { useToast } from '@/shared/hooks/useToast'
+import { useAuthStore, useIsLoggedIn } from '@/shared/store/authStore'
 import { Button } from '@/shared/ui/Button'
+import { Toast } from '@/shared/ui/Toast'
 
-import { checkNicknameAvailability } from '../api'
-import { meQuery } from '../queries'
+import { changeNickname, checkNicknameAvailability, toAuthUser } from '../api'
+import { authKeys, meQuery } from '../queries'
 import { NICKNAME_MIN_LENGTH } from '../types'
 
 import { PasswordChangeModal } from './PasswordChangeModal'
@@ -21,13 +24,17 @@ import { WithdrawModal } from './WithdrawModal'
  * - 닉네임은 중복 불가. 별도의 중복 확인 API 로 입력 중에 확인한다
  * - 프로필 이미지는 JPG · JPEG · PNG · WEBP, 한 장당 최대 5MB
  *
- * TODO: 닉네임 저장 API 연결 — **엔드포인트가 아직 없습니다.** `PATCH /users/me`
- *       같은 수정 경로가 없어서 중복 확인만 붙어 있고 [저장] 은 아직 비어 있습니다.
- * TODO: 프로필 이미지 업로드 · 삭제. 업로드 경로도 아직 없습니다
+ * 닉네임 저장은 `PATCH /users/me/nickname` 입니다. 지금 쓰는 이름을 그대로 보내도
+ * 성공하고, 남이 쓰는 이름이면 409 입니다 — 중복 확인을 통과했어도 그 사이 누가
+ * 가져갈 수 있어 저장에서 한 번 더 걸립니다.
+ *
+ * TODO: 프로필 이미지 업로드 · 삭제. 업로드 경로가 아직 없습니다
  */
 export function AccountForm() {
   const isLoggedIn = useIsLoggedIn()
   const { data: me } = useQuery({ ...meQuery(), enabled: isLoggedIn })
+  const queryClient = useQueryClient()
+  const { showToast, toastProps } = useToast()
 
   const [passwordOpen, setPasswordOpen] = useState(false)
   const [withdrawOpen, setWithdrawOpen] = useState(false)
@@ -49,8 +56,39 @@ export function AccountForm() {
     onSuccess: (available) => setNicknameAvailable(available),
   })
 
+  /**
+   * 닉네임 저장 (A29 [저장]).
+   *
+   * 응답에 바뀐 내 정보가 실려 옵니다. **캐시와 스토어 둘 다** 맞춥니다 — 화면은
+   * 쿼리를 보고, 헤더의 닉네임은 로그인 스토어를 봅니다. 하나만 고치면 저장 뒤에도
+   * 헤더에 옛 이름이 남습니다.
+   */
+  const save = useMutation({
+    mutationFn: () => changeNickname(trimmedNickname),
+    onSuccess: (user) => {
+      queryClient.setQueryData(authKeys.me(), user)
+      useAuthStore.getState().setUser(toAuthUser(user))
+
+      // 고쳐 쓰던 값을 비웁니다 — 이제 서버 값이 곧 화면 값입니다
+      setNicknameDraft(null)
+      setNicknameAvailable(null)
+      showToast('닉네임을 바꿨습니다')
+    },
+    onError: (error) =>
+      showToast(
+        isApiError(error) && error.status === 409
+          ? '이미 사용 중인 닉네임입니다'
+          : '닉네임을 바꾸지 못했습니다',
+      ),
+  })
+
+  /* 바꾼 것이 없으면 보낼 이유가 없습니다 — 서버는 성공으로 답하지만 왕복이 낭비입니다 */
+  const nicknameChanged = me != null && trimmedNickname !== me.nickname
+
   return (
     <>
+      <Toast {...toastProps} />
+
       <div className="border-line bg-surface-card border">
         <div className="space-y-3.75 p-6.25">
           <h1 className="text-ink text-[17px] font-bold">정보 변경</h1>
@@ -91,7 +129,7 @@ export function AccountForm() {
             className="flex items-center gap-2.5"
             onSubmit={(event) => {
               event.preventDefault()
-              // TODO: 닉네임 저장 API 연결 (수정 엔드포인트가 생기면)
+              if (nicknameChanged) save.mutate()
             }}
           >
             <label
@@ -139,7 +177,15 @@ export function AccountForm() {
           <hr className="border-line" />
 
           <div className="flex gap-1.25">
-            <Button type="submit" form="account-nickname-form">
+            <Button
+              type="submit"
+              form="account-nickname-form"
+              disabled={
+                !nicknameChanged ||
+                trimmedNickname.length < NICKNAME_MIN_LENGTH ||
+                save.isPending
+              }
+            >
               저장
             </Button>
             <Button

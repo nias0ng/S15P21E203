@@ -22,7 +22,6 @@ const PERFUME_PAGE_SIZE = 20
  *
  * **와이어프레임에 없는 신규 화면입니다.** 구성은 같은 모양인 노트 상세(A36)를 따릅니다.
  *
- * 브랜드 상세 엔드포인트가 없어 브랜드 자체는 목록에서 골라냅니다(brandDetailQuery).
  * 향수는 검색 API 에 `brand` 를 걸어 받습니다 — **영문 이름 완전 일치**입니다.
  */
 export default function BrandDetailPage() {
@@ -95,6 +94,14 @@ export default function BrandDetailPage() {
               {name}
             </p>
           )}
+          {/*
+            향수 수는 **상세 응답에만 있습니다** — 목록에서는 브랜드가 7,793개라
+            필드 하나가 133KB 여서 뺐습니다. 아래 목록의 개수와 같은 값이지만,
+            그쪽은 검색 결과라 이름이 안 맞으면 0 이 나올 수 있습니다.
+          */}
+          <p className="text-ink-muted text-caption">
+            향수 {brand.data.perfumeCount}개
+          </p>
         </div>
       </header>
 

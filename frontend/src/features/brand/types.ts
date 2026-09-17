@@ -32,6 +32,17 @@ export interface BrandsResponse {
 }
 
 /**
+ * 브랜드 한 곳 (`GET /brands/{brandId}`).
+ *
+ * **목록과 달리 향수 수가 옵니다.** 목록에서 뺀 것은 브랜드 7,793개에 필드 하나가
+ * 133KB 가 되기 때문이었고, 한 건에는 그 사정이 없습니다.
+ */
+export interface BrandDetail extends Brand {
+  /** 이 브랜드의 활성 향수 수 */
+  perfumeCount: number
+}
+
+/**
  * A34 정렬. 기본은 영문 abc 순입니다.
  *
  * 이름이 `NAME` 하나가 아닌 이유는 브랜드가 이름을 둘 갖기 때문입니다 —

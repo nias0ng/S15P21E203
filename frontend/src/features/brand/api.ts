@@ -1,7 +1,12 @@
 import { http } from '@/shared/api/http'
 
 import { usableLogoUrl } from './logo'
-import type { Brand, BrandSearchParams, BrandsResponse } from './types'
+import type {
+  Brand,
+  BrandDetail,
+  BrandSearchParams,
+  BrandsResponse,
+} from './types'
 
 // 경로에 '/api/v1' 을 붙이지 않습니다 — http 의 baseURL 에 이미 있습니다
 
@@ -24,4 +29,20 @@ export async function getBrands(params: BrandSearchParams): Promise<Brand[]> {
     ...brand,
     logoUrl: usableLogoUrl(brand.logoUrl),
   }))
+}
+
+/**
+ * A34 브랜드 한 곳. 로그인이 필요 없습니다.
+ *
+ * 목록에서 골라 쓰지 않는 이유는 크기입니다 — 브랜드가 7,793개라, 상세 화면 하나를
+ * 그리려고 전체 목록을 받게 됩니다.
+ *
+ * 없는 브랜드(또는 내려간 브랜드)는 404 입니다. 목록에서 골라내던 때는 `null` 이라
+ * 화면이 "찾을 수 없습니다" 를 그렸는데, 이제 그 판단을 오류 상태로 합니다.
+ *
+ * 로고는 목록과 같은 규칙으로 한 번 거릅니다(`logo.ts`).
+ */
+export async function getBrand(brandId: number): Promise<BrandDetail> {
+  const { data } = await http.get<BrandDetail>(`/brands/${brandId}`)
+  return { ...data, logoUrl: usableLogoUrl(data.logoUrl) }
 }
