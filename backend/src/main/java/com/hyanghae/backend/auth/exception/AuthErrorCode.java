@@ -14,7 +14,8 @@ public enum AuthErrorCode implements ErrorCode {
     AUTH_ACCESS_DENIED(HttpStatus.FORBIDDEN, "요청한 작업을 수행할 권한이 없습니다."),
     AUTH_USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),
     AUTH_CURRENT_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "현재 비밀번호가 올바르지 않습니다."),
-    AUTH_INVALID_NICKNAME(HttpStatus.BAD_REQUEST, "닉네임은 공백을 제외하고 2자부터 20자까지 입력해야 합니다.");
+    AUTH_INVALID_NICKNAME(HttpStatus.BAD_REQUEST, "닉네임은 공백을 제외하고 2자부터 20자까지 입력해야 합니다."),
+    AUTH_INVALID_EMAIL(HttpStatus.BAD_REQUEST, "이메일 형식이 올바르지 않습니다.");
 
     private final HttpStatus status;
     private final String message;

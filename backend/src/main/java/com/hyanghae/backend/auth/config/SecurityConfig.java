@@ -51,8 +51,12 @@ public class SecurityConfig {
                                     "/api/v1/auth/login",
                                     "/api/v1/auth/refresh"
                             ).permitAll()
-                            .requestMatchers(HttpMethod.GET, "/api/v1/users/nickname-availability")
-                            .permitAll();
+                            // 가입 화면에서 쓰므로 로그인 전에 열려 있어야 합니다.
+                            .requestMatchers(
+                                    HttpMethod.GET,
+                                    "/api/v1/users/nickname-availability",
+                                    "/api/v1/users/email-availability"
+                            ).permitAll();
 
                     if (properties.enforceHttpAuthorization()) {
                         authorize
