@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router'
 
 import { communityKeys } from '@/features/community'
 import { PerfumeReviewDetail, reviewDetailQuery } from '@/features/perfume'
+import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { ROUTES, toPerfumeDetail, toReviewEdit } from '@/shared/config/routes'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
@@ -67,7 +68,10 @@ export default function ReviewDetailPage() {
        */
       onDeleted={() => {
         void queryClient.invalidateQueries({ queryKey: communityKeys.all })
-        navigate(toPerfumeDetail(data.perfume.perfumeId), { replace: true })
+        navigate(toPerfumeDetail(data.perfume.perfumeId), {
+          replace: true,
+          state: perfumeViewState('COMMUNITY'),
+        })
       }}
     />
   )

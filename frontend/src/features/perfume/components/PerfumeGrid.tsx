@@ -1,3 +1,7 @@
+import {
+  perfumeViewState,
+  type PerfumeViewSource,
+} from '@/shared/config/perfumeViewSource'
 import { toPerfumeDetail } from '@/shared/config/routes'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { PerfumeCard } from '@/shared/ui/PerfumeCard'
@@ -28,6 +32,14 @@ type PerfumeGridProps = {
    * 숫자가 붙으면 "검색어와 상관없는 전체 순위" 로 잘못 읽힙니다.
    */
   rankable?: boolean
+  /**
+   * 이 격자를 통해 들어간 향수 상세에 남길 **들어온 길** (VIEW-01).
+   *
+   * 격자는 자기가 어느 화면에 놓였는지 모릅니다 — 향수 목록 · 검색 결과 · 브랜드 ·
+   * 노트가 다 같은 격자를 씁니다. 기본값이 `SEARCH` 인 것은 넷 다 "찾아보다 눌렀다" 에
+   * 해당해서입니다. 다른 뜻이 필요한 화면만 넘기세요.
+   */
+  source?: PerfumeViewSource
 }
 
 /**
@@ -42,6 +54,7 @@ export function PerfumeGrid({
   empty,
   columns = 5,
   rankable = false,
+  source = 'SEARCH',
   emptyAction,
 }: PerfumeGridProps) {
   /*
@@ -113,6 +126,7 @@ export function PerfumeGrid({
             // 이미지가 없는 향수가 있습니다. 그때는 Thumbnail 이 빈 상자를 그립니다.
             thumbnailUrl={perfume.imageUrl}
             to={toPerfumeDetail(perfume.perfumeId)}
+            state={perfumeViewState(source)}
           />
         </li>
       ))}

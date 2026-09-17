@@ -8,6 +8,7 @@ import {
   POST_CATEGORIES,
   postDetailQuery,
 } from '@/features/community'
+import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
@@ -157,6 +158,7 @@ export default function PostDetailPage() {
                 <li key={perfume.perfumeId}>
                   <Link
                     to={toPerfumeDetail(perfume.perfumeId)}
+                    state={perfumeViewState('COMMUNITY')}
                     className={cn(
                       'border-line-soft bg-surface-sunken hover:border-accent rounded-card',
                       'inline-flex w-fit max-w-full items-baseline gap-2.5 border px-2.5 py-2.5',

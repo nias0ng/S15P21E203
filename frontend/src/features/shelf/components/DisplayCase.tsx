@@ -301,8 +301,14 @@ export const DisplayCase = memo(function DisplayCase({
                         브랜드가 이미 있습니다. 전체 이름은 병에 마우스를 올리면 뜨는
                         title 에 남습니다.
                       */}
+                      {/*
+                        한국어 이름이 오면 그것을, 아직 안 오면 영문 이름을 적습니다
+                        (`ShelfItem.nameKo` 주석 — 목록 응답에 추가를 요청해 둔 값입니다).
+                        브랜드를 떼는 일은 영문 이름에만 뜻이 있습니다 — 한국어 이름은
+                        앞에 브랜드가 붙어 오지 않습니다.
+                      */}
                       <span className="shelf-tag-name font-serif font-semibold">
-                        {nameWithoutBrand(item.name, item.brand)}
+                        {item.nameKo ?? nameWithoutBrand(item.name, item.brand)}
                       </span>
                     </span>
                   </span>
