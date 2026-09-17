@@ -187,6 +187,7 @@ class ShelfItemServiceTest {
                 SHELF_ITEM_ID,
                 PERFUME_ID,
                 "Test Scent",
+                "테스트 향수",
                 "Test Brand",
                 OwnershipStatus.OWNED,
                 true
