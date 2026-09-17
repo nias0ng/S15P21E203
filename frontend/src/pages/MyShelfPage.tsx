@@ -1,10 +1,19 @@
-import { useQuery } from '@tanstack/react-query'
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { useRef, useState, type ReactNode } from 'react'
 
 import {
+  collectionKeys,
+  collectionPreviewsQuery,
   CollectionFormModal,
   CollectionStrip,
+  createCollection,
   myCollectionsQuery,
+  type CollectionInput,
 } from '@/features/collection'
 import { perfumeListQuery } from '@/features/perfume'
 import {
@@ -114,6 +123,7 @@ export default function MyShelfPage() {
   const arrangement = useShelfArrangement()
   // 낙관적 갱신과 되돌리기는 도메인 훅이 들고 있습니다. 토스트만 여기서 붙입니다
   const actions = useShelfActions()
+  const queryClient = useQueryClient()
 
   const [stage, setStage] = useState<Stage>('shelf')
   const [registerOpen, setRegisterOpen] = useState(false)
@@ -178,6 +188,53 @@ export default function MyShelfPage() {
   const recommendation = useQuery({
     ...personalRecommendationQuery(),
     enabled: shelfCount >= RECOMMEND_MIN_SHELF_ITEMS,
+  })
+
+  /*
+   * 컬렉션 카드에 얹을 향수 사진.
+   *
+   * ⚠️ 목록 응답에 썸네일이 없어 **컬렉션마다 상세를 한 번씩** 부릅니다. 캐시는
+   * 상세 화면과 같은 키라, 카드를 눌러 들어가면 요청이 다시 나가지 않습니다.
+   * BE 가 목록에 `previewThumbnails` 를 실어 주면 이 블록을 통째로 지웁니다.
+   */
+  const collectionIds = (collections.data ?? []).map(
+    (item) => item.collectionId,
+  )
+  const collectionDetails = useQueries({
+    queries: collectionPreviewsQuery(collectionIds),
+  })
+
+  /** 카드에 넘길 목록 — 미리보기만 상세에서 가져와 채웁니다 */
+  const collectionCards = (collections.data ?? []).map((item, index) => {
+    const detail = collectionDetails[index]?.data
+    return detail === undefined
+      ? item
+      : { ...item, previewThumbnails: detail.previewThumbnails }
+  })
+
+  /**
+   * 컬렉션 만들기 (COL-01).
+   *
+   * 만든 뒤 상세로 보내지 않습니다 — 진열대 하단 띠에 바로 나타나고, 방금 만든
+   * 사람은 대개 향수를 더 담기보다 진열대를 계속 보기 때문입니다.
+   */
+  const createCollectionMutation = useMutation({
+    mutationFn: ({
+      input,
+      shelfItemIds,
+    }: {
+      input: CollectionInput
+      shelfItemIds: number[]
+    }) => createCollection(input, shelfItemIds),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: collectionKeys.mine() })
+      showToast('컬렉션을 만들었습니다')
+    },
+    onError: (error) =>
+      showToast(
+        // 이름이 겹치면 409 입니다
+        isApiError(error) ? error.message : '컬렉션을 만들지 못했습니다',
+      ),
   })
 
   if (shelf.isPending) return <PageFallback />
@@ -356,9 +413,26 @@ export default function MyShelfPage() {
     </div>
   )
 
-  const collectionStrip = (
+  /*
+    컬렉션을 못 받았으면 빈 띠로 그리지 않습니다. 진열대 목록과 같은 이유 —
+    아무 말이 없으면 "컬렉션이 하나도 없다" 로 읽히는데, 실제로는 못 읽어 온
+    것입니다. 여기는 화면의 한 구역이라 진열대처럼 화면 전체를 대신하지 않고
+    띠 자리에만 안내를 둡니다.
+  */
+  const collectionStrip = collections.isError ? (
+    <div className="border-line rounded-card flex min-h-40 flex-col items-center justify-center gap-2.5 border border-dashed">
+      <p className="shelf-muted text-caption">컬렉션을 불러오지 못했습니다</p>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => void collections.refetch()}
+      >
+        다시 시도
+      </Button>
+    </div>
+  ) : (
     <CollectionStrip
-      items={collections.data ?? []}
+      items={collectionCards}
       isPending={collections.isPending}
       onCreate={() => setCreateCollectionOpen(true)}
     />
@@ -402,12 +476,21 @@ export default function MyShelfPage() {
           })
         }}
       />
+      {/*
+        ⚠️ **만들 때 향수를 최소 하나 골라야 합니다.** 서버가 `shelfItemIds` 를
+        `@NotEmpty` 로 요구합니다 — 와이어프레임 A19 의 "향수 없이도 생성 가능" 과
+        어긋나는 자리라, BE 가 제약을 풀면 고르는 목록을 선택으로 되돌립니다.
+      */}
       <CollectionFormModal
         open={createCollectionOpen}
         onClose={() => setCreateCollectionOpen(false)}
-        onSubmit={() => {
+        candidates={shelf.data ?? []}
+        onSearch={() => {
+          // TODO: 진열대 내 검색 연결 (지금은 담은 향수 전부를 보여줍니다)
+        }}
+        onSubmit={(input, shelfItemIds) => {
           setCreateCollectionOpen(false)
-          showToast('컬렉션을 만들었습니다')
+          createCollectionMutation.mutate({ input, shelfItemIds })
         }}
       />
       {/*
