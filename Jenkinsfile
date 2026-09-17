@@ -7,6 +7,9 @@ pipeline {
     }
 
     environment {
+        AI_DIR = 'ai'
+        AI_IMAGE = 'hyanghae-ai:latest'
+        AI_CONTAINER = 'hyanghae-ai'
         BACKEND_DIR = 'backend'
         BACKEND_IMAGE = 'hyanghae-backend:latest'
         FRONTEND_DIR = 'frontend'
@@ -84,7 +87,7 @@ pipeline {
             }
         }
 
-        stage('Docker Image Build') {
+        stage('Docker Images Build') {
             when {
                 branch 'master'
             }
@@ -92,6 +95,7 @@ pipeline {
                 sh '''
                     set -eu
                     docker build --tag "$BACKEND_IMAGE" "$BACKEND_DIR"
+                    docker build --tag "$AI_IMAGE" "$AI_DIR"
                 '''
             }
         }
@@ -162,6 +166,41 @@ pipeline {
                         --retry-all-errors \
                         --max-time 5 \
                         "$HEALTH_CHECK_URL"
+                '''
+            }
+        }
+
+        stage('AI Health Check') {
+            when {
+                branch 'master'
+            }
+            steps {
+                sh '''
+                    set -eu
+
+                    attempts=12
+                    while [ "$attempts" -gt 0 ]; do
+                        status="$(docker inspect \
+                            --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' \
+                            "$AI_CONTAINER" 2>/dev/null || true)"
+
+                        case "$status" in
+                            healthy)
+                                exit 0
+                                ;;
+                            unhealthy)
+                                docker logs --tail 100 "$AI_CONTAINER" || true
+                                exit 1
+                                ;;
+                        esac
+
+                        attempts=$((attempts - 1))
+                        sleep 5
+                    done
+
+                    echo "$AI_CONTAINER did not become healthy." >&2
+                    docker logs --tail 100 "$AI_CONTAINER" || true
+                    exit 1
                 '''
             }
         }
