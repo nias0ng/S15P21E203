@@ -87,6 +87,29 @@ class CollectionIntegrationTest {
                 .andExpect(jsonPath("$.perfumes[1].nameKo").value("첫 번째 향수"));
     }
 
+    /**
+     * 컬렉션 상세에서도 한국어 이름이 없으면 <b>키는 있고 값만 {@code null}</b> 입니다.
+     *
+     * <p>jsonPath 의 {@code doesNotExist()} 는 "키가 없음" 과 "값이 null" 을 구분하지 못합니다.
+     * 직렬화 형태가 바뀌어도 그 단언은 계속 통과하므로 여기서 실제 모양을 봅니다.
+     */
+    @Test
+    void serializesMissingKoreanNameAsExplicitNull() throws Exception {
+        long collectionId = create("한국어명 없음");
+
+        String body = mvc.perform(get(URL + "/" + collectionId))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+
+        com.fasterxml.jackson.databind.JsonNode first =
+                mapper.readTree(body).get("perfumes").get(0);
+
+        assertThat(first.has("nameKo")).as("키 자체는 있어야 합니다").isTrue();
+        assertThat(first.get("nameKo").isNull()).as("값은 null 이어야 합니다").isTrue();
+    }
+
     @Test
     void addsAndRemovesCollectionPerfume() throws Exception {
         long collectionId = create("addition");

@@ -1,5 +1,6 @@
 package com.hyanghae.backend.perfume;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -145,10 +146,20 @@ class NoteIntegrationTest {
      */
     @Test
     void answersNullDescriptionWhenNotWrittenYet() throws Exception {
-        mockMvc.perform(get(NOTE_URL, ROSE))
+        String body = mockMvc.perform(get(NOTE_URL, ROSE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nameKo").value("로즈"))
-                .andExpect(jsonPath("$.description").doesNotExist());
+                .andReturn()
+                .getResponse()
+                .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+
+        com.fasterxml.jackson.databind.JsonNode note =
+                new com.fasterxml.jackson.databind.ObjectMapper().readTree(body);
+
+        // 키가 빠지는 것과 값이 null 인 것은 다릅니다. jsonPath 의 doesNotExist() 로는
+        // 둘을 구분하지 못해 실제 모양을 직접 봅니다.
+        assertThat(note.has("description")).as("키 자체는 있어야 합니다").isTrue();
+        assertThat(note.get("description").isNull()).as("값은 null 이어야 합니다").isTrue();
     }
 
     /**

@@ -1,10 +1,13 @@
 package com.hyanghae.backend.shelf;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.shelf.exception.ShelfErrorCode;
 import com.hyanghae.backend.support.IntegrationTest;
@@ -33,6 +36,9 @@ class ShelfItemListIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Autowired
     private FakeCurrentUser fakeCurrentUser;
@@ -121,6 +127,35 @@ class ShelfItemListIntegrationTest {
                 .andExpect(jsonPath("$.perfumes[0].brand").value("Test Brand"))
                 // 한국어명이 없는 향수는 null 입니다.
                 .andExpect(jsonPath("$.perfumes[1].nameKo").doesNotExist());
+    }
+
+    /**
+     * 한국어 이름이 없는 향수는 <b>필드가 빠지는 게 아니라 {@code null} 로 실립니다.</b>
+     *
+     * <p>{@code jsonPath().doesNotExist()} 로는 이 둘을 구분하지 못합니다 — 값이 없을 때와
+     * 키가 없을 때 모두 통과합니다. 나중에 누가 Jackson 의
+     * {@code default-property-inclusion=non_null} 을 켜면 키가 통째로 사라지는데, 그래도 그
+     * 단언은 계속 통과합니다. 화면이 {@code 'nameKo' in item} 으로 분기하고 있으면 그때
+     * 조용히 깨집니다.
+     */
+    @Test
+    void serializesMissingKoreanNameAsExplicitNull() throws Exception {
+        fakeCurrentUser.login(LOGGED_IN_USER);
+
+        String body = mockMvc.perform(get(URL).param("category", "OWNED"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+
+        JsonNode second = objectMapper.readTree(body).get("perfumes").get(1);
+
+        assertThat(second.has("nameKo"))
+                .as("키 자체는 있어야 합니다")
+                .isTrue();
+        assertThat(second.get("nameKo").isNull())
+                .as("값은 null 이어야 합니다")
+                .isTrue();
     }
 
     @Test
