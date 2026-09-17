@@ -15,6 +15,7 @@ import {
 } from '@/features/collection'
 import { shelfItemsQuery } from '@/features/shelf'
 import { isApiError } from '@/shared/api/http'
+import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
 import { Button } from '@/shared/ui/Button'
@@ -217,6 +218,7 @@ export default function CollectionDetailPage() {
                 brand={perfume.brand}
                 thumbnailUrl={perfume.thumbnailUrl}
                 to={toPerfumeDetail(perfume.perfumeId)}
+                state={perfumeViewState('COLLECTION')}
               />
               {/* 제거해도 진열대 저장은 유지됩니다 */}
               <button

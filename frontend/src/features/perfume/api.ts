@@ -1,5 +1,6 @@
 import { http, isApiError } from '@/shared/api/http'
 import { env } from '@/shared/config/env'
+import type { PerfumeViewSource } from '@/shared/config/perfumeViewSource'
 import { toScentFamilyKey } from '@/shared/config/scentFamilies'
 
 import { placeholderDetail, placeholderSearch } from './placeholder'
@@ -262,6 +263,63 @@ export async function unlikeReview(
 ): Promise<ReviewLikeResponse> {
   const { data } = await http.delete<ReviewLikeResponse>(
     `/reviews/${reviewId}/like`,
+  )
+  return data
+}
+
+/*
+ * ── 향수 상세 조회 기록 (VIEW-01) ──────────────────────────
+ *
+ * 들어올 때 한 번(`POST`), 나갈 때 한 번(`PATCH .../exit`) 부릅니다. **체류 시간은
+ * 서버가 잽니다** — 화면이 잰 값을 보내면 시계가 틀어진 기기나 잠자기에 들어간 탭이
+ * 몇 시간짜리 체류를 만듭니다.
+ *
+ * 전부 로그인이 필요합니다(401). 기록이 실패해도 화면은 아무 일 없이 계속 돕니다 —
+ * 사용자가 할 일이 없는 값이라 오류를 보여줄 자리가 없습니다.
+ */
+
+/** `POST /perfume-views` 응답 */
+export interface PerfumeViewStartResponse {
+  perfumeViewId: number
+  viewedAt: string
+}
+
+/** `PATCH /perfume-views/{id}/exit` 응답 */
+export interface PerfumeViewExitResponse {
+  perfumeViewId: number
+  exitedAt: string
+  /** 서버가 잰 체류 시간(초) */
+  durationSeconds: number
+}
+
+/**
+ * 상세 화면에 들어왔다고 남깁니다.
+ *
+ * `fromLocationType` 은 **들어온 길**입니다(`shared/config/perfumeViewSource`).
+ * `fromPerfumeId` 는 다른 향수 상세에서 건너온 경우에만 싣습니다 — 없는 향수를 실으면
+ * 404 입니다.
+ */
+export async function startPerfumeView(input: {
+  perfumeId: number
+  fromLocationType: PerfumeViewSource
+  fromPerfumeId?: number
+}): Promise<PerfumeViewStartResponse> {
+  const { data } = await http.post<PerfumeViewStartResponse>('/perfume-views', {
+    perfumeId: input.perfumeId,
+    fromLocationType: input.fromLocationType,
+    ...(input.fromPerfumeId === undefined
+      ? {}
+      : { fromPerfumeId: input.fromPerfumeId }),
+  })
+  return data
+}
+
+/** 상세 화면에서 나갔다고 남깁니다. 남의 기록이거나 없는 번호면 404 입니다 */
+export async function exitPerfumeView(
+  perfumeViewId: number,
+): Promise<PerfumeViewExitResponse> {
+  const { data } = await http.patch<PerfumeViewExitResponse>(
+    `/perfume-views/${perfumeViewId}/exit`,
   )
   return data
 }
