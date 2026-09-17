@@ -485,9 +485,6 @@ export default function MyShelfPage() {
         open={createCollectionOpen}
         onClose={() => setCreateCollectionOpen(false)}
         candidates={shelf.data ?? []}
-        onSearch={() => {
-          // TODO: 진열대 내 검색 연결 (지금은 담은 향수 전부를 보여줍니다)
-        }}
         onSubmit={(input, shelfItemIds) => {
           setCreateCollectionOpen(false)
           createCollectionMutation.mutate({ input, shelfItemIds })

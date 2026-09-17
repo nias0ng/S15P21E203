@@ -259,9 +259,6 @@ export default function CollectionDetailPage() {
         candidates={(shelf.data ?? []).filter(
           (item) => !inCollection.has(item.perfumeId),
         )}
-        onSearch={() => {
-          // TODO: 진열대 내 검색 연결
-        }}
         onSubmit={(shelfItemIds) => {
           setAddOpen(false)
           addPerfumes.mutate(shelfItemIds)
