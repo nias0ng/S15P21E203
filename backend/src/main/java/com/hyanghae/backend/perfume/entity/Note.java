@@ -29,6 +29,15 @@ public class Note {
     @Column(name = "image_url")
     private String imageUrl;
 
+    /**
+     * 노트 설명입니다. 채워지는 대로 들어와 비어 있을 수 있습니다.
+     *
+     * <p>목록에는 나가지 않습니다 — 활성 노트 전체를 한 번에 돌려주는 응답이라 설명까지
+     * 실으면 크게 무거워집니다. 상세에서만 씁니다.
+     */
+    @Column(name = "description")
+    private String description;
+
     @Column(name = "popularity_rank")
     private Integer popularityRank;
 

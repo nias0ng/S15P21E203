@@ -133,6 +133,15 @@ ON CONFLICT (name) DO NOTHING;
 -- 브랜드 한국어 이름과 로고를 보충합니다. 같은 영문 이름에 번역이 여러 개인 경우에는
 -- 한국어 이름만 건너뛰고, 로고 정보는 사용할 수 있으면 별도로 반영합니다.
 -- logo_override가 있으면 그대로 쓰고, 없으면 logo_domain으로 img.logo.dev 주소를 만듭니다.
+--
+-- 서로 다른 브랜드가 같은 한국어 이름을 쓰는 것은 막지 않습니다. 리들(Lidl / Riddle),
+-- 노이즈(Noyz / Noise) 처럼 실제로 다른 브랜드라 합칠 수 없고, 화면은 카드 부제의 영문명으로
+-- 둘을 구분합니다. 예전에는 brands.name_ko 의 UNIQUE 제약에 걸리지 않으려고 중복 한글명을
+-- 여기서 건너뛰었는데, 그 탓에 해당 브랜드의 한국어 이름이 영구히 비어 있었습니다.
+-- 제약은 V21 에서 뗐습니다.
+--
+-- count(DISTINCT name_ko) = 1 은 남겨 둡니다. 그것은 "같은 영문 브랜드에 번역이 둘"인 별개
+-- 상황을 막는 장치라 위 변경과 무관합니다. 어느 쪽이 맞는지 CSV 만 보고는 알 수 없습니다.
 WITH brand_meta AS (
     SELECT name,
            CASE WHEN count(DISTINCT NULLIF(btrim(name_ko), '')) = 1
@@ -142,33 +151,16 @@ WITH brand_meta AS (
     FROM stg_brands_ko
     WHERE NULLIF(btrim(name), '') IS NOT NULL
     GROUP BY name
-), ranked_brand_meta AS (
-    SELECT brand_meta.*,
-           count(*) OVER (PARTITION BY name_ko) AS name_ko_count
-    FROM brand_meta
 )
 UPDATE brands b
-SET name_ko = COALESCE(
-        NULLIF(btrim(b.name_ko), ''),
-        CASE
-            WHEN m.name_ko IS NOT NULL
-             AND m.name_ko_count = 1
-             AND NOT EXISTS (
-                 SELECT 1
-                 FROM brands existing
-                 WHERE existing.name_ko = m.name_ko
-                   AND existing.brand_id <> b.brand_id
-             )
-            THEN m.name_ko
-        END
-    ),
+SET name_ko = COALESCE(NULLIF(btrim(b.name_ko), ''), m.name_ko),
     logo_url = COALESCE(
         m.logo_override,
         NULLIF(btrim(b.logo_url), ''),
         CASE WHEN m.logo_domain IS NOT NULL
              THEN 'https://img.logo.dev/' || m.logo_domain END
     )
-FROM ranked_brand_meta m
+FROM brand_meta m
 WHERE b.name = m.name
   AND (m.name_ko IS NOT NULL OR m.logo_override IS NOT NULL OR m.logo_domain IS NOT NULL);
 
