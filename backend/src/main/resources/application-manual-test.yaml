@@ -54,6 +54,32 @@ hyanghae:
       api-key: ${GMS_API_KEY:}
       model: ${GMS_MODEL:gpt-5-nano}
 
+  # 업로드 이미지를 어디에 쌓을지입니다. 운영(application-prod.yaml)과 같은 환경변수 이름을
+  # 씁니다 — 인계 문서의 절차가 여기서도 그대로 통해야 합니다.
+  #
+  # 기본은 꺼짐(컨테이너 디스크)입니다. AWS 계정 없이도 수동 확인이 돌아야 합니다. 실제 S3 로
+  # 올려 보려면 compose 를 띄우는 셸에 값을 넣습니다:
+  #
+  #   $env:IMAGE_STORAGE_S3_ENABLED = "true"
+  #   $env:AWS_ACCESS_KEY_ID = "..."
+  #   $env:AWS_SECRET_ACCESS_KEY = "..."
+  #   docker compose -f compose.manual-test.yaml up -d backend
+  #
+  # ⚠ key-prefix 를 uploads 로 바꾸지 마십시오. 기본값 uploads/dev 가 개발 경로입니다.
+  # 운영 경로로 두면 수동 확인으로 올린 사진이 실제 사용자 이미지 틈에 쌓이고, 파일 이름이
+  # UUID 라 나중에 어느 것이 시험용이었는지 골라낼 수 없습니다.
+  #
+  # ⚠ 자격 증명을 이 파일에 적지 마십시오. 저장소에 추적되는 파일입니다. AWS SDK 가 환경변수를
+  # 알아서 찾으므로 여기서 받을 이유도 없습니다.
+  storage:
+    s3:
+      enabled: ${IMAGE_STORAGE_S3_ENABLED:false}
+      bucket: ${IMAGE_STORAGE_S3_BUCKET:}
+      region: ${IMAGE_STORAGE_S3_REGION:}
+      public-base-url: ${IMAGE_STORAGE_S3_PUBLIC_BASE_URL:}
+      key-prefix: ${IMAGE_STORAGE_S3_KEY_PREFIX:uploads/dev}
+      public-path-prefix: ${IMAGE_STORAGE_S3_PUBLIC_PATH_PREFIX:}
+
   # 자연어 추천이 부르는 AI 서버 주소입니다. 붙는 곳이 둘이라 환경변수로 갈립니다.
   #
   #   ./gradlew bootRun 으로 백엔드만 띄울 때  -> 기본값. AI 서버도 로컬에서 직접 띄웁니다

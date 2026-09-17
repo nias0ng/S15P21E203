@@ -35,17 +35,20 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final CurrentUser currentUser;
     private final AuthSessionStore sessionStore;
+    private final UserProfileImageService profileImageService;
 
     public UserService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             CurrentUser currentUser,
-            AuthSessionStore sessionStore
+            AuthSessionStore sessionStore,
+            UserProfileImageService profileImageService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.currentUser = currentUser;
         this.sessionStore = sessionStore;
+        this.profileImageService = profileImageService;
     }
 
     @Transactional(readOnly = true)
@@ -75,7 +78,8 @@ public class UserService {
     @Transactional(readOnly = true)
     public UserResponse findMe() {
         User user = findCurrentUser();
-        return new UserResponse(user.getId(), user.getEmail(), user.getNickname());
+        return new UserResponse(user.getId(), user.getEmail(), user.getNickname(),
+                user.getProfileImageUrl());
     }
 
     /**
@@ -96,7 +100,8 @@ public class UserService {
             user.changeNickname(nickname, OffsetDateTime.now(ZoneOffset.UTC));
             flushNickname();
         }
-        return new UserResponse(user.getId(), user.getEmail(), user.getNickname());
+        return new UserResponse(user.getId(), user.getEmail(), user.getNickname(),
+                user.getProfileImageUrl());
     }
 
     /**
@@ -131,9 +136,13 @@ public class UserService {
             throw new BusinessException(AuthErrorCode.AUTH_CURRENT_PASSWORD_MISMATCH);
         }
         Long userId = user.getId();
+        String profileImageUrl = user.getProfileImageUrl();
         sessionStore.revokeAll(userId);
         userRepository.delete(user);
         userRepository.flush();
+        // 회원이 사라지면 그 사진을 가리키는 곳이 없습니다. flush 뒤에 부르므로 행이 실제로
+        // 지워진 것을 확인한 뒤에 파일을 지웁니다.
+        profileImageService.removeAfterWithdrawal(profileImageUrl);
     }
 
     private User findCurrentUser() {

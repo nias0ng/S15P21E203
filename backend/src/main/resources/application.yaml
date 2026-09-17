@@ -2,6 +2,18 @@ spring:
   application:
     name: backend
 
+  # 게시글 이미지 업로드의 바깥 울타리입니다. 여기 걸리면 요청 본문을 다 읽기 전에 잘라내므로
+  # 거대한 파일이 디스크와 대역폭을 먹는 것을 막습니다. 대신 응답은 공용 413 이라 어떤 제한에
+  # 걸렸는지 알려주지 못합니다.
+  #
+  # 그래서 hyanghae.community.post-image.max-size(기본 5MB)보다 넉넉하게 잡습니다. 사람이 실제로
+  # 만나는 제한은 애플리케이션 쪽이고, 그쪽은 COMMUNITY_IMAGE_TOO_LARGE 로 이유를 알려줍니다.
+  # 이 값을 더 작게 두면 애플리케이션 검사에 닿지 못해 그 에러 코드가 영영 나가지 않습니다.
+  servlet:
+    multipart:
+      max-file-size: 8MB
+      max-request-size: 8MB
+
 springdoc:
   api-docs:
     enabled: false
