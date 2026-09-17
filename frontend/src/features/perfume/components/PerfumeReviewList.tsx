@@ -1,10 +1,12 @@
 import { Link } from 'react-router'
 
 import { ROUTES, toReviewDetail } from '@/shared/config/routes'
+import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { LinkButton } from '@/shared/ui/LinkButton'
+import { GLASS_PANEL } from '@/shared/ui/panel'
 import { Skeleton } from '@/shared/ui/Skeleton'
 
 import type { Review } from '../types'
@@ -42,13 +44,11 @@ export function PerfumeReviewList({
   const lastPage = Math.max(0, Math.ceil(totalElements / size) - 1)
 
   return (
-    <section className="space-y-3.75 p-6.25">
+    <section className={cn(GLASS_PANEL, 'space-y-3.75')}>
       <div className="flex items-center gap-2.5">
-        <h2 className="text-ink text-sm font-bold">후기</h2>
+        <h2 className="text-ink text-title font-serif font-semibold">후기</h2>
         {!isPending && (
-          <span className="text-ink-muted text-[10.5px]">
-            {totalElements}개
-          </span>
+          <span className="text-ink-muted text-caption">{totalElements}개</span>
         )}
         {/* TODO: 작성 화면에 이 향수(와 수정할 후기)를 실어 보내기 — A24a 연결 시 */}
         <LinkButton to={ROUTES.REVIEW_WRITE} size="sm" className="ml-auto">
@@ -88,7 +88,7 @@ export function PerfumeReviewList({
           >
             이전
           </Button>
-          <span className="text-ink-muted text-[10.5px]">
+          <span className="text-ink-muted text-caption">
             {page + 1} / {lastPage + 1}
           </span>
           <Button
@@ -113,9 +113,9 @@ function ReviewRow({ review }: { review: Review }) {
       className="hover:bg-surface-sunken block space-y-1.25 px-2.5 py-3.75"
     >
       <span className="flex items-center gap-2.5">
-        <span className="text-ink text-xs font-medium">{review.title}</span>
+        <span className="text-ink text-body font-medium">{review.title}</span>
         {review.mine && (
-          <span className="text-ink-muted text-[10.5px]">내 후기</span>
+          <span className="text-ink-muted text-caption">내 후기</span>
         )}
       </span>
 
@@ -123,16 +123,19 @@ function ReviewRow({ review }: { review: Review }) {
         한 줄로 자릅니다. 목록에서 필요한 것은 "무슨 이야기인가" 까지고
         전문은 누르면 나옵니다.
       */}
-      <span className="text-ink-muted block truncate text-[10.5px]">
+      <span className="text-ink-muted text-body block truncate">
         {review.content}
       </span>
 
-      <span className="text-ink-muted block text-[10.5px]">
+      {/*
+        계절은 적지 않습니다. 응답(`review.seasons`)에 들어 있지만, 바로 위 계절별
+        평가 구역이 같은 값을 네 계절 집계로 이미 보여주고 있어 한 줄마다 또 적으면
+        같은 정보가 두 번 나옵니다.
+      */}
+      <span className="text-ink-muted text-caption block">
         {/* 탈퇴한 회원의 후기는 글만 남고 작성자가 지워집니다 */}
         {review.nickname ?? '탈퇴한 회원'} ·{' '}
         {formatRelativeTime(review.createdAt)}
-        {review.seasons.length > 0 &&
-          ` · ${review.seasons.map((season) => season.name).join(' · ')}`}
       </span>
     </Link>
   )

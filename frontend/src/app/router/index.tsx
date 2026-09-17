@@ -51,9 +51,10 @@ const withSuspense = (element: React.ReactNode) => (
 const FULL = { width: 'full' } satisfies { width: PageWidth }
 const TEXT = { width: 'text' } satisfies { width: PageWidth }
 /**
- * 어두운 방 + 유리판 화면 (A33 향수 목록 · A09 검색 결과 · A34 브랜드 · A35 · A36 노트).
+ * 어두운 방 + 유리판 화면
+ * (A33 향수 목록 · A09 검색 결과 · A10 향수 상세 · A34 브랜드 · A35 · A36 노트).
  *
- * 폭은 적지 않습니다 — 넷 다 기본 wide(1440)입니다. 생김새는
+ * 폭은 적지 않습니다 — 모두 기본 wide(1440)입니다. 생김새는
  * styles/scent-display.css, 켜는 자리는 app/layouts/RootLayout 의 `useIsNight`.
  */
 const NIGHT = { night: true } satisfies { night: boolean }
@@ -86,6 +87,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.PERFUME_DETAIL,
         element: withSuspense(<PerfumeDetailPage />),
+        handle: NIGHT,
       },
       {
         path: ROUTES.REVIEW_DETAIL,
