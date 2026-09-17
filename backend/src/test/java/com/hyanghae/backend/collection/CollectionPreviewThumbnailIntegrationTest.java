@@ -115,6 +115,36 @@ class CollectionPreviewThumbnailIntegrationTest {
     }
 
     /**
+     * <b>컬렉션 카드도 종이 질감 이미지를 받아야 합니다.</b> 진열대 화면 아래에 붙는 카드라
+     * 같은 종이 배경 위에 놓입니다.
+     *
+     * <p>일반 이미지를 1번, 종이 질감을 2번으로 심습니다 — 실제 적재와 같은 순서라, 종류를
+     * 보지 않으면 일반 이미지가 나옵니다.
+     */
+    @Test
+    void servesPaperTextureThumbnails() throws Exception {
+        jdbcTemplate.update("""
+                INSERT INTO perfumes (perfume_id, name) VALUES (9, '두 장 다 있는 향수')
+                """);
+        jdbcTemplate.update("""
+                INSERT INTO user_perfumes (user_perfumes_id, user_id, perfume_id)
+                VALUES (9, ?, 9)
+                """, USER_ID);
+        jdbcTemplate.update("""
+                INSERT INTO perfume_images (perfume_id, image_url, display_order, image_type)
+                VALUES (9, 'original.png', 1, 'ORIGINAL'),
+                       (9, 'paper-texture.png', 2, 'PAPER_TEXTURE')
+                """);
+        long collectionId = insertCollection(10, "종이 질감");
+        addPerfume(collectionId, 9, 0);
+
+        mockMvc.perform(get(URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.collections[0].previewThumbnails[0]")
+                        .value("paper-texture.png"));
+    }
+
+    /**
      * 담긴 향수가 셋보다 적으면 배열도 짧습니다. 화면이 남은 자리를 채웁니다.
      */
     @Test

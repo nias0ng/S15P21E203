@@ -17,6 +17,7 @@ import com.hyanghae.backend.collection.repository.CollectionPerfumeRow;
 import com.hyanghae.backend.collection.repository.CollectionRepository;
 import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.global.security.CurrentUser;
+import com.hyanghae.backend.perfume.entity.PerfumeImageType;
 import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
 import com.hyanghae.backend.shelf.entity.UserPerfume;
@@ -266,11 +267,16 @@ public class CollectionService {
         return perfumeIds;
     }
 
+    /**
+     * 컬렉션 카드는 진열대 화면 아래에 붙습니다. 같은 종이 배경 위라 진열대와 같은
+     * <b>종이 질감 이미지</b>를 씁니다. 없으면 일반 이미지로 넘어갑니다.
+     */
     private Map<Long, String> loadThumbnailsByPerfumeIds(List<Long> perfumeIds) {
         if (perfumeIds.isEmpty()) {
             return Map.of();
         }
-        return perfumeImageRepository.findOrderedByPerfumeIds(perfumeIds)
+        return perfumeImageRepository
+                .findOrderedByPerfumeIdsPreferring(perfumeIds, PerfumeImageType.PAPER_TEXTURE)
                 .stream()
                 .filter(image -> image.imageUrl() != null)
                 .collect(Collectors.toMap(
@@ -312,6 +318,10 @@ public class CollectionService {
                 ));
     }
 
+    /**
+     * 컬렉션 상세도 진열대와 같은 <b>종이 질감 이미지</b>를 씁니다. 목록과 상세가 다른
+     * 사진을 보여주면 같은 향수가 화면마다 달라 보입니다.
+     */
     private Map<Long, String> loadThumbnails(List<CollectionPerfumeResponse> perfumes) {
         List<Long> perfumeIds = perfumes.stream()
                 .map(CollectionPerfumeResponse::perfumeId)
@@ -319,7 +329,8 @@ public class CollectionService {
         if (perfumeIds.isEmpty()) {
             return Map.of();
         }
-        return perfumeImageRepository.findOrderedByPerfumeIds(perfumeIds)
+        return perfumeImageRepository
+                .findOrderedByPerfumeIdsPreferring(perfumeIds, PerfumeImageType.PAPER_TEXTURE)
                 .stream()
                 .filter(image -> image.imageUrl() != null)
                 .collect(Collectors.toMap(
