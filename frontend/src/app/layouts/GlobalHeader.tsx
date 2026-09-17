@@ -8,6 +8,114 @@ import { cn } from '@/shared/lib/cn'
 import { useAuthStore } from '@/shared/store/authStore'
 
 /**
+ * 헤더가 앉는 바탕 — 어느 화면 위인지는 껍데기(RootLayout)가 정합니다.
+ *
+ *   surface     종이 한 장(ivory) — 기본
+ *   paper       진열대의 종이 결 — 본문과 같은 종이
+ *   glass       3D 향 지도 위의 거의 투명한 유리 — 밤하늘 위라 상아색 글자
+ *   glassLight  같은 유리 — 밝은 하늘(낮 · 저녁) 위라 먹색 글자
+ */
+export type HeaderTone = 'surface' | 'paper' | 'glass' | 'glassLight'
+
+/*
+ * 유리판 (3D 향 지도 위) — 거의 투명한 유리입니다
+ * - fixed: 흐름에서 빠져 3D 가 헤더 뒤(화면 맨 위)까지 깔립니다
+ * - 판의 옅은 색(25%)과 흐림(4px)은 before 층에 깔고, 아래로 갈수록 0 으로 녹입니다(mask).
+ *   아래 끝에서 딱 끊기면 그 선이 곧 판의 경계로 읽혀 3D 와 따로 떨어진 띠가 됩니다
+ * - 예전의 짙은 남색(60% → 45%) · 흐림 24px · 그림자 · 아래 상아색 실선을 걷었습니다 — 뒤의 하늘 ·
+ *   바다 색이 그대로 비쳐야 헤더와 3D 가 한 화면으로 읽힙니다
+ * - 판이 옅어져 글자가 뒤의 하늘 위에 바로 앉습니다 — 그래서 판의 색 · 글자색 · 글자 그림자가 하늘을
+ *   따릅니다 (아래 GLASS_INK · GLASS_LIGHT_INK 의 tint · text · shadow). 그림자는 상속되므로 헤더에 한 번 겁니다
+ */
+const GLASS = cn(
+  'fixed inset-x-0',
+  'before:pointer-events-none before:absolute before:inset-0 before:-z-10',
+  'before:bg-linear-to-b before:to-transparent before:backdrop-blur-xs',
+  'before:[mask-image:linear-gradient(to_bottom,black_40%,transparent)]',
+)
+
+/*
+ * 헤더 위 글자 · 선 · 펼침 메뉴의 색.
+ * 유리판(남색) 위에서는 상아색으로 뒤집습니다 — 종이의 먹색은 남색 위에서 읽히지 않습니다.
+ */
+type Ink = {
+  /** 유리판의 옅은 색 — 유리(glass · glassLight)에만 씁니다 */
+  tint: string
+  /** 글자 그림자. 상속되므로 헤더에 한 번 겁니다 */
+  shadow: string
+  text: string
+  hover: string
+  open: string
+  ring: string
+  menu: string
+  item: string
+  itemRule: string
+  login: string
+}
+
+/*
+ * 밤하늘 위 유리 — 남색 판 · 상아색 글자 · 남색 그림자.
+ * 2026-09-16 실측 (헤더 띠의 밤하늘) : 상아색 최저 7.4:1. 먹색으로 두면 1.2:1 이라 꼭 바꿔야 합니다
+ */
+const GLASS_INK: Ink = {
+  tint: 'before:from-surface-night/25',
+  shadow: 'text-shadow-xs text-shadow-surface-night/40',
+  text: 'text-surface',
+  hover: 'hover:text-surface/70',
+  open: 'text-surface/70',
+  ring: 'focus-visible:ring-surface focus-visible:ring-offset-surface-night',
+  // 펼침 메뉴는 판보다 짙게 깝니다. 판 밖으로 내려와 3D 위에 바로 앉아서, 옅으면 뒤의 부표 · 글자와 섞입니다
+  menu: 'border-surface/15 bg-surface-night/90 shadow-overlay',
+  item: 'text-surface hover:bg-surface/10',
+  itemRule: 'border-surface/15',
+  login: 'border-surface/40 text-surface hover:bg-surface/10',
+}
+/*
+ * 밝은 하늘(낮 · 저녁) 위 유리 — 상아색 판 · 먹색 글자 · 상아색 그림자.
+ * 거의 투명한 판 뒤로 살구색 하늘이 그대로 비쳐 상아색 글자는 대비가 1.7:1 까지 떨어졌습니다.
+ * 2026-09-16 실측 (헤더 띠 저녁 하늘의 상대 휘도 0.38 ~ 0.56) :
+ *   먹색 + 남색 판 최저 4.3:1 → 먹색 + 상아색 판(25%) 최저 6.4:1
+ * 남색 판은 먹색 글자 뒤를 더 어둡게 해서 오히려 대비를 깎습니다 — 그래서 판의 색도 하늘을 따릅니다.
+ * 펼침 메뉴는 판 밖 3D 위에 바로 앉으므로 종이 카드로 깝니다.
+ */
+const GLASS_LIGHT_INK: Ink = {
+  tint: 'before:from-surface/25',
+  shadow: 'text-shadow-xs text-shadow-surface/40',
+  text: 'text-ink',
+  hover: 'hover:text-ink/70',
+  open: 'text-ink/70',
+  ring: 'focus-visible:ring-accent-deep',
+  menu: 'border-line bg-surface-card shadow-overlay',
+  item: 'text-ink hover:bg-line-soft',
+  itemRule: 'border-line',
+  login: 'border-ink/40 text-ink hover:bg-surface/40',
+}
+
+/*
+ * 종이 화면(surface · paper) — **메인의 밝은 하늘(GLASS_LIGHT_INK)과 같은 값**입니다.
+ *
+ * 2026-09-16 사용자 : "상단 헤더 통일화 · 메인페이지 기준으로 전체 페이지". 예전에는 종이 화면이
+ * 제 값을 따로 들고 있어서 글자 그림자 · 마우스를 올린 색(ink-muted) · 펼침 메뉴 그림자 ·
+ * [로그인] 테두리가 메인과 조금씩 달랐습니다.
+ *
+ * 다른 것은 둘뿐입니다.
+ * - 판의 옅은 색(tint)이 없습니다 — 종이 화면은 헤더가 본문과 같은 종이를 깝니다(아래 GlobalHeader)
+ * - [로그인]에 마우스를 올린 바탕 — 메인의 상아색 40% 는 종이 위에서 안 보여 누를 수 있다는 표시가 사라집니다
+ *
+ * 향수 목록의 어두운 방(`.scent-night`)은 ink · surface 토큰을 어둠 기준으로 다시 정의하므로,
+ * 같은 값이 그대로 상아색 글자 · 어두운 그림자가 됩니다 — 메인의 밤하늘(GLASS_INK)과 같은 짝입니다.
+ */
+const PAPER_INK: Ink = {
+  ...GLASS_LIGHT_INK,
+  tint: '',
+  login: 'border-ink/40 text-ink hover:bg-line-soft',
+}
+
+/** 포커스 링 — 링 색은 바탕마다 ink.ring 으로 더합니다 */
+const FOCUS =
+  'rounded-card outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
+
+/**
  * 전역 헤더 (와이어프레임 N01 · 모든 화면 공통 — 진열장 시안 배치)
  *
  * 와이어프레임 주석 그대로 지킨 것입니다.
@@ -22,7 +130,7 @@ import { useAuthStore } from '@/shared/store/authStore'
  *   좌우 여백       --gutter (1920 에서 60) — 본문과 같은 값이라 로고가 본문 왼쪽 끝
  *                  (진열장 모서리 · 제목) 바로 위에 섭니다
  *   메뉴 다섯 개    항목 사이 60, 로고와 우측 도구 사이의 정중앙
- *   우측 도구       돋보기 · 계정 · 구분선 · 문구, 사이 30
+ *   우측 도구       돋보기 · 계정, 사이 30
  *
  * 세 덩어리라 `grid-cols-[auto_1fr_auto]` 입니다. flex + ml-auto 로 하면 메뉴가 좌우
  * 덩어리 폭에 밀려서, 로그인 여부로 오른쪽 폭이 바뀔 때 메뉴가 함께 움직입니다.
@@ -33,52 +141,67 @@ import { useAuthStore } from '@/shared/store/authStore'
  *
  * 아래 테두리를 뺐습니다. 시안은 헤더와 본문이 같은 종이 한 장이고, 선을 그으면
  * 진열대 화면에서 종이가 두 장으로 잘려 보입니다.
+ *
+ * 3D 향 지도(메인) 위에서만 유리판(glass · glassLight)입니다. 거기는 종이가 아니라 저녁 바다라,
+ * 헤더가 3D 위에 뜬 거의 투명한 유리로 읽혀야 화면 한 장이 됩니다. 판의 경계선은 두지 않습니다.
  */
-export function GlobalHeader({ onPaper = false }: { onPaper?: boolean }) {
+export function GlobalHeader({ tone = 'surface' }: { tone?: HeaderTone }) {
   const accessToken = useAuthStore((state) => state.accessToken)
   const isLoggedIn = Boolean(accessToken)
+  const onGlass = tone === 'glass' || tone === 'glassLight'
+  const ink =
+    tone === 'glass'
+      ? GLASS_INK
+      : tone === 'glassLight'
+        ? GLASS_LIGHT_INK
+        : PAPER_INK
 
   return (
     /*
-     * onPaper 인 화면(진열대)에서는 헤더도 본문과 같은 종이를 깝니다. 투명하게
+     * paper 인 화면(진열대)에서는 헤더도 본문과 같은 종이를 깝니다. 투명하게
      * 두지 않는 이유: 스크롤한 내용이 로고와 메뉴 밑으로 비쳐 지나갑니다.
      * `.shelf-paper` 가 뷰포트 기준으로 그려져서 본문과 결이 이어집니다.
+     *
+     * ⚠ 폭은 **화면 폭(100vw)** 입니다 (`w-screen`). 스크롤바를 뺀 폭으로 두면 세로
+     * 스크롤이 생기는 화면(목록 · 상세)에서 1920 기준 메뉴가 7.5px, 돋보기 · 계정이 15px
+     * 왼쪽으로 밀려, 스크롤이 없는 메인과 헤더가 어긋났습니다(2026-09-16 실측).
+     * 스크롤바 밑으로 나간 15px 은 RootLayout 이 잘라냅니다(`overflow-x-clip`).
+     * 로고는 왼쪽 여백에 붙어 있어 본문 왼쪽 끝과 그대로 맞습니다.
+     *
+     * ⚠⚠ `sm`(640) 부터입니다. 그보다 좁으면 헤더 내용(390 에서 458px)이 화면보다 넓어
+     *   돋보기 · 계정이 오른쪽 밖으로 나갑니다 — 잘라내면 아예 못 누릅니다. 휴대폰은 스크롤바가
+     *   화면 위에 떠서 밀림도 없습니다. 좁은 화면의 헤더는 배치를 바꿔야 할 자리입니다.
      */
     <header
       className={cn(
-        'sticky top-0 z-20',
-        onPaper ? 'shelf-scope shelf-paper shelf-grain' : 'bg-surface',
+        'top-0 z-20 sm:w-screen',
+        ink.shadow,
+        onGlass ? cn(GLASS, ink.tint) : 'sticky',
+        tone === 'paper' && 'shelf-scope shelf-paper shelf-grain',
+        tone === 'surface' && 'bg-surface',
       )}
     >
       <div className="max-w-frame mx-auto grid h-22.5 grid-cols-[auto_1fr_auto] items-center gap-5 px-[var(--gutter)]">
-        <BrandMark />
-        <PrimaryNav isLoggedIn={isLoggedIn} />
+        <BrandMark ink={ink} />
+        <PrimaryNav isLoggedIn={isLoggedIn} ink={ink} />
 
-        {/* 돋보기 · 계정 · 구분선 · 문구 (시안 우측 묶음) */}
+        {/* 돋보기 · 계정 (시안 우측 묶음 — 구분선 · '오늘도, 좋은 향과 함께.' 문구는 2026-09-16 에 뺐습니다) */}
         <div className="flex shrink-0 items-center gap-7.5">
           <Link
             to={ROUTES.PERFUME_SEARCH}
             aria-label="향수 검색"
             className={cn(
-              'text-ink hover:text-ink-muted transition-colors duration-120 ease-out',
-              'focus-visible:ring-accent-deep rounded-card outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+              ink.text,
+              ink.hover,
+              'transition-colors duration-120 ease-out',
+              FOCUS,
+              ink.ring,
             )}
           >
             <SearchIcon />
           </Link>
 
-          {isLoggedIn ? <AccountMenu /> : <LoginButton />}
-
-          {/*
-            구분선과 문구는 넓은 화면에서만 나옵니다. 좁아지면 가운데 메뉴가 먼저
-            찌그러지는데, 문구는 읽을거리가 아니라 장식이라 먼저 자리를 내주는 쪽입니다.
-          */}
-          <span aria-hidden className="bg-line hidden h-7.5 w-px xl:block" />
-          <p className="text-ink-muted text-caption hidden leading-relaxed xl:block">
-            오늘도,
-            <br />
-            좋은 향과 함께.
-          </p>
+          {isLoggedIn ? <AccountMenu ink={ink} /> : <LoginButton ink={ink} />}
         </div>
       </div>
     </header>
@@ -88,29 +211,18 @@ export function GlobalHeader({ onPaper = false }: { onPaper?: boolean }) {
 /* ------------------------------------------------------------------ */
 
 /**
- * 로고 묶음 — 이름 아래 영문 한 줄.
+ * 로고 — 이름 한 줄.
  *
- * 두 줄이 한 링크입니다. 영문 줄을 링크 밖으로 빼면 낭독기의 링크 목록에 뜻이 반쯤
- * 잘린 항목이 하나 더 생깁니다. 영문 줄에 aria-hidden 을 다는 것도 같은 이유입니다 —
- * 자간을 크게 벌린 대문자는 낭독기가 한 글자씩 읽는 일이 있습니다.
+ * 이름 아래의 영문 한 줄(SCENT JOURNEY)은 2026-09-16 에 모든 화면에서 뺐습니다.
  */
-function BrandMark() {
+function BrandMark({ ink }: { ink: Ink }) {
   return (
     <Link
       to={ROUTES.HOME}
-      className={cn(
-        'text-ink block shrink-0',
-        'focus-visible:ring-accent-deep rounded-card outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-      )}
+      className={cn('block shrink-0', ink.text, FOCUS, ink.ring)}
     >
       <span className="block font-serif text-[26px] leading-none font-semibold tracking-[0.12em]">
         향해
-      </span>
-      <span
-        aria-hidden
-        className="text-ink-muted mt-1.25 block text-[10px] leading-none tracking-[0.28em]"
-      >
-        SCENT JOURNEY
       </span>
     </Link>
   )
@@ -129,7 +241,7 @@ const COMMUNITY_ITEMS = [
   { to: ROUTES.COMMUNITY_FREE, label: '자유' },
 ]
 
-function PrimaryNav({ isLoggedIn }: { isLoggedIn: boolean }) {
+function PrimaryNav({ isLoggedIn, ink }: { isLoggedIn: boolean; ink: Ink }) {
   const items = NAV_ITEMS.filter((item) => isLoggedIn || !item.requiresAuth)
 
   return (
@@ -139,13 +251,13 @@ function PrimaryNav({ isLoggedIn }: { isLoggedIn: boolean }) {
       <ul className="text-body flex items-center gap-15">
         {items.map((item) => (
           <li key={item.to}>
-            <NavLink to={item.to} className={navLinkClass}>
+            <NavLink to={item.to} className={navLinkClass(ink)}>
               {item.label}
             </NavLink>
           </li>
         ))}
         <li>
-          <CommunityMenu />
+          <CommunityMenu ink={ink} />
         </li>
       </ul>
     </nav>
@@ -157,16 +269,25 @@ function PrimaryNav({ isLoggedIn }: { isLoggedIn: boolean }) {
  * 배경 대신 글자색만 옅어지고, 지금 보고 있는 화면만 밑줄로 표시됩니다.
  * 좌우 padding 을 걷어낸 이유: 항목 간격을 60px 로 잡았는데 패딩이 남아 있으면
  * 글자 사이가 시안보다 그만큼 더 벌어집니다.
+ *
+ * ⚠ 지금 화면은 **밑줄만** 긋고 굵게 하지 않습니다 (2026-09-16 헤더 통일). 굵게 하면 그 글자
+ * 폭이 늘어 정중앙에 선 메뉴 다섯 개가 화면마다 조금씩 옮겨 가고, 굵은 메뉴가 없는 메인과
+ * 글자 무게가 달라집니다. 밑줄은 자리를 차지하지 않습니다.
  */
-const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  cn(
-    'text-ink hover:text-ink-muted block transition-colors duration-120 ease-out',
-    'focus-visible:ring-accent-deep rounded-card outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-    isActive && 'font-semibold underline underline-offset-[6px]',
-  )
+const navLinkClass =
+  (ink: Ink) =>
+  ({ isActive }: { isActive: boolean }) =>
+    cn(
+      'block transition-colors duration-120 ease-out',
+      ink.text,
+      ink.hover,
+      FOCUS,
+      ink.ring,
+      isActive && 'underline underline-offset-[6px]',
+    )
 
 /** 커뮤니티 ▾ — 하위가 있는 유일한 메뉴 */
-function CommunityMenu() {
+function CommunityMenu({ ink }: { ink: Ink }) {
   const { open, setOpen, containerRef } = useDismissable()
 
   return (
@@ -177,9 +298,12 @@ function CommunityMenu() {
         aria-haspopup="menu"
         onClick={() => setOpen(!open)}
         className={cn(
-          'text-ink hover:text-ink-muted text-body transition-colors duration-120 ease-out',
-          'focus-visible:ring-accent-deep rounded-card outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-          open && 'text-ink-muted',
+          'text-body transition-colors duration-120 ease-out',
+          ink.text,
+          ink.hover,
+          FOCUS,
+          ink.ring,
+          open && ink.open,
         )}
       >
         커뮤니티 <span aria-hidden>▾</span>
@@ -188,7 +312,10 @@ function CommunityMenu() {
       {open && (
         <ul
           // 와이어프레임 기준 폭 120px
-          className="border-line bg-surface-card absolute top-full left-0 z-30 mt-2.5 w-30 border"
+          className={cn(
+            'absolute top-full left-0 z-30 mt-2.5 w-30 border',
+            ink.menu,
+          )}
           role="menu"
         >
           {COMMUNITY_ITEMS.map((item, index) => (
@@ -198,8 +325,10 @@ function CommunityMenu() {
                 to={item.to}
                 onClick={() => setOpen(false)}
                 className={cn(
-                  'text-ink hover:bg-line-soft text-caption block px-2.5 py-2.5',
-                  index < COMMUNITY_ITEMS.length - 1 && 'border-line border-b',
+                  'text-caption block px-2.5 py-2.5',
+                  ink.item,
+                  index < COMMUNITY_ITEMS.length - 1 &&
+                    cn('border-b', ink.itemRule),
                 )}
               >
                 {item.label}
@@ -219,7 +348,7 @@ function CommunityMenu() {
  * 글자 길이에 따라 폭이 달라져서, 그대로 두면 가운데 메뉴가 사람마다 다른 자리에
  * 섭니다(가운데 칸이 남는 자리의 중앙을 잡기 때문입니다).
  */
-function AccountMenu() {
+function AccountMenu({ ink }: { ink: Ink }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const clear = useAuthStore((state) => state.clear)
@@ -250,9 +379,12 @@ function AccountMenu() {
         aria-label="내 계정"
         onClick={() => setOpen(!open)}
         className={cn(
-          'text-ink hover:text-ink-muted block transition-colors duration-120 ease-out',
-          'focus-visible:ring-accent-deep rounded-card outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-          open && 'text-ink-muted',
+          'block transition-colors duration-120 ease-out',
+          ink.text,
+          ink.hover,
+          FOCUS,
+          ink.ring,
+          open && ink.open,
         )}
       >
         {/* TODO: 프로필 이미지 연동 (A29 정보 변경에서 업로드) */}
@@ -262,7 +394,10 @@ function AccountMenu() {
       {open && (
         <ul
           // 와이어프레임 기준 폭 158px, 우측 정렬
-          className="border-line bg-surface-card absolute top-full right-0 z-30 mt-2.5 w-40 border"
+          className={cn(
+            'absolute top-full right-0 z-30 mt-2.5 w-40 border',
+            ink.menu,
+          )}
           role="menu"
         >
           <li role="none">
@@ -270,7 +405,11 @@ function AccountMenu() {
               role="menuitem"
               to={ROUTES.ACCOUNT}
               onClick={() => setOpen(false)}
-              className="text-ink hover:bg-line-soft border-line text-caption block border-b px-2.5 py-2.5"
+              className={cn(
+                'text-caption block border-b px-2.5 py-2.5',
+                ink.item,
+                ink.itemRule,
+              )}
             >
               개인 정보 수정
             </Link>
@@ -286,7 +425,10 @@ function AccountMenu() {
                 setOpen(false)
                 navigate(ROUTES.HOME)
               }}
-              className="text-ink hover:bg-line-soft text-caption block w-full px-2.5 py-2.5 text-left"
+              className={cn(
+                'text-caption block w-full px-2.5 py-2.5 text-left',
+                ink.item,
+              )}
             >
               로그아웃
             </button>
@@ -297,14 +439,16 @@ function AccountMenu() {
   )
 }
 
-function LoginButton() {
+function LoginButton({ ink }: { ink: Ink }) {
   return (
     <Link
       to={ROUTES.LOGIN}
       className={cn(
-        'border-line text-ink hover:bg-line-soft rounded-card block border px-2.5 py-1.25',
+        'rounded-card block border px-2.5 py-1.25',
+        ink.login,
         'text-caption transition-colors duration-120 ease-out',
-        'focus-visible:ring-accent-deep outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+        'outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+        ink.ring,
       )}
     >
       로그인

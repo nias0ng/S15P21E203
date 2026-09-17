@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 
 import {
@@ -7,6 +7,7 @@ import {
   VoyageLog,
   voyageLogQuery,
   type ScenePerfumeRef,
+  type VoyageLogStatus,
 } from '@/features/map'
 // 진열대 저장은 진열대 도메인의 어휘입니다. 화면에서 두 도메인을 조합합니다.
 import {
@@ -19,6 +20,7 @@ import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
 import { useIsLoggedIn } from '@/shared/store/authStore'
+import { useSceneSkyStore } from '@/shared/store/sceneSkyStore'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { Toast } from '@/shared/ui/Toast'
 
@@ -39,6 +41,14 @@ import { Toast } from '@/shared/ui/Toast'
 export default function HomePage() {
   const navigate = useNavigate()
   const log = useQuery(voyageLogQuery())
+  // 향해 일지 상태 — 비로그인(401)이면 로그인 안내. 개발 중 서버가 없으면 api 가 대체 일지를 줍니다
+  const logStatus: VoyageLogStatus = log.isPending
+    ? 'loading'
+    : log.isError
+      ? isApiError(log.error) && log.error.status === 401
+        ? 'guest'
+        : 'error'
+      : 'ready'
 
   /** 지도 카드에서 담으려는 향수. 모달이 이름 · 브랜드를 보여주는 데 씁니다 */
   const [saving, setSaving] = useState<ScenePerfumeRef | null>(null)
@@ -48,6 +58,11 @@ export default function HomePage() {
   const { showToast, toastProps } = useToast()
   const isLoggedIn = useIsLoggedIn()
   const actions = useShelfActions()
+
+  // 유리판 헤더의 글자색은 3D 하늘을 따릅니다 (밝은 하늘 먹색 · 밤하늘 상아색).
+  // 화면을 떠나면 기본(dark — 3D 가 뜨기 전 남색 바탕에 맞는 상아색)으로 돌려놓습니다
+  const setSky = useSceneSkyStore((state) => state.setSky)
+  useEffect(() => () => setSky('dark'), [setSky])
 
   /** 3D 입력 잠금을 풉니다. 어떤 길로 끝나든 반드시 한 번은 불러야 합니다 */
   const release = () => {
@@ -61,12 +76,19 @@ export default function HomePage() {
   }
 
   return (
-    // 헤더(GlobalHeader 의 h-22.5 = 90px) 아래 남은 높이를 3D 가 채웁니다
-    <div className="relative h-[calc(100dvh_-_90px)] min-h-120">
+    /*
+     * 3D 가 화면 맨 위부터 끝까지 채웁니다 — 헤더(GlobalHeader)는 그 위에 유리판으로 뜹니다.
+     * 바탕의 남색은 3D 가 뜨기 전 자리입니다. 비워 두면 종이(ivory) 위에 남색 유리판이 앉아
+     * 헤더의 상아색 글자가 흐려집니다.
+     */
+    <div className="bg-surface-night relative h-dvh min-h-120">
       <h1 className="sr-only">향 지도</h1>
 
       <ScentScene
         className="absolute inset-0"
+        // 유리판 헤더(GlobalHeader 의 h-22.5 = 90px)가 3D 위를 가리는 높이 — 엔진이 검색창 · 해도를 그 아래로 내립니다
+        coveredTop={90}
+        onNightChange={(night) => setSky(night ? 'dark' : 'light')}
         onOpenDetail={(perfume) => {
           // ⚠️ 엔진 데이터에는 아직 DB perfumeId 가 없습니다(fragrantica_id 뿐). 없으면 이름으로 검색 결과(A09)에 보냅니다
           navigate(
@@ -113,9 +135,29 @@ export default function HomePage() {
         }}
       />
 
-      {/* 향해 일지 — 3D 위 왼쪽 위에 계속 떠 있습니다 */}
-      <div className="absolute top-5 left-5">
-        <VoyageLog entries={log.data ?? []} />
+      {/*
+        향해 일지 — 3D 위 왼쪽 위에 계속 떠 있습니다. 유리판 헤더(90px) 아래 30 · 왼쪽 30 —
+        엔진 미니맵(SCENT MAP)이 오른쪽 아래 28px 에 서는 것과 마주 보게 둡니다
+
+        ⭐ 2026-09-16 : 엔진 검색창이 이 판의 **윗변(120)에 맞춰** 올라왔습니다 (`params.searchDrop` 40 → 0 ·
+          `--pb-search-top` 44 → 30). 그래서 넓은 창에서는 판과 검색창이 **같은 높이로 나란히** 섭니다.
+
+        ⚠ 폭 940 이하에서는 **왼쪽 아래**로 내려갑니다. 판 오른끝이 270 으로 고정인데 검색창은 가운데
+          정렬이라, 그 단계(검색창 폭 400)에서 왼끝 `(창폭 − 400) / 2` 가 270 아래로 내려옵니다.
+          윗변을 맞춘 뒤로는 세로가 **정확히 겹치므로** 접어 놔도 부딪힙니다.
+          ⚠⚠ 검색창 **바로 밑**(182)도 안 됩니다 — 그 자리는 설명문구(`#zone-info`)가 씁니다.
+            900 실측 : 설명문구 170~730 × 206~343 vs 판 30~270 × 182~226 = 100 × 20px 물림.
+            검색창 · 설명문구 · 수면 타이포가 전부 위쪽에 모여 있어, 그 무리를 **통째로** 비킨다.
+          bottom 60 은 DRIFT 바를 피한 값입니다 — 그 바는 좁은 창(760 이하)에서 왼쪽으로 옵니다
+          (900 실측 : 가운데 295~605 / 588 실측 : 왼쪽 16~198 · y 697~712). 미니맵은 오른쪽 아래라 안 겹칩니다.
+        ⚠⚠ 문턱 940 은 **엔진 값에서 나온 수**다 — 검색창 폭 400 인 단계에서 `(W − 400) / 2 = 270` 이 되는 폭.
+          앱 기본값(md 768 · lg 1024)을 쓰면 어긋난다. 엔진의 `--pb-search-top` · `--pb-search-w` ·
+          `--pb-search-h` · `searchDrop` · DRIFT 자리를 바꾸면 **여기 940 과 60 을 같이 본다** —
+          앱이 엔진 좌표를 하드코딩하는 자리라, 근본은 엔진에 상자를 넘기는 문이다
+          (`landing/docs/분할/C-연출UI.md` 의 D 요청).
+      */}
+      <div className="absolute top-30 left-7.5 max-[940px]:top-auto max-[940px]:bottom-15">
+        <VoyageLog entries={log.data ?? []} status={logStatus} />
       </div>
 
       {/*

@@ -1,8 +1,9 @@
 import { Outlet, useLocation, useMatches } from 'react-router'
 
-import { GlobalHeader } from '@/app/layouts/GlobalHeader'
+import { GlobalHeader, type HeaderTone } from '@/app/layouts/GlobalHeader'
 import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
+import { useSceneSkyStore } from '@/shared/store/sceneSkyStore'
 
 /**
  * 화면이 쓰는 본문 폭. 라우트 설정(app/router)의 `handle.width` 로 정합니다.
@@ -10,7 +11,8 @@ import { cn } from '@/shared/lib/cn'
  *   full  화면 틀 전체(1920 에서 1800) — 진열대 · 향 지도처럼 화면을 그림으로 쓰는 곳
  *   wide  1440 — 목록 · 격자 · 상세 (적지 않으면 이것)
  *   text  800 — 글을 읽고 쓰는 곳 · 계정 폼
- *   bleed 헤더 아래 화면 끝까지 — 틀 · 좌우 여백 · 위아래 숨 없이 (3D 향 지도 A01)
+ *   bleed 화면 끝까지, 헤더 뒤까지 — 틀 · 좌우 여백 · 위아래 숨 없이. 헤더는 그 위에
+ *         유리판으로 뜹니다 (3D 향 지도 A01)
  *
  * 폭의 근거는 styles/index.css 의 --container-* 주석에 있습니다.
  */
@@ -102,10 +104,37 @@ export function RootLayout() {
    */
   const onNight = useIsNight()
   const width = usePageWidth()
+  const sky = useSceneSkyStore((state) => state.sky)
+  /*
+   * bleed(3D 향 지도)는 화면 전체가 그림이라 헤더가 그 위에 유리판으로 뜹니다.
+   * 유리판 헤더는 흐름에서 빠지므로(fixed) 본문이 화면 맨 위부터 섭니다 — 헤더가
+   * 가리는 높이는 화면(HomePage)이 3D 엔진에 알려 줍니다.
+   * 유리가 거의 투명해 글자색은 뒤의 하늘을 따릅니다 — 밝은 하늘 glassLight(먹색) · 밤하늘 glass(상아색).
+   * 하늘은 화면(HomePage)이 엔진의 시간대를 보고 sceneSkyStore 에 적습니다.
+   */
+  const tone: HeaderTone = onPaper
+    ? 'paper'
+    : width === 'bleed'
+      ? sky === 'light'
+        ? 'glassLight'
+        : 'glass'
+      : 'surface'
 
   return (
-    <div className={cn('flex min-h-dvh flex-col', onNight && 'scent-night')}>
-      <GlobalHeader onPaper={onPaper} />
+    /*
+      overflow-x-clip : 헤더는 스크롤바가 있어도 메인과 같은 자리에 서도록 화면 폭(100vw)이라
+      스크롤바 밑으로 15px 나갑니다(GlobalHeader). 그 조각이 가로 스크롤을 만들지 않게 자릅니다.
+      ⚠ hidden 이 아니라 clip 입니다 — hidden 은 스크롤 상자를 만들어 헤더의 sticky 가 풀립니다.
+      ⚠ 헤더의 100vw 와 같은 `sm`(640) 부터입니다. 더 좁으면 헤더가 화면보다 넓어 잘라내면
+        돋보기 · 계정을 못 누릅니다.
+    */
+    <div
+      className={cn(
+        'flex min-h-dvh flex-col sm:overflow-x-clip',
+        onNight && 'scent-night',
+      )}
+    >
+      <GlobalHeader tone={tone} />
 
       {/*
         위 60px 은 헤더(90px) 아래 숨입니다. 진열대 화면도 같은 값을 씁니다 —

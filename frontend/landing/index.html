@@ -83,7 +83,11 @@
   }
   /* ⭐ 호버 미리보기 (#scent-card[data-peek] — ui.js setScentPeek 가 단다). 훑어보는 동안은 **더 비치고 덜 흐리게** —
      작은 부표(반지름 6px 안팎)는 흐림 5px 뒤에서 자리가 안 읽혔다 (1440×780 화면 확인). 누른 향수의 카드는 위의 진하기 그대로다.
-     ⚠ 변수만 바꾼다 (불변식 23) — 배율은 `--pb-card-peek` (main.js 가 params.cardPeekA 를 넣는다) */
+     ⚠ 변수만 바꾼다 (불변식 23) — 배율은 `--pb-card-peek` (main.js 가 params.cardPeekA 를 넣는다)
+     ⭐⭐ 2026-09-16 : 이 속성이 **서서히** 바뀐다 (사용자 : *"갑자기 색상이 바뀌는게 아니라 서서히 지금 설정한 색상으로"*).
+       ⚠⚠ 트랜지션은 **변수가 아니라 그 변수를 쓰는 속성**에 건다 — CSS 커스텀 속성은 `@property` 로 등록하지 않으면 보간되지 않는다.
+         그래서 카드 상자 · 꼬리의 인라인에 `background-color` · `backdrop-filter` 트랜지션을 뒀다 (길이는 `--pb-card-peek-ms`).
+       ⚠ 자리(translate3d)에는 여전히 트랜지션을 안 건다 — 매 프레임 미는 값이라 걸면 카드가 배를 따라 늘어진다 (아래 #scent-card 주석) */
   html[data-card-eve] #scent-card[data-peek] {
     --pb-card-bg: rgba(44,38,62,calc(var(--pb-card-a,0.86) * var(--pb-card-peek,0.65)));
     --pb-card-blur: blur(1.5px);
@@ -104,9 +108,19 @@
      ⚠ 자리를 켜고 끄는 것도 **변수**다 (display — 불변식 7 · 23). 속성이 없으면 자리가 없다 = v0.63.0 카드 */
   html[data-card-img] { --pb-card-img-d: flex; }
   /* ⭐ 카드의 서비스 동작 세 가지 (2026-09-15, v0.68.0 — params.cardActions 가 <html data-card-actions> 를 단다). 프론트 HomePage 팝오버(A02)와 같은 셋 —
-     [자세히 보기] · [진열대에 저장] · [주변 향 탐색]. ⚠ 디자인 전 자리다 — 글자 단추 한 줄 · 색은 카드 토큰 그대로. 동작은 main.js cardAction → host.js */
+     [자세히 보기] · [진열대에 저장] · [주변 향 탐색]. 동작은 main.js cardAction → host.js
+     ⭐⭐ 2026-09-16 : **밑줄 글자 → 테두리 단추**로 (사용자 : *"부표 정보창에 이 문구들 버튼으로 만들어줘"*). v0.68.0 주석의 *"디자인 전 자리"* 를 닫는다.
+       아래 [이 향의 해역으로]가 **채운 알약**이라 이 셋은 **테두리만** 둘러 둘째 자리로 둔다 — 같이 채우면 무엇이 주 동작인지 안 읽힌다.
+     ⭐⭐ 같은 날 : **[주변 향 탐색] 단추를 뺐다** (사용자 : *"주변 향 탐색은 부표를 눌렸을때 뜨게하고 버튼은 빼야겠네"*).
+       ⚠ 동작이 없어진 게 아니다 — **부표를 누르는 것이 곧 그 동작**이다 (불변식 32 : *"[주변 향 탐색] 은 엔진이 한다 — 부표를 새 클릭한 길 pickSail → startFocus 와 같다"*).
+         단추는 같은 일을 두 번 내놓고 있었다.
+       ⭐ 그래서 `cardAction` 의 `explore` 갈래 · `canExplore` · `exploreAround` 는 걷었고, 호스트 문 `exploreSimilar` 는
+         **`onPick` 의 부표 갈래**(`startFocus` 옆)에서 알린다 — 앱(`ScentScene.tsx`)의 핸들러는 그대로 산다 (불변식 32).
+     ⚠ 둘이 남아 **한 줄에 들어간다** (84 + 5 + 95 = 184 ≤ 246). 셋일 때는 266px 이라 두 줄이었다. */
   html[data-card-actions] { --pb-card-actions-d: flex; }
   #scent-actions button:disabled { opacity: 0.4; cursor: default !important; }
+  /* 호버는 **배경이 아니라 글자 · 테두리**를 진하게 — 밝은 카드(낮)와 저녁 카드 양쪽에서 같이 읽힌다 (배경 틴트는 한쪽에서 안 보인다) */
+  #scent-actions button:not(:disabled):hover { color: var(--pb-card-ink, #1A1A1A); border-color: var(--pb-card-ink-2, #555555); }
   /* ⭐⭐ 사이트 헤더 자리 (2026-09-15, v0.66.0 — params.siteHeader 가 <html data-site-header> 를 단다 · 첫 칠이 튀지 않게 <html> 에 미리 적어 두었다).
      사용자 : *"90px 정도의 헤더가 추가될 예정임 그래서 해당 공간 만큼 채팅 및 연출 문구를 아래로 내려서 해당 헤더 공간을 확보해야함 …
      1차 시안을 보기위해서 다른 프론트, 백엔드 작업물들과 결합을 해야함"*.
@@ -189,8 +203,18 @@
   /* 바탕 — 창이 560 보다 낮아도 스크롤이 생기지 않게 · 휴대폰 주소창이 접혔다 펴져도 화면이 안 튀게 (dvh) */
   :root:not([data-fixed]) { --pb-stage-min: 320px; }
   @supports (height: 100dvh) { :root:not([data-fixed]) { --pb-stage-h: 100dvh; } }
+  /* ⭐ 검색창 기본 크기 — 1280 보다 넓은 창 몫 (2026-09-16, A 메모의 요청 · 사용자 : *"자연어 검색창을 조금 줄이기"*).
+     ⚠ 인라인 fallback(520 × 56 · 버튼 42)은 **안 고친다** — data-fixed 일 때 나오는 비교 패널 '반응형' [원본] 이 그 값이다.
+     ⚠ 높이와 버튼은 묶여 있다 — 오른쪽 여백(7px)과 같은 테가 위아래에 남으려면 h = btn + 14 (50 = 36 + 14)
+
+     ⭐ `--pb-search-top` 30 — **앱의 향해 일지 판 윗변에 맞춘다** (2026-09-16 사용자). 판은 헤더(90) 아래 30 이므로 무대 기준 top 120 이고,
+       검색창은 `top = --pb-search-top + --pb-search-drop` 인데 drop = `params.searchDrop` + hostTop 이다.
+       ⚠ `searchDrop` 은 `clamp(0, 240)` 이라 **음수가 안 된다** — 그래서 40 → 0 (params.js)으로 내리고 남은 14 를 여기서 44 → 30 으로 준다. 90 + 0 + 30 = 120.
+       ⚠⚠ 설명문구(`#zone-info`)와 존 향 폰트(수면 타이포)는 **손대지 않는다 — 저절로 따라온다.**
+         `--pb-info-top` 이 이 값과 `--pb-search-h` 를 읽고(아래 data-info-center), 타이포 천장은 그 블록 아래끝 + 18px 이다 (main.js 가 `ui.zoneInfoRect()` 로 재서 title.js 에 넘긴다). */
+  :root:not([data-fixed]) { --pb-search-w: 450px; --pb-search-h: 50px; --pb-search-btn: 36px; --pb-search-top: 30px; }
   @media (max-width: 1280px) { :root:not([data-fixed]) {
-    --pb-edge: 40px; --pb-info-w: 280px; --pb-mini-w: 214px; --pb-search-w: 480px;
+    --pb-edge: 40px; --pb-info-w: 280px; --pb-mini-w: 214px; --pb-search-w: 420px;
     --pb-chart-edge: 28px; --pb-chart-legend: 208px;
   } }
   @media (max-width: 1024px) { :root:not([data-fixed]) {
@@ -240,7 +264,12 @@
       --pb-info-align: center; --pb-info-dir: column; --pb-info-gap: 10px;
       --pb-info-line-flex: none; --pb-info-line-w: 120px; --pb-info-timer-origin: center;
       --pb-info-title-pad: 0.34em;                                      /* 자간(0.34em)이 글자 뒤에만 붙어 가운데에서 비껴 보이는 몫 */
-      --pb-info-shadow: 0 1px 10px var(--pb-halo-2, transparent);       /* 저녁 · 밤 하늘 위 글자 그늘 (낮은 없음) */
+      /* 저녁 · 밤 하늘 위 글자 그늘 (낮은 없음).
+         ⭐ 2026-09-16 : **두 겹으로 바꿨다** (사용자 : *"설명 문구가 너무 지금 안보임"*). 한 겹 `0 1px 10px`(옅은 halo-2)으로는
+           밝은 살구색 하늘 위의 상아색 글자가 안 잡혔다 — 넓게만 퍼져서 획의 가장자리를 못 세운다.
+           좁고 진한 겹(halo 0.9)이 획을 세우고, 넓고 옅은 겹이 바탕에서 떼어낸다. 글자색은 안 바꿨다 —
+           밤에는 상아색이 맞고(불변식 25), 하늘을 따라 뒤집는 것은 앱 헤더가 하는 큰 장치다. */
+      --pb-info-shadow: 0 1px 2px var(--pb-halo, transparent), 0 2px 14px var(--pb-halo-2, transparent);
     }
   }
 </style>
@@ -267,7 +296,7 @@
   </div>
 </header>
 
-<div id="stage" style="position:relative;width:100%;height:calc(var(--pb-stage-h,100vh) - var(--pb-header-h,0px));min-height:var(--pb-stage-min,560px);overflow:hidden;background:var(--pb-paper,#F6F5F2);color:var(--pb-ink,#1A1A1A);font-family:'Noto Serif KR',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,serif;cursor:grab;user-select:none;">
+<div id="stage" style="position:relative;width:100%;height:calc(var(--pb-stage-h,100vh) - var(--pb-header-h,0px));min-height:var(--pb-stage-min,560px);overflow:hidden;background:var(--pb-paper,#F6F5F2);color:var(--pb-ink,#1A1A1A);font-family:'Noto Serif KR',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,serif;cursor:default;user-select:none;">
 
   <div id="mount" style="position:absolute;inset:0;"></div>
 
@@ -290,13 +319,20 @@
          ⚠⚠ 이 표면은 **자기 바탕이 있다** — 글자는 `--pb-on-surface`(CHARCOAL) 이지 `--pb-ink` 가 아니다.
            v0.44.0 에 카드가 그 둘을 안 갈라 저녁에 제목이 사라졌다 (불변식 25).
          ⚠ 그래도 **바다가 비친다** — 불투명하지 않고 blur 를 준다. 물 위에 놓인 종이여야 한다.
-         ⚠ id 둘(`search-input` · `search-button`)은 ui.js 가 잡으므로 **이름을 바꾸지 않는다** -->
-    <div style="pointer-events:auto;position:relative;display:flex;align-items:center;width:var(--pb-search-w,520px);height:var(--pb-search-h,56px);padding:0 7px 0 20px;border-radius:999px;background:var(--pb-surface-glass,rgba(249,246,239,0.88));border:1px solid var(--pb-line-soft,#C9C4BB);box-shadow:var(--pb-lift,0 10px 30px rgba(24,18,34,0.20));backdrop-filter:blur(7px);">
+         ⚠ id 둘(`search-input` · `search-button`)은 ui.js 가 잡으므로 **이름을 바꾸지 않는다**
+
+         ⭐ 2026-09-16 (사용자) — 둘을 같이 바꿨다 :
+         · **막대 그림자를 뺐다** ("일단 삭제"). 예전 값은 `box-shadow:var(--pb-lift,0 10px 30px rgba(24,18,34,0.20))` — 되살리려면 그 한 조각을 다시 넣는다.
+           ⚠ 막대는 여전히 `backdrop-filter: blur(7px)` 과 상아색 테두리로 물 위에 뜬다 — 그림자만 뺀 것이지 판을 없앤 게 아니다.
+         · **버튼을 남색 → 주황 그라데이션으로** (`--pb-search-btn-a` #1E2947 · `--pb-search-btn-b` #E2833C).
+           예전은 물빛 → 브론즈 `linear-gradient(140deg,var(--pb-shimmer,#A7C8DB),var(--pb-accent,#A68F5B))` 였다.
+           ⚠ 남색은 말풍선 카드 단추와 같은 값이다 (`--pb-card-btn` #1E2947) — 그쪽을 바꾸면 여기도 같이 본다. 주황은 저녁 하늘(살구색)에 맞춘 새 값이라 팔레트 토큰이 아직 없다. -->
+    <div style="pointer-events:auto;position:relative;display:flex;align-items:center;width:var(--pb-search-w,520px);height:var(--pb-search-h,56px);padding:0 7px 0 20px;border-radius:999px;background:var(--pb-surface-glass,rgba(249,246,239,0.88));border:1px solid var(--pb-line-soft,#C9C4BB);backdrop-filter:blur(7px);">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" style="color:var(--pb-on-surface-2,rgba(47,47,50,0.62));flex:none;margin-right:12px;">
         <circle cx="10.5" cy="10.5" r="6.8"/><line x1="15.6" y1="15.6" x2="20.5" y2="20.5"/>
       </svg>
       <input id="search-input" placeholder="어떤 향을 찾고 계신가요?" style="flex:1;min-width:0;height:100%;padding:0;border:none;background:none;outline:none;font-family:inherit;font-size:var(--pb-search-fs,15px);color:var(--pb-on-surface,#2F2F32);">
-      <button id="search-button" aria-label="찾기" style="flex:none;display:flex;align-items:center;justify-content:center;width:var(--pb-search-btn,42px);height:var(--pb-search-btn,42px);padding:0;border:none;border-radius:50%;background:linear-gradient(140deg,var(--pb-shimmer,#A7C8DB),var(--pb-accent,#A68F5B));color:#F9F6EF;cursor:pointer;box-shadow:0 2px 8px rgba(24,18,34,0.18);">
+      <button id="search-button" aria-label="찾기" style="flex:none;display:flex;align-items:center;justify-content:center;width:var(--pb-search-btn,42px);height:var(--pb-search-btn,42px);padding:0;border:none;border-radius:50%;background:linear-gradient(140deg,var(--pb-search-btn-a,#1E2947),var(--pb-search-btn-b,#E2833C));color:#F9F6EF;cursor:pointer;box-shadow:0 2px 8px rgba(24,18,34,0.18);">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="4.5" y1="12" x2="18.5" y2="12"/><polyline points="13,6.5 18.5,12 13,17.5"/>
         </svg>
@@ -360,7 +396,7 @@
            화면 잉크(`--pb-ink`)를 상속하면 안 된다 — 저녁이 기본이 되자(sceneTime 1) 밝은 바탕에
            밝은 글자가 되어 제목이 통째로 안 읽혔다. 불변식 25 가 *"카드·미니맵은 자기 바탕이 있어
            그대로다"* 라고 적어 두었지만 상속을 막는 줄이 없었다. -->
-      <div style="position:relative;padding:var(--pb-card-pad,22px 24px 22px);border:var(--pb-card-border,1px solid #1A1A1A);border-radius:var(--pb-card-radius,5px);background:var(--pb-card-bg,rgba(246,245,242,0.95));color:var(--pb-card-ink,#1A1A1A);backdrop-filter:var(--pb-card-blur,blur(3px));box-shadow:var(--pb-card-shadow,0 10px 28px rgba(26,26,26,0.10));pointer-events:auto;">
+      <div style="position:relative;padding:var(--pb-card-pad,22px 24px 22px);border:var(--pb-card-border,1px solid #1A1A1A);border-radius:var(--pb-card-radius,5px);background:var(--pb-card-bg,rgba(246,245,242,0.95));color:var(--pb-card-ink,#1A1A1A);backdrop-filter:var(--pb-card-blur,blur(3px));box-shadow:var(--pb-card-shadow,0 10px 28px rgba(26,26,26,0.10));pointer-events:auto;transition:background-color var(--pb-card-peek-ms,200ms) ease, backdrop-filter var(--pb-card-peek-ms,200ms) ease;">
         <button id="scent-close" aria-label="닫기" style="position:absolute;top:10px;right:12px;width:24px;height:24px;padding:0;border:none;background:none;font-family:inherit;font-size:17px;line-height:1;color:var(--pb-card-ink-2,#555555);cursor:pointer;">×</button>
         <div data-row style="display:flex;align-items:center;gap:8px;">
           <span id="scent-zone-dot" style="width:7px;height:7px;border-radius:50%;background:#D9738F;"></span>
@@ -385,16 +421,16 @@
         <div data-row style="margin-top:14px;font-size:10px;letter-spacing:0.18em;color:var(--pb-card-ink-2,#555555);">NOTES</div>
         <div data-row id="scent-notes" style="margin-top:6px;font-size:13px;line-height:1.6;">—</div>
         <!-- ⭐ 서비스 동작 세 가지 (2026-09-15, v0.68.0 — cardActions · <html data-card-actions>). [자세히 보기] · [진열대에 저장]은 앱(호스트)으로 나가고
-             [주변 향 탐색]은 이 향을 새 중심으로 12개를 다시 띄운다. ⚠ 디자인 전 자리 — 글자 단추 한 줄. ui.js 는 data-act 만 넘긴다 (main.js cardAction · host.js) -->
-        <div data-row id="scent-actions" style="display:var(--pb-card-actions-d,none);margin-top:14px;flex-wrap:wrap;gap:2px 14px;">
-          <button type="button" data-act="detail" style="padding:4px 0;border:none;background:none;font-family:inherit;font-size:12px;color:var(--pb-card-ink-2,#555555);text-decoration:underline;text-underline-offset:3px;cursor:pointer;">자세히 보기</button>
-          <button type="button" data-act="save" style="padding:4px 0;border:none;background:none;font-family:inherit;font-size:12px;color:var(--pb-card-ink-2,#555555);text-decoration:underline;text-underline-offset:3px;cursor:pointer;">진열대에 저장</button>
-          <button type="button" data-act="explore" style="padding:4px 0;border:none;background:none;font-family:inherit;font-size:12px;color:var(--pb-card-ink-2,#555555);text-decoration:underline;text-underline-offset:3px;cursor:pointer;">주변 향 탐색</button>
+             ui.js 는 data-act 만 넘긴다 (main.js cardAction · host.js)
+             ⭐ 2026-09-16 : 밑줄 글자 → **테두리 단추** · [주변 향 탐색]을 뺐다 (부표 누르기가 곧 그 동작이다). 값 · 까닭은 위 <style> 의 #scent-actions 주석 -->
+        <div data-row id="scent-actions" style="display:var(--pb-card-actions-d,none);margin-top:14px;flex-wrap:wrap;gap:5px;">
+          <button type="button" data-act="detail" style="padding:0 10px;height:30px;border:1px solid var(--pb-card-btn-line,#1A1A1A);border-radius:var(--pb-card-btn-radius,999px);background:none;font-family:inherit;font-size:12px;color:var(--pb-card-ink-2,#555555);white-space:nowrap;cursor:pointer;transition:color 140ms ease, border-color 140ms ease;">자세히 보기</button>
+          <button type="button" data-act="save" style="padding:0 10px;height:30px;border:1px solid var(--pb-card-btn-line,#1A1A1A);border-radius:var(--pb-card-btn-radius,999px);background:none;font-family:inherit;font-size:12px;color:var(--pb-card-ink-2,#555555);white-space:nowrap;cursor:pointer;transition:color 140ms ease, border-color 140ms ease;">진열대에 저장</button>
         </div>
         <button data-row id="scent-sail" style="margin-top:18px;width:100%;height:40px;border:1px solid var(--pb-card-btn-line,#1A1A1A);border-radius:var(--pb-card-btn-radius,5px);background:var(--pb-card-btn,#1A1A1A);color:var(--pb-card-btn-ink,#F6F5F2);font-family:inherit;font-size:13px;font-weight:600;letter-spacing:0.02em;cursor:pointer;">이 향의 해역으로</button>
       </div>
       <!-- 꼬리 : 45° 돌린 정사각형의 **바깥 두 변**만 긋는다. 상자 **위에** 얹어 안쪽 절반이 상자 테두리를 덮는다 -->
-      <span id="scent-tail" aria-hidden="true" style="position:absolute;left:-7px;top:50%;width:13px;height:13px;margin-top:-6.5px;background:var(--pb-card-bg,rgba(246,245,242,0.95));backdrop-filter:var(--pb-card-tail-blur,none);border-left:1px solid #1A1A1A;border-bottom:1px solid #1A1A1A;transform:rotate(45deg);pointer-events:none;"></span>
+      <span id="scent-tail" aria-hidden="true" style="position:absolute;left:-7px;top:50%;width:13px;height:13px;margin-top:-6.5px;background:var(--pb-card-bg,rgba(246,245,242,0.95));backdrop-filter:var(--pb-card-tail-blur,none);border-left:1px solid #1A1A1A;border-bottom:1px solid #1A1A1A;transform:rotate(45deg);pointer-events:none;transition:background-color var(--pb-card-peek-ms,200ms) ease, backdrop-filter var(--pb-card-peek-ms,200ms) ease;"></span>
     </div>
   </div>
 
@@ -430,7 +466,7 @@
          그 방식을 전체 화면으로 키우면 층당 1920×1080×dpr² 비트맵이고 확대하면 뭉갠다. 자세한 것은 chart.js 머리말.
        ⚠ z 40 — 서비스 UI(카드 20) 위, 개발 바(51) 아래다. 열려 있는 동안 미니맵·검색창을 덮는 것이 맞다 (모달이다).
        ⚠ 색은 `:root` 에서, 자리·크기는 `var(--pb-…, 예전 px)` 에서 받는다 (불변식 7 · 23). -->
-  <div id="chart" style="position:absolute;inset:0;z-index:40;display:none;align-items:center;justify-content:center;">
+  <div id="chart" style="position:absolute;inset:0;z-index:40;display:none;align-items:center;justify-content:center;box-sizing:border-box;padding-top:var(--pb-host-top,0px);">
     <!-- 바다를 덮는 너울. ⚠ 흐림(backdrop-filter)을 주지 않는다 — 전체 화면 흐림은 물 시뮬과 겹쳐 비싸고,
          어두운 너울만으로도 바다가 아래에서 은은히 비친다 (그게 더 해도답다) -->
     <div id="chart-veil" style="position:absolute;inset:0;background:var(--pb-chart-veil,rgba(24,18,34,0.58));"></div>

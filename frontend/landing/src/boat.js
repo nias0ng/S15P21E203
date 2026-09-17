@@ -242,7 +242,11 @@ export function createBoat(scene) {
     uWindAmp: { value: 0 },
     uWindFreq: { value: 0 },
     uSailSpan: { value: new THREE.Vector2(0, 1) },  // 마스크 축의 [고정단, 자유단]
-    uSailFlip: { value: 0 }                         // 고정단이 반대쪽이면 1
+    uSailFlip: { value: 0 },                        // 고정단이 반대쪽이면 1
+    // ⭐ 물결이 흐르는 방향 (v0.70.0) — 1 = 고정단 → 자유단 · −1 = 반대. 둘째 물결의 세기와 방향(x = 폭축 · y = 세로축 성분)
+    uWindDir: { value: 1 },
+    uCrossK: { value: 0.55 },
+    uCrossDir: { value: new THREE.Vector2(0, 1) }
   };
   // ⚠⚠ **가장 긴 로컬 축을 돛의 폭으로 삼으면 안 된다.** 이 모델은 로컬 z 가 가장 길지만(564.3)
   //   그 축이 월드에서는 **수직**이다 (실측 : 로컬 z → 월드 y). 그대로 쓰면 돛이 마스트가 아니라
@@ -319,18 +323,27 @@ export function createBoat(scene) {
       sh.uniforms.uWindFreq = sailUni.uWindFreq;
       sh.uniforms.uSailSpan = sailUni.uSailSpan;
       sh.uniforms.uSailFlip = sailUni.uSailFlip;
+      sh.uniforms.uWindDir = sailUni.uWindDir;
+      sh.uniforms.uCrossK = sailUni.uCrossK;
+      sh.uniforms.uCrossDir = sailUni.uCrossDir;
       sh.vertexShader = sh.vertexShader
         .replace('#include <common>',
-          '#include <common>\nuniform float uWindT, uWindAmp, uWindFreq, uSailFlip;\nuniform vec2 uSailSpan;')
+          '#include <common>\nuniform float uWindT, uWindAmp, uWindFreq, uSailFlip, uWindDir, uCrossK;\nuniform vec2 uSailSpan, uCrossDir;')
         .replace('#include <begin_vertex>',
           '#include <begin_vertex>\n' +
           // 고정단 0 → 자유단 1. 제곱해서 마스트 쪽은 거의 안 움직이게 한다
-          'float sMask = clamp((position.' + AX + ' - uSailSpan.x) / max(uSailSpan.y - uSailSpan.x, 1e-4), 0.0, 1.0);\n' +
-          'sMask = mix(sMask, 1.0 - sMask, uSailFlip);\n' +
-          'sMask *= sMask;\n' +
-          // 두 방향의 파를 겹쳐 한 방향 물결이 안 되게 한다
-          'float w = sin(position.' + AX + ' * uWindFreq + uWindT)\n' +
-          '        + 0.55 * sin(position.' + PU + ' * uWindFreq * 1.7 - uWindT * 1.3);\n' +
+          'float sLin = clamp((position.' + AX + ' - uSailSpan.x) / max(uSailSpan.y - uSailSpan.x, 1e-4), 0.0, 1.0);\n' +
+          'sLin = mix(sLin, 1.0 - sLin, uSailFlip);\n' +
+          'float sMask = sLin * sLin;\n' +
+          // ⭐⭐ 물결은 **고정단에서 잰 거리**를 따라 흐른다 (v0.70.0, sailWindDir · sailWindCross · sailWindTilt).
+          //   사용자 : *"지금 위아래 아래로 방향이 되어있는데 돛의 천이 반대 방향으로 옆으로 흘러야할 것같은데"*.
+          //   ⚠ 예전 첫 물결은 로컬 축 좌표(position.AX)를 그대로 써서 흐르는 쪽이 모델 축의 부호에 달려 있었고(sailFlip 과 따로 놀았다),
+          //     둘째 물결은 돛의 **세로축**(PU — 이 모델은 월드 아래)으로 흘러 천이 위아래로 흐르는 것처럼 보였다.
+          //   이제 둘 다 고정단 → 자유단(바람이 빠져나가는 쪽)으로 흐르고, 둘째는 uCrossDir 만큼만 세로로 기울어 한 방향 줄무늬가 안 된다.
+          //   미는 방향(천의 면 · OUT)은 그대로다
+          'float sDist = sLin * (uSailSpan.y - uSailSpan.x);\n' +
+          'float w = sin(sDist * uWindFreq - uWindT * uWindDir)\n' +
+          '        + uCrossK * sin((sDist * uCrossDir.x + position.' + PU + ' * uCrossDir.y) * uWindFreq * 1.7 - uWindT * 1.3 * uWindDir);\n' +
           'transformed.' + OUT + ' += w * uWindAmp * sMask;');
     };
     sailMat.needsUpdate = true;
@@ -614,7 +627,9 @@ export function createBoat(scene) {
     probes: [[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],
     stepped: false,   // 이번 프레임에 배가 갱신됐는가 (sim.stepped 와 짝. perf.js 가 본다)
 
-    update(sim, { t, s, mv, head, headV }) {
+    // ⚠ `offX` · `offZ` — 배가 씬 원점을 벗어난 양 (존 연출). 0 이면 예전과 비트 단위로 같다.
+    //   자리를 놓는 것은 main.js 다 (pivot.position) — 여기는 **물을 어디서 읽을지**에만 쓴다.
+    update(sim, { t, s, mv, head, headV, offX = 0, offZ = 0 }) {
       syncModel();   // 종이배 ↔ GLB (값이 바뀔 때만 실제로 만진다)
       // 돛의 바람. ⚠ 물의 시계(sim.qT)를 쓴다 — 실시간 t 로 흔들면 파도와 따로 논다.
       //   ⚠ 이 갱신만은 boatFps 게이트 **밖**이다. 게이트에 걸면 천이 덜덜 떤다
@@ -628,9 +643,19 @@ export function createBoat(scene) {
       sailQPrev = sim.qT;
       sailPhase += dQ * P.sailWindSpeed * (1.0 + P.sailWindGust * s);
       sailUni.uWindT.value = sailPhase;
-      sailUni.uWindAmp.value = P.sailWind * sailSpan;                       // 돛 길이의 배수
+      // ⭐ 흔드는 폭이 배 속도를 따라 오른다 (2026-09-15, v0.71.0 — sailWindRest → sailWind). 사용자 : *"배가 점점 빨라지면서 값이 같이 올라가게 만들고
+      //   최대 속도 일때 해당 값을 유지할 수 있도록"*. 멈춤 = sailWindRest · 최대 속도(CONFIG.speed.boost) = sailWind · 그 사이는 속도 비율대로, 넘으면 sailWind 에 머문다.
+      //   ⚠ s 는 main.js 가 이미 매끄럽게 민다 (가속 lerp · 감속 speedGlide) — 폭도 그대로 따라오므로 따로 램프를 안 만든다
+      const windK = Math.min(Math.max(s / Math.max(CONFIG.speed.boost, 1e-3), 0), 1);
+      const windRest = P.sailWindRest === undefined ? P.sailWind : P.sailWindRest;
+      sailUni.uWindAmp.value = (windRest + (P.sailWind - windRest) * windK) * sailSpan;   // 돛 길이의 배수
       sailUni.uWindFreq.value = P.sailWindFreq * 2.0 * Math.PI / sailSpan;  // 돛을 가로지르는 물결 개수
       sailUni.uSailFlip.value = sailAuto ? 1 - P.sailFlip : P.sailFlip;   // 실측 고정단 위에 XOR
+      // 물결이 흐르는 방향 · 둘째 물결 (v0.70.0). 기울기 90° 에 세기 0.55 면 v0.69.0 의 둘째 물결과 같은 식이다
+      sailUni.uWindDir.value = (P.sailWindDir === undefined ? 1 : P.sailWindDir) < 0 ? -1 : 1;
+      sailUni.uCrossK.value = P.sailWindCross === undefined ? 0.55 : P.sailWindCross;
+      const tilt = (P.sailWindTilt === undefined ? 20 : P.sailWindTilt) * Math.PI / 180;
+      sailUni.uCrossDir.value.set(Math.cos(tilt), Math.sin(tilt));
       const B = CONFIG.buoy, b = CONFIG.boat;
 
       // 게이트를 먼저 판정한다 — 아래 부력 블록 전체가 이 안에서만 돌아야 하기 때문
@@ -650,7 +675,9 @@ export function createBoat(scene) {
         const aXx = B.armX * ch, aXz = -B.armX * sh;   // 선체 폭방향 (roll 을 만든다)
         const aZx = B.armZ * sh, aZz = B.armZ * ch;    // 선체 길이방향 (pitch 를 만든다)
         let hC = 0, hXp = 0, hXm = 0, hZp = 0, hZm = 0;
-        const at = sim.sampler();
+        // ⚠⚠ 배가 씬 원점을 벗어나 있으면(존 연출의 등장 · 정박) **물을 읽는 자리도 같이 옮긴다** (2026-09-16).
+        //   시뮬 프로브 창과 해석적 너울 **둘 다** 옮겨야 한다 — 한쪽만 옮기면 GPU 와 CPU 가 갈라져 배가 잠기거나 뜬다 (불변식 2 의 실패 모양).
+        const at = sim.sampler(offX, offZ);
         if (at) {
           hC = at(0, 0); hXp = at(aXx, aXz); hXm = at(-aXx, -aXz);
           hZp = at(aZx, aZz); hZm = at(-aZx, -aZz);
@@ -658,7 +685,8 @@ export function createBoat(scene) {
         // 부력도 물과 같은 양자화된 시각·위치를 봐야 한다 — 아니면 배가 잠기거나 뜬다
         // gerstner 를 같이 넘겨야 한다 — 켜면 GPU 는 정점을 옆으로도 밀고, CPU 는 그 역을 풀어
         // '이 월드 좌표의 수면 높이'를 낸다. 안 넘기면 배가 파도와 어긋난 자리에서 뜬다
-        const sw = (ox, oz) => swellCPU(ox + sim.qScroll.x, oz - sim.qScroll.z, sim.qT * P.waveSpeed, P.oceanSwell, P.ripple, P.gerstner);
+        //   ⚠ 씬 오프셋 → 월드는 `(x + scroll.x, z − scroll.z)` 규약이다 (불변식 0-2) — offX · offZ 도 같은 자리에 더한다
+        const sw = (ox, oz) => swellCPU(offX + ox + sim.qScroll.x, offZ + oz - sim.qScroll.z, sim.qT * P.waveSpeed, P.oceanSwell, P.ripple, P.gerstner);
         hC += sw(0, 0);
         hXp += sw(aXx, aXz); hXm += sw(-aXx, -aXz);
         hZp += sw(aZx, aZz); hZm += sw(-aZx, -aZz);
