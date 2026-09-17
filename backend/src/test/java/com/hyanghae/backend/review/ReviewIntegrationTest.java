@@ -176,6 +176,149 @@ class ReviewIntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 
+    /**
+     * 제목·내용·계절을 한 요청으로 고치고, 응답에 <b>고쳐진 결과 전체</b>가 담깁니다.
+     *
+     * <p>응답이 보낸 항목만 담으면 화면이 나머지를 알 수 없어 상세를 다시 불러야 합니다.
+     */
+    @Test
+    void updatesTitleContentAndSeasonsInOneRequest() throws Exception {
+        long reviewId = createReview("수정 전", "수정하기 전의 후기 내용입니다.", "[\"SPRING\"]");
+
+        mockMvc.perform(patch(REVIEWS_URL + "/" + reviewId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"수정 후","seasonCodes":["AUTUMN","WINTER"]}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("수정 후"))
+                .andExpect(jsonPath("$.content").value("수정하기 전의 후기 내용입니다."))
+                .andExpect(jsonPath("$.seasonCodes[0]").value("AUTUMN"))
+                .andExpect(jsonPath("$.seasonCodes[1]").value("WINTER"));
+
+        assertThat(jdbcTemplate.queryForList(
+                "SELECT season_id FROM perfume_review_seasons WHERE review_id = ? ORDER BY season_id",
+                Long.class,
+                reviewId
+        )).containsExactly(3L, 4L);
+    }
+
+    /**
+     * 계절만 보내는 수정도 됩니다. 화면에서 계절 칩만 바꾸고 저장하는 경우입니다.
+     */
+    @Test
+    void updatesSeasonsAlone() throws Exception {
+        long reviewId = createReview("그대로", "제목과 내용은 그대로 두는 후기입니다.", "[\"SPRING\"]");
+
+        mockMvc.perform(patch(REVIEWS_URL + "/" + reviewId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"seasonCodes\":[\"SUMMER\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("그대로"))
+                .andExpect(jsonPath("$.content").value("제목과 내용은 그대로 두는 후기입니다."))
+                .andExpect(jsonPath("$.seasonCodes[0]").value("SUMMER"));
+    }
+
+    /**
+     * 계절을 보내지 않으면 그대로 두고, 응답에는 지금 계절이 담깁니다.
+     */
+    @Test
+    void keepsSeasonsWhenNotSentAndStillEchoesThem() throws Exception {
+        long reviewId = createReview("제목만", "계절은 건드리지 않는 후기입니다.", "[\"SPRING\",\"AUTUMN\"]");
+
+        mockMvc.perform(patch(REVIEWS_URL + "/" + reviewId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"제목만 바꿈\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.seasonCodes[0]").value("SPRING"))
+                .andExpect(jsonPath("$.seasonCodes[1]").value("AUTUMN"));
+    }
+
+    /**
+     * <b>이 변경이 생긴 이유입니다.</b> 계절이 잘못되면 제목도 저장되지 않아야 합니다.
+     *
+     * <p>둘로 나뉘어 있던 시절에는 제목이 먼저 저장된 뒤 계절이 실패해, 서버에는 새 제목이
+     * 있는데 화면은 "아무것도 저장 안 됨"으로 보이는 어긋남이 생겼습니다. 사용자는 포기하고
+     * 떠나고, 새로고침해야 그제야 바뀐 제목이 나타납니다.
+     */
+    @Test
+    void rollsBackTitleWhenSeasonCodeIsInvalid() throws Exception {
+        long reviewId = createReview("원래 제목", "되돌아가야 하는 후기 내용입니다.", "[\"SPRING\"]");
+
+        mockMvc.perform(patch(REVIEWS_URL + "/" + reviewId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"바뀌면 안 되는 제목","seasonCodes":["NOPE"]}
+                                """))
+                .andExpect(status().isNotFound());
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT title FROM perfume_reviews WHERE id = ?", String.class, reviewId))
+                .as("계절이 실패했으므로 제목도 원래대로여야 합니다")
+                .isEqualTo("원래 제목");
+        assertThat(jdbcTemplate.queryForList(
+                "SELECT season_id FROM perfume_review_seasons WHERE review_id = ?",
+                Long.class,
+                reviewId
+        )).containsExactly(1L);
+    }
+
+    /**
+     * 비활성 계절도 같습니다. 있는 코드지만 쓸 수 없으므로 전부 되돌아갑니다.
+     */
+    @Test
+    void rollsBackTitleWhenSeasonIsInactive() throws Exception {
+        long reviewId = createReview("원래 제목", "비활성 계절로는 못 바꾸는 후기입니다.", "[\"SPRING\"]");
+
+        mockMvc.perform(patch(REVIEWS_URL + "/" + reviewId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"바뀌면 안 되는 제목","seasonCodes":["OLD"]}
+                                """))
+                .andExpect(status().isNotFound());
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT title FROM perfume_reviews WHERE id = ?", String.class, reviewId))
+                .isEqualTo("원래 제목");
+    }
+
+    /**
+     * 중복 계절은 400 이고, 이때도 제목은 그대로입니다.
+     */
+    @Test
+    void rollsBackTitleWhenSeasonCodesAreDuplicated() throws Exception {
+        long reviewId = createReview("원래 제목", "중복 계절로는 못 바꾸는 후기입니다.", "[\"SPRING\"]");
+
+        mockMvc.perform(patch(REVIEWS_URL + "/" + reviewId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"바뀌면 안 되는 제목","seasonCodes":["SUMMER","SUMMER"]}
+                                """))
+                .andExpect(status().isBadRequest());
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT title FROM perfume_reviews WHERE id = ?", String.class, reviewId))
+                .isEqualTo("원래 제목");
+    }
+
+    /**
+     * 빈 배열로는 계절을 비울 수 없습니다. 후기에는 계절이 적어도 하나 있어야 합니다 —
+     * 계절 전용 엔드포인트와 같은 규칙입니다.
+     */
+    @Test
+    void rejectsEmptySeasonCodes() throws Exception {
+        long reviewId = createReview("원래 제목", "계절을 비울 수 없는 후기입니다.", "[\"SPRING\"]");
+
+        mockMvc.perform(patch(REVIEWS_URL + "/" + reviewId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"바뀌면 안 됨\",\"seasonCodes\":[]}"))
+                .andExpect(status().isBadRequest());
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT title FROM perfume_reviews WHERE id = ?", String.class, reviewId))
+                .isEqualTo("원래 제목");
+    }
+
     @Test
     void replacesSeasonsAndKeepsExistingSummary() throws Exception {
         long reviewId = createReview("계절", "계절을 변경하기 위한 후기입니다.", "[\"SPRING\",\"SUMMER\"]");
