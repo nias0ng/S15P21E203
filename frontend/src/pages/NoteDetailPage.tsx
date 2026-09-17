@@ -81,10 +81,11 @@ export default function NoteDetailPage() {
       </LinkButton>
 
       <div className="flex flex-col gap-3.75 sm:flex-row">
+        {/* 목록과 같은 7:5 입니다. 높이를 정하면 폭(224)은 비율이 정합니다 */}
         <Thumbnail
           src={data.imageUrl}
           fallback="노트 이미지"
-          className="h-40 w-56.25 shrink-0"
+          className="aspect-7/5 h-40 shrink-0"
         />
 
         <div className="flex-1 space-y-2.5">

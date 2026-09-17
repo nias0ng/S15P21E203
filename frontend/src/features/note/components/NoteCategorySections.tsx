@@ -44,8 +44,20 @@ export function NoteCategorySections({
           <div key={section} className="space-y-2.5">
             <Skeleton className="h-5 w-23.75" />
             <div className="grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-5">
+              {/*
+                카드와 같은 틀 · 같은 사진 비율이어야 노트가 도착할 때 격자가 안
+                튑니다. 사진이 7:5 라 높이가 열 폭을 따라가서, 고정 높이로는 못 맞춥니다.
+              */}
               {Array.from({ length: 5 }, (_, index) => (
-                <Skeleton key={index} className="h-32.5" />
+                <div
+                  key={index}
+                  className="border-line rounded-card flex flex-col gap-2.5 border p-2.5"
+                >
+                  <Skeleton className="aspect-7/5 w-full" />
+                  {/* 영문 이름 · 한국어 이름 두 줄 */}
+                  <Skeleton className="h-5 w-3/5" />
+                  <Skeleton className="h-4 w-2/5" />
+                </div>
               ))}
             </div>
           </div>
@@ -80,7 +92,12 @@ export function NoteCategorySections({
                     <Thumbnail
                       src={note.imageUrl}
                       fallback="이미지"
-                      className="h-20 w-full"
+                      /*
+                        노트 사진은 7:5(가로:세로)로 맞춰 올라옵니다. 높이를 고정하면
+                        열 폭이 바뀌는 순간 object-cover 가 좌우를 잘라내므로, 비율로
+                        잡고 높이가 폭을 따라오게 둡니다.
+                      */
+                      className="aspect-7/5 w-full"
                     />
                   }
                   /*
