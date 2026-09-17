@@ -39,6 +39,13 @@ export function TileCard({
   return (
     <Link
       to={to}
+      /*
+        화면 테마가 붙잡을 자리 이름입니다(`PerfumeCard` 와 같은 뜻).
+        어두운 방 위 유리판(`styles/scent-display.css` 의 `.scent-glass`)이 이 이름으로
+        카드를 찾아 유리로 바꿉니다. 판 밖에서는 아무 일도 하지 않으므로, 이 카드를
+        쓰는 노트 · 컬렉션 화면은 그대로입니다.
+      */
+      data-slot="card"
       className={cn(
         'border-line bg-surface-card rounded-card flex flex-col gap-2.5 border p-2.5',
         'transition-[transform,box-shadow] duration-200 ease-out',
