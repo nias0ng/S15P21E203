@@ -324,9 +324,9 @@ cd backend/db/seed
 
 ## 먼저 확인할 것
 
-**스키마가 `V14` 까지 적용돼 있어야 합니다.** `V14` 가 `uk_perfumes_brand_name` 을 걷어내고
-`fragrantica_rating_count` 를 만듭니다. 안 되어 있으면 향수를 넣는 단계에서 컬럼 이름을
-알려주며 멈춥니다. 애플리케이션을 한 번 띄우면 Flyway 가 적용합니다.
+**스키마가 `V21` 까지 적용돼 있어야 합니다.** `V14` 가 향수 적재에 필요한 컬럼을 만들고,
+`V21` 이 여러 브랜드가 같은 한국어 이름을 사용할 수 있도록 제약을 바꿉니다. 애플리케이션을
+한 번 띄우면 Flyway가 적용됩니다.
 
 ## 실행
 
@@ -345,17 +345,22 @@ DATABASE_URL="postgresql://..." ./load_perfume_catalog.sh   # 로컬에 psql 이
 DB_NAME=... DB_USER=... PG_CONTAINER=... ./load_perfume_catalog.sh
 ```
 
-`perfume_ko.csv`는 영문 원이름과 한국어 번역명을 담습니다. 같은 영문 이름에 번역이 하나로
-정해지는 향수의 빈 `name_ko`만 보충하며, 이미 사람이 입력한 이름이나 번역이 서로 다른 동명이
-향수는 덮어쓰지 않습니다.
+`perfume_ko.csv`는 영문 원이름과 한국어 번역명을 담습니다. 이 파일을 향수 한국어 이름의 기준으로
+사용하므로, 번역이 바뀌면 기존 DB 값도 새 값으로 갱신됩니다. 같은 영문 이름에 서로 다른 번역이
+여러 개 있으면 어느 값이 맞는지 알 수 없어 그 이름만 건너뜁니다.
 
-`brands_ko.csv`는 브랜드의 `name_ko`, `logo_domain`, `logo_override`를 담습니다. 브랜드의 빈
-한국어 이름만 보충합니다. 같은 영문 이름에 번역이 여러 개이거나 여러 브랜드가 같은
-한국어 이름을 쓰는 경우에는 어느 브랜드인지 확정하기 어려우므로 해당 한국어 이름을 모두
-건너뜁니다. 로고는
-`logo_override`가 있으면 기존 값보다 우선해 저장합니다.
-`logo_override`가 없으면 기존 로고를 유지하고, 기존 로고도 없을 때만
-`https://img.logo.dev/{logo_domain}`으로 만들어 저장합니다.
+`brands_ko.csv`는 브랜드의 `name_ko`, `logo_domain`, `logo_override`를 담습니다. 이 파일에 값이
+있으면 기존 DB 값도 새 값으로 갱신됩니다. 서로 다른 브랜드가 같은 한국어 이름을 사용하는 것은
+허용합니다. 같은 영문 브랜드 하나에 서로 다른 번역이 여러 개 있을 때만 한국어 이름을
+건너뜁니다.
+
+로고는 `logo_override`가 있으면 그 주소를 사용합니다. 없으면 현재 CSV의 `logo_domain`으로
+`https://img.logo.dev/{logo_domain}` 주소를 만듭니다. CSV에 두 값이 모두 없을 때만 기존 DB 로고를
+유지합니다.
+
+노트는 `notes_top300_1.csv`의 이름·분류와 `notes_top300_with_explain.csv`의 설명을 합쳐
+`notes.csv`에 넣습니다. 새 원본의 `image_url`이 비어 있으므로, 기존에 확인한 노트 이미지 주소는
+`notes.csv`에 계속 보존합니다.
 
 몇 번을 다시 돌려도 결과가 같습니다. 전체가 한 트랜잭션이라 중간에 하나라도 어긋나면 아무것도
 반영되지 않습니다. 끝나면 아래와 같은지 확인하세요.
@@ -368,6 +373,38 @@ SELECT (SELECT count(*) FROM brands)          AS brands,          -- 7,793 이�
 ```
 
 `perfumes` 가 129,161 보다 클 수 있습니다. 이 CSV 에 없는 향수가 이미 있으면 그대로 남습니다.
+
+# 운영 발표용 데모 seed
+
+정적 데이터만 적재한 운영 DB에서 진열대·컬렉션·커뮤니티·후기·조회 순위 화면을 보여 주기 위한
+별도 도구입니다. 로컬 전용 `seed-local`과 실행 파일 및 장부를 분리합니다.
+
+- `demo01@demo.hyanghae.test`부터 `demo43@demo.hyanghae.test`까지 데모 계정을 만듭니다.
+- `demo41@demo.hyanghae.test`는 진열대 18개, 컬렉션 3개와 메모 6개를 가진 발표 계정입니다.
+- 전체 컬렉션 30개와 게시글 90개는 여러 가상 사용자에게 분산됩니다. 계정별 닉네임과 활동량을
+  다르게 구성하고 시향·여행·출근 등 상황별 문구를 사용합니다. 실제 사용자 후기는 아닙니다.
+- 작성 시간은 최초 실행 전 약 48일 동안 분산되며, 재실행해도 기존 작성 시간은 유지됩니다.
+- 모든 데모 계정은 실행할 때 지정한 `SEED_LOGIN_PASSWORD`를 사용합니다.
+- 생성한 행은 `demo_seed.records`에 기록합니다. 실제 사용자가 만든 행은 소유하거나 수정하지 않습니다.
+- 운영에서는 `fill`만 허용합니다. 다시 실행해도 기존 데모 행의 사용자 수정을 덮어쓰지 않습니다.
+- 정적 seed 네 가지를 모두 적재한 뒤 실행해야 합니다.
+
+운영 서버에서 저장소 루트 기준으로 다음 환경변수를 준비합니다. JDBC 주소의 호스트에는 운영
+PostgreSQL 컨테이너의 Compose 서비스명을 사용합니다.
+
+```bash
+export DEMO_SEED_CONFIRM=CREATE_DEMO_DATA
+export DEMO_SEED_DOCKER_NETWORK=운영_Compose_네트워크명
+export SEED_JDBC_URL='jdbc:postgresql://PostgreSQL서비스명:5432/운영DB이름'
+export SEED_DB_USER='운영DB사용자'
+export SEED_DB_PASSWORD='운영DB비밀번호'
+export SEED_LOGIN_PASSWORD='발표용계정비밀번호'
+
+bash backend/db/seed/run_demo_seed.sh
+```
+
+DB 비밀번호와 로그인 비밀번호를 명령행에 직접 붙이지 말고 현재 셸의 환경변수로 전달합니다.
+완료 메시지에 표시되는 `demo41@demo.hyanghae.test`로 로그인하여 진열대와 커뮤니티를 확인합니다.
 
 ## 운영에 넣기 전에
 

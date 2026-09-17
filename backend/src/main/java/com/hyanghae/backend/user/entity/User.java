@@ -26,6 +26,16 @@ public class User {
     @Column(name = "nickname", nullable = false, length = 20)
     private String nickname;
 
+    /**
+     * 프로필 사진의 주소입니다. {@code null} 은 설정하지 않은 상태이고, 화면이 기본
+     * 아바타를 보여줍니다.
+     *
+     * <p>주소만 담습니다. 파일은 {@code UserProfileImageService} 가 저장하고 여기에는
+     * 그 결과 주소가 들어옵니다.
+     */
+    @Column(name = "profile_image_url")
+    private String profileImageUrl;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
@@ -67,6 +77,17 @@ public class User {
         this.updatedAt = updatedAt;
     }
 
+    /**
+     * 프로필 사진을 바꿉니다. {@code null} 을 주면 설정하지 않은 상태로 되돌립니다.
+     *
+     * <p><b>옛 파일을 지우는 것은 부르는 쪽의 몫입니다.</b> 엔티티는 디스크를 모르고,
+     * 지우는 시점도 트랜잭션이 커밋된 뒤여야 합니다.
+     */
+    public void changeProfileImage(String profileImageUrl, OffsetDateTime updatedAt) {
+        this.profileImageUrl = profileImageUrl;
+        this.updatedAt = updatedAt;
+    }
+
     public boolean hasNickname(String nickname) {
         return this.nickname.equals(nickname);
     }
@@ -85,6 +106,10 @@ public class User {
 
     public String getNickname() {
         return nickname;
+    }
+
+    public String getProfileImageUrl() {
+        return profileImageUrl;
     }
 
     public OffsetDateTime getCreatedAt() {

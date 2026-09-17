@@ -7,6 +7,7 @@ import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /** 생성한 행의 키와 최초 값을 기록합니다. 사람이 만든 행을 소유 데이터로 편입하지 않습니다. */
@@ -14,14 +15,20 @@ final class SeedStore {
     private static final ObjectMapper JSON = new ObjectMapper();
     private final Connection db;
     private final boolean reset;
+    private final String registrySchema;
     private final Map<String, Map<String, Object>> registry = new java.util.HashMap<>();
     int inserted;
     int restored;
 
-    SeedStore(Connection db, boolean reset) throws SQLException {
+    SeedStore(Connection db, boolean reset, String registrySchema) throws SQLException {
+        if (!Set.of("local_seed", "demo_seed").contains(registrySchema)) {
+            throw new IllegalArgumentException("허용되지 않은 seed 장부 스키마입니다.");
+        }
         this.db = db;
         this.reset = reset;
-        for (var record : query(db, "SELECT seed_key, table_name, primary_key::text AS pk, baseline::text AS baseline FROM local_seed.records")) {
+        this.registrySchema = registrySchema;
+        for (var record : query(db, "SELECT seed_key, table_name, primary_key::text AS pk, baseline::text AS baseline FROM "
+                + registrySchema + ".records")) {
             registry.put(record.get("seed_key").toString(), record);
         }
     }
@@ -64,7 +71,7 @@ final class SeedStore {
         Map<String, Object> created = insert(table, values);
         Map<String, Object> primaryKey = new LinkedHashMap<>();
         pk.forEach(column -> primaryKey.put(column, created.get(column)));
-        execute(db, "INSERT INTO local_seed.records VALUES (?, ?, ?::jsonb, ?::jsonb)",
+        execute(db, "INSERT INTO " + registrySchema + ".records VALUES (?, ?, ?::jsonb, ?::jsonb)",
                 key, table, json(primaryKey), json(created));
         registry.put(key, row("table_name", table, "pk", json(primaryKey), "baseline", json(created)));
         inserted++;

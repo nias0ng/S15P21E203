@@ -137,6 +137,16 @@ public class Post {
      * <p>비운 뒤 바로 담으면 안 되는 경우가 있어 {@link #clearPerfumes()} 와 나눠 두었습니다.
      * 이미지는 번호가 자동 증가라 겹칠 일이 없지만, 두 목록의 사용법을 같게 두는 편이 읽힙니다.
      */
+    /**
+     * 지금 걸려 있는 이미지 주소입니다.
+     *
+     * <p>글을 지우거나 이미지를 바꾸기 <b>전에</b> 불러 둡니다. 바꾸고 나면 빠진 주소를 알
+     * 길이 없어 그 파일이 디스크에 영영 남습니다.
+     */
+    public List<String> imageUrls() {
+        return images.stream().map(PostImage::imageUrl).toList();
+    }
+
     public void replaceImages(List<String> imageUrls) {
         images.clear();
         for (int order = 0; order < imageUrls.size(); order++) {

@@ -10,6 +10,8 @@
 export { PerfumeFilters } from './components/PerfumeFilters'
 export { usePerfumeViewLog } from './hooks/usePerfumeViewLog'
 export { PerfumeGrid } from './components/PerfumeGrid'
+export { PerfumeRelated } from './components/PerfumeRelated'
+export { PerfumeReviewKeywords } from './components/PerfumeReviewKeywords'
 export { PerfumeNotes } from './components/PerfumeNotes'
 export { PerfumeOverview } from './components/PerfumeOverview'
 export { PerfumeReviewList } from './components/PerfumeReviewList'
@@ -22,10 +24,12 @@ export {
   perfumeKeys,
   perfumeListQuery,
   perfumeNotesQuery,
+  perfumeReviewKeywordsQuery,
   perfumeReviewStatisticsQuery,
   perfumeReviewSummaryQuery,
   perfumeReviewsQuery,
   perfumeSeasonStatisticsQuery,
+  relatedPerfumesQuery,
   reviewDetailQuery,
   reviewKeys,
 } from './queries'
@@ -66,4 +70,6 @@ export {
   type SeasonStatistic,
   type SeasonStatisticsResponse,
   type RankingFilter,
+  type RelatedPerfume,
+  type ReviewKeyword,
 } from './types'

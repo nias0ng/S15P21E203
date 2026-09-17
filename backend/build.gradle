@@ -18,6 +18,12 @@ repositories {
     mavenCentral()
 }
 
+// AWS SDK 는 Spring Boot BOM 이 관리하지 않아 자체 BOM 으로 버전을 맞춥니다.
+// s3 하나만 쓰더라도 내부 의존(auth, http-client 등) 버전이 어긋나면 런타임에 깨집니다.
+ext {
+    awsSdkVersion = '2.31.78'
+}
+
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -30,10 +36,15 @@ dependencies {
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-database-postgresql'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.9.0'
+    implementation platform("software.amazon.awssdk:bom:${awsSdkVersion}")
+    implementation 'software.amazon.awssdk:s3'
     testImplementation 'org.testcontainers:junit-jupiter'
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
     testImplementation 'org.testcontainers:testcontainers'
     testImplementation 'org.testcontainers:postgresql'
+    // 실제 AWS 계정 없이 S3 저장소를 검증합니다. 목으로 대신하면 SDK 가 실제로 무엇을
+    // 보내는지(Content-Type, 키 경로)를 확인하지 못합니다.
+    testImplementation 'org.testcontainers:localstack'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
