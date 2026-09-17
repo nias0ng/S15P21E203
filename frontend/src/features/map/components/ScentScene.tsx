@@ -52,6 +52,17 @@ type Props = {
   onSaveToShelf: (perfume: ScenePerfumeRef) => Promise<void>
   /** 엔진 화면 위의 검색창 */
   onSearch: (query: string) => void
+  /**
+   * 앱이 3D 위에 겹쳐 올린 것(유리판 헤더)이 가리는 위쪽 높이(px).
+   * 엔진은 3D 를 그 뒤까지 그대로 그리고, 검색창 · 정보 블록 · 해도만 그 아래로 내리며
+   * 향수 고르기의 12개를 그 띠에 세우지 않습니다 (paperboat `hostTop`).
+   */
+  coveredTop?: number
+  /**
+   * 엔진의 하늘이 밤인지 알려 줍니다 — 엔진이 붙을 때 한 번, 시간대가 바뀔 때마다.
+   * 엔진은 iframe 문서에 `<html data-time="dusk|night">` 을 답니다 (없으면 낮 · paperboat 불변식 25).
+   */
+  onNightChange?: (night: boolean) => void
   className?: string
 }
 
@@ -76,15 +87,29 @@ export function ScentScene({
   onOpenDetail,
   onSaveToShelf,
   onSearch,
+  coveredTop = 0,
+  onNightChange,
   className,
 }: Props) {
   const frame = useRef<HTMLIFrameElement>(null)
   const [ready, setReady] = useState(false)
 
   // 엔진에는 처리기를 한 번만 꽂습니다. 렌더마다 새로 만들어지는 props 는 여기서 최신 것으로 부릅니다
-  const latest = useRef({ onOpenDetail, onSaveToShelf, onSearch })
+  const latest = useRef({
+    onOpenDetail,
+    onSaveToShelf,
+    onSearch,
+    coveredTop,
+    onNightChange,
+  })
   useEffect(() => {
-    latest.current = { onOpenDetail, onSaveToShelf, onSearch }
+    latest.current = {
+      onOpenDetail,
+      onSaveToShelf,
+      onSearch,
+      coveredTop,
+      onNightChange,
+    }
   })
 
   useEffect(() => {
@@ -94,6 +119,7 @@ export function ScentScene({
     let timer = 0
     let tries = 0
     let attached: EngineHandle | null = null
+    let timeWatch: MutationObserver | null = null
 
     // iframe 이 다시 불러오면 엔진도 새로 뜨고 PB 도 새것이라, 불러올 때마다 다시 찾습니다
     const attach = () => {
@@ -107,8 +133,10 @@ export function ScentScene({
       if (engine === attached) return
       attached = engine
 
-      // 앱의 GlobalHeader 가 iframe 위에 있으므로 엔진의 자리표시 헤더(v0.66.0)는 끕니다
+      // 엔진의 자리표시 헤더(v0.66.0)는 끕니다 — 무대를 헤더만큼 줄이는 방식이라 3D 가 앱의 유리판 헤더
+      // 뒤까지 안 깔립니다. 대신 앱 헤더가 가리는 높이를 알려 검색창 · 해도를 그 아래로 내립니다
       engine.params.siteHeader = 0
+      engine.params.hostTop = latest.current.coveredTop
       engine.apply()
       // 개발 서버에서는 엔진의 개발 패널도 같이 뜹니다 — 서비스 화면만 남깁니다
       engine.solo?.(true)
@@ -120,6 +148,19 @@ export function ScentScene({
         },
         search: (query) => latest.current.onSearch(query),
       })
+      // 시간대 — 엔진이 iframe 문서의 <html data-time> 을 바꿉니다. 그 속성 하나만 지켜봅니다
+      timeWatch?.disconnect()
+      const html = el.contentDocument?.documentElement
+      if (html) {
+        const report = () =>
+          latest.current.onNightChange?.(html.dataset.time === 'night')
+        report()
+        timeWatch = new MutationObserver(report)
+        timeWatch.observe(html, {
+          attributes: true,
+          attributeFilter: ['data-time'],
+        })
+      }
       setReady(true)
       // 들어오자마자 방향키로 배를 몰 수 있게 포커스를 엔진으로 넘깁니다
       el.contentWindow?.focus()
@@ -135,6 +176,7 @@ export function ScentScene({
     return () => {
       el.removeEventListener('load', onLoad)
       window.clearTimeout(timer)
+      timeWatch?.disconnect()
       attached?.setHost(null)
     }
   }, [])
