@@ -374,6 +374,38 @@ SELECT (SELECT count(*) FROM brands)          AS brands,          -- 7,793 이�
 
 `perfumes` 가 129,161 보다 클 수 있습니다. 이 CSV 에 없는 향수가 이미 있으면 그대로 남습니다.
 
+# 운영 발표용 데모 seed
+
+정적 데이터만 적재한 운영 DB에서 진열대·컬렉션·커뮤니티·후기·조회 순위 화면을 보여 주기 위한
+별도 도구입니다. 로컬 전용 `seed-local`과 실행 파일 및 장부를 분리합니다.
+
+- `demo01@demo.hyanghae.test`부터 `demo43@demo.hyanghae.test`까지 데모 계정을 만듭니다.
+- `demo41@demo.hyanghae.test`는 진열대 18개, 컬렉션 3개와 메모 6개를 가진 발표 계정입니다.
+- 전체 컬렉션 30개와 게시글 90개는 여러 가상 사용자에게 분산됩니다. 계정별 닉네임과 활동량을
+  다르게 구성하고 시향·여행·출근 등 상황별 문구를 사용합니다. 실제 사용자 후기는 아닙니다.
+- 작성 시간은 최초 실행 전 약 48일 동안 분산되며, 재실행해도 기존 작성 시간은 유지됩니다.
+- 모든 데모 계정은 실행할 때 지정한 `SEED_LOGIN_PASSWORD`를 사용합니다.
+- 생성한 행은 `demo_seed.records`에 기록합니다. 실제 사용자가 만든 행은 소유하거나 수정하지 않습니다.
+- 운영에서는 `fill`만 허용합니다. 다시 실행해도 기존 데모 행의 사용자 수정을 덮어쓰지 않습니다.
+- 정적 seed 네 가지를 모두 적재한 뒤 실행해야 합니다.
+
+운영 서버에서 저장소 루트 기준으로 다음 환경변수를 준비합니다. JDBC 주소의 호스트에는 운영
+PostgreSQL 컨테이너의 Compose 서비스명을 사용합니다.
+
+```bash
+export DEMO_SEED_CONFIRM=CREATE_DEMO_DATA
+export DEMO_SEED_DOCKER_NETWORK=운영_Compose_네트워크명
+export SEED_JDBC_URL='jdbc:postgresql://PostgreSQL서비스명:5432/운영DB이름'
+export SEED_DB_USER='운영DB사용자'
+export SEED_DB_PASSWORD='운영DB비밀번호'
+export SEED_LOGIN_PASSWORD='발표용계정비밀번호'
+
+bash backend/db/seed/run_demo_seed.sh
+```
+
+DB 비밀번호와 로그인 비밀번호를 명령행에 직접 붙이지 말고 현재 셸의 환경변수로 전달합니다.
+완료 메시지에 표시되는 `demo41@demo.hyanghae.test`로 로그인하여 진열대와 커뮤니티를 확인합니다.
+
 ## 운영에 넣기 전에
 
 - **`fragrantica_id` 가 없는 향수를 먼저 보십시오.** 손으로 넣어 둔 향수가 카탈로그에도 있으면
