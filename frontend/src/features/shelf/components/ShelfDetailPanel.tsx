@@ -13,8 +13,6 @@ type Props = {
    * 도착하면 그걸로 바꿔 넘깁니다 — 카드를 넘길 때마다 패널이 비지 않습니다.
    */
   item: ShelfItemDetail | null
-  /** 대표 향수로 지정 (보유 중 칸에서만 뜻이 있습니다 — 아래 주석) */
-  onSetRepresentative: () => void
   /**
    * 취향 적합도 매기기. 1.0~5.0 을 0.5 단위로 넘깁니다.
    *
@@ -68,7 +66,6 @@ type Props = {
  * 두 상태가 같은 높이라, 병을 누를 때마다 카드가 커졌다 작아지지 않습니다.
  * 조작과 메모는 mt-auto 로 늘 맨 아래입니다.
  *
- * `relative` 는 왼쪽 위 대표 향수 별을 카드 모서리에 앉히려고 둡니다.
  *
  * `[zoom:var(--panel-scale,1)]` 이 작은 화면에서 카드를 통째로 줄입니다(위 설명). 값이 없으면
  * 1 이라 진열대 밖에 두어도 원래 크기입니다.
@@ -109,14 +106,13 @@ const SCENT_NOTES = [
  * 컬렉션 상세 패널 (와이어프레임 A13 우측 — 진열장 시안)
  *
  * 진열대에서 병을 고르면 그 향수의 얼굴을 크게 보여주는 패널입니다.
- * 위에서 아래로 — 대표 향수 별(왼쪽 위 모서리) · 사진 · 브랜드 · 이름 ·
- * 취향 적합도 · 향조 · 조작(변경하기 · 저장 해제) · 메모 순입니다.
+ * 위에서 아래로 — 사진 · 브랜드 · 이름 · 취향 적합도 · 향조 ·
+ * 조작(변경하기 · 저장 해제) · 메모 순입니다.
  *
  * 카드 폭은 정하지 않습니다 — 진열장과 나란히 놓이는 자리라 화면(pages)이 정합니다.
  */
 export function ShelfDetailPanel({
   item,
-  onSetRepresentative,
   onChangeRating,
   onEdit,
   onRemove,
@@ -140,8 +136,6 @@ export function ShelfDetailPanel({
       aria-label="선택한 향수 정보"
       className={cn(CARD, '@container flex flex-col', className)}
     >
-      <RepresentativeStar item={item} onSet={onSetRepresentative} />
-
       {/*
         두 묶음 — 얼굴(사진 · 이름 · 적합도)과 기록(향조 · 조작 · 메모).
         카드가 좁으면(벽 위에 얹힐 때 · 휴대폰) 위아래로, 넓으면(쌓는 배치의 태블릿 폭)
@@ -333,74 +327,6 @@ export function ShelfDetailPanel({
         </div>
       </div>
     </aside>
-  )
-}
-
-/**
- * 대표 향수 별 — 카드 왼쪽 위 모서리 (SHF-05)
- *
- * ⚠️ 대표 향수는 **보유 중 칸에만** 뜻이 있습니다(와이어프레임 A13 주석 ·
- * `ShelfItem.representative`). 시향만 해 본 향수나 아직 안 산 향수를 "나를
- * 대표하는 향" 으로 두는 건 뜻이 맞지 않아서, 다른 칸에서는 끕니다.
- * 숨기지 않고 끄는 이유: 별이 사라지면 분류를 옮겨 다닐 때마다 카드 모서리가
- * 비었다 찼다 해서, 무엇이 달라진 것인지 읽히지 않습니다.
- *
- * 이미 대표인 향수에서도 끕니다 — 대표는 한 번에 하나라 여기서 풀 곳이 없고,
- * 채운 별 자체가 "지금 이 향수가 대표" 라는 표시입니다.
- *
- * 카드 흐름 밖(absolute)에 둡니다. 시안처럼 모서리에 앉히면서, 별 때문에 아래
- * 사진과 이름이 밀려 내려가지 않게 합니다.
- */
-function RepresentativeStar({
-  item,
-  onSet,
-}: {
-  item: ShelfItemDetail
-  onSet: () => void
-}) {
-  const settable = item.category === 'OWNED' && !item.representative
-
-  /*
-   * 낭독기 이름과 마우스 툴팁을 같은 문장으로 둡니다. 예전에는 눈에 안 보이는
-   * 글(sr-only)과 title 이 서로 달랐는데, 버튼 이름은 title 이 이겨서 낭독기가
-   * "한 번에 하나입니다" 만 읽고 무슨 단추인지는 말하지 않았습니다.
-   * 끈 단추는 왜 못 누르는지를 이름 자체에 적습니다 — 끈 단추에는 툴팁이 안 뜨는
-   * 브라우저가 있어서, 설명을 title 에만 두면 마우스로도 알 수 없습니다.
-   */
-  const label = item.representative
-    ? '대표 향수입니다'
-    : item.category === 'OWNED'
-      ? '대표 향수로 지정'
-      : '대표 향수는 보유 중 향수만 지정할 수 있습니다'
-
-  return (
-    <button
-      type="button"
-      disabled={!settable}
-      onClick={onSet}
-      aria-pressed={item.representative}
-      aria-label={label}
-      title={label}
-      className={cn(
-        'absolute top-3.75 left-3.75 flex size-11.25 items-center justify-center rounded-full',
-        'transition-opacity duration-120 ease-out',
-        // 지정할 수 있을 때만 눌리는 느낌을 줍니다. 끈 별은 표시로만 남깁니다
-        settable ? 'hover:opacity-70' : 'cursor-default',
-        // 빈 별이 카드 모서리에서 너무 튀지 않게 한 단 옅게 둡니다
-        item.representative ? 'text-[var(--shelf-ink)]' : 'shelf-muted',
-        FOCUS_RING,
-      )}
-    >
-      <svg viewBox="0 0 24 24" aria-hidden className="size-7.5">
-        <path
-          d="M12 2.5l2.9 6.1 6.6.9-4.8 4.7 1.2 6.6L12 17.7 6.1 20.8l1.2-6.6L2.5 9.5l6.6-.9L12 2.5Z"
-          fill={item.representative ? 'currentColor' : 'none'}
-          stroke="currentColor"
-          strokeWidth="1.4"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </button>
   )
 }
 

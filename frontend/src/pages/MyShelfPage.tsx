@@ -376,16 +376,6 @@ export default function MyShelfPage() {
       */
       key={`${browser.selected?.shelfItemId ?? 'empty'}:${detailReady ? 'full' : 'lite'}`}
       item={panelItem}
-      onSetRepresentative={() => {
-        if (selectedId === undefined) return
-        actions.representative.mutate(
-          { shelfItemId: selectedId },
-          {
-            onSuccess: () => showToast('대표 향수로 지정했습니다'),
-            onError: () => showToast('대표 향수로 지정하지 못했습니다'),
-          },
-        )
-      }}
       onChangeRating={(rating) => {
         if (selectedId === undefined) return
         /*
