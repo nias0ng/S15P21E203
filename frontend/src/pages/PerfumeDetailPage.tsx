@@ -10,6 +10,10 @@ import {
   PerfumeReviewList,
   perfumeReviewsQuery,
   perfumeReviewStatisticsQuery,
+  PerfumeRelated,
+  relatedPerfumesQuery,
+  PerfumeReviewKeywords,
+  perfumeReviewKeywordsQuery,
   PerfumeReviewSummary,
   perfumeReviewSummaryQuery,
   PerfumeSeasonRatings,
@@ -92,6 +96,12 @@ export default function PerfumeDetailPage() {
     ...perfumeSeasonStatisticsQuery(numericId),
     enabled,
   })
+  const related = useQuery({ ...relatedPerfumesQuery(numericId), enabled })
+  const reviewKeywords = useQuery({
+    ...perfumeReviewKeywordsQuery(numericId),
+    enabled,
+  })
+
   const summary = useQuery({
     ...perfumeReviewSummaryQuery(numericId),
     enabled,
@@ -170,6 +180,13 @@ export default function PerfumeDetailPage() {
         isPending={summary.isPending}
       />
 
+      {/*
+        후기 키워드는 후기 목록 바로 위에 둡니다 — 같은 후기를 요약한 값이라
+        떨어뜨리면 무엇을 센 숫자인지 알기 어렵습니다. 값이 없으면 아무것도
+        그리지 않으므로 지금은 보이지 않습니다(적재 전).
+      */}
+      <PerfumeReviewKeywords keywords={reviewKeywords.data ?? []} />
+
       <PerfumeReviewList
         reviews={reviews.data?.reviews ?? []}
         // 전체 개수는 후기 통계가 정본입니다. 목록 응답의 totalElements 와 같지만,
@@ -183,6 +200,16 @@ export default function PerfumeDetailPage() {
         isPending={reviews.isPending}
         myReviewId={data.myReviewId}
         perfumeId={numericId}
+      />
+
+      {/*
+        후기 다음에 옵니다 — 이 향수를 다 읽고 나서 "그럼 비슷한 건" 으로 넘어가는
+        순서입니다. 관계가 없는 향수(향 지도 밖)에서는 구역이 그려지지 않습니다.
+      */}
+      <PerfumeRelated
+        fromPerfumeId={numericId}
+        perfumes={related.data ?? []}
+        isPending={related.isPending}
       />
 
       {/*

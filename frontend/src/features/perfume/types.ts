@@ -330,3 +330,47 @@ export interface ReviewLikeResponse {
   liked: boolean
   likeCount: number
 }
+
+/* ── 향수 상세의 곁 정보 (DTL) ──────────────────────────────── */
+
+/**
+ * 비슷한 향수 한 건 (`GET /perfumes/{id}/similar` · `/neighbors`).
+ *
+ * **두 엔드포인트가 같은 데이터를 줍니다** — 서버도 같은 메서드를 씁니다. 명세가
+ * 화면에 놓이는 자리가 달라 URL 을 둘로 나눠 두었을 뿐이라, 화면은 하나만 부릅니다.
+ * 나중에 근거가 갈리면 그때 나눕니다.
+ *
+ * 향 지도에 실린 향수(200개)에만 있습니다. 나머지는 빈 배열입니다 —
+ * 적재할 때 미리 정해 둔 연관 관계를 읽는 값이기 때문입니다.
+ */
+export interface RelatedPerfume {
+  perfumeId: number
+  /** 영문 이름 */
+  name: string
+  /** 한국어 이름. 없는 향수가 있습니다 */
+  nameKo: string | null
+  imageUrl: string | null
+}
+
+export interface RelatedPerfumesResponse {
+  perfumes: RelatedPerfume[]
+}
+
+/**
+ * 후기에서 뽑힌 향 표현 한 개 (`GET /perfumes/{id}/review-keywords`).
+ *
+ * `percentage` 의 분모는 **키워드가 하나라도 뽑힌 후기 수**입니다. 향수에 달린 모든
+ * 후기가 아닙니다 — 그래서 화면 문구가 "향을 언급한 후기 중" 이 됩니다.
+ *
+ * 후기 하나에서 키워드가 여러 개 나올 수 있어 **합이 100 을 넘습니다.** 원형 차트나
+ * 누적 막대에 쓰면 안 됩니다.
+ */
+export interface ReviewKeyword {
+  keyword: string
+  /** 0~100, 소수점 한 자리 */
+  percentage: number
+}
+
+export interface ReviewKeywordsResponse {
+  keywords: ReviewKeyword[]
+}
