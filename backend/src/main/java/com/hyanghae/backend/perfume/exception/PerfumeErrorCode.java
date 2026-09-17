@@ -12,7 +12,8 @@ import org.springframework.http.HttpStatus;
 public enum PerfumeErrorCode implements ErrorCode {
 
     PERFUME_NOT_FOUND(HttpStatus.NOT_FOUND, "향수를 찾을 수 없습니다."),
-    PERFUME_NOTE_NOT_FOUND(HttpStatus.NOT_FOUND, "노트를 찾을 수 없습니다.");
+    PERFUME_NOTE_NOT_FOUND(HttpStatus.NOT_FOUND, "노트를 찾을 수 없습니다."),
+    PERFUME_BRAND_NOT_FOUND(HttpStatus.NOT_FOUND, "브랜드를 찾을 수 없습니다.");
 
     private final HttpStatus status;
     private final String message;

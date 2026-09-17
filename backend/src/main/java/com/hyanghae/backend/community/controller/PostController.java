@@ -7,8 +7,10 @@ import com.hyanghae.backend.community.dto.response.PostDetailResponse;
 import com.hyanghae.backend.community.dto.response.PostLikeResponse;
 import com.hyanghae.backend.community.dto.response.PostUpdateResponse;
 import com.hyanghae.backend.community.dto.response.PostsResponse;
+import com.hyanghae.backend.community.dto.response.TrendingPerfumesResponse;
 import com.hyanghae.backend.community.repository.PostSort;
 import com.hyanghae.backend.community.service.PostService;
+import com.hyanghae.backend.community.service.TrendingPerfumeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -44,9 +46,14 @@ public class PostController {
     private static final int DEFAULT_PAGE_SIZE = 20;
 
     private final PostService postService;
+    private final TrendingPerfumeService trendingPerfumeService;
 
-    public PostController(PostService postService) {
+    public PostController(
+            PostService postService,
+            TrendingPerfumeService trendingPerfumeService
+    ) {
         this.postService = postService;
+        this.trendingPerfumeService = trendingPerfumeService;
     }
 
     /**
@@ -220,5 +227,31 @@ public class PostController {
             @Parameter(description = "게시글 ID") @PathVariable Long postId
     ) {
         postService.delete(postId);
+    }
+
+    /**
+     * 지금 많이 언급되는 향수입니다. 게시판 오른쪽 칸이 씁니다.
+     *
+     * <p><b>향수 검색의 인기 순과 다른 값입니다.</b> 그쪽은 담거나 열어 본 횟수라 혼자 보는
+     * 행동이고, 이쪽은 글에 써서 남들에게 보인 횟수입니다.
+     *
+     * <p>기간은 최근 7일 고정입니다. 화면이 기간을 고르지 않아 파라미터로 열지 않았습니다.
+     * 응답의 {@code days} 로 몇 일치인지 알 수 있습니다.
+     *
+     * <p>로그인이 필요 없습니다. 언급이 없으면 빈 배열입니다.
+     */
+    @Operation(
+            summary = "지금 많이 언급되는 향수",
+            description = "최근 7일 동안 자유 게시판 글에 걸린 향수를 많이 걸린 순으로"
+                    + " 내려줍니다. 향수 검색의 인기 순(담거나 열어 본 횟수)과는 다른 값입니다."
+                    + " 로그인 없이 조회할 수 있습니다."
+    )
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @GetMapping("/trending-perfumes")
+    public TrendingPerfumesResponse getTrendingPerfumes(
+            @Parameter(description = "받을 개수. 기본 10개, 최대 50개입니다.", example = "10")
+            @RequestParam(required = false) Integer limit
+    ) {
+        return trendingPerfumeService.findTrending(limit);
     }
 }

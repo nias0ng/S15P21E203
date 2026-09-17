@@ -2,6 +2,7 @@ package com.hyanghae.backend.perfume.repository;
 
 import com.hyanghae.backend.perfume.entity.Brand;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -112,4 +113,27 @@ public interface BrandRepository extends JpaRepository<Brand, Long> {
     @Query(value = BRAND_COLUMNS + BRAND_FROM + BRAND_COUNT_JOIN + BRAND_WHERE + BRAND_GROUP_BY
             + BRAND_ORDER_PERFUME_COUNT, nativeQuery = true)
     List<BrandSummaryRow> findAllByPerfumeCount(@Param("keyword") String keyword);
+
+    /**
+     * 브랜드 한 곳입니다. 내려간 브랜드는 없는 것으로 봅니다.
+     *
+     * <p>목록과 달리 향수 수를 함께 셉니다. 한 건이라 세는 비용이 문제가 되지 않고, 상세
+     * 화면이 쓰는 값입니다.
+     *
+     * <p>세는 조건은 목록의 향수 많은 순 정렬과 같습니다 — <b>활성 향수만</b> 셉니다. 두 곳이
+     * 다르면 목록에서 42개라던 브랜드가 상세에서 다른 수로 보입니다.
+     */
+    @Query(value = """
+            SELECT b.brand_id AS brandId,
+                   b.name AS name,
+                   b.name_ko AS nameKo,
+                   b.logo_url AS logoUrl,
+                   CAST(COUNT(p.perfume_id) AS integer) AS perfumeCount
+            FROM brands b
+            LEFT JOIN perfumes p ON p.brand_id = b.brand_id AND p.is_active = TRUE
+            WHERE b.brand_id = :brandId
+              AND b.is_active = TRUE
+            GROUP BY b.brand_id, b.name, b.name_ko, b.logo_url
+            """, nativeQuery = true)
+    Optional<BrandDetailRow> findDetailById(@Param("brandId") Long brandId);
 }
