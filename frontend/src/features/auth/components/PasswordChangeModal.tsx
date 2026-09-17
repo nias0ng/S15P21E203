@@ -1,6 +1,16 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useNavigate } from 'react-router'
+
+import { isApiError } from '@/shared/api/http'
+import { ROUTES } from '@/shared/config/routes'
+import { useAuthStore } from '@/shared/store/authStore'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
 import { Modal } from '@/shared/ui/Modal'
+
+import { changePassword } from '../api'
+import { PASSWORD_MIN_LENGTH } from '../types'
 
 type Props = { open: boolean; onClose: () => void }
 
@@ -9,30 +19,94 @@ type Props = { open: boolean; onClose: () => void }
  *
  * A29 주석: 비밀번호는 정보 변경 화면에 표시하지 않고 변경은 이 모달로만 합니다.
  * 비밀번호 정책 검증은 A28 회원가입과 같은 규칙입니다.
+ *
+ * **새 비밀번호 확인란은 서버로 보내지 않습니다** — 두 번 입력이 같은지는 화면이
+ * 봅니다. 현재 비밀번호가 틀리면 400 (`AUTH_CURRENT_PASSWORD_MISMATCH`) 입니다.
+ *
+ * **성공하면 로그아웃됩니다.** 서버가 비밀번호를 바꾸면서 그 사람의 모든 세션을
+ * 끊습니다(`UserService.changePassword` → `revokeAll`). 지금 들고 있는 액세스
+ * 토큰도 그 순간 죽으므로, 로그인한 척 두면 다음 요청에서 예고 없이 튕깁니다.
+ * 그래서 여기서 스스로 정리하고 안내와 함께 로그인 화면으로 보냅니다.
  */
 export function PasswordChangeModal({ open, onClose }: Props) {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState('')
+
+  const reset = () => {
+    setCurrentPassword('')
+    setNewPassword('')
+    setNewPasswordConfirm('')
+  }
+
+  const mutation = useMutation({
+    mutationFn: () => changePassword({ currentPassword, newPassword }),
+    onSuccess: () => {
+      reset()
+      onClose()
+
+      // 토큰을 먼저 버려야 남아 있는 쿼리가 죽은 토큰으로 다시 나가지 않습니다
+      useAuthStore.getState().clear()
+      queryClient.clear()
+      navigate(ROUTES.LOGIN, {
+        replace: true,
+        state: { passwordChanged: true },
+      })
+    },
+  })
+
+  // 닫을 때 입력과 지난 오류를 함께 비웁니다 — 다시 열었을 때 남아 있으면 안 됩니다
+  const close = () => {
+    reset()
+    mutation.reset()
+    onClose()
+  }
+
+  const newPasswordError =
+    newPassword.length > 0 && newPassword.length < PASSWORD_MIN_LENGTH
+      ? `비밀번호는 ${PASSWORD_MIN_LENGTH}자 이상이어야 합니다`
+      : undefined
+
+  const confirmError =
+    newPasswordConfirm.length > 0 && newPasswordConfirm !== newPassword
+      ? '비밀번호가 서로 다릅니다'
+      : undefined
+
+  const canSubmit =
+    currentPassword.length > 0 &&
+    newPassword.length >= PASSWORD_MIN_LENGTH &&
+    newPasswordConfirm === newPassword &&
+    !mutation.isPending
+
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={close}
       title="비밀번호 변경"
       footer={
         <>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={close}>
             취소
           </Button>
-          <Button type="submit" form="password-change-form">
-            변경
+          <Button
+            type="submit"
+            form="password-change-form"
+            disabled={!canSubmit}
+          >
+            {mutation.isPending ? '변경 중' : '변경'}
           </Button>
         </>
       }
     >
       <form
         id="password-change-form"
-        className="space-y-3"
+        className="space-y-2.5"
         onSubmit={(event) => {
           event.preventDefault()
-          // TODO: 비밀번호 변경 API 연결
+          mutation.mutate()
         }}
       >
         <Input
@@ -42,6 +116,8 @@ export function PasswordChangeModal({ open, onClose }: Props) {
           autoComplete="current-password"
           placeholder="현재 비밀번호"
           required
+          value={currentPassword}
+          onChange={(event) => setCurrentPassword(event.target.value)}
         />
         <Input
           label="새 비밀번호"
@@ -50,6 +126,9 @@ export function PasswordChangeModal({ open, onClose }: Props) {
           autoComplete="new-password"
           placeholder="새 비밀번호"
           required
+          value={newPassword}
+          onChange={(event) => setNewPassword(event.target.value)}
+          error={newPasswordError}
         />
         <Input
           label="새 비밀번호 확인"
@@ -58,9 +137,21 @@ export function PasswordChangeModal({ open, onClose }: Props) {
           autoComplete="new-password"
           placeholder="새 비밀번호 확인"
           required
+          value={newPasswordConfirm}
+          onChange={(event) => setNewPasswordConfirm(event.target.value)}
+          error={confirmError}
         />
-        <p className="text-ink-muted text-[10.5px]">
-          비밀번호 정책 검증 — A28 회원가입과 같은 규칙
+
+        {mutation.error !== null && (
+          <p className="text-danger text-caption" role="alert">
+            {isApiError(mutation.error)
+              ? mutation.error.message
+              : '비밀번호를 바꾸지 못했습니다. 잠시 후 다시 시도해주세요.'}
+          </p>
+        )}
+
+        <p className="text-ink-muted text-caption">
+          비밀번호는 {PASSWORD_MIN_LENGTH}자 이상이어야 합니다.
         </p>
       </form>
     </Modal>

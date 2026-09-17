@@ -7,13 +7,20 @@
  * ⚠️ 백엔드 · AI 추천 API 가 아직 없습니다. api.ts 가 와이어프레임의 예시 결과를
  * 돌려줍니다.
  *
- * 개인화 추천(REC-12 · REC-13)은 별도 화면 없이 향 지도(A01)의 취향 영역으로
- * 표시하므로 이 도메인에 없습니다.
+ * 개인화 추천(REC-12 · REC-13)은 향 지도가 아니라 **진열대 화면(A13)** 의 추천
+ * 카드입니다. 진열대는 이미 취향이 쌓인 자리라 추천의 근거가 한 화면에 함께 보입니다.
  */
+export { RecommendPeekCard } from './components/RecommendPeekCard'
 export { RecommendResultList } from './components/RecommendResultList'
-export { recommendationQuery, recommendKeys } from './queries'
-export type {
-  RecommendReason,
-  RecommendResult,
-  RecommendedPerfume,
+export {
+  personalRecommendationQuery,
+  recommendationQuery,
+  recommendKeys,
+} from './queries'
+export {
+  RECOMMEND_MIN_SHELF_ITEMS,
+  type PersonalRecommendation,
+  type RecommendReason,
+  type RecommendResult,
+  type RecommendedPerfume,
 } from './types'

@@ -1,2 +1,26 @@
 ./venv
 venv/
+.venv/
+env/
+ENV/
+
+__pycache__/
+*.pyc
+
+# 원본 덤프는 저장소에 넣지 않습니다.
+#
+# build_data.py 의 --source 로 쓰려고 이 폴더에 복사해두기 쉬운데,
+# perfumes.csv 는 127MB 라 실수로 커밋하면 저장소가 망가집니다.
+# 서비스가 쓰는 것은 data/perfumes_nlr.csv.gz (5MB) 뿐입니다.
+perfumes.csv
+perfumes.jsonl
+*.jsonl
+
+# 미매칭 로그는 저장소에 넣지 않습니다.
+#
+# unmatched_log.py 가 ai/logs/unmatched.jsonl 에 사용자가 입력한 원문을 저장합니다.
+# 설문 실측에 건강·신분 서술이 있었습니다("향에 민감해서 두통이 옴" 등).
+# 한 번 커밋해서 푸시하면 git 이력에서 지우기가 사실상 불가능합니다.
+#
+# 보관 기간이 지난 원문은 unmatched_log.purge_raw_text() 로 비웁니다.
+logs/

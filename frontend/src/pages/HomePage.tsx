@@ -1,197 +1,208 @@
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 
 import {
-  MapPointPopover,
-  MiniMap,
-  mapPointsQuery,
-  ScentMap,
-  SimilarExplorer,
-  tasteAreaQuery,
+  ScentScene,
   VoyageLog,
   voyageLogQuery,
-  type MapPoint,
+  type ScenePerfumeRef,
+  type VoyageLogStatus,
 } from '@/features/map'
 // 진열대 저장은 진열대 도메인의 어휘입니다. 화면에서 두 도메인을 조합합니다.
-import { ShelfSaveModal } from '@/features/shelf'
-import { ROUTES } from '@/shared/config/routes'
+import {
+  ShelfRegisterModal,
+  ShelfRegisterPartialError,
+  useShelfActions,
+} from '@/features/shelf'
+import { isApiError } from '@/shared/api/http'
+import { perfumeViewState } from '@/shared/config/perfumeViewSource'
+import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
-import { Button } from '@/shared/ui/Button'
-import { EmptyState } from '@/shared/ui/EmptyState'
-import { Input } from '@/shared/ui/Input'
-import { PageFallback } from '@/shared/ui/PageFallback'
+import { useIsLoggedIn } from '@/shared/store/authStore'
+import { useSceneSkyStore } from '@/shared/store/sceneSkyStore'
+import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { Toast } from '@/shared/ui/Toast'
 
 /**
- * 랜딩 · 향 지도 (와이어프레임 A01 · A02 · A03 — MAP-01 · 05 · 06 · 07 · 08 · 24)
+ * 랜딩 · 향 지도 (와이어프레임 A01 · A02 · A03 — MAP-01 · 05 · 06 · 07 · 24)
  *
- * 세 화면이 한 경로입니다. 와이어프레임 주석대로 포인트를 눌러도 화면 전환이 없고
- * 지도 위에 팝오버만 뜨며(A02), 주변 향 탐색도 같은 화면에서 이어집니다(A03).
+ * **화면 전체가 3D 향 지도입니다** (paperboat 엔진 — ScentScene). 검색창 · 미니맵 · 향수
+ * 카드(A02) · 주변 향 12개(A03)는 엔진이 그리고, 앱은 엔진이 넘기는 것만 받습니다.
  *
- * 와이어프레임 주석:
- * - 입력하고 [찾기] — 별도 입력 화면 없이 바로 결과로
- * - 검은 원 = 나를 위한 추천 (개인화 추천 REC-12 · REC-13 은 별도 화면 없이 여기 표시)
- * - 데이터 없음 / 로드 실패 시 빈 지도를 띄우지 않고 안내 박스를 대신 표시
- * - 향해 일지는 지도 위에 계속 떠 있다
+ *   [자세히 보기]  → A10 향수 상세로 이동
+ *   [진열대에 저장] → 등록 모달 2단계(A15). 카드 · 고른 향수는 그대로 남습니다
+ *   검색창        → A06 자연어 추천 (`/recommend?q=`)
  *
- * ⚠️ 지도 라이브러리 미정. ScentMap 이 SVG 자리표시자이고 확대는 배율만 바뀝니다.
- * 팬 · 클러스터링 · 실제 좌표계는 라이브러리를 정한 뒤 작업해야 합니다.
+ * 향해 일지(MAP-24)는 다른 화면의 데이터와 맞추기 쉽도록 엔진이 아니라 앱이 3D 위에 얹습니다.
+ *
+ * ⚠️ 취향 영역(MAP-08)은 엔진에 아직 없습니다.
  */
 export default function HomePage() {
   const navigate = useNavigate()
-
-  const points = useQuery(mapPointsQuery())
   const log = useQuery(voyageLogQuery())
-  const tasteArea = useQuery(tasteAreaQuery())
+  // 향해 일지 상태 — 비로그인(401)이면 로그인 안내. 개발 중 서버가 없으면 api 가 대체 일지를 줍니다
+  const logStatus: VoyageLogStatus = log.isPending
+    ? 'loading'
+    : log.isError
+      ? isApiError(log.error) && log.error.status === 401
+        ? 'guest'
+        : 'error'
+      : 'ready'
 
-  const [keyword, setKeyword] = useState('')
-  const [zoom, setZoom] = useState(1)
-  const [selected, setSelected] = useState<MapPoint | null>(null)
-  const [similarOf, setSimilarOf] = useState<MapPoint | null>(null)
-  const [shelfSaveOpen, setShelfSaveOpen] = useState(false)
+  /** 지도 카드에서 담으려는 향수. 모달이 이름 · 브랜드를 보여주는 데 씁니다 */
+  const [saving, setSaving] = useState<ScenePerfumeRef | null>(null)
+  const [loginOpen, setLoginOpen] = useState(false)
+  // 엔진이 기다리는 저장 모달의 끝. 모달이 닫히면(취소 · 저장) 불러 3D 입력 잠금을 풉니다
+  const releaseSave = useRef<(() => void) | null>(null)
   const { showToast, toastProps } = useToast()
+  const isLoggedIn = useIsLoggedIn()
+  const actions = useShelfActions()
 
-  if (points.isPending) return <PageFallback />
+  // 유리판 헤더의 글자색은 3D 하늘을 따릅니다 (밝은 하늘 먹색 · 밤하늘 상아색).
+  // 화면을 떠나면 기본(dark — 3D 가 뜨기 전 남색 바탕에 맞는 상아색)으로 돌려놓습니다
+  const setSky = useSceneSkyStore((state) => state.setSky)
+  useEffect(() => () => setSky('dark'), [setSky])
 
-  // 빈 지도를 띄우지 않고 안내 박스를 대신 표시합니다
-  if (points.isError || (points.data?.length ?? 0) === 0) {
-    return (
-      <EmptyState
-        title="향 지도를 불러오지 못했습니다"
-        description="다시 시도해주세요."
-        action={
-          <Button variant="outline" onClick={() => points.refetch()}>
-            다시 시도
-          </Button>
-        }
-      />
-    )
+  /** 3D 입력 잠금을 풉니다. 어떤 길로 끝나든 반드시 한 번은 불러야 합니다 */
+  const release = () => {
+    releaseSave.current?.()
+    releaseSave.current = null
   }
 
-  const items = points.data ?? []
-  const similar = similarOf
-    ? items.filter(
-        (item) =>
-          item.region === similarOf.region &&
-          item.perfumeId !== similarOf.perfumeId,
-      )
-    : []
+  const closeShelfSave = () => {
+    setSaving(null)
+    release()
+  }
 
   return (
-    <div className="space-y-4">
+    /*
+     * 3D 가 화면 맨 위부터 끝까지 채웁니다 — 헤더(GlobalHeader)는 그 위에 유리판으로 뜹니다.
+     * 바탕의 남색은 3D 가 뜨기 전 자리입니다. 비워 두면 종이(ivory) 위에 남색 유리판이 앉아
+     * 헤더의 상아색 글자가 흐려집니다.
+     */
+    <div className="bg-surface-night relative h-dvh min-h-120">
       <h1 className="sr-only">향 지도</h1>
 
-      {/* 별도 입력 화면 없이 바로 결과로 갑니다 */}
-      <form
-        className="flex items-start gap-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          const trimmed = keyword.trim()
+      <ScentScene
+        className="absolute inset-0"
+        // 유리판 헤더(GlobalHeader 의 h-22.5 = 90px)가 3D 위를 가리는 높이 — 엔진이 검색창 · 해도를 그 아래로 내립니다
+        coveredTop={90}
+        onNightChange={(night) => setSky(night ? 'dark' : 'light')}
+        onOpenDetail={(perfume) => {
+          // ⚠️ 엔진 데이터에는 아직 DB perfumeId 가 없습니다(fragrantica_id 뿐). 없으면 이름으로 검색 결과(A09)에 보냅니다
+          navigate(
+            perfume.perfumeId === null
+              ? `${ROUTES.PERFUME_SEARCH}?keyword=${encodeURIComponent(perfume.nameKo)}`
+              : toPerfumeDetail(perfume.perfumeId),
+            // 검색으로 돌려보내는 쪽은 향수 상세가 아니라 기록할 것이 없습니다
+            perfume.perfumeId === null
+              ? undefined
+              : { state: perfumeViewState('SCENT_MAP') },
+          )
+        }}
+        onSaveToShelf={(perfume) =>
+          new Promise<void>((resolve) => {
+            releaseSave.current = resolve
+
+            /*
+              ⚠️ 엔진 데이터에는 아직 DB perfumeId 가 없을 수 있습니다
+              (fragrantica_id 뿐). 없으면 담을 수가 없어 — 서버가 받는 것은 DB
+              번호입니다 — 모달을 열지 않고 사정을 알려주고 끝냅니다. 모달을 열어
+              분류까지 고르게 한 뒤 실패시키면 한 일이 버려집니다.
+            */
+            if (perfume.perfumeId === null) {
+              showToast('이 향수는 아직 진열대에 담을 수 없습니다')
+              resolve()
+              releaseSave.current = null
+              return
+            }
+
+            // 비로그인이면 저장 모달 대신 로그인 유도입니다 (공통 규칙 C01)
+            if (!isLoggedIn) {
+              setLoginOpen(true)
+              return
+            }
+
+            setSaving(perfume)
+          })
+        }
+        onSearch={(query) => {
+          // 별도 입력 화면 없이 바로 결과로 갑니다
+          const trimmed = query.trim()
           if (!trimmed) return
           navigate(`${ROUTES.RECOMMEND}?q=${encodeURIComponent(trimmed)}`)
         }}
-      >
-        <div className="flex-1">
-          <Input
-            label="어떤 향을 찾고 계신가요"
-            hideLabel
-            placeholder="어떤 향을 찾고 계신가요"
-            value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
-          />
-        </div>
-        <Button type="submit">찾기</Button>
-      </form>
+      />
 
-      <div className="relative">
-        <div className="h-[32rem]">
-          <ScentMap
-            points={items}
-            tasteArea={tasteArea.data}
-            selectedId={selected?.perfumeId ?? null}
-            zoom={zoom}
-            onSelectPoint={(point) => {
-              setSelected(point)
-              setSimilarOf(null)
-            }}
-            onSelectBackground={() => setSelected(null)}
-          />
-        </div>
+      {/*
+        향해 일지 — 3D 위 왼쪽 위에 계속 떠 있습니다. 유리판 헤더(90px) 아래 30 · 왼쪽 30 —
+        엔진 미니맵(SCENT MAP)이 오른쪽 아래 28px 에 서는 것과 마주 보게 둡니다
 
-        {/* 포인트를 눌러도 화면 전환이 없고 팝오버만 뜹니다 (A02) */}
-        {selected && (
-          <MapPointPopover
-            point={selected}
-            onClose={() => setSelected(null)}
-            // 팝오버는 열어 둔 채 모달만 띄웁니다. 취소하면 고른 포인트가 그대로 남습니다.
-            onSave={() => setShelfSaveOpen(true)}
-            onExploreSimilar={() => {
-              setSimilarOf(selected)
-              setSelected(null)
-            }}
-          />
-        )}
+        ⭐ 2026-09-16 : 엔진 검색창이 이 판의 **윗변(120)에 맞춰** 올라왔습니다 (`params.searchDrop` 40 → 0 ·
+          `--pb-search-top` 44 → 30). 그래서 넓은 창에서는 판과 검색창이 **같은 높이로 나란히** 섭니다.
 
-        {/* 향해 일지는 지도 위에 계속 떠 있습니다 */}
-        <div className="absolute top-3 right-3">
-          <VoyageLog entries={log.data ?? []} />
-        </div>
-
-        <div className="absolute bottom-3 left-3 w-40">
-          <MiniMap
-            points={items}
-            viewport={{
-              x: 50 - 50 / zoom,
-              y: 50 - 50 / zoom,
-              width: 100 / zoom,
-              height: 100 / zoom,
-            }}
-            highlightedId={selected?.perfumeId ?? null}
-          />
-        </div>
-
-        <div className="absolute right-3 bottom-3 flex flex-col gap-1">
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="확대"
-            onClick={() => setZoom((prev) => Math.min(3, prev + 0.5))}
-          >
-            +
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="축소"
-            onClick={() => setZoom((prev) => Math.max(1, prev - 0.5))}
-          >
-            −
-          </Button>
-        </div>
+        ⚠ 폭 940 이하에서는 **왼쪽 아래**로 내려갑니다. 판 오른끝이 270 으로 고정인데 검색창은 가운데
+          정렬이라, 그 단계(검색창 폭 400)에서 왼끝 `(창폭 − 400) / 2` 가 270 아래로 내려옵니다.
+          윗변을 맞춘 뒤로는 세로가 **정확히 겹치므로** 접어 놔도 부딪힙니다.
+          ⚠⚠ 검색창 **바로 밑**(182)도 안 됩니다 — 그 자리는 설명문구(`#zone-info`)가 씁니다.
+            900 실측 : 설명문구 170~730 × 206~343 vs 판 30~270 × 182~226 = 100 × 20px 물림.
+            검색창 · 설명문구 · 수면 타이포가 전부 위쪽에 모여 있어, 그 무리를 **통째로** 비킨다.
+          bottom 60 은 DRIFT 바를 피한 값입니다 — 그 바는 좁은 창(760 이하)에서 왼쪽으로 옵니다
+          (900 실측 : 가운데 295~605 / 588 실측 : 왼쪽 16~198 · y 697~712). 미니맵은 오른쪽 아래라 안 겹칩니다.
+        ⚠⚠ 문턱 940 은 **엔진 값에서 나온 수**다 — 검색창 폭 400 인 단계에서 `(W − 400) / 2 = 270` 이 되는 폭.
+          앱 기본값(md 768 · lg 1024)을 쓰면 어긋난다. 엔진의 `--pb-search-top` · `--pb-search-w` ·
+          `--pb-search-h` · `searchDrop` · DRIFT 자리를 바꾸면 **여기 940 과 60 을 같이 본다** —
+          앱이 엔진 좌표를 하드코딩하는 자리라, 근본은 엔진에 상자를 넘기는 문이다
+          (`landing/docs/분할/C-연출UI.md` 의 D 요청).
+      */}
+      <div className="absolute top-30 left-7.5 max-[940px]:top-auto max-[940px]:bottom-15">
+        <VoyageLog entries={log.data ?? []} status={logStatus} />
       </div>
 
-      <p className="text-ink-muted text-[10.5px]">
-        검은 원은 나를 위한 추천 영역입니다.
-      </p>
-
-      {/* 주변 향 탐색 (A03) — 같은 화면에서 이어집니다 */}
-      {similarOf && (
-        <SimilarExplorer
-          center={similarOf}
-          similar={similar}
-          onPick={(point) => setSimilarOf(point)}
-        />
-      )}
-
-      <ShelfSaveModal
-        open={shelfSaveOpen}
-        onClose={() => setShelfSaveOpen(false)}
-        onSave={() => {
-          // TODO: SHF-01 진열대 저장 API 연결 (백엔드 진열대 API 미구현)
-          setShelfSaveOpen(false)
-          showToast('진열대에 저장했습니다')
+      {/*
+        향수 상세 · 진열대 화면과 **같은 등록 모달**입니다. 지도 카드도 어떤 향수인지
+        이미 알고 있어 `preselected` 로 1단계를 건너뜁니다. 들어온 입구마다 적을 수
+        있는 값이 다르면 사용자가 같은 기능을 다르게 배웁니다.
+      */}
+      <ShelfRegisterModal
+        open={saving !== null}
+        onClose={closeShelfSave}
+        options={[]}
+        onSearch={() => {}}
+        preselected={
+          saving === null || saving.perfumeId === null
+            ? undefined
+            : {
+                perfumeId: saving.perfumeId,
+                name: saving.nameKo || saving.name,
+                brand: saving.brandKo || saving.brand,
+              }
+        }
+        onSubmit={(input) => {
+          closeShelfSave()
+          actions.register.mutate(input, {
+            onSuccess: () => showToast('진열대에 저장했습니다'),
+            onError: (error) =>
+              showToast(
+                error instanceof ShelfRegisterPartialError
+                  ? `진열대에 담았지만 ${error.missing.join(' · ')}은(는) 저장하지 못했습니다`
+                  : isApiError(error)
+                    ? error.message
+                    : '진열대에 저장하지 못했습니다.',
+              ),
+          })
         }}
+      />
+
+      {/* 로그인하러 떠나도 3D 입력 잠금은 풀어 둡니다 */}
+      <LoginRequiredDialog
+        open={loginOpen}
+        onClose={() => {
+          setLoginOpen(false)
+          release()
+        }}
+        redirectTo={ROUTES.HOME}
       />
 
       <Toast {...toastProps} />

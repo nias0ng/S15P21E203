@@ -1,0 +1,240 @@
+"""미매칭 로그 — 사전이 받지 못한 한국어 표현을 기록한다.
+
+지금은 사전이 표현을 못 받으면 그 사실이 사라진다. 합성 평가셋 600건의 22.3%,
+실사용자 설문 155건의 44% 가 향 조건을 하나도 못 뽑는데 그 내용이 남지 않는다.
+이 모듈은 그 실패를 남겨 나중에 사전을 키우는 근거로 쓴다.
+
+지킬 원칙 셋
+  1. **사전 경로와 LLM 경로를 등급으로 구분한다.** 사전은 같은 뜻이면 항상 같은 결과를
+     내지만 LLM 은 그렇지 않다(측정: 같은 뜻 21쌍 중 15쌍이 상위 50개에서 0% 겹침).
+  2. **LLM 이 쓴 "이유" 는 근거가 아니라 추정 기록이다.** 사전의 `rationale` 과
+     `llm_reasoning` 을 한 칸에 섞지 않는다.
+  3. **승격에 빈도만이 아니라 판정이 들어간다.** 3회 쌓였다는 것은 "자주 나온다"(중요도)
+     이지 "그 추정이 맞다"(정확도)가 아니다. 이 모듈은 후보를 올리는 데까지만 한다.
+
+쓰는 법
+-------
+    import unmatched_log as ulog
+    from nlr_engine import load_index, recommend
+
+    index = load_index()
+    out = recommend(index, "밤에 쓰기 좋은 섹시한 향")
+    ulog.record(out)                       # 미매칭 표현을 한 줄씩 덧붙인다
+
+    for row in ulog.review_queue(top_n=20):  # 자주 나온 순으로 검토 후보
+        print(row["normalized_key"], row["occurrence_count"])
+
+LLM 추정을 붙이려면 추정 함수를 만들어 넘긴다. 이 모듈과 엔진은 네트워크를 모른다.
+
+    estimate = ulog.cached_estimator(my_gms_call)   # 같은 표현은 한 번만 부른다
+    out = recommend(index, text, estimator=estimate)
+
+저장 형식
+---------
+한 줄씩 덧붙이기만 한다(append-only). **누적 횟수를 파일에 적지 않는다.** 같은 표현이
+어떤 문맥에서 나왔는지가 판정에 필요한데, 카운터만 올리면 그 문맥이 사라지기 때문이다.
+횟수·최초·최종 등장은 `review_queue()` 가 읽을 때 센다.
+
+개인정보
+--------
+`raw_text` 에 사용자 원문이 들어간다. 설문 실측에 건강·신분 서술이 있었다.
+  - `MAX_RAW_CHARS` 자까지만 저장한다
+  - 로그 디렉터리는 `.gitignore` 에 있다. **저장소에 올라가면 회수할 수 없다**
+  - `purge_raw_text()` 로 `RETENTION_DAYS` 가 지난 줄의 원문을 비운다. 표현은 남는다
+
+의존성: 표준 라이브러리만.
+"""
+from __future__ import annotations
+
+import collections
+import datetime as dt
+import json
+import pathlib
+import re
+import unicodedata
+
+MAX_RAW_CHARS = 500       # 설문 실측 최대가 600자(행운의 편지)였다
+RETENTION_DAYS = 30       # 이 기간이 지나면 raw_text 만 비운다
+
+_LOG_DIR = pathlib.Path(__file__).resolve().parent / "logs"
+DEFAULT_LOG = _LOG_DIR / "unmatched.jsonl"
+
+# 미매칭 원인 — 셋은 고쳐야 할 곳이 다르다
+NOT_IN_LEXICON = "NOT_IN_LEXICON"          # 사전에 없다 -> 항목을 추가한다
+CONDITION_NOT_MET = "CONDITION_NOT_MET"    # 있는데 match_condition 이 안 걸렸다 -> 조건을 손본다
+NOT_CORE = "NOT_CORE"                      # 있는데 optional/NO_MAPPING 이다 -> 판정 이력이 있다
+
+
+def normalize_key(expression):
+    """조회·집계용 키. str.
+
+    NFC 정규화 + 공백 정리 + 소문자. **형태소 분석은 하지 않는다** —
+    spec 2장 2-b 의 Kiwi 정규화가 아직 없어서 `레몬 같은 상큼함` 과 `상큼함` 은
+    다른 키가 된다. 형태소 분석이 들어오면 여기를 바꾼다.
+    """
+    text = unicodedata.normalize("NFC", str(expression)).strip()
+    return re.sub(r"\s+", " ", text).lower()
+
+
+def record(result, path=DEFAULT_LOG, max_raw_chars=MAX_RAW_CHARS, now=None):
+    """recommend() 결과의 미매칭 표현을 한 줄씩 덧붙인다. int (쓴 줄 수).
+
+    result         : dict            nlr_engine.recommend() 가 낸 것
+    path           : str | Path      기본 ai/logs/unmatched.jsonl
+    max_raw_chars  : int             원문을 이 길이까지만 저장한다
+    now            : datetime | None 시각. 테스트에서 고정하려고 열어뒀다
+    """
+    rows = result.get("unmatched") or []
+    if not rows:
+        return 0
+
+    path = pathlib.Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    stamp = (now or dt.datetime.now(dt.timezone.utc).astimezone()).isoformat(timespec="seconds")
+    raw = str(result.get("query", ""))[:max_raw_chars]
+    had_conditions = bool(result.get("conditions", {}).get("core"))
+    estimate = result.get("llm_estimate") or {}
+
+    lines = []
+    for item in rows:
+        key = item["normalized_key"]
+        guess = estimate.get(key) or {}
+        lines.append(json.dumps({
+            "ts": stamp,
+            "raw_text": raw,
+            "expression": item["expression"],
+            "normalized_key": key,
+            "unmatch_reason": item["unmatch_reason"],
+            "entry_id": item.get("entry_id"),
+            "had_conditions": had_conditions,
+            "llm_accords": guess.get("accords"),
+            "llm_reasoning": guess.get("reasoning"),
+            "tier": "LLM" if guess else None,
+            "result_count": len(result.get("results") or []) if guess else None,
+        }, ensure_ascii=False))
+
+    with path.open("a", encoding="utf-8", newline="\n") as handle:
+        handle.write("\n".join(lines) + "\n")
+    return len(lines)
+
+
+def read(path=DEFAULT_LOG):
+    """기록을 전부 읽는다. list[dict]. 파일이 없으면 빈 목록."""
+    path = pathlib.Path(path)
+    if not path.is_file():
+        return []
+    out = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            out.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue   # 쓰다 만 줄은 건너뛴다. 나머지 기록을 버리지 않는다
+    return out
+
+
+def review_queue(path=DEFAULT_LOG, top_n=30, examples=3):
+    """검토 후보를 자주 나온 순으로 낸다. list[dict].
+
+    **문턱을 두지 않는다.** spec 4.4 는 3회 이상을 후보로 적었으나, 실측상
+    합성 600건에서 고유 표현 1,630개 중 3회 이상이 37개(2.3%)뿐이라 거의 발화하지 않는다.
+    실사용 규모를 모르는 상태에서 절대 문턱은 의미가 없으므로 상대 순위를 쓴다.
+
+    반환 항목 — normalized_key / occurrence_count / first_seen / last_seen /
+                reasons(원인별 횟수) / entry_ids / llm_accords / examples(원문 표본)
+    """
+    rows = read(path)
+    if not rows:
+        return []
+
+    grouped = collections.defaultdict(list)
+    for row in rows:
+        grouped[row["normalized_key"]].append(row)
+
+    queue = []
+    for key, group in grouped.items():
+        stamps = sorted(r["ts"] for r in group)
+        samples = [r["raw_text"] for r in group if r.get("raw_text")][:examples]
+        guesses = [r["llm_accords"] for r in group if r.get("llm_accords")]
+        queue.append({
+            "normalized_key": key,
+            "occurrence_count": len(group),
+            "first_seen": stamps[0],
+            "last_seen": stamps[-1],
+            "reasons": dict(collections.Counter(r["unmatch_reason"] for r in group)),
+            "entry_ids": sorted({r["entry_id"] for r in group if r.get("entry_id")}),
+            "llm_accords": guesses[-1] if guesses else None,
+            "examples": samples,
+        })
+    queue.sort(key=lambda r: (-r["occurrence_count"], r["normalized_key"]))
+    return queue[:top_n]
+
+
+def load_estimates(path=DEFAULT_LOG):
+    """이미 추정한 표현을 읽는다. dict[str, dict].
+
+    같은 표현에 여러 추정이 있으면 **마지막 것**을 쓴다.
+    """
+    out = {}
+    for row in read(path):
+        if row.get("llm_accords"):
+            out[row["normalized_key"]] = {"accords": row["llm_accords"],
+                                          "reasoning": row.get("llm_reasoning")}
+    return out
+
+
+def cached_estimator(estimate, path=DEFAULT_LOG):
+    """추정 함수를 캐시로 감싼다. callable.
+
+    estimate : callable  표현 하나(str)를 받아 {"accords": [...], "reasoning": str} 를 낸다
+
+    같은 표현을 두 번 물으면 같은 답이 나오게 한다. 측정(노트북 26)상 LLM 은 같은 뜻에
+    다른 답을 내므로, 캐시가 없으면 사용자마다 다른 향수를 받고 `llm_accords` 기록도
+    표현마다 값이 여러 개가 되어 검토할 수 없다.
+
+    캐시는 별도 파일이 아니라 **이 로그 자체**다. 기동 시 한 번 읽어 메모리에 둔다.
+    """
+    cache = load_estimates(path)
+
+    def wrapped(expression):
+        key = normalize_key(expression)
+        if key not in cache:
+            guess = estimate(expression) or {}
+            cache[key] = {"accords": list(guess.get("accords") or []),
+                          "reasoning": guess.get("reasoning")}
+        return cache[key]
+
+    wrapped.cache = cache
+    return wrapped
+
+
+def purge_raw_text(path=DEFAULT_LOG, days=RETENTION_DAYS, now=None):
+    """보관 기간이 지난 줄의 raw_text 를 비운다. int (비운 줄 수).
+
+    **줄을 지우지 않는다.** 표현과 원인은 남기고 원문만 비운다. 빈도 집계는 그대로 되고
+    개인정보만 사라진다. 되돌릴 수 없으므로 실행 전에 확인한다.
+    """
+    path = pathlib.Path(path)
+    rows = read(path)
+    if not rows:
+        return 0
+
+    cutoff = (now or dt.datetime.now(dt.timezone.utc).astimezone()) - dt.timedelta(days=days)
+    cleared = 0
+    for row in rows:
+        if not row.get("raw_text"):
+            continue
+        try:
+            stamp = dt.datetime.fromisoformat(row["ts"])
+        except ValueError:
+            continue
+        if stamp < cutoff:
+            row["raw_text"] = ""
+            cleared += 1
+
+    if cleared:
+        body = "\n".join(json.dumps(r, ensure_ascii=False) for r in rows)
+        path.write_text(body + "\n", encoding="utf-8", newline="\n")
+    return cleared

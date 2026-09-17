@@ -15,10 +15,7 @@ type InputProps = Omit<React.ComponentPropsWithRef<'input'>, 'id'> & {
 
 /**
  * 라벨·에러·설명을 한 덩어리로 묶은 입력창.
- *
- * label 과 input 의 id 연결, aria-invalid, aria-describedby 를 매번 손으로 쓰면
- * 빠뜨리기 쉬워서 컴포넌트 안에서 처리합니다. useId 는 서버/클라이언트에서
- * 겹치지 않는 고유 id 를 만들어주는 React 훅입니다.
+ * id 연결 · aria-invalid · aria-describedby 를 컴포넌트가 맡습니다.
  */
 export function Input({
   label,
@@ -33,11 +30,11 @@ export function Input({
   const hintId = `${id}-hint`
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2.5">
       <label
         htmlFor={id}
         className={cn(
-          'block text-sm font-medium',
+          'text-caption block font-medium',
           hideLabel && 'sr-only', // 화면에서만 숨기고 스크린리더는 읽습니다
         )}
       >
@@ -49,23 +46,26 @@ export function Input({
         aria-invalid={error ? true : undefined}
         aria-describedby={cn(hint && hintId, error && errorId) || undefined}
         className={cn(
-          'rounded-card h-10 w-full border px-3 text-sm',
+          'rounded-card text-body h-10 w-full border px-2.5',
           'placeholder:text-ink-muted/70',
-          'focus-visible:ring-accent outline-none focus-visible:ring-2',
+          // 바탕을 한 단 밝게 칠합니다 — 비워 두면 테두리 한 줄로만 칸을 알려야 합니다
+          'bg-surface-card',
+
+          'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
           'disabled:bg-line-soft disabled:opacity-60',
-          error ? 'border-red-500' : 'border-line',
+          error ? 'border-danger' : 'border-line',
           className,
         )}
         {...props}
       />
 
       {hint && !error && (
-        <p id={hintId} className="text-ink-muted text-xs">
+        <p id={hintId} className="text-ink-muted text-caption">
           {hint}
         </p>
       )}
       {error && (
-        <p id={errorId} className="text-xs text-red-600">
+        <p id={errorId} className="text-danger text-caption">
           {error}
         </p>
       )}

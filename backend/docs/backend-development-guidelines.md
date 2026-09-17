@@ -37,10 +37,14 @@
 Windows는 `.\gradlew.bat`, macOS/Linux는 `./gradlew`를 사용합니다. 아래 명령은 macOS/Linux 기준입니다.
 
 ```bash
-# 로컬 인프라: 저장소 루트에서 실행
-docker compose -f compose.manual-test.yaml up -d
+# 전체 로컬 환경: 저장소 루트에서 실행
+docker compose -f compose.manual-test.yaml up -d --build --wait
 docker compose -f compose.manual-test.yaml ps
+docker compose -f compose.manual-test.yaml run --rm seed
 docker compose -f compose.manual-test.yaml down
+
+# 백엔드 코드 개발용 PostgreSQL과 Redis: 저장소 루트에서 실행
+docker compose -f compose.manual-test.yaml up -d postgres redis
 
 # 애플리케이션과 Gradle: backend/에서 실행
 ./gradlew bootRun --args="--spring.profiles.active=manual-test"
@@ -55,6 +59,10 @@ docker compose -f compose.manual-test.yaml down
 - Swagger UI: `http://localhost:8080/swagger-ui/index.html`
 - OpenAPI JSON: `http://localhost:8080/v3/api-docs`
 
+전체 환경에서는 백엔드만 `127.0.0.1:8080`으로 공개합니다. AI 서버는 호스트 포트를 공개하지
+않으며 Compose 내부의 `http://ai:8000`에서 동작합니다. 상세한 환경변수와 API는
+[AI 서버 README](../../ai/README.md)를 참고합니다.
+
 ## 3. 코드 구조와 계층별 책임
 
 - 기능 코드는 `com.hyanghae.backend.<domain>`처럼 도메인 단위로 배치합니다.
@@ -65,7 +73,7 @@ docker compose -f compose.manual-test.yaml down
 - Repository는 데이터 접근만 담당하며 `ResponseEntity` 같은 웹 계층 타입에 의존하지 않습니다.
 - 조회 성능을 위한 DTO 프로젝션은 사용할 수 있지만 비즈니스 로직은 Repository에 작성하지 않습니다.
 - Entity를 API 응답으로 직접 반환하지 않고 응답 DTO로 변환합니다.
-- 페이징 응답은 Spring Data의 `Page`를 직접 반환하지 않고 `PageResponse<T>`를 사용합니다.
+- 페이징 응답은 Spring Data의 `Page`를 직접 반환하지 않고, API 명세가 정한 필드명을 쓰는 도메인별 응답 record로 감쌉니다. 목록 필드명이 도메인마다 다르므로(`perfumes`, `posts`) 필드명이 고정된 제네릭 응답으로는 표현할 수 없습니다.
 - 이유가 명확하지 않은 새 추상화나 공통 계층을 먼저 만들지 않습니다. 반복되는 요구가 확인된 뒤 공통화합니다.
 
 ### 패키지 목표 구조
@@ -76,7 +84,7 @@ docker compose -f compose.manual-test.yaml down
 com.hyanghae.backend
 ├─ global
 │  ├─ exception   ErrorCode(인터페이스), BusinessException, GlobalExceptionHandler
-│  ├─ response    ApiErrorResponse, PageResponse
+│  ├─ response    ApiErrorResponse
 │  └─ logging     RequestIdFilter
 └─ perfume
    ├─ controller
@@ -226,7 +234,7 @@ Windows에서 저장소 경로에 한글 등 비ASCII 문자가 포함되면 Gra
 
 - `master`와 `develop`에 직접 Push하지 않고 모든 변경을 MR로 병합합니다.
 - 작업 브랜치는 최신 `develop`에서 만들며 형식은 `<type>/<scope>/S15P21E203-<이슈번호>-<slug>`입니다.
-- 커밋 형식은 `<type>: S15P21E203-<이슈번호> <작업 내용>`이며 문장 끝에 마침표를 붙이지 않습니다.
+- 커밋 형식은 `<type>: <작업 내용>`이며 Jira 이슈 키와 문장 끝의 마침표를 넣지 않습니다.
 - 하나의 Jira 이슈는 하나의 브랜치에서 처리하고, 한 커밋에는 하나의 의미 있는 작업만 담습니다.
 - MR 대상은 `develop`이며 빌드와 테스트를 통과한 뒤 병합합니다.
 - MR 생성 전에 최신 `origin/develop`을 반영하고 충돌 해결 후 다시 빌드와 테스트를 실행합니다.
@@ -240,3 +248,4 @@ CI는 `develop`과 `master`에서 Gradle 빌드와 테스트를 실행합니다.
 - [백엔드 개발 시작 가이드](../README.md)
 - [운영 모니터링 및 Grafana 사용 가이드](operational-logging.md)
 - [성능 테스트 가이드](performance-testing.md)
+- [후기 요약 배치 가이드](review-analysis-batch.md)

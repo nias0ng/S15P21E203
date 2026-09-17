@@ -1,157 +1,211 @@
+import { http } from '@/shared/api/http'
+
 import type {
-  BoardType,
-  Comment,
+  CommentsResponse,
+  PostCategory,
   PostDetail,
-  PostSummary,
-  TrendingPerfume,
+  PostSort,
+  PostsResponse,
+  ReviewBoardResponse,
+  ReviewSort,
+  TrendingPerfumesResponse,
 } from './types'
 
+// 경로에 '/api/v1' 을 붙이지 않습니다 — http 의 baseURL 에 이미 있습니다
+
 /**
- * ⚠️ 백엔드에 커뮤니티 엔드포인트가 아직 없습니다. 화면을 눈으로 확인할 수 있도록
- * 자리표시자를 돌려줍니다. API 가 준비되면 이 함수들 본문만 http.get 으로 바꾸세요.
+ * 사이드바에 보이는 줄 수. 서버 기본값은 10, 최대 50 입니다.
  *
- *   const { data } = await http.get<Page<PostSummary>>('/posts', { params })
+ * 다섯으로 줄인 이유: 게시판 옆의 좁은 칸이라 열 줄이면 목록보다 길어집니다.
  */
-export async function getPosts(board: BoardType): Promise<PostSummary[]> {
-  return PLACEHOLDER_POSTS.filter((post) => post.board === board)
+const TRENDING_LIMIT = 5
+
+/**
+ * CMT-01 자유 게시판 글 목록. 로그인 없이 볼 수 있습니다.
+ *
+ * 분류 · 정렬 · 페이지를 **전부 서버가 처리합니다.** 화면에서 다시 거르면 같은 일을
+ * 두 번 하는 데다, 한 페이지 안에서만 걸러져 "2페이지에 있던 잡담 글" 이 사라집니다.
+ *
+ * `category` 를 주지 않으면 전체입니다. 페이지 크기는 기본 20, 최대 100 입니다.
+ */
+export async function getPosts(params: {
+  category?: PostCategory
+  sort?: PostSort
+  page?: number
+  size?: number
+}) {
+  const { data } = await http.get<PostsResponse>('/posts', { params })
+  return data
 }
 
-export async function getPostDetail(postId: number): Promise<PostDetail> {
-  const summary = PLACEHOLDER_POSTS.find((post) => post.postId === postId)
-  const base = summary ?? PLACEHOLDER_POSTS[0]!
-
-  return {
-    ...base,
-    content:
-      '우드 세이지 앤 씨 솔트를 몇 번 시향했는데, 비슷한 결로 조금 더 짠 느낌이 나는 향을 찾고 있습니다. 추천 부탁드립니다.',
-    imageUrls: [],
-    collectionTitle: null,
-    relatedPerfumes: base.perfume ? [base.perfume] : [],
-    mine: true,
-  }
+/**
+ * CMT-02 게시글 상세. 비로그인도 볼 수 있습니다.
+ *
+ * 작성자가 탈퇴한 글은 `nickname` 이 비어 옵니다 — 글은 남고 작성자만 지워집니다.
+ */
+export async function getPostDetail(postId: number) {
+  const { data } = await http.get<PostDetail>(`/posts/${postId}`)
+  return data
 }
 
-export async function getComments(): Promise<Comment[]> {
-  return PLACEHOLDER_COMMENTS
+/** CMT-08 댓글 목록. 기본 20개, 최대 100개입니다. */
+export async function getComments(
+  postId: number,
+  params: { page?: number; size?: number } = {},
+) {
+  const { data } = await http.get<CommentsResponse>(
+    `/posts/${postId}/comments`,
+    { params },
+  )
+  return data
 }
 
-export async function getTrendingPerfumes(): Promise<TrendingPerfume[]> {
-  return [
-    { perfumeId: 1, name: '조 말론 우드 세이지', postCount: 24 },
-    { perfumeId: 3, name: '르 라보 상탈 33', postCount: 19 },
-    { perfumeId: 2, name: '딥디크 오르페옹', postCount: 11 },
-  ]
+/**
+ * CMT-01 후기 게시판. 향수를 가리지 않은 **전체 후기**입니다.
+ *
+ * 향수 상세의 후기 목록(`/perfumes/{id}/reviews`)과 다릅니다 — 거기는 향수 하나의
+ * 후기만 보고, 여기는 여러 향수가 섞여 나와 줄마다 향수가 함께 실립니다.
+ *
+ * 분류 필터가 없습니다. 후기는 전부 같은 종류입니다(A22a).
+ */
+export async function getReviewBoard(params: {
+  sort?: ReviewSort
+  page?: number
+  size?: number
+}) {
+  const { data } = await http.get<ReviewBoardResponse>('/reviews', { params })
+  return data
 }
 
-const hoursAgo = (hours: number) =>
-  new Date(Date.now() - hours * 60 * 60 * 1000).toISOString()
+/**
+ * 지금 많이 언급되는 향수 (A22a · A22b 우측). 로그인이 필요 없습니다.
+ *
+ * 최근 며칠을 셌는지는 **서버가 응답에 담아 줍니다**(`days`). 화면이 "최근 한 주" 를
+ * 적어 두면 서버가 기간을 바꾼 날 문구만 거짓이 됩니다.
+ *
+ * 향수 검색의 `ranking`(OWNED · WISH · VIEWED)과 다른 값입니다 — 저쪽은 담거나 열어
+ * 본 횟수이고 이쪽은 글에 걸린 횟수입니다.
+ */
+export async function getTrendingPerfumes(
+  limit = TRENDING_LIMIT,
+): Promise<TrendingPerfumesResponse> {
+  const { data } = await http.get<TrendingPerfumesResponse>(
+    '/posts/trending-perfumes',
+    { params: { limit } },
+  )
+  return data
+}
 
-/** ⚠️ 백엔드 API 가 붙으면 아래 배열들을 통째로 지우세요. */
-const PLACEHOLDER_POSTS: PostSummary[] = [
-  {
-    postId: 1,
-    board: 'REVIEW',
-    title: '처음 뿌렸을 때 바다 냄새가 났다',
-    nickname: '유저닉네임',
-    createdAt: hoursAgo(0.2),
-    perfume: {
-      perfumeId: 1,
-      name: '조 말론 우드 세이지',
-      brand: '조 말론 런던',
-    },
-    category: null,
-    likeCount: 42,
-    commentCount: 12,
-    viewCount: 310,
-    liked: false,
-  },
-  {
-    postId: 2,
-    board: 'REVIEW',
-    title: '책방에서 맡던 냄새에 가장 가까운 향',
-    nickname: '유저닉네임',
-    createdAt: hoursAgo(0.6),
-    perfume: { perfumeId: 2, name: '딥디크 오르페옹', brand: '딥디크' },
-    category: null,
-    likeCount: 28,
-    commentCount: 8,
-    viewCount: 204,
-    liked: false,
-  },
-  {
-    postId: 3,
-    board: 'REVIEW',
-    title: '상탈 33은 겨울에 다시 맡아야 한다',
-    nickname: '유저닉네임',
-    createdAt: hoursAgo(2),
-    perfume: { perfumeId: 3, name: '르 라보 상탈 33', brand: '르 라보' },
-    category: null,
-    likeCount: 61,
-    commentCount: 21,
-    viewCount: 512,
-    liked: true,
-  },
-  {
-    postId: 4,
-    board: 'FREE',
-    title: '비 오는 날에만 뿌리는 다섯 개',
-    nickname: '유저닉네임',
-    createdAt: hoursAgo(0.13),
-    perfume: null,
-    category: 'COLLECTION',
-    likeCount: 34,
-    commentCount: 9,
-    viewCount: 260,
-    liked: false,
-  },
-  {
-    postId: 5,
-    board: 'FREE',
-    title: '우디인데 달지 않은 쪽으로 찾고 있습니다',
-    nickname: '유저닉네임',
-    createdAt: hoursAgo(0.87),
-    perfume: null,
-    category: 'RECOMMEND',
-    likeCount: 12,
-    commentCount: 26,
-    viewCount: 188,
-    liked: false,
-  },
-  {
-    postId: 6,
-    board: 'FREE',
-    title: '시향지와 피부에서 향이 갈리는 이유',
-    nickname: '유저닉네임',
-    createdAt: hoursAgo(3),
-    perfume: null,
-    category: 'CHAT',
-    likeCount: 47,
-    commentCount: 14,
-    viewCount: 420,
-    liked: false,
-  },
-]
+/*
+ * ── 쓰기 ──────────────────────────────────────────────────────
+ *
+ * 전부 로그인이 필요합니다(401). 남의 글 · 남의 댓글을 고치거나 지우면 403 입니다.
+ * 화면에서 [수정] · [삭제] 를 본인에게만 보여주지만, 그건 표시일 뿐이라 서버가
+ * 다시 확인합니다.
+ */
 
-const PLACEHOLDER_COMMENTS: Comment[] = [
-  {
-    commentId: 1,
-    nickname: '유저닉네임',
-    content: '씨 솔트 계열이면 바이레도 블랑쉬도 한 번 맡아보세요.',
-    createdAt: hoursAgo(2),
-    mine: false,
-  },
-  {
-    commentId: 2,
-    nickname: '유저닉네임',
-    content: '저는 겨울에 더 잘 맞았습니다.',
-    createdAt: hoursAgo(1),
-    mine: true,
-  },
-  {
-    commentId: 3,
-    nickname: '유저닉네임',
-    content: '시향지로만 맡으면 다르게 느껴질 수 있어요.',
-    createdAt: hoursAgo(0.5),
-    mine: false,
-  },
-]
+/** 글 작성에 보내는 값 (CMT-03) */
+export interface PostCreateInput {
+  category: PostCategory
+  title: string
+  content: string
+  /**
+   * 첨부할 컬렉션. **`perfumeIds` 와 함께 보낼 수 없습니다**(400) — 컬렉션을 붙이면
+   * 그 컬렉션의 향수가 곧 글의 향수입니다.
+   */
+  collectionId?: number | null
+  /** 글에 걸 향수. 보낸 순서대로 표시됩니다 */
+  perfumeIds?: number[]
+  imageUrls?: string[]
+}
+
+/**
+ * 글 수정에 보내는 값 (CMT-06).
+ *
+ * **보낸 항목만 바뀝니다.** 빼면 그대로 두라는 뜻이라, 제목만 고칠 때 나머지를 함께
+ * 보낼 필요가 없습니다. 반대로 `perfumeIds` · `imageUrls` 는 보낸 목록으로 **통째로**
+ * 바뀌므로, 하나를 빼려면 남길 것 전부를 보내야 합니다(빈 배열이면 전부 지워집니다).
+ *
+ * `collectionId: null` 은 첨부를 뗍니다. 보내지 않으면 글을 쓸 때 박제한 컬렉션이
+ * 그대로 남습니다 — 제목만 고쳤는데 향수가 바뀌면 안 되기 때문입니다.
+ */
+export type PostUpdateInput = Partial<PostCreateInput>
+
+/** `PUT · DELETE /posts/{postId}/like` 응답 */
+export interface PostLikeResult {
+  postId: number
+  liked: boolean
+  likeCount: number
+}
+
+/** 글 작성 (CMT-03). 만들어진 글 번호를 돌려줍니다 — 화면이 그 글로 이동합니다 */
+export async function createPost(input: PostCreateInput): Promise<number> {
+  const { data } = await http.post<{ postId: number; createdAt: string }>(
+    '/posts',
+    input,
+  )
+  return data.postId
+}
+
+/**
+ * 글 수정 (CMT-06). 남의 글은 403, 고칠 항목이 하나도 없으면 400 입니다.
+ *
+ * ⚠️ **`perfumeIds` · `imageUrls` 를 보내면 그 목록으로 통째로 바뀝니다.** 더하거나
+ * 빼는 요청이 아니라 덮어쓰기라, 하나만 빼려고 그것만 빼고 보내면 나머지가 전부
+ * 지워집니다. 화면이 들고 있는 목록 전체를 보내세요(자세한 규칙은 `PostUpdateInput`).
+ */
+export async function updatePost(
+  postId: number,
+  input: PostUpdateInput,
+): Promise<void> {
+  await http.patch(`/posts/${postId}`, input)
+}
+
+/** 글 삭제 (CMT-07) */
+export async function deletePost(postId: number): Promise<void> {
+  await http.delete(`/posts/${postId}`)
+}
+
+/**
+ * 좋아요 (CMT-05).
+ *
+ * **누르기와 취소가 다른 메서드입니다.** 토글 하나로 두면 네트워크가 끊겨 요청을
+ * 다시 보낼 때 상태가 뒤집혀, 한 번 눌렀는데 취소되는 일이 생깁니다. 나눠 두면
+ * 몇 번을 보내도 결과가 하나로 정해집니다.
+ *
+ * 응답에 `liked` 와 `likeCount` 가 함께 오므로 화면이 숫자를 직접 더하지 않습니다.
+ */
+export async function likePost(postId: number): Promise<PostLikeResult> {
+  const { data } = await http.put<PostLikeResult>(`/posts/${postId}/like`)
+  return data
+}
+
+export async function unlikePost(postId: number): Promise<PostLikeResult> {
+  const { data } = await http.delete<PostLikeResult>(`/posts/${postId}/like`)
+  return data
+}
+
+/** 댓글 작성 (CMT-09). 500자까지입니다 */
+export async function createComment(
+  postId: number,
+  content: string,
+): Promise<number> {
+  const { data } = await http.post<{ commentId: number; createdAt: string }>(
+    `/posts/${postId}/comments`,
+    { content },
+  )
+  return data.commentId
+}
+
+/** 댓글 수정 (CMT-10). 글이 아니라 **댓글** 번호를 씁니다 */
+export async function updateComment(
+  commentId: number,
+  content: string,
+): Promise<void> {
+  await http.patch(`/comments/${commentId}`, { content })
+}
+
+/** 댓글 삭제 (CMT-11) */
+export async function deleteComment(commentId: number): Promise<void> {
+  await http.delete(`/comments/${commentId}`)
+}

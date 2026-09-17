@@ -48,10 +48,11 @@ export function SegmentedFilter<T extends string>({
             aria-pressed={selected}
             onClick={() => onChange(selected ? null : option.value)}
             className={cn(
-              'flex-1 py-2.5 text-center text-xs transition-colors',
+              'text-body flex-1 py-2.5 text-center',
+              'transition-colors duration-120 ease-out',
               index > 0 && 'border-line -ml-px border-l',
               selected
-                ? 'bg-ink text-white'
+                ? 'bg-ink text-surface'
                 : 'text-ink hover:bg-line-soft bg-transparent',
             )}
           >

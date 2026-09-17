@@ -1,3 +1,4 @@
+import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { toPerfumeDetail } from '@/shared/config/routes'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
@@ -34,15 +35,15 @@ export function MapPointPopover({
     <div
       // 지도 배경 클릭으로 닫히는 동작과 겹치지 않게 이벤트를 여기서 멈춥니다
       onClick={(event) => event.stopPropagation()}
-      className="border-line bg-surface-card absolute w-56 border p-3 shadow-lg"
+      className="border-line bg-surface-card absolute w-56.25 border p-2.5 shadow-lg"
       // 선택한 포인트 옆에 붙습니다
       style={{
         left: `calc(${point.x}% + 12px)`,
         top: `calc(${point.y}% - 12px)`,
       }}
     >
-      <div className="flex items-start gap-2">
-        <Thumbnail className="size-12 shrink-0" />
+      <div className="flex items-start gap-2.5">
+        <Thumbnail className="size-12.5 shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="text-ink truncate text-xs font-bold">{point.name}</p>
           <p className="text-ink-muted truncate text-[10.5px]">{point.brand}</p>
@@ -58,14 +59,15 @@ export function MapPointPopover({
       </div>
 
       {/* TODO: 향 계열 · 노트 배지는 백엔드 응답이 붙으면 채웁니다 */}
-      <div className="mt-2 flex flex-wrap gap-1">
+      <div className="mt-2.5 flex flex-wrap gap-1.25">
         <Badge tone="outline">우디</Badge>
         <Badge tone="outline">아로마틱</Badge>
       </div>
 
-      <div className="mt-3 space-y-1.5">
+      <div className="mt-2.5 space-y-1.25">
         <LinkButton
           to={toPerfumeDetail(point.perfumeId)}
+          state={perfumeViewState('SCENT_MAP')}
           variant="outline"
           size="sm"
           fullWidth

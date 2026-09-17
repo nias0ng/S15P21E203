@@ -52,10 +52,10 @@ describe('Textarea', () => {
   it('className 으로 기본 글자 크기를 덮어쓸 수 있다', () => {
     render(<Textarea label="본문" className="text-base" />)
 
-    // cn() 이 twMerge 를 거치므로 기본값 text-sm 은 사라지고 text-base 만 남습니다
+    // cn() 이 twMerge 를 거치므로 기본값 text-body 는 사라지고 text-base 만 남습니다
     const textarea = screen.getByRole('textbox', { name: '본문' })
     expect(textarea.className).toContain('text-base')
-    expect(textarea.className).not.toContain('text-sm')
+    expect(textarea.className).not.toContain('text-body')
   })
 
   it('rows 같은 textarea 속성이 그대로 전달된다', () => {

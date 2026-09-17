@@ -1,71 +1,189 @@
 @import 'tailwindcss';
 
 /*
- * 디자인 토큰 — Scent Voyage Color Palette (BRAND SYSTEM / 01)
+ * 디자인 토큰 — Museum Archive
  *
- * 팔레트의 사용 비율 규칙을 그대로 따릅니다.
- *   NEUTRAL 90~95%  canvas · surface · type · grid
- *   PEARL    5~10%  scent · wake · reflection   ← 오팔 4색은 강조에만
- *   "MIST IVORY ↔ ABYSS / COLOR APPEARS ONLY WHEN THE SCENT MOVES."
+ * 따뜻한 종이 바탕에 흙빛 강조. 컨셉아트의 팔레트 7색을 그대로 옮기고,
+ * 대비 기준을 넘기지 못하는 자리는 아래 "파생" 4색으로 메꿉니다.
  *
- * 화면 코드에서는 아래 "역할 토큰"만 씁니다. 원색 토큰(ivory/abyss/...)을
- * 직접 쓰면 나중에 색을 바꿀 때 전부 찾아 고쳐야 합니다.
+ * 화면 코드에서는 "역할 토큰"만 씁니다. 원색(ivory/bronze/...)을 직접 쓰면
+ * 나중에 색을 바꿀 때 전부 찾아 고쳐야 합니다.
  */
 @theme {
-  /* ── 원색: 브랜드 앵커 ───────────────────────────────── */
-  --color-ivory: #f6f5f2; /* Mist Ivory  · air · paper · diffusion */
-  --color-abyss: #090b13; /* Abyss       · depth · night · immersion */
+  /* ── 원색: Museum Archive 팔레트 ─────────────────────── */
+  --color-ivory: #f9f6ef; /* Ivory       · light · beginnings */
+  --color-bone: #e8e1d6; /* Bone        · warmth · balance */
+  --color-stonegray: #c9c4bb; /* Stone Gray  · quiet strength */
+  --color-sage: #7f8a7a; /* Sage        · nature · harmony */
+  --color-bronze: #a68f5b; /* Aged Bronze · history · craft */
+  --color-charcoal: #2f2f32; /* Charcoal    · depth · clarity */
+  --color-shimmer: #a7c8db; /* Sea Shimmer · wonder · movement */
 
-  /* ── 원색: 뉴트럴 (밝은 쪽) ──────────────────────────── */
-  --color-paper: #ebe8e5; /* Sail Paper */
-  --color-fog: #dad9d6; /* Pearl Fog */
-  --color-silver: #c7c5c5; /* Silver Current */
+  /*
+   * ── 파생: 대비를 맞추려고 계산한 값 ───────────────────
+   * 팔레트 7색만으로는 본문 대비(4.5:1)가 안 나오는 자리가 있습니다.
+   * 괄호 안은 ivory 바탕 기준 대비입니다.
+   */
+  --color-charcoal-soft: #727170; /* 4.51:1 — charcoal 을 33% 밝힘 */
+  --color-bronze-deep: #7f6f4d; /* 4.54:1 — bronze 를 어둡게 */
+  --color-sage-deep: #556150; /* 6.06:1 — sage 를 어둡게 */
+  --color-rust: #8f4632; /* 6.30:1 — 흙빛 러스트 */
 
-  /* ── 원색: 뉴트럴 (어두운 쪽) ────────────────────────── */
-  --color-tide: #151822; /* Deep Tide */
-  --color-night: #323648; /* Night Current */
-  --color-slate: #535565; /* Moon Slate */
-
-  /* ── 원색: 시그니처 오팔 스펙트럼 (합쳐서 화면의 5~10%까지) ── */
-  --color-vapor: #86cdd8; /* Vapor Cyan */
-  --color-iris: #afa3da; /* Iris Current */
-  --color-coral: #d798ac; /* Coral Veil */
-  --color-seaglass: #83b99f; /* Sea Glass */
+  /*
+   * ── 3D 향 지도(저녁 바다) 위 ─────────────────────────
+   * 메인(A01)은 헤더 뒤까지 3D 가 깔리고, 헤더가 그 위에 유리판으로 뜹니다.
+   * 짙은 남색은 3D 엔진 카드 단추(paperboat --pb-card-btn)와 같은 색입니다 —
+   * 사용자가 그 단추에 고른 남색이라 헤더도 같은 색을 비칩니다.
+   * 팔레트 7색 밖이라 3D 위에서만 씁니다. 그 위 글자는 상아색(surface)입니다.
+   */
+  --color-navy: #1e2947;
+  /*
+   * 3D 지도 위에 떠 있는 작은 판(향해 일지)은 엔진 미니맵(SCENT MAP)의 저녁 유리와 한 벌입니다 —
+   * paperboat index.html `html[data-mini-eve]` 의 --pb-mini-bg(60%) · --pb-mini-accent 와 같은 값.
+   * 판은 bg-dusk/60, 글자는 상아색(surface), 강조(단추 · 펼침 표시)는 dusk-gold 입니다.
+   */
+  --color-dusk: #2c263e;
+  --color-dusk-gold: #d9be86;
 
   /* ── 역할 토큰: 이것만 화면에서 사용 ─────────────────── */
 
   /* 바탕 */
   --color-surface: var(--color-ivory); /* 페이지 바탕 */
-  --color-surface-card: #ffffff; /* 카드 · 모달 바탕 */
-  --color-surface-sunken: var(--color-paper); /* 연한 채움 · 이미지 자리 */
+  --color-surface-card: #fefcf8; /* 종이 위에 얹는 따뜻한 흰색 */
+  --color-surface-sunken: var(--color-bone); /* 연한 채움 · 이미지 자리 */
+  /* 3D 저녁 바다 위 — 유리판 헤더의 바탕 · 3D 가 뜨기 전 자리. 알파는 쓰는 곳에서 줍니다 */
+  --color-surface-night: var(--color-navy);
 
   /* 글자 */
-  --color-ink: var(--color-abyss); /* 본문 · 주요 액션 바탕 */
-  --color-ink-muted: var(--color-slate); /* 보조 설명 · 라벨 */
+  --color-ink: var(--color-charcoal); /* 본문 · 주요 액션 바탕 (12.36:1) */
+  --color-ink-muted: var(--color-charcoal-soft); /* 보조 설명 · 라벨 (4.51:1) */
 
   /* 선 */
-  --color-line: var(--color-silver); /* 테두리 */
-  --color-line-soft: var(--color-paper); /* 연한 구분선 · 호버 배경 */
+  --color-line: var(--color-stonegray); /* 테두리 · 호버 배경 */
+  --color-line-soft: var(--color-bone); /* 연한 구분선 */
 
-  /* 강조 — 포커스 링과 "향이 움직이는" 순간에만 */
-  --color-accent: var(--color-vapor);
+  /* 강조 */
+  --color-accent: var(
+    --color-bronze
+  ); /* 테두리 · 아이콘. 글자로는 쓰지 않습니다 (2.90:1) */
+  --color-accent-deep: var(--color-bronze-deep); /* 버튼 바탕 · 포커스 링 */
 
-  /* ── 형태 ────────────────────────────────────────────── */
-  --font-sans:
-    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
-    system-ui, 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
-
-  --radius-card: 0.875rem;
+  /* 상태 — 색만으로 뜻을 구분하지 말고 글자도 함께 답니다 */
+  --color-success: var(--color-sage-deep);
+  --color-danger: var(--color-rust);
 
   /*
-   * 콘텐츠 최대 폭. 와이어프레임 S01 규격이 "폭 1120 고정"입니다.
-   * 1120 + 좌우 여백 32 = 1184px 이면 다 보이므로, 1920 화면을 125%(뷰포트 1536)나
-   * 150%(1280) 배율로 쓰는 노트북에서도 여백이 남습니다.
+   * 면으로만 씁니다. ivory 위 1.63:1 이라 글자로 쓰면 안 보입니다.
+   * 그라데이션 · 글로우 전용.
    */
-  --container-content: 70rem;
+  --color-glow: var(--color-shimmer);
+
+  /* ── 형태 ────────────────────────────────────────────── */
+  /*
+   * 활자. 실물은 index.html 의 <link> 가 받아옵니다.
+   *   본문·라벨·버튼 → font-sans  (Noto Sans KR)
+   *   제목·향수명     → font-serif (Noto Serif KR)
+   * 컨셉의 정체성이 에디토리얼 세리프인데, 본문까지 세리프면 한글 가독성이
+   * 떨어져서 제목에만 씁니다.
+   */
+  --font-sans:
+    'Noto Sans KR', -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI',
+    'Apple SD Gothic Neo', sans-serif;
+
+  --font-serif: 'Noto Serif KR', Georgia, 'Times New Roman', serif;
+
+  /*
+   * ── 활자 스케일 (S15P21E203-162) ──────────────────────
+   * 다섯 단계로 끝냅니다. text-[10.5px] 같은 임의값은 쓰지 않습니다 —
+   * 이전에는 임의값 119개가 스케일 클래스 104개보다 많았습니다.
+   *
+   * body 와 caption 은 1px 차이라 크기로 위계를 만들지 않습니다.
+   * 위계는 색이 만듭니다 — text-ink(12.36:1) 와 text-ink-muted(4.51:1).
+   * 12px 아래로는 내려가지 않습니다. 한글은 자소가 많아 급격히 읽기 힘들어집니다.
+   */
+  --text-display: 1.75rem; /* 28px — 향수명 · 페이지 대표 제목 (serif) */
+  --text-display--line-height: 1.2;
+  --text-title: 1.25rem; /* 20px — 섹션 제목 (serif) */
+  --text-title--line-height: 1.3;
+  --text-heading: 1rem; /* 16px — 카드 제목 · 소제목 (serif) */
+  --text-heading--line-height: 1.4;
+  --text-body: 0.8125rem; /* 13px — 본문 · 버튼 · 입력창 */
+  --text-body--line-height: 1.7;
+  --text-caption: 0.75rem; /* 12px — 라벨 · 메타 · 배지 */
+  --text-caption--line-height: 1.5;
+
+  /*
+   * ── 그림자 ────────────────────────────────────────────
+   * 떠 있는 높이 = 그 요소가 얼마나 위에 있는가.
+   * 기본 상태의 카드에는 걸지 않습니다. 테두리로 충분하고,
+   * 그림자까지 있으면 목록 전체가 들떠 보입니다.
+   */
+  --shadow-raised: 0 6px 18px rgb(47 47 50 / 0.09); /* 카드 호버 */
+  --shadow-overlay: 0 10px 26px rgb(47 47 50 / 0.14); /* 드롭다운 · 토스트 */
+  --shadow-modal: 0 24px 60px rgb(47 47 50 / 0.22); /* 모달 */
+  --shadow-glass: 0 12px 32px rgb(16 10 28 / 0.3); /* 3D 지도 위 떠 있는 판 — 엔진 미니맵과 같은 값 */
+
+  /* 컨셉아트의 카드는 거의 각져 있습니다. 미술관·아카이브 인상이 여기서 나옵니다. */
+  --radius-glass: 0.5625rem; /* 9px — 3D 지도 위 떠 있는 판 · 엔진 미니맵과 같은 값 */
+  --radius-card: 0.375rem;
+
+  /*
+   * ── 화면 폭 (1920 기준) ──────────────────────────────
+   * 디자인 기준 화면은 1920 x 1080 입니다(피그마 "1920w" 아트보드). 1920 이 가장 넓은
+   * 규격이고, 거기서 줄어드는 방향으로 맞춥니다. 화면 성격에 따라 세 가지 폭을 씁니다.
+   *
+   *   frame  1920  화면 틀. 좌우 여백(--gutter 60)을 뺀 1800 이 본문입니다.
+   *                진열대 · 향 지도처럼 화면 전체를 그림으로 쓰는 곳
+   *   wide   1440  목록 · 격자 · 상세 — 카드가 한 줄에 여럿 서는 곳
+   *   text    800  글을 읽고 쓰는 곳 · 계정 폼. 한글은 한 줄 40자 안팎이 읽기 좋고
+   *                (WCAG 1.4.8 은 CJK 한 줄 40자 이하 권장), 본문 13px 에서 그 폭입니다
+   *
+   * 인터랙티브한 화면과 게시판이 섞인 사이트들이 쓰는 방식입니다 — 틀과 그림은 넓게,
+   * 글은 읽을 수 있는 폭으로 가둡니다. 전부 1800 으로 펴면 글 한 줄이 130자를 넘어
+   * 줄 끝에서 다음 줄 첫머리를 찾기 어렵습니다.
+   *
+   * 치수는 끝자리를 0 또는 5 로 맞추고, 좌우 여백은 0 으로 맞춥니다. 글자 크기는 이
+   * 규칙에서 빠집니다 — 위 활자 스케일을 그대로 씁니다. 화면마다 어느 폭을 쓰는지는
+   * 라우트 설정(app/router)의 handle.width 에 한 번만 적습니다.
+   */
+  --container-frame: 120rem;
+  --container-wide: 90rem;
+  --container-text: 50rem;
 }
 
 @layer base {
+  /*
+   * 화면 좌우 여백. 끝자리를 0 으로 맞추고, 화면이 좁아질수록 10px 씩 줄입니다.
+   *
+   *   1536~ 60 (1920 기준값)  ·  1280~ 50  ·  1024~ 40  ·  768~ 30  ·  그 아래 20
+   *
+   * 헤더와 본문이 같은 값을 써서 로고 · 제목 · 진열장 왼쪽 끝이 한 줄에 섭니다.
+   * 경계는 Tailwind 기본 브레이크포인트(md · lg · xl · 2xl)와 같습니다.
+   */
+  :root {
+    --gutter: 20px;
+  }
+  @media (width >= 48rem) {
+    :root {
+      --gutter: 30px;
+    }
+  }
+  @media (width >= 64rem) {
+    :root {
+      --gutter: 40px;
+    }
+  }
+  @media (width >= 80rem) {
+    :root {
+      --gutter: 50px;
+    }
+  }
+  @media (width >= 96rem) {
+    :root {
+      --gutter: 60px;
+    }
+  }
+
   html {
     -webkit-text-size-adjust: 100%;
   }
@@ -77,5 +195,21 @@
 
   #root {
     min-height: 100dvh;
+  }
+
+  /*
+   * 모션 줄이기를 켠 사용자에게는 전환을 끕니다. 컴포넌트마다 따로 걸면
+   * 새로 만드는 것에서 반드시 빠지므로 여기서 한 번에 처리합니다.
+   * 0.01ms 인 이유는 0s 로 두면 transitionend 가 안 오는 브라우저가 있어서입니다.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }

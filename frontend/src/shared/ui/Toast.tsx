@@ -12,16 +12,11 @@ type ToastProps = {
 }
 
 /**
- * 저장 · 삭제 피드백 (와이어프레임 C03 — 화면 하단 고정 · 자동 사라짐)
+ * 저장 · 삭제 피드백 (와이어프레임 C03). 결과는 전부 이걸로 알립니다 — 인라인 ·
+ * 모달로 알리지 마세요.
  *
- * 와이어프레임 C03 의 "피드백 방식 통일" 은 **토스트로 확정**되었습니다.
- * 저장 · 삭제 · 생성 결과는 전부 이걸로 알립니다. 인라인 · 모달로 알리지 마세요.
- *
- * 상태는 직접 useState 로 들지 말고 shared/hooks/useToast 를 쓰세요.
- * 인라인 화살표를 onClose 로 넘기면 아래 타이머가 렌더마다 초기화됩니다.
- *
- *   const { showToast, toastProps } = useToast()
- *   <Toast {...toastProps} />
+ * **상태는 `shared/hooks/useToast` 를 쓰세요.** 직접 들고 인라인 화살표를 onClose 로
+ * 넘기면 아래 타이머가 렌더마다 초기화됩니다.
  */
 export function Toast({
   open,
@@ -45,8 +40,8 @@ export function Toast({
       role="status"
       aria-live="polite"
       className={cn(
-        'bg-ink fixed bottom-6 left-1/2 z-50 -translate-x-1/2',
-        'px-4 py-3 text-xs text-white shadow-lg',
+        'bg-ink fixed bottom-6.25 left-1/2 z-40 -translate-x-1/2',
+        'text-surface text-body shadow-overlay px-3.75 py-2.5',
         className,
       )}
     >

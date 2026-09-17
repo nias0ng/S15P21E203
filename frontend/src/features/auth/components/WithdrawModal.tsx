@@ -1,9 +1,16 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useNavigate } from 'react-router'
 
+import { isApiError } from '@/shared/api/http'
+import { ROUTES } from '@/shared/config/routes'
+import { useAuthStore } from '@/shared/store/authStore'
 import { Button } from '@/shared/ui/Button'
 import { Checkbox } from '@/shared/ui/Checkbox'
 import { Input } from '@/shared/ui/Input'
 import { Modal } from '@/shared/ui/Modal'
+
+import { withdraw } from '../api'
 
 type Props = { open: boolean; onClose: () => void }
 
@@ -20,36 +27,57 @@ type Props = { open: boolean; onClose: () => void }
  * 적고 있었는데 확정된 정책은 후기를 남기는 쪽이라, 문구를 정책에 맞춰 고쳤습니다.
  */
 export function WithdrawModal({ open, onClose }: Props) {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+
   const [confirmed, setConfirmed] = useState(false)
   const [password, setPassword] = useState('')
 
-  const canWithdraw = confirmed && password.length > 0
+  const mutation = useMutation({
+    mutationFn: () => withdraw(password),
+    onSuccess: () => {
+      useAuthStore.getState().clear()
+      /*
+       * 캐시도 비웁니다. 스토어만 지우면 진열대 · 컬렉션 같은 응답이 그대로 남아,
+       * 같은 브라우저에서 다음에 로그인한 사람이 지워진 계정의 화면을 잠깐 봅니다.
+       */
+      queryClient.clear()
+      navigate(ROUTES.HOME, { replace: true })
+    },
+  })
+
+  const close = () => {
+    setConfirmed(false)
+    setPassword('')
+    mutation.reset()
+    onClose()
+  }
+
+  const canWithdraw = confirmed && password.length > 0 && !mutation.isPending
 
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={close}
       title="회원 탈퇴"
       footer={
         <>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={close}>
             취소
           </Button>
           <Button
             variant="danger"
             // 안내 확인과 비밀번호 재확인을 모두 거쳐야 탈퇴할 수 있습니다
             disabled={!canWithdraw}
-            onClick={() => {
-              // TODO: COM-06 회원 탈퇴 API 연결 (요청 본문에 password 포함)
-            }}
+            onClick={() => mutation.mutate()}
           >
-            탈퇴
+            {mutation.isPending ? '탈퇴 중' : '탈퇴'}
           </Button>
         </>
       }
     >
-      <div className="space-y-3">
-        <div className="border-line bg-line-soft text-ink space-y-1 border p-3 text-[11px] leading-relaxed">
+      <div className="space-y-2.5">
+        <div className="border-line bg-line-soft text-ink space-y-1.25 border p-2.5 text-[11px] leading-relaxed">
           <p>진열대 · 컬렉션 · 메모가 함께 삭제됩니다.</p>
           <p>
             작성한 게시글 · 댓글 · 후기는{' '}
@@ -76,6 +104,14 @@ export function WithdrawModal({ open, onClose }: Props) {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
+
+        {mutation.error !== null && (
+          <p className="text-danger text-caption" role="alert">
+            {isApiError(mutation.error)
+              ? mutation.error.message
+              : '탈퇴하지 못했습니다. 잠시 후 다시 시도해주세요.'}
+          </p>
+        )}
       </div>
     </Modal>
   )

@@ -23,10 +23,11 @@ const FEATURE_DOMAINS = [
   'community',
   'brand',
   'note',
+  'taste',
 ]
 
 export default tseslint.config([
-  { ignores: ['dist', 'node_modules', 'coverage'] },
+  { ignores: ['dist', 'node_modules', 'coverage', 'landing'] },
 
   js.configs.recommended,
   tseslint.configs.recommended,

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { toPerfumeDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { LinkButton } from '@/shared/ui/LinkButton'
@@ -30,7 +31,7 @@ export function RecommendResultList({ perfumes, selectedId, onSelect }: Props) {
   )
 
   return (
-    <ul className="max-h-[32rem] space-y-2 overflow-y-auto pr-1">
+    <ul className="max-h-127.5 space-y-2.5 overflow-y-auto pr-1.25">
       {perfumes.map((perfume, index) => {
         const expanded = expandedId === perfume.perfumeId
         const selected = selectedId === perfume.perfumeId
@@ -39,7 +40,7 @@ export function RecommendResultList({ perfumes, selectedId, onSelect }: Props) {
           <li key={perfume.perfumeId}>
             <article
               className={cn(
-                'border-line bg-surface-card border p-3',
+                'border-line bg-surface-card border p-2.5',
                 selected && 'border-ink',
               )}
             >
@@ -50,15 +51,15 @@ export function RecommendResultList({ perfumes, selectedId, onSelect }: Props) {
                   onSelect(perfume.perfumeId)
                   setExpandedId(expanded ? null : perfume.perfumeId)
                 }}
-                className="flex w-full items-start gap-3 text-left"
+                className="flex w-full items-start gap-2.5 text-left"
               >
-                <span className="bg-ink flex size-6 shrink-0 items-center justify-center text-[11px] text-white">
+                <span className="bg-ink text-surface flex size-6.25 shrink-0 items-center justify-center text-[11px]">
                   {index + 1}
                 </span>
                 <Thumbnail
                   src={perfume.thumbnailUrl}
                   fallback="이미지"
-                  className="size-16 shrink-0 text-[10px]"
+                  className="size-16.25 shrink-0 text-[10px]"
                 />
                 <span className="min-w-0 flex-1">
                   <span className="text-ink block truncate text-xs font-bold">
@@ -71,9 +72,9 @@ export function RecommendResultList({ perfumes, selectedId, onSelect }: Props) {
               </button>
 
               {expanded && (
-                <div className="mt-3 space-y-2">
+                <div className="mt-2.5 space-y-2.5">
                   <p className="text-ink-muted text-[10.5px]">추천 이유</p>
-                  <ul className="space-y-1">
+                  <ul className="space-y-1.25">
                     {perfume.reasons.map((reason) => (
                       <li
                         key={reason.evidence}
@@ -91,6 +92,7 @@ export function RecommendResultList({ perfumes, selectedId, onSelect }: Props) {
                   </ul>
                   <LinkButton
                     to={toPerfumeDetail(perfume.perfumeId)}
+                    state={perfumeViewState('NATURAL_LANGUAGE_RECOMMENDATION')}
                     variant="outline"
                     size="sm"
                   >

@@ -1,0 +1,11 @@
+# 자연어 추천 엔진
+#
+# 만든 환경: Python 3.11.9 / pandas 3.0.5 / numpy 2.4.6
+# 이 버전을 맞추실 필요는 없습니다.
+
+pandas>=2.0
+numpy>=1.24
+
+# HTTP 서버(server.py). 엔진만 쓸 거면 없어도 됩니다.
+fastapi>=0.110
+uvicorn>=0.27

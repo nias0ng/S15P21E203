@@ -89,7 +89,7 @@ export function ScentMap({
               'cursor-pointer',
               selectedId === point.perfumeId
                 ? 'fill-ink'
-                : 'fill-slate hover:fill-ink',
+                : 'fill-ink-muted hover:fill-ink',
             )}
             onClick={(event) => {
               // 배경 클릭 핸들러까지 올라가면 방금 연 모달이 바로 닫힙니다
@@ -107,12 +107,23 @@ export function ScentMap({
   )
 }
 
-/** 구역 이름을 놓을 자리. 실제 구역 경계가 생기면 그 중심으로 바꿉니다. */
+/**
+ * 구역 이름을 놓을 자리. **자리표시자입니다.**
+ *
+ * 백엔드가 구역마다 `anchorX` · `anchorY`(이름을 적을 위치)와 폴리곤을 내려주므로,
+ * 향 지도 API 를 붙이는 날 이 배열을 지우고 그 값을 씁니다. 지금은 아홉 개가 서로
+ * 겹치지 않게만 흩어 둔 값이라 실제 계열 위치와 다릅니다.
+ *
+ * 순서는 `SCENT_REGIONS`(= 공용 어휘 순서)와 하나씩 맞습니다.
+ */
 const REGION_POSITIONS = [
-  { x: 32, y: 30 },
-  { x: 68, y: 20 },
-  { x: 20, y: 12 },
-  { x: 82, y: 60 },
-  { x: 14, y: 66 },
-  { x: 60, y: 86 },
+  { x: 74, y: 22 }, // FLORAL
+  { x: 30, y: 48 }, // GREEN
+  { x: 40, y: 30 }, // CITRUS
+  { x: 66, y: 40 }, // FRUITY
+  { x: 14, y: 40 }, // AQUATIC
+  { x: 62, y: 12 }, // MUSK
+  { x: 70, y: 60 }, // GOURMAND
+  { x: 34, y: 68 }, // WOODY
+  { x: 46, y: 84 }, // AMBER
 ]

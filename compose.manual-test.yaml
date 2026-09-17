@@ -1,6 +1,103 @@
 name: hyanghae-manual-test
 
 services:
+  ai:
+    build:
+      context: ./ai
+    image: hyanghae-ai:local
+    environment:
+      GMS_API_KEY: ${GMS_API_KEY:-}
+      GMS_MODEL: ${NLR_GMS_MODEL:-gpt-5.4-nano}
+      NLR_LOG_PATH: /app/logs/unmatched.jsonl
+    expose:
+      - "8000"
+    volumes:
+      - nlr-logs:/app/logs
+
+  backend:
+    build:
+      context: ./backend
+    image: hyanghae-backend:local
+    environment:
+      SPRING_PROFILES_ACTIVE: manual-test
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${MANUAL_TEST_POSTGRES_DB:-hyanghae_test}
+      SPRING_DATASOURCE_USERNAME: ${MANUAL_TEST_POSTGRES_USER:-hyanghae}
+      SPRING_DATASOURCE_PASSWORD: ${MANUAL_TEST_POSTGRES_PASSWORD:-hyanghae_test}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      GMS_API_KEY: ${GMS_API_KEY:-}
+      GMS_MODEL: ${BACKEND_GMS_MODEL:-gpt-5-nano}
+      REVIEW_ANALYSIS_ENABLED: ${REVIEW_ANALYSIS_ENABLED:-false}
+      # 자연어 추천이 부르는 AI 서버입니다. 같은 네트워크 안이라 서비스 이름으로 붙습니다.
+      # ai 는 호스트 포트를 공개하지 않으므로 이 주소로만 닿습니다.
+      NLR_AI_BASE_URL: http://ai:8000
+    ports:
+      - "127.0.0.1:${MANUAL_TEST_BACKEND_PORT:-8080}:8080"
+    depends_on:
+      ai:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080'
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  seed:
+    image: postgres:17
+    profiles:
+      - tools
+    working_dir: /workspace/backend/db/seed
+    environment:
+      DB_NAME: ${MANUAL_TEST_POSTGRES_DB:-hyanghae_test}
+      DB_USER: ${MANUAL_TEST_POSTGRES_USER:-hyanghae}
+      PGPASSWORD: ${MANUAL_TEST_POSTGRES_PASSWORD:-hyanghae_test}
+      DATABASE_URL: postgresql://${MANUAL_TEST_POSTGRES_USER:-hyanghae}@postgres:5432/${MANUAL_TEST_POSTGRES_DB:-hyanghae_test}
+    volumes:
+      - ./backend/db/seed:/workspace/backend/db/seed:ro
+      - ./ai/delivery/for_db:/workspace/ai/delivery/for_db:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    command:
+      - bash
+      - -euc
+      - |
+        echo "[1/4] 향 지도 데이터를 넣습니다."
+        psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f load_scent_map.sql
+        echo "[2/4] 향수 카탈로그를 넣습니다."
+        bash ./load_perfume_catalog.sh
+        echo "[3/4] 노트 메타데이터를 넣습니다."
+        bash ./load_notes.sh
+        echo "[4/4] 향수 이미지를 넣습니다."
+        bash ./load_perfume_images.sh
+        echo "모든 초기 데이터 적재가 끝났습니다."
+
+  seed-local:
+    build:
+      context: ./backend
+      dockerfile: db/seed/Dockerfile.local
+    profiles:
+      - tools
+    environment:
+      SEED_ENV: manual-test
+      SEED_JDBC_URL: jdbc:postgresql://postgres:5432/${MANUAL_TEST_POSTGRES_DB:-hyanghae_test}
+      SEED_DB_USER: ${MANUAL_TEST_POSTGRES_USER:-hyanghae}
+      SEED_DB_PASSWORD: ${MANUAL_TEST_POSTGRES_PASSWORD:-hyanghae_test}
+      SEED_LOGIN_PASSWORD: ${SEED_LOGIN_PASSWORD:-}
+      SEED_MODE: fill
+    volumes:
+      - ./backend/db/seed:/workspace/backend/db/seed:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   postgres:
     image: postgres:17
     environment:
@@ -43,3 +140,4 @@ services:
 volumes:
   manual-test-postgres-data:
   manual-test-redis-data:
+  nlr-logs:

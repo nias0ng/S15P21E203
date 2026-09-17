@@ -14,11 +14,8 @@ type ModalProps = {
 }
 
 /**
- * 브라우저 기본 <dialog> 를 씁니다.
- *
- * 직접 div 로 만들면 포커스 가두기(모달 밖으로 Tab 이 나가지 않게), Esc 로 닫기,
- * 배경 스크롤 잠금을 전부 손으로 구현해야 합니다. showModal() 은 이걸 브라우저가
- * 해줍니다. 게시글 검수 보류 안내(CMT-13)처럼 모달이 필요한 곳에서 재사용합니다.
+ * 브라우저 기본 `<dialog>` 를 씁니다. div 로 만들면 포커스 가두기 · Esc · 배경 스크롤
+ * 잠금을 전부 손으로 구현해야 하는데 `showModal()` 이 그걸 해줍니다.
  */
 export function Modal({
   open,
@@ -30,8 +27,7 @@ export function Modal({
 }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
 
-  // open prop 과 실제 dialog 상태를 맞춥니다.
-  // <dialog open> 속성만 주면 모달이 아니라 그냥 보이는 요소가 되므로 showModal() 을 호출합니다.
+  // `<dialog open>` 속성만 주면 모달이 아니라 그냥 보이는 요소라 showModal() 을 씁니다
   useEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return
@@ -44,8 +40,8 @@ export function Modal({
     <dialog
       ref={dialogRef}
       aria-label={title}
-      // Esc 키는 dialog 의 cancel 이벤트로 옵니다. 기본 동작(즉시 close)을 막고
-      // 부모의 onClose 를 거쳐 닫아서 open 상태와 어긋나지 않게 합니다.
+      // Esc 의 기본 동작(즉시 close)을 막고 부모의 onClose 를 거칩니다 — 안 그러면
+      // dialog 는 닫혔는데 open prop 은 true 로 남습니다
       onCancel={(event) => {
         event.preventDefault()
         onClose()
@@ -55,27 +51,27 @@ export function Modal({
         if (event.target === dialogRef.current) onClose()
       }}
       className={cn(
-        'rounded-card m-auto w-[min(32rem,calc(100vw-2rem))] p-0',
+        'rounded-card m-auto w-[min(510px,calc(100vw-40px))] p-0',
         'backdrop:bg-ink/40 open:flex open:flex-col',
         className,
       )}
     >
-      <header className="border-line flex items-center justify-between border-b px-5 py-4">
-        <h2 className="text-base font-semibold">{title}</h2>
+      <header className="border-line flex items-center justify-between border-b px-5 py-3.75">
+        <h2 className="text-title font-serif font-semibold">{title}</h2>
         <button
           type="button"
           onClick={onClose}
           aria-label="닫기"
-          className="text-ink-muted hover:text-ink rounded p-1 text-lg leading-none"
+          className="text-ink-muted hover:text-ink rounded p-1.25 text-lg leading-none"
         >
           ×
         </button>
       </header>
 
-      <div className="px-5 py-4 text-sm">{children}</div>
+      <div className="text-body px-5 py-3.75">{children}</div>
 
       {footer && (
-        <footer className="border-line flex justify-end gap-2 border-t px-5 py-4">
+        <footer className="border-line flex justify-end gap-2.5 border-t px-5 py-3.75">
           {footer}
         </footer>
       )}

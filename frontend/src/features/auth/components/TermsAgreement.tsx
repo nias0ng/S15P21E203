@@ -21,11 +21,11 @@ export function TermsAgreement({ value, onChange }: TermsAgreementProps) {
   }
 
   return (
-    <fieldset className="space-y-3">
+    <fieldset className="space-y-2.5">
       <legend className="text-ink text-[17px] font-bold">약관 동의</legend>
 
       {/* 전체 동의 — 테두리로 감싸 나머지 항목과 구분합니다 */}
-      <label className="border-line flex cursor-pointer items-center gap-2.5 border px-3 py-2.5">
+      <label className="border-line flex cursor-pointer items-center gap-2.5 border px-2.5 py-2.5">
         <Checkbox
           checked={allChecked}
           onChange={(event) => toggleAll(event.target.checked)}
@@ -33,7 +33,7 @@ export function TermsAgreement({ value, onChange }: TermsAgreementProps) {
         <span className="text-ink text-xs">전체 동의</span>
       </label>
 
-      <ul className="space-y-2">
+      <ul className="space-y-2.5">
         {TERMS.map((term) => (
           <li key={term.id} className="flex items-center gap-2.5">
             <label className="flex flex-1 cursor-pointer items-center gap-2.5">
@@ -53,7 +53,7 @@ export function TermsAgreement({ value, onChange }: TermsAgreementProps) {
             {term.required && (
               <button
                 type="button"
-                className="border-line text-ink hover:bg-line-soft shrink-0 border px-2.5 py-1.5 text-[11px]"
+                className="border-line text-ink hover:bg-line-soft shrink-0 border px-2.5 py-1.25 text-[11px]"
               >
                 보기
               </button>
