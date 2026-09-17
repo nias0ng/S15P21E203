@@ -1,13 +1,15 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
+import { isApiError } from '@/shared/api/http'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Skeleton } from '@/shared/ui/Skeleton'
 
+import { completeTasteTest } from '../api'
 import { MAX_PICKS } from '../families'
 import { matchStartingPoint } from '../match'
-import { scentVectorsQuery } from '../queries'
+import { scentVectorsQuery, tasteKeys } from '../queries'
 import type { ScentFamilyKey, TasteMatch } from '../types'
 
 import { FamilyPicker } from './FamilyPicker'
@@ -17,10 +19,9 @@ type TasteTestStepProps = {
   /**
    * 결과 모달에서 확인을 눌렀을 때. 화면 이동은 pages 쪽에서 합니다.
    *
-   * ⚠️ 뽑힌 향수 id 를 넘기지 않습니다. 취향 테스트는 향 지도 시드 200개
-   * (`fragrantica_id`)로 계산하는데 지도 화면의 자리표시자 포인트는 id 체계가 달라,
-   * 지금 넘겨도 마커를 찍을 수 없습니다. 향 지도 API 가 붙어 id 가 하나로 합쳐지면
-   * `TasteMatch` 를 그대로 넘기면 됩니다.
+   * 뽑힌 향수 id 를 넘기지 않습니다 — **서버가 이미 알고 있습니다.** 확인을 누를 때
+   * 이 컴포넌트가 결과를 남기고(`POST /users/me/taste-test`), 배를 그 자리에 띄우는
+   * 것은 지도 쪽 일입니다.
    */
   onComplete: () => void
 }
@@ -32,12 +33,13 @@ type TasteTestStepProps = {
  * 확인을 눌러야 향 지도로 넘어가고, 다시 하기를 누르면 모달만 닫힙니다.
  * **건너뛰기는 없습니다.**
  *
- * 지금은 독립 라우트(`ROUTES.TASTE_TEST`)로 열립니다. 백엔드가 붙어 회원가입이
- * 동작하면 가입 직후 온보딩 스텝으로 옮길 수 있도록, 화면 이동을 이 컴포넌트가 아니라
- * 호출하는 쪽에 맡겨 두었습니다.
+ * **첫 로그인 직후에 열립니다.** 로그인 화면이 `GET /users/me/taste-test` 로 아직
+ * 치르지 않은 사람을 가려내 이 화면으로 보냅니다. 확인을 누르면 결과를 서버에 남기고
+ * (`POST /users/me/taste-test`) 그다음 이동은 호출하는 쪽이 정합니다.
  */
 export function TasteTestStep({ onComplete }: TasteTestStepProps) {
   const vectors = useQuery(scentVectorsQuery())
+  const queryClient = useQueryClient()
 
   const [picks, setPicks] = useState<ScentFamilyKey[]>([])
   const [match, setMatch] = useState<TasteMatch | null>(null)
@@ -46,6 +48,39 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
     if (!vectors.data || picks.length === 0) return
     setMatch(matchStartingPoint(vectors.data, picks))
   }
+
+  /**
+   * 결과를 서버에 남깁니다 (TST-03).
+   *
+   * **이미 마친 사람은 409 인데 성공으로 다룹니다.** 남기려던 것이 이미 남아 있는
+   * 상태라 사용자가 할 일이 없습니다 — 여기서 막으면 주소로 이 화면에 다시 들어온
+   * 사람이 아무 데도 못 갑니다.
+   *
+   * 저장한 기록을 캐시에 넣어 둡니다. 로그인 화면이 온보딩을 띄울지 정할 때 보는
+   * 값이라, 비워 두면 같은 세션에서 한 번 더 물어보게 됩니다.
+   */
+  const save = useMutation({
+    mutationFn: (result: TasteMatch) =>
+      completeTasteTest({
+        picks: result.picks,
+        matchedPerfumeId: result.perfumeId,
+      }),
+    onSuccess: (record) => {
+      queryClient.setQueryData(tasteKeys.mine(), record)
+      onComplete()
+    },
+    onError: (error) => {
+      if (isApiError(error) && error.status === 409) {
+        void queryClient.invalidateQueries({ queryKey: tasteKeys.mine() })
+        onComplete()
+      }
+    },
+  })
+
+  const saveError =
+    save.isError && !(isApiError(save.error) && save.error.status === 409)
+      ? '결과를 저장하지 못했습니다. 다시 시도해주세요.'
+      : null
 
   return (
     <div className="space-y-8">
@@ -108,8 +143,15 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
       <TasteResultModal
         open={match !== null}
         match={match}
-        onRetry={() => setMatch(null)}
-        onConfirm={onComplete}
+        /* 저장하는 중에는 계열 선택 화면으로 돌아가지 못하게 둡니다 */
+        onRetry={() => {
+          if (save.isPending) return
+          save.reset()
+          setMatch(null)
+        }}
+        onConfirm={() => match && save.mutate(match)}
+        saving={save.isPending}
+        saveError={saveError}
       />
     </div>
   )

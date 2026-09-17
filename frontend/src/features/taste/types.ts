@@ -88,6 +88,31 @@ export type TasteMatchMode =
   /** n = 0 — 두 향을 함께 담은 향수가 없어 1순위 향수가 뽑혔습니다 */
   | 'NO_OVERLAP'
 
+/**
+ * 서버에 남은 취향 테스트 기록 (`GET · POST /users/me/taste-test`).
+ * 저장 직후와 조회가 같은 모양입니다.
+ *
+ * **아직 치르지 않은 사람도 200 입니다** — `completed` 가 `false` 이고 나머지가
+ * 비어 옵니다. 404 가 아니라서 화면이 "처음 온 사람" 을 오류로 다루지 않아도 됩니다.
+ *
+ * `picks` 를 `ScentFamilyKey[]` 로 좁히지 않습니다. 서버가 `scent_regions.code` 를
+ * 그대로 돌려주는 열린 값이라, 우리가 모르는 코드가 오면 타입이 거짓말을 합니다.
+ */
+export interface TasteTestRecord {
+  completed: boolean
+  /** 고른 계열. `[0]` 이 1순위입니다. 안 치렀으면 빈 배열 */
+  picks: string[]
+  /**
+   * 결과 향수. **`completed` 가 true 여도 null 일 수 있습니다** — 지도를 다시
+   * 만들면서 그 향수가 빠진 경우입니다.
+   */
+  matchedPerfumeId: number | null
+  /** 결과 향수의 지도 좌표. 0~1 스케일입니다(화면은 100배 해서 씁니다) */
+  x: number | null
+  y: number | null
+  completedAt: string | null
+}
+
 /** 취향 테스트 결과. 화면에는 문구만 쓰고, 향수 정보는 지도에서 보여줍니다. */
 export interface TasteMatch {
   /** 고른 계열. `[0]` 이 1순위입니다. */

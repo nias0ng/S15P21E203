@@ -24,7 +24,7 @@ export {
   countCandidates,
   matchStartingPoint,
 } from './match'
-export { scentVectorsQuery, tasteKeys } from './queries'
+export { myTasteTestQuery, scentVectorsQuery, tasteKeys } from './queries'
 export {
   SCENT_FAMILY_KEYS,
   type ScentFamilyKey,
@@ -33,4 +33,5 @@ export {
   type ScentWeights,
   type TasteMatch,
   type TasteMatchMode,
+  type TasteTestRecord,
 } from './types'

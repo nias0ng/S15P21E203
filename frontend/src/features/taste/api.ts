@@ -1,7 +1,13 @@
 import { http } from '@/shared/api/http'
 import { isScentFamilyKey } from '@/shared/config/scentFamilies'
 
-import type { ScentVector, ScentVectorsResponse, ScentWeights } from './types'
+import type {
+  ScentFamilyKey,
+  ScentVector,
+  ScentVectorsResponse,
+  ScentWeights,
+  TasteTestRecord,
+} from './types'
 
 /**
  * 백엔드는 **0~1 로 저장된 좌표를 그대로** 줍니다(`x` 0~1, `y` 0~0.83056).
@@ -51,4 +57,39 @@ function toScentWeights(families: Record<string, number>): ScentWeights {
   }
 
   return weights
+}
+
+/**
+ * 내 취향 테스트 기록 (TST-03). 로그인이 필요합니다.
+ *
+ * **로그인 직후 온보딩을 띄울지 여기서 정합니다.** 아직 안 치렀으면 `completed` 가
+ * false 인 200 이라, 처음 온 사람을 오류로 다루지 않아도 됩니다.
+ */
+export async function getMyTasteTest(): Promise<TasteTestRecord> {
+  const { data } = await http.get<TasteTestRecord>('/users/me/taste-test')
+  return data
+}
+
+/**
+ * 취향 테스트를 마쳤다고 남깁니다 (TST-03). 로그인이 필요합니다.
+ *
+ * `picks` 는 **순서가 순위**입니다. 첫 번째가 1순위이고, 뒤집으면 서버에 다른 취향으로
+ * 남습니다(1순위 0.58 · 2순위 0.42).
+ *
+ * `matchedPerfumeId` 는 **화면이 고른 향수**입니다. 서버는 다시 계산하지 않고 그 향수가
+ * 지도에 있는지만 확인합니다 — 코사인 유사도가 이미 화면에 있고 테스트도 거기 붙어 있어서,
+ * 자바로 한 벌 더 두면 두 결과가 갈릴 때 어느 쪽이 맞는지 가릴 근거가 없습니다.
+ *
+ * **이미 마친 사람은 409 입니다.** 한 번만 치릅니다 — 호출하는 쪽이 그 상태를 "이미 됨"
+ * 으로 받아 넘겨야 합니다.
+ */
+export async function completeTasteTest(input: {
+  picks: readonly ScentFamilyKey[]
+  matchedPerfumeId: number
+}): Promise<TasteTestRecord> {
+  const { data } = await http.post<TasteTestRecord>('/users/me/taste-test', {
+    picks: input.picks,
+    matchedPerfumeId: input.matchedPerfumeId,
+  })
+  return data
 }

@@ -1,6 +1,6 @@
 import { queryOptions } from '@tanstack/react-query'
 
-import { getScentVectors } from './api'
+import { getMyTasteTest, getScentVectors } from './api'
 
 /**
  * 쿼리 키를 한 곳에 모아둡니다.
@@ -9,7 +9,21 @@ import { getScentVectors } from './api'
 export const tasteKeys = {
   all: ['taste'] as const,
   scentVectors: () => [...tasteKeys.all, 'scent-vectors'] as const,
+  mine: () => [...tasteKeys.all, 'mine'] as const,
 }
+
+/**
+ * 내 취향 테스트 기록. **로그인 직후 온보딩을 띄울지 정하는 값**입니다.
+ *
+ * `staleTime` 을 두지 않습니다. 한 번 치르면 끝인 값이라 자주 바뀌지 않지만, 로그인한
+ * 사람이 달라지면 앞 사람의 답이 남아 있으면 안 됩니다 — 세션이 끊길 때 캐시를 비우는
+ * 쪽(`setSessionExpiredHandler`)과 맞물려 있어 여기서 오래 들고 있지 않습니다.
+ */
+export const myTasteTestQuery = () =>
+  queryOptions({
+    queryKey: tasteKeys.mine(),
+    queryFn: getMyTasteTest,
+  })
 
 /**
  * 향수 200개의 계열 벡터.
