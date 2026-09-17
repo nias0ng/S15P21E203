@@ -12,6 +12,7 @@ import com.hyanghae.backend.perfume.dto.response.PerfumeSeasonStatisticsResponse
 import com.hyanghae.backend.perfume.dto.response.PerfumeSearchResponse;
 import com.hyanghae.backend.perfume.service.PerfumeService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Pageable;
@@ -60,6 +61,14 @@ public class PerfumeController {
      * "사람들이 많이 담은 향수"라서 다른 정렬을 둘 자리가 없습니다. 같은 횟수면 향수 번호순이라
      * 페이지를 넘겨도 순서가 흔들리지 않습니다.
      */
+    @Operation(
+            summary = "향수 검색",
+            description = "조건은 모두 선택입니다. 하나도 주지 않으면 활성 향수 전체가"
+                    + " 페이지로 나갑니다. 브랜드는 이름(brand)보다 번호(brandId)를 권합니다"
+                    + " — 표기가 다른 중복 브랜드가 있어 이름은 어긋날 수 있습니다."
+                    + " ranking 을 주면 sort 는 무시됩니다."
+    )
+    @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping
     public PerfumeSearchResponse search(
             @ModelAttribute PerfumeSearchCondition condition,
@@ -90,6 +99,9 @@ public class PerfumeController {
     /**
      * 향수 향조 조회입니다. 노트와 어코드를 함께 내려줍니다.
      */
+    @Operation(summary = "향수 향조 조회", description = "노트와 어코드를 함께 돌려줍니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "404", description = "향수 없음")
     @GetMapping("/{perfumeId}/notes")
     public PerfumeNotesResponse getNotes(@PathVariable Long perfumeId) {
         return perfumeService.getNotes(perfumeId);
@@ -101,10 +113,16 @@ public class PerfumeController {
      * <p>명세의 Query Parameter 에 {@code size} 만 있지만 응답에 {@code page} 가 있어
      * {@code page} 도 받습니다. 없으면 2페이지 이후를 볼 방법이 없습니다. 검색과 같은 판단입니다.
      */
+    @Operation(summary = "관련 게시글 조회",
+            description = "이 향수가 연결된 게시글을 최신순으로 돌려줍니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "404", description = "향수 없음")
     @GetMapping("/{perfumeId}/posts")
     public PerfumePostsResponse getPosts(
             @PathVariable Long perfumeId,
+            @Parameter(description = "0부터 시작하는 페이지 번호")
             @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "페이지 크기")
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size
     ) {
         return perfumeService.getPosts(perfumeId, page, size);
@@ -125,15 +143,27 @@ public class PerfumeController {
      * 따로 세어지기 때문입니다. 그래서 화면 문구는 "향을 언급한 후기 중 몇 퍼센트"가 됩니다.
      * 향수에 달린 모든 후기를 분모로 읽으면 실제보다 큰 숫자를 말하게 됩니다.
      */
+    @Operation(
+            summary = "후기 키워드 통계 조회",
+            description = "후기에서 자주 나온 향 표현과 비중을 많이 나온 순으로 돌려줍니다."
+                    + " 백분율의 분모는 향수에 달린 전체 후기가 아니라 키워드가 하나라도"
+                    + " 뽑힌 후기 수입니다. 그래서 몇 개를 받든 각 키워드의 비율은 같습니다."
+    )
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "404", description = "향수 없음")
     @GetMapping("/{perfumeId}/review-keywords")
     public PerfumeReviewKeywordsResponse getReviewKeywords(
             @PathVariable Long perfumeId,
+            @Parameter(description = "받을 최대 개수. 페이지 크기가 아니라 상한입니다.")
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size
     ) {
         return perfumeService.getReviewKeywords(perfumeId, size);
     }
 
     /** 향수 후기 통계 조회입니다. */
+    @Operation(summary = "향수 후기 통계 조회", description = "후기 수와 평점 분포입니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "404", description = "향수 없음")
     @GetMapping("/{perfumeId}/review-statistics")
     public PerfumeReviewStatisticsResponse getReviewStatistics(@PathVariable Long perfumeId) {
         return perfumeService.getReviewStatistics(perfumeId);
@@ -145,9 +175,14 @@ public class PerfumeController {
      * <p>{@code size} 는 페이지 크기가 아니라 최대 개수입니다. 명세에 {@code page} 와
      * {@code totalElements} 가 없어 나머지를 이어서 볼 방법이 없습니다.
      */
+    @Operation(summary = "주변 향수 조회",
+            description = "향수 데이터를 넣을 때 미리 정해 둔 연관 향수입니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "404", description = "향수 없음")
     @GetMapping("/{perfumeId}/neighbors")
     public RelatedPerfumesResponse getNeighbors(
             @PathVariable Long perfumeId,
+            @Parameter(description = "받을 최대 개수. 페이지 크기가 아니라 상한입니다.")
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size
     ) {
         return perfumeService.getRelatedPerfumes(perfumeId, size);
@@ -159,21 +194,35 @@ public class PerfumeController {
      * <p>화면에서 놓이는 자리가 달라 명세가 URL 을 두 개로 나눠 두었습니다. 응답이 같으므로
      * 서비스 메서드도 같은 것을 씁니다. 나중에 근거가 갈리면 그때 나누면 됩니다.
      */
+    @Operation(summary = "유사 향수 조회",
+            description = "주변 향수와 같은 데이터를 같은 형태로 돌려줍니다."
+                    + " 화면에서 놓이는 자리가 달라 경로만 나뉘어 있습니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "404", description = "향수 없음")
     @GetMapping("/{perfumeId}/similar")
     public RelatedPerfumesResponse getSimilar(
             @PathVariable Long perfumeId,
+            @Parameter(description = "받을 최대 개수. 페이지 크기가 아니라 상한입니다.")
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size
     ) {
         return perfumeService.getRelatedPerfumes(perfumeId, size);
     }
 
     /** AI 후기 요약 조회입니다. 요약이 없으면 필드가 모두 null 입니다. */
+    @Operation(summary = "AI 후기 요약 조회",
+            description = "요약이 아직 만들어지지 않았으면 필드가 모두 null 입니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "404", description = "향수 없음")
     @GetMapping("/{perfumeId}/review-summary")
     public PerfumeReviewSummaryResponse getReviewSummary(@PathVariable Long perfumeId) {
         return perfumeService.getReviewSummary(perfumeId);
     }
 
     /** 향수 계절 통계 조회입니다. 후기가 고른 계절의 분포입니다. */
+    @Operation(summary = "향수 계절 통계 조회",
+            description = "후기 작성자가 고른 계절의 분포입니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "404", description = "향수 없음")
     @GetMapping("/{perfumeId}/season-statistics")
     public PerfumeSeasonStatisticsResponse getSeasonStatistics(@PathVariable Long perfumeId) {
         return perfumeService.getSeasonStatistics(perfumeId);
