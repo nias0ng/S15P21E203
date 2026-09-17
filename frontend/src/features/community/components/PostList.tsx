@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 
+import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { toPerfumeDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
@@ -112,6 +113,7 @@ export function PostList({
             {item.perfume && (
               <Link
                 to={toPerfumeDetail(item.perfume.perfumeId)}
+                state={perfumeViewState('COMMUNITY')}
                 className={cn(
                   'border-line-soft bg-surface-sunken hover:border-accent rounded-card',
                   // w-fit 으로 내용만큼만 차지합니다. 칸 전체를 채우면 향수 이름

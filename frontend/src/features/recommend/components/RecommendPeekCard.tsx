@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router'
 
+import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { toPerfumeDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
@@ -123,6 +124,7 @@ export function RecommendPeekCard({
           */}
           <Link
             to={toPerfumeDetail(perfumeId)}
+            state={perfumeViewState('PERSONALIZED_RECOMMENDATION')}
             className={cn(
               'block space-y-2 rounded-md p-1 text-center',
               'focus-visible:ring-accent outline-none focus-visible:ring-2',

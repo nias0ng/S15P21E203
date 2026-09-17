@@ -8,6 +8,7 @@
  * 화면: A33 향수 목록 / A09 검색 결과 / A10 상세 / A12 후기 상세
  */
 export { PerfumeFilters } from './components/PerfumeFilters'
+export { usePerfumeViewLog } from './hooks/usePerfumeViewLog'
 export { PerfumeGrid } from './components/PerfumeGrid'
 export { PerfumeNotes } from './components/PerfumeNotes'
 export { PerfumeOverview } from './components/PerfumeOverview'

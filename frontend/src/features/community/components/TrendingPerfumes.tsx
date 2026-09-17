@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 
+import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { toPerfumeDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 
@@ -29,6 +30,7 @@ export function TrendingPerfumes({ items }: Props) {
           <li key={item.perfumeId}>
             <Link
               to={toPerfumeDetail(item.perfumeId)}
+              state={perfumeViewState('COMMUNITY')}
               className={cn(
                 'hover:bg-line-soft rounded-card flex items-baseline gap-2.5 px-2.5 py-2.5',
                 'transition-colors duration-120 ease-out',

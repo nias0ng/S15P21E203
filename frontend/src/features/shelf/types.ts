@@ -64,6 +64,14 @@ export interface ShelfItem {
   brandEn?: string
   /** 영문 향수 이름 (Wood Sage & Sea Salt). 이름표를 간소화하면서 지금은 화면에 적지 않습니다 */
   nameEn?: string
+  /**
+   * 한국어 이름 (우드 세이지 앤 씨 솔트).
+   *
+   * ⚠️ **목록 응답에 아직 없습니다 — BE 에 추가를 요청해 둔 값입니다**(상세에는 이미
+   * 있습니다). 그날까지는 undefined 로 오고 이름표가 영문 이름을 그대로 적습니다.
+   * 내려주기 시작하면 이 화면은 손대지 않아도 한글로 바뀝니다. `?` 는 그때 떼세요.
+   */
+  nameKo?: string | null
   /** 부향률 (Eau de Cologne). 이름표를 간소화하면서 지금은 화면에 적지 않습니다 */
   concentration?: string
   thumbnailUrl: string | null
