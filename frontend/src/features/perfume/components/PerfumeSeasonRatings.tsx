@@ -1,3 +1,6 @@
+import { cn } from '@/shared/lib/cn'
+import { GLASS_PANEL } from '@/shared/ui/panel'
+
 import type { SeasonStatistic } from '../types'
 
 import { SeasonRatingChart } from './SeasonRatingChart'
@@ -18,8 +21,10 @@ type Props = {
  */
 export function PerfumeSeasonRatings({ seasons, isPending = false }: Props) {
   return (
-    <section className="space-y-3.75 p-6.25">
-      <h2 className="text-ink text-sm font-bold">계절별 평가</h2>
+    <section className={cn(GLASS_PANEL, 'space-y-3.75')}>
+      <h2 className="text-ink text-title font-serif font-semibold">
+        계절별 평가
+      </h2>
       {/* 불러오는 중에도 0% 도넛을 그립니다. 값만 바뀌므로 자리가 흔들리지 않습니다. */}
       <SeasonRatingChart seasons={isPending ? [] : seasons} />
     </section>

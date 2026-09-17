@@ -12,6 +12,7 @@ import {
 import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
+import { GLASS_PANEL } from '@/shared/ui/panel'
 import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
 
 /**
@@ -132,7 +133,7 @@ export default function PerfumeListPage() {
         구분선(hr)을 걷어냈습니다. 판 테두리가 이미 "여기서부터 목록" 을 긋고 있어
         선을 또 그으면 경계가 두 겹이 됩니다.
       */}
-      <section className="scent-glass rounded-[36px] p-7.5 pt-6.25">
+      <section className={GLASS_PANEL}>
         <div className="mb-6.25 flex items-baseline gap-2.5">
           {/* 글자 크기·굵기는 S15P21E203-162 타이포 스케일에서 확정합니다 */}
           <h2 className="text-ink font-serif text-2xl">
