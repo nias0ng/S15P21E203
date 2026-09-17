@@ -147,7 +147,13 @@ export async function createPost(input: PostCreateInput): Promise<number> {
   return data.postId
 }
 
-/** 글 수정 (CMT-06). 남의 글은 403, 고칠 항목이 하나도 없으면 400 입니다 */
+/**
+ * 글 수정 (CMT-06). 남의 글은 403, 고칠 항목이 하나도 없으면 400 입니다.
+ *
+ * ⚠️ **`perfumeIds` · `imageUrls` 를 보내면 그 목록으로 통째로 바뀝니다.** 더하거나
+ * 빼는 요청이 아니라 덮어쓰기라, 하나만 빼려고 그것만 빼고 보내면 나머지가 전부
+ * 지워집니다. 화면이 들고 있는 목록 전체를 보내세요(자세한 규칙은 `PostUpdateInput`).
+ */
 export async function updatePost(
   postId: number,
   input: PostUpdateInput,
