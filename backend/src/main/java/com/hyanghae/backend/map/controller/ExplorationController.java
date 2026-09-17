@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -68,7 +69,7 @@ public class ExplorationController {
     @ApiResponse(responseCode = "400", description = "향수 번호도 좌표도 없음")
     @ApiResponse(responseCode = "404", description = "지도에 없는 향수")
     @PutMapping("/exploration/me")
-    public ExplorationStateResponse move(@RequestBody ExplorationMoveRequest request) {
+    public ExplorationStateResponse move(@Valid @RequestBody ExplorationMoveRequest request) {
         return explorationService.move(request);
     }
 
