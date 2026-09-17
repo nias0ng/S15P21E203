@@ -4,7 +4,8 @@ import com.hyanghae.backend.auth.exception.AuthErrorCode;
 import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.global.exception.ErrorCode;
 import com.hyanghae.backend.global.security.CurrentUser;
-import com.hyanghae.backend.global.storage.ImageFileStorage;
+import com.hyanghae.backend.global.storage.ImageStorage;
+import com.hyanghae.backend.global.storage.ImageStorageFactory;
 import com.hyanghae.backend.global.storage.ImageStorageException;
 import com.hyanghae.backend.user.config.UserProfileImageProperties;
 import com.hyanghae.backend.user.entity.User;
@@ -36,17 +37,21 @@ public class UserProfileImageService {
 
     private static final Logger log = LoggerFactory.getLogger(UserProfileImageService.class);
 
-    private final ImageFileStorage storage;
+    private final ImageStorage storage;
     private final UserRepository userRepository;
     private final CurrentUser currentUser;
 
     public UserProfileImageService(
             UserProfileImageProperties properties,
+            ImageStorageFactory storageFactory,
             UserRepository userRepository,
             CurrentUser currentUser
     ) {
-        this.storage = new ImageFileStorage(
-                properties.rootPath(), properties.urlPath(), properties.maxSize());
+        this.storage = storageFactory.create(
+                properties.rootPath(),
+                properties.urlPath(),
+                properties.keyPrefix(),
+                properties.maxSize());
         this.userRepository = userRepository;
         this.currentUser = currentUser;
     }

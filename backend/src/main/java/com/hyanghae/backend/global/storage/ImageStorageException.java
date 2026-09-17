@@ -31,7 +31,7 @@ public class ImageStorageException extends RuntimeException {
 
     private final transient Reason reason;
 
-    ImageStorageException(Reason reason) {
+    public ImageStorageException(Reason reason) {
         super(reason.name());
         this.reason = reason;
     }

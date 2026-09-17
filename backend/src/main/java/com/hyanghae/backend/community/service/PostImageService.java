@@ -5,7 +5,8 @@ import com.hyanghae.backend.community.exception.CommunityErrorCode;
 import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.global.exception.ErrorCode;
 import com.hyanghae.backend.global.security.CurrentUser;
-import com.hyanghae.backend.global.storage.ImageFileStorage;
+import com.hyanghae.backend.global.storage.ImageStorage;
+import com.hyanghae.backend.global.storage.ImageStorageFactory;
 import com.hyanghae.backend.global.storage.ImageStorageException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,19 +25,25 @@ import org.springframework.web.multipart.MultipartFile;
  * <p>글을 지우거나 이미지를 교체할 때의 정리는 {@code PostService} 가 합니다. 어떤 주소가 아직
  * 쓰이는지는 게시글 쪽만 알 수 있습니다.
  *
- * <p>저장 규칙 자체는 {@link ImageFileStorage} 가 갖고 있습니다. 프로필 이미지와 같은 규칙을
- * 써야 하는데 따로 두면 한쪽만 느슨해집니다. 여기서는 로그인 확인과 <b>도메인 에러 코드로
- * 바꾸는 일</b>만 합니다.
+ * <p>저장 규칙 자체는 {@link ImageStorage} 가 갖고 있습니다. 서버 디스크냐 S3 냐는 설정이
+ * 정하고 이 서비스는 모릅니다. 여기서는 로그인 확인과 <b>도메인 에러 코드로 바꾸는 일</b>만 합니다.
  */
 @Service
 public class PostImageService {
 
-    private final ImageFileStorage storage;
+    private final ImageStorage storage;
     private final CurrentUser currentUser;
 
-    public PostImageService(PostImageProperties properties, CurrentUser currentUser) {
-        this.storage = new ImageFileStorage(
-                properties.rootPath(), properties.urlPath(), properties.maxSize());
+    public PostImageService(
+            PostImageProperties properties,
+            ImageStorageFactory storageFactory,
+            CurrentUser currentUser
+    ) {
+        this.storage = storageFactory.create(
+                properties.rootPath(),
+                properties.urlPath(),
+                properties.keyPrefix(),
+                properties.maxSize());
         this.currentUser = currentUser;
     }
 

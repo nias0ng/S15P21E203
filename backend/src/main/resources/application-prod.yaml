@@ -65,6 +65,28 @@ management:
 # 켜기 전에 GMS_API_KEY 를 배포 디렉터리의 .env 에 넣어야 합니다. 키 없이 켜면 애플리케이션이
 # 시작되지 않습니다. 매 주기마다 401 을 받으며 도는 것보다 배포 시점에 실패하는 편이 낫습니다.
 hyanghae:
+  # 업로드 이미지를 어디에 쌓을지입니다. 기본은 꺼짐(서버 디스크)이고, 인프라 준비가 끝나면
+  # 배포 디렉터리의 .env 에 아래 값을 넣어 켭니다. 코드 배포 없이 전환됩니다.
+  #
+  #   IMAGE_STORAGE_S3_ENABLED=true
+  #   IMAGE_STORAGE_S3_BUCKET=...
+  #   IMAGE_STORAGE_S3_REGION=ap-northeast-2
+  #   IMAGE_STORAGE_S3_PUBLIC_BASE_URL=https://djpgc0m2v54q1.cloudfront.net
+  #
+  # ⚠ 켜기 전에 확인할 것이 둘입니다. 필요한 값이 비어 있으면 애플리케이션이 시작되지 않고,
+  # 자격 증명(EC2 인스턴스 역할 또는 AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY)이 없으면 첫
+  # 업로드에서 실패합니다.
+  #
+  # ⚠ public-base-url 은 CloudFront 주소입니다. S3 객체 주소를 넣으면 버킷이 CloudFront 만
+  # 읽도록 잠겨 있어 사용자가 403 을 받습니다. 자세한 절차는
+  # docs/image-upload-s3-handover.md 를 보십시오.
+  storage:
+    s3:
+      enabled: ${IMAGE_STORAGE_S3_ENABLED:false}
+      bucket: ${IMAGE_STORAGE_S3_BUCKET:}
+      region: ${IMAGE_STORAGE_S3_REGION:}
+      public-base-url: ${IMAGE_STORAGE_S3_PUBLIC_BASE_URL:}
+
   auth:
     jwt-secret: ${JWT_SECRET}
     cookie:

@@ -1,6 +1,7 @@
 package com.hyanghae.backend.community.config;
 
 import java.time.Duration;
+import com.hyanghae.backend.global.storage.ImageStorageFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.CacheControl;
@@ -34,13 +35,20 @@ public class PostImageWebConfig implements WebMvcConfigurer {
     private static final Duration CACHE_DURATION = Duration.ofDays(30);
 
     private final PostImageProperties properties;
+    private final ImageStorageFactory storageFactory;
 
-    public PostImageWebConfig(PostImageProperties properties) {
+    public PostImageWebConfig(PostImageProperties properties, ImageStorageFactory storageFactory) {
         this.properties = properties;
+        this.storageFactory = storageFactory;
     }
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // S3 에 쌓는 환경에서는 CloudFront 가 내주므로 여기서 할 일이 없습니다. 그래도
+        // 등록하면 쓰지도 않을 로컬 디렉터리를 만들게 됩니다.
+        if (storageFactory.usesS3()) {
+            return;
+        }
         registry.addResourceHandler(properties.urlPath() + "/**")
                 .addResourceLocations(location())
                 .setCacheControl(CacheControl.maxAge(CACHE_DURATION).cachePublic());

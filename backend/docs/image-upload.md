@@ -3,9 +3,9 @@
 올라온 이미지 파일을 서버에 저장하고 주소로 돌려주는 기능입니다. 지금 쓰는 곳은 둘입니다 —
 **게시글 이미지**와 **프로필 사진**. 이 문서의 모든 상대 경로는 `backend/`를 기준으로 합니다.
 
-저장 규칙(형식 판별 · 이름 짓기 · 경로 탈출 방어)은 `global/storage/ImageFileStorage` 가
-공통으로 갖고 있습니다. **어디에 쌓을지, 얼마까지 받을지, 무엇을 에러로 부를지는 도메인마다
-다릅니다.**
+저장 규칙(형식 판별 · 이름 짓기 · 경로 탈출 방어)은 `global/storage/ImageStorage` 가 공통으로
+갖고 있습니다. **어디에 쌓을지, 얼마까지 받을지, 무엇을 에러로 부를지는 도메인마다
+다릅니다.** 실제로 쌓는 곳은 환경에 따라 서버 디스크 또는 S3 입니다(§4).
 
 ## 1. 두 기능의 차이
 
@@ -16,6 +16,7 @@
 | 저장 자리 | `post_images` 테이블 | `users.profile_image_url` 컬럼 |
 | 크기 제한 | 5MB | 1MB |
 | 조회 권한 | 로그인 불필요 | 로그인 불필요 |
+| S3 키 앞부분 | `uploads/posts` | `uploads/profiles` |
 
 **게시글만 2단계인 이유는 순서입니다.** 글이 만들어지기 전에 미리보기를 보여줘야 하는데 그
 시점에는 이미지를 매달 글이 없습니다. 프로필은 매달 사용자가 이미 있어 나눌 이유가 없고,
@@ -92,17 +93,46 @@ XML 이고, 시그니처가 없어 내용으로 걸러낼 수도 없습니다.
 
 ## 4. 저장 위치와 설정
 
+**뒷단이 둘입니다.** 설정 한 줄로 갈립니다.
+
+| | 서버 디스크 (기본) | S3 + CloudFront |
+| --- | --- | --- |
+| 쓰는 곳 | 로컬 개발 · 테스트 | 운영 |
+| 돌려주는 주소 | `/api/v1/posts/images/...` | `https://djpgc0m2v54q1.cloudfront.net/uploads/posts/...` |
+| 내주는 주체 | 백엔드 리소스 핸들러 | CloudFront |
+| 구현 | `LocalImageStorage` | `S3ImageStorage` |
+
+로컬과 테스트가 AWS 없이 돌아야 해서 기본이 서버 디스크입니다. 고르는 판단은
+`ImageStorageFactory` 한 곳에 있고, 도메인 서비스는 어느 쪽인지 모릅니다.
+
 | 키 | 기본값 |
 | --- | --- |
-| `hyanghae.community.post-image.directory` | `uploads/posts` |
+| `hyanghae.storage.s3.enabled` | `false` |
+| `hyanghae.storage.s3.bucket` · `.region` · `.public-base-url` | 비어 있음 (켜면 필수) |
+| `hyanghae.storage.s3.cache-control` | `public, max-age=2592000` |
+| `hyanghae.community.post-image.directory` · `.key-prefix` | `uploads/posts` |
 | `hyanghae.community.post-image.url-path` | `/api/v1/posts/images` |
 | `hyanghae.community.post-image.max-size` | `5MB` |
-| `hyanghae.user.profile-image.directory` | `uploads/profiles` |
+| `hyanghae.user.profile-image.directory` · `.key-prefix` | `uploads/profiles` |
 | `hyanghae.user.profile-image.url-path` | `/api/v1/users/profile-images` |
 | `hyanghae.user.profile-image.max-size` | `1MB` |
 | `spring.servlet.multipart.max-file-size` | `8MB` |
 
 기본값은 각 `*Properties` 에 있습니다. yaml 에는 바꿀 값만 적습니다.
+
+**S3 를 켜는 절차와 인프라 요구 사항은 [S3 전환 인계 문서](image-upload-s3-handover.md)에
+있습니다.** 켤 때 주의할 것 둘: 필요한 값이 비어 있으면 애플리케이션이 시작되지 않고,
+`public-base-url` 에 S3 객체 주소를 넣으면 버킷이 CloudFront 만 읽도록 잠겨 있어 사용자가
+403 을 받습니다.
+
+### S3 모드에서 달라지는 것
+
+* 객체마다 `Content-Type` 을 **명시적으로** 넣습니다. S3 는 확장자로 타입을 추론하지 않아,
+  넣지 않으면 `binary/octet-stream` 으로 저장되고 브라우저가 이미지를 그리는 대신 내려받기를
+  시작합니다. 타입은 보낸 헤더가 아니라 **파일 내용에서 알아낸 형식**에서 옵니다.
+* 리소스 핸들러를 등록하지 않습니다. CloudFront 가 내주므로 할 일이 없고, 등록하면 쓰지도
+  않을 로컬 디렉터리를 만들게 됩니다.
+* 업로드 디렉터리 볼륨(§5)이 필요 없습니다.
 
 **⚠ 두 저장소의 `directory` 가 겹치면 안 됩니다.** 같은 트리를 둘이 함께 보면 게시글 주소로
 프로필 파일을 가리킬 수 있게 되고, 그 글을 지우는 것만으로 남의 프로필 사진이 지워집니다.
@@ -127,7 +157,7 @@ XML 이고, 시그니처가 없어 내용으로 걸러낼 수도 없습니다.
 `UserProfileImageWebConfig`). 그래서 Swagger 에는 올리는 쪽만 나옵니다. 받은 주소로 GET 하면
 로그인 없이 이미지가 나오고, HEAD 로 크기와 형식만 확인할 수도 있습니다.
 
-## 5. ⚠ 배포 서버에서 해야 하는 일
+## 5. ⚠ 배포 서버에서 해야 하는 일 (서버 디스크 모드일 때만)
 
 **저장 디렉터리는 컨테이너 안에 있습니다. 볼륨을 붙이지 않으면 다음 배포에서 그동안 올라온
 이미지가 전부 사라지고 게시글과 프로필에는 깨진 주소만 남습니다.**
@@ -205,21 +235,23 @@ docker system df -v | grep uploaded-images
   자신에게 그칩니다.
 - **빈 디렉터리**: 파일을 지워도 날짜 디렉터리는 남습니다. 개수가 달마다 하나씩 늘 뿐이라
   그대로 둡니다.
-- **서버가 하나라는 전제**: 파일이 그 서버의 디스크에 있으므로 백엔드를 여러 대로 늘리면
-  A 에 올린 이미지를 B 가 내주지 못합니다. 늘릴 때는 저장소를 먼저 옮겨야 합니다.
+- **서버가 하나라는 전제 (서버 디스크 모드만)**: 파일이 그 서버의 디스크에 있으므로 백엔드를
+  여러 대로 늘리면 A 에 올린 이미지를 B 가 내주지 못합니다. **S3 모드에는 해당하지
+  않습니다.**
 - **리사이징이 없습니다**: 올린 원본을 그대로 저장합니다. 넣으려면 이미지를 디코딩해야 하는데
   표준 `ImageIO` 는 WebP 를 못 읽어, WebP 를 포기하거나 라이브러리를 추가해야 합니다.
 
-## 8. 나중에 옮길 때
+## 8. 전환할 때 주의할 것
 
-- **nginx 가 직접 내주게 하기**: 같은 경로를 nginx 가 디스크에서 바로 내주도록 가로챕니다.
-  저장된 주소는 그대로 두고 앞단만 바뀌므로 데이터는 손댈 필요가 없습니다.
-- **S3 같은 외부 저장소로 옮기기**: `ImageFileStorage` 의 저장 부분과 `url-path` 만 바꾸면
-  두 기능이 함께 옮겨집니다. `PostService` 와 `User` 는 주소 문자열만 알고 있어 바뀌지
-  않습니다. **이미 저장된 주소는 옛 경로 그대로이므로, 옮긴 뒤에도 그 주소가 계속 닿는지
-  확인해야 합니다.**
+서버 디스크에서 S3 로 바꾸면 **새로 올라오는 것만** S3 로 갑니다. 이미 DB 에 저장된
+`/api/v1/...` 주소는 그대로이고, 리소스 핸들러가 등록되지 않아 **더 이상 닿지 않습니다.**
+
+그래서 **업로드 기능이 운영에 나가기 전에 전환을 끝내는 편이 훨씬 간단합니다.** 아직 사용자
+데이터가 없으면 옮길 것이 없습니다. 이미 쌓인 뒤라면 파일을 S3 로 올리고 DB 의 주소도 함께
+바꿔야 합니다.
 
 ## 9. 참고 문서
 
+- [S3 전환 인계 문서](image-upload-s3-handover.md)
 - [백엔드 개발 가이드라인](backend-development-guidelines.md)
 - [운영 모니터링 및 Grafana 사용 가이드](operational-logging.md)
