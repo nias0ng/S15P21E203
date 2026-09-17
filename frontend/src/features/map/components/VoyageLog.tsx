@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 
+import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 
@@ -250,6 +251,7 @@ function VoyageLogBody({ entries, status }: Props) {
                     <li key={perfume.perfumeId}>
                       <Link
                         to={toPerfumeDetail(perfume.perfumeId)}
+                        state={perfumeViewState('SCENT_MAP')}
                         className="text-caption text-surface/95 hover:text-surface block truncate transition-colors duration-120 ease-out"
                       >
                         {perfume.name}

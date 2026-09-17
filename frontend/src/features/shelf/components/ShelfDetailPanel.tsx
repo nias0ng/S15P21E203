@@ -1,3 +1,7 @@
+import { Link } from 'react-router'
+
+import { perfumeViewState } from '@/shared/config/perfumeViewSource'
+import { toPerfumeDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { StarRating } from '@/shared/ui/StarRating'
@@ -200,9 +204,10 @@ export function ShelfDetailPanel({
             </p>
 
             {/*
-              시안은 영문 이름을 크게 적고 그 아래 국문 이름을 한 줄 답니다. 영문 이름은
-              백엔드가 아직 주지 않아 없을 수 있으므로, 없으면 국문 이름 한 줄만 크게
-              적습니다 — 빈 줄을 남기지 않습니다.
+              **국문 이름을 크게 적고 그 아래 영문 이름을 한 줄 답니다.** 시안은 반대로
+              영문을 크게 적었는데, 백엔드가 주는 `name` 이 영문이고 `nameKo` 가 국문이라
+              읽는 사람에게 익숙한 쪽을 위로 올렸습니다. 국문 이름이 없는 향수는 영문
+              한 줄만 크게 적습니다 — 빈 줄을 남기지 않습니다.
 
               향수명은 활자 스케일의 display(28px)입니다. title(20px)로 적어 두고
               "시안 실측과 같다" 고 믿고 있었는데, 시안을 카드 폭 기준으로 다시 재 보니
@@ -212,18 +217,41 @@ export function ShelfDetailPanel({
               제목 단계가 달라지기 때문입니다. 대신 aside 에 aria-label 을 달아
               낭독기가 영역을 찾을 수 있게 했습니다.
             */}
-            <p className="text-display font-serif leading-tight font-semibold">
-              {item.nameEn ? (
-                <span aria-hidden lang="en">
-                  {item.nameEn}
-                </span>
-              ) : (
-                item.name
+            {/*
+              이름을 누르면 향수 상세(A10)로 갑니다. 진열대에서 상세로 가는 유일한
+              길이라 **두 줄을 한 링크로 묶습니다** — 영문 이름은 국문을 되풀이하는
+              장식이라 낭독기에서 빼 두었고(aria-hidden), 그 줄만 링크로 만들면
+              낭독기가 이름 없는 링크를 읽게 됩니다. 국문 줄을 함께 감싸야 링크에
+              이름이 생깁니다(영문 이름이 없는 향수는 큰 줄 자체가 국문입니다).
+            */}
+            <Link
+              to={toPerfumeDetail(item.perfumeId)}
+              state={perfumeViewState('SHELF')}
+              className={cn(
+                'flex flex-col items-start gap-1.25 rounded-md',
+                'hover:underline hover:underline-offset-4',
+                FOCUS_RING,
               )}
-            </p>
-            {item.nameEn && (
-              <p className="shelf-muted text-body">{item.name}</p>
-            )}
+            >
+              {/*
+                영문 이름은 브랜드 바로 밑에 붙습니다 — 브랜드와 한 덩이로 읽히고,
+                크게 적는 국문 이름이 그 아래에서 제목 노릇을 합니다.
+
+                같은 향수를 한 번 더 부르는 줄이라 낭독기에서 뺍니다. 링크 이름은
+                아래 국문 한 줄로 잡힙니다(이름표 · 향수 카드와 같은 규칙).
+              */}
+              {item.nameKo && (
+                <span className="shelf-muted text-body" aria-hidden lang="en">
+                  {item.name}
+                </span>
+              )}
+              <span
+                className="text-display font-serif leading-tight font-semibold"
+                lang={item.nameKo ? undefined : 'en'}
+              >
+                {item.nameKo ?? item.name}
+              </span>
+            </Link>
           </div>
 
           {/*

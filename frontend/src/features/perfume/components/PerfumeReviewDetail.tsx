@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
 import { isApiError } from '@/shared/api/http'
+import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
@@ -68,7 +69,16 @@ export function PerfumeReviewDetail({
   return (
     <article className="border-line bg-surface-card border">
       <div className="space-y-3.75 p-6.25">
-        <LinkButton to={backTo} variant="outline" size="sm">
+        {/*
+          후기를 읽다 향수로 건너가는 길입니다 — 들어온 길은 늘 커뮤니티입니다
+          (후기 게시판 · 향수 상세의 후기 목록 어느 쪽에서 왔든 읽던 것은 후기입니다).
+        */}
+        <LinkButton
+          to={backTo}
+          state={perfumeViewState('COMMUNITY')}
+          variant="outline"
+          size="sm"
+        >
           ← {review.perfume.name}
         </LinkButton>
 
