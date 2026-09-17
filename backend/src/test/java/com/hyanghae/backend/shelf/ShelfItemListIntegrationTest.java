@@ -99,6 +99,30 @@ class ShelfItemListIntegrationTest {
      * <p>일반 이미지를 1번, 종이 질감을 2번으로 심습니다 — 실제 적재와 같은 순서라, 종류를
      * 보지 않으면 일반 이미지가 나옵니다.
      */
+    /**
+     * 진열대 벽의 이름표가 <b>한국어</b>로 적힙니다. 목록에 한국어명이 없으면 화면이 항목마다
+     * 상세를 불러야 하는데, 한 화면에 병이 최대 25개라 요청이 25번 나갑니다.
+     *
+     * <p>한국어명이 없는 향수는 {@code null} 이고 화면이 영문명을 그대로 적습니다. 인계
+     * 데이터에 한국어명이 아직 없는 향수가 많습니다.
+     */
+    @Test
+    void servesKoreanNameInTheList() throws Exception {
+        jdbcTemplate.update("UPDATE perfumes SET name_ko = ? WHERE perfume_id = 1", "블루 드 샤넬");
+
+        fakeCurrentUser.login(LOGGED_IN_USER);
+
+        mockMvc.perform(get(URL).param("category", "OWNED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
+                .andExpect(jsonPath("$.perfumes[0].name").value("First Scent"))
+                .andExpect(jsonPath("$.perfumes[0].nameKo").value("블루 드 샤넬"))
+                // 브랜드는 영문 그대로입니다. 이름표가 브랜드를 영문으로 적습니다.
+                .andExpect(jsonPath("$.perfumes[0].brand").value("Test Brand"))
+                // 한국어명이 없는 향수는 null 입니다.
+                .andExpect(jsonPath("$.perfumes[1].nameKo").doesNotExist());
+    }
+
     @Test
     void servesPaperTextureImageOnTheShelf() throws Exception {
         jdbcTemplate.update("DELETE FROM perfume_images");
@@ -195,6 +219,17 @@ class ShelfItemListIntegrationTest {
                 "INSERT INTO brands (brand_id, name, is_active) VALUES (?, ?, true)",
                 id,
                 name
+        );
+    }
+
+    private void insertPerfume(long id, long brandId, String name, String nameKo) {
+        jdbcTemplate.update(
+                "INSERT INTO perfumes (perfume_id, brand_id, name, name_ko, is_active) "
+                        + "VALUES (?, ?, ?, ?, true)",
+                id,
+                brandId,
+                name,
+                nameKo
         );
     }
 

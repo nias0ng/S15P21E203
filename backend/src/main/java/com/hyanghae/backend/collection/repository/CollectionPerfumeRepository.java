@@ -57,6 +57,7 @@ public interface CollectionPerfumeRepository
                        up.id,
                        p.id,
                        p.name,
+                       p.nameKo,
                        b.name
                    )
             FROM CollectionPerfume cp

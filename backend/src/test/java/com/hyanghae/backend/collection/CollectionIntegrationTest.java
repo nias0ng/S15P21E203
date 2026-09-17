@@ -66,6 +66,27 @@ class CollectionIntegrationTest {
                 .andExpect(jsonPath("$.paths['/api/v1/users/me/collections/{collectionId}/perfumes/{shelfItemId}'].delete").exists());
     }
 
+    /**
+     * 컬렉션 상세의 향수 카드도 한국어 이름을 적습니다. 진열대 목록과 같은 모양이라,
+     * 같은 향수가 화면마다 다르게 오지 않습니다.
+     *
+     * <p>한국어명이 없는 향수는 null 이고 화면이 영문명을 그대로 적습니다.
+     */
+    @Test
+    void servesKoreanNameInCollectionDetail() throws Exception {
+        jdbc.update("UPDATE perfumes SET name_ko = ? WHERE perfume_id = 1", "첫 번째 향수");
+        long collectionId = create("한국어명");
+
+        // create() 가 shelfItemIds [2, 1] 순서로 담으므로 2번 향수가 먼저입니다.
+        mvc.perform(get(URL + "/" + collectionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(2))
+                .andExpect(jsonPath("$.perfumes[0].nameKo").doesNotExist())
+                .andExpect(jsonPath("$.perfumes[1].perfumeId").value(1))
+                .andExpect(jsonPath("$.perfumes[1].name").value("First"))
+                .andExpect(jsonPath("$.perfumes[1].nameKo").value("첫 번째 향수"));
+    }
+
     @Test
     void addsAndRemovesCollectionPerfume() throws Exception {
         long collectionId = create("addition");
