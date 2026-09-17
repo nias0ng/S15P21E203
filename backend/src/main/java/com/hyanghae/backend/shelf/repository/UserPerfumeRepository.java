@@ -50,6 +50,7 @@ public interface UserPerfumeRepository extends JpaRepository<UserPerfume, Long> 
                                up.id,
                                p.id,
                                p.name,
+                               p.nameKo,
                                b.name,
                                up.ownershipStatus,
                                CASE WHEN up.representative = true THEN true ELSE false END

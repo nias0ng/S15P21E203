@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import { useParams } from 'react-router'
+import { useLocation, useParams } from 'react-router'
 
 import {
   perfumeDetailQuery,
@@ -14,6 +14,7 @@ import {
   perfumeReviewSummaryQuery,
   PerfumeSeasonRatings,
   perfumeSeasonStatisticsQuery,
+  usePerfumeViewLog,
 } from '@/features/perfume'
 // 진열대 저장은 진열대 도메인의 어휘입니다. 화면에서 두 도메인을 조합합니다.
 import {
@@ -22,6 +23,7 @@ import {
   useShelfActions,
 } from '@/features/shelf'
 import { isApiError } from '@/shared/api/http'
+import { readPerfumeViewState } from '@/shared/config/perfumeViewSource'
 import { toPerfumeDetail } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
 import { useIsLoggedIn } from '@/shared/store/authStore'
@@ -49,6 +51,14 @@ export default function PerfumeDetailPage() {
   const { perfumeId } = useParams<{ perfumeId: string }>()
   const numericId = Number(perfumeId)
   const enabled = Number.isFinite(numericId)
+
+  /*
+    들어온 길은 **보낸 쪽이 실어 줍니다.** 이 화면은 자기가 어디서 불렸는지 모릅니다.
+    주소를 복사해 열거나 새로 고치면 state 가 비어 `DIRECT` 가 됩니다.
+  */
+  const { state } = useLocation()
+  const { source, fromPerfumeId } = readPerfumeViewState(state)
+  usePerfumeViewLog(numericId, source, fromPerfumeId)
 
   const [shelfOpen, setShelfOpen] = useState(false)
   const [loginOpen, setLoginOpen] = useState(false)
@@ -154,6 +164,7 @@ export default function PerfumeDetailPage() {
         onPageChange={setReviewPage}
         isPending={reviews.isPending}
         myReviewId={data.myReviewId}
+        perfumeId={numericId}
       />
 
       {/*

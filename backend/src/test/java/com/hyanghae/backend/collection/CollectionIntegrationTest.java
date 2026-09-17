@@ -66,6 +66,50 @@ class CollectionIntegrationTest {
                 .andExpect(jsonPath("$.paths['/api/v1/users/me/collections/{collectionId}/perfumes/{shelfItemId}'].delete").exists());
     }
 
+    /**
+     * 컬렉션 상세의 향수 카드도 한국어 이름을 적습니다. 진열대 목록과 같은 모양이라,
+     * 같은 향수가 화면마다 다르게 오지 않습니다.
+     *
+     * <p>한국어명이 없는 향수는 null 이고 화면이 영문명을 그대로 적습니다.
+     */
+    @Test
+    void servesKoreanNameInCollectionDetail() throws Exception {
+        jdbc.update("UPDATE perfumes SET name_ko = ? WHERE perfume_id = 1", "첫 번째 향수");
+        long collectionId = create("한국어명");
+
+        // create() 가 shelfItemIds [2, 1] 순서로 담으므로 2번 향수가 먼저입니다.
+        mvc.perform(get(URL + "/" + collectionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(2))
+                .andExpect(jsonPath("$.perfumes[0].nameKo").doesNotExist())
+                .andExpect(jsonPath("$.perfumes[1].perfumeId").value(1))
+                .andExpect(jsonPath("$.perfumes[1].name").value("First"))
+                .andExpect(jsonPath("$.perfumes[1].nameKo").value("첫 번째 향수"));
+    }
+
+    /**
+     * 컬렉션 상세에서도 한국어 이름이 없으면 <b>키는 있고 값만 {@code null}</b> 입니다.
+     *
+     * <p>jsonPath 의 {@code doesNotExist()} 는 "키가 없음" 과 "값이 null" 을 구분하지 못합니다.
+     * 직렬화 형태가 바뀌어도 그 단언은 계속 통과하므로 여기서 실제 모양을 봅니다.
+     */
+    @Test
+    void serializesMissingKoreanNameAsExplicitNull() throws Exception {
+        long collectionId = create("한국어명 없음");
+
+        String body = mvc.perform(get(URL + "/" + collectionId))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+
+        com.fasterxml.jackson.databind.JsonNode first =
+                mapper.readTree(body).get("perfumes").get(0);
+
+        assertThat(first.has("nameKo")).as("키 자체는 있어야 합니다").isTrue();
+        assertThat(first.get("nameKo").isNull()).as("값은 null 이어야 합니다").isTrue();
+    }
+
     @Test
     void addsAndRemovesCollectionPerfume() throws Exception {
         long collectionId = create("addition");

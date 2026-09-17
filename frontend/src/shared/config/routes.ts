@@ -44,7 +44,14 @@ export const ROUTES = {
    * 할 수 있어 나중에 보호 라우트를 붙일 자리가 필요합니다.
    */
   REVIEW_EDIT: '/community/reviews/:reviewId/edit',
-  POST_WRITE: '/community/free/write', // A24b 자유 글 작성 · 수정
+  POST_WRITE: '/community/free/write', // A24b 자유 글 작성
+  /**
+   * A24b 자유 글 수정. 작성과 **같은 화면**(`PostWritePage`)을 쓰고 주소만 다릅니다.
+   *
+   * 후기 수정(`REVIEW_EDIT`)과 같은 방식입니다 — 쓰는 칸과 규칙이 같아 화면을 나누면
+   * 한쪽만 고쳐집니다.
+   */
+  POST_EDIT: '/community/free/:postId/edit',
 
   // 계정 (에픽 115) — 마이페이지는 없고 헤더 닉네임 ▾ 에서 바로 들어갑니다
   LOGIN: '/login', // A28 로그인
@@ -66,3 +73,5 @@ export const toPostDetail = (postId: number | string) =>
   `/community/posts/${postId}`
 export const toReviewEdit = (reviewId: number | string) =>
   `/community/reviews/${reviewId}/edit`
+export const toPostEdit = (postId: number | string) =>
+  `/community/free/${postId}/edit`

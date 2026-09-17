@@ -1,6 +1,7 @@
 package com.hyanghae.backend.perfume.service;
 
 import com.hyanghae.backend.global.exception.BusinessException;
+import com.hyanghae.backend.perfume.dto.response.NoteDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.NoteSummaryResponse;
 import com.hyanghae.backend.perfume.dto.response.NotesResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSearchResponse;
@@ -58,7 +59,7 @@ public class NoteService {
 
     /** 노트 하나입니다. 내려갔거나 없는 노트는 404 입니다. */
     @Transactional(readOnly = true)
-    public NoteSummaryResponse findById(Long noteId) {
+    public NoteDetailResponse findById(Long noteId) {
         return noteRepository.findActiveById(noteId)
                 .orElseThrow(() -> new BusinessException(PerfumeErrorCode.PERFUME_NOTE_NOT_FOUND));
     }

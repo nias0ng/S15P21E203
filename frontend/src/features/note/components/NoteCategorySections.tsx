@@ -6,17 +6,24 @@ import { Skeleton } from '@/shared/ui/Skeleton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 import { TileCard } from '@/shared/ui/TileCard'
 
+import { groupByAccordFamily } from '../grouping'
 import type { Note } from '../types'
 
 type Props = {
   notes: Note[]
   isPending?: boolean
-  /** 0건 안내 아래 버튼. 검색어로 걸러 0건이 된 경우 [초기화] 를 답니다. */
+  /** 0건 안내 아래 버튼. 검색어·대분류로 걸러 0건이 된 경우 [초기화] 를 답니다. */
   emptyAction?: React.ReactNode
 }
 
-/** 대분류가 비어 있는 노트도 있습니다. 묶어서 맨 뒤에 둡니다 */
-const UNCATEGORIZED = '기타'
+/**
+ * 유리판 하나. 향수 목록(A33) · 브랜드(A34)의 판과 **같은 모서리 · 같은 패딩**입니다.
+ *
+ * 그 두 화면은 판이 하나뿐이라 화면 파일에 직접 적혀 있는데, 노트는 대분류마다
+ * 한 장씩 열한 장이 나옵니다. 값을 여기 한 번만 적어 스켈레톤과 실제 판이 같은
+ * 크기로 서게 합니다 — 다르면 노트가 도착하는 순간 판이 커졌다 작아집니다.
+ */
+const GLASS = 'scent-glass rounded-[36px] p-7.5 pt-6.25'
 
 /**
  * 대분류별 노트 섹션 (와이어프레임 A35)
@@ -24,11 +31,15 @@ const UNCATEGORIZED = '기타'
  * 와이어프레임 주석: "대분류(CITRUS · WOOD · FLORAL …)로 묶어 세로로 쌓는다 —
  * 대분류 순서는 고정".
  *
+ * **대분류마다 유리판 한 장입니다.** 향수·브랜드는 격자 하나를 판 한 장에 얹지만,
+ * 노트는 묶음이 여럿이라 한 판에 다 넣으면 판이 화면보다 길어져 "떠 있는 판" 으로
+ * 안 읽힙니다. 판을 끊으면 그 사이로 어두운 방이 보여 층이 살아납니다.
+ *
  * **고정 목록을 두지 않고 받은 순서를 끊습니다.** 대분류는 백엔드가 원본 파일의
  * 코드를 그대로 내보내는 열린 문자열이라, 화면이 목록을 들고 있으면 새 값이 생긴
  * 날 그 노트들이 조용히 사라집니다(목록에 없는 대분류는 어느 섹션에도 안 걸립니다).
  * 응답이 이미 대분류 순 · 인기 순으로 오므로 대분류가 바뀌는 자리에서 끊으면
- * 순서도 고정이고 새 값도 제 자리에 그려집니다.
+ * 순서도 고정이고 새 값도 제 자리에 그려집니다. 묶는 규칙은 `../grouping` 에 있습니다.
  */
 export function NoteCategorySections({
   notes,
@@ -39,10 +50,10 @@ export function NoteCategorySections({
 
   if (isPending) {
     return (
-      <div className="space-y-6.25">
+      <div className="space-y-7.5">
         {Array.from({ length: 2 }, (_, section) => (
-          <div key={section} className="space-y-2.5">
-            <Skeleton className="h-5 w-23.75" />
+          <div key={section} className={GLASS}>
+            <Skeleton className="mb-6.25 h-6 w-23.75" />
             <div className="grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-5">
               {/*
                 카드와 같은 틀 · 같은 사진 비율이어야 노트가 도착할 때 격자가 안
@@ -70,7 +81,7 @@ export function NoteCategorySections({
     return (
       <EmptyState
         title="노트를 찾지 못했습니다"
-        description="노트명을 다시 확인해 주세요."
+        description="다른 이름으로 검색해보세요."
         action={emptyAction}
       />
     )
@@ -79,10 +90,18 @@ export function NoteCategorySections({
   return (
     <div className="space-y-7.5">
       {sections.map((section) => (
-        <section key={section.family} className="space-y-2.5">
-          <h2 className="text-ink text-title font-serif font-semibold">
-            {section.family}
-          </h2>
+        <section key={section.family} className={GLASS}>
+          {/*
+            판 머리는 브랜드 판과 같은 형식입니다 — 이름 옆에 개수 한 줄.
+            상단 메뉴로 두 화면을 오갈 때 같은 자리에서 같은 크기로 읽힙니다.
+          */}
+          <div className="mb-6.25 flex items-baseline gap-2.5">
+            <h2 className="text-ink font-serif text-2xl">{section.family}</h2>
+            <span className="text-ink-muted text-caption">
+              {section.notes.length}개
+            </span>
+          </div>
+
           <ul className="grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-5">
             {section.notes.map((note) => (
               <li key={note.noteId}>
@@ -115,25 +134,4 @@ export function NoteCategorySections({
       ))}
     </div>
   )
-}
-
-/**
- * 받은 순서 그대로 대분류가 바뀌는 자리에서 끊습니다.
- *
- * 같은 대분류가 목록에서 떨어져 두 번 나오면 섹션도 둘이 됩니다. 응답이 대분류 순
- * 정렬이라 실제로는 생기지 않지만, 그렇게 되는 편이 **순서가 흐트러진 것을 화면에서
- * 보이게** 합니다 — 몰래 합치면 정렬이 깨진 줄 모르고 넘어갑니다.
- */
-function groupByAccordFamily(notes: Note[]) {
-  const sections: { family: string; notes: Note[] }[] = []
-
-  for (const note of notes) {
-    const family = note.accordFamily ?? UNCATEGORIZED
-    const last = sections.at(-1)
-
-    if (last?.family === family) last.notes.push(note)
-    else sections.push({ family, notes: [note] })
-  }
-
-  return sections
 }

@@ -1,4 +1,4 @@
-import { Link } from 'react-router'
+import { Link, type LinkProps } from 'react-router'
 
 import { cn } from '@/shared/lib/cn'
 import { BottleSilhouette } from '@/shared/ui/BottleSilhouette'
@@ -31,6 +31,13 @@ type PerfumeCardProps = {
   thumbnailUrl?: string | null
   /** 카드를 누르면 갈 곳. 없으면 링크가 아닌 그냥 카드가 됩니다. */
   to?: string
+  /**
+   * 이동할 때 함께 실어 보낼 값(react-router `Link` 의 state).
+   *
+   * 향수 상세가 **들어온 길**을 여기서 받습니다(`perfumeViewState`). 카드는 그 뜻을
+   * 모르고 그대로 전달만 합니다 — 도메인을 아는 것은 부르는 쪽입니다.
+   */
+  state?: LinkProps['state']
   className?: string
 }
 
@@ -72,6 +79,7 @@ export function PerfumeCard({
   rank,
   thumbnailUrl,
   to,
+  state,
   className,
 }: PerfumeCardProps) {
   const body = (
@@ -237,6 +245,7 @@ export function PerfumeCard({
       {to ? (
         <Link
           to={to}
+          state={state}
           data-slot="card"
           className={cn(
             shell,

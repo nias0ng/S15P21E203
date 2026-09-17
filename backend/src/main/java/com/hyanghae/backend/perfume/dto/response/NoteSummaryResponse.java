@@ -3,10 +3,11 @@ package com.hyanghae.backend.perfume.dto.response;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
- * 노트 한 개입니다. 목록과 상세가 같은 모양을 씁니다.
+ * 노트 목록의 한 개입니다.
  *
- * <p>상세에 더 담을 값이 없어서입니다. 설명(description)이 표에 없고, 화면도 이름·대분류·이미지만
- * 그립니다. 나중에 설명이 생기면 상세용 record 를 따로 두면 됩니다.
+ * <p><b>설명을 담지 않습니다.</b> 목록은 활성 노트 전체를 한 번에 돌려주는 응답이라 설명까지
+ * 실으면 크게 무거워지고, 화면도 목록 카드에는 이름과 이미지만 그립니다. 설명이 필요한 상세는
+ * {@link NoteDetailResponse} 가 담당합니다.
  *
  * <p>{@code accordFamily} 는 목록을 묶는 기준입니다. <b>향 지도의 향 계열과 다른 어휘입니다</b> —
  * 이쪽은 13가지({@code SWEET}·{@code SPICY}·{@code AROMATIC}·{@code SMOKY}·{@code FRESH}·

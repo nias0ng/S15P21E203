@@ -1,3 +1,4 @@
+import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { toPerfumeDetail } from '@/shared/config/routes'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
@@ -66,6 +67,7 @@ export function MapPointPopover({
       <div className="mt-2.5 space-y-1.25">
         <LinkButton
           to={toPerfumeDetail(point.perfumeId)}
+          state={perfumeViewState('SCENT_MAP')}
           variant="outline"
           size="sm"
           fullWidth

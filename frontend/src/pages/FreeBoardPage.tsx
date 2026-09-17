@@ -1,21 +1,27 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 
 import {
   BoardHeader,
+  communityKeys,
   FREE_SORTS,
+  likePost,
   POST_CATEGORY_FILTERS,
   PostList,
   postListQuery,
   postToBoardItem,
   TrendingPerfumes,
   trendingPerfumesQuery,
+  unlikePost,
   type PostCategory,
   type PostSort,
 } from '@/features/community'
 import { ROUTES } from '@/shared/config/routes'
+import { useIsLoggedIn } from '@/shared/store/authStore'
+import { AuthLinkButton } from '@/shared/ui/AuthLinkButton'
 import { ChipToggle } from '@/shared/ui/ChipToggle'
-import { LinkButton } from '@/shared/ui/LinkButton'
+import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { Pagination } from '@/shared/ui/Pagination'
 
 type CategoryFilter = PostCategory | 'ALL'
@@ -40,16 +46,57 @@ export default function FreeBoardPage() {
     (searchParams.get('category') as CategoryFilter | null) ?? 'ALL'
   const page = Math.max(0, Number(searchParams.get('page') ?? 1) - 1)
 
-  const posts = useQuery(
-    postListQuery({
-      // 'ALL' 은 백엔드 값이 아닙니다. 조건을 아예 빼면 전체입니다.
-      category: category === 'ALL' ? undefined : category,
-      sort,
-      page,
-      size: PAGE_SIZE,
-    }),
-  )
+  const listParams = {
+    // 'ALL' 은 백엔드 값이 아닙니다. 조건을 아예 빼면 전체입니다.
+    category: category === 'ALL' ? undefined : category,
+    sort,
+    page,
+    size: PAGE_SIZE,
+  }
+
+  const posts = useQuery(postListQuery(listParams))
   const trending = useQuery(trendingPerfumesQuery())
+
+  const queryClient = useQueryClient()
+  const isLoggedIn = useIsLoggedIn()
+  const [loginOpen, setLoginOpen] = useState(false)
+
+  /**
+   * 좋아요 토글 (CMT-05). 후기 게시판과 같은 방식입니다.
+   *
+   * 응답에 `liked` 와 `likeCount` 가 함께 오므로 화면이 숫자를 직접 더하지 않습니다 —
+   * 그 사이 다른 사람이 누른 것도 같이 반영됩니다. 그래서 목록을 다시 부르지 않고
+   * **응답 값을 그 줄에만 덮어씁니다.** 전체를 다시 부르면 보고 있던 자리가 흔들리고,
+   * 정렬이 '좋아요순'이면 방금 누른 줄이 눈앞에서 이동합니다.
+   *
+   * 누르기와 취소가 서로 다른 메서드라 따닥 눌러도 결과가 하나로 정해집니다.
+   */
+  const toggleLike = useMutation({
+    mutationFn: ({ id, liked }: { id: number; liked: boolean }) =>
+      liked ? unlikePost(id) : likePost(id),
+    onSuccess: (result) => {
+      queryClient.setQueryData(
+        communityKeys.posts(listParams),
+        (old: typeof posts.data) =>
+          old === undefined
+            ? old
+            : {
+                ...old,
+                posts: old.posts.map((post) =>
+                  post.postId === result.postId
+                    ? {
+                        ...post,
+                        liked: result.liked,
+                        likeCount: result.likeCount,
+                      }
+                    : post,
+                ),
+              },
+      )
+      // 글 상세도 같은 숫자를 읽으므로 다음에 열 때 맞는 값이 보이게 비웁니다
+      void queryClient.invalidateQueries({ queryKey: communityKeys.all })
+    },
+  })
 
   const updateParams = (next: {
     sort?: PostSort
@@ -75,9 +122,13 @@ export default function FreeBoardPage() {
       <BoardHeader
         description="향수 이야기를 자유롭게 나눕니다. 컬렉션을 남에게 보이는 유일한 길이기도 합니다."
         action={
-          <LinkButton to={ROUTES.POST_WRITE} size="sm">
+          <AuthLinkButton
+            to={ROUTES.POST_WRITE}
+            size="sm"
+            description="글은 로그인한 뒤에 쓸 수 있습니다."
+          >
             글쓰기
-          </LinkButton>
+          </AuthLinkButton>
         }
       />
 
@@ -111,10 +162,22 @@ export default function FreeBoardPage() {
             items={(posts.data?.posts ?? []).map(postToBoardItem)}
             isPending={posts.isPending}
             emptyAction={
-              <LinkButton to={ROUTES.POST_WRITE} size="sm">
+              <AuthLinkButton
+                to={ROUTES.POST_WRITE}
+                size="sm"
+                description="글은 로그인한 뒤에 쓸 수 있습니다."
+              >
                 글쓰기
-              </LinkButton>
+              </AuthLinkButton>
             }
+            onToggleLike={(item) => {
+              // 비로그인은 401 이라, 보내 보는 대신 먼저 안내합니다
+              if (!isLoggedIn) {
+                setLoginOpen(true)
+                return
+              }
+              toggleLike.mutate({ id: item.id, liked: item.liked })
+            }}
           />
 
           <Pagination
@@ -126,8 +189,18 @@ export default function FreeBoardPage() {
           />
         </div>
 
-        <TrendingPerfumes items={trending.data ?? []} />
+        <TrendingPerfumes
+          items={trending.data?.perfumes ?? []}
+          days={trending.data?.days}
+        />
       </div>
+
+      <LoginRequiredDialog
+        open={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        redirectTo={ROUTES.COMMUNITY_FREE}
+        description="좋아요는 로그인한 뒤에 누를 수 있습니다. 글은 로그인 없이도 읽을 수 있습니다."
+      />
     </div>
   )
 }

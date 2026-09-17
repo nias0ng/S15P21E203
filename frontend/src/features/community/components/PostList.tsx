@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 
+import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { toPerfumeDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
@@ -16,8 +17,7 @@ type Props = {
   isPending?: boolean
   emptyAction?: React.ReactNode
   /**
-   * 넘기면 좋아요가 **누를 수 있는 버튼**이 됩니다. 안 넘기면 지금처럼 숫자만
-   * 보여줍니다 — 자유 게시판은 아직 좋아요 API 를 붙이지 않아 표시만 합니다.
+   * 넘기면 좋아요가 **누를 수 있는 버튼**이 됩니다. 안 넘기면 숫자만 보여줍니다.
    *
    * 누를 수 없을 때 버튼으로 두지 않는 이유: 눌러도 아무 일이 없으면 고장난
    * 것으로 보입니다. 붙지 않은 기능은 아예 버튼이 아니어야 합니다.
@@ -112,6 +112,7 @@ export function PostList({
             {item.perfume && (
               <Link
                 to={toPerfumeDetail(item.perfume.perfumeId)}
+                state={perfumeViewState('COMMUNITY')}
                 className={cn(
                   'border-line-soft bg-surface-sunken hover:border-accent rounded-card',
                   // w-fit 으로 내용만큼만 차지합니다. 칸 전체를 채우면 향수 이름

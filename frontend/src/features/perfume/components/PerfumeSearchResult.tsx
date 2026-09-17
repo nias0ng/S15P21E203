@@ -163,7 +163,7 @@ function Board({
   return (
     <section className="scent-glass rounded-[36px] p-7.5 pt-6.25">
       {heading && (
-        <h2 className="text-ink mb-6.25 font-serif text-lg">{heading}</h2>
+        <h2 className="text-ink mb-6.25 font-serif text-2xl">{heading}</h2>
       )}
       {children}
     </section>

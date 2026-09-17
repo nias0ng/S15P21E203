@@ -135,7 +135,7 @@ export default function PerfumeListPage() {
       <section className="scent-glass rounded-[36px] p-7.5 pt-6.25">
         <div className="mb-6.25 flex items-baseline gap-2.5">
           {/* 글자 크기·굵기는 S15P21E203-162 타이포 스케일에서 확정합니다 */}
-          <h2 className="text-ink font-serif text-lg">
+          <h2 className="text-ink font-serif text-2xl">
             {hasFilter ? '조건에 맞는 향수' : '최근 인기 향수'}
           </h2>
           {items.length > 0 && (
