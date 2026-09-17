@@ -16,7 +16,7 @@
     python nlr_engine.py "빨래 냄새 나는 향수 찾고 있어"
 
 ①단계 구조화 결과가 있으면 `structured` 로 넘긴다. 없으면 사전 문자열 매칭만 쓴다.
-사전 v1.8 기준 합성 600문장에서 조건을 뽑는 비율이 **86.7% -> 75.5%** 로 떨어지지만
+사전 v1.8 기준 합성 600문장에서 조건을 뽑는 비율이 **88.2% -> 75.5%** 로 떨어지지만
 서비스는 죽지 않는다.
 
 **입력은 `structured`, 출력은 `conditions` 다.** 이름을 나눈 이유는 모양이 달라서다 —
@@ -58,6 +58,32 @@ _DATA_DIR = Path(__file__).resolve().parent / "data"
 DEFAULT_PERFUMES = _DATA_DIR / "perfumes_nlr.csv.gz"
 DEFAULT_LEXICON = _DATA_DIR / "domain_lexicon_v1_8.csv"
 DEFAULT_ACCORDS = _DATA_DIR / "accord_dictionary.csv"
+DEFAULT_NOTE_BRIDGE = _DATA_DIR / "note_accord_bridge.csv"
+
+# [측정] 노트 브리지 문턱. 측정 기록 18·19번.
+#
+# ①단계가 `scent_preference` 에 accord 이름이 아니라 **노트(원료) 이름** 을 넣는 일이
+# 잦다 — 합성 600 에서 256회(31.8%). `_normalize_accord` 는 그것을 통째로 버린다.
+# 그중 111회(43.4%)가 이 표로 풀린다.
+#
+#   p    그 노트를 가진 향수 중 이 accord 를 가진 비율
+#   lift p 를 그 accord 의 기저율로 나눈 값. **1 이면 정보가 없다**
+#
+# `p` 만 쓰면 기저율이 조건으로 섞인다 — `woody` 는 전체 향수의 **63.1%** 가 가지고 있어
+# 어떤 노트든 `p >= 0.5` 를 넘긴다(129,161개 직접 계수. 평가자 10명 이상만 보면 64.5%).
+# `peony -> woody` 는 p 0.536 인데 lift 0.87 로 **작약이 있으면 오히려 덜 나온다.**
+# 그래서 lift 를 함께 건다.
+#
+# 1.4 는 DECISIONS.md N4 의 통제군이 정한 값이다(무작위 집단에서 1.17·1.38·1.14).
+# 72번 스윕에서 **0~1.6 구간은 NDCG 가 서로 갈리지 않고 1.7 부터 확실히 나빠진다.**
+# 그 평지 안에서 유일하게 근거가 있는 값이라 1.4 를 골랐다.
+#
+# **BRIDGE_P_MIN 은 지금 배포된 CSV 에서 한 행도 거르지 않는다.** 그 파일을 만들 때
+# 이미 `p >= 0.5` 로 걸러 넣었기 때문이다(`p` 최솟값이 정확히 0.5000).
+# 실제로 거르는 것은 lift 뿐이다 — 2,925행 중 987행. **빼지 않고 두는 이유는 표를
+# 다시 만들 때 `p < 0.5` 인 행이 들어올 수 있어서다.** search_rules.md 에도 적었다.
+BRIDGE_P_MIN = 0.5
+BRIDGE_LIFT_MIN = 1.4
 
 # [측정] 한글 accord 표기 10종. 11_rule_lexicon.csv 가 인정한 외래어 음차다.
 # 합성 평가셋 600건에서 80건이 여기 걸린다(대부분 '바닐라').
@@ -73,13 +99,20 @@ KOREAN_ACCORD = {
 # ---------------------------------------------------------------------------
 # 적재
 # ---------------------------------------------------------------------------
-def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True):
+def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True,
+               bridge_csv=None, bridge_p_min=BRIDGE_P_MIN,
+               bridge_lift_min=BRIDGE_LIFT_MIN):
     """향수 데이터와 사전을 읽어 조회용 인덱스를 만든다.
 
     perfumes_csv : str | Path | None   기본 data/perfumes_nlr.csv.gz
     lexicon_csv  : str | Path | None   기본 data/domain_lexicon_v1_8.csv
     accord_csv   : str | Path | None   기본 data/accord_dictionary.csv (accord 92개 마스터)
     verify       : bool                accord 보유 수를 마스터와 대조해 틀리면 RuntimeError
+    bridge_csv   : str | Path | None   기본 data/note_accord_bridge.csv (노트→accord)
+                                       **없어도 엔진은 돈다.** 경고를 남기고 노트를 해석하지
+                                       않는다 — 코드만 먼저 배포한 경우를 막지 않는다
+    bridge_p_min : float               기본 BRIDGE_P_MIN
+    bridge_lift_min : float            기본 BRIDGE_LIFT_MIN
 
     무겁다. 13만 x 92 행렬을 만드므로 **기동 시 한 번만 부르고 재사용한다.**
 
@@ -133,9 +166,14 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
             if form:
                 surface.setdefault(form, set()).add(row["expression"])
 
+    note_bridge = _load_note_bridge(
+        Path(bridge_csv) if bridge_csv else DEFAULT_NOTE_BRIDGE,
+        aidx, bridge_p_min, bridge_lift_min)
+
     return {
         "accords": accords,
         "aidx": aidx,
+        "note_bridge": note_bridge,
         "strength": strength,
         "has": strength > 0,
         "pid": perf["id"].to_numpy(),
@@ -148,6 +186,63 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
         "lexicon_entry_id": entry_ids,
         "n_perfumes": len(perf),
     }
+
+
+def _load_note_bridge(path, aidx, p_min, lift_min):
+    """노트 이름 -> accord 표를 읽어 조회용 dict 로 만든다. dict[str, list[str]].
+
+    path    : Path   note · accord · p · lift 네 칸을 가진 CSV
+    aidx    : dict   accord 이름 -> 열 번호. 여기 없는 accord 는 버린다
+    p_min   : float  `p` 문턱
+    lift_min: float  `lift` 문턱
+
+    키는 **소문자로 정규화한 노트 이름**이다. ①단계 LLM 이 `Mint` · `mint` 를 섞어 쓴다.
+    값은 그 노트가 부르는 accord 목록이고, 노트 하나당 평균 2.56개다.
+
+    **파일이 없으면 빈 dict 를 주고 경고만 남긴다.** 이 표는 조건을 넓히는 보강재이지
+    엔진이 도는 데 필요한 것이 아니다. 없으면 이 기능을 얹기 전과 똑같이 동작한다.
+
+    깨질 수 있는 곳 — `p` · `lift` 칸이 숫자가 아니면 비교가 조용히 거짓이 되어 행이
+    사라진다. 그래서 읽은 뒤 몇 행이 남았는지 로그에 남긴다.
+    """
+    if not Path(path).exists():
+        LOGGER.warning(
+            "노트 브리지 파일이 없다: %s. 노트 이름(`mint` 등)은 해석하지 않는다. "
+            "엔진은 정상 동작하지만 조건 추출이 이 기능을 얹기 전 수준으로 돌아간다", path)
+        return {}
+
+    table = pd.read_csv(path)
+    missing = [c for c in ("note", "accord", "p", "lift") if c not in table.columns]
+    if missing:
+        raise RuntimeError(f"노트 브리지에 필요한 칸이 없다: {missing} ({path})")
+
+    total = len(table)
+    table = table.dropna(subset=["note", "accord"])
+    empty = total - len(table)
+    if empty:
+        LOGGER.warning("노트 브리지에서 note·accord 가 비어 있는 %d행을 버렸다 (%s)",
+                       empty, path)
+
+    table = table[table["accord"].isin(aidx)]
+    table = table[(pd.to_numeric(table["p"], errors="coerce") >= p_min)
+                  & (pd.to_numeric(table["lift"], errors="coerce") >= lift_min)]
+
+    bridge = {}
+    for note, accord in zip(table["note"], table["accord"]):
+        key = re.sub(r"\s+", " ", str(note).strip().lower())
+        # 공백뿐인 노트는 `""` 가 되어 걸러진다. `"nan"` 은 pandas 가 결측을 글자로
+        # 남겼을 때 나오는데 `dropna` 를 통과하므로 여기서 한 번 더 막는다
+        # (`_parse_accords` 도 같은 방식으로 막는다).
+        if not key or key == "nan":
+            continue
+        bridge.setdefault(key, [])
+        if accord not in bridge[key]:
+            bridge[key].append(accord)
+    LOGGER.info("노트 브리지 %d행 중 p>=%.2f · lift>=%.2f 를 통과한 %d행 "
+                "-> 노트 %d개", total, p_min, lift_min, len(table), len(bridge))
+    # 값을 tuple 로 굳힌다. `_bridge_lookup` 이 이 객체를 그대로 돌려주므로 list 면
+    # 부른 쪽이 고쳤을 때 표가 망가진다.
+    return {k: tuple(v) for k, v in bridge.items()}
 
 
 def _parse_accords(value):
@@ -205,6 +300,15 @@ def understand(index, text, structured=None):
                 core.add(accord)
                 evidence.append({"from": str(raw), "accord": accord,
                                  "tier": "VERIFIED", "rationale": "accord 이름 직접 일치"})
+                continue
+            # accord 이름이 아니면 노트(원료) 이름일 수 있다. 전에는 여기서 버렸다.
+            #
+            # **근거(evidence)를 남기지 않는다.** 계약 문서가 `tier` 를
+            # VERIFIED/TEAM/LLM 세 값으로 적어 뒀고, 이 경로는 셋 중 어디에도 맞지
+            # 않는다(코퍼스에서 잰 동시출현이다). 새 값을 만드는 것은 계약 변경이라
+            # 팀이 정할 일이다. 근거가 없으면 `matched[]` 의 from·tier·rationale 이
+            # null 로 나간다 — recommend() 가 이미 그렇게 처리한다.
+            core.update(_bridge_lookup(index, raw))
 
     avoid = set()
     for raw in ((structured or {}).get("avoid") or []):
@@ -355,6 +459,28 @@ def _normalize_accord(index, raw):
         if guess in index["aidx"]:
             return guess
     return None
+
+
+def _bridge_lookup(index, raw):
+    """노트(원료) 이름 하나가 부르는 accord 목록. tuple[str, ...].
+
+    `_normalize_accord` 가 못 푼 값에만 쓴다. 표에 없으면 빈 tuple 이다.
+    표를 못 읽었으면(파일 없음) 항상 빈 tuple 이라 이전과 같이 동작한다.
+
+        "Mint"   -> ("aromatic", "fresh spicy", "green")
+        "lemon"  -> ("aromatic", "citrus")
+        "flower" -> ()          표에 없다. 노트가 아니라 형용사다
+
+    **표의 값을 그대로 돌려준다. 복사하지 않는다.** 그래서 `_load_note_bridge` 가
+    tuple 로 굳혀 둔다 — list 면 부른 쪽이 고쳤을 때 표가 망가진다.
+
+    `index` 에 `note_bridge` 키가 없어도 동작한다. 이 기능을 얹기 전 `load_index()` 가
+    만든 인덱스가 들어올 수 있다 — 그때는 이전과 똑같이 노트를 해석하지 않는다.
+    """
+    bridge = index.get("note_bridge")
+    if not bridge:
+        return ()
+    return bridge.get(re.sub(r"\s+", " ", str(raw).strip().lower()), ())
 
 
 # ---------------------------------------------------------------------------

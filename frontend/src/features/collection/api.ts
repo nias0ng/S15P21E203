@@ -1,22 +1,18 @@
 import { http } from '@/shared/api/http'
 
 import type {
-  CollectionCreateInput,
   CollectionDetail,
   CollectionInput,
   CollectionPerfume,
   CollectionSummary,
 } from './types'
 
-/*
- * ── 백엔드 응답 모양 ─────────────────────────────────────────
+/**
+ * 컬렉션 한 줄 (`GET /users/me/collections`).
  *
- * 화면 타입과 이름이 다른 칸이 있어(`name` → `title`) 응답을 그대로 흘려보내지 않고
- * 이 파일에서 옮깁니다. 향수 이름 · 브랜드는 **영문 원문**으로 옵니다(한국어 이름이
- * 응답에 없습니다) — 진열대 목록과 같습니다.
+ * **이름이 `name` 입니다** — 화면은 `title` 로 부릅니다. 어긋나는 자리가 여기
+ * 하나라, 옮기는 일은 아래 `toCollectionSummary` 한 곳에서만 합니다.
  */
-
-/** GET /users/me/collections 의 한 줄 */
 interface CollectionSummaryResponse {
   collectionId: number
   name: string
@@ -26,7 +22,6 @@ interface CollectionSummaryResponse {
   updatedAt: string
 }
 
-/** 최신 컬렉션이 먼저 옵니다(`ORDER BY id DESC`) */
 interface CollectionsResponse {
   collections: CollectionSummaryResponse[]
   page: number
@@ -34,6 +29,10 @@ interface CollectionsResponse {
   totalElements: number
 }
 
+/** 백엔드 `MAX_PAGE_SIZE`. 더 큰 값을 보내도 서버가 여기로 깎습니다 */
+const MAX_PAGE_SIZE = 100
+
+/** 컬렉션에 담긴 향수 한 건. 지우는 데 쓰는 번호는 `shelfItemId` 입니다 */
 interface CollectionPerfumeResponse {
   shelfItemId: number
   perfumeId: number
@@ -42,39 +41,35 @@ interface CollectionPerfumeResponse {
   thumbnailUrl: string | null
 }
 
-/** GET /users/me/collections/{id} — 향수는 담은 순서대로 옵니다 */
-interface CollectionDetailResponse {
-  collectionId: number
-  name: string
-  description: string | null
+interface CollectionDetailResponse extends CollectionSummaryResponse {
   perfumes: CollectionPerfumeResponse[]
-  createdAt: string
-  updatedAt: string
 }
 
-/** POST /users/me/collections 응답 */
-export interface CollectionCreateResponse {
-  collectionId: number
-  name: string
-  description: string | null
-  createdAt: string
+/**
+ * 카드 미리보기 자리 세 개.
+ *
+ * ⚠️ 목록 응답에 썸네일이 없어(`CollectionSummaryResponse` 참고) 빈 자리로 채웁니다.
+ * `[]` 로 두면 `slice(0, 3)` 이 빈 배열이라 상자가 하나도 안 그려지고, 카드가
+ * 납작해져 옆의 [+ 컬렉션 만들기] 점선 카드와 높이가 어긋납니다.
+ * BE 가 `previewThumbnails` 를 내려주면 이 줄만 고칩니다.
+ */
+const EMPTY_PREVIEW: (string | null)[] = [null, null, null]
+
+function toCollectionSummary(
+  collection: CollectionSummaryResponse,
+): CollectionSummary {
+  return {
+    collectionId: collection.collectionId,
+    title: collection.name,
+    description: collection.description,
+    perfumeCount: collection.perfumeCount,
+    previewThumbnails: EMPTY_PREVIEW,
+  }
 }
 
-/** 백엔드 `MAX_PAGE_SIZE`. 더 큰 값을 보내도 서버가 여기로 깎습니다 */
-const MAX_PAGE_SIZE = 100
-
-/** 카드 미리보기 칸 수 (와이어프레임 3장) */
-const PREVIEW_SIZE = 3
-
-/** 앞의 향수 사진 3장. 모자라면 null 로 채워 칸 수를 맞춥니다 */
-function toPreview(perfumes: { thumbnailUrl: string | null }[]) {
-  return Array.from(
-    { length: PREVIEW_SIZE },
-    (_, index) => perfumes[index]?.thumbnailUrl ?? null,
-  )
-}
-
-function toPerfume(perfume: CollectionPerfumeResponse): CollectionPerfume {
+function toCollectionPerfume(
+  perfume: CollectionPerfumeResponse,
+): CollectionPerfume {
   return {
     shelfItemId: perfume.shelfItemId,
     perfumeId: perfume.perfumeId,
@@ -85,123 +80,109 @@ function toPerfume(perfume: CollectionPerfumeResponse): CollectionPerfume {
 }
 
 /**
- * 내 컬렉션 전부 (A13 하단).
+ * 내 컬렉션 목록 (COL-01). 로그인이 필요합니다.
  *
- * ⚠️ **목록 응답에 향수 사진이 없습니다** (이름 · 설명 · 향수 수뿐). 카드의 미리보기 3장을
- * 채우려고 컬렉션마다 상세를 한 번 더 부릅니다 — 컬렉션이 N 개면 요청이 최대 1 + N 개입니다.
- * 백엔드가 목록에 미리보기 사진을 실어 주면 상세 요청을 걷어내세요.
- *
- * - 향수가 0개인 컬렉션은 부르지 않습니다. 채울 사진이 없습니다
- * - 상세 하나가 실패해도 목록 전체를 실패로 만들지 않습니다 — 그 카드만 빈 칸으로 그립니다
+ * **페이지로 나뉩니다.** 기본 10개라 그냥 부르면 열한 번째부터 조용히 사라집니다 —
+ * 진열대 하단 띠는 내 컬렉션을 **전부** 보여주는 자리라 끝까지 받아옵니다.
+ * 대부분 한 번으로 끝납니다(100개까지).
  */
 export async function getMyCollections(): Promise<CollectionSummary[]> {
-  const summaries = await fetchAllSummaries()
+  const first = await fetchCollectionPage(0)
+  const collections = [...first.collections]
 
-  const details = await Promise.allSettled(
-    summaries.map((summary) =>
-      summary.perfumeCount > 0
-        ? fetchDetail(summary.collectionId)
-        : Promise.resolve(null),
-    ),
-  )
-
-  return summaries.map((summary, index) => {
-    const detail = details[index]
-    const perfumes =
-      detail?.status === 'fulfilled' && detail.value !== null
-        ? detail.value.perfumes
-        : []
-
-    return {
-      collectionId: summary.collectionId,
-      title: summary.name,
-      description: summary.description,
-      perfumeCount: summary.perfumeCount,
-      previewThumbnails: toPreview(perfumes),
-    }
-  })
-}
-
-/** 서버가 size 를 깎을 수 있으므로 **응답이 알려준 size** 로 남은 장수를 셉니다 */
-async function fetchAllSummaries(): Promise<CollectionSummaryResponse[]> {
-  const first = await fetchSummaryPage(0)
-  const items = [...first.collections]
-
+  // 서버가 size 를 깎을 수 있으므로 **응답이 알려준 size** 로 남은 장수를 셉니다
   const pageSize = first.size > 0 ? first.size : MAX_PAGE_SIZE
   const pages = Math.ceil(first.totalElements / pageSize)
 
   for (let page = 1; page < pages; page += 1) {
-    const next = await fetchSummaryPage(page)
-    items.push(...next.collections)
+    const next = await fetchCollectionPage(page)
+    collections.push(...next.collections)
   }
 
-  return items
+  return collections.map(toCollectionSummary)
 }
 
-async function fetchSummaryPage(page: number) {
+async function fetchCollectionPage(page: number) {
   const { data } = await http.get<CollectionsResponse>(
     '/users/me/collections',
-    { params: { page, size: MAX_PAGE_SIZE } },
-  )
-  return data
-}
-
-async function fetchDetail(collectionId: number) {
-  const { data } = await http.get<CollectionDetailResponse>(
-    `/users/me/collections/${collectionId}`,
-  )
-  return data
-}
-
-/**
- * 컬렉션 상세 (A17). 남의 컬렉션이거나 없으면 404 입니다.
- *
- * 향수 수는 목록의 `perfumeCount` 대신 **담긴 향수를 직접 셉니다** — 같은 값이지만
- * 한 응답 안에서 세면 목록 캐시와 어긋날 일이 없습니다.
- */
-export async function getCollectionDetail(
-  collectionId: number,
-): Promise<CollectionDetail> {
-  const data = await fetchDetail(collectionId)
-
-  return {
-    collectionId: data.collectionId,
-    title: data.name,
-    description: data.description,
-    perfumeCount: data.perfumes.length,
-    previewThumbnails: toPreview(data.perfumes),
-    perfumes: data.perfumes.map(toPerfume),
-  }
-}
-
-/*
- * ── 변경 (COL-01 · COL-03 ~ COL-06) ──────────────────────────
- *
- * 전부 로그인이 필요합니다. 서버의 규칙 둘이 화면에 드러납니다.
- *   - 이름은 사람마다 겹칠 수 없습니다 (409 `COLLECTION_NAME_ALREADY_EXISTS`)
- *   - **컬렉션은 늘 향수가 하나 이상입니다** — 만들 때 1개 이상, 마지막 향수는 빼기 불가
- */
-
-/** 컬렉션 만들기 (COL-01). 진열대 향수를 하나 이상 함께 보내야 합니다 */
-export async function createCollection(
-  input: CollectionCreateInput,
-): Promise<CollectionCreateResponse> {
-  const { data } = await http.post<CollectionCreateResponse>(
-    '/users/me/collections',
     {
-      name: input.title,
-      description: input.description,
-      shelfItemIds: input.shelfItemIds,
+      params: { page, size: MAX_PAGE_SIZE },
     },
   )
   return data
 }
 
-/**
- * 제목 · 설명 수정 (COL-05).
+/** 컬렉션 상세 (A17 · COL-02). 담긴 향수가 함께 옵니다 */
+export async function getCollectionDetail(
+  collectionId: number,
+): Promise<CollectionDetail> {
+  const { data } = await http.get<CollectionDetailResponse>(
+    `/users/me/collections/${collectionId}`,
+  )
+
+  const perfumes = data.perfumes.map(toCollectionPerfume)
+
+  return {
+    ...toCollectionSummary(data),
+    /*
+     * ⚠️ **상세 응답에는 `perfumeCount` 가 없습니다**(`CollectionDetailResponse` 는
+     * `collectionId · name · description · perfumes · createdAt · updatedAt` 뿐).
+     * 목록 응답에만 있어서 그대로 옮기면 `undefined` 가 되고 화면에 "향수 개" 로
+     * 찍힙니다. 담긴 향수를 세는 것이 서버가 세는 것과 같은 값입니다.
+     */
+    perfumeCount: perfumes.length,
+    /*
+     * 상세는 담긴 향수를 다 주므로 앞 세 장을 미리보기로 씁니다.
+     * **모자라면 빈 자리로 채웁니다** — 두 장만 그리면 카드 안에서 사진이 넓게
+     * 늘어나(각 `flex-1`) 컬렉션마다 사진 크기가 달라집니다.
+     */
+    previewThumbnails: [
+      ...perfumes.slice(0, 3).map((item) => item.thumbnailUrl),
+      ...EMPTY_PREVIEW,
+    ].slice(0, 3),
+    perfumes,
+  }
+}
+
+/*
+ * ── 컬렉션 만들기 · 수정 · 삭제 (COL-01 · COL-05 · COL-06) ───
  *
- * PATCH 라 **보낸 칸만** 바뀝니다. 설명을 `null` 로 보내면 지워지고, 칸을 빼면 그대로
- * 남습니다. 모달은 두 칸을 늘 함께 보내므로 설명을 비우고 저장하면 지워지는 것이 맞습니다.
+ * 전부 로그인이 필요합니다. 진열대와 달리 **부분 실패가 없습니다** — 한 동작이
+ * 요청 하나로 끝납니다(향수를 담고 빼는 것은 별도 엔드포인트입니다).
+ */
+
+/**
+ * 컬렉션 만들기 (COL-01).
+ *
+ * ⚠️ **빈 컬렉션을 만들 수 없습니다.** 서버가 `shelfItemIds` 를 `@NotEmpty` 로
+ * 요구해서 만들 때 진열대 항목을 최소 하나 넣어야 합니다. 와이어프레임 A19 주석은
+ * "향수 없이도 생성 가능" 이라 어긋나는데, 서버 쪽을 바꿀 수 없어 **만들기 모달에서
+ * 향수를 고르게** 했습니다(`CollectionFormModal`). BE 가 그 제약을 풀면 모달의
+ * 고르는 목록을 선택으로 되돌리고 여기에 빈 배열을 넘기면 됩니다.
+ *
+ * 이름은 사용자별로 중복될 수 없습니다(409).
+ */
+export async function createCollection(
+  input: CollectionInput,
+  shelfItemIds: number[],
+): Promise<number> {
+  const { data } = await http.post<{ collectionId: number }>(
+    '/users/me/collections',
+    {
+      name: input.title,
+      description: input.description,
+      shelfItemIds,
+    },
+  )
+  return data.collectionId
+}
+
+/**
+ * 컬렉션 수정 (COL-05). 제목 · 설명만 바꿉니다 — 구성 향수는 A17 에서 고칩니다.
+ *
+ * 서버가 **보낸 항목만** 고칩니다(`namePresent` · `descriptionPresent`). 생략하면
+ * 그대로 두고, 설명을 빈 값으로 보내면 지웁니다. 이름은 비울 수 없고, 둘 다
+ * 생략하면 400 입니다 — 모달이 늘 둘 다 들고 있어 그대로 보냅니다.
  */
 export async function updateCollection(
   collectionId: number,
@@ -209,20 +190,23 @@ export async function updateCollection(
 ): Promise<void> {
   await http.patch(`/users/me/collections/${collectionId}`, {
     name: input.title,
-    description: input.description,
+    // 빈 설명은 "설명 없음" 입니다 — 서버가 공백을 삭제로 읽습니다
+    description: input.description ?? '',
   })
 }
 
-/** 컬렉션 삭제 (COL-06). 담긴 향수의 진열대 저장은 남습니다. 본문 없이 204 입니다 */
+/** 컬렉션 삭제 (COL-06). 담긴 향수의 진열대 저장은 그대로 남습니다. 204 */
 export async function deleteCollection(collectionId: number): Promise<void> {
   await http.delete(`/users/me/collections/${collectionId}`)
 }
 
 /**
- * 향수 하나 넣기 (COL-03). 컬렉션의 마지막 순서에 붙습니다.
+ * 컬렉션에 향수 담기 (COL-03).
  *
- * **한 번에 하나만 받습니다** — 여러 개는 부르는 쪽(`useCollectionActions`)이 차례로
- * 보냅니다. 이미 담긴 향수면 409 입니다.
+ * **진열대 항목 번호를 보냅니다** — 컬렉션에는 내 진열대에 있는 향수만 들어갑니다.
+ * 서버가 한 번에 하나씩 받아서, 여러 개를 고르면 그만큼 요청이 나갑니다.
+ *
+ * 이미 담긴 향수면 409 입니다 — 화면이 후보에서 미리 걸러 냅니다.
  */
 export async function addCollectionPerfume(
   collectionId: number,
@@ -234,10 +218,9 @@ export async function addCollectionPerfume(
 }
 
 /**
- * 향수 빼기 (COL-04). 진열대 저장은 남습니다.
+ * 컬렉션에서 향수 빼기 (COL-04). 진열대 저장은 그대로 남습니다. 204
  *
- * ⚠️ **마지막 향수는 뺄 수 없습니다** (409 `COLLECTION_LAST_PERFUME`). 비우려면 컬렉션을
- * 지웁니다.
+ * 경로에 `perfumeId` 가 아니라 **`shelfItemId`** 가 들어갑니다.
  */
 export async function removeCollectionPerfume(
   collectionId: number,

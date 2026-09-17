@@ -198,8 +198,10 @@ describe('목데이터 API', () => {
   })
 
   describe('컬렉션', () => {
-    it('여섯 개를 최신 것부터 준다', () => {
-      const body = bodyOf<{ collections: { collectionId: number }[] }>(
+    it('여섯 개를 최신 것부터 주고, 카드 미리보기 사진은 앞의 세 장까지다', () => {
+      const body = bodyOf<{
+        collections: { collectionId: number; previewThumbnails: string[] }[]
+      }>(
         call(api, 'GET', '/users/me/collections', {
           search: 'page=0&size=100',
         }),
@@ -208,6 +210,13 @@ describe('목데이터 API', () => {
       expect(body.collections.map((item) => item.collectionId)).toEqual([
         6, 5, 4, 3, 2, 1,
       ])
+      expect(
+        body.collections.every(
+          (item) =>
+            item.previewThumbnails.length === 3 &&
+            item.previewThumbnails.every((url) => url.startsWith('/bottles/')),
+        ),
+      ).toBe(true)
     })
 
     it('마지막 향수는 뺄 수 없고, 그 향수를 진열대에서 빼는 것도 막힌다', () => {

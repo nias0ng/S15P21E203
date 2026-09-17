@@ -6,22 +6,27 @@ import com.hyanghae.backend.collection.dto.response.CollectionCreateResponse;
 import com.hyanghae.backend.collection.dto.response.CollectionDetailResponse;
 import com.hyanghae.backend.collection.dto.response.CollectionPerfumeCreateResponse;
 import com.hyanghae.backend.collection.dto.response.CollectionPerfumeResponse;
+import com.hyanghae.backend.collection.dto.response.CollectionSummaryResponse;
 import com.hyanghae.backend.collection.dto.response.CollectionsResponse;
 import com.hyanghae.backend.collection.dto.response.CollectionUpdateResponse;
 import com.hyanghae.backend.collection.entity.Collection;
 import com.hyanghae.backend.collection.entity.CollectionPerfume;
 import com.hyanghae.backend.collection.exception.CollectionErrorCode;
 import com.hyanghae.backend.collection.repository.CollectionPerfumeRepository;
+import com.hyanghae.backend.collection.repository.CollectionPerfumeRow;
 import com.hyanghae.backend.collection.repository.CollectionRepository;
 import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.global.security.CurrentUser;
+import com.hyanghae.backend.perfume.entity.PerfumeImageType;
 import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
 import com.hyanghae.backend.shelf.entity.UserPerfume;
 import com.hyanghae.backend.shelf.repository.UserPerfumeRepository;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -34,6 +39,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class CollectionService {
 
     private static final int MAX_PAGE_SIZE = 100;
+
+    /**
+     * 카드에 실을 미리보기 사진 수입니다. 화면이 세 장을 그립니다.
+     *
+     * <p>더 많이 보내도 화면이 앞의 세 장만 쓰므로 여기서 잘라 보냅니다. 컬렉션마다 담긴
+     * 향수를 전부 실으면 목록 응답이 쓸데없이 커집니다.
+     */
+    private static final int PREVIEW_THUMBNAIL_COUNT = 3;
 
     private final CollectionRepository collectionRepository;
     private final CollectionPerfumeRepository collectionPerfumeRepository;
@@ -197,11 +210,80 @@ public class CollectionService {
                 PageRequest.of(pageNumber, pageSize)
         );
         return new CollectionsResponse(
-                found.getContent(),
+                withPreviewThumbnails(found.getContent()),
                 found.getNumber(),
                 found.getSize(),
                 found.getTotalElements()
         );
+    }
+
+    /**
+     * 페이지에 실린 컬렉션들의 미리보기 사진을 <b>추가 쿼리 두 번</b>으로 채웁니다.
+     *
+     * <p>컬렉션마다 따로 읽으면 컬렉션 수만큼 쿼리가 나갑니다. 담긴 향수를 한 번에 읽고, 거기서
+     * 추린 향수들의 이미지를 다시 한 번에 읽습니다. 진열대 목록이 쓰는 방식과 같습니다.
+     */
+    private List<CollectionSummaryResponse> withPreviewThumbnails(
+            List<CollectionSummaryResponse> collections
+    ) {
+        if (collections.isEmpty()) {
+            return collections;
+        }
+        Map<Long, List<Long>> previewPerfumeIds = previewPerfumeIds(collections);
+        Map<Long, String> thumbnails = loadThumbnailsByPerfumeIds(
+                previewPerfumeIds.values().stream().flatMap(List::stream).distinct().toList());
+
+        return collections.stream()
+                .map(collection -> collection.withPreviewThumbnails(
+                        previewPerfumeIds.getOrDefault(collection.collectionId(), List.of())
+                                .stream()
+                                // 사진이 없는 향수도 자리를 지켜야 합니다. 빼 버리면 화면이
+                                // 세 칸 중 어느 칸이 비었는지 알 수 없습니다. Stream.toList 는
+                                // Collectors.toUnmodifiableList 와 달리 null 을 허용합니다.
+                                .map(thumbnails::get)
+                                .toList()))
+                .toList();
+    }
+
+    /**
+     * 컬렉션마다 앞에서 {@link #PREVIEW_THUMBNAIL_COUNT} 개씩 향수 번호를 추립니다.
+     *
+     * <p>순서는 저장소가 담긴 순서로 정렬해 주므로 여기서는 앞에서부터 담기만 합니다.
+     */
+    private Map<Long, List<Long>> previewPerfumeIds(List<CollectionSummaryResponse> collections) {
+        List<Long> collectionIds = collections.stream()
+                .map(CollectionSummaryResponse::collectionId)
+                .toList();
+
+        Map<Long, List<Long>> perfumeIds = new LinkedHashMap<>();
+        for (CollectionPerfumeRow row : collectionPerfumeRepository
+                .findAllByCollectionIds(collectionIds)) {
+            List<Long> ids = perfumeIds.computeIfAbsent(
+                    row.collectionId(), ignored -> new ArrayList<>());
+            if (ids.size() < PREVIEW_THUMBNAIL_COUNT) {
+                ids.add(row.perfumeId());
+            }
+        }
+        return perfumeIds;
+    }
+
+    /**
+     * 컬렉션 카드는 진열대 화면 아래에 붙습니다. 같은 종이 배경 위라 진열대와 같은
+     * <b>종이 질감 이미지</b>를 씁니다. 없으면 일반 이미지로 넘어갑니다.
+     */
+    private Map<Long, String> loadThumbnailsByPerfumeIds(List<Long> perfumeIds) {
+        if (perfumeIds.isEmpty()) {
+            return Map.of();
+        }
+        return perfumeImageRepository
+                .findOrderedByPerfumeIdsPreferring(perfumeIds, PerfumeImageType.PAPER_TEXTURE)
+                .stream()
+                .filter(image -> image.imageUrl() != null)
+                .collect(Collectors.toMap(
+                        PerfumeImageUrl::perfumeId,
+                        PerfumeImageUrl::imageUrl,
+                        (first, ignored) -> first
+                ));
     }
 
     @Transactional(readOnly = true)
@@ -236,6 +318,10 @@ public class CollectionService {
                 ));
     }
 
+    /**
+     * 컬렉션 상세도 진열대와 같은 <b>종이 질감 이미지</b>를 씁니다. 목록과 상세가 다른
+     * 사진을 보여주면 같은 향수가 화면마다 달라 보입니다.
+     */
     private Map<Long, String> loadThumbnails(List<CollectionPerfumeResponse> perfumes) {
         List<Long> perfumeIds = perfumes.stream()
                 .map(CollectionPerfumeResponse::perfumeId)
@@ -243,7 +329,8 @@ public class CollectionService {
         if (perfumeIds.isEmpty()) {
             return Map.of();
         }
-        return perfumeImageRepository.findOrderedByPerfumeIds(perfumeIds)
+        return perfumeImageRepository
+                .findOrderedByPerfumeIdsPreferring(perfumeIds, PerfumeImageType.PAPER_TEXTURE)
                 .stream()
                 .filter(image -> image.imageUrl() != null)
                 .collect(Collectors.toMap(

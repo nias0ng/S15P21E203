@@ -1,52 +1,54 @@
-import { NOTE_CATEGORIES, type Note, type NoteDetail } from './types'
+import { http } from '@/shared/api/http'
+
+import type { Note, NotePerfumesResponse } from './types'
+
+// 경로에 '/api/v1' 을 붙이지 않습니다 — http 의 baseURL 에 이미 있습니다
+
+/** `GET /notes` 응답 껍데기. 목록만 꺼내 돌려주므로 밖으로 내보내지 않습니다 */
+interface NotesResponse {
+  notes: Note[]
+}
 
 /**
- * ⚠️ 백엔드에 노트 엔드포인트가 아직 없습니다. 화면을 눈으로 확인할 수 있도록
- * 자리표시자를 돌려줍니다. API 가 준비되면 두 함수 본문만 http.get 으로 바꾸세요.
+ * 노트 전체 (A35). 로그인이 필요 없습니다.
  *
- *   const { data } = await http.get<Note[]>('/notes', { params: { keyword } })
+ * **페이지가 없습니다** — 246개가 한 번에 옵니다. 화면이 대분류로 묶어 그리려면
+ * 전부 있어야 해서입니다(향수처럼 늘어나는 값이 아닙니다).
+ *
+ * **받은 순서를 지켜야 합니다.** 대분류 순 · 그 안에서 인기 순으로 정렬되어 오고,
+ * 화면은 그 순서를 대분류가 바뀌는 자리에서 끊어 섹션을 만듭니다. 다시 정렬하면
+ * 섹션이 뒤섞입니다.
+ *
+ * **검색어 파라미터가 없습니다.** 246개를 이미 다 들고 있으니 거르는 일은 화면이
+ * 합니다(`noteListQuery` 의 select).
  */
-export async function getNotes(keyword = ''): Promise<Note[]> {
-  const q = keyword.trim().toLowerCase()
-  return PLACEHOLDER_NOTES.filter(
-    (note) => !q || note.name.toLowerCase().includes(q),
+export async function getNotes(): Promise<Note[]> {
+  const { data } = await http.get<NotesResponse>('/notes')
+  return data.notes
+}
+
+/** 노트 하나 (A36). 목록의 한 줄과 같은 모양입니다 */
+export async function getNote(noteId: number): Promise<Note> {
+  const { data } = await http.get<Note>(`/notes/${noteId}`)
+  return data
+}
+
+/**
+ * 그 노트가 들어간 향수 (A36 아래). **페이지가 있습니다.**
+ *
+ * 노트 목록과 다른 점입니다 — 인기 노트 하나에 향수가 수만 개 달립니다
+ * (머스크 49,571개). 전부 받으려 들면 화면이 멈춥니다.
+ *
+ * 없는 노트는 404 입니다. 빈 목록이 아니라서 화면이 "향수가 없는 노트" 와
+ * "잘못된 번호" 를 구분할 수 있습니다.
+ */
+export async function getNotePerfumes(
+  noteId: number,
+  page = 0,
+): Promise<NotePerfumesResponse> {
+  const { data } = await http.get<NotePerfumesResponse>(
+    `/notes/${noteId}/perfumes`,
+    { params: { page } },
   )
+  return data
 }
-
-export async function getNoteDetail(noteId: number): Promise<NoteDetail> {
-  const note =
-    PLACEHOLDER_NOTES.find((item) => item.noteId === noteId) ??
-    PLACEHOLDER_NOTES[0]!
-
-  return {
-    ...note,
-    description:
-      '이탈리아 남부에서 자라는 감귤류로, 껍질을 짜면 쌉쌀하면서도 밝은 향이 납니다. 탑 노트에 자주 쓰이며 첫인상을 산뜻하게 만듭니다.',
-    perfumeCount: 42,
-  }
-}
-
-/** ⚠️ 백엔드 API 가 붙으면 이 배열을 통째로 지우세요. */
-const PLACEHOLDER_NOTES: Note[] = [
-  { noteId: 1, name: '베르가못', category: 'CITRUS', imageUrl: null },
-  { noteId: 2, name: '레몬', category: 'CITRUS', imageUrl: null },
-  { noteId: 3, name: '자몽', category: 'CITRUS', imageUrl: null },
-  { noteId: 4, name: '만다린', category: 'CITRUS', imageUrl: null },
-  { noteId: 5, name: '유자', category: 'CITRUS', imageUrl: null },
-  { noteId: 6, name: '장미', category: 'FLORAL', imageUrl: null },
-  { noteId: 7, name: '자스민', category: 'FLORAL', imageUrl: null },
-  { noteId: 8, name: '은방울꽃', category: 'FLORAL', imageUrl: null },
-  { noteId: 9, name: '아이리스', category: 'FLORAL', imageUrl: null },
-  { noteId: 10, name: '시더우드', category: 'WOOD', imageUrl: null },
-  { noteId: 11, name: '샌달우드', category: 'WOOD', imageUrl: null },
-  { noteId: 12, name: '베티버', category: 'WOOD', imageUrl: null },
-  { noteId: 13, name: '오크모스', category: 'WOOD', imageUrl: null },
-  { noteId: 14, name: '핑크 페퍼', category: 'SPICY', imageUrl: null },
-  { noteId: 15, name: '시나몬', category: 'SPICY', imageUrl: null },
-  { noteId: 16, name: '씨 솔트', category: 'FRESH', imageUrl: null },
-  { noteId: 17, name: '민트', category: 'FRESH', imageUrl: null },
-  { noteId: 18, name: '바닐라', category: 'SWEET', imageUrl: null },
-  { noteId: 19, name: '통카 빈', category: 'SWEET', imageUrl: null },
-]
-
-export { NOTE_CATEGORIES }

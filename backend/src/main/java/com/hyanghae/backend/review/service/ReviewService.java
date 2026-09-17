@@ -119,7 +119,36 @@ public class ReviewService {
         Instant updatedAt = Instant.now();
 
         review.update(title, content, updatedAt);
-        return new ReviewUpdateResponse(reviewId, title, content, updatedAt);
+        List<String> seasonCodes = applySeasons(reviewId, request.seasonCodes());
+
+        return new ReviewUpdateResponse(reviewId, title, content, seasonCodes, updatedAt);
+    }
+
+    /**
+     * 계절을 통째로 바꾸고, 고쳐진 결과를 돌려줍니다. 보내지 않았으면 지금 값을 읽어 옵니다.
+     *
+     * <p><b>코드 검증을 바꾸기 전에 합니다.</b> 여기서 예외가 나면 같은 트랜잭션 안의 제목·내용
+     * 변경까지 함께 되돌아갑니다 — 이 메서드가 생긴 이유가 바로 그 원자성입니다. 계절만 따로
+     * 받던 시절에는 제목은 저장되고 계절만 실패하는 어긋남이 생겼습니다.
+     *
+     * <p>보내지 않았을 때 굳이 읽어 오는 것은 응답이 <b>고쳐진 결과 전체</b>를 담기 위해서입니다.
+     * 화면이 이 응답만으로 캐시를 갱신할 수 있어야 상세를 다시 부르지 않습니다.
+     */
+    private List<String> applySeasons(Long reviewId, List<String> seasonCodes) {
+        if (seasonCodes == null) {
+            return currentSeasonCodes(reviewId);
+        }
+        List<Long> seasonIds = toSeasonIds(seasonCodes);
+        perfumeReviewSeasonRepository.deleteAllByReviewId(reviewId);
+        saveSeasons(reviewId, seasonIds);
+        return seasonCodes;
+    }
+
+    private List<String> currentSeasonCodes(Long reviewId) {
+        return perfumeReviewSeasonRepository.findAllByReviewIds(List.of(reviewId))
+                .stream()
+                .map(ReviewSeasonRow::code)
+                .toList();
     }
 
     @Transactional

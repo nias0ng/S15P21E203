@@ -9,8 +9,8 @@ type TileCardProps = {
    * 이미지 자리. 호출하는 쪽이 `Thumbnail` 을 직접 넘깁니다.
    *
    * 이미지 URL 하나를 받게 하지 않은 이유는 컬렉션이 썸네일 **세 장**을 나란히
-   * 보여주기 때문입니다. 높이도 도메인마다 다릅니다(노트 h-20 · 브랜드 h-23.75 ·
-   * 컬렉션 h-13.75). 여기서 정하면 셋 중 둘이 예외가 됩니다.
+   * 보여주기 때문입니다. 크기 잡는 방식도 도메인마다 다릅니다(노트는 비율
+   * aspect-7/5 · 브랜드 h-20 · 컬렉션 h-13.75). 여기서 정하면 셋 중 둘이 예외가 됩니다.
    */
   media: React.ReactNode
   /** 한 줄로 줄여서 보여줍니다 */
@@ -39,6 +39,13 @@ export function TileCard({
   return (
     <Link
       to={to}
+      /*
+        화면 테마가 붙잡을 자리 이름입니다(`PerfumeCard` 와 같은 뜻).
+        어두운 방 위 유리판(`styles/scent-display.css` 의 `.scent-glass`)이 이 이름으로
+        카드를 찾아 유리로 바꿉니다. 판 밖에서는 아무 일도 하지 않으므로, 이 카드를
+        쓰는 노트 · 컬렉션 화면은 그대로입니다.
+      */
+      data-slot="card"
       className={cn(
         'border-line bg-surface-card rounded-card flex flex-col gap-2.5 border p-2.5',
         'transition-[transform,box-shadow] duration-200 ease-out',
@@ -47,12 +54,26 @@ export function TileCard({
       )}
     >
       {media}
-      <span className="text-ink text-heading truncate font-serif font-semibold">
-        {title}
+
+      {/*
+        이름 두 줄은 **바짝 붙입니다.** 카드의 `gap-2.5`(10px)를 그대로 물려받으면
+        영문 이름과 한국어 이름이 사진과 같은 간격으로 떨어져, 두 줄이 한 덩이가
+        아니라 따로 놓인 정보처럼 읽힙니다. 향수 카드(`PerfumeCard`)가 이름 묶음을
+        `space-y-0.5`(2px)로 두고 있어 같은 값을 씁니다 — 향수 · 브랜드 · 노트 ·
+        컬렉션 카드가 한 격자에서 이웃하는 화면이 있어 간격이 갈리면 눈에 띕니다.
+
+        묶음을 block 으로 두는 이유: `space-y-*` 는 형제에 margin-top 을 다는 방식이라
+        안쪽 요소가 블록이어야 먹습니다. 제목의 `truncate` 도 같은 이유로 block 이
+        필요합니다 — 전에는 flex 자식이라 저절로 블록이었습니다.
+      */}
+      <span className="block space-y-0.5">
+        <span className="text-ink text-heading block truncate font-serif font-semibold">
+          {title}
+        </span>
+        {caption && (
+          <span className="text-ink-muted text-caption block">{caption}</span>
+        )}
       </span>
-      {caption && (
-        <span className="text-ink-muted text-caption block">{caption}</span>
-      )}
     </Link>
   )
 }

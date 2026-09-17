@@ -1,5 +1,6 @@
 package com.hyanghae.backend.perfume.controller;
 
+import com.hyanghae.backend.perfume.dto.response.BrandDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.BrandsResponse;
 import com.hyanghae.backend.perfume.repository.BrandSort;
 import com.hyanghae.backend.perfume.service.BrandService;
@@ -8,6 +9,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>로그인이 필요 없습니다. 브랜드 페이지는 누구나 볼 수 있어야 합니다.
  */
-@Tag(name = "브랜드", description = "브랜드 목록을 조회합니다.")
+@Tag(name = "브랜드", description = "브랜드 목록과 상세를 조회합니다.")
 @RestController
 @RequestMapping("/api/v1/brands")
 public class BrandController {
@@ -63,5 +65,29 @@ public class BrandController {
             @RequestParam(defaultValue = "NAME_EN") BrandSort sort
     ) {
         return brandService.findAll(keyword, sort);
+    }
+
+    /**
+     * 브랜드 한 곳입니다. 로그인이 필요 없습니다.
+     *
+     * <p>목록에서 골라 쓰지 않고 따로 두는 이유는 크기입니다. 브랜드가 7,793개라 상세 화면
+     * 하나를 그리려고 전체 목록을 받아 오게 됩니다.
+     *
+     * <p>목록과 달리 <b>향수 수를 담습니다.</b> 목록에서 뺀 것은 필드 하나가 133KB 가 되기
+     * 때문이었고, 한 건에는 그 사정이 없습니다.
+     */
+    @Operation(
+            summary = "브랜드 상세",
+            description = "브랜드 한 곳의 이름 · 로고 · 활성 향수 수를 내려줍니다. 로그인 없이"
+                    + " 조회할 수 있습니다."
+    )
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "404", description = "브랜드 없음 또는 내려간 브랜드")
+    @GetMapping("/{brandId}")
+    public BrandDetailResponse getBrand(
+            @Parameter(description = "브랜드 ID", example = "1")
+            @PathVariable Long brandId
+    ) {
+        return brandService.findOne(brandId);
     }
 }

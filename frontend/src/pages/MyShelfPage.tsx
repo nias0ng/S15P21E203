@@ -1,13 +1,19 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { useRef, useState, type ReactNode } from 'react'
 
 import {
-  CollectionFormModal,
   collectionKeys,
+  collectionPreviewsQuery,
+  CollectionFormModal,
   CollectionStrip,
+  createCollection,
   myCollectionsQuery,
-  useCollectionActions,
-  type CollectionCandidate,
+  type CollectionInput,
 } from '@/features/collection'
 import { perfumeListQuery } from '@/features/perfume'
 import {
@@ -117,7 +123,6 @@ export default function MyShelfPage() {
   const arrangement = useShelfArrangement()
   // 낙관적 갱신과 되돌리기는 도메인 훅이 들고 있습니다. 토스트만 여기서 붙입니다
   const actions = useShelfActions()
-  const collectionActions = useCollectionActions()
   const queryClient = useQueryClient()
 
   const [stage, setStage] = useState<Stage>('shelf')
@@ -126,8 +131,6 @@ export default function MyShelfPage() {
   const [loginOpen, setLoginOpen] = useState(false)
   const isLoggedIn = useIsLoggedIn()
   const [createCollectionOpen, setCreateCollectionOpen] = useState(false)
-  // 컬렉션 만들기 모달을 열 때마다 새로 그려 앞서 적은 제목 · 고른 향수를 비웁니다
-  const [createCollectionKey, setCreateCollectionKey] = useState(0)
   const [editOpen, setEditOpen] = useState(false)
   const [removeOpen, setRemoveOpen] = useState(false)
   const { showToast, toastProps } = useToast()
@@ -185,6 +188,53 @@ export default function MyShelfPage() {
   const recommendation = useQuery({
     ...personalRecommendationQuery(),
     enabled: shelfCount >= RECOMMEND_MIN_SHELF_ITEMS,
+  })
+
+  /*
+   * 컬렉션 카드에 얹을 향수 사진.
+   *
+   * ⚠️ 목록 응답에 썸네일이 없어 **컬렉션마다 상세를 한 번씩** 부릅니다. 캐시는
+   * 상세 화면과 같은 키라, 카드를 눌러 들어가면 요청이 다시 나가지 않습니다.
+   * BE 가 목록에 `previewThumbnails` 를 실어 주면 이 블록을 통째로 지웁니다.
+   */
+  const collectionIds = (collections.data ?? []).map(
+    (item) => item.collectionId,
+  )
+  const collectionDetails = useQueries({
+    queries: collectionPreviewsQuery(collectionIds),
+  })
+
+  /** 카드에 넘길 목록 — 미리보기만 상세에서 가져와 채웁니다 */
+  const collectionCards = (collections.data ?? []).map((item, index) => {
+    const detail = collectionDetails[index]?.data
+    return detail === undefined
+      ? item
+      : { ...item, previewThumbnails: detail.previewThumbnails }
+  })
+
+  /**
+   * 컬렉션 만들기 (COL-01).
+   *
+   * 만든 뒤 상세로 보내지 않습니다 — 진열대 하단 띠에 바로 나타나고, 방금 만든
+   * 사람은 대개 향수를 더 담기보다 진열대를 계속 보기 때문입니다.
+   */
+  const createCollectionMutation = useMutation({
+    mutationFn: ({
+      input,
+      shelfItemIds,
+    }: {
+      input: CollectionInput
+      shelfItemIds: number[]
+    }) => createCollection(input, shelfItemIds),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: collectionKeys.mine() })
+      showToast('컬렉션을 만들었습니다')
+    },
+    onError: (error) =>
+      showToast(
+        // 이름이 겹치면 409 입니다
+        isApiError(error) ? error.message : '컬렉션을 만들지 못했습니다',
+      ),
   })
 
   if (shelf.isPending) return <PageFallback />
@@ -326,16 +376,6 @@ export default function MyShelfPage() {
       */
       key={`${browser.selected?.shelfItemId ?? 'empty'}:${detailReady ? 'full' : 'lite'}`}
       item={panelItem}
-      onSetRepresentative={() => {
-        if (selectedId === undefined) return
-        actions.representative.mutate(
-          { shelfItemId: selectedId },
-          {
-            onSuccess: () => showToast('대표 향수로 지정했습니다'),
-            onError: () => showToast('대표 향수로 지정하지 못했습니다'),
-          },
-        )
-      }}
       onChangeRating={(rating) => {
         if (selectedId === undefined) return
         /*
@@ -363,29 +403,33 @@ export default function MyShelfPage() {
     </div>
   )
 
-  const collectionStrip = (
+  /*
+    컬렉션을 못 받았으면 빈 띠로 그리지 않습니다. 진열대 목록과 같은 이유 —
+    아무 말이 없으면 "컬렉션이 하나도 없다" 로 읽히는데, 실제로는 못 읽어 온
+    것입니다. 여기는 화면의 한 구역이라 진열대처럼 화면 전체를 대신하지 않고
+    띠 자리에만 안내를 둡니다.
+  */
+  const collectionStrip = collections.isError ? (
+    <div className="border-line rounded-card flex min-h-40 flex-col items-center justify-center gap-2.5 border border-dashed">
+      <p className="shelf-muted text-caption">컬렉션을 불러오지 못했습니다</p>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => void collections.refetch()}
+      >
+        다시 시도
+      </Button>
+    </div>
+  ) : (
     <CollectionStrip
-      items={collections.data ?? []}
+      items={collectionCards}
       isPending={collections.isPending}
-      onCreate={() => {
-        setCreateCollectionKey((key) => key + 1)
-        setCreateCollectionOpen(true)
-      }}
+      onCreate={() => setCreateCollectionOpen(true)}
     />
   )
 
   /** 이미 담은 향수 번호. 등록 모달이 중복 선택을 막는 데 씁니다 */
   const inShelf = new Set((shelf.data ?? []).map((item) => item.perfumeId))
-
-  /** 컬렉션에 넣을 수 있는 향수 — 진열대 전부를 컬렉션 도메인이 아는 모양으로 옮깁니다 */
-  const collectionCandidates: CollectionCandidate[] = (shelf.data ?? []).map(
-    (item) => ({
-      shelfItemId: item.shelfItemId,
-      name: item.name,
-      brand: item.brand,
-      thumbnailUrl: item.thumbnailUrl,
-    }),
-  )
 
   const dialogs = (
     <>
@@ -422,31 +466,19 @@ export default function MyShelfPage() {
           })
         }}
       />
+      {/*
+        ⚠️ **만들 때 향수를 최소 하나 골라야 합니다.** 서버가 `shelfItemIds` 를
+        `@NotEmpty` 로 요구합니다 — 와이어프레임 A19 의 "향수 없이도 생성 가능" 과
+        어긋나는 자리라, BE 가 제약을 풀면 고르는 목록을 선택으로 되돌립니다.
+      */}
       <CollectionFormModal
-        key={createCollectionKey}
-        mode="create"
         open={createCollectionOpen}
         onClose={() => setCreateCollectionOpen(false)}
-        candidates={collectionCandidates}
-        isSubmitting={collectionActions.create.isPending}
-        onSubmit={(input) =>
-          collectionActions.create.mutate(input, {
-            onSuccess: () => {
-              setCreateCollectionOpen(false)
-              showToast('컬렉션을 만들었습니다')
-            },
-            /*
-              이름이 겹치면 409 입니다. 모달을 닫지 않아 적은 제목 · 고른 향수를
-              그대로 두고 제목만 고칠 수 있게 합니다.
-            */
-            onError: (error) =>
-              showToast(
-                isApiError(error)
-                  ? error.message
-                  : '컬렉션을 만들지 못했습니다',
-              ),
-          })
-        }
+        candidates={shelf.data ?? []}
+        onSubmit={(input, shelfItemIds) => {
+          setCreateCollectionOpen(false)
+          createCollectionMutation.mutate({ input, shelfItemIds })
+        }}
       />
       {/*
         변경하기 (C02). 분류만 고치던 모달이었는데 카드에서 고칠 수 있는 값이
@@ -488,16 +520,7 @@ export default function MyShelfPage() {
           actions.remove.mutate(
             { shelfItemId: selectedId },
             {
-              onSuccess: () => {
-                showToast('진열대에서 뺐습니다')
-                /*
-                  진열대에서 빼면 서버가 그 향수를 담은 컬렉션에서도 함께 뺍니다
-                  (ON DELETE CASCADE). 컬렉션 카드의 향수 수 · 사진도 다시 받습니다.
-                */
-                void queryClient.invalidateQueries({
-                  queryKey: collectionKeys.all,
-                })
-              },
+              onSuccess: () => showToast('진열대에서 뺐습니다'),
               onError: () => showToast('진열대에서 빼지 못했습니다'),
             },
           )

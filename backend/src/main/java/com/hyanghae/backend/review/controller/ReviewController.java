@@ -91,11 +91,26 @@ public class ReviewController {
         return reviewService.findByPerfume(perfumeId, page, size);
     }
 
-    @Operation(summary = "향수 후기 수정")
+    /**
+     * 후기를 고칩니다. <b>보낸 항목만 바뀌고, 전부 저장되거나 전부 취소됩니다.</b>
+     *
+     * <p>제목 · 내용 · 계절을 한 요청으로 받습니다. 계절을 따로 받던 시절에는 화면이 두 번을
+     * 불러야 했고, 앞이 저장된 뒤 뒤가 실패하면 서버에는 제목이 바뀌어 있는데 화면은
+     * "아무것도 저장 안 됨"으로 보였습니다.
+     *
+     * <p>응답은 보낸 항목이 아니라 <b>고쳐진 결과 전체</b>입니다. 화면이 이 응답만으로 캐시를
+     * 갱신할 수 있습니다.
+     */
+    @Operation(
+            summary = "향수 후기 수정",
+            description = "제목 · 내용 · 계절을 한 요청으로 고칩니다. 보낸 항목만 바뀌고,"
+                    + " 하나라도 실패하면 전부 취소됩니다. 응답에는 고쳐진 결과 전체가 담깁니다."
+    )
     @ApiResponse(responseCode = "200", description = "수정 성공")
-    @ApiResponse(responseCode = "400", description = "올바르지 않은 요청")
+    @ApiResponse(responseCode = "400",
+            description = "고칠 항목이 없거나, 제목·내용이 비었거나, 계절 코드가 올바르지 않음")
     @ApiResponse(responseCode = "401", description = "로그인 필요")
-    @ApiResponse(responseCode = "404", description = "본인 후기 없음")
+    @ApiResponse(responseCode = "404", description = "본인 후기 없음 또는 계절 없음")
     @PatchMapping("/reviews/{reviewId}")
     public ReviewUpdateResponse updateReview(
             @Parameter(
@@ -130,9 +145,18 @@ public class ReviewController {
         reviewService.delete(reviewId);
     }
 
+    /**
+     * 계절만 바꿉니다.
+     *
+     * <p>제목·내용과 함께 고칠 때는 {@code PATCH /reviews/{reviewId}} 로 한 번에 보내십시오.
+     * 그쪽은 한 트랜잭션이라 일부만 저장되는 일이 없습니다. 이 엔드포인트는 계절만 바꾸는
+     * 화면을 위해 남겨 둡니다.
+     */
     @Operation(
             summary = "후기 계절 선택 수정",
-            description = "본인 후기에 연결된 계절 선택을 전체 교체합니다."
+            description = "본인 후기에 연결된 계절 선택을 전체 교체합니다. 제목·내용과 함께"
+                    + " 고칠 때는 PATCH /reviews/{reviewId} 로 한 번에 보내십시오. 그쪽은 한"
+                    + " 트랜잭션이라 일부만 저장되는 일이 없습니다."
     )
     @ApiResponse(responseCode = "200", description = "수정 성공")
     @ApiResponse(responseCode = "400", description = "빈 목록, 중복 등 올바르지 않은 요청")

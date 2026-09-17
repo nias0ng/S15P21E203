@@ -9,8 +9,12 @@ type TasteResultModalProps = {
   match: TasteMatch | null
   /** 다시 하기 · Esc · 배경 클릭 — 모달만 닫고 계열 선택 화면에 머무릅니다 */
   onRetry: () => void
-  /** 확인 — 향 지도로 이동합니다 */
+  /** 확인 — 결과를 저장하고 향 지도로 이동합니다 */
   onConfirm: () => void
+  /** 저장하는 동안 확인 단추를 잠급니다 */
+  saving?: boolean
+  /** 저장이 실패했을 때 할 말. 확인을 다시 누르면 다시 보냅니다 */
+  saveError?: string | null
 }
 
 const CLOSING = '내 취향을 향 지도에서 확인하러 가볼까요?'
@@ -63,6 +67,8 @@ export function TasteResultModal({
   match,
   onRetry,
   onConfirm,
+  saving = false,
+  saveError = null,
 }: TasteResultModalProps) {
   if (!match) return null
 
@@ -73,15 +79,26 @@ export function TasteResultModal({
       title={headlineOf(match)}
       footer={
         <>
-          <Button variant="outline" onClick={onRetry}>
+          <Button variant="outline" onClick={onRetry} disabled={saving}>
             다시 하기
           </Button>
-          <Button onClick={onConfirm}>확인</Button>
+          <Button onClick={onConfirm} isLoading={saving}>
+            {saveError === null ? '확인' : '다시 시도'}
+          </Button>
         </>
       }
     >
       <p className="text-ink">{leadOf(match)}</p>
       <p className="text-ink-muted mt-4">{CLOSING}</p>
+      {/*
+        저장이 실패해도 결과 문구는 그대로 둡니다 — 고른 것과 뽑힌 향수는 화면에서
+        이미 정해졌고, 못 한 것은 그것을 서버에 남기는 일뿐입니다.
+      */}
+      {saveError !== null && (
+        <p role="alert" className="text-danger mt-4">
+          {saveError}
+        </p>
+      )}
     </Modal>
   )
 }

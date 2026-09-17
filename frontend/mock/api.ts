@@ -218,6 +218,11 @@ export function createMockApi(options: MockApiOptions = {}) {
     name: collection.name,
     description: collection.description,
     perfumeCount: collection.shelfItemIds.length,
+    // 담긴 순서대로 앞의 세 장 — 사진이 없는 향수는 자리를 지키려고 null, 3개 미만이면 짧습니다
+    previewThumbnails: collection.shelfItemIds
+      .slice(0, 3)
+      .map((shelfItemId) => findShelfItem(shelfItemId))
+      .map((item) => (item === undefined ? null : shelfImageUrl(item.perfume))),
     createdAt: collection.createdAt,
     updatedAt: collection.updatedAt,
   })

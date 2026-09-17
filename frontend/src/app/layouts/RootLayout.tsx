@@ -47,6 +47,26 @@ function usePageWidth(): PageWidth {
 }
 
 /**
+ * 어두운 방(`styles/scent-display.css` 의 `.scent-night`)을 켜는 화면인지.
+ * 라우트 설정(app/router)의 `handle.night` 로 정합니다 — 폭과 같은 자리입니다.
+ *
+ * 예전에는 여기에 경로 배열을 두고 `pathname` 과 문자열로 맞춰봤습니다. 상세
+ * 화면이 어두워지면서 그 방식이 깨졌습니다 — `/notes/:noteId` 는 라우트에 적힌
+ * 모양이고 실제 주소는 `/notes/5` 라, 배열에 넣어도 **영영 안 걸립니다.**
+ * 라우트 옆에 적으면 파라미터가 있든 없든 그냥 됩니다.
+ */
+function useIsNight(): boolean {
+  const matches = useMatches()
+  for (let at = matches.length - 1; at >= 0; at -= 1) {
+    const handle: unknown = matches[at]?.handle
+    if (typeof handle === 'object' && handle !== null && 'night' in handle) {
+      return handle.night === true
+    }
+  }
+  return false
+}
+
+/**
  * 모든 화면의 공통 껍데기.
  *
  * 1920 x 1080 이 가장 넓은 규격입니다. 틀(max-w-frame, 1920)에 좌우 여백(--gutter,
@@ -70,14 +90,19 @@ export function RootLayout() {
   const pathname = useLocation().pathname
   const onPaper = pathname === ROUTES.MY_SHELF
   /*
-   * 향수 목록은 어두운 방에 유리판이 떠 있는 구성입니다(A33 시안). 어둠이 헤더까지
-   * 덮어야 한 장으로 읽혀서 진열대 종이와 같은 자리에서 정합니다.
+   * 향수 목록 · 그 검색 결과 · 브랜드 · 노트는 어두운 방에 유리판이 떠 있는
+   * 구성입니다(A33 · A09 · A34 · A35 · A36 시안). 어둠이 헤더까지 덮어야 한 장으로
+   * 읽혀서 진열대 종이와 같은 자리에서 정합니다.
+   *
+   * 이들을 같이 묶는 이유: 서로 **한 번에 넘어가는 사이**입니다. 향수 목록의
+   * 검색창에 글을 치면 검색 결과로 가고, 브랜드와 노트는 상단 메뉴에서 향수
+   * 바로 옆입니다. 한쪽만 어두우면 누른 순간 화면 전체가 뒤집힙니다.
    *
    * `.scent-night` 는 색 토큰(ink · line · surface-card)을 어둠 기준으로 다시
    * 정의하기만 합니다 — 헤더도 그 토큰을 쓰고 있어 컴포넌트를 고치지 않습니다.
-   * 자세한 설명은 features/perfume/perfume-display.css 에 있습니다.
+   * 자세한 설명은 styles/scent-display.css 에 있습니다.
    */
-  const onNight = pathname === ROUTES.PERFUMES
+  const onNight = useIsNight()
   const width = usePageWidth()
   const sky = useSceneSkyStore((state) => state.sky)
   /*

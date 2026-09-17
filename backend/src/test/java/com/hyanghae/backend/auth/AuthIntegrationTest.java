@@ -221,6 +221,46 @@ class AuthIntegrationTest {
                         .value(AuthErrorCode.AUTH_EMAIL_ALREADY_EXISTS.code()));
     }
 
+    /**
+     * 이메일 중복 확인입니다. 가입 버튼을 눌러야 중복을 아는 것보다 입력 중에 알려주는 편이
+     * 낫습니다.
+     *
+     * <p><b>가입과 같은 방식으로 다듬어 봅니다</b> — 앞뒤 공백을 떼고 소문자로 바꿉니다. 그러지
+     * 않으면 대문자로 친 사람에게 "쓸 수 있다"고 해 놓고 가입에서 막습니다.
+     */
+    @Test
+    void reportsEmailAvailability() throws Exception {
+        signup();
+
+        mockMvc.perform(get("/api/v1/users/email-availability").param("email", EMAIL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.available").value(false));
+
+        // 가입한 이메일을 대문자·공백 섞어 쳐도 같은 주소로 봅니다.
+        mockMvc.perform(get("/api/v1/users/email-availability")
+                        .param("email", "  " + EMAIL.toUpperCase(java.util.Locale.ROOT) + "  "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.available").value(false));
+
+        mockMvc.perform(get("/api/v1/users/email-availability")
+                        .param("email", "somebody-else@example.com"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.available").value(true));
+    }
+
+    /**
+     * 형식이 아닌 값에 "쓸 수 있습니다"라고 답하지 않습니다. 가입은 {@code @Email} 이 걸러
+     * 주는데 이 조회는 걸러 주는 것이 없어 직접 봅니다.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"not-an-email", "  ", "@example.com", "a@b", "a b@example.com"})
+    void rejectsInvalidEmailAvailabilityQueries(String email) throws Exception {
+        mockMvc.perform(get("/api/v1/users/email-availability").param("email", email))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value(AuthErrorCode.AUTH_INVALID_EMAIL.code()));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"a", "abcdefghijklmnopqrstu", "   ", "  a  "})
     void rejectsInvalidNicknameAvailabilityQueries(String nickname) throws Exception {

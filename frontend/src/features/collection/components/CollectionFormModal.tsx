@@ -5,36 +5,23 @@ import { Input } from '@/shared/ui/Input'
 import { Modal } from '@/shared/ui/Modal'
 import { Textarea } from '@/shared/ui/Textarea'
 
-import type {
-  CollectionCandidate,
-  CollectionCreateInput,
-  CollectionInput,
-} from '../types'
+import type { CollectionInput } from '../types'
 
-import { ShelfPerfumePicker } from './ShelfPerfumePicker'
-
-/** 백엔드 검증 한도(`@Size`). 넘기면 400 이라 입력에서 먼저 막습니다 */
-const TITLE_MAX = 50
-const DESCRIPTION_MAX = 300
+import { ShelfItemPickList, type ShelfItemCandidate } from './ShelfItemPickList'
 
 type Props = {
   open: boolean
   onClose: () => void
-  isSubmitting?: boolean
-} & (
-  | {
-      /** 만들기 (COL-01). 진열대 향수를 하나 이상 골라야 만들어집니다 */
-      mode: 'create'
-      candidates: CollectionCandidate[]
-      onSubmit: (input: CollectionCreateInput) => void
-    }
-  | {
-      /** 수정 (COL-05). 제목 · 설명만 — 구성 향수는 A17 에서 고칩니다 */
-      mode: 'edit'
-      initial: CollectionInput
-      onSubmit: (input: CollectionInput) => void
-    }
-)
+  /**
+   * 만들 때는 **고른 진열대 항목**이 함께 옵니다 — 서버가 최소 하나를 요구합니다.
+   * 수정할 때는 빈 배열입니다(구성 향수는 A17 에서 고칩니다).
+   */
+  onSubmit: (input: CollectionInput, shelfItemIds: number[]) => void
+  /** 값이 있으면 수정(COL-05), 없으면 만들기(COL-01) 입니다. */
+  initial?: CollectionInput
+  /** 만들 때 고를 수 있는 진열대 항목. 수정할 때는 쓰지 않습니다 */
+  candidates?: ShelfItemCandidate[]
+}
 
 /**
  * 컬렉션 만들기 · 수정 모달 (와이어프레임 A19 좌 · 중 — COL-01 · COL-05)
@@ -43,62 +30,85 @@ type Props = {
  * - 공개 · 비공개 상태가 없다 — 남에게 보이는 건 자유 게시판의 컬렉션 공유 글로만
  * - 수정은 제목 · 설명만 — 구성 향수는 A17 에서 고친다
  *
- * ⚠️ 와이어프레임의 "향수 없이도 생성 가능" 은 **따르지 않습니다.** 백엔드가 만들 때
- * 향수를 1개 이상 받고 마지막 향수도 못 빼게 막습니다(컬렉션은 늘 향수가 있다).
- * 그래서 만들기에는 진열대 향수 고르기가 붙고, 하나도 안 고르면 [만들기]가 잠깁니다.
+ * ⚠️ **"향수 없이도 생성 가능" 은 지금 지킬 수 없습니다.** 서버가 만들 때
+ * `shelfItemIds` 를 `@NotEmpty` 로 요구합니다(`CollectionCreateRequest`). 그래서
+ * 만들기에서는 진열대 항수를 최소 하나 고르게 합니다 — 고르지 않고 만들면 400 입니다.
+ * BE 가 그 제약을 풀면 이 목록을 선택으로 되돌리면 됩니다.
  *
- * 두 모달의 내용이 같아 하나로 만들고 제목과 버튼 문구만 바꿉니다.
- * 입력값은 모달이 들고 있습니다. 열 때마다 비우려면 화면이 `key` 를 바꿔 새로 그립니다.
+ * 두 모달의 내용이 거의 같아 하나로 만들고 제목 · 버튼 문구와 고르는 목록만 바꿉니다.
  */
-export function CollectionFormModal(props: Props) {
-  const { open, onClose, isSubmitting = false } = props
-  const initial = props.mode === 'edit' ? props.initial : undefined
-
-  const [title, setTitle] = useState(initial?.title ?? '')
-  const [description, setDescription] = useState(initial?.description ?? '')
+export function CollectionFormModal({
+  open,
+  onClose,
+  onSubmit,
+  initial,
+  candidates = [],
+}: Props) {
+  const editing = initial !== undefined
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
   const [picked, setPicked] = useState<number[]>([])
+  const [keyword, setKeyword] = useState('')
 
-  const trimmedTitle = title.trim()
-  // 제목은 필수, 만들기는 향수도 하나 이상
-  const canSubmit =
-    trimmedTitle.length > 0 && (props.mode === 'edit' || picked.length > 0)
+  /*
+   * 열릴 때마다 칸을 처음 값으로 되돌립니다.
+   *
+   * `Modal` 이 `<dialog>` 라 **닫아도 언마운트되지 않습니다.** 그냥 두면 만들기를
+   * 취소하고 다시 열었을 때 앞서 적던 제목 · 설명 · 고른 향수가 그대로 남습니다.
+   * 수정에서도 다른 컬렉션을 열면 앞 컬렉션의 값이 보입니다.
+   *
+   * `useEffect` 가 아니라 렌더 중에 맞추는 이유: 한 박자 늦게 맞추면 첫 프레임에
+   * 옛 값이 보입니다. 값으로 비교해야 해서(`initial` 은 매 렌더 새 객체입니다)
+   * 직렬화한 것을 열쇠로 씁니다.
+   */
+  const openedKey = open ? JSON.stringify(initial ?? null) : null
+  const [openedFor, setOpenedFor] = useState<string | null>(null)
+  if (openedKey !== openedFor) {
+    setOpenedFor(openedKey)
+    setTitle(initial?.title ?? '')
+    setDescription(initial?.description ?? '')
+    setPicked([])
+    setKeyword('')
+  }
 
-  const toggle = (shelfItemId: number) => {
+  const toggle = (shelfItemId: number) =>
     setPicked((prev) =>
       prev.includes(shelfItemId)
         ? prev.filter((id) => id !== shelfItemId)
         : [...prev, shelfItemId],
     )
-  }
-
-  const submit = () => {
-    const values: CollectionInput = {
-      title: trimmedTitle,
-      description: description.trim() || null,
-    }
-    if (props.mode === 'create') {
-      props.onSubmit({ ...values, shelfItemIds: picked })
-    } else {
-      props.onSubmit(values)
-    }
-  }
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={props.mode === 'edit' ? '컬렉션 수정' : '컬렉션 만들기'}
+      title={editing ? '컬렉션 수정' : '컬렉션 만들기'}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
             취소
           </Button>
           <Button
-            disabled={!canSubmit}
-            isLoading={isSubmitting}
-            onClick={submit}
+            /*
+              제목은 필수이고, 만들 때는 향수도 최소 하나 골라야 합니다
+              (서버가 shelfItemIds 를 @NotEmpty 로 요구합니다).
+            */
+            disabled={
+              title.trim().length === 0 || (!editing && picked.length === 0)
+            }
+            onClick={() => {
+              onSubmit(
+                {
+                  title: title.trim(),
+                  description: description.trim() || null,
+                },
+                picked,
+              )
+              setPicked([])
+              setKeyword('')
+            }}
           >
-            {props.mode === 'edit' ? '저장' : '만들기'}
+            {editing ? '저장' : '만들기'}
           </Button>
         </>
       }
@@ -109,7 +119,6 @@ export function CollectionFormModal(props: Props) {
           hideLabel
           placeholder="제목 *"
           required
-          maxLength={TITLE_MAX}
           value={title}
           onChange={(event) => setTitle(event.target.value)}
         />
@@ -118,26 +127,27 @@ export function CollectionFormModal(props: Props) {
           hideLabel
           placeholder="설명 (선택)"
           rows={4}
-          maxLength={DESCRIPTION_MAX}
           value={description}
           onChange={(event) => setDescription(event.target.value)}
         />
 
-        {props.mode === 'edit' ? (
+        {editing ? (
           <p className="text-ink-muted text-caption leading-relaxed">
             제목 · 설명만 수정합니다. 구성 향수는 컬렉션 상세에서 고칩니다.
           </p>
         ) : (
           <>
-            <ShelfPerfumePicker
-              candidates={props.candidates}
+            <ShelfItemPickList
+              candidates={candidates}
               picked={picked}
               onToggle={toggle}
+              keyword={keyword}
+              onKeywordChange={setKeyword}
+              emptyTitle="진열대에 담은 향수가 없습니다"
             />
             <p className="text-ink-muted text-caption leading-relaxed">
-              {picked.length}개 선택됨 · 진열대 향수를 하나 이상 골라야
-              만들어집니다. 공개 · 비공개 상태가 없고, 남에게 보이는 길은 자유
-              게시판의 컬렉션 공유 글뿐입니다.
+              컬렉션이 남에게 보이는 길은 자유 게시판의 컬렉션 공유 글뿐입니다.
+              향수는 나중에 더 담을 수 있습니다.
             </p>
           </>
         )}
