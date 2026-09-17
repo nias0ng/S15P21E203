@@ -281,6 +281,12 @@ const input = createInput(ui.mount, {
     if ((P.focusOn === undefined ? 1 : P.focusOn) >= 0.5 && m.src === 'map' && !phase.cue.zone) {
       pickSail(m);   // ⭐ v0.65.0 — 가속을 멈추고 누른 향수 곁으로 (연출보다 먼저 — 12개 자리는 속도 0 카메라로 잡는다)
       startFocus(m);
+      // ⭐⭐ **앱에 알린다 — 이 향을 새 중심으로 12개를 다시 띄웠다** (2026-09-16, host.js `exploreSimilar` · 불변식 32).
+      //   v0.74.2 에서 카드의 [주변 향 탐색] 단추를 뺐다 (부표 누르기가 곧 그 동작이라 같은 일을 두 번 내놓고 있었다) — 그래서 알림도 **여기서** 나간다.
+      //   ⚠ 12개 **안**의 부표를 누른 것은 위에서 먼저 return 한다 (고르기만 하고 중심은 안 바뀐다) — 그때는 안 알린다. 알림의 뜻이 '새 중심' 이라야 앱이 셀 수 있다.
+      //   ⚠ **알림만이다** — 앱이 Promise 를 줘도 `holdWhile` 로 입력을 잠그지 않는다. 엔진이 이미 한 일이라 기다릴 것이 없다 ([진열대에 저장]과 다른 점).
+      const exRef = perfumeRef(m);
+      if (exRef) callHost('exploreSimilar', exRef);
     }
   }
 });
@@ -426,7 +432,31 @@ let paSx = 0, paSy = 0;
 // ── 카메라 자세 (패럴랙스 **전**) — cl = 존 구도 섞임 0..1 · s = 속도 0..1 (2026-09-11 에 함수로 뺐다).
 // ⚠⚠ 틱과 향수 고르기의 **슬롯 계산이 같은 함수**를 부른다. 식을 두 곳에 적으면 12개가 화면의 제자리에서
 //   비켜 앉는다 (불변식 2 와 같은 규율). 식 자체는 예전 카메라 블록 그대로다 — 주석은 틱 쪽에 남겨 뒀다
-const _pose = { pos: new THREE.Vector3(), tgt: new THREE.Vector3(), rgt: new THREE.Vector3(), upv: new THREE.Vector3(), fov: 45, kD: 1 };
+const _pose = { pos: new THREE.Vector3(), tgt: new THREE.Vector3(), rgt: new THREE.Vector3(), upv: new THREE.Vector3(), fwdH: new THREE.Vector3(), fov: 45, kD: 1, hW: 1 };
+// 존에 들어갈 때 배가 돌기 시작한 각 (zoneShipYaw). 한 번 붙잡아 두고 swing 으로 섞는다 — null 이면 아직 안 잡았다
+let _zoneYawFrom = null;
+// ⭐⭐ 배가 씬 원점을 벗어난 양 (존 연출의 등장 · 정박). **자리를 놓는 곳과 물을 읽는 곳이 같이 봐야 해서** 여기 둔다.
+//   ⚠ `sim.update` 는 카메라 블록보다 **먼저** 돌아서 한 프레임 전 값을 쓴다 — 시뮬 게이트가 30fps 라 그 지연은 화면에 안 드러난다.
+const _shipOff = { x: 0, z: 0 };
+// 그 이동의 **속도**를 배의 속도 단위(0~1 · 1 = 부스트)로 바꾼 값. 항적 · 물보라 · 흘수 눌림이 이걸 탄다 —
+// ⚠ 안 넘기면 배는 옮겨지는데 `mv` 가 0 이라 물이 아무 반응을 안 한다 (연출 중 nav.speed 는 0 이다)
+let _shipMv = 0;
+// 시작 자리에 다 놓였는가 (그 뒤로는 속도로 민다) · 퇴장에서 0 으로 되돌릴 기준값
+let _shipRun = false;
+const _shipHold = { x: 0, z: 0 };
+// ⭐⭐ 배의 시작 자리를 재는 **존 구도** 카메라 (2026-09-16). 배가 놓이는 때는 0.30s 인데 그때 카메라는 아직 **항해 구도**라,
+//   그 자리(`_pose`)로 재면 어긋난다 — 실측 : hW(항해) = 1.65 × hW(존) 이라 `zoneShipOut` 0.46 이 존 구도에서는 **0.76** 이 되어 화면 밖이었다.
+//   방향(rgt · fwdH)도 camYaw −52.1 → zoneYaw −30 으로 22° 다르다. 그래서 크기 · 방향 **둘 다** 존 구도에서 받는다.
+const _poseZ = { pos: new THREE.Vector3(), tgt: new THREE.Vector3(), rgt: new THREE.Vector3(), upv: new THREE.Vector3(), fwdH: new THREE.Vector3(), fov: 45, kD: 1, hW: 1 };
+// 지난 프레임의 연출 상태 — `leaving` → `sailing` 으로 넘어가는 **그 한 프레임**을 잡으려고 둔다
+let _prevPhase = 'sailing';
+// 세로로 긴 창(휴대폰)에서는 배를 옆으로 미는 몫을 0 까지 줄인다 (2026-09-11 오후 · 아래 zoneLookX 주석).
+// ⚠ cameraPose 와 틱의 **배 등장**이 같이 읽는다 — 식을 두 곳에 적지 않는다 (불변식 2).
+const lookRsp = (aspect) =>
+  (PARAMS.uiResponsive === undefined ? 1 : PARAMS.uiResponsive) >= 0.5 ? clamp((aspect - 0.9) / 0.7, 0, 1) : 1;
+
+// ⭐ `out.hW` 를 같이 낸다 (2026-09-16) — look 점 거리에서의 **화면 반폭(월드)**. 배를 화면 비율로 옮길 때 쓴다 (틱의 배 등장).
+//   ⚠ 카메라 식은 안 바뀌었다 — 값 하나를 더 실어 보낼 뿐이다.
 function cameraPose(cl, s, aspect, out) {
   const camZ = lerp(CONFIG.cam.zNear, CONFIG.cam.zFar, s);
   const camY = lerp(CONFIG.cam.yNear, CONFIG.cam.yFar, s);
@@ -444,16 +474,19 @@ function cameraPose(cl, s, aspect, out) {
   _dir.set(L[0] - out.pos.x, L[1] - out.pos.y, L[2] - out.pos.z).normalize();
   out.rgt.crossVectors(_dir, UP_Y).normalize();
   out.upv.crossVectors(out.rgt, _dir);
+  // 수평 전방 — 배를 카메라 쪽으로 당기면 화면 **아래**로 내려온다 (구도가 내려다보는 각이라). 등장의 대각선 성분이 쓴다
+  out.fwdH.set(_dir.x, 0, _dir.z).normalize();
   // ⭐ 반응형 (2026-09-11 오후) — 세로로 긴 창(휴대폰)에서는 정보 블록이 **위에 가로로** 서므로 오른쪽을 비울 까닭이 없다.
   //   배를 왼쪽으로 미는 양(zoneLookX)을 창 비율 1.6 → 0.9 사이에서 0 까지 줄인다 (세로 비율 lookY 는 그대로).
   //   ⚠ uiResponsive 0 이면 예전 그대로 · 넓은 창(비율 1.6 이상)은 **비트 단위로** 예전과 같다
-  const rsp = (PARAMS.uiResponsive === undefined ? 1 : PARAMS.uiResponsive) >= 0.5 ? clamp((aspect - 0.9) / 0.7, 0, 1) : 1;
+  const rsp = lookRsp(aspect);
   const lx = (PARAMS.zoneLookX === undefined ? 0 : PARAMS.zoneLookX) * cl * rsp;
   const ly = (PARAMS.zoneLookY === undefined ? 0 : PARAMS.zoneLookY) * cl;
+  const hH = Math.tan(out.fov * 0.5 * Math.PI / 180) * baseDist;
+  out.hW = hH * aspect;   // look 점 거리에서의 화면 반폭(월드) — 배를 '화면 반폭 대비 비율' 로 옮길 때 쓴다
   out.tgt.set(L[0], L[1], L[2]);
   if (lx !== 0 || ly !== 0) {
-    const hH = Math.tan(out.fov * 0.5 * Math.PI / 180) * baseDist;
-    out.tgt.addScaledVector(out.rgt, lx * hH * aspect).addScaledVector(out.upv, ly * hH);
+    out.tgt.addScaledVector(out.rgt, lx * out.hW).addScaledVector(out.upv, ly * hH);
   }
   return out;
 }
@@ -533,7 +566,7 @@ function arriveAt(key) {
 let focusT = 0;
 let focusLabelsOn = false;
 const _fc = new THREE.PerspectiveCamera();
-const _pose2 = { pos: new THREE.Vector3(), tgt: new THREE.Vector3(), rgt: new THREE.Vector3(), upv: new THREE.Vector3(), fov: 45, kD: 1 };
+const _pose2 = { pos: new THREE.Vector3(), tgt: new THREE.Vector3(), rgt: new THREE.Vector3(), upv: new THREE.Vector3(), fwdH: new THREE.Vector3(), fov: 45, kD: 1, hW: 1 };
 const _v3 = new THREE.Vector3();
 // 말풍선이 피할 것들 (배 · 다른 부표의 화면 자리). ⚠ 매 프레임 새 배열을 만들지 않는다
 const _obs = [];
@@ -592,11 +625,22 @@ function seaGo(nx, ny) {
   //   그래서 목표를 pendingSea 에 맡겨 두고 틱이 'sailing' 을 확인한 순간 건다 (미뤄 둔 도착 pendingArrive 옆).
   //   ⚠ onPick 이 전환 중(busy) 누름을 이미 막으므로 여기 오는 연출은 늘 inspecting 이다
   const inZone = !!phase.cue.zone && phase.cue.phase === 'inspecting';
+  // ⭐⭐ **연출 중 빈 바다 누름 = 연출 종료만. 떠나지 않는다** (2026-09-16, `zoneSeaEnds`).
+  //   사용자 : *"그냥 한번클릭은 그 연출 즉시 종료로 만들어주고"*. 12개 고르기의 `focusSeaEnds`(v0.65.0)와 **같은 규약**이다 —
+  //   연출이 떠 있을 때 누름의 뜻은 '떠난다' 가 아니라 **'이 화면을 닫는다'** 다.
+  //   ⚠ 0 이면 v0.73.0 (연출이 걷힌 뒤 누른 자리로 부스트 — 아래 seaGoAfterZone 주석 그대로)
+  const zoneEnds = inZone && (P.zoneSeaEnds === undefined ? 1 : P.zoneSeaEnds) >= 0.5;
   if (phase.cue.zone && !phase.cue.busy) phase.leave();
   travel.cancel();
   pendingArrive = null;
   pendingTravel = null;   // 새로 누른 바다가 이긴다 — 연출이 걷히길 기다리던 먼 곳 이동은 버린다 (startTravel)
   seaBlockT = 0;
+  if (zoneEnds) {
+    // 닫기만 한다 — 목표도 안 잡고 네 줄기(seamark)도 안 띄운다. 빨려 드는 줄기는 '그리로 간다' 는 대답이라 안 가는데 띄우면 거짓말이다
+    pendingSea = null;
+    zones.clearAuto();
+    return true;
+  }
   const vB = groundSpeed(CONFIG.speed.boost);
   const rTurn = vB / Math.max(1e-4, turnRate(vB));
   const arrive = Math.max(P.seaGoArrive === undefined ? 3 : P.seaGoArrive, rTurn * 1.3);
@@ -678,10 +722,16 @@ function focusSlots(fc) {
 //   ⚠ 짝짓기(marks.focusOn)는 그대로 **화면 x 순서**다 — 슬롯의 sx 가 곧 방위각 비율이다
 const _v3s = new THREE.Vector3();
 const _box = new THREE.Box3();   // 배의 경계 상자 (focusAvoidBoat — 누를 때마다 다시 잰다)
+// 호스트 헤더가 무대 위에 겹친 높이 (CSS px, 2026-09-15 v0.69.0 — hostTop). 3D 는 그 뒤까지 그리지만 그 띠의 UI · 부표는 가려지고 못 누른다
+function hostTopPx() { return clamp(P.hostTop === undefined ? 0 : P.hostTop, 0, 240); }
 // 피할 상자 (CSS px) — 흩기와 깊이 배치가 **같이** 쓴다 (2026-09-13 에 흩기에서 꺼냈다 — 두 곳에 적지 않는다)
 function focusKeepBoxes(fc, W0, H0) {
   // 피할 상자 (CSS px) — 미니맵 · 검색바. 이름표가 부표 위로 뜨므로 위쪽 여유를 더 둔다
   const keep = [];
+  // ⭐ 호스트 헤더 띠 (v0.69.0, hostTop) — 화면 폭 전체 · 헤더 아래 40px(이름표 몫)까지. 흩기는 부표 중심을 이 띠에서 뺀다.
+  //   `band` — 깊이 배치는 이 상자를 겹침 벌점으로 안 본다 (옆으로 비켜서는 못 벗어나는 띠라 비끼기 후보만 헛돈다) · 화면 밖 검사가 위 끝으로 본다
+  const ht = hostTopPx();
+  if (ht > 0) keep.push({ x0: -1e5, x1: W0 + 1e5, y0: -1e5, y1: ht + 40, band: true });
   const st = ui.stage.getBoundingClientRect();
   for (const id of ['minimap', 'search-input']) {
     const el = document.getElementById(id);
@@ -967,6 +1017,7 @@ function focusDepthPlace(fc, set, clicked, seed, boatX, boatZ) {
   const fit = (P.focusDepthFit === undefined ? 1 : P.focusDepthFit) >= 0.5;
   const spreadK = fit ? Math.max(0.5, num(P.focusDepthSpread, 1.25)) : 1;
   const mg = Math.max(6, num(P.focusDepthMargin, 12) * W0 / 1440);
+  const topBand = hostTopPx();   // 화면 밖 검사의 위 끝 — 호스트 헤더가 가린 띠 (v0.69.0 · 0 이면 예전 그대로)
   const koName = (P.markNameKo === undefined ? 1 : P.markNameKo) >= 0.5;
   // 이름표 크기 — 이름표 겹침 판정(tick 의 labelItems → ui.labelWidth · labelHeight)과 **같은 식**이다. 가운데 정렬 · 몸통 꼭대기(r × 1.1) 위
   const lab = set.map(q => {
@@ -1043,8 +1094,8 @@ function focusDepthPlace(fc, set, clicked, seed, boatX, boatZ) {
           if (!moved) bad += 60;
         }
         const e = ext(i, px, py, r);
-        if (e.x0 < mg - 1 || e.x1 > W0 - mg + 1 || e.y0 < 0 || e.y1 > H0) bad += 100;               // 화면 밖
-        for (const k of keep) if (k !== boatK && boxHit(e, k)) { bad += 40; conflict = conflict || k; }   // 검색창 · 미니맵
+        if (e.x0 < mg - 1 || e.x1 > W0 - mg + 1 || e.y0 < topBand || e.y1 > H0) bad += 100;         // 화면 밖 (위 끝 = 호스트 헤더 아래)
+        for (const k of keep) if (k !== boatK && !k.band && boxHit(e, k)) { bad += 40; conflict = conflict || k; }   // 검색창 · 미니맵 (헤더 띠는 위 줄이 본다)
         const lb = labBox(i, px, py, r), bb = bodyBox(px, py, r);
         let sep = 4;
         for (const q of placed) {
@@ -1182,15 +1233,15 @@ function startFocus(m) {
 //   대상은 카드가 비추는 향수(marks.selected)다 — '이 향의 해역으로'(onSail)와 같다
 //   · [자세히 보기]  → 앱으로 (A10 화면 이동). 엔진은 아무것도 안 바꾼다
 //   · [진열대에 저장] → 앱으로 (A11 분류 모달). 카드 · 고른 향수 · 12개는 그대로 — 앱이 Promise 를 돌려주면 닫힐 때까지 입력을 잠근다 (holdWhile)
-//   · [주변 향 탐색] → **엔진이** 카드의 향을 새 중심으로 12개를 다시 띄운다 (exploreAround) · 앱에는 알림만.
-//     사용자 선택 : *"지금 3D 클릭 유지"* — 부표를 누르면 바로 12개가 뜨는 것은 그대로다. 12개 안의 부표를 누르면 고르기만 하므로 **새 중심은 이 단추가 연다**
+//   ⚠⚠ **[주변 향 탐색] 은 2026-09-16 에 카드에서 뺐다** (v0.74.2). 부표를 누르는 것이 곧 그 동작이라 같은 일을 두 번 내놓고 있었다 —
+//     엔진이 12개를 다시 띄우는 것도, 앱에 `exploreSimilar` 를 알리는 것도 이제 **onPick 의 부표 갈래**가 한다 (위 startFocus 옆).
+//     그래서 여기 있던 `explore` 갈래와 `canExplore` · `exploreAround` 도 같이 걷었다 — 부를 곳이 없어졌다.
 function cardAction(act) {
   if ((P.cardActions === undefined ? 1 : P.cardActions) < 0.5 || hostHold) return;
   const m = marks.selected, ref = perfumeRef(m);
   if (!ref) return;
   if (act === 'detail') callHost('openDetail', ref);
   else if (act === 'save') holdWhile(callHost('saveToShelf', ref));
-  else if (act === 'explore' && exploreAround(m)) callHost('exploreSimilar', ref);
 }
 // 앱이 띄운 창이 닫힐 때까지 입력(방향키 · Shift · 휠 · 누르기)을 잠근다 — 호버 · ESC · 스페이스는 hostHold 를 본다.
 //   ⚠ 모달 위 방향키가 새면 onManual 이 12개와 고른 향수를 거둔다 — 프론트는 *"취소하면 고른 포인트가 그대로 남습니다"* 다
@@ -1202,21 +1253,6 @@ function holdWhile(ret) {
   const done = () => { hostHold = Math.max(0, hostHold - 1); if (!hostHold) input.setHold(false); };
   ret.then(done, done);
 }
-// [주변 향 탐색]을 지금 누를 수 있는가 — 누르기(onPick)와 같은 가드 (§9-4 · 존 연출 중에는 안 한다) · 이미 그 향이 중심이면 할 일이 없다
-function canExplore(m) {
-  return !!m && m.src === 'map' && !!m.perfume && !hostHold && !phase.cue.busy && !travel.busy && !phase.cue.zone && marks.focusCenter !== m;
-}
-// 부표를 새로 누른 것과 같은 길이다 (onPick 끝의 pickSail → startFocus).
-//   ⚠ 12개가 떠 있는 채로 들어가면 앞 슬롯의 부표는 그 자리에서 잠긴 뒤 새 자리로 솟는다 (marks.js focusOn 의 prev)
-function exploreAround(m) {
-  if (!canExplore(m)) return false;
-  marks.select(m);
-  clickMark = m; hoverMark = m;
-  pickSail(m);
-  startFocus(m);
-  return true;
-}
-
 // 미니맵의 '지금 화면' 부채꼴 (배 기준 월드 x·z). 화면 테두리 16점을 부표 높이 평면에 투영하고
 //   부표 거리 페이드(38) 밖은 잘라 낸다 — 부표가 뜰 수 있는 곳이 곧 '보이는 바다' 다
 const _footPts = [];
@@ -1376,7 +1412,9 @@ function tick() {
   nav.scroll.z += vZ * dt;
   nav.scroll.x += vX * dt;
   nav.latV += (vX - nav.latV) * 0.08;
-  const mv = Math.min(1, Math.max(s, Math.abs(nav.latV) / M.strafe)) * blockK;
+  // ⭐ `_shipMv` — 존 연출에서 배가 씬 안을 실제로 가로지르는 속도 (2026-09-16). 그게 없으면 배만 옮겨지고
+  //   물은 가만히 있다 (연출 중 nav.speed 는 0 이라 항적 · 물보라 · 흘수가 전부 죽는다). ⚠ 한 프레임 전 값이다 (아래 카메라 블록이 채운다)
+  const mv = Math.min(1, Math.max(s, Math.abs(nav.latV) / M.strafe, _shipMv)) * blockK;
 
   // 마우스 패럴랙스 목표를 부드럽게 따라간다. ⚠ 즉시 따라가면 손떨림이 그대로 화면에 나온다
   {
@@ -1426,7 +1464,9 @@ function tick() {
   }
 
   // ── 물
-  sim.update(dt, t, { vX, vZ, mv, scrollX: nav.scroll.x, scrollZ: nav.scroll.z });
+  // ⭐ 배가 씬 원점을 벗어나 있으면 뱃머리 그립 · 항적이 나는 자리도 같이 옮긴다 (2026-09-16 — 존 연출의 등장 · 정박).
+  //   ⚠ `_shipOff` 는 아래 카메라 블록이 채우므로 여기서는 **한 프레임 전** 값이다 (시뮬 게이트 30fps — 안 드러난다)
+  sim.update(dt, t, { vX, vZ, mv, scrollX: nav.scroll.x, scrollZ: nav.scroll.z, boatX: _shipOff.x, boatZ: _shipOff.z });
 
   // ── 카메라. 월드에 고정 — 속도에 따라 후퇴 / 상승 / 화각 확대
   //   ⚠ 계산은 위의 `cameraPose()` 에 있다 (2026-09-11 — 향수 고르기 슬롯이 같은 식을 써야 해서 뺐다).
@@ -1446,6 +1486,62 @@ function tick() {
   //   섞임(focusT)만큼 속도의 몫(후퇴 · 상승 · 화각)을 뺀다 — 배는 일반 속도로 가도 화면이 선다. 존 연출은 그대로 · 0 = v0.64.0
   const sCam = (P.focusCamStill === undefined ? 1 : P.focusCamStill) >= 0.5 ? s * (1 - EASE.inOutCubic(focusT)) : s;
   cameraPose(cl, sCam, cam.aspect, _pose);
+  // ⭐⭐ **배 등장 · 정박** (2026-09-16, `zoneBoatEnter`) — 존 연출에서 배가 화면 밖 왼쪽으로 빠졌다가 왼쪽에 정박한다.
+  //   ⚠⚠ **카메라는 안 건드린다.** 처음에는 시선 목표(zoneLookX)를 밀어서 했는데 바다 · 부표 · 게이트가 통째로 흔들렸다
+  //     (사용자 : *"지금 카메라가 너무 출렁이는데"*). 그래서 **배만** 카메라의 오른쪽 축(−rgt)으로 민다.
+  //   ⚠ `boat.js` 는 pivot 의 **y 만** 쓴다(부력) — x · z 는 여기가 주인이다.
+  //   ⚠ 배에 딸린 층은 따라온다 — 물의 `uBoatPos`(water.setBoat 가 pivot 을 잡는다) · 반사 · 물보라 · 잠긴 선체 · 배 피할 상자.
+  //   ⚠⚠ **따라오지 않는 것 : 시뮬의 뱃머리 그립과 항적이다** (sim.js 의 `BOW_Z` 는 텍스처 원점에 박혀 있다).
+  //     존 연출에서는 배가 이미 서 있어 새 항적이 안 나므로 남은 자국이 옅어질 뿐이다 — 움직이는 중에 이 값을 켜지 않는다.
+  //   ⚠ 단위는 zoneLookX 와 같은 **화면 반폭 대비 비율**이다 (`_pose.hW` 가 월드로 바꾼다).
+  //   ⭐⭐ **등장은 대각선이다** (2026-09-16 사용자 : *"왼쪽에서 수평으로 등장하는게아니라 … 왼쪽 하단에서 대각선으로"*).
+  //     세로 성분은 배를 **카메라 쪽으로 당겨서** 낸다 — 구도가 내려다보는 각이라 가까울수록 화면 아래고, 원근으로 크게도 보인다.
+  //     ⚠ 배의 y 를 직접 내리지 않는다 — 그건 부력이 정하고(boat.js), 건드리면 물에 잠기거나 뜬다.
+  //     ⚠ 정박 자리의 깊이 성분은 0 이다 — 들어오는 동안만 가까웠다가 제 깊이로 물러난다.
+  //   ⭐⭐ **자리를 타임라인으로 정하지 않는다 — 속도로 민다** (2026-09-16 사용자 : *"시간 맞추기 위해 중간에 멈추는데 … 시간 제한 두지 말고 앞으로 움직여"*).
+  //     타임라인으로 자리를 정하면 끝점에서 **반드시 감속해 선다.** 그래서 `swing` 은 **시작 자리에 놓기만** 하고,
+  //     그 뒤로는 매 프레임 뱃머리 방향으로 `zoneShipSpeed × 부스트` 만큼 나아간다 — 끝나는 지점이 없다.
+  {
+    const rsp = lookRsp(cam.aspect);
+    const c = phase.cue;
+    const pX = _shipOff.x, pZ = _shipOff.z;
+    // ⚠⚠ **존 구도 카메라를 따로 받는다** (`_poseZ`) — 배가 놓이는 때(0.30s)의 카메라는 아직 항해 구도이고,
+    //   뱃머리가 바라볼 방향도 존 구도 기준이어야 전환 중에 안 흔들린다 (아래 boat.update 의 각도 블록이 같이 쓴다).
+    cameraPose(1, 0, cam.aspect, _poseZ);
+    if (c.phase === 'entering' || c.phase === 'inspecting') {
+      if (!_shipRun) {
+        // 시작 자리 — swing 이 0 → 1 로 놓는다 (순간이동 방지). 세로 몫은 카메라 쪽으로 당겨서 낸다 (화면 아래 · 원근으로 크게)
+        // ⚠ 카메라가 들어오는 2초 동안 배의 **화면** 자리는 조금 움직인다 (월드 자리는 고정인데 카메라가 당겨지므로) — 앉고 나면 잰 그 자리다.
+        const dx = (P.zoneShipOut === undefined ? 0 : P.zoneShipOut) * c.swing * rsp * _poseZ.hW;
+        const dz = (P.zoneShipOutY === undefined ? 0 : P.zoneShipOutY) * c.swing * rsp * _poseZ.hW;
+        _shipOff.x = -dx * _poseZ.rgt.x - dz * _poseZ.fwdH.x;
+        _shipOff.z = -dx * _poseZ.rgt.z - dz * _poseZ.fwdH.z;
+        if (c.swing >= 1) _shipRun = true;
+      } else {
+        // ⚠ 뱃머리는 로컬 −z 라 씬 방향이 `(−sin h, −cos h)` 다 (불변식 0-2). 그 방향이 곧 글자 쪽이라 화면에서 **대각선**으로 읽힌다
+        const v = (P.zoneShipSpeed === undefined ? 0 : P.zoneShipSpeed) * groundSpeed(1) * dt;
+        const hd = boat.pivot.rotation.y;
+        _shipOff.x += -Math.sin(hd) * v;
+        _shipOff.z += -Math.cos(hd) * v;
+        // ⚠⚠ 스펀지 안에 묶는다 — 중심에서 `domain × 0.29` 를 넘으면 **항적이 태어나자마자 먹힌다** (sim.js 의 주입점 주석). 여유를 두고 0.26
+        const r = Math.hypot(_shipOff.x, _shipOff.z), lim = CONFIG.sim.domain * 0.26;
+        if (r > lim) { _shipOff.x *= lim / r; _shipOff.z *= lim / r; }
+      }
+      _shipHold.x = _shipOff.x; _shipHold.z = _shipOff.z;
+    } else if (c.phase === 'leaving') {
+      // 나아간 만큼을 swing(1 → 0)으로 되돌린다 — 끝이 `look` 과 같아 카메라 복귀와 함께 선다
+      _shipOff.x = _shipHold.x * c.swing;
+      _shipOff.z = _shipHold.z * c.swing;
+    } else {
+      _shipOff.x = 0; _shipOff.z = 0; _shipRun = false;
+    }
+    boat.pivot.position.x = _shipOff.x;
+    boat.pivot.position.z = _shipOff.z;
+    // 이동한 만큼을 **배의 속도 단위**로 바꾼다 (`groundSpeed(1)` = 부스트의 월드/초) — 숫자를 손으로 적지 않는다 (불변식 0-1)
+    _shipMv = dt > 1e-4
+      ? clamp(Math.hypot(_shipOff.x - pX, _shipOff.z - pZ) / dt / Math.max(1e-4, groundSpeed(1)), 0, 1)
+      : 0;
+  }
   const kD = _pose.kD;
   // ⚠⚠ **camYaw — look 점을 축으로 카메라를 옆으로 돌린다** (2026-09-06, 세일보트와 같이 들어왔다).
   //   배의 진행 방향은 로컬 −z 라 뱃머리가 화면 안쪽을 향한다. 예전 종이배는 길이축이 로컬 x
@@ -1573,7 +1669,49 @@ function tick() {
   water.update(sim, view, t, kD);
   grids.update(sim, t, view, nav.scroll);
   spray.update(sim, t, boat);
-  boat.update(sim, { t, s, mv, head: nav.head, headV: nav.headV });
+  // ⭐⭐ 존 연출에서 **뱃머리가 글자를 바라본다** (2026-09-16, `zoneShipYaw`). 사용자 : *"뱃머리가 글자를 바라보며 들어와야함 근데 대각선으로"*.
+  //   ⚠⚠ 평행이동만 시키면 배가 옆으로 미끄러지는 **게걸음(드리프트)** 으로 보인다 — 각을 같이 줘야 '들어온다' 로 읽힌다.
+  //   ⚠ `nav.head` 자체는 **안 건드린다** (불변식 0-2-2 — 누적각이라 여기서 감싸거나 더하면 시각 요 보간과 자동 조타가 어긋난다).
+  //     boat.js 에 **넘기는 값**에만 더한다. 조타 · 항적 · 부력은 그대로 nav.head 를 쓴다.
+  //   ⚠ boat.js 가 0.05/프레임으로 좇으므로 각이 **서서히** 돈다 — 그 선회가 들어오는 동안의 움직임으로 읽힌다.
+  //   ⚠ 섞는 것은 `swing` 이다 (dock 이 아니다) — 배가 화면 밖으로 나가는 동안 이미 돌아서, **돌아선 채로 들어온다.**
+  //   ⚠⚠ **각은 카메라 기준 절대값이다 — `nav.head` 에 상대 각을 더하지 않는다.** 더하면 *어느 방향에서 존에 들어왔느냐*에 따라
+  //     뱃머리가 매번 달라진다 (처음에 그렇게 짰다가 고쳤다). 구도는 카메라에 고정이므로 기준도 카메라여야 한다.
+  //     `atan2(−fwdH.x, −fwdH.z)` 가 뱃머리를 **화면 안쪽**으로 놓는 각이고(불변식 0-2 : 뱃머리 = 로컬 −z), 거기에 zoneShipYaw 를 더한다.
+  //   ⚠ 섞기는 `wrapPi` 로 **최단 경로**를 쓴다 (불변식 0-2-2 — 누적각과 유한각을 그냥 빼면 몇 바퀴어치가 나온다).
+  //   ⚠⚠ **`nav.head` 를 실제로 돌린다 — 시각만 돌리지 않는다.** 시각만 돌리면 나갈 때 그 각이 풀리면서 배가 **빙글빙글 돈다**
+  //     (2026-09-16 사용자 : *"원래 화면으로 돌아갈때도 그냥 그 방향을 보고 있어야할 것같음 지금 무슨 빙글빙글 돈다"*).
+  //     존을 나가면 배는 **바라보던 그 방향으로** 항해를 이어간다 — 그게 '돌아선 채로 떠난다' 로 읽힌다.
+  //   ⚠ 들어올 때(`entering`)만 돌린다. 시작 각을 한 번 붙잡아 두고(`_zoneYawFrom`) swing 으로 섞으므로 프레임마다 다시 당기지 않는다.
+  //     나갈 때는 `want` 가 카메라를 따라 움직이는데 그걸 좇으면 또 돌아버린다 — 그래서 `leaving` 에서는 건드리지 않는다.
+  //   ⚠ 더하는 몫은 `wrapPi` 로 잰 **최단 경로**다 (불변식 0-2-2 — 누적각 nav.head 에 유한각을 그냥 넣으면 몇 바퀴가 된다).
+  //   ⚠ 바라볼 방향은 **존 구도**(`_poseZ`)에서 받는다 — 전환 중 카메라(`_pose`)로 재면 목표각이 22° 따라 움직여 배가 그걸 좇는다.
+  const cph = phase.cue.phase;
+  if (cph === 'entering' && _zoneYawFrom === null) {
+    // ⭐⭐ **각은 한 프레임에 맞춘다 — 서서히 돌리지 않는다** (2026-09-16 사용자 : *"자꾸 뱃머리 억지로 틀리고있는게 내눈에 딱보이는데"*
+    //   · *"흰색 화면으로 전환과 동시에 배가 그 방향으로 회전을 해두면 안되나?"*).
+    //   ⚠⚠ `travel.js` 의 순간이동과 **같은 규약**이다 (그 파일 57~63행) — `nav.head` 를 등가각으로 놓고
+    //     `pivot.rotation.y` 를 **직접** 써서 boat.js 의 시각 요 보간(0.05/프레임)을 건너뛴다. 거기 주석 그대로 *"안개 속에서 이미 돌아 있어야 한다"*.
+    //   ⚠ 먼 곳 이동(미니맵 · 카드 · 검색)으로 들어오면 **흰 안개가 이 순간을 덮는다** (travel.js 의 fogIn → fogOut).
+    //     배로 직접 들어오면 덮개가 없지만, 한 프레임이라 예전처럼 **트는 과정이 보이지는 않는다.**
+    //   ⚠ 등가각으로 넣는다 — `nav.head` 는 무한 누적값이라 `atan2` 결과를 그냥 넣으면 몇 바퀴가 된다 (불변식 0-2-2).
+    const faceIn = Math.atan2(-_poseZ.fwdH.x, -_poseZ.fwdH.z);
+    const want = faceIn + (P.zoneShipYaw === undefined ? 0 : P.zoneShipYaw) * (Math.PI / 180);
+    nav.head += wrapPi(want - nav.head);
+    nav.headV = 0;
+    boat.pivot.rotation.y = nav.head;
+    _zoneYawFrom = nav.head;   // 이번 진입에서 이미 맞췄다는 표시 (null 이 아니면 다시 안 한다)
+  } else if (_prevPhase === 'leaving' && cph === 'sailing') {
+    // ⭐⭐ **연출이 끝나는 그대로 각도를 유지한다** (2026-09-16 사용자 : *"연출 끝나는 그대로 배 각도가 유지되어있으면 될듯함"*).
+    //   화면에 보이던 각(`pivot.rotation.y`)을 그대로 항해 각으로 삼는다 — 되감을 것도, 좇아갈 것도 남지 않는다.
+    //   ⚠ `nav.head` 는 무한 누적값이라 `atan2` 결과를 그냥 넣으면 몇 바퀴가 된다 — **등가각**으로 넣는다 (불변식 0-2-2 · travel.js 의 순간이동과 같은 규약).
+    //   ⚠ 각속도도 0 으로 — 남아 있으면 항해를 이어가며 그만큼 더 돈다.
+    nav.head += wrapPi(boat.pivot.rotation.y - nav.head);
+    nav.headV = 0;
+    _zoneYawFrom = null;
+  } else if (cph === 'sailing') _zoneYawFrom = null;
+  _prevPhase = cph;
+  boat.update(sim, { t, s, mv, head: nav.head, headV: nav.headV, offX: _shipOff.x, offZ: _shipOff.z });
   zones.update({ head: nav.head, scroll: nav.scroll });
   // ⚠ boat.update 뒤여야 한다 — 부표의 부유가 배와 같은 게이트(boat.stepped)를 탄다
   marks.update(sim, { scroll: nav.scroll, stepped: boat.stepped, cam, dt, viewH: H() });
@@ -1646,12 +1784,22 @@ function tick() {
   // ⭐ 마우스 호버 → 말풍선 (2026-09-12 저녁). ⚠ 아래 카드 갱신 **바로 앞**이라야 같은 프레임에 반영된다
   updateHover(view);
   // 고른 부표가 멀어져 사라지면 marks 가 선택을 스스로 놓는다. 카드도 여기서 같이 닫힌다
-  if (marks.selected !== shownMark) {
-    shownMark = marks.selected;
+  // ⭐⭐ **카드는 제 부표의 잠김 · 솟음을 같이 탄다** (2026-09-16, `cardFollowFade`).
+  //   사용자 : *"12개 씬에 부표가 내려갈때 같이 내려갔다가 같이 올라오게"* · *"너무 창이 억지로 이동한게 보이니까 연관성이 떨어짐"*.
+  //   고르기에 들고 날 때 부표는 한 번 **잠겼다가 새 슬롯에서 솟는다** (불변식 31). 카드를 그대로 두면 그동안
+  //   화면을 **가로질러 새 자리로 미끄러진다** — 무엇에 딸린 창인지 흐려진다. 그래서 부표가 잠기면 카드도 접고, 다시 솟으면 같이 뜬다.
+  //   ⚠ `marks.selected` 는 안 건드린다 (선택 링 · 이름표 우선순위가 그걸 읽는다) — **카드만** 따라간다.
+  //   ⚠ 잠김 · 솟음은 한 방향으로만 가므로 문턱 하나로 충분하다 (되돌아오며 깜빡일 구간이 없다). 0 이면 예전처럼 안 따라간다
+  const fMin = P.cardFollowFade === undefined ? 0.35 : P.cardFollowFade;
+  const selM = marks.selected;
+  const wantCard = (selM && (fMin <= 0 || (selM.on && selM.fade >= fMin))) ? selM : null;
+  if (wantCard !== shownMark) {
+    shownMark = wantCard;
     if (shownMark) ui.showScent(shownMark); else ui.hideScent();
   }
-  // 카드의 서비스 동작 단추 (v0.68.0) — 지도 향수가 아니면 셋 다 쉬고, [주변 향 탐색]은 지금 누를 수 없으면 쉰다 (canExplore). ⚠ ui 가 바뀔 때만 쓴다
-  if (shownMark) ui.setScentActions(shownMark.src === 'map' && !!shownMark.perfume && !hostHold, canExplore(shownMark));
+  // 카드의 서비스 동작 단추 (v0.68.0) — 지도 향수가 아니면 둘 다 쉰다. ⚠ ui 가 바뀔 때만 쓴다
+  //   ⚠ [주변 향 탐색]이 빠지면서(v0.74.2) 인자가 하나가 됐다 — 남은 둘은 같은 조건이다
+  if (shownMark) ui.setScentActions(shownMark.src === 'map' && !!shownMark.perfume && !hostHold);
   // ⭐ 호버 미리보기 카드는 마우스를 통과시킨다 (2026-09-13 저녁, cardPeek) — 카드 밑에 가린 부표에도 바로 마우스를 올릴 수 있게.
   //   ⚠ 누른 향수의 카드(clickMark)는 그대로 받는다 — × · '이 향의 해역으로' 를 눌러야 하고, 통과시키면 카드 누름이 빈 바다 누름이 된다
   //   ⭐ v0.65.0 : 마우스가 그 카드 위에 올라오면 통과를 끄고 진하게 — × · '이 향의 해역으로' 를 누를 수 있다 (updateHover 의 hoverOnCard).
@@ -1744,8 +1892,8 @@ applyResponsive();
 // ⭐⭐ 저녁 카드 · 저녁 미니맵 (2026-09-13 저녁, cardEve · minimapEve). <html data-card-eve> · <html data-mini-eve> 가 index.html 의 토큰을 켠다.
 //   ⚠ 속성이 없으면 인라인의 예전 값이다 (반응형 · 시간대와 같은 규약 — 불변식 23 · 25). 카드 바탕의 불투명도(cardGlassA)는 CSS 변수로 넣는다.
 //   미니맵 캔버스는 minimap.js 가 속성이 바뀐 것을 보고 색을 다시 읽는다
-let _cardEveOn = null, _miniEveOn = null, _cardGlassA = null, _cardPeekA = null, _cardBtnNavy = null, _cardRuleSolid = null, _cardImg = null, _infoCenter = null, _siteHeader = null, _cardActions = null;
-let _warnEveOn = null, _warnLine = null, _warnDrop = null, _searchDrop = null, _infoDescK = null;
+let _cardEveOn = null, _miniEveOn = null, _cardGlassA = null, _cardPeekA = null, _cardPeekMs = null, _cardBtnNavy = null, _cardRuleSolid = null, _cardImg = null, _infoCenter = null, _siteHeader = null, _cardActions = null;
+let _warnEveOn = null, _warnLine = null, _warnDrop = null, _searchDrop = null, _infoDescK = null, _hostTop = null;
 function applyUiEve() {
   const root = document.documentElement;
   const ce = (P.cardEve === undefined ? 1 : P.cardEve) >= 0.5;
@@ -1754,6 +1902,9 @@ function applyUiEve() {
   if (a !== _cardGlassA) { _cardGlassA = a; root.style.setProperty('--pb-card-a', String(a)); }
   const pa = clamp(P.cardPeekA === undefined ? 0.65 : P.cardPeekA, 0, 1);
   if (pa !== _cardPeekA) { _cardPeekA = pa; root.style.setProperty('--pb-card-peek', String(pa)); }
+  // ⭐ 미리보기 ↔ 진한 카드가 **서서히** 바뀌는 시간 (2026-09-16). 트랜지션은 카드 상자 · 꼬리의 인라인에 걸려 있고 길이만 여기서 준다
+  const pms = Math.round(clamp(P.cardPeekMs === undefined ? 200 : P.cardPeekMs, 0, 1200));
+  if (pms !== _cardPeekMs) { _cardPeekMs = pms; root.style.setProperty('--pb-card-peek-ms', pms + 'ms'); }
   // 해역 버튼 색 (2026-09-13 저녁) — 1 짙은 남색 · 0 브론즈 (v0.53.0 첫 시안). ⚠ 색을 인라인으로 넣지 않는다 — <html> 인라인은 종이 카드([원본])까지 덮는다
   const navy = (P.cardBtnNavy === undefined ? 1 : P.cardBtnNavy) >= 0.5;
   if (navy !== _cardBtnNavy) { _cardBtnNavy = navy; root.toggleAttribute('data-card-btn-bronze', !navy); }
@@ -1789,7 +1940,11 @@ function applyUiEve() {
   if (wd !== _warnDrop) { _warnDrop = wd; root.style.setProperty('--pb-warn-drop', wd + 'px'); }
   // ⭐ 검색창 · 정보 블록 · 경고 토스트 내림 · 설명 글자 배율 (2026-09-15, v0.67.0 — searchDrop · infoDescK). 반응형 단계 값에 **더하고 · 곱한다** (단계마다 같은 만큼).
   //   ⚠ 정보 블록 아래끝 + 18px 이 수면 타이포의 천장이다 — 자리 · 크기가 바뀌면 창 크기 변화처럼 알려 천장과 말풍선 피할 자리를 다시 잰다 (처음 한 번은 안 알린다)
-  const sd = clamp(P.searchDrop === undefined ? 40 : P.searchDrop, 0, 240);
+  // ⭐⭐ 호스트 헤더 (2026-09-15, v0.69.0 — hostTop) : 앱 헤더가 무대 위에 겹친 높이만큼 **더 내린다** (searchDrop 에 더한다 — 검색창 · 정보 블록 · 경고 토스트가 같이 간다).
+  //   해도 판은 --pb-host-top 으로 그 아래에 서고, 향수 고르기는 focusKeepBoxes · 깊이 배치의 화면 검사가 그 띠를 뺀다. ⚠ 무대 크기는 안 바뀐다 (siteHeader 와 다르다)
+  const ht = hostTopPx();
+  if (ht !== _hostTop) { _hostTop = ht; root.style.setProperty('--pb-host-top', ht + 'px'); }
+  const sd = clamp(P.searchDrop === undefined ? 40 : P.searchDrop, 0, 240) + ht;
   if (sd !== _searchDrop) { const first = _searchDrop === null; _searchDrop = sd; root.style.setProperty('--pb-search-drop', sd + 'px'); if (!first) window.dispatchEvent(new Event('resize')); }
   const dk = clamp(P.infoDescK === undefined ? 1.15 : P.infoDescK, 0.5, 2);
   if (dk !== _infoDescK) { const first = _infoDescK === null; _infoDescK = dk; root.style.setProperty('--pb-info-desc-k', String(dk)); if (!first) window.dispatchEvent(new Event('resize')); }

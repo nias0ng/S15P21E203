@@ -35,7 +35,8 @@ export function createPerf(renderer, stage) {
 
   const box = document.createElement('div');
   box.style.cssText =
-    'position:absolute;top:12px;left:12px;z-index:50;padding:8px 10px;' +
+    // ⚠ 호스트 헤더(hostTop — 앱의 유리판 헤더 90px)가 무대 위를 가리므로 그만큼 내린다 (2026-09-16, D). 단독 실행이면 0 이라 예전 자리다
+    'position:absolute;top:calc(var(--pb-host-top,0px) + 12px);left:12px;z-index:50;padding:8px 10px;' +
     'background:rgba(248,247,243,0.82);border:1px solid rgba(26,26,26,0.18);border-radius:4px;' +
     'font:11px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#1A1A1A;' +
     'white-space:pre;pointer-events:none;font-variant-numeric:tabular-nums;';

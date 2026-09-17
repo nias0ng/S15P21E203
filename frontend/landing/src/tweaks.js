@@ -103,7 +103,7 @@ const GROUPS = [
    '배가 남기는 것. 항적은 거품과 함께 기억을 갖는 채널(.z) 이다'],
   // ⚠ 시간 계약을 맨 앞에 둔다 — 배의 속도가 파도의 위상속도에서 나오므로 여기 손잡이는
   //   배만의 값이 아니라 **배와 파도의 관계**다 (ocean-clock.js). 만지기 전에 clock.report()
-  ['배 · 움직임과 시계', ['boatModel', 'boatGlbLift', 'boatPaperTone', 'sailWind', 'sailWindFreq', 'sailWindSpeed', 'sailWindGust', 'sailFlip', 'sailSpec', 'sailTone', 'boatMetal', 'boatRough', 'metalAmount', 'metalMetalness', 'metalRough', 'boatNormal', 'paperAmount', 'paperScale', 'paperShade', 'paperVary', 'clockUnified', 'driftCp', 'boostCp', 'driftSpeed', 'turnRadius', 'turnRate',
+  ['배 · 움직임과 시계', ['boatModel', 'boatGlbLift', 'boatPaperTone', 'sailWind', 'sailWindRest', 'sailWindFreq', 'sailWindSpeed', 'sailWindGust', 'sailWindDir', 'sailWindCross', 'sailWindTilt', 'sailFlip', 'sailSpec', 'sailTone', 'boatMetal', 'boatRough', 'metalAmount', 'metalMetalness', 'metalRough', 'boatNormal', 'paperAmount', 'paperScale', 'paperShade', 'paperVary', 'clockUnified', 'driftCp', 'boostCp', 'driftSpeed', 'turnRadius', 'turnRate',
                  'turnFloor', 'buoyancy', 'rightLimit', 'rightLead', 'rightDamp', 'boatFps'],
    '속도는 월드/초가 아니라 **위상속도의 배수**다. ⚠ 속도를 줄이면 선회 반경을 보존한다'],
   ['카메라', ['camYaw', 'camPitch', 'camDist'],
@@ -195,7 +195,8 @@ export function createTweaks(stage, { params, ranges, apply }) {
 
   const box = document.createElement('div');
   box.style.cssText =
-    'position:absolute;top:8px;right:8px;width:264px;max-height:calc(100vh - 24px);' +
+    // ⚠ 호스트 헤더(hostTop — 앱의 유리판 헤더 90px)가 무대 위를 가리므로 그만큼 내린다 (2026-09-16, D). 단독 실행이면 0 이라 예전 자리다
+    'position:absolute;top:calc(var(--pb-host-top,0px) + 8px);right:8px;width:264px;max-height:calc(100vh - 24px - var(--pb-host-top,0px));' +
     'display:flex;flex-direction:column;z-index:50;' +
     'font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#1A1A1A;' +
     'background:rgba(255,255,255,.86);backdrop-filter:blur(6px);' +
