@@ -21,7 +21,6 @@ type Props = {
   initial?: CollectionInput
   /** 만들 때 고를 수 있는 진열대 항목. 수정할 때는 쓰지 않습니다 */
   candidates?: ShelfItemCandidate[]
-  onSearch?: (keyword: string) => void
 }
 
 /**
@@ -44,12 +43,12 @@ export function CollectionFormModal({
   onSubmit,
   initial,
   candidates = [],
-  onSearch,
 }: Props) {
   const editing = initial !== undefined
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [picked, setPicked] = useState<number[]>([])
+  const [keyword, setKeyword] = useState('')
 
   /*
    * 열릴 때마다 칸을 처음 값으로 되돌립니다.
@@ -69,6 +68,7 @@ export function CollectionFormModal({
     setTitle(initial?.title ?? '')
     setDescription(initial?.description ?? '')
     setPicked([])
+    setKeyword('')
   }
 
   const toggle = (shelfItemId: number) =>
@@ -105,6 +105,7 @@ export function CollectionFormModal({
                 picked,
               )
               setPicked([])
+              setKeyword('')
             }}
           >
             {editing ? '저장' : '만들기'}
@@ -140,7 +141,8 @@ export function CollectionFormModal({
               candidates={candidates}
               picked={picked}
               onToggle={toggle}
-              onSearch={onSearch ?? (() => {})}
+              keyword={keyword}
+              onKeywordChange={setKeyword}
               emptyTitle="진열대에 담은 향수가 없습니다"
             />
             <p className="text-ink-muted text-caption leading-relaxed">

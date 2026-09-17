@@ -13,7 +13,6 @@ type Props = {
    * ("진열대에 없는 향수는 추가 불가"). 목록은 화면(pages)에서 진열대 데이터로 만듭니다.
    */
   candidates: ShelfItemCandidate[]
-  onSearch: (keyword: string) => void
   /** **진열대 항목 번호**입니다 — 서버가 `shelfItemIds` 로 받습니다 */
   onSubmit: (shelfItemIds: number[]) => void
 }
@@ -31,10 +30,10 @@ export function AddToCollectionModal({
   open,
   onClose,
   candidates,
-  onSearch,
   onSubmit,
 }: Props) {
   const [picked, setPicked] = useState<number[]>([])
+  const [keyword, setKeyword] = useState('')
 
   const toggle = (shelfItemId: number) =>
     setPicked((prev) =>
@@ -43,8 +42,14 @@ export function AddToCollectionModal({
         : [...prev, shelfItemId],
     )
 
+  /*
+   * `Modal` 이 `<dialog>` 라 **닫아도 언마운트되지 않습니다.** 검색어를 비우지
+   * 않으면 다음에 열었을 때 지난번 검색어가 남아, 담을 수 있는 향수 일부가
+   * 가려진 채로 보입니다.
+   */
   const close = () => {
     setPicked([])
+    setKeyword('')
     onClose()
   }
 
@@ -63,6 +68,7 @@ export function AddToCollectionModal({
             onClick={() => {
               onSubmit(picked)
               setPicked([])
+              setKeyword('')
             }}
           >
             추가
@@ -75,7 +81,8 @@ export function AddToCollectionModal({
           candidates={candidates}
           picked={picked}
           onToggle={toggle}
-          onSearch={onSearch}
+          keyword={keyword}
+          onKeywordChange={setKeyword}
           emptyTitle="추가할 향수가 없습니다"
         />
       </div>
