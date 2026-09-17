@@ -133,7 +133,10 @@ export default function ReviewBoardPage() {
           />
         </div>
 
-        <TrendingPerfumes items={trending.data ?? []} />
+        <TrendingPerfumes
+          items={trending.data?.perfumes ?? []}
+          days={trending.data?.days}
+        />
       </div>
     </div>
   )

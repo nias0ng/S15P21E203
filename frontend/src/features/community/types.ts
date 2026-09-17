@@ -47,6 +47,14 @@ export interface LinkedPerfume {
   perfumeId: number
   name: string
   brand: string | null
+  /**
+   * 대표 사진. 고르는 목록에서 보여줍니다 — 이름만으로는 같은 브랜드의 비슷한
+   * 이름들 사이에서 무엇을 고르는지 알기 어렵습니다.
+   *
+   * 선택 항목입니다. 글 상세의 연결 향수(`PostDetail.relatedPerfumes`)는 서버가
+   * 사진을 주지 않아 비어 있고, 거기서는 사진을 쓰지도 않습니다.
+   */
+  thumbnailUrl?: string | null
 }
 
 /* ── 자유 게시판 (GET /posts) ──────────────────────────────── */
@@ -224,5 +232,19 @@ export function reviewToBoardItem(review: ReviewBoardItem): BoardItem {
 export interface TrendingPerfume {
   perfumeId: number
   name: string
-  postCount: number
+  /** 브랜드가 비어 있는 향수가 있습니다 */
+  brand: string | null
+  thumbnailUrl: string | null
+  /** 이 향수를 건 글의 수. 기간은 응답의 `days` 가 알려줍니다 */
+  mentionCount: number
+}
+
+/** `GET /posts/trending-perfumes` 응답 */
+export interface TrendingPerfumesResponse {
+  /**
+   * 집계한 기간(일). 화면이 "최근 한 주" 를 적어 두지 않고 이 값을 씁니다 —
+   * 서버가 기간을 바꾸면 문구도 같이 바뀌어야 합니다.
+   */
+  days: number
+  perfumes: TrendingPerfume[]
 }

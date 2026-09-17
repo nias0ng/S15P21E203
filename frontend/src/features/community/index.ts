@@ -5,10 +5,23 @@
  * 화면: A22a 후기 게시판 / A22b 자유 게시판 / A23 게시글 상세 + 댓글
  *      A24a 후기 작성 / A24b 자유 글 작성 / C02 향수 선택
  *
- * 조회는 전부 실제 API 입니다. **쓰기(작성 · 수정 · 삭제 · 좋아요 · 댓글)는 로그인이
- * 필요해 인증이 붙을 때 이어집니다.** "지금 많이 언급되는 향수" 는 엔드포인트
- * 자체가 없습니다.
+ * 조회와 쓰기(작성 · 수정 · 삭제 · 좋아요 · 댓글)가 전부 실제 API 입니다.
+ * 쓰기는 로그인이 필요합니다(401) — 남의 글 · 남의 댓글은 403 입니다.
+ * "지금 많이 언급되는 향수" 만 아직 자리표시자입니다.
  */
+export {
+  createComment,
+  createPost,
+  deleteComment,
+  deletePost,
+  likePost,
+  unlikePost,
+  updateComment,
+  updatePost,
+  type PostCreateInput,
+  type PostLikeResult,
+  type PostUpdateInput,
+} from './api'
 export { BoardHeader } from './components/BoardHeader'
 export { ImageAttachField, WriteForm } from './components/WriteForm'
 export { CommentSection } from './components/CommentSection'
@@ -43,4 +56,5 @@ export {
   type ReviewBoardResponse,
   type ReviewSort,
   type TrendingPerfume,
+  type TrendingPerfumesResponse,
 } from './types'
