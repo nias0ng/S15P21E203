@@ -163,6 +163,20 @@ function refreshAccessToken(): Promise<string> {
   return pending
 }
 
+/**
+ * 재발급 실패가 **세션이 끝났다는 뜻인지** 가립니다.
+ *
+ * 서버가 거절한 것(401 · 403)만 세션의 끝입니다. 닿지 못했거나(0 · 502~504) 서버가
+ * 아픈 것(5xx)은 **다음에 다시 물어보면 되는 일**입니다.
+ *
+ * `/auth/refresh` 요청도 이 인터셉터를 지나므로, 여기 오는 실패는 이미
+ * `ApiError` 로 정규화돼 있습니다. `ApiError` 가 아닌 것은 axios 밖에서 터진
+ * 예외라 세션과 무관하므로 역시 끝내지 않습니다.
+ */
+function isSessionRejected(error: unknown): boolean {
+  return isApiError(error) && (error.status === 401 || error.status === 403)
+}
+
 // 응답 인터셉터: 만료된 토큰은 재발급하고, 나머지 에러는 ApiError 로 정규화
 http.interceptors.response.use(
   (response) => response,
@@ -184,12 +198,27 @@ http.interceptors.response.use(
         if (refreshable) {
           config._retried = true
 
-          const renewed = await refreshAccessToken().catch(() => null)
-
-          if (renewed !== null) {
+          try {
+            const renewed = await refreshAccessToken()
             useAuthStore.getState().setAccessToken(renewed)
             // 요청 인터셉터가 새 토큰으로 Authorization 을 다시 붙입니다
             return http(config)
+          } catch (refreshError) {
+            /*
+             * **실패한 이유를 가립니다.** 전에는 `catch(() => null)` 로 전부 뭉개서,
+             * 서버에 못 물어본 것까지 "세션이 끝났다" 로 읽고 로그아웃시켰습니다.
+             * 백엔드를 재시작하는 몇 초, 배포 중 순단, 지하철에서 끊긴 와이파이가
+             * 전부 로그아웃이었습니다 — 토큰은 멀쩡한데 말입니다.
+             *
+             * 세션을 끝내는 것은 **서버가 이 리프레시 토큰을 못 쓴다고 답했을 때뿐**
+             * 입니다. 그 외에는 원래 실패를 그대로 올려 화면이 "잠시 후 다시 시도" 를
+             * 말하게 두고, 로그인은 유지합니다. 만료된 액세스 토큰은 스토어에 남지만
+             * 다음 요청이 다시 401 을 받아 재발급을 새로 시도하므로, 서버가 돌아오면
+             * 저절로 이어집니다.
+             */
+            if (!isSessionRejected(refreshError)) {
+              return Promise.reject(refreshError)
+            }
           }
         }
 
