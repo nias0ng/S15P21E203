@@ -50,7 +50,8 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
               AND (CAST(:keyword AS String) IS NULL
                 OR LOWER(p.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!'
                 OR LOWER(p.nameKo) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!'
-                OR LOWER(b.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!')
+                OR LOWER(b.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!'
+                OR LOWER(b.nameKo) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!')
               AND (CAST(:brand AS String) IS NULL OR b.name = CAST(:brand AS String))
               AND (:brandId IS NULL OR b.id = :brandId)
               AND (CAST(:gender AS String) IS NULL OR p.gender = CAST(:gender AS String))
@@ -70,7 +71,8 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
      * 백슬래시는 이스케이프 문자라 소스에 두 개를 써야 쿼리에 하나가 들어가는데, 나중에 하나로 줄이면
      * {@code ESCAPE ''} 가 되어 이스케이프가 조용히 사라집니다.
      *
-     * <p>{@code brand} 는 완전 일치입니다. 브랜드명 부분 일치는 {@code keyword} 가 담당합니다.
+     * <p>{@code brand} 는 완전 일치입니다. 브랜드명 부분 일치는 {@code keyword} 가 담당하며,
+     * 영문 이름과 한국어 이름을 모두 봅니다. 한쪽만 보면 한국어로 브랜드를 친 검색이 0건이 됩니다.
      */
     @Query(value = """
             SELECT new com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse(
