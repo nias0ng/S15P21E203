@@ -124,7 +124,7 @@ unmatched_log.py   사전이 못 받은 표현을 기록합니다 (아래 참고
 build_data.py      원본 덤프에서 data/perfumes_nlr.csv.gz 를 다시 만듭니다
 data/
   perfumes_nlr.csv.gz        5.0MB  향수 129,161개 (id·이름·브랜드·accord·평가자수·평점)
-  domain_lexicon_v1_8.csv     24KB  한국어 향 표현 53행 -> accord
+  domain_lexicon_v1_15.csv    31KB  한국어 향 표현 63행 -> accord
   accord_dictionary.csv        7KB  accord 92개 마스터 (적재 시 검증용)
   note_accord_bridge.csv      95KB  노트(향 원료) 이름 -> accord 2,925행
   stage1_prompt_v1.txt        2KB   ①단계 구조화 프롬프트 (sha256 앞자리 4f0a368d)
@@ -150,7 +150,7 @@ curl http://localhost:8000/health
 ```
 
 `"llm"` 이 ①단계 LLM 구조화를 쓸 수 있는 상태인지 알려줍니다. `false` 면 `GMS_API_KEY`
-가 없는 것이고, 서버는 정상으로 돌지만 **조건을 뽑는 비율이 88.2% → 75.5% 로 떨어집니다.**
+가 없는 것이고, 서버는 정상으로 돌지만 **조건을 뽑는 비율이 88.8% → 76.8% 로 떨어집니다.**
 응답만 봐서는 구분이 안 되니 배포 후 이 칸을 확인하십시오. 기동 로그에도 남습니다.
 
 ```
@@ -210,7 +210,7 @@ Invoke-RestMethod -Uri "http://localhost:8000/nlr/recommend" -Method Post `
 | `GMS_MODEL` | `gpt-5.4-nano` | 모델을 바꿔 비교할 때 |
 | `GMS_ENDPOINT` | SSAFY GMS 게이트웨이 | — |
 | `NLR_LOG_PATH` | `ai/logs/unmatched.jsonl` | 컨테이너에서 볼륨 경로를 줄 때 |
-| `NLR_LEXICON_PATH` | `data/domain_lexicon_v1_8.csv` | 사전 버전을 바꿔 비교할 때 |
+| `NLR_LEXICON_PATH` | `data/domain_lexicon_v1_15.csv` | 사전 버전을 바꿔 비교할 때 |
 | `NLR_PERFUMES_PATH` | `data/perfumes_nlr.csv.gz` | — |
 
 **키를 코드나 파일에 적지 마십시오.** 환경변수로만 받습니다. 만료되면 HTTP 401 로
@@ -224,10 +224,10 @@ Invoke-RestMethod -Uri "http://localhost:8000/nlr/recommend" -Method Post `
 없음 -> llm_stage1.structure() 로 채웁니다. 실패하면 사전 매칭으로 내려갑니다
 ```
 
-| | 조건을 뽑는 비율 (합성 600문장 · 사전 v1.8) |
+| | 조건을 뽑는 비율 (합성 600문장 · 사전 v1.15) |
 |---|---|
-| 구조화 + 사전 | **529/600 = 88.2%** |
-| 사전만 | 453/600 = 75.5% |
+| 구조화 + 사전 | **533/600 = 88.8%** |
+| 사전만 | 461/600 = 76.8% |
 
 **`/nlr/understand` 를 부른 뒤 `/nlr/recommend` 를 이어 부를 거면 첫 응답의
 `structured` 를 두 번째 요청의 `structured` 에 넣으십시오.** 그래야 LLM 을 한 번만
@@ -337,22 +337,23 @@ python build_data.py --source /경로/perfumes.csv
 
 ## 지금 어느 정도 되나 — 실측
 
-합성 평가셋 600건 · **사전 v1.8 · 노트 브리지 켬** 기준, **결과가 나오는 비율**입니다.
+합성 평가셋 600건 · **사전 v1.15 · 노트 브리지 켬** 기준, **결과가 나오는 비율**입니다.
 
 | | 비율 | 검색 단계 |
 |---|---|---|
-| **LLM 구조화 + 사전** | **529/600 = 88.2%** | AND 412 · SINGLE_BROAD 75 · 완화 42 |
-| **사전만 (LLM 없이)** | **453/600 = 75.5%** | AND 286 · SINGLE_BROAD 164 · 완화 3 |
+| **LLM 구조화 + 사전** | **533/600 = 88.8%** | AND 417 · SINGLE_BROAD 73 · 완화 43 |
+| **사전만 (LLM 없이)** | **461/600 = 76.8%** | AND 295 · SINGLE_BROAD 163 · 완화 3 |
 
 조건을 하나라도 뽑으면 **결과가 0개인 경우는 없습니다.**
 
 **LLM 이 없어도 돌아가므로 API 가 죽어도 서비스를 내리지 마십시오.** 다만 사전만 쓰면
-`SINGLE_BROAD` 가 75 → 164 로 늘어납니다 — 향 조건이 하나뿐이라 **순위를 향이 아니라
+`SINGLE_BROAD` 가 73 → 163 으로 늘어납니다 — 향 조건이 하나뿐이라 **순위를 향이 아니라
 인기도가 정하는 상태**입니다. 비율뿐 아니라 이 분포도 같이 보십시오.
 
-> 이 표는 사전 v1.8 의 값입니다. 이전 판에는 v1.2 기준 `77.7% / 35.7%` 가 적혀 있었습니다.
-> 사전만 쓰는 쪽이 35.7% → 75.5% 로 오른 것은 LLM 이 아니라 **사전 확장의 몫**입니다
-> (`DECISIONS.md` N10).
+> 이 표는 사전 v1.15 의 값입니다. 이전 판에는 v1.2 기준 `77.7% / 35.7%`,
+> 그 뒤 v1.8 기준 `88.2% / 75.5%` 가 적혀 있었습니다.
+> 사전만 쓰는 쪽이 35.7% → 76.8% 로 오른 것은 LLM 이 아니라 **사전 확장의 몫**입니다
+> (`DECISIONS.md` N10). v1.8 → v1.15 의 몫은 작습니다 — 측정 기록 14번.
 
 ---
 
@@ -417,6 +418,6 @@ python build_data.py --source /경로/perfumes.csv
 | **실사용은 더 어렵습니다** | 설문 155건에서 **48.4% 가 조건 0개** 였습니다. 위 22.3% 보다 나쁩니다 |
 | **추천 이유 문장화** | 근거까지만 만듭니다. LLM 문장화는 미구현입니다 |
 | **한국어 형태소 분석** | 지금은 문자열 포함 매칭이라 표기 변형은 사전의 `aliases` 나열에 의존합니다 |
-| **사전 53행 중 37행이 `candidate`** | 서비스에 써도 되는지 팀 판정이 아직 없습니다. 나머지 16행은 `active` 입니다 |
+| **사전 63행 중 47행이 `candidate`** | 서비스에 써도 되는지 팀 판정이 아직 없습니다. 나머지 16행은 `active` 입니다 |
 
 설계와 측정 근거는 별도 분석 저장소에 있습니다 — 노트북 40여 개, 측정 기록 11건, 의사결정 기록 N1~N10.

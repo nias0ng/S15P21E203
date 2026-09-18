@@ -16,7 +16,7 @@
     python nlr_engine.py "빨래 냄새 나는 향수 찾고 있어"
 
 ①단계 구조화 결과가 있으면 `structured` 로 넘긴다. 없으면 사전 문자열 매칭만 쓴다.
-사전 v1.8 기준 합성 600문장에서 조건을 뽑는 비율이 **88.2% -> 75.5%** 로 떨어지지만
+사전 v1.15 기준 합성 600문장에서 조건을 뽑는 비율이 **88.8% -> 76.8%** 로 떨어지지만
 서비스는 죽지 않는다.
 
 **입력은 `structured`, 출력은 `conditions` 다.** 이름을 나눈 이유는 모양이 달라서다 —
@@ -64,7 +64,7 @@ STRUCTURED_KEYS = ("scent_preference", "avoid", "additional_requirements")
 # 기본 데이터 경로. 인자로 덮어쓸 수 있다.
 _DATA_DIR = Path(__file__).resolve().parent / "data"
 DEFAULT_PERFUMES = _DATA_DIR / "perfumes_nlr.csv.gz"
-DEFAULT_LEXICON = _DATA_DIR / "domain_lexicon_v1_8.csv"
+DEFAULT_LEXICON = _DATA_DIR / "domain_lexicon_v1_15.csv"
 DEFAULT_ACCORDS = _DATA_DIR / "accord_dictionary.csv"
 DEFAULT_NOTE_BRIDGE = _DATA_DIR / "note_accord_bridge.csv"
 
@@ -113,7 +113,7 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
     """향수 데이터와 사전을 읽어 조회용 인덱스를 만든다.
 
     perfumes_csv : str | Path | None   기본 data/perfumes_nlr.csv.gz
-    lexicon_csv  : str | Path | None   기본 data/domain_lexicon_v1_8.csv
+    lexicon_csv  : str | Path | None   기본 data/domain_lexicon_v1_15.csv
     accord_csv   : str | Path | None   기본 data/accord_dictionary.csv (accord 92개 마스터)
     verify       : bool                accord 보유 수를 마스터와 대조해 틀리면 RuntimeError
     bridge_csv   : str | Path | None   기본 data/note_accord_bridge.csv (노트→accord)
