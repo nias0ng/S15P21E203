@@ -59,11 +59,37 @@ export const http: AxiosInstance = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+/**
+ * **Authorization 을 붙이면 안 되는 경로.**
+ *
+ * 백엔드에서 이 셋은 `permitAll` 이지만, `oauth2ResourceServer.jwt()` 가 깔아 둔
+ * `BearerTokenAuthenticationFilter` 는 **인가 단계보다 먼저** 돕니다. Authorization
+ * 헤더가 있으면 무조건 검증하고, 만료된 토큰이면 그 자리에서 401 을 던집니다.
+ * `permitAll` 은 거기까지 오지도 못합니다.
+ *
+ * 그래서 만료된 토큰을 그대로 달고 `/auth/refresh` 를 부르면 **재발급이 반드시
+ * 실패합니다** — 재발급이 필요한 순간은 정의상 토큰이 만료된 순간이라, 이 헤더
+ * 하나 때문에 재발급이 한 번도 성공하지 못하고 30분(`access-token-ttl`)마다
+ * 자동 로그아웃됐습니다.
+ *
+ *   Authorization 없음  →  401 AUTH_INVALID_REFRESH_TOKEN  (컨트롤러까지 도달)
+ *   Authorization 있음  →  401 AUTH_LOGIN_REQUIRED         (보안 필터가 먼저 차단)
+ *
+ * **`/auth/logout` 은 여기 넣지 않습니다.** 백엔드가 `authenticated()` 로 잡아 두어
+ * 토큰이 있어야 세션을 지울 수 있습니다. 아래 `NO_REFRESH_PATHS` 와 목록이 겹쳐
+ * 보이지만 **다른 질문에 답하는 목록입니다** — 여기는 "토큰을 붙일 것인가",
+ * 저기는 "401 을 재발급으로 볼 것인가" 입니다.
+ */
+const NO_AUTH_HEADER_PATHS = ['/auth/login', '/auth/signup', '/auth/refresh']
+
 // 요청 인터셉터: 액세스 토큰 주입
 http.interceptors.request.use((config) => {
   const { accessToken } = useAuthStore.getState()
+  const isAuthPath = NO_AUTH_HEADER_PATHS.some((path) =>
+    config.url?.startsWith(path),
+  )
 
-  if (accessToken) {
+  if (accessToken && !isAuthPath) {
     config.headers.setAuthorization(`Bearer ${accessToken}`)
   }
 
