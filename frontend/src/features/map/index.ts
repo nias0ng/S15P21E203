@@ -14,9 +14,14 @@ export { MapPointPopover } from './components/MapPointPopover'
 export { MiniMap } from './components/MiniMap'
 export { SceneBootCurtain } from './components/SceneBootCurtain'
 export { ScentMap } from './components/ScentMap'
-export { ScentScene, type ScenePerfumeRef } from './components/ScentScene'
+export {
+  ScentScene,
+  type SceneMove,
+  type ScenePerfumeRef,
+} from './components/ScentScene'
 export { SimilarExplorer } from './components/SimilarExplorer'
 export { VoyageLog, type VoyageLogStatus } from './components/VoyageLog'
+export { useExplorationMove } from './hooks/useExplorationMove'
 export { useSceneBoot } from './hooks/useSceneBoot'
 export { type SceneBootEvent } from './lib/bootProgress'
 export {

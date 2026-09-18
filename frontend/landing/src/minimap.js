@@ -25,7 +25,7 @@ import { PARAMS as P } from './params.js';
 //   ② **범위 없음** (`mapBound`) — 지도 사각형 + mapMargin 밖을 **빗금 띠**로 그린다. 거기를 누르면 가지 않고 경고만 띄운다
 //      (onBlocked → main.js → ui.warn). 배가 그 선에 닿을 때도 같은 경고다 (main.js).
 //      ⭐ 2026-09-13 (v0.50.0) : 빗금이 아니라 **`--pb-void` 한 색**이고, 경계는 **원들의 합집합을 정확한 호로** 그린다
-//        (`scentmap.navOutline`) — 해도와 같은 색 · 같은 모양이다 (사용자 : *"연관성을 만들어야하니 작은 미니맵에도 같은 색상으로"*)
+//        (`scentmap.navLoops` — 2026-09-18 부터 부드러운 고리다) — 해도와 같은 색 · 같은 모양이다 (사용자 : *"연관성을 만들어야하니 작은 미니맵에도 같은 색상으로"*)
 
 const FOG_CELL = 4;            // 안개 격자 한 칸 (월드). 배 한 척(5)보다 조금 작다
 const FOG_KEY = 'pb.minimap.fog.v1:';
@@ -210,25 +210,36 @@ export function createMinimap({ onPick, onBlocked } = {}) {
       //     (main.js · `navDist ≤ navReach`)과 같은 모양이다. 계단도 흐림도 없다.
       //   ⚠ 이 캔버스가 **아직 비어 있을 때** 그린다 — `destination-out` 이 점·이름까지 지우지 않게
       //   ⚠ 모든 원을 같은 방향으로 그리므로 nonzero 채움이 곧 합집합이다
-      const r = map.navReach * (W - 2 * PAD) / (view.x1 - view.x0);
+      // ⭐⭐ 2026-09-18 : **해도와 같은 고리**를 긋는다 (`scentmap.navLoops` — 불변식 21 · 28).
+      //   예전에는 원 200개를 그대로 뚫고 끝선은 그 **정확한 바깥 호**였다. 반지름이 같은 원들이라
+      //   만나는 자리마다 오목한 뾰족점이 생겨 테두리가 물결쳤다 — 해도에서 사용자가 짚은 '구름' 이
+      //   이 모양이다 (*"구름모양처럼 뭉개뭉개있으면 안될 것같고"*).
+      //   ⚠⚠ 해도만 고치면 같은 바다가 **두 모양**이 된다 (실제로 09-18 에 그 상태를 한 번 거쳤다).
+      //   ⚠ 면과 끝선이 **같은 경로**라 둘이 갈라질 수가 없다 — 한 번 훑는 함수를 두 번 부른다
+      const loops = map.navLoops();
+      const trace = () => {
+        sctx.beginPath();
+        for (const lp of loops) {
+          for (let i = 0; i < lp.length; i++) {
+            const [x, y] = toC(lp[i][0], lp[i][1]);
+            if (i) sctx.lineTo(x, y); else sctx.moveTo(x, y);
+          }
+          sctx.closePath();
+        }
+      };
       sctx.fillStyle = PAL.void;
       sctx.fillRect(0, 0, W, H);
       sctx.globalCompositeOperation = 'destination-out';
-      sctx.beginPath();
-      for (const p of map.points) { const [x, y] = toC(p.x, p.z); sctx.moveTo(x + r, y); sctx.arc(x, y, r, 0, Math.PI * 2); }
-      sctx.fill();
+      trace();
+      // ⚠ **evenodd** — 바다 속에 갈 수 없는 웅덩이가 생기면 뚫리지 않아야 한다 (해도의 fill-rule 과 같다)
+      sctx.fill('evenodd');
       sctx.globalCompositeOperation = 'source-over';
-      // 끝선 — 합집합의 **바깥 호만** (안쪽으로 겹친 호는 긋지 않는다). ⚠ 밝은 선이다 — 바깥이 어둡다
-      const ol = map.navOutline();
+      // 끝선 — 같은 고리. ⚠ 밝은 선이다 — 바깥이 어둡다
       sctx.strokeStyle = rgba(PAL.rim, 0.85);
       sctx.lineWidth = 1.4;
       sctx.lineCap = 'round';
-      sctx.beginPath();
-      for (const a of ol.arcs) {
-        const [x, y] = toC(a.x, a.z);
-        sctx.moveTo(x + r * Math.cos(a.a0), y + r * Math.sin(a.a0));
-        sctx.arc(x, y, r, a.a0, a.a1);
-      }
+      sctx.lineJoin = 'round';
+      trace();
       sctx.stroke();
     }
     // 지도 사각형 — 머리카락 선.

@@ -33,11 +33,28 @@ export interface ScenePerfumeRef {
 }
 
 /** 엔진에 꽂는 처리기 (host.js 의 setHost) */
+/**
+ * 배가 옮겨 간 자리 (엔진 `host.js` 의 `moveBoat`) — 해역이 바뀔 때와 향수를 고를 때 옵니다.
+ *
+ * ⚠️ `x` · `y` 는 **정규화 좌표**입니다 (엔진 `scentmap.toNorm()` · 백엔드 `perfume_map_points`
+ * 와 같은 공간). 월드 좌표가 아닙니다.
+ * ⚠️ `perfumeId` 는 DB 번호라 엔진 데이터에 아직 없어 늘 null 입니다 — 그동안은 좌표로 갑니다.
+ */
+export interface SceneMove {
+  perfumeId: number | null
+  x: number
+  y: number
+  /** 해역(향조) 코드 · 이름 — 화면이 쓰지는 않고 무엇이 왔는지 읽을 때 씁니다 */
+  regionKey?: string
+  regionName?: string
+}
+
 interface EngineHost {
   openDetail: (perfume: ScenePerfumeRef) => void
   saveToShelf: (perfume: ScenePerfumeRef) => Promise<void>
   exploreSimilar: (perfume: ScenePerfumeRef) => void
   search: (query: string) => void
+  moveBoat: (move: SceneMove) => void
 }
 
 /** iframe 안 엔진이 여는 손잡이 — paperboat main.js 의 window.PB 중 여기서 쓰는 것만 */
@@ -77,6 +94,11 @@ type Props = {
    * 로딩 커튼(SceneBootCurtain)이 퍼센트를 미는 데 씁니다. 배 GLB 진행은 초당 수십 번 옵니다.
    */
   onBoot?: (event: SceneBootEvent) => void
+  /**
+   * 배가 든 해역이 바뀌었거나(자유 항해 · 먼 곳 이동 둘 다) 향수를 골랐습니다 — 향해 일지(MAP-24)가
+   * 이걸 받아 `PUT /map/exploration/me` 를 부릅니다. 기록할지는 서버가 정합니다.
+   */
+  onMove?: (move: SceneMove) => void
   className?: string
 }
 
@@ -104,6 +126,7 @@ export function ScentScene({
   coveredTop = 0,
   onNightChange,
   onBoot,
+  onMove,
   className,
 }: Props) {
   const frame = useRef<HTMLIFrameElement>(null)
@@ -117,6 +140,7 @@ export function ScentScene({
     coveredTop,
     onNightChange,
     onBoot,
+    onMove,
   })
   useEffect(() => {
     latest.current = {
@@ -126,6 +150,7 @@ export function ScentScene({
       coveredTop,
       onNightChange,
       onBoot,
+      onMove,
     }
   })
 
@@ -186,6 +211,8 @@ export function ScentScene({
           // 엔진이 카드의 향을 새 중심으로 12개를 다시 띄웁니다 — 앱이 더 할 일은 없습니다
         },
         search: (query) => latest.current.onSearch(query),
+        // 배가 든 해역이 바뀌었거나 향수를 골랐습니다 — 향해 일지가 받습니다 (host.js `hostMove`)
+        moveBoat: (move) => latest.current.onMove?.(move),
       })
       // 시간대 — 엔진이 iframe 문서의 <html data-time> 을 바꿉니다. 그 속성 하나만 지켜봅니다
       timeWatch?.disconnect()

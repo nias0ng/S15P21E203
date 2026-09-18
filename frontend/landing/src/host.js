@@ -17,7 +17,7 @@
 let handlers = null;
 let notice = null;   // 단독일 때 알릴 곳 — main.js 가 ui.warn 을 넘긴다
 
-/** 호스트가 붙을 때 부른다. h = { openDetail, saveToShelf, exploreSimilar } — 없는 것은 기본 동작. null 이면 단독으로 돌아간다 */
+/** 호스트가 붙을 때 부른다. h = { openDetail, saveToShelf, exploreSimilar, search, moveBoat } — 없는 것은 기본 동작. null 이면 단독으로 돌아간다 */
 export function setHost(h) { handlers = h || null; }
 export function setHostNotice(fn) { notice = typeof fn === 'function' ? fn : null; }
 
@@ -56,6 +56,22 @@ export function callHost(name, ref) {
   if (typeof fn === 'function') return fn(ref);
   DEFAULTS[name](ref);
   return undefined;
+}
+
+// ───────── 배가 옮겨 간 자리 (2026-09-18, v0.75.12) — 앱의 향해 일지가 듣는다 ─────────
+// 앱 : `PUT /api/v1/map/exploration/me` (ExplorationController). 향수를 고른 이동은 `perfumeId` 를,
+//   빈 바다로 간 이동은 정규화 좌표 `x`·`y` 를 보낸다 — **서버가 기록할지 정한다** (향수는 늘 남기고,
+//   빈 바다는 향 영역이 바뀐 경우에만). 그래서 엔진은 '어디로 갔는가' 만 말하고 일지를 모른다.
+// ⚠⚠ **좌표는 정규화 공간이다** (CSV 의 map_x·map_y · 백엔드 `perfume_map_points` 와 같은 공간) —
+//   월드를 보내면 서버가 지도 밖으로 읽는다. 옮기는 것은 `scentmap.toNorm()` 하나다 (불변식 21).
+// ⚠ 비로그인이어도 앱이 부른다 — 서버가 옮긴 자리만 돌려주고 기록은 안 남긴다 (컨트롤러 주석).
+//   엔진이 로그인 여부를 알 필요가 없다는 뜻이다.
+// ⚠ **알림만이다** — 호스트가 Promise 를 줘도 입력을 잠그지 않는다 (`exploreSimilar` 와 같은 규약 · 불변식 32).
+export function hostMove(move) {
+  const fn = handlers && handlers.moveBoat;
+  if (typeof fn !== 'function' || !move) return false;
+  fn(move);
+  return true;
 }
 
 /** 검색창 (main.js onSearch). 호스트가 search 를 주면 검색어를 넘기고 true — 엔진은 해역으로 떠나지 않는다. 없으면 false — 예전 그대로 엔진이 찾는다 (goSearch) */

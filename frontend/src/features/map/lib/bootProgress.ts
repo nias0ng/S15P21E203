@@ -1,16 +1,13 @@
 /**
- * 3D 향 지도 로딩 커튼의 진행률 모델 — 순수 함수입니다 (React 를 모릅니다).
+ * 3D 향 지도 로딩 커튼의 **부팅 상태 모델** — 순수 함수입니다 (React 를 모릅니다).
  *
- * 엔진(`landing/src/host.js` 의 `bootReport`)이 부팅 단계를 postMessage 로 알리고, 앱은
- * 단계마다 가중치를 곱해 더합니다. 아직 안 끝난 단계는 시간으로 조금씩 기어갑니다(creep) —
- * 신호가 오기 전에 숫자가 서 있으면 끊긴 것으로 보입니다.
+ * 엔진(`landing/src/host.js` 의 `bootReport`)이 부팅 단계를 postMessage 로 알리고, 앱은 그것을 모아
+ * **언제 커튼을 걷어도 되는지**(`isBootFinishing`)만 판정합니다.
  *
- * 숫자가 따라갈 목표값은 **페이스 곡선과 "실제 진행 + 조금" 중 작은 값**입니다. 페이스 곡선은 최소
- * 표시 시간(첫 진입 5초)에 걸쳐 99 까지 오르는 곡선이라, 다 받았어도 향이 퍼지듯 차오르고,
- * 덜 받았으면 받은 만큼보다 조금(BOOT_LEAD)만 앞서 갑니다 — 딱 맞추지 않고 느슨하게 따라갑니다.
- * 숫자가 목표를 어떻게 따라가는지(멈추지 않기 · 굴러가기)는 `bootCounter.ts` 입니다.
- *
- * 설계 근거: landing/docs/고도화-0917/03-로딩-전환-수중.md §2-3 · §2-5.
+ * ⚠️ 2026-09-18 에 **퍼센트 계산을 통째로 지웠습니다** (사용자 : *"원래 있던거 다 지우고 그냥 구름
+ * 걷힌다는거임"*). 진행률 곡선 · 페이스 상한 · 기어가기(creep) · 단계 가중치와 `bootCounter.ts` ·
+ * `bootWordmark.ts` 가 그때 같이 없어졌습니다 — 커튼에 숫자가 없으니 따라갈 목표도 없습니다.
+ * 되살릴 일이 생기면 커밋 `05b7de7` 에 그대로 있습니다.
  */
 
 export type SceneBootStage =
@@ -61,31 +58,24 @@ export interface SceneBootState {
 
 /**
  * 첫 진입 — 항해 시작부터 이만큼은 보여 줍니다.
- * 처음엔 3초였고(사용자 "로딩시간 3초 정도"), 2026-09-18 사용자 *"로딩을 좀 길게 해보자"* 로 5초.
- * 글자 그리기(SceneBootCurtain 의 WORD_*)와 원의 템포(scene-boot.css 의 --boot-tempo)도 같이 늘렸습니다.
+ *
+ * 3초(사용자 "로딩시간 3초 정도") → 4.2초(*"로딩을 좀 길게"*) → **1.5초** (2026-09-18 사용자 :
+ * *"그냥 약간 아이보리 화면에서 가운데서 구름 걷히듯이 하는 효과만 간단하게 넣자 1초 정도만"* ·
+ * 확인 : *"1~2초로 하고"*). 향 원 세 개 · 붓글씨 '향해' · 퍼센트를 전부 빼고 구름 걷힘만 남겼습니다.
+ *
+ * ⚠️ **이 값은 바닥일 뿐입니다** — 커튼은 `isBootFinishing`(다 떴고 + 이 시간이 지났음)에 걷힙니다.
+ * 엔진이 GLB(8MB)와 셰이더 컴파일로 메인 스레드를 1~3초 막으므로 **실제로는 그보다 늦게 걷힙니다.**
+ * 1.5초로 내려도 바다가 1.5초에 나오는 것이 아니라, 준비되는 즉시 나옵니다(예전에는 4.2초까지 붙잡고 있었습니다).
  */
-export const BOOT_FIRST_MIN_MS = 4200
-/** 첫 진입이라도 React 가 뜬 뒤 이만큼은 보여 줍니다 — 번들이 늦게 와도 원이 퍼지는 것은 보이게 */
-export const BOOT_MOUNT_FLOOR_MS = 1800
+export const BOOT_FIRST_MIN_MS = 1500
+/** 첫 진입이라도 React 가 뜬 뒤 이만큼은 보여 줍니다 — 번들이 늦게 와도 구름이 갈라지는 것은 보이게 */
+export const BOOT_MOUNT_FLOOR_MS = 700
 /** 앱 안에서 메인으로 돌아왔을 때 — 엔진은 처음부터 다시 뜨지만 캐시가 차 있어 짧게 */
-export const BOOT_REVISIT_MIN_MS = 2200
+export const BOOT_REVISIT_MIN_MS = 900
 /** 첫 장(frame)이 이만큼 안 오면 걷습니다 — 3D 가 없어도 화면은 보여야 합니다 */
 export const BOOT_FRAME_TIMEOUT_MS = 20000
 /** 첫 장 뒤 배 GLB 가 이만큼 안 오면 종이배 그대로 걷습니다 */
 export const BOOT_BOAT_TIMEOUT_MS = 12000
-/** 다 뜨기 전 표시 상한 — 100 은 "다 왔다" 일 때만 */
-export const BOOT_CEILING = 99
-/**
- * 숫자는 실제 진행보다 이만큼(퍼센트 포인트) 앞서 갈 수 있습니다. 사용자 (2026-09-17) :
- * "퍼센트도 완전히 일치보단 느슨하게" — 받은 만큼에 딱 붙으면 신호 사이마다 숫자가 섭니다
- */
-export const BOOT_LEAD = 12
-
-/** 단계 가중치 — 합 100. "보통 회선에서 그 단계가 차지하는 시간" 을 어림한 값이라 GLB 를 압축하면 다시 잡습니다 */
-const WEIGHT = { html: 5, script: 15, frame: 25, boatBytes: 45, boat: 10 }
-/** 기어가기 시간 상수 — 단계 시작 뒤 이만큼에 90% 의 63% 에 닿습니다 */
-const TAU_MS = { html: 400, script: 800, frame: 600, boatBytes: 2500 }
-
 export function createBootState(
   now: number,
   firstVisit: boolean,
@@ -137,55 +127,6 @@ export function applyBootEvent(
   return { ...state, doneAt }
 }
 
-/** 단계 시작 뒤 흐른 시간으로 0 → 0.9 에 다가갑니다. 1 은 신호가 왔을 때만 */
-const creep = (elapsedMs: number, tauMs: number): number =>
-  elapsedMs <= 0 ? 0 : 0.9 * (1 - Math.exp(-elapsedMs / tauMs))
-
-/** 실제 진행 0~100 — 끝난 단계는 가중치 전부, 아닌 단계는 앞 단계가 끝난 뒤부터 기어갑니다 */
-export function bootTarget(state: SceneBootState, now: number): number {
-  const { doneAt, startedAt } = state
-  const html =
-    doneAt.html !== undefined ? 1 : creep(now - startedAt, TAU_MS.html)
-  const script =
-    doneAt.script !== undefined
-      ? 1
-      : creep(now - (doneAt.html ?? startedAt), TAU_MS.script)
-  const frame =
-    doneAt.frame !== undefined
-      ? 1
-      : creep(now - (doneAt.script ?? startedAt), TAU_MS.frame)
-  let bytes: number
-  if (doneAt.boat !== undefined) {
-    bytes = 1
-  } else if (state.boatTotal !== null) {
-    bytes = Math.min(1, state.boatLoaded / state.boatTotal)
-  } else {
-    bytes = creep(now - (doneAt.frame ?? startedAt), TAU_MS.boatBytes)
-  }
-  const boat = doneAt.boat !== undefined ? 1 : 0
-  return (
-    WEIGHT.html * html +
-    WEIGHT.script * script +
-    WEIGHT.frame * frame +
-    WEIGHT.boatBytes * bytes +
-    WEIGHT.boat * boat
-  )
-}
-
-/**
- * 향이 퍼지듯 처음에 빠르고 끝으로 갈수록 느려지되, 끝에서도 서지 않습니다 — outQuad 에 직선을 30% 섞었습니다.
- * (예전 outCubic 은 끝의 기울기가 0 이라 90 뒤로 숫자가 거의 멈춰 보였습니다)
- */
-const ease = (t: number): number => 0.3 * t + 0.7 * (1 - (1 - t) ** 2)
-
-/** 페이스 상한 — 최소 표시 시간에 걸쳐 0 → 99 */
-export function bootCeiling(state: SceneBootState, now: number): number {
-  const span = state.minUntil - state.startedAt
-  if (span <= 0) return BOOT_CEILING
-  const t = Math.min(1, Math.max(0, (now - state.startedAt) / span))
-  return BOOT_CEILING * ease(t)
-}
-
 /** 걷어도 되는가 — 배까지 붙었거나, 오류거나, 기다릴 만큼 기다렸거나 */
 export function isBootReady(state: SceneBootState, now: number): boolean {
   if (state.doneAt.boat !== undefined || state.error !== null) return true
@@ -198,19 +139,6 @@ export function isBootReady(state: SceneBootState, now: number): boolean {
 /** 다 떴고 최소 표시 시간도 지났는가 — 숫자가 100 으로 가도 됩니다 */
 export function isBootFinishing(state: SceneBootState, now: number): boolean {
   return isBootReady(state, now) && now >= state.minUntil
-}
-
-/**
- * 숫자가 따라갈 목표 — 페이스 상한과 (실제 진행 + BOOT_LEAD) 중 작은 값이고 99 를 넘지 않습니다.
- * 다 떴고 최소 시간도 지났으면 100
- */
-export function bootDisplayTarget(state: SceneBootState, now: number): number {
-  if (isBootFinishing(state, now)) return 100
-  return Math.min(
-    BOOT_CEILING,
-    bootCeiling(state, now),
-    bootTarget(state, now) + BOOT_LEAD,
-  )
 }
 
 const STAGES: readonly SceneBootStage[] = [

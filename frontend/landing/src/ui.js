@@ -83,17 +83,6 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
     for (let i = 0; i < 8 && contrastOf(rgb, bg) < floor; i++) rgb = rgb.map((v, k) => v + (iv[k] - v) * 0.2);
     return rgbHex(rgb);
   };
-  // #RRGGBB 채움 위에 올릴 글자색 — 검정 · 흰색 중 **대비(WCAG 상대 휘도)가 큰 쪽** (v0.75.5 · [이 향의 해역으로] 호버).
-  //   사용자 : *"밝으면 폰트가 검정, 짙으면 폰트가 흰색"*. 향조 아홉은 지금 전부 밝은 쪽이라 검정이 나온다 (가장 어두운 WOODY #A38F7C 도 검정 6.1:1 · 흰색 3.1:1)
-  const INK_DARK = '#111111', INK_LIGHT = '#FFFFFF';
-  const inkOn = (hex) => {
-    const n = parseInt(String(hex || '').replace('#', ''), 16);
-    if (!Number.isFinite(n)) return INK_LIGHT;
-    const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
-    const L = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
-    const LD = 0.0056;   // #111111 의 상대 휘도
-    return (L + 0.05) / (LD + 0.05) >= 1.05 / (L + 0.05) ? INK_DARK : INK_LIGHT;
-  };
   // 말풍선 상태. side = 부표의 어느 쪽에 서는가 (1 오른쪽 · −1 왼쪽)
   //   x · y = 자리 잡은 카드의 왼쪽 위 · ax · ay · ar = 가리키는 부표 (둘 다 #stage 기준 CSS px — 호버 카드의 틈 판정이 읽는다, v0.65.0). x 가 null 이면 아직 · 좌하단 고정
   const bub = { on: false, m: null, side: 1, w: 325, h: 280, key: '', tailKey: '', mode: '', anim: null, peek: false, x: null, y: 0, ax: 0, ay: 0, ar: 0 };
@@ -265,15 +254,13 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
       const zc = eveCard && m.zone.area && m.zone.area.color ? mixHex(m.zone.area.color, '#FBF3EA', 0.25) : m.zone.color;
       cZone.style.color = zc;
       cDot.style.background = zc;
-      // ⭐ [이 향의 해역으로] 호버 물결 색 (v0.75.5 · 물결은 v0.75.6) — 앞 겹 = 이 향의 해역(향조) 색 · 뒤 겹 = 그 색을 흰색 쪽으로 35% (옅은 물마루) ·
-      //   그 위 글자는 각 색의 밝기로 검정 / 흰색 (index.html #scent-sail [data-wave] 가 읽는다).
-      //   ⚠ 글자색(zc)이 아니라 **향조 제 색**이다 — zc 는 어두운 유리에서 읽히라고 상아색 쪽으로 밝힌 값이다. 향조 색이 없는 예전 더미 부표는 변수를 지워 한 단계 밝은 남색 물결로 간다
-      const zoneFill = m.zone.area && m.zone.area.color ? m.zone.area.color : '';
-      const SAIL_VARS = ['--pb-sail-zone', '--pb-sail-zone-ink', '--pb-sail-zone-back', '--pb-sail-zone-back-ink'];
-      if (zoneFill) {
-        const back = mixHex(zoneFill, '#FFFFFF', 0.35);
-        [zoneFill, inkOn(zoneFill), back, inkOn(back)].forEach((v, i) => cSail.style.setProperty(SAIL_VARS[i], v));
-      } else SAIL_VARS.forEach(k => cSail.style.removeProperty(k));
+      // ⭐ [이 향의 해역으로] 호버 물결은 **향조 색을 안 쓴다** (2026-09-18, v0.75.12 — 사용자 : *"내부는 그냥 흰색"* ·
+      //   *"각 파트에있는 색상은 전부 이렇게 통일"*). v0.75.5 ~ v0.75.6 은 향수마다 --pb-sail-zone* 넷을 넣어
+      //   물결과 그 위 글자색을 해역 색으로 칠했는데, 지금은 흰 파도라 넣을 값이 없다 (index.html #scent-sail).
+      //   ⚠ 예전 값이 인라인에 남아 있을 수 있어 지운다 — 카드는 한 벌이라 향수를 바꿔도 같은 요소를 다시 쓴다.
+      for (const k of ['--pb-sail-zone', '--pb-sail-zone-ink', '--pb-sail-zone-back', '--pb-sail-zone-back-ink']) {
+        cSail.style.removeProperty(k);
+      }
       card.style.visibility = 'visible';
       card.style.opacity = '1';
       card.style.pointerEvents = bub.peek ? 'none' : 'auto';

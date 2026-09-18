@@ -5,7 +5,7 @@ import { createBloom } from './bloom.js';
 import { createSubmerged } from './submerged.js';
 import { lerp, clamp, wrapPi } from './util.js';
 import { createUI } from './ui.js';
-import { bootNow, bootReport, callHost, hostSearch, perfumeRef, setHost, setHostNotice } from './host.js';   // 카드의 서비스 동작 · 검색창이 앱(호스트)으로 나가는 문 (v0.68.0) · 부팅 신호 (v0.75.0)
+import { bootNow, bootReport, callHost, hostMove, hostSearch, perfumeRef, setHost, setHostNotice } from './host.js';   // 카드의 서비스 동작 · 검색창이 앱(호스트)으로 나가는 문 (v0.68.0) · 부팅 신호 (v0.75.0)
 import { createInput } from './input.js';
 import { createSim } from './sim.js';
 import { createWater } from './water.js';
@@ -289,6 +289,10 @@ const input = createInput(ui.mount, {
       //   ⚠ **알림만이다** — 앱이 Promise 를 줘도 `holdWhile` 로 입력을 잠그지 않는다. 엔진이 이미 한 일이라 기다릴 것이 없다 ([진열대에 저장]과 다른 점).
       const exRef = perfumeRef(m);
       if (exRef) callHost('exploreSimilar', exRef);
+      // ⭐ **들른 향수** (2026-09-18, v0.75.12 — 향해 일지). 서버는 향수를 고른 이동을 **언제나** 남기고,
+      //   지금 구역의 진입 줄에 그 향수를 매단다 (ExplorationController — 새 줄이 되지 않는다).
+      //   ⚠ 좌표는 부표의 정규화 자리(mx · my)다 — `perfumeId` 가 있으면 서버가 제 좌표로 덮어쓴다
+      if (exRef) hostMove({ perfumeId: exRef.perfumeId, x: exRef.mx, y: exRef.my, regionKey: exRef.family });
     }
   }
 });
@@ -313,6 +317,35 @@ const input = createInput(ui.mount, {
 let hoverMark = null, clickMark = null, hoverX = NaN, hoverY = NaN;
 let _miniHidden = false;   // 존 연출 중 미니맵 숨김 (zoneMiniHide — tick). ⚠ tick 보다 먼저 선언한다 (TDZ)
 let seaBlockT = 0;         // Shift 바다 누르기가 경계에 막혀 있던 시간 (tick). ⚠ 같은 이유로 여기서 선언한다
+
+// ───────── 배가 든 해역이 바뀌면 앱에 알린다 (2026-09-18, v0.75.12) — 향해 일지 ─────────
+// 앱은 이것을 받아 `PUT /map/exploration/me` 를 부른다 (host.js `hostMove`). 일지 한 줄이 "○○ 구역 진입"
+// 이므로 **바뀌는 순간**이 곧 한 줄이다 — 매 프레임 보내면 서버가 같은 구역을 몇백 번 받는다.
+// ⚠⚠ `zones.onArrive` 로는 모자라다 — 그건 **자동 조타 목표에 닿았을 때**만 뜬다. 방향키로 자유 항해하면
+//   영영 안 온다 (사용자 : *"향 영역으로 이동했을때 향해 일지가 작성 안되고 있음"*).
+// ⚠ 해역은 `map.regionAt` (가장 가까운 향수의 향조 — 향수들로 나눈 보로노이)이다. 200개 순회라
+//   **REGION_MS 마다 한 번**만 돈다 (같은 틱의 `navDist` 도 200개를 도므로 두 배가 되지 않게).
+// ⚠ 갈 수 있는 바다 **밖**이면 보내지 않는다 — 배가 경계에 붙어 미끄러지는 동안 값이 흔들린다.
+// ⚠ 좌표는 `map.toNorm` 이 낸 정규화 좌표다 (불변식 21). 첫 해역도 한 줄이다 (배가 그 바다에서 시작한다).
+const REGION_MS = 400;
+let regionKey = null, regionT = -1e9;
+function reportRegion(t) {
+  const map = marks.map;
+  if (!map || t - regionT < REGION_MS / 1000) return;
+  regionT = t;
+  const wx = nav.scroll.x, wz = -nav.scroll.z;
+  if (!map.inNav(wx, wz, 0)) return;
+  const reg = map.regionAt(wx, wz);
+  if (!reg || reg.key === regionKey) return;
+  const [nx, ny] = map.toNorm(wx, wz);
+  // ⚠ perfumeId 는 **DB 번호**라 엔진 데이터에 아직 없다 (불변식 32 · 지금은 늘 null) — 그동안은 좌표로 간다.
+  //   좌표만 오면 서버는 '빈 바다로 간 이동' 으로 보고 **향 영역이 바뀐 경우에만** 기록한다. 여기가 정확히 그 순간이다
+  const told = hostMove({ x: nx, y: ny, regionKey: reg.key, regionName: reg.name, perfumeId: null });
+  // ⚠⚠ **알린 뒤에만 기억한다.** 첫 틱은 호스트(앱)가 `window.PB` 를 찾아 붙기 **전**이라 아무 데도 안 간다 —
+  //   그때 기억해 버리면 배가 그 해역을 떠날 때까지 영영 다시 안 알리고, 첫 해역이 일지에서 통째로 빠진다
+  //   (실측 2026-09-18 : 앱을 열자마자 `hostMove` 가 false 로 한 번 돌고 그대로 잠겼다).
+  if (told) regionKey = reg.key;
+}
 // ⭐ 호버 카드의 틈 (2026-09-15, v0.65.0 — cardHoverBridge). hoverGrace = 부표와 카드 밖으로 나간 앱 시각 (−1 = 유예 없음) ·
 //   hoverOnCard = 이번 프레임에 마우스가 떠 있는 카드 위다 (틱의 setScentPeek 가 읽는다 — 카드 위면 통과를 끄고 진하게)
 let hoverGrace = -1, hoverOnCard = false;
@@ -1413,6 +1446,7 @@ function tick() {
   } else seaBlockT = 0;
   nav.scroll.z += vZ * dt;
   nav.scroll.x += vX * dt;
+  reportRegion(t);
   nav.latV += (vX - nav.latV) * 0.08;
   // ⭐ `_shipMv` — 존 연출에서 배가 씬 안을 실제로 가로지르는 속도 (2026-09-16). 그게 없으면 배만 옮겨지고
   //   물은 가만히 있다 (연출 중 nav.speed 는 0 이라 항적 · 물보라 · 흘수가 전부 죽는다). ⚠ 한 프레임 전 값이다 (아래 카메라 블록이 채운다)

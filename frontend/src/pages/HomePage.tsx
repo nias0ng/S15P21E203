@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router'
 import {
   SceneBootCurtain,
   ScentScene,
+  useExplorationMove,
   useSceneBoot,
   VoyageLog,
   voyageLogQuery,
@@ -70,6 +71,10 @@ export default function HomePage() {
   // 커튼이 걷히면(finish) 내립니다. 화면을 떠났다 돌아오면 엔진이 처음부터 다시 뜨므로 커튼도 다시 섭니다
   const boot = useSceneBoot()
 
+  // 향해 일지(MAP-24) — 배가 든 해역이 바뀌거나 향수를 고르면 서버에 남기고 일지를 다시 읽습니다.
+  // 기록할지는 서버가 정합니다 (향수는 늘 · 빈 바다는 향 영역이 바뀐 경우만)
+  const reportMove = useExplorationMove()
+
   /** 3D 입력 잠금을 풉니다. 어떤 길로 끝나든 반드시 한 번은 불러야 합니다 */
   const release = () => {
     releaseSave.current?.()
@@ -99,6 +104,7 @@ export default function HomePage() {
         coveredTop={90}
         onNightChange={(night) => setSky(night ? 'dark' : 'light')}
         onBoot={boot.report}
+        onMove={reportMove}
         onOpenDetail={(perfume) => {
           // ⚠️ 엔진 데이터에는 아직 DB perfumeId 가 없습니다(fragrantica_id 뿐). 없으면 이름으로 검색 결과(A09)에 보냅니다
           navigate(

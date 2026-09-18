@@ -712,6 +712,42 @@ export function createMockApi(options: MockApiOptions = {}) {
     return { status: 200, body: { entries: voyageLog.slice(0, size) } }
   }
 
+  /**
+   * 배를 옮깁니다 (PUT /map/exploration/me). 엔진이 해역을 옮길 때마다 부릅니다.
+   *
+   * ⚠ **로그인 없이도 움직입니다** — 백엔드와 같은 규칙입니다(ExplorationController). 그때는
+   * `updatedAt` 을 비워 "남기지 않았다" 를 알립니다. 401 이 아닙니다.
+   * ⚠ 목데이터는 일지를 **새로 쌓지 않습니다** — seed 의 줄이 그대로입니다. 여기서 줄을 만들려면
+   * 향 영역 폴리곤(엔진 terrain-data)이 있어야 하는데 목데이터는 그 좌표계를 모릅니다.
+   */
+  const moveExploration: Handler = ({ body, loggedIn }) => {
+    const move = (body ?? {}) as {
+      perfumeId?: number | null
+      x?: number
+      y?: number
+    }
+    const perfume =
+      move.perfumeId == null ? undefined : perfumes.get(move.perfumeId)
+    // 향수를 골랐으면 서버가 그 향수의 지도 좌표로 채웁니다 — 목데이터엔 지도 좌표가 없어 보낸 값을 씁니다
+    const x = move.x ?? null
+    const y = move.y ?? null
+    if (move.perfumeId != null && perfume === undefined) {
+      return fail(404, 'MAP_PERFUME_NOT_FOUND', '지도에 없는 향수입니다.')
+    }
+    // 향수 번호도 좌표도 없으면 어디로 갔는지 모릅니다
+    if (move.perfumeId == null && (x === null || y === null)) {
+      return fail(
+        400,
+        'MAP_MOVE_TARGET_REQUIRED',
+        '향수 번호나 좌표가 필요합니다.',
+      )
+    }
+    return {
+      status: 200,
+      body: { x, y, updatedAt: loggedIn ? timestamp() : null },
+    }
+  }
+
   const searchPerfumes: Handler = ({ query }) => {
     const keyword = squash(query.get('keyword') ?? '')
     const brand = query.get('brand')
@@ -805,6 +841,8 @@ export function createMockApi(options: MockApiOptions = {}) {
     ],
 
     ['GET', /^\/map\/exploration-logs$/, signedIn(getVoyageLog)],
+    // ⚠ signedIn 을 씌우지 않습니다 — 비회원도 배를 움직입니다 (위 주석)
+    ['PUT', /^\/map\/exploration\/me$/, moveExploration],
     ['GET', /^\/perfumes$/, searchPerfumes],
   ]
 

@@ -3,6 +3,8 @@ import { env } from '@/shared/config/env'
 
 import {
   VOYAGE_LOG_SIZE,
+  type ExplorationMove,
+  type ExplorationState,
   type MapPoint,
   type VoyageLogEntry,
   type VoyageLogResponse,
@@ -51,7 +53,7 @@ async function withDevFallback<T>(
  * MAP-24 향해 일지 — 최근 해역 진입부터 다섯 줄 (VOYAGE_LOG_SIZE — 판에 싣는 수와 같습니다).
  * 로그인해야 읽을 수 있습니다 (비로그인 401 — 화면은 로그인 안내를 띄웁니다).
  *
- * ⚠️ 일지가 쌓이려면 배를 옮길 때 `PUT /api/v1/map/exploration/me` 를 불러야 합니다 — 아직 엔진이 부르지 않습니다.
+ * 일지는 `moveExploration()` 이 쌓습니다 — 엔진이 배의 해역이 바뀔 때마다 알려 줍니다(아래).
  */
 export async function getVoyageLog(): Promise<VoyageLogEntry[]> {
   return withDevFallback(
@@ -64,6 +66,23 @@ export async function getVoyageLog(): Promise<VoyageLogEntry[]> {
     },
     () => PLACEHOLDER_LOG,
   )
+}
+
+/**
+ * MAP-24 배를 옮깁니다 — 향해 일지가 쌓이는 유일한 길입니다 (2026-09-18).
+ *
+ * 엔진이 배의 해역이 바뀔 때와 향수를 고를 때 알려 주고(`landing/src/host.js` `hostMove`),
+ * **기록할지는 서버가 정합니다** — 향수를 고른 이동은 언제나, 빈 바다로 간 이동은 향 영역이
+ * 바뀐 경우에만 남습니다. 그래서 화면은 "언제 한 줄이 되는가" 를 알 필요가 없습니다.
+ *
+ * ⚠️ 로그인하지 않아도 부릅니다 — 비회원도 지도를 탐색할 수 있어야 해서 배는 움직이고,
+ * 서버가 `updatedAt` 을 비워 "남기지 않았다" 를 알려 줍니다(401 이 아닙니다).
+ */
+export async function moveExploration(
+  move: ExplorationMove,
+): Promise<ExplorationState> {
+  const { data } = await http.put<ExplorationState>('/map/exploration/me', move)
+  return data
 }
 
 /**

@@ -2,16 +2,11 @@ import { describe, expect, it } from 'vitest'
 
 import {
   BOOT_BOAT_TIMEOUT_MS,
-  BOOT_CEILING,
   BOOT_FIRST_MIN_MS,
   BOOT_FRAME_TIMEOUT_MS,
-  BOOT_LEAD,
   BOOT_MOUNT_FLOOR_MS,
   BOOT_REVISIT_MIN_MS,
   applyBootEvent,
-  bootCeiling,
-  bootDisplayTarget,
-  bootTarget,
   createBootState,
   isBootReady,
   parseBootMessage,
@@ -82,55 +77,6 @@ describe('applyBootEvent', () => {
   })
 })
 
-describe('bootTarget', () => {
-  it('시작 직후는 0, 배까지 붙으면 100 입니다', () => {
-    const state = createBootState(0, true)
-    expect(bootTarget(state, 0)).toBe(0)
-    expect(bootTarget(ready(state, 2000), 2000)).toBe(100)
-  })
-
-  it('신호가 없어도 시간이 흐르면 조금씩 오르되 단계 가중치의 90% 를 넘지 않습니다', () => {
-    const state = createBootState(0, true)
-    const early = bootTarget(state, 500)
-    const late = bootTarget(state, 60_000)
-    expect(early).toBeGreaterThan(0)
-    expect(late).toBeGreaterThan(early)
-    // html 5 + script 15 + frame 25 + bytes 45 = 90 의 90% · boat 는 신호 없이는 0
-    expect(late).toBeLessThan(90 * 0.9 + 1)
-  })
-
-  it('배 GLB 는 받은 비율 그대로입니다', () => {
-    const state = applyBootEvent(
-      applyBootEvent(createBootState(0, true), { stage: 'frame' }, 100),
-      { stage: 'boat-bytes', loaded: 4_000_000, total: 8_000_000 },
-      200,
-    )
-    // html 5 + script 15 + frame 25 = 45 · bytes 45 의 절반 22.5
-    expect(bootTarget(state, 200)).toBeCloseTo(67.5, 5)
-  })
-})
-
-describe('bootCeiling', () => {
-  it('최소 표시 시간에 걸쳐 0 에서 99 까지 오르고 다시 내려가지 않습니다', () => {
-    const state = createBootState(0, true)
-    expect(bootCeiling(state, 0)).toBe(0)
-    const mid = bootCeiling(state, BOOT_FIRST_MIN_MS / 2)
-    expect(mid).toBeGreaterThan(0)
-    expect(mid).toBeLessThan(BOOT_CEILING)
-    expect(bootCeiling(state, BOOT_FIRST_MIN_MS)).toBeCloseTo(BOOT_CEILING, 5)
-    expect(bootCeiling(state, BOOT_FIRST_MIN_MS * 3)).toBeCloseTo(
-      BOOT_CEILING,
-      5,
-    )
-  })
-
-  it('끝에서도 서지 않습니다 — 마지막 10% 시간에 3 넘게 오릅니다', () => {
-    const state = createBootState(0, true)
-    const nearEnd = bootCeiling(state, BOOT_FIRST_MIN_MS * 0.9)
-    expect(BOOT_CEILING - nearEnd).toBeGreaterThan(3)
-  })
-})
-
 describe('isBootReady', () => {
   it('배가 붙었거나 오류면 바로, 아니면 기다린 시간으로 정합니다', () => {
     const state = createBootState(0, true)
@@ -144,29 +90,6 @@ describe('isBootReady', () => {
     const framed = applyBootEvent(state, { stage: 'frame' }, 1000)
     expect(isBootReady(framed, 1000 + BOOT_BOAT_TIMEOUT_MS - 1)).toBe(false)
     expect(isBootReady(framed, 1000 + BOOT_BOAT_TIMEOUT_MS)).toBe(true)
-  })
-})
-
-describe('bootDisplayTarget', () => {
-  it('다 떴어도 최소 표시 시간 전에는 99 를 넘지 않고, 지나면 100 입니다', () => {
-    const state = ready(createBootState(0, true), 800)
-    expect(bootDisplayTarget(state, 1500)).toBeLessThanOrEqual(BOOT_CEILING)
-    expect(bootDisplayTarget(state, BOOT_FIRST_MIN_MS)).toBe(100)
-  })
-
-  it('최소 시간이 지나도 덜 받았으면 받은 만큼보다 조금(BOOT_LEAD)만 앞섭니다', () => {
-    const state = applyBootEvent(
-      createBootState(0, true),
-      { stage: 'frame' },
-      500,
-    )
-    const at = BOOT_FIRST_MIN_MS + 1000
-    const shown = bootDisplayTarget(state, at)
-    expect(shown).toBeLessThan(100)
-    expect(shown).toBeCloseTo(
-      Math.min(BOOT_CEILING, bootTarget(state, at) + BOOT_LEAD),
-      5,
-    )
   })
 })
 
