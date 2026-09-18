@@ -5,6 +5,7 @@ import com.hyanghae.backend.recommendation.dto.request.NlrFeedbackRequest;
 import com.hyanghae.backend.recommendation.exception.RecommendationErrorCode;
 import com.hyanghae.backend.recommendation.repository.NlrRecordRepository;
 import java.util.UUID;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,10 +62,17 @@ public class NlrFeedbackService {
     /**
      * 만족도를 남깁니다.
      *
-     * <p>이미 답한 추천이면 409 입니다. 표의 기본키가 막아 주지만 그대로 두면 500 이 나가므로
-     * 먼저 확인합니다. <b>확인과 삽입 사이에 다른 요청이 끼어들 수 있습니다</b> — 그때는 DB 가
-     * 막아 500 이 나갑니다. 사람이 버튼을 두 번 누르는 간격에서 실제로 겹치기는 어렵고, 막으려면
-     * 잠금이 필요한데 이 표의 값어치에 비해 무겁습니다.
+     * <p>이미 답한 추천이면 409 입니다. <b>두 겹으로 막습니다.</b>
+     *
+     * <p>먼저 확인하는 이유는 흔한 경우를 싸게 거르기 위해서입니다 — 화면을 다시 열어 같은
+     * 버튼이 눌리는 일이 실제로 옵니다.
+     *
+     * <p>확인과 삽입 사이에 다른 요청이 끼어들 수 있습니다. 그 틈은 잠금 없이는 닫히지 않고,
+     * 잠금은 이 표의 값어치에 비해 무겁습니다. 대신 <b>기본키 위반을 잡아 같은 409 로
+     * 바꿉니다.</b> 그대로 두면 사용자가 500 을 받는데, 실제로 일어난 일은 "이미 답했다" 이지
+     * 서버 오류가 아닙니다.
+     *
+     * <p>두 경로가 같은 코드로 나가므로 화면은 경합이 있었는지 알 필요가 없습니다.
      */
     @Transactional
     public void recordFeedback(UUID recommendationToken, NlrFeedbackRequest request) {
@@ -74,11 +82,16 @@ public class NlrFeedbackService {
             throw new BusinessException(
                     RecommendationErrorCode.RECOMMENDATION_FEEDBACK_ALREADY_ANSWERED);
         }
-        repository.insertFeedback(
-                recommendationId,
-                request.satisfaction().name(),
-                request.comment()
-        );
+        try {
+            repository.insertFeedback(
+                    recommendationId,
+                    request.satisfaction().name(),
+                    request.comment()
+            );
+        } catch (DuplicateKeyException exception) {
+            throw new BusinessException(
+                    RecommendationErrorCode.RECOMMENDATION_FEEDBACK_ALREADY_ANSWERED);
+        }
     }
 
     /**

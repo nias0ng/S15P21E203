@@ -13,6 +13,7 @@ import com.hyanghae.backend.recommendation.client.NlrClient;
 import com.hyanghae.backend.recommendation.client.NlrRecommendResponse;
 import com.hyanghae.backend.support.IntegrationTest;
 import java.util.List;
+import java.util.UUID;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,6 +51,9 @@ class RecommendationRateLimitIntegrationTest {
 
     private static final int ANONYMOUS_LIMIT = 10;
     private static final int MEMBER_LIMIT = 30;
+
+    /** 클릭·만족도의 비회원 한도입니다. 추천보다 넉넉합니다 — 한 번의 추천이 여러 클릭을 부릅니다. */
+    private static final int FEEDBACK_ANONYMOUS_LIMIT = 60;
     private static final long USER_ID = 7;
 
     @Autowired
@@ -174,6 +178,61 @@ class RecommendationRateLimitIntegrationTest {
         }
 
         mockMvc.perform(request()).andExpect(status().isOk());
+    }
+
+    /**
+     * 클릭·만족도는 <b>추천과 다른 통을 씁니다.</b>
+     *
+     * <p>한 통에 담으면 카드 다섯 개를 누르고 만족도를 남긴 사람이 추천 한도를 다 써 버립니다.
+     * 추천을 한도까지 쓴 뒤에도 피드백은 그대로 받아야 합니다.
+     */
+    @Test
+    void spendsSeparateQuotaFromRecommendations() throws Exception {
+        for (int attempt = 0; attempt < ANONYMOUS_LIMIT; attempt++) {
+            mockMvc.perform(request()).andExpect(status().isOk());
+        }
+        mockMvc.perform(request()).andExpect(status().isTooManyRequests());
+
+        // 추천은 막혔지만 피드백은 살아 있어야 합니다. 없는 손잡이라 404 이고, 429 가 아닙니다.
+        mockMvc.perform(feedbackRequest(UUID.randomUUID()))
+                .andExpect(status().isNotFound());
+    }
+
+    /**
+     * 피드백도 제 한도를 넘으면 429 입니다.
+     *
+     * <p><b>없는 손잡이도 한도를 씁니다.</b> 제한이 서비스보다 먼저 돌기 때문이고, 그래야
+     * 손잡이를 무한히 찍어 볼 수 없습니다. 손잡이가 추측 불가능해도 제한이 없으면 시도 횟수에
+     * 제약이 없어집니다.
+     */
+    @Test
+    void rejectsFeedbackOverItsOwnLimit() throws Exception {
+        for (int attempt = 0; attempt < FEEDBACK_ANONYMOUS_LIMIT; attempt++) {
+            mockMvc.perform(feedbackRequest(UUID.randomUUID()))
+                    .andExpect(status().isNotFound());
+        }
+
+        mockMvc.perform(feedbackRequest(UUID.randomUUID()))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("RECOMMENDATION_RATE_LIMIT_EXCEEDED"));
+    }
+
+    /** 회원은 피드백도 비회원보다 많이 부를 수 있습니다. */
+    @Test
+    void givesMemberHigherFeedbackLimit() throws Exception {
+        currentUser.login(USER_ID);
+
+        for (int attempt = 0; attempt < FEEDBACK_ANONYMOUS_LIMIT + 1; attempt++) {
+            mockMvc.perform(feedbackRequest(UUID.randomUUID()))
+                    .andExpect(status().isNotFound());
+        }
+    }
+
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
+            feedbackRequest(UUID token) {
+        return post(RECOMMEND_URL + "/" + token + "/feedback")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"satisfaction\":\"SATISFIED\"}");
     }
 
     private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder request() {

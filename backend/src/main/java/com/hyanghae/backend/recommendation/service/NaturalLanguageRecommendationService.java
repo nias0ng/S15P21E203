@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -58,6 +59,20 @@ public class NaturalLanguageRecommendationService {
 
     /** 향 조건을 하나도 못 뽑았을 때의 상태입니다. 이때는 향수가 없는 것이 정상입니다. */
     private static final String NO_CONDITION = "NO_CONDITION";
+
+    /**
+     * 화면과 계약에 적어 둔 네 가지입니다. <b>여기 없는 값은 내보내지도 남기지도 않습니다.</b>
+     *
+     * <p>AI 가 새 상태를 만들면 두 곳이 동시에 깨집니다. 화면은 {@code allowableValues} 로 네
+     * 가지를 약속받았는데 다섯 번째를 받게 되고, {@code nlr_recommendations.status} 의
+     * {@code CHECK} 가 막아 그 추천의 기록 전체가 실패합니다 — 결과 · 클릭 · 미매칭까지 한
+     * 트랜잭션이라 함께 날아갑니다.
+     *
+     * <p>모르는 값은 {@code NO_RESULT} 로 내립니다. "조건은 찾았는데 보여줄 것이 없다" 가
+     * 모르는 상태에 가장 가깝고, 화면이 이미 다룰 줄 아는 값입니다.
+     */
+    private static final Set<String> KNOWN_STATUSES =
+            Set.of("OK", "OK_RELAXED", NO_CONDITION, NO_RESULT);
 
     private final NlrClient nlrClient;
     private final NlrRecordService recordService;
@@ -268,6 +283,10 @@ public class NaturalLanguageRecommendationService {
      * 않습니다</b> — 개수만으로 충분합니다.
      */
     private static String resolveStatus(String aiStatus, int foundByAi, int shownToUser) {
+        if (!KNOWN_STATUSES.contains(aiStatus)) {
+            log.warn("AI 가 모르는 상태를 보냈습니다. NO_RESULT 로 내립니다: aiStatus={}", aiStatus);
+            return NO_RESULT;
+        }
         if (shownToUser > 0 || NO_CONDITION.equals(aiStatus) || NO_RESULT.equals(aiStatus)) {
             return aiStatus;
         }
