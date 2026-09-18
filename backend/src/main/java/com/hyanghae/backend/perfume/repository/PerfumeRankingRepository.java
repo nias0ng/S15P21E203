@@ -58,7 +58,8 @@ public class PerfumeRankingRepository {
               AND (CAST(:keyword AS varchar) IS NULL
                 OR LOWER(p.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS varchar), '%')) ESCAPE '!'
                 OR LOWER(p.name_ko) LIKE LOWER(CONCAT('%', CAST(:keyword AS varchar), '%')) ESCAPE '!'
-                OR LOWER(b.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS varchar), '%')) ESCAPE '!')
+                OR LOWER(b.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS varchar), '%')) ESCAPE '!'
+                OR LOWER(b.name_ko) LIKE LOWER(CONCAT('%', CAST(:keyword AS varchar), '%')) ESCAPE '!')
               AND (CAST(:brand AS varchar) IS NULL OR b.name = CAST(:brand AS varchar))
               AND (CAST(:brandId AS bigint) IS NULL OR b.brand_id = CAST(:brandId AS bigint))
               AND (CAST(:gender AS varchar) IS NULL OR p.gender = CAST(:gender AS varchar))
