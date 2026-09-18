@@ -9,8 +9,7 @@ import { PageFallback } from '@/shared/ui/PageFallback'
 
 // 라우트 단위 코드 스플리팅: 첫 진입 번들을 가볍게 유지합니다.
 // 오른쪽 주석은 와이어프레임 화면 번호 · 담당 에픽입니다.
-const HomePage = lazy(() => import('@/pages/HomePage')) // A01  · 109
-const RecommendPage = lazy(() => import('@/pages/RecommendPage')) // A06  · 109
+const HomePage = lazy(() => import('@/pages/HomePage')) // A01  · 109 (A06 자연어 추천은 이 화면의 모달입니다)
 
 const PerfumeListPage = lazy(() => import('@/pages/PerfumeListPage')) // A33  · 110
 const PerfumeSearchPage = lazy(() => import('@/pages/PerfumeSearchPage')) // A09  · 110
@@ -68,11 +67,6 @@ export const router = createBrowserRouter([
     errorElement: <ErrorPage />,
     children: [
       { index: true, element: withSuspense(<HomePage />), handle: BLEED },
-      {
-        path: ROUTES.RECOMMEND,
-        element: withSuspense(<RecommendPage />),
-        handle: FULL,
-      },
 
       {
         path: ROUTES.PERFUMES,

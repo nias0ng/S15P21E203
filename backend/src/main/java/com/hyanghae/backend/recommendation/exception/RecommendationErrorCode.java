@@ -44,7 +44,30 @@ public enum RecommendationErrorCode implements ErrorCode {
      * <p>비회원이 회원보다 적게 부를 수 있습니다. 결과는 같지만 한도가 다릅니다.
      */
     RECOMMENDATION_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS,
-            "추천을 너무 자주 요청했습니다. 잠시 뒤 다시 시도해 주세요.");
+            "추천을 너무 자주 요청했습니다. 잠시 뒤 다시 시도해 주세요."),
+
+    /**
+     * 그 번호의 추천이 없거나, 있어도 그 순위의 결과가 없습니다.
+     *
+     * <p>둘을 한 코드로 묶습니다. 화면이 두 경우에 할 일이 같고, 나눠 두면 "1042번 추천은
+     * 있는데 3위가 없다" 를 알려 주게 되어 남의 추천 번호를 훑을 수 있습니다.
+     *
+     * <p>보관 기간이 지나 지워진 추천도 여기로 옵니다.
+     */
+    RECOMMENDATION_RECORD_NOT_FOUND(HttpStatus.NOT_FOUND,
+            "해당 추천 기록을 찾을 수 없습니다."),
+
+    /**
+     * 이미 만족도를 남긴 추천입니다.
+     *
+     * <p>409 입니다. 표의 기본키가 추천 번호라 두 번째 응답은 DB 가 막습니다. 그것을 그대로
+     * 두면 500 이 나가므로 먼저 확인해 409 로 답합니다.
+     *
+     * <p>다시 답하는 것을 허용하기로 하면 이 코드를 지우고 갱신으로 바꾸면 됩니다. 지금은
+     * "처음 누른 답" 을 지킵니다 — 화면을 다시 열어 같은 버튼이 눌리는 일이 있습니다.
+     */
+    RECOMMENDATION_FEEDBACK_ALREADY_ANSWERED(HttpStatus.CONFLICT,
+            "이미 만족도를 남긴 추천입니다.");
 
     private final HttpStatus status;
     private final String message;

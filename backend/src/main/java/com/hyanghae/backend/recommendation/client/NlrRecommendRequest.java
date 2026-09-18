@@ -12,7 +12,8 @@ package com.hyanghae.backend.recommendation.client;
  * AI 서버가 400 을 냅니다. 여기서는 아예 보내지 않으므로 그 사고가 생기지 않습니다.
  *
  * @param text 사용자가 쓴 문장 그대로입니다. AI 서버도 1~500자만 받습니다.
- * @param topK 몇 개까지 받을지입니다. 1~20 입니다.
+ * @param topK 몇 개까지 받을지입니다. AI 서버는 1~20 을 받지만 우리가 보내는 값은 1~5 입니다
+ *             — {@link RecommendationProperties#topK()} 를 보십시오.
  */
 record NlrRecommendRequest(String text, int topK) {
 }

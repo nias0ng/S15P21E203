@@ -18,7 +18,14 @@
 
     /* Path alias - import { x } from '@/shared/...' (vite.config.ts 의 alias 와 쌍) */
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      /*
+       * 3D 엔진의 생성 데이터 (지도 향수 200개). 실체는 순수 JS 라 타입이 없고,
+       * 앱이 읽는 필드만 `src/features/map/engine-perfumes.d.ts` 가 선언합니다 —
+       * 그 ambient 선언이 이 매핑보다 먼저 쓰이므로 `.js` 파일 자체는 타입 검사에
+       * 들어오지 않습니다. 이 줄은 **ESLint 의 import 해석기**를 위한 것입니다.
+       */
+      "@landing/*": ["./landing/src/*"]
     },
 
     /* Linting */

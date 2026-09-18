@@ -47,6 +47,22 @@ export function LinkedPerfumeModal({
 }: Props) {
   const [picked, setPicked] = useState<LinkedPerfume[]>([])
 
+  /*
+    한 번이라도 검색했는지. 후보가 0개인 경우가 둘(아직 안 찾음 · 찾았는데 없음)인데,
+    둘 다 "찾지 못했습니다" 라고 하면 열자마자 검색에 실패한 것처럼 읽힙니다.
+    검색어는 화면(pages)이 들고 있어 여기로 내려오지 않으므로 모달이 따로 기억합니다.
+
+    닫아도 되돌리지 않습니다 — `SearchField` 는 제가 값을 들고 있고 `Modal` 이
+    `<dialog>` 라 언마운트되지 않아서, 다시 열면 지난 검색어가 칸에 그대로 남습니다.
+    그 상태에서 "검색해 주세요" 로 돌아가면 칸의 글자와 안내가 어긋납니다.
+  */
+  const [searched, setSearched] = useState(false)
+
+  const search = (keyword: string) => {
+    setSearched(keyword.trim().length > 0)
+    onSearch(keyword)
+  }
+
   const toggle = (perfume: LinkedPerfume) => {
     if (single) {
       setPicked([perfume])
@@ -98,12 +114,12 @@ export function LinkedPerfumeModal({
         <SearchField
           label="향수명 또는 브랜드명으로 검색"
           placeholder="향수명 · 브랜드 검색"
-          onSearch={onSearch}
+          onSearch={search}
         />
 
         {isPending ? (
-          <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-            {Array.from({ length: 6 }, (_, index) => (
+          <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            {Array.from({ length: 8 }, (_, index) => (
               <li key={index}>
                 <Skeleton className="aspect-[1/1.35] w-full" />
               </li>
@@ -111,19 +127,25 @@ export function LinkedPerfumeModal({
           </ul>
         ) : candidates.length === 0 ? (
           <EmptyState
-            title="향수를 찾지 못했습니다"
-            description="검색어를 입력해 향수를 찾아보세요."
+            title={searched ? '향수를 찾지 못했습니다' : '향수를 검색해 주세요'}
+            description={
+              searched
+                ? '검색어를 바꿔 보세요.'
+                : '향수명이나 브랜드명을 입력하면 고를 수 있는 향수가 나옵니다.'
+            }
           />
         ) : (
           /*
-            진열대 등록 모달(A15)과 같은 격자입니다. 사진이 커야 같은 브랜드의
-            비슷한 이름들 사이에서 고르던 것을 알아볼 수 있습니다.
+            한 줄에 넷입니다. 사진을 3:4 로 세우면서 카드가 길어져(모달 폭 510 ·
+            셋일 때 243), `max-h-90`(360) 안에 한 줄 반밖에 안 들어왔습니다 — 다음
+            줄이 절반쯤 잘린 채 떠 있습니다. 넷으로 나누면 카드가 190 으로 줄어
+            한 줄과 다음 줄의 대부분이 보입니다. (진열대 등록 모달(A15)은 아직 셋입니다.)
 
             여럿 고를 때도 체크박스를 두지 않습니다 — 카드 자체가 누르는 자리이고,
             고른 것은 테두리와 `aria-pressed` 로 알립니다. 카드 안에 체크박스를 또
             두면 사진을 누를지 네모를 누를지 헷갈립니다.
           */
-          <ul className="grid max-h-90 grid-cols-2 gap-2.5 overflow-y-auto sm:grid-cols-3">
+          <ul className="grid max-h-90 grid-cols-2 gap-2.5 overflow-y-auto sm:grid-cols-4">
             {candidates.map((candidate) => (
               <li key={candidate.perfumeId}>
                 <button
@@ -143,7 +165,7 @@ export function LinkedPerfumeModal({
                   <Thumbnail
                     src={candidate.thumbnailUrl}
                     fallback="이미지"
-                    className="text-caption mb-2.5 h-16.25 w-full"
+                    className="text-caption mb-2.5 aspect-3/4 w-full"
                   />
                   <span className="text-ink text-body block truncate font-medium">
                     {candidate.name}

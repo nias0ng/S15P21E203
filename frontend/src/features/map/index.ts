@@ -8,19 +8,26 @@
  * ScentMap 은 A06 추천 결과의 흐린 배경으로만 남은 SVG 자리표시자입니다.
  */
 export { MapPointPopover } from './components/MapPointPopover'
+export { MapSearchModal } from './components/MapSearchModal'
 export { MiniMap } from './components/MiniMap'
 export { ScentMap } from './components/ScentMap'
 export { ScentScene, type ScenePerfumeRef } from './components/ScentScene'
+export {
+  SceneSearchBar,
+  type SceneSearchMode,
+} from './components/SceneSearchBar'
 export { SimilarExplorer } from './components/SimilarExplorer'
 export { VoyageLog, type VoyageLogStatus } from './components/VoyageLog'
 export {
   mapKeys,
+  mapPerfumesQuery,
   mapPointsQuery,
   tasteAreaQuery,
   voyageLogQuery,
 } from './queries'
 export {
   SCENT_REGIONS,
+  type MapPerfume,
   type MapPoint,
   type ScentRegionId,
   type Viewport,

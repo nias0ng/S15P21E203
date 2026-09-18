@@ -234,11 +234,6 @@ export default function CollectionDetailPage() {
         </ul>
       )}
 
-      <p className="text-ink-muted text-caption leading-relaxed">
-        향수를 제거해도 진열대 저장은 유지됩니다. 컬렉션이 남에게 보이는 길은
-        자유 게시판의 컬렉션 공유 글뿐입니다.
-      </p>
-
       <CollectionFormModal
         open={editOpen}
         onClose={() => setEditOpen(false)}

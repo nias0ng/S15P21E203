@@ -86,19 +86,41 @@ public class RecommendationRateLimiter {
      * @throws BusinessException 한도를 넘었습니다. 429 로 나갑니다.
      */
     public void check(String clientIp) {
+        RecommendationProperties.RateLimit rateLimit = properties.rateLimit();
+        check(clientIp, "recommend", rateLimit.member(), rateLimit.anonymous());
+    }
+
+    /**
+     * 클릭과 만족도의 호출량을 제한합니다.
+     *
+     * <p><b>추천과 셈을 나눕니다.</b> 한 통에 담으면 카드 다섯 개를 누르고 만족도를 남긴 사람이
+     * 추천 한도를 다 써 버립니다. 둘은 성격도 다릅니다 — 추천은 LLM 을 불러 비용이 나가고,
+     * 이쪽은 한 칸을 고치는 일이라 한도를 넉넉히 둘 수 있습니다.
+     *
+     * <p>손잡이가 추측 불가능해도 제한이 필요합니다. 자기 추천을 반복해서 두드리는 것은 막아야
+     * 하고, 무엇보다 제한이 없으면 존재하지 않는 손잡이를 무한히 시험해 볼 수 있습니다.
+     */
+    public void checkFeedback(String clientIp) {
+        RecommendationProperties.RateLimit rateLimit = properties.rateLimit();
+        check(clientIp, "feedback", rateLimit.feedbackMember(), rateLimit.feedbackAnonymous());
+    }
+
+    private void check(String clientIp, String bucket, int memberLimit, int anonymousLimit) {
         Optional<Long> userId = currentUser.id();
         boolean member = userId.isPresent();
 
         RecommendationProperties.RateLimit rateLimit = properties.rateLimit();
-        int limit = member ? rateLimit.member() : rateLimit.anonymous();
-        String key = KEY_PREFIX + (member ? "user:" + userId.get() : "ip:" + clientIp);
+        int limit = member ? memberLimit : anonymousLimit;
+        String key = KEY_PREFIX + bucket + ":"
+                + (member ? "user:" + userId.get() : "ip:" + clientIp);
 
         Long count = redisTemplate.execute(
                 COUNT_SCRIPT, List.of(key), Long.toString(rateLimit.window().toMillis()));
 
         if (count != null && count > limit) {
-            log.warn("자연어 추천 호출량 제한에 걸렸습니다: subjectType={}, limit={}, windowSeconds={}",
-                    member ? "user" : "ip", limit, rateLimit.window().toSeconds());
+            log.warn("자연어 추천 호출량 제한에 걸렸습니다:"
+                            + " bucket={}, subjectType={}, limit={}, windowSeconds={}",
+                    bucket, member ? "user" : "ip", limit, rateLimit.window().toSeconds());
             throw new BusinessException(RecommendationErrorCode.RECOMMENDATION_RATE_LIMIT_EXCEEDED);
         }
     }

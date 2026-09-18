@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 
-import { Checkbox } from '@/shared/ui/Checkbox'
+import { cn } from '@/shared/lib/cn'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { SearchField } from '@/shared/ui/SearchField'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
@@ -99,29 +99,51 @@ export function ShelfItemPickList({
           description="다른 향수명이나 브랜드명으로 검색해 보세요."
         />
       ) : (
-        <ul className="max-h-72.5 space-y-1.25 overflow-y-auto">
-          {visible.map((candidate) => (
-            <li key={candidate.shelfItemId}>
-              <label className="hover:bg-line-soft flex cursor-pointer items-center gap-2.5 p-2.5">
-                <Checkbox
-                  checked={picked.includes(candidate.shelfItemId)}
-                  onChange={() => onToggle(candidate.shelfItemId)}
-                />
-                <Thumbnail
-                  src={candidate.thumbnailUrl}
-                  className="size-10 shrink-0"
-                />
-                <span className="min-w-0">
+        /*
+          향수를 고르는 나머지 두 모달(`ShelfRegisterModal` 1단계 ·
+          `LinkedPerfumeModal`)과 같은 격자입니다 — 한 줄에 넷 · 높이는 360 까지 ·
+          넘치면 목록만 스크롤합니다. 셋이 같은 일을 하는데 여기만 한 줄짜리 목록이라,
+          같은 화면을 오가며 향수를 고르는 사람이 매번 다른 물건으로 읽었습니다.
+
+          체크박스를 두지 않습니다 — 카드 자체가 누르는 자리이고, 고른 것은 테두리와
+          `aria-pressed` 로 알립니다. 카드 안에 네모를 또 두면 사진을 누를지 네모를
+          누를지 헷갈립니다.
+        */
+        <ul className="grid max-h-90 grid-cols-2 gap-2.5 overflow-y-auto sm:grid-cols-4">
+          {visible.map((candidate) => {
+            const isPicked = picked.includes(candidate.shelfItemId)
+
+            return (
+              <li key={candidate.shelfItemId}>
+                <button
+                  type="button"
+                  aria-pressed={isPicked}
+                  onClick={() => onToggle(candidate.shelfItemId)}
+                  className={cn(
+                    'w-full border p-2.5 text-left',
+                    'transition-colors duration-120 ease-out',
+                    'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
+                    isPicked
+                      ? 'border-accent bg-line-soft'
+                      : 'border-line hover:border-accent',
+                  )}
+                >
+                  {/* 사진이 없는 향수가 있습니다 — 그때는 빈 상자를 그립니다 */}
+                  <Thumbnail
+                    src={candidate.thumbnailUrl}
+                    fallback="이미지"
+                    className="text-caption mb-2.5 aspect-3/4 w-full"
+                  />
                   <span className="text-ink text-body block truncate font-medium">
                     {candidate.name}
                   </span>
                   <span className="text-ink-muted text-caption block truncate">
                     {candidate.brand}
                   </span>
-                </span>
-              </label>
-            </li>
-          ))}
+                </button>
+              </li>
+            )
+          })}
         </ul>
       )}
 

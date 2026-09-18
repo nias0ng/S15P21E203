@@ -59,11 +59,37 @@ export const http: AxiosInstance = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+/**
+ * **Authorization 을 붙이면 안 되는 경로.**
+ *
+ * 백엔드에서 이 셋은 `permitAll` 이지만, `oauth2ResourceServer.jwt()` 가 깔아 둔
+ * `BearerTokenAuthenticationFilter` 는 **인가 단계보다 먼저** 돕니다. Authorization
+ * 헤더가 있으면 무조건 검증하고, 만료된 토큰이면 그 자리에서 401 을 던집니다.
+ * `permitAll` 은 거기까지 오지도 못합니다.
+ *
+ * 그래서 만료된 토큰을 그대로 달고 `/auth/refresh` 를 부르면 **재발급이 반드시
+ * 실패합니다** — 재발급이 필요한 순간은 정의상 토큰이 만료된 순간이라, 이 헤더
+ * 하나 때문에 재발급이 한 번도 성공하지 못하고 30분(`access-token-ttl`)마다
+ * 자동 로그아웃됐습니다.
+ *
+ *   Authorization 없음  →  401 AUTH_INVALID_REFRESH_TOKEN  (컨트롤러까지 도달)
+ *   Authorization 있음  →  401 AUTH_LOGIN_REQUIRED         (보안 필터가 먼저 차단)
+ *
+ * **`/auth/logout` 은 여기 넣지 않습니다.** 백엔드가 `authenticated()` 로 잡아 두어
+ * 토큰이 있어야 세션을 지울 수 있습니다. 아래 `NO_REFRESH_PATHS` 와 목록이 겹쳐
+ * 보이지만 **다른 질문에 답하는 목록입니다** — 여기는 "토큰을 붙일 것인가",
+ * 저기는 "401 을 재발급으로 볼 것인가" 입니다.
+ */
+const NO_AUTH_HEADER_PATHS = ['/auth/login', '/auth/signup', '/auth/refresh']
+
 // 요청 인터셉터: 액세스 토큰 주입
 http.interceptors.request.use((config) => {
   const { accessToken } = useAuthStore.getState()
+  const isAuthPath = NO_AUTH_HEADER_PATHS.some((path) =>
+    config.url?.startsWith(path),
+  )
 
-  if (accessToken) {
+  if (accessToken && !isAuthPath) {
     config.headers.setAuthorization(`Bearer ${accessToken}`)
   }
 
@@ -137,6 +163,20 @@ function refreshAccessToken(): Promise<string> {
   return pending
 }
 
+/**
+ * 재발급 실패가 **세션이 끝났다는 뜻인지** 가립니다.
+ *
+ * 서버가 거절한 것(401 · 403)만 세션의 끝입니다. 닿지 못했거나(0 · 502~504) 서버가
+ * 아픈 것(5xx)은 **다음에 다시 물어보면 되는 일**입니다.
+ *
+ * `/auth/refresh` 요청도 이 인터셉터를 지나므로, 여기 오는 실패는 이미
+ * `ApiError` 로 정규화돼 있습니다. `ApiError` 가 아닌 것은 axios 밖에서 터진
+ * 예외라 세션과 무관하므로 역시 끝내지 않습니다.
+ */
+function isSessionRejected(error: unknown): boolean {
+  return isApiError(error) && (error.status === 401 || error.status === 403)
+}
+
 // 응답 인터셉터: 만료된 토큰은 재발급하고, 나머지 에러는 ApiError 로 정규화
 http.interceptors.response.use(
   (response) => response,
@@ -158,12 +198,27 @@ http.interceptors.response.use(
         if (refreshable) {
           config._retried = true
 
-          const renewed = await refreshAccessToken().catch(() => null)
-
-          if (renewed !== null) {
+          try {
+            const renewed = await refreshAccessToken()
             useAuthStore.getState().setAccessToken(renewed)
             // 요청 인터셉터가 새 토큰으로 Authorization 을 다시 붙입니다
             return http(config)
+          } catch (refreshError) {
+            /*
+             * **실패한 이유를 가립니다.** 전에는 `catch(() => null)` 로 전부 뭉개서,
+             * 서버에 못 물어본 것까지 "세션이 끝났다" 로 읽고 로그아웃시켰습니다.
+             * 백엔드를 재시작하는 몇 초, 배포 중 순단, 지하철에서 끊긴 와이파이가
+             * 전부 로그아웃이었습니다 — 토큰은 멀쩡한데 말입니다.
+             *
+             * 세션을 끝내는 것은 **서버가 이 리프레시 토큰을 못 쓴다고 답했을 때뿐**
+             * 입니다. 그 외에는 원래 실패를 그대로 올려 화면이 "잠시 후 다시 시도" 를
+             * 말하게 두고, 로그인은 유지합니다. 만료된 액세스 토큰은 스토어에 남지만
+             * 다음 요청이 다시 401 을 받아 재발급을 새로 시도하므로, 서버가 돌아오면
+             * 저절로 이어집니다.
+             */
+            if (!isSessionRejected(refreshError)) {
+              return Promise.reject(refreshError)
+            }
           }
         }
 
