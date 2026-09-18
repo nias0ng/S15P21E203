@@ -62,8 +62,6 @@ interface EngineHandle {
   setHost: (host: EngineHost | null) => void
   params: Record<string, number>
   apply: () => void
-  /** 개발 패널(계측 · 슬라이더 · 비교)을 한꺼번에 숨깁니다 — 개발 서버에서만 뜹니다 */
-  solo?: (on: boolean) => void
   /** 지금까지의 부팅 단계 — postMessage 를 놓친 앱이 따라잡습니다 (host.js bootNow) */
   boot?: () => SceneBootSnapshot
 }
@@ -245,8 +243,6 @@ export function ScentScene({
       engine.params.siteHeader = 0
       engine.params.hostTop = latest.current.coveredTop
       engine.apply()
-      // 개발 서버에서는 엔진의 개발 패널도 같이 뜹니다 — 서비스 화면만 남깁니다
-      engine.solo?.(true)
       engine.setHost({
         openDetail: (perfume) => latest.current.onOpenDetail(perfume),
         saveToShelf: (perfume) => latest.current.onSaveToShelf(perfume),
