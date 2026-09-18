@@ -1,11 +1,8 @@
 import { Link } from 'react-router'
 
-import { perfumeViewState } from '@/shared/config/perfumeViewSource'
-import { toPerfumeDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { Badge } from '@/shared/ui/Badge'
-import { Card } from '@/shared/ui/Card'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Skeleton } from '@/shared/ui/Skeleton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
@@ -28,19 +25,13 @@ type Props = {
 /**
  * 게시글 목록 (와이어프레임 A22a · A22b 공용)
  *
- * **유리판 위에 놓입니다.** 두 게시판 모두 어두운 방(라우트의 `handle.night`)이라
- * 카드가 `data-slot="card"` 로 잡혀 한 단 밝은 서리 유리가 되고, 그 안쪽만 글자가
- * 다시 먹색으로 돌아옵니다 — 향수 목록(A33) · 브랜드(A34) · 노트(A35)의 격자와
- * 같은 층 구성입니다(어둠 → 판 → 카드).
- *
- * `interactive` 를 걸지 않는 이유가 여기 있습니다. 그 prop 이 얹는
- * `hover:shadow-raised` 는 **유틸리티**라 유리 카드의 그림자(가장자리 반사광 두 겹)를
- * 통째로 덮어써서, 마우스를 올리면 카드가 유리에서 종이로 바뀝니다. 떠오르는 느낌은
- * 유리판 쪽 `:hover`(판보다 더 밝아짐)가 이미 만들고, 누를 수 있다는 신호는 제목
- * 밑줄(`group-hover:underline`)이 냅니다.
+ * **유리판 한 장 위에 줄로 눕습니다.** 향수 상세(A10)의 후기 목록과 같은 모양입니다 —
+ * 글은 세로로 길게 이어지는 글자 덩어리라, 한 줄 한 줄을 밝은 카드로 띄우면 판보다
+ * 카드가 무거워져 유리판이 카드 사이 틈으로만 보입니다. 격자(향수 · 브랜드 · 노트)가
+ * 카드를 쓰는 것은 타일이 작고 사진이 주인공이라서입니다.
  *
  * 두 게시판이 같은 컴포넌트를 씁니다. 백엔드 응답은 서로 다르지만
- * (`/posts` 와 `/reviews`) 카드 모양이 같아, 도메인에서 `BoardItem` 으로 맞춰
+ * (`/posts` 와 `/reviews`) 줄 모양이 같아, 도메인에서 `BoardItem` 으로 맞춰
  * 넘깁니다(types.ts 의 `postToBoardItem` · `reviewToBoardItem`).
  *
  * 값이 있을 때만 그리는 것 — 향수 블록(자유 글은 안 걸어도 됨), 분류 배지(후기에는
@@ -56,9 +47,9 @@ export function PostList({
 }: Props) {
   if (isPending) {
     return (
-      <div className="space-y-3.75">
+      <div className="space-y-2.5">
         {Array.from({ length: 4 }, (_, index) => (
-          <Skeleton key={index} className="rounded-card h-32.5" />
+          <Skeleton key={index} className="rounded-card h-25" />
         ))}
       </div>
     )
@@ -75,105 +66,118 @@ export function PostList({
   }
 
   return (
-    <ul className="space-y-3.75">
+    <ul className="divide-line divide-y">
       {items.map((item) => (
-        <li key={item.id}>
+        <li
+          key={item.id}
+          className={cn(
+            'relative space-y-2.5 px-2.5 py-3.75',
+            /*
+              판 위의 hover 는 **어둡게** 합니다 — 유리가 반투명이라 뒤의 방이 더
+              비쳐 그 줄이 유리 안으로 가라앉습니다
+              (styles/scent-display.css 의 `--color-surface-sunken`).
+            */
+            'hover:bg-surface-sunken rounded-card',
+            'transition-colors duration-120 ease-out',
+          )}
+        >
+          <div className="space-y-2.5">
+            {/*
+              제목 링크를 `after:inset-0` 으로 줄 전체만큼 늘립니다. 줄 어디를
+              눌러도 글로 가고, 낭독기에는 링크가 여전히 제목 하나입니다 —
+              `<li>` 를 통째로 링크로 감싸면 안에 있는 좋아요 버튼이 링크 안의
+              버튼이 되어 잘못된 마크업이 됩니다.
+            */}
+            <Link
+              to={item.to}
+              className={cn(
+                'text-ink text-heading block font-serif font-bold',
+                'underline-offset-4 hover:underline',
+                'focus-visible:ring-accent-deep rounded-card outline-none focus-visible:ring-2',
+                'after:absolute after:inset-0',
+              )}
+            >
+              {item.title}
+            </Link>
+
+            <div className="text-caption flex flex-wrap items-center gap-2.5">
+              <Thumbnail className="size-5 shrink-0 rounded-full" />
+              {/* 탈퇴한 회원의 글은 글만 남고 작성자가 지워집니다 */}
+              <span className="text-ink">{item.nickname ?? '탈퇴한 회원'}</span>
+              <span className="text-ink-muted">
+                · {formatRelativeTime(item.createdAt)}
+              </span>
+              {/* 자유 글에만 분류가 있습니다 */}
+              {item.category && (
+                <Badge tone="neutral">
+                  {
+                    POST_CATEGORIES.find(
+                      (entry) => entry.value === item.category,
+                    )?.label
+                  }
+                </Badge>
+              )}
+            </div>
+          </div>
+
           {/*
-            카드 전체가 아니라 제목만 링크입니다. 카드를 통째로 링크로 감싸면 안에
-            있는 향수 블록 링크가 링크 안의 링크가 되어 낭독기와 브라우저가 둘 다
-            헷갈립니다. 대신 카드에 group 을 걸어 어디에 마우스를 올리든 제목에
-            밑줄이 들어옵니다.
+            어느 향수 이야기인지 — 후기는 항상, 자유 글은 걸었을 때만.
+
+            **누르는 곳이 아니라 표시입니다.** 예전에는 향수 상세로 가는 링크였는데,
+            게시판에서 글을 누르려다 이 블록을 밟으면 글이 아니라 향수로 새 버립니다.
+            줄 전체가 글로 가는 지금은 그 사고가 더 잦아집니다. 향수로 건너가는 길은
+            **글 상세(A23)의 `연결된 향수`** 한 곳으로 모읍니다 — 글을 읽고 나서
+            건너가는 것이 순서이기도 합니다.
+
+            바탕을 칠하지 않고 테두리만 두릅니다. 줄 hover 가 바탕을 어둡게 하는데
+            이 블록도 바탕을 깔면 hover 때 둘이 같은 색이 되어 블록이 사라집니다.
           */}
-          <Card className="group space-y-2.5">
-            <div className="space-y-2.5">
-              <Link
-                to={item.to}
-                className={cn(
-                  'text-ink text-heading block font-serif font-bold',
-                  'underline-offset-4 group-hover:underline',
-                  'focus-visible:ring-accent-deep rounded-card outline-none focus-visible:ring-2',
-                )}
-              >
-                {item.title}
-              </Link>
-
-              <div className="text-caption flex flex-wrap items-center gap-2.5">
-                <Thumbnail className="size-5 shrink-0 rounded-full" />
-                {/* 탈퇴한 회원의 글은 글만 남고 작성자가 지워집니다 */}
-                <span className="text-ink">
-                  {item.nickname ?? '탈퇴한 회원'}
+          {item.perfume && (
+            <p className="border-line rounded-card inline-flex w-fit max-w-full items-baseline gap-2.5 border px-2.5 py-1.25">
+              <span className="text-ink text-body font-medium">
+                {item.perfume.name}
+              </span>
+              {/* 브랜드가 없는 향수가 있습니다 */}
+              {item.perfume.brand && (
+                <span className="text-ink-muted text-caption">
+                  {item.perfume.brand}
                 </span>
-                <span className="text-ink-muted">
-                  · {formatRelativeTime(item.createdAt)}
-                </span>
-                {/* 자유 글에만 분류가 있습니다 */}
-                {item.category && (
-                  <Badge tone="neutral">
-                    {
-                      POST_CATEGORIES.find(
-                        (entry) => entry.value === item.category,
-                      )?.label
-                    }
-                  </Badge>
-                )}
-              </div>
-            </div>
+              )}
+            </p>
+          )}
 
-            {/* 향수 블록 — 후기는 항상, 자유 글은 걸었을 때만 */}
-            {item.perfume && (
-              <Link
-                to={toPerfumeDetail(item.perfume.perfumeId)}
-                state={perfumeViewState('COMMUNITY')}
+          {/* 점수나 별점은 없습니다. 좋아요만 있습니다. */}
+          <div className="text-ink-muted text-caption flex items-center gap-3.75">
+            {onToggleLike ? (
+              /*
+                위 제목 링크가 줄 전체를 덮고 있으므로 `relative` 로 그 위에
+                올립니다. 안 그러면 좋아요를 눌러도 글로 넘어갑니다.
+              */
+              <button
+                type="button"
+                aria-pressed={item.liked}
+                aria-label={`좋아요 ${item.likeCount}`}
+                onClick={() => onToggleLike(item)}
                 className={cn(
-                  'border-line-soft bg-surface-sunken hover:border-accent rounded-card',
-                  // w-fit 으로 내용만큼만 차지합니다. 칸 전체를 채우면 향수 이름
-                  // 하나가 제목만큼 넓은 띠가 되어 무엇이 제목인지 흐려집니다.
-                  'inline-flex w-fit max-w-full items-baseline gap-2.5 border px-2.5 py-2.5',
-                  'transition-colors duration-120 ease-out',
+                  'hover:text-danger rounded-card relative transition-colors duration-120 ease-out',
                   'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
+                  item.liked && 'text-danger',
                 )}
               >
-                <span className="text-ink text-body font-medium">
-                  {item.perfume.name}
-                </span>
-                {/* 브랜드가 없는 향수가 있습니다 */}
-                {item.perfume.brand && (
-                  <span className="text-ink-muted text-caption">
-                    {item.perfume.brand}
-                  </span>
-                )}
-              </Link>
+                <span aria-hidden>{item.liked ? '♥' : '♡'}</span> 좋아요{' '}
+                {item.likeCount}
+              </button>
+            ) : (
+              <span className={item.liked ? 'text-danger' : undefined}>
+                <span aria-hidden>{item.liked ? '♥' : '♡'}</span> 좋아요{' '}
+                {item.likeCount}
+              </span>
             )}
-
-            {/* 점수나 별점은 없습니다. 좋아요만 있습니다. */}
-            <div className="text-ink-muted text-caption flex items-center gap-3.75">
-              {onToggleLike ? (
-                <button
-                  type="button"
-                  aria-pressed={item.liked}
-                  aria-label={`좋아요 ${item.likeCount}`}
-                  onClick={() => onToggleLike(item)}
-                  className={cn(
-                    'hover:text-danger rounded-card transition-colors duration-120 ease-out',
-                    'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
-                    item.liked && 'text-danger',
-                  )}
-                >
-                  <span aria-hidden>{item.liked ? '♥' : '♡'}</span> 좋아요{' '}
-                  {item.likeCount}
-                </button>
-              ) : (
-                <span className={item.liked ? 'text-danger' : undefined}>
-                  <span aria-hidden>{item.liked ? '♥' : '♡'}</span> 좋아요{' '}
-                  {item.likeCount}
-                </span>
-              )}
-              {item.commentCount !== null && (
-                <span>댓글 {item.commentCount}</span>
-              )}
-              <span>조회 {item.viewCount}</span>
-            </div>
-          </Card>
+            {item.commentCount !== null && (
+              <span>댓글 {item.commentCount}</span>
+            )}
+            <span>조회 {item.viewCount}</span>
+          </div>
         </li>
       ))}
     </ul>
