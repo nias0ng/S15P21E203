@@ -133,6 +133,23 @@ export const GENDER_FILTERS = [
   { value: 'UNISEX', label: '중성' },
 ] as const satisfies readonly { value: GenderFilter; label: string }[]
 
+/**
+ * 영문 줄에 적는 성별. 위 `GENDER_FILTERS` 의 한글 라벨과 **일부러 다릅니다** —
+ * 향수 이름이 영문인 줄에 '중성' 만 한글로 섞이면 그 줄에서 혼자 튑니다.
+ * 한글 라벨은 목록 필터 알약에 그대로 두고 여기만 따로 적습니다.
+ *
+ * ⚠️ **표에 없는 값이면 아무것도 안 적습니다.** 타입은 `GenderFilter` 지만 백엔드
+ * 컬럼은 제약 없는 `VARCHAR(30)` 이고(entity `Gender` 는 검색 필터용 어휘일 뿐입니다)
+ * 원본 CSV 에도 없는 값이라, 여기 없는 문자열이 올 수 있습니다.
+ *
+ * 향수 상세의 개요(A10)와 후기 상세의 향수 칸(A12)이 같이 씁니다.
+ */
+export const GENDER_TEXT: Record<GenderFilter, string> = {
+  FEMALE: 'female',
+  MALE: 'male',
+  UNISEX: 'unisex',
+}
+
 /* ── A10 향수 상세에서 쓰는 것들 ───────────────────────────── */
 
 /** 계절 (DTL-14 · DTL-16 · DTL-24) */

@@ -2,7 +2,8 @@ import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
-import type { GenderFilter, PerfumeDetail } from '../types'
+import { GENDER_TEXT } from '../types'
+import type { PerfumeDetail } from '../types'
 
 type Props = {
   perfume: PerfumeDetail
@@ -145,21 +146,4 @@ export function PerfumeOverview({
       </div>
     </section>
   )
-}
-
-/**
- * 향의 성별(DTL-01 `gender`)을 영문 줄에 적는 말.
- *
- * **영문 소문자입니다.** 이 줄은 브랜드 · 향수의 영문 표기가 서는 자리라, 한글
- * 라벨(`GENDER_FILTERS` 의 남성 · 여성 · 중성)을 섞으면 한 줄 안에서 두 언어가
- * 부딪힙니다. 그 라벨은 목록 필터 알약에 그대로 두고, 여기만 따로 적습니다.
- *
- * ⚠️ **표에 없는 값이면 아무것도 안 적습니다.** 타입은 `GenderFilter` 지만 백엔드
- * 컬럼은 제약 없는 `VARCHAR(30)` 이고(entity `Gender` 는 검색 필터용 어휘일 뿐입니다)
- * 원본 CSV 에도 없는 값이라, 여기 없는 문자열이 올 수 있습니다.
- */
-const GENDER_TEXT: Record<GenderFilter, string> = {
-  FEMALE: 'female',
-  MALE: 'male',
-  UNISEX: 'unisex',
 }
