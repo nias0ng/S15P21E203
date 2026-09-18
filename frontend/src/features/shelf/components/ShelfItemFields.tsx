@@ -13,14 +13,15 @@ type Props = {
   memo: string
   onMemoChange: (next: string) => void
   /**
-   * 비운 채로 저장하려 했을 때 그 칸 옆에 [필수] 를 띄웁니다.
+   * 비운 채로 저장하려 했을 때 분류 칸 옆에 [필수] 를 띄웁니다.
    *
    * 무엇이 필수인지는 여기서 정하지 않고 **부르는 쪽이 정합니다.** 담을 때(A15)는
-   * 분류와 적합도가 필수인데 고칠 때(A13)는 둘 다 비울 수 있어서, 칸만 보고는
-   * 지금 빈 것이 잘못인지 알 수 없습니다.
+   * 분류를 골라야 하는데 고칠 때(A13)는 비울 수 있어서, 칸만 보고는 지금 빈 것이
+   * 잘못인지 알 수 없습니다.
+   *
+   * 적합도와 메모에는 이 표시가 없습니다 — 세 자리 중 필수는 분류뿐입니다.
    */
   categoryMissing?: boolean
-  ratingMissing?: boolean
   /** 아래 안내 문구. 할 말이 없는 자리에서는 넘기지 않습니다 */
   hint?: string
 }
@@ -48,7 +49,6 @@ export function ShelfItemFields({
   memo,
   onMemoChange,
   categoryMissing = false,
-  ratingMissing = false,
   hint,
 }: Props) {
   return (
@@ -71,7 +71,7 @@ export function ShelfItemFields({
           value={rating}
           /*
            * 아직 안 매겼을 때의 "아직 매기지 않음" 은 **글자로 띄우지 않습니다.**
-           * 빈 원 다섯 개가 이미 같은 말을 하고 있고, 그 자리는 [필수] 가 씁니다.
+           * 빈 원 다섯 개가 이미 같은 말을 하고 있습니다.
            *
            * `showValue` 를 끄는 것은 지우는 것이 아니라 `sr-only` 로 미는 것이라
            * 낭독기에는 그대로 읽힙니다 — 원은 `aria-hidden` 이어서 이 글자가
@@ -81,7 +81,6 @@ export function ShelfItemFields({
           showValue={rating !== null}
           onChange={onRatingChange}
         />
-        {ratingMissing && <RequiredMark what="내 취향 적합도를 매겨 주세요" />}
         {rating !== null && (
           <button
             type="button"
@@ -115,9 +114,8 @@ export function ShelfItemFields({
  * **저장을 누른 뒤에만 나타납니다.** 열자마자 빨간 글자 둘이 떠 있으면 아직
  * 아무것도 안 했는데 이미 틀린 것처럼 보입니다.
  *
- * 눈에는 두 글자지만 낭독기에는 어느 칸 이야기인지까지 읽힙니다 — "필수" 만
- * 읽어 주면 칸이 둘이라 어느 쪽인지 알 수 없습니다. `role="alert"` 은 나타나는
- * 순간 읽어 달라는 표시입니다. 포커스는 방금 누른 단추에 그대로 있습니다.
+ * 눈에는 두 글자지만 낭독기에는 어느 칸 이야기인지까지 읽힙니다. `role="alert"` 은
+ * 나타나는 순간 읽어 달라는 표시입니다. 포커스는 방금 누른 단추에 그대로 있습니다.
  */
 function RequiredMark({ what }: { what: string }) {
   return (

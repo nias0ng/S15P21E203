@@ -176,11 +176,15 @@ export default function MyShelfPage() {
    * 등록 모달 1단계의 후보 (SHF-01).
    *
    * 향수 도메인과 진열대 도메인은 서로 import 할 수 없어 **화면이 조합합니다.**
-   * 검색어가 비어 있을 때도 부릅니다 — 모달을 열자마자 고를 것이 있어야 합니다.
+   *
+   * 검색어를 치기 전에는 부르지 않습니다 — 글에 향수를 거는 모달(`PostWritePage` ·
+   * `ReviewWritePage`)과 같은 규칙입니다. 예전에는 열자마자 불러서 "고를 것이 있게"
+   * 했는데, 백엔드 기본 정렬이 `sort = "id"` 라 그 20개는 카탈로그 7,793개 중 번호가
+   * 빠른 스물이었습니다. 고를 향수가 아니라 그냥 목록입니다.
    */
   const candidates = useQuery({
-    ...perfumeListQuery({ keyword: registerKeyword || undefined, size: 20 }),
-    enabled: registerOpen,
+    ...perfumeListQuery({ keyword: registerKeyword, size: 20 }),
+    enabled: registerOpen && registerKeyword.trim().length > 0,
   })
 
   // 담은 향수가 적으면 아예 묻지 않습니다 — 개인화를 말할 근거가 없습니다
@@ -447,6 +451,7 @@ export default function MyShelfPage() {
           thumbnailUrl: perfume.imageUrl,
           alreadyInShelf: inShelf.has(perfume.perfumeId),
         }))}
+        isPending={candidates.isFetching}
         onSearch={setRegisterKeyword}
         onSubmit={(input) => {
           setRegisterOpen(false)
