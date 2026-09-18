@@ -187,14 +187,14 @@ export default function FreeBoardPage() {
               value={sort}
               onChange={(next) => updateParams({ sort: next ?? 'RECENT' })}
               required
-              className="flex-wrap"
+              className="flex-wrap justify-center"
             />
             <PillFilter
               label="분류"
               options={POST_CATEGORIES}
               value={category === 'ALL' ? null : category}
               onChange={(next) => updateParams({ category: next ?? 'ALL' })}
-              className="flex-wrap"
+              className="flex-wrap justify-center"
             />
           </div>
 

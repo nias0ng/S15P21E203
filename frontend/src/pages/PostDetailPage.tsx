@@ -204,7 +204,15 @@ export default function PostDetailPage() {
           (styles/scent-display.css 의 .scent-glass).
         */}
         <div className={cn(GLASS_PANEL, 'space-y-6.25')}>
-          <p className="text-ink text-body whitespace-pre-wrap">
+          {/*
+            본문(13)이 아니라 `text-heading`(16)입니다. 이 판은 **읽으라고** 깐
+            판인데, 짧은 글이면 13px 한 줄이 넓은 판 위에 떠서 판이 띠처럼 얇게
+            앉습니다 — 노트 상세(A36)의 설명 판을 16 으로 올린 것과 같은 까닭이고,
+            폭이 text(800)라 16px 한글도 한 줄 40자를 넘지 않습니다.
+            줄 간격은 토큰값(1.4)이 16 짜리 한글에 빡빡해 `leading-relaxed` 로
+            벌립니다.
+          */}
+          <p className="text-ink text-heading leading-relaxed whitespace-pre-wrap">
             {data.content}
           </p>
 

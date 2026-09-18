@@ -143,9 +143,7 @@ export default function ReviewBoardPage() {
 
             정렬은 **늘 하나가 켜져 있어야** 해서 `required` 입니다. 꺼지면 줄 세울
             기준이 없어집니다 — 브랜드 목록(A34)의 정렬 알약과 같은 규칙입니다.
-            가운데로 몰지 않는 이유: 저 화면들은 위에 가운데 검색창이 있어 축이
-            가운데인데, 게시판은 왼쪽에 제목 · 탭이 서 있어 알약까지 가운데로 가면
-            축이 둘이 됩니다.
+            가운데로 세우는 것도 저 화면들과 같습니다(머리말도 가운데입니다).
           */}
           <PillFilter
             label="정렬"
@@ -153,7 +151,7 @@ export default function ReviewBoardPage() {
             value={sort}
             onChange={(next) => updateParams({ sort: next ?? 'RECENT' })}
             required
-            className="flex-wrap"
+            className="flex-wrap justify-center"
           />
 
           {/*
