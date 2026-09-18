@@ -113,14 +113,13 @@ async def lifespan(app: FastAPI):
                 llm["model"], llm["prompt_sha256"])
 
     # ⑤단계 미매칭 추정. **조건이 하나도 안 잡혔을 때만** 돈다.
-    # `cached_estimator` 가 미매칭 로그를 캐시로 쓴다 — 같은 표현은 항상 같은 답이고
-    # 재시작해도 파일에서 다시 채운다. 캐시가 없으면 같은 문장에 매번 다른 향수가
-    # 나온다 [측정 2026-09-17 · 같은 설정으로 두 번 불러 5문장 중 5문장이 달랐다].
+    # `cached_estimator` 는 **이 프로세스 안에서만** 캐시한다. 재시작하면 비워진다 —
+    # 파일에서 이어받으면 LLM 이 한 번 잘못 추정한 값이 영구히 되풀이된다
+    # [측정 2026-09-18 · `"빨레"` 가 rubber/plastic 으로 굳어 재기동 뒤에도 같았다].
     if ESTIMATOR_ENABLED and llm["enabled"]:
         app.state.estimator = unmatched_log.cached_estimator(
-            llm_stage1.make_estimator(app.state.index), path=LOG_PATH)
-        LOGGER.info("⑤단계 미매칭 추정 켜짐 — 캐시 %d개를 %s 에서 읽었다",
-                    len(app.state.estimator.cache), LOG_PATH)
+            llm_stage1.make_estimator(app.state.index))
+        LOGGER.info("⑤단계 미매칭 추정 켜짐 — 캐시는 이 프로세스 안에서만 유지된다")
     else:
         app.state.estimator = None
         LOGGER.info("⑤단계 미매칭 추정 꺼짐 (NLR_ESTIMATOR=%s · GMS 키 %s)",
