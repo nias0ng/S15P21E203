@@ -319,6 +319,36 @@ class NlrFeedbackIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
+    /**
+     * 손잡이 모양이 아니면 400 입니다. <b>404 가 아닙니다.</b>
+     *
+     * <p>둘을 가르는 기준이 다릅니다. 404 는 "그런 추천이 없다" 이고 400 은 "그건 손잡이가
+     * 아니다" 입니다. 형식이 틀린 값은 경로 변환에서 막혀 서비스까지 오지도 않으므로 있는지
+     * 없는지를 따질 대상이 아닙니다.
+     *
+     * <p>이 구분이 실제로 쓸모가 있습니다. 화면이 400 을 받으면 <b>보내는 값 자체가 잘못된
+     * 것</b>이고(변수를 잘못 넣었거나 null 을 문자열로 만들었거나), 404 면 값은 맞는데 그
+     * 추천이 없는 것입니다. 고쳐야 할 곳이 다릅니다.
+     */
+    @Test
+    void rejectsMalformedToken() throws Exception {
+        for (String malformed : List.of("not-a-uuid", "123", "22aab31b-5fda-4be0-9b61")) {
+            mockMvc.perform(post(RECOMMEND_URL + "/" + malformed + "/feedback")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"satisfaction\":\"SATISFIED\"}"))
+                    .andExpect(status().isBadRequest());
+
+            mockMvc.perform(post(RECOMMEND_URL + "/" + malformed + "/clicks")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"rank\":1}"))
+                    .andExpect(status().isBadRequest());
+        }
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM nlr_feedbacks", Integer.class))
+                .isZero();
+    }
+
     /** 추천을 한 번 받고 손잡이를 돌려줍니다. 화면이 받는 것과 같은 값입니다. */
     private String recommend() throws Exception {
         clearRateLimit();

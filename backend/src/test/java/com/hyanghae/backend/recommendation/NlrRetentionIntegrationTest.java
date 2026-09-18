@@ -30,6 +30,12 @@ class NlrRetentionIntegrationTest {
     /** 아직 기간 안인 요청입니다. */
     private static final long RECENT = 2L;
 
+    /** 보관 기간을 1분 넘긴 요청입니다. 지워져야 합니다. */
+    private static final long JUST_OVER = 3L;
+
+    /** 보관 기간에 1분 모자란 요청입니다. 남아야 합니다. */
+    private static final long JUST_UNDER = 4L;
+
     @Autowired
     private NlrRetentionService retentionService;
 
@@ -50,6 +56,12 @@ class NlrRetentionIntegrationTest {
 
         insertRecommendation(OLD, "40일 전에 물어본 문장입니다", 40);
         insertRecommendation(RECENT, "10일 전에 물어본 문장입니다", 10);
+
+        // 경계 바로 양쪽입니다. 부등호가 <= 로 바뀌거나 기준일이 31 로 밀리면 여기서 걸립니다.
+        insertRecommendationAt(JUST_OVER, "30일하고 1분 전입니다", RETENTION_DAYS, 1);
+        insertRecommendationAt(JUST_UNDER, "30일에서 1분 모자랍니다", RETENTION_DAYS, -1);
+        insertFeedback(JUST_OVER, "NEUTRAL", "30일하고 1분 전 한마디");
+        insertFeedback(JUST_UNDER, "NEUTRAL", "30일에서 1분 모자란 한마디");
 
         insertFeedback(OLD, "SATISFIED", "40일 전 한마디");
         insertFeedback(RECENT, "DISSATISFIED", "10일 전 한마디");
@@ -95,10 +107,10 @@ class NlrRetentionIntegrationTest {
     void keepsEveryRow() {
         retentionService.purge();
 
-        assertThat(count("nlr_recommendations")).isEqualTo(2);
+        assertThat(count("nlr_recommendations")).isEqualTo(4);
         assertThat(count("nlr_recommendation_items")).isEqualTo(1);
         assertThat(count("nlr_unmatched_expressions")).isEqualTo(1);
-        assertThat(count("nlr_feedbacks")).isEqualTo(2);
+        assertThat(count("nlr_feedbacks")).isEqualTo(4);
     }
 
     /**
@@ -153,7 +165,20 @@ class NlrRetentionIntegrationTest {
 
         assertThat(rawQuery(OLD)).isEmpty();
         assertThat(rawQuery(RECENT)).isEqualTo(before);
-        assertThat(count("nlr_recommendations")).isEqualTo(2);
+        assertThat(count("nlr_recommendations")).isEqualTo(4);
+    }
+
+    /**
+     * 경계 바로 양쪽을 만듭니다. 분 단위가 필요해 따로 둡니다.
+     *
+     * @param extraMinutes 양수면 그만큼 더 오래된 것, 음수면 그만큼 덜 오래된 것입니다.
+     */
+    private void insertRecommendationAt(long id, String query, int daysAgo, int extraMinutes) {
+        jdbcTemplate.update("""
+                INSERT INTO nlr_recommendations
+                    (recommendation_id, raw_query, status, requested_at)
+                VALUES (?, ?, 'OK', now() - make_interval(days => ?, mins => ?))
+                """, id, query, daysAgo, extraMinutes);
     }
 
     private void insertRecommendation(long id, String query, int daysAgo) {
@@ -162,6 +187,43 @@ class NlrRetentionIntegrationTest {
                     (recommendation_id, raw_query, status, requested_at)
                 VALUES (?, ?, 'OK', now() - make_interval(days => ?))
                 """, id, query, daysAgo);
+    }
+
+    /**
+     * 경계 바로 양쪽을 가릅니다.
+     *
+     * <p>40일과 10일만으로는 부등호가 {@code <=} 로 바뀌거나 기준일이 29 · 31 로 밀려도 안
+     * 걸립니다. 하루 차이가 아니라 <b>1분 차이</b>로 갈리는지 봐야 기준이 정확한지 알 수
+     * 있습니다.
+     *
+     * <p>보관 기간 정책은 "30일이 지나면 지운다" 이고, 30일에 1분 모자란 것은 아직 지날 것이
+     * 안 지난 것입니다.
+     */
+    @Test
+    void clearsOnlyPastTheExactBoundary() {
+        retentionService.purge();
+
+        assertThat(rawQuery(JUST_OVER)).isEmpty();
+        assertThat(comment(JUST_OVER)).isNull();
+
+        assertThat(rawQuery(JUST_UNDER)).isEqualTo("30일에서 1분 모자랍니다");
+        assertThat(comment(JUST_UNDER)).isEqualTo("30일에서 1분 모자란 한마디");
+    }
+
+    /** 경계 양쪽 모두 행과 만족도 값은 남습니다. */
+    @Test
+    void keepsRowsOnBothSidesOfTheBoundary() {
+        retentionService.purge();
+
+        assertThat(count("nlr_recommendations")).isEqualTo(4);
+        assertThat(queryForSatisfaction(JUST_OVER)).isEqualTo("NEUTRAL");
+        assertThat(queryForSatisfaction(JUST_UNDER)).isEqualTo("NEUTRAL");
+    }
+
+    private String queryForSatisfaction(long id) {
+        return jdbcTemplate.queryForObject(
+                "SELECT satisfaction FROM nlr_feedbacks WHERE recommendation_id = ?",
+                String.class, id);
     }
 
     private void insertFeedback(long id, String satisfaction, String comment) {
