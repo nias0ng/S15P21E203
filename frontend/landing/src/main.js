@@ -5,7 +5,7 @@ import { createBloom } from './bloom.js';
 import { createSubmerged } from './submerged.js';
 import { lerp, clamp, wrapPi } from './util.js';
 import { createUI } from './ui.js';
-import { callHost, hostSearch, perfumeRef, setHost, setHostNotice } from './host.js';   // 카드의 서비스 동작 · 검색창이 앱(호스트)으로 나가는 문 (v0.68.0)
+import { bootNow, bootReport, callHost, hostMove, hostSearch, perfumeRef, setHost, setHostNotice } from './host.js';   // 카드의 서비스 동작 · 검색창이 앱(호스트)으로 나가는 문 (v0.68.0) · 부팅 신호 (v0.75.0)
 import { createInput } from './input.js';
 import { createSim } from './sim.js';
 import { createWater } from './water.js';
@@ -43,6 +43,8 @@ const { groundSpeed, turnRate } = oceanClock;
 // 그래서 scroll 은 "배의 위치"이자 "월드가 흐른 양"이다. 두 뜻이 같은 값이다.
 
 const P = PARAMS;
+// ⭐ 부팅 신호 ② (v0.75.0) — import 가 전부 평가됐다. 앱의 로딩 커튼이 듣는다 (host.js bootReport)
+bootReport('script');
 // 앱(호스트)이 띄운 창이 열려 있는 수 (2026-09-15, v0.68.0 — holdWhile). 0 보다 크면 누르기 · 호버 · ESC · 스페이스를 안 받는다.
 //   ⚠ 입력을 만들기 전인 여기에 선언한다 — onPick · updateHover · onKeyExit 가 읽는다 (TDZ)
 let hostHold = 0;
@@ -279,6 +281,10 @@ const input = createInput(ui.mount, {
       //   ⚠ **알림만이다** — 앱이 Promise 를 줘도 `holdWhile` 로 입력을 잠그지 않는다. 엔진이 이미 한 일이라 기다릴 것이 없다 ([진열대에 저장]과 다른 점).
       const exRef = perfumeRef(m);
       if (exRef) callHost('exploreSimilar', exRef);
+      // ⭐ **들른 향수** (2026-09-18, v0.75.12 — 향해 일지). 서버는 향수를 고른 이동을 **언제나** 남기고,
+      //   지금 구역의 진입 줄에 그 향수를 매단다 (ExplorationController — 새 줄이 되지 않는다).
+      //   ⚠ 좌표는 부표의 정규화 자리(mx · my)다 — `perfumeId` 가 있으면 서버가 제 좌표로 덮어쓴다
+      if (exRef) hostMove({ perfumeId: exRef.perfumeId, x: exRef.mx, y: exRef.my, regionKey: exRef.family });
     }
   }
 });
@@ -303,6 +309,35 @@ const input = createInput(ui.mount, {
 let hoverMark = null, clickMark = null, hoverX = NaN, hoverY = NaN;
 let _miniHidden = false;   // 존 연출 중 미니맵 숨김 (zoneMiniHide — tick). ⚠ tick 보다 먼저 선언한다 (TDZ)
 let seaBlockT = 0;         // Shift 바다 누르기가 경계에 막혀 있던 시간 (tick). ⚠ 같은 이유로 여기서 선언한다
+
+// ───────── 배가 든 해역이 바뀌면 앱에 알린다 (2026-09-18, v0.75.12) — 향해 일지 ─────────
+// 앱은 이것을 받아 `PUT /map/exploration/me` 를 부른다 (host.js `hostMove`). 일지 한 줄이 "○○ 구역 진입"
+// 이므로 **바뀌는 순간**이 곧 한 줄이다 — 매 프레임 보내면 서버가 같은 구역을 몇백 번 받는다.
+// ⚠⚠ `zones.onArrive` 로는 모자라다 — 그건 **자동 조타 목표에 닿았을 때**만 뜬다. 방향키로 자유 항해하면
+//   영영 안 온다 (사용자 : *"향 영역으로 이동했을때 향해 일지가 작성 안되고 있음"*).
+// ⚠ 해역은 `map.regionAt` (가장 가까운 향수의 향조 — 향수들로 나눈 보로노이)이다. 200개 순회라
+//   **REGION_MS 마다 한 번**만 돈다 (같은 틱의 `navDist` 도 200개를 도므로 두 배가 되지 않게).
+// ⚠ 갈 수 있는 바다 **밖**이면 보내지 않는다 — 배가 경계에 붙어 미끄러지는 동안 값이 흔들린다.
+// ⚠ 좌표는 `map.toNorm` 이 낸 정규화 좌표다 (불변식 21). 첫 해역도 한 줄이다 (배가 그 바다에서 시작한다).
+const REGION_MS = 400;
+let regionKey = null, regionT = -1e9;
+function reportRegion(t) {
+  const map = marks.map;
+  if (!map || t - regionT < REGION_MS / 1000) return;
+  regionT = t;
+  const wx = nav.scroll.x, wz = -nav.scroll.z;
+  if (!map.inNav(wx, wz, 0)) return;
+  const reg = map.regionAt(wx, wz);
+  if (!reg || reg.key === regionKey) return;
+  const [nx, ny] = map.toNorm(wx, wz);
+  // ⚠ perfumeId 는 **DB 번호**라 엔진 데이터에 아직 없다 (불변식 32 · 지금은 늘 null) — 그동안은 좌표로 간다.
+  //   좌표만 오면 서버는 '빈 바다로 간 이동' 으로 보고 **향 영역이 바뀐 경우에만** 기록한다. 여기가 정확히 그 순간이다
+  const told = hostMove({ x: nx, y: ny, regionKey: reg.key, regionName: reg.name, perfumeId: null });
+  // ⚠⚠ **알린 뒤에만 기억한다.** 첫 틱은 호스트(앱)가 `window.PB` 를 찾아 붙기 **전**이라 아무 데도 안 간다 —
+  //   그때 기억해 버리면 배가 그 해역을 떠날 때까지 영영 다시 안 알리고, 첫 해역이 일지에서 통째로 빠진다
+  //   (실측 2026-09-18 : 앱을 열자마자 `hostMove` 가 false 로 한 번 돌고 그대로 잠겼다).
+  if (told) regionKey = reg.key;
+}
 // ⭐ 호버 카드의 틈 (2026-09-15, v0.65.0 — cardHoverBridge). hoverGrace = 부표와 카드 밖으로 나간 앱 시각 (−1 = 유예 없음) ·
 //   hoverOnCard = 이번 프레임에 마우스가 떠 있는 카드 위다 (틱의 setScentPeek 가 읽는다 — 카드 위면 통과를 끄고 진하게)
 let hoverGrace = -1, hoverOnCard = false;
@@ -343,10 +378,6 @@ function updateHover(view) {
   else if (clickMark && clickMark.on && clickMark.fade > 0.02) marks.select(clickMark);
   else marks.clearSelect();
 }
-
-// ⚠ 개발 패널(계측 HUD · 파라미터 · 조작 바 · 시점 · 원본 비교 · 자유 시점 · 부력 프로브 · 프레임 잡기)은
-//   develop 에 넣지 않는다 (2026-09-16 사용자 : "최종 develop 에 올릴 때는 노출 안 되게 삭제").
-//   엔진 원본 작업 브랜치에만 있다 — 이 파일에서 그 자리를 다시 만들지 않는다.
 
 // 픽셀 밀도 페이드가 쓸 실제 버퍼 해상도. 드라이버가 clamp 할 수 있으니 getSize 기준
 function syncRes() {
@@ -463,7 +494,7 @@ function cameraPose(cl, s, aspect, out) {
 }
 
 // ── 먼 곳 이동 · 미니맵 · 향수 고르기 (2026-09-11, v0.32.0)
-// ⚠⚠ tick() **보다 먼저** 만든다 — 루프가 첫 프레임부터 부른다 (아래에서 const 로 만들면 첫 프레임이 TDZ 에 걸린다)
+// ⚠⚠ tick() **보다 먼저** 만든다 — 루프가 첫 프레임부터 부른다 (위 campanel 의 TDZ 교훈)
 const travel = createTravel({ nav, zones, pivotOf: () => boat.pivot });
 // ⭐ onBlocked — 미니맵의 바깥(범위 밖 · 2026-09-13 부터 `--pb-void` 한 색)을 누르면 가지 않고 경고만 (2026-09-11 오후)
 const minimap = createMinimap({ onPick: (t) => startTravel(t), onBlocked: () => ui.warn('범위 없음', '이 너머는 갈 수 없는 해역입니다') });
@@ -1381,6 +1412,7 @@ function tick() {
   } else seaBlockT = 0;
   nav.scroll.z += vZ * dt;
   nav.scroll.x += vX * dt;
+  reportRegion(t);
   nav.latV += (vX - nav.latV) * 0.08;
   // ⭐ `_shipMv` — 존 연출에서 배가 씬 안을 실제로 가로지르는 속도 (2026-09-16). 그게 없으면 배만 옮겨지고
   //   물은 가만히 있다 (연출 중 nav.speed 는 0 이라 항적 · 물보라 · 흘수가 전부 죽는다). ⚠ 한 프레임 전 값이다 (아래 카메라 블록이 채운다)
@@ -1797,13 +1829,14 @@ function tick() {
     ui.placeScent({ x, y, r, obs: _obs, bubble: (P.cardBubble === undefined ? 1 : P.cardBubble) >= 0.5 });
   }
   ui.setDrift(s);
-
   // 반사를 먼저 찍는다 (배와 같은 게이트라 8fps). 본 렌더가 그 그림을 되읽는다
   submerged.update(view, boat.stepped);
   reflect.update(view, water.uni.uBoatPos.value, boat.stepped);
   bloom.render(scene, view);
 }
 tick();
+// ⭐ 부팅 신호 ③ (v0.75.0) — 첫 장이 그려졌다 (셰이더 컴파일 포함). 배 GLB 는 아직 오는 중일 수 있다 (boat.js 가 따로 알린다)
+bootReport('frame');
 
 // 리사이즈는 rAF 로 디바운스한다 — 드래그로 창을 늘리면 ResizeObserver 가 프레임마다 터지고,
 // setSize 는 백버퍼를 재할당한다. 모니터를 옮기면 devicePixelRatio 도 바뀌므로 같이 다시 잡는다
@@ -1993,7 +2026,7 @@ const onKeyExit = (e) => {
 };
 window.addEventListener('keydown', onKeyExit);
 
-window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, goRegion, startTravel, startFocus, setHost, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
+window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, goRegion, startTravel, startFocus, setHost, boot: bootNow, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
   // ⭐ 반응형 검산 (2026-09-11 오후) — 제품 UI 상자들의 자리 · 서로 겹침 · 화면 밖 · 스크롤 · 수면 타이포 꼭대기와 정보 블록의 간격.
   //   ⚠ 창 크기를 바꾼 뒤에는 **스크린샷 한 장으로 먼저 칠하고** 부른다 (숨긴 패널에서는 ResizeObserver 가 안 불린다 — 교훈 ⑧)
   layout: () => layoutReport(),
@@ -2003,7 +2036,7 @@ window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel
     get: () => marks.map
   } };
 
-// PB.layout() — 위 주석. 제품 UI 만 본다
+// PB.layout() — 위 주석. 제품 UI 만 본다 (개발 패널은 solo 로 숨기고 잰다)
 function layoutReport() {
   const st = ui.stage.getBoundingClientRect();
   const box = (el) => {

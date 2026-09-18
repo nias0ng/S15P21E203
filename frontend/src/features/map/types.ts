@@ -118,3 +118,30 @@ export interface VoyageLogResponse {
 
 /** 향해 일지에 싣는 진입 줄 수 — 최근 다섯 (2026-09-16 사용자). 백엔드에도 이만큼만 달라고 합니다 */
 export const VOYAGE_LOG_SIZE = 5
+
+/**
+ * `PUT /api/v1/map/exploration/me` 요청 (백엔드 ExplorationMoveRequest) — 배를 옮깁니다.
+ *
+ * 향수를 골랐으면 `perfumeId` 를, 빈 바다를 골랐으면 `x` · `y` 를 보냅니다. 향수를 고른
+ * 경우 좌표는 서버가 그 향수의 지도 좌표로 채우므로 보내지 않아도 됩니다. 둘 다 없으면 400 입니다.
+ *
+ * ⚠️ `x` · `y` 는 **정규화 좌표**입니다 (백엔드 `perfume_map_points` · 엔진 `scentmap.toNorm()` 과 같은 공간).
+ * 엔진의 월드 좌표를 그대로 보내면 서버가 지도 밖으로 읽습니다.
+ */
+export interface ExplorationMove {
+  perfumeId?: number | null
+  x?: number
+  y?: number
+}
+
+/**
+ * `PUT` · `GET /api/v1/map/exploration/me` 응답 (백엔드 ExplorationStateResponse) — 옮긴 뒤의 자리.
+ *
+ * ⚠️ 셋 다 null 일 수 있습니다 — 한 번도 움직인 적이 없으면 그렇습니다(200). 그리고 **비로그인이면
+ * `updatedAt` 이 비어 나옵니다** — 배는 움직이되 남기지 않았다는 표시입니다(컨트롤러 주석).
+ */
+export interface ExplorationState {
+  x: number | null
+  y: number | null
+  updatedAt: string | null
+}
