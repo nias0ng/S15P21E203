@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -103,16 +104,16 @@ public class NaturalLanguageRecommendationService {
     }
 
     /**
-     * 이 추천을 기록하고 번호를 돌려줍니다. 화면이 그 번호로 클릭과 만족도를 보냅니다.
+     * 이 추천을 기록하고 손잡이를 돌려줍니다. 화면이 그 값으로 클릭과 만족도를 보냅니다.
      *
      * <p><b>기록이 실패해도 추천은 그대로 나갑니다.</b> 남기는 것은 사전을 넓힐 근거를 모으는
-     * 일이고, 그것이 안 됐다고 사용자가 추천을 못 받을 이유는 없습니다. 대신 번호가 비어 나가
+     * 일이고, 그것이 안 됐다고 사용자가 추천을 못 받을 이유는 없습니다. 대신 손잡이가 비어 나가
      * 그 요청에는 클릭과 만족도를 붙일 수 없습니다.
      *
      * <p>조용히 넘기지 않고 로그를 남깁니다. 기록이 계속 실패하면 집계가 비는데, 그것을 표가
      * 빈 뒤에 알아채면 그사이 행동을 영영 잃습니다.
      */
-    private Long record(
+    private UUID record(
             String query,
             String status,
             NlrRecommendResponse ai,

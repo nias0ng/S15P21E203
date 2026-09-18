@@ -12,6 +12,7 @@ import com.hyanghae.backend.recommendation.client.NlrRecommendResponse;
 import com.hyanghae.backend.support.IntegrationTest;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -66,52 +67,87 @@ class NlrFeedbackIntegrationTest {
     }
 
     /**
-     * 추천 한 번이 표 셋에 남고 그 번호가 응답에 나옵니다.
+     * 추천 한 번이 표 셋에 남고 손잡이가 응답에 나옵니다.
      *
-     * <p>화면은 이 번호로 클릭과 만족도를 보냅니다. 번호가 안 나가면 나머지 두 표가 영영
-     * 비어 있게 됩니다.
+     * <p>화면은 이 값으로 클릭과 만족도를 보냅니다. 안 나가면 나머지 두 표가 영영 빕니다.
      */
     @Test
     void recordsRequestResultsAndUnmatched() throws Exception {
         given(nlrClient.recommend(anyString())).willReturn(aiResponse());
 
-        long recommendationId = recommend();
+        String token = recommend();
+        long id = idOf(token);
 
-        assertThat(recommendationId).isPositive();
         assertThat(queryForString(
-                "SELECT raw_query FROM nlr_recommendations WHERE recommendation_id = ?",
-                recommendationId))
+                "SELECT raw_query FROM nlr_recommendations WHERE recommendation_id = ?", id))
                 .isEqualTo(QUERY);
         assertThat(queryForString(
-                "SELECT status FROM nlr_recommendations WHERE recommendation_id = ?",
-                recommendationId))
+                "SELECT status FROM nlr_recommendations WHERE recommendation_id = ?", id))
                 .isEqualTo("OK");
 
         // 조건과 진단이 그대로 남아야 "이 조건에서 왜 이 향수가 나왔나" 를 다시 볼 수 있습니다.
         assertThat(queryForString(
-                "SELECT core_accords FROM nlr_recommendations WHERE recommendation_id = ?",
-                recommendationId))
+                "SELECT core_accords FROM nlr_recommendations WHERE recommendation_id = ?", id))
                 .isEqualTo("soapy|fresh");
         assertThat(queryForString(
-                "SELECT stage FROM nlr_recommendations WHERE recommendation_id = ?",
-                recommendationId))
+                "SELECT stage FROM nlr_recommendations WHERE recommendation_id = ?", id))
                 .isEqualTo("AND");
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT candidate_count FROM nlr_recommendations WHERE recommendation_id = ?",
-                Integer.class, recommendationId))
+                Integer.class, id))
                 .isEqualTo(172);
 
         // 순위가 AI 가 준 순서 그대로여야 합니다.
         assertThat(jdbcTemplate.queryForList(
                 "SELECT perfume_id FROM nlr_recommendation_items"
-                        + " WHERE recommendation_id = ? ORDER BY rank", Long.class,
-                recommendationId))
+                        + " WHERE recommendation_id = ? ORDER BY rank", Long.class, id))
                 .containsExactly(1L, 2L);
 
         assertThat(queryForString(
-                "SELECT expression FROM nlr_unmatched_expressions WHERE recommendation_id = ?",
-                recommendationId))
+                "SELECT expression FROM nlr_unmatched_expressions WHERE recommendation_id = ?", id))
                 .isEqualTo("무겁지 않게");
+    }
+
+    /**
+     * <b>응답에 내부 번호가 나가지 않습니다.</b>
+     *
+     * <p>{@code recommendation_id} 는 1부터 차례로 붙습니다. 그것을 내보내면 1부터 세기만 해도
+     * 남의 추천에 만족도를 남기고 클릭을 채울 수 있습니다.
+     */
+    @Test
+    void servesTokenNotSequentialId() throws Exception {
+        given(nlrClient.recommend(anyString())).willReturn(aiResponse());
+
+        mockMvc.perform(post(RECOMMEND_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"query\":\"" + QUERY + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recommendationId").doesNotExist())
+                .andExpect(jsonPath("$.recommendationToken")
+                        .value(org.hamcrest.Matchers.matchesPattern(
+                                "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")));
+    }
+
+    /**
+     * <b>내부 번호로는 보낼 수 없습니다.</b>
+     *
+     * <p>이 단언이 깨지면 경로가 숫자를 받는다는 뜻이고, 그러면 1부터 세어 남의 추천을 전부
+     * 건드릴 수 있습니다. 이 기능에서 가장 비싼 실수입니다 — 오염된 줄과 진짜 줄을 나중에
+     * 구분할 방법이 없습니다.
+     */
+    @Test
+    void rejectsInternalIdInPath() throws Exception {
+        given(nlrClient.recommend(anyString())).willReturn(aiResponse());
+        long id = idOf(recommend());
+
+        mockMvc.perform(post(RECOMMEND_URL + "/" + id + "/feedback")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"satisfaction\":\"SATISFIED\"}"))
+                .andExpect(status().isBadRequest());
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM nlr_feedbacks", Integer.class))
+                .isZero();
     }
 
     /**
@@ -124,16 +160,14 @@ class NlrFeedbackIntegrationTest {
     @Test
     void leavesColumnsTheAiDoesNotSendYetEmpty() throws Exception {
         given(nlrClient.recommend(anyString())).willReturn(aiResponse());
-
-        long recommendationId = recommend();
+        long id = idOf(recommend());
 
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT had_conditions FROM nlr_unmatched_expressions"
-                        + " WHERE recommendation_id = ?", Boolean.class, recommendationId))
+                        + " WHERE recommendation_id = ?", Boolean.class, id))
                 .isNull();
         assertThat(queryForString(
-                "SELECT lexicon_version FROM nlr_recommendations WHERE recommendation_id = ?",
-                recommendationId))
+                "SELECT lexicon_version FROM nlr_recommendations WHERE recommendation_id = ?", id))
                 .isNull();
     }
 
@@ -141,15 +175,15 @@ class NlrFeedbackIntegrationTest {
     @Test
     void recordsClick() throws Exception {
         given(nlrClient.recommend(anyString())).willReturn(aiResponse());
-        long recommendationId = recommend();
+        String token = recommend();
 
-        mockMvc.perform(post(RECOMMEND_URL + "/" + recommendationId + "/clicks")
+        mockMvc.perform(post(RECOMMEND_URL + "/" + token + "/clicks")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"rank\":2}"))
                 .andExpect(status().isNoContent());
 
-        assertThat(clickedAt(recommendationId, 2)).isNotNull();
-        assertThat(clickedAt(recommendationId, 1)).isNull();
+        assertThat(clickedAt(idOf(token), 2)).isNotNull();
+        assertThat(clickedAt(idOf(token), 1)).isNull();
     }
 
     /**
@@ -161,19 +195,19 @@ class NlrFeedbackIntegrationTest {
     @Test
     void keepsTheFirstClickTime() throws Exception {
         given(nlrClient.recommend(anyString())).willReturn(aiResponse());
-        long recommendationId = recommend();
+        String token = recommend();
 
-        click(recommendationId, 1);
-        OffsetDateTime first = clickedAt(recommendationId, 1);
-        click(recommendationId, 1);
+        click(token, 1);
+        OffsetDateTime first = clickedAt(idOf(token), 1);
+        click(token, 1);
 
-        assertThat(clickedAt(recommendationId, 1)).isEqualTo(first);
+        assertThat(clickedAt(idOf(token), 1)).isEqualTo(first);
     }
 
-    /** 없는 추천 번호로 오는 클릭은 404 입니다. */
+    /** 없는 손잡이로 오는 클릭은 404 입니다. */
     @Test
-    void rejectsClickOnUnknownRecommendation() throws Exception {
-        mockMvc.perform(post(RECOMMEND_URL + "/999999/clicks")
+    void rejectsClickOnUnknownToken() throws Exception {
+        mockMvc.perform(post(RECOMMEND_URL + "/" + UUID.randomUUID() + "/clicks")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"rank\":1}"))
                 .andExpect(status().isNotFound())
@@ -184,9 +218,9 @@ class NlrFeedbackIntegrationTest {
     @Test
     void rejectsClickOnRankThatWasNotServed() throws Exception {
         given(nlrClient.recommend(anyString())).willReturn(aiResponse());
-        long recommendationId = recommend();
+        String token = recommend();
 
-        mockMvc.perform(post(RECOMMEND_URL + "/" + recommendationId + "/clicks")
+        mockMvc.perform(post(RECOMMEND_URL + "/" + token + "/clicks")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"rank\":5}"))
                 .andExpect(status().isNotFound());
@@ -196,9 +230,9 @@ class NlrFeedbackIntegrationTest {
     @Test
     void rejectsRankOutOfRange() throws Exception {
         given(nlrClient.recommend(anyString())).willReturn(aiResponse());
-        long recommendationId = recommend();
+        String token = recommend();
 
-        mockMvc.perform(post(RECOMMEND_URL + "/" + recommendationId + "/clicks")
+        mockMvc.perform(post(RECOMMEND_URL + "/" + token + "/clicks")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"rank\":0}"))
                 .andExpect(status().isBadRequest());
@@ -208,20 +242,18 @@ class NlrFeedbackIntegrationTest {
     @Test
     void recordsFeedback() throws Exception {
         given(nlrClient.recommend(anyString())).willReturn(aiResponse());
-        long recommendationId = recommend();
+        String token = recommend();
 
-        mockMvc.perform(post(RECOMMEND_URL + "/" + recommendationId + "/feedback")
+        mockMvc.perform(post(RECOMMEND_URL + "/" + token + "/feedback")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"satisfaction\":\"SATISFIED\",\"comment\":\"원하던 느낌\"}"))
                 .andExpect(status().isCreated());
 
         assertThat(queryForString(
-                "SELECT satisfaction FROM nlr_feedbacks WHERE recommendation_id = ?",
-                recommendationId))
+                "SELECT satisfaction FROM nlr_feedbacks WHERE recommendation_id = ?", idOf(token)))
                 .isEqualTo("SATISFIED");
         assertThat(queryForString(
-                "SELECT comment FROM nlr_feedbacks WHERE recommendation_id = ?",
-                recommendationId))
+                "SELECT comment FROM nlr_feedbacks WHERE recommendation_id = ?", idOf(token)))
                 .isEqualTo("원하던 느낌");
     }
 
@@ -229,16 +261,15 @@ class NlrFeedbackIntegrationTest {
     @Test
     void recordsFeedbackWithoutComment() throws Exception {
         given(nlrClient.recommend(anyString())).willReturn(aiResponse());
-        long recommendationId = recommend();
+        String token = recommend();
 
-        mockMvc.perform(post(RECOMMEND_URL + "/" + recommendationId + "/feedback")
+        mockMvc.perform(post(RECOMMEND_URL + "/" + token + "/feedback")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"satisfaction\":\"NEUTRAL\"}"))
                 .andExpect(status().isCreated());
 
         assertThat(queryForString(
-                "SELECT comment FROM nlr_feedbacks WHERE recommendation_id = ?",
-                recommendationId))
+                "SELECT comment FROM nlr_feedbacks WHERE recommendation_id = ?", idOf(token)))
                 .isNull();
     }
 
@@ -251,10 +282,10 @@ class NlrFeedbackIntegrationTest {
     @Test
     void rejectsSecondFeedback() throws Exception {
         given(nlrClient.recommend(anyString())).willReturn(aiResponse());
-        long recommendationId = recommend();
-        feedback(recommendationId, "SATISFIED");
+        String token = recommend();
+        feedback(token, "SATISFIED");
 
-        mockMvc.perform(post(RECOMMEND_URL + "/" + recommendationId + "/feedback")
+        mockMvc.perform(post(RECOMMEND_URL + "/" + token + "/feedback")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"satisfaction\":\"DISSATISFIED\"}"))
                 .andExpect(status().isConflict())
@@ -263,8 +294,7 @@ class NlrFeedbackIntegrationTest {
 
         // 처음 답이 그대로여야 합니다.
         assertThat(queryForString(
-                "SELECT satisfaction FROM nlr_feedbacks WHERE recommendation_id = ?",
-                recommendationId))
+                "SELECT satisfaction FROM nlr_feedbacks WHERE recommendation_id = ?", idOf(token)))
                 .isEqualTo("SATISFIED");
     }
 
@@ -272,42 +302,51 @@ class NlrFeedbackIntegrationTest {
     @Test
     void rejectsUnknownSatisfaction() throws Exception {
         given(nlrClient.recommend(anyString())).willReturn(aiResponse());
-        long recommendationId = recommend();
+        String token = recommend();
 
-        mockMvc.perform(post(RECOMMEND_URL + "/" + recommendationId + "/feedback")
+        mockMvc.perform(post(RECOMMEND_URL + "/" + token + "/feedback")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"satisfaction\":\"VERY_GOOD\"}"))
                 .andExpect(status().isBadRequest());
     }
 
-    /** 없는 추천에 만족도를 보내면 404 입니다. */
+    /** 없는 손잡이에 만족도를 보내면 404 입니다. */
     @Test
-    void rejectsFeedbackOnUnknownRecommendation() throws Exception {
-        mockMvc.perform(post(RECOMMEND_URL + "/999999/feedback")
+    void rejectsFeedbackOnUnknownToken() throws Exception {
+        mockMvc.perform(post(RECOMMEND_URL + "/" + UUID.randomUUID() + "/feedback")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"satisfaction\":\"SATISFIED\"}"))
                 .andExpect(status().isNotFound());
     }
 
-    private long recommend() throws Exception {
+    /** 추천을 한 번 받고 손잡이를 돌려줍니다. 화면이 받는 것과 같은 값입니다. */
+    private String recommend() throws Exception {
         clearRateLimit();
         String body = mockMvc.perform(post(RECOMMEND_URL)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"query\":\"" + QUERY + "\"}"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        return Long.parseLong(body.replaceAll(".*\"recommendationId\"\\s*:\\s*(\\d+).*", "$1"));
+        return body.replaceAll(".*\"recommendationToken\"\\s*:\\s*\"([0-9a-f-]+)\".*", "$1");
     }
 
-    private void click(long recommendationId, int rank) throws Exception {
-        mockMvc.perform(post(RECOMMEND_URL + "/" + recommendationId + "/clicks")
+    /** 손잡이로 내부 번호를 찾습니다. 표를 직접 볼 때만 씁니다. */
+    private long idOf(String token) {
+        Long id = jdbcTemplate.queryForObject(
+                "SELECT recommendation_id FROM nlr_recommendations WHERE public_token = ?::uuid",
+                Long.class, token);
+        return id == null ? -1 : id;
+    }
+
+    private void click(String token, int rank) throws Exception {
+        mockMvc.perform(post(RECOMMEND_URL + "/" + token + "/clicks")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"rank\":" + rank + "}"))
                 .andExpect(status().isNoContent());
     }
 
-    private void feedback(long recommendationId, String satisfaction) throws Exception {
-        mockMvc.perform(post(RECOMMEND_URL + "/" + recommendationId + "/feedback")
+    private void feedback(String token, String satisfaction) throws Exception {
+        mockMvc.perform(post(RECOMMEND_URL + "/" + token + "/feedback")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"satisfaction\":\"" + satisfaction + "\"}"))
                 .andExpect(status().isCreated());

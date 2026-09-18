@@ -3,6 +3,7 @@ package com.hyanghae.backend.recommendation.service;
 import com.hyanghae.backend.recommendation.client.NlrRecommendResponse;
 import com.hyanghae.backend.recommendation.repository.NlrRecordRepository;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,7 +43,8 @@ public class NlrRecordService {
     /**
      * 요청 · 결과 · 미매칭을 한 트랜잭션으로 남기고 요청 번호를 돌려줍니다.
      *
-     * <p>화면이 이 번호로 클릭과 만족도를 보냅니다.
+     * <p>돌려주는 것은 내부 번호가 아니라 <b>손잡이</b>입니다. 화면이 이 값으로 클릭과 만족도를
+     * 보냅니다. 내부 번호는 순차라 밖으로 내보내면 남의 것을 세어서 맞힐 수 있습니다.
      *
      * @param userId     비로그인이면 {@code null} 입니다.
      * @param status     화면에 나가는 것과 같은 값을 남깁니다. AI 가 준 값이 아니라 우리가
@@ -50,7 +52,7 @@ public class NlrRecordService {
      * @param perfumeIds 우리 DB 의 향수 번호입니다. <b>순서가 곧 순위입니다.</b>
      */
     @Transactional
-    public long record(
+    public UUID record(
             Long userId,
             String query,
             String status,
@@ -60,7 +62,9 @@ public class NlrRecordService {
         NlrRecommendResponse.Conditions conditions = ai.conditions();
         NlrRecommendResponse.Diagnostics diagnostics = ai.diagnostics();
 
+        UUID publicToken = UUID.randomUUID();
         long recommendationId = repository.insertRecommendation(
+                publicToken,
                 userId,
                 query,
                 status,
@@ -75,7 +79,7 @@ public class NlrRecordService {
         if (ai.unmatched() != null && !ai.unmatched().isEmpty()) {
             repository.insertUnmatched(recommendationId, ai.unmatched());
         }
-        return recommendationId;
+        return publicToken;
     }
 
     /**

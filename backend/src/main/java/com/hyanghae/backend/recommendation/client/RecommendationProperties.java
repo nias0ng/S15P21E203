@@ -71,7 +71,19 @@ public record RecommendationProperties(
     public record RateLimit(
             @DefaultValue("1m") @NotNull Duration window,
             @DefaultValue("30") @Min(1) int member,
-            @DefaultValue("10") @Min(1) int anonymous
+            @DefaultValue("10") @Min(1) int anonymous,
+
+            /*
+             * 클릭과 만족도의 한도입니다. 추천과 셈을 나누고 한도도 따로 둡니다.
+             *
+             * 추천보다 넉넉한 이유는 한 번의 추천이 여러 번의 클릭을 부르기 때문입니다. 카드가
+             * 다섯이라 다 눌러 보고 만족도까지 남기면 여섯 번입니다. 추천 한도(비회원 10)를
+             * 그대로 쓰면 추천 두 번에 한도가 찹니다.
+             *
+             * 비용도 다릅니다. 추천은 LLM 을 불러 돈이 나가고, 이쪽은 한 칸을 고칩니다.
+             */
+            @DefaultValue("120") @Min(1) int feedbackMember,
+            @DefaultValue("60") @Min(1) int feedbackAnonymous
     ) {
     }
 }

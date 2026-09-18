@@ -2,6 +2,7 @@ package com.hyanghae.backend.recommendation.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 자연어 추천 응답입니다.
@@ -26,7 +27,10 @@ import java.util.List;
  * 어깁니다. 드문 경우도 아닙니다 — 합성 평가셋 600건에서 22.3%, 실사용자 설문 155건에서
  * 48.4% 입니다. 예외가 아니라 정상 경로입니다.
  *
- * @param recommendationId 이 추천의 번호입니다. 화면이 클릭과 만족도를 보낼 때 씁니다.
+ * @param recommendationToken 이 추천의 손잡이입니다. 화면이 클릭과 만족도를 보낼 때 씁니다.
+ *                 <b>번호가 아니라 추측할 수 없는 값입니다</b> — 순차 번호를 내보내면 아무나
+ *                 남의 추천에 만족도를 남기고 클릭을 채울 수 있습니다. 로그인을 요구하지 않고
+ *                 위조만 막으려는 것이라, 이 값을 받은 사람이 곧 그 추천의 주인입니다.
  *                 <b>{@code null} 일 수 있습니다</b> — 기록에 실패한 경우이고, 그때는
  *                 클릭·만족도를 보내지 않으면 됩니다. 추천 자체는 정상입니다.
  * @param status   위 네 가지 중 하나입니다.
@@ -36,10 +40,10 @@ import java.util.List;
  */
 public record NaturalLanguageRecommendationResponse(
 
-        @Schema(description = "이 추천의 번호입니다. 클릭과 만족도를 보낼 때 씁니다."
-                + " 기록에 실패하면 null 이고, 그때는 보내지 않으면 됩니다.",
-                example = "1042", nullable = true)
-        Long recommendationId,
+        @Schema(description = "이 추천의 손잡이입니다. 클릭과 만족도를 보낼 때 그대로"
+                + " 돌려보내십시오. 기록에 실패하면 null 이고, 그때는 보내지 않으면 됩니다.",
+                example = "b7f3a1e8-4c2d-4f1a-9e3b-2a5c8d7e6f40", nullable = true)
+        UUID recommendationToken,
 
         @Schema(description = "결과의 종류입니다. 화면이 네 가지를 구분해야 합니다.",
                 allowableValues = {"OK", "OK_RELAXED", "NO_CONDITION", "NO_RESULT"},

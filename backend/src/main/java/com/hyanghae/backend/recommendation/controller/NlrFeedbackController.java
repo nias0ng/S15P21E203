@@ -3,11 +3,14 @@ package com.hyanghae.backend.recommendation.controller;
 import com.hyanghae.backend.recommendation.dto.request.NlrClickRequest;
 import com.hyanghae.backend.recommendation.dto.request.NlrFeedbackRequest;
 import com.hyanghae.backend.recommendation.service.NlrFeedbackService;
+import com.hyanghae.backend.recommendation.service.RecommendationRateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,8 +22,12 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * 자연어 추천을 받은 뒤의 행동을 받습니다.
  *
- * <p>추천 응답의 {@code recommendationId} 로 보냅니다. 그 값이 {@code null} 로 왔다면 기록에
- * 실패한 요청이라 여기에 보낼 것이 없습니다.
+ * <p>추천 응답의 {@code recommendationToken} 으로 보냅니다. 그 값이 {@code null} 로 왔다면
+ * 기록에 실패한 요청이라 여기에 보낼 것이 없습니다.
+ *
+ * <p><b>번호가 아니라 손잡이를 받습니다.</b> 내부 번호는 1부터 차례로 붙어, 그것을 받으면 1부터
+ * 세기만 해도 남의 추천에 만족도를 남기고 클릭을 채울 수 있습니다. 추천이 비로그인도 받을 수
+ * 있어 신원으로는 막을 수 없으므로, 추측할 수 없는 값으로 확인합니다.
  *
  * <p>추천을 만드는 {@link NaturalLanguageRecommendationController} 와 경로 앞부분을 공유하되
  * 컨트롤러를 나눴습니다. 추천은 AI 서버를 부르고 호출량 제한이 걸리는 무거운 경로이고, 여기는
@@ -33,13 +40,18 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "자연어 추천 피드백",
         description = "추천 결과의 클릭과 만족도를 남깁니다.")
 @RestController
-@RequestMapping("/api/v1/recommendations/natural-language/{recommendationId}")
+@RequestMapping("/api/v1/recommendations/natural-language/{recommendationToken}")
 public class NlrFeedbackController {
 
     private final NlrFeedbackService feedbackService;
+    private final RecommendationRateLimiter rateLimiter;
 
-    public NlrFeedbackController(NlrFeedbackService feedbackService) {
+    public NlrFeedbackController(
+            NlrFeedbackService feedbackService,
+            RecommendationRateLimiter rateLimiter
+    ) {
         this.feedbackService = feedbackService;
+        this.rateLimiter = rateLimiter;
     }
 
     /**
@@ -56,14 +68,17 @@ public class NlrFeedbackController {
     @ApiResponse(responseCode = "204", description = "기록 성공")
     @ApiResponse(responseCode = "400", description = "rank 가 없거나 1~5 를 벗어났습니다.")
     @ApiResponse(responseCode = "404", description = "그 추천이나 그 순위의 결과가 없습니다.")
+    @ApiResponse(responseCode = "429", description = "호출량 제한을 넘었습니다.")
     @PostMapping("/clicks")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void recordClick(
-            @Parameter(description = "추천 응답의 recommendationId")
-            @PathVariable Long recommendationId,
-            @Valid @RequestBody NlrClickRequest request
+            @Parameter(description = "추천 응답의 recommendationToken")
+            @PathVariable UUID recommendationToken,
+            @Valid @RequestBody NlrClickRequest request,
+            HttpServletRequest httpRequest
     ) {
-        feedbackService.recordClick(recommendationId, request.rank());
+        rateLimiter.checkFeedback(httpRequest.getRemoteAddr());
+        feedbackService.recordClick(recommendationToken, request.rank());
     }
 
     /**
@@ -79,13 +94,16 @@ public class NlrFeedbackController {
             description = "satisfaction 이 없거나 세 값 밖이거나, comment 가 500자를 넘었습니다.")
     @ApiResponse(responseCode = "404", description = "그 번호의 추천이 없습니다.")
     @ApiResponse(responseCode = "409", description = "이미 만족도를 남긴 추천입니다.")
+    @ApiResponse(responseCode = "429", description = "호출량 제한을 넘었습니다.")
     @PostMapping("/feedback")
     @ResponseStatus(HttpStatus.CREATED)
     public void recordFeedback(
-            @Parameter(description = "추천 응답의 recommendationId")
-            @PathVariable Long recommendationId,
-            @Valid @RequestBody NlrFeedbackRequest request
+            @Parameter(description = "추천 응답의 recommendationToken")
+            @PathVariable UUID recommendationToken,
+            @Valid @RequestBody NlrFeedbackRequest request,
+            HttpServletRequest httpRequest
     ) {
-        feedbackService.recordFeedback(recommendationId, request);
+        rateLimiter.checkFeedback(httpRequest.getRemoteAddr());
+        feedbackService.recordFeedback(recommendationToken, request);
     }
 }

@@ -3,6 +3,7 @@ package com.hyanghae.backend.recommendation.repository;
 import com.hyanghae.backend.recommendation.client.NlrRecommendResponse;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -29,13 +30,23 @@ public class NlrRecordRepository {
      */
     private static final String INSERT_RECOMMENDATION = """
             INSERT INTO nlr_recommendations (
-                user_id, raw_query, status, stage, source,
+                public_token, user_id, raw_query, status, stage, source,
                 core_accords, avoid_accords, candidate_count
             )
             VALUES (
-                :userId, :rawQuery, :status, :stage, :source,
+                :publicToken, :userId, :rawQuery, :status, :stage, :source,
                 :coreAccords, :avoidAccords, :candidateCount
             )
+            """;
+
+    /**
+     * 화면이 보낸 손잡이로 내부 번호를 찾습니다.
+     *
+     * <p>바깥에는 {@code public_token} 만 나가고 표 사이의 연결은 {@code recommendation_id} 로
+     * 합니다. 순차 번호를 내보내면 남의 것을 세어서 맞힐 수 있습니다.
+     */
+    private static final String SELECT_ID_BY_TOKEN = """
+            SELECT recommendation_id FROM nlr_recommendations WHERE public_token = :publicToken
             """;
 
     /** 결과 한 줄입니다. 추천이 나간 순간 순위대로 들어가고 클릭은 나중에 갱신됩니다. */
@@ -88,12 +99,6 @@ public class NlrRecordRepository {
     private static final String INSERT_FEEDBACK = """
             INSERT INTO nlr_feedbacks (recommendation_id, satisfaction, comment)
             VALUES (:recommendationId, :satisfaction, :comment)
-            """;
-
-    private static final String EXISTS_RECOMMENDATION = """
-            SELECT EXISTS (
-                SELECT 1 FROM nlr_recommendations WHERE recommendation_id = :recommendationId
-            )
             """;
 
     private static final String EXISTS_FEEDBACK = """
@@ -152,6 +157,7 @@ public class NlrRecordRepository {
      * @param userId 비로그인이면 {@code null} 입니다.
      */
     public long insertRecommendation(
+            UUID publicToken,
             Long userId,
             String rawQuery,
             String status,
@@ -163,6 +169,7 @@ public class NlrRecordRepository {
     ) {
         KeyHolder keys = new GeneratedKeyHolder();
         jdbcClient.sql(INSERT_RECOMMENDATION)
+                .param("publicToken", publicToken)
                 .param("userId", userId)
                 .param("rawQuery", rawQuery)
                 .param("status", status)
@@ -205,6 +212,14 @@ public class NlrRecordRepository {
         }
     }
 
+    /** 손잡이로 내부 번호를 찾습니다. 비어 있으면 그런 추천이 없습니다. */
+    public Optional<Long> findIdByToken(UUID publicToken) {
+        return jdbcClient.sql(SELECT_ID_BY_TOKEN)
+                .param("publicToken", publicToken)
+                .query(Long.class)
+                .optional();
+    }
+
     /** 그 순위의 향수입니다. 비어 있으면 그런 결과가 없었다는 뜻입니다. */
     public Optional<Long> findItemPerfumeId(long recommendationId, int rank) {
         return jdbcClient.sql(SELECT_ITEM_PERFUME)
@@ -220,13 +235,6 @@ public class NlrRecordRepository {
                 .param("recommendationId", recommendationId)
                 .param("rank", rank)
                 .update();
-    }
-
-    public boolean existsRecommendation(long recommendationId) {
-        return Boolean.TRUE.equals(jdbcClient.sql(EXISTS_RECOMMENDATION)
-                .param("recommendationId", recommendationId)
-                .query(Boolean.class)
-                .single());
     }
 
     public boolean existsFeedback(long recommendationId) {
