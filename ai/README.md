@@ -124,7 +124,7 @@ unmatched_log.py   사전이 못 받은 표현을 기록합니다 (아래 참고
 build_data.py      원본 덤프에서 data/perfumes_nlr.csv.gz 를 다시 만듭니다
 data/
   perfumes_nlr.csv.gz        5.0MB  향수 129,161개 (id·이름·브랜드·accord·평가자수·평점)
-  domain_lexicon_v1_14.csv    31KB  한국어 향 표현 63행 -> accord
+  domain_lexicon_v1_15.csv    31KB  한국어 향 표현 63행 -> accord
   accord_dictionary.csv        7KB  accord 92개 마스터 (적재 시 검증용)
   note_accord_bridge.csv      95KB  노트(향 원료) 이름 -> accord 2,925행
   stage1_prompt_v1.txt        2KB   ①단계 구조화 프롬프트 (sha256 앞자리 4f0a368d)
@@ -210,7 +210,7 @@ Invoke-RestMethod -Uri "http://localhost:8000/nlr/recommend" -Method Post `
 | `GMS_MODEL` | `gpt-5.4-nano` | 모델을 바꿔 비교할 때 |
 | `GMS_ENDPOINT` | SSAFY GMS 게이트웨이 | — |
 | `NLR_LOG_PATH` | `ai/logs/unmatched.jsonl` | 컨테이너에서 볼륨 경로를 줄 때 |
-| `NLR_LEXICON_PATH` | `data/domain_lexicon_v1_14.csv` | 사전 버전을 바꿔 비교할 때 |
+| `NLR_LEXICON_PATH` | `data/domain_lexicon_v1_15.csv` | 사전 버전을 바꿔 비교할 때 |
 | `NLR_PERFUMES_PATH` | `data/perfumes_nlr.csv.gz` | — |
 
 **키를 코드나 파일에 적지 마십시오.** 환경변수로만 받습니다. 만료되면 HTTP 401 로
@@ -224,7 +224,7 @@ Invoke-RestMethod -Uri "http://localhost:8000/nlr/recommend" -Method Post `
 없음 -> llm_stage1.structure() 로 채웁니다. 실패하면 사전 매칭으로 내려갑니다
 ```
 
-| | 조건을 뽑는 비율 (합성 600문장 · 사전 v1.14) |
+| | 조건을 뽑는 비율 (합성 600문장 · 사전 v1.15) |
 |---|---|
 | 구조화 + 사전 | **533/600 = 88.8%** |
 | 사전만 | 461/600 = 76.8% |
@@ -337,7 +337,7 @@ python build_data.py --source /경로/perfumes.csv
 
 ## 지금 어느 정도 되나 — 실측
 
-합성 평가셋 600건 · **사전 v1.14 · 노트 브리지 켬** 기준, **결과가 나오는 비율**입니다.
+합성 평가셋 600건 · **사전 v1.15 · 노트 브리지 켬** 기준, **결과가 나오는 비율**입니다.
 
 | | 비율 | 검색 단계 |
 |---|---|---|
@@ -350,10 +350,10 @@ python build_data.py --source /경로/perfumes.csv
 `SINGLE_BROAD` 가 73 → 163 으로 늘어납니다 — 향 조건이 하나뿐이라 **순위를 향이 아니라
 인기도가 정하는 상태**입니다. 비율뿐 아니라 이 분포도 같이 보십시오.
 
-> 이 표는 사전 v1.14 의 값입니다. 이전 판에는 v1.2 기준 `77.7% / 35.7%`,
+> 이 표는 사전 v1.15 의 값입니다. 이전 판에는 v1.2 기준 `77.7% / 35.7%`,
 > 그 뒤 v1.8 기준 `88.2% / 75.5%` 가 적혀 있었습니다.
 > 사전만 쓰는 쪽이 35.7% → 76.8% 로 오른 것은 LLM 이 아니라 **사전 확장의 몫**입니다
-> (`DECISIONS.md` N10). v1.8 → v1.14 의 몫은 작습니다 — 측정 기록 14번.
+> (`DECISIONS.md` N10). v1.8 → v1.15 의 몫은 작습니다 — 측정 기록 14번.
 
 ---
 
