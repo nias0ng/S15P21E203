@@ -10,6 +10,7 @@
  * 개인화 추천(REC-12 · REC-13)은 향 지도가 아니라 **진열대 화면(A13)** 의 추천
  * 카드입니다. 진열대는 이미 취향이 쌓인 자리라 추천의 근거가 한 화면에 함께 보입니다.
  */
+export { RecommendModal } from './components/RecommendModal'
 export { RecommendPeekCard } from './components/RecommendPeekCard'
 export { RecommendResultList } from './components/RecommendResultList'
 export {
@@ -22,5 +23,6 @@ export {
   type PersonalRecommendation,
   type RecommendReason,
   type RecommendResult,
+  type RecommendStatus,
   type RecommendedPerfume,
 } from './types'

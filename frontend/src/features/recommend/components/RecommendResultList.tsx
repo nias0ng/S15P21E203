@@ -65,9 +65,12 @@ export function RecommendResultList({ perfumes, selectedId, onSelect }: Props) {
                   <span className="text-ink block truncate text-xs font-bold">
                     {perfume.name}
                   </span>
-                  <span className="text-ink-muted block truncate text-[10.5px]">
-                    {perfume.brand}
-                  </span>
+                  {/* 브랜드가 없는 향수가 있습니다 — 빈 줄을 남기지 않고 이름만 보입니다 */}
+                  {perfume.brand && (
+                    <span className="text-ink-muted block truncate text-[10.5px]">
+                      {perfume.brand}
+                    </span>
+                  )}
                 </span>
               </button>
 

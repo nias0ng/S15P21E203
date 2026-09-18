@@ -8,6 +8,16 @@ type SearchFieldProps = Omit<
   label: string
   /** 검색 버튼을 눌렀을 때. form 안에 있으면 submit 으로도 동작합니다. */
   onSearch?: (keyword: string) => void
+  /**
+   * 입력칸 **왼쪽**에 놓을 것. 기본은 돋보기입니다.
+   *
+   * 메인(3D 향 지도)의 검색창이 이 자리에 검색 방식(자연어 · 일반) 단추를 넣습니다 —
+   * 알약 바깥에 두면 좁은 창에서 설 자리가 없고, 알약 위에 겹쳐 띄우면 헤더와 부딪힙니다.
+   *
+   * ⚠️ 여기 넣는 단추는 `type="button"` 이어야 합니다. form 안이라 기본값(`submit`)이면
+   * 누를 때마다 검색이 실행됩니다.
+   */
+  leading?: React.ReactNode
   className?: string
 }
 
@@ -45,6 +55,7 @@ export const SEARCH_FIELD_LIST_WIDTH = 'max-w-[540px]'
 export function SearchField({
   label,
   onSearch,
+  leading,
   className,
   name = 'keyword',
   ...props
@@ -82,7 +93,7 @@ export function SearchField({
         {label}
       </label>
 
-      <SearchIcon />
+      {leading ?? <SearchIcon />}
 
       <input
         id={`search-${name}`}
