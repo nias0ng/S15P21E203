@@ -4,6 +4,7 @@ import { PARAMS as P } from './params.js';
 import { paperVariant, paperRescale } from './paper.js';
 import { swellCPU } from './swell.js';
 import { clamp, D2R } from './util.js';
+import { bootReport } from './host.js';   // 부팅 신호 — GLB 받는 진행 · 붙임을 앱의 로딩 커튼에 알린다 (v0.75.0)
 
 // ───────── 종이배 ─────────
 // 메시 생성은 createBoatMesh() 안에만 있다. GLB 로 교체하려면 이 함수만 바꾼다
@@ -592,7 +593,13 @@ export function createBoat(scene) {
         console.log('[GLB] 맞춘 크기 x/y/z =',
           b3.getSize(new THREE.Vector3()).toArray().map(v => +v.toFixed(2)).join(' / '),
           '· 용골 y =', +b3.min.y.toFixed(3));
-      }, undefined, (e) => { console.warn('GLB 로드 실패:', e); });
+        bootReport('boat', { ok: true });
+      },
+      // 받는 진행 (v0.75.0). ⚠ total 은 Content-Length(없으면 X-File-Size)다 — 서버가 압축해 보내면 읽는 바이트가
+      //   total 을 넘을 수 있어 앱이 1 로 자른다. lengthComputable 이 아니면 0 을 보내 "크기를 모른다" 로 읽힌다
+      (ev) => bootReport('boat-bytes', { loaded: ev.loaded || 0, total: ev.lengthComputable ? (ev.total || 0) : 0 }),
+      // 실패해도 배는 있다 — 종이배(코드로 만든 것)가 그대로 서 있으므로 커튼은 걷어도 된다
+      (e) => { console.warn('GLB 로드 실패:', e); bootReport('boat', { ok: false }); });
     });
   };
 
@@ -764,6 +771,8 @@ export function createBoat(scene) {
   // ⚠ 초기값이 GLB(boatModel 1)면 여기서 바로 로드를 시작한다. update()·apply() 를 기다리면
   //   rAF 가 아직 안 돈 시점에는 아무 일도 안 일어나 "새로고침했는데 안 뜬다" 가 된다
   syncModel();
+  // 종이배 설정(boatModel 0)이면 받을 것이 없다 — 앱의 로딩 커튼이 배를 기다리지 않게 바로 알린다 (v0.75.0)
+  if (!glbLoaded) bootReport('boat', { skipped: true });
 
   return api;
 }

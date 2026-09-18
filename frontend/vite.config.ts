@@ -4,6 +4,8 @@ import { fileURLToPath, URL } from 'node:url'
 import { loadEnv } from 'vite'
 import { defineConfig } from 'vitest/config'
 
+import { mockApiPlugin } from './mock/plugin.ts'
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
@@ -14,6 +16,8 @@ export default defineConfig(({ mode }) => {
       // exclude 를 주면 기본값(node_modules)이 사라지므로 같이 적습니다
       react({ exclude: [/\/node_modules\//, /\/landing\//] }),
       tailwindcss(),
+      // `npm run dev:mock` — 백엔드 없이 목데이터로 (mock/plugin.ts)
+      mode === 'mock' && mockApiPlugin(env.VITE_API_BASE_URL),
     ],
     resolve: {
       alias: {
@@ -71,7 +75,7 @@ export default defineConfig(({ mode }) => {
       // 'vitest' 에서 명시적으로 import 하면 어디서 온 함수인지 보이고 타입도 정확합니다.
       globals: false,
       css: true,
-      include: ['src/**/*.test.{ts,tsx}'],
+      include: ['src/**/*.test.{ts,tsx}', 'mock/**/*.test.ts'],
     },
   }
 })

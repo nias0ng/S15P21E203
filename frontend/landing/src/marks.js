@@ -186,8 +186,9 @@ export function createMarks(scene) {
     return { src: 'map', j, zone: f.key, fam: f, name: p.name, sub: p.brand + (p.year ? ' · ' + p.year : ''), notes: '', perfume: p,
       nameKo: p.nameKo || p.name, labelKo: p.labelKo || p.nameKo || p.name,
       subKo: (p.brandKo || p.brand) + (p.year ? ' · ' + p.year : ''), rank: p.rank,
-      accords: (p.ac || []).map(([en, ko, fam]) => ({ en, ko, fam: fam || '' })),   // fam = 어코드가 속한 향조 (v0.75.7 — 동그라미 색 계열, ui.js accordColor)
-      // 카드 이미지 주소 (2026-09-14, v0.64.0 — ui.js showScent). ⚠ 아직 데이터에 없다 — 생성기나 호스트(백엔드 imageUrl)가 p.img 를 실으면 카드에 뜬다
+      accords: (p.ac || []).map(([en, ko, fam]) => ({ en, ko, fam: fam || '' })),   // fam = 어코드가 속한 향조 (v0.75.7 — 글자색 계열, ui.js accordInk)
+      // 카드 이미지 주소 (2026-09-14, v0.64.0 — ui.js showScent). v0.75.1 부터 생성기가 싣는다 — data/perfume_images.csv 의 ORIGINAL(종이 질감 없는 PNG) · 156/200.
+      //   사진이 없는 44개는 칸이 없어 '' 이고 카드는 자리표시를 띄운다
       img: p.img || '' };
   });
   const POOL = [...LEGACY, ...MAPPED];

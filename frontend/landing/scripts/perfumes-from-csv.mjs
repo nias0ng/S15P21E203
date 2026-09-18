@@ -1,7 +1,7 @@
 // ───────── 향수 지도 CSV → JS 모듈 (2026-09-11) ─────────
 //   node scripts/perfumes-from-csv.mjs            (paperboat 폴더에서)
 //
-// 원본 : data/perfume_map_points.csv (+ 한글 이름 data/perfume_names_ko.csv · 어코드 · 닮은 향수 data/scent_map.json · 어코드 한글 data/accord_names_ko.csv)  →  생성 : src/perfumes-data.js
+// 원본 : data/perfume_map_points.csv (+ 한글 이름 data/perfume_names_ko.csv · 카드 사진 data/perfume_images.csv · 어코드 · 닮은 향수 data/scent_map.json · 어코드 한글 data/accord_names_ko.csv)  →  생성 : src/perfumes-data.js
 //
 // ⚠ 왜 CSV 를 바로 import 하지 않는가 — Vite 의 `?raw` 를 쓰면 **Vite 없이 여는
 //   preview-nobuild.html 이 통째로 죽는다** (브라우저가 CSV 를 모듈로 받으려다 MIME 에러).
@@ -93,6 +93,38 @@ for (const id of koById.keys()) if (!rows.some(r => r.id === id)) warn.push(`원
 const seen = new Map();
 rows.forEach(r => { if (!r.labelKo) return; if (seen.has(r.labelKo)) warn.push(`이름표가 겹친다 : '${r.labelKo}' (${seen.get(r.labelKo)} · ${r.id}) — label_ko 로 가른다`); else seen.set(r.labelKo, r.id); });
 if (warn.length) console.warn('⚠ 한글 이름 :\n  ' + warn.join('\n  '));
+
+// ── 카드 사진 (2026-09-17, v0.75.1) — data/perfume_images.csv 의 ORIGINAL 주소를 fragrantica_id 로 붙인다 (ui.js showScent 의 이미지 자리).
+//   ⚠ 이 CSV 는 백엔드 적재 파일 `backend/db/seed/perfume_images.csv` 를 **그대로 복사한 것**이다 — 백엔드 /api/v1/map 의 imageUrl 과 같은 주소다.
+//     서버 사진이 바뀌면 그 파일을 다시 복사하고 이 스크립트를 돌린다 (손으로 고치지 않는다).
+//   ⚠ ORIGINAL(종이 질감 없는 투명 PNG · 여백 잘림)만 쓴다. PAPER_TEXTURE 는 진열대용이고, CDN 원본은 여백을 안 잘라 카드에서 병이 작게 선다.
+//   사진이 없는 향수는 img 를 싣지 않는다 — marks.js 가 '' 로 받아 카드가 자리표시(병 윤곽)를 띄운다.
+const IMG = join(root, 'data', 'perfume_images.csv');
+const imgText = readFileSync(IMG, 'utf8').replace(/^﻿/, '');
+const imgLines = imgText.split(/\r?\n/).filter(l => l.trim());
+const imgHead = parseLine(imgLines[0]);
+for (const k of ['korea_selection_rank', 'fragrantica_id', 'image_type', 'image_url']) if (!imgHead.includes(k)) throw new Error('사진 CSV 에 열이 없다 : ' + k);
+const ic = Object.fromEntries(imgHead.map((h, i) => [h, i]));
+const imgById = new Map();
+const imgWarn = [];
+imgLines.slice(1).forEach(l => {
+  const v = parseLine(l);
+  if (v[ic.image_type] !== 'ORIGINAL') return;
+  const id = Number(v[ic.fragrantica_id]);
+  if (imgById.has(id)) imgWarn.push(`일반 사진이 둘이다 : ${id}`);
+  imgById.set(id, { url: v[ic.image_url], rank: Number(v[ic.korea_selection_rank]) });
+});
+rows.forEach(r => {
+  const q = imgById.get(r.id);
+  if (!q) return;
+  // 순위가 다르면 두 파일의 id 가 어긋난 것이다 — 조용히 엉뚱한 병이 뜬다
+  if (q.rank !== r.rank) imgWarn.push(`순위가 다르다 : ${r.id} 지도 ${r.rank} ≠ 사진 ${q.rank}`);
+  if (!q.url.startsWith('https://')) imgWarn.push(`주소가 https 가 아니다 : ${r.id} '${q.url}'`);
+  r.img = q.url;
+});
+for (const id of imgById.keys()) if (!rows.some(r => r.id === id)) imgWarn.push(`원본에 없는 id : ${id}`);
+if (imgWarn.length) console.warn('⚠ 카드 사진 :\n  ' + imgWarn.join('\n  '));
+const imgCount = rows.filter(r => r.img).length;
 
 // ── 카드 어코드 (2026-09-17, v0.75.3) — data/scent_map.json 의 points[].top_accords 에서 **상위 3개**를 [영문, 한글] 로 붙인다 (카드의 ACCORDS 줄).
 //   ⭐ 사용자 : *"어코드로 진행해줘 상위 3개만"*. 노트(탑 · 미들 · 베이스)는 데이터가 없다 — 백엔드 perfume_notes 가 비어 있다 (09-17 로컬 DB 0행).
@@ -190,10 +222,11 @@ writeFileSync(OUT,
 //   ${rows.length}행 · 향조 ${Object.entries(fams).map(([k, n]) => k + ' ' + n).join(' · ')}
 //   mx·my 는 CSV 의 정규화 좌표(0~1) 그대로다. 월드로 옮기는 것은 src/scentmap.js 다.
 //   nameKo · brandKo · labelKo 는 data/perfume_names_ko.csv 에서 붙였다 (koBasis = 확인 · 관례 · 추정)
+//   img 는 data/perfume_images.csv 의 ORIGINAL 주소다 — 종이 질감 없는 투명 PNG · ${imgCount}/${rows.length}개 (없는 향수는 칸이 없다 · 카드 사진, ui.js showScent)
 //   ac 는 data/scent_map.json 의 top_accords 상위 ${AC_TOP}개다 — [영문, 한글, 향조] · ${acCount}/${rows.length}개 (한글 · 향조 data/accord_names_ko.csv · 카드 ACCORDS 줄, ui.js showScent)
 //   nb 는 data/scent_map.json 의 neighbors 다 — [fragrantica_id, 유사도] 닮은 순 10개 · ${nbCount}개 (유사 연결선의 기준, focusLinkBasis 1)
 export const PERFUMES = [
 ${body}
 ];
 `);
-console.log('생성 :', OUT, '·', rows.length, '행 ·', JSON.stringify(fams), '· 어코드', acCount, '개 · 닮은 향수', nbCount, '개');
+console.log('생성 :', OUT, '·', rows.length, '행 ·', JSON.stringify(fams), '· 카드 사진', imgCount, '개 · 어코드', acCount, '개 · 닮은 향수', nbCount, '개');

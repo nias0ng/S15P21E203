@@ -5,7 +5,7 @@ import { createBloom } from './bloom.js';
 import { createSubmerged } from './submerged.js';
 import { lerp, clamp, wrapPi } from './util.js';
 import { createUI } from './ui.js';
-import { callHost, hostSearch, perfumeRef, setHost, setHostNotice } from './host.js';   // 카드의 서비스 동작 · 검색창이 앱(호스트)으로 나가는 문 (v0.68.0)
+import { bootNow, bootReport, callHost, hostMove, hostSearch, perfumeRef, setHost, setHostNotice } from './host.js';   // 카드의 서비스 동작 · 검색창이 앱(호스트)으로 나가는 문 (v0.68.0) · 부팅 신호 (v0.75.0)
 import { createInput } from './input.js';
 import { createSim } from './sim.js';
 import { createWater } from './water.js';
@@ -17,6 +17,13 @@ import { createZones } from './zones.js';
 import { createMarks } from './marks.js';
 import { createLinks, linkEdges, linkDiff } from './links.js';
 import { createSeaMark } from './seamark.js';
+import { createPerf } from './perf.js';
+import { createTweaks } from './tweaks.js';
+import { createProbes } from './probes.js';
+import { createFreecam } from './freecam.js';
+import { createFrameGrab } from './framegrab.js';
+import { createViewbar } from './viewbar.js';
+import { createCampanel } from './campanel.js';
 import { createStage } from './stage.js';
 import { createPhase, EASE } from './phase.js';
 import { createTravel } from './travel.js';
@@ -25,6 +32,7 @@ import { createChart } from './chart.js';
 import { areaOf, findArea } from './areas.js';
 import { createTitle } from './title.js';
 import { createGate } from './gate.js';
+import { createCompare } from './compare.js';
 import { scentMapReport } from './scentmap.js';
 // PB 로 내보내 GLSL 사본과 대조할 수 있게 한다.
 // ⚠ swellAmplitude / gerstnerLoopLimit / swellEnvCPU 도 같이 내보낸다 — 안 그러면
@@ -43,6 +51,8 @@ const { groundSpeed, turnRate } = oceanClock;
 // 그래서 scroll 은 "배의 위치"이자 "월드가 흐른 양"이다. 두 뜻이 같은 값이다.
 
 const P = PARAMS;
+// ⭐ 부팅 신호 ② (v0.75.0) — import 가 전부 평가됐다. 앱의 로딩 커튼이 듣는다 (host.js bootReport)
+bootReport('script');
 // 앱(호스트)이 띄운 창이 열려 있는 수 (2026-09-15, v0.68.0 — holdWhile). 0 보다 크면 누르기 · 호버 · ESC · 스페이스를 안 받는다.
 //   ⚠ 입력을 만들기 전인 여기에 선언한다 — onPick · updateHover · onKeyExit 가 읽는다 (TDZ)
 let hostHold = 0;
@@ -279,6 +289,10 @@ const input = createInput(ui.mount, {
       //   ⚠ **알림만이다** — 앱이 Promise 를 줘도 `holdWhile` 로 입력을 잠그지 않는다. 엔진이 이미 한 일이라 기다릴 것이 없다 ([진열대에 저장]과 다른 점).
       const exRef = perfumeRef(m);
       if (exRef) callHost('exploreSimilar', exRef);
+      // ⭐ **들른 향수** (2026-09-18, v0.75.12 — 향해 일지). 서버는 향수를 고른 이동을 **언제나** 남기고,
+      //   지금 구역의 진입 줄에 그 향수를 매단다 (ExplorationController — 새 줄이 되지 않는다).
+      //   ⚠ 좌표는 부표의 정규화 자리(mx · my)다 — `perfumeId` 가 있으면 서버가 제 좌표로 덮어쓴다
+      if (exRef) hostMove({ perfumeId: exRef.perfumeId, x: exRef.mx, y: exRef.my, regionKey: exRef.family });
     }
   }
 });
@@ -303,6 +317,35 @@ const input = createInput(ui.mount, {
 let hoverMark = null, clickMark = null, hoverX = NaN, hoverY = NaN;
 let _miniHidden = false;   // 존 연출 중 미니맵 숨김 (zoneMiniHide — tick). ⚠ tick 보다 먼저 선언한다 (TDZ)
 let seaBlockT = 0;         // Shift 바다 누르기가 경계에 막혀 있던 시간 (tick). ⚠ 같은 이유로 여기서 선언한다
+
+// ───────── 배가 든 해역이 바뀌면 앱에 알린다 (2026-09-18, v0.75.12) — 향해 일지 ─────────
+// 앱은 이것을 받아 `PUT /map/exploration/me` 를 부른다 (host.js `hostMove`). 일지 한 줄이 "○○ 구역 진입"
+// 이므로 **바뀌는 순간**이 곧 한 줄이다 — 매 프레임 보내면 서버가 같은 구역을 몇백 번 받는다.
+// ⚠⚠ `zones.onArrive` 로는 모자라다 — 그건 **자동 조타 목표에 닿았을 때**만 뜬다. 방향키로 자유 항해하면
+//   영영 안 온다 (사용자 : *"향 영역으로 이동했을때 향해 일지가 작성 안되고 있음"*).
+// ⚠ 해역은 `map.regionAt` (가장 가까운 향수의 향조 — 향수들로 나눈 보로노이)이다. 200개 순회라
+//   **REGION_MS 마다 한 번**만 돈다 (같은 틱의 `navDist` 도 200개를 도므로 두 배가 되지 않게).
+// ⚠ 갈 수 있는 바다 **밖**이면 보내지 않는다 — 배가 경계에 붙어 미끄러지는 동안 값이 흔들린다.
+// ⚠ 좌표는 `map.toNorm` 이 낸 정규화 좌표다 (불변식 21). 첫 해역도 한 줄이다 (배가 그 바다에서 시작한다).
+const REGION_MS = 400;
+let regionKey = null, regionT = -1e9;
+function reportRegion(t) {
+  const map = marks.map;
+  if (!map || t - regionT < REGION_MS / 1000) return;
+  regionT = t;
+  const wx = nav.scroll.x, wz = -nav.scroll.z;
+  if (!map.inNav(wx, wz, 0)) return;
+  const reg = map.regionAt(wx, wz);
+  if (!reg || reg.key === regionKey) return;
+  const [nx, ny] = map.toNorm(wx, wz);
+  // ⚠ perfumeId 는 **DB 번호**라 엔진 데이터에 아직 없다 (불변식 32 · 지금은 늘 null) — 그동안은 좌표로 간다.
+  //   좌표만 오면 서버는 '빈 바다로 간 이동' 으로 보고 **향 영역이 바뀐 경우에만** 기록한다. 여기가 정확히 그 순간이다
+  const told = hostMove({ x: nx, y: ny, regionKey: reg.key, regionName: reg.name, perfumeId: null });
+  // ⚠⚠ **알린 뒤에만 기억한다.** 첫 틱은 호스트(앱)가 `window.PB` 를 찾아 붙기 **전**이라 아무 데도 안 간다 —
+  //   그때 기억해 버리면 배가 그 해역을 떠날 때까지 영영 다시 안 알리고, 첫 해역이 일지에서 통째로 빠진다
+  //   (실측 2026-09-18 : 앱을 열자마자 `hostMove` 가 false 로 한 번 돌고 그대로 잠겼다).
+  if (told) regionKey = reg.key;
+}
 // ⭐ 호버 카드의 틈 (2026-09-15, v0.65.0 — cardHoverBridge). hoverGrace = 부표와 카드 밖으로 나간 앱 시각 (−1 = 유예 없음) ·
 //   hoverOnCard = 이번 프레임에 마우스가 떠 있는 카드 위다 (틱의 setScentPeek 가 읽는다 — 카드 위면 통과를 끄고 진하게)
 let hoverGrace = -1, hoverOnCard = false;
@@ -344,9 +387,22 @@ function updateHover(view) {
   else marks.clearSelect();
 }
 
-// ⚠ 개발 패널(계측 HUD · 파라미터 · 조작 바 · 시점 · 원본 비교 · 자유 시점 · 부력 프로브 · 프레임 잡기)은
-//   develop 에 넣지 않는다 (2026-09-16 사용자 : "최종 develop 에 올릴 때는 노출 안 되게 삭제").
-//   엔진 원본 작업 브랜치에만 있다 — 이 파일에서 그 자리를 다시 만들지 않는다.
+// 계측 HUD 는 개발 빌드에만. 프로덕션 번들에서는 이 분기째로 사라진다(트리셰이킹).
+// `import.meta.env &&` 를 앞에 두는 이유 : preview-nobuild.html 은 Vite 없이 이 파일을
+// 그대로 로드하므로 import.meta.env 자체가 없다. 빼면 그쪽 경로가 TypeError 로 죽는다
+const DEV = import.meta.env && import.meta.env.DEV;
+const perf = DEV ? createPerf(renderer, ui.stage) : null;
+// 부력 프로브 시각화. perf HUD 와 같이 개발 빌드에만 들어간다 (params.showProbes 로 켠다)
+const probes = DEV ? createProbes(scene, boat) : null;
+// 자유 시점 (개발 전용). 켜지는 동안 input 의 드래그·휠 조타를 세운다 —
+// 안 그러면 드래그가 배도 돌리고 카메라도 돌린다
+const freecam = DEV ? createFreecam(ui.mount, (on) => input.setSteer(!on)) : null;
+// ⭐ 프레임 잡기 (개발 전용) — 연속 프레임을 모아 한 장씩 넘겨 본다. `PB.grab.start()`
+//   ⚠ 실시간으로도 녹화로도 못 보는 것을 본다 : 움찔은 프레임 **사이**에서 일어나고,
+//     30fps 녹화는 30fps 게이트와 비팅을 일으켜 증거를 뭉갠다 (2026-09-12 저녁 실측)
+const grab = DEV ? createFrameGrab(renderer, ui.stage, () => ({
+  scrollZ: nav.scroll.z, speed: nav.speed, stepped: sim.stepped, acc: sim.adv
+})) : null;
 
 // 픽셀 밀도 페이드가 쓸 실제 버퍼 해상도. 드라이버가 clamp 할 수 있으니 getSize 기준
 function syncRes() {
@@ -380,7 +436,15 @@ const nav = { scroll: { x: 0, z: 0 }, speed: CONFIG.speed.idle, head: 0, headV: 
 let view = cam;
 // 카드는 marks.selected 를 그대로 비춘다. 상태를 두 곳에 두지 않기 위한 거울 하나
 let shownMark = null;
+// ⚠⚠ **여기서 선언한다 — 아래에서 만들지만 `tick()` 이 그 전에 시작된다.** 아래에 `const` 로
+//   두면 루프 첫 프레임이 TDZ 에 걸려 "Cannot access 'campanel' before initialization" 이
+//   매 프레임 터진다 (실제로 그랬다). tweaks·viewbar 는 루프에서 안 읽어서 무사한 것뿐이다
+let campanel = null;
 const clock = new THREE.Clock();
+// 개발 바 '연출' 행 갱신 훅. ⚠ 이 파일에서 `viewbar` 는 한참 아래에서 만들어지는데
+//   렌더 루프는 그보다 **먼저** 돌기 시작한다 (tick() 최초 호출이 위쪽에 있다).
+//   그래서 루프가 viewbar 를 찾아가는 대신, viewbar 가 여기에 자기를 꽂는다.
+let syncPhaseRow = null;
 
 // 존 구도에서 시선을 밀 때 쓰는 축들. ⚠ 매 프레임 새로 만들지 않는다 (GC 압력)
 const UP_Y = new THREE.Vector3(0, 1, 0);
@@ -463,7 +527,7 @@ function cameraPose(cl, s, aspect, out) {
 }
 
 // ── 먼 곳 이동 · 미니맵 · 향수 고르기 (2026-09-11, v0.32.0)
-// ⚠⚠ tick() **보다 먼저** 만든다 — 루프가 첫 프레임부터 부른다 (아래에서 const 로 만들면 첫 프레임이 TDZ 에 걸린다)
+// ⚠⚠ tick() **보다 먼저** 만든다 — 루프가 첫 프레임부터 부른다 (위 campanel 의 TDZ 교훈)
 const travel = createTravel({ nav, zones, pivotOf: () => boat.pivot });
 // ⭐ onBlocked — 미니맵의 바깥(범위 밖 · 2026-09-13 부터 `--pb-void` 한 색)을 누르면 가지 않고 경고만 (2026-09-11 오후)
 const minimap = createMinimap({ onPick: (t) => startTravel(t), onBlocked: () => ui.warn('범위 없음', '이 너머는 갈 수 없는 해역입니다') });
@@ -1256,6 +1320,7 @@ let t = 0;
 
 function tick() {
   raf = requestAnimationFrame(tick);
+  perf && perf.begin();
   const dt = Math.min(0.05, clock.getDelta());
   t += dt;
   const M = CONFIG.move;
@@ -1381,6 +1446,7 @@ function tick() {
   } else seaBlockT = 0;
   nav.scroll.z += vZ * dt;
   nav.scroll.x += vX * dt;
+  reportRegion(t);
   nav.latV += (vX - nav.latV) * 0.08;
   // ⭐ `_shipMv` — 존 연출에서 배가 씬 안을 실제로 가로지르는 속도 (2026-09-16). 그게 없으면 배만 옮겨지고
   //   물은 가만히 있다 (연출 중 nav.speed 는 0 이라 항적 · 물보라 · 흘수가 전부 죽는다). ⚠ 한 프레임 전 값이다 (아래 카메라 블록이 채운다)
@@ -1578,7 +1644,9 @@ function tick() {
 
   // 항공뷰를 쓰는 동안에는 이 카메라가 씬을 그린다. 본 카메라는 그대로 두므로
   // 끄면 원래 구도로 그대로 돌아온다
-  view = PARAMS.topView ? topCam : cam;
+  // 자유 시점 > 항공뷰 > 본 카메라. 둘 다 개발 전용이라 끄면 원래 구도로 그대로 돌아온다
+  if (freecam) freecam.update(PARAMS.freeView, W() / H());
+  view = (PARAMS.freeView && freecam) ? freecam.cam : (PARAMS.topView ? topCam : cam);
   if (PARAMS.topView) {
     const half = Math.max(1, PARAMS.topSize) * 0.5, a = W() / H();
     topCam.left = -half * a; topCam.right = half * a;
@@ -1628,6 +1696,10 @@ function tick() {
     //   ⚠ 다음 프레임의 phase.update 가 이걸 본다 — 한 프레임 늦는 것은 사람 눈에 안 보인다
     phase.pauseHold((P.zoneHoldHover === undefined ? 1 : P.zoneHoldHover) >= 0.5 && ui.zoneHover);
   }
+  // 개발 바 '연출' 행이 지금 상태를 보여 주도록. ⚠⚠ `viewbar` 를 **직접 참조하지 않는다** —
+  //   루프는 여기(tick 최초 호출)보다 **뒤에서** 만들어지는 것들을 모른다. let 은 TDZ 가 있어서
+  //   `typeof` 로도 못 피한다. 그래서 만들어질 때 아래 훅에 함수를 꽂는 방식으로 뒤집었다
+  if (syncPhaseRow) syncPhaseRow();
   // ⚠⚠ **보간된 kD 를 넘긴다.** 물의 거리 페이드가 camDist 를 곱해 따라오는데, 그 상쇄는
   //   카메라와 **같은 값**을 볼 때만 성립한다 (§23-1). 한쪽만 보간하면 전환 중 원경이 부푼다
   water.update(sim, view, t, kD);
@@ -1797,13 +1869,22 @@ function tick() {
     ui.placeScent({ x, y, r, obs: _obs, bubble: (P.cardBubble === undefined ? 1 : P.cardBubble) >= 0.5 });
   }
   ui.setDrift(s);
+  // ⚠ 씬을 그린 카메라(view)가 아니라 **본 카메라**를 넘긴다 — 항공뷰·자유 시점으로 보는
+  //   동안에도 이 패널이 말하는 것은 "기본 구도에서 수평선이 어디인가" 여야 한다
+  campanel && campanel.update(cam, H());
 
   // 반사를 먼저 찍는다 (배와 같은 게이트라 8fps). 본 렌더가 그 그림을 되읽는다
+  probes && probes.update();
   submerged.update(view, boat.stepped);
   reflect.update(view, water.uni.uBoatPos.value, boat.stepped);
   bloom.render(scene, view);
+  // ⚠⚠ **렌더 직후 같은 틱**이라야 드로잉 버퍼가 살아 있다 (preserveDrawingBuffer false)
+  grab && grab.tick();
+  perf && perf.end(sim, boat);
 }
 tick();
+// ⭐ 부팅 신호 ③ (v0.75.0) — 첫 장이 그려졌다 (셰이더 컴파일 포함). 배 GLB 는 아직 오는 중일 수 있다 (boat.js 가 따로 알린다)
+bootReport('frame');
 
 // 리사이즈는 rAF 로 디바운스한다 — 드래그로 창을 늘리면 ResizeObserver 가 프레임마다 터지고,
 // setSize 는 백버퍼를 재할당한다. 모니터를 옮기면 devicePixelRatio 도 바뀌므로 같이 다시 잡는다
@@ -1970,6 +2051,24 @@ function applyEnv() {
 }
 applyEnv();
 applyShadow();
+// 파라미터 슬라이더 패널. perf HUD 와 같이 개발 빌드에만 들어간다.
+// apply 가 hoisting 되는 함수 선언이라 여기서 넘겨도 된다
+const tweaks = DEV ? createTweaks(ui.stage, { params: P, ranges: PARAM_RANGES, apply }) : null;
+// 좌상단 조작 바 (계측 HUD 바로 밑). ⚠ tweaks 뒤에 만든다 — 누를 때 tweaks.sync() 를 부른다
+const viewbar = DEV ? createViewbar(ui.stage, { tweaks, apply, freecam, phase }) : null;
+viewbar && viewbar.mount();
+// ⭐ 연출 상태가 **바뀔 때만** 개발 바의 버튼 색을 맞춘다. 매 프레임 DOM 을 만지지 않는다
+if (viewbar) {
+  let lastPhaseKey = '';
+  syncPhaseRow = () => {
+    const pk = phase.cue.phase + '|' + (phase.cue.zone || '');
+    if (pk !== lastPhaseKey) { lastPhaseKey = pk; viewbar.sync(); }
+  };
+}
+// 좌하단 시점 패널. ⚠ viewbar·tweaks 뒤에 만든다 — 셋이 같은 값을 만지므로 서로를 sync 한다.
+//   [화면만] 이 나머지 패널의 el 을 숨기려면 그것들이 먼저 있어야 한다
+// 좌하단 패널 거치대. ⚠ column-reverse 라 **먼저 붙인 campanel 이 아래**에 온다 —
+//   자주 누르는 시점 패널을 손에 가깝게 둔다
 // ── 존에서 나가기. ⚠ 들어가는 것은 자동 조타 도착이 걸지만 **나오는 것은 사람이 건다** —
 //   아직 화면에 [닫기] 가 없으므로 우선 ESC 하나다 (§10-1 의 남은 갈래).
 //   ⚠ busy 중에는 무시한다. 트윈 도중에 leave 를 부르면 되감기로 읽힌다 (§3 : 퇴장은 역순이 아니다)
@@ -1993,7 +2092,56 @@ const onKeyExit = (e) => {
 };
 window.addEventListener('keydown', onKeyExit);
 
-window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, goRegion, startTravel, startFocus, setHost, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
+const dock = document.createElement('div');
+// ⚠⚠ **가둬 두지 않으면 위로 삐져나가 잘린다.** 2026-09-10 실측 : 묶음이 열둘이 되면서
+//   스택이 **910px** 이 됐는데 뷰포트는 720px 이라 위로 **201px** 이 화면 밖으로 나갔고,
+//   그 위에 있던 개발 바(z 51)까지 덮었다. 천장을 두고 **휠로 넘긴다.**
+// ⚠⚠ **`column-reverse` 를 쓰지 않는다.** 예전에는 그걸로 쌓는 순서를 뒤집었는데, 스크롤을
+//   붙이는 순간 `scrollTop` 범위가 **−592~0 으로 뒤집혀서**(2026-09-10 실측) 휠 방향이
+//   직관과 어긋난다. 순서는 아래 `prepend` 로 잡고 여기는 평범한 `column` 으로 둔다.
+// ⚠ `overscroll-behavior:contain` — 목록 끝에서 휠을 더 굴려도 뒤 페이지로 새지 않는다.
+//   ⭐ 씬의 조타(휠 = 가속)로도 안 샌다 — 확인함 (throttle 0 유지).
+dock.style.cssText = 'position:absolute;left:12px;bottom:12px;z-index:52;' +
+  'display:flex;flex-direction:column;gap:6px;align-items:flex-start;' +
+  'overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin';
+DEV && ui.stage.appendChild(dock);
+campanel = DEV ? createCampanel(dock, { tweaks, viewbar, perf, apply }) : null;
+campanel && campanel.mount();
+// 우하단 원본 비교 패널. ⚠ campanel 뒤에 만든다 — [화면만] 대상에 자기를 등록한다
+const compare = DEV ? createCompare(dock, { apply, tweaks, viewbar, campanel }) : null;
+if (compare) {
+  compare.mount();
+  campanel && campanel.addSoloTarget(compare.el);
+  // ⚠ 비교 패널이 **위**, 시점 패널이 아래다 (예전 column-reverse 가 만들던 순서 그대로).
+  //   mount 가 append 하므로 여기서 한 번 앞으로 당긴다
+  dock.prepend(compare.el);
+}
+
+// ⚠⚠ dock 의 천장을 **개발 바 바로 아래**로 맞춘다. 둘은 서로를 모르고 각자 자리를 잡는데
+//   (dock 은 bottom 기준, viewbar 는 top:150 기준) 합이 화면보다 커지면 그대로 겹쳤다.
+//   ⭐ 개발 바를 접으면 이 값이 자동으로 커진다 — ResizeObserver 가 높이 변화를 본다.
+let dockRO = null;
+function syncDock() {
+  if (!dock.isConnected) return;
+  const sr = ui.stage.getBoundingClientRect();
+  const vb = viewbar && viewbar.el;
+  // ⚠ [화면만](solo)으로 숨겨졌으면 offsetParent 가 null 이다 — 그때는 화면 전체를 쓴다
+  const ceiling = (vb && vb.offsetParent) ? (vb.getBoundingClientRect().bottom - sr.top) + 8 : 12;
+  dock.style.maxHeight = Math.max(120, Math.round(sr.height - ceiling - 12)) + 'px';
+}
+if (DEV) {
+  syncDock();
+  onResize(syncDock);
+  if (viewbar && window.ResizeObserver) {
+    dockRO = new ResizeObserver(syncDock);
+    dockRO.observe(viewbar.el);
+  }
+}
+
+window.PB = { grab, submerged, bloom, topCam, stage, phase, title, gate, compare, input, travel, minimap, chart, goRegion, startTravel, startFocus, setHost, boot: bootNow, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, perf, tweaks, viewbar, campanel, probes, freecam, reflect, swellCPU, sim, water, grids, spray, boat, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
+  // ⚠⚠ **측정·스크린샷 전에 부른다.** 개발 UI 넷을 통째로 숨긴다 (되돌리기 : PB.solo(false) 또는 H 키).
+  //   예전에는 콘솔에서 querySelectorAll 로 하나씩 숨겼는데 원래 display 값을 잃어 tweaks 가 깨졌다
+  solo: (on) => campanel ? campanel.solo(on) : false,
   // ⭐ 반응형 검산 (2026-09-11 오후) — 제품 UI 상자들의 자리 · 서로 겹침 · 화면 밖 · 스크롤 · 수면 타이포 꼭대기와 정보 블록의 간격.
   //   ⚠ 창 크기를 바꾼 뒤에는 **스크린샷 한 장으로 먼저 칠하고** 부른다 (숨긴 패널에서는 ResizeObserver 가 안 불린다 — 교훈 ⑧)
   layout: () => layoutReport(),
@@ -2003,7 +2151,7 @@ window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel
     get: () => marks.map
   } };
 
-// PB.layout() — 위 주석. 제품 UI 만 본다
+// PB.layout() — 위 주석. 제품 UI 만 본다 (개발 패널은 solo 로 숨기고 잰다)
 function layoutReport() {
   const st = ui.stage.getBoundingClientRect();
   const box = (el) => {
@@ -2046,6 +2194,7 @@ function layoutReport() {
 // HMR 과 언마운트가 같은 경로를 쓴다. 여기를 갈라 두면 한쪽만 정리돼 640² 렌더타깃 2장이
 // 저장할 때마다 쌓인다 (약 6.5MB/회)
 function disposeAll() {
+  grab && grab.dispose();
   if (raf) { cancelAnimationFrame(raf); raf = 0; }
   if (resizeRaf) { cancelAnimationFrame(resizeRaf); resizeRaf = 0; }
   ro.disconnect();
@@ -2065,11 +2214,19 @@ function disposeAll() {
   water.dispose();
   sim.dispose();
   scene.remove(hemiLight, dirLight);   // 씬을 완전히 비워 둔다 — 남으면 재마운트 때 중복된다
+  perf && perf.dispose();
+  tweaks && tweaks.dispose();
+  probes && probes.dispose();
+  freecam && freecam.dispose();
+  viewbar && viewbar.dispose();
+  campanel && campanel.dispose();
+  compare && compare.dispose();
   title.dispose();
   gate.dispose();
   travel.dispose();    // ⚠ 안개를 걷어 둔다 — HMR 뒤에 흰 화면이 남으면 "바다가 날아갔다" 로 오진한다
   chart.dispose();     // ⚠ 미니맵보다 먼저 — 안개 격자를 그쪽에서 읽는다
   minimap.dispose();   // (향수 고르기 라벨은 ui.dispose() 가 거둔다)
+  if (dockRO) { dockRO.disconnect(); dockRO = null; }
   window.removeEventListener('keydown', onKeyExit);
   phase.dispose();
   stage.dispose();   // ⚠ window 의 H 키 리스너를 여기서 뗀다 (HMR 마다 쌓인다)

@@ -2,6 +2,8 @@ import { PARAMS as P } from './params.js';
 import { BAND as MINI_BAND } from './minimap.js';
 import { areasNow } from './areas.js';
 import { TERRAIN } from './terrain-data.js';
+// 격자 → 부드러운 닫힌 고리 (안개 윤곽 · scentmap.navLoops 와 **같은 함수**다)
+import { traceGrid } from './util.js';
 
 // ───────── 전체 화면 해도 (2026-09-12 저녁, v0.48.0) ─────────
 // 미니맵 머리말의 [확대] 를 누르면 열리는 **화면 가득한 지도**다. 사용자 : *"미니맵 확대 버전도
@@ -20,9 +22,11 @@ import { TERRAIN } from './terrain-data.js';
 //   (갈 수 있는 바다 132×110 · 안개 116×102)을 작은 그림으로 두고 `<mask>` 안에서 늘려 흐렸는데,
 //   **6배 확대에서 칸이 45~58px 이 되어 흐린 계단**으로 보였다 (사용자 화면 : *"SVG 면 이렇게 blur 처리
 //   되듯이 되면 안될텐데"*). 지금은 :
-//     · 갈 수 있는 바다 = **원 200개의 합집합 경로** (배를 막는 식 `navDist ≤ navReach` 와 같은 모양)
-//     · 그 끝선 = 합집합의 **정확한 바깥 호** (`scentmap.navOutline()` — 미니맵도 같은 호를 긋는다)
-//     · 안개 = 격자를 **마칭 스퀘어로 잇고 Chaikin 두 번**으로 둥글린 윤곽
+//     · 갈 수 있는 바다 = `scentmap.navLoops()` 의 **부드러운 고리** — 면과 끝선이 같은 경로다 (2026-09-18).
+//       ⚠ v0.50.0 ~ 2026-09-17 은 원 200개의 합집합과 그 정확한 바깥 호였다. 반지름이 같은 원들이라
+//         만나는 자리마다 오목한 뾰족점이 생겨 테두리가 물결쳤다 — 사용자가 본 '구름' 이다 (호 50개).
+//       ⚠⚠ **미니맵도 같은 고리를 긋는다** (불변식 21 · 28) — 한쪽만 고치면 같은 바다가 두 모양이 된다.
+//     · 안개 = 격자를 **마칭 스퀘어로 잇고 Chaikin 세 번**으로 둥글린 윤곽 (같은 `traceGrid`)
 //   ⚠ 갈 수 없는 바다는 빗금이 아니라 **`--pb-void` 한 색**이다 (미니맵과 같은 토큰 — 연관성).
 //
 // ⚠ 좌표는 scentmap 월드 그대로다 (불변식 21). 화면 px 로 옮기는 식은 `sx/sy` 하나, 그 역이 `toW` 이고
@@ -39,8 +43,10 @@ import { TERRAIN } from './terrain-data.js';
 //   ⚠ 색은 `CONFIG.families` 에서 받는다 (부표·점과 같은 색이라야 3D 에서 본 향조와 이어진다, 불변식 2).
 //   ⚠ 향수 200개 중 **48개(24%)는 자기 향조 영역 밖에 있다** (원본 데이터의 성질이다 — 영역은
 //     보로노이가 아니라 밀도 덩어리다). 점 색과 영역 색이 다른 자리는 버그가 아니다.
-//   ⚠ 영역을 **선으로 두르지 않는다** — 이웃한 영역이 맞닿아 있어 두 번 그려지고, 색만으로도 갈린다.
-//     경계선은 육지 전체의 **해안선 한 겹**뿐이다 (원본 contours).
+//   ⚠⚠ 2026-09-18 **뒤집혔다** — 영역마다 옅은 경계선을 두른다 (`gTerrEdge`). 여기 있던 *"선으로 두르지
+//     않는다"* 는 색만으로 갈린다는 전제였는데, 사용자 판정은 *"향조 영역끼리의 경계"* 도 뭉개져 보인다였다.
+//     맞닿은 변이 두 번 칠해지는 것은 그대로라 **평소 짙기를 0.4 로 묶어 둔다** (겹치면 0.64) — 올리면 티가 난다.
+//     범례에 마우스를 올린 하나만 제 색으로 또렷해진다 (그때는 한 겹뿐이라 겹침이 없다).
 //
 // ⭐⭐ **이름은 지나온 바다에서만 적는다** (`chartNames` 1). 사용자 : *"내가 탐색한 이름만 노출"*.
 //   안개 격자(미니맵이 주인)를 그대로 판정에 쓴다 — 영역과 점은 전부 보이고 **이름만** 가린다
@@ -142,12 +148,12 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
   //   ⚠ 마스크 영역은 drawSea 가 판의 세 배로 잡는다 (기본 −10% ~ 120% 로 두면 확대·이동한 끝에서 잘린다)
   // 갈 수 있는 바다 **안쪽** — 원들의 합집합을 흰색으로
   const maskIn = svgEl('mask', { id: 'pbc-in', maskUnits: 'userSpaceOnUse' });
-  const pInFill = svgEl('path', { fill: '#fff' });
+  const pInFill = svgEl('path', { fill: '#fff', 'fill-rule': 'evenodd' });
   maskIn.appendChild(pInFill);
   // 갈 수 있는 바다 **바깥** — 흰 판에서 합집합을 검게 뺀다
   const maskOut = svgEl('mask', { id: 'pbc-out', maskUnits: 'userSpaceOnUse' });
   const maskOutBg = svgEl('rect', { fill: '#fff' });
-  const pOutFill = svgEl('path', { fill: '#000' });
+  const pOutFill = svgEl('path', { fill: '#000', 'fill-rule': 'evenodd' });
   maskOut.append(maskOutBg, pOutFill);
   // 안개 — 흰 판에서 **지나온 바다**를 검게 뺀다 (너울은 안 지나온 곳에만 얹힌다)
   const maskFog = svgEl('mask', { id: 'pbc-fog', maskUnits: 'userSpaceOnUse' });
@@ -178,10 +184,18 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
   const gTerr = svgEl('g', { 'fill-rule': 'evenodd' });
   const gTerrLit = svgEl('g', { 'fill-rule': 'evenodd', mask: 'url(#pbc-lit)' });
   // 해안선 — 육지 전체의 경계 한 겹. ⚠ 면이 아니라 **선**이다 (넷 중 셋이 지도 경계에서 열려 있다)
+  // ⭐⭐ 향 영역의 **경계선** (2026-09-18). 사용자 : *"해당 목록에 마우스 오버했을때 그 영역의 경계면이
+  //   밝게 표현된다던지"* · 향조끼리의 경계도 *"더 부드럽게"*.
+  //   ⚠⚠ 불변식 29 는 *"영역을 선으로 두르지 않는다 — 이웃한 영역이 맞닿아 있어 공유 변이 두 번 그려진다"*
+  //     였다. 여기서 **일부러 되돌린다** — 색만으로는 경계가 뭉개져 지도로 안 읽힌다는 판정이다.
+  //     대신 평소에는 옅게(0.4) 둔다 : 두 번 칠해지는 공유 변이 0.64 가 되는데, 그 정도는
+  //     '두 영역이 맞닿은 자리' 로 읽혀서 오히려 맞다. **짙게 올리면 그 겹침이 티가 난다.**
+  //   ⭐ 마우스를 올린 한 영역만 제 색으로 또렷해진다 — 그때는 **한 겹뿐이라** 겹침 문제가 없다.
+  const gTerrEdge = svgEl('g', { fill: 'none', 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
   const pCoast = svgEl('path', { fill: 'none', stroke: rgba(PAL.ink, 0.34), 'stroke-width': 1.1, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
   // 미탐색 너울. ⚠ 0.52 → **0.38** (2026-09-12 저녁) — 향 영역 **아래**로 내려갔으므로 색을 안 먹는다
   const rFog = svgEl('rect', { fill: PAL.ink, 'fill-opacity': 0.38, mask: 'url(#pbc-fog)' });
-  // 갈 수 있는 바다의 **끝선** — 원들의 합집합의 정확한 바깥 호 (`scentmap.navOutline`).
+  // 갈 수 있는 바다의 **끝선** — `scentmap.navLoops()` 의 부드러운 고리 (2026-09-18 · 면과 같은 경로).
   //   ⚠ `non-scaling-stroke` — 확대해도 화면에서 같은 굵기다 (배율로 나눌 일이 없다)
   //   ⚠⚠ **밝은 선이다.** v0.48.0 의 먹색 끝선은 바깥이 *종이*였을 때의 값이다 — 바깥이 `--pb-void` 로
   //     다시 어두워졌으므로 또 뒤집힌다 (불변식 14 의 규율 · 미니맵의 IVORY 85% 와 같은 값이 됐다)
@@ -192,7 +206,7 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
   //   위에 얹으면 향 영역의 색을 곱으로 눌러 아홉이 한 회색으로 뭉친다 — 그리고 채도를 빼는 것으로도
   //   못 살린다 : **부표 색은 일부러 등휘도다** (불변식 21 — 선형 휘도 0.33~0.45 로 맞춰 뒀다).
   const gIn = svgEl('g', { mask: 'url(#pbc-in)' });
-  gIn.append(rSea, rFog, gTerr, gTerrLit, pCoast);
+  gIn.append(rSea, rFog, gTerr, gTerrLit, gTerrEdge, pCoast);
   // 쌓는 순서 : 갈 수 없는 바다(한 색) → 갈 수 있는 바다(물빛 · 너울 · 향 영역 · 해안선) → 끝선
   gSea.append(rVoid, gIn, pNavEdge);
 
@@ -233,11 +247,12 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
   };
 
   // ── 지나온 바다의 **벡터 윤곽** (2026-09-13, v0.50.0).
-  //   안개 격자(미니맵이 주인 · 칸 4 월드)를 **마칭 스퀘어**로 잇고 **Chaikin 두 번**으로 둥글린다.
+  //   안개 격자(미니맵이 주인 · 칸 4 월드)를 위 `traceGrid` 로 둥글린다.
   //   ⚠⚠ 예전에는 격자 크기 그대로의 그림을 마스크 안에서 늘리고 흐렸다 — 6배 확대에서 칸이 58px 이 되어
   //     흐린 계단으로 보였다 (사용자 화면). 경계는 벡터라야 확대해도 또렷하다.
-  //   ⚠ 월드 좌표로 구워 둔다 — 집 좌표계(px)는 판 크기를 타므로 옮기는 것은 drawSea 가 한다.
   //   ⚠ 칸 수가 달라질 때만 다시 굽는다 (배가 새 칸을 밝혔을 때). 격자 1만 2천 칸이라 1ms 대다
+  //   ⭐ 2026-09-18 : Chaikin 두 번 → **세 번**. 칸이 4 월드라 두 번으로는 격자 자국이 남았다
+  //     (사용자 : *"흰색으로 영역이 띄어져있는것도 원형이 다 삐뚤고 어색하고"* — 이 윤곽이 곧 그 흰 자국이다)
   const fog = { key: '', loops: [], on: false };
   function buildFog() {
     const fm = fogGrid();
@@ -248,61 +263,13 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
     fog.key = key; fogN = fm.n;
     const C = fm.cols, R = fm.rows, bits = fm.bits;
     const at = (i, j) => (i >= 0 && j >= 0 && i < C && j < R && bits[j * C + i] ? 1 : 0);
-    // 변 중점을 **두 배 정수 좌표**로 적는다 — (2i+1, 2j) 는 칸 중점 (i,j)–(i+1,j) 사이다.
-    //   같은 점이 같은 키가 되므로 이웃 칸의 선분이 저절로 이어진다
-    const key2 = (X, Y) => (X + 4) * 65536 + (Y + 4);
-    const adj = new Map();
-    const seg = (p, q) => {
-      const a = key2(p[0], p[1]), b = key2(q[0], q[1]);
-      if (!adj.has(a)) adj.set(a, []);
-      if (!adj.has(b)) adj.set(b, []);
-      adj.get(a).push(b); adj.get(b).push(a);
-    };
-    // ⚠ 격자 바깥 한 줄까지 돈다 — 가장자리에 닿은 덩어리도 닫힌 고리가 된다
-    for (let j = -1; j < R; j++) for (let i = -1; i < C; i++) {
-      const c = (at(i, j) << 3) | (at(i + 1, j) << 2) | (at(i + 1, j + 1) << 1) | at(i, j + 1);
-      if (c === 0 || c === 15) continue;
-      const T = [2 * i + 1, 2 * j], Rt = [2 * i + 2, 2 * j + 1], B = [2 * i + 1, 2 * j + 2], L = [2 * i, 2 * j + 1];
-      switch (c) {
-        case 1: case 14: seg(L, B); break;
-        case 2: case 13: seg(B, Rt); break;
-        case 3: case 12: seg(L, Rt); break;
-        case 4: case 11: seg(T, Rt); break;
-        case 6: case 9: seg(T, B); break;
-        case 7: case 8: seg(L, T); break;
-        // 대각 안장 — 둘을 **갈라** 둔다 (꼭짓점만 닿은 밝힌 칸은 이어진 바다가 아니다)
-        case 5: seg(T, Rt); seg(L, B); break;
-        case 10: seg(L, T); seg(B, Rt); break;
-      }
-    }
     const toXZ = (kk) => {
       const X = Math.floor(kk / 65536) - 4, Y = (kk % 65536) - 4;
       return [fm.x0 + (X / 2 + 0.5) * fm.cell, fm.z0 + (Y / 2 + 0.5) * fm.cell];
     };
-    const chaikin = (p) => {
-      const o = [];
-      for (let i = 0; i < p.length; i++) {
-        const a = p[i], b = p[(i + 1) % p.length];
-        o.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
-      }
-      return o;
-    };
-    const done = new Set(), loops = [];
-    for (const start of adj.keys()) {
-      if (done.has(start)) continue;
-      const lp = [];
-      let prev = -1, cur = start;
-      for (let guard = 0; guard < 100000; guard++) {
-        done.add(cur); lp.push(cur);
-        const nb = adj.get(cur);
-        const next = nb[0] !== prev ? nb[0] : nb[1];
-        prev = cur; cur = next;
-        if (cur === start || cur === undefined) break;
-      }
-      if (lp.length >= 4) loops.push(chaikin(chaikin(lp.map(toXZ))));
-    }
-    fog.loops = loops;
+    fog.loops = traceGrid(C, R, at, toXZ, 3);
   }
+
 
   // ── 배치. 판 크기가 바뀌거나 지도가 바뀔 때만 돈다
   function layout() {
@@ -375,31 +342,16 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
     // ⚠ 소수 둘째 자리까지 — 6배 확대에서 0.1px 반올림이 0.6px 어긋남이 되어 끝선과 면이 갈라진다
     const f = (v) => v.toFixed(2);
     if (bound) {
-      // ── 갈 수 있는 바다. ⚠ 원 하나 = 반원 둘 (SVG 호 한 번으로는 온 원을 못 긋는다).
-      //   모든 원이 같은 방향이라 nonzero 로 채우면 **합집합**이다
-      const r = map.navReach * s, rs = f(r);
+      // ── 갈 수 있는 바다 — **면과 끝선이 같은 경로다** (2026-09-18 · scentmap.navLoops 주석).
+      //   ⚠ evenodd — 바다 속에 갈 수 없는 웅덩이가 생기면 구멍이 된다 (고리의 감김 방향과 무관하게)
       let d = '';
-      for (const p of map.points) {
-        const cx = hx(p.x), cy = hy(p.z);
-        d += `M${f(cx + r)} ${f(cy)}A${rs} ${rs} 0 1 1 ${f(cx - r)} ${f(cy)}A${rs} ${rs} 0 1 1 ${f(cx + r)} ${f(cy)}Z`;
+      for (const lp of map.navLoops()) {
+        for (let i = 0; i < lp.length; i++) d += (i ? 'L' : 'M') + f(hx(lp[i][0])) + ' ' + f(hy(lp[i][1]));
+        d += 'Z';
       }
       pInFill.setAttribute('d', d);
       pOutFill.setAttribute('d', d);
-      // ── 끝선 — 합집합의 바깥 호만. ⚠ 이웃이 없는 원(0 ~ 2π)은 반원 둘로 긋는다
-      const ol = map.navOutline();
-      const R = ol.r * s, Rs = f(R);
-      let e = '';
-      for (const a of ol.arcs) {
-        const cx = hx(a.x), cy = hy(a.z), span = a.a1 - a.a0;
-        if (span >= Math.PI * 2 - 1e-6) {
-          e += `M${f(cx + R)} ${f(cy)}A${Rs} ${Rs} 0 1 1 ${f(cx - R)} ${f(cy)}A${Rs} ${Rs} 0 1 1 ${f(cx + R)} ${f(cy)}`;
-        } else {
-          // ⚠ sweep 1 = 각이 느는 쪽. 각은 atan2(dz, dx) 이고 z 가 화면 아래라 SVG 의 양의 각과 같은 방향이다
-          e += `M${f(cx + R * Math.cos(a.a0))} ${f(cy + R * Math.sin(a.a0))}`
-            + `A${Rs} ${Rs} 0 ${span > Math.PI ? 1 : 0} 1 ${f(cx + R * Math.cos(a.a1))} ${f(cy + R * Math.sin(a.a1))}`;
-        }
-      }
-      pNavEdge.setAttribute('d', e);
+      pNavEdge.setAttribute('d', d);
       gIn.setAttribute('mask', 'url(#pbc-in)');
     } else {
       gIn.removeAttribute('mask');
@@ -426,11 +378,33 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
   //   ⚠ 정규화 → 월드는 `scentmap.toWorld()` 가 한다 — 변환식을 여기 또 적지 않는다 (불변식 21).
   //   ⚠ 색은 `areasNow()`(= CONFIG.families) 에서 받는다 — 점·부표와 같은 색이라야 향조가 이어진다.
   const terrPaths = [];
+
+  // ── 마우스를 올린 향조 (범례). null 이면 아무것도 안 올렸다
+  let famHover = null;
+  /** 경계선 한 겹을 칠한다. 올렸으면 제 색으로 또렷하게, 아니면 아주 옅게 (gTerrEdge 주석) */
+  function paintEdge(edge, on, amt) {
+    edge.setAttribute('stroke-opacity', ((on ? 0.95 : 0.4) * amt).toFixed(3));
+    edge.setAttribute('stroke-width', on ? 2.4 : 1);
+  }
+  /**
+   * 범례에서 마우스가 오갈 때. **경계선만** 다시 칠한다 — 면 · 이름 · 점은 그대로다.
+   * ⚠ 면을 같이 밝히지 않는다 : 아홉 색이 등휘도라(불변식 21) 한 영역만 밝히면 그 영역이 아니라
+   *   **나머지가 어두워진 것**처럼 보인다. 경계 한 줄이 '어디까지가 이 해역인가' 를 더 잘 말한다.
+   */
+  function setFamHover(key) {
+    if (famHover === key) return;
+    famHover = key;
+    const amt = terrAmt();
+    for (const row of terrPaths) {
+      if (row[2]) paintEdge(row[2], row[2].dataset.key === key, amt);
+    }
+  }
+
   function drawTerr() {
     const amt = terrAmt();
     const on = amt > 0.01 && map && typeof map.toWorld === 'function';
     // ⚠ **세 겹을 다 끈다** — 색 겹(gTerrLit)을 빼먹어 chartTerrain 0 에서 색만 남았다 (실측으로 걸렸다)
-    for (const el of [gTerr, gTerrLit, pCoast]) el.style.display = on ? '' : 'none';
+    for (const el of [gTerr, gTerrLit, gTerrEdge, pCoast]) el.style.display = on ? '' : 'none';
     if (!on) return;
     const fams = Object.fromEntries(areasNow().map((a) => [a.key, a]));
     const toH = (nx, ny) => { const w = map.toWorld(nx, ny); return [(ox + (w[0] - home.x0) * s).toFixed(1), (oy + (w[1] - home.z0) * s).toFixed(1)]; };
@@ -441,11 +415,13 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
     };
     while (terrPaths.length < TERRAIN.families.length) {
       const a = svgEl('path'), b = svgEl('path');
-      gTerr.appendChild(a); gTerrLit.appendChild(b);
-      terrPaths.push([a, b]);
+      // 경계선 — 확대해도 화면에서 같은 굵기다 (끝선과 같은 규약)
+      const c = svgEl('path', { 'vector-effect': 'non-scaling-stroke' });
+      gTerr.appendChild(a); gTerrLit.appendChild(b); gTerrEdge.appendChild(c);
+      terrPaths.push([a, b, c]);
     }
     TERRAIN.families.forEach((f, i) => {
-      const [el, lit] = terrPaths[i], fam = fams[f.key];
+      const [el, lit, edge] = terrPaths[i], fam = fams[f.key];
       const col = (fam && fam.color) || PAL.sage;
       const d = f.rings.map((r) => ringD(r, true)).join('');
       // 어디나 깔리는 겹 — 제 색의 34%. ⚠ 채도를 조금만 뺀다 (많이 빼면 등휘도라 아홉이 같아진다)
@@ -456,6 +432,11 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
       lit.setAttribute('fill', col);
       lit.setAttribute('fill-opacity', (0.30 * amt).toFixed(3));
       lit.setAttribute('d', d);
+      // 경계선 — 제 색. 평소엔 옅고, 마우스를 올린 하나만 또렷해진다 (gTerrEdge 주석 · setFamHover)
+      edge.dataset.key = f.key;
+      edge.setAttribute('stroke', col);
+      edge.setAttribute('d', d);
+      paintEdge(edge, f.key === famHover, amt);
     });
     pCoast.setAttribute('d', TERRAIN.coast.map((r) => ringD(r, false)).join(''));
     pCoast.setAttribute('stroke-opacity', (0.34 * amt).toFixed(3));
@@ -607,8 +588,9 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
         + fam.name + '</span><span style="display:block;margin-top:1px;font-size:10.5px;color:' + rgba(PAL.ink, 0.55) + ';">'
         + ((fam.kw && fam.kw[0]) || '') + '</span></span>'
         + '<span style="flex:none;font-size:10px;color:' + rgba(PAL.ink, 0.45) + ';">' + pts.length + '</span>';
-      row.onmouseenter = () => { row.style.background = rgba(PAL.surface2, 0.9); if (hintEl) hintEl.textContent = fam.name + ' 해역 · 향수 ' + pts.length; };
-      row.onmouseleave = () => { row.style.background = 'none'; idleHint(); };
+      // ⭐ 2026-09-18 : 지도에서 **그 해역의 경계선이 밝아진다** (setFamHover — 사용자 요청)
+      row.onmouseenter = () => { row.style.background = rgba(PAL.surface2, 0.9); if (hintEl) hintEl.textContent = fam.name + ' 해역 · 향수 ' + pts.length; setFamHover(key); };
+      row.onmouseleave = () => { row.style.background = 'none'; idleHint(); setFamHover(null); };
       row.onclick = () => {
         const a = map.familyAnchors[key];
         pick({ key, name: fam.name, x: a.x, z: a.z, custom: true });
@@ -718,6 +700,8 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
     box.style.display = 'none';
     hoverPt = null;
     drag.on = false;
+    // ⚠ 닫을 때 경계선 강조를 거둔다 — 범례를 지우며 onmouseleave 가 안 오는 길이 있다 (다시 열면 켜진 채다)
+    setFamHover(null);
   }
   // 지도가 바뀌었거나 처음 열었으면 다시 배치한다
   function ensure() {
@@ -776,7 +760,7 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
       return `해도 ${open ? '열림' : '닫힘'} · ${W}×${H} · 배율 ${k.toFixed(2)} · 이름 ${named.size}/${map.points.length}`
         + ` (모드 ${nameMode()}${fm ? ' · 밝힌 칸 ' + fm.n : ' · 안개 꺼짐'})`
         + ` · 향 영역 ${TERRAIN.families.length}개 고리 ${TERRAIN.families.reduce((a, f) => a + f.rings.length, 0)} · 해안선 ${TERRAIN.coast.length}`
-        + ` · 끝선 호 ${map.navOutline ? map.navOutline().arcs.length : 0} · 안개 윤곽 ${fog.loops.length}고리 (${fog.key})`;
+        + ` · 바다 고리 ${map.navLoops ? map.navLoops().length : 0} · 안개 윤곽 ${fog.loops.length}고리 (${fog.key})`;
     },
     dispose() {
       window.removeEventListener('keydown', onKey, true);

@@ -17,7 +17,7 @@
 let handlers = null;
 let notice = null;   // 단독일 때 알릴 곳 — main.js 가 ui.warn 을 넘긴다
 
-/** 호스트가 붙을 때 부른다. h = { openDetail, saveToShelf, exploreSimilar } — 없는 것은 기본 동작. null 이면 단독으로 돌아간다 */
+/** 호스트가 붙을 때 부른다. h = { openDetail, saveToShelf, exploreSimilar, search, moveBoat } — 없는 것은 기본 동작. null 이면 단독으로 돌아간다 */
 export function setHost(h) { handlers = h || null; }
 export function setHostNotice(fn) { notice = typeof fn === 'function' ? fn : null; }
 
@@ -58,10 +58,58 @@ export function callHost(name, ref) {
   return undefined;
 }
 
+// ───────── 배가 옮겨 간 자리 (2026-09-18, v0.75.12) — 앱의 향해 일지가 듣는다 ─────────
+// 앱 : `PUT /api/v1/map/exploration/me` (ExplorationController). 향수를 고른 이동은 `perfumeId` 를,
+//   빈 바다로 간 이동은 정규화 좌표 `x`·`y` 를 보낸다 — **서버가 기록할지 정한다** (향수는 늘 남기고,
+//   빈 바다는 향 영역이 바뀐 경우에만). 그래서 엔진은 '어디로 갔는가' 만 말하고 일지를 모른다.
+// ⚠⚠ **좌표는 정규화 공간이다** (CSV 의 map_x·map_y · 백엔드 `perfume_map_points` 와 같은 공간) —
+//   월드를 보내면 서버가 지도 밖으로 읽는다. 옮기는 것은 `scentmap.toNorm()` 하나다 (불변식 21).
+// ⚠ 비로그인이어도 앱이 부른다 — 서버가 옮긴 자리만 돌려주고 기록은 안 남긴다 (컨트롤러 주석).
+//   엔진이 로그인 여부를 알 필요가 없다는 뜻이다.
+// ⚠ **알림만이다** — 호스트가 Promise 를 줘도 입력을 잠그지 않는다 (`exploreSimilar` 와 같은 규약 · 불변식 32).
+export function hostMove(move) {
+  const fn = handlers && handlers.moveBoat;
+  if (typeof fn !== 'function' || !move) return false;
+  fn(move);
+  return true;
+}
+
 /** 검색창 (main.js onSearch). 호스트가 search 를 주면 검색어를 넘기고 true — 엔진은 해역으로 떠나지 않는다. 없으면 false — 예전 그대로 엔진이 찾는다 (goSearch) */
 export function hostSearch(query) {
   const fn = handlers && handlers.search;
   if (typeof fn !== 'function') return false;
   fn(query == null ? '' : String(query));
   return true;
+}
+
+// ───────── 부팅 신호 (2026-09-17, v0.75.0) — 앱의 로딩 커튼이 듣는다 ─────────
+// 엔진이 어디까지 떴는지를 **부모 창**에 알린다 (`postMessage` · 같은 출처). 앱(ScentScene)은 이걸 받아
+// '향해' 커튼의 퍼센트를 민다 (docs/고도화-0917/03-로딩-전환-수중.md §2-4).
+//   html        index.html 인라인 스크립트 (모듈보다 앞이라 이 파일을 못 부른다 — 같은 모양으로 직접 보낸다)
+//   script      main.js 의 import 평가 직후
+//   frame       첫 tick() 다음 줄 — 셰이더가 컴파일되고 첫 장이 그려졌다
+//   boat-bytes  GLB 받는 중 (loaded · total — total 0 이면 크기를 모른다)
+//   boat        GLB 를 붙였다 (ok) · 실패해 종이배로 간다 (ok:false) · 종이배 설정이라 안 받는다 (skipped)
+//   error       스크립트 오류 (where · message)
+// ⚠ setHost 처리기만으로는 모자라다 — 호스트는 `window.PB` 가 열린 **뒤**에 붙는데 html · script · frame 은 그 전이다.
+//   그래서 postMessage 로 보내고, 늦게 붙은 호스트를 위해 마지막 상태를 `bootNow()`(PB.boot) 로도 읽게 한다.
+// ⚠ 시각은 이 문서의 performance.now() 다 — 부모 문서와 시간 원점이 달라 밖으로 내보내지 않는다 (단계가 끝났는지만 본다).
+const boot = { stages: {}, bytes: null, error: null };
+export function bootReport(stage, detail) {
+  const d = detail || {};
+  if (stage === 'boat-bytes') boot.bytes = { loaded: d.loaded || 0, total: d.total || 0 };
+  else if (stage === 'error') boot.error = { where: d.where || '', message: d.message || '' };
+  else if (!boot.stages[stage]) boot.stages[stage] = performance.now();
+  if (window.parent && window.parent !== window) {
+    // file: 로 열면 origin 이 'null' 이라 postMessage 가 던진다 — 단독 화면에서는 알릴 곳도 없으니 조용히 넘어간다
+    try { window.parent.postMessage({ type: 'pb:boot', stage, ...d }, location.origin); } catch (e) { /* 단독 */ }
+  }
+}
+/** 지금까지의 부팅 상태 — 늦게 붙은 호스트가 놓친 단계를 따라잡는다 (main.js 가 PB.boot 로 내보낸다) */
+export function bootNow() {
+  return {
+    stages: { ...boot.stages },
+    bytes: boot.bytes ? { ...boot.bytes } : null,
+    error: boot.error ? { ...boot.error } : null
+  };
 }

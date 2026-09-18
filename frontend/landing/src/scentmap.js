@@ -4,6 +4,8 @@ import { PERFUMES } from './perfumes-data.js';
 import { PARAMS as P } from './params.js';
 // ⚠ m/월드는 손으로 적지 않는다 — waveSpeed 에서 파생된다 (다음-세션 §7 : 손으로 옮긴 축척이 세 세션을 틀렸다)
 import { metersPerWorld, groundSpeed } from './ocean-clock.js';
+// 격자 → 부드러운 닫힌 고리 (navLoops 가 쓴다 · 안개 윤곽도 같은 함수다)
+import { traceGrid } from './util.js';
 
 // ───────── 향 지도 좌표계 (2026-09-11) ─────────
 // 향수 지도 CSV 의 정규화 좌표(map_x·map_y, 0~1)를 **월드 좌표**로 옮긴다.
@@ -159,6 +161,55 @@ export function scentMap({ size = 320, minGap = 3.0, home = 4.5, flipY = 0 } = {
   //   가려진 구간을 합치고 **남은 구간**이 끝선이다. 200×200 = 4만 번 · 반경이 바뀔 때만 다시 굽는다.
   //   ⚠ 각은 월드 XZ 의 `atan2(dz, dx)` 다. 미니맵·해도는 z 를 화면 아래로 두고 균일 배율이라 **그대로** 쓴다
   //   ⚠ 호는 a0 < a1 이고 a1 이 2π 를 넘을 수 있다 (0 을 걸친 호). 가리는 이웃이 없는 원은 0 ~ 2π 다
+  // ⭐⭐⭐ **갈 수 있는 바다의 부드러운 윤곽** (2026-09-18) — 해도와 미니맵이 **둘 다 이것을 그린다.**
+  //   ⚠⚠ 아래 `navOutline`(정확한 바깥 호)은 수학적으로는 맞지만, 반지름이 같은 원 200개라
+  //     만나는 자리마다 오목한 뾰족점이 생겨 테두리가 물결처럼 울퉁불퉁하다 (실측 : 바깥 호 50개).
+  //     사용자 : *"경계가 더 부드럽게 있어야함 지금 구름모양처럼 뭉개뭉개있으면 안될 것같고"*.
+  //     그래서 같은 판정을 격자에 찍고 `traceGrid` 로 둥글린다 — 호 50개가 한 줄 곡선이 된다.
+  //   ⚠⚠ **여기 한 곳에서 만든다** (불변식 21). 해도와 미니맵이 따로 만들면 같은 바다가 두 모양이 된다 —
+  //     실제로 2026-09-18 에 해도만 먼저 고쳐서 그 상태가 됐다.
+  //   ⚠⚠ 그림과 **판정이 칸 하나만큼 어긋난다** — 뾰족점을 메운 만큼 그림이 조금 넓다. 배를 막는 것은
+  //     여전히 `navDist`(main.js)이고 그쪽은 경계 앞 **8 월드**부터 속도를 줄이므로(EDGE_SOFT) 칸 2 월드는
+  //     그 안에 묻힌다. 누르기 판정(해도 · 미니맵의 `hitAt`)도 `inNav` 그대로다.
+  //   ⚠ 격자는 **원을 찍어서** 만든다 — 칸마다 `inNav`(200개 순회)를 부르면 890만 번이다.
+  //   ⚠ Chaikin 두 번 (칸 2 월드로 촘촘해 세 번은 면적만 깎는다 — 안개는 칸 4 월드라 세 번이다).
+  const NAV_CELL = 2;
+  let loopsCache = null;
+  const navLoops = () => {
+    const R = reachOf();
+    const key = R.toFixed(3) + '|' + pts.length + '|' + NAV_CELL;
+    if (loopsCache && loopsCache.key === key) return loopsCache.loops;
+    const pad = R + NAV_CELL * 2;
+    const x0 = bounds.x0 - pad, z0 = bounds.z0 - pad;
+    const C = Math.ceil((bounds.x1 - bounds.x0 + pad * 2) / NAV_CELL);
+    const Rw = Math.ceil((bounds.z1 - bounds.z0 + pad * 2) / NAV_CELL);
+    const bits = new Uint8Array(C * Rw), r2 = R * R;
+    for (const p of pts) {
+      const i0 = Math.max(0, Math.floor((p.x - R - x0) / NAV_CELL));
+      const i1 = Math.min(C - 1, Math.ceil((p.x + R - x0) / NAV_CELL));
+      const j0 = Math.max(0, Math.floor((p.z - R - z0) / NAV_CELL));
+      const j1 = Math.min(Rw - 1, Math.ceil((p.z + R - z0) / NAV_CELL));
+      for (let j = j0; j <= j1; j++) {
+        const dz = z0 + (j + 0.5) * NAV_CELL - p.z;
+        for (let i = i0; i <= i1; i++) {
+          const n = j * C + i;
+          if (bits[n]) continue;
+          const dx = x0 + (i + 0.5) * NAV_CELL - p.x;
+          if (dx * dx + dz * dz <= r2) bits[n] = 1;
+        }
+      }
+    }
+    const at = (i, j) => (i >= 0 && j >= 0 && i < C && j < Rw && bits[j * C + i] ? 1 : 0);
+    const toXZ = (kk) => {
+      const X = Math.floor(kk / 65536) - 4, Y = (kk % 65536) - 4;
+      return [x0 + (X / 2 + 0.5) * NAV_CELL, z0 + (Y / 2 + 0.5) * NAV_CELL];
+    };
+    loopsCache = { key, loops: traceGrid(C, Rw, at, toXZ, 2) };
+    return loopsCache.loops;
+  };
+
+  // ⚠ 아래는 **예전 끝선**이다 — 2026-09-18 부터 해도 · 미니맵은 `navLoops` 를 그린다.
+  //   정확한 호가 필요한 곳이 생기면 그대로 쓸 수 있어 남겨 둔다.
   let outlineCache = null;
   const navOutline = (extra = 0) => {
     const R = reachOf() + extra;
@@ -212,10 +263,17 @@ export function scentMap({ size = 320, minGap = 3.0, home = 4.5, flipY = 0 } = {
     regionAt,
     // ⚠ `navMask`(격자 132×110)는 2026-09-13 에 지웠다 — 미니맵·해도 모두 원들의 합집합과 `navOutline` 으로 그린다
     navRect, inNav, navDist, navOutline,
+    // ⭐ 갈 수 있는 바다의 부드러운 윤곽 — 해도 · 미니맵이 **둘 다** 이것을 그린다 (2026-09-18)
+    navLoops,
     // ⭐ 정규화 좌표(CSV 의 map_x·map_y · 지형 JSON 과 같은 공간) → 월드. **변환식은 이 파일 한 곳이다**
     //   (2026-09-12 저녁 — 해도의 향 영역 폴리곤이 이걸 쓴다. 불변식 21 : 두 곳에 적으면 갈라진다)
     //   ⚠ 여백 때문에 정규화 좌표가 0~1 을 넘을 수 있다 (지형 bounds 는 −0.05~1.05) — 식은 그대로 맞다
     toWorld: (nx, ny) => [(nx - X_MID) * size, -fy * (ny - Y_MID) * size],
+    // ⭐ 그 역 — 월드 → 정규화 (2026-09-18). 앱의 향해 일지가 배가 옮겨 간 자리를 **백엔드와 같은 공간**으로
+    //   보내야 한다 (host.js `hostMove` → `PUT /map/exploration/me`). 역식도 **여기 같이 둔다** —
+    //   부르는 쪽에서 나누기를 적으면 `mapSize` · `mapFlipY` 를 바꿀 때 한쪽만 남는다 (불변식 21).
+    //   ⚠ `fy` 는 ±1 이라 나누기와 곱하기가 같지만, 식의 짝이 보이게 나눠서 적는다
+    toNorm: (x, z) => [x / size + X_MID, -z / (fy * size) + Y_MID],
     get navReach() { return reachOf(); },
     // 지도 사각형 (월드). 미니맵이 이걸 그린다
     bounds,

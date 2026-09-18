@@ -214,6 +214,7 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
       if (cEn) { cEn.textContent = ko && m.name !== m.nameKo ? m.name : ''; cEn.style.display = cEn.textContent ? '' : 'none'; }
       cSub.textContent = (ko ? m.subKo : m.sub) || '—';
       // ⭐ 어코드 상위 3개 (2026-09-17, v0.75.3 — 사용자 : *"어코드로 진행해줘 상위 3개만"*). 지도 향수의 이 줄은 **어코드**다 — 노트는 데이터가 없다 (marks.js).
+      //   이름마다 nowrap 칸에 담고 가운뎃점은 앞 이름에 붙인다 — 줄은 점 뒤에서만 바뀐다 ('화이트 플로럴' 이 둘로 쪼개지지 않는다).
       //   markNameKo 0 이면 영문 이름. 어코드가 없는 부표(예전 더미)는 notes 글자 그대로 · 라벨 NOTES
       // ⭐⭐ 2026-09-18 (v0.75.8) : 어코드마다 **앞에 제 향조 색 동그라미**(accordColor — 같은 향조라도 어코드마다 조금씩 다르다) · 글자는 카드 글자색 · 보통 굵기.
       //   사용자 : *"폰트 굵기 색상 바꾸니까 너무 촌스러워서 차라리 앞에 O 동그라미 아이콘에 색상을 넣어줘"* (v0.75.7 은 글자를 칠하고 굵게 했다).
@@ -253,6 +254,13 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
       const zc = eveCard && m.zone.area && m.zone.area.color ? mixHex(m.zone.area.color, '#FBF3EA', 0.25) : m.zone.color;
       cZone.style.color = zc;
       cDot.style.background = zc;
+      // ⭐ [이 향의 해역으로] 호버 물결은 **향조 색을 안 쓴다** (2026-09-18, v0.75.12 — 사용자 : *"내부는 그냥 흰색"* ·
+      //   *"각 파트에있는 색상은 전부 이렇게 통일"*). v0.75.5 ~ v0.75.6 은 향수마다 --pb-sail-zone* 넷을 넣어
+      //   물결과 그 위 글자색을 해역 색으로 칠했는데, 지금은 흰 파도라 넣을 값이 없다 (index.html #scent-sail).
+      //   ⚠ 예전 값이 인라인에 남아 있을 수 있어 지운다 — 카드는 한 벌이라 향수를 바꿔도 같은 요소를 다시 쓴다.
+      for (const k of ['--pb-sail-zone', '--pb-sail-zone-ink', '--pb-sail-zone-back', '--pb-sail-zone-back-ink']) {
+        cSail.style.removeProperty(k);
+      }
       card.style.visibility = 'visible';
       card.style.opacity = '1';
       card.style.pointerEvents = bub.peek ? 'none' : 'auto';

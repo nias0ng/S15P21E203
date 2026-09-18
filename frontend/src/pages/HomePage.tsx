@@ -4,8 +4,11 @@ import { useNavigate } from 'react-router'
 
 import {
   MapSearchModal,
+  SceneBootCurtain,
   SceneSearchBar,
   ScentScene,
+  useExplorationMove,
+  useSceneBoot,
   VoyageLog,
   voyageLogQuery,
   type ScenePerfumeRef,
@@ -86,6 +89,14 @@ export default function HomePage() {
   const setSky = useSceneSkyStore((state) => state.setSky)
   useEffect(() => () => setSky('dark'), [setSky])
 
+  // 로딩 커튼 — 엔진의 부팅 신호(ScentScene onBoot)를 모아 커튼의 퍼센트를 밉니다.
+  // 커튼이 걷히면(finish) 내립니다. 화면을 떠났다 돌아오면 엔진이 처음부터 다시 뜨므로 커튼도 다시 섭니다
+  const boot = useSceneBoot()
+
+  // 향해 일지(MAP-24) — 배가 든 해역이 바뀌거나 향수를 고르면 서버에 남기고 일지를 다시 읽습니다.
+  // 기록할지는 서버가 정합니다 (향수는 늘 · 빈 바다는 향 영역이 바뀐 경우만)
+  const reportMove = useExplorationMove()
+
   /** 3D 입력 잠금을 풉니다. 어떤 길로 끝나든 반드시 한 번은 불러야 합니다 */
   const release = () => {
     releaseSave.current?.()
@@ -103,7 +114,10 @@ export default function HomePage() {
      * 바탕의 남색은 3D 가 뜨기 전 자리입니다. 비워 두면 종이(ivory) 위에 남색 유리판이 앉아
      * 헤더의 상아색 글자가 흐려집니다.
      */
-    <div className="bg-surface-night relative h-dvh min-h-120">
+    <div
+      className="bg-surface-night relative h-dvh min-h-120"
+      aria-busy={!boot.done}
+    >
       <h1 className="sr-only">향 지도</h1>
 
       <ScentScene
@@ -111,6 +125,8 @@ export default function HomePage() {
         // 유리판 헤더(GlobalHeader 의 h-22.5 = 90px)가 3D 위를 가리는 높이 — 엔진이 검색창 · 해도를 그 아래로 내립니다
         coveredTop={90}
         onNightChange={(night) => setSky(night ? 'dark' : 'light')}
+        onBoot={boot.report}
+        onMove={reportMove}
         onOpenDetail={(perfume) => {
           // ⚠️ 엔진 데이터에는 아직 DB perfumeId 가 없습니다(fragrantica_id 뿐). 없으면 이름으로 검색 결과(A09)에 보냅니다
           navigate(
@@ -252,6 +268,11 @@ export default function HomePage() {
       />
 
       <Toast {...toastProps} />
+
+      {/* 흰 커튼 · 짙은 점에서 터져 번지는 향 원 셋 · 굴러가는 퍼센트 — 헤더 · 토스트 위에 서고, 100% 뒤 걷히며 바다가 드러납니다 */}
+      {!boot.done && (
+        <SceneBootCurtain getState={boot.getState} onDone={boot.finish} />
+      )}
     </div>
   )
 }
