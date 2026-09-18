@@ -126,13 +126,18 @@ export function ShelfRegisterModal({
             </Button>
             <Button
               /*
-               * **꺼 두지 않고 눌리게 둡니다.** 분류와 적합도가 필수인데 단추를
-               * 꺼 버리면 왜 안 눌리는지 알려 줄 자리가 없습니다 — 눌러 보게 하고
-               * 모자란 칸 옆에 [필수] 를 띄웁니다.
+               * **꺼 두지 않고 눌리게 둡니다.** 분류가 필수인데 단추를 꺼 버리면
+               * 왜 안 눌리는지 알려 줄 자리가 없습니다 — 눌러 보게 하고 모자란
+               * 칸 옆에 [필수] 를 띄웁니다.
+               *
+               * 적합도와 메모는 선택입니다. 아직 맡아 보지 않은 향수를 [보유 희망]
+               * 으로 담는 것이 이 모달의 정상적인 쓰임인데, 그때 적합도는 답할 수
+               * 없는 질문입니다. 서버도 `POST /users/me/shelf-items` 로는 분류만
+               * 받고, 적합도는 따로 보내거나 아예 안 보낼 수 있습니다.
                */
               onClick={() => {
                 if (!picked) return
-                if (category === null || rating === null) {
+                if (category === null) {
                   setShowMissing(true)
                   return
                 }
@@ -262,7 +267,6 @@ export function ShelfRegisterModal({
             memo={memo}
             onMemoChange={setMemo}
             categoryMissing={showMissing && category === null}
-            ratingMissing={showMissing && rating === null}
           />
         </div>
       )}
