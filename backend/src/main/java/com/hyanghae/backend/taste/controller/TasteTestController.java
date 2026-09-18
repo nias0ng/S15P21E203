@@ -6,6 +6,7 @@ import com.hyanghae.backend.taste.service.TasteTestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -53,7 +54,7 @@ public class TasteTestController {
     @ApiResponse(responseCode = "409", description = "이미 취향 테스트를 마쳤습니다.")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public TasteTestResponse complete(@RequestBody TasteTestCreateRequest request) {
+    public TasteTestResponse complete(@Valid @RequestBody TasteTestCreateRequest request) {
         return tasteTestService.complete(request);
     }
 
