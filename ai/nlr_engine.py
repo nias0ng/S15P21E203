@@ -68,6 +68,9 @@ DEFAULT_LEXICON = _DATA_DIR / "domain_lexicon_v1_15.csv"
 DEFAULT_ACCORDS = _DATA_DIR / "accord_dictionary.csv"
 DEFAULT_NOTE_BRIDGE = _DATA_DIR / "note_accord_bridge.csv"
 
+# 사전 파일 이름에서 버전을 뽑는 규칙. `domain_lexicon_v1_15.csv` -> `v1_15`.
+_LEXICON_VERSION = re.compile(r"_(v\d+(?:_\d+)*)$")
+
 # [측정] 노트 브리지 문턱. 측정 기록 18·19번.
 #
 # ①단계가 `scent_preference` 에 accord 이름이 아니라 **노트(원료) 이름** 을 넣는 일이
@@ -192,8 +195,32 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
         "lexicon_by_expression": by_expression,
         "lexicon_surface": surface,
         "lexicon_entry_id": entry_ids,
+        "lexicon_version": lexicon_version(lexicon_csv),
         "n_perfumes": len(perf),
     }
+
+
+def lexicon_version(path=None):
+    """그 사전 파일의 버전. str 또는 None.
+
+    path : str | Path | None   기본 DEFAULT_LEXICON
+
+    **파일 이름에서 뽑는다.** `domain_lexicon_v1_15.csv` -> `'v1_15'`.
+
+    **왜 파일 이름인가** — 이 값은 응답으로 나가 `nlr_recommendations.lexicon_version`
+    에 쌓인다. 목적이 *"반년 뒤에 이 기록이 어느 사전에서 나왔는지 해석하는 것"* 이라
+    **사람이 읽을 수 있어야 한다.** 파일 내용 해시를 쓰면 정확하지만 읽을 수 없다.
+    DB 칸도 `VARCHAR(20)` 이고 `'v1_14'` 를 예시로 적어 두었다.
+
+    **⚠ 한계 — 파일을 복사해 이름을 바꾸면 틀린 값이 나간다.** 이름 규칙에 안 맞으면
+    `None` 을 돌려주므로 *"모른다"* 가 `NULL` 로 남는다. 틀린 값보다 낫다 — 없으면
+    모른다는 것을 알지만 틀리면 아는 줄 착각한다.
+
+    측정 스크립트가 임시 파일로 사전을 실험할 때가 여기 걸린다. 그때는 `None` 이 맞다.
+    """
+    name = Path(path).stem if path else DEFAULT_LEXICON.stem
+    found = _LEXICON_VERSION.search(name)
+    return found.group(1) if found else None
 
 
 def _load_note_bridge(path, aidx, p_min, lift_min):
