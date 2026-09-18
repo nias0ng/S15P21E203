@@ -39,7 +39,12 @@ export interface PerfumeDetail {
   name: string
   nameKo: string | null
   gender: GenderFilter | null
-  description: string | null
+  /*
+   * ⚠️ **브랜드 공식 향 설명(`description`)은 일부러 빼 두었습니다.** 응답에는 아직
+   * 들어 있지만 값의 신뢰성 문제로 걷어내기로 했고, 화면 어디에서도 쓰지 않습니다
+   * (향수 상세 ④ 유리판은 이제 AI 후기 요약만 씁니다). 타입에 남겨 두면 다음 사람이
+   * "있으니 쓰면 되겠다" 고 읽습니다. 다시 살릴 일이 생기면 그때 되돌리세요.
+   */
   concentration: string | null
   /** 검색과 달리 객체입니다 */
   brand: { brandId: number; name: string } | null

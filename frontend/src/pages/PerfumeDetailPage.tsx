@@ -176,7 +176,6 @@ export default function PerfumeDetailPage() {
       <PerfumeReviewSummary
         summary={summary.data?.summary ?? null}
         sourceReviewCount={summary.data?.sourceReviewCount ?? null}
-        description={data.description}
         isPending={summary.isPending}
       />
 
