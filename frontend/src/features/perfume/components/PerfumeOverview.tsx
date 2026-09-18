@@ -6,8 +6,21 @@ import type { PerfumeDetail } from '../types'
 
 type Props = {
   perfume: PerfumeDetail
-  /** [진열대 저장] — 화면이 진열대 모달을 엽니다 */
-  onSaveToShelf: () => void
+  /**
+   * 이 향수가 이미 내 진열대에 있는지. 단추가 [진열대 저장] ↔ [진열대 해제] 로 바뀝니다.
+   *
+   * 비로그인이면 알 길이 없으므로 늘 false 입니다 — 그때 누르면 로그인 유도가 뜹니다.
+   */
+  inShelf: boolean
+  /**
+   * 진열대에 있는지 **아직 모르는 동안**(내 진열대를 받는 중).
+   *
+   * 이때는 단추를 잠급니다. 모르는 채로 [저장] 이라고 적어 두면 이미 담은 향수인데
+   * 담기 모달이 열리고, 분류까지 고른 뒤 409 로 튕겨 사용자가 한 일이 버려집니다.
+   */
+  shelfPending?: boolean
+  /** 위 단추를 눌렀을 때. 담을지 뺄지는 화면이 정합니다 */
+  onShelfAction: () => void
   /**
    * 사진 오른쪽, 이름 아래 남는 자리에 놓을 것.
    *
@@ -30,7 +43,13 @@ type Props = {
  * 판은 그 아래 내용 구역부터 시작합니다 — 다만 사진 오른쪽에 남는 자리에는
  * `aside` 로 판 하나가 들어옵니다.
  */
-export function PerfumeOverview({ perfume, onSaveToShelf, aside }: Props) {
+export function PerfumeOverview({
+  perfume,
+  inShelf,
+  shelfPending = false,
+  onShelfAction,
+  aside,
+}: Props) {
   /*
     영문 이름은 한국어 이름이 있을 때만 따로 적습니다. 없으면 아래 제목이 이미
     영문이라, 위에 또 적으면 같은 글자가 두 줄로 늘어섭니다.
@@ -93,7 +112,21 @@ export function PerfumeOverview({ perfume, onSaveToShelf, aside }: Props) {
             </div>
           )}
 
-          <Button onClick={onSaveToShelf}>진열대 저장</Button>
+          {/*
+            담긴 향수는 같은 자리에서 [진열대 해제] 가 됩니다. [빼기] 단추를 옆에
+            따로 두지 않는 이유: 둘이 나란히 있으면 지금 담겨 있는지를 단추만 보고
+            알 수 없고, 담은 적 없는 향수에도 뺄 수 없는 단추가 하나 붙습니다.
+
+            해제는 되돌릴 수 없어(메모 · 적합도가 함께 지워집니다) `outline` 으로 한
+            단 내립니다. 담기는 이 화면이 권하는 일이라 primary 그대로입니다.
+          */}
+          <Button
+            variant={inShelf ? 'outline' : 'primary'}
+            isLoading={shelfPending}
+            onClick={onShelfAction}
+          >
+            {inShelf ? '진열대 해제' : '진열대 저장'}
+          </Button>
         </div>
 
         {aside}

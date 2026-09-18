@@ -24,6 +24,7 @@ import {
 import {
   ShelfRegisterModal,
   ShelfRegisterPartialError,
+  shelfItemsQuery,
   useShelfActions,
 } from '@/features/shelf'
 import { isApiError } from '@/shared/api/http'
@@ -32,6 +33,7 @@ import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
 import { useIsLoggedIn } from '@/shared/store/authStore'
 import { Button } from '@/shared/ui/Button'
+import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
@@ -72,6 +74,7 @@ export default function PerfumeDetailPage() {
   usePerfumeViewLog(numericId, source, fromPerfumeId)
 
   const [shelfOpen, setShelfOpen] = useState(false)
+  const [removeOpen, setRemoveOpen] = useState(false)
   const [loginOpen, setLoginOpen] = useState(false)
   const isLoggedIn = useIsLoggedIn()
 
@@ -83,6 +86,25 @@ export default function PerfumeDetailPage() {
    * 하나로 끝나고, 나눠 보낼 때 생기는 부분 실패가 없습니다.
    */
   const actions = useShelfActions()
+
+  /*
+   * 이 향수가 이미 내 진열대에 있는지 — 단추가 [진열대 저장] ↔ [진열대 해제] 로
+   * 갈립니다. 빼려면 `shelfItemId` 가 필요한데 그 번호도 이 목록에만 있습니다.
+   *
+   * ⚠️ **내 진열대를 통째로 받아 찾습니다.** 같은 화면의 [후기 쓰기] 는 상세 응답의
+   * `myReviewId` 로 한 번에 아는데, 진열대에는 그런 값이 없습니다
+   * (`GET /perfumes/{id}` 에도, 따로 물어볼 엔드포인트에도). `myShelfItemId` 를
+   * 내려달라고 BE 에 요청해 둔 값이고, 오면 이 쿼리는 지우면 됩니다.
+   *
+   * 값이 무거워 보이지만 캐시(`shelfKeys.items()`)를 진열대 화면과 함께 씁니다 —
+   * 담기 · 빼기가 그 키를 무효화하므로 단추가 저절로 따라 바뀝니다.
+   *
+   * 비로그인이면 부르지 않습니다. 401 이기도 하고, 누구의 진열대도 아닙니다.
+   */
+  const myShelf = useQuery({ ...shelfItemsQuery(), enabled: isLoggedIn })
+  const shelfItem =
+    myShelf.data?.find((item) => item.perfumeId === numericId) ?? null
+
   const [reviewPage, setReviewPage] = useState(0)
   const { showToast, toastProps } = useToast()
 
@@ -147,13 +169,27 @@ export default function PerfumeDetailPage() {
 
       <PerfumeOverview
         perfume={data}
+        inShelf={shelfItem !== null}
+        // 진열대를 받는 동안에는 [저장] 인지 [해제] 인지 모릅니다
+        shelfPending={isLoggedIn && myShelf.isPending}
         /*
           비로그인이면 저장 모달 대신 로그인 유도 모달을 띄웁니다 (공통 규칙 C01).
           그냥 열어 두면 분류까지 고른 뒤 401 로 튕겨, 사용자가 한 일이 버려집니다.
+
+          이미 담긴 향수는 빼는 동작이고, 되돌릴 수 없어 확인을 한 번 받습니다 —
+          진열대 화면(A13)의 [빼기] 와 같은 규칙입니다.
         */
-        onSaveToShelf={() =>
-          isLoggedIn ? setShelfOpen(true) : setLoginOpen(true)
-        }
+        onShelfAction={() => {
+          if (!isLoggedIn) {
+            setLoginOpen(true)
+            return
+          }
+          if (shelfItem) {
+            setRemoveOpen(true)
+            return
+          }
+          setShelfOpen(true)
+        }}
         /*
           향조는 개요 **안쪽** 오른쪽 아래에 들어갑니다. 사진이 400 인데 이름과
           단추는 그 절반도 안 써서 그 자리가 크게 비어 있었고, 향조는 줄 몇 개뿐인
@@ -244,6 +280,35 @@ export default function PerfumeDetailPage() {
                     : '진열대에 저장하지 못했습니다.',
               ),
           })
+        }}
+      />
+      {/*
+        진열대에서 빼기 (SHF-04). 문구는 진열대 화면의 [빼기] 와 같은 틀이되,
+        **무엇이 함께 지워지는지**를 적습니다 — 이 화면에는 진열대 카드가 없어서
+        메모 · 적합도가 거기 딸려 있다는 것이 보이지 않습니다.
+      */}
+      <ConfirmDialog
+        open={removeOpen}
+        onClose={() => setRemoveOpen(false)}
+        title={`'${data.nameKo ?? data.name}' 를 진열대에서 뺄까요?`}
+        description="적어 둔 메모와 취향 적합도가 함께 지워집니다. 되돌릴 수 없습니다."
+        confirmLabel="빼기"
+        isLoading={actions.remove.isPending}
+        onConfirm={() => {
+          if (!shelfItem) return
+          actions.remove.mutate(
+            { shelfItemId: shelfItem.shelfItemId },
+            {
+              onSuccess: () => {
+                setRemoveOpen(false)
+                showToast('진열대에서 뺐습니다')
+              },
+              onError: () => {
+                setRemoveOpen(false)
+                showToast('진열대에서 빼지 못했습니다')
+              },
+            },
+          )
         }}
       />
       <LoginRequiredDialog
