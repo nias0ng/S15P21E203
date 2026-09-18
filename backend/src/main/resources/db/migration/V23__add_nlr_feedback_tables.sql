@@ -88,6 +88,11 @@ CREATE INDEX idx_nlr_recommendations_status    ON nlr_recommendations (status);
 -- user_perfume_views 에는 그 값이 없습니다.
 --
 -- clicked_at 이 NULL 이면 안 누른 것입니다. 행 자체는 추천이 나간 순간 들어갑니다.
+--
+-- rank 의 1~5 는 RecommendationProperties.topK 의 @Max(5) 와 같은 값입니다. 한쪽만
+-- 올리면 안 됩니다. CHECK 만 두고 topK 를 올리면 여섯 번째 INSERT 가 걸려 그 요청의
+-- 기록이 통째로 롤백되는데, 기록 실패는 추천을 막지 않으므로 아무도 모르게 집계만
+-- 빕니다. 요구사항 NLR-01 이 결과를 "3~5개" 로 정한 값이라 화면 설계와 함께 움직입니다.
 -- ---------------------------------------------------------------------------
 CREATE TABLE nlr_recommendation_items (
     recommendation_id  BIGINT   NOT NULL,

@@ -16,14 +16,20 @@ import org.springframework.validation.annotation.Validated;
  * <p>기본값을 yaml 이 아니라 여기에 둡니다. 프로필이 세 개라 yaml 에 두면 같은 값을 세 곳에
  * 적게 되고, 한 곳을 빼먹으면 그 프로필만 다르게 동작합니다. yaml 은 바꿀 값만 적습니다.
  *
- * @param topK      한 번에 받을 향수 수입니다. AI 서버가 1~20 만 받습니다.
+ * @param topK      한 번에 받을 향수 수입니다. <b>5 를 넘길 수 없습니다.</b> AI 서버는 1~20 을
+ *                  받지만 우리 쪽 상한은 5 입니다. 요구사항 NLR-01 이 결과를 "3~5개" 로
+ *                  정했고, {@code nlr_recommendation_items} 의
+ *                  {@code ck_nlr_items_rank} 도 1~5 만 받습니다. 여기를 6 으로 올리면
+ *                  여섯 번째 결과의 INSERT 가 CHECK 에 걸려 그 요청의 기록이 통째로
+ *                  사라집니다 — 추천은 정상으로 보이는데 집계만 비는 상태가 됩니다.
+ *                  5 를 넘기려면 화면 설계·CHECK·이 값을 함께 바꿔야 합니다.
  * @param ai        AI 서버 접속 정보입니다.
  * @param rateLimit 호출량 제한입니다.
  */
 @Validated
 @ConfigurationProperties(prefix = "hyanghae.recommendation")
 public record RecommendationProperties(
-        @DefaultValue("5") @Min(1) @Max(20) int topK,
+        @DefaultValue("5") @Min(1) @Max(5) int topK,
         @DefaultValue @Valid @NotNull Ai ai,
         @DefaultValue @Valid @NotNull RateLimit rateLimit
 ) {
