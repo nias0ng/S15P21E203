@@ -9,8 +9,7 @@ import { PageFallback } from '@/shared/ui/PageFallback'
 
 // 라우트 단위 코드 스플리팅: 첫 진입 번들을 가볍게 유지합니다.
 // 오른쪽 주석은 와이어프레임 화면 번호 · 담당 에픽입니다.
-const HomePage = lazy(() => import('@/pages/HomePage')) // A01  · 109
-const RecommendPage = lazy(() => import('@/pages/RecommendPage')) // A06  · 109
+const HomePage = lazy(() => import('@/pages/HomePage')) // A01  · 109 (A06 자연어 추천은 이 화면의 모달입니다)
 
 const PerfumeListPage = lazy(() => import('@/pages/PerfumeListPage')) // A33  · 110
 const PerfumeSearchPage = lazy(() => import('@/pages/PerfumeSearchPage')) // A09  · 110
@@ -51,9 +50,10 @@ const withSuspense = (element: React.ReactNode) => (
 const FULL = { width: 'full' } satisfies { width: PageWidth }
 const TEXT = { width: 'text' } satisfies { width: PageWidth }
 /**
- * 어두운 방 + 유리판 화면 (A33 향수 목록 · A09 검색 결과 · A34 브랜드 · A35 · A36 노트).
+ * 어두운 방 + 유리판 화면
+ * (A33 향수 목록 · A09 검색 결과 · A10 향수 상세 · A34 브랜드 · A35 · A36 노트).
  *
- * 폭은 적지 않습니다 — 넷 다 기본 wide(1440)입니다. 생김새는
+ * 폭은 적지 않습니다 — 모두 기본 wide(1440)입니다. 생김새는
  * styles/scent-display.css, 켜는 자리는 app/layouts/RootLayout 의 `useIsNight`.
  */
 const NIGHT = { night: true } satisfies { night: boolean }
@@ -67,11 +67,6 @@ export const router = createBrowserRouter([
     errorElement: <ErrorPage />,
     children: [
       { index: true, element: withSuspense(<HomePage />), handle: BLEED },
-      {
-        path: ROUTES.RECOMMEND,
-        element: withSuspense(<RecommendPage />),
-        handle: FULL,
-      },
 
       {
         path: ROUTES.PERFUMES,
@@ -86,6 +81,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.PERFUME_DETAIL,
         element: withSuspense(<PerfumeDetailPage />),
+        handle: NIGHT,
       },
       {
         path: ROUTES.REVIEW_DETAIL,
@@ -101,6 +97,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.BRAND_DETAIL,
         element: withSuspense(<BrandDetailPage />),
+        handle: NIGHT,
       },
       {
         path: ROUTES.NOTES,
@@ -148,6 +145,12 @@ export const router = createBrowserRouter([
       },
       {
         path: ROUTES.POST_WRITE,
+        element: withSuspense(<PostWritePage />),
+        handle: TEXT,
+      },
+      {
+        // 수정도 같은 화면입니다 — 주소로 모드를 가릅니다
+        path: ROUTES.POST_EDIT,
         element: withSuspense(<PostWritePage />),
         handle: TEXT,
       },

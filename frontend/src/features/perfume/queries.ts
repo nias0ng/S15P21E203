@@ -3,10 +3,12 @@ import { queryOptions } from '@tanstack/react-query'
 import {
   getPerfumeDetail,
   getPerfumeNotes,
-  getPerfumeReviews,
+  getPerfumeReviewKeywords,
   getPerfumeReviewStatistics,
   getPerfumeReviewSummary,
+  getPerfumeReviews,
   getPerfumeSeasonStatistics,
+  getRelatedPerfumes,
   getReviewDetail,
   searchPerfumes,
 } from './api'
@@ -37,6 +39,10 @@ export const perfumeKeys = {
     [...perfumeKeys.detail(perfumeId), 'review-statistics'] as const,
   reviews: (perfumeId: number, params: { page?: number; size?: number }) =>
     [...perfumeKeys.detail(perfumeId), 'reviews', params] as const,
+  related: (perfumeId: number) =>
+    [...perfumeKeys.detail(perfumeId), 'related'] as const,
+  reviewKeywords: (perfumeId: number) =>
+    [...perfumeKeys.detail(perfumeId), 'review-keywords'] as const,
 }
 
 /** 후기는 향수에 매달려 있지 않고 번호로 바로 열립니다(A12) */
@@ -100,4 +106,22 @@ export const reviewDetailQuery = (reviewId: number) =>
     queryFn: () => getReviewDetail(reviewId),
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+  })
+
+/**
+ * 비슷한 향수. 적재할 때 정해 둔 관계라 자주 바뀌지 않습니다.
+ *
+ * 향 지도 밖 향수는 빈 배열입니다 — 오류가 아니라 "관계가 없다" 입니다.
+ */
+export const relatedPerfumesQuery = (perfumeId: number) =>
+  queryOptions({
+    queryKey: perfumeKeys.related(perfumeId),
+    queryFn: () => getRelatedPerfumes(perfumeId),
+  })
+
+/** 후기에서 뽑힌 향 표현. 적재 전이라 지금은 모두 빈 배열입니다 */
+export const perfumeReviewKeywordsQuery = (perfumeId: number) =>
+  queryOptions({
+    queryKey: perfumeKeys.reviewKeywords(perfumeId),
+    queryFn: () => getPerfumeReviewKeywords(perfumeId),
   })

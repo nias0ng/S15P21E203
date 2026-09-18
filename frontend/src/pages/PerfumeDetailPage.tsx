@@ -10,6 +10,10 @@ import {
   PerfumeReviewList,
   perfumeReviewsQuery,
   perfumeReviewStatisticsQuery,
+  PerfumeRelated,
+  relatedPerfumesQuery,
+  PerfumeReviewKeywords,
+  perfumeReviewKeywordsQuery,
   PerfumeReviewSummary,
   perfumeReviewSummaryQuery,
   PerfumeSeasonRatings,
@@ -20,15 +24,18 @@ import {
 import {
   ShelfRegisterModal,
   ShelfRegisterPartialError,
+  shelfItemsQuery,
   useShelfActions,
 } from '@/features/shelf'
 import { isApiError } from '@/shared/api/http'
 import { readPerfumeViewState } from '@/shared/config/perfumeViewSource'
-import { toPerfumeDetail } from '@/shared/config/routes'
+import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
 import { useIsLoggedIn } from '@/shared/store/authStore'
 import { Button } from '@/shared/ui/Button'
+import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { EmptyState } from '@/shared/ui/EmptyState'
+import { LinkButton } from '@/shared/ui/LinkButton'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { PageFallback } from '@/shared/ui/PageFallback'
 import { Toast } from '@/shared/ui/Toast'
@@ -40,8 +47,14 @@ const REVIEW_PAGE_SIZE = 10
  * 향수 상세 (와이어프레임 A10 — DTL-01 · 02 · 03 · 10 · 12 · 15)
  *
  * 다섯 개 구역(개요 · 향조 · 계절 · AI 요약 · 후기)을 조립합니다. 마크업은
- * features/perfume/components/ 안에 있습니다.
+ * features/perfume/components/ 안에 있습니다. 향조는 개요 오른쪽에 남는 자리로
+ * 들어가므로 개요의 `aside` 로 넘깁니다 — 나머지 셋만 세로로 쌓입니다.
  * 계절 등록(DTL-16)은 이 화면이 아니라 후기 작성 화면(A24a)에 있습니다.
+ *
+ * 향수 목록(A33) · 브랜드(A34) · 노트(A35 · A36)와 같은 **어두운 방 + 유리판**
+ * 구성입니다. 어둠은 라우트의 `handle.night` 이 켜고(app/router), 판은 아래 네
+ * 구역이 각자 `GLASS_PANEL` 을 답니다. 개요만 판 없이 어둠에 바로 놓입니다 —
+ * 판을 다섯 장 쌓으면 화면이 판으로만 채워져 층이 안 읽힙니다.
  *
  * **구역마다 엔드포인트가 따로입니다.** 기본 정보가 없으면 화면 자체가 없는 것이라
  * 그것만 전체 실패로 다루고, 나머지 넷은 각자 비어 있는 모습으로 자기 자리를
@@ -61,6 +74,7 @@ export default function PerfumeDetailPage() {
   usePerfumeViewLog(numericId, source, fromPerfumeId)
 
   const [shelfOpen, setShelfOpen] = useState(false)
+  const [removeOpen, setRemoveOpen] = useState(false)
   const [loginOpen, setLoginOpen] = useState(false)
   const isLoggedIn = useIsLoggedIn()
 
@@ -72,6 +86,25 @@ export default function PerfumeDetailPage() {
    * 하나로 끝나고, 나눠 보낼 때 생기는 부분 실패가 없습니다.
    */
   const actions = useShelfActions()
+
+  /*
+   * 이 향수가 이미 내 진열대에 있는지 — 단추가 [진열대 저장] ↔ [진열대 해제] 로
+   * 갈립니다. 빼려면 `shelfItemId` 가 필요한데 그 번호도 이 목록에만 있습니다.
+   *
+   * ⚠️ **내 진열대를 통째로 받아 찾습니다.** 같은 화면의 [후기 쓰기] 는 상세 응답의
+   * `myReviewId` 로 한 번에 아는데, 진열대에는 그런 값이 없습니다
+   * (`GET /perfumes/{id}` 에도, 따로 물어볼 엔드포인트에도). `myShelfItemId` 를
+   * 내려달라고 BE 에 요청해 둔 값이고, 오면 이 쿼리는 지우면 됩니다.
+   *
+   * 값이 무거워 보이지만 캐시(`shelfKeys.items()`)를 진열대 화면과 함께 씁니다 —
+   * 담기 · 빼기가 그 키를 무효화하므로 단추가 저절로 따라 바뀝니다.
+   *
+   * 비로그인이면 부르지 않습니다. 401 이기도 하고, 누구의 진열대도 아닙니다.
+   */
+  const myShelf = useQuery({ ...shelfItemsQuery(), enabled: isLoggedIn })
+  const shelfItem =
+    myShelf.data?.find((item) => item.perfumeId === numericId) ?? null
+
   const [reviewPage, setReviewPage] = useState(0)
   const { showToast, toastProps } = useToast()
 
@@ -85,6 +118,12 @@ export default function PerfumeDetailPage() {
     ...perfumeSeasonStatisticsQuery(numericId),
     enabled,
   })
+  const related = useQuery({ ...relatedPerfumesQuery(numericId), enabled })
+  const reviewKeywords = useQuery({
+    ...perfumeReviewKeywordsQuery(numericId),
+    enabled,
+  })
+
   const summary = useQuery({
     ...perfumeReviewSummaryQuery(numericId),
     enabled,
@@ -117,27 +156,52 @@ export default function PerfumeDetailPage() {
   }
 
   return (
-    /*
-      구역마다 종이보다 밝은 판을 깔고 사이를 여백으로 띄웁니다. 예전에는 다섯
-      구역이 테두리 상자 하나 안에 가로줄로 나뉘어 있었는데(divide-y), 바탕이
-      종이가 되면서 상자 안팎이 같은 색이 되어 구분이 사라졌습니다.
-      판 모양은 features/perfume/components/detailSection.ts 에 있습니다.
-    */
-    <div className="space-y-4">
+    <div className="space-y-6.25">
+      {/*
+        노트 상세(A36) · 브랜드 상세와 같은 자리 · 같은 모양입니다. 들어온
+        길(`perfumeViewSource`)로 되돌리지 않고 향수 목록으로 고정합니다 — 그 두
+        화면도 고정 목적지를 쓰고 있어, 여기만 다르면 상세 화면마다 뒤로 가기가
+        서로 다른 뜻이 됩니다.
+      */}
+      <LinkButton to={ROUTES.PERFUMES} variant="outline" size="sm">
+        ← 향수 목록
+      </LinkButton>
+
       <PerfumeOverview
         perfume={data}
+        inShelf={shelfItem !== null}
+        // 진열대를 받는 동안에는 [저장] 인지 [해제] 인지 모릅니다
+        shelfPending={isLoggedIn && myShelf.isPending}
         /*
           비로그인이면 저장 모달 대신 로그인 유도 모달을 띄웁니다 (공통 규칙 C01).
           그냥 열어 두면 분류까지 고른 뒤 401 로 튕겨, 사용자가 한 일이 버려집니다.
-        */
-        onSaveToShelf={() =>
-          isLoggedIn ? setShelfOpen(true) : setLoginOpen(true)
-        }
-      />
 
-      <PerfumeNotes
-        notes={notes.data?.notes ?? []}
-        isPending={notes.isPending}
+          이미 담긴 향수는 빼는 동작이고, 되돌릴 수 없어 확인을 한 번 받습니다 —
+          진열대 화면(A13)의 [빼기] 와 같은 규칙입니다.
+        */
+        onShelfAction={() => {
+          if (!isLoggedIn) {
+            setLoginOpen(true)
+            return
+          }
+          if (shelfItem) {
+            setRemoveOpen(true)
+            return
+          }
+          setShelfOpen(true)
+        }}
+        /*
+          향조는 개요 **안쪽** 오른쪽 아래에 들어갑니다. 사진이 400 인데 이름과
+          단추는 그 절반도 안 써서 그 자리가 크게 비어 있었고, 향조는 줄 몇 개뿐인
+          짧은 구역이라 따로 한 줄을 차지하면 판이 납작하게 눌립니다.
+        */
+        aside={
+          <PerfumeNotes
+            notes={notes.data?.notes ?? []}
+            isPending={notes.isPending}
+            className="flex-1"
+          />
+        }
       />
 
       <PerfumeSeasonRatings
@@ -148,9 +212,15 @@ export default function PerfumeDetailPage() {
       <PerfumeReviewSummary
         summary={summary.data?.summary ?? null}
         sourceReviewCount={summary.data?.sourceReviewCount ?? null}
-        description={data.description}
         isPending={summary.isPending}
       />
+
+      {/*
+        후기 키워드는 후기 목록 바로 위에 둡니다 — 같은 후기를 요약한 값이라
+        떨어뜨리면 무엇을 센 숫자인지 알기 어렵습니다. 값이 없으면 아무것도
+        그리지 않으므로 지금은 보이지 않습니다(적재 전).
+      */}
+      <PerfumeReviewKeywords keywords={reviewKeywords.data ?? []} />
 
       <PerfumeReviewList
         reviews={reviews.data?.reviews ?? []}
@@ -164,6 +234,17 @@ export default function PerfumeDetailPage() {
         onPageChange={setReviewPage}
         isPending={reviews.isPending}
         myReviewId={data.myReviewId}
+        perfumeId={numericId}
+      />
+
+      {/*
+        후기 다음에 옵니다 — 이 향수를 다 읽고 나서 "그럼 비슷한 건" 으로 넘어가는
+        순서입니다. 관계가 없는 향수(향 지도 밖)에서는 구역이 그려지지 않습니다.
+      */}
+      <PerfumeRelated
+        fromPerfumeId={numericId}
+        perfumes={related.data ?? []}
+        isPending={related.isPending}
       />
 
       {/*
@@ -199,6 +280,35 @@ export default function PerfumeDetailPage() {
                     : '진열대에 저장하지 못했습니다.',
               ),
           })
+        }}
+      />
+      {/*
+        진열대에서 빼기 (SHF-04). 문구는 진열대 화면의 [빼기] 와 같은 틀이되,
+        **무엇이 함께 지워지는지**를 적습니다 — 이 화면에는 진열대 카드가 없어서
+        메모 · 적합도가 거기 딸려 있다는 것이 보이지 않습니다.
+      */}
+      <ConfirmDialog
+        open={removeOpen}
+        onClose={() => setRemoveOpen(false)}
+        title={`'${data.nameKo ?? data.name}' 를 진열대에서 뺄까요?`}
+        description="적어 둔 메모와 취향 적합도가 함께 지워집니다. 되돌릴 수 없습니다."
+        confirmLabel="빼기"
+        isLoading={actions.remove.isPending}
+        onConfirm={() => {
+          if (!shelfItem) return
+          actions.remove.mutate(
+            { shelfItemId: shelfItem.shelfItemId },
+            {
+              onSuccess: () => {
+                setRemoveOpen(false)
+                showToast('진열대에서 뺐습니다')
+              },
+              onError: () => {
+                setRemoveOpen(false)
+                showToast('진열대에서 빼지 못했습니다')
+              },
+            },
+          )
         }}
       />
       <LoginRequiredDialog

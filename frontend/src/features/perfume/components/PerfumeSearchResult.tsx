@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Pagination } from '@/shared/ui/Pagination'
+import { GLASS_PANEL } from '@/shared/ui/panel'
 
 import { perfumeListQuery } from '../queries'
 
@@ -161,7 +162,7 @@ function Board({
   children: React.ReactNode
 }) {
   return (
-    <section className="scent-glass rounded-[36px] p-7.5 pt-6.25">
+    <section className={GLASS_PANEL}>
       {heading && (
         <h2 className="text-ink mb-6.25 font-serif text-2xl">{heading}</h2>
       )}

@@ -50,6 +50,7 @@ class LocalSeedIntegrationTest {
         user = postgres.getUsername();
         password = postgres.getPassword();
         jdbc.execute("DROP SCHEMA IF EXISTS local_seed CASCADE");
+        jdbc.execute("DROP SCHEMA IF EXISTS demo_seed CASCADE");
         jdbc.execute("TRUNCATE users, perfumes, brands RESTART IDENTITY CASCADE");
         jdbc.update("INSERT INTO brands(name, name_ko) VALUES ('Seed Brand', '테스트 브랜드')");
         Map<Long, Integer> manifest = new HashMap<>();
@@ -203,5 +204,35 @@ class LocalSeedIntegrationTest {
         Map<String, Long> before = counts();
         seed(false);
         assertThat(counts()).isEqualTo(before);
+    }
+
+    @Test
+    void demoSeedUsesSeparateRegistryAndPresentationCopyWithoutLegacyTestUsers() throws Exception {
+        // 실제 카탈로그에는 테스트용 짧은 이름보다 긴 향수명이 존재합니다.
+        jdbc.update("UPDATE perfumes SET name=? WHERE perfume_id=(SELECT min(perfume_id) FROM perfume_images)",
+                "긴 향수 이름 🌿 ".repeat(20));
+        LocalSeed.runDemo(url, user, password, DATA, HASH);
+        long records = count("SELECT count(*) FROM demo_seed.records");
+
+        assertThat(records).isPositive();
+        assertThat(count("SELECT count(*) FROM pg_namespace WHERE nspname='local_seed'")).isZero();
+        assertThat(count("SELECT count(*) FROM users WHERE email LIKE '%@demo.hyanghae.test'")).isEqualTo(43);
+        assertThat(count("SELECT count(*) FROM users WHERE email LIKE '%@seed.hyanghae.test'")).isZero();
+        assertThat(count("SELECT count(*) FROM collections")).isEqualTo(30);
+        assertThat(count("SELECT count(*) FROM posts")).isEqualTo(90);
+        assertThat(count("SELECT count(*) FROM posts WHERE content LIKE '%로컬 화면 확인%'")).isZero();
+        assertThat(count("SELECT count(*) FROM collections WHERE description LIKE '%테스트%'")).isZero();
+        assertThat(count("SELECT count(DISTINCT user_id) FROM collections")).isGreaterThan(20);
+        assertThat(count("SELECT count(DISTINCT user_id) FROM posts")).isGreaterThan(20);
+        assertThat(count("SELECT count(*) FROM user_perfumes s JOIN users u USING(user_id) WHERE u.email='demo41@demo.hyanghae.test'")).isEqualTo(18);
+        assertThat(count("SELECT count(*) FROM collections c JOIN users u USING(user_id) WHERE u.email='demo41@demo.hyanghae.test'")).isEqualTo(3);
+        assertThat(count("SELECT count(*) FROM posts WHERE created_at > now()")).isZero();
+        assertThat(count("SELECT count(*) FROM comments c JOIN posts p USING(post_id) WHERE c.created_at < p.created_at")).isZero();
+        assertThat(count("SELECT count(DISTINCT title) FROM posts")).isEqualTo(90);
+        assertThat(count("SELECT max(char_length(title)) FROM posts")).isLessThanOrEqualTo(50);
+        assertThat(count("SELECT max(char_length(title)) FROM perfume_reviews")).isLessThanOrEqualTo(100);
+
+        LocalSeed.runDemo(url, user, password, DATA, HASH);
+        assertThat(count("SELECT count(*) FROM demo_seed.records")).isEqualTo(records);
     }
 }

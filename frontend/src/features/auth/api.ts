@@ -50,8 +50,8 @@ export async function signup(input: SignupInput): Promise<UserResponse> {
 /**
  * 닉네임 중복 확인. 비로그인으로도 부를 수 있습니다.
  *
- * **이메일 중복 확인은 없습니다.** 이메일이 겹치는지는 가입할 때 409 로만
- * 알 수 있어서, 회원가입 화면의 [중복 확인] 은 닉네임에만 답니다.
+ * **참이어도 가입 · 변경이 반드시 되는 것은 아닙니다.** 확인과 저장 사이에 다른
+ * 사람이 같은 닉네임을 가져갈 수 있어, 저장 시점에 409 로 한 번 더 걸립니다.
  */
 export async function checkNicknameAvailability(
   nickname: string,
@@ -88,4 +88,38 @@ export async function withdraw(password: string): Promise<void> {
  */
 export async function logout(): Promise<void> {
   await http.post('/auth/logout')
+}
+
+/**
+ * 이메일 중복 확인 (A28 회원가입). 비로그인으로도 부를 수 있습니다.
+ *
+ * 가입과 **같은 방식으로** 앞뒤 공백을 떼고 소문자로 바꿔 봅니다 — 화면이 다르게
+ * 다듬으면 "쓸 수 있다" 고 해 놓고 가입에서 막힙니다.
+ *
+ * 닉네임과 마찬가지로 참이어도 가입 시점에 다시 확인합니다(409).
+ * 형식이 틀리면 400 입니다.
+ */
+export async function checkEmailAvailability(email: string): Promise<boolean> {
+  const { data } = await http.get<{ available: boolean }>(
+    '/users/email-availability',
+    { params: { email } },
+  )
+  return data.available
+}
+
+/**
+ * 닉네임 변경 (A29). 로그인이 필요합니다.
+ *
+ * 지금 쓰는 닉네임을 그대로 보내도 성공합니다(바꾸지 않습니다). 이미 남이 쓰는
+ * 닉네임이면 409, 형식이 틀리면 400 입니다. **로그인 세션은 유지됩니다** —
+ * 비밀번호 변경과 다른 점입니다.
+ *
+ * 바뀐 내 정보가 응답으로 옵니다. 화면이 그 값을 캐시에 넣으면 헤더의 닉네임까지
+ * 한 번에 바뀝니다.
+ */
+export async function changeNickname(nickname: string): Promise<UserResponse> {
+  const { data } = await http.patch<UserResponse>('/users/me/nickname', {
+    nickname,
+  })
+  return data
 }

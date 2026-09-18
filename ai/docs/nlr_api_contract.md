@@ -185,7 +185,7 @@ Content-Type: application/json
 > 넘기면 그대로 쓰고 LLM 을 부르지 않는다 — Spring 이 스스로 구조화하기로 바뀌어도
 > 요청 형식은 안 바뀐다.
 >
-> 사전 v1.8 기준 합성 600문장에서 조건을 뽑는 비율이 **75.5% → 88.2%** 로 오른다.
+> 사전 v1.15 기준 합성 600문장에서 조건을 뽑는 비율이 **76.8% → 88.8%** 로 오른다.
 > LLM 이 죽어도 사전 매칭으로 내려가므로 **서비스를 내리지 않는다.**
 
 ### 요청은 `structured`, 응답은 `conditions` — 다른 것이다
@@ -232,6 +232,8 @@ POST /nlr/recommend   { "text": "...", "structured": <위의 structured 그대�
 {
   "status": "OK",
   "query": "빨래 냄새 나는 향수 찾고 있어",
+  "lexiconVersion": "v1_15",
+  "promptSha256": "4f0a368d98b41338",
   "conditions": {
     "core": ["fresh", "soapy"],
     "avoid": [],
@@ -254,7 +256,12 @@ POST /nlr/recommend   { "text": "...", "structured": <위의 structured 그대�
       ]
     }
   ],
-  "unmatched": [],
+  "unmatched": [
+    { "expression": "포근한 느낌", "normalizedKey": "포근한 느낌",
+      "unmatchReason": "NOT_CORE", "entryId": "kr.sens.cozy",
+      "hadConditions": true, "llmAccords": ["amber", "sweet", "vanilla"],
+      "tier": "LLM", "resultCount": 5 }
+  ],
   "diagnostics": {
     "stage": "AND", "candidateCount": 518, "tieAtLast": 1,
     "relaxed": [], "unmatchedHint": null
@@ -271,9 +278,37 @@ POST /nlr/recommend   { "text": "...", "structured": <위의 structured 그대�
 | `matched[].from` | 사용자가 쓴 표현. 이걸 `phrase` 에 쓴다 |
 | `matched[].tier` | `VERIFIED`/`TEAM`/`LLM`. **내부 기록이라 사용자에게 노출하지 않는다** |
 | `matched[].rationale` | 사람이 쓴 근거 문장. **`tier` 가 `LLM` 이면 `null` 이다** (원칙 ②) |
-| `unmatched` | 사전이 받지 못한 표현. 백엔드는 안 써도 된다. AI 가 로그에 남긴다 |
+| `unmatched` | 사전이 받지 못한 표현. **화면에 쓰지 않는다.** 백엔드가 `nlr_unmatched_expressions` 에 남긴다 — 아래 표 |
 | `diagnostics.stage` | `AND` / **`SINGLE_BROAD`** / `RELAXED_OR` / `RELAXED_OR_NO_THRESHOLD` / `NO_CONDITION` |
 | `diagnostics` | 문제를 볼 때 쓴다. 응답에 그대로 넘기지 않는다 |
+
+#### `unmatched[]` 의 칸
+
+| 칸 | DB 칸 | 설명 |
+|---|---|---|
+| `expression` | `expression` | ①단계가 뽑은 표현 그대로. `무겁지 않게` 처럼 문장 조각 |
+| `normalizedKey` | `normalized_key` | 정규화한 키. **집계는 이것으로 한다** |
+| `unmatchReason` | `unmatch_reason` | `NOT_IN_LEXICON` / `CONDITION_NOT_MET` / `NOT_CORE`. 셋은 고쳐야 할 곳이 다르다 |
+| `entryId` | `entry_id` | 사전에 있는데 조건이 안 맞은 경우만 |
+| `hadConditions` | `had_conditions` | 그 요청이 조건을 뽑았는가 |
+| `llmAccords` | `llm_accords` | ⑤단계 추정. **`[]` 와 `null` 이 다르다** — 아래 |
+| `tier` | `tier` | `"LLM"` 또는 `null`. 사전 경로와 LLM 경로를 가른다 |
+| `resultCount` | `result_count` | 그 요청이 낸 추천 개수. **추정을 물어봤을 때만** 값이 있다 |
+
+**`llmAccords` 의 세 상태를 구분해야 한다.**
+
+```
+["woody","green"]   LLM 이 accord 를 골랐다
+[]                  **LLM 이 "향이 아니다" 라고 판정했다** — 가격·성별·지속력 같은 것
+null                묻지 않았다 (⑤단계가 꺼졌거나 조건이 이미 있었다)
+```
+
+`[]` 를 `null` 로 뭉개면 *"향이 아니라고 답한 것"* 과 *"안 물어본 것"* 을 셀 수 없다.
+
+**`llmReasoning` 은 보내지 않는다.** LLM 이 매핑한 **뒤에 붙인 설명**이지 근거가 아니다
+(`spec.md` 1장). 실측에서 없는 말을 지어냈다 — `"빨레"`(빨래의 오타)를 *"바퀴/롤러로
+비유되는 고무·플라스틱 계열"* 로 설명했다. **그 문장이 화면에 나가면 사용자는 근거로
+읽는다.** 분석이 필요하면 AI 서버의 파일 로그에 그대로 남아 있다.
 
 #### `conditions.source` 3종 — 지표로 쓸 때 주의하십시오
 
@@ -300,6 +335,33 @@ llm_no_effect   262건 (43.7%)   그중 조건이 나온 문장 182건
 > 그래서 `evidence` 를 무엇으로 채울지가 아직 미정이다 — 아래 「아직 없는 것」 참고.
 > **백엔드는 이 칸이 온다고 가정하고 코딩하지 마십시오.**
 
+### `lexiconVersion` · `promptSha256` — 이 기록이 어느 판에서 나왔는지
+
+두 엔드포인트 모두 응답 **최상위**에 싣는다. 화면에는 쓰지 않고 **백엔드가
+`nlr_recommendations` 에 그대로 남긴다.**
+
+| 칸 | 예 | DB 칸 | 무엇인가 |
+|---|---|---|---|
+| `lexiconVersion` | `"v1_15"` | `lexicon_version VARCHAR(20)` | 엔진이 쓴 향 사전 버전 |
+| `promptSha256` | `"4f0a368d98b41338"` | `prompt_sha256 VARCHAR(16)` | ①단계 프롬프트 지문 앞 16자 |
+
+**왜 남기나** — 반년 뒤에 *"이 표현이 미매칭이었다"* 를 볼 때 **어느 사전에서 미매칭
+이었는지** 모르면 사전을 넓힐 근거가 되지 않는다. 최근에도 사전이 v1.8 → v1.14 →
+v1.15, 프롬프트가 v1 → v4 로 움직였다.
+
+**⚠ 둘 다 `null` 일 수 있다.** DB 칸이 둘 다 `NULL` 허용이라 `INSERT` 가 막히지 않는다.
+
+```
+lexiconVersion   사전 파일 이름이 `..._v1_15.csv` 규칙에 안 맞을 때 (측정용 임시 파일 등)
+promptSha256     프롬프트 파일을 못 읽을 때
+```
+
+**`null` 은 "없다" 가 아니라 "모른다" 다.** 추측해서 채우지 마십시오 — 틀린 값이 들어가면
+칸이 없는 것보다 나쁘다. 없으면 모른다는 것을 알지만 틀리면 아는 줄 착각한다.
+
+`promptSha256` 은 **①단계 프롬프트만** 가리킨다. ⑤단계 추정 프롬프트는 별개이고 아직
+응답에 싣지 않는다.
+
 ### `/nlr/understand` 응답 (200)
 
 향수를 찾지 않는다. 향 조건까지만 낸다.
@@ -307,6 +369,8 @@ llm_no_effect   262건 (43.7%)   그중 조건이 나온 문장 182건
 ```json
 {
   "query": "빨래 냄새 나는 향수 찾고 있어",
+  "lexiconVersion": "v1_15",
+  "promptSha256": "4f0a368d98b41338",
   "conditions": { "core": ["fresh", "soapy"], "avoid": [],
                   "matchedExpressions": ["빨래"], "source": "llm+lexicon" },
   "structured": { "scent_preference": [], "context": {"season": [], "daypart": [], "gender": []},
@@ -323,7 +387,7 @@ llm_no_effect   262건 (43.7%)   그중 조건이 나온 문장 182건
 | `conditions` | ②단계 결과. **화면에 보여줄 해석.** 요청에 되돌려 넣으면 `400` 이다 |
 | `structured` | ①단계 결과. **`/nlr/recommend` 의 `structured` 에 그대로 넣는 값.** LLM 이 꺼져 있거나 실패하면 `null` |
 | `evidence` | 어느 표현이 어느 accord 로 갔는지와 그 근거. `source` 가 `lexicon_only` 면 사전만 쓴 것 |
-| `unmatched` | 사전이 받지 못한 표현. AI 가 로그에 남긴다 |
+| `unmatched` | 위 `/nlr/recommend` 와 같은 모양이다. **다만 이 엔드포인트는 ⑤단계를 돌리지 않아** `llmAccords` · `tier` · `resultCount` 가 전부 `null` 이다 |
 
 ### 백엔드가 하는 변환
 
@@ -386,9 +450,9 @@ reasons  [ { phrase:"빨래", evidence: ??? } ]
 | | 무엇을 |
 |---|---|
 | **프론트엔드** | `features/recommend/api.ts` 의 목 함수를 실제 호출로 바꾼다. `status` 4종 분기를 만든다. 타입에서 `x`·`y` 를 뺀다 |
-| **백엔드** | `POST /api/v1/recommendations/natural-language` 를 만든다. AI 서버 클라이언트를 붙인다. 위 「백엔드가 하는 변환」 3단계를 구현한다. 호출량 제한을 건다 |
+| **백엔드** | ~~`POST /api/v1/recommendations/natural-language` 를 만든다~~ · ~~AI 서버 클라이언트~~ · ~~변환 3단계~~ · ~~호출량 제한~~ (S15P21E203-201·320 에서 완료). **`lexiconVersion` · `promptSha256` 과 `unmatched[]` 의 새 네 칸을 받아 `nlr_*` 표에 넣는다** (S15P21E203-325 로 AI 쪽이 보내기 시작했다) |
 | **AI** | ~~`POST /nlr/understand` · `/nlr/recommend` 를 만든다~~ (S15P21E203-202 에서 완료). ~~LLM 구조화를 붙인다~~ (완료. `llm_stage1.py`). 미매칭 추정(⑤단계)을 붙인다. 향 특성 92개에 한국어 이름을 단다 |
-| **인프라** | AI 서버를 배포에 태운다. 백엔드가 쓸 AI 서버 주소를 환경변수로 넣는다. **AI 서버에도 `GMS_API_KEY` 를 넣는다** — 없으면 서버는 뜨지만 조건을 뽑는 비율이 88.2% → 75.5% 로 떨어진다 |
+| **인프라** | AI 서버를 배포에 태운다. 백엔드가 쓸 AI 서버 주소를 환경변수로 넣는다. **AI 서버에도 `GMS_API_KEY` 를 넣는다** — 없으면 서버는 뜨지만 조건을 뽑는 비율이 88.8% → 76.8% 로 떨어진다 |
 
 ---
 

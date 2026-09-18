@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 
 import { toNoteDetail } from '@/shared/config/routes'
 import { EmptyState } from '@/shared/ui/EmptyState'
+import { GLASS_PANEL } from '@/shared/ui/panel'
 import { Skeleton } from '@/shared/ui/Skeleton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 import { TileCard } from '@/shared/ui/TileCard'
@@ -15,15 +16,6 @@ type Props = {
   /** 0건 안내 아래 버튼. 검색어·대분류로 걸러 0건이 된 경우 [초기화] 를 답니다. */
   emptyAction?: React.ReactNode
 }
-
-/**
- * 유리판 하나. 향수 목록(A33) · 브랜드(A34)의 판과 **같은 모서리 · 같은 패딩**입니다.
- *
- * 그 두 화면은 판이 하나뿐이라 화면 파일에 직접 적혀 있는데, 노트는 대분류마다
- * 한 장씩 열한 장이 나옵니다. 값을 여기 한 번만 적어 스켈레톤과 실제 판이 같은
- * 크기로 서게 합니다 — 다르면 노트가 도착하는 순간 판이 커졌다 작아집니다.
- */
-const GLASS = 'scent-glass rounded-[36px] p-7.5 pt-6.25'
 
 /**
  * 대분류별 노트 섹션 (와이어프레임 A35)
@@ -52,7 +44,7 @@ export function NoteCategorySections({
     return (
       <div className="space-y-7.5">
         {Array.from({ length: 2 }, (_, section) => (
-          <div key={section} className={GLASS}>
+          <div key={section} className={GLASS_PANEL}>
             <Skeleton className="mb-6.25 h-6 w-23.75" />
             <div className="grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-5">
               {/*
@@ -90,7 +82,7 @@ export function NoteCategorySections({
   return (
     <div className="space-y-7.5">
       {sections.map((section) => (
-        <section key={section.family} className={GLASS}>
+        <section key={section.family} className={GLASS_PANEL}>
           {/*
             판 머리는 브랜드 판과 같은 형식입니다 — 이름 옆에 개수 한 줄.
             상단 메뉴로 두 화면을 오갈 때 같은 자리에서 같은 크기로 읽힙니다.

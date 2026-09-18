@@ -202,7 +202,7 @@ class NlrClientTest {
                         Duration.ofSeconds(2),
                         readTimeout
                 ),
-                new RecommendationProperties.RateLimit(Duration.ofMinutes(1), 30, 10)
+                new RecommendationProperties.RateLimit(Duration.ofMinutes(1), 30, 10, 120, 60)
         ));
     }
 

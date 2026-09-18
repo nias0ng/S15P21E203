@@ -13,8 +13,8 @@ import jakarta.persistence.Table;
 /**
  * {@code post_images} 테이블 매핑입니다.
  *
- * <p>주소만 담습니다. 파일을 올리는 방법이 정해지면 그 API 가 주소를 돌려주고, 화면이 그것을
- * 게시글 API 로 보내면 됩니다.
+ * <p>주소만 담습니다. 파일은 {@code POST /api/v1/posts/images} 가 받아 저장하고 주소를
+ * 돌려주며, 화면이 그 주소를 게시글 API 로 보냅니다. 여기에 파일이 오는 일은 없습니다.
  *
  * <p>{@code displayOrder} 는 화면에 보일 순서입니다. 순서를 지키지 않으면 화면이 고른 대표
  * 이미지가 매번 달라집니다.
@@ -40,6 +40,14 @@ public class PostImage {
 
     protected PostImage() {
         // JPA 가 요구하는 기본 생성자입니다.
+    }
+
+    /**
+     * 저장된 주소입니다. 글이 지워지거나 이미지가 교체될 때 어떤 파일을 지울지 정하는 데
+     * 씁니다. 같은 패키지의 {@link Post} 만 읽습니다.
+     */
+    String imageUrl() {
+        return imageUrl;
     }
 
     static PostImage create(Post post, String imageUrl, int displayOrder) {

@@ -13,6 +13,7 @@ import com.hyanghae.backend.community.entity.Post;
 import com.hyanghae.backend.community.entity.PostCategory;
 import com.hyanghae.backend.community.exception.CommunityErrorCode;
 import com.hyanghae.backend.community.repository.PostCategoryRepository;
+import com.hyanghae.backend.community.repository.PostImageRepository;
 import com.hyanghae.backend.community.repository.PostLikeRepository;
 import com.hyanghae.backend.community.repository.PostListRow;
 import com.hyanghae.backend.community.repository.PostPerfumeRow;
@@ -34,8 +35,12 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * 게시글을 쓰고 고치고 지우고 읽습니다.
@@ -47,34 +52,42 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code mine} 은 보는 사람에 따라 달라지므로 로그인 여부를 <b>참고</b>합니다. 로그인을
  * 요구하는 것과 로그인 여부를 참고하는 것은 다릅니다. 쓰기 셋은 로그인이 필요합니다.
  *
- * <p>이미지는 주소만 받습니다. 파일을 올리는 방법이 정해지면 그 API 가 주소를 돌려주고, 화면이
- * 그것을 여기로 보내면 됩니다. 이 서비스는 바뀔 일이 없습니다.
+ * <p>이미지는 주소만 받습니다. 파일은 {@link PostImageService} 가 따로 받아 저장하고 주소를
+ * 돌려주며, 화면이 그 주소를 여기로 보냅니다. 저장소를 어디로 옮기든 이 서비스는 바뀌지 않습니다.
  */
 @Service
 public class PostService {
+
+    private static final Logger log = LoggerFactory.getLogger(PostService.class);
 
     private static final int MAX_PAGE_SIZE = 100;
 
     private final PostRepository postRepository;
     private final PostLikeRepository postLikeRepository;
     private final PostCategoryRepository postCategoryRepository;
+    private final PostImageRepository postImageRepository;
     private final CollectionRepository collectionRepository;
     private final PerfumeRepository perfumeRepository;
+    private final PostImageService postImageService;
     private final CurrentUser currentUser;
 
     public PostService(
             PostRepository postRepository,
             PostLikeRepository postLikeRepository,
             PostCategoryRepository postCategoryRepository,
+            PostImageRepository postImageRepository,
             CollectionRepository collectionRepository,
             PerfumeRepository perfumeRepository,
+            PostImageService postImageService,
             CurrentUser currentUser
     ) {
         this.postRepository = postRepository;
         this.postLikeRepository = postLikeRepository;
         this.postCategoryRepository = postCategoryRepository;
+        this.postImageRepository = postImageRepository;
         this.collectionRepository = collectionRepository;
         this.perfumeRepository = perfumeRepository;
+        this.postImageService = postImageService;
         this.currentUser = currentUser;
     }
 
@@ -162,7 +175,11 @@ public class PostService {
             replacePerfumes(post, request.getPerfumeIds());
         }
         if (request.isImagesPresent()) {
+            // 바꾸기 전의 주소를 전부 넘깁니다. 그대로 남는 주소는 교체 뒤에도 행이 있어
+            // 아래의 참조 수 확인에 걸리므로, 빠진 것만 골라낼 필요가 없습니다.
+            List<String> replaced = post.imageUrls();
             post.replaceImages(request.getImageUrls());
+            deleteUnusedImageFilesAfterCommit(replaced);
         }
 
         return new PostUpdateResponse(post.getId(), post.getUpdatedAt());
@@ -175,7 +192,41 @@ public class PostService {
      */
     @Transactional
     public void delete(Long postId) {
-        postRepository.delete(requireMyPost(postId));
+        Post post = requireMyPost(postId);
+        List<String> imageUrls = post.imageUrls();
+        postRepository.delete(post);
+        deleteUnusedImageFilesAfterCommit(imageUrls);
+    }
+
+    /**
+     * 더 이상 쓰이지 않는 이미지 파일을 <b>커밋된 뒤에</b> 지웁니다.
+     *
+     * <p>순서가 중요합니다. 트랜잭션 안에서 지우면 뒤늦게 롤백됐을 때 행은 살아 있는데 파일만
+     * 없어져 글이 깨집니다. 커밋 뒤에 지우면 최악이라도 파일이 남을 뿐이고, 남은 파일은
+     * 나중에 치울 수 있습니다. 되돌릴 수 없는 쪽을 피하는 것입니다.
+     *
+     * <p>참조 수도 여기서 셉니다. 커밋 뒤라 지워진 행은 이미 빠져 있고 남은 행만 세어지므로,
+     * 세는 시점이 자연스럽게 맞습니다.
+     *
+     * <p>여기서 무엇이 실패해도 요청은 성공입니다. 사용자가 요청한 일(글 삭제·수정)은 이미
+     * 커밋됐고, 파일 정리가 안 됐다고 그것을 되돌릴 수는 없습니다.
+     */
+    private void deleteUnusedImageFilesAfterCommit(List<String> imageUrls) {
+        if (imageUrls.isEmpty()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    imageUrls.stream()
+                            .filter(url -> postImageRepository.countByImageUrl(url) == 0)
+                            .forEach(postImageService::delete);
+                } catch (RuntimeException exception) {
+                    log.warn("Failed to clean up post image files", exception);
+                }
+            }
+        });
     }
 
     /**

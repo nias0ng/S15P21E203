@@ -20,8 +20,17 @@ export const ROUTES = {
   NOTES: '/notes', // A35 노트 목록
   NOTE_DETAIL: '/notes/:noteId', // A36 노트 상세
 
-  // 추천 (에픽 109)
-  RECOMMEND: '/recommend', // A06 자연어 추천 결과 (지도 배경 + 결과 카드 + 미니맵)
+  /*
+   * 추천 (에픽 109) — **주소가 없습니다.**
+   *
+   * A06 자연어 추천은 `/recommend?q=` 라는 화면이었는데 메인(A01)의 **모달**이
+   * 됐습니다(`RecommendModal`). 추천은 지도를 떠날 일이 아니라 지도 위에서 보는
+   * 것이고, 화면을 나누면 한 줄 적을 때마다 3D 가 통째로 내려갔다 다시 떴습니다
+   * (iframe 이라 WebGL 컨텍스트와 8MB 배 모델을 새로 받습니다).
+   *
+   * ⚠️ 그래서 추천 결과는 **링크로 공유할 수 없습니다.** 공유가 필요해지면 메인에
+   * 쿼리를 받는 길(`/?q=`)을 내는 쪽이지, 화면을 되살리는 쪽이 아닙니다.
+   */
 
   // 취향 테스트 (요구사항 TST-03)
   // 원래 자리는 회원가입 직후 온보딩 스텝입니다. 백엔드가 붙기 전까지 화면을 바로
@@ -44,7 +53,14 @@ export const ROUTES = {
    * 할 수 있어 나중에 보호 라우트를 붙일 자리가 필요합니다.
    */
   REVIEW_EDIT: '/community/reviews/:reviewId/edit',
-  POST_WRITE: '/community/free/write', // A24b 자유 글 작성 · 수정
+  POST_WRITE: '/community/free/write', // A24b 자유 글 작성
+  /**
+   * A24b 자유 글 수정. 작성과 **같은 화면**(`PostWritePage`)을 쓰고 주소만 다릅니다.
+   *
+   * 후기 수정(`REVIEW_EDIT`)과 같은 방식입니다 — 쓰는 칸과 규칙이 같아 화면을 나누면
+   * 한쪽만 고쳐집니다.
+   */
+  POST_EDIT: '/community/free/:postId/edit',
 
   // 계정 (에픽 115) — 마이페이지는 없고 헤더 닉네임 ▾ 에서 바로 들어갑니다
   LOGIN: '/login', // A28 로그인
@@ -66,3 +82,5 @@ export const toPostDetail = (postId: number | string) =>
   `/community/posts/${postId}`
 export const toReviewEdit = (reviewId: number | string) =>
   `/community/reviews/${reviewId}/edit`
+export const toPostEdit = (postId: number | string) =>
+  `/community/free/${postId}/edit`

@@ -1,10 +1,14 @@
+import { cn } from '@/shared/lib/cn'
 import { Badge } from '@/shared/ui/Badge'
+import { GLASS_PANEL } from '@/shared/ui/panel'
 
 import type { PerfumeNote } from '../types'
 
 type Props = {
   notes: PerfumeNote[]
   isPending?: boolean
+  /** 놓이는 자리는 화면이 정합니다 — 개요 오른쪽에서 남은 높이를 받습니다(`flex-1`) */
+  className?: string
 }
 
 /**
@@ -28,23 +32,23 @@ const KNOWN_ORDER = Object.keys(KNOWN_TYPES)
  *
  * 어코드(`accords`)도 같은 응답에 있지만 와이어프레임에 자리가 없어 아직 안 그립니다.
  */
-export function PerfumeNotes({ notes, isPending = false }: Props) {
+export function PerfumeNotes({ notes, isPending = false, className }: Props) {
   const rows = groupByType(notes)
 
   return (
-    <section className="space-y-2.5 p-6.25">
-      <h2 className="text-ink-muted text-[10.5px]">향조</h2>
+    <section className={cn(GLASS_PANEL, 'space-y-3.75', className)}>
+      <h2 className="text-ink text-title font-serif font-semibold">향조</h2>
 
       {isPending ? (
-        <p className="text-ink-muted text-xs">향조를 불러오는 중입니다.</p>
+        <p className="text-ink-muted text-body">향조를 불러오는 중입니다.</p>
       ) : rows.length === 0 ? (
-        <p className="text-ink-muted text-xs">
+        <p className="text-ink-muted text-body">
           향조 정보가 아직 등록되지 않았습니다.
         </p>
       ) : (
         rows.map(([label, items]) => (
           <div key={label} className="flex items-center gap-3.75">
-            <span className="text-ink w-20 shrink-0 text-xs">{label}</span>
+            <span className="text-ink text-body w-20 shrink-0">{label}</span>
             <div className="flex flex-wrap gap-1.25">
               {items.map((note) => (
                 <Badge key={note.noteId} tone="outline">

@@ -9,15 +9,19 @@ import type {
   PerfumeNotesResponse,
   PerfumeSearchParams,
   PerfumeSearchResponse,
+  RelatedPerfume,
+  RelatedPerfumesResponse,
   ReviewCreateInput,
   ReviewCreateResponse,
   ReviewDetail,
+  ReviewKeyword,
+  ReviewKeywordsResponse,
   ReviewLikeResponse,
   ReviewSeasonsResponse,
   ReviewStatistics,
   ReviewSummary,
-  ReviewsResponse,
   ReviewUpdateInput,
+  ReviewsResponse,
   Season,
   SeasonStatisticsResponse,
 } from './types'
@@ -322,4 +326,56 @@ export async function exitPerfumeView(
     `/perfume-views/${perfumeViewId}/exit`,
   )
   return data
+}
+
+/**
+ * 비슷한 향수로 보여줄 개수.
+ *
+ * 카드 격자가 가장 넓은 화면에서 5열이라 **딱 한 줄**입니다. 두 줄이 되면 후기
+ * 아래의 곁가지 구역이 본문만큼 길어집니다. 서버는 더 줄 수 있고(기본 20) 이 값이
+ * 곧 요청하는 최대 개수입니다.
+ */
+export const RELATED_PERFUME_LIMIT = 5
+
+/**
+ * 비슷한 향수 (DTL — A10 아래쪽).
+ *
+ * `/similar` 과 `/neighbors` 가 **같은 데이터를 같은 모양으로** 줍니다(서버도 같은
+ * 메서드입니다). 둘을 다 부르면 같은 목록을 두 번 받으므로 하나만 씁니다.
+ *
+ * `size` 는 쪽 크기가 아니라 **최대 개수**입니다 — 응답에 `page` 도 `totalElements`
+ * 도 없어 이어서 볼 방법이 없습니다.
+ *
+ * 향 지도에 실린 향수가 아니면 빈 배열입니다.
+ */
+export async function getRelatedPerfumes(
+  perfumeId: number,
+  size = RELATED_PERFUME_LIMIT,
+): Promise<RelatedPerfume[]> {
+  const { data } = await http.get<RelatedPerfumesResponse>(
+    `/perfumes/${perfumeId}/similar`,
+    { params: { size } },
+  )
+  return data.perfumes
+}
+
+/**
+ * 후기에서 자주 나온 향 표현 (DTL).
+ *
+ * ⚠️ **지금은 모든 향수가 빈 배열입니다.** 키워드를 적재하는 코드가 아직 없어서이고,
+ * 백엔드 응답 주석에도 그렇게 적혀 있습니다. 화면은 값이 있을 때만 구역을 그립니다 —
+ * 그래야 적재가 도는 날 손대지 않아도 나타납니다.
+ *
+ * `size` 는 쪽 크기가 아니라 최대 개수입니다. 몇 개를 받든 각 키워드의 백분율은
+ * 같습니다(분모가 따로 세어집니다).
+ */
+export async function getPerfumeReviewKeywords(
+  perfumeId: number,
+  size = 8,
+): Promise<ReviewKeyword[]> {
+  const { data } = await http.get<ReviewKeywordsResponse>(
+    `/perfumes/${perfumeId}/review-keywords`,
+    { params: { size } },
+  )
+  return data.keywords
 }

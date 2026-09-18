@@ -21,7 +21,14 @@ public enum CommunityErrorCode implements ErrorCode {
     COMMUNITY_COMMENT_NOT_OWNED(HttpStatus.FORBIDDEN, "본인이 쓴 댓글만 고치거나 지울 수 있습니다."),
     COMMUNITY_COLLECTION_NOT_FOUND(HttpStatus.NOT_FOUND, "첨부할 컬렉션을 찾을 수 없습니다."),
     COMMUNITY_PERFUMES_FROM_COLLECTION(HttpStatus.BAD_REQUEST,
-            "컬렉션을 붙인 글의 향수는 컬렉션에서 가져옵니다. 향수를 따로 보낼 수 없습니다.");
+            "컬렉션을 붙인 글의 향수는 컬렉션에서 가져옵니다. 향수를 따로 보낼 수 없습니다."),
+    COMMUNITY_IMAGE_EMPTY(HttpStatus.BAD_REQUEST, "올릴 이미지를 선택해주세요."),
+    // 제한 값을 문구에 적지 않습니다. 설정으로 바꿀 수 있는 값이라 여기 적으면 설정만 바꿨을 때
+    // 안내가 거짓말이 됩니다. 실제 기본값은 Swagger 설명에 적혀 있습니다.
+    COMMUNITY_IMAGE_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE, "이미지 크기 제한을 넘었습니다."),
+    COMMUNITY_IMAGE_TYPE_NOT_ALLOWED(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+            "JPG · PNG · GIF · WEBP 이미지만 올릴 수 있습니다."),
+    COMMUNITY_IMAGE_SAVE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "이미지를 저장하지 못했습니다.");
 
     private final HttpStatus status;
     private final String message;

@@ -14,10 +14,12 @@ import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
 import com.hyanghae.backend.perfume.repository.PerfumeRepository;
 import com.hyanghae.backend.recommendation.client.NlrClient;
 import com.hyanghae.backend.recommendation.client.NlrRecommendResponse;
+import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.recommendation.dto.response.NaturalLanguageRecommendationResponse;
 import com.hyanghae.backend.recommendation.dto.response.RecommendationReasonResponse;
 import com.hyanghae.backend.recommendation.dto.response.RecommendedPerfumeResponse;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -39,10 +41,13 @@ class NaturalLanguageRecommendationServiceTest {
     private final NlrClient nlrClient = mock(NlrClient.class);
     private final PerfumeRepository perfumeRepository = mock(PerfumeRepository.class);
     private final PerfumeImageRepository perfumeImageRepository = mock(PerfumeImageRepository.class);
+    private final NlrRecordService recordService = mock(NlrRecordService.class);
+    private final CurrentUser currentUser = Optional::<Long>empty;
 
     private final NaturalLanguageRecommendationService service =
             new NaturalLanguageRecommendationService(
-                    nlrClient, perfumeRepository, perfumeImageRepository, new AccordLabeler());
+                    nlrClient, recordService, currentUser,
+                    perfumeRepository, perfumeImageRepository, new AccordLabeler());
 
     /**
      * AI 가 정한 순위를 그대로 지킵니다.
@@ -250,7 +255,7 @@ class NaturalLanguageRecommendationServiceTest {
 
     private static NlrRecommendResponse aiResponse(
             String status, NlrRecommendResponse.Result... results) {
-        return new NlrRecommendResponse(status, QUERY, List.of(results));
+        return new NlrRecommendResponse(status, QUERY, null, List.of(results), null, null);
     }
 
     private static NlrRecommendResponse.Result result(

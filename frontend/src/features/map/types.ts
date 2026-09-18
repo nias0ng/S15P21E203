@@ -59,6 +59,32 @@ export interface MapPoint {
   y: number
 }
 
+/**
+ * 3D 지도에 실제로 떠 있는 향수 한 개 (MAP-01 의 200개).
+ *
+ * `MapPoint` 와 다릅니다. `MapPoint` 는 **백엔드 지도 API** 가 줄 점이고(아직
+ * 자리표시자), 이쪽은 **엔진이 지금 화면에 띄우고 있는 목록** 그대로입니다
+ * (`landing/src/perfumes-data.js` · `data/perfume_map_points.csv` 생성물).
+ * 메인의 일반 검색이 찾는 대상이라 엔진과 같은 목록이어야 합니다.
+ *
+ * ⚠️ `fragranticaId` 는 **DB 향수 번호가 아닙니다.** 향수 상세(A10)로 보내려면
+ * DB 번호가 필요한데 이 데이터에는 없어서, 지금은 이름으로 향수 검색(A09)에
+ * 보냅니다 — 엔진 카드의 [자세히 보기]가 쓰는 길과 같습니다(`ScentScene`).
+ */
+export interface MapPerfume {
+  fragranticaId: number
+  /** 한글 이름. 없으면 영문 원명입니다 */
+  name: string
+  /** 한글 브랜드. 없으면 영문 원명입니다 */
+  brand: string
+  /** 영문 원명 — 한글로 못 찾을 때 같이 보여 줍니다 */
+  nameEn: string
+  brandEn: string
+  family: ScentRegionId | null
+  /** 화해 지도 기준 순위 1~200. 검색 결과를 이 순서로 냅니다 */
+  rank: number
+}
+
 /** 지도에서 지금 보고 있는 범위. 미니맵이 이 값을 사각형으로 그립니다. */
 export interface Viewport {
   x: number

@@ -76,8 +76,26 @@ type Props = {
    * 모달 위에서 누른 방향키가 배를 돌리지 않게, 모달이 닫히면(취소 · 저장) resolve 하세요.
    */
   onSaveToShelf: (perfume: ScenePerfumeRef) => Promise<void>
-  /** 엔진 화면 위의 검색창 */
-  onSearch: (query: string) => void
+  /**
+   * 엔진 화면 위의 검색창.
+   *
+   * ⚠️ `hideEngineSearch` 로 엔진 알약을 숨기면 **여기로 아무것도 오지 않습니다** —
+   * 검색을 앱이 직접 받고 있다는 뜻입니다 (메인은 그쪽입니다 · `SceneSearchBar`).
+   */
+  onSearch?: (query: string) => void
+  /**
+   * 엔진이 그리는 검색창을 숨깁니다. 앱이 그 자리에 자기 검색창을 얹을 때 씁니다.
+   *
+   * 왜 필요한가: 메인 검색은 방식이 둘(자연어 추천 · 지도 향수 찾기)이고 결과가
+   * 모달인데, 엔진은 iframe 안이라 라우터도 모달도 모릅니다. 그래서 알약만 앱으로
+   * 올리고 엔진 쪽은 숨깁니다. 3D · 설명문구 · 해도는 그대로 엔진이 그립니다.
+   *
+   * ⚠️ 엔진 DOM 을 직접 건드리는 **유일한 자리**입니다. 엔진에 끄는 입구
+   * (`params.searchBar` 같은 것)가 생기면 그걸로 바꾸세요 — 그때까지는 알약을 감싼
+   * 칸을 찾아 `display:none` 합니다. 엔진 `index.html` 의 마크업 모양에 기대고
+   * 있어서, 못 찾으면 **조용히 아무 일도 하지 않습니다**(알약 둘이 겹쳐 보입니다).
+   */
+  hideEngineSearch?: boolean
   /**
    * 앱이 3D 위에 겹쳐 올린 것(유리판 헤더)이 가리는 위쪽 높이(px).
    * 엔진은 3D 를 그 뒤까지 그대로 그리고, 검색창 · 정보 블록 · 해도만 그 아래로 내리며
@@ -123,6 +141,7 @@ export function ScentScene({
   onOpenDetail,
   onSaveToShelf,
   onSearch,
+  hideEngineSearch = false,
   coveredTop = 0,
   onNightChange,
   onBoot,
@@ -153,6 +172,30 @@ export function ScentScene({
       onMove,
     }
   })
+
+  /*
+   * 엔진 알약 숨기기. 엔진이 붙은 뒤(`ready`)에 겁니다 — 그 전에는 iframe 문서에
+   * 알약이 아직 없습니다. `ready` 는 엔진이 새로 뜰 때마다 false → true 로 도니
+   * iframe 이 다시 불러와도 따라옵니다.
+   */
+  useEffect(() => {
+    const el = frame.current
+    if (!el) return
+
+    const apply = () => {
+      const input = el.contentDocument?.getElementById('search-input')
+      // 알약(`div`)을 감싼 **가운데 정렬 칸**까지 숨깁니다 — 알약만 숨기면 빈 칸이 남고,
+      // 그 칸은 `pointer-events:none` 이라 3D 를 가리지는 않지만 자리를 계속 잡습니다
+      const band = input?.parentElement?.parentElement
+      if (band) band.style.display = hideEngineSearch ? 'none' : ''
+    }
+
+    apply()
+    // iframe 이 다시 뜨면(HMR · 새로고침) 엔진 DOM 도 새것이라 다시 겁니다.
+    // `ready` 는 처음 한 번만 true 가 되므로 그것만 봐서는 놓칩니다
+    el.addEventListener('load', apply)
+    return () => el.removeEventListener('load', apply)
+  }, [ready, hideEngineSearch])
 
   useEffect(() => {
     const el = frame.current
@@ -202,15 +245,14 @@ export function ScentScene({
       engine.params.siteHeader = 0
       engine.params.hostTop = latest.current.coveredTop
       engine.apply()
-      // 개발 서버에서는 엔진의 개발 패널도 같이 뜹니다 — 서비스 화면만 남깁니다
-      engine.solo?.(true)
       engine.setHost({
         openDetail: (perfume) => latest.current.onOpenDetail(perfume),
         saveToShelf: (perfume) => latest.current.onSaveToShelf(perfume),
         exploreSimilar: () => {
           // 엔진이 카드의 향을 새 중심으로 12개를 다시 띄웁니다 — 앱이 더 할 일은 없습니다
         },
-        search: (query) => latest.current.onSearch(query),
+        // 앱이 검색을 직접 받고 있으면(`hideEngineSearch`) 엔진 알약이 없어 오지 않습니다
+        search: (query) => latest.current.onSearch?.(query),
         // 배가 든 해역이 바뀌었거나 향수를 골랐습니다 — 향해 일지가 받습니다 (host.js `hostMove`)
         moveBoat: (move) => latest.current.onMove?.(move),
       })

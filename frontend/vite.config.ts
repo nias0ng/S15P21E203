@@ -22,10 +22,27 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
+        /*
+         * 3D 엔진이 들고 있는 **생성 데이터**를 앱에서도 읽습니다 (지도 향수 200개).
+         *
+         * 엔진은 iframe 이라 앱과 메모리를 나눠 쓰지 않습니다. 메인의 일반 검색이
+         * "지도에 있는 향수" 를 찾으려면 같은 목록이 앱 쪽에도 있어야 하는데,
+         * 200줄을 복사해 두면 CSV 가 갱신될 때 한쪽만 낡습니다.
+         *
+         * ⚠️ 엔진 코드(`landing/src/*.js`)를 앱이 import 하는 **유일한 자리**입니다.
+         * 순수 데이터라 엔진의 three.js · DOM 에 딸려오는 것이 없습니다. 동작 코드는
+         * 이 길로 가져오지 마세요 — 엔진은 iframe 안에서만 돕니다.
+         */
+        '@landing': fileURLToPath(new URL('./landing/src', import.meta.url)),
       },
     },
     server: {
-      port: 5173,
+      /*
+       * 기본은 5173 그대로입니다. `PORT` 를 주면 그 포트로 뜹니다 — 워크트리를 여러 개
+       * 두고 같은 저장소를 동시에 띄울 때 5173 하나를 두고 다투지 않게 하려는 것입니다.
+       * (`PORT=5180 npm run dev`)
+       */
+      port: Number(process.env.PORT) || 5173,
       // 로컬 개발 시 /api 요청을 백엔드(Spring Boot)로 프록시합니다.
       // 프록시를 쓰면 브라우저 기준 same-origin 이라 CORS 설정 없이 개발할 수 있습니다.
       proxy: {

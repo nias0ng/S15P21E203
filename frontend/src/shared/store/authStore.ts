@@ -16,6 +16,11 @@ interface AuthState {
    * 둘 다 사용자 정보를 아직 모르거나 바뀔 필요가 없는 자리입니다.
    */
   setAccessToken: (accessToken: string) => void
+  /**
+   * 사용자 정보만 갈아끼웁니다. 닉네임을 바꿀 때 씁니다 — 토큰은 그대로이고
+   * (세션이 유지됩니다) 헤더에 걸린 이름만 바뀌어야 합니다.
+   */
+  setUser: (user: AuthUser) => void
   clear: () => void
 }
 
@@ -30,6 +35,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       setAuth: ({ accessToken, user }) => set({ accessToken, user }),
       setAccessToken: (accessToken) => set({ accessToken }),
+      setUser: (user) => set({ user }),
       clear: () => set({ accessToken: null, user: null }),
     }),
     { name: 'hyanghae-auth' },

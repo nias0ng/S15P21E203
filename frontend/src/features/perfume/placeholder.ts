@@ -204,8 +204,6 @@ export function placeholderDetail(perfumeId: number): PerfumeDetail {
     name: perfume.name,
     nameKo: perfume.nameKo,
     gender: 'UNISEX',
-    description:
-      '백엔드가 떠 있지 않아 대체 설명을 보여주고 있습니다. 실제 소개 문구는 서버에서 옵니다.',
     concentration: 'EAU DE PARFUM',
     brand: { brandId: 0, name: perfume.brandName ?? '' },
     images: [],

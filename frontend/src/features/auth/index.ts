@@ -22,7 +22,9 @@ export { EMPTY_TERMS, hasAgreedRequired, TERMS } from './terms'
 export type { TermId, TermsState } from './terms'
 export { WithdrawModal } from './components/WithdrawModal'
 export {
+  changeNickname,
   changePassword,
+  checkEmailAvailability,
   checkNicknameAvailability,
   getMe,
   login,

@@ -1,24 +1,38 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 
 import {
   CommentSection,
   commentsQuery,
+  communityKeys,
+  createComment,
+  deleteComment,
+  deletePost,
   POST_CATEGORIES,
   postDetailQuery,
+  updateComment,
 } from '@/features/community'
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
-import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
+import {
+  ROUTES,
+  toPerfumeDetail,
+  toPostDetail,
+  toPostEdit,
+} from '@/shared/config/routes'
+import { useToast } from '@/shared/hooks/useToast'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
+import { useIsLoggedIn } from '@/shared/store/authStore'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { LinkButton } from '@/shared/ui/LinkButton'
+import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { PageFallback } from '@/shared/ui/PageFallback'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
+import { Toast } from '@/shared/ui/Toast'
 
 /** 백엔드 기본값과 같습니다 */
 const COMMENT_PAGE_SIZE = 20
@@ -44,13 +58,67 @@ export default function PostDetailPage() {
   const numericId = Number(postId)
   const enabled = Number.isFinite(numericId)
 
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { showToast, toastProps } = useToast()
+
+  const isLoggedIn = useIsLoggedIn()
+
   const [commentPage, setCommentPage] = useState(0)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [loginOpen, setLoginOpen] = useState(false)
 
   const post = useQuery({ ...postDetailQuery(numericId), enabled })
   const comments = useQuery({
     ...commentsQuery(numericId, { page: commentPage, size: COMMENT_PAGE_SIZE }),
     enabled,
+  })
+
+  /*
+    댓글이 늘거나 줄면 **글 상세도 함께 낡습니다** — 댓글 수(`commentCount`)를
+    거기서 읽기 때문입니다. 목록의 댓글 수도 같은 값이라 커뮤니티 키를 통째로 비웁니다.
+
+    낙관적으로 그리지 않습니다. 서버가 붙이는 번호 · 작성 시각 · 닉네임을 화면이
+    지어낼 수 없어서, 미리 그린 줄과 도착한 줄이 다르게 보입니다.
+  */
+  const refreshComments = () =>
+    void queryClient.invalidateQueries({ queryKey: communityKeys.all })
+
+  const addComment = useMutation({
+    mutationFn: (content: string) => createComment(numericId, content),
+    onSuccess: refreshComments,
+    onError: () => showToast('댓글을 남기지 못했습니다'),
+  })
+
+  const editComment = useMutation({
+    mutationFn: ({
+      commentId,
+      content,
+    }: {
+      commentId: number
+      content: string
+    }) => updateComment(commentId, content),
+    onSuccess: refreshComments,
+    onError: () => showToast('댓글을 수정하지 못했습니다'),
+  })
+
+  const removeComment = useMutation({
+    mutationFn: (commentId: number) => deleteComment(commentId),
+    onSuccess: refreshComments,
+    onError: () => showToast('댓글을 삭제하지 못했습니다'),
+  })
+
+  /** 글 삭제 (CMT-07). 지운 글에 머물 수 없어 게시판으로 돌려보냅니다 */
+  const removePost = useMutation({
+    mutationFn: () => deletePost(numericId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: communityKeys.all })
+      navigate(ROUTES.COMMUNITY_FREE, { replace: true })
+    },
+    onError: () => {
+      setDeleteOpen(false)
+      showToast('게시글을 삭제하지 못했습니다')
+    },
   })
 
   if (post.isPending) return <PageFallback />
@@ -101,8 +169,11 @@ export default function PostDetailPage() {
 
             {data.mine && (
               <span className="ml-auto flex gap-2.5">
-                {/* TODO: 작성 화면에 수정할 글을 실어 보내기 — A24b 연결 시 */}
-                <LinkButton to={ROUTES.POST_WRITE} variant="outline" size="sm">
+                <LinkButton
+                  to={toPostEdit(numericId)}
+                  variant="outline"
+                  size="sm"
+                >
                   수정
                 </LinkButton>
                 <Button
@@ -196,26 +267,39 @@ export default function PostDetailPage() {
         size={COMMENT_PAGE_SIZE}
         onPageChange={setCommentPage}
         isPending={comments.isPending}
-        onCreate={() => {
-          // TODO: CMT-09 댓글 작성 API 연결 (로그인 필요)
+        /*
+          비로그인이면 보내 보고 실패하는 대신 먼저 안내합니다. 401 이 나면 인터셉터가
+          재발급을 시도하다 세션을 정리해, 사용자에게는 "왜 안 되지" 만 남습니다.
+        */
+        onCreate={(content) => {
+          if (!isLoggedIn) {
+            setLoginOpen(true)
+            return
+          }
+          addComment.mutate(content)
         }}
-        onUpdate={() => {
-          // TODO: CMT-10 댓글 수정 API 연결 (로그인 필요)
-        }}
-        onDelete={() => {
-          // TODO: CMT-11 댓글 삭제 API 연결 (로그인 필요)
-        }}
+        onUpdate={(commentId, content) =>
+          editComment.mutate({ commentId, content })
+        }
+        onDelete={(commentId) => removeComment.mutate(commentId)}
       />
 
       <ConfirmDialog
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
         title={`'${data.title}' 게시글을 삭제할까요?`}
-        onConfirm={() => {
-          // TODO: CMT-07 게시글 삭제 API 연결 후 게시판으로 이동 (로그인 필요)
-          setDeleteOpen(false)
-        }}
+        onConfirm={() => removePost.mutate()}
+        destructive
       />
+
+      <LoginRequiredDialog
+        open={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        redirectTo={toPostDetail(numericId)}
+        description="댓글은 로그인한 뒤에 쓸 수 있습니다."
+      />
+
+      <Toast {...toastProps} />
     </div>
   )
 }

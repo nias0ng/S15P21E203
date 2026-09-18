@@ -1,5 +1,6 @@
 package com.hyanghae.backend.perfume.repository;
 
+import com.hyanghae.backend.perfume.dto.response.NoteDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.NoteSummaryResponse;
 import com.hyanghae.backend.perfume.entity.Note;
 import java.util.List;
@@ -37,15 +38,21 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
             """)
     List<NoteSummaryResponse> findAllActive();
 
-    /** 노트 하나입니다. 내려간 노트는 조회되지 않습니다. 향수 검색이 비활성을 빼는 것과 같습니다. */
+    /**
+     * 노트 하나입니다. 내려간 노트는 조회되지 않습니다. 향수 검색이 비활성을 빼는 것과 같습니다.
+     *
+     * <p>목록과 달리 <b>설명을 함께</b> 읽습니다. 목록은 활성 노트 전체를 돌려주는 응답이라
+     * 설명까지 실으면 크게 무거워집니다.
+     */
     @Query("""
-            SELECT new com.hyanghae.backend.perfume.dto.response.NoteSummaryResponse(
-                       n.id, n.name, n.nameKo, n.accordFamily, n.imageUrl, n.popularityRank)
+            SELECT new com.hyanghae.backend.perfume.dto.response.NoteDetailResponse(
+                       n.id, n.name, n.nameKo, n.accordFamily, n.imageUrl, n.popularityRank,
+                       n.description)
             FROM Note n
             WHERE n.id = :noteId
               AND n.active = true
             """)
-    Optional<NoteSummaryResponse> findActiveById(@Param("noteId") Long noteId);
+    Optional<NoteDetailResponse> findActiveById(@Param("noteId") Long noteId);
 
     /** 하위 목록이 404 를 내야 하는지 판단할 때 씁니다. 향수 쪽 {@code existsByIdAndActiveTrue} 와 같습니다. */
     boolean existsByIdAndActiveTrue(Long noteId);
