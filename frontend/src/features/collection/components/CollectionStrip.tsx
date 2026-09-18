@@ -21,12 +21,21 @@ type Props = {
  * - 컬렉션 카드를 누르면 A17
  */
 export function CollectionStrip({ items, isPending = false, onCreate }: Props) {
-  const gridClass = 'grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-4'
+  /*
+    한 줄에 셋. **카드 폭은 넷이던 때 그대로 두고**(1920 에서 440) 남는 폭은 카드 사이
+    간격과 좌우 여백으로 돌립니다 — 셋으로 줄이면서 폭까지 다 나눠 가지면 카드와 사진만
+    커져서 빽빽한 느낌이 그대로 남습니다. 440 x 3 + 가로 간격 40 x 2 = 1400.
+
+    가로 간격만 넓힙니다(`gap-x-10`). 세로는 줄과 줄 사이라 카드 제목이 위 카드 사진에서
+    멀어질 이유가 없어 15 그대로 둡니다.
+  */
+  const gridClass =
+    'mx-auto grid w-full max-w-350 grid-cols-2 gap-x-10 gap-y-3.75 sm:grid-cols-3'
 
   if (isPending) {
     return (
       <div className={gridClass}>
-        {Array.from({ length: 4 }, (_, index) => (
+        {Array.from({ length: 3 }, (_, index) => (
           <Skeleton key={index} className="h-40" />
         ))}
       </div>
@@ -47,7 +56,7 @@ export function CollectionStrip({ items, isPending = false, onCreate }: Props) {
                   <Thumbnail
                     key={index}
                     src={thumbnail}
-                    className="h-13.75 flex-1"
+                    className="aspect-3/4 min-w-0 flex-1"
                   />
                 ))}
             </span>
