@@ -17,10 +17,11 @@ import org.springframework.context.annotation.*;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.context.ActiveProfiles;
 
 @IntegrationTest
 @AutoConfigureMockMvc
-@org.springframework.test.context.ActiveProfiles({"manual-test", "test"})
+@ActiveProfiles({"manual-test", "test"})
 class CollectionIntegrationTest {
     private static final String URL = "/api/v1/users/me/collections";
     @Autowired MockMvc mvc;
