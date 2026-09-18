@@ -2,12 +2,25 @@ import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
-import type { PerfumeDetail } from '../types'
+import type { GenderFilter, PerfumeDetail } from '../types'
 
 type Props = {
   perfume: PerfumeDetail
-  /** [진열대 저장] — 화면이 진열대 모달을 엽니다 */
-  onSaveToShelf: () => void
+  /**
+   * 이 향수가 이미 내 진열대에 있는지. 단추가 [진열대 저장] ↔ [진열대 해제] 로 바뀝니다.
+   *
+   * 비로그인이면 알 길이 없으므로 늘 false 입니다 — 그때 누르면 로그인 유도가 뜹니다.
+   */
+  inShelf: boolean
+  /**
+   * 진열대에 있는지 **아직 모르는 동안**(내 진열대를 받는 중).
+   *
+   * 이때는 단추를 잠급니다. 모르는 채로 [저장] 이라고 적어 두면 이미 담은 향수인데
+   * 담기 모달이 열리고, 분류까지 고른 뒤 409 로 튕겨 사용자가 한 일이 버려집니다.
+   */
+  shelfPending?: boolean
+  /** 위 단추를 눌렀을 때. 담을지 뺄지는 화면이 정합니다 */
+  onShelfAction: () => void
   /**
    * 사진 오른쪽, 이름 아래 남는 자리에 놓을 것.
    *
@@ -30,12 +43,30 @@ type Props = {
  * 판은 그 아래 내용 구역부터 시작합니다 — 다만 사진 오른쪽에 남는 자리에는
  * `aside` 로 판 하나가 들어옵니다.
  */
-export function PerfumeOverview({ perfume, onSaveToShelf, aside }: Props) {
+export function PerfumeOverview({
+  perfume,
+  inShelf,
+  shelfPending = false,
+  onShelfAction,
+  aside,
+}: Props) {
   /*
     영문 이름은 한국어 이름이 있을 때만 따로 적습니다. 없으면 아래 제목이 이미
     영문이라, 위에 또 적으면 같은 글자가 두 줄로 늘어섭니다.
   */
   const hasKoreanName = perfume.nameKo !== null
+
+  /*
+    브랜드 아래 영문 줄 — 향수 영문 이름과 향의 성별을 가운뎃점으로 잇습니다.
+
+    **배열로 모아 잇습니다.** 둘 다 없을 수 있어서(한글 이름이 없는 향수 · 성별을
+    모르는 향수), 문자열을 직접 붙이면 한쪽이 빠졌을 때 가운뎃점만 남거나 줄이
+    통째로 비어 있는 채로 자리를 차지합니다.
+  */
+  const meta = [
+    hasKoreanName ? perfume.name : null,
+    perfume.gender ? GENDER_TEXT[perfume.gender] : null,
+  ].filter((part): part is string => typeof part === 'string')
 
   return (
     <section className="flex flex-col gap-7.5 sm:flex-row">
@@ -78,8 +109,8 @@ export function PerfumeOverview({ perfume, onSaveToShelf, aside }: Props) {
             {/* 검색은 brandName 문자열, 상세는 brand 객체입니다 */}
             <p className="text-ink-muted text-caption">{perfume.brand?.name}</p>
 
-            {hasKoreanName && (
-              <p className="text-ink-muted text-caption">{perfume.name}</p>
+            {meta.length > 0 && (
+              <p className="text-ink-muted text-caption">{meta.join(' · ')}</p>
             )}
           </div>
 
@@ -93,11 +124,42 @@ export function PerfumeOverview({ perfume, onSaveToShelf, aside }: Props) {
             </div>
           )}
 
-          <Button onClick={onSaveToShelf}>진열대 저장</Button>
+          {/*
+            담긴 향수는 같은 자리에서 [진열대 해제] 가 됩니다. [빼기] 단추를 옆에
+            따로 두지 않는 이유: 둘이 나란히 있으면 지금 담겨 있는지를 단추만 보고
+            알 수 없고, 담은 적 없는 향수에도 뺄 수 없는 단추가 하나 붙습니다.
+
+            해제는 되돌릴 수 없어(메모 · 적합도가 함께 지워집니다) `outline` 으로 한
+            단 내립니다. 담기는 이 화면이 권하는 일이라 primary 그대로입니다.
+          */}
+          <Button
+            variant={inShelf ? 'outline' : 'primary'}
+            isLoading={shelfPending}
+            onClick={onShelfAction}
+          >
+            {inShelf ? '진열대 해제' : '진열대 저장'}
+          </Button>
         </div>
 
         {aside}
       </div>
     </section>
   )
+}
+
+/**
+ * 향의 성별(DTL-01 `gender`)을 영문 줄에 적는 말.
+ *
+ * **영문 소문자입니다.** 이 줄은 브랜드 · 향수의 영문 표기가 서는 자리라, 한글
+ * 라벨(`GENDER_FILTERS` 의 남성 · 여성 · 중성)을 섞으면 한 줄 안에서 두 언어가
+ * 부딪힙니다. 그 라벨은 목록 필터 알약에 그대로 두고, 여기만 따로 적습니다.
+ *
+ * ⚠️ **표에 없는 값이면 아무것도 안 적습니다.** 타입은 `GenderFilter` 지만 백엔드
+ * 컬럼은 제약 없는 `VARCHAR(30)` 이고(entity `Gender` 는 검색 필터용 어휘일 뿐입니다)
+ * 원본 CSV 에도 없는 값이라, 여기 없는 문자열이 올 수 있습니다.
+ */
+const GENDER_TEXT: Record<GenderFilter, string> = {
+  FEMALE: 'female',
+  MALE: 'male',
+  UNISEX: 'unisex',
 }

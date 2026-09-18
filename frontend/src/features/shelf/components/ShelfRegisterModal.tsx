@@ -50,6 +50,13 @@ export function ShelfRegisterModal({
   const [category, setCategory] = useState<ShelfCategory | null>(null)
   const [rating, setRating] = useState<number | null>(null)
   const [memo, setMemo] = useState('')
+  /*
+   * [담기] 를 눌렀는데 빈 칸이 있었는지. 참이면 그 칸 옆에 [필수] 가 섭니다.
+   *
+   * 누르기 전에는 띄우지 않습니다 — 열자마자 빨간 글자가 둘 떠 있으면 아직
+   * 아무것도 안 했는데 이미 틀린 것처럼 보입니다.
+   */
+  const [showMissing, setShowMissing] = useState(false)
 
   /*
    * 열릴 때마다 칸을 처음 값으로 되돌립니다.
@@ -69,6 +76,7 @@ export function ShelfRegisterModal({
     setCategory(null)
     setRating(null)
     setMemo('')
+    setShowMissing(false)
   }
 
   // 상세에서 들어오면 1단계가 없습니다
@@ -94,18 +102,24 @@ export function ShelfRegisterModal({
               취소
             </Button>
             <Button
-              // 분류만 고르면 담깁니다
-              disabled={category === null}
-              onClick={() =>
-                picked &&
-                category &&
+              /*
+               * **꺼 두지 않고 눌리게 둡니다.** 분류와 적합도가 필수인데 단추를
+               * 꺼 버리면 왜 안 눌리는지 알려 줄 자리가 없습니다 — 눌러 보게 하고
+               * 모자란 칸 옆에 [필수] 를 띄웁니다.
+               */
+              onClick={() => {
+                if (!picked) return
+                if (category === null || rating === null) {
+                  setShowMissing(true)
+                  return
+                }
                 onSubmit({
                   perfumeId: picked.perfumeId,
                   category,
                   rating,
                   memo: memo.trim() || null,
                 })
-              }
+              }}
             >
               진열대에 담기
             </Button>
@@ -196,7 +210,8 @@ export function ShelfRegisterModal({
             onRatingChange={setRating}
             memo={memo}
             onMemoChange={setMemo}
-            hint="적합도와 메모는 선택입니다. 분류만 고르면 담깁니다. 메모는 향수 한 개당 하나이고 진열대에서 수정할 수 있습니다."
+            categoryMissing={showMissing && category === null}
+            ratingMissing={showMissing && rating === null}
           />
         </div>
       )}

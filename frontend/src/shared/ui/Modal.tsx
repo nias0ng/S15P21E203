@@ -10,6 +10,25 @@ type ModalProps = {
   children: React.ReactNode
   /** 하단 버튼 영역 */
   footer?: React.ReactNode
+  /**
+   * **읽고 답만 하는 짧은 안내 모달** 모양 (확인 · 경고 C01).
+   *
+   * 넷이 함께 바뀝니다 — 제목이 가운데로 모이고, 오른쪽 위 [×] 가 빠지고, 단추 위
+   * 구분선을 걷고, 본문 위아래 숨이 넓어집니다. 넷을 따로 열어 두지 않는 이유:
+   * 전부 "칸이 없고 문장이 한 덩이" 라는 **한 가지 판단**에서 나온 결과라, 하나만
+   * 켜면 어중간한 모양이 됩니다.
+   *
+   * ⚠️ **[×] 가 없으므로 닫는 단추를 `footer` 에 반드시 두세요.** Esc 와 배경
+   * 클릭은 남아 있지만 둘 다 눈에 보이지 않아서, 그것만으로는 나가는 길이 화면에
+   * 없는 모달이 됩니다. `ConfirmDialog` 는 [취소] 를 늘 답니다.
+   *
+   * 칸이 있는 모달(향수 등록 등)에는 쓰지 마세요. 아래 입력이 왼쪽에서 시작하므로
+   * 제목만 가운데면 축이 두 개가 되고, 내용이 길어 구분선이 층을 나눠 줘야 합니다.
+   *
+   * 본문 글의 정렬은 여기서 건드리지 않습니다 — 무엇을 어떻게 놓을지는 내용을 가진
+   * 쪽이 정합니다(`ConfirmDialog` 가 자기 문장에 `text-center` 를 답니다).
+   */
+  notice?: boolean
   className?: string
 }
 
@@ -23,6 +42,7 @@ export function Modal({
   title,
   children,
   footer,
+  notice = false,
   className,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
@@ -56,22 +76,68 @@ export function Modal({
         className,
       )}
     >
-      <header className="border-line flex items-center justify-between border-b px-5 py-3.75">
-        <h2 className="text-title font-serif font-semibold">{title}</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="닫기"
-          className="text-ink-muted hover:text-ink rounded p-1.25 text-lg leading-none"
+      <header
+        className={cn(
+          'border-line flex items-center border-b py-3.75',
+          /*
+            안내 모달은 좌우를 50px 로 넓힙니다. 가운데로 모은 글은 줄이 길수록
+            다음 줄 첫머리를 찾기 어려워서, 컬럼을 한 단 좁혀 둡니다.
+          */
+          notice ? 'justify-center px-12.5' : 'justify-between px-5',
+        )}
+      >
+        <h2
+          className={cn(
+            'text-title font-serif font-semibold',
+            notice && 'text-center',
+          )}
         >
-          ×
-        </button>
+          {title}
+        </h2>
+
+        {/*
+          안내 모달에는 [×] 가 없습니다. 나가는 길이 아래 [취소] 에 이미 있고, 둘을
+          같이 두면 **같은 일을 하는 단추가 한 화면에 둘**이 됩니다 — 무엇이 다른지
+          찾게 되고, 오른쪽 위에 무게가 실려 가운데로 모은 제목까지 밀려 보였습니다.
+
+          Esc 와 배경 클릭은 그대로입니다(`onCancel` · 배경 onClick).
+        */}
+        {!notice && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="닫기"
+            className="text-ink-muted hover:text-ink rounded p-1.25 text-lg leading-none"
+          >
+            ×
+          </button>
+        )}
       </header>
 
-      <div className="text-body px-5 py-3.75">{children}</div>
+      {/*
+        안내 모달은 본문을 위 40px · 아래 25px 로 벌립니다.
+
+        **위아래가 다른 값인데 눈에는 같습니다.** 아래쪽에는 단추 구역의 위 여백
+        15px 이 이어 붙어서, 문장에서 단추까지가 실제로는 40px 입니다. 위아래를
+        똑같이 25px 로 두면 아래만 40px 이 되어 문장이 자기 칸 위쪽에 붙습니다.
+
+        아래 구분선을 걷어서 더 그렇습니다 — 선이 있을 때는 그 선이 경계를 대신
+        말해 주지만, 없으면 문장이 어디쯤 놓였는지를 여백만으로 읽습니다.
+      */}
+      <div
+        className={cn('text-body px-5', notice ? 'pt-10 pb-6.25' : 'py-3.75')}
+      >
+        {children}
+      </div>
 
       {footer && (
-        <footer className="border-line flex justify-end gap-2.5 border-t px-5 py-3.75">
+        <footer
+          className={cn(
+            'border-line flex justify-end gap-2.5 px-5 py-3.75',
+            // 안내 모달에는 긋지 않습니다 — 나눌 층이 문장 한 덩이뿐입니다
+            !notice && 'border-t',
+          )}
+        >
           {footer}
         </footer>
       )}
