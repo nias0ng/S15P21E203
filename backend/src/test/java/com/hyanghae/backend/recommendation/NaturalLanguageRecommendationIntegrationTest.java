@@ -251,7 +251,7 @@ class NaturalLanguageRecommendationIntegrationTest {
 
     private static NlrRecommendResponse aiResponse(
             String status, NlrRecommendResponse.Result... results) {
-        return new NlrRecommendResponse(status, QUERY, List.of(results));
+        return new NlrRecommendResponse(status, QUERY, null, List.of(results), null, null);
     }
 
     private static NlrRecommendResponse.Result result(

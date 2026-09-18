@@ -3,43 +3,76 @@ package com.hyanghae.backend.recommendation.client;
 import java.util.List;
 
 /**
- * AI 서버의 {@code POST /nlr/recommend} 응답입니다. <b>쓰는 칸만 받습니다.</b>
+ * AI 서버의 {@code POST /nlr/recommend} 응답입니다.
  *
- * <p>받지 않는 칸이 많습니다. {@code conditions}·{@code unmatched}·{@code diagnostics} 는
- * 문제를 볼 때 쓰는 내부 기록이고, 결과 안의 {@code people}·{@code rating}·{@code score} 와
- * {@code matched} 안의 {@code strength}·{@code tier}·{@code rationale} 도 마찬가지입니다.
- * 사용자에게 내보내지 않기로 계약서가 정했고, 여기서 받지 않으면 실수로 흘릴 일도 없습니다.
+ * <p>화면에 나가는 것은 {@code status} 와 {@code results} 뿐입니다. 나머지 셋은
+ * <b>기록용</b>입니다 — 어떤 조건으로 무엇을 골랐는지, 사전이 무엇을 못 받았는지를
+ * {@code nlr_*} 표에 남깁니다. 남기지 않으면 사전을 무엇으로 넓힐지 정할 근거가 없습니다.
  *
- * <p>모르는 칸이 와도 실패하지 않습니다. Spring 이 만드는 {@code ObjectMapper} 는
- * {@code FAIL_ON_UNKNOWN_PROPERTIES} 가 꺼져 있습니다. AI 가 칸을 더해도 이쪽은 안 깨집니다.
- *
- * <p>이름과 브랜드도 받지 않습니다. AI 도 그 값을 갖고 있지만 <b>우리 DB 에서 꺼내야</b>
- * 합니다. AI 쪽 이름을 쓰면 DB 에 없는 향수도 이름만 채워 내보내게 되고, 그러면
- * {@code perfumeId} 가 없어 상세 페이지로 갈 수 없는 결과가 화면에 섞입니다.
- *
- * @param status  {@code OK}·{@code OK_RELAXED}·{@code NO_CONDITION}·{@code NO_RESULT} 넷입니다.
- * @param query   사용자가 쓴 말 그대로입니다.
- * @param results 향수 목록입니다. 순위 순서이고, <b>이 순서가 곧 의미입니다.</b>
+ * <p>모르는 칸은 Jackson 이 무시합니다. AI 가 계약을 넓혀도 이 record 를 고치기 전까지는
+ * 그냥 버려지고, 고치면 그때부터 읽힙니다.
  */
-public record NlrRecommendResponse(String status, String query, List<Result> results) {
+public record NlrRecommendResponse(
+        String status,
+        String query,
+        Conditions conditions,
+        List<Result> results,
+        List<Unmatched> unmatched,
+        Diagnostics diagnostics
+) {
 
     /**
-     * 추천된 향수 한 건입니다.
+     * AI 가 문장에서 뽑아낸 향 조건입니다.
      *
+     * @param core   원하는 향 특성입니다.
+     * @param avoid  피하고 싶은 향 특성입니다.
+     * @param source {@code lexicon_only} · {@code llm+lexicon} · {@code llm_no_effect}.
+     *               조건이 사전만으로 나왔는지 LLM 이 거들었는지 가릅니다.
+     */
+    public record Conditions(
+            List<String> core,
+            List<String> avoid,
+            List<String> matchedExpressions,
+            String source
+    ) {
+    }
+
+    /**
      * @param fragranticaId Fragrantica 원본 향수 번호입니다. {@code perfumes.fragrantica_id}
-     *                      와 같은 값이고, 이것으로 우리 DB 를 찾습니다.
-     * @param matched       어느 향 조건에 맞았는지입니다. 추천 이유의 재료입니다.
+     *                      로 우리 번호를 찾아야 합니다.
      */
     public record Result(Long fragranticaId, List<Matched> matched) {
     }
 
-    /**
-     * 향수가 향 조건 하나에 맞았다는 기록입니다.
-     *
-     * @param accord 향 특성의 영어 이름입니다. <b>이 값을 그대로 사용자에게 보여주면 안 됩니다.</b>
-     * @param from   사용자가 쓴 표현입니다. 화면의 {@code phrase} 가 이 값입니다.
-     *               입력어와 무관한 근거면 {@code null} 입니다.
-     */
     public record Matched(String accord, String from) {
+    }
+
+    /**
+     * 사전이 받지 못한 표현 하나입니다.
+     *
+     * <p><b>지금 오는 칸은 넷뿐입니다.</b> 표에는 {@code hadConditions} · {@code llmAccords} ·
+     * {@code tier} 같은 칸이 더 있지만 AI 계약이 아직 그것을 보내지 않아 {@code NULL} 로
+     * 남습니다. 계약이 넓어지면 여기에 칸을 더하면 됩니다.
+     */
+    public record Unmatched(
+            String expression,
+            String normalizedKey,
+            String unmatchReason,
+            String entryId
+    ) {
+    }
+
+    /**
+     * @param stage          어느 단계에서 답이 나왔는지입니다. {@code AND} · {@code RELAXED_OR}
+     *                       처럼 조건을 얼마나 풀었는지가 담깁니다.
+     * @param candidateCount 다섯 개를 고르기 전의 후보 규모입니다.
+     */
+    public record Diagnostics(
+            String stage,
+            Integer candidateCount,
+            Integer tieAtLast,
+            List<String> relaxed,
+            String unmatchedHint
+    ) {
     }
 }

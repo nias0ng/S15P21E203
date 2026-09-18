@@ -4,6 +4,7 @@ import com.hyanghae.backend.perfume.repository.PerfumeIdentity;
 import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
 import com.hyanghae.backend.perfume.repository.PerfumeRepository;
+import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.recommendation.client.NlrClient;
 import com.hyanghae.backend.recommendation.client.NlrRecommendResponse;
 import com.hyanghae.backend.recommendation.dto.response.NaturalLanguageRecommendationResponse;
@@ -58,17 +59,23 @@ public class NaturalLanguageRecommendationService {
     private static final String NO_CONDITION = "NO_CONDITION";
 
     private final NlrClient nlrClient;
+    private final NlrRecordService recordService;
+    private final CurrentUser currentUser;
     private final PerfumeRepository perfumeRepository;
     private final PerfumeImageRepository perfumeImageRepository;
     private final AccordLabeler accordLabeler;
 
     public NaturalLanguageRecommendationService(
             NlrClient nlrClient,
+            NlrRecordService recordService,
+            CurrentUser currentUser,
             PerfumeRepository perfumeRepository,
             PerfumeImageRepository perfumeImageRepository,
             AccordLabeler accordLabeler
     ) {
         this.nlrClient = nlrClient;
+        this.recordService = recordService;
+        this.currentUser = currentUser;
         this.perfumeRepository = perfumeRepository;
         this.perfumeImageRepository = perfumeImageRepository;
         this.accordLabeler = accordLabeler;
@@ -85,12 +92,44 @@ public class NaturalLanguageRecommendationService {
                 ai.results() == null ? List.of() : ai.results();
 
         List<RecommendedPerfumeResponse> perfumes = toPerfumes(results);
+        String status = resolveStatus(ai.status(), results.size(), perfumes.size());
 
         return new NaturalLanguageRecommendationResponse(
-                resolveStatus(ai.status(), results.size(), perfumes.size()),
+                record(query, status, ai, perfumes),
+                status,
                 query,
                 perfumes
         );
+    }
+
+    /**
+     * 이 추천을 기록하고 번호를 돌려줍니다. 화면이 그 번호로 클릭과 만족도를 보냅니다.
+     *
+     * <p><b>기록이 실패해도 추천은 그대로 나갑니다.</b> 남기는 것은 사전을 넓힐 근거를 모으는
+     * 일이고, 그것이 안 됐다고 사용자가 추천을 못 받을 이유는 없습니다. 대신 번호가 비어 나가
+     * 그 요청에는 클릭과 만족도를 붙일 수 없습니다.
+     *
+     * <p>조용히 넘기지 않고 로그를 남깁니다. 기록이 계속 실패하면 집계가 비는데, 그것을 표가
+     * 빈 뒤에 알아채면 그사이 행동을 영영 잃습니다.
+     */
+    private Long record(
+            String query,
+            String status,
+            NlrRecommendResponse ai,
+            List<RecommendedPerfumeResponse> perfumes
+    ) {
+        try {
+            return recordService.record(
+                    currentUser.id().orElse(null),
+                    query,
+                    status,
+                    ai,
+                    perfumes.stream().map(RecommendedPerfumeResponse::perfumeId).toList()
+            );
+        } catch (RuntimeException exception) {
+            log.warn("자연어 추천 기록을 남기지 못했습니다. 추천은 그대로 나갑니다.", exception);
+            return null;
+        }
     }
 
     /**

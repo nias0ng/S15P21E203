@@ -26,12 +26,20 @@ import java.util.List;
  * 어깁니다. 드문 경우도 아닙니다 — 합성 평가셋 600건에서 22.3%, 실사용자 설문 155건에서
  * 48.4% 입니다. 예외가 아니라 정상 경로입니다.
  *
+ * @param recommendationId 이 추천의 번호입니다. 화면이 클릭과 만족도를 보낼 때 씁니다.
+ *                 <b>{@code null} 일 수 있습니다</b> — 기록에 실패한 경우이고, 그때는
+ *                 클릭·만족도를 보내지 않으면 됩니다. 추천 자체는 정상입니다.
  * @param status   위 네 가지 중 하나입니다.
  * @param query    사용자가 쓴 말 그대로입니다.
  * @param perfumes 0~5개입니다. {@code status} 가 {@code OK} 또는 {@code OK_RELAXED} 면
  *                 비어 있지 않습니다.
  */
 public record NaturalLanguageRecommendationResponse(
+
+        @Schema(description = "이 추천의 번호입니다. 클릭과 만족도를 보낼 때 씁니다."
+                + " 기록에 실패하면 null 이고, 그때는 보내지 않으면 됩니다.",
+                example = "1042", nullable = true)
+        Long recommendationId,
 
         @Schema(description = "결과의 종류입니다. 화면이 네 가지를 구분해야 합니다.",
                 allowableValues = {"OK", "OK_RELAXED", "NO_CONDITION", "NO_RESULT"},

@@ -1,0 +1,365 @@
+package com.hyanghae.backend.recommendation;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.hyanghae.backend.recommendation.client.NlrClient;
+import com.hyanghae.backend.recommendation.client.NlrRecommendResponse;
+import com.hyanghae.backend.support.IntegrationTest;
+import java.time.OffsetDateTime;
+import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+/**
+ * 자연어 추천의 기록과 피드백을 실제 PostgreSQL 위에서 검증합니다.
+ *
+ * <p>여기서 볼 것은 화면에 나가는 모양이 아니라 <b>표에 무엇이 남는가</b> 입니다. 이 기록이
+ * 사전을 무엇으로 넓힐지 정하는 유일한 실사용 근거라, 남지 않으면 기능이 있으나 마나입니다.
+ *
+ * <p>AI 호출만 대역으로 바꿉니다. 실제 AI 를 부르면 같은 문장이 실행마다 다른 조건을 내놓아
+ * (①단계 LLM 이 매번 조금 다른 표현을 뽑습니다) 검증이 그날의 응답에 좌우됩니다.
+ */
+@IntegrationTest
+@AutoConfigureMockMvc
+class NlrFeedbackIntegrationTest {
+
+    private static final String RECOMMEND_URL = "/api/v1/recommendations/natural-language";
+    private static final String QUERY = "빨래 냄새 나는 향수 찾고 있어";
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    @MockitoBean
+    private NlrClient nlrClient;
+
+    @BeforeEach
+    void insertFixtures() {
+        clearAll();
+        jdbcTemplate.update(
+                "INSERT INTO brands (brand_id, name) VALUES (1, 'Ostrikov Beauty Publishing')");
+        insertPerfume(1, 73368L, "Laundry");
+        insertPerfume(2, 1234L, "Soft Cotton");
+    }
+
+    @AfterEach
+    void cleanUp() {
+        clearAll();
+    }
+
+    /**
+     * 추천 한 번이 표 셋에 남고 그 번호가 응답에 나옵니다.
+     *
+     * <p>화면은 이 번호로 클릭과 만족도를 보냅니다. 번호가 안 나가면 나머지 두 표가 영영
+     * 비어 있게 됩니다.
+     */
+    @Test
+    void recordsRequestResultsAndUnmatched() throws Exception {
+        given(nlrClient.recommend(anyString())).willReturn(aiResponse());
+
+        long recommendationId = recommend();
+
+        assertThat(recommendationId).isPositive();
+        assertThat(queryForString(
+                "SELECT raw_query FROM nlr_recommendations WHERE recommendation_id = ?",
+                recommendationId))
+                .isEqualTo(QUERY);
+        assertThat(queryForString(
+                "SELECT status FROM nlr_recommendations WHERE recommendation_id = ?",
+                recommendationId))
+                .isEqualTo("OK");
+
+        // 조건과 진단이 그대로 남아야 "이 조건에서 왜 이 향수가 나왔나" 를 다시 볼 수 있습니다.
+        assertThat(queryForString(
+                "SELECT core_accords FROM nlr_recommendations WHERE recommendation_id = ?",
+                recommendationId))
+                .isEqualTo("soapy|fresh");
+        assertThat(queryForString(
+                "SELECT stage FROM nlr_recommendations WHERE recommendation_id = ?",
+                recommendationId))
+                .isEqualTo("AND");
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT candidate_count FROM nlr_recommendations WHERE recommendation_id = ?",
+                Integer.class, recommendationId))
+                .isEqualTo(172);
+
+        // 순위가 AI 가 준 순서 그대로여야 합니다.
+        assertThat(jdbcTemplate.queryForList(
+                "SELECT perfume_id FROM nlr_recommendation_items"
+                        + " WHERE recommendation_id = ? ORDER BY rank", Long.class,
+                recommendationId))
+                .containsExactly(1L, 2L);
+
+        assertThat(queryForString(
+                "SELECT expression FROM nlr_unmatched_expressions WHERE recommendation_id = ?",
+                recommendationId))
+                .isEqualTo("무겁지 않게");
+    }
+
+    /**
+     * AI 계약에 아직 없는 칸은 비어 있습니다.
+     *
+     * <p><b>이 단언이 깨지면 계약이 넓어졌다는 뜻입니다.</b> 그때는 값을 채우도록 고치고 이
+     * 테스트를 값 검증으로 바꾸면 됩니다. {@code had_conditions} 를 {@code NOT NULL} 로 두지
+     * 않은 이유가 여기에 있습니다 — 그랬다면 미매칭이 한 줄도 안 남습니다.
+     */
+    @Test
+    void leavesColumnsTheAiDoesNotSendYetEmpty() throws Exception {
+        given(nlrClient.recommend(anyString())).willReturn(aiResponse());
+
+        long recommendationId = recommend();
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT had_conditions FROM nlr_unmatched_expressions"
+                        + " WHERE recommendation_id = ?", Boolean.class, recommendationId))
+                .isNull();
+        assertThat(queryForString(
+                "SELECT lexicon_version FROM nlr_recommendations WHERE recommendation_id = ?",
+                recommendationId))
+                .isNull();
+    }
+
+    /** 누른 순위가 남습니다. */
+    @Test
+    void recordsClick() throws Exception {
+        given(nlrClient.recommend(anyString())).willReturn(aiResponse());
+        long recommendationId = recommend();
+
+        mockMvc.perform(post(RECOMMEND_URL + "/" + recommendationId + "/clicks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rank\":2}"))
+                .andExpect(status().isNoContent());
+
+        assertThat(clickedAt(recommendationId, 2)).isNotNull();
+        assertThat(clickedAt(recommendationId, 1)).isNull();
+    }
+
+    /**
+     * 같은 카드를 다시 눌러도 처음 시각을 지킵니다.
+     *
+     * <p>덮어쓰면 "추천을 받고 얼마 만에 눌렀나" 가 마지막 클릭 기준으로 바뀝니다. 화면을
+     * 뒤로 갔다 돌아와 다시 누르는 일이 흔해서 실제로 일어납니다.
+     */
+    @Test
+    void keepsTheFirstClickTime() throws Exception {
+        given(nlrClient.recommend(anyString())).willReturn(aiResponse());
+        long recommendationId = recommend();
+
+        click(recommendationId, 1);
+        OffsetDateTime first = clickedAt(recommendationId, 1);
+        click(recommendationId, 1);
+
+        assertThat(clickedAt(recommendationId, 1)).isEqualTo(first);
+    }
+
+    /** 없는 추천 번호로 오는 클릭은 404 입니다. */
+    @Test
+    void rejectsClickOnUnknownRecommendation() throws Exception {
+        mockMvc.perform(post(RECOMMEND_URL + "/999999/clicks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rank\":1}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("RECOMMENDATION_RECORD_NOT_FOUND"));
+    }
+
+    /** 그 추천에 없던 순위도 404 입니다. 결과가 둘인데 5위를 눌렀다고 올 수는 없습니다. */
+    @Test
+    void rejectsClickOnRankThatWasNotServed() throws Exception {
+        given(nlrClient.recommend(anyString())).willReturn(aiResponse());
+        long recommendationId = recommend();
+
+        mockMvc.perform(post(RECOMMEND_URL + "/" + recommendationId + "/clicks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rank\":5}"))
+                .andExpect(status().isNotFound());
+    }
+
+    /** 순위는 1~5 입니다. 범위 밖은 요청 DTO 가 400 으로 막습니다. */
+    @Test
+    void rejectsRankOutOfRange() throws Exception {
+        given(nlrClient.recommend(anyString())).willReturn(aiResponse());
+        long recommendationId = recommend();
+
+        mockMvc.perform(post(RECOMMEND_URL + "/" + recommendationId + "/clicks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rank\":0}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    /** 만족도가 남습니다. */
+    @Test
+    void recordsFeedback() throws Exception {
+        given(nlrClient.recommend(anyString())).willReturn(aiResponse());
+        long recommendationId = recommend();
+
+        mockMvc.perform(post(RECOMMEND_URL + "/" + recommendationId + "/feedback")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"satisfaction\":\"SATISFIED\",\"comment\":\"원하던 느낌\"}"))
+                .andExpect(status().isCreated());
+
+        assertThat(queryForString(
+                "SELECT satisfaction FROM nlr_feedbacks WHERE recommendation_id = ?",
+                recommendationId))
+                .isEqualTo("SATISFIED");
+        assertThat(queryForString(
+                "SELECT comment FROM nlr_feedbacks WHERE recommendation_id = ?",
+                recommendationId))
+                .isEqualTo("원하던 느낌");
+    }
+
+    /** 한마디는 선택입니다. */
+    @Test
+    void recordsFeedbackWithoutComment() throws Exception {
+        given(nlrClient.recommend(anyString())).willReturn(aiResponse());
+        long recommendationId = recommend();
+
+        mockMvc.perform(post(RECOMMEND_URL + "/" + recommendationId + "/feedback")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"satisfaction\":\"NEUTRAL\"}"))
+                .andExpect(status().isCreated());
+
+        assertThat(queryForString(
+                "SELECT comment FROM nlr_feedbacks WHERE recommendation_id = ?",
+                recommendationId))
+                .isNull();
+    }
+
+    /**
+     * 두 번째 답은 409 입니다.
+     *
+     * <p>표의 기본키가 막아 주지만 그대로 두면 500 이 나갑니다. 화면을 다시 열어 같은 버튼이
+     * 눌리는 일이 있어 실제로 옵니다.
+     */
+    @Test
+    void rejectsSecondFeedback() throws Exception {
+        given(nlrClient.recommend(anyString())).willReturn(aiResponse());
+        long recommendationId = recommend();
+        feedback(recommendationId, "SATISFIED");
+
+        mockMvc.perform(post(RECOMMEND_URL + "/" + recommendationId + "/feedback")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"satisfaction\":\"DISSATISFIED\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code")
+                        .value("RECOMMENDATION_FEEDBACK_ALREADY_ANSWERED"));
+
+        // 처음 답이 그대로여야 합니다.
+        assertThat(queryForString(
+                "SELECT satisfaction FROM nlr_feedbacks WHERE recommendation_id = ?",
+                recommendationId))
+                .isEqualTo("SATISFIED");
+    }
+
+    /** 세 값 밖의 만족도는 400 입니다. DB 의 CHECK 까지 내려가면 500 이 됩니다. */
+    @Test
+    void rejectsUnknownSatisfaction() throws Exception {
+        given(nlrClient.recommend(anyString())).willReturn(aiResponse());
+        long recommendationId = recommend();
+
+        mockMvc.perform(post(RECOMMEND_URL + "/" + recommendationId + "/feedback")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"satisfaction\":\"VERY_GOOD\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    /** 없는 추천에 만족도를 보내면 404 입니다. */
+    @Test
+    void rejectsFeedbackOnUnknownRecommendation() throws Exception {
+        mockMvc.perform(post(RECOMMEND_URL + "/999999/feedback")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"satisfaction\":\"SATISFIED\"}"))
+                .andExpect(status().isNotFound());
+    }
+
+    private long recommend() throws Exception {
+        clearRateLimit();
+        String body = mockMvc.perform(post(RECOMMEND_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"query\":\"" + QUERY + "\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return Long.parseLong(body.replaceAll(".*\"recommendationId\"\\s*:\\s*(\\d+).*", "$1"));
+    }
+
+    private void click(long recommendationId, int rank) throws Exception {
+        mockMvc.perform(post(RECOMMEND_URL + "/" + recommendationId + "/clicks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rank\":" + rank + "}"))
+                .andExpect(status().isNoContent());
+    }
+
+    private void feedback(long recommendationId, String satisfaction) throws Exception {
+        mockMvc.perform(post(RECOMMEND_URL + "/" + recommendationId + "/feedback")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"satisfaction\":\"" + satisfaction + "\"}"))
+                .andExpect(status().isCreated());
+    }
+
+    private OffsetDateTime clickedAt(long recommendationId, int rank) {
+        return jdbcTemplate.queryForObject(
+                "SELECT clicked_at FROM nlr_recommendation_items"
+                        + " WHERE recommendation_id = ? AND rank = ?",
+                OffsetDateTime.class, recommendationId, rank);
+    }
+
+    private String queryForString(String sql, long recommendationId) {
+        return jdbcTemplate.queryForObject(sql, String.class, recommendationId);
+    }
+
+    private static NlrRecommendResponse aiResponse() {
+        return new NlrRecommendResponse(
+                "OK",
+                QUERY,
+                new NlrRecommendResponse.Conditions(
+                        List.of("soapy", "fresh"), List.of(), List.of("빨래"), "llm+lexicon"),
+                List.of(
+                        new NlrRecommendResponse.Result(73368L,
+                                List.of(new NlrRecommendResponse.Matched("soapy", "빨래"))),
+                        new NlrRecommendResponse.Result(1234L,
+                                List.of(new NlrRecommendResponse.Matched("fresh", "빨래")))),
+                List.of(new NlrRecommendResponse.Unmatched(
+                        "무겁지 않게", "무겁지않게", "NOT_IN_LEXICON", null)),
+                new NlrRecommendResponse.Diagnostics("AND", 172, 1, List.of(), null));
+    }
+
+    private void insertPerfume(long perfumeId, Long fragranticaId, String name) {
+        jdbcTemplate.update("""
+                INSERT INTO perfumes (perfume_id, brand_id, fragrantica_id, name, is_active)
+                VALUES (?, 1, ?, ?, TRUE)
+                """, perfumeId, fragranticaId, name);
+    }
+
+    /**
+     * {@code nlr_recommendations} 를 먼저 지웁니다. 나머지 셋이 {@code ON DELETE CASCADE} 로
+     * 딸려 나갑니다. 향수를 먼저 지우면 결과 줄만 사라지고 요청 줄이 남아, 다음 테스트가 "결과
+     * 없는 요청" 을 보게 됩니다.
+     */
+    private void clearAll() {
+        jdbcTemplate.update("DELETE FROM nlr_recommendations");
+        jdbcTemplate.update("DELETE FROM perfumes");
+        jdbcTemplate.update("DELETE FROM brands");
+        clearRateLimit();
+    }
+
+    private void clearRateLimit() {
+        redisTemplate.delete(redisTemplate.keys("recommendation:rate:*"));
+    }
+}
