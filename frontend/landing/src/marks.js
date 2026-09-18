@@ -177,14 +177,16 @@ export function createMarks(scene) {
   const FAMS = Object.fromEntries(CONFIG.families.map(f => [f.key, f]));
   const MAPPED = PERFUMES.map((p, j) => {
     const f = FAMS[p.family] || CONFIG.families[0];
-    // 카드(MAP-05)에 들어갈 글자. ⚠ CSV 에는 노트가 없다 — 카드는 '—' 로 둔다 (ui.js 규약 :
+    // 카드(MAP-05)에 들어갈 글자. ⚠ 노트는 데이터에 없다 (CSV 에도 · 백엔드 perfume_notes 도 비어 있다) — notes 는 '' 로 둔다 (ui.js 규약 :
     //   *"제공 가능한 정보만 표시한다"*). 향조는 카드 위쪽 라벨(zone.name)이 이미 보여 준다
+    // ⭐ 어코드 상위 3개 (2026-09-17, v0.75.3) — 생성기가 data/scent_map.json 의 top_accords 에서 [영문, 한글] 로 싣는다 (p.ac). 카드의 ACCORDS 줄이 이것이다
     // ⚠ v0.32.0 : 지도에서는 **향조가 곧 존**이다 (areas.js) — zone 키가 향조 키다
     // ⭐ 한글 판매명 (2026-09-12, markNameKo) — data/perfume_names_ko.csv 에서 생성기가 붙였다. name · sub 는 **영문 원본 그대로** 두고
     //   한글은 따로 싣는다 (카드가 둘 다 보여 준다 — 한글 제목 밑에 영문 원명). labelKo 는 부표 위 이름표용 짧은 이름이다 (농도·연도를 뗐다)
     return { src: 'map', j, zone: f.key, fam: f, name: p.name, sub: p.brand + (p.year ? ' · ' + p.year : ''), notes: '', perfume: p,
       nameKo: p.nameKo || p.name, labelKo: p.labelKo || p.nameKo || p.name,
       subKo: (p.brandKo || p.brand) + (p.year ? ' · ' + p.year : ''), rank: p.rank,
+      accords: (p.ac || []).map(([en, ko, fam]) => ({ en, ko, fam: fam || '' })),   // fam = 어코드가 속한 향조 (v0.75.7 — 동그라미 색 계열, ui.js accordColor)
       // 카드 이미지 주소 (2026-09-14, v0.64.0 — ui.js showScent). ⚠ 아직 데이터에 없다 — 생성기나 호스트(백엔드 imageUrl)가 p.img 를 실으면 카드에 뜬다
       img: p.img || '' };
   });

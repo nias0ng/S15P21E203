@@ -1,7 +1,7 @@
 // ───────── 향수 지도 CSV → JS 모듈 (2026-09-11) ─────────
 //   node scripts/perfumes-from-csv.mjs            (paperboat 폴더에서)
 //
-// 원본 : data/perfume_map_points.csv (+ 한글 이름 data/perfume_names_ko.csv · 닮은 향수 data/scent_map.json)  →  생성 : src/perfumes-data.js
+// 원본 : data/perfume_map_points.csv (+ 한글 이름 data/perfume_names_ko.csv · 어코드 · 닮은 향수 data/scent_map.json · 어코드 한글 data/accord_names_ko.csv)  →  생성 : src/perfumes-data.js
 //
 // ⚠ 왜 CSV 를 바로 import 하지 않는가 — Vite 의 `?raw` 를 쓰면 **Vite 없이 여는
 //   preview-nobuild.html 이 통째로 죽는다** (브라우저가 CSV 를 모듈로 받으려다 MIME 에러).
@@ -94,14 +94,75 @@ const seen = new Map();
 rows.forEach(r => { if (!r.labelKo) return; if (seen.has(r.labelKo)) warn.push(`이름표가 겹친다 : '${r.labelKo}' (${seen.get(r.labelKo)} · ${r.id}) — label_ko 로 가른다`); else seen.set(r.labelKo, r.id); });
 if (warn.length) console.warn('⚠ 한글 이름 :\n  ' + warn.join('\n  '));
 
+// ── 카드 어코드 (2026-09-17, v0.75.3) — data/scent_map.json 의 points[].top_accords 에서 **상위 3개**를 [영문, 한글] 로 붙인다 (카드의 ACCORDS 줄).
+//   ⭐ 사용자 : *"어코드로 진행해줘 상위 3개만"*. 노트(탑 · 미들 · 베이스)는 데이터가 없다 — 백엔드 perfume_notes 가 비어 있다 (09-17 로컬 DB 0행).
+//     어코드는 백엔드 perfume_accords(/api/v1/perfumes/{id}/notes 의 accords)와 같은 값이다 (strength 0~100 = weight × 100).
+//   한글은 data/accord_names_ko.csv — basis : 서비스(향 계열 이름 · 노트 목록에 이미 있는 표기) · 관례(흔히 쓰는 음역) · 추정.
+//   ⚠ top_accords 는 세기 순이다 (아니면 경고). 3위와 4위의 세기가 같은 향수(11개)는 원본 순서를 따른다.
+//   ⭐ 2026-09-18 (v0.75.7) : 어코드마다 **향조 아홉 중 하나**(`family`)를 같이 싣는다 — [영문, 한글, 향조]. 카드가 그 향조 색 계열로 어코드 글자를 칠한다 (ui.js accordInk).
+//     사용자 : *"해당 어코드들을 9개로 묶어 … 전부 같은 색이 아니라 유사한 계열 색상의 폰트로"*. 묶음은 data/accord_names_ko.csv 의 family 열이다 —
+//     family_basis : 데이터(200개에서 어코드 세기와 향조 비중의 상관이 가장 큰 향조 · 10회 이상이거나 r ≥ 0.3) · 데이터(약함) · 판단(드물고 데이터 1위가 향료 상식과 어긋난 것 — family_note).
+//     ⚠ 여기서 그 상관을 다시 재어, **10회 이상 나오는 어코드**의 family 가 데이터 1위와 다르면 경고한다 — 원본이 바뀌어 묶음이 낡은 것이다.
+const SM = join(root, 'data', 'scent_map.json');
+const smap = JSON.parse(readFileSync(SM, 'utf8'));
+const AC_TOP = 3;
+const FAMILY_KEYS = ['CITRUS', 'FRUITY', 'FLORAL', 'GREEN', 'AQUATIC', 'WOODY', 'AMBER', 'GOURMAND', 'MUSK'];
+const AKO = join(root, 'data', 'accord_names_ko.csv');
+const akText = readFileSync(AKO, 'utf8').replace(/^﻿/, '');
+const akLines = akText.split(/\r?\n/).filter(l => l.trim());
+const akHead = parseLine(akLines[0]);
+for (const k of ['accord', 'name_ko', 'basis', 'family', 'family_basis']) if (!akHead.includes(k)) throw new Error('어코드 한글 CSV 에 열이 없다 : ' + k);
+const akc = Object.fromEntries(akHead.map((h, i) => [h, i]));
+const acKo = new Map(), acFam = new Map();
+const acWarn = [];
+akLines.slice(1).forEach(l => {
+  const v = parseLine(l);
+  const en = v[akc.accord];
+  if (acKo.has(en)) acWarn.push(`한글 이름이 둘이다 : ${en}`);
+  if (!v[akc.name_ko]) acWarn.push(`한글 이름이 비었다 : ${en}`);
+  if (!FAMILY_KEYS.includes(v[akc.family])) acWarn.push(`향조가 아홉 중 하나가 아니다 : ${en} '${v[akc.family]}'`);
+  acKo.set(en, v[akc.name_ko]);
+  acFam.set(en, v[akc.family]);
+});
+// 묶음 검사 — 어코드 세기(없으면 0)와 향수의 향조 비중(families[].weight, 없으면 0)의 상관 (피어슨)
+{
+  const pts = smap.points || [];
+  const fw = pts.map(p => Object.fromEntries(FAMILY_KEYS.map(f => [f, ((p.families || []).find(q => q.key === f) || {}).weight || 0])));
+  const corr = (x, y) => {
+    const n = x.length, mx = x.reduce((a, b) => a + b, 0) / n, my = y.reduce((a, b) => a + b, 0) / n;
+    let sxy = 0, sxx = 0, syy = 0;
+    for (let i = 0; i < n; i++) { sxy += (x[i] - mx) * (y[i] - my); sxx += (x[i] - mx) ** 2; syy += (y[i] - my) ** 2; }
+    return sxx && syy ? sxy / Math.sqrt(sxx * syy) : 0;
+  };
+  for (const [en, fam] of acFam) {
+    const x = pts.map(p => ((p.top_accords || []).find(a => a.name === en) || {}).strength || 0);
+    if (x.filter(v => v > 0).length < 10) continue;
+    const best = FAMILY_KEYS.map(f => [f, corr(x, fw.map(o => o[f]))]).sort((a, b) => b[1] - a[1])[0];
+    if (best[0] !== fam) acWarn.push(`묶음이 데이터와 다르다 : ${en} → ${fam} (데이터 1위 ${best[0]} ${best[1].toFixed(2)})`);
+  }
+}
+const acById = new Map((smap.points || []).map(q => [q.fragrantica_id, q.top_accords || []]));
+rows.forEach(r => {
+  const list = acById.get(r.id);
+  if (!list || !list.length) { acWarn.push(`어코드가 없다 : ${r.id} ${r.brand} | ${r.name}`); return; }
+  list.forEach((a, k) => { if (k && a.strength > list[k - 1].strength) acWarn.push(`세기 순이 아니다 : ${r.id} 의 ${k + 1}번째`); });
+  r.ac = list.slice(0, AC_TOP).map(a => {
+    const ko = acKo.get(a.name);
+    // 한글이 없으면 영문으로 띄우고 경고한다 — 새 원본에 처음 보는 어코드가 들어온 것이다 (향조가 없으면 글자는 상아색으로 뜬다)
+    if (!ko) acWarn.push(`어코드 한글 이름이 없다 : '${a.name}' (${r.id}) — data/accord_names_ko.csv 에 더한다`);
+    return [a.name, ko || a.name, acFam.get(a.name) || ''];
+  });
+});
+if (acWarn.length) console.warn('⚠ 카드 어코드 :\n  ' + acWarn.join('\n  '));
+const acCount = rows.filter(r => r.ac && r.ac.length).length;
+
 // ── 닮은 향수 (2026-09-14, v0.62.0) — data/scent_map.json 의 points[].neighbors 를 fragrantica_id 로 붙인다.
 //   ⭐ 사용자 확정 : **유사도 = 데이터 neighbors** 다 (*"백엔드에 있는 자료가 더 좋을듯"*). 지도 좌표 거리가 아니다 —
 //     원본이 *"x,y 로 거리를 계산하면 안 된다"* 고 적어 두었다 (좌표는 200개를 평면에 눌러 담은 것 · distance_is_metric false).
 //     백엔드 perfume_neighbors(/api/v1/perfumes/{id}/neighbors · /similar)와 **같은 목록**이다 (09-14 대조 200/200).
 //   nb = [[fragrantica_id, 유사도], …] 닮은 순 10개. ⚠ 방향이 있다 — a 의 목록에 b 가 있어도 b 의 목록에 a 가 없을 수 있다
 //     (2000행 중 810행이 한쪽뿐). 짝으로 볼 때는 어느 쪽 목록에 있든 본다 — src/links.js `linkSim`.
-const SM = join(root, 'data', 'scent_map.json');
-const smap = JSON.parse(readFileSync(SM, 'utf8'));
+//   (scent_map.json 은 위 카드 어코드에서 읽어 두었다 — smap)
 const nbById = new Map((smap.points || []).map(q => [q.fragrantica_id, q.neighbors || []]));
 const ids = new Set(rows.map(r => r.id));
 const nbWarn = [];
@@ -129,9 +190,10 @@ writeFileSync(OUT,
 //   ${rows.length}행 · 향조 ${Object.entries(fams).map(([k, n]) => k + ' ' + n).join(' · ')}
 //   mx·my 는 CSV 의 정규화 좌표(0~1) 그대로다. 월드로 옮기는 것은 src/scentmap.js 다.
 //   nameKo · brandKo · labelKo 는 data/perfume_names_ko.csv 에서 붙였다 (koBasis = 확인 · 관례 · 추정)
+//   ac 는 data/scent_map.json 의 top_accords 상위 ${AC_TOP}개다 — [영문, 한글, 향조] · ${acCount}/${rows.length}개 (한글 · 향조 data/accord_names_ko.csv · 카드 ACCORDS 줄, ui.js showScent)
 //   nb 는 data/scent_map.json 의 neighbors 다 — [fragrantica_id, 유사도] 닮은 순 10개 · ${nbCount}개 (유사 연결선의 기준, focusLinkBasis 1)
 export const PERFUMES = [
 ${body}
 ];
 `);
-console.log('생성 :', OUT, '·', rows.length, '행 ·', JSON.stringify(fams), '· 닮은 향수', nbCount, '개');
+console.log('생성 :', OUT, '·', rows.length, '행 ·', JSON.stringify(fams), '· 어코드', acCount, '개 · 닮은 향수', nbCount, '개');

@@ -219,7 +219,7 @@
   } }
   @media (max-width: 1024px) { :root:not([data-fixed]) {
     --pb-edge: 28px; --pb-info-top: 112px; --pb-info-w: 250px; --pb-mini-w: 190px; --pb-mini-edge: 18px;
-    --pb-search-w: 400px; --pb-card-w: 272px; --pb-drift-w: 200px;
+    --pb-search-w: 400px; --pb-card-w: 310px; --pb-drift-w: 200px; --pb-card-accord-size: 12px;
     /* 해도 — 좁은 창에서는 범례를 접는다 (지도에 폭을 다 준다). ⚠ display 도 변수로 끈다 (클래스를 새로 만들지 않는다, 불변식 7) */
     --pb-chart-edge: 18px; --pb-chart-legend-d: none; --pb-chart-title: 20px;
   } }
@@ -228,7 +228,7 @@
     --pb-search-top: 12px; --pb-search-w: calc(100vw - 104px); --pb-search-h: 42px; --pb-search-fs: 14px; --pb-search-pad: 0 14px; --pb-btn-pad: 0 16px;
     --pb-edge: 16px; --pb-info-top: 66px; --pb-info-w: calc(100vw - 32px); --pb-info-title: 13px; --pb-info-desc: 12px; --pb-info-lh: 1.7;
     --pb-mini-w: 148px; --pb-mini-edge: 10px; --pb-mini-pad: 6px 8px 8px;
-    --pb-card-w: min(280px, calc(100vw - 32px)); --pb-card-pad: 16px 18px 16px; --pb-card-name: 18px; --pb-card-img-h: 120px;
+    --pb-card-w: min(295px, calc(100vw - 32px)); --pb-card-pad: 16px 18px 16px; --pb-card-name: 18px; --pb-card-img-h: 120px; --pb-card-accord-size: 12px;
     --pb-drift-w: 72px; --pb-drift-bottom: 18px; --pb-help: none; --pb-drift-align: flex-start; --pb-drift-pad: 0 0 0 16px;
     --pb-warn-top: 64px; --pb-mark-bottom: 58px; --pb-mark-no: 18px;
     --pb-chart-edge: 10px; --pb-chart-pad: 12px 13px 14px; --pb-chart-title: 17px; --pb-chart-name: 10px; --pb-chart-gap: 0px;
@@ -390,7 +390,7 @@
        ⚠ 배경을 거의 불투명(0.95)으로 둔 이유 : 꼬리가 상자 테두리를 **덮어서** 이음매를 지운다 (반투명이면 겹친 자리가 짙어진다)
        ⭐ 2026-09-13 저녁 카드(<html data-card-eve>)는 바탕이 **비친다** — 그래서 꼬리를 바깥 삼각형으로 잘라 상자와 안 겹치게 한다 (ui.js setTail).
          색은 전부 `var(--pb-card-…, 예전 값)` 이라 속성이 없으면 예전 종이 카드 그대로다 -->
-  <div id="scent-card" style="position:absolute;left:0;top:0;z-index:20;width:var(--pb-card-w,296px);opacity:0;visibility:hidden;pointer-events:none;will-change:transform;">
+  <div id="scent-card" style="position:absolute;left:0;top:0;z-index:20;width:var(--pb-card-w,325px);opacity:0;visibility:hidden;pointer-events:none;will-change:transform;">
     <div id="scent-bubble" style="position:relative;transform-origin:0 50%;">
       <!-- ⚠⚠ color 를 **여기서 끊는다** (2026-09-12 저녁). 이 상자는 자기 바탕(종이색)이 있으므로
            화면 잉크(`--pb-ink`)를 상속하면 안 된다 — 저녁이 기본이 되자(sceneTime 1) 밝은 바탕에
@@ -418,16 +418,32 @@
         <div data-row id="scent-en" lang="en" style="margin-top:2px;font-size:11px;letter-spacing:0.02em;color:var(--pb-card-ink-3,#8A8A8A);display:none;">—</div>
         <div data-row id="scent-sub" style="margin-top:3px;font-size:12px;letter-spacing:0.04em;color:var(--pb-card-ink-2,#555555);">—</div>
         <div data-row style="margin-top:16px;height:1px;background:var(--pb-card-rule,rgba(26,26,26,0.16));"></div>
-        <div data-row style="margin-top:14px;font-size:10px;letter-spacing:0.18em;color:var(--pb-card-ink-2,#555555);">NOTES</div>
-        <div data-row id="scent-notes" style="margin-top:6px;font-size:13px;line-height:1.6;">—</div>
+        <!-- ⭐ 어코드 상위 3개 (2026-09-17, v0.75.3) — 지도 향수는 ACCORDS (노트 데이터가 없다). 라벨 글자는 ui.js showScent 가 정한다 (어코드가 없는 예전 더미 부표는 NOTES) -->
+        <div data-row id="scent-notes-label" style="margin-top:14px;font-size:10px;letter-spacing:0.18em;color:var(--pb-card-ink-2,#555555);">ACCORDS</div>
+        <!-- ⭐ 어코드 줄 (2026-09-18, v0.75.7 — 사용자 : *"생각보다 중요한 정보일 수 있으니 폰트를 키우고 … 사이의 마진을 작게 만들어서 어코드 3가지를 조금 더 강조"*).
+             글자 13 → 16px(좁은 창 15px · --pb-card-accord-size) · 라벨과 틈 6 → 5px · 아래 단추 줄과 틈 14 → 10px · [이 향의 해역으로]와 틈 18 → 10px.
+             ⭐⭐ v0.75.8 : 색은 **글자가 아니라 앞 동그라미**다 (사용자 : *"폰트 굵기 색상 바꾸니까 너무 촌스러워서 차라리 앞에 O 동그라미 아이콘에 색상을 넣어줘"*) —
+             글자는 카드 글자색 · 보통 굵기 · 칸(동그라미 + 틈 4px + 이름)마다 ui.js 가 만든다 · 가운뎃점은 뺐다.
+             ⭐⭐ v0.75.9 (사용자 : *"폰트 더 작게 · 동그라미 조금만 더 크게 · 왼쪽 정렬이 아니라 … 해당 소속된 레이아웃 중앙 순차 정렬해서 가로로 꽉 차게"*) :
+             동그라미 7 → 9px · 세 칸을 이 줄(카드 안쪽 폭) 안에 **고르게 벌려** 가운데 기준으로 선다 (space-evenly — 칸 사이 · 양끝 여백이 같다).
+             ⚠ 폭을 똑같이 삼등분하지 않았다 — 칸 하나(75px)에 긴 이름(프레시 스파이시 112px)이 안 들어가는 향수가 200개 중 91개다. 이름 길이대로 두고 남는 폭을 나눈다.
+             ⚠ 한 줄에 안 드는 향수는 칸 단위로 다음 줄로 가고 그 줄도 가운데로 선다.
+             ⭐ v0.75.10 (사용자 : *"그대로 두고 글자 한 단계 줄여줘"* — `프레시 스파이시` 를 `스파이시` 로 줄이지 않는다 · 웜 · 소프트 스파이시와 뜻이 갈린다) :
+             글자 13px (폭 1024 이하 · 760 이하 12px — 토큰 명세의 가장 작은 글자)
+             ⭐⭐ v0.75.11 (사용자 : *"간격 좁혀서 한 줄로 · 모든 카드가 한줄로 적힐 수 있게 간격 좁히고 최소 단위로만 좁히게 한다음 아직도 남아있으면 카드를 최소 단위로 좌우로 넓혀"*) :
+             ① 간격을 한 번만 좁혔다 — 칸 사이 최소 10 → 6px · 동그라미 틈 5 → 4px (ui.js). 여기서 멈춘다 — 4 · 3px 까지 좁혀도 가장 긴 조합(오, 러브 · 네롤리 보타니카 · 해피 필스 — 프레시/소프트 스파이시 + 화이트 플로럴 + 시트러스)이 넘친다.
+             ② 남은 것은 **카드를 넓혀** 맞췄다 — `#scent-card` 폭 (5px 단위로 가장 긴 조합이 한 줄에 드는 가장 작은 값) :
+                넓은 창 296 → 325px (안쪽 275.7 ≥ 가장 긴 272.6) · 폭 1024 이하 272 → 310px (12px 글자 · 가장 긴 255.5 — 305 는 여유 0.2px 라 글꼴 차이로 넘칠 수 있어 한 단계 더) · 760 이하 280 → 295px (여백 18 · 여유 2.2px).
+             ⚠ 어코드 이름 · 한글 표기 · 글자 크기를 바꾸면 이 폭을 다시 잰다 — 넘치면 두 줄로 내려갈 뿐 깨지지는 않는다 -->
+        <div data-row id="scent-notes" style="margin-top:5px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-evenly;column-gap:6px;row-gap:2px;font-size:var(--pb-card-accord-size,13px);line-height:1.45;">—</div>
         <!-- ⭐ 서비스 동작 세 가지 (2026-09-15, v0.68.0 — cardActions · <html data-card-actions>). [자세히 보기] · [진열대에 저장]은 앱(호스트)으로 나가고
              ui.js 는 data-act 만 넘긴다 (main.js cardAction · host.js)
              ⭐ 2026-09-16 : 밑줄 글자 → **테두리 단추** · [주변 향 탐색]을 뺐다 (부표 누르기가 곧 그 동작이다). 값 · 까닭은 위 <style> 의 #scent-actions 주석 -->
-        <div data-row id="scent-actions" style="display:var(--pb-card-actions-d,none);margin-top:14px;flex-wrap:wrap;gap:5px;">
+        <div data-row id="scent-actions" style="display:var(--pb-card-actions-d,none);margin-top:10px;flex-wrap:wrap;gap:5px;">
           <button type="button" data-act="detail" style="padding:0 10px;height:30px;border:1px solid var(--pb-card-btn-line,#1A1A1A);border-radius:var(--pb-card-btn-radius,999px);background:none;font-family:inherit;font-size:12px;color:var(--pb-card-ink-2,#555555);white-space:nowrap;cursor:pointer;transition:color 140ms ease, border-color 140ms ease;">자세히 보기</button>
           <button type="button" data-act="save" style="padding:0 10px;height:30px;border:1px solid var(--pb-card-btn-line,#1A1A1A);border-radius:var(--pb-card-btn-radius,999px);background:none;font-family:inherit;font-size:12px;color:var(--pb-card-ink-2,#555555);white-space:nowrap;cursor:pointer;transition:color 140ms ease, border-color 140ms ease;">진열대에 저장</button>
         </div>
-        <button data-row id="scent-sail" style="margin-top:18px;width:100%;height:40px;border:1px solid var(--pb-card-btn-line,#1A1A1A);border-radius:var(--pb-card-btn-radius,5px);background:var(--pb-card-btn,#1A1A1A);color:var(--pb-card-btn-ink,#F6F5F2);font-family:inherit;font-size:13px;font-weight:600;letter-spacing:0.02em;cursor:pointer;">이 향의 해역으로</button>
+        <button data-row id="scent-sail" style="margin-top:10px;width:100%;height:40px;border:1px solid var(--pb-card-btn-line,#1A1A1A);border-radius:var(--pb-card-btn-radius,5px);background:var(--pb-card-btn,#1A1A1A);color:var(--pb-card-btn-ink,#F6F5F2);font-family:inherit;font-size:13px;font-weight:600;letter-spacing:0.02em;cursor:pointer;">이 향의 해역으로</button>
       </div>
       <!-- 꼬리 : 45° 돌린 정사각형의 **바깥 두 변**만 긋는다. 상자 **위에** 얹어 안쪽 절반이 상자 테두리를 덮는다 -->
       <span id="scent-tail" aria-hidden="true" style="position:absolute;left:-7px;top:50%;width:13px;height:13px;margin-top:-6.5px;background:var(--pb-card-bg,rgba(246,245,242,0.95));backdrop-filter:var(--pb-card-tail-blur,none);border-left:1px solid #1A1A1A;border-bottom:1px solid #1A1A1A;transform:rotate(45deg);pointer-events:none;transition:background-color var(--pb-card-peek-ms,200ms) ease, backdrop-filter var(--pb-card-peek-ms,200ms) ease;"></span>
