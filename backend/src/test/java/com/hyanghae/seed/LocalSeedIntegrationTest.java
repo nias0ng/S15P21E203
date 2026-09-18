@@ -208,6 +208,9 @@ class LocalSeedIntegrationTest {
 
     @Test
     void demoSeedUsesSeparateRegistryAndPresentationCopyWithoutLegacyTestUsers() throws Exception {
+        // 실제 카탈로그에는 테스트용 짧은 이름보다 긴 향수명이 존재합니다.
+        jdbc.update("UPDATE perfumes SET name=? WHERE perfume_id=(SELECT min(perfume_id) FROM perfume_images)",
+                "긴 향수 이름 🌿 ".repeat(20));
         LocalSeed.runDemo(url, user, password, DATA, HASH);
         long records = count("SELECT count(*) FROM demo_seed.records");
 
@@ -226,6 +229,8 @@ class LocalSeedIntegrationTest {
         assertThat(count("SELECT count(*) FROM posts WHERE created_at > now()")).isZero();
         assertThat(count("SELECT count(*) FROM comments c JOIN posts p USING(post_id) WHERE c.created_at < p.created_at")).isZero();
         assertThat(count("SELECT count(DISTINCT title) FROM posts")).isEqualTo(90);
+        assertThat(count("SELECT max(char_length(title)) FROM posts")).isLessThanOrEqualTo(50);
+        assertThat(count("SELECT max(char_length(title)) FROM perfume_reviews")).isLessThanOrEqualTo(100);
 
         LocalSeed.runDemo(url, user, password, DATA, HASH);
         assertThat(count("SELECT count(*) FROM demo_seed.records")).isEqualTo(records);

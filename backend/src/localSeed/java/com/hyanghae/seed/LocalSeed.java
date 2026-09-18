@@ -324,6 +324,11 @@ public final class LocalSeed {
         return demoBase.plusMinutes(minute).toString();
     }
 
+    static String demoTitle(String title, int limit) {
+        if (title.codePointCount(0, title.length()) <= limit) return title;
+        return title.substring(0, title.offsetByCodePoints(0, limit - 1)) + "…";
+    }
+
     private long demoShelf(int u, Perfume p, String status, int minute) throws Exception {
         return number(ensure("shelf/" + p.externalId + "/" + u, "user_perfumes", "user_perfumes_id", row(
                 "user_id", users[u], "perfume_id", p.id, "ownership_status", status,
@@ -368,7 +373,7 @@ public final class LocalSeed {
                 String key = "review/" + p.externalId + "/" + n;
                 long review = number(ensure(key, "perfume_reviews", "id", row(
                         "user_id", users[author], "perfume_id", p.id,
-                        "title", p.name + " · " + DemoContent.REVIEW_TITLES[(i + n) % 6],
+                        "title", demoTitle(p.name + " · " + DemoContent.REVIEW_TITLES[(i + n) % 6], 100),
                         "content", DemoContent.REVIEW_CONTEXT[(i + n * 3) % 6] + " "
                                 + DemoContent.REVIEW_FEELING[(i * 3 + n) % 7] + " " + DemoContent.REVIEW_END[(i + n) % 5],
                         "view_count", 3 + (i * 11 + n * 19) % 117,
@@ -413,7 +418,7 @@ public final class LocalSeed {
                     default -> topic.discussion();
                 };
                 long post = number(ensure(key, "posts", "post_id", row(
-                        "user_id", users[author], "category_id", categoryId, "title", title, "content", content,
+                        "user_id", users[author], "category_id", categoryId, "title", demoTitle(title, 50), "content", content,
                         "collection_id", type == 0 ? collection : null, "collection_name", type == 0 ? topic.name() : null,
                         "view_count", 7 + (c * 47 + type * 31) % 283,
                         "created_at", demoTime(posted), "updated_at", demoTime(posted))), "post_id");
