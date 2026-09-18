@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router'
 
 import { ROUTES } from '@/shared/config/routes'
+import { withReturnPath } from '@/shared/lib/returnPath'
 import { Button } from '@/shared/ui/Button'
 import { Modal } from '@/shared/ui/Modal'
 
@@ -32,9 +33,14 @@ export function LoginRequiredDialog({
 }: Props) {
   const navigate = useNavigate()
 
-  // 로그인 후 원래 하려던 자리로 돌아오게 합니다. 회원가입도 같은 값을 들고 갑니다.
-  const withRedirect = (path: string) =>
-    redirectTo ? `${path}?redirectTo=${encodeURIComponent(redirectTo)}` : path
+  /*
+    로그인 후 원래 하려던 자리로 돌아오게 합니다. 회원가입도 같은 값을 들고 갑니다.
+
+    주소를 여기서 직접 짜지 않고 `withReturnPath` 에 맡깁니다 — 쿼리 이름을 이 파일이
+    따로 적고 있었고 로그인 화면은 그걸 읽지 않아(`location.state.from` 을 읽고
+    있었습니다) 돌아갈 경로가 늘 버려졌습니다.
+  */
+  const withRedirect = (path: string) => withReturnPath(path, redirectTo)
 
   return (
     <Modal

@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 
 import {
   EMPTY_TERMS,
@@ -9,6 +9,11 @@ import {
 } from '@/features/auth/terms'
 import { isApiError } from '@/shared/api/http'
 import { ROUTES } from '@/shared/config/routes'
+import {
+  RETURN_PATH_PARAM,
+  safeReturnPath,
+  withReturnPath,
+} from '@/shared/lib/returnPath'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
 
@@ -37,6 +42,9 @@ import { TermsAgreement } from './TermsAgreement'
  */
 export function SignupForm() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  /** 로그인 유도 모달이 달아 준, 가입 · 로그인을 마치고 돌아갈 자리 */
+  const returnTo = safeReturnPath(searchParams.get(RETURN_PATH_PARAM))
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -86,8 +94,16 @@ export function SignupForm() {
 
   const signupMutation = useMutation({
     mutationFn: () => signup({ email, password, nickname: trimmedNickname }),
+    /*
+      가입이 끝나면 로그인으로 넘기면서 **돌아갈 경로를 같이 들려 보냅니다.**
+      로그인 유도 모달에서 [회원가입] 으로 들어온 사람은 원래 하려던 일이 있는데,
+      여기서 경로를 흘리면 로그인까지 마치고 홈에 떨어집니다.
+    */
     onSuccess: () =>
-      navigate(ROUTES.LOGIN, { replace: true, state: { signedUp: true } }),
+      navigate(withReturnPath(ROUTES.LOGIN, returnTo), {
+        replace: true,
+        state: { signedUp: true },
+      }),
   })
 
   const canSubmit =
