@@ -201,14 +201,74 @@ def _camel_evidence(evidence):
     } for e in evidence]
 
 
-def _camel_unmatched(unmatched):
-    """미매칭 표현을 백엔드가 읽을 형태로. list[dict]."""
-    return [{
-        "expression": u["expression"],
-        "normalizedKey": u["normalized_key"],
-        "unmatchReason": u["unmatch_reason"],
-        "entryId": u.get("entry_id"),
-    } for u in unmatched]
+def _camel_unmatched(unmatched, *, had_conditions=None, estimate=None, result_count=None):
+    """미매칭 표현을 백엔드가 읽을 형태로. list[dict].
+
+    unmatched      : list[dict]   `understand()`·`recommend()` 의 `unmatched`
+    had_conditions : bool | None  그 요청이 조건을 뽑았는가
+    estimate       : dict | None  `recommend()` 의 `llm_estimate`. 추정을 안 돌렸으면 None
+    result_count   : int | None   그 요청이 낸 추천 개수
+
+    **뒤의 세 인자는 표현이 아니라 요청 전체의 값이다.** `nlr_unmatched_expressions`
+    가 그것을 표현마다 한 줄씩 갖도록 설계돼 있어 여기서 붙인다.
+
+    **`unmatched_log.record()` 와 같은 규칙으로 채운다.** 두 곳이 어긋나면 파일 로그와
+    DB 가 다른 말을 하게 된다.
+
+        tier          추정을 물어봤으면 'LLM' · 아니면 null
+        resultCount   추정을 물어봤을 때만. 안 물어본 표현에 개수를 적으면
+                      "추정이 결과를 만들었나" 를 셀 수 없다
+        llmAccords    [] 는 "LLM 이 향이 아니라고 답했다" · null 은 "묻지 않았다".
+                      **둘을 구분해야 한다** — DB 주석에도 같은 말이 적혀 있다
+
+    **`llmReasoning` 은 싣지 않는다.** LLM 이 매핑한 **뒤에 붙인 설명**이지 근거가
+    아니고(`spec.md` 1장), 실측에서 없는 말을 지어냈다 — `"빨레"` 를
+    *"바퀴/롤러로 비유되는 고무·플라스틱 계열"* 로 설명했다 [측정 2026-09-18 · 기록 25번].
+    그 문장이 DB 에 쌓이면 화면으로 새어 나갈 길이 하나 생긴다. 파일 로그에는 그대로
+    남으므로 분석할 때는 볼 수 있다.
+    """
+    estimate = estimate or {}
+    rows = []
+    for u in unmatched:
+        key = u["normalized_key"]
+        guess = estimate.get(key) or {}
+        rows.append({
+            "expression": u["expression"],
+            "normalizedKey": key,
+            "unmatchReason": u["unmatch_reason"],
+            "entryId": u.get("entry_id"),
+            "hadConditions": had_conditions,
+            "llmAccords": guess.get("accords"),
+            "tier": "LLM" if guess else None,
+            "resultCount": result_count if guess else None,
+        })
+    return rows
+
+
+def _version(index):
+    """이 응답이 어느 판에서 나왔는지. dict.
+
+    두 칸을 응답 최상위에 얹는다. **백엔드가 `nlr_recommendations` 에 그대로 남긴다.**
+
+        lexiconVersion   'v1_15'              사전 파일 이름에서 뽑는다
+        promptSha256     '4f0a368d98b41338'   ①단계 프롬프트 지문 앞 16자
+
+    **왜 남기나** — 반년 뒤에 *"이 표현이 미매칭이었다"* 를 볼 때 **어느 사전에서
+    미매칭이었는지** 모르면 사전 확장 근거가 되지 않는다. 최근에도 사전이 v1.8 -> v1.14
+    -> v1.15, 프롬프트가 v1 -> v4 로 움직였다.
+
+    **둘 다 `None` 일 수 있다.** 사전 이름이 규칙에 안 맞거나(측정 스크립트의 임시 파일),
+    프롬프트 파일을 못 읽거나 키가 없을 때다. DB 칸이 둘 다 `NULL` 허용이라 막히지 않고,
+    `NULL` 은 *"없다"* 가 아니라 **"모른다"** 로 읽힌다.
+
+    **`diagnostics` 에 넣지 않는다.** 그 칸은 한 요청을 들여다볼 때 쓰는 진단이고,
+    이 둘은 **요청 전체가 어느 판에서 처리됐는지**라 성격이 다르다. DB 에서도
+    `nlr_recommendations` 의 최상위 칸이다.
+    """
+    return {
+        "lexiconVersion": index.get("lexicon_version"),
+        "promptSha256": llm_stage1.status()["prompt_sha256"],
+    }
 
 
 def _structure(body):
@@ -309,10 +369,13 @@ def understand(body: UnderstandRequest, request: Request):
     understood = nlr_engine.understand(index, body.text, structured)
     result = {
         "query": body.text,
+        **_version(index),
         "conditions": _camel_conditions(understood),
         "structured": structured,
         "evidence": _camel_evidence(understood["evidence"]),
-        "unmatched": _camel_unmatched(understood["unmatched"]),
+        # 이 엔드포인트는 ⑤단계를 돌리지 않는다. 추정 관련 칸은 전부 null 이다
+        "unmatched": _camel_unmatched(understood["unmatched"],
+                                      had_conditions=bool(understood["core"])),
     }
     _record_unmatched({"query": body.text,
                        "unmatched": understood["unmatched"],
@@ -334,6 +397,7 @@ def recommend(body: RecommendRequest, request: Request):
     return {
         "status": out["status"],
         "query": out["query"],
+        **_version(index),
         "conditions": _camel_conditions(out["conditions"]),
         "results": [{
             "fragranticaId": r["perfume_id"],
@@ -350,7 +414,12 @@ def recommend(body: RecommendRequest, request: Request):
                 "rationale": m["rationale"],
             } for m in r["matched"]],
         } for r in out["results"]],
-        "unmatched": _camel_unmatched(out["unmatched"]),
+        "unmatched": _camel_unmatched(
+            out["unmatched"],
+            had_conditions=bool(out["conditions"]["core"]),
+            estimate=out.get("llm_estimate"),
+            result_count=len(out["results"]),
+        ),
         "diagnostics": {
             "stage": out["diagnostics"]["stage"],
             "candidateCount": out["diagnostics"]["candidate_count"],
