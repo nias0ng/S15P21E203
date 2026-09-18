@@ -72,7 +72,9 @@ public class NlrRecordService {
                 conditions == null ? null : conditions.source(),
                 join(conditions == null ? null : conditions.core(), CORE_ACCORDS_LIMIT),
                 join(conditions == null ? null : conditions.avoid(), AVOID_ACCORDS_LIMIT),
-                diagnostics == null ? null : diagnostics.candidateCount()
+                diagnostics == null ? null : diagnostics.candidateCount(),
+                ai.lexiconVersion(),
+                ai.promptSha256()
         );
 
         repository.insertItems(recommendationId, perfumeIds);

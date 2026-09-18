@@ -116,6 +116,50 @@ class NlrClientTest {
     }
 
     /**
+     * 계약서가 새로 실은 칸 여섯을 JSON 이름 그대로 읽습니다.
+     *
+     * <p><b>여기가 아니면 칸 이름이 틀려도 아무도 모릅니다.</b> 나머지 테스트는 자바 객체를
+     * 직접 만들어 넣으므로 {@code @JsonProperty} 없이 이름만 어긋나도 전부 통과하고, 표에는
+     * {@code NULL} 만 쌓입니다. 화면에 안 나가는 값이라 눈으로도 안 보입니다.
+     */
+    @Test
+    void readsFieldsTheContractAdded() {
+        responseBody = okResponse();
+
+        NlrRecommendResponse response = client().recommend(QUERY);
+
+        assertThat(response.lexiconVersion()).isEqualTo("v1_15");
+        assertThat(response.promptSha256()).isEqualTo("4f0a368d98b41338");
+
+        NlrRecommendResponse.Unmatched unmatched = response.unmatched().getFirst();
+        assertThat(unmatched.expression()).isEqualTo("포근한 느낌");
+        assertThat(unmatched.unmatchReason()).isEqualTo("NOT_CORE");
+        assertThat(unmatched.entryId()).isEqualTo("kr.sens.cozy");
+        assertThat(unmatched.hadConditions()).isTrue();
+        assertThat(unmatched.llmAccords()).containsExactly("amber", "sweet", "vanilla");
+        assertThat(unmatched.tier()).isEqualTo("LLM");
+        assertThat(unmatched.resultCount()).isEqualTo(5);
+    }
+
+    /**
+     * {@code llmAccords} 가 빈 배열이면 빈 목록으로 읽습니다. <b>{@code null} 이 아닙니다.</b>
+     *
+     * <p>빈 배열은 LLM 이 "향이 아니다" 라고 답한 것이고 {@code null} 은 묻지 않은 것입니다.
+     * Jackson 이 여기서 둘을 뭉개면 표까지 뭉개진 채로 갑니다.
+     */
+    @Test
+    void keepsEmptyAccordArrayDistinctFromNull() {
+        responseBody = unmatchedAccordsResponse("[]");
+        assertThat(client().recommend(QUERY).unmatched().getFirst().llmAccords())
+                .isNotNull()
+                .isEmpty();
+
+        responseBody = unmatchedAccordsResponse("null");
+        assertThat(client().recommend(QUERY).unmatched().getFirst().llmAccords())
+                .isNull();
+    }
+
+    /**
      * 쓰지 않는 칸이 와도 실패하지 않습니다.
      *
      * <p>{@code conditions}·{@code diagnostics}·{@code tier} 처럼 받지 않기로 한 칸이 응답에
@@ -207,17 +251,24 @@ class NlrClientTest {
     }
 
     /**
-     * 계약서의 응답 예시를 그대로 씁니다.
+     * 계약서({@code ai/docs/nlr_api_contract.md})의 응답 예시를 그대로 씁니다.
      *
-     * <p>받지 않기로 한 칸({@code conditions}·{@code unmatched}·{@code diagnostics} 와
-     * {@code people}·{@code rating}·{@code score}·{@code strength}·{@code tier}·
-     * {@code rationale})을 일부러 남겨 둡니다. 그 칸들이 와도 깨지지 않아야 합니다.
+     * <p><b>여기가 JSON 칸 이름을 지키는 유일한 자리입니다.</b> 다른 테스트는 전부 자바
+     * 객체를 직접 만들어 넣으므로, 칸 이름을 잘못 적어도 그쪽은 통과합니다. 계약서가 바뀌면
+     * 이 문자열을 함께 고쳐야 합니다.
+     *
+     * <p>쓰지 않는 칸({@code people}·{@code rating}·{@code score}·{@code strength}·
+     * {@code matched[].tier}·{@code rationale})은 일부러 남겨 둡니다. 그 칸들이 와도 깨지지
+     * 않아야 합니다. {@code llmReasoning} 도 남겨 둡니다 — AI 는 안 보내지만, 보내더라도
+     * 우리가 읽지 않는다는 것을 여기서 고정합니다.
      */
     private String okResponse() {
         return """
                 {
                   "status": "OK",
                   "query": "%s",
+                  "lexiconVersion": "v1_15",
+                  "promptSha256": "4f0a368d98b41338",
                   "conditions": {
                     "core": ["fresh", "soapy"], "avoid": [],
                     "matchedExpressions": ["빨래"], "source": "lexicon_only"
@@ -244,12 +295,38 @@ class NlrClientTest {
                       ]
                     }
                   ],
-                  "unmatched": [],
+                  "unmatched": [
+                    {"expression": "포근한 느낌", "normalizedKey": "포근한 느낌",
+                     "unmatchReason": "NOT_CORE", "entryId": "kr.sens.cozy",
+                     "hadConditions": true,
+                     "llmAccords": ["amber", "sweet", "vanilla"],
+                     "tier": "LLM", "resultCount": 5,
+                     "llmReasoning": "AI 는 안 보내지만 와도 읽지 않는다"}
+                  ],
                   "diagnostics": {
                     "stage": "AND", "candidateCount": 518, "tieAtLast": 1,
                     "relaxed": [], "unmatchedHint": null
                   }
                 }
                 """.formatted(QUERY);
+    }
+
+    /** {@code llmAccords} 만 바꿔 가며 보는 최소 응답입니다. */
+    private String unmatchedAccordsResponse(String accordsJson) {
+        return """
+                {
+                  "status": "NO_CONDITION",
+                  "query": "%s",
+                  "lexiconVersion": "v1_15",
+                  "promptSha256": "4f0a368d98b41338",
+                  "results": [],
+                  "unmatched": [
+                    {"expression": "저렴한 가격", "normalizedKey": "저렴한 가격",
+                     "unmatchReason": "NOT_IN_LEXICON", "entryId": null,
+                     "hadConditions": false, "llmAccords": %s,
+                     "tier": "LLM", "resultCount": 0}
+                  ]
+                }
+                """.formatted(QUERY, accordsJson);
     }
 }

@@ -255,7 +255,8 @@ class NaturalLanguageRecommendationServiceTest {
 
     private static NlrRecommendResponse aiResponse(
             String status, NlrRecommendResponse.Result... results) {
-        return new NlrRecommendResponse(status, QUERY, null, List.of(results), null, null);
+        return new NlrRecommendResponse(
+                status, QUERY, null, null, null, List.of(results), null, null);
     }
 
     private static NlrRecommendResponse.Result result(
