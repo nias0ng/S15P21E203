@@ -17,17 +17,37 @@ export interface RecommendReason {
 
 export interface RecommendedPerfume {
   perfumeId: number
+  /** 한국어 이름이 없으면 영어입니다 */
   name: string
-  brand: string
+  /** 브랜드가 없는 향수면 null 입니다 */
+  brand: string | null
   thumbnailUrl: string | null
+  /** 1~3개입니다 */
   reasons: RecommendReason[]
-  /** 미니맵에서 어디쯤인지 (0~100 비율) */
-  x: number
-  y: number
 }
 
-/** 결과는 3~5개 가변입니다 (와이어프레임 주석) */
+/**
+ * 결과의 종류. **화면이 넷을 구분해야 합니다.**
+ *
+ * 향수가 0개인 경우가 **두 종류**이고 사용자에게 할 말이 서로 다릅니다 — 하나로 묶으면
+ * 향 조건을 못 뽑은 사람에게 "그런 향수가 없습니다" 라고 말하게 됩니다. 그 사람에게
+ * 없는 것은 향수가 아니라 **우리가 알아들은 조건**입니다.
+ *
+ * ⚠️ **0개일 때 인기 향수를 대신 보여주면 안 됩니다.** 추천처럼 보이지만 근거가 없어
+ * NLR-07(추천 이유 제공)을 어깁니다.
+ * ⚠️ `NO_CONDITION` 은 **드문 경우가 아닙니다** — 백엔드 기준 실사용자 설문 155건에서
+ * 48.4% 입니다. 예외가 아니라 정상 경로로 다룹니다.
+ *
+ * - `OK` 조건을 전부 만족하는 향수를 찾음 → 그대로 보여줍니다
+ * - `OK_RELAXED` 조건을 넓혔거나 향 조건이 하나뿐이라 순위를 못 정함 → "조건이 넓습니다" 를 함께
+ * - `NO_CONDITION` 향 조건을 하나도 못 뽑음 → 다시 쓰도록 유도
+ * - `NO_RESULT` 조건은 찾았으나 보여줄 향수가 없음 → 다시 쓰도록 유도
+ */
+export type RecommendStatus = 'OK' | 'OK_RELAXED' | 'NO_CONDITION' | 'NO_RESULT'
+
+/** 향수는 0~5개입니다. `OK` · `OK_RELAXED` 면 비어 있지 않습니다 */
 export interface RecommendResult {
+  status: RecommendStatus
   /** 사용자가 입력한 말 그대로 */
   query: string
   perfumes: RecommendedPerfume[]

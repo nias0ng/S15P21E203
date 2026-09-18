@@ -3,12 +3,16 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 
 import {
+  MapSearchModal,
+  SceneSearchBar,
   ScentScene,
   VoyageLog,
   voyageLogQuery,
   type ScenePerfumeRef,
+  type SceneSearchMode,
   type VoyageLogStatus,
 } from '@/features/map'
+import { RecommendModal } from '@/features/recommend'
 // 진열대 저장은 진열대 도메인의 어휘입니다. 화면에서 두 도메인을 조합합니다.
 import {
   ShelfRegisterModal,
@@ -32,7 +36,13 @@ import { Toast } from '@/shared/ui/Toast'
  *
  *   [자세히 보기]  → A10 향수 상세로 이동
  *   [진열대에 저장] → 등록 모달 2단계(A15). 카드 · 고른 향수는 그대로 남습니다
- *   검색창        → A06 자연어 추천 (`/recommend?q=`)
+ *
+ * **검색창만 앱이 그립니다** (`SceneSearchBar` · 엔진 알약은 `hideEngineSearch` 로 숨깁니다).
+ * 방식이 둘이고 둘 다 답을 **모달**로 내놓기 때문입니다 — 엔진은 iframe 안이라 라우터도
+ * 모달도 모릅니다.
+ *
+ *   자연어 → A06 추천 모달 (`RecommendModal`). 전에는 `/recommend?q=` 라는 별도 화면이었습니다
+ *   이름   → 지도 향수 200개에서 찾기 (`MapSearchModal`) · 고르면 향수 검색(A09)으로
  *
  * 향해 일지(MAP-24)는 다른 화면의 데이터와 맞추기 쉽도록 엔진이 아니라 앱이 3D 위에 얹습니다.
  *
@@ -49,6 +59,18 @@ export default function HomePage() {
         ? 'guest'
         : 'error'
       : 'ready'
+
+  /**
+   * 메인 검색 — 방식과, 방식별로 열린 답.
+   *
+   * 답을 하나의 `result` 로 묶지 않고 둘로 나눠 둡니다. 방식을 바꾸면 **뒤 결과가
+   * 사라지는 게 아니라** 다음에 그 방식으로 검색할 때까지 그대로 닫혀 있습니다 —
+   * 같은 말을 두 방식으로 해보는 것이 스왑 단추의 쓸모라, 한쪽을 지우면 방금 본
+   * 추천이 없어집니다.
+   */
+  const [searchMode, setSearchMode] = useState<SceneSearchMode>('nl')
+  const [nlQuery, setNlQuery] = useState<string | null>(null)
+  const [mapKeyword, setMapKeyword] = useState<string | null>(null)
 
   /** 지도 카드에서 담으려는 향수. 모달이 이름 · 브랜드를 보여주는 데 씁니다 */
   const [saving, setSaving] = useState<ScenePerfumeRef | null>(null)
@@ -127,11 +149,16 @@ export default function HomePage() {
             setSaving(perfume)
           })
         }
-        onSearch={(query) => {
-          // 별도 입력 화면 없이 바로 결과로 갑니다
-          const trimmed = query.trim()
-          if (!trimmed) return
-          navigate(`${ROUTES.RECOMMEND}?q=${encodeURIComponent(trimmed)}`)
+        // 검색창은 앱이 그립니다 (아래 SceneSearchBar) — 엔진 알약은 자리를 비웁니다
+        hideEngineSearch
+      />
+
+      <SceneSearchBar
+        mode={searchMode}
+        onModeChange={setSearchMode}
+        onSearch={(keyword, mode) => {
+          if (mode === 'nl') setNlQuery(keyword)
+          else setMapKeyword(keyword)
         }}
       />
 
@@ -159,6 +186,25 @@ export default function HomePage() {
       <div className="absolute top-30 left-7.5 max-[940px]:top-auto max-[940px]:bottom-15">
         <VoyageLog entries={log.data ?? []} status={logStatus} />
       </div>
+
+      {/* 검색창의 두 방식이 내놓는 답. 뒤의 3D 는 그대로 돌아갑니다 */}
+      <RecommendModal query={nlQuery} onClose={() => setNlQuery(null)} />
+
+      <MapSearchModal
+        keyword={mapKeyword}
+        onClose={() => setMapKeyword(null)}
+        onSelect={(perfume) => {
+          setMapKeyword(null)
+          /*
+            지도 목록에는 DB 향수 번호가 없어(fragrantica_id 뿐) 상세로 바로 못 갑니다 —
+            이름으로 향수 검색(A09)에 보냅니다. 엔진 카드의 [자세히 보기]가 번호 없는
+            향수를 보내는 길과 **같은 곳**입니다(위 onOpenDetail).
+          */
+          navigate(
+            `${ROUTES.PERFUME_SEARCH}?keyword=${encodeURIComponent(perfume.name)}`,
+          )
+        }}
+      />
 
       {/*
         향수 상세 · 진열대 화면과 **같은 등록 모달**입니다. 지도 카드도 어떤 향수인지
