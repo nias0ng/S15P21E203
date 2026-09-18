@@ -16,8 +16,9 @@ import org.springframework.stereotype.Repository;
  * 이유는 이 표들에 하는 일이 한 줄 넣기와 한 칸 갱신뿐이고, 읽는 쪽이 애플리케이션이 아니라
  * <b>사람이 돌리는 집계 질의</b>이기 때문입니다.
  *
- * <p>{@code nlr_unmatched_expressions.llm_accords} 는 이 DB 의 첫 배열 컬럼인데 지금은 값을
- * 넣지 않습니다. AI 계약이 그 값을 보내기 시작하면 그때 매핑을 정하면 됩니다.
+ * <p>{@code nlr_unmatched_expressions.llm_accords} 는 이 DB 의 첫 배열 컬럼입니다. accord 이름에
+ * 공백이 들어가므로({@code white floral} · {@code warm spicy}) 문자열로 조립하면 깨집니다.
+ * 자바 배열을 그대로 넘겨 드라이버가 따옴표를 붙이게 합니다.
  */
 @Repository
 public class NlrRecordRepository {
@@ -25,17 +26,21 @@ public class NlrRecordRepository {
     /**
      * 요청 한 줄입니다. {@code requested_at} 은 표의 기본값 {@code now()} 를 씁니다.
      *
-     * <p>{@code lexicon_version} 과 {@code prompt_sha256} 은 넣지 않습니다. AI 응답에 아직
-     * 그 값이 없습니다 — 둘 다 {@code NULL} 허용이라 {@code INSERT} 가 막히지 않습니다.
+     * <p>{@code lexicon_version} 과 {@code prompt_sha256} 은 AI 가 보내 준 값을 <b>그대로</b>
+     * 넣습니다. 둘 다 {@code NULL} 허용이고, AI 가 모르면 {@code null} 을 보냅니다. 그 자리를
+     * 우리가 채우면 안 됩니다 — 이 칸의 목적이 "반년 뒤에 이 기록이 어느 판에서 나왔는지"를
+     * 아는 것이라, 지어낸 값은 칸이 비어 있는 것보다 나쁩니다.
      */
     private static final String INSERT_RECOMMENDATION = """
             INSERT INTO nlr_recommendations (
                 public_token, user_id, raw_query, status, stage, source,
-                core_accords, avoid_accords, candidate_count
+                core_accords, avoid_accords, candidate_count,
+                lexicon_version, prompt_sha256
             )
             VALUES (
                 :publicToken, :userId, :rawQuery, :status, :stage, :source,
-                :coreAccords, :avoidAccords, :candidateCount
+                :coreAccords, :avoidAccords, :candidateCount,
+                :lexiconVersion, :promptSha256
             )
             """;
 
@@ -61,15 +66,20 @@ public class NlrRecordRepository {
      * <p>{@code occurred_at} 을 값으로 주지 않고 {@code now()} 를 씁니다. AI 응답에 시각이 없고,
      * 애플리케이션이 만든 시각을 쓰면 인스턴스마다 시계가 조금씩 달라 같은 순간의 기록이
      * 뒤섞여 보입니다. 같은 요청 안이라 {@code requested_at} 과 사실상 같습니다.
+     *
+     * <p>{@code llm_reasoning} 은 넣지 않습니다. 칸은 있지만 AI 가 일부러 보내지 않습니다 —
+     * {@link NlrRecommendResponse.Unmatched} 를 보십시오.
      */
     private static final String INSERT_UNMATCHED = """
             INSERT INTO nlr_unmatched_expressions (
                 recommendation_id, occurred_at, expression, normalized_key,
-                unmatch_reason, entry_id
+                unmatch_reason, entry_id,
+                had_conditions, llm_accords, tier, result_count
             )
             VALUES (
                 :recommendationId, now(), :expression, :normalizedKey,
-                :unmatchReason, :entryId
+                :unmatchReason, :entryId,
+                :hadConditions, :llmAccords, :tier, :resultCount
             )
             """;
 
@@ -154,7 +164,9 @@ public class NlrRecordRepository {
     /**
      * 요청을 남기고 그 번호를 돌려줍니다. 나머지 세 표가 이 번호를 가리킵니다.
      *
-     * @param userId 비로그인이면 {@code null} 입니다.
+     * @param userId         비로그인이면 {@code null} 입니다.
+     * @param lexiconVersion AI 가 모르면 {@code null} 입니다. 그대로 넣습니다.
+     * @param promptSha256   AI 가 모르면 {@code null} 입니다. 그대로 넣습니다.
      */
     public long insertRecommendation(
             UUID publicToken,
@@ -165,7 +177,9 @@ public class NlrRecordRepository {
             String source,
             String coreAccords,
             String avoidAccords,
-            Integer candidateCount
+            Integer candidateCount,
+            String lexiconVersion,
+            String promptSha256
     ) {
         KeyHolder keys = new GeneratedKeyHolder();
         jdbcClient.sql(INSERT_RECOMMENDATION)
@@ -178,6 +192,8 @@ public class NlrRecordRepository {
                 .param("coreAccords", coreAccords)
                 .param("avoidAccords", avoidAccords)
                 .param("candidateCount", candidateCount)
+                .param("lexiconVersion", lexiconVersion)
+                .param("promptSha256", promptSha256)
                 .update(keys, "recommendation_id");
         Number key = keys.getKey();
         if (key == null) {
@@ -208,8 +224,26 @@ public class NlrRecordRepository {
                     .param("normalizedKey", expression.normalizedKey())
                     .param("unmatchReason", expression.unmatchReason())
                     .param("entryId", expression.entryId())
+                    .param("hadConditions", expression.hadConditions())
+                    .param("llmAccords", toTextArray(expression.llmAccords()))
+                    .param("tier", expression.tier())
+                    .param("resultCount", expression.resultCount())
                     .update();
         }
+    }
+
+    /**
+     * {@code List<String>} 을 {@code text[]} 로 넘길 배열로 바꿉니다.
+     *
+     * <p><b>빈 목록을 {@code null} 로 뭉개지 않습니다.</b> 빈 배열은 "LLM 이 향이 아니라고
+     * 답했다" 이고 {@code null} 은 "묻지 않았다" 입니다. 둘을 같게 만들면 집계에서 그 둘을
+     * 나눌 수 없고, 이 표는 바로 그것을 세려고 있습니다.
+     *
+     * <p>문자열로 조립하지 않습니다. accord 이름에 공백이 있어({@code white floral})
+     * 직접 이어 붙이면 배열 리터럴이 깨집니다.
+     */
+    private static String[] toTextArray(List<String> values) {
+        return values == null ? null : values.toArray(new String[0]);
     }
 
     /** 손잡이로 내부 번호를 찾습니다. 비어 있으면 그런 추천이 없습니다. */
