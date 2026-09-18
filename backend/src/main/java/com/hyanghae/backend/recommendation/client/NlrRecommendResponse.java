@@ -83,9 +83,18 @@ public record NlrRecommendResponse(
      *                      을 셀 수 없습니다. 표 주석에도 같은 말이 적혀 있습니다.
      * @param tier          {@code "LLM"} 또는 {@code null} 입니다. 사전 경로와 LLM 경로를
      *                      가릅니다.
-     * @param resultCount   그 요청이 실제로 낸 추천 개수입니다. <b>추정을 물어봤을 때만</b>
-     *                      값이 있습니다 — 안 물어본 표현에도 개수를 적으면 "추정이 결과를
-     *                      만들었나" 를 셀 수 없습니다.
+     * @param resultCount   <b>AI 가 찾은</b> 추천 개수입니다. 사용자가 본 개수가 아닙니다 —
+     *                      둘은 실제로 갈립니다. AI 는 자기 데이터 13만 개에서 찾는데 그
+     *                      향수가 우리 DB 에 없으면 화면에 안 나가고, 그때
+     *                      {@code NaturalLanguageRecommendationService} 가 {@code NO_RESULT}
+     *                      로 내리며 경고를 남깁니다.
+     *                      <p>AI 기준으로 둡니다. 이 칸이 답하는 질문이 "⑤단계 추정이 결과를
+     *                      만들었나" 이고 그것은 AI 색인 안의 일이라, 우리 적재가 밀린 것을
+     *                      섞으면 추정이 실제보다 나빠 보입니다. 사용자가 본 개수를 잃지도
+     *                      않습니다 — {@code nlr_recommendation_items} 의 줄 수가 그 값입니다.
+     *                      <b>둘이 벌어진 줄은 버그가 아니라 적재가 밀렸다는 신호입니다.</b>
+     *                      <p><b>추정을 물어봤을 때만</b> 값이 있습니다 — 안 물어본 표현에도
+     *                      개수를 적으면 "추정이 결과를 만들었나" 를 셀 수 없습니다.
      */
     public record Unmatched(
             String expression,
