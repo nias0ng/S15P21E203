@@ -14,4 +14,9 @@ export {
   noteListQuery,
   notePerfumesQuery,
 } from './queries'
-export type { Note, NotePerfume, NotePerfumesResponse } from './types'
+export type {
+  Note,
+  NoteDetail,
+  NotePerfume,
+  NotePerfumesResponse,
+} from './types'
