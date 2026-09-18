@@ -245,6 +245,8 @@ export function ScentScene({
       engine.params.siteHeader = 0
       engine.params.hostTop = latest.current.coveredTop
       engine.apply()
+      // 개발 서버에서는 엔진의 개발 패널도 같이 뜹니다 — 서비스 화면만 남깁니다
+      engine.solo?.(true)
       engine.setHost({
         openDetail: (perfume) => latest.current.onOpenDetail(perfume),
         saveToShelf: (perfume) => latest.current.onSaveToShelf(perfume),
