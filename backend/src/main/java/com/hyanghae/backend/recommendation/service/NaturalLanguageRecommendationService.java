@@ -4,6 +4,7 @@ import com.hyanghae.backend.perfume.repository.PerfumeIdentity;
 import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
 import com.hyanghae.backend.perfume.repository.PerfumeRepository;
+import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.recommendation.client.NlrClient;
 import com.hyanghae.backend.recommendation.client.NlrRecommendResponse;
 import com.hyanghae.backend.recommendation.dto.response.NaturalLanguageRecommendationResponse;
@@ -15,6 +16,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -57,18 +60,38 @@ public class NaturalLanguageRecommendationService {
     /** 향 조건을 하나도 못 뽑았을 때의 상태입니다. 이때는 향수가 없는 것이 정상입니다. */
     private static final String NO_CONDITION = "NO_CONDITION";
 
+    /**
+     * 화면과 계약에 적어 둔 네 가지입니다. <b>여기 없는 값은 내보내지도 남기지도 않습니다.</b>
+     *
+     * <p>AI 가 새 상태를 만들면 두 곳이 동시에 깨집니다. 화면은 {@code allowableValues} 로 네
+     * 가지를 약속받았는데 다섯 번째를 받게 되고, {@code nlr_recommendations.status} 의
+     * {@code CHECK} 가 막아 그 추천의 기록 전체가 실패합니다 — 결과 · 클릭 · 미매칭까지 한
+     * 트랜잭션이라 함께 날아갑니다.
+     *
+     * <p>모르는 값은 {@code NO_RESULT} 로 내립니다. "조건은 찾았는데 보여줄 것이 없다" 가
+     * 모르는 상태에 가장 가깝고, 화면이 이미 다룰 줄 아는 값입니다.
+     */
+    private static final Set<String> KNOWN_STATUSES =
+            Set.of("OK", "OK_RELAXED", NO_CONDITION, NO_RESULT);
+
     private final NlrClient nlrClient;
+    private final NlrRecordService recordService;
+    private final CurrentUser currentUser;
     private final PerfumeRepository perfumeRepository;
     private final PerfumeImageRepository perfumeImageRepository;
     private final AccordLabeler accordLabeler;
 
     public NaturalLanguageRecommendationService(
             NlrClient nlrClient,
+            NlrRecordService recordService,
+            CurrentUser currentUser,
             PerfumeRepository perfumeRepository,
             PerfumeImageRepository perfumeImageRepository,
             AccordLabeler accordLabeler
     ) {
         this.nlrClient = nlrClient;
+        this.recordService = recordService;
+        this.currentUser = currentUser;
         this.perfumeRepository = perfumeRepository;
         this.perfumeImageRepository = perfumeImageRepository;
         this.accordLabeler = accordLabeler;
@@ -85,12 +108,44 @@ public class NaturalLanguageRecommendationService {
                 ai.results() == null ? List.of() : ai.results();
 
         List<RecommendedPerfumeResponse> perfumes = toPerfumes(results);
+        String status = resolveStatus(ai.status(), results.size(), perfumes.size());
 
         return new NaturalLanguageRecommendationResponse(
-                resolveStatus(ai.status(), results.size(), perfumes.size()),
+                record(query, status, ai, perfumes),
+                status,
                 query,
                 perfumes
         );
+    }
+
+    /**
+     * 이 추천을 기록하고 손잡이를 돌려줍니다. 화면이 그 값으로 클릭과 만족도를 보냅니다.
+     *
+     * <p><b>기록이 실패해도 추천은 그대로 나갑니다.</b> 남기는 것은 사전을 넓힐 근거를 모으는
+     * 일이고, 그것이 안 됐다고 사용자가 추천을 못 받을 이유는 없습니다. 대신 손잡이가 비어 나가
+     * 그 요청에는 클릭과 만족도를 붙일 수 없습니다.
+     *
+     * <p>조용히 넘기지 않고 로그를 남깁니다. 기록이 계속 실패하면 집계가 비는데, 그것을 표가
+     * 빈 뒤에 알아채면 그사이 행동을 영영 잃습니다.
+     */
+    private UUID record(
+            String query,
+            String status,
+            NlrRecommendResponse ai,
+            List<RecommendedPerfumeResponse> perfumes
+    ) {
+        try {
+            return recordService.record(
+                    currentUser.id().orElse(null),
+                    query,
+                    status,
+                    ai,
+                    perfumes.stream().map(RecommendedPerfumeResponse::perfumeId).toList()
+            );
+        } catch (RuntimeException exception) {
+            log.warn("자연어 추천 기록을 남기지 못했습니다. 추천은 그대로 나갑니다.", exception);
+            return null;
+        }
     }
 
     /**
@@ -228,6 +283,10 @@ public class NaturalLanguageRecommendationService {
      * 않습니다</b> — 개수만으로 충분합니다.
      */
     private static String resolveStatus(String aiStatus, int foundByAi, int shownToUser) {
+        if (!KNOWN_STATUSES.contains(aiStatus)) {
+            log.warn("AI 가 모르는 상태를 보냈습니다. NO_RESULT 로 내립니다: aiStatus={}", aiStatus);
+            return NO_RESULT;
+        }
         if (shownToUser > 0 || NO_CONDITION.equals(aiStatus) || NO_RESULT.equals(aiStatus)) {
             return aiStatus;
         }
