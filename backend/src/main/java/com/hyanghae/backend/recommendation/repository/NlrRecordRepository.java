@@ -102,6 +102,44 @@ public class NlrRecordRepository {
             )
             """;
 
+    /**
+     * 보관 기간이 지난 요청의 원문을 비웁니다. <b>행은 지우지 않습니다.</b>
+     *
+     * <p>{@code nlr_recommendations} 를 지우면 {@code ON DELETE CASCADE} 로 결과 · 클릭 ·
+     * 미매칭 · 만족도가 모두 함께 사라집니다. 사전을 키우는 데 필요한 {@code expression} 과
+     * {@code normalized_key} 까지 없어집니다. 지울 것은 원문뿐입니다.
+     *
+     * <p>{@code raw_query} 가 {@code NOT NULL} 이라 {@code NULL} 이 아니라 빈 문자열로 비웁니다.
+     * AI 쪽 파일 로그의 {@code purge_raw_text()} 도 같은 방식입니다.
+     *
+     * <p>이미 빈 줄은 건드리지 않습니다. 매일 돌면서 같은 줄을 다시 쓰면 갱신이 쌓입니다.
+     */
+    private static final String PURGE_RAW_QUERY = """
+            UPDATE nlr_recommendations
+            SET raw_query = ''
+            WHERE requested_at < now() - make_interval(days => :days)
+              AND raw_query <> ''
+            """;
+
+    /**
+     * 만족도에 딸린 한마디도 함께 비웁니다.
+     *
+     * <p>기준 시각이 {@code answered_at} 이 아니라 <b>{@code requested_at}</b> 입니다. 설문을
+     * 나중에 답하면 두 시각이 벌어지는데, 기준이 둘이면 같은 요청의 원문과 한마디가 다른 날
+     * 지워집니다.
+     *
+     * <p>{@code satisfaction} 은 비우지 않습니다. {@code SATISFIED} 같은 값에는 개인정보가 없고
+     * 그것이 만족도 지표의 본체입니다.
+     */
+    private static final String PURGE_COMMENT = """
+            UPDATE nlr_feedbacks f
+            SET comment = NULL
+            FROM nlr_recommendations r
+            WHERE r.recommendation_id = f.recommendation_id
+              AND r.requested_at < now() - make_interval(days => :days)
+              AND f.comment IS NOT NULL
+            """;
+
     private final JdbcClient jdbcClient;
 
     public NlrRecordRepository(JdbcClient jdbcClient) {
@@ -204,5 +242,15 @@ public class NlrRecordRepository {
                 .param("satisfaction", satisfaction)
                 .param("comment", comment)
                 .update();
+    }
+
+    /** 보관 기간이 지난 원문을 비우고 비운 줄 수를 돌려줍니다. */
+    public int purgeRawQueries(int retentionDays) {
+        return jdbcClient.sql(PURGE_RAW_QUERY).param("days", retentionDays).update();
+    }
+
+    /** 보관 기간이 지난 한마디를 비우고 비운 줄 수를 돌려줍니다. */
+    public int purgeComments(int retentionDays) {
+        return jdbcClient.sql(PURGE_COMMENT).param("days", retentionDays).update();
     }
 }
