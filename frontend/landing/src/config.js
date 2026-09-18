@@ -148,6 +148,8 @@ export const CONFIG = {
       apex: '#FFD4A0',                  // 반짝임·이음매 — 지는 해의 금빛
       light: { hemiSky: '#C8B6D6', hemiGround: '#5E5870', hemi: 1.0, dir: '#FFBE8C', dirI: 1.7 },
       gateTint: '#9C8290',              // 암석 — 역광에 선 보랏빛 그늘
+      // 돌고래 실루엣 (pod.js). ⚠ 복숭아빛 수면 **앞**에 서므로 그보다 어둡고 차가워야 실루엣으로 읽힌다
+      pod: '#6E6A7E',
       title: { lift: 0, to: '#FFF4EC' },// 글자 — 수평선(복숭아빛) 앞이라 짙은 향조 색이 그대로 읽힌다
       marksAdd: true,                   // 부표를 **더해서** 그린다 (marks.js — 아래 밤 주석)
       seaMark: '#FFE08A',               // 바다 누르기 화살표 (seamark.js) — 밝은 노란 금빛을 **더한다** (사용자 : *"밝은 노란색으로"*). 낮은 표가 비어 있어 seamark.js 의 짙은 금빛을 섞는다
@@ -159,6 +161,9 @@ export const CONFIG = {
       bg: '#39425E',
       water: { theme: 5, tone: 0.85 },
       apex: '#E4ECFF',                  // 달빛 — 푸른 흰빛
+      // ⚠⚠ 돌고래 실루엣 — **밤 바탕(#39425E)보다 어두워야 한다.** 낮의 회색(#8A8F94)을 그대로 두면
+      //   선형 휘도가 0.272 대 0.056 로 **4.9배 밝아** 실루엣이 뒤집혀 밝은 얼룩으로 뜬다
+      pod: '#232A3E',
       // ⚠ 첫 시안(반구 0.6 · 방향 0.95)은 배가 **실루엣**이 되어 찾기 어려웠다 — 주인공이 흰 종이배로 읽힐 만큼 달빛을 올렸다
       light: { hemiSky: '#7888B0', hemiGround: '#1A2032', hemi: 1.0, dir: '#C4D4FF', dirI: 1.8 },
       gateTint: '#394056',              // 암석 — 실루엣

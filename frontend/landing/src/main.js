@@ -12,6 +12,7 @@ import { createWater } from './water.js';
 import { createGrids } from './grid.js';
 import { createSpray } from './spray.js';
 import { createBoat } from './boat.js';
+import { createPod } from './pod.js';
 import { createReflect } from './reflect.js';
 import { createZones } from './zones.js';
 import { createMarks } from './marks.js';
@@ -173,6 +174,12 @@ const boat = createBoat(scene);
 const reflect = createReflect(renderer, scene, boat, [hemiLight, dirLight]);
 water.setBoat(boat.pivot);
 water.setReflect(reflect);
+// 돌고래 무리 — 원경을 채운다 (2026-09-18). ⚠ 반사·물속·발광 패스에 **안 넣는다** (pod.js 머리 주석) —
+// 씬을 한 번 더 그리는 값은 그대로 나가는데 원경이라 반사에는 거의 안 보이고, 반사 패스의
+// 클리핑 평면(reflectSlice)이 점프 꼭대기를 어차피 자른다. GLB 는 podAmount > 0 일 때 처음으로 받는다
+// ⚠ 원경색(uBg)을 **참조로** 넘긴다 — 멀어지는 돌고래가 물과 **같은 색**으로 녹어야 한다.
+//   복사하면 시간대가 바뀌는 순간 둘째 수평선이 생긴다 (stage.js 가 태양 유니폼을 참조로 받는 것과 같은 규율)
+const pod = createPod(scene, water.uni);
 // 화면에 그리는 하늘. ⚠⚠ **water 뒤에 만든다** — 태양 유니폼(`uLightDir3`)을 **참조로**
 // 공유해서 물과 하늘이 갈라질 수 없게 한다 (stage.js 주석의 실측 : 태양이 세 곳에서
 // 80.8°·125.7° 로 어긋나 있었다). 복사하면 그 순간 넷째 태양이 생긴다
@@ -373,7 +380,12 @@ function updateHover(view) {
   hoverGrace = -1;
   if (next === hoverMark) return;
   hoverMark = next;
-  if (next) marks.select(next);
+  // ⭐⭐ **카드는 누를 때만 뜬다** (2026-09-18) — 사용자 : *"일단 카드 자동으로 열리는거 삭제하셈 안그래도
+  //   이거 다시 디벨롭 올릴때 삭제 예정이었음"*. 부표 위를 **지나가기만 해도** 카드가 열려 화면 절반이 덮였다.
+  //   ⚠ 고르기(클릭) · 카드 위 호버 다리(cardHoverBridge)는 그대로다 — **여는 방아쇠만** 뺐다.
+  //   ⚠ `markHoverCard 1` 이면 예전과 비트 단위로 같다 (되돌릴 수 있게 둔다)
+  const hoverCard = (PARAMS.markHoverCard === undefined ? 0 : PARAMS.markHoverCard) >= 0.5;
+  if (next && hoverCard) marks.select(next);
   // 벗어났다 — 클릭으로 고른 것이 아직 화면에 있으면 그리로 돌아간다
   else if (clickMark && clickMark.on && clickMark.fade > 0.02) marks.select(clickMark);
   else marks.clearSelect();
@@ -1717,6 +1729,11 @@ function tick() {
   links.update(marks.linkItems(), dt);   // ⚠ dt 로 '하나씩 뻗는' 시계를 돌린다 (links.js)
   // 바다 누르기 화살표 — 누른 월드 자리를 이번 프레임 scroll 로 씬에 옮기고 수면 높이에 앉힌다 (seamark.js). 떠 있지 않으면 곧장 돌아온다
   seamark.update({ dt, scroll: nav.scroll, sim, cam: view });
+  // 돌고래 무리. ⚠ 시계는 물의 것(sim.qT)이라 dt 를 안 넘긴다 (pod.js)
+  // ⚠⚠ `hide` 는 **연출이 비키라고 넘기는 값 하나**다 — 돌고래는 연출을 모른다 (dive.js 와 같은 규율).
+  //   `cl` 은 존 구도와 향수 고르기를 이미 합친 클로즈업 블렌드(위 1530줄)이고, 거기에 이동 안개를 얹는다.
+  //   배 근처는 부표 · 항적 · 이름표로 붐비는 데다 클로즈업에서 돌고래가 화면을 가린다 (사용자 지적).
+  pod.update(sim, { scroll: nav.scroll, cam, hide: Math.max(cl, travel.fog) });
   // ⚠ 아래 둘은 이번 프레임 카메라로 투영한다 — 행렬을 먼저 갱신한다 (안 하면 한 프레임 늦어 라벨이 떤다.
   //   카메라는 씬에 안 들어 있어 render 전까지 matrixWorld 가 지난 프레임 값이다)
   cam.updateMatrixWorld();
@@ -2026,7 +2043,7 @@ const onKeyExit = (e) => {
 };
 window.addEventListener('keydown', onKeyExit);
 
-window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, goRegion, startTravel, startFocus, setHost, boot: bootNow, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
+window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, goRegion, startTravel, startFocus, setHost, boot: bootNow, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, pod, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
   // ⭐ 반응형 검산 (2026-09-11 오후) — 제품 UI 상자들의 자리 · 서로 겹침 · 화면 밖 · 스크롤 · 수면 타이포 꼭대기와 정보 블록의 간격.
   //   ⚠ 창 크기를 바꾼 뒤에는 **스크린샷 한 장으로 먼저 칠하고** 부른다 (숨긴 패널에서는 ResizeObserver 가 안 불린다 — 교훈 ⑧)
   layout: () => layoutReport(),
@@ -2090,6 +2107,7 @@ function disposeAll() {
   marks.dispose();   // ⚠ 새 모듈은 여기 등록한다 (불변식 10)
   links.dispose();
   seamark.dispose();
+  pod.dispose();
   zones.dispose();
   boat.dispose();
   spray.dispose();
