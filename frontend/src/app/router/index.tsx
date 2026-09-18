@@ -52,12 +52,25 @@ const FULL = { width: 'full' } satisfies { width: PageWidth }
 const TEXT = { width: 'text' } satisfies { width: PageWidth }
 /**
  * 어두운 방 + 유리판 화면
- * (A33 향수 목록 · A09 검색 결과 · A10 향수 상세 · A34 브랜드 · A35 · A36 노트).
+ * (A33 향수 목록 · A09 검색 결과 · A10 향수 상세 · A34 브랜드 · A35 · A36 노트 ·
+ *  A22a 후기 게시판 · A22b 자유 게시판).
  *
  * 폭은 적지 않습니다 — 모두 기본 wide(1440)입니다. 생김새는
  * styles/scent-display.css, 켜는 자리는 app/layouts/RootLayout 의 `useIsNight`.
  */
 const NIGHT = { night: true } satisfies { night: boolean }
+/**
+ * 어두운 방 + 글 읽고 쓰는 폭 (A12 후기 상세 · A23 게시글 상세 · A24a · A24b 작성).
+ *
+ * 커뮤니티는 게시판에서 **한 번에 넘어가는 사이**입니다 — 목록의 한 줄을 누르면
+ * 상세, [글쓰기] 를 누르면 작성 화면입니다. 목록만 어두우면 누른 순간 화면이
+ * 통째로 뒤집히므로 커뮤니티 안쪽까지 같이 어둡습니다. 폭은 글을 읽고 쓰는
+ * 화면이라 그대로 text(800)입니다.
+ */
+const TEXT_NIGHT = { width: 'text', night: true } satisfies {
+  width: PageWidth
+  night: boolean
+}
 /** 헤더 아래 화면 끝까지 — 3D 향 지도(A01)가 씁니다 */
 const BLEED = { width: 'bleed' } satisfies { width: PageWidth }
 
@@ -92,7 +105,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.REVIEW_DETAIL,
         element: withSuspense(<ReviewDetailPage />),
-        handle: TEXT,
+        handle: TEXT_NIGHT,
       },
 
       {
@@ -131,34 +144,39 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.COMMUNITY_REVIEWS,
         element: withSuspense(<ReviewBoardPage />),
+        handle: NIGHT,
       },
-      { path: ROUTES.COMMUNITY_FREE, element: withSuspense(<FreeBoardPage />) },
+      {
+        path: ROUTES.COMMUNITY_FREE,
+        element: withSuspense(<FreeBoardPage />),
+        handle: NIGHT,
+      },
       {
         path: ROUTES.POST_DETAIL,
         element: withSuspense(<PostDetailPage />),
-        handle: TEXT,
+        handle: TEXT_NIGHT,
       },
       {
         path: ROUTES.REVIEW_WRITE,
         element: withSuspense(<ReviewWritePage />),
-        handle: TEXT,
+        handle: TEXT_NIGHT,
       },
       {
         // 수정도 같은 화면입니다 — 주소로 모드를 가릅니다
         path: ROUTES.REVIEW_EDIT,
         element: withSuspense(<ReviewWritePage />),
-        handle: TEXT,
+        handle: TEXT_NIGHT,
       },
       {
         path: ROUTES.POST_WRITE,
         element: withSuspense(<PostWritePage />),
-        handle: TEXT,
+        handle: TEXT_NIGHT,
       },
       {
         // 수정도 같은 화면입니다 — 주소로 모드를 가릅니다
         path: ROUTES.POST_EDIT,
         element: withSuspense(<PostWritePage />),
-        handle: TEXT,
+        handle: TEXT_NIGHT,
       },
 
       {

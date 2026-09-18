@@ -8,6 +8,7 @@ import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { LinkButton } from '@/shared/ui/LinkButton'
+import { GLASS_PANEL } from '@/shared/ui/panel'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import { deleteReview } from '../api'
@@ -37,6 +38,11 @@ type Props = {
  * 와이어프레임 주석: "본인이 작성한 후기에만 수정 · 삭제가 보인다".
  * 그래서 review.mine 일 때만 두 버튼을 그립니다. 화면에서 숨기는 것만으로는
  * 권한이 지켜지지 않으니 백엔드도 수정 · 삭제 때 작성자를 다시 확인합니다.
+ *
+ * **유리판 한 장입니다.** 이 화면으로 들어오는 두 길(향수 상세 A10 의 후기 목록 ·
+ * 후기 게시판 A22a)이 둘 다 어두운 방이라, 여기도 같은 어둠입니다(라우트의
+ * `handle.night`). 예전의 `bg-surface-card` 는 그 어둠에서 `--night-soft` 로
+ * 뒤집혀 갈색 상자가 됐습니다.
  */
 export function PerfumeReviewDetail({
   review,
@@ -67,8 +73,8 @@ export function PerfumeReviewDetail({
   })
 
   return (
-    <article className="border-line bg-surface-card border">
-      <div className="space-y-3.75 p-6.25">
+    <article className={GLASS_PANEL}>
+      <div className="space-y-3.75">
         {/*
           후기를 읽다 향수로 건너가는 길입니다 — 들어온 길은 늘 커뮤니티입니다
           (후기 게시판 · 향수 상세의 후기 목록 어느 쪽에서 왔든 읽던 것은 후기입니다).

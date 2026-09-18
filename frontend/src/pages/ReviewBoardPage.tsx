@@ -17,11 +17,13 @@ import {
 // 두 도메인은 서로 import 할 수 없으므로 화면에서 조합합니다.
 import { likeReview, reviewKeys, unlikeReview } from '@/features/perfume'
 import { ROUTES } from '@/shared/config/routes'
+import { cn } from '@/shared/lib/cn'
 import { useIsLoggedIn } from '@/shared/store/authStore'
 import { AuthLinkButton } from '@/shared/ui/AuthLinkButton'
-import { ChipToggle } from '@/shared/ui/ChipToggle'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { Pagination } from '@/shared/ui/Pagination'
+import { GLASS_PANEL } from '@/shared/ui/panel'
+import { PillFilter } from '@/shared/ui/PillFilter'
 
 /** 백엔드 기본값과 같습니다 */
 const PAGE_SIZE = 10
@@ -35,6 +37,12 @@ const PAGE_SIZE = 10
  *
  * 줄을 누르면 후기 상세(A12)로 갑니다. 향수 상세에서 후기를 눌렀을 때와 같은
  * 화면입니다 — 게시판용 상세를 따로 두면 같은 후기가 두 주소를 갖게 됩니다.
+ *
+ * 생김새는 향수 목록(A33) · 브랜드(A34) · 노트(A35)와 한 벌입니다 — **어두운 방 ·
+ * 알약 필터 · 유리판 위 목록.** 상단 메뉴에서 향수와 커뮤니티를 오가는데 한쪽만
+ * 밝으면 누를 때마다 화면이 통째로 뒤집힙니다. 어둠은 라우트의
+ * `handle.night`(app/router)이 켜고, 판 · 알약의 생김새는
+ * `styles/scent-display.css` 에 있습니다.
  */
 export default function ReviewBoardPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -43,6 +51,13 @@ export default function ReviewBoardPage() {
 
   const reviews = useQuery(reviewBoardQuery({ sort, page, size: PAGE_SIZE }))
   const trending = useQuery(trendingPerfumesQuery())
+
+  /*
+    곁판을 그릴지. 언급된 향수가 하나도 없으면 `TrendingPerfumes` 가 아무것도
+    그리지 않으므로 칸도 같이 접습니다(아래 grid 주석).
+  */
+  const showTrending =
+    trending.isPending || (trending.data?.perfumes.length ?? 0) > 0
 
   const queryClient = useQueryClient()
   const isLoggedIn = useIsLoggedIn()
@@ -110,45 +125,85 @@ export default function ReviewBoardPage() {
         }
       />
 
-      <div className="grid gap-6.25 lg:grid-cols-[1fr_255px]">
-        <div className="min-w-0 space-y-6.25">
-          {/* 후기 게시판에는 분류 필터가 없습니다 — 전부 후기라서 */}
-          <ChipToggle
+      {/*
+        곁판이 없으면 **한 칸으로 폅니다.** 두 칸으로 고정해 두면 언급된 향수가 없는
+        동안 오른쪽 255px 이 빈 채로 남아, 유리판이 화면 오른쪽 끝에 못 닿고 잘린
+        것처럼 보입니다. 불러오는 중에는 칸을 비워 둡니다 — 대개는 값이 오므로,
+        먼저 폈다가 좁히면 목록 전체가 한 번 출렁입니다.
+      */}
+      <div
+        className={cn(
+          'grid gap-6.25',
+          showTrending && 'lg:grid-cols-[1fr_255px]',
+        )}
+      >
+        <div className="min-w-0 space-y-3.75">
+          {/*
+            후기 게시판에는 분류 필터가 없습니다 — 전부 후기라서.
+
+            정렬은 **늘 하나가 켜져 있어야** 해서 `required` 입니다. 꺼지면 줄 세울
+            기준이 없어집니다 — 브랜드 목록(A34)의 정렬 알약과 같은 규칙입니다.
+            가운데로 몰지 않는 이유: 저 화면들은 위에 가운데 검색창이 있어 축이
+            가운데인데, 게시판은 왼쪽에 제목 · 탭이 서 있어 알약까지 가운데로 가면
+            축이 둘이 됩니다.
+          */}
+          <PillFilter
             label="정렬"
             options={REVIEW_SORTS}
             value={sort}
             onChange={(next) => updateParams({ sort: next ?? 'RECENT' })}
+            required
+            className="flex-wrap"
           />
 
-          <PostList
-            items={(reviews.data?.reviews ?? []).map(reviewToBoardItem)}
-            isPending={reviews.isPending}
-            onToggleLike={(item) => {
-              // 비로그인은 401 이라, 보내 보는 대신 먼저 안내합니다
-              if (!isLoggedIn) {
-                setLoginOpen(true)
-                return
+          {/*
+            유리판. 목록과 쪽 번호가 이 판 위에 놓입니다 — 어두운 방 안의 밝은
+            표면이라 판 안쪽은 색 토큰이 다시 정의됩니다
+            (styles/scent-display.css 의 .scent-glass).
+          */}
+          <section className={GLASS_PANEL}>
+            <div className="mb-6.25 flex items-baseline gap-2.5">
+              {/* 판 위 제목은 향수 · 브랜드 · 노트의 판과 같은 크기입니다 */}
+              <h2 className="text-ink font-serif text-2xl">전체 후기</h2>
+              {/* 불러오는 중에는 아예 적지 않습니다 — 0 이 잠깐 보였다 바뀌면 눈에 띕니다 */}
+              {!reviews.isPending && !!reviews.data?.totalElements && (
+                <span className="text-ink-muted text-caption">
+                  {reviews.data.totalElements.toLocaleString()}개
+                </span>
+              )}
+            </div>
+
+            <PostList
+              items={(reviews.data?.reviews ?? []).map(reviewToBoardItem)}
+              isPending={reviews.isPending}
+              onToggleLike={(item) => {
+                // 비로그인은 401 이라, 보내 보는 대신 먼저 안내합니다
+                if (!isLoggedIn) {
+                  setLoginOpen(true)
+                  return
+                }
+                toggleLike.mutate({ id: item.id, liked: item.liked })
+              }}
+              emptyAction={
+                <AuthLinkButton
+                  to={ROUTES.REVIEW_WRITE}
+                  size="sm"
+                  description="후기는 로그인한 뒤에 쓸 수 있습니다."
+                >
+                  후기 쓰기
+                </AuthLinkButton>
               }
-              toggleLike.mutate({ id: item.id, liked: item.liked })
-            }}
-            emptyAction={
-              <AuthLinkButton
-                to={ROUTES.REVIEW_WRITE}
-                size="sm"
-                description="후기는 로그인한 뒤에 쓸 수 있습니다."
-              >
-                후기 쓰기
-              </AuthLinkButton>
-            }
-          />
+            />
 
-          <Pagination
-            label="후기 게시판 페이지"
-            page={page}
-            size={PAGE_SIZE}
-            totalElements={reviews.data?.totalElements ?? 0}
-            onPageChange={(next) => updateParams({ page: next })}
-          />
+            <Pagination
+              className="mt-6.25"
+              label="후기 게시판 페이지"
+              page={page}
+              size={PAGE_SIZE}
+              totalElements={reviews.data?.totalElements ?? 0}
+              onPageChange={(next) => updateParams({ page: next })}
+            />
+          </section>
         </div>
 
         <TrendingPerfumes

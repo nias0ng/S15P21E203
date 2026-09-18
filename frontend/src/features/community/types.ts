@@ -19,12 +19,6 @@ export const POST_CATEGORIES = [
   { value: 'CHAT', label: '잡담' },
 ] as const satisfies readonly { value: PostCategory; label: string }[]
 
-/** 자유 게시판 목록의 분류 필터 — 전체가 기본입니다. */
-export const POST_CATEGORY_FILTERS = [
-  { value: 'ALL', label: '전체' },
-  ...POST_CATEGORIES,
-] as const
-
 /** 자유 게시판 정렬. 후기에는 댓글이 없어 댓글 순이 없습니다. */
 export type PostSort = 'RECENT' | 'VIEWS' | 'LIKES' | 'COMMENTS'
 

@@ -28,6 +28,17 @@ type Props = {
 /**
  * 게시글 목록 (와이어프레임 A22a · A22b 공용)
  *
+ * **유리판 위에 놓입니다.** 두 게시판 모두 어두운 방(라우트의 `handle.night`)이라
+ * 카드가 `data-slot="card"` 로 잡혀 한 단 밝은 서리 유리가 되고, 그 안쪽만 글자가
+ * 다시 먹색으로 돌아옵니다 — 향수 목록(A33) · 브랜드(A34) · 노트(A35)의 격자와
+ * 같은 층 구성입니다(어둠 → 판 → 카드).
+ *
+ * `interactive` 를 걸지 않는 이유가 여기 있습니다. 그 prop 이 얹는
+ * `hover:shadow-raised` 는 **유틸리티**라 유리 카드의 그림자(가장자리 반사광 두 겹)를
+ * 통째로 덮어써서, 마우스를 올리면 카드가 유리에서 종이로 바뀝니다. 떠오르는 느낌은
+ * 유리판 쪽 `:hover`(판보다 더 밝아짐)가 이미 만들고, 누를 수 있다는 신호는 제목
+ * 밑줄(`group-hover:underline`)이 냅니다.
+ *
  * 두 게시판이 같은 컴포넌트를 씁니다. 백엔드 응답은 서로 다르지만
  * (`/posts` 와 `/reviews`) 카드 모양이 같아, 도메인에서 `BoardItem` 으로 맞춰
  * 넘깁니다(types.ts 의 `postToBoardItem` · `reviewToBoardItem`).
@@ -73,7 +84,7 @@ export function PostList({
             헷갈립니다. 대신 카드에 group 을 걸어 어디에 마우스를 올리든 제목에
             밑줄이 들어옵니다.
           */}
-          <Card interactive className="group space-y-2.5">
+          <Card className="group space-y-2.5">
             <div className="space-y-2.5">
               <Link
                 to={item.to}
