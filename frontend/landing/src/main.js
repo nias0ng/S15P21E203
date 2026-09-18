@@ -5,7 +5,7 @@ import { createBloom } from './bloom.js';
 import { createSubmerged } from './submerged.js';
 import { lerp, clamp, wrapPi } from './util.js';
 import { createUI } from './ui.js';
-import { callHost, hostSearch, perfumeRef, setHost, setHostNotice } from './host.js';   // 카드의 서비스 동작 · 검색창이 앱(호스트)으로 나가는 문 (v0.68.0)
+import { bootNow, bootReport, callHost, hostSearch, perfumeRef, setHost, setHostNotice } from './host.js';   // 카드의 서비스 동작 · 검색창이 앱(호스트)으로 나가는 문 (v0.68.0) · 부팅 신호 (v0.75.0)
 import { createInput } from './input.js';
 import { createSim } from './sim.js';
 import { createWater } from './water.js';
@@ -51,6 +51,8 @@ const { groundSpeed, turnRate } = oceanClock;
 // 그래서 scroll 은 "배의 위치"이자 "월드가 흐른 양"이다. 두 뜻이 같은 값이다.
 
 const P = PARAMS;
+// ⭐ 부팅 신호 ② (v0.75.0) — import 가 전부 평가됐다. 앱의 로딩 커튼이 듣는다 (host.js bootReport)
+bootReport('script');
 // 앱(호스트)이 띄운 창이 열려 있는 수 (2026-09-15, v0.68.0 — holdWhile). 0 보다 크면 누르기 · 호버 · ESC · 스페이스를 안 받는다.
 //   ⚠ 입력을 만들기 전인 여기에 선언한다 — onPick · updateHover · onKeyExit 가 읽는다 (TDZ)
 let hostHold = 0;
@@ -1847,6 +1849,8 @@ function tick() {
   perf && perf.end(sim, boat);
 }
 tick();
+// ⭐ 부팅 신호 ③ (v0.75.0) — 첫 장이 그려졌다 (셰이더 컴파일 포함). 배 GLB 는 아직 오는 중일 수 있다 (boat.js 가 따로 알린다)
+bootReport('frame');
 
 // 리사이즈는 rAF 로 디바운스한다 — 드래그로 창을 늘리면 ResizeObserver 가 프레임마다 터지고,
 // setSize 는 백버퍼를 재할당한다. 모니터를 옮기면 devicePixelRatio 도 바뀌므로 같이 다시 잡는다
@@ -2100,7 +2104,7 @@ if (DEV) {
   }
 }
 
-window.PB = { grab, submerged, bloom, topCam, stage, phase, title, gate, compare, input, travel, minimap, chart, goRegion, startTravel, startFocus, setHost, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, perf, tweaks, viewbar, campanel, probes, freecam, reflect, swellCPU, sim, water, grids, spray, boat, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
+window.PB = { grab, submerged, bloom, topCam, stage, phase, title, gate, compare, input, travel, minimap, chart, goRegion, startTravel, startFocus, setHost, boot: bootNow, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, perf, tweaks, viewbar, campanel, probes, freecam, reflect, swellCPU, sim, water, grids, spray, boat, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
   // ⚠⚠ **측정·스크린샷 전에 부른다.** 개발 UI 넷을 통째로 숨긴다 (되돌리기 : PB.solo(false) 또는 H 키).
   //   예전에는 콘솔에서 querySelectorAll 로 하나씩 숨겼는데 원래 display 값을 잃어 tweaks 가 깨졌다
   solo: (on) => campanel ? campanel.solo(on) : false,

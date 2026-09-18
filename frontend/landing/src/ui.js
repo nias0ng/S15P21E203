@@ -21,7 +21,7 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
   const card = $('scent-card');
   const bubble = $('scent-bubble'), tail = $('scent-tail');
   const rows = card ? [...card.querySelectorAll('[data-row]')] : [];
-  const cName = $('scent-name'), cSub = $('scent-sub'), cNotes = $('scent-notes');
+  const cName = $('scent-name'), cSub = $('scent-sub'), cNotes = $('scent-notes'), cNotesLabel = $('scent-notes-label');
   const cEn = $('scent-en');   // 영문 원명 (한글 제목 밑, 2026-09-12)
   const cZone = $('scent-zone'), cDot = $('scent-zone-dot');
   const cClose = $('scent-close'), cSail = $('scent-sail');
@@ -48,9 +48,55 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
     const A = p(a), B = p(b);
     return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join('');
   };
+  // ⭐ 어코드 동그라미 색 (v0.75.7 글자색 → v0.75.8 앞 동그라미) — 어코드가 속한 향조(해역)의 색 **계열**. 사용자 : *"전부 같은 색이 아니라 유사한 계열 색상"*.
+  //   ⚠ v0.75.8 : 글자를 칠하고 굵게 한 것은 사용자가 *"너무 촌스러워서 차라리 앞에 O 동그라미 아이콘에 색상을 넣어줘"* — 글자는 카드 글자색 그대로 · 색은 동그라미에만.
+  //   향조 색(CONFIG.families[].color · areasNow)의 HSL 에서 채도 × 1.5 · 명도 0.72 로 어두운 유리 위에서 또렷하게 하고,
+  //   어코드 이름의 해시로 색상 ±12° · 채도 ±0.07 · 명도 ±0.05 를 흔든다 (같은 어코드는 어느 카드에서나 같은 색).
+  //   ⚠ 대비 바닥 `floor` (동그라미는 그림이라 3:1) — 카드 바탕을 밝은 하늘이 비칠 때의 값(#473D4D, dusk 86% + 살구색 하늘 14%)으로 재고, 모자라면 상아색 쪽으로 20% 씩 밝힌다.
+  //   향조를 모르면(예전 더미 · 표에 없는 어코드) '' · 낮 카드(종이)면 향조 제 색 그대로
+  const ACCORD_BG = '#473D4D', ACCORD_IVORY = '#FBF3EA';
+  const hexRgb = (h) => { const n = parseInt(h.replace('#', ''), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const rgbHex = (a) => '#' + a.map(v => Math.round(Math.min(255, Math.max(0, v))).toString(16).padStart(2, '0')).join('');
+  const lumOf = (a) => { const f = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }; return 0.2126 * f(a[0]) + 0.7152 * f(a[1]) + 0.0722 * f(a[2]); };
+  const contrastOf = (a, b) => { const x = lumOf(a), y = lumOf(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  const hash01 = (s, k) => { let h = (2166136261 ^ k) >>> 0; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return (h % 1000) / 999; };
+  const accordColor = (fam, name, floor) => {
+    if (!fam) return '';
+    const area = areasNow().find(a => String(a.key).toUpperCase() === fam);
+    if (!area || !area.color) return '';
+    if (!document.documentElement.hasAttribute('data-card-eve')) return area.color;
+    const [r0, g0, b0] = hexRgb(area.color).map(v => v / 255);
+    const mx = Math.max(r0, g0, b0), mn = Math.min(r0, g0, b0), l0 = (mx + mn) / 2;
+    let h = 0, s = 0;
+    if (mx !== mn) {
+      const d = mx - mn;
+      s = l0 > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+      h = (mx === r0 ? (g0 - b0) / d + (g0 < b0 ? 6 : 0) : mx === g0 ? (b0 - r0) / d + 2 : (r0 - g0) / d + 4) * 60;
+    }
+    const H = (h + (hash01(name, 1) - 0.5) * 24 + 360) % 360;
+    const S = Math.min(1, Math.max(0, s * 1.5 + (hash01(name, 2) - 0.5) * 0.14));
+    const L = Math.min(1, Math.max(0, 0.72 + (hash01(name, 3) - 0.5) * 0.10));
+    const c = (1 - Math.abs(2 * L - 1)) * S, x = c * (1 - Math.abs((H / 60) % 2 - 1)), m0 = L - c / 2;
+    const [r1, g1, b1] = H < 60 ? [c, x, 0] : H < 120 ? [x, c, 0] : H < 180 ? [0, c, x] : H < 240 ? [0, x, c] : H < 300 ? [x, 0, c] : [c, 0, x];
+    let rgb = [(r1 + m0) * 255, (g1 + m0) * 255, (b1 + m0) * 255];
+    const bg = hexRgb(ACCORD_BG), iv = hexRgb(ACCORD_IVORY);
+    for (let i = 0; i < 8 && contrastOf(rgb, bg) < floor; i++) rgb = rgb.map((v, k) => v + (iv[k] - v) * 0.2);
+    return rgbHex(rgb);
+  };
+  // #RRGGBB 채움 위에 올릴 글자색 — 검정 · 흰색 중 **대비(WCAG 상대 휘도)가 큰 쪽** (v0.75.5 · [이 향의 해역으로] 호버).
+  //   사용자 : *"밝으면 폰트가 검정, 짙으면 폰트가 흰색"*. 향조 아홉은 지금 전부 밝은 쪽이라 검정이 나온다 (가장 어두운 WOODY #A38F7C 도 검정 6.1:1 · 흰색 3.1:1)
+  const INK_DARK = '#111111', INK_LIGHT = '#FFFFFF';
+  const inkOn = (hex) => {
+    const n = parseInt(String(hex || '').replace('#', ''), 16);
+    if (!Number.isFinite(n)) return INK_LIGHT;
+    const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+    const L = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+    const LD = 0.0056;   // #111111 의 상대 휘도
+    return (L + 0.05) / (LD + 0.05) >= 1.05 / (L + 0.05) ? INK_DARK : INK_LIGHT;
+  };
   // 말풍선 상태. side = 부표의 어느 쪽에 서는가 (1 오른쪽 · −1 왼쪽)
   //   x · y = 자리 잡은 카드의 왼쪽 위 · ax · ay · ar = 가리키는 부표 (둘 다 #stage 기준 CSS px — 호버 카드의 틈 판정이 읽는다, v0.65.0). x 가 null 이면 아직 · 좌하단 고정
-  const bub = { on: false, m: null, side: 1, w: 296, h: 280, key: '', tailKey: '', mode: '', anim: null, peek: false, x: null, y: 0, ax: 0, ay: 0, ar: 0 };
+  const bub = { on: false, m: null, side: 1, w: 325, h: 280, key: '', tailKey: '', mode: '', anim: null, peek: false, x: null, y: 0, ax: 0, ay: 0, ar: 0 };
   // 피해야 할 자리 (CSS px, #stage 기준). ⚠ 매 프레임 재지 않는다 — 보일 때 · 창 크기가 바뀔 때만
   let avoid = { top: 110, mini: null };
   const measureAvoid = () => {
@@ -62,7 +108,7 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
       top: sb ? sb.bottom - sr.top + 12 : 110,
       mini: mr && mr.width > 0 ? { x0: mr.left - sr.left - 10, y0: mr.top - sr.top - 10, x1: mr.right - sr.left + 10, y1: mr.bottom - sr.top + 10 } : null
     };
-    if (card) { bub.w = card.offsetWidth || 296; bub.h = card.offsetHeight || 280; }
+    if (card) { bub.w = card.offsetWidth || 325; bub.h = card.offsetHeight || 280; }   // 325 = #scent-card 폭 대체값 (v0.75.11 — 어코드 한 줄)
   };
   const onWinResize = () => { if (bub.on) measureAvoid(); bub.key = ''; bub.tailKey = ''; };
   window.addEventListener('resize', onWinResize);
@@ -178,7 +224,31 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
       cName.textContent = (ko ? m.nameKo : m.name) || '—';
       if (cEn) { cEn.textContent = ko && m.name !== m.nameKo ? m.name : ''; cEn.style.display = cEn.textContent ? '' : 'none'; }
       cSub.textContent = (ko ? m.subKo : m.sub) || '—';
-      cNotes.textContent = m.notes || '—';
+      // ⭐ 어코드 상위 3개 (2026-09-17, v0.75.3 — 사용자 : *"어코드로 진행해줘 상위 3개만"*). 지도 향수의 이 줄은 **어코드**다 — 노트는 데이터가 없다 (marks.js).
+      //   이름마다 nowrap 칸에 담고 가운뎃점은 앞 이름에 붙인다 — 줄은 점 뒤에서만 바뀐다 ('화이트 플로럴' 이 둘로 쪼개지지 않는다).
+      //   markNameKo 0 이면 영문 이름. 어코드가 없는 부표(예전 더미)는 notes 글자 그대로 · 라벨 NOTES
+      // ⭐⭐ 2026-09-18 (v0.75.8) : 어코드마다 **앞에 제 향조 색 동그라미**(accordColor — 같은 향조라도 어코드마다 조금씩 다르다) · 글자는 카드 글자색 · 보통 굵기.
+      //   사용자 : *"폰트 굵기 색상 바꾸니까 너무 촌스러워서 차라리 앞에 O 동그라미 아이콘에 색상을 넣어줘"* (v0.75.7 은 글자를 칠하고 굵게 했다).
+      //   동그라미가 이름을 가르므로 가운뎃점은 뺐다 — 사이는 #scent-notes 의 column-gap. 한 칸(동그라미 + 이름)은 안 쪼개지고 줄은 칸 사이에서만 바뀐다
+      const acc = m.accords;
+      if (acc && acc.length) {
+        const koA = (P.markNameKo === undefined ? 1 : P.markNameKo) >= 0.5;
+        cNotes.replaceChildren(...acc.map(a => {
+          const item = document.createElement('span');
+          // 동그라미 9px (v0.75.9 — 사용자 : *"동그라미 조금만 더 크게"* · 예전 7px 은 위 향조 라벨 점과 같은 크기였다) · 동그라미와 이름 사이 4px (v0.75.11 에 5 → 4 — 모든 카드를 한 줄로).
+          //   칸들은 #scent-notes 가 한 줄 안에 고르게 벌린다 (space-evenly — index.html 주석)
+          item.style.cssText = 'display:inline-flex;align-items:center;gap:var(--pb-card-accord-dot-gap,4px);white-space:nowrap;';
+          const dot = document.createElement('span');
+          dot.setAttribute('aria-hidden', 'true');
+          dot.style.cssText = 'flex:none;width:var(--pb-card-accord-dot,9px);height:var(--pb-card-accord-dot,9px);border-radius:50%;';
+          dot.style.background = accordColor(a.fam, a.en, 3) || 'var(--pb-card-ink-3, #8A8A8A)';
+          const word = document.createElement('span');
+          word.textContent = (koA ? a.ko : a.en) || a.en;
+          item.append(dot, word);
+          return item;
+        }));
+      } else cNotes.textContent = m.notes || '—';
+      if (cNotesLabel) cNotesLabel.textContent = acc && acc.length ? 'ACCORDS' : 'NOTES';
       // 이미지 자리 (v0.64.0) — 주소가 있으면 그림, 없거나 못 불러온 주소면 자리표시. ⚠ 자리 높이는 CSS 가 고정한다 (그림이 늦게 떠도 카드 높이가 안 튄다)
       if (cImg) {
         const src = m.img || '';
@@ -195,6 +265,15 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
       const zc = eveCard && m.zone.area && m.zone.area.color ? mixHex(m.zone.area.color, '#FBF3EA', 0.25) : m.zone.color;
       cZone.style.color = zc;
       cDot.style.background = zc;
+      // ⭐ [이 향의 해역으로] 호버 물결 색 (v0.75.5 · 물결은 v0.75.6) — 앞 겹 = 이 향의 해역(향조) 색 · 뒤 겹 = 그 색을 흰색 쪽으로 35% (옅은 물마루) ·
+      //   그 위 글자는 각 색의 밝기로 검정 / 흰색 (index.html #scent-sail [data-wave] 가 읽는다).
+      //   ⚠ 글자색(zc)이 아니라 **향조 제 색**이다 — zc 는 어두운 유리에서 읽히라고 상아색 쪽으로 밝힌 값이다. 향조 색이 없는 예전 더미 부표는 변수를 지워 한 단계 밝은 남색 물결로 간다
+      const zoneFill = m.zone.area && m.zone.area.color ? m.zone.area.color : '';
+      const SAIL_VARS = ['--pb-sail-zone', '--pb-sail-zone-ink', '--pb-sail-zone-back', '--pb-sail-zone-back-ink'];
+      if (zoneFill) {
+        const back = mixHex(zoneFill, '#FFFFFF', 0.35);
+        [zoneFill, inkOn(zoneFill), back, inkOn(back)].forEach((v, i) => cSail.style.setProperty(SAIL_VARS[i], v));
+      } else SAIL_VARS.forEach(k => cSail.style.removeProperty(k));
       card.style.visibility = 'visible';
       card.style.opacity = '1';
       card.style.pointerEvents = bub.peek ? 'none' : 'auto';
