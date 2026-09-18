@@ -50,6 +50,50 @@ describe('PerfumeOverview', () => {
     ).not.toBeInTheDocument()
   })
 
+  /**
+   * 브랜드 아래 영문 줄은 조각 둘을 이어 만듭니다. 한쪽이 빠졌을 때 가운뎃점이
+   * 혼자 남는 것이 이 줄에서 가장 나기 쉬운 오류라, 세 경우를 다 잡아 둡니다.
+   */
+  it('영문 이름 옆에 향의 성별을 적는다', () => {
+    render(
+      <PerfumeOverview
+        perfume={{ ...PERFUME, gender: 'MALE' }}
+        inShelf={false}
+        onShelfAction={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('Allure Homme Sport · male')).toBeInTheDocument()
+  })
+
+  it('성별을 모르면 영문 이름만 적는다', () => {
+    render(
+      <PerfumeOverview
+        perfume={{ ...PERFUME, gender: null }}
+        inShelf={false}
+        onShelfAction={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('Allure Homme Sport')).toBeInTheDocument()
+  })
+
+  it('한글 이름이 없으면 제목이 영문이라 그 줄에는 성별만 남는다', () => {
+    render(
+      <PerfumeOverview
+        perfume={{ ...PERFUME, nameKo: null, gender: 'UNISEX' }}
+        inShelf={false}
+        onShelfAction={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('unisex')).toBeInTheDocument()
+    // 영문 이름은 제목(h1)에만 있습니다
+    expect(
+      screen.getByRole('heading', { name: 'Allure Homme Sport' }),
+    ).toBeInTheDocument()
+  })
+
   it('담겼는지 모르는 동안에는 누를 수 없다', () => {
     render(
       <PerfumeOverview

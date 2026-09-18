@@ -2,7 +2,7 @@ import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
-import type { PerfumeDetail } from '../types'
+import type { GenderFilter, PerfumeDetail } from '../types'
 
 type Props = {
   perfume: PerfumeDetail
@@ -56,6 +56,18 @@ export function PerfumeOverview({
   */
   const hasKoreanName = perfume.nameKo !== null
 
+  /*
+    브랜드 아래 영문 줄 — 향수 영문 이름과 향의 성별을 가운뎃점으로 잇습니다.
+
+    **배열로 모아 잇습니다.** 둘 다 없을 수 있어서(한글 이름이 없는 향수 · 성별을
+    모르는 향수), 문자열을 직접 붙이면 한쪽이 빠졌을 때 가운뎃점만 남거나 줄이
+    통째로 비어 있는 채로 자리를 차지합니다.
+  */
+  const meta = [
+    hasKoreanName ? perfume.name : null,
+    perfume.gender ? GENDER_TEXT[perfume.gender] : null,
+  ].filter((part): part is string => typeof part === 'string')
+
   return (
     <section className="flex flex-col gap-7.5 sm:flex-row">
       {/*
@@ -97,8 +109,8 @@ export function PerfumeOverview({
             {/* 검색은 brandName 문자열, 상세는 brand 객체입니다 */}
             <p className="text-ink-muted text-caption">{perfume.brand?.name}</p>
 
-            {hasKoreanName && (
-              <p className="text-ink-muted text-caption">{perfume.name}</p>
+            {meta.length > 0 && (
+              <p className="text-ink-muted text-caption">{meta.join(' · ')}</p>
             )}
           </div>
 
@@ -133,4 +145,21 @@ export function PerfumeOverview({
       </div>
     </section>
   )
+}
+
+/**
+ * 향의 성별(DTL-01 `gender`)을 영문 줄에 적는 말.
+ *
+ * **영문 소문자입니다.** 이 줄은 브랜드 · 향수의 영문 표기가 서는 자리라, 한글
+ * 라벨(`GENDER_FILTERS` 의 남성 · 여성 · 중성)을 섞으면 한 줄 안에서 두 언어가
+ * 부딪힙니다. 그 라벨은 목록 필터 알약에 그대로 두고, 여기만 따로 적습니다.
+ *
+ * ⚠️ **표에 없는 값이면 아무것도 안 적습니다.** 타입은 `GenderFilter` 지만 백엔드
+ * 컬럼은 제약 없는 `VARCHAR(30)` 이고(entity `Gender` 는 검색 필터용 어휘일 뿐입니다)
+ * 원본 CSV 에도 없는 값이라, 여기 없는 문자열이 올 수 있습니다.
+ */
+const GENDER_TEXT: Record<GenderFilter, string> = {
+  FEMALE: 'female',
+  MALE: 'male',
+  UNISEX: 'unisex',
 }
