@@ -68,7 +68,9 @@ describe('ShelfItemPickList', () => {
   it('검색으로 가려져도 고른 것은 그대로 센다', async () => {
     render(<Harness />)
 
-    await userEvent.click(screen.getAllByRole('checkbox')[0]!)
+    await userEvent.click(
+      screen.getByRole('button', { name: /우드 세이지 앤 씨 솔트/ }),
+    )
     expect(screen.getByText(/1개 선택됨/)).toBeInTheDocument()
 
     await userEvent.type(search(), '상탈')
