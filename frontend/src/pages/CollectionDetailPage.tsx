@@ -27,13 +27,10 @@ import { PerfumeCard } from '@/shared/ui/PerfumeCard'
 import { Toast } from '@/shared/ui/Toast'
 
 /**
- * 컬렉션 상세 (와이어프레임 A17 — COL-04 · COL-07)
+ * 컬렉션 상세 (A17 — COL-04 · COL-07)
  *
- * 컬렉션은 공개·비공개 구분이 없습니다 — 남에게 보이는 길은 자유 게시판의
- * 컬렉션 공유 글뿐입니다.
- *
- * 향수 추가 후보가 진열대에 있는 향수뿐이라(A19) 여기서 진열대 데이터를 함께
- * 불러 모달에 넘깁니다.
+ * 공개·비공개 구분이 없습니다 — 남에게 보이는 길은 자유 게시판의 공유 글뿐입니다.
+ * 향수 추가 후보가 진열대 항목뿐이라(A19) 진열대 데이터를 함께 불러 넘깁니다.
  */
 export default function CollectionDetailPage() {
   const { collectionId } = useParams<{ collectionId: string }>()
@@ -54,10 +51,8 @@ export default function CollectionDetailPage() {
   const queryClient = useQueryClient()
 
   /**
-   * 컬렉션 수정 (COL-05). 제목 · 설명만 바뀝니다.
-   *
-   * 목록도 함께 갱신합니다 — 진열대 하단 띠가 같은 제목을 보여주고 있어서,
-   * 상세만 고치면 돌아갔을 때 옛 제목이 남습니다.
+   * 컬렉션 수정 (COL-05). 목록도 함께 갱신합니다 — 진열대 하단 띠가 같은 제목을
+   * 보여주고 있어 상세만 고치면 옛 제목이 남습니다.
    */
   const edit = useMutation({
     mutationFn: (input: CollectionInput) => updateCollection(numericId, input),
@@ -75,12 +70,7 @@ export default function CollectionDetailPage() {
       ),
   })
 
-  /**
-   * 컬렉션 삭제 (COL-06).
-   *
-   * 지운 컬렉션의 상세 캐시를 버리고 진열대로 보냅니다 — 남겨 두면 뒤로가기로
-   * 이미 없는 컬렉션 화면이 다시 뜹니다.
-   */
+  /** 컬렉션 삭제 (COL-06). 캐시를 버리지 않으면 뒤로가기로 다시 뜹니다 */
   const remove = useMutation({
     mutationFn: () => deleteCollection(numericId),
     onSuccess: () => {

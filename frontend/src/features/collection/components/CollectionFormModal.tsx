@@ -51,15 +51,9 @@ export function CollectionFormModal({
   const [keyword, setKeyword] = useState('')
 
   /*
-   * 열릴 때마다 칸을 처음 값으로 되돌립니다.
-   *
-   * `Modal` 이 `<dialog>` 라 **닫아도 언마운트되지 않습니다.** 그냥 두면 만들기를
-   * 취소하고 다시 열었을 때 앞서 적던 제목 · 설명 · 고른 향수가 그대로 남습니다.
-   * 수정에서도 다른 컬렉션을 열면 앞 컬렉션의 값이 보입니다.
-   *
-   * `useEffect` 가 아니라 렌더 중에 맞추는 이유: 한 박자 늦게 맞추면 첫 프레임에
-   * 옛 값이 보입니다. 값으로 비교해야 해서(`initial` 은 매 렌더 새 객체입니다)
-   * 직렬화한 것을 열쇠로 씁니다.
+   * 열릴 때마다 칸을 되돌립니다. `Modal` 이 `<dialog>` 라 **닫아도 언마운트되지
+   * 않아** 앞서 적던 값이 남습니다. `useEffect` 가 아니라 렌더 중에 맞추는 이유:
+   * 한 박자 늦으면 첫 프레임에 옛 값이 보입니다.
    */
   const openedKey = open ? JSON.stringify(initial ?? null) : null
   const [openedFor, setOpenedFor] = useState<string | null>(null)

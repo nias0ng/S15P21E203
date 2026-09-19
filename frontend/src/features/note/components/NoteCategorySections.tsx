@@ -47,10 +47,7 @@ export function NoteCategorySections({
           <div key={section} className={GLASS_PANEL}>
             <Skeleton className="mb-6.25 h-6 w-23.75" />
             <div className="grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-5">
-              {/*
-                카드와 같은 틀 · 같은 사진 비율이어야 노트가 도착할 때 격자가 안
-                튑니다. 사진이 7:5 라 높이가 열 폭을 따라가서, 고정 높이로는 못 맞춥니다.
-              */}
+              {/* 카드와 같은 비율이어야 도착할 때 격자가 안 튑니다(7:5) */}
               {Array.from({ length: 5 }, (_, index) => (
                 <div
                   key={index}
@@ -83,10 +80,6 @@ export function NoteCategorySections({
     <div className="space-y-7.5">
       {sections.map((section) => (
         <section key={section.family} className={GLASS_PANEL}>
-          {/*
-            판 머리는 브랜드 판과 같은 형식입니다 — 이름 옆에 개수 한 줄.
-            상단 메뉴로 두 화면을 오갈 때 같은 자리에서 같은 크기로 읽힙니다.
-          */}
           <div className="mb-6.25 flex items-baseline gap-2.5">
             <h2 className="text-ink font-serif text-2xl">{section.family}</h2>
             <span className="text-ink-muted text-caption">
@@ -103,19 +96,11 @@ export function NoteCategorySections({
                     <Thumbnail
                       src={note.imageUrl}
                       fallback="이미지"
-                      /*
-                        노트 사진은 7:5(가로:세로)로 맞춰 올라옵니다. 높이를 고정하면
-                        열 폭이 바뀌는 순간 object-cover 가 좌우를 잘라내므로, 비율로
-                        잡고 높이가 폭을 따라오게 둡니다.
-                      */
+                      /* 7:5 로 올라옵니다. 높이를 고정하면 좌우가 잘립니다 */
                       className="aspect-7/5 w-full"
                     />
                   }
-                  /*
-                    향수 카드와 같은 약속입니다 — 영문 이름을 크게, 한국어 이름을
-                    그 아래 작게. 한국어 이름이 없는 노트는 아랫줄이 비고, 두 값이
-                    같으면 같은 글자가 두 줄로 겹치지 않게 뺍니다.
-                  */
+                  /* 두 값이 같으면 같은 글자가 두 줄로 겹치지 않게 뺍니다 */
                   title={note.name}
                   caption={note.nameKo !== note.name ? note.nameKo : undefined}
                 />
