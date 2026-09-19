@@ -84,6 +84,9 @@ export function WriteForm({
  * 이미지 첨부 칸 (A24a · A24b 공용)
  *
  * ⚠️ 아직 업로드를 붙이지 않았습니다. 자리와 규칙만 잡아 둡니다.
+ *
+ * **경로는 이제 있습니다** — `POST /posts/images`(multipart)가 올린 주소를
+ * 돌려주고, 글을 쓸 때 그 주소를 `imageUrls` 로 넘기면 됩니다.
  */
 export function ImageAttachField() {
   return (
@@ -91,7 +94,7 @@ export function ImageAttachField() {
       <legend className="text-ink text-caption font-medium">
         이미지 첨부 <span className="text-ink-muted">(선택)</span>
       </legend>
-      {/* TODO: 이미지 업로드 연결 (형식 · 용량 제한은 별도 정책) */}
+      {/* TODO: `POST /posts/images` 연결 (형식 · 용량 제한은 백엔드가 겁니다) */}
       <Button variant="outline" size="sm" type="button">
         + 이미지 첨부
       </Button>

@@ -28,7 +28,14 @@ import { WithdrawModal } from './WithdrawModal'
  * 성공하고, 남이 쓰는 이름이면 409 입니다 — 중복 확인을 통과했어도 그 사이 누가
  * 가져갈 수 있어 저장에서 한 번 더 걸립니다.
  *
- * TODO: 프로필 이미지 업로드 · 삭제. 업로드 경로가 아직 없습니다
+ * TODO: 프로필 이미지 업로드 · 삭제 붙이기. **경로는 이제 있습니다** —
+ * `POST /users/me/profile-image`(multipart, 필드 이름 `file`) 와
+ * `DELETE /users/me/profile-image` 입니다. 지우기는 쓰던 사진이 없어도 오류가
+ * 아니고 여러 번 눌러도 결과가 같습니다.
+ *
+ * ⚠️ 위에 적힌 제한(JPG · JPEG · PNG · WEBP · 5MB)과 백엔드가 실제로 거는 제한이
+ * 다릅니다 — 백엔드는 JPG · PNG · GIF · WEBP 에 기본 1MB 이고, 형식을 파일 이름이
+ * 아니라 내용으로 판별합니다. 붙일 때 어느 쪽이 맞는지 먼저 맞추세요.
  */
 export function AccountForm() {
   const isLoggedIn = useIsLoggedIn()

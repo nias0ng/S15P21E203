@@ -151,7 +151,7 @@ export function PerfumeSearchResult({
  * **모든 갈래를 이 안에 넣습니다** — 결과가 있을 때만 판을 씌우면, 로딩 중이나
  * 0건일 때 판이 사라졌다 나타나 화면이 한 번 껌뻑입니다.
  *
- * 판 자체는 `features/perfume/perfume-display.css` 의 `.scent-glass` 가 그리고,
+ * 판 자체는 `styles/scent-display.css` 의 `.scent-glass` 가 그리고,
  * 어두운 방은 RootLayout 이 이 경로에도 깔아 줍니다.
  */
 function Board({
