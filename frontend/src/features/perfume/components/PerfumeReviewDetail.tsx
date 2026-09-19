@@ -129,14 +129,7 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
   return (
     <article className={GLASS_PANEL}>
       <div className="space-y-3.75">
-        {/*
-          **읽던 목록으로 돌아갑니다.** 예전에는 이 자리가 향수 상세로 갔는데,
-          [뒤로] 자리에 "오지 않은 곳" 이 적혀 있던 셈입니다 — 후기를 읽다 뒤로
-          가려는 사람은 후기 목록으로 가려는 것이지 향수로 건너가려는 것이 아닙니다.
-          자유 게시판 글 상세(A23)의 [← 자유 게시판] 과 같은 자리 · 같은 말입니다.
-
-          향수로 건너가는 길은 아래 향수 칸이 맡습니다.
-        */}
+        {/* 예전에는 이 자리가 향수 상세로 가서, [뒤로] 에 오지 않은 곳이 적혀 있었습니다 */}
         <LinkButton to={ROUTES.COMMUNITY_REVIEWS} variant="outline" size="sm">
           ← 후기 게시판
         </LinkButton>
@@ -156,11 +149,6 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
             · {formatRelativeTime(review.createdAt)}
           </span>
 
-          {/*
-            줄 오른쪽 끝. 하트는 **늘 맨 끝**이고 수정 · 삭제는 그 앞에 섭니다 —
-            내 후기냐 아니냐에 따라 하트가 좌우로 움직이면, 게시판에서 후기를 여러 개
-            열어 볼 때 같은 자리를 매번 다시 겨냥하게 됩니다.
-          */}
           <span className="ml-auto flex items-center gap-2.5">
             {review.mine && (
               <>
@@ -179,9 +167,8 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
             )}
 
             {/*
-              좋아요. **숫자는 안 답니다** — 아래 줄이 이미 적고 있어서, 옆에 또
-              적으면 같은 수가 한 화면에 두 번 나옵니다. 낭독기에는 `aria-label` 로
-              수를 알리고 눌린 상태는 `aria-pressed` 로 전합니다(색만으로는 못 전합니다).
+              낭독기에는 `aria-label` 로 수를, `aria-pressed` 로 눌린 상태를
+              전합니다 — 색만으로는 못 전합니다.
 
               비로그인은 401 이라, 보내 보는 대신 먼저 안내합니다 — 401 이 나면
               인터셉터가 재발급을 시도하다 세션을 정리해 "왜 안 되지" 만 남습니다.
@@ -229,22 +216,9 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
         )}
 
         {/*
-          이 후기가 말하는 향수.
-
-          **누르면 향수 상세(A10)로 갑니다.** 머리가 아니라 글 아래인 이유: 후기를
-          열었을 때 먼저 읽을 것은 글이고 "무엇에 대한 글이었나" 는 다 읽고 나서
-          확인하는 순서라서입니다. 위 [뒤로] 가 목록으로 가게 되면서, 향수로
-          건너가는 길은 이 칸 하나가 됐습니다.
-
-          들어온 길(`perfumeViewState`)을 실어 보냅니다 — 향수 상세가 조회 기록에
-          "커뮤니티에서 왔다" 를 남깁니다.
-
-          바탕을 칠하지 않고 테두리만 두릅니다 — 유리판 위에서 한 단 어둡게 깔면
-          판에 파인 자리가 되는데, 이 칸은 파묻힌 것이 아니라 얹힌 것입니다.
-
-          사진은 `bare` 입니다. 향수병은 배경이 투명한 PNG 라 상자를 그리면 투명한
-          영역이 네모로 드러나 병이 상자에 담긴 것처럼 보입니다. 사진이 없을 때만
-          자리표시자 상자가 나옵니다.
+          이 후기가 말하는 향수. 누르면 향수 상세(A10)로 가고, 들어온
+          길(`perfumeViewState`)을 실어 보내 조회 기록에 "커뮤니티에서 왔다" 가
+          남습니다. 향수로 건너가는 길은 이 칸 하나입니다.
         */}
         <Link
           to={toPerfumeDetail(review.perfume.perfumeId)}
@@ -275,10 +249,6 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
             {sub && <p className="text-ink-muted text-caption">{sub}</p>}
           </div>
 
-          {/*
-            누를 수 있다는 표시. 칸 전체가 링크라 테두리 색만으로는 "누르는 곳" 인지
-            잘 안 읽힙니다 — 글 상세(A23)의 연결 향수 줄과 같은 말 · 같은 자리입니다.
-          */}
           <span className="text-ink-muted text-caption ml-auto shrink-0">
             향수 상세 →
           </span>
@@ -286,10 +256,7 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
 
         <hr className="border-line" />
 
-        {/*
-          조회수는 이번 조회를 포함한 수입니다. 좋아요 수도 여기서는 읽기만 합니다 —
-          누르는 것은 위 줄의 하트가 맡습니다.
-        */}
+        {/* 조회수는 이번 조회를 포함한 수입니다 */}
         <p className="text-ink-muted text-[10.5px]">
           좋아요 {review.likeCount} · 조회 {review.viewCount}
         </p>

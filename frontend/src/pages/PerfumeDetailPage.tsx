@@ -52,9 +52,7 @@ const REVIEW_PAGE_SIZE = 10
  * 계절 등록(DTL-16)은 이 화면이 아니라 후기 작성 화면(A24a)에 있습니다.
  *
  * 향수 목록(A33) · 브랜드(A34) · 노트(A35 · A36)와 같은 **어두운 방 + 유리판**
- * 구성입니다. 어둠은 라우트의 `handle.night` 이 켜고(app/router), 판은 아래 네
- * 구역이 각자 `GLASS_PANEL` 을 답니다. 개요만 판 없이 어둠에 바로 놓입니다 —
- * 판을 다섯 장 쌓으면 화면이 판으로만 채워져 층이 안 읽힙니다.
+ * 구성입니다. 어둠은 라우트의 `handle.night`(app/router)이 켭니다.
  *
  * **구역마다 엔드포인트가 따로입니다.** 기본 정보가 없으면 화면 자체가 없는 것이라
  * 그것만 전체 실패로 다루고, 나머지 넷은 각자 비어 있는 모습으로 자기 자리를
@@ -157,12 +155,7 @@ export default function PerfumeDetailPage() {
 
   return (
     <div className="space-y-6.25">
-      {/*
-        노트 상세(A36) · 브랜드 상세와 같은 자리 · 같은 모양입니다. 들어온
-        길(`perfumeViewSource`)로 되돌리지 않고 향수 목록으로 고정합니다 — 그 두
-        화면도 고정 목적지를 쓰고 있어, 여기만 다르면 상세 화면마다 뒤로 가기가
-        서로 다른 뜻이 됩니다.
-      */}
+      {/* 들어온 길(`perfumeViewSource`)로 되돌리지 않고 향수 목록으로 고정합니다 */}
       <LinkButton to={ROUTES.PERFUMES} variant="outline" size="sm">
         ← 향수 목록
       </LinkButton>
@@ -190,11 +183,6 @@ export default function PerfumeDetailPage() {
           }
           setShelfOpen(true)
         }}
-        /*
-          향조는 개요 **안쪽** 오른쪽 아래에 들어갑니다. 사진이 400 인데 이름과
-          단추는 그 절반도 안 써서 그 자리가 크게 비어 있었고, 향조는 줄 몇 개뿐인
-          짧은 구역이라 따로 한 줄을 차지하면 판이 납작하게 눌립니다.
-        */
         aside={
           <PerfumeNotes
             notes={notes.data?.notes ?? []}
@@ -215,11 +203,7 @@ export default function PerfumeDetailPage() {
         isPending={summary.isPending}
       />
 
-      {/*
-        후기 키워드는 후기 목록 바로 위에 둡니다 — 같은 후기를 요약한 값이라
-        떨어뜨리면 무엇을 센 숫자인지 알기 어렵습니다. 값이 없으면 아무것도
-        그리지 않으므로 지금은 보이지 않습니다(적재 전).
-      */}
+      {/* 값이 없으면 아무것도 그리지 않습니다 — 아직 적재 전입니다 */}
       <PerfumeReviewKeywords keywords={reviewKeywords.data ?? []} />
 
       <PerfumeReviewList
@@ -237,10 +221,7 @@ export default function PerfumeDetailPage() {
         perfumeId={numericId}
       />
 
-      {/*
-        후기 다음에 옵니다 — 이 향수를 다 읽고 나서 "그럼 비슷한 건" 으로 넘어가는
-        순서입니다. 관계가 없는 향수(향 지도 밖)에서는 구역이 그려지지 않습니다.
-      */}
+      {/* 관계가 없는 향수(향 지도 밖)에서는 구역이 그려지지 않습니다 */}
       <PerfumeRelated
         fromPerfumeId={numericId}
         perfumes={related.data ?? []}
