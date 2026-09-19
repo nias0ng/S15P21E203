@@ -202,19 +202,29 @@
     /* 여기까지가 '다 덮은' 구간(58%) — 밝기는 아래로 갈수록 단조롭게 짙어진다 */
     var(--color-sea-deep) 58%,
     /* 아래부터 알파만 내려간다. 기울기가 꺾이지 않게 촘촘히 */
-    color-mix(in srgb, var(--color-sea-deep) 93%, transparent) 65%,
-    color-mix(in srgb, var(--color-sea-deep) 78%, transparent) 73%,
-    color-mix(in srgb, var(--color-sea-deep) 58%, transparent) 81%,
-    color-mix(in srgb, var(--color-sea-deep) 36%, transparent) 88%,
+    color-mix(in srgb, var(--color-sea-deep) 93%, transparent) 64%,
     /*
-     * ⭐ 여기서부터 꼭대기까지가 **수면 바로 아래**다 — 색이 청록에서 보랏빛으로 넘어간다.
+     * ⭐⭐ 여기서부터 꼭대기까지가 **수면 바로 아래**다 — 색이 청록에서 보랏빛으로 넘어간다.
      *   판은 아래끝에 못 박혀 자라므로 이 끝이 곧 **지나가는 물선**이고, 그 자리에 3D 의
      *   마루선(보라)이 있다. 내려갈수록(= 아래로 갈수록) 보라가 빠지고 짙은 물만 남는다.
-     * ⚠ 알파는 그대로 낮게 둔다 — 색만 바꾸는 것이지 띠를 세우는 것이 아니다 (머리말 ①).
+     *
+     * ⚠⚠ **처음엔 87% 에서 시작했는데 안 보였다** (2026-09-19 사용자 : *"그대로같은데?"*).
+     *   재 보니 그 폭이면 띠가 화면에서 최대 87px 이고, 판이 화면 꼭대기에 닿는 차오름 0.556
+     *   에서 화면 밖으로 나가 **t 300~820ms 약 0.5초**만 산다. 게다가 엔진이 k 0.75 에 색을
+     *   다 눕혀 버려(그때 차오름 0.413 · 띠 65px), 보라가 가장 넓어질 때는 **대비할 밝은
+     *   바다가 이미 없었다.** 그래서 둘을 같이 고쳤다 — 여기서 띠를 13% → **30%** 로 넓히고,
+     *   엔진의 `diveDimEnd` 를 0.75 → 0.88 로 늦춰 바다가 색을 더 들고 있게 했다.
+     *
+     * ⚠ 알파 곡선은 건드리지 않았다 (93 → 78 → 60 → 42 → 24 → 9 → 0). 바뀐 것은 **어디서부터
+     *   색이 보라로 가느냐**뿐이다 — 알파를 같이 올리면 띠가 아니라 판이 된다 (머리말 ①).
+     * ⚠ 색은 64% 의 sea-deep 에서 70% 의 보랏빛으로 **그라데이션이 알아서 섞는다.** 중간에
+     *   정지점을 더 두면 그 자리가 단이 된다.
      */
-    color-mix(in srgb, var(--sea-surface) 40%, transparent) 87%,
-    color-mix(in srgb, var(--sea-surface) 22%, transparent) 92%,
-    color-mix(in srgb, var(--sea-surface) 8%, transparent) 96%,
+    color-mix(in srgb, var(--sea-surface) 78%, transparent) 70%,
+    color-mix(in srgb, var(--sea-surface) 60%, transparent) 78%,
+    color-mix(in srgb, var(--sea-surface) 42%, transparent) 85%,
+    color-mix(in srgb, var(--sea-surface) 24%, transparent) 91%,
+    color-mix(in srgb, var(--sea-surface) 9%, transparent) 96%,
     transparent 100%
   );
 }
