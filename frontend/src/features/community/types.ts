@@ -1,12 +1,10 @@
 /**
- * 커뮤니티 도메인 타입 (와이어프레임 A22a · A22b · A23 · A24a · A24b)
- * CMT-01 · 02 · 03 · 06 · 07 · 08 · 09 · 10 · 11
+ * 커뮤니티 도메인 타입 (A22a · A22b · A23 · A24a · A24b)
  *
- * **두 게시판은 백엔드에서 서로 다른 자원입니다.** 자유 게시판은 `/posts`, 후기
- * 게시판은 `/reviews` 이고 응답 모양도 다릅니다(후기에는 분류와 댓글이 없습니다).
- * 예전에는 `board: 'REVIEW' | 'FREE'` 하나로 묶고 있었는데, 그러면 어느 쪽에도
- * 맞지 않는 타입이 됩니다. 화면에서 같은 카드로 보이는 부분만 `BoardItem` 으로
- * 맞춰 목록 컴포넌트에 넘깁니다.
+ * **두 게시판은 백엔드에서 서로 다른 자원입니다** — 자유는 `/posts`, 후기는
+ * `/reviews` 이고 응답 모양도 다릅니다(후기에는 분류와 댓글이 없습니다). 예전에
+ * `board: 'REVIEW' | 'FREE'` 하나로 묶었더니 어느 쪽에도 맞지 않는 타입이 됐습니다.
+ * 같은 카드로 보이는 부분만 `BoardItem` 으로 맞춰 넘깁니다.
  */
 import { toPostDetail, toReviewDetail } from '@/shared/config/routes'
 
@@ -42,11 +40,8 @@ export interface LinkedPerfume {
   name: string
   brand: string | null
   /**
-   * 대표 사진. 고르는 목록에서 보여줍니다 — 이름만으로는 같은 브랜드의 비슷한
-   * 이름들 사이에서 무엇을 고르는지 알기 어렵습니다.
-   *
-   * 선택 항목입니다. 글 상세의 연결 향수(`PostDetail.relatedPerfumes`)는 서버가
-   * 사진을 주지 않아 비어 있고, 거기서는 사진을 쓰지도 않습니다.
+   * 대표 사진. 선택 항목입니다 — 글 상세의 연결 향수(`PostDetail.relatedPerfumes`)는
+   * 서버가 사진을 주지 않아 비어 있고, 거기서는 쓰지도 않습니다.
    */
   thumbnailUrl?: string | null
 }
@@ -80,10 +75,8 @@ export interface PostsResponse {
 }
 
 /**
- * 게시글 상세.
- *
- * `PostSummary` 를 상속하지 않습니다 — 상세에는 `perfume` 한 개가 아니라
- * `relatedPerfumes` 여러 개가 옵니다. 상속으로 묶으면 타입이 거짓말을 합니다.
+ * 게시글 상세. `PostSummary` 를 상속하지 않습니다 — 상세에는 `perfume` 한 개가
+ * 아니라 `relatedPerfumes` 여러 개가 와서, 묶으면 타입이 거짓말을 합니다.
  */
 export interface PostDetail {
   postId: number
@@ -126,11 +119,8 @@ export interface CommentsResponse {
 /* ── 후기 게시판 (GET /reviews) ────────────────────────────── */
 
 /**
- * 후기 게시판의 한 줄.
- *
- * 자유 글과 달리 **분류와 댓글 수가 없습니다.** 후기는 전부 같은 종류이고
- * (와이어프레임 A22a — "분류 필터는 없다") 후기에는 댓글을 달지 않습니다.
- * 대신 어느 향수 이야기인지가 반드시 실립니다.
+ * 후기 게시판의 한 줄. 자유 글과 달리 **분류와 댓글 수가 없고**(A22a) 대신 어느
+ * 향수 이야기인지가 반드시 실립니다.
  */
 export interface ReviewBoardItem {
   reviewId: number
@@ -154,10 +144,8 @@ export interface ReviewBoardResponse {
 /* ── 두 게시판이 같은 카드로 보이는 부분 ───────────────────── */
 
 /**
- * 목록 컴포넌트가 읽는 한 줄. 두 게시판의 응답을 여기로 맞춰 넘깁니다.
- *
- * 화면에서 카드 모양이 같으니 컴포넌트를 둘로 쪼개지 않고, 다른 부분만
- * (분류 · 댓글 수) `null` 로 비웁니다.
+ * 목록 컴포넌트가 읽는 한 줄. 두 게시판의 응답을 여기로 맞춰 넘기고, 다른
+ * 부분만(분류 · 댓글 수) `null` 로 비웁니다.
  */
 export interface BoardItem {
   id: number
@@ -193,10 +181,8 @@ export function postToBoardItem(post: PostSummary): BoardItem {
 }
 
 /**
- * 후기 게시판의 한 줄을 카드 한 장으로 옮깁니다.
- *
- * 누르면 후기 상세(A12)로 갑니다 — 향수 상세에서 후기를 눌렀을 때와 **같은 화면**
- * 입니다. 게시판용 상세를 따로 두면 같은 후기가 두 주소를 갖게 됩니다.
+ * 후기 게시판의 한 줄을 카드 한 장으로 옮깁니다. 누르면 후기 상세(A12)로 갑니다 —
+ * 향수 상세에서 눌렀을 때와 **같은 화면**입니다.
  */
 export function reviewToBoardItem(review: ReviewBoardItem): BoardItem {
   return {
@@ -219,9 +205,8 @@ export function reviewToBoardItem(review: ReviewBoardItem): BoardItem {
 /**
  * 게시판 우측 "지금 많이 언급되는 향수"
  *
- * ⚠️ 엔드포인트가 없습니다. 향수 검색의 `ranking` 은 담거나 열어 본 횟수라
- * "글에 언급된 수" 와 다른 값이어서 대신 쓸 수 없습니다. api.ts 가 자리표시자를
- * 돌려줍니다.
+ * ⚠️ 엔드포인트가 없습니다. 향수 검색의 `ranking` 은 담거나 열어 본 횟수라 대신 쓸
+ * 수 없어, api.ts 가 자리표시자를 돌려줍니다.
  */
 export interface TrendingPerfume {
   perfumeId: number
@@ -235,10 +220,7 @@ export interface TrendingPerfume {
 
 /** `GET /posts/trending-perfumes` 응답 */
 export interface TrendingPerfumesResponse {
-  /**
-   * 집계한 기간(일). 화면이 "최근 한 주" 를 적어 두지 않고 이 값을 씁니다 —
-   * 서버가 기간을 바꾸면 문구도 같이 바뀌어야 합니다.
-   */
+  /** 집계한 기간(일). 화면이 "최근 한 주" 를 적어 두지 않고 이 값을 씁니다 */
   days: number
   perfumes: TrendingPerfume[]
 }

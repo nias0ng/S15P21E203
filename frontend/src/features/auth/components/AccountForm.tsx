@@ -15,27 +15,16 @@ import { PasswordChangeModal } from './PasswordChangeModal'
 import { WithdrawModal } from './WithdrawModal'
 
 /**
- * 정보 변경 (와이어프레임 A29 — COM-04 · 헤더 닉네임 ▾ [개인 정보 수정] 도착 화면)
+ * 정보 변경 (A29 — COM-04). 마이페이지 화면은 없고 계정 동작이 여기 모입니다.
  *
- * 마이페이지 화면은 없습니다. 계정 관련 동작은 이 화면 하나에 모입니다.
+ * 이메일은 계정 식별자라 변경 불가입니다. 닉네임 저장은
+ * `PATCH /users/me/nickname` 이고, 지금 쓰는 이름을 그대로 보내도 성공하며 남이
+ * 쓰면 409 입니다 — 중복 확인을 통과했어도 그 사이 누가 가져갈 수 있습니다.
  *
- * 백엔드와 확정된 정책입니다.
- * - 이메일은 계정 식별자라 중복 불가 · 변경 불가
- * - 닉네임은 중복 불가. 별도의 중복 확인 API 로 입력 중에 확인한다
- * - 프로필 이미지는 JPG · JPEG · PNG · WEBP, 한 장당 최대 5MB
- *
- * 닉네임 저장은 `PATCH /users/me/nickname` 입니다. 지금 쓰는 이름을 그대로 보내도
- * 성공하고, 남이 쓰는 이름이면 409 입니다 — 중복 확인을 통과했어도 그 사이 누가
- * 가져갈 수 있어 저장에서 한 번 더 걸립니다.
- *
- * TODO: 프로필 이미지 업로드 · 삭제 붙이기. **경로는 이제 있습니다** —
- * `POST /users/me/profile-image`(multipart, 필드 이름 `file`) 와
- * `DELETE /users/me/profile-image` 입니다. 지우기는 쓰던 사진이 없어도 오류가
- * 아니고 여러 번 눌러도 결과가 같습니다.
- *
- * ⚠️ 위에 적힌 제한(JPG · JPEG · PNG · WEBP · 5MB)과 백엔드가 실제로 거는 제한이
- * 다릅니다 — 백엔드는 JPG · PNG · GIF · WEBP 에 기본 1MB 이고, 형식을 파일 이름이
- * 아니라 내용으로 판별합니다. 붙일 때 어느 쪽이 맞는지 먼저 맞추세요.
+ * TODO: 프로필 이미지 업로드 · 삭제 붙이기. **경로는 있습니다** —
+ * `POST · DELETE /users/me/profile-image`(multipart, 필드 `file`).
+ * ⚠️ 백엔드 제한은 JPG · PNG · GIF · WEBP 에 기본 1MB 이고, 형식을 파일 이름이
+ * 아니라 내용으로 판별합니다.
  */
 export function AccountForm() {
   const isLoggedIn = useIsLoggedIn()
@@ -64,11 +53,8 @@ export function AccountForm() {
   })
 
   /**
-   * 닉네임 저장 (A29 [저장]).
-   *
-   * 응답에 바뀐 내 정보가 실려 옵니다. **캐시와 스토어 둘 다** 맞춥니다 — 화면은
-   * 쿼리를 보고, 헤더의 닉네임은 로그인 스토어를 봅니다. 하나만 고치면 저장 뒤에도
-   * 헤더에 옛 이름이 남습니다.
+   * 닉네임 저장 (A29 [저장]). **캐시와 스토어 둘 다** 맞춥니다 — 화면은 쿼리를,
+   * 헤더는 로그인 스토어를 봐서, 하나만 고치면 헤더에 옛 이름이 남습니다.
    */
   const save = useMutation({
     mutationFn: () => changeNickname(trimmedNickname),

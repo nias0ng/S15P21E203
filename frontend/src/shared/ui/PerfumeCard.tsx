@@ -8,11 +8,8 @@ type PerfumeCardProps = {
   /** 크게 적는 이름. 한국어 이름이 있으면 그걸 넘기세요 */
   name: string
   /**
-   * 큰 이름 바로 아래 작게 적는 다른 이름. 무엇이 위로 갈지는 부르는 쪽이 정합니다.
-   *
-   * `name` 과 같으면 안 적습니다 — 한쪽 이름이 없는 향수는 부르는 쪽이
-   * `name={a ?? b} subName={b}` 으로 넘기게 되는데, 그때 두 값이 같아져 같은
-   * 글자가 두 줄로 겹칩니다.
+   * 큰 이름 아래 작게 적는 다른 이름. `name` 과 같으면 안 적습니다 — 부르는 쪽이
+   * `name={a ?? b} subName={b}` 로 넘기면 두 값이 같아져 두 줄로 겹칩니다.
    */
   subName?: string | null
   /** 브랜드명. 브랜드가 없는 향수는 null 이라 줄을 그리지 않습니다 */
@@ -32,10 +29,8 @@ type PerfumeCardProps = {
 const SLOT = 'aspect-square w-full px-7.5 pt-3.75 pb-5'
 
 /**
- * 향수 카드 (A33 · A09 · A13 · A17 · C02 공용)
- *
- * `features/a` 는 `features/b` 를 import 할 수 없어 `shared/ui` 에 두고, 도메인
- * 타입을 받지 않고 낱개로 받습니다(ESLint 가 막습니다).
+ * 향수 카드 (A33 · A09 · A13 · A17 · C02 공용). 도메인 타입을 받지 않고 낱개로
+ * 받습니다 — `shared` 가 `features` 를 알면 ESLint 가 막습니다.
  */
 export function PerfumeCard({
   name,
@@ -50,15 +45,9 @@ export function PerfumeCard({
   const body = (
     <>
       {/*
-        예전에는 높이 110px 짜리 가로로 납작한 칸에 `cover` 로 채워서, 3:4 세로
-        사진(카탈로그가 전부 432 x 577 입니다)의 위아래가 잘려 병목과 바닥만
-        남았습니다. 어느 향순지 알아볼 수 없는 그림이었습니다.
-
-        `bare` 로 사진 뒤 상자를 지웁니다 — 예전에는 사진 자리에 bone(#E8E1D6)
-        바탕이 깔려 카드 안에 또 다른 네모가 있었습니다.
-
-        그림자는 `drop-shadow` 입니다. box-shadow 는 네모난 상자 둘레에 지는데,
-        병 사진은 배경이 투명이라 네모 그림자가 병과 따로 놉니다.
+        예전에는 납작한 칸에 `cover` 라 3:4 세로 사진(카탈로그가 전부 432 x 577)의
+        위아래가 잘려 병목과 바닥만 남았습니다. 그림자는 `drop-shadow` 입니다 —
+        병 사진은 배경이 투명이라 box-shadow 의 네모 그림자가 병과 따로 놉니다.
       */}
       <div className="relative w-full">
         {/*
@@ -80,10 +69,8 @@ export function PerfumeCard({
         )}
 
         {/*
-          순위 동그라미. 색은 line-soft(bone)입니다 — 처음에 surface-card(#fefcf8)로
-          깔았더니 **카드 바탕이 같은 흰색이라 동그라미가 아예 안 보였습니다.**
-
-          숫자만 두면 낭독기가 "1" 이라고만 읽어 무엇의 1 인지 알 수 없습니다.
+          순위 동그라미. 색은 line-soft(bone)입니다 — surface-card 로 깔았더니
+          **카드 바탕이 같은 흰색이라 아예 안 보였습니다.**
         */}
         {rank != null && (
           <span

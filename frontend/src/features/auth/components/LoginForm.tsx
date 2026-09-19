@@ -19,10 +19,7 @@ import { AuthCard } from './AuthCard'
 
 /**
  * 이 화면으로 보낼 때 실어 오는 안내 (회원가입 완료 · 비밀번호 변경).
- *
- * **돌아갈 경로는 여기 없습니다.** 그건 주소의 `?redirectTo=` 로 옵니다 —
- * 예전에는 `from` 을 여기서 읽었는데 그 값을 채우는 곳이 하나도 없어서, 로그인하면
- * 늘 홈으로 갔습니다(`shared/lib/returnPath`).
+ * **돌아갈 경로는 여기 없습니다** — 주소의 `?redirectTo=` 로 옵니다.
  */
 type LoginLocationState = {
   signedUp?: boolean
@@ -30,22 +27,15 @@ type LoginLocationState = {
 } | null
 
 /**
- * 로그인 (와이어프레임 A28 좌측 카드 — COM-02)
- *
- * **요청을 두 번 보냅니다.** 로그인 응답에는 액세스 토큰만 있고 사용자 정보가
- * 없는데 스토어(`setAuth`)는 둘을 함께 받습니다. 그래서 토큰을 먼저 스토어에 넣고
- * `GET /users/me` 를 이어 부릅니다 — 토큰이 들어가야 그 요청에 Authorization 이
- * 붙습니다.
+ * 로그인 (A28 좌측 카드 — COM-02). **요청을 두 번 보냅니다** — 로그인 응답에는
+ * 토큰만 있어 `GET /users/me` 를 이어 부르고, 토큰을 먼저 스토어에 넣어야 그
+ * 요청에 Authorization 이 붙습니다.
  */
 type LoginFormProps = {
   /**
-   * 로그인이 끝난 뒤 어디로 보낼지 화면(pages)이 정할 때 씁니다.
-   *
-   * 첫 로그인에는 취향 테스트로 보내야 하는데, 그 판단에 `features/taste` 의 쿼리가
-   * 필요합니다. **`features/a` 는 `features/b` 를 import 할 수 없어서**(ESLint 레이어
-   * 규칙) 여기서 부르지 못하고, 두 도메인을 아는 `pages/LoginPage` 가 정합니다.
-   *
-   * 넘기지 않으면 예전처럼 이 컴포넌트가 `from`(없으면 홈)으로 보냅니다.
+   * 로그인이 끝난 뒤 어디로 보낼지 화면(pages)이 정할 때 씁니다. 첫 로그인의 취향
+   * 테스트 판단에 `features/taste` 가 필요한데 **`features/a` 는 `features/b` 를
+   * import 할 수 없어** `pages/LoginPage` 가 정합니다.
    */
   onLoggedIn?: () => void
 }
@@ -62,12 +52,9 @@ export function LoginForm({ onLoggedIn }: LoginFormProps = {}) {
   const state = location.state as LoginLocationState
 
   /**
-   * 로그인하러 오기 전에 보던 화면. 주소의 `?redirectTo=` 를 읽습니다.
-   *
-   * 이 값은 `onLoggedIn` 을 안 넘겼을 때만 씁니다 — 지금 이 폼을 쓰는 곳은
-   * `pages/LoginPage` 하나이고 거기는 늘 넘깁니다(첫 로그인이면 취향 테스트로
-   * 보내야 해서). 그래도 같은 자리를 읽어 둡니다. 두 갈래가 서로 다른 곳을 보면
-   * 어느 날 한쪽만 고쳐지는데, 이 버그가 정확히 그렇게 생겼습니다.
+   * 로그인하러 오기 전에 보던 화면(`?redirectTo=`). `onLoggedIn` 을 안 넘겼을 때만
+   * 쓰지만 같은 자리를 읽어 둡니다 — 두 갈래가 다른 곳을 보면 어느 날 한쪽만
+   * 고쳐지고, 이 버그가 정확히 그렇게 생겼습니다.
    */
   const returnTo = safeReturnPath(searchParams.get(RETURN_PATH_PARAM))
   const from = returnTo ?? ROUTES.HOME

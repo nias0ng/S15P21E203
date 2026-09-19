@@ -92,12 +92,9 @@ const FOCUS =
   'rounded-card outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
 
 /**
- * 전역 헤더 (와이어프레임 N01 · 모든 화면 공통)
- *
- * 마이페이지 화면은 없습니다 — 개인 정보 수정은 계정 아이콘에서 바로 들어갑니다.
- *
- * `grid-cols-[auto_1fr_auto]` 인 이유: flex + ml-auto 로 하면 로그인 여부로 오른쪽
- * 폭이 바뀔 때 가운데 메뉴가 함께 움직입니다.
+ * 전역 헤더 (N01 · 모든 화면 공통). 마이페이지 화면은 없습니다 — 개인 정보 수정은
+ * 계정 아이콘에서 바로 들어갑니다. `grid-cols-[auto_1fr_auto]` 인 이유: flex +
+ * ml-auto 면 로그인 여부로 오른쪽 폭이 바뀔 때 가운데 메뉴가 함께 움직입니다.
  */
 export function GlobalHeader({ tone = 'surface' }: { tone?: HeaderTone }) {
   const accessToken = useAuthStore((state) => state.accessToken)
@@ -112,12 +109,10 @@ export function GlobalHeader({ tone = 'surface' }: { tone?: HeaderTone }) {
 
   return (
     /*
-     * ⚠ 폭은 **화면 폭(100vw)** 입니다. 스크롤바를 뺀 폭으로 두면 세로 스크롤이
-     * 있는 화면에서 메뉴가 왼쪽으로 밀려 메인과 어긋납니다(2026-09-16 실측).
-     * 밑으로 나간 15px 은 RootLayout 이 잘라냅니다(`overflow-x-clip`).
-     *
-     * ⚠⚠ `sm`(640) 부터입니다 — 그보다 좁으면 헤더 내용이 화면보다 넓어 돋보기 ·
-     * 계정이 밖으로 나가고, 잘라내면 아예 못 누릅니다.
+     * ⚠ 폭은 **화면 폭(100vw)** 입니다 — 스크롤바를 뺀 폭이면 세로 스크롤이 있는
+     * 화면에서 메뉴가 왼쪽으로 밀려 메인과 어긋납니다. 나간 15px 은 RootLayout 이
+     * 잘라냅니다. ⚠⚠ `sm`(640) 부터입니다 — 더 좁으면 돋보기 · 계정이 밖으로
+     * 나가고, 잘라내면 아예 못 누릅니다.
      */
     <header
       className={cn(
@@ -286,12 +281,9 @@ function AccountMenu({ ink }: { ink: Ink }) {
   const { open, setOpen, containerRef } = useDismissable()
 
   /*
-   * 스토어를 비우는 것만으로는 로그아웃이 아닙니다. refresh 토큰은 httpOnly
-   * 쿠키라 화면이 지울 수 없고, 서버에 알리지 않으면 그 쿠키로 다시 액세스
-   * 토큰을 받을 수 있습니다.
-   *
-   * 요청이 실패해도 이 브라우저에서는 반드시 나가지도록 `onSettled` 에서 비웁니다.
-   * 캐시도 함께 비워야 다음 사람이 앞 사람의 화면을 보지 않습니다.
+   * 스토어를 비우는 것만으로는 로그아웃이 아닙니다 — refresh 토큰은 httpOnly 쿠키라
+   * 서버에 알려야 합니다. 실패해도 이 브라우저에서는 나가도록 `onSettled` 에서
+   * 비우고, 캐시도 함께 비워야 다음 사람이 앞 사람 화면을 안 봅니다.
    */
   const logoutMutation = useMutation({
     mutationFn: logout,
