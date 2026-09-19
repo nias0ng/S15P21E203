@@ -1,5 +1,5 @@
-import { http, isApiError } from '@/shared/api/http'
-import { env } from '@/shared/config/env'
+import { http } from '@/shared/api/http'
+import { withDevFallback } from '@/shared/api/withDevFallback'
 
 import type { PersonalRecommendation, RecommendResult } from './types'
 
@@ -9,11 +9,16 @@ import type { PersonalRecommendation, RecommendResult } from './types'
  *
  * ⚠️ **향수를 못 찾아도 200 입니다** — 0개인 경우가 두 종류라 `status` 로 넷을
  * 구분합니다. ⚠️ 이 엔드포인트만 나는 오류가 둘 — **429**(호출량) · **503**(AI 서버).
+ *
+ * ⚠️ **503 이 두 뜻입니다** — vite 프록시가 백엔드에 못 닿아도, 백엔드가 살아서
+ * "AI 서버가 죽었다" 고 해도 503 입니다. `withDevFallback` 은 둘을 못 가려 개발
+ * 중에는 뒤엣것도 자리표시자로 덮습니다. 운영에서는 끼어들지 않습니다.
  */
 export async function getRecommendation(
   query: string,
 ): Promise<RecommendResult> {
   return withDevFallback(
+    'recommend',
     async () => {
       const { data } = await http.post<RecommendResult>(
         '/recommendations/natural-language',
@@ -23,34 +28,6 @@ export async function getRecommendation(
     },
     () => placeholderRecommendation(query),
   )
-}
-
-/**
- * ⚠️ 개발 중 백엔드가 안 떠 있을 때(status 0 · 502~504)만 대체값으로 넘어갑니다.
- *
- * ⚠️ **503 이 두 뜻입니다** — 프록시가 백엔드에 못 닿아도, 백엔드가 살아서 "AI 서버가
- * 죽었다" 고 해도 503 입니다. 뒤엣것은 알려야 하므로 `env.isDev` 일 때만 덮습니다.
- *
- * ⚠️ 세 번째 복사본입니다. perfume · map 갈래가 합쳐질 때 `shared/api` 로 올립니다.
- */
-async function withDevFallback<T>(
-  request: () => Promise<T>,
-  fallback: () => T,
-): Promise<T> {
-  try {
-    return await request()
-  } catch (error) {
-    const unreachable =
-      isApiError(error) &&
-      (error.status === 0 || (error.status >= 502 && error.status <= 504))
-
-    if (!env.isDev || !unreachable) throw error
-
-    console.warn(
-      '[recommend] 백엔드에 닿지 못해 개발용 대체 추천을 씁니다. 실제 값이 아닙니다.',
-    )
-    return fallback()
-  }
 }
 
 /** 와이어프레임의 예시 결과. 백엔드 없이 화면을 볼 때만 씁니다 */

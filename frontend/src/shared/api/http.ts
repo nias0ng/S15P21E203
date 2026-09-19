@@ -8,7 +8,7 @@ import { env } from '@/shared/config/env'
 import { useAuthStore } from '@/shared/store/authStore'
 
 /** 서버가 내려주는 공통 에러 응답 형태. 백엔드와 스펙 확정 후 맞춰서 수정하세요. */
-export interface ApiErrorResponse {
+interface ApiErrorResponse {
   code: string
   message: string
 }

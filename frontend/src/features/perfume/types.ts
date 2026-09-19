@@ -47,7 +47,7 @@ export interface PerfumeDetail {
   myReviewId: number | null
 }
 
-export interface PerfumePrice {
+interface PerfumePrice {
   volumeMl: number | null
   minPrice: number | null
   maxPrice: number | null
@@ -151,7 +151,7 @@ export interface PerfumeNote {
 }
 
 /** 향수의 어코드 한 건. rank 가 작을수록 두드러집니다 */
-export interface PerfumeAccord {
+interface PerfumeAccord {
   accordId: number
   name: string
   rank: number | null
@@ -208,7 +208,7 @@ export interface ReviewStatistics {
 /* ── DTL-03 후기 (GET /perfumes/{id}/reviews · /reviews/{id}) ── */
 
 /** 후기에 걸린 계절 한 건 */
-export interface ReviewSeason {
+interface ReviewSeason {
   seasonId: number
   code: Season
   name: string
@@ -274,7 +274,6 @@ export interface ReviewCreateInput {
 export const REVIEW_TITLE_MAX_LENGTH = 50
 export const REVIEW_CONTENT_MIN_LENGTH = 10
 export const REVIEW_CONTENT_MAX_LENGTH = 1000
-export const REVIEW_SEASON_MIN_COUNT = 1
 
 /**
  * 후기 수정 요청 (PATCH /reviews/{reviewId}). **둘 다 생략할 수 없습니다**(서버

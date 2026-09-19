@@ -90,7 +90,7 @@ export async function getTrendingPerfumes(
  */
 
 /** 글 작성에 보내는 값 (CMT-03) */
-export interface PostCreateInput {
+interface PostCreateInput {
   category: PostCategory
   title: string
   content: string
@@ -111,10 +111,10 @@ export interface PostCreateInput {
  * **통째로** 바뀌므로, 하나를 빼려면 남길 것 전부를 보내야 합니다(빈 배열이면 전부
  * 지워집니다). `collectionId: null` 은 첨부를 떼고, 안 보내면 그대로 남습니다.
  */
-export type PostUpdateInput = Partial<PostCreateInput>
+type PostUpdateInput = Partial<PostCreateInput>
 
 /** `PUT · DELETE /posts/{postId}/like` 응답 */
-export interface PostLikeResult {
+interface PostLikeResult {
   postId: number
   liked: boolean
   likeCount: number

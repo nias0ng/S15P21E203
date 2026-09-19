@@ -1,5 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router'
 
 import {
@@ -18,8 +17,9 @@ import {
   type PostSort,
 } from '@/features/community'
 import { ROUTES } from '@/shared/config/routes'
+import { useLikeToggle } from '@/shared/hooks/useLikeToggle'
 import { cn } from '@/shared/lib/cn'
-import { useIsLoggedIn } from '@/shared/store/authStore'
+import { readPage, withQueryParams, writePage } from '@/shared/lib/queryParams'
 import { AuthLinkButton } from '@/shared/ui/AuthLinkButton'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { Pagination } from '@/shared/ui/Pagination'
@@ -43,7 +43,7 @@ export default function FreeBoardPage() {
   const sort = (searchParams.get('sort') as PostSort | null) ?? 'RECENT'
   const category =
     (searchParams.get('category') as CategoryFilter | null) ?? 'ALL'
-  const page = Math.max(0, Number(searchParams.get('page') ?? 1) - 1)
+  const page = readPage(searchParams)
 
   const listParams = {
     // 'ALL' 은 백엔드 값이 아닙니다. 조건을 아예 빼면 전체입니다.
@@ -73,18 +73,17 @@ export default function FreeBoardPage() {
     trending.isPending || (trending.data?.perfumes.length ?? 0) > 0
 
   const queryClient = useQueryClient()
-  const isLoggedIn = useIsLoggedIn()
-  const [loginOpen, setLoginOpen] = useState(false)
 
   /**
-   * 좋아요 토글 (CMT-05). 응답의 `liked` · `likeCount` 를 **그 줄에만 덮어씁니다** —
-   * 전체를 다시 부르면 보고 있던 자리가 흔들리고, '좋아요순' 이면 방금 누른 줄이
-   * 눈앞에서 이동합니다.
+   * 좋아요 토글 (CMT-05). 비로그인 안내 · 누르기/취소 고르기는 `useLikeToggle` 이
+   * 맡고, 여기서는 캐시만 고칩니다 — 응답의 `liked` · `likeCount` 를 **그 줄에만
+   * 덮어씁니다.** 전체를 다시 부르면 보고 있던 자리가 흔들리고, '좋아요순' 이면
+   * 방금 누른 줄이 눈앞에서 이동합니다.
    */
-  const toggleLike = useMutation({
-    mutationFn: ({ id, liked }: { id: number; liked: boolean }) =>
-      liked ? unlikePost(id) : likePost(id),
-    onSuccess: (result) => {
+  const likeToggle = useLikeToggle({
+    like: likePost,
+    unlike: unlikePost,
+    onToggled: (result) => {
       queryClient.setQueryData(
         communityKeys.posts(listParams),
         (old: typeof posts.data) =>
@@ -113,17 +112,18 @@ export default function FreeBoardPage() {
     category?: CategoryFilter
     page?: number
   }) => {
-    const params = new URLSearchParams(searchParams)
-    if (next.sort !== undefined) params.set('sort', next.sort)
-    if (next.category !== undefined) {
-      if (next.category === 'ALL') params.delete('category')
-      else params.set('category', next.category)
-    }
+    let params = withQueryParams(searchParams, {
+      ...(next.sort !== undefined && { sort: next.sort }),
+      // 'ALL' 은 백엔드 값이 아닙니다 — 조건을 아예 빼면 전체입니다
+      ...(next.category !== undefined && {
+        category: next.category === 'ALL' ? null : next.category,
+      }),
+    })
     // 거르는 조건이 바뀌면 첫 쪽부터 다시 봅니다 — 3쪽에 있던 자리는 의미가 없습니다
     if (next.sort !== undefined || next.category !== undefined) {
-      params.delete('page')
+      params = writePage(params, 0)
     }
-    if (next.page !== undefined) params.set('page', String(next.page + 1))
+    if (next.page !== undefined) params = writePage(params, next.page)
     setSearchParams(params)
   }
 
@@ -200,14 +200,9 @@ export default function FreeBoardPage() {
                   글쓰기
                 </AuthLinkButton>
               }
-              onToggleLike={(item) => {
-                // 비로그인은 401 이라, 보내 보는 대신 먼저 안내합니다
-                if (!isLoggedIn) {
-                  setLoginOpen(true)
-                  return
-                }
-                toggleLike.mutate({ id: item.id, liked: item.liked })
-              }}
+              onToggleLike={(item) =>
+                likeToggle.toggle({ id: item.id, liked: item.liked })
+              }
             />
 
             <Pagination
@@ -228,8 +223,8 @@ export default function FreeBoardPage() {
       </div>
 
       <LoginRequiredDialog
-        open={loginOpen}
-        onClose={() => setLoginOpen(false)}
+        open={likeToggle.loginRequired}
+        onClose={likeToggle.closeLoginRequired}
         redirectTo={ROUTES.COMMUNITY_FREE}
         description="좋아요는 로그인한 뒤에 누를 수 있습니다. 글은 로그인 없이도 읽을 수 있습니다."
       />

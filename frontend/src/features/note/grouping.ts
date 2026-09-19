@@ -8,14 +8,13 @@ import type { Note } from './types'
 /** 대분류가 비어 있는 노트도 있습니다. 한 이름으로 묶어 섹션 하나로 둡니다 */
 export const UNCATEGORIZED = '기타'
 
-export type NoteSection = {
+type NoteSection = {
   family: string
   notes: Note[]
 }
 
 /** 이 노트가 걸리는 대분류. 비어 있으면 '기타' 입니다 */
-export const familyOf = (note: Note): string =>
-  note.accordFamily ?? UNCATEGORIZED
+const familyOf = (note: Note): string => note.accordFamily ?? UNCATEGORIZED
 
 /**
  * 받은 순서 그대로 대분류가 바뀌는 자리에서 끊습니다. 같은 대분류가 떨어져 두 번

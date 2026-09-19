@@ -2,7 +2,7 @@ import { queryOptions } from '@tanstack/react-query'
 
 import { getPersonalRecommendation, getRecommendation } from './api'
 
-export const recommendKeys = {
+const recommendKeys = {
   all: ['recommend'] as const,
   byQuery: (query: string) => [...recommendKeys.all, query] as const,
   personal: () => [...recommendKeys.all, 'personal'] as const,

@@ -12,16 +12,10 @@ export {
 export { AddToCollectionModal } from './components/AddToCollectionModal'
 export { CollectionFormModal } from './components/CollectionFormModal'
 export { CollectionStrip } from './components/CollectionStrip'
-export type { ShelfItemCandidate } from './components/ShelfItemPickList'
 export {
   collectionDetailQuery,
   collectionKeys,
   collectionPreviewsQuery,
   myCollectionsQuery,
 } from './queries'
-export type {
-  CollectionDetail,
-  CollectionInput,
-  CollectionPerfume,
-  CollectionSummary,
-} from './types'
+export type { CollectionInput } from './types'

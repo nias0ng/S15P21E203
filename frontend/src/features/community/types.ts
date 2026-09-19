@@ -48,7 +48,7 @@ export interface LinkedPerfume {
 
 /* ── 자유 게시판 (GET /posts) ──────────────────────────────── */
 
-export interface PostSummary {
+interface PostSummary {
   postId: number
   /** 분류 코드. 번호가 아니라 코드입니다 — 번호는 환경마다 다릅니다 */
   category: PostCategory
@@ -122,7 +122,7 @@ export interface CommentsResponse {
  * 후기 게시판의 한 줄. 자유 글과 달리 **분류와 댓글 수가 없고**(A22a) 대신 어느
  * 향수 이야기인지가 반드시 실립니다.
  */
-export interface ReviewBoardItem {
+interface ReviewBoardItem {
   reviewId: number
   title: string
   content: string

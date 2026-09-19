@@ -8,6 +8,7 @@ import {
   noteListQuery,
 } from '@/features/note'
 import { cn } from '@/shared/lib/cn'
+import { withQueryParams } from '@/shared/lib/queryParams'
 import { Button } from '@/shared/ui/Button'
 import { PillFilter } from '@/shared/ui/PillFilter'
 import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
@@ -32,10 +33,7 @@ export default function NoteListPage() {
   const hasFilter = keyword !== '' || family !== null
 
   const setParam = (key: 'keyword' | 'family', value: string | null) => {
-    const next = new URLSearchParams(searchParams)
-    if (value) next.set(key, value)
-    else next.delete(key)
-    setSearchParams(next)
+    setSearchParams(withQueryParams(searchParams, { [key]: value }))
   }
 
   return (

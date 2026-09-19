@@ -5,9 +5,9 @@ import { Link } from 'react-router'
 import { isApiError } from '@/shared/api/http'
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { ROUTES, toPerfumeDetail, toReviewDetail } from '@/shared/config/routes'
+import { useLikeToggle } from '@/shared/hooks/useLikeToggle'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
-import { useIsLoggedIn } from '@/shared/store/authStore'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
@@ -42,9 +42,7 @@ type Props = {
  */
 export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
   const queryClient = useQueryClient()
-  const isLoggedIn = useIsLoggedIn()
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const [loginOpen, setLoginOpen] = useState(false)
 
   /*
     사진 · 한국어 이름 · 성별은 **후기 응답에 없어** 향수 상세를 따로 부릅니다
@@ -81,15 +79,14 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
   })
 
   /**
-   * 좋아요 토글 (CMT-05). 다시 부르지 않고 **응답 값을 이 후기에만 덮어씁니다** —
-   * 다시 부르면 조회수가 한 번 더 오릅니다(여는 것이 곧 조회라서).
+   * 좋아요 토글 (CMT-05). 비로그인 안내 · 누르기/취소 고르기는 `useLikeToggle` 이
+   * 맡고, 여기서는 캐시만 고칩니다 — 다시 부르지 않고 **응답 값을 이 후기에만
+   * 덮어씁니다.** 다시 부르면 조회수가 한 번 더 오릅니다(여는 것이 곧 조회라서).
    */
-  const toggleLike = useMutation({
-    mutationFn: () =>
-      review.liked
-        ? unlikeReview(review.reviewId)
-        : likeReview(review.reviewId),
-    onSuccess: (result) => {
+  const likeToggle = useLikeToggle({
+    like: likeReview,
+    unlike: unlikeReview,
+    onToggled: (result) => {
       queryClient.setQueryData(
         reviewKeys.detail(review.reviewId),
         (old: ReviewDetail | undefined) =>
@@ -148,14 +145,13 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
               type="button"
               aria-pressed={review.liked}
               aria-label={`좋아요 ${review.likeCount}`}
-              disabled={toggleLike.isPending}
-              onClick={() => {
-                if (!isLoggedIn) {
-                  setLoginOpen(true)
-                  return
-                }
-                toggleLike.mutate()
-              }}
+              disabled={likeToggle.isPending}
+              onClick={() =>
+                likeToggle.toggle({
+                  id: review.reviewId,
+                  liked: review.liked,
+                })
+              }
               className={cn(
                 'rounded-card text-title leading-none',
                 'transition-colors duration-120 ease-out',
@@ -236,7 +232,7 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
           </p>
         )}
 
-        {toggleLike.error !== null && (
+        {likeToggle.error !== null && (
           <p className="text-danger text-caption" role="alert">
             좋아요를 누르지 못했습니다. 잠시 후 다시 시도해주세요.
           </p>
@@ -250,8 +246,8 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
       />
 
       <LoginRequiredDialog
-        open={loginOpen}
-        onClose={() => setLoginOpen(false)}
+        open={likeToggle.loginRequired}
+        onClose={likeToggle.closeLoginRequired}
         redirectTo={toReviewDetail(review.reviewId)}
         description="좋아요는 로그인한 뒤에 누를 수 있습니다. 후기는 로그인 없이도 읽을 수 있습니다."
       />

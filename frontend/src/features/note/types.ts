@@ -50,7 +50,7 @@ export interface NoteDetail extends Note {
  * `features/a` 는 `features/b` 를 import 할 수 없어 여기 한 번 더 적습니다.
  * 화면이 그대로 `PerfumeGrid` 에 넘겨, 한쪽이 바뀌면 타입 에러로 드러납니다.
  */
-export interface NotePerfume {
+interface NotePerfume {
   perfumeId: number
   name: string
   nameKo: string | null

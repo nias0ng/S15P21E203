@@ -3,9 +3,8 @@
  * 백엔드 요청 DTO 의 검증 애너테이션을 그대로 옮긴 값입니다.
  */
 
-/** 비밀번호 8~64자 (`@Size(min = 8, max = 64)`) */
+/** 비밀번호는 최소 8자입니다 (`@Size(min = 8, max = 64)`) */
 export const PASSWORD_MIN_LENGTH = 8
-export const PASSWORD_MAX_LENGTH = 64
 
 /**
  * 닉네임 2~20자. **앞뒤 공백을 제거한 뒤**의 길이입니다 — 서버가 trim 하고 셉니다.

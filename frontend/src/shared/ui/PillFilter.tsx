@@ -23,8 +23,8 @@ type PillFilterProps<T extends string> = {
  * 어둠 위에 놓이는 알약 필터 (A33 향수 · A34 브랜드)
  *
  * 생김새는 `styles/scent-display.css` 의 `.scent-pill` 이 그립니다 — **어두운
- * 방(`.scent-night`) 안에서만 제 모양이 납니다.** 공용 `SegmentedFilter` 는 칸을
- * 고르게 나눠 채우는 한 덩이라 다릅니다.
+ * 방(`.scent-night`) 안에서만 제 모양이 납니다.** 고르는 방식은 `ChipToggle` 과
+ * 같지만 저쪽은 밝은 화면용입니다.
  */
 export function PillFilter<T extends string>({
   label,

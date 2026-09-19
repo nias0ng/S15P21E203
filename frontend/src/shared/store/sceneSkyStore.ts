@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 /** 3D 향 지도의 하늘 — 밝음(낮 · 저녁) · 어두움(밤) */
-export type SceneSky = 'light' | 'dark'
+type SceneSky = 'light' | 'dark'
 
 interface SceneSkyState {
   sky: SceneSky

@@ -1,11 +1,4 @@
 /**
- * 종이 바탕 위에 얹는 밝은 판. 여백이 다른 자리에서는 뒤에 덮어씁니다:
- * `cn(PANEL, 'p-4')`.
- */
-export const PANEL =
-  'border-line/50 bg-surface-card rounded-panel shadow-card border p-6'
-
-/**
  * 어두운 방 위에 떠 있는 유리판의 **모양값**(모서리 · 여백).
  * 생김새는 `styles/scent-display.css` · 설계는 docs/어두운-방-유리판.md
  *

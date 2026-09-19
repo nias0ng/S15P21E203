@@ -11,9 +11,6 @@ export {
   unlikePost,
   updateComment,
   updatePost,
-  type PostCreateInput,
-  type PostLikeResult,
-  type PostUpdateInput,
 } from './api'
 export { BoardHeader } from './components/BoardHeader'
 export { ImageAttachField, WriteForm } from './components/WriteForm'
@@ -35,18 +32,8 @@ export {
   postToBoardItem,
   REVIEW_SORTS,
   reviewToBoardItem,
-  type BoardItem,
-  type Comment,
-  type CommentsResponse,
   type LinkedPerfume,
   type PostCategory,
-  type PostDetail,
   type PostSort,
-  type PostSummary,
-  type PostsResponse,
-  type ReviewBoardItem,
-  type ReviewBoardResponse,
   type ReviewSort,
-  type TrendingPerfume,
-  type TrendingPerfumesResponse,
 } from './types'
