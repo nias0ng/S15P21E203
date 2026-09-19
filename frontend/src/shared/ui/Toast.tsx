@@ -12,11 +12,8 @@ type ToastProps = {
 }
 
 /**
- * 저장 · 삭제 피드백 (와이어프레임 C03). 결과는 전부 이걸로 알립니다 — 인라인 ·
- * 모달로 알리지 마세요.
- *
- * **상태는 `shared/hooks/useToast` 를 쓰세요.** 직접 들고 인라인 화살표를 onClose 로
- * 넘기면 아래 타이머가 렌더마다 초기화됩니다.
+ * 저장 · 삭제 피드백 (C03). **상태는 `shared/hooks/useToast` 를 쓰세요** — 직접
+ * 들고 인라인 화살표를 onClose 로 넘기면 아래 타이머가 렌더마다 초기화됩니다.
  */
 export function Toast({
   open,

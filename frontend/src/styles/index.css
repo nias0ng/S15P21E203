@@ -1,11 +1,6 @@
 @import 'tailwindcss';
 
-/*
- * 디자인 토큰 — Museum Archive
- *
- * **화면 코드에서는 "역할 토큰"만 씁니다.** 원색(ivory/bronze/...)을 직접 쓰면
- * 나중에 색을 바꿀 때 전부 찾아 고쳐야 합니다.
- */
+/* 디자인 토큰 — **화면 코드에서는 "역할 토큰"만 씁니다** */
 @theme {
   /* ── 원색: Museum Archive 팔레트 ─────────────────────── */
   --color-ivory: #f9f6ef;
@@ -28,12 +23,8 @@
 
   /*
    * ── 3D 향 지도 위 ───────────────────────────────────
-   * **엔진(paperboat)과 값을 맞춰야 하는 색입니다.** 한쪽만 바꾸면 3D 위에 뜬
-   * 판과 엔진 미니맵의 색이 갈립니다.
-   *   navy      엔진 카드 단추 `--pb-card-btn`
-   *   dusk      엔진 미니맵 `html[data-mini-eve]` 의 `--pb-mini-bg`(60%)
-   *   dusk-gold 그 미니맵의 `--pb-mini-accent`
-   * 팔레트 7색 밖이라 3D 위에서만 씁니다.
+   * **엔진(paperboat)과 값을 맞춰야 하는 색입니다** — navy 는 엔진 카드 단추
+   * `--pb-card-btn`, dusk · dusk-gold 는 미니맵의 `--pb-mini-bg` · `--pb-mini-accent`.
    */
   --color-navy: #1e2947;
   --color-dusk: #2c263e;

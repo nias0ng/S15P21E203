@@ -2,10 +2,8 @@ import { cn } from '@/shared/lib/cn'
 
 type ThumbnailProps = {
   /**
-   * 이미지 주소. 없으면 자리표시자 상자를 그립니다.
-   *
-   * ⚠️ 백엔드가 아직 이미지를 거의 내려주지 않아 대부분의 호출부가 값 없이 씁니다.
-   * 그래서 optional 이고, 없는 경우가 기본 동작입니다.
+   * 이미지 주소. ⚠️ 백엔드가 아직 이미지를 거의 안 내려줘 대부분 값 없이 씁니다 —
+   * 없는 경우가 기본 동작입니다.
    */
   src?: string | null
   /** 자리표시자 안에 보일 문구("이미지" · "로고"). 없으면 빈 상자만 그립니다. */
@@ -27,17 +25,11 @@ type ThumbnailProps = {
 }
 
 /**
- * 이미지 슬롯. 이미지가 있으면 그리고, 없으면 와이어프레임의 자리표시자 상자를 그립니다.
+ * 이미지 슬롯. 있으면 그리고, 없으면 자리표시자 상자를 그립니다. 아바타
+ * (`rounded-full`)도 같은 상자라 이걸 씁니다.
  *
- * 이걸 만들기 전에는 `border-line bg-surface-sunken border` 상자와 그 fallback 분기가
- * 16개 파일에 흩어져 있었습니다. 백엔드가 이미지를 붙이는 시점에 16곳을 고쳐야 했습니다.
- *
- * 아바타(`size-6.25 rounded-full`)도 같은 상자라서 이걸 씁니다. 나중에 아바타에 이니셜이나
- * 기본 아이콘이 필요해지면 그때 Avatar 를 따로 만듭니다(미리 만들지 않습니다).
- *
- *   <Thumbnail src={perfume.thumbnailUrl} fallback="이미지" className="size-13.75 shrink-0" />
- *   <Thumbnail src={brand.logoUrl} fallback="로고" fit="contain" className="h-23.75 w-full" />
- *   <Thumbnail className="size-6.25 shrink-0 rounded-full" />
+ *   <Thumbnail src={perfume.thumbnailUrl} fallback="이미지" className="size-13.75" />
+ *   <Thumbnail src={brand.logoUrl} fallback="로고" fit="contain" className="h-23.75" />
  */
 export function Thumbnail({
   src,

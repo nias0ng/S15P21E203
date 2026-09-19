@@ -7,11 +7,8 @@ type TermsAgreementProps = {
 }
 
 /**
- * 약관 동의 블록 (와이어프레임 A32 — 회원가입 하단에 붙는다)
- *
- * 와이어프레임 주석 두 가지를 그대로 남겨둡니다.
- * - 필수 미동의 시 [가입하기] 비활성 — 비활성 표현은 팀 확정 필요
- * - 약관 전문 화면은 별도 · 항목 구성은 법무 확인 필요
+ * 약관 동의 블록 (A32 — 회원가입 하단). 필수 미동의면 [가입하기] 비활성이고,
+ * 약관 전문 화면은 별도 · 항목 구성은 법무 확인이 필요합니다.
  */
 export function TermsAgreement({ value, onChange }: TermsAgreementProps) {
   const allChecked = TERMS.every((term) => value[term.id])

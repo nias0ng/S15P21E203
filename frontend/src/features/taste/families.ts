@@ -5,14 +5,9 @@ import {
 } from './types'
 
 /**
- * 계열 9개의 화면 문구.
- *
- * 타일에는 **형용사만** 보이고, 마우스를 올리거나 키보드 포커스가 가면 계열명으로
- * 바뀝니다("화사하고 우아한" → "플로럴"). 화면 낭독기에는 둘을 함께 읽힙니다
- * (`familyAriaLabel`) — 보이는 글자가 바뀌는 것을 소리로는 알 수 없기 때문입니다.
- *
- * 배열 순서는 `SCENT_FAMILY_KEYS` 와 같습니다. 타일 3×3 그리드가 가벼운 향에서
- * 무거운 향으로 내려갑니다.
+ * 계열 9개의 화면 문구. 타일에는 **형용사만** 보이고 마우스 · 포커스가 가면
+ * 계열명으로 바뀌며, 낭독기에는 둘을 함께 읽힙니다(`familyAriaLabel`).
+ * 배열 순서는 `SCENT_FAMILY_KEYS` 와 같습니다.
  */
 export const SCENT_FAMILIES: readonly ScentFamilyLabel[] = [
   { key: 'FLORAL', adjective: '화사한', name: '플로럴' },

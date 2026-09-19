@@ -37,16 +37,13 @@ type NoteRow = {
 }
 
 /**
- * 향수 상세 ② 향조 (와이어프레임 A10 — DTL-02)
+ * 향수 상세 ② 향조 (A10 — DTL-02)
  *
- * **쪼개고 묶는 일을 화면이 합니다.** 백엔드는 `noteType` 을 해석하지 않고 문자열
- * 그대로 내려줍니다(컬럼에 값 제약이 없어, 서버가 세 칸에 나눠 담으면 예상 못 한
- * 값이 조용히 버려집니다). 시드가 넣는 값은 `top` · `middle` · `base` · `flat` 과
- * 셋의 조합(`top+middle` 등)입니다 — `backend/db/seed/load_perfume_notes.sql` 이
- * 이 여덟 가지만 통과시킵니다. 그래도 모르는 값이 오면 버리지 않고 제 이름으로
- * 한 줄 만듭니다.
+ * **쪼개고 묶는 일을 화면이 합니다** — 백엔드는 `noteType` 을 해석하지 않고 문자열
+ * 그대로 내려줍니다. 시드가 넣는 값은 `top` · `middle` · `base` · `flat` 과 그
+ * 조합이고, 모르는 값이 와도 버리지 않고 제 이름으로 한 줄 만듭니다.
  *
- * 어코드(`accords`)도 같은 응답에 있지만 와이어프레임에 자리가 없어 아직 안 그립니다.
+ * 어코드(`accords`)도 같은 응답에 있지만 자리가 없어 아직 안 그립니다.
  */
 export function PerfumeNotes({ notes, isPending = false, className }: Props) {
   const rows = toRows(notes)

@@ -53,11 +53,8 @@ async function withDevFallback<T>(
 
 /**
  * COM-05 향수 검색. 조건은 모두 선택이고 함께 오면 AND 입니다.
- *
- * **`scentFamily` 는 받는 자리에서 거릅니다** — 응답의 계열은 열린 문자열이라 타입만
- * 좁혀 두면 거짓말이 됩니다. 모르는 값은 null 로 바꿔 배지만 안 그립니다.
- *
- * ⚠️ gender · ranking 에 정의되지 않은 값을 보내면 400 입니다.
+ * **`scentFamily` 는 받는 자리에서 거릅니다** — 열린 문자열이라 타입만 좁히면
+ * 거짓말입니다. ⚠️ gender · ranking 에 없는 값을 보내면 400 입니다.
  */
 export async function searchPerfumes(params: PerfumeSearchParams) {
   return withDevFallback(

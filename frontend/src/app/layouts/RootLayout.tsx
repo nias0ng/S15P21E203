@@ -40,13 +40,9 @@ function usePageWidth(): PageWidth {
 }
 
 /**
- * 어두운 방(`styles/scent-display.css` 의 `.scent-night`)을 켜는 화면인지.
- * 라우트 설정(app/router)의 `handle.night` 로 정합니다 — 폭과 같은 자리입니다.
- *
- * 예전에는 여기에 경로 배열을 두고 `pathname` 과 문자열로 맞춰봤습니다. 상세
- * 화면이 어두워지면서 그 방식이 깨졌습니다 — `/notes/:noteId` 는 라우트에 적힌
- * 모양이고 실제 주소는 `/notes/5` 라, 배열에 넣어도 **영영 안 걸립니다.**
- * 라우트 옆에 적으면 파라미터가 있든 없든 그냥 됩니다.
+ * 어두운 방을 켜는 화면인지. 라우트의 `handle.night` 로 정합니다 — 경로 배열을 두고
+ * `pathname` 과 맞춰보던 때, `/notes/:noteId` 는 실제 주소가 `/notes/5` 라 **영영
+ * 안 걸렸습니다.** docs/어두운-방-유리판.md
  */
 function useIsNight(): boolean {
   const matches = useMatches()
@@ -93,11 +89,9 @@ export function RootLayout() {
 
   return (
     /*
-      overflow-x-clip : 헤더는 스크롤바가 있어도 메인과 같은 자리에 서도록 화면 폭(100vw)이라
-      스크롤바 밑으로 15px 나갑니다(GlobalHeader). 그 조각이 가로 스크롤을 만들지 않게 자릅니다.
-      ⚠ hidden 이 아니라 clip 입니다 — hidden 은 스크롤 상자를 만들어 헤더의 sticky 가 풀립니다.
-      ⚠ 헤더의 100vw 와 같은 `sm`(640) 부터입니다. 더 좁으면 헤더가 화면보다 넓어 잘라내면
-        돋보기 · 계정을 못 누릅니다.
+      overflow-x-clip : 헤더가 화면 폭(100vw)이라 스크롤바 밑으로 나간 15px 을 자릅니다.
+      ⚠ hidden 이 아니라 clip — hidden 은 스크롤 상자를 만들어 sticky 가 풀립니다.
+      ⚠ 헤더와 같은 `sm`(640) 부터 — 더 좁으면 돋보기 · 계정을 못 누릅니다.
     */
     <div
       className={cn(

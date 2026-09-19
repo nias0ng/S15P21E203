@@ -12,10 +12,8 @@ import type { PersonalRecommendation } from '../types'
 const BODY_WIDTH = 'w-72'
 
 /**
- * 개인화 맞춤 향수 추천 카드 (REC-12 · REC-13)
- *
- * 화면 왼쪽 가장자리에 오른쪽 끝만 내놓고 붙어 있다가 누르면 미끄러져 나옵니다.
- * 묻지 않았는데 온 것이라 ✕ 로 아예 치울 수 있어야 합니다.
+ * 개인화 맞춤 향수 추천 카드 (REC-12 · REC-13). 묻지 않았는데 온 것이라 ✕ 로 아예
+ * 치울 수 있어야 합니다.
  */
 export function RecommendPeekCard({
   recommendation,
@@ -24,11 +22,8 @@ export function RecommendPeekCard({
 }) {
   const [open, setOpen] = useState(false)
   /*
-   * 닫으면 이 화면을 떠날 때까지 다시 뜨지 않습니다.
-   *
-   * ⚠️ 기억해 두지는 않습니다 — 화면을 다시 들어오면 또 나타납니다. "이 추천 그만
-   * 보기" 를 계속 기억하려면 저장할 곳이 있어야 하는데, 그건 브라우저에 담을지
-   * 계정에 담을지 정해야 하는 문제라 추천 API 를 붙일 때 함께 정합니다.
+   * 닫으면 이 화면을 떠날 때까지 다시 뜨지 않습니다. ⚠️ 기억해 두지는 않습니다 —
+   * 어디에 담을지는 추천 API 를 붙일 때 함께 정합니다.
    */
   const [dismissed, setDismissed] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -70,13 +65,9 @@ export function RecommendPeekCard({
 
   return (
     /*
-      세로 가운데. 헤더(z-10)보다 위이고 모달·토스트보다 아래입니다.
-
-      **빈 자리는 클릭을 먹지 않습니다.** 접혀 있을 때 안쪽이 `-translate-x-72` 로
-      화면 밖에 나가도 바깥 상자는 그대로 337px 을 차지합니다 — transform 은 그림만
-      옮기고 자리는 안 옮기기 때문입니다. 그래서 진열대 왼쪽 화살표와 병이 이
-      보이지 않는 상자에 가려 안 눌렸습니다. 바깥은 통과시키고, 실제로 누를 수 있는
-      안쪽만 다시 받게 합니다.
+      **빈 자리는 클릭을 먹지 않습니다.** 접혀서 안쪽이 화면 밖에 나가도 바깥 상자는
+      337px 을 그대로 차지합니다 — transform 은 그림만 옮기고 자리는 안 옮깁니다.
+      진열대 왼쪽 화살표와 병이 이 보이지 않는 상자에 가려 안 눌렸습니다.
     */
     <div
       ref={rootRef}

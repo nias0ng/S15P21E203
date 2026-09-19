@@ -14,17 +14,13 @@ import { GLASS_PANEL } from '@/shared/ui/panel'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 /**
- * 노트 상세 (와이어프레임 A36 — A35 에서 노트를 누른 화면)
+ * 노트 상세 (A36 — A35 에서 노트를 누른 화면)
  *
- * 향수 목록(A33) · 브랜드(A34) · 노트 목록(A35) · 향수 상세(A10)와 같은 **어두운 방 +
- * 유리판** 구성입니다. 어둠은 라우트의 `handle.night`(app/router)이 켭니다.
+ * 향수는 **쪽 넘김**입니다 — 인기 노트 하나에 향수가 수만 개 달려(머스크 49,571개)
+ * 이어 붙이면 끝이 없습니다. ⚠️ **[향수 전체 보기]로 넘기지 못합니다** — 향수 검색
+ * 파라미터에 `note` 가 없어 노트의 향수는 `/notes/{noteId}/perfumes` 에만 있습니다.
  *
- * 향수는 **쪽 넘김**입니다. 와이어프레임의 "스크롤로 이어 로드" 와 다르지만, 인기
- * 노트 하나에 향수가 수만 개 달려(머스크 49,571개) 이어 붙이면 끝이 없습니다.
- *
- * ⚠️ **브랜드 상세처럼 [향수 전체 보기]로 넘기지 못합니다.** 향수 검색 파라미터에
- * `note` 가 없어(features/perfume/types.ts 의 `PerfumeSearchParams`) 노트의 향수는
- * `/notes/{noteId}/perfumes` 에만 있습니다. 필터가 생기면 그때 같이 맞춥니다.
+ * 어두운 방 · 유리판 구성 — docs/어두운-방-유리판.md
  */
 export default function NoteDetailPage() {
   const { noteId } = useParams<{ noteId: string }>()
@@ -85,10 +81,8 @@ export default function NoteDetailPage() {
           src={data.imageUrl}
           fallback="노트 이미지"
           /*
-            ⚠️ **바탕을 여기서 덮어씁니다.** `Thumbnail` 의 기본 상자는
-            `bg-surface-sunken` 인데 `.scent-night` 는 이 토큰을 다시 정의하지
-            않습니다(유리판 **안쪽**에서만 뒤집힙니다). 그대로 두면 사진이 없거나
-            아직 안 받아졌을 때 어둠 위에 아이보리 사각형이 남습니다.
+            ⚠️ **바탕을 여기서 덮어씁니다** — 그대로 두면 어둠 위에 아이보리
+            사각형이 남습니다(docs/어두운-방-유리판.md 의 5).
           */
           className="aspect-7/5 h-60 shrink-0 bg-white/5"
         />

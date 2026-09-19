@@ -27,10 +27,8 @@ import { PerfumeCard } from '@/shared/ui/PerfumeCard'
 import { Toast } from '@/shared/ui/Toast'
 
 /**
- * 컬렉션 상세 (A17 — COL-04 · COL-07)
- *
- * 공개·비공개 구분이 없습니다 — 남에게 보이는 길은 자유 게시판의 공유 글뿐입니다.
- * 향수 추가 후보가 진열대 항목뿐이라(A19) 진열대 데이터를 함께 불러 넘깁니다.
+ * 컬렉션 상세 (A17 — COL-04 · COL-07). 향수 추가 후보가 진열대 항목뿐이라(A19)
+ * 진열대 데이터를 함께 불러 넘깁니다.
  */
 export default function CollectionDetailPage() {
   const { collectionId } = useParams<{ collectionId: string }>()
@@ -84,11 +82,8 @@ export default function CollectionDetailPage() {
   })
 
   /**
-   * 향수 담기 (COL-03).
-   *
-   * 서버가 한 번에 하나씩 받아서 고른 만큼 요청이 나갑니다. **하나가 실패해도
-   * 나머지는 계속 보냅니다** — 앞에서 멈추면 이미 담긴 것과 안 담긴 것이 섞인 채
-   * 사용자는 무엇이 들어갔는지 알 수 없습니다.
+   * 향수 담기 (COL-03). 서버가 한 번에 하나씩 받아 고른 만큼 요청이 나가고,
+   * **하나가 실패해도 나머지는 계속 보냅니다.**
    */
   const addPerfumes = useMutation({
     mutationFn: async (shelfItemIds: number[]) => {
@@ -146,11 +141,8 @@ export default function CollectionDetailPage() {
   const data = collection.data
   const inCollection = new Set(data.perfumes.map((item) => item.perfumeId))
   /*
-    확인창 제목에 넣을 대상 이름입니다. id 만 들고 있어 목록에서 찾아옵니다.
-
-    ⚠️ **들고 있는 id 는 `shelfItemId`** 입니다 — 서버가 그 번호로 지웁니다
-    (`DELETE .../perfumes/{shelfItemId}`). `perfumeId` 로 찾으면 이름도 못 찾고
-    지우는 요청도 404 가 납니다.
+    ⚠️ **들고 있는 id 는 `shelfItemId`** 입니다 — `perfumeId` 로 찾으면 이름도 못
+    찾고 지우는 요청도 404 입니다.
   */
   const removeTargetName = data.perfumes.find(
     (item) => item.shelfItemId === removeTarget,

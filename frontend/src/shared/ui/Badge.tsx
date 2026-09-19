@@ -3,10 +3,8 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/shared/lib/cn'
 
 /**
- * 향 계열 · 노트 · 상태처럼 짧은 라벨.
- *
- * `tone` 은 색 이름이 아니라 뜻입니다 — 팔레트가 바뀌어도 호출부를 안 고칩니다.
- * 색만으로 뜻을 구분하지 말고 라벨 글자를 함께 다세요.
+ * 향 계열 · 노트 · 상태처럼 짧은 라벨. `tone` 은 색 이름이 아니라 뜻입니다 —
+ * 색만으로 구분하지 말고 라벨 글자를 함께 다세요.
  */
 const badgeVariants = cva(
   'text-caption inline-flex items-center rounded-full px-2.5 py-1.25 font-medium',

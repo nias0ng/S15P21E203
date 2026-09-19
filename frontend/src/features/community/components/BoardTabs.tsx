@@ -3,12 +3,7 @@ import { NavLink } from 'react-router'
 import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 
-/**
- * 게시판 탭 (와이어프레임 A22a · A22b 상단)
- *
- * 후기 · 자유 두 게시판을 오갑니다. 헤더의 커뮤니티 드롭다운과 같은 목적지이고,
- * 게시판 안에서도 바로 전환할 수 있게 둡니다.
- */
+/** 게시판 탭 (A22a · A22b 상단). 헤더의 커뮤니티 드롭다운과 같은 목적지입니다 */
 export function BoardTabs() {
   return (
     <nav aria-label="게시판" className="border-line flex border-b">

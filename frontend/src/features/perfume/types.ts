@@ -21,11 +21,9 @@ export interface PerfumeSummary {
 }
 
 /**
- * DTL-01 향수 기본 정보 조회
- *
- * **PerfumeSummary 를 상속하지 않습니다** — 검색은 `brandName`·`imageUrl`, 상세는
- * `brand` 객체·`images` 배열이라 상속으로 묶으면 타입이 거짓말을 합니다.
- * 향조 · 계절 평가 · AI 요약 · 후기는 **각각 별도 엔드포인트**입니다.
+ * DTL-01 향수 기본 정보. **PerfumeSummary 를 상속하지 않습니다** — 검색은
+ * `brandName`·`imageUrl`, 상세는 `brand`·`images` 라 묶으면 타입이 거짓말을 합니다.
+ * 향조 · 계절 · 요약 · 후기는 **각각 별도 엔드포인트**입니다.
  */
 export interface PerfumeDetail {
   perfumeId: number
@@ -65,11 +63,9 @@ export interface PerfumeSearchParams {
   scentFamily?: ScentFamilyKey
 
   /**
-   * A33 위 줄 필터. **이름이 shelf 였는데 ranking 으로 바뀌었습니다** — 이전
-   * 이름으로 보내면 @ModelAttribute 가 조용히 무시해 오류 없이 안 걸립니다.
-   *
-   * 전체 사용자 집계라 로그인이 필요 없습니다. OWNED · WISH 는 세 명 이상이 담은
-   * 향수만 나오고, 이 값이 있으면 sort 는 무시됩니다.
+   * A33 위 줄 필터. **이름이 shelf 였는데 ranking 으로 바뀌었습니다** — 옛 이름은
+   * @ModelAttribute 가 조용히 무시해 오류 없이 안 걸립니다. 전체 사용자 집계라
+   * 로그인이 필요 없고, OWNED · WISH 는 세 명 이상 · sort 는 무시됩니다.
    */
   ranking?: RankingFilter
 
@@ -119,10 +115,8 @@ export const GENDER_FILTERS = [
 ] as const satisfies readonly { value: GenderFilter; label: string }[]
 
 /**
- * 영문 줄에 적는 성별. `GENDER_FILTERS` 의 한글 라벨과 일부러 다릅니다.
- *
- * ⚠️ **표에 없는 값이면 아무것도 안 적습니다.** 타입은 `GenderFilter` 지만 백엔드
- * 컬럼은 제약 없는 `VARCHAR(30)` 이라 여기 없는 문자열이 올 수 있습니다.
+ * 영문 줄에 적는 성별. ⚠️ **표에 없는 값이면 아무것도 안 적습니다** — 타입은
+ * `GenderFilter` 지만 백엔드 컬럼이 제약 없는 `VARCHAR(30)` 입니다.
  */
 export const GENDER_TEXT: Record<GenderFilter, string> = {
   FEMALE: 'female',
@@ -267,12 +261,9 @@ export interface ReviewDetail {
 /* ── 후기 쓰기 (CMT-03 · DTL-05 · DTL-06 · DTL-16) ──────────── */
 
 /**
- * 후기 작성 요청 (POST /perfumes/{perfumeId}/reviews)
- *
- * 길이 제약은 백엔드 `ReviewCreateRequest` 의 검증 애너테이션 그대로이고,
- * **계절은 1개 이상 필수입니다**(`@NotEmpty`) — 문구가 "선택"이면 안 됩니다.
- * 계절은 번호가 아니라 **코드**로 보냅니다 — `season_id` 는 자동 증가라 환경마다
- * 달라지고, 코드는 마이그레이션 V18 이 고정했습니다.
+ * 후기 작성 요청 (POST /perfumes/{perfumeId}/reviews). 길이 제약은 백엔드
+ * `ReviewCreateRequest` 그대로이고 **계절은 1개 이상 필수**(`@NotEmpty`)입니다.
+ * 계절은 번호가 아니라 **코드**로 보냅니다 — `season_id` 는 환경마다 다릅니다.
  */
 export interface ReviewCreateInput {
   title: string
@@ -286,11 +277,9 @@ export const REVIEW_CONTENT_MAX_LENGTH = 1000
 export const REVIEW_SEASON_MIN_COUNT = 1
 
 /**
- * 후기 수정 요청 (PATCH /reviews/{reviewId})
- *
- * **둘 다 생략할 수 없습니다**(서버 `@AssertTrue`) — 바뀐 게 없으면 안 부릅니다.
- * **대상 향수와 계절은 여기로 못 바꿉니다.** 향수는 경로 자체가 없고, 계절은
- * `PUT /reviews/{reviewId}/seasons` 로 따로 갑니다.
+ * 후기 수정 요청 (PATCH /reviews/{reviewId}). **둘 다 생략할 수 없습니다**(서버
+ * `@AssertTrue`). **향수와 계절은 여기로 못 바꿉니다** — 향수는 경로가 없고
+ * 계절은 `PUT /reviews/{reviewId}/seasons` 입니다.
  */
 export interface ReviewUpdateInput {
   title?: string
@@ -325,10 +314,8 @@ export interface ReviewLikeResponse {
 /* ── 향수 상세의 곁 정보 (DTL) ──────────────────────────────── */
 
 /**
- * 비슷한 향수 한 건 (`GET /perfumes/{id}/similar` · `/neighbors`).
- *
- * **두 엔드포인트가 같은 데이터를 줍니다**(서버도 같은 메서드) — 화면은 하나만
- * 부릅니다. 향 지도에 실린 향수(200개)에만 있고 나머지는 빈 배열입니다.
+ * 비슷한 향수 한 건. **`/similar` 과 `/neighbors` 가 같은 데이터를 줍니다** —
+ * 화면은 하나만 부릅니다. 향 지도에 실린 200개 밖은 빈 배열입니다.
  */
 export interface RelatedPerfume {
   perfumeId: number
@@ -344,10 +331,8 @@ export interface RelatedPerfumesResponse {
 }
 
 /**
- * 후기에서 뽑힌 향 표현 한 개 (`GET /perfumes/{id}/review-keywords`).
- *
- * `percentage` 의 분모는 **키워드가 하나라도 뽑힌 후기 수**입니다(그래서 문구가
- * "향을 언급한 후기 중"). 후기 하나에서 여러 개가 나와 **합이 100 을 넘습니다**.
+ * 후기에서 뽑힌 향 표현 한 개. `percentage` 의 분모는 **키워드가 하나라도 뽑힌
+ * 후기 수**이고, 후기 하나에서 여러 개가 나와 **합이 100 을 넘습니다**.
  */
 export interface ReviewKeyword {
   keyword: string

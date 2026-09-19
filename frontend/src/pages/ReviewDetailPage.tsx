@@ -11,10 +11,8 @@ import { LinkButton } from '@/shared/ui/LinkButton'
 import { PageFallback } from '@/shared/ui/PageFallback'
 
 /**
- * 후기 상세 (와이어프레임 A12 — DTL-03 · DTL-05 · DTL-06)
- *
- * 비로그인도 볼 수 있습니다. **여는 것이 곧 조회라 조회수가 하나 오릅니다** —
- * 그래서 쿼리에서 창 포커스 · 재연결 재요청을 꺼 두었습니다(queries.ts).
+ * 후기 상세 (A12 — DTL-03 · 05 · 06). 비로그인도 볼 수 있고, **여는 것이 곧 조회라
+ * 조회수가 하나 오릅니다** — 창 포커스 · 재연결 재요청을 꺼 두었습니다.
  */
 export default function ReviewDetailPage() {
   const navigate = useNavigate()

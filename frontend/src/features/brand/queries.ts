@@ -40,12 +40,8 @@ export const brandListQuery = (params: BrandSearchParams) =>
   })
 
 /**
- * 브랜드 한 곳.
- *
- * 예전에는 상세 엔드포인트가 없어 **목록에서 골라냈습니다**. 화면 하나를 그리려고
- * 브랜드 7,793개를 받아 오는 방식이라, 엔드포인트가 생기면서 그만뒀습니다.
- *
- * 없는 브랜드는 404 입니다 — `null` 이 아니라 오류로 옵니다.
+ * 브랜드 한 곳. 예전에는 상세 엔드포인트가 없어 목록 7,793개에서 골라냈습니다.
+ * 없는 브랜드는 `null` 이 아니라 404 입니다.
  */
 export const brandDetailQuery = (brandId: number) =>
   queryOptions({

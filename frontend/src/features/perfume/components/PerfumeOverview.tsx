@@ -14,10 +14,8 @@ type Props = {
    */
   inShelf: boolean
   /**
-   * 진열대에 있는지 **아직 모르는 동안**(내 진열대를 받는 중).
-   *
-   * 이때는 단추를 잠급니다. 모르는 채로 [저장] 이라고 적어 두면 이미 담은 향수인데
-   * 담기 모달이 열리고, 분류까지 고른 뒤 409 로 튕겨 사용자가 한 일이 버려집니다.
+   * 진열대에 있는지 **아직 모르는 동안** 단추를 잠급니다 — 모르는 채로 [저장] 이면
+   * 이미 담은 향수인데 분류까지 고른 뒤 409 로 튕깁니다.
    */
   shelfPending?: boolean
   /** 위 단추를 눌렀을 때. 담을지 뺄지는 화면이 정합니다 */
@@ -45,13 +43,7 @@ export function PerfumeOverview({
   /* 영문 이름은 한국어 이름이 있을 때만 — 없으면 제목이 이미 영문입니다 */
   const hasKoreanName = perfume.nameKo !== null
 
-  /*
-    브랜드 아래 영문 줄 — 향수 영문 이름과 향의 성별을 가운뎃점으로 잇습니다.
-
-    **배열로 모아 잇습니다.** 둘 다 없을 수 있어서(한글 이름이 없는 향수 · 성별을
-    모르는 향수), 문자열을 직접 붙이면 한쪽이 빠졌을 때 가운뎃점만 남거나 줄이
-    통째로 비어 있는 채로 자리를 차지합니다.
-  */
+  /* 둘 다 없을 수 있어 배열로 모아 잇습니다 — 직접 붙이면 가운뎃점만 남습니다 */
   const meta = [
     hasKoreanName ? perfume.name : null,
     perfume.gender ? GENDER_TEXT[perfume.gender] : null,
@@ -68,12 +60,9 @@ export function PerfumeOverview({
         fallback="대표 이미지"
         fit="contain"
         /*
-          ⚠️ **색 토큰이 아니라 `bg-white` 인 이유가 있습니다.** 향수병은 배경이
-          투명한 PNG 라 상자 색이 그대로 병 뒤로 비칩니다. 그런데 이 화면의 색
-          토큰은 어두운 방(`.scent-night`)에서 전부 어둡게 재정의됩니다 —
-          `bg-surface-sunken` 은 아이보리로 남아 병 뒤가 누렇고,
-          `bg-surface-card` 를 쓰면 `--night-soft`(#362f26) 로 뒤집혀 캄캄해집니다.
-          제품 사진 뒤는 테마와 무관하게 늘 흰색이어야 해서 토큰을 타지 않습니다.
+          ⚠️ **색 토큰이 아니라 `bg-white` 입니다.** 향수병은 투명 PNG 라 상자 색이
+          병 뒤로 비치는데, 토큰은 어두운 방에서 뒤집힙니다
+          (docs/어두운-방-유리판.md 의 6).
         */
         className="h-100 w-75 shrink-0 bg-white"
       />

@@ -18,11 +18,8 @@ type TileCardProps = {
 }
 
 /**
- * 격자에 반복되는 타일 카드 (A34 브랜드 · A35 노트 · A13 컬렉션)
- *
- * `features/a` 는 `features/b` 를 import 할 수 없어 `shared/ui` 에 두고, 도메인
- * 타입을 받지 않고 낱개로 받습니다. 향수 카드는 배지 · 동작 영역이 따로 있어
- * `PerfumeCard` 로 남깁니다.
+ * 격자에 반복되는 타일 카드 (A34 브랜드 · A35 노트 · A13 컬렉션). 도메인 타입을
+ * 받지 않고 낱개로 받습니다 — 향수 카드는 배지 · 동작이 있어 따로입니다.
  */
 export function TileCard({
   to,

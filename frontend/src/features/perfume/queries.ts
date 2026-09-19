@@ -15,12 +15,9 @@ import {
 import type { PerfumeSearchParams } from './types'
 
 /**
- * 쿼리 키를 한 곳에 모아둡니다.
- * 무효화(invalidate) 할 때 perfumeKeys.all 처럼 상위 키만 지정하면 하위가 함께 갱신됩니다.
- *
- * 향수 상세의 다섯 구역은 각자 다른 엔드포인트라 키도 각자 있습니다. 전부
- * `detail(perfumeId)` 아래에 두어, 후기를 쓰고 나서 그 향수의 후기 · 통계 · 요약을
- * `invalidateQueries({ queryKey: perfumeKeys.detail(id) })` 한 줄로 갱신할 수 있습니다.
+ * 쿼리 키를 한 곳에 모아둡니다 — 상위 키만 무효화하면 하위가 함께 갱신됩니다.
+ * 향수 상세의 다섯 구역은 엔드포인트가 각자지만 키를 전부 `detail(perfumeId)`
+ * 아래에 두어, 후기 · 통계 · 요약을 한 줄로 갱신합니다.
  */
 export const perfumeKeys = {
   all: ['perfumes'] as const,

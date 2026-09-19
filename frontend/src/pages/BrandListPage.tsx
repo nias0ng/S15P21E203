@@ -16,23 +16,17 @@ import { PillFilter } from '@/shared/ui/PillFilter'
 import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
 
 /**
- * 한 쪽에 깔 브랜드 수. **5열 × 6줄**이라 30 입니다.
+ * 한 쪽에 깔 브랜드 수. 쪽을 나누는 것은 브랜드가 7,793개라 전부 그리면 카드가
+ * 7,793장 생겨서입니다.
  *
- * 쪽을 나누는 이유는 브랜드가 7,793개이기 때문입니다. 전에는 전부를 한 번에
- * 그려서 카드가 7,793장 생겼고, 그게 화면이 느린 진짜 이유였습니다.
- *
- * ⚠️ **자르는 일은 화면이 합니다.** 브랜드 목록 API 에는 쪽이 없어서(types.ts)
- * 응답은 여전히 전부 옵니다 — 받는 시간은 이걸로 줄지 않고, 그리는 시간만 줍니다.
- * 백엔드에 쪽이 붙으면 이 자르기를 걷고 `brandListQuery` 에 page 를 넘기세요.
+ * ⚠️ **자르는 일은 화면이 합니다** — 목록 API 에 쪽이 없어 응답은 전부 옵니다.
+ * 백엔드에 쪽이 붙으면 자르기를 걷고 `brandListQuery` 에 page 를 넘기세요.
  */
 const PAGE_SIZE = 30
 
 /**
- * 브랜드 (와이어프레임 A34 — 상단 메뉴 [브랜드] 목적지)
- *
- * 어두운 방 · 유리판 구성 — docs/어두운-방-유리판.md *
- * 검색어 · 정렬 · 쪽 번호를 URL 쿼리에 둡니다. 새로고침 · 뒤로가기 · 링크 공유가
- * 같은 결과를 보여주게 하려는 것입니다.
+ * 브랜드 (A34 — 상단 메뉴 [브랜드] 목적지). 검색어 · 정렬 · 쪽 번호는 URL 쿼리에
+ * 둡니다. 어두운 방 · 유리판 구성 — docs/어두운-방-유리판.md
  */
 export default function BrandListPage() {
   const [searchParams, setSearchParams] = useSearchParams()

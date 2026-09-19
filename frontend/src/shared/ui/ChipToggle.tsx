@@ -28,11 +28,9 @@ type ChipToggleProps<T extends string> = {
 )
 
 /**
- * 칩 토글 (와이어프레임 A11 진열대 분류 · 계절 등록, A13 분류 변경, A15)
- *
- * SegmentedFilter 와 달리 칩이 낱개로 떨어져 있고, 여러 개를 고를 수 있습니다.
- * - 진열대 분류(SHF-01)는 하나만 — "분류는 필수. 선택하지 않으면 저장하지 않는다"
- * - 계절(DTL-16 · DTL-24)은 여러 개 — "기존에 선택한 계절을 추가하거나 해제"
+ * 칩 토글 (A11 진열대 분류 · 계절 등록, A13 분류 변경, A15). SegmentedFilter 와
+ * 달리 낱개로 떨어져 있고 여러 개를 고를 수 있습니다 — 진열대 분류는 하나만,
+ * 계절(DTL-16 · 24)은 여러 개입니다.
  */
 export function ChipToggle<T extends string>(props: ChipToggleProps<T>) {
   const { label, options, tone = 'ink', className } = props
