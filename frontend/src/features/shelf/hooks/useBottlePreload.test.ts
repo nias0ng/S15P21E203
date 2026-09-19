@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { layoutWall } from '../lib'
@@ -223,5 +223,87 @@ describe('useBottlePreload', () => {
     unmount()
     vi.runAllTimers()
     expect(started).toEqual([])
+  })
+
+  /*
+   * ───────── 첫 화면 병이 다 섰다는 신호 (2026-09-19) ─────────
+   *
+   * 잠수 커튼이 이 신호에 걷힙니다 (`ShelfWall` 이 `useDiveReady` 로 잇습니다). 여태 커튼은
+   * **목록**이 칠해지면 걷혔고, 그래서 걷고 난 뒤에 병이 한 장씩 뒤늦게 떠올랐습니다.
+   *
+   * ⚠ 이 훅이 돌려주는 값은 React 상태라 `act` 로 감싸야 읽힙니다. 위쪽 테스트들이 `act` 없이
+   *   도는 것은 DOM 속성(data-ready)만 보기 때문입니다 — 그쪽은 예열기가 직접 씁니다.
+   */
+  const firstScreenSlots = (track: HTMLElement) =>
+    [
+      ...track.querySelectorAll<HTMLImageElement>('img[fetchpriority="high"]'),
+    ].map((img) => Number(img.alt))
+
+  const allFirstReady = (track: HTMLElement) =>
+    firstScreenSlots(track).every((slot) =>
+      boxOf(track, slot)?.hasAttribute('data-ready'),
+    )
+
+  /** 지금 풀리기를 기다리는 것을 전부 끝냅니다 */
+  const finishAll = async () => {
+    for (const [slot, done] of finish) {
+      finish.delete(slot)
+      done(true)
+    }
+    await flush()
+  }
+
+  it('첫 화면 병이 다 드러나야 알린다 — 나머지 병은 안 기다린다', async () => {
+    const track = buildTrack()
+    const { result } = preload(track)
+    expect(firstScreenSlots(track)).toHaveLength(6)
+
+    await act(async () => {
+      vi.runAllTimers()
+    })
+    expect(result.current).toBe(false)
+
+    /*
+      라운드마다 (다 섰는가 · 알렸는가)를 적어 두고 끝나고 한꺼번에 봅니다 — 루프 안에서
+      조건을 걸고 expect 하면 조건이 한 번도 안 맞았을 때 아무것도 안 본 채로 통과합니다.
+    */
+    const rounds: { stood: boolean; told: boolean }[] = []
+    for (let count = 0; count < 30 && !allFirstReady(track); count += 1) {
+      await act(finishAll)
+      rounds.push({ stood: allFirstReady(track), told: result.current })
+    }
+    // 다 서기 전에 알린 라운드가 하나도 없습니다
+    expect(rounds.filter((round) => !round.stood && round.told)).toEqual([])
+    expect(rounds.length).toBeGreaterThan(1)
+
+    expect(allFirstReady(track)).toBe(true)
+    expect(result.current).toBe(true)
+    // 첫 화면 밖 병은 아직 안 드러났는데도 알렸습니다 — 그것까지 기다리면 커튼이 상한까지 섭니다
+    expect(
+      track.querySelectorAll('[data-photo]:not([data-ready])').length,
+    ).toBeGreaterThan(0)
+  })
+
+  it('첫 화면 사진이 이미 다 받아져 있으면 그 자리에서 알린다', async () => {
+    const track = buildTrack()
+    // 10분 안에 다시 들어온 경우입니다 — 풀 것이 없어 한가해지기를 기다릴 까닭도 없습니다
+    for (const slot of firstScreenSlots(track)) {
+      const img = track.querySelector<HTMLImageElement>(`img[alt="${slot}"]`)
+      if (!img) continue
+      Object.defineProperty(img, 'complete', { value: true })
+      Object.defineProperty(img, 'naturalWidth', { value: 400 })
+    }
+    const { result } = preload(track)
+    expect(result.current).toBe(true)
+    // 아직 아무것도 풀지 않았습니다
+    expect(started).toEqual([])
+  })
+
+  it('사진이 한 장도 없는 진열대는 곧바로 알린다', () => {
+    const track = buildTrack()
+    // 사진이 없는 병은 DisplayCase 가 img 를 안 그립니다 — 기다릴 것이 없습니다
+    for (const img of track.querySelectorAll('img')) img.remove()
+    const { result } = preload(track)
+    expect(result.current).toBe(true)
   })
 })

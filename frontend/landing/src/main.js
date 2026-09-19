@@ -21,6 +21,7 @@ import { createSeaMark } from './seamark.js';
 import { createStage } from './stage.js';
 import { createPhase, EASE } from './phase.js';
 import { createTravel } from './travel.js';
+import { diveNow, setDive, disposeDive, diveReport } from './dive.js';   // 잠수 — 진열대로 넘어가는 전환 (2026-09-18). 진행도는 앱 커튼이 넘긴다 (PB.dive)
 import { createMinimap } from './minimap.js';
 import { createChart } from './chart.js';
 import { areaOf, findArea } from './areas.js';
@@ -142,6 +143,8 @@ scene.add(hemiLight, dirLight);
 //   ⚠ 바뀔 때만 돈다 — applySky 가 환경맵(PMREM)을 다시 굽는 데 수십 ms 다
 const LIGHT0 = { hemiSky: hemiLight.color.clone(), hemiGround: hemiLight.groundColor.clone(), hemi: hemiLight.intensity,
                  dir: dirLight.color.clone(), dirI: dirLight.intensity };
+// 시간대 표가 정한 배경색 (잠수가 이 값에서 짙은 바다색으로 간다 — applyDiveBg)
+const _bgBase = new THREE.Color(CONFIG.color.bg);
 let _timeKey = null;
 function applyTime() {
   const k = timeKey();
@@ -156,12 +159,29 @@ function applyTime() {
     dirLight.color.copy(LIGHT0.dir); dirLight.intensity = LIGHT0.dirI;
   }
   scene.background.set(T ? T.bg : CONFIG.color.bg);
+  _bgBase.copy(scene.background);   // 잠수가 여기서부터 짙은 바다색으로 간다 (아래 applyDiveBg)
   // 글자색 변수 (index.html <style>). 낮이면 속성을 지운다 — 인라인의 예전 값이 그대로 산다
   if (T && T.ui) document.documentElement.dataset.time = T.ui;
   else delete document.documentElement.dataset.time;
   applySky();
 }
 applyTime();
+
+// ⭐ 잠수 — 배경색이 짙은 바다색으로 눕는다 (2026-09-18, dive.js).
+// ⚠⚠ `applyTime()` 은 **시간대가 바뀔 때만** 배경을 쓰므로, 잠수가 매 프레임 덮으면 끝난 뒤에 되돌릴 사람이 없다.
+//   그래서 그 표의 값을 `_bgBase` 에 챙겨 두고, 잠수 중에만 섞어 덮고 **끝나는 프레임에 한 번** 되돌린다.
+//   ⚠ 물(`uBg`) · 하늘(stage) 은 자기 update 안에서 같은 일을 한다 — 셋이 같은 `dim` 을 보므로 갈라지지 않는다
+let _bgDived = false;
+function applyDiveBg() {
+  const D = diveNow();
+  if (D) {
+    scene.background.copy(_bgBase).lerp(D.deep, D.dim);   // ⚠ `dim` 에 diveDim 이 이미 들어 있다 (dive.js)
+    _bgDived = true;
+  } else if (_bgDived) {
+    scene.background.copy(_bgBase);
+    _bgDived = false;
+  }
+}
 
 const sim = createSim(renderer);
 const water = createWater(scene, sim.texture);
@@ -1267,6 +1287,23 @@ function holdWhile(ret) {
   const done = () => { hostHold = Math.max(0, hostHold - 1); if (!hostHold) input.setHold(false); };
   ret.then(done, done);
 }
+// ───────── 잠수 (2026-09-18, dive.js) — 앱 커튼이 진행도를 넘기는 문 ─────────
+// 앱 : 헤더 '진열대' 를 누르면 커튼이 시계를 쥐고 매 프레임 `PB.dive(k)` 로 0 → 1 을 민다 (k = 1 이 화면을 다 덮은 순간).
+//   그 뒤 앱이 `/shelf` 로 옮겨 가며 엔진은 통째로 사라지므로, 엔진 쪽에서 되돌릴 일은 **취소했을 때**뿐이다.
+// ⚠ 잠수 동안 입력을 잠근다 — 방향키로 배를 몰면 카메라가 잠수 트윈과 조타를 같이 탄다.
+//   ⚠⚠ 잠금은 `hostHold` **세는 자물쇠**를 같이 쓴다 (holdWhile 과 같은 것). 직접 `input.setHold(false)` 로
+//     풀면 모달이 걸어 둔 잠금까지 같이 풀린다.
+// ⚠ 혼자 볼 때 : `PB.dive(0.6)` 으로 중간 장면을 세워 두고 `PB.dive(0)` 으로 되돌린다. `PB.diveReport()` 가 값 한 줄.
+let _diveHeld = false;
+function hostDive(k) {
+  setDive(k);
+  const on = !!diveNow();
+  if (on === _diveHeld) return;
+  _diveHeld = on;
+  if (on) { hostHold++; input.setHold(true); }
+  else { hostHold = Math.max(0, hostHold - 1); if (!hostHold) input.setHold(false); }
+}
+
 // 미니맵의 '지금 화면' 부채꼴 (배 기준 월드 x·z). 화면 테두리 16점을 부표 높이 평면에 투영하고
 //   부표 거리 페이드(38) 밖은 잘라 낸다 — 부표가 뜰 수 있는 곳이 곧 '보이는 바다' 다
 const _footPts = [];
@@ -1500,6 +1537,27 @@ function tick() {
   //   섞임(focusT)만큼 속도의 몫(후퇴 · 상승 · 화각)을 뺀다 — 배는 일반 속도로 가도 화면이 선다. 존 연출은 그대로 · 0 = v0.64.0
   const sCam = (P.focusCamStill === undefined ? 1 : P.focusCamStill) >= 0.5 ? s * (1 - EASE.inOutCubic(focusT)) : s;
   cameraPose(cl, sCam, cam.aspect, _pose);
+  // ⭐⭐ **잠수** (2026-09-18, dive.js) — 카메라가 고개를 숙이며 수면으로 다가간다.
+  //   ⚠⚠ **여기 한 곳에서만 건다.** `cameraPose()` 안에 넣으면 존 구도 카메라(`_poseZ`)와 향수 고르기 슬롯(focusCamera)도
+  //     같이 잠겨, 연출 중에 잠수를 걸면 배가 놓인 자리와 12개의 자리가 통째로 어긋난다.
+  //   ⚠ 수면(y 0)을 뚫지 않는다 — `diveEndY` 위에 서고 그 앞에 앱 커튼이 덮는다 (dive.js 머리 주석).
+  //   ⚠ 패럴랙스 축(`_pose.rgt · upv`)은 잠수 전 방향 그대로 둔다 — 1초 동안 커튼 아래에서 감지 않는 차이고,
+  //     다시 풀면 `cameraPose` 의 식을 여기에 한 번 더 적게 된다 (불변식 2).
+  {
+    const D = diveNow();
+    if (D) {
+      const d = D.cam;
+      // 시선이 물속으로 내려간다 — 내려다보는 각이 깊어진다
+      _pose.tgt.y -= (P.diveLookY === undefined ? 0 : P.diveLookY) * d;
+      // 수면 쪽으로 내려앉는다
+      _pose.pos.y += ((P.diveEndY === undefined ? 2 : P.diveEndY) - _pose.pos.y) * d;
+      // look 점 쪽으로 **수평으로만** 당긴다 (높이는 바로 위에서 이미 정했다)
+      const kIn = 1 - (1 - (P.diveDist === undefined ? 1 : P.diveDist)) * d;
+      _pose.pos.x = _pose.tgt.x + (_pose.pos.x - _pose.tgt.x) * kIn;
+      _pose.pos.z = _pose.tgt.z + (_pose.pos.z - _pose.tgt.z) * kIn;
+      _pose.fov += (P.diveFov === undefined ? 0 : P.diveFov) * d;
+    }
+  }
   // ⭐⭐ **배 등장 · 정박** (2026-09-16, `zoneBoatEnter`) — 존 연출에서 배가 화면 밖 왼쪽으로 빠졌다가 왼쪽에 정박한다.
   //   ⚠⚠ **카메라는 안 건드린다.** 처음에는 시선 목표(zoneLookX)를 밀어서 했는데 바다 · 부표 · 게이트가 통째로 흔들렸다
   //     (사용자 : *"지금 카메라가 너무 출렁이는데"*). 그래서 **배만** 카메라의 오른쪽 축(−rgt)으로 민다.
@@ -1556,7 +1614,13 @@ function tick() {
       ? clamp(Math.hypot(_shipOff.x - pX, _shipOff.z - pZ) / dt / Math.max(1e-4, groundSpeed(1)), 0, 1)
       : 0;
   }
-  const kD = _pose.kD;
+  // ⭐ 잠수는 이 값을 줄여 **원경을 가까이 당긴다** — 물이 짙은 바다색에 더 빨리 먹힌다 (dive.js · `diveFade`).
+  //   ⚠ 물의 거리 페이드 · LOD 가 전부 이 하나를 곱해 따라오므로(§23-1) 카메라와 물이 갈라지지 않는다
+  let kD = _pose.kD;
+  {
+    const D = diveNow();
+    if (D) kD *= 1 - (1 - (P.diveFade === undefined ? 1 : P.diveFade)) * D.dim;
+  }
   // ⚠⚠ **camYaw — look 점을 축으로 카메라를 옆으로 돌린다** (2026-09-06, 세일보트와 같이 들어왔다).
   //   배의 진행 방향은 로컬 −z 라 뱃머리가 화면 안쪽을 향한다. 예전 종이배는 길이축이 로컬 x
   //   였으므로 그 구도에서 **옆모습**이 보였는데, 뱃머리가 있는 배를 제대로 놓으니 같은
@@ -1642,6 +1706,8 @@ function tick() {
   // ⚠ 씬을 실제로 그리는 카메라(view)를 넘긴다 — 하늘 구가 그 카메라를 중심으로 서야 한다.
   //   항공뷰·자유 시점에서도 하늘이 따라온다
   stage.update(view);
+  // ⭐ 배경색 — 잠수 중에는 짙은 바다색으로 (applyTime 바로 뒤 · 위 applyDiveBg 주석)
+  applyDiveBg();
   // ⚠ 카메라에서 좌표를 파생시키므로 **본 카메라(cam)** 를 넘긴다 — view(항공뷰·자유시점)가
   //   아니다. 그래야 개발 시점으로 옮겨도 글자가 제자리에 서서 검증이 된다 (§11)
   // ⭐ 천장 — 우측 정보 블록 아래끝 + 18px (2026-09-11 오후, titleCeil). title.js 는 DOM 을 모르므로 여기서 재서 넘긴다
@@ -2043,7 +2109,7 @@ const onKeyExit = (e) => {
 };
 window.addEventListener('keydown', onKeyExit);
 
-window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, goRegion, startTravel, startFocus, setHost, boot: bootNow, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, pod, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
+window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, dive: hostDive, diveReport, goRegion, startTravel, startFocus, setHost, boot: bootNow, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, pod, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
   // ⭐ 반응형 검산 (2026-09-11 오후) — 제품 UI 상자들의 자리 · 서로 겹침 · 화면 밖 · 스크롤 · 수면 타이포 꼭대기와 정보 블록의 간격.
   //   ⚠ 창 크기를 바꾼 뒤에는 **스크린샷 한 장으로 먼저 칠하고** 부른다 (숨긴 패널에서는 ResizeObserver 가 안 불린다 — 교훈 ⑧)
   layout: () => layoutReport(),
@@ -2119,6 +2185,8 @@ function disposeAll() {
   title.dispose();
   gate.dispose();
   travel.dispose();    // ⚠ 안개를 걷어 둔다 — HMR 뒤에 흰 화면이 남으면 "바다가 날아갔다" 로 오진한다
+  hostDive(0);         // ⚠ 잠수를 풀어 둔다 — `<html data-dive>` 가 남으면 엔진 UI 가 영영 안 보인다 (불변식 10)
+  disposeDive();
   chart.dispose();     // ⚠ 미니맵보다 먼저 — 안개 격자를 그쪽에서 읽는다
   minimap.dispose();   // (향수 고르기 라벨은 ui.dispose() 가 거둔다)
   window.removeEventListener('keydown', onKeyExit);

@@ -1,11 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink, useNavigate } from 'react-router'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router'
 
 import { logout } from '@/features/auth'
 import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { useAuthStore } from '@/shared/store/authStore'
+import { useDiveStore } from '@/shared/store/diveStore'
 
 /**
  * 헤더가 앉는 바탕 — 어느 화면 위인지는 껍데기(RootLayout)가 정합니다.
@@ -152,11 +153,41 @@ export function GlobalHeader({ tone = 'surface' }: { tone?: HeaderTone }) {
 
 /* ------------------------------------------------------------------ */
 
-/** 로고 — 이름 한 줄 */
+/**
+ * 로고 — 이름 한 줄.
+ *
+ * ⭐ **진열대에서 누르면 떠오릅니다** (2026-09-19). 진열대에서 메인으로 가는 길이 여기
+ * 하나뿐이라 돌아오는 연출의 입구도 여기입니다.
+ * ⚠ 로그아웃의 `navigate(ROUTES.HOME)`(아래 계정 메뉴)은 이 길이 아닙니다 — 로그인이
+ *   풀리는데 바다로 떠오르면 무슨 일이 일어난 건지 흐려집니다.
+ */
 function BrandMark({ ink }: { ink: Ink }) {
+  const onShelf = useLocation().pathname === ROUTES.MY_SHELF
+  const startDive = useDiveStore((state) => state.start)
   return (
     <Link
       to={ROUTES.HOME}
+      onClick={
+        /*
+          진열대에서 누를 때만 가로챕니다 — 커튼이 위에서 덮은 **뒤에** 커튼이 직접 옮겨 갑니다.
+          ⚠ 새 탭 · 새 창으로 여는 누름은 건드리지 않습니다 (나가는 길과 같은 규율).
+          ⚠ 뒤로 가기(브라우저)는 못 가로챕니다 — 그때는 평소대로 넘어갑니다.
+        */
+        onShelf
+          ? (event) => {
+              if (
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+              ) {
+                return
+              }
+              event.preventDefault()
+              startDive(ROUTES.HOME, 'rise')
+            }
+          : undefined
+      }
       className={cn('block shrink-0', ink.text, FOCUS, ink.ring)}
     >
       <span className="block font-serif text-[26px] leading-none font-semibold tracking-[0.12em]">
@@ -171,7 +202,8 @@ const NAV_ITEMS = [
   { to: ROUTES.BRANDS, label: '브랜드' },
   { to: ROUTES.NOTES, label: '노트' },
   // 진열대는 로그인해야 보입니다 (와이어프레임: 비로그인 시 좌측 메뉴에서 제거)
-  { to: ROUTES.MY_SHELF, label: '진열대', requiresAuth: true },
+  // ⭐ 메인(3D 향 지도)에서 누르면 곧바로 옮겨 가지 않고 **잠수 연출**로 넘어갑니다 (아래 dive)
+  { to: ROUTES.MY_SHELF, label: '진열대', requiresAuth: true, dive: true },
 ]
 
 const COMMUNITY_ITEMS = [
@@ -181,6 +213,35 @@ const COMMUNITY_ITEMS = [
 
 function PrimaryNav({ isLoggedIn, ink }: { isLoggedIn: boolean; ink: Ink }) {
   const items = NAV_ITEMS.filter((item) => isLoggedIn || !item.requiresAuth)
+  const onMain = useLocation().pathname === ROUTES.HOME
+  const queryClient = useQueryClient()
+  const startDive = useDiveStore((state) => state.start)
+
+  /*
+   * 진열대를 미리 받아 둡니다 — 마우스를 올리거나 탭으로 옮겨 온 순간입니다.
+   *
+   * 잠수는 1초에 끝나는데 진열대는 청크(약 48KB)와 목록 API 왕복이 남아 있습니다. 미리
+   * 안 받으면 커튼이 덮은 뒤 그 둘을 기다리느라 남색 화면이 상한(1.5초)까지 서 있습니다.
+   * 마우스를 올린 순간이면 대개 누르기 전에 둘 다 끝납니다.
+   *
+   * ⚠ `lazy()` 와 **같은 모듈 캐시**라 미리 부르면 라우터가 기다릴 것이 없습니다.
+   * ⚠ 목록은 `staleTime` 안이면 다시 안 받습니다 — 여러 번 올려도 요청이 쌓이지 않습니다.
+   */
+  const warmShelf = () => {
+    void import('@/pages/MyShelfPage')
+    /*
+      ⚠⚠ **진열대 도메인은 `import()` 로 부릅니다 — 위에서 정적으로 import 하면 안 됩니다.**
+      헤더는 첫 번들(main)에 들어 있어서, 정적으로 쓰면 진열대의 컴포넌트 · 쿼리 · 전용
+      스타일시트(`shelf-display.css` — 도메인 입구가 같이 싣습니다)가 **메인 화면 첫 진입에
+      통째로 딸려 옵니다.**
+      실측 (2026-09-18 빌드) : 정적 import 면 main **305.7KB** · main.css **93.9KB** 이고 진열대
+      청크가 아예 없습니다. `import()` 면 main **266.2KB** · main.css **70.8KB** 이고 진열대가
+      제 청크로 떨어집니다 (shelf 51.2KB + shelf.css 23.1KB — 메인 첫 진입은 그것을 안 받습니다).
+    */
+    void import('@/features/shelf').then(({ shelfItemsQuery }) =>
+      queryClient.prefetchQuery(shelfItemsQuery()),
+    )
+  }
 
   return (
     // 가운데 칸의 정중앙. 항목 사이 60px 은 시안(1671 폭에서 62px)을 1920 규격에
@@ -189,7 +250,36 @@ function PrimaryNav({ isLoggedIn, ink }: { isLoggedIn: boolean; ink: Ink }) {
       <ul className="text-body flex items-center gap-15">
         {items.map((item) => (
           <li key={item.to}>
-            <NavLink to={item.to} className={navLinkClass(ink)}>
+            <NavLink
+              to={item.to}
+              className={navLinkClass(ink)}
+              onPointerEnter={item.dive ? warmShelf : undefined}
+              onFocus={item.dive ? warmShelf : undefined}
+              onClick={
+                /*
+                  메인에서 진열대로 갈 때만 가로챕니다 — 3D 카메라가 수면으로 내려가고
+                  커튼이 차오른 **뒤에** 커튼이 직접 옮겨 갑니다 (shared/ui/DiveCurtain).
+                  ⚠ 새 탭 · 새 창으로 여는 누름(⌘ · Ctrl · Shift · Alt)은 건드리지 않습니다 —
+                    가로채면 링크가 링크이기를 그만둡니다.
+                  ⚠ 메인이 아니면 평소의 NavLink 입니다. 잠수는 바다에서 시작해야 뜻이 있습니다.
+                */
+                item.dive && onMain
+                  ? (event) => {
+                      if (
+                        event.metaKey ||
+                        event.ctrlKey ||
+                        event.shiftKey ||
+                        event.altKey
+                      ) {
+                        return
+                      }
+                      event.preventDefault()
+                      warmShelf()
+                      startDive(item.to)
+                    }
+                  : undefined
+              }
+            >
               {item.label}
             </NavLink>
           </li>
