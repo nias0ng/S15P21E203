@@ -39,7 +39,6 @@ export {
 export {
   FREE_SORTS,
   POST_CATEGORIES,
-  POST_CATEGORY_FILTERS,
   postToBoardItem,
   REVIEW_SORTS,
   reviewToBoardItem,

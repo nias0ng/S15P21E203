@@ -21,3 +21,14 @@ export const PANEL =
  * 유리로 보이므로, 어두운 방을 켠 화면(라우트의 `handle.night`)에서만 씁니다.
  */
 export const GLASS_PANEL = 'scent-glass rounded-[36px] p-7.5 pt-6.25'
+
+/**
+ * 좁은 곁판. 같은 유리인데 **모서리와 여백만 작습니다.**
+ *
+ * 커뮤니티 게시판 오른쪽의 `지금 많이 언급되는 향수`(255px)가 씁니다. 본문 판의
+ * 36px 을 그대로 주면 폭이 판의 6분의 1이라 네 귀퉁이가 서로 닿을 만큼 둥글어
+ * 판이 아니라 알약으로 보입니다 — 모달을 24px 로 내린 것과 같은 이유이고
+ * (styles/scent-display.css), 폭이 모달의 절반이라 한 단 더 내립니다.
+ * 여백도 30px 이면 255px 중 60px 이 숨이라 목록이 들어설 자리가 없습니다.
+ */
+export const GLASS_PANEL_ASIDE = 'scent-glass rounded-[20px] p-5'

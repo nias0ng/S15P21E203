@@ -1,9 +1,14 @@
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 
 import { isApiError } from '@/shared/api/http'
 import { ROUTES } from '@/shared/config/routes'
+import {
+  RETURN_PATH_PARAM,
+  safeReturnPath,
+  withReturnPath,
+} from '@/shared/lib/returnPath'
 import { useAuthStore } from '@/shared/store/authStore'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
@@ -12,9 +17,14 @@ import { getMe, login, toAuthUser } from '../api'
 
 import { AuthCard } from './AuthCard'
 
-/** 이 화면으로 보낼 때 실어 오는 값 (보호 라우트 · 회원가입 완료 · 비밀번호 변경) */
+/**
+ * 이 화면으로 보낼 때 실어 오는 안내 (회원가입 완료 · 비밀번호 변경).
+ *
+ * **돌아갈 경로는 여기 없습니다.** 그건 주소의 `?redirectTo=` 로 옵니다 —
+ * 예전에는 `from` 을 여기서 읽었는데 그 값을 채우는 곳이 하나도 없어서, 로그인하면
+ * 늘 홈으로 갔습니다(`shared/lib/returnPath`).
+ */
 type LoginLocationState = {
-  from?: string
   signedUp?: boolean
   passwordChanged?: boolean
 } | null
@@ -43,6 +53,7 @@ type LoginFormProps = {
 export function LoginForm({ onLoggedIn }: LoginFormProps = {}) {
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const setAuth = useAuthStore((state) => state.setAuth)
 
   const [email, setEmail] = useState('')
@@ -51,12 +62,15 @@ export function LoginForm({ onLoggedIn }: LoginFormProps = {}) {
   const state = location.state as LoginLocationState
 
   /**
-   * 로그인하러 오기 전에 보던 화면.
+   * 로그인하러 오기 전에 보던 화면. 주소의 `?redirectTo=` 를 읽습니다.
    *
-   * 아직 보호 라우트가 없어 지금은 거의 항상 비어 있습니다. 로그인이 필요한 화면을
-   * 막기 시작하면 그 화면이 `state.from` 을 실어 보내고, 여기서 그대로 돌려보냅니다.
+   * 이 값은 `onLoggedIn` 을 안 넘겼을 때만 씁니다 — 지금 이 폼을 쓰는 곳은
+   * `pages/LoginPage` 하나이고 거기는 늘 넘깁니다(첫 로그인이면 취향 테스트로
+   * 보내야 해서). 그래도 같은 자리를 읽어 둡니다. 두 갈래가 서로 다른 곳을 보면
+   * 어느 날 한쪽만 고쳐지는데, 이 버그가 정확히 그렇게 생겼습니다.
    */
-  const from = state?.from ?? ROUTES.HOME
+  const returnTo = safeReturnPath(searchParams.get(RETURN_PATH_PARAM))
+  const from = returnTo ?? ROUTES.HOME
 
   /** 여기로 보낸 쪽이 남긴 안내. 둘이 겹칠 일은 없어 먼저 맞는 것을 씁니다 */
   const notice =
@@ -138,7 +152,14 @@ export function LoginForm({ onLoggedIn }: LoginFormProps = {}) {
       </form>
 
       <div className="text-caption flex items-center justify-between">
-        <Link to={ROUTES.SIGNUP} className="text-ink-muted hover:text-ink">
+        {/*
+          돌아갈 경로를 회원가입까지 들고 갑니다. 안 들려 보내면 "로그인하려다
+          계정이 없어서 가입" 한 사람만 원래 자리를 잃습니다.
+        */}
+        <Link
+          to={withReturnPath(ROUTES.SIGNUP, returnTo)}
+          className="text-ink-muted hover:text-ink"
+        >
           회원가입 →
         </Link>
         {/* 와이어프레임 A31: "A28 진입점 필요" — 여기가 그 진입점입니다 */}

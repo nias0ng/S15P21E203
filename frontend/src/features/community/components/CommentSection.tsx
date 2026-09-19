@@ -1,9 +1,11 @@
 import { useState } from 'react'
 
+import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { Pagination } from '@/shared/ui/Pagination'
+import { GLASS_PANEL } from '@/shared/ui/panel'
 import { Textarea } from '@/shared/ui/Textarea'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
@@ -46,11 +48,16 @@ export function CommentSection({
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null)
 
   /*
-   * 댓글 묶음은 판에 올리지 않습니다 — 흰 칸이 입력창 하나뿐이어야 "쓰는 자리" 가
-   * 한눈에 보입니다. 위쪽 게시글 본문은 반대로 판에 올립니다(읽는 덩어리는 경계 필요).
+   * 댓글 묶음도 유리판에 올립니다.
+   *
+   * 예전에는 반대였습니다 — 밝은 화면에서는 종이 위에 흰 칸이 입력창 하나뿐이어야
+   * "쓰는 자리" 가 한눈에 보였습니다. 어두운 방에서는 그 논리가 뒤집힙니다: 판이
+   * 없으면 댓글이 어둠 위에 맨몸으로 떠서, 바로 위 본문 판과 층이 어긋납니다.
+   * 입력칸은 판 위에서 **파인 자리**(검정 0.22)로 앉으므로 여전히 판과 구분됩니다
+   * (styles/scent-display.css 의 `--color-surface-card`).
    */
   return (
-    <section className="space-y-3.75">
+    <section className={cn(GLASS_PANEL, 'space-y-3.75')}>
       <h2 className="text-ink text-title font-serif font-bold">
         댓글 {totalElements}
       </h2>

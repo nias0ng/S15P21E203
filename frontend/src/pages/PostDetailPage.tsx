@@ -31,6 +31,7 @@ import { EmptyState } from '@/shared/ui/EmptyState'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { PageFallback } from '@/shared/ui/PageFallback'
+import { GLASS_PANEL } from '@/shared/ui/panel'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 import { Toast } from '@/shared/ui/Toast'
 
@@ -52,6 +53,11 @@ const COMMENT_PAGE_SIZE = 20
  * 폭은 라우트의 text(800px)입니다. 이 화면은 목록이 아니라 **읽는 화면**이라 본문이
  * wide(1440px)를 꽉 채우면 한 줄이 100자를 넘어가고, 줄을 바꿀 때마다 눈이 왼쪽 끝을
  * 다시 찾아야 합니다.
+ *
+ * 게시판(A22b)에서 한 번에 넘어오는 화면이라 **어두운 방 + 유리판**을 그대로 씁니다
+ * (라우트의 `handle.night`). 판 구성은 향수 상세(A10)와 같습니다 — 머리 구역(분류 ·
+ * 제목 · 작성자)은 판 없이 어둠에 바로 놓고, 읽을 덩어리인 본문과 댓글이 각자 판을
+ * 답니다. 머리까지 판에 올리면 판이 세 장 쌓여 어디부터가 글인지가 흐려집니다.
  */
 export default function PostDetailPage() {
   const { postId } = useParams<{ postId: string }>()
@@ -139,15 +145,18 @@ export default function PostDetailPage() {
   const data = post.data
 
   return (
-    // 폭은 라우트의 TEXT(800) 가 정합니다 — 글 읽는 화면 공통 폭
-    <div className="space-y-7.5">
+    // 폭은 라우트의 TEXT_NIGHT(800) 가 정합니다 — 글 읽는 화면 공통 폭
+    <div className="space-y-6.25">
       <LinkButton to={ROUTES.COMMUNITY_FREE} variant="outline" size="sm">
         ← 자유 게시판
       </LinkButton>
 
-      <article className="space-y-6.25">
-        {/* 제목 묶음. 아래 선으로 본문과 나눕니다 — hr 을 따로 두면 간격이 두 번 생깁니다 */}
-        <header className="border-line space-y-2.5 border-b pb-6.25">
+      <article className="space-y-3.75">
+        {/*
+          제목 묶음. 어둠에 바로 놓입니다 — 아래 본문 판의 위 테두리가 이미
+          "여기서부터 글" 을 긋고 있어, 밑줄(border-b)까지 두면 경계가 두 겹입니다.
+        */}
+        <header className="space-y-2.5">
           {/* 자유 글은 분류가 필수라 늘 있습니다 */}
           <Badge tone="neutral">
             {
@@ -188,76 +197,92 @@ export default function PostDetailPage() {
           </div>
         </header>
 
-        <p className="text-ink text-body whitespace-pre-wrap">{data.content}</p>
+        {/*
+          본문 판. 글 · 첨부 이미지 · 컬렉션 · 연결 향수가 한 판에 담깁니다 —
+          넷은 "이 글이 무엇을 담고 있는가" 한 덩이라, 판을 따로 깔면 첨부가 본문과
+          같은 글의 일부라는 것이 안 읽힙니다. 판 안쪽은 색 토큰이 다시 정의됩니다
+          (styles/scent-display.css 의 .scent-glass).
+        */}
+        <div className={cn(GLASS_PANEL, 'space-y-6.25')}>
+          {/*
+            본문(13)이 아니라 `text-heading`(16)입니다. 이 판은 **읽으라고** 깐
+            판인데, 짧은 글이면 13px 한 줄이 넓은 판 위에 떠서 판이 띠처럼 얇게
+            앉습니다 — 노트 상세(A36)의 설명 판을 16 으로 올린 것과 같은 까닭이고,
+            폭이 text(800)라 16px 한글도 한 줄 40자를 넘지 않습니다.
+            줄 간격은 토큰값(1.4)이 16 짜리 한글에 빡빡해 `leading-relaxed` 로
+            벌립니다.
+          */}
+          <p className="text-ink text-heading leading-relaxed whitespace-pre-wrap">
+            {data.content}
+          </p>
 
-        {/* 첨부 이미지가 없으면 영역 자체를 그리지 않습니다 */}
-        {data.imageUrls.length > 0 && (
-          <section className="space-y-2.5">
-            <h2 className="text-ink-muted text-caption font-medium">
-              첨부 이미지
-            </h2>
-            <ul className="flex flex-wrap gap-2.5">
-              {data.imageUrls.map((url) => (
-                <li key={url}>
-                  <Thumbnail src={url} className="h-32.5" />
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+          {/* 첨부 이미지가 없으면 영역 자체를 그리지 않습니다 */}
+          {data.imageUrls.length > 0 && (
+            <section className="space-y-2.5">
+              <h2 className="text-ink-muted text-caption font-medium">
+                첨부 이미지
+              </h2>
+              <ul className="flex flex-wrap gap-2.5">
+                {data.imageUrls.map((url) => (
+                  <li key={url}>
+                    <Thumbnail src={url} className="h-32.5" />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
-        {/* 컬렉션 공유 글에만 붙습니다 */}
-        {data.collectionTitle && (
-          <section className="space-y-2.5">
-            <h2 className="text-ink-muted text-caption font-medium">
-              첨부 컬렉션
-            </h2>
-            <p className="border-line-soft bg-surface-sunken text-ink text-body rounded-card inline-flex w-fit max-w-full border px-2.5 py-2.5">
-              {data.collectionTitle}
-            </p>
-          </section>
-        )}
+          {/* 컬렉션 공유 글에만 붙습니다 */}
+          {data.collectionTitle && (
+            <section className="space-y-2.5">
+              <h2 className="text-ink-muted text-caption font-medium">
+                첨부 컬렉션
+              </h2>
+              <p className="border-line-soft bg-surface-sunken text-ink text-body rounded-card inline-flex w-fit max-w-full border px-2.5 py-2.5">
+                {data.collectionTitle}
+              </p>
+            </section>
+          )}
 
-        {/* 연결 향수가 없으면 영역 자체를 그리지 않습니다 */}
-        {data.relatedPerfumes.length > 0 && (
-          <section className="space-y-2.5">
-            <h2 className="text-ink-muted text-caption font-medium">
-              연결된 향수
-            </h2>
-            <ul className="space-y-2.5">
-              {data.relatedPerfumes.map((perfume) => (
-                <li key={perfume.perfumeId}>
-                  <Link
-                    to={toPerfumeDetail(perfume.perfumeId)}
-                    state={perfumeViewState('COMMUNITY')}
-                    className={cn(
-                      'border-line-soft bg-surface-sunken hover:border-accent rounded-card',
-                      'inline-flex w-fit max-w-full items-baseline gap-2.5 border px-2.5 py-2.5',
-                      'transition-colors duration-120 ease-out',
-                      'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
-                    )}
-                  >
-                    <span className="text-ink text-body font-medium">
-                      {perfume.name}
-                    </span>
-                    {/* 브랜드가 없는 향수가 있습니다 */}
-                    {perfume.brand && (
-                      <span className="text-ink-muted text-caption">
-                        {perfume.brand}
+          {/* 연결 향수가 없으면 영역 자체를 그리지 않습니다 */}
+          {data.relatedPerfumes.length > 0 && (
+            <section className="space-y-2.5">
+              <h2 className="text-ink-muted text-caption font-medium">
+                연결된 향수
+              </h2>
+              <ul className="space-y-2.5">
+                {data.relatedPerfumes.map((perfume) => (
+                  <li key={perfume.perfumeId}>
+                    <Link
+                      to={toPerfumeDetail(perfume.perfumeId)}
+                      state={perfumeViewState('COMMUNITY')}
+                      className={cn(
+                        'border-line-soft bg-surface-sunken hover:border-accent rounded-card',
+                        'inline-flex w-fit max-w-full items-baseline gap-2.5 border px-2.5 py-2.5',
+                        'transition-colors duration-120 ease-out',
+                        'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
+                      )}
+                    >
+                      <span className="text-ink text-body font-medium">
+                        {perfume.name}
                       </span>
-                    )}
-                    <span className="text-ink-muted text-caption ml-auto">
-                      향수 상세 →
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+                      {/* 브랜드가 없는 향수가 있습니다 */}
+                      {perfume.brand && (
+                        <span className="text-ink-muted text-caption">
+                          {perfume.brand}
+                        </span>
+                      )}
+                      <span className="text-ink-muted text-caption ml-auto">
+                        향수 상세 →
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
       </article>
-
-      <hr className="border-line" />
 
       <CommentSection
         comments={comments.data?.comments ?? []}

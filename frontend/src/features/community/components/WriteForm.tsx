@@ -1,5 +1,7 @@
+import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { LinkButton } from '@/shared/ui/LinkButton'
+import { GLASS_PANEL } from '@/shared/ui/panel'
 
 type Props = {
   title: string
@@ -28,6 +30,12 @@ type Props = {
  * 예전에는 "분류는 필수입니다..." 가 [포스팅] 단추 **아래**에 있었습니다. 규칙을
  * 다 쓰고 난 뒤에 읽게 되는 자리라, 필수 항목을 빠뜨린 사람은 단추가 왜 꺼져 있는지
  * 모른 채 화면을 뒤지게 됩니다.
+ *
+ * ── 어두운 방 위의 유리판 ─────────────────────────────────
+ * 게시판(A22a · A22b)에서 [글쓰기] 한 번으로 오는 화면이라 같은 어둠을 씁니다
+ * (라우트의 `handle.night`). **제목 묶음은 어둠에 바로, 입력 항목은 판 위에** —
+ * 글 상세(A23)의 머리 구역과 본문 판이 나뉘는 자리와 같습니다. 입력칸은 판 위에서
+ * 파인 자리(검정 0.22)로 앉아 판과 구분됩니다(styles/scent-display.css).
  */
 export function WriteForm({
   title,
@@ -39,15 +47,15 @@ export function WriteForm({
   children,
 }: Props) {
   return (
-    // 폭은 글쓰기 화면의 라우트(TEXT, 800)가 정합니다 — 글 읽는 화면과 같은 폭
-    <div className="space-y-7.5">
+    // 폭은 글쓰기 화면의 라우트(TEXT_NIGHT, 800)가 정합니다 — 글 읽는 화면과 같은 폭
+    <div className="space-y-6.25">
       <header className="space-y-2.5">
         <h1 className="text-ink text-display font-serif font-bold">{title}</h1>
         <p className="text-ink-muted text-body">{description}</p>
       </header>
 
       <form
-        className="space-y-6.25"
+        className={cn(GLASS_PANEL, 'space-y-6.25')}
         onSubmit={(event) => {
           event.preventDefault()
           onSubmit()

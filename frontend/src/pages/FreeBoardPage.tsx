@@ -7,7 +7,7 @@ import {
   communityKeys,
   FREE_SORTS,
   likePost,
-  POST_CATEGORY_FILTERS,
+  POST_CATEGORIES,
   PostList,
   postListQuery,
   postToBoardItem,
@@ -18,11 +18,13 @@ import {
   type PostSort,
 } from '@/features/community'
 import { ROUTES } from '@/shared/config/routes'
+import { cn } from '@/shared/lib/cn'
 import { useIsLoggedIn } from '@/shared/store/authStore'
 import { AuthLinkButton } from '@/shared/ui/AuthLinkButton'
-import { ChipToggle } from '@/shared/ui/ChipToggle'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { Pagination } from '@/shared/ui/Pagination'
+import { GLASS_PANEL } from '@/shared/ui/panel'
+import { PillFilter } from '@/shared/ui/PillFilter'
 
 type CategoryFilter = PostCategory | 'ALL'
 
@@ -38,6 +40,9 @@ const PAGE_SIZE = 20
  * 화면에서 걸렀는데, 그러면 그 페이지 안에서만 걸러져 2쪽에 있던 잡담 글이
  * 사라집니다. 셋 다 URL 쿼리에 두어 새로고침 · 뒤로가기 · 링크 공유가 같은 결과를
  * 보여줍니다.
+ *
+ * 생김새는 후기 게시판(A22a)과 한 벌이고, 그 한 벌은 향수 목록(A33) · 브랜드(A34) ·
+ * 노트(A35)의 **어두운 방 · 알약 필터 · 유리판 위 목록**을 그대로 씁니다.
  */
 export default function FreeBoardPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -56,6 +61,22 @@ export default function FreeBoardPage() {
 
   const posts = useQuery(postListQuery(listParams))
   const trending = useQuery(trendingPerfumesQuery())
+
+  /*
+    판 제목에 지금 보고 있는 분류를 적습니다. 알약에서 '전체' 를 없앤 대신
+    (아래 주석) 무엇으로 걸러진 목록인지는 제목이 말해 줍니다.
+  */
+  const categoryLabel =
+    category === 'ALL'
+      ? undefined
+      : POST_CATEGORIES.find((entry) => entry.value === category)?.label
+
+  /*
+    곁판을 그릴지. 언급된 향수가 하나도 없으면 `TrendingPerfumes` 가 아무것도
+    그리지 않으므로 칸도 같이 접습니다(아래 grid 주석).
+  */
+  const showTrending =
+    trending.isPending || (trending.data?.perfumes.length ?? 0) > 0
 
   const queryClient = useQueryClient()
   const isLoggedIn = useIsLoggedIn()
@@ -132,61 +153,100 @@ export default function FreeBoardPage() {
         }
       />
 
-      <div className="grid gap-6.25 lg:grid-cols-[1fr_255px]">
-        <div className="min-w-0 space-y-6.25">
+      {/*
+        곁판이 없으면 **한 칸으로 폅니다.** 두 칸으로 고정해 두면 언급된 향수가 없는
+        동안 오른쪽 255px 이 빈 채로 남아, 유리판이 화면 오른쪽 끝에 못 닿고 잘린
+        것처럼 보입니다. 불러오는 중에는 칸을 비워 둡니다 — 대개는 값이 오므로,
+        먼저 폈다가 좁히면 목록 전체가 한 번 출렁입니다.
+      */}
+      <div
+        className={cn(
+          'grid gap-6.25',
+          showTrending && 'lg:grid-cols-[1fr_255px]',
+        )}
+      >
+        <div className="min-w-0 space-y-3.75">
           {/*
-            정렬과 분류를 두 줄로 둡니다. 자유 게시판은 칩이 여덟 개(4+4)라 한 줄에
-            넣으면 좁은 화면의 목록 폭(1024 에서 약 660px)을 넘어 줄바꿈이 제멋대로 일어납니다.
+            정렬과 분류를 두 줄로 둡니다. 한 줄에 넣으면 좁은 화면의 목록 폭
+            (1024 에서 약 660px)을 넘어 줄바꿈이 제멋대로 일어납니다.
             두 줄 사이는 gap-2.5 로 붙여서 한 덩어리로 읽히게 합니다.
+
+            분류에서 **'전체' 알약을 없앴습니다.** 켜진 것을 다시 누르면 꺼지고
+            전체로 돌아갑니다 — 노트 목록(A35)의 대분류 알약과 같은 규칙입니다.
+            정렬은 반대로 `required` 라 안 꺼집니다. 꺼지면 줄 세울 기준이 없어지는데,
+            "거르지 않음" 은 멀쩡한 상태라 둘을 같게 둘 수 없습니다.
           */}
           <div
             role="group"
             aria-label="글 거르기"
             className="flex flex-col gap-2.5"
           >
-            <ChipToggle
+            <PillFilter
               label="정렬"
               options={FREE_SORTS}
               value={sort}
               onChange={(next) => updateParams({ sort: next ?? 'RECENT' })}
+              required
+              className="flex-wrap justify-center"
             />
-            <ChipToggle
+            <PillFilter
               label="분류"
-              options={POST_CATEGORY_FILTERS}
-              value={category}
+              options={POST_CATEGORIES}
+              value={category === 'ALL' ? null : category}
               onChange={(next) => updateParams({ category: next ?? 'ALL' })}
+              className="flex-wrap justify-center"
             />
           </div>
 
-          <PostList
-            items={(posts.data?.posts ?? []).map(postToBoardItem)}
-            isPending={posts.isPending}
-            emptyAction={
-              <AuthLinkButton
-                to={ROUTES.POST_WRITE}
-                size="sm"
-                description="글은 로그인한 뒤에 쓸 수 있습니다."
-              >
-                글쓰기
-              </AuthLinkButton>
-            }
-            onToggleLike={(item) => {
-              // 비로그인은 401 이라, 보내 보는 대신 먼저 안내합니다
-              if (!isLoggedIn) {
-                setLoginOpen(true)
-                return
-              }
-              toggleLike.mutate({ id: item.id, liked: item.liked })
-            }}
-          />
+          {/*
+            유리판. 목록과 쪽 번호가 이 판 위에 놓입니다 — 어두운 방 안의 밝은
+            표면이라 판 안쪽은 색 토큰이 다시 정의됩니다
+            (styles/scent-display.css 의 .scent-glass).
+          */}
+          <section className={GLASS_PANEL}>
+            <div className="mb-6.25 flex items-baseline gap-2.5">
+              <h2 className="text-ink font-serif text-2xl">
+                {categoryLabel ? `${categoryLabel} 글` : '전체 글'}
+              </h2>
+              {/* 불러오는 중에는 아예 적지 않습니다 — 0 이 잠깐 보였다 바뀌면 눈에 띕니다 */}
+              {!posts.isPending && !!posts.data?.totalElements && (
+                <span className="text-ink-muted text-caption">
+                  {posts.data.totalElements.toLocaleString()}개
+                </span>
+              )}
+            </div>
 
-          <Pagination
-            label="자유 게시판 페이지"
-            page={page}
-            size={PAGE_SIZE}
-            totalElements={posts.data?.totalElements ?? 0}
-            onPageChange={(next) => updateParams({ page: next })}
-          />
+            <PostList
+              items={(posts.data?.posts ?? []).map(postToBoardItem)}
+              isPending={posts.isPending}
+              emptyAction={
+                <AuthLinkButton
+                  to={ROUTES.POST_WRITE}
+                  size="sm"
+                  description="글은 로그인한 뒤에 쓸 수 있습니다."
+                >
+                  글쓰기
+                </AuthLinkButton>
+              }
+              onToggleLike={(item) => {
+                // 비로그인은 401 이라, 보내 보는 대신 먼저 안내합니다
+                if (!isLoggedIn) {
+                  setLoginOpen(true)
+                  return
+                }
+                toggleLike.mutate({ id: item.id, liked: item.liked })
+              }}
+            />
+
+            <Pagination
+              className="mt-6.25"
+              label="자유 게시판 페이지"
+              page={page}
+              size={PAGE_SIZE}
+              totalElements={posts.data?.totalElements ?? 0}
+              onPageChange={(next) => updateParams({ page: next })}
+            />
+          </section>
         </div>
 
         <TrendingPerfumes

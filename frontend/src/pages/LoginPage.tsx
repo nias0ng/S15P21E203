@@ -1,12 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useLocation, useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 
 import { LoginForm } from '@/features/auth'
 import { myTasteTestQuery } from '@/features/taste'
 import { ROUTES } from '@/shared/config/routes'
-
-/** 로그인하러 오기 전에 보던 화면. 보호 라우트가 실어 보냅니다 */
-type LoginLocationState = { from?: string } | null
+import { RETURN_PATH_PARAM, safeReturnPath } from '@/shared/lib/returnPath'
 
 /**
  * 로그인 (와이어프레임 A28 — COM-02)
@@ -19,10 +17,19 @@ type LoginLocationState = { from?: string } | null
  */
 export default function LoginPage() {
   const navigate = useNavigate()
-  const location = useLocation()
+  const [searchParams] = useSearchParams()
   const queryClient = useQueryClient()
 
-  const from = (location.state as LoginLocationState)?.from ?? ROUTES.HOME
+  /*
+    로그인하러 오기 전에 보던 화면. 주소의 `?redirectTo=` 로 옵니다
+    (`shared/ui/LoginRequiredDialog` 가 답니다).
+
+    **주소에 실어 나르는 이유:** 라우터 state 는 새로고침하면 사라집니다. 로그인
+    화면에서 비밀번호를 찾다 돌아오거나 탭을 다시 열면 돌아갈 곳을 잃습니다.
+    걸러 내는 일(바깥 주소 차단)은 `safeReturnPath` 가 합니다.
+  */
+  const from =
+    safeReturnPath(searchParams.get(RETURN_PATH_PARAM)) ?? ROUTES.HOME
 
   return (
     <div className="flex justify-center py-6.25">

@@ -59,7 +59,6 @@ export default function ReviewDetailPage() {
   return (
     <PerfumeReviewDetail
       review={data}
-      backTo={toPerfumeDetail(data.perfume.perfumeId)}
       // 같은 후기 작성 화면입니다 — 주소로 수정 모드가 켜집니다
       editTo={toReviewEdit(data.reviewId)}
       /*
