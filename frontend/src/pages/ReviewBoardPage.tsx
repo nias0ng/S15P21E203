@@ -29,14 +29,11 @@ import { PillFilter } from '@/shared/ui/PillFilter'
 const PAGE_SIZE = 10
 
 /**
- * 후기 게시판 (와이어프레임 A22a — CMT-01)
+ * 후기 게시판 (A22a — CMT-01)
  *
- * 정렬과 쪽 번호를 URL 쿼리에 둡니다. 새로고침 · 뒤로가기 · 링크 공유가 같은
- * 결과를 보여주게 하려는 것입니다. **URL 의 page 는 1부터**이고 백엔드는 0부터라
- * 여기서 한 번 바꿉니다 — 주소창에 `page=0` 이 보이면 사람이 읽기 어렵습니다.
- *
- * 줄을 누르면 후기 상세(A12)로 갑니다. 향수 상세에서 후기를 눌렀을 때와 같은
- * 화면입니다 — 게시판용 상세를 따로 두면 같은 후기가 두 주소를 갖게 됩니다.
+ * **URL 의 page 는 1부터**이고 백엔드는 0부터라 여기서 한 번 바꿉니다.
+ * 줄을 누르면 후기 상세(A12)로 갑니다 — 향수 상세에서 눌렀을 때와 같은 화면입니다
+ * (게시판용을 따로 두면 같은 후기가 두 주소를 갖습니다).
  *
  * 어두운 방 · 유리판 구성 — docs/어두운-방-유리판.md */
 export default function ReviewBoardPage() {
@@ -47,10 +44,7 @@ export default function ReviewBoardPage() {
   const reviews = useQuery(reviewBoardQuery({ sort, page, size: PAGE_SIZE }))
   const trending = useQuery(trendingPerfumesQuery())
 
-  /*
-    곁판을 그릴지. 언급된 향수가 하나도 없으면 `TrendingPerfumes` 가 아무것도
-    그리지 않으므로 칸도 같이 접습니다(아래 grid 주석).
-  */
+  /* 언급된 향수가 없으면 `TrendingPerfumes` 가 비어서 칸도 같이 접습니다 */
   const showTrending =
     trending.isPending || (trending.data?.perfumes.length ?? 0) > 0
 
@@ -60,14 +54,8 @@ export default function ReviewBoardPage() {
   const boardKey = communityKeys.reviewBoard({ sort, page, size: PAGE_SIZE })
 
   /**
-   * 좋아요 토글 (CMT-05).
-   *
-   * 응답에 `liked` 와 `likeCount` 가 함께 오므로 화면이 숫자를 직접 더하고 빼지
-   * 않습니다 — 그 사이 다른 사람이 누른 것도 같이 반영됩니다. 그래서 무효화 대신
-   * **응답 값을 그 줄에만 덮어씁니다.** 목록 전체를 다시 부르면 보고 있던 자리가
-   * 흔들리고, 정렬이 '좋아요순'이면 방금 누른 줄이 눈앞에서 이동합니다.
-   *
-   * 서버가 멱등이라(이미 누른 것에 또 눌러도 같은 결과) 따닥 누름을 막지 않습니다.
+   * 좋아요 토글 (CMT-05). 응답 값을 **그 줄에만 덮어씁니다** — 목록 전체를 다시
+   * 부르면 정렬이 '좋아요순'일 때 방금 누른 줄이 눈앞에서 이동합니다.
    */
   const toggleLike = useMutation({
     mutationFn: ({ id, liked }: { id: number; liked: boolean }) =>
@@ -120,12 +108,7 @@ export default function ReviewBoardPage() {
         }
       />
 
-      {/*
-        곁판이 없으면 **한 칸으로 폅니다.** 두 칸으로 고정해 두면 언급된 향수가 없는
-        동안 오른쪽 255px 이 빈 채로 남아, 유리판이 화면 오른쪽 끝에 못 닿고 잘린
-        것처럼 보입니다. 불러오는 중에는 칸을 비워 둡니다 — 대개는 값이 오므로,
-        먼저 폈다가 좁히면 목록 전체가 한 번 출렁입니다.
-      */}
+      {/* 곁판이 없으면 한 칸으로 폅니다. 불러오는 중에는 칸을 비워 둡니다 */}
       <div
         className={cn(
           'grid gap-6.25',
@@ -133,13 +116,7 @@ export default function ReviewBoardPage() {
         )}
       >
         <div className="min-w-0 space-y-3.75">
-          {/*
-            후기 게시판에는 분류 필터가 없습니다 — 전부 후기라서.
-
-            정렬은 **늘 하나가 켜져 있어야** 해서 `required` 입니다. 꺼지면 줄 세울
-            기준이 없어집니다 — 브랜드 목록(A34)의 정렬 알약과 같은 규칙입니다.
-            가운데로 세우는 것도 저 화면들과 같습니다(머리말도 가운데입니다).
-          */}
+          {/* 분류 필터는 없습니다(전부 후기). 정렬은 꺼지면 기준이 없어 `required` */}
           <PillFilter
             label="정렬"
             options={REVIEW_SORTS}

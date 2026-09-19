@@ -30,13 +30,10 @@ import { Skeleton } from '@/shared/ui/Skeleton'
 import { Textarea } from '@/shared/ui/Textarea'
 
 /**
- * 자유 게시글 작성 · 수정 (와이어프레임 A24b — CMT-03 · CMT-06 · CMT-16)
+ * 자유 게시글 작성 · 수정 (A24b — CMT-03 · 06 · 16)
  *
  * 분류는 필수이고, 컬렉션 첨부는 "컬렉션 공유" 를 골랐을 때만 나타납니다.
- * [포스팅] 하면 게시글 상세(A23)로 갑니다.
- *
  * **수정도 같은 화면입니다** — 주소에 글 번호가 있으면(`POST_EDIT`) 수정입니다.
- * 후기 쓰기(A24a)와 같은 방식입니다.
  */
 export default function PostWritePage() {
   const navigate = useNavigate()
@@ -60,11 +57,8 @@ export default function PostWritePage() {
   const [collectionOpen, setCollectionOpen] = useState(false)
 
   /*
-    향수 후보는 이 화면이 만듭니다 — `features/community` 는 `features/perfume` 을
-    import 할 수 없어(ESLint 레이어 규칙) 모달이 스스로 검색할 수 없습니다.
-
-    검색어를 치기 전에는 부르지 않습니다. 조건 없이 부르면 카탈로그 7,793개의 첫
-    쪽이 후보로 뜨는데, 그건 "고를 향수" 가 아니라 그냥 목록입니다.
+    향수 후보는 이 화면이 만듭니다 — 모달은 `features/perfume` 을 import 할 수
+    없습니다(ESLint). 검색어를 치기 전에는 부르지 않습니다.
   */
   const perfumeSearch = useQuery({
     ...perfumeListQuery({ keyword, size: 20 }),
@@ -93,9 +87,8 @@ export default function PostWritePage() {
   })
 
   /*
-    고칠 글이 도착하면 칸을 한 번 채웁니다. `useEffect` 가 아니라 렌더 중에 맞추는
-    이유는 한 박자 늦게 채우면 첫 프레임에 빈 칸이 보여서입니다. 채운 뒤에는 사람이
-    고친 값이 이깁니다 — 열쇠(글 번호)가 그대로면 다시 덮어쓰지 않습니다.
+    고칠 글이 도착하면 칸을 한 번 채웁니다. 렌더 중에 맞추는 이유: `useEffect` 는
+    한 박자 늦어 첫 프레임에 빈 칸이 보입니다. 채운 뒤에는 사람이 고친 값이 이깁니다.
   */
   const [filledFor, setFilledFor] = useState<number | null>(null)
   if (editing && post.data && filledFor !== editingId) {
