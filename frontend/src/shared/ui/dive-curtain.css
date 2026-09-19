@@ -330,9 +330,16 @@
  *   ⚠ 그래서 **고칠 것은 색뿐입니다.** 기하를 손대기 시작하면 저 함정들을 다시 밟습니다.
  *
  * ⭐ **색은 한 칸 얕습니다.** 나가는 길은 심해(navy)까지 내려가지만 돌아오는 길은 수면으로
- *   올라가는 길이라 그 깊이를 지날 까닭이 없습니다. `sea-shallow` 에서 `sea-deep` 까지만 씁니다.
- *   ⚠ 뒤집힌 뒤의 화면에서 **위가 밝고 아래로 갈수록 짙습니다** — 빛은 수면 쪽(위)에 있습니다.
- *     쓰기는 나가는 길과 같은 `to top` 으로 쓰고, 뒤집기가 방향을 맡습니다 (0% 가 화면 위입니다).
+ *   올라가는 길이라 그 깊이를 지날 까닭이 없습니다. `sea-deep` 에서 `sea-shallow` 까지만 씁니다.
+ *
+ * ⚠⚠⚠ **뒤집힌 판에서는 아래로 갈수록 밝아집니다.** 머리말 ②의 *"밝기는 단조로워야 한다"* 가
+ *   여기서는 이 방향입니다 — 판이 뒤집혔으니 규칙도 같이 뒤집힙니다. 기준은 화면의 위아래가
+ *   아니라 **굳은 끝에서 번지는 끝으로** 이고, 번지는 끝 너머에 밝은 진열대가 있기 때문입니다.
+ *   2026-09-19 사용자 : *"역으로 넘어갈때 밑에가 진하고 위에가 밝은데 이거 반대가 되어야함"*.
+ *   처음에는 '깊을수록 어둡다' 를 그대로 가져와 위를 밝게(sea-shallow) 뒀는데, 그러면 화면이
+ *   **밝음 → 어두움 → 밝은 진열대**가 되어 가운데에 어두운 띠가 한 줄 섭니다. 그 띠가 곧 이음매입니다.
+ *   ⭐ 덤 : 번지는 끝이 `sea-shallow` 라 진열대에 깔린 물 한 겹과 **같은 색으로** 만납니다.
+ *   쓰기는 나가는 길과 같은 `to top` 으로 쓰고, 뒤집기가 방향을 맡습니다 (0% 가 화면 위입니다).
  *
  * ⚠ 밝아지는 일은 **3D 가 맡습니다.** 걷히는 동안 엔진을 `RISE_ENGINE_FROM` 에서 0 으로 되밀어
  *   바다가 같이 떠오릅니다 (`DiveCurtain`). 그래서 나가는 길의 `--dive-rise` 겹은 여기서 끕니다 —
@@ -345,18 +352,18 @@
 .dive-curtain[data-way='rise'] .dive-curtain-water {
   background: linear-gradient(
     to top,
-    /* 뒤집히면 여기가 화면 맨 위 — 수면에 가장 가까운 물이라 가장 밝다 */
-    var(--color-sea-shallow) 0%,
-    var(--color-sea-shallow) 38%,
-    /* 다 덮은 구간(58%)의 끝. 아래로 갈수록 단조롭게 짙어진다 (머리말 ②와 같은 규칙) */
-    var(--color-sea-deep) 58%,
+    /* 뒤집히면 여기가 화면 맨 위 — 굳은 끝이라 가장 짙다 */
+    var(--color-sea-deep) 0%,
+    var(--color-sea-deep) 38%,
+    /* 다 덮은 구간(58%)의 끝. 아래로 갈수록 단조롭게 **밝아진다** (위 ⚠⚠⚠) */
+    var(--color-sea-shallow) 58%,
     /* 여기부터 알파만 내려간다 — 기울기가 꺾이지 않게 촘촘히 */
-    color-mix(in srgb, var(--color-sea-deep) 93%, transparent) 65%,
-    color-mix(in srgb, var(--color-sea-deep) 78%, transparent) 73%,
-    color-mix(in srgb, var(--color-sea-deep) 58%, transparent) 81%,
-    color-mix(in srgb, var(--color-sea-deep) 36%, transparent) 88%,
-    color-mix(in srgb, var(--color-sea-deep) 18%, transparent) 93%,
-    color-mix(in srgb, var(--color-sea-deep) 6%, transparent) 97%,
+    color-mix(in srgb, var(--color-sea-shallow) 93%, transparent) 65%,
+    color-mix(in srgb, var(--color-sea-shallow) 78%, transparent) 73%,
+    color-mix(in srgb, var(--color-sea-shallow) 58%, transparent) 81%,
+    color-mix(in srgb, var(--color-sea-shallow) 36%, transparent) 88%,
+    color-mix(in srgb, var(--color-sea-shallow) 18%, transparent) 93%,
+    color-mix(in srgb, var(--color-sea-shallow) 6%, transparent) 97%,
     transparent 100%
   );
 }
@@ -371,7 +378,7 @@
   .dive-curtain[data-way='rise'] .dive-curtain-water,
   .dive-curtain[data-way='rise'][data-stage='covered'] .dive-curtain-water,
   .dive-curtain[data-way='rise'][data-stage='lifting'] .dive-curtain-water {
-    background: var(--color-sea-shallow);
+    background: var(--color-sea-deep);
   }
   /* 뒤집을 까닭이 없습니다 — 쓸기도 자라기도 없이 그냥 옅어졌다 사라집니다 */
   .dive-curtain[data-way='rise'] {
