@@ -51,6 +51,20 @@ export function useBottlePreload(
   enabled: boolean,
 ) {
   const [preloader] = useState(createPreloader)
+  /**
+   * 첫 화면 병이 다 섰는가 — 잠수 커튼이 이 신호에 걷힙니다 (`ShelfWall`).
+   * 한 번만 참으로 바뀌므로 다시 그리는 것도 한 번입니다.
+   */
+  const [firstScreenIn, setFirstScreenIn] = useState(false)
+
+  /*
+    ⚠ 등록이 아래 scan(useLayoutEffect)보다 **늦게** 돕니다 — 효과는 선언 순서대로 돌고
+      레이아웃 효과가 먼저입니다. 사진이 이미 캐시에 있으면 scan 안에서 곧바로 끝나 버리므로,
+      예열기 쪽에서 "이미 끝났으면 그 자리에서 부른다" 로 받칩니다 (onFirstScreen).
+  */
+  useEffect(() => {
+    preloader.onFirstScreen(() => setFirstScreenIn(true))
+  }, [preloader])
 
   // 벽을 처음 그리거나 병이 바뀌면(검색 · 분류 변경) 새로 들어온 사진을 줄에 넣습니다
   useLayoutEffect(() => {
@@ -63,6 +77,8 @@ export function useBottlePreload(
   useEffect(() => {
     preloader.aim(start + clear / 2)
   }, [preloader, start, clear])
+
+  return firstScreenIn
 }
 
 /** 브라우저가 한가할 때 한 번 부릅니다. 돌려주는 함수로 취소합니다 */
@@ -89,6 +105,33 @@ function createPreloader() {
   let center = 0
 
   /*
+   * ───────── 첫 화면 병이 다 섰는가 (2026-09-19) ─────────
+   *
+   * 잠수 커튼은 여태 **목록**이 칠해지면 걷혔습니다. 그런데 목록이 칠해진 것은 벽과 벽감이
+   * 섰다는 뜻일 뿐이라, 걷고 나서 병이 한 장씩 뒤늦게 떠올랐습니다. 이 셋이 비면 커튼에
+   * "이제 병까지 섰다" 고 알립니다 (설계 문서 §3-1 의 3).
+   *
+   * ⚠ 기다리는 것은 **첫 화면 병뿐**입니다 (fetchpriority=high). 전부를 기다리면 커튼이 늘
+   *   상한까지 서 있습니다 — 그 판단은 그대로입니다.
+   * ⚠ 사진이 없는 칸은 애초에 줄에 안 들어오므로 막지 않습니다 (img 가 없습니다).
+   * ⚠ 받다 멈춘 사진 하나가 영영 안 끝날 수 있어서, 이 신호는 **빠른 길일 뿐**입니다.
+   *   안 와도 화면 쪽의 유예(`READY_GRACE_MS`)와 커튼의 상한이 받칩니다.
+   */
+  const firstPending = new Set<HTMLImageElement>()
+  let firstSettled = false
+  let notifyFirst: (() => void) | null = null
+
+  const finishFirst = () => {
+    if (firstSettled) return
+    firstSettled = true
+    notifyFirst?.()
+  }
+  const settleFirst = (img: HTMLImageElement) => {
+    if (!firstPending.delete(img)) return
+    if (firstPending.size === 0) finishFirst()
+  }
+
+  /*
    * 줄 순위(작을수록 앞). 칸 가운데와 기준 사이 거리의 두 배에, 왼쪽이면 1 을 더합니다 — 거리가
    * 칸 단위로 한 칸씩 벌어지므로 가운데 · 오른쪽 · 왼쪽 · 오른쪽 · 왼쪽 … 으로 번갈아 섭니다.
    */
@@ -104,6 +147,8 @@ function createPreloader() {
     const box = img.closest('[data-photo]')
     if (box && !box.hasAttribute('data-ready'))
       box.setAttribute('data-ready', '')
+    // 드러난 자리가 곧 '섰다' 입니다 — scan 의 곧바로 드러내기와 pump 의 풀기 뒤, 두 길을 함께 덮습니다
+    settleFirst(img)
   }
 
   const pump = () => {
@@ -112,6 +157,8 @@ function createPreloader() {
       const next = waiting[at]
       // 기다리는 사이 벽에서 빠진 병(검색)은 줄에서 뺍니다
       if (!next || !next.img.isConnected) {
+        // 빠진 병은 영영 안 드러나므로 여기서 매듭짓습니다 — 안 그러면 첫 화면 신호가 안 옵니다
+        if (next) settleFirst(next.img)
         waiting.splice(at, 1)
         continue
       }
@@ -160,6 +207,9 @@ function createPreloader() {
           const img =
             button.querySelector<HTMLImageElement>('.shelf-bottle-img')
           if (!img || done.has(img) || busy.has(img)) return
+          const first = img.getAttribute('fetchpriority') === 'high'
+          // ⚠ 드러내기(reveal)가 곧 매듭이라, 그 **전에** 줄에 넣어 둬야 셈이 맞습니다
+          if (first && !firstSettled) firstPending.add(img)
           if (img.complete && img.naturalWidth > 0) reveal(img)
           if (!img.complete) {
             // 줄에서 건너뛰던(pump) 사진입니다. 받기가 끝나면 줄을 다시 돌려 곧바로 풉니다
@@ -167,12 +217,13 @@ function createPreloader() {
             img.addEventListener('load', pump, { signal })
             img.addEventListener('error', pump, { signal })
           }
-          found.push({
-            img,
-            slot: slots[at] ?? at,
-            first: img.getAttribute('fetchpriority') === 'high',
-          })
+          found.push({ img, slot: slots[at] ?? at, first })
         })
+      /*
+       * 기다릴 것이 하나도 안 남았으면 그 자리에서 알립니다 — 병이 없는 진열대이거나,
+       * 첫 화면 사진이 전부 이미 받아져 있던 경우입니다 (10분 안에 다시 들어왔을 때).
+       */
+      if (firstPending.size === 0) finishFirst()
 
       const cancel = whenIdle(() => {
         waiting = found
@@ -189,6 +240,15 @@ function createPreloader() {
     aim(next: number) {
       center = next
       sort()
+    },
+
+    /** 첫 화면 병이 다 서면 한 번 부릅니다. ⚠ 이미 끝났으면 **그 자리에서** 부릅니다 */
+    onFirstScreen(fn: () => void) {
+      if (firstSettled) {
+        fn()
+        return
+      }
+      notifyFirst = fn
     },
   }
 }
