@@ -43,6 +43,7 @@ import {
 } from '@/features/shelf'
 import { isApiError } from '@/shared/api/http'
 import { ROUTES } from '@/shared/config/routes'
+import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { useToast } from '@/shared/hooks/useToast'
 import { useIsLoggedIn } from '@/shared/store/authStore'
 import { Button } from '@/shared/ui/Button'
@@ -120,6 +121,15 @@ const STAGE_TITLE =
 export default function MyShelfPage() {
   const shelf = useQuery(shelfItemsQuery())
   const collections = useQuery(myCollectionsQuery())
+  /*
+   * 메인에서 잠수로 들어왔으면 커튼이 짙은 남색으로 덮은 채 이 신호를 기다립니다
+   * (안 알려도 1.5초 상한에 걷힙니다 — shared/ui/DiveCurtain).
+   *
+   * 기준은 **목록**입니다. 이게 오면 벽과 벽감이 서고, 병 사진은 받은 것부터 차례로
+   * 드러납니다(`useBottlePreload`) — 사진까지 기다리면 커튼이 늘 상한까지 서 있습니다.
+   * 아래 `shelf.isPending` 이 스피너로 갈리는 바로 그 조건입니다.
+   */
+  useDiveReady(!shelf.isPending)
   const arrangement = useShelfArrangement()
   // 낙관적 갱신과 되돌리기는 도메인 훅이 들고 있습니다. 토스트만 여기서 붙입니다
   const actions = useShelfActions()
@@ -550,7 +560,14 @@ export default function MyShelfPage() {
     Toast(fixed)와 모달이 그 아래로 밀립니다.
   */
   const paper = (
-    <div aria-hidden className="shelf-paper shelf-grain fixed inset-0 -z-10" />
+    <div aria-hidden className="shelf-paper shelf-grain fixed inset-0 -z-10">
+      {/*
+        수면 물결이 모래에 드리우는 빛 — 잠수해서 들어온 이 화면이 "얕은 물에 비치는 모래" 로
+        읽히게 하는 겹입니다. 종이 위 · 결 아래 · 내용 뒤(-z-10)이고, 움직이는 것은 transform
+        하나뿐입니다. 값과 까닭은 shelf-display.css 의 .shelf-caustic 에 있습니다.
+      */}
+      <i className="shelf-caustic" />
+    </div>
   )
 
   /*
