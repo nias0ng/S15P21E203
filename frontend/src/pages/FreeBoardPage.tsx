@@ -1,5 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router'
 
 import {
@@ -18,9 +17,9 @@ import {
   type PostSort,
 } from '@/features/community'
 import { ROUTES } from '@/shared/config/routes'
+import { useLikeToggle } from '@/shared/hooks/useLikeToggle'
 import { cn } from '@/shared/lib/cn'
 import { readPage, withQueryParams, writePage } from '@/shared/lib/queryParams'
-import { useIsLoggedIn } from '@/shared/store/authStore'
 import { AuthLinkButton } from '@/shared/ui/AuthLinkButton'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { Pagination } from '@/shared/ui/Pagination'
@@ -80,23 +79,19 @@ export default function FreeBoardPage() {
     trending.isPending || (trending.data?.perfumes.length ?? 0) > 0
 
   const queryClient = useQueryClient()
-  const isLoggedIn = useIsLoggedIn()
-  const [loginOpen, setLoginOpen] = useState(false)
 
   /**
-   * 좋아요 토글 (CMT-05). 후기 게시판과 같은 방식입니다.
+   * 좋아요 토글 (CMT-05). 비로그인 안내 · 누르기/취소 고르기는 훅이 맡습니다
+   * (`shared/hooks/useLikeToggle`). 여기서는 **캐시 고치는 일만** 합니다.
    *
-   * 응답에 `liked` 와 `likeCount` 가 함께 오므로 화면이 숫자를 직접 더하지 않습니다 —
-   * 그 사이 다른 사람이 누른 것도 같이 반영됩니다. 그래서 목록을 다시 부르지 않고
-   * **응답 값을 그 줄에만 덮어씁니다.** 전체를 다시 부르면 보고 있던 자리가 흔들리고,
-   * 정렬이 '좋아요순'이면 방금 누른 줄이 눈앞에서 이동합니다.
-   *
-   * 누르기와 취소가 서로 다른 메서드라 따닥 눌러도 결과가 하나로 정해집니다.
+   * 목록을 다시 부르지 않고 **응답 값을 그 줄에만 덮어씁니다.** 전체를 다시 부르면
+   * 보고 있던 자리가 흔들리고, 정렬이 '좋아요순'이면 방금 누른 줄이 눈앞에서
+   * 이동합니다.
    */
-  const toggleLike = useMutation({
-    mutationFn: ({ id, liked }: { id: number; liked: boolean }) =>
-      liked ? unlikePost(id) : likePost(id),
-    onSuccess: (result) => {
+  const likeToggle = useLikeToggle({
+    like: likePost,
+    unlike: unlikePost,
+    onToggled: (result) => {
       queryClient.setQueryData(
         communityKeys.posts(listParams),
         (old: typeof posts.data) =>
@@ -230,14 +225,9 @@ export default function FreeBoardPage() {
                   글쓰기
                 </AuthLinkButton>
               }
-              onToggleLike={(item) => {
-                // 비로그인은 401 이라, 보내 보는 대신 먼저 안내합니다
-                if (!isLoggedIn) {
-                  setLoginOpen(true)
-                  return
-                }
-                toggleLike.mutate({ id: item.id, liked: item.liked })
-              }}
+              onToggleLike={(item) =>
+                likeToggle.toggle({ id: item.id, liked: item.liked })
+              }
             />
 
             <Pagination
@@ -258,8 +248,8 @@ export default function FreeBoardPage() {
       </div>
 
       <LoginRequiredDialog
-        open={loginOpen}
-        onClose={() => setLoginOpen(false)}
+        open={likeToggle.loginRequired}
+        onClose={likeToggle.closeLoginRequired}
         redirectTo={ROUTES.COMMUNITY_FREE}
         description="좋아요는 로그인한 뒤에 누를 수 있습니다. 글은 로그인 없이도 읽을 수 있습니다."
       />
