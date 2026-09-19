@@ -11,8 +11,6 @@ import type {
   TrendingPerfumesResponse,
 } from './types'
 
-// 경로에 '/api/v1' 을 붙이지 않습니다 — http 의 baseURL 에 이미 있습니다
-
 /**
  * 사이드바에 보이는 줄 수. 서버 기본값은 10, 최대 50 입니다.
  *

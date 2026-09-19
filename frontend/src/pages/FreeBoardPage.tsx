@@ -208,7 +208,6 @@ export default function FreeBoardPage() {
               <h2 className="text-ink font-serif text-2xl">
                 {categoryLabel ? `${categoryLabel} 글` : '전체 글'}
               </h2>
-              {/* 불러오는 중에는 아예 적지 않습니다 — 0 이 잠깐 보였다 바뀌면 눈에 띕니다 */}
               {!posts.isPending && !!posts.data?.totalElements && (
                 <span className="text-ink-muted text-caption">
                   {posts.data.totalElements.toLocaleString()}개

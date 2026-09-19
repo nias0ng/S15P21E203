@@ -8,8 +8,6 @@ import type {
   BrandsResponse,
 } from './types'
 
-// 경로에 '/api/v1' 을 붙이지 않습니다 — http 의 baseURL 에 이미 있습니다
-
 /**
  * A34 브랜드 목록. 로그인이 필요 없습니다.
  *

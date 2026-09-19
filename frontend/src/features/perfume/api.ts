@@ -55,8 +55,6 @@ async function withDevFallback<T>(
   }
 }
 
-// 경로에 '/api/v1' 을 붙이지 않습니다 — http 의 baseURL 에 이미 있습니다
-
 /**
  * COM-05 향수 검색. 조건은 모두 선택이고 함께 오면 AND 입니다.
  *

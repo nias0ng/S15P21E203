@@ -18,8 +18,6 @@ import type {
  */
 const MAP_SCALE = 100
 
-// 경로에 '/api/v1' 을 붙이지 않습니다 — http 의 baseURL 에 이미 있습니다
-
 /**
  * 취향 테스트가 쓰는 향수 200개의 계열 벡터 (TST-03).
  *

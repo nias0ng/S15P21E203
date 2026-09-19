@@ -2,8 +2,6 @@ import { http } from '@/shared/api/http'
 
 import type { Note, NoteDetail, NotePerfumesResponse } from './types'
 
-// 경로에 '/api/v1' 을 붙이지 않습니다 — http 의 baseURL 에 이미 있습니다
-
 /** `GET /notes` 응답 껍데기. 목록만 꺼내 돌려주므로 밖으로 내보내지 않습니다 */
 interface NotesResponse {
   notes: Note[]

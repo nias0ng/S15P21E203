@@ -10,8 +10,6 @@ import type {
   UserResponse,
 } from './types'
 
-// 경로에 '/api/v1' 을 붙이지 않습니다 — http 의 baseURL 에 이미 있습니다
-
 /** 서버의 `userId` 를 스토어의 `id` 로 옮깁니다. 이름이 어긋나는 자리는 여기뿐입니다. */
 export function toAuthUser(user: UserResponse): AuthUser {
   return { id: user.userId, email: user.email, nickname: user.nickname }

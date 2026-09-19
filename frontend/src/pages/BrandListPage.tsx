@@ -122,7 +122,6 @@ export default function BrandListPage() {
           <h2 className="text-ink font-serif text-2xl">
             {keyword ? `'${keyword}' 검색 결과` : '전체 브랜드'}
           </h2>
-          {/* 불러오는 중에는 아예 적지 않습니다 — 0 이 잠깐 보였다 바뀌면 눈에 띕니다 */}
           {!isPending && brands.length > 0 && (
             <span className="text-ink-muted text-caption">
               {brands.length}개

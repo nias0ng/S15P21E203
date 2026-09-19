@@ -128,7 +128,6 @@ export function ShelfItemPickList({
                       : 'border-line hover:border-accent',
                   )}
                 >
-                  {/* 사진이 없는 향수가 있습니다 — 그때는 빈 상자를 그립니다 */}
                   <Thumbnail
                     src={candidate.thumbnailUrl}
                     fallback="이미지"

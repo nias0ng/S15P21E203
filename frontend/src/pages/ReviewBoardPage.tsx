@@ -163,7 +163,6 @@ export default function ReviewBoardPage() {
             <div className="mb-6.25 flex items-baseline gap-2.5">
               {/* 판 위 제목은 향수 · 브랜드 · 노트의 판과 같은 크기입니다 */}
               <h2 className="text-ink font-serif text-2xl">전체 후기</h2>
-              {/* 불러오는 중에는 아예 적지 않습니다 — 0 이 잠깐 보였다 바뀌면 눈에 띕니다 */}
               {!reviews.isPending && !!reviews.data?.totalElements && (
                 <span className="text-ink-muted text-caption">
                   {reviews.data.totalElements.toLocaleString()}개
