@@ -262,7 +262,10 @@ function buildGeometry(mesh) {
 /**
  * @param scene
  * @param waterUni 물의 유니폼 묶음(`water.uni`). **참조로** 받는다 — 복사하면 물과 갈라진다.
- *   읽는 것은 둘이다 : 원경색 `uBg` · **거리 LOD** `uDetail0/1` (아래 detailAt 주석).
+ *   ⚠⚠ **읽는 것이 셋이다** — water.js 가 이 이름을 바꾸면 여기 셋을 같이 본다 :
+ *     · 원경색 `uBg` (재질의 uFar)
+ *     · **거리 LOD** `uDetail0/1` (아래 `detailAt` — 수면 높이를 물과 같은 대역으로 본다)
+ *     · **원경 안개** `uFade0/uFade1` (아래 `hazeAt` — 물의 `vis` 와 **같은 자**로 뿌옇게 한다)
  */
 export function createPod(scene, waterUni) {
   const group = new THREE.Group();
