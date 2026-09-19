@@ -6,15 +6,8 @@ import { cn } from '@/shared/lib/cn'
 import { useSceneSkyStore } from '@/shared/store/sceneSkyStore'
 
 /**
- * 화면이 쓰는 본문 폭. 라우트 설정(app/router)의 `handle.width` 로 정합니다.
- *
- *   full  화면 틀 전체(1920 에서 1800) — 진열대 · 향 지도처럼 화면을 그림으로 쓰는 곳
- *   wide  1440 — 목록 · 격자 · 상세 (적지 않으면 이것)
- *   text  800 — 글을 읽고 쓰는 곳 · 계정 폼
- *   bleed 화면 끝까지, 헤더 뒤까지 — 틀 · 좌우 여백 · 위아래 숨 없이. 헤더는 그 위에
- *         유리판으로 뜹니다 (3D 향 지도 A01)
- *
- * 폭의 근거는 styles/index.css 의 --container-* 주석에 있습니다.
+ * 화면이 쓰는 본문 폭. 라우트의 `handle.width` 로 정합니다(적지 않으면 `wide`).
+ *   full 틀 전체 · wide 1440 목록 · text 800 글 · bleed 헤더 뒤까지(3D 향 지도)
  */
 export type PageWidth = 'full' | 'wide' | 'text' | 'bleed'
 
@@ -67,21 +60,14 @@ function useIsNight(): boolean {
 }
 
 /**
- * 모든 화면의 공통 껍데기. 틀(max-w-frame)에 좌우 여백(--gutter)을 두르고, 그 안에서
- * 화면마다 정한 폭으로 본문을 가운데 세웁니다.
- *
- * 예전에는 모든 화면이 1120 고정이었고 넓게 써야 하는 진열대만 음수 마진으로 그
- * 제약을 깨고 나갔습니다. 이제 넓게 쓰는 화면은 라우트에 `full` 이라고 적습니다.
+ * 모든 화면의 공통 껍데기. 넓게 쓰는 화면은 음수 마진으로 틀을 깨고 나가지 말고
+ * 라우트에 `full` 이라고 적습니다.
  */
 export function RootLayout() {
   /*
-   * 진열대는 화면 전체가 종이 한 장인 구성이라 헤더도 그 종이 위에 놓입니다.
-   * 헤더가 자기 바탕(ivory)을 칠하면 종이가 두 장으로 잘려 가로줄이 생깁니다 —
-   * 실제로 헤더 246 대 본문 219 로 눈에 띄게 갈라져 있었습니다.
-   *
-   * 라우트를 여기서 보는 이유: 헤더는 자기가 어느 화면 위에 있는지 모르고, 알게
-   * 하면 화면이 늘 때마다 헤더를 고치게 됩니다. 껍데기가 화면을 아는 건 껍데기의
-   * 일이라 여기 둡니다.
+   * 진열대는 화면 전체가 종이 한 장이라 헤더가 자기 바탕을 칠하면 종이가 두 장으로
+   * 잘립니다(헤더 246 대 본문 219 로 갈라져 있었습니다). 라우트를 헤더가 아니라
+   * 여기서 보는 이유: 헤더가 화면을 알면 화면이 늘 때마다 헤더를 고치게 됩니다.
    */
   const pathname = useLocation().pathname
   const onPaper = pathname === ROUTES.MY_SHELF
@@ -93,11 +79,9 @@ export function RootLayout() {
   const width = usePageWidth()
   const sky = useSceneSkyStore((state) => state.sky)
   /*
-   * bleed(3D 향 지도)는 화면 전체가 그림이라 헤더가 그 위에 유리판으로 뜹니다.
-   * 유리판 헤더는 흐름에서 빠지므로(fixed) 본문이 화면 맨 위부터 섭니다 — 헤더가
-   * 가리는 높이는 화면(HomePage)이 3D 엔진에 알려 줍니다.
-   * 유리가 거의 투명해 글자색은 뒤의 하늘을 따릅니다 — 밝은 하늘 glassLight(먹색) · 밤하늘 glass(상아색).
-   * 하늘은 화면(HomePage)이 엔진의 시간대를 보고 sceneSkyStore 에 적습니다.
+   * bleed(3D 향 지도)는 헤더가 유리판으로 뜹니다. `fixed` 라 본문이 화면 맨 위부터
+   * 서고, 헤더가 가리는 높이는 HomePage 가 엔진에 알려 줍니다. 글자색은 뒤의
+   * 하늘을 따릅니다(sceneSkyStore).
    */
   const tone: HeaderTone = onPaper
     ? 'paper'

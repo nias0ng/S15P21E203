@@ -30,15 +30,10 @@ type Props = {
 }
 
 /**
- * 향수 상세 ① 기본 정보 + 액션 (와이어프레임 A10 — DTL-01 · 02)
+ * 향수 상세 ① 기본 정보 + 액션 (A10 — DTL-01 · 02)
  *
- * 도메인 안이라 PerfumeDetail 타입을 그대로 받습니다. shared/ui 였다면 ESLint 가
- * 막았겠지만, 여기서는 도메인을 알아도 됩니다.
- *
- * **이 구역 자체는 유리판에 올리지 않습니다.** 판을 다섯 장 쌓으면 화면이 판으로만
- * 채워져 층이 안 읽힙니다. 사진과 이름은 어두운 방에 바로 놓여 제목 역할을 하고,
- * 판은 그 아래 내용 구역부터 시작합니다 — 다만 사진 오른쪽에 남는 자리에는
- * `aside` 로 판 하나가 들어옵니다.
+ * 도메인 안이라 `PerfumeDetail` 타입을 그대로 받습니다.
+ * 이 구역은 판 없이 어둠에 바로 놓입니다 — docs/어두운-방-유리판.md
  */
 export function PerfumeOverview({
   perfume,
@@ -47,10 +42,7 @@ export function PerfumeOverview({
   onShelfAction,
   aside,
 }: Props) {
-  /*
-    영문 이름은 한국어 이름이 있을 때만 따로 적습니다. 없으면 아래 제목이 이미
-    영문이라, 위에 또 적으면 같은 글자가 두 줄로 늘어섭니다.
-  */
+  /* 영문 이름은 한국어 이름이 있을 때만 — 없으면 제목이 이미 영문입니다 */
   const hasKoreanName = perfume.nameKo !== null
 
   /*
@@ -68,12 +60,8 @@ export function PerfumeOverview({
   return (
     <section className="flex flex-col gap-7.5 sm:flex-row">
       {/*
-        상세 응답의 images 는 배열이고 대표 이미지는 첫 번째 원소입니다.
-
-        `contain` 인 이유: 향수병 사진은 세로로 긴데 `cover` 는 상자를 꽉 채우려고
-        넘치는 쪽을 잘라내서, 병의 뚜껑과 바닥이 날아갔습니다. `contain` 은 긴 쪽을
-        상자에 맞추므로 병이 통째로 들어옵니다. 상자를 3:4 로 세워 두면 남는 여백도
-        거의 없습니다.
+        대표 이미지는 `images` 의 첫 번째 원소입니다. `cover` 로 두면 세로로 긴
+        병 사진의 뚜껑과 바닥이 잘려 나갑니다.
       */}
       <Thumbnail
         src={perfume.images[0] ?? null}
