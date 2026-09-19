@@ -25,10 +25,11 @@ import {
 import { isApiError } from '@/shared/api/http'
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
+import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { useToast } from '@/shared/hooks/useToast'
 import { cn } from '@/shared/lib/cn'
 import { useIsLoggedIn } from '@/shared/store/authStore'
-import { useIsDiving } from '@/shared/store/diveStore'
+import { useIsDiving, useIsRising } from '@/shared/store/diveStore'
 import { useSceneSkyStore } from '@/shared/store/sceneSkyStore'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { Toast } from '@/shared/ui/Toast'
@@ -65,6 +66,19 @@ const DIVE_FADE = 'transition-opacity duration-300 ease-out'
 export default function HomePage() {
   const navigate = useNavigate()
   const diving = useIsDiving()
+  /*
+   * 진열대에서 **떠올라** 들어오는 중인가. 그동안 화면은 잠수 커튼(물)이 덮고 있으므로
+   * 이 화면의 아이보리 로딩 커튼은 비킵니다 — 물 밑에서 구름이 갈라지면 걷히는 겹이 둘이 됩니다.
+   */
+  const rising = useIsRising()
+  /*
+   * 로딩 커튼이 **걷기 시작했다 = 엔진이 다 떴다.** 이것을 잠수 커튼의 준비 신호로 넘겨,
+   * 물이 걷히면서 이미 떠오르는 중인 바다가 드러나게 합니다.
+   * ⚠ 다 걷힐 때(boot.done)까지 기다리면 1초가 더 붙습니다 — 그 1초는 물 밑이라 안 보입니다.
+   * ⚠ 잠수로 들어온 것이 아니면 아무 일도 안 일어납니다 (useDiveReady 머리말).
+   */
+  const [engineUp, setEngineUp] = useState(false)
+  useDiveReady(engineUp)
   const log = useQuery(voyageLogQuery())
   // 향해 일지 상태 — 비로그인(401)이면 로그인 안내. 개발 중 서버가 없으면 api 가 대체 일지를 줍니다
   const logStatus: VoyageLogStatus = log.isPending
@@ -290,7 +304,12 @@ export default function HomePage() {
 
       {/* 흰 커튼 · 짙은 점에서 터져 번지는 향 원 셋 · 굴러가는 퍼센트 — 헤더 · 토스트 위에 서고, 100% 뒤 걷히며 바다가 드러납니다 */}
       {!boot.done && (
-        <SceneBootCurtain getState={boot.getState} onDone={boot.finish} />
+        <SceneBootCurtain
+          getState={boot.getState}
+          onDone={boot.finish}
+          onLeaving={() => setEngineUp(true)}
+          hidden={rising}
+        />
       )}
     </div>
   )

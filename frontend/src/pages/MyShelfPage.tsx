@@ -47,6 +47,7 @@ import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { useToast } from '@/shared/hooks/useToast'
 import { READY_GRACE_MS } from '@/shared/lib/diveTrack'
 import { useIsLoggedIn } from '@/shared/store/authStore'
+import { useIsRising } from '@/shared/store/diveStore'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { EmptyState } from '@/shared/ui/EmptyState'
@@ -121,6 +122,8 @@ const STAGE_TITLE =
  */
 export default function MyShelfPage() {
   const shelf = useQuery(shelfItemsQuery())
+  // 메인으로 떠오르는 중인가 (헤더 로고). ⚠ useIsDiving 이 아닙니다 — 그것은 들어올 때도 참입니다
+  const rising = useIsRising()
   const collections = useQuery(myCollectionsQuery())
   /*
    * 메인에서 잠수로 들어왔으면 커튼이 짙은 남색으로 덮은 채 이 신호를 기다립니다
@@ -565,7 +568,17 @@ export default function MyShelfPage() {
     Toast(fixed)와 모달이 그 아래로 밀립니다.
   */
   const paper = (
-    <div aria-hidden className="shelf-paper shelf-grain fixed inset-0 -z-10">
+    <div
+      aria-hidden
+      className="shelf-paper shelf-grain fixed inset-0 -z-10"
+      data-rising={rising ? '' : undefined}
+    >
+      {/*
+        떠오르기 시작하면 **모래에서 멀어집니다** — 사이의 물이 두꺼워져 바닥이 한 단 가라앉습니다.
+        커튼이 위에서 덮기 전 0.3초 동안 화면에서 움직이는 것이 이것 하나입니다 (나가는 길에서
+        카메라가 먼저 고개를 숙이는 것과 같은 자리).
+      */}
+      <i className="shelf-deepen" />
       {/*
         수면 물결이 모래에 드리우는 빛 — 잠수해서 들어온 이 화면이 "얕은 물에 비치는 모래" 로
         읽히게 하는 겹입니다. 종이 위 · 결 아래 · 내용 뒤(-z-10)이고, 움직이는 것은 transform

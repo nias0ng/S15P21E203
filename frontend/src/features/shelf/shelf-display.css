@@ -369,6 +369,46 @@
   }
 
   /*
+   * ───────── 떠오를 때 — 모래에서 멀어진다 (2026-09-19) ─────────
+   *
+   * 헤더 로고를 눌러 메인으로 떠오르기 시작하면, 나와 모래 사이의 물이 두꺼워집니다.
+   * 커튼이 위에서 덮기 전 0.3초 동안 화면에서 움직이는 것이 이것 하나입니다 — 나가는 길에서
+   * 카메라가 먼저 고개를 숙여 '내려간다' 를 알리는 것과 같은 자리입니다.
+   *
+   * ⚠⚠ 위의 물 겹(`--water-deep`)을 키우지 않고 **따로 한 겹을 얹어 opacity 만 바꿉니다.**
+   *   그쪽은 `.shelf-paper` 의 background 라, 값을 바꾸면 화면 전체를 매 장 다시 칠합니다
+   *   (그라데이션 보간은 합성 단계가 아닙니다). 여기는 움직이는 것이 opacity 하나입니다.
+   * ⚠ 색은 navy 입니다 — 이 모래의 보색이라 짙어져도 색이 안 돕니다 (위 --water-deep 주석의 실측).
+   *   sea-shallow 로 두껍게 덮으면 초록으로 넘어갑니다.
+   * ⚠ 되돌아올 일이 없는 한쪽 방향입니다 (떠오르면 이 화면은 곧 사라집니다). 그래도 전환을 두는
+   *   것은, 전환이 걸렸다 접힐 때(다른 화면으로 새어 나갈 때) 툭 끊기지 않게 하기 위해서입니다.
+   */
+  .shelf-scope .shelf-deepen {
+    position: absolute;
+    inset: 0;
+    /* 결(z-50) · 코스틱보다 **위**입니다 — 물이 두꺼워지면 모래의 결도 빛도 같이 가라앉습니다 */
+    z-index: 60;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 700ms ease-out;
+    background: radial-gradient(
+      118% 112% at 45% -12%,
+      transparent 18%,
+      color-mix(in srgb, var(--color-navy) 16%, transparent)
+    );
+  }
+  .shelf-scope .shelf-paper[data-rising] .shelf-deepen {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    /* 두께 자체는 남기고 드는 시간만 없앱니다 — 알리는 것은 움직임이 아니라 겹입니다 */
+    .shelf-scope .shelf-deepen {
+      transition: none;
+    }
+  }
+
+  /*
    * 진열장 크기 — 벽감 높이(--case-h) · 병 높이(--bottle-h) · 칸 폭(--pitch).
    *
    * 고정값이 아니라 ShelfWall 이 진열장 자리의 크기에서 계산해 넣습니다(lib.ts 의

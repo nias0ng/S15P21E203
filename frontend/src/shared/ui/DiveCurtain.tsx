@@ -5,8 +5,11 @@ import {
   diveDuration,
   diveFrameAt,
   HOLD_MIN_MS,
+  inOutCubic,
   LIFT_MS,
   READY_CAP_MS,
+  RISE_CAP_MS,
+  RISE_ENGINE_FROM,
 } from '@/shared/lib/diveTrack'
 import { useDiveStore } from '@/shared/store/diveStore'
 
@@ -41,9 +44,19 @@ import './dive-curtain.css'
  * ⚠ 기다리는 때를 `setTimeout` 이 아니라 rAF 로 봅니다 — 메인 스레드가 막힌 동안 타이머는
  * 늦게 오고, 그만큼 남색 화면이 더 오래 섭니다.
  */
+/** 움직임 줄이기인가 — 세 효과가 같은 판단을 씁니다 */
+const reducedMotion = () =>
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
 export function DiveCurtain() {
   const navigate = useNavigate()
   const stage = useDiveStore((state) => state.stage)
+  /*
+    가라앉는가 떠오르는가. 단계는 둘이 같고 다른 것은 **방향과 색**뿐이라, 커튼 CSS 가
+    `[data-way='rise']` 에서 판을 통째로 뒤집습니다 (dive-curtain.css).
+    ⚠ 여기(TS)가 다루는 차이는 둘뿐입니다 — 엔진을 어느 쪽으로 미는가, 무엇을 기다리는가.
+  */
+  const way = useDiveStore((state) => state.way)
   const water = useRef<HTMLElement>(null)
 
   // ── 잠수 : 카메라를 내리고 커튼을 올린다. 다 덮으면 진열대로 옮겨 간다
@@ -51,9 +64,7 @@ export function DiveCurtain() {
     if (stage !== 'diving') return
 
     // 움직임 줄이기면 3D 는 그대로 두고 커튼만 짧게 덮습니다 (dive-curtain.css 의 미디어 쿼리와 한 벌)
-    const reduced = window.matchMedia(
-      '(prefers-reduced-motion: reduce)',
-    ).matches
+    const reduced = reducedMotion()
     const duration = diveDuration(reduced)
     const started = performance.now()
     let raf = 0
@@ -71,8 +82,12 @@ export function DiveCurtain() {
     const tick = () => {
       const frame = diveFrameAt(performance.now() - started, duration)
       water.current?.style.setProperty('--dive-cover', frame.cover.toFixed(4))
-      // 엔진이 아직 안 떴으면(로딩 커튼 중) 그냥 커튼만 올라옵니다
-      if (!reduced) useDiveStore.getState().engine?.(frame.k)
+      /*
+        엔진이 아직 안 떴으면(로딩 커튼 중) 그냥 커튼만 올라옵니다.
+        ⚠ 떠오를 때는 엔진을 **안 건드립니다.** 지금 서 있는 곳은 진열대라 엔진이 없고,
+          있다 해도 그것은 우리가 향해 가는 화면의 것입니다 — 미는 때는 걷힐 때입니다.
+      */
+      if (!reduced && way === 'dive') useDiveStore.getState().engine?.(frame.k)
       if (frame.covered) {
         finish()
         return
@@ -93,7 +108,7 @@ export function DiveCurtain() {
       cancelAnimationFrame(raf)
       window.clearTimeout(bail)
     }
-  }, [stage, navigate])
+  }, [stage, way, navigate])
 
   // ── 덮인 채로 진열대를 기다린다 (준비 신호 · 상한 중 먼저 오는 쪽)
   useEffect(() => {
@@ -104,13 +119,25 @@ export function DiveCurtain() {
       느리게 걷는 커튼이 시작하자마자 걷히기 시작합니다 (잠수해서 내려앉은 것이 한 박자도 안 쉽니다).
     */
     const started = performance.now()
-    const until = started + READY_CAP_MS
+    /*
+      기다리는 것이 다릅니다 — 가라앉을 때는 **진열대 목록**(과 첫 화면 병)이고,
+      떠오를 때는 **3D 엔진**입니다. 엔진 쪽이 더 오래 걸려 상한도 따로 둡니다.
+    */
+    const rising = way === 'rise'
+    const cap = rising ? RISE_CAP_MS : READY_CAP_MS
+    const until = started + cap
     let raf = 0
     const lift = () => useDiveStore.getState().lift()
     const tick = () => {
       const now = performance.now()
-      const ready =
-        useDiveStore.getState().ready && now >= started + HOLD_MIN_MS
+      const store = useDiveStore.getState()
+      /*
+        떠오를 때는 엔진이 **기다리는 사이에 뜹니다.** 뜨자마자 잠긴 깊이에 세워 둬야,
+        걷히기 시작하는 첫 장에 이미 짙은 바다가 있습니다 — 안 그러면 다 밝은 바다가
+        한 장 비쳤다가 다시 어두워집니다. 매 장 넣는 것은 유니폼 한 번이라 쌉니다.
+      */
+      if (rising && !reducedMotion()) store.engine?.(RISE_ENGINE_FROM)
+      const ready = store.ready && now >= started + HOLD_MIN_MS
       if (ready || now >= until) {
         lift()
         return
@@ -119,24 +146,59 @@ export function DiveCurtain() {
     }
     raf = requestAnimationFrame(tick)
     // 위와 같은 안전장치 — 덮인 채로 갇히면 짙은 남색 화면이 영영 남습니다
-    const bail = window.setTimeout(lift, READY_CAP_MS + 2000)
+    const bail = window.setTimeout(lift, cap + 2000)
     return () => {
       cancelAnimationFrame(raf)
       window.clearTimeout(bail)
     }
-  }, [stage])
+  }, [stage, way])
 
-  // ── 다 걷혔다
+  // ── 걷히는 중 · 다 걷혔다
   useEffect(() => {
     if (stage !== 'lifting') return
-    const timer = window.setTimeout(() => {
+
+    let done = false
+    const finish = () => {
+      if (done) return
+      done = true
       const store = useDiveStore.getState()
       // 메인에 그대로 남은 채로 끝난 경우(전환을 접었을 때)를 대비해 엔진도 되돌립니다
       store.engine?.(0)
       store.end()
-    }, LIFT_MS)
-    return () => window.clearTimeout(timer)
-  }, [stage])
+    }
+
+    /*
+      ⭐⭐ **떠오를 때는 3D 가 커튼과 같이 밝아집니다.** 걷히는 동안 엔진을
+      `RISE_ENGINE_FROM` 에서 0 으로 되밀어, 카메라가 올라오고 물 · 하늘이 제 색을 되찾습니다.
+      커튼이 트인 자리에 **이미 떠오르는 중인 바다**가 있어야 두 판이 한 움직임으로 읽힙니다 —
+      다 걷힌 다음에 바다가 밝아지면 전환이 끝나고 나서 한 번 더 무슨 일이 일어난 꼴입니다.
+
+      ⚠ 가라앉을 때는 이 루프를 안 돕니다. 그쪽은 걷히는 동안 엔진이 아예 없습니다
+        (메인이 언마운트됐습니다) — 커튼 뒤에 있는 것은 진열대입니다.
+      ⚠ 쓸기와 같은 길이 · 같은 결의 곡선을 씁니다. 갈라지면 바다가 먼저 다 밝아졌는데
+        커튼이 아직 남아 있거나 그 반대가 됩니다.
+    */
+    const rising = way === 'rise' && !reducedMotion()
+    const started = performance.now()
+    let raf = 0
+    const tick = () => {
+      const t = Math.min(1, (performance.now() - started) / LIFT_MS)
+      useDiveStore.getState().engine?.(RISE_ENGINE_FROM * (1 - inOutCubic(t)))
+      if (t >= 1) {
+        finish()
+        return
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    if (rising) raf = requestAnimationFrame(tick)
+
+    // rAF 가 안 도는 동안(창이 가려짐)에도 끝나야 합니다 — 안 그러면 커튼이 영영 남습니다
+    const timer = window.setTimeout(finish, LIFT_MS + (rising ? 300 : 0))
+    return () => {
+      cancelAnimationFrame(raf)
+      window.clearTimeout(timer)
+    }
+  }, [stage, way])
 
   if (stage === 'idle') return null
 
@@ -144,6 +206,8 @@ export function DiveCurtain() {
     <div
       aria-hidden="true"
       data-stage={stage}
+      // 방향 — CSS 가 이 한 글자로 판을 뒤집습니다 (dive-curtain.css 의 '떠오르기')
+      data-way={way}
       /*
         ⚠ `overflow-hidden` 을 두지 않습니다 — 걷힐 때 이 겹이 화면 밖(위)으로 200vh 나가면서
         그 안의 물판까지 잘려 나갑니다 (dive-curtain.css 의 걷힘 주석). 물판은 위로만 넘치므로

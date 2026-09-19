@@ -319,6 +319,67 @@
 }
 
 /*
+ * ───────── 떠오르기 — 진열대에서 메인으로 (2026-09-19) ─────────
+ *
+ * 나가는 길의 **거울**입니다. 위에서 덮이고, 위에서부터 트입니다 — 올라가면 세상이 프레임
+ * 아래로 흐르므로 물은 위에서 들어오고, 하늘도 위에서 먼저 드러납니다.
+ *
+ * ⭐⭐ **판을 통째로 뒤집습니다** (`scaleY(-1)`). 아래에 붙은 판 · 자라는 방향 · 마스크의
+ *   기울기 · 쓸기가 가는 쪽이 한 번에 뒤집혀서, 마스크를 새로 짤 일이 없습니다. 위에서 어렵게
+ *   얻은 것(마스크 길이 = 겹 높이 · 상쇄 겹 · 아래끝 못 박기)이 그대로 따라옵니다.
+ *   ⚠ 그래서 **고칠 것은 색뿐입니다.** 기하를 손대기 시작하면 저 함정들을 다시 밟습니다.
+ *
+ * ⭐ **색은 한 칸 얕습니다.** 나가는 길은 심해(navy)까지 내려가지만 돌아오는 길은 수면으로
+ *   올라가는 길이라 그 깊이를 지날 까닭이 없습니다. `sea-shallow` 에서 `sea-deep` 까지만 씁니다.
+ *   ⚠ 뒤집힌 뒤의 화면에서 **위가 밝고 아래로 갈수록 짙습니다** — 빛은 수면 쪽(위)에 있습니다.
+ *     쓰기는 나가는 길과 같은 `to top` 으로 쓰고, 뒤집기가 방향을 맡습니다 (0% 가 화면 위입니다).
+ *
+ * ⚠ 밝아지는 일은 **3D 가 맡습니다.** 걷히는 동안 엔진을 `RISE_ENGINE_FROM` 에서 0 으로 되밀어
+ *   바다가 같이 떠오릅니다 (`DiveCurtain`). 그래서 나가는 길의 `--dive-rise` 겹은 여기서 끕니다 —
+ *   둘 다 켜면 두 번 밝아집니다.
+ */
+.dive-curtain[data-way='rise'] {
+  transform: scaleY(-1);
+}
+
+.dive-curtain[data-way='rise'] .dive-curtain-water {
+  background: linear-gradient(
+    to top,
+    /* 뒤집히면 여기가 화면 맨 위 — 수면에 가장 가까운 물이라 가장 밝다 */
+    var(--color-sea-shallow) 0%,
+    var(--color-sea-shallow) 38%,
+    /* 다 덮은 구간(58%)의 끝. 아래로 갈수록 단조롭게 짙어진다 (머리말 ②와 같은 규칙) */
+    var(--color-sea-deep) 58%,
+    /* 여기부터 알파만 내려간다 — 기울기가 꺾이지 않게 촘촘히 */
+    color-mix(in srgb, var(--color-sea-deep) 93%, transparent) 65%,
+    color-mix(in srgb, var(--color-sea-deep) 78%, transparent) 73%,
+    color-mix(in srgb, var(--color-sea-deep) 58%, transparent) 81%,
+    color-mix(in srgb, var(--color-sea-deep) 36%, transparent) 88%,
+    color-mix(in srgb, var(--color-sea-deep) 18%, transparent) 93%,
+    color-mix(in srgb, var(--color-sea-deep) 6%, transparent) 97%,
+    transparent 100%
+  );
+}
+
+/* 얕아지는 겹은 끕니다 — 돌아오는 길에서 밝아지는 일은 3D 가 맡습니다 (위 머리말) */
+.dive-curtain[data-way='rise'] .dive-curtain-water::after {
+  content: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* 나가는 길이 navy 한 장이듯, 돌아오는 길은 얕은 물 한 장입니다 */
+  .dive-curtain[data-way='rise'] .dive-curtain-water,
+  .dive-curtain[data-way='rise'][data-stage='covered'] .dive-curtain-water,
+  .dive-curtain[data-way='rise'][data-stage='lifting'] .dive-curtain-water {
+    background: var(--color-sea-shallow);
+  }
+  /* 뒤집을 까닭이 없습니다 — 쓸기도 자라기도 없이 그냥 옅어졌다 사라집니다 */
+  .dive-curtain[data-way='rise'] {
+    transform: none;
+  }
+}
+
+/*
  * 움직임 줄이기 — 차오름과 가라앉음을 빼고 **짙은 남색이 짧게 덮였다 걷힙니다**
  * (문서 §4-2 : *"움직임 줄이기면 카메라 잠수를 빼고 커튼 교차 페이드 200ms 만 한다"*).
  * 3D 카메라도 안 내려갑니다 — 그쪽은 `DiveCurtain` 이 엔진을 아예 안 부릅니다.

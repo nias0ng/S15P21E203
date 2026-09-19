@@ -215,11 +215,39 @@ export function GlobalHeader({ tone = 'surface' }: { tone?: HeaderTone }) {
  * 로고 — 이름 한 줄.
  *
  * 이름 아래의 영문 한 줄(SCENT JOURNEY)은 2026-09-16 에 모든 화면에서 뺐습니다.
+ *
+ * ⭐ **진열대에서 누르면 떠오릅니다** (2026-09-19). 진열대에서 메인으로 가는 길은 여기 하나뿐이라
+ * (다른 링크가 없습니다) 돌아오는 연출도 여기가 입구입니다 — 나가는 길이 헤더의 '진열대' 인 것과 짝입니다.
+ * ⚠ 로그아웃의 `navigate(ROUTES.HOME)`(아래 계정 메뉴)은 이 길이 아닙니다. 로그인이 풀리는데
+ *   바다로 떠오르는 연출이 붙으면 무슨 일이 일어난 건지 흐려집니다.
  */
 function BrandMark({ ink }: { ink: Ink }) {
+  const onShelf = useLocation().pathname === ROUTES.MY_SHELF
+  const startDive = useDiveStore((state) => state.start)
   return (
     <Link
       to={ROUTES.HOME}
+      onClick={
+        /*
+          진열대에서 누를 때만 가로챕니다 — 커튼이 위에서 덮은 **뒤에** 커튼이 직접 옮겨 갑니다.
+          ⚠ 새 탭 · 새 창으로 여는 누름은 건드리지 않습니다 (나가는 길과 같은 규율).
+          ⚠ 뒤로 가기(브라우저)는 못 가로챕니다 — 그때는 평소대로 넘어갑니다.
+        */
+        onShelf
+          ? (event) => {
+              if (
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+              ) {
+                return
+              }
+              event.preventDefault()
+              startDive(ROUTES.HOME, 'rise')
+            }
+          : undefined
+      }
       className={cn('block shrink-0', ink.text, FOCUS, ink.ring)}
     >
       <span className="block font-serif text-[26px] leading-none font-semibold tracking-[0.12em]">

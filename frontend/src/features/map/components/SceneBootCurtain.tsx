@@ -40,9 +40,25 @@ type Props = {
   getState: () => SceneBootState
   /** 커튼이 다 걷혔습니다 — 화면에서 내려도 됩니다 */
   onDone: () => void
+  /**
+   * 걷기 시작했습니다 = **엔진이 다 떴습니다.** 진열대에서 떠올라 들어올 때 잠수 커튼이
+   * 이것을 준비 신호로 씁니다 (`HomePage`) — 다 걷힐 때까지(1초) 기다리면 그만큼 늦습니다.
+   */
+  onLeaving?: () => void
+  /**
+   * 비켜 있습니다 — 잠수 커튼이 이미 화면을 덮고 있을 때입니다.
+   * ⚠ 언마운트가 아니라 **숨기기**입니다. 걷는 때를 재는 일(getState · onDone)은 그대로 해야
+   *   준비 신호가 오고, 떠오르기가 끝난 뒤 이 커튼도 제대로 내려갑니다.
+   */
+  hidden?: boolean
 }
 
-export function SceneBootCurtain({ getState, onDone }: Props) {
+export function SceneBootCurtain({
+  getState,
+  onDone,
+  onLeaving,
+  hidden,
+}: Props) {
   // 첫 진입이면 index.html 의 정적 커튼(#boot)이 이미 칠하고 있습니다
   const [adopted] = useState(() => document.getElementById('boot') !== null)
   const revisit = !adopted
@@ -87,9 +103,15 @@ export function SceneBootCurtain({ getState, onDone }: Props) {
     }
   }, [getState])
 
+  const latestLeaving = useRef(onLeaving)
+  useEffect(() => {
+    latestLeaving.current = onLeaving
+  })
+
   // 걷기 — 첫 진입이면 #boot 의 구름도 같이 갈라집니다
   useEffect(() => {
     if (!leaving) return
+    latestLeaving.current?.()
     document.getElementById('boot')?.classList.add('is-leaving')
     const timer = window.setTimeout(() => latestDone.current(), LEAVE_MS)
     return () => window.clearTimeout(timer)
@@ -98,7 +120,12 @@ export function SceneBootCurtain({ getState, onDone }: Props) {
   return (
     <div
       aria-hidden="true"
-      className={cn('scene-boot fixed inset-0 z-100', leaving && 'is-leaving')}
+      className={cn(
+        'scene-boot fixed inset-0 z-100',
+        leaving && 'is-leaving',
+        // 잠수 커튼이 덮고 있는 동안은 비킵니다 — 물 밑에서 아이보리 구름이 갈라지면 두 겹이 됩니다
+        hidden && 'pointer-events-none opacity-0',
+      )}
     >
       {revisit && (
         <i className="scene-boot-veil">
