@@ -1,8 +1,5 @@
 /**
- * 경로 문자열은 여기서만 정의합니다.
- * 화면/링크가 늘어나도 오타로 깨지는 링크가 생기지 않도록 상수로 관리합니다.
- *
- * 오른쪽 주석은 와이어프레임 화면 번호입니다 (피그마 "1920w light" 아트보드).
+ * 경로 문자열은 여기서만 정의합니다. 오른쪽 주석은 와이어프레임 화면 번호입니다.
  */
 export const ROUTES = {
   /** A01 랜딩 · 향 지도 — 개인화 추천도 이 화면의 취향 영역으로 표시됩니다 */
@@ -47,19 +44,12 @@ export const ROUTES = {
   POST_DETAIL: '/community/posts/:postId', // A23 게시글 상세 + 댓글
   REVIEW_WRITE: '/community/reviews/write', // A24a 후기 작성
   /**
-   * A24a 후기 수정. 작성과 **같은 화면**(`ReviewWritePage`)을 쓰고 주소만 다릅니다.
-   *
-   * 주소를 나눈 이유: 부르는 API 가 다르고(`POST` · `PATCH`), 수정은 본인만
-   * 할 수 있어 나중에 보호 라우트를 붙일 자리가 필요합니다.
+   * A24a 후기 수정. 작성과 같은 화면을 쓰고 주소만 다릅니다 — 부르는 API 가
+   * 다르고(`POST` · `PATCH`) 보호 라우트를 붙일 자리가 필요합니다.
    */
   REVIEW_EDIT: '/community/reviews/:reviewId/edit',
   POST_WRITE: '/community/free/write', // A24b 자유 글 작성
-  /**
-   * A24b 자유 글 수정. 작성과 **같은 화면**(`PostWritePage`)을 쓰고 주소만 다릅니다.
-   *
-   * 후기 수정(`REVIEW_EDIT`)과 같은 방식입니다 — 쓰는 칸과 규칙이 같아 화면을 나누면
-   * 한쪽만 고쳐집니다.
-   */
+  /** A24b 자유 글 수정. `REVIEW_EDIT` 와 같은 방식입니다 */
   POST_EDIT: '/community/free/:postId/edit',
 
   // 계정 (에픽 115) — 마이페이지는 없고 헤더 닉네임 ▾ 에서 바로 들어갑니다

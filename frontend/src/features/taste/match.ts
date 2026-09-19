@@ -6,12 +6,7 @@ import type {
   TasteMatchMode,
 } from './types'
 
-/**
- * 취향 테스트 매칭 (TST-03)
- *
- * 훅을 쓰지 않는 순수 함수만 둡니다. 렌더링 없이 테스트할 수 있고, 데이터가
- * 갱신됐을 때 `match.test.ts` 가 바로 잡아냅니다.
- */
+/** 취향 테스트 매칭 (TST-03). 훅을 쓰지 않는 순수 함수만 둡니다 */
 
 /**
  * 1순위 · 2순위 가중치.
@@ -34,10 +29,8 @@ export const SECONDARY_WEIGHT = 1 - PRIMARY_WEIGHT
 const EPSILON = 1e-9
 
 /**
- * 고른 계열로 취향 벡터를 만듭니다.
- *
- * 한 개면 그 계열만 1, 두 개면 1순위 0.58 · 2순위 0.42 입니다.
- * 코사인 유사도는 크기에 영향을 받지 않으므로 합을 1 로 맞출 필요가 없습니다.
+ * 고른 계열로 취향 벡터를 만듭니다. 한 개면 그 계열만 1, 두 개면 0.58 · 0.42 —
+ * 코사인 유사도는 크기를 안 보므로 합을 1 로 맞출 필요가 없습니다.
  */
 export function buildTasteVector(
   picks: readonly ScentFamilyKey[],
@@ -50,11 +43,8 @@ export function buildTasteVector(
 }
 
 /**
- * 두 계열 벡터의 코사인 유사도(0~1).
- *
- * 크기를 무시하고 방향만 보기 때문에, 비중의 절대값이 아니라 **계열 사이의 비율**이
- * 비슷한 향수가 뽑힙니다. 예를 들어 1순위 FLORAL · 2순위 MUSK 를 골랐을 때
- * FLORAL 0.7 / MUSK 0.2 인 향수보다 FLORAL 0.52 / MUSK 0.48 인 향수가 더 가깝습니다.
+ * 두 계열 벡터의 코사인 유사도(0~1). 방향만 보므로 비중의 절대값이 아니라
+ * **계열 사이의 비율**이 비슷한 향수가 뽑힙니다.
  */
 export function cosineSimilarity(a: ScentWeights, b: ScentWeights): number {
   let dot = 0
@@ -74,10 +64,8 @@ export function cosineSimilarity(a: ScentWeights, b: ScentWeights): number {
 }
 
 /**
- * 고른 계열을 **모두** 가진 향수의 수.
- *
- * 희소 조합 목록을 코드에 적어두지 않고 여기서 세어 정합니다. 지도가 다시 만들어져
- * 데이터가 통째로 바뀌어도 판정이 함께 따라갑니다.
+ * 고른 계열을 **모두** 가진 향수의 수. 희소 조합 목록을 적어두지 않고 세어 정합니다 —
+ * 데이터가 통째로 바뀌어도 판정이 따라갑니다.
  */
 export function countCandidates(
   vectors: readonly ScentVector[],

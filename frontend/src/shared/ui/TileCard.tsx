@@ -6,11 +6,8 @@ type TileCardProps = {
   /** 카드를 누르면 갈 곳 */
   to: string
   /**
-   * 이미지 자리. 호출하는 쪽이 `Thumbnail` 을 직접 넘깁니다.
-   *
-   * 이미지 URL 하나를 받게 하지 않은 이유는 컬렉션이 썸네일 **세 장**을 나란히
-   * 보여주기 때문입니다. 크기 잡는 방식도 도메인마다 다릅니다(노트는 비율
-   * aspect-7/5 · 브랜드 h-20 · 컬렉션 aspect-3/4). 여기서 정하면 셋 중 둘이 예외가 됩니다.
+   * 이미지 자리. 호출하는 쪽이 `Thumbnail` 을 직접 넘깁니다 — 컬렉션은 썸네일을
+   * 세 장 나란히 놓고, 크기 잡는 방식도 도메인마다 다릅니다.
    */
   media: React.ReactNode
   /** 한 줄로 줄여서 보여줍니다 */
@@ -21,13 +18,11 @@ type TileCardProps = {
 }
 
 /**
- * 격자에 반복되는 타일 카드 (와이어프레임 A34 브랜드 · A35 노트 · A13 컬렉션)
+ * 격자에 반복되는 타일 카드 (A34 브랜드 · A35 노트 · A13 컬렉션)
  *
- * 세 도메인이 같은 클래스 문자열을 복사해 쓰고 있어서 공용으로 올렸습니다
- * (S15P21E203-167). `features/a` 는 `features/b` 를 import 할 수 없으므로
- * `shared/ui` 에 두고, 도메인 타입을 받지 않고 필요한 값만 낱개로 받습니다.
- *
- * 향수 카드는 배지 · 하단 동작 영역이 따로 있어 `PerfumeCard` 로 남깁니다.
+ * `features/a` 는 `features/b` 를 import 할 수 없어 `shared/ui` 에 두고, 도메인
+ * 타입을 받지 않고 낱개로 받습니다. 향수 카드는 배지 · 동작 영역이 따로 있어
+ * `PerfumeCard` 로 남깁니다.
  */
 export function TileCard({
   to,
@@ -39,12 +34,7 @@ export function TileCard({
   return (
     <Link
       to={to}
-      /*
-        화면 테마가 붙잡을 자리 이름입니다(`PerfumeCard` 와 같은 뜻).
-        어두운 방 위 유리판(`styles/scent-display.css` 의 `.scent-glass`)이 이 이름으로
-        카드를 찾아 유리로 바꿉니다. 판 밖에서는 아무 일도 하지 않으므로, 이 카드를
-        쓰는 노트 · 컬렉션 화면은 그대로입니다.
-      */
+      /* 화면 테마가 붙잡을 자리 이름 — docs/어두운-방-유리판.md */
       data-slot="card"
       className={cn(
         'border-line bg-surface-card rounded-card flex flex-col gap-2.5 border p-2.5',
@@ -56,15 +46,8 @@ export function TileCard({
       {media}
 
       {/*
-        이름 두 줄은 **바짝 붙입니다.** 카드의 `gap-2.5`(10px)를 그대로 물려받으면
-        영문 이름과 한국어 이름이 사진과 같은 간격으로 떨어져, 두 줄이 한 덩이가
-        아니라 따로 놓인 정보처럼 읽힙니다. 향수 카드(`PerfumeCard`)가 이름 묶음을
-        `space-y-0.5`(2px)로 두고 있어 같은 값을 씁니다 — 향수 · 브랜드 · 노트 ·
-        컬렉션 카드가 한 격자에서 이웃하는 화면이 있어 간격이 갈리면 눈에 띕니다.
-
         묶음을 block 으로 두는 이유: `space-y-*` 는 형제에 margin-top 을 다는 방식이라
-        안쪽 요소가 블록이어야 먹습니다. 제목의 `truncate` 도 같은 이유로 block 이
-        필요합니다 — 전에는 flex 자식이라 저절로 블록이었습니다.
+        안쪽 요소가 블록이어야 먹습니다. 제목의 `truncate` 도 마찬가지입니다.
       */}
       <span className="block space-y-0.5">
         <span className="text-ink text-heading block truncate font-serif font-semibold">
