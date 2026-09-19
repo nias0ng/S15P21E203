@@ -1,18 +1,14 @@
 import type { ScentFamilyKey } from '@/shared/config/scentFamilies'
 
 /**
- * 취향 테스트 도메인 타입 (요구사항 TST-03)
- *
- * 회원가입 직후 온보딩 스텝에서 향 계열을 1~2개 고르면, 향 지도의 출발점이 될
- * 향수 한 개를 정합니다. 판단은 지도의 2D 좌표가 아니라 9차원 계열 벡터에서 합니다.
- * UMAP 투영을 거친 2D 좌표를 평균 내면 고르지 않은 계열 영역에 결과가 찍힐 수 있습니다.
+ * 취향 테스트 도메인 타입 (TST-03). 향 계열을 1~2개 고르면 향 지도의 출발점이 될
+ * 향수 하나를 정합니다. 판단은 2D 좌표가 아니라 **9차원 계열 벡터**에서 합니다 —
+ * UMAP 투영 좌표를 평균 내면 고르지 않은 계열 영역에 결과가 찍힙니다.
  */
 
 /**
- * 향 계열 9개는 취향 테스트만의 어휘가 아닙니다 — 향 지도가 지도를 이 아홉으로
- * 나누고 향수 검색도 같은 코드를 내려주므로 `shared/config` 에 한 벌만 둡니다.
- *
- * 배열 순서가 곧 선택 화면의 타일 배치 순서입니다(가벼운 향 → 무거운 향).
+ * 향 계열 9개는 향 지도 · 향수 검색도 쓰는 어휘라 `shared/config` 에 한 벌만 둡니다.
+ * 배열 순서가 곧 선택 화면의 타일 순서입니다(가벼운 향 → 무거운 향).
  */
 export {
   SCENT_FAMILY_KEYS,
@@ -29,11 +25,9 @@ export interface ScentFamilyLabel {
 }
 
 /**
- * 계열별 비중. 향수 한 개가 9개 중 1~3개만 값을 갖는 희소 벡터이고,
- * **합이 1이 아닙니다**(0.2~1.0). 정규화하지 않은 값이므로 `1 - 합` 을
- * "기타 계열" 로 해석하면 안 됩니다.
- *
- * 코사인 유사도는 벡터 크기에 영향을 받지 않아, 정규화 없이 그대로 씁니다.
+ * 계열별 비중. 9개 중 1~3개만 값을 갖는 희소 벡터이고 **합이 1이 아닙니다**
+ * (0.2~1.0) — `1 - 합` 을 "기타 계열" 로 읽으면 안 됩니다. 코사인 유사도는 벡터
+ * 크기를 타지 않아 정규화 없이 그대로 씁니다.
  */
 export type ScentWeights = Partial<Record<ScentFamilyKey, number>>
 
@@ -41,10 +35,8 @@ export type ScentWeights = Partial<Record<ScentFamilyKey, number>>
 export interface ScentVector {
   perfumeId: number
   /**
-   * 지도 좌표 (x 0~100, y 0~83.056).
-   *
-   * **응답은 0~1 인데 `api.ts` 가 100배 해서 넘깁니다.** 지도 컴포넌트의 viewBox 가
-   * 100x100 이라 같은 스케일이어야 같은 자리에 찍힙니다.
+   * 지도 좌표 (x 0~100, y 0~83.056). **응답은 0~1 인데 `api.ts` 가 100배 합니다** —
+   * 지도 컴포넌트의 viewBox 가 100x100 이라 같은 스케일이어야 합니다.
    */
   x: number
   y: number
@@ -54,12 +46,8 @@ export interface ScentVector {
 }
 
 /**
- * `GET /map/scent-vectors` 응답 그대로.
- *
- * 배열이 아니라 `perfumes` 를 감싼 객체입니다 — 나중에 이 자리에 값을 더해도 응답
- * 모양이 통째로 바뀌지 않게 하려는 백엔드 쪽 판단입니다.
- *
- * `families` 의 키는 `scent_regions.code` 라 **열린 문자열**입니다. 받는 자리에서
+ * `GET /map/scent-vectors` 응답 그대로. 배열이 아니라 `perfumes` 를 감싼 객체이고,
+ * `families` 의 키는 `scent_regions.code` 라 **열린 문자열**입니다 — 받는 자리에서
  * 아는 계열만 남깁니다(`api.ts`).
  */
 export interface ScentVectorsResponse {
@@ -75,10 +63,8 @@ export interface ScentVectorsResponse {
 }
 
 /**
- * 결과 문구가 갈리는 기준.
- *
- * n = 고른 계열을 **모두** 가진 향수의 수. 조합 목록을 코드에 적어두지 않고
- * 데이터에서 세어 정합니다. 지도가 다시 만들어져도 목록과 어긋나지 않게 하려는 것입니다.
+ * 결과 문구가 갈리는 기준. n = 고른 계열을 **모두** 가진 향수의 수이고, 조합 목록을
+ * 코드에 적지 않고 데이터에서 셉니다 — 지도가 다시 만들어져도 안 어긋납니다.
  */
 export type TasteMatchMode =
   /** n ≥ 2 — 후보가 여럿이라 비율이 가장 가까운 향수가 뽑혔습니다 */
@@ -90,13 +76,10 @@ export type TasteMatchMode =
 
 /**
  * 서버에 남은 취향 테스트 기록 (`GET · POST /users/me/taste-test`).
- * 저장 직후와 조회가 같은 모양입니다.
  *
- * **아직 치르지 않은 사람도 200 입니다** — `completed` 가 `false` 이고 나머지가
- * 비어 옵니다. 404 가 아니라서 화면이 "처음 온 사람" 을 오류로 다루지 않아도 됩니다.
- *
- * `picks` 를 `ScentFamilyKey[]` 로 좁히지 않습니다. 서버가 `scent_regions.code` 를
- * 그대로 돌려주는 열린 값이라, 우리가 모르는 코드가 오면 타입이 거짓말을 합니다.
+ * **아직 치르지 않은 사람도 200 입니다** — `completed` 가 `false` 이고 나머지가 비어
+ * 옵니다. `picks` 는 `scent_regions.code` 를 그대로 돌려주는 열린 값이라
+ * `ScentFamilyKey[]` 로 좁히지 않습니다.
  */
 export interface TasteTestRecord {
   completed: boolean

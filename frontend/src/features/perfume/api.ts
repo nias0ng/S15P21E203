@@ -30,12 +30,8 @@ import type {
 
 /**
  * COM-05 향수 검색. 조건은 모두 선택이고 함께 오면 AND 입니다.
- *
- * **`scentFamily` 는 받는 자리에서 한 번 거릅니다.** 응답의 계열은 열린 문자열이라
- * (`scent_regions` 에 행을 더하면 모르는 값이 옵니다) 타입만 좁혀 두면 거짓말이
- * 됩니다. 모르는 값은 null 로 바꿔 계열 배지만 안 그리고 향수는 그대로 보여 줍니다.
- *
- * ⚠️ gender · ranking 에 정의되지 않은 값을 보내면 400 입니다.
+ * **`scentFamily` 는 받는 자리에서 거릅니다** — 열린 문자열이라 타입만 좁히면
+ * 거짓말입니다. ⚠️ gender · ranking 에 없는 값을 보내면 400 입니다.
  */
 export async function searchPerfumes(params: PerfumeSearchParams) {
   return withDevFallback(
@@ -57,8 +53,7 @@ export async function searchPerfumes(params: PerfumeSearchParams) {
 }
 
 /**
- * DTL-01 향수 기본 정보 조회. 없는 향수는 404 `PERFUME_NOT_FOUND` 입니다.
- *
+ * DTL-01 향수 기본 정보 조회. 없는 향수는 404 `PERFUME_NOT_FOUND` 이고,
  * 향조 · 계절 · 요약 · 후기는 아래 함수들이 각각 따로 부릅니다.
  */
 export async function getPerfumeDetail(perfumeId: number) {
@@ -73,9 +68,8 @@ export async function getPerfumeDetail(perfumeId: number) {
 }
 
 /**
- * DTL-02 향조. 노트와 어코드를 함께 돌려줍니다.
- *
- * 향조가 없는 향수도 200 이고 두 목록이 빈 배열입니다. 없는 향수만 404 입니다.
+ * DTL-02 향조. 노트와 어코드를 함께 돌려줍니다. 향조가 없는 향수도 200 이고 두
+ * 목록이 빈 배열입니다 — 없는 향수만 404 입니다.
  */
 export async function getPerfumeNotes(perfumeId: number) {
   return withDevFallback(
@@ -134,7 +128,6 @@ export async function getPerfumeReviewStatistics(perfumeId: number) {
 
 /**
  * DTL-03 후기 목록. 최신 작성 순이고 비로그인도 볼 수 있습니다.
- *
  * 백엔드 기본 size 는 10 이고 최대 100 입니다.
  */
 export async function getPerfumeReviews(
@@ -170,16 +163,13 @@ export async function getReviewDetail(reviewId: number) {
 
 /*
  * ── 후기 쓰기 ───────────────────────────────────────────────
- *
- * 전부 로그인이 필요합니다(401). `withDevFallback` 을 쓰지 않습니다 — 읽기와 달리
- * 실패를 자리표시자로 덮으면 저장되지 않은 것을 저장된 것처럼 보여주게 됩니다.
+ * 전부 로그인이 필요합니다(401). `withDevFallback` 을 쓰지 않습니다 — 저장되지
+ * 않은 것을 저장된 것처럼 보여주게 됩니다.
  */
 
 /**
- * 후기 작성. 대상 향수는 **경로로** 정해지고 나중에 바꿀 수 없습니다.
- *
- * 한 사람이 같은 향수에 후기를 두 개 쓸 수 없어, 이미 썼으면 409 입니다
- * (`REVIEW_ALREADY_EXISTS`).
+ * 후기 작성. 대상 향수는 **경로로** 정해지고 나중에 바꿀 수 없습니다. 한 사람이 같은
+ * 향수에 두 개를 못 써서, 이미 썼으면 409 `REVIEW_ALREADY_EXISTS` 입니다.
  */
 export async function createReview(
   perfumeId: number,
@@ -193,10 +183,8 @@ export async function createReview(
 }
 
 /**
- * 후기 수정. 제목 · 내용만 바뀝니다.
- *
- * 보내지 않은 항목은 그대로 유지되지만, **둘 다 비우면 400** 입니다. 부르는 쪽이
- * 바뀐 것만 담아 보내고, 담을 게 없으면 아예 부르지 않습니다.
+ * 후기 수정. 제목 · 내용만 바뀌고 보내지 않은 항목은 유지되지만, **둘 다 비우면
+ * 400** 입니다 — 담을 게 없으면 아예 부르지 않습니다.
  */
 export async function updateReview(
   reviewId: number,
@@ -206,9 +194,8 @@ export async function updateReview(
 }
 
 /**
- * 후기의 계절을 통째로 바꿉니다. 더하기 · 빼기가 아니라 교체입니다.
- *
- * 빈 배열은 400 이라, 계절을 지우기만 할 수는 없습니다.
+ * 후기의 계절을 통째로 바꿉니다(더하기 · 빼기가 아니라 교체). 빈 배열은 400 이라
+ * 계절을 지우기만 할 수는 없습니다.
  */
 export async function replaceReviewSeasons(
   reviewId: number,
@@ -252,12 +239,9 @@ export async function unlikeReview(
 /*
  * ── 향수 상세 조회 기록 (VIEW-01) ──────────────────────────
  *
- * 들어올 때 한 번(`POST`), 나갈 때 한 번(`PATCH .../exit`) 부릅니다. **체류 시간은
- * 서버가 잽니다** — 화면이 잰 값을 보내면 시계가 틀어진 기기나 잠자기에 들어간 탭이
- * 몇 시간짜리 체류를 만듭니다.
- *
- * 전부 로그인이 필요합니다(401). 기록이 실패해도 화면은 아무 일 없이 계속 돕니다 —
- * 사용자가 할 일이 없는 값이라 오류를 보여줄 자리가 없습니다.
+ * 들어올 때 `POST`, 나갈 때 `PATCH .../exit` 입니다. **체류 시간은 서버가 잽니다** —
+ * 화면이 잰 값은 시계가 틀어진 기기나 잠든 탭이 몇 시간짜리 체류를 만듭니다.
+ * 로그인이 필요하고(401), 실패해도 화면은 그대로 돕니다.
  */
 
 /** `POST /perfume-views` 응답 */
@@ -275,11 +259,9 @@ interface PerfumeViewExitResponse {
 }
 
 /**
- * 상세 화면에 들어왔다고 남깁니다.
- *
- * `fromLocationType` 은 **들어온 길**입니다(`shared/config/perfumeViewSource`).
- * `fromPerfumeId` 는 다른 향수 상세에서 건너온 경우에만 싣습니다 — 없는 향수를 실으면
- * 404 입니다.
+ * 상세 화면에 들어왔다고 남깁니다. `fromLocationType` 은 **들어온 길**이고
+ * (`shared/config/perfumeViewSource`) `fromPerfumeId` 는 다른 향수 상세에서 건너온
+ * 경우에만 싣습니다 — 없는 향수를 실으면 404 입니다.
  */
 export async function startPerfumeView(input: {
   perfumeId: number
@@ -306,25 +288,15 @@ export async function exitPerfumeView(
   return data
 }
 
-/**
- * 비슷한 향수로 보여줄 개수.
- *
- * 카드 격자가 가장 넓은 화면에서 5열이라 **딱 한 줄**입니다. 두 줄이 되면 후기
- * 아래의 곁가지 구역이 본문만큼 길어집니다. 서버는 더 줄 수 있고(기본 20) 이 값이
- * 곧 요청하는 최대 개수입니다.
- */
+/** 가장 넓은 화면에서 딱 한 줄. 서버는 더 줄 수 있습니다(기본 20) */
 export const RELATED_PERFUME_LIMIT = 5
 
 /**
  * 비슷한 향수 (DTL — A10 아래쪽).
  *
  * `/similar` 과 `/neighbors` 가 **같은 데이터를 같은 모양으로** 줍니다(서버도 같은
- * 메서드입니다). 둘을 다 부르면 같은 목록을 두 번 받으므로 하나만 씁니다.
- *
- * `size` 는 쪽 크기가 아니라 **최대 개수**입니다 — 응답에 `page` 도 `totalElements`
- * 도 없어 이어서 볼 방법이 없습니다.
- *
- * 향 지도에 실린 향수가 아니면 빈 배열입니다.
+ * 메서드) — 하나만 씁니다. `size` 는 쪽 크기가 아니라 **최대 개수**입니다(응답에
+ * `page` 도 `totalElements` 도 없습니다). 향 지도 밖 향수는 빈 배열입니다.
  */
 export async function getRelatedPerfumes(
   perfumeId: number,
@@ -340,12 +312,9 @@ export async function getRelatedPerfumes(
 /**
  * 후기에서 자주 나온 향 표현 (DTL).
  *
- * ⚠️ **지금은 모든 향수가 빈 배열입니다.** 키워드를 적재하는 코드가 아직 없어서이고,
- * 백엔드 응답 주석에도 그렇게 적혀 있습니다. 화면은 값이 있을 때만 구역을 그립니다 —
- * 그래야 적재가 도는 날 손대지 않아도 나타납니다.
- *
- * `size` 는 쪽 크기가 아니라 최대 개수입니다. 몇 개를 받든 각 키워드의 백분율은
- * 같습니다(분모가 따로 세어집니다).
+ * ⚠️ **지금은 모든 향수가 빈 배열입니다** — 키워드를 적재하는 코드가 아직 없습니다.
+ * 화면은 값이 있을 때만 구역을 그려, 적재가 도는 날 손대지 않아도 나타납니다.
+ * `size` 는 최대 개수이고, 몇 개를 받든 백분율은 같습니다(분모가 따로 세어집니다).
  */
 export async function getPerfumeReviewKeywords(
   perfumeId: number,

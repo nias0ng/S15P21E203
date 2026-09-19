@@ -17,25 +17,18 @@ import { TasteResultModal } from './TasteResultModal'
 
 type TasteTestStepProps = {
   /**
-   * 결과 모달에서 확인을 눌렀을 때. 화면 이동은 pages 쪽에서 합니다.
-   *
-   * 뽑힌 향수 id 를 넘기지 않습니다 — **서버가 이미 알고 있습니다.** 확인을 누를 때
-   * 이 컴포넌트가 결과를 남기고(`POST /users/me/taste-test`), 배를 그 자리에 띄우는
-   * 것은 지도 쪽 일입니다.
+   * 결과 모달에서 확인을 눌렀을 때. 뽑힌 향수 id 를 넘기지 않습니다 — 확인을 누를 때
+   * 이 컴포넌트가 결과를 남겨(`POST /users/me/taste-test`) **서버가 이미 압니다**.
    */
   onComplete: () => void
 }
 
 /**
- * 취향 테스트 온보딩 스텝 (TST-03)
- *
- * 계열을 1~2개 고르고 [출발점 찾기] 를 누르면 결과 모달이 이 화면 위에 뜹니다.
- * 확인을 눌러야 향 지도로 넘어가고, 다시 하기를 누르면 모달만 닫힙니다.
+ * 취향 테스트 온보딩 스텝 (TST-03). 계열을 1~2개 고르면 결과 모달이 뜨고,
  * **건너뛰기는 없습니다.**
  *
- * **첫 로그인 직후에 열립니다.** 로그인 화면이 `GET /users/me/taste-test` 로 아직
- * 치르지 않은 사람을 가려내 이 화면으로 보냅니다. 확인을 누르면 결과를 서버에 남기고
- * (`POST /users/me/taste-test`) 그다음 이동은 호출하는 쪽이 정합니다.
+ * **첫 로그인 직후에 열립니다** — 로그인 화면이 `GET /users/me/taste-test` 로 아직
+ * 치르지 않은 사람을 가려내 보냅니다. 그다음 이동은 부르는 쪽이 정합니다.
  */
 export function TasteTestStep({ onComplete }: TasteTestStepProps) {
   const vectors = useQuery(scentVectorsQuery())
@@ -50,14 +43,9 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
   }
 
   /**
-   * 결과를 서버에 남깁니다 (TST-03).
-   *
-   * **이미 마친 사람은 409 인데 성공으로 다룹니다.** 남기려던 것이 이미 남아 있는
-   * 상태라 사용자가 할 일이 없습니다 — 여기서 막으면 주소로 이 화면에 다시 들어온
-   * 사람이 아무 데도 못 갑니다.
-   *
-   * 저장한 기록을 캐시에 넣어 둡니다. 로그인 화면이 온보딩을 띄울지 정할 때 보는
-   * 값이라, 비워 두면 같은 세션에서 한 번 더 물어보게 됩니다.
+   * 결과를 서버에 남깁니다 (TST-03). **이미 마친 사람은 409 인데 성공으로 다룹니다** —
+   * 막으면 주소로 다시 들어온 사람이 아무 데도 못 갑니다. 저장한 기록은 캐시에
+   * 넣어 둡니다(로그인 화면이 온보딩을 띄울지 볼 때 씁니다).
    */
   const save = useMutation({
     mutationFn: (result: TasteMatch) =>

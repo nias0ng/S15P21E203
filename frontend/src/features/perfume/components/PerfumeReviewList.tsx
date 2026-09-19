@@ -29,11 +29,7 @@ type Props = {
   perfumeId: number
 }
 
-/**
- * 향수 상세 ⑤ 후기 (와이어프레임 A10 — DTL-03 · DTL-10)
- *
- * [후기 쓰기]는 모달이 아니라 후기 게시글 작성 화면(A24a)으로 이동합니다.
- */
+/** 향수 상세 ⑤ 후기 (A10). [후기 쓰기]는 모달이 아니라 작성 화면(A24a)입니다 */
 export function PerfumeReviewList({
   reviews,
   totalElements,
@@ -135,19 +131,10 @@ function ReviewRow({ review }: { review: Review }) {
         )}
       </span>
 
-      {/*
-        한 줄로 자릅니다. 목록에서 필요한 것은 "무슨 이야기인가" 까지고
-        전문은 누르면 나옵니다.
-      */}
       <span className="text-ink-muted text-body block truncate">
         {review.content}
       </span>
 
-      {/*
-        계절은 적지 않습니다. 응답(`review.seasons`)에 들어 있지만, 바로 위 계절별
-        평가 구역이 같은 값을 네 계절 집계로 이미 보여주고 있어 한 줄마다 또 적으면
-        같은 정보가 두 번 나옵니다.
-      */}
       <span className="text-ink-muted text-caption block">
         {/* 탈퇴한 회원의 후기는 글만 남고 작성자가 지워집니다 */}
         {review.nickname ?? '탈퇴한 회원'} ·{' '}

@@ -39,26 +39,15 @@ import { Toast } from '@/shared/ui/Toast'
 const COMMENT_PAGE_SIZE = 20
 
 /**
- * 게시글 상세 + 댓글 (와이어프레임 A23 — CMT-02 · 07 · 08 · 09 · 10 · 11)
+ * 게시글 상세 + 댓글 (A23 — CMT-02 · 07 ~ 11)
  *
- * **자유 게시판 전용입니다.** 후기는 백엔드에서 다른 자원이라
- * `/reviews/:reviewId` 에서 보여줍니다. 후기에는 댓글을 달지 않습니다(A22a).
+ * **자유 게시판 전용입니다.** 후기는 백엔드에서 다른 자원이라 `/reviews/:reviewId`
+ * 에서 보여주고, 후기에는 댓글을 달지 않습니다(A22a).
  *
  * 여는 것이 곧 조회라 조회수가 하나 오릅니다 — 창 포커스 · 재연결 재요청은
- * queries.ts 에서 꺼 두었습니다.
+ * queries.ts 에서 꺼 두었습니다. 연결 향수 · 첨부는 값이 있을 때만 그립니다.
  *
- * 와이어프레임 주석: "연결 향수와 첨부 이미지가 없으면 이 영역들을 표시하지 않는다".
- * 자유 글은 향수를 걸지 않아도 되므로 값이 있을 때만 그립니다.
- *
- * 폭은 라우트의 text(800px)입니다. 이 화면은 목록이 아니라 **읽는 화면**이라 본문이
- * wide(1440px)를 꽉 채우면 한 줄이 100자를 넘어가고, 줄을 바꿀 때마다 눈이 왼쪽 끝을
- * 다시 찾아야 합니다.
- *
- * 게시판(A22b)에서 한 번에 넘어오는 화면이라 **어두운 방 + 유리판**을 그대로 씁니다
- * (라우트의 `handle.night`). 판 구성은 향수 상세(A10)와 같습니다 — 머리 구역(분류 ·
- * 제목 · 작성자)은 판 없이 어둠에 바로 놓고, 읽을 덩어리인 본문과 댓글이 각자 판을
- * 답니다. 머리까지 판에 올리면 판이 세 장 쌓여 어디부터가 글인지가 흐려집니다.
- */
+ * 어두운 방 · 유리판 구성 — docs/어두운-방-유리판.md */
 export default function PostDetailPage() {
   const { postId } = useParams<{ postId: string }>()
   const numericId = Number(postId)
@@ -197,21 +186,7 @@ export default function PostDetailPage() {
           </div>
         </header>
 
-        {/*
-          본문 판. 글 · 첨부 이미지 · 컬렉션 · 연결 향수가 한 판에 담깁니다 —
-          넷은 "이 글이 무엇을 담고 있는가" 한 덩이라, 판을 따로 깔면 첨부가 본문과
-          같은 글의 일부라는 것이 안 읽힙니다. 판 안쪽은 색 토큰이 다시 정의됩니다
-          (styles/scent-display.css 의 .scent-glass).
-        */}
         <div className={cn(GLASS_PANEL, 'space-y-6.25')}>
-          {/*
-            본문(13)이 아니라 `text-heading`(16)입니다. 이 판은 **읽으라고** 깐
-            판인데, 짧은 글이면 13px 한 줄이 넓은 판 위에 떠서 판이 띠처럼 얇게
-            앉습니다 — 노트 상세(A36)의 설명 판을 16 으로 올린 것과 같은 까닭이고,
-            폭이 text(800)라 16px 한글도 한 줄 40자를 넘지 않습니다.
-            줄 간격은 토큰값(1.4)이 16 짜리 한글에 빡빡해 `leading-relaxed` 로
-            벌립니다.
-          */}
           <p className="text-ink text-heading leading-relaxed whitespace-pre-wrap">
             {data.content}
           </p>

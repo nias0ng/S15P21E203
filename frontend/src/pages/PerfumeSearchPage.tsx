@@ -7,11 +7,8 @@ import { readPage, writePage } from '@/shared/lib/queryParams'
 import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
 
 /**
- * 향수 검색 결과 (와이어프레임 A09 — COM-05)
- *
- * 검색어와 쪽 번호를 URL 쿼리에 둡니다. 그래야 새로고침·뒤로가기·링크 공유가
- * 모두 같은 결과를 보여줍니다. **URL 의 page 는 1부터**이고 백엔드는 0부터라
- * 여기서 한 번 바꿉니다 — 주소창에 `page=0` 이 보이면 사람이 읽기 어렵습니다.
+ * 향수 검색 결과 (A09 — COM-05). 검색어와 쪽 번호를 URL 쿼리에 두고,
+ * **URL 의 page 는 1부터**라 백엔드(0부터)와 여기서 한 번 바꿉니다.
  */
 export default function PerfumeSearchPage() {
   const navigate = useNavigate()

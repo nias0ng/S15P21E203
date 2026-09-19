@@ -14,20 +14,8 @@ import { PillFilter } from '@/shared/ui/PillFilter'
 import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
 
 /**
- * 노트 (와이어프레임 A35 — 상단 메뉴 [노트] 목적지)
- *
- * 와이어프레임 주석:
- * - 대분류(CITRUS · WOOD · FLORAL …)로 묶어 세로로 쌓는다 — 대분류 순서는 고정
- * - 노트를 누르면 노트 상세(A36)
- *
- * 구성은 향수 목록(A33) · 브랜드(A34)와 한 벌입니다 — 어두운 방 · 가운데 검색창 ·
- * 알약 필터 · 유리판 위 격자. 셋은 상단 메뉴에서 바로 오가는 사이라 서로 다른
- * 모양이면 메뉴를 누를 때마다 화면이 뒤집힙니다. 어둠을 켜는 자리는 라우트의
- * `handle.night`(app/router)이고, 유리판·알약의 생김새는 styles/scent-display.css
- * 에 있습니다. 다른 점은 판이 대분류마다 한 장씩이라는 것뿐입니다.
- *
- * 검색어와 대분류를 URL 쿼리에 둡니다. 새로고침 · 뒤로가기 · 링크 공유가 같은
- * 결과를 보여주게 하려는 것입니다.
+ * 노트 (A35). 대분류로 묶어 세로로 쌓고 순서는 고정이며, 검색어와 대분류는 URL
+ * 쿼리에 둡니다. 어두운 방 · 유리판 — docs/어두운-방-유리판.md (판이 묶음마다 한 장)
  */
 export default function NoteListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -67,12 +55,8 @@ export default function NoteListPage() {
       />
 
       {/*
-        대분류 알약. 브랜드의 정렬 알약과 달리 `required` 가 아닙니다 — 켜진 것을
-        다시 누르면 꺼지고 전체로 돌아갑니다. 정렬은 꺼지면 줄 세울 기준이 없지만
-        이건 "거르지 않음" 이 멀쩡한 상태입니다.
-
-        목록이 오기 전에는 그리지 않습니다. 빈 묶음을 미리 두면 낭독기가 아무것도
-        없는 필터를 읽습니다.
+        대분류 알약. 정렬과 달리 `required` 가 아닙니다 — "거르지 않음" 이 멀쩡한
+        상태입니다. 목록이 오기 전에는 그리지 않습니다.
       */}
       {families && families.length > 0 && (
         <PillFilter

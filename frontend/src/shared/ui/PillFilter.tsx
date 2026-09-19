@@ -12,26 +12,19 @@ type PillFilterProps<T extends string> = {
    */
   onChange: (next: T | null) => void
   /**
-   * 늘 하나가 켜져 있어야 하는 묶음인지.
-   *
-   * 정렬처럼 "고르지 않음" 이 없는 것에 씁니다 — 켜진 것을 다시 눌러도 안 꺼집니다.
-   * 향수의 성별 · 인기 필터는 반대로 해제가 있어야 해서 기본값이 `false` 입니다.
+   * 늘 하나가 켜져 있어야 하는 묶음인지. 정렬처럼 "고르지 않음" 이 없는 것에
+   * 씁니다 — 성별 · 인기 필터는 해제가 있어야 해서 기본값이 `false` 입니다.
    */
   required?: boolean
   className?: string
 }
 
 /**
- * 어둠 위에 놓이는 알약 필터 (와이어프레임 A33 향수 · A34 브랜드)
+ * 어둠 위에 놓이는 알약 필터 (A33 향수 · A34 브랜드)
  *
- * 향수 목록의 필터 알약을 브랜드 정렬이 같이 쓰게 되면서 공용으로 올렸습니다.
- * `features/a` 는 `features/b` 를 import 할 수 없어 여기 둡니다.
- *
- * 생김새는 `styles/scent-display.css` 의 `.scent-pill` 이 그립니다 — 반투명 어둠에
- * 테두리만 도는 빛. **어두운 방(`.scent-night`) 안에서만 제 모양이 납니다.**
- *
- * 낱개 알약이 흩어져 서는 모양입니다. 칩 토글(`ChipToggle`)과 고르는 방식은 같지만,
- * 이쪽은 어두운 방 위에서만 제 모양이 나고 저쪽은 밝은 화면용입니다.
+ * 생김새는 `styles/scent-display.css` 의 `.scent-pill` 이 그립니다 — **어두운
+ * 방(`.scent-night`) 안에서만 제 모양이 납니다.** 고르는 방식은 `ChipToggle` 과
+ * 같지만 저쪽은 밝은 화면용입니다.
  */
 export function PillFilter<T extends string>({
   label,

@@ -15,18 +15,13 @@ import { PASSWORD_MIN_LENGTH } from '../types'
 type Props = { open: boolean; onClose: () => void }
 
 /**
- * 비밀번호 변경 모달 (와이어프레임 A30 좌측 — A29 [비밀번호 변경] 도착)
+ * 비밀번호 변경 모달 (A30 좌측 — A29 [비밀번호 변경] 도착)
  *
- * A29 주석: 비밀번호는 정보 변경 화면에 표시하지 않고 변경은 이 모달로만 합니다.
- * 비밀번호 정책 검증은 A28 회원가입과 같은 규칙입니다.
+ * **새 비밀번호 확인란은 서버로 보내지 않습니다.** 현재 비밀번호가 틀리면 400
+ * (`AUTH_CURRENT_PASSWORD_MISMATCH`) 입니다.
  *
- * **새 비밀번호 확인란은 서버로 보내지 않습니다** — 두 번 입력이 같은지는 화면이
- * 봅니다. 현재 비밀번호가 틀리면 400 (`AUTH_CURRENT_PASSWORD_MISMATCH`) 입니다.
- *
- * **성공하면 로그아웃됩니다.** 서버가 비밀번호를 바꾸면서 그 사람의 모든 세션을
- * 끊습니다(`UserService.changePassword` → `revokeAll`). 지금 들고 있는 액세스
- * 토큰도 그 순간 죽으므로, 로그인한 척 두면 다음 요청에서 예고 없이 튕깁니다.
- * 그래서 여기서 스스로 정리하고 안내와 함께 로그인 화면으로 보냅니다.
+ * **성공하면 로그아웃됩니다** — 서버가 그 사람의 모든 세션을 끊어(`revokeAll`)
+ * 들고 있는 토큰도 죽습니다. 여기서 스스로 정리하고 로그인 화면으로 보냅니다.
  */
 export function PasswordChangeModal({ open, onClose }: Props) {
   const navigate = useNavigate()

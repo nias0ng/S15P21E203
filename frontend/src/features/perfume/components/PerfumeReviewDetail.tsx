@@ -26,49 +26,32 @@ type Props = {
   /** 후기 수정 화면 경로 (A24a 가 후기 대상을 걸고 열립니다) */
   editTo: string
   /**
-   * 삭제가 끝난 뒤 화면을 옮기는 일은 부르는 쪽이 합니다.
-   *
-   * 여기서 직접 하지 않는 이유: 삭제하면 커뮤니티 게시판 목록도 낡는데,
-   * `features/perfume` 은 `features/community` 를 import 할 수 없습니다. 키를
-   * 문자열로 적어 넘어갈 수는 있지만 그건 린트만 피하고 경계는 넘는 것입니다.
-   * 두 도메인을 다 아는 곳은 화면(`pages/`)이라 거기서 정리합니다.
+   * 삭제 뒤 화면을 옮기는 일은 부르는 쪽이 합니다 — 커뮤니티 목록도 낡는데
+   * `features/perfume` 은 `features/community` 를 import 할 수 없습니다.
    */
   onDeleted?: () => void
 }
 
 /**
- * 후기 상세 (와이어프레임 A12 — DTL-03 · DTL-05 · DTL-06)
+ * 후기 상세 (A12 — DTL-03 · 05 · 06)
  *
- * 와이어프레임 주석: "본인이 작성한 후기에만 수정 · 삭제가 보인다".
- * 그래서 review.mine 일 때만 두 버튼을 그립니다. 화면에서 숨기는 것만으로는
- * 권한이 지켜지지 않으니 백엔드도 수정 · 삭제 때 작성자를 다시 확인합니다.
+ * `review.mine` 일 때만 수정 · 삭제를 그립니다. 화면에서 숨기는 것만으로는 권한이
+ * 지켜지지 않아 백엔드도 작성자를 다시 확인합니다.
  *
- * **유리판 한 장입니다.** 이 화면으로 들어오는 두 길(향수 상세 A10 의 후기 목록 ·
- * 후기 게시판 A22a)이 둘 다 어두운 방이라, 여기도 같은 어둠입니다(라우트의
- * `handle.night`). 예전의 `bg-surface-card` 는 그 어둠에서 `--night-soft` 로
- * 뒤집혀 갈색 상자가 됐습니다.
+ * 어두운 방 · 유리판 구성 — docs/어두운-방-유리판.md
  */
 export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
   const queryClient = useQueryClient()
   const [deleteOpen, setDeleteOpen] = useState(false)
 
   /*
-    향수 칸에 채울 것 — 사진 · 한국어 이름 · 성별.
-
-    **후기 응답에는 없습니다.** `review.perfume` 은 번호 · 영문 이름 · 브랜드 셋뿐이라
-    (types.ts 의 `ReviewDetail`) 향수 상세를 따로 부릅니다. 향수 상세 화면과 같은
-    쿼리 키라 방금 그 화면에서 넘어왔으면 캐시에 이미 있습니다.
-
-    도착 전에도 칸은 그립니다 — 이름과 브랜드는 후기 응답에 있어서, 사진과 아랫줄만
-    빈 채로 자리를 지키면 값이 도착할 때 칸이 튀지 않습니다.
+    사진 · 한국어 이름 · 성별은 **후기 응답에 없어** 향수 상세를 따로 부릅니다
+    (`review.perfume` 은 번호 · 영문 이름 · 브랜드 셋뿐). 향수 상세 화면과 같은
+    쿼리 키라 거기서 넘어왔으면 캐시에 있습니다.
   */
   const perfume = useQuery(perfumeDetailQuery(review.perfume.perfumeId))
   const brandName = perfume.data?.brand?.name ?? review.perfume.brand
-  /*
-    한국어 이름과 성별을 가운뎃점으로 잇습니다. **배열로 모아 잇는** 이유는 둘 다
-    없을 수 있어서입니다 — 문자열을 직접 붙이면 한쪽이 빠졌을 때 가운뎃점만 남거나
-    빈 줄이 자리를 차지합니다. 개요(A10)의 영문 줄과 같은 방식입니다.
-  */
+  /* 둘 다 없을 수 있어 배열로 모아 잇습니다 — 직접 붙이면 가운뎃점만 남습니다 */
   const sub = [
     perfume.data?.nameKo,
     perfume.data?.gender ? GENDER_TEXT[perfume.data.gender] : null,
@@ -96,14 +79,9 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
   })
 
   /**
-   * 좋아요 토글 (CMT-05). 비로그인 안내 · 누르기/취소 고르기는 훅이 맡습니다
-   * (`shared/hooks/useLikeToggle`). 여기서는 **캐시 고치는 일만** 합니다.
-   *
-   * 다시 부르지 않고 **응답 값을 이 후기에만 덮어씁니다.** 다시 부르면 조회수가
-   * 한 번 더 오릅니다 — 여는 것이 곧 조회라서입니다.
-   *
-   * 게시판 목록의 숫자는 여기서 건드리지 않습니다. `features/community` 를 import
-   * 할 수 없기도 하고, 목록 쿼리에 staleTime 이 없어 뒤로 가면 어차피 다시 불립니다.
+   * 좋아요 토글 (CMT-05). 비로그인 안내 · 누르기/취소 고르기는 `useLikeToggle` 이
+   * 맡고, 여기서는 캐시만 고칩니다 — 다시 부르지 않고 **응답 값을 이 후기에만
+   * 덮어씁니다.** 다시 부르면 조회수가 한 번 더 오릅니다(여는 것이 곧 조회라서).
    */
   const likeToggle = useLikeToggle({
     like: likeReview,
@@ -122,14 +100,7 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
   return (
     <article className={GLASS_PANEL}>
       <div className="space-y-3.75">
-        {/*
-          **읽던 목록으로 돌아갑니다.** 예전에는 이 자리가 향수 상세로 갔는데,
-          [뒤로] 자리에 "오지 않은 곳" 이 적혀 있던 셈입니다 — 후기를 읽다 뒤로
-          가려는 사람은 후기 목록으로 가려는 것이지 향수로 건너가려는 것이 아닙니다.
-          자유 게시판 글 상세(A23)의 [← 자유 게시판] 과 같은 자리 · 같은 말입니다.
-
-          향수로 건너가는 길은 아래 향수 칸이 맡습니다.
-        */}
+        {/* 예전에는 이 자리가 향수 상세로 가서, [뒤로] 에 오지 않은 곳이 적혀 있었습니다 */}
         <LinkButton to={ROUTES.COMMUNITY_REVIEWS} variant="outline" size="sm">
           ← 후기 게시판
         </LinkButton>
@@ -149,11 +120,6 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
             · {formatRelativeTime(review.createdAt)}
           </span>
 
-          {/*
-            줄 오른쪽 끝. 하트는 **늘 맨 끝**이고 수정 · 삭제는 그 앞에 섭니다 —
-            내 후기냐 아니냐에 따라 하트가 좌우로 움직이면, 게시판에서 후기를 여러 개
-            열어 볼 때 같은 자리를 매번 다시 겨냥하게 됩니다.
-          */}
           <span className="ml-auto flex items-center gap-2.5">
             {review.mine && (
               <>
@@ -172,12 +138,8 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
             )}
 
             {/*
-              좋아요. **숫자는 안 답니다** — 아래 줄이 이미 적고 있어서, 옆에 또
-              적으면 같은 수가 한 화면에 두 번 나옵니다. 낭독기에는 `aria-label` 로
-              수를 알리고 눌린 상태는 `aria-pressed` 로 전합니다(색만으로는 못 전합니다).
-
-              비로그인은 401 이라, 보내 보는 대신 먼저 안내합니다 — 401 이 나면
-              인터셉터가 재발급을 시도하다 세션을 정리해 "왜 안 되지" 만 남습니다.
+              비로그인은 401 이라 보내 보지 않고 먼저 안내합니다 — 401 이 나면
+              인터셉터가 재발급을 시도하다 세션을 정리해 버립니다.
             */}
             <button
               type="button"
@@ -220,24 +182,7 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
           </div>
         )}
 
-        {/*
-          이 후기가 말하는 향수.
-
-          **누르면 향수 상세(A10)로 갑니다.** 머리가 아니라 글 아래인 이유: 후기를
-          열었을 때 먼저 읽을 것은 글이고 "무엇에 대한 글이었나" 는 다 읽고 나서
-          확인하는 순서라서입니다. 위 [뒤로] 가 목록으로 가게 되면서, 향수로
-          건너가는 길은 이 칸 하나가 됐습니다.
-
-          들어온 길(`perfumeViewState`)을 실어 보냅니다 — 향수 상세가 조회 기록에
-          "커뮤니티에서 왔다" 를 남깁니다.
-
-          바탕을 칠하지 않고 테두리만 두릅니다 — 유리판 위에서 한 단 어둡게 깔면
-          판에 파인 자리가 되는데, 이 칸은 파묻힌 것이 아니라 얹힌 것입니다.
-
-          사진은 `bare` 입니다. 향수병은 배경이 투명한 PNG 라 상자를 그리면 투명한
-          영역이 네모로 드러나 병이 상자에 담긴 것처럼 보입니다. 사진이 없을 때만
-          자리표시자 상자가 나옵니다.
-        */}
+        {/* 들어온 길을 실어 보내 조회 기록에 "커뮤니티에서 왔다" 가 남습니다 */}
         <Link
           to={toPerfumeDetail(review.perfume.perfumeId)}
           state={perfumeViewState('COMMUNITY')}
@@ -267,10 +212,6 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
             {sub && <p className="text-ink-muted text-caption">{sub}</p>}
           </div>
 
-          {/*
-            누를 수 있다는 표시. 칸 전체가 링크라 테두리 색만으로는 "누르는 곳" 인지
-            잘 안 읽힙니다 — 글 상세(A23)의 연결 향수 줄과 같은 말 · 같은 자리입니다.
-          */}
           <span className="text-ink-muted text-caption ml-auto shrink-0">
             향수 상세 →
           </span>
@@ -278,10 +219,7 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
 
         <hr className="border-line" />
 
-        {/*
-          조회수는 이번 조회를 포함한 수입니다. 좋아요 수도 여기서는 읽기만 합니다 —
-          누르는 것은 위 줄의 하트가 맡습니다.
-        */}
+        {/* 조회수는 이번 조회를 포함한 수입니다 */}
         <p className="text-ink-muted text-[10.5px]">
           좋아요 {review.likeCount} · 조회 {review.viewCount}
         </p>

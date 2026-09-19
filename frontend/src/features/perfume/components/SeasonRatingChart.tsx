@@ -3,15 +3,11 @@ import { SEASONS, type SeasonStatistic } from '../types'
 type Props = { seasons: SeasonStatistic[] }
 
 /**
- * 계절별 평가 (와이어프레임 A10 ③ — DTL-14)
+ * 계절별 평가 (A10 ③ — DTL-14). 파이가 아니라 도넛 네 개인 것은 계절을 여러 개
+ * 골라 **합이 100이 아니기** 때문입니다 — 서로 독립인 비율 넷입니다.
  *
- * 파이가 아니라 도넛 네 개인 이유: 계절을 여러 개 고를 수 있어 합이 100이 아닙니다.
- * 부분-전체가 아니라 서로 독립인 비율 네 개라 단일값 미터가 맞습니다.
- *
- * 넷 다 같은 색인 이유: 어느 계절인지는 아래 라벨이 이미 알려줍니다.
- *
- * 응답에 네 계절이 항상 들어 있지만 화면은 SEASONS 순서로 그립니다 — 응답 순서에
- * 기대면 정렬이 바뀌는 날 봄 · 여름 · 가을 · 겨울 자리가 뒤섞입니다.
+ * 응답에 네 계절이 늘 있지만 화면은 SEASONS 순서로 그립니다 — 응답 순서에 기대면
+ * 정렬이 바뀌는 날 자리가 뒤섞입니다.
  */
 export function SeasonRatingChart({ seasons }: Props) {
   const bySeason = new Map(seasons.map((item) => [item.code, item.percentage]))

@@ -11,22 +11,15 @@ import type {
   TrendingPerfumesResponse,
 } from './types'
 
-// 경로에 '/api/v1' 을 붙이지 않습니다 — http 의 baseURL 에 이미 있습니다
-
-/**
- * 사이드바에 보이는 줄 수. 서버 기본값은 10, 최대 50 입니다.
- *
- * 다섯으로 줄인 이유: 게시판 옆의 좁은 칸이라 열 줄이면 목록보다 길어집니다.
- */
+/** 사이드바 줄 수. 서버 기본값은 10, 최대 50 입니다 */
 const TRENDING_LIMIT = 5
 
 /**
  * CMT-01 자유 게시판 글 목록. 로그인 없이 볼 수 있습니다.
  *
- * 분류 · 정렬 · 페이지를 **전부 서버가 처리합니다.** 화면에서 다시 거르면 같은 일을
- * 두 번 하는 데다, 한 페이지 안에서만 걸러져 "2페이지에 있던 잡담 글" 이 사라집니다.
- *
- * `category` 를 주지 않으면 전체입니다. 페이지 크기는 기본 20, 최대 100 입니다.
+ * 분류 · 정렬 · 페이지를 **전부 서버가 처리합니다** — 화면에서 다시 거르면 한 페이지
+ * 안에서만 걸러져 "2페이지에 있던 잡담 글" 이 사라집니다.
+ * `category` 가 없으면 전체이고, 페이지 크기는 기본 20 · 최대 100 입니다.
  */
 export async function getPosts(params: {
   category?: PostCategory
@@ -39,9 +32,8 @@ export async function getPosts(params: {
 }
 
 /**
- * CMT-02 게시글 상세. 비로그인도 볼 수 있습니다.
- *
- * 작성자가 탈퇴한 글은 `nickname` 이 비어 옵니다 — 글은 남고 작성자만 지워집니다.
+ * CMT-02 게시글 상세. 비로그인도 볼 수 있습니다. 작성자가 탈퇴한 글은 `nickname` 이
+ * 비어 옵니다 — 글은 남고 작성자만 지워집니다.
  */
 export async function getPostDetail(postId: number) {
   const { data } = await http.get<PostDetail>(`/posts/${postId}`)
@@ -61,12 +53,9 @@ export async function getComments(
 }
 
 /**
- * CMT-01 후기 게시판. 향수를 가리지 않은 **전체 후기**입니다.
- *
- * 향수 상세의 후기 목록(`/perfumes/{id}/reviews`)과 다릅니다 — 거기는 향수 하나의
- * 후기만 보고, 여기는 여러 향수가 섞여 나와 줄마다 향수가 함께 실립니다.
- *
- * 분류 필터가 없습니다. 후기는 전부 같은 종류입니다(A22a).
+ * CMT-01 후기 게시판. 향수를 가리지 않은 **전체 후기**입니다 — 향수 상세의 후기
+ * 목록(`/perfumes/{id}/reviews`)과 달리 줄마다 향수가 함께 실립니다.
+ * 분류 필터는 없습니다(A22a).
  */
 export async function getReviewBoard(params: {
   sort?: ReviewSort
@@ -80,11 +69,9 @@ export async function getReviewBoard(params: {
 /**
  * 지금 많이 언급되는 향수 (A22a · A22b 우측). 로그인이 필요 없습니다.
  *
- * 최근 며칠을 셌는지는 **서버가 응답에 담아 줍니다**(`days`). 화면이 "최근 한 주" 를
- * 적어 두면 서버가 기간을 바꾼 날 문구만 거짓이 됩니다.
- *
- * 향수 검색의 `ranking`(OWNED · WISH · VIEWED)과 다른 값입니다 — 저쪽은 담거나 열어
- * 본 횟수이고 이쪽은 글에 걸린 횟수입니다.
+ * 최근 며칠을 셌는지는 **서버가 응답에 담아 줍니다**(`days`) — 화면이 "최근 한 주" 를
+ * 적어 두면 서버가 기간을 바꾼 날 거짓이 됩니다. 향수 검색의 `ranking` 과 다른
+ * 값입니다(저쪽은 담거나 열어 본 횟수, 이쪽은 글에 걸린 횟수).
  */
 export async function getTrendingPerfumes(
   limit = TRENDING_LIMIT,
@@ -98,10 +85,8 @@ export async function getTrendingPerfumes(
 
 /*
  * ── 쓰기 ──────────────────────────────────────────────────────
- *
- * 전부 로그인이 필요합니다(401). 남의 글 · 남의 댓글을 고치거나 지우면 403 입니다.
- * 화면에서 [수정] · [삭제] 를 본인에게만 보여주지만, 그건 표시일 뿐이라 서버가
- * 다시 확인합니다.
+ * 전부 로그인이 필요하고(401) 남의 글 · 댓글을 고치거나 지우면 403 입니다.
+ * 화면이 [수정] · [삭제] 를 숨기는 것은 표시일 뿐이라 서버가 다시 확인합니다.
  */
 
 /** 글 작성에 보내는 값 (CMT-03) */
@@ -122,12 +107,9 @@ interface PostCreateInput {
 /**
  * 글 수정에 보내는 값 (CMT-06).
  *
- * **보낸 항목만 바뀝니다.** 빼면 그대로 두라는 뜻이라, 제목만 고칠 때 나머지를 함께
- * 보낼 필요가 없습니다. 반대로 `perfumeIds` · `imageUrls` 는 보낸 목록으로 **통째로**
- * 바뀌므로, 하나를 빼려면 남길 것 전부를 보내야 합니다(빈 배열이면 전부 지워집니다).
- *
- * `collectionId: null` 은 첨부를 뗍니다. 보내지 않으면 글을 쓸 때 박제한 컬렉션이
- * 그대로 남습니다 — 제목만 고쳤는데 향수가 바뀌면 안 되기 때문입니다.
+ * **보낸 항목만 바뀝니다.** 다만 `perfumeIds` · `imageUrls` 는 보낸 목록으로
+ * **통째로** 바뀌므로, 하나를 빼려면 남길 것 전부를 보내야 합니다(빈 배열이면 전부
+ * 지워집니다). `collectionId: null` 은 첨부를 떼고, 안 보내면 그대로 남습니다.
  */
 type PostUpdateInput = Partial<PostCreateInput>
 
@@ -150,9 +132,8 @@ export async function createPost(input: PostCreateInput): Promise<number> {
 /**
  * 글 수정 (CMT-06). 남의 글은 403, 고칠 항목이 하나도 없으면 400 입니다.
  *
- * ⚠️ **`perfumeIds` · `imageUrls` 를 보내면 그 목록으로 통째로 바뀝니다.** 더하거나
- * 빼는 요청이 아니라 덮어쓰기라, 하나만 빼려고 그것만 빼고 보내면 나머지가 전부
- * 지워집니다. 화면이 들고 있는 목록 전체를 보내세요(자세한 규칙은 `PostUpdateInput`).
+ * ⚠️ **`perfumeIds` · `imageUrls` 는 보낸 목록으로 통째로 바뀝니다** — 더하기 · 빼기가
+ * 아니라 덮어쓰기라 화면이 들고 있는 목록 전체를 보내세요(`PostUpdateInput`).
  */
 export async function updatePost(
   postId: number,
@@ -167,13 +148,9 @@ export async function deletePost(postId: number): Promise<void> {
 }
 
 /**
- * 좋아요 (CMT-05).
- *
- * **누르기와 취소가 다른 메서드입니다.** 토글 하나로 두면 네트워크가 끊겨 요청을
- * 다시 보낼 때 상태가 뒤집혀, 한 번 눌렀는데 취소되는 일이 생깁니다. 나눠 두면
- * 몇 번을 보내도 결과가 하나로 정해집니다.
- *
- * 응답에 `liked` 와 `likeCount` 가 함께 오므로 화면이 숫자를 직접 더하지 않습니다.
+ * 좋아요 (CMT-05). **누르기와 취소가 다른 메서드입니다** — 토글 하나면 요청을 다시
+ * 보낼 때 상태가 뒤집혀 한 번 눌렀는데 취소됩니다. 응답에 `liked` 와 `likeCount` 가
+ * 함께 와서 화면이 숫자를 직접 더하지 않습니다.
  */
 export async function likePost(postId: number): Promise<PostLikeResult> {
   const { data } = await http.put<PostLikeResult>(`/posts/${postId}/like`)

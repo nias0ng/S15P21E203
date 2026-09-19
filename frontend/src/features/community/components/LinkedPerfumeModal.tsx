@@ -17,22 +17,14 @@ type Props = {
   candidates: LinkedPerfume[]
   onSearch: (keyword: string) => void
   onSubmit: (perfumes: LinkedPerfume[]) => void
-  /**
-   * 하나만 고르게 합니다(후기 — 후기는 향수 한 개에 씁니다).
-   *
-   * 체크박스가 아니라 **누르면 골라지는 줄**이 됩니다. 여럿 고를 수 있는 것처럼
-   * 보이는 칸에서 하나만 반영하면, 셋을 고른 사람이 하나만 걸린 것을 나중에 압니다.
-   */
+  /** 하나만 고르게 합니다(후기는 향수 한 개에 씁니다) */
   single?: boolean
   /** 검색 결과를 기다리는 중 */
   isPending?: boolean
 }
 
 /**
- * 글에 연결할 향수 선택 모달 (와이어프레임 C02 — A24b 의 관련 향수 선택)
- *
- * 이름이 커뮤니티의 `LinkedPerfume` 을 따라가는 이유: 향수 도메인을 가리키면 향수
- * 검색 모달과 헷갈립니다. 여러 개 고를 수 있습니다.
+ * 글에 연결할 향수 선택 모달 (C02 — A24b 의 관련 향수 선택)
  *
  * 후보 목록은 화면에서 넘겨받습니다 — features 끼리는 import 할 수 없습니다.
  */
@@ -48,13 +40,9 @@ export function LinkedPerfumeModal({
   const [picked, setPicked] = useState<LinkedPerfume[]>([])
 
   /*
-    한 번이라도 검색했는지. 후보가 0개인 경우가 둘(아직 안 찾음 · 찾았는데 없음)인데,
-    둘 다 "찾지 못했습니다" 라고 하면 열자마자 검색에 실패한 것처럼 읽힙니다.
-    검색어는 화면(pages)이 들고 있어 여기로 내려오지 않으므로 모달이 따로 기억합니다.
-
-    닫아도 되돌리지 않습니다 — `SearchField` 는 제가 값을 들고 있고 `Modal` 이
-    `<dialog>` 라 언마운트되지 않아서, 다시 열면 지난 검색어가 칸에 그대로 남습니다.
-    그 상태에서 "검색해 주세요" 로 돌아가면 칸의 글자와 안내가 어긋납니다.
+    한 번이라도 검색했는지. 후보 0개가 두 경우(아직 안 찾음 · 찾았는데 없음)라
+    구분합니다. 닫아도 되돌리지 않습니다 — `<dialog>` 라 언마운트되지 않아 다시
+    열면 지난 검색어가 칸에 남고, 안내만 되돌리면 칸의 글자와 어긋납니다.
   */
   const [searched, setSearched] = useState(false)
 
@@ -136,14 +124,9 @@ export function LinkedPerfumeModal({
           />
         ) : (
           /*
-            한 줄에 넷입니다. 사진을 3:4 로 세우면서 카드가 길어져(모달 폭 510 ·
-            셋일 때 243), `max-h-90`(360) 안에 한 줄 반밖에 안 들어왔습니다 — 다음
-            줄이 절반쯤 잘린 채 떠 있습니다. 넷으로 나누면 카드가 190 으로 줄어
-            한 줄과 다음 줄의 대부분이 보입니다. (진열대 등록 모달(A15)은 아직 셋입니다.)
-
-            여럿 고를 때도 체크박스를 두지 않습니다 — 카드 자체가 누르는 자리이고,
-            고른 것은 테두리와 `aria-pressed` 로 알립니다. 카드 안에 체크박스를 또
-            두면 사진을 누를지 네모를 누를지 헷갈립니다.
+            한 줄에 넷입니다(진열대 등록 모달 A15 는 아직 셋). 여럿 고를 때도
+            체크박스를 두지 않습니다 — 카드 자체가 누르는 자리이고 고른 것은
+            `aria-pressed` 로 알립니다.
           */
           <ul className="grid max-h-90 grid-cols-2 gap-2.5 overflow-y-auto sm:grid-cols-4">
             {candidates.map((candidate) => (
@@ -161,7 +144,6 @@ export function LinkedPerfumeModal({
                       : 'border-line hover:border-accent',
                   )}
                 >
-                  {/* 사진이 없는 향수가 있습니다 — 그때는 빈 상자를 그립니다 */}
                   <Thumbnail
                     src={candidate.thumbnailUrl}
                     fallback="이미지"

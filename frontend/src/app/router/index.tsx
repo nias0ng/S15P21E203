@@ -50,21 +50,13 @@ const withSuspense = (element: React.ReactNode) => (
 const FULL = { width: 'full' } satisfies { width: PageWidth }
 const TEXT = { width: 'text' } satisfies { width: PageWidth }
 /**
- * 어두운 방 + 유리판 화면
- * (A33 향수 목록 · A09 검색 결과 · A10 향수 상세 · A34 브랜드 · A35 · A36 노트 ·
- *  A22a 후기 게시판 · A22b 자유 게시판).
- *
- * 폭은 적지 않습니다 — 모두 기본 wide(1440)입니다. 생김새는
- * styles/scent-display.css, 켜는 자리는 app/layouts/RootLayout 의 `useIsNight`.
+ * 어두운 방 + 유리판 화면. 폭은 적지 않습니다 — 모두 기본 wide(1440)입니다.
+ * docs/어두운-방-유리판.md
  */
 const NIGHT = { night: true } satisfies { night: boolean }
 /**
- * 어두운 방 + 글 읽고 쓰는 폭 (A12 후기 상세 · A23 게시글 상세 · A24a · A24b 작성).
- *
- * 커뮤니티는 게시판에서 **한 번에 넘어가는 사이**입니다 — 목록의 한 줄을 누르면
- * 상세, [글쓰기] 를 누르면 작성 화면입니다. 목록만 어두우면 누른 순간 화면이
- * 통째로 뒤집히므로 커뮤니티 안쪽까지 같이 어둡습니다. 폭은 글을 읽고 쓰는
- * 화면이라 그대로 text(800)입니다.
+ * 어두운 방 + 글 읽고 쓰는 폭 (A12 · A23 · A24a · A24b). 게시판에서 **한 번에
+ * 넘어가는 사이**라 같은 어둠입니다 — docs/어두운-방-유리판.md
  */
 const TEXT_NIGHT = { width: 'text', night: true } satisfies {
   width: PageWidth

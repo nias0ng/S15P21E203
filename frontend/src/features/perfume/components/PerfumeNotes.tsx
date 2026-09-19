@@ -19,9 +19,8 @@ const STAGE_LABELS: Record<string, string> = {
 }
 
 /**
- * 원본에 피라미드가 **아예 없는** 향수의 표시입니다(전체의 27%). 네 번째 단계가
- * 아니라 "나눌 수 없음" 이라, 라벨을 달지 않고 노트만 한 줄로 늘어놓습니다.
- * 셋 중 아무 단계나 골라 넣으면 데이터에 없는 말을 지어내는 셈입니다.
+ * 원본에 피라미드가 **아예 없는** 향수(전체의 27%). 네 번째 단계가 아니라
+ * "나눌 수 없음" 이라 라벨 없이 한 줄로 늘어놓습니다.
  */
 const FLAT = 'FLAT'
 
@@ -38,16 +37,13 @@ type NoteRow = {
 }
 
 /**
- * 향수 상세 ② 향조 (와이어프레임 A10 — DTL-02)
+ * 향수 상세 ② 향조 (A10 — DTL-02)
  *
- * **쪼개고 묶는 일을 화면이 합니다.** 백엔드는 `noteType` 을 해석하지 않고 문자열
- * 그대로 내려줍니다(컬럼에 값 제약이 없어, 서버가 세 칸에 나눠 담으면 예상 못 한
- * 값이 조용히 버려집니다). 시드가 넣는 값은 `top` · `middle` · `base` · `flat` 과
- * 셋의 조합(`top+middle` 등)입니다 — `backend/db/seed/load_perfume_notes.sql` 이
- * 이 여덟 가지만 통과시킵니다. 그래도 모르는 값이 오면 버리지 않고 제 이름으로
- * 한 줄 만듭니다.
+ * **쪼개고 묶는 일을 화면이 합니다** — 백엔드는 `noteType` 을 해석하지 않고 문자열
+ * 그대로 내려줍니다. 시드가 넣는 값은 `top` · `middle` · `base` · `flat` 과 그
+ * 조합이고, 모르는 값이 와도 버리지 않고 제 이름으로 한 줄 만듭니다.
  *
- * 어코드(`accords`)도 같은 응답에 있지만 와이어프레임에 자리가 없어 아직 안 그립니다.
+ * 어코드(`accords`)도 같은 응답에 있지만 자리가 없어 아직 안 그립니다.
  */
 export function PerfumeNotes({ notes, isPending = false, className }: Props) {
   const rows = toRows(notes)
@@ -85,9 +81,8 @@ export function PerfumeNotes({ notes, isPending = false, className }: Props) {
 }
 
 /**
- * 노트를 단계별로 묶습니다. Top · Middle · Base 를 먼저 놓고 flat 을, 모르는 단계는
- * 처음 나온 순서대로 뒤에 붙입니다. 비어 있는 단계는 줄을 만들지 않습니다 — 셋 중
- * 하나만 있는 향수가 많아 빈 줄을 그리면 화면 절반이 대시가 됩니다.
+ * 노트를 단계별로 묶습니다. Top · Middle · Base → flat → 모르는 단계 순이고,
+ * 비어 있는 단계는 줄을 만들지 않습니다(셋 중 하나만 있는 향수가 많습니다).
  */
 function toRows(notes: PerfumeNote[]): NoteRow[] {
   const groups = new Map<string, PerfumeNote[]>()
@@ -111,9 +106,8 @@ function toRows(notes: PerfumeNote[]): NoteRow[] {
 }
 
 /**
- * 노트 하나가 속하는 단계들입니다. `top+middle` 은 **두 단계 모두**를 뜻하므로
- * 쪼개서 양쪽 줄에 같은 노트를 넣습니다 — 한 덩어리로 두면 `TOP+MIDDLE` 이라는
- * 없는 단계가 화면에 생깁니다.
+ * 노트가 속하는 단계들. `top+middle` 은 **두 단계 모두**라 쪼개서 양쪽에 넣습니다 —
+ * 한 덩어리로 두면 `TOP+MIDDLE` 이라는 없는 단계가 생깁니다.
  */
 function stagesOf(note: PerfumeNote): string[] {
   const raw = note.noteType?.trim().toUpperCase()

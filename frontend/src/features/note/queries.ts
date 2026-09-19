@@ -20,11 +20,8 @@ const noteKeys = {
 const CATALOG_STALE_TIME = 1000 * 60 * 10
 
 /**
- * 검색어는 **캐시 키에 넣지 않습니다.**
- *
- * 서버에 검색어 파라미터가 없어 어차피 같은 응답 하나를 받습니다. 키에 넣으면
- * 글자를 칠 때마다 다른 키가 되어 같은 246개를 몇 번이고 다시 받습니다.
- * 받아 둔 목록에 `select` 로 거르면 요청은 한 번이고 거르는 일만 다시 합니다.
+ * 검색어는 **캐시 키에 넣지 않습니다** — 서버에 검색어 파라미터가 없어 어차피 같은
+ * 응답입니다. 키에 넣으면 글자를 칠 때마다 246개를 다시 받습니다.
  */
 export const noteListQuery = (keyword: string) =>
   queryOptions({
@@ -47,14 +44,9 @@ function filterNotes(notes: Note[], keyword: string): Note[] {
 }
 
 /**
- * 알약 필터에 쓸 대분류 목록.
- *
- * 목록과 **같은 캐시를 봅니다**(같은 `queryKey`, 거르는 방식만 다른 `select`) —
- * 요청이 한 번 더 가지 않습니다.
- *
- * **검색 결과가 아니라 전체 노트에서 뽑습니다.** 검색어에 걸린 것만으로 만들면
- * 글자를 칠 때마다 알약이 사라졌다 나타나 줄 수가 오르내리고, 그 바람에 아래
- * 유리판이 위아래로 밀립니다.
+ * 알약 필터에 쓸 대분류 목록. 목록과 **같은 캐시를 봅니다**(`select` 만 다릅니다).
+ * **검색 결과가 아니라 전체 노트에서 뽑습니다** — 걸린 것만으로 만들면 글자를 칠
+ * 때마다 알약 줄 수가 오르내려 아래 판이 밀립니다.
  */
 export const noteFamiliesQuery = queryOptions({
   queryKey: noteKeys.lists(),
@@ -64,11 +56,8 @@ export const noteFamiliesQuery = queryOptions({
 })
 
 /**
- * 노트 하나.
- *
- * 브랜드(`brandDetailQuery`)처럼 목록에서 골라내지 않고 상세 엔드포인트를 부릅니다 —
- * 브랜드는 상세 API 가 없어 그랬던 것이고, 노트는 있습니다. 주소로 바로 열었을 때
- * 246개를 통째로 받지 않아도 됩니다.
+ * 노트 하나. 목록에서 골라내지 않고 상세 엔드포인트를 부릅니다 — 주소로 바로
+ * 열었을 때 246개를 통째로 받지 않아도 됩니다.
  */
 export const noteDetailQuery = (noteId: number) =>
   queryOptions({
