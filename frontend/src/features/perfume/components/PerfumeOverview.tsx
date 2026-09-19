@@ -23,12 +23,8 @@ type Props = {
   /** 위 단추를 눌렀을 때. 담을지 뺄지는 화면이 정합니다 */
   onShelfAction: () => void
   /**
-   * 사진 오른쪽, 이름 아래 남는 자리에 놓을 것.
-   *
-   * 사진이 400 인데 브랜드 · 이름 · 단추는 그 절반도 안 써서 오른쪽 아래가 크게
-   * 비었습니다. 향조(DTL-02)가 짧은 구역이라 그 자리에 들어갑니다.
-   *
-   * 무엇이 올지는 화면이 정합니다 — 이 컴포넌트는 자리만 내어 줍니다.
+   * 사진 오른쪽, 이름 아래 남는 자리에 놓을 것. 무엇이 올지는 화면이 정합니다 —
+   * 이 컴포넌트는 자리만 내어 줍니다.
    */
   aside?: React.ReactNode
 }
@@ -94,18 +90,8 @@ export function PerfumeOverview({
         className="h-100 w-75 shrink-0 bg-white"
       />
 
-      {/*
-        오른쪽 칸. 이름 묶음은 제 높이만 쓰고, `aside` 가 `flex-1` 로 남은 높이를
-        받아 사진 아래끝에 맞춰 섭니다 — 판 아래가 붕 뜨면 사진과 판이 서로 다른
-        줄에 선 것처럼 보입니다.
-      */}
       <div className="flex flex-1 flex-col gap-6.25">
         <div className="space-y-2.5">
-          {/*
-          브랜드명과 영문 향수명은 **바짝 붙입니다.** 바깥 간격(10px)을 그대로 두면
-          두 줄이 따로 놓인 정보처럼 읽히는데, 둘은 "무엇의 무엇" 한 덩이입니다.
-          카드의 이름 묶음(`TileCard`)과 같은 2px 입니다.
-        */}
           <div className="space-y-0.5">
             {/* 검색은 brandName 문자열, 상세는 brand 객체입니다 */}
             <p className="text-ink-muted text-caption">{perfume.brand?.name}</p>
@@ -126,12 +112,8 @@ export function PerfumeOverview({
           )}
 
           {/*
-            담긴 향수는 같은 자리에서 [진열대 해제] 가 됩니다. [빼기] 단추를 옆에
-            따로 두지 않는 이유: 둘이 나란히 있으면 지금 담겨 있는지를 단추만 보고
-            알 수 없고, 담은 적 없는 향수에도 뺄 수 없는 단추가 하나 붙습니다.
-
-            해제는 되돌릴 수 없어(메모 · 적합도가 함께 지워집니다) `outline` 으로 한
-            단 내립니다. 담기는 이 화면이 권하는 일이라 primary 그대로입니다.
+            담긴 향수는 같은 자리에서 [진열대 해제] 가 됩니다. 해제는 되돌릴 수
+            없습니다 — 메모 · 적합도가 함께 지워집니다.
           */}
           <Button
             variant={inShelf ? 'outline' : 'primary'}

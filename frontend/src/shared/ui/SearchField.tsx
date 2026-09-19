@@ -76,10 +76,7 @@ export function SearchField({
         */
         'border-stonegray bg-ivory/90 border backdrop-blur-[7px]',
         'shadow-[0_10px_30px_rgb(24_18_34/0.2)]',
-        /*
-          포커스 링을 input 이 아니라 알약에 겁니다. input 에 걸면 링이 돋보기를
-          뺀 안쪽에만 네모로 그려져 알약 테두리와 따로 놉니다.
-        */
+        /* 포커스 링은 input 이 아니라 알약에 겁니다 */
         'has-[:focus-visible]:ring-accent-deep has-[:focus-visible]:ring-2',
         className,
       )}
@@ -135,12 +132,7 @@ export function SearchField({
   )
 }
 
-/**
- * 돋보기.
- *
- * 아이콘 하나 때문에 라이브러리를 붙이지 않습니다. 굵기 1.7 은 메인 검색창과
- * 같은 값입니다. currentColor 라 감싼 쪽의 글자색을 따라갑니다.
- */
+/** 돋보기. 아이콘 하나 때문에 라이브러리를 붙이지 않습니다 */
 function SearchIcon() {
   return (
     <svg

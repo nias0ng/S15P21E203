@@ -25,19 +25,12 @@ type Props = {
 /**
  * 게시글 목록 (와이어프레임 A22a · A22b 공용)
  *
- * **유리판 한 장 위에 줄로 눕습니다.** 향수 상세(A10)의 후기 목록과 같은 모양입니다 —
- * 글은 세로로 길게 이어지는 글자 덩어리라, 한 줄 한 줄을 밝은 카드로 띄우면 판보다
- * 카드가 무거워져 유리판이 카드 사이 틈으로만 보입니다. 격자(향수 · 브랜드 · 노트)가
- * 카드를 쓰는 것은 타일이 작고 사진이 주인공이라서입니다.
- *
  * 두 게시판이 같은 컴포넌트를 씁니다. 백엔드 응답은 서로 다르지만
  * (`/posts` 와 `/reviews`) 줄 모양이 같아, 도메인에서 `BoardItem` 으로 맞춰
  * 넘깁니다(types.ts 의 `postToBoardItem` · `reviewToBoardItem`).
  *
  * 값이 있을 때만 그리는 것 — 향수 블록(자유 글은 안 걸어도 됨), 분류 배지(후기에는
  * 없음), 댓글 수(후기에는 댓글 자체가 없음).
- *
- * 제목이 맨 위인 이유: 게시판에서 훑는 것은 제목입니다.
  */
 export function PostList({
   items,
@@ -72,11 +65,6 @@ export function PostList({
           key={item.id}
           className={cn(
             'relative space-y-2.5 px-2.5 py-3.75',
-            /*
-              판 위의 hover 는 **어둡게** 합니다 — 유리가 반투명이라 뒤의 방이 더
-              비쳐 그 줄이 유리 안으로 가라앉습니다
-              (styles/scent-display.css 의 `--color-surface-sunken`).
-            */
             'hover:bg-surface-sunken rounded-card',
             'transition-colors duration-120 ease-out',
           )}
@@ -124,13 +112,8 @@ export function PostList({
             어느 향수 이야기인지 — 후기는 항상, 자유 글은 걸었을 때만.
 
             **누르는 곳이 아니라 표시입니다.** 예전에는 향수 상세로 가는 링크였는데,
-            게시판에서 글을 누르려다 이 블록을 밟으면 글이 아니라 향수로 새 버립니다.
-            줄 전체가 글로 가는 지금은 그 사고가 더 잦아집니다. 향수로 건너가는 길은
-            **글 상세(A23)의 `연결된 향수`** 한 곳으로 모읍니다 — 글을 읽고 나서
-            건너가는 것이 순서이기도 합니다.
-
-            바탕을 칠하지 않고 테두리만 두릅니다. 줄 hover 가 바탕을 어둡게 하는데
-            이 블록도 바탕을 깔면 hover 때 둘이 같은 색이 되어 블록이 사라집니다.
+            글을 누르려다 이 블록을 밟으면 향수로 새 버렸습니다. 향수로 건너가는
+            길은 글 상세(A23)의 `연결된 향수` 한 곳으로 모읍니다.
           */}
           {item.perfume && (
             <p className="border-line rounded-card inline-flex w-fit max-w-full items-baseline gap-2.5 border px-2.5 py-1.25">

@@ -57,12 +57,7 @@ export function PerfumeGrid({
   source = 'SEARCH',
   emptyAction,
 }: PerfumeGridProps) {
-  /*
-    열 수가 곧 카드 크기입니다 — 카드는 폭을 격자에서 받고, 사진 칸이 3:4 라
-    높이가 폭을 따라옵니다. 그래서 카드를 줄이려면 열을 늘립니다.
-    1440 기준 5열 276 · 6열 228 입니다. **6열이 상한입니다** — 더 촘촘하게
-    깔아 봤더니(8열 166) 병이 무엇인지 알아보기 어려웠습니다.
-  */
+  /* 8열까지 깔아 봤더니 병이 무엇인지 알아보기 어려워 6열이 상한입니다 */
   const gridClass = {
     5: 'grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-5',
     6: 'grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-6',
@@ -71,11 +66,7 @@ export function PerfumeGrid({
   if (isPending) {
     return (
       <div className={gridClass}>
-        {/*
-          카드와 같은 높이여야 자료가 도착할 때 격자가 안 튑니다. 카드는 사진 칸이
-          정사각이라 폭에 따라 높이가 변하므로 고정 px 대신 같은 방식으로 셉니다 —
-          사진(폭과 같은 높이) + 안쪽 여백 · 사이 간격 · 이름 두 줄 자리.
-        */}
+        {/* 카드와 같은 높이여야 자료가 도착할 때 격자가 안 튑니다 */}
         {Array.from({ length: columns * 2 }, (_, index) => (
           <Skeleton key={index} className="aspect-[1/1.29] w-full" />
         ))}
@@ -117,12 +108,7 @@ export function PerfumeGrid({
             rank={rankable ? index + 1 : undefined}
             name={perfume.name}
             subName={perfume.nameKo}
-            /*
-              브랜드는 **일부러 넘기지 않습니다.** 목록에서는 향수를 고르는 것이지
-              브랜드를 고르는 것이 아니라, 줄이 늘어나 카드만 길어졌습니다.
-              브랜드로 좁히는 길은 위 필터(`?brand=`)와 브랜드 화면에 따로 있습니다.
-              PerfumeCard 는 brand 를 그대로 받을 수 있습니다 — 컬렉션 상세는 씁니다.
-            */
+            /* 브랜드는 일부러 안 넘깁니다 — 컬렉션 상세는 같은 카드에 넘겨 씁니다 */
             // 이미지가 없는 향수가 있습니다. 그때는 Thumbnail 이 빈 상자를 그립니다.
             thumbnailUrl={perfume.imageUrl}
             to={toPerfumeDetail(perfume.perfumeId)}
