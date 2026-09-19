@@ -4,6 +4,7 @@ import { PARAMS as P } from './params.js';
 import { SWELL, FOAM_CLUMP, swellAmplitude, swellMeanDir, swellPhaseC, swellSlopeRms } from './swell.js';
 import { SKY_GLSL, SKY_UNIFORMS } from './sky.js';
 import { timeNow, timeKey } from './times.js';
+import { diveNow } from './dive.js';   // 잠수 — 팔레트 · 원경색이 짙은 바다색으로 눕는다 (2026-09-18)
 // ⚠ 모듈 상수로 한 번만 뽑는다. 매 프레임 BANDS 를 다시 도는 것을 막는다
 const SLOPE_RMS = swellSlopeRms();
 
@@ -137,13 +138,39 @@ function syncPalette(uni) {
   const TM = timeNow();
   const i = Math.min(n - 1, Math.max(0, Math.round(TM ? TM.water.theme : (P.waterTheme || 0))));
   const tone = TM ? TM.water.tone : P.waterTone;
-  const key = i + '/' + tone + '/' + timeKey();
+  // ⭐ 잠수 (2026-09-18, dive.js) — 이 팔레트 **전체**가 짙은 바다색으로 눕는다.
+  //   ⚠⚠ 유니폼을 따로 밀지 않고 **여기 한 곳에서** 섞는다. 이 함수는 양 끝 원본에서 매번 처음부터
+  //     섞으므로(위 주석) 잠수가 0 으로 돌아오면 값이 **정확히** 제자리다 — 밖에서 밀면 이 캐시(key)가
+  //     되돌릴 기회를 영영 안 준다 (바다가 짙은 채로 남는다).
+  //   ⚠ 거품 · 항적까지 같이 눕는다. 1초 동안 물속으로 들어가는 길이라 흰 줄만 남기지 않는다 —
+  //     남기고 싶으면 `foam` · `wake` 를 이 섞기에서 빼는 것이 첫 손잡이다 (색은 화면에서 정한다)
+  const D = diveNow();
+  const dk = D ? D.dim : 0;
+  const key = i + '/' + tone + '/' + timeKey() + '/' + dk.toFixed(3);
   if (key === _palKey) return;
   _palKey = key;
   const T = THEMES[i];
-  PAIR.forEach(k => uni[UNI_OF[k]].value.copy(T.L[k]).lerp(T.D[k], tone));
+  PAIR.forEach(k => {
+    const c = uni[UNI_OF[k]].value.copy(T.L[k]).lerp(T.D[k], tone);
+    if (dk > 0) c.lerp(D.deep, dk);
+  });
   uni.uApex.value.set(TM ? TM.apex : CONFIG.color.crestApex);
   uni.uBg.value.set(TM ? TM.bg : CONFIG.color.bg);
+  // ⚠⚠ **마루선(오로라)의 두 색은 만들 때 한 번 칠하고 안 바뀌던 값이다** — 시간대도 안 탄다.
+  //   잠수가 이 둘을 안 눕히면 **물만 어두워지고 밝은 선만 남는다** (2026-09-18 실측 : 짙어진 물 위에
+  //   #9FE6F3 아이스블루 마루선이 그대로 떠 있었다 — 화면이 안 어두워 보이던 가장 큰 몫).
+  //   ⚠ 그래서 여기서 **매번 원본에서** 다시 칠한다 — dk 0 이면 값 단위로 예전과 같다.
+  uni.uViolet.value.set(CONFIG.color.crestViolet);
+  uni.uBlue.value.set(CONFIG.color.crestBlue);
+  if (dk > 0) {
+    // ⚠ 물이 녹아드는 원경색 — 하늘(stage) · 씬 배경과 **같은 값**이라야 물끝에 띠가 안 생긴다
+    uni.uBg.value.lerp(D.deep, dk);
+    // 반짝임 · 이음매의 금빛도 같이 눕는다 — 안 눕히면 짙어진 물 위에 **금색 길만** 남는다
+    uni.uApex.value.lerp(D.deep, dk);
+    // 마루선 두 색 (위 주석)
+    uni.uViolet.value.lerp(D.deep, dk);
+    uni.uBlue.value.lerp(D.deep, dk);
+  }
 }
 
 const WATER_VERT = SWELL + `
@@ -2224,6 +2251,13 @@ export function createWater(scene, tex) {
       // ⚠ 테마와 tone 을 같이 본다 (위 syncPalette). 예전에는 tone 만 비교했는데,
       //   그대로 두면 **테마를 갈아타도 색이 안 바뀐다**
       syncPalette(uni);
+      // ⭐⭐ 잠수 — **물에 비친 하늘도 같이 걷힌다** (2026-09-18, dive.js).
+      //   ⚠⚠ 팔레트만 눕히면 화면이 거의 안 어두워진다 : 카메라가 수면으로 내려갈수록 시선이 스치는 각이
+      //     되어 프레넬이 1 에 가까워지고, 그 자리를 `skyColor()` 가 **팔레트와 무관하게** 칠한다 (아래 uSkyAmt).
+      //     실측(2026-09-18, 저녁 · k 1.0) : 이 항을 안 걷으면 짙은 물 위가 옅은 라벤더로 남는다.
+      //   ⚠ 원경이 하늘로 녹는 몫(uFadeSky)도 **같은 값**으로 내린다 — 갈라지면 물끝에 밝은 띠가 한 줄 남는다.
+      const Dv = diveNow();
+      const diveSky = Dv ? 1 - (P.diveSkyOff === undefined ? 1 : P.diveSkyOff) * Dv.dim : 1;
       uni.uH.value = sim.texture;
       uni.uTime.value = t;   // 색의 흐름만 실시간 — 형태는 sim.qT 를 본다
       uni.uWaveSpeed.value = P.waveSpeed;
@@ -2415,7 +2449,7 @@ export function createWater(scene, tex) {
       bakeSun(uni.uLightDir3.value); // 수면 태양 (sunRot / sunTilt)
       uni.uEnvMicro.value = P.envMicro;
       uni.uSpecAmt.value = P.specAmount;
-      uni.uSkyAmt.value = P.skyAmount;
+      uni.uSkyAmt.value = P.skyAmount * diveSky;   // ⭐ 잠수 — 물에 비친 하늘 (위 diveSky 주석)
       uni.uShadowAmt.value = P.shadowAmount;
       uni.uShadowIn.value = P.shadowSoft;
       uni.uShadowKnee.value = P.shadowKnee;
@@ -2507,7 +2541,8 @@ export function createWater(scene, tex) {
       // ⚠ 하늘이 없으면 하늘색으로 녹을 수도 없다 — stageAmount 를 곱해 둘을 묶는다.
       //   그래서 `stageAmount = 0` 한 값이 여전히 예전 화면으로 정확히 되돌린다
       const fs = P.waterFadeSky !== undefined ? P.waterFadeSky : 1;
-      uni.uFadeSky.value = fs * (P.stageAmount === undefined ? 1 : P.stageAmount);
+      // ⭐ 잠수 — 하늘이 지워지는 만큼(stage.js · 위 diveSky 와 **같은 값**) 물끝도 하늘 대신 `uBg` 로 녹는다
+      uni.uFadeSky.value = fs * (P.stageAmount === undefined ? 1 : P.stageAmount) * diveSky;
     },
 
     dispose() {

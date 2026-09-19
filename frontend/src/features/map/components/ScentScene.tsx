@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { cn } from '@/shared/lib/cn'
+import { useDiveStore } from '@/shared/store/diveStore'
 
 import {
   parseBootMessage,
@@ -64,6 +65,13 @@ interface EngineHandle {
   apply: () => void
   /** 지금까지의 부팅 단계 — postMessage 를 놓친 앱이 따라잡습니다 (host.js bootNow) */
   boot?: () => SceneBootSnapshot
+  /**
+   * 잠수 진행도 0~1 (엔진 `landing/src/dive.js` · `PB.dive`) — 카메라가 수면으로 내려가고
+   * 물 · 하늘이 짙은 바다색으로 눕습니다. **시계는 앱 커튼이 쥡니다**(`shared/ui/DiveCurtain`).
+   *
+   * ⚠️ 없을 수 있습니다 — 잠수가 없던 엔진 빌드입니다. 그때는 커튼만 차오릅니다.
+   */
+  dive?: (k: number) => void
 }
 
 type Props = {
@@ -267,6 +275,19 @@ export function ScentScene({
           attributeFilter: ['data-time'],
         })
       }
+      /*
+        잠수 — 진열대로 넘어가는 전환에 커튼이 매 장 진행도를 밀 수 있게 엔진의 문을 꽂습니다
+        (`shared/store/diveStore`). 커튼은 껍데기(RootLayout)에 있어 이 화면이 사라진 뒤에도
+        살아 있으므로, 화면(HomePage)을 거치지 않고 여기서 바로 잇습니다 — `setHost` 와 같은
+        엔진 경계입니다. ⚠️ 엔진에 `dive` 가 없으면 꽂지 않습니다 (커튼만 올라옵니다).
+      */
+      useDiveStore
+        .getState()
+        .setEngine(
+          typeof engine.dive === 'function'
+            ? (k: number) => engine.dive?.(k)
+            : null,
+        )
       setReady(true)
       // 들어오자마자 방향키로 배를 몰 수 있게 포커스를 엔진으로 넘깁니다
       el.contentWindow?.focus()
@@ -293,6 +314,8 @@ export function ScentScene({
       window.clearTimeout(timer)
       timeWatch?.disconnect()
       attached?.setHost(null)
+      // 엔진이 사라집니다 — 커튼은 이제 혼자 차오릅니다 (잠수로 떠나는 길이 바로 이 경로입니다)
+      useDiveStore.getState().setEngine(null)
     }
   }, [])
 
