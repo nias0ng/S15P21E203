@@ -45,6 +45,7 @@ import { isApiError } from '@/shared/api/http'
 import { ROUTES } from '@/shared/config/routes'
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { useToast } from '@/shared/hooks/useToast'
+import { READY_GRACE_MS } from '@/shared/lib/diveTrack'
 import { useIsLoggedIn } from '@/shared/store/authStore'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
@@ -125,11 +126,15 @@ export default function MyShelfPage() {
    * 메인에서 잠수로 들어왔으면 커튼이 짙은 남색으로 덮은 채 이 신호를 기다립니다
    * (안 알려도 1.5초 상한에 걷힙니다 — shared/ui/DiveCurtain).
    *
-   * 기준은 **목록**입니다. 이게 오면 벽과 벽감이 서고, 병 사진은 받은 것부터 차례로
-   * 드러납니다(`useBottlePreload`) — 사진까지 기다리면 커튼이 늘 상한까지 서 있습니다.
-   * 아래 `shelf.isPending` 이 스피너로 갈리는 바로 그 조건입니다.
+   * 기준은 **목록**입니다. 이게 오면 벽과 벽감이 섭니다 — 아래 `shelf.isPending` 이
+   * 스피너로 갈리는 바로 그 조건입니다.
+   *
+   * ⭐ 다만 곧바로 알리지 않고 `READY_GRACE_MS` 를 둡니다. 목록이 칠해진 것은 **벽이 섰다**는
+   * 뜻일 뿐이라, 그 자리에서 걷으면 병 사진이 걷힌 뒤에 한 장씩 떠올랐습니다. 그 사이에
+   * 첫 화면 병이 다 서면 `ShelfWall` 이 따로 알려 **그쪽이 먼저 이깁니다** —
+   * 즉 `min(첫 화면 병, 목록 + 유예)` 입니다. 사진을 끝까지 기다리지는 않습니다.
    */
-  useDiveReady(!shelf.isPending)
+  useDiveReady(!shelf.isPending, READY_GRACE_MS)
   const arrangement = useShelfArrangement()
   // 낙관적 갱신과 되돌리기는 도메인 훅이 들고 있습니다. 토스트만 여기서 붙입니다
   const actions = useShelfActions()

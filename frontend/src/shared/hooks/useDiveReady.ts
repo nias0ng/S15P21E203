@@ -14,12 +14,17 @@ import { useDiveStore } from '@/shared/store/diveStore'
  * ⚠ 이 훅이 `features/` 가 아니라 `shared/` 에 있는 까닭은 잠수가 **한 도메인의 것이 아니기**
  * 때문입니다 (`shared/store/diveStore` 머리말).
  *
+ * ⚠ **한 화면이 여러 번 알려도 됩니다.** 신호는 먼저 온 쪽이 이깁니다(store 의 `markReady`
+ * 는 멱등입니다). 진열대가 그렇게 씁니다 — 벽은 "첫 화면 병이 다 섰다" 를 유예 없이 알리고,
+ * 화면은 "목록은 칠해졌다" 를 `READY_GRACE_MS` 뒤에 알립니다. 실제로 걷히는 때는 둘 중
+ * 이른 쪽이라, 사진이 빨리 오면 빨리 걷히고 안 와도 유예에서 끊깁니다.
+ *
  * ```tsx
  * const shelf = useQuery(shelfItemsQuery())
- * useDiveReady(!shelf.isPending)
+ * useDiveReady(!shelf.isPending, READY_GRACE_MS)
  * ```
  */
-export function useDiveReady(ready: boolean) {
+export function useDiveReady(ready: boolean, graceMs = 0) {
   const markReady = useDiveStore((state) => state.markReady)
 
   useEffect(() => {
@@ -34,9 +39,24 @@ export function useDiveReady(ready: boolean) {
       ⚠ 사진까지 기다리지는 않습니다 — 사진은 받은 것부터 차례로 드러나므로(`useBottlePreload`)
         거기까지 기다리면 커튼이 늘 상한(`READY_CAP_MS`)까지 서 있습니다.
     */
+    /*
+      ⚠ 유예는 rAF 가 아니라 **시계**로 셉니다. 이 기다림은 '그려졌는가' 가 아니라 '더 나은
+        신호를 기다려 준다' 라서, 메인 스레드가 막혀 늦게 와도 뜻이 안 변합니다 —
+        늦어 봐야 더 기다린 것이고, 그 끝은 커튼의 상한(`READY_CAP_MS`)이 막습니다.
+    */
+    let timer = 0
     let raf = requestAnimationFrame(() => {
-      raf = requestAnimationFrame(markReady)
+      raf = requestAnimationFrame(() => {
+        if (graceMs <= 0) {
+          markReady()
+          return
+        }
+        timer = window.setTimeout(markReady, graceMs)
+      })
     })
-    return () => cancelAnimationFrame(raf)
-  }, [ready, markReady])
+    return () => {
+      cancelAnimationFrame(raf)
+      window.clearTimeout(timer)
+    }
+  }, [ready, graceMs, markReady])
 }
