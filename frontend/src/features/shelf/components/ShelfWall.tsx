@@ -12,6 +12,7 @@ import {
 } from 'react'
 import { flushSync } from 'react-dom'
 
+import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { cn } from '@/shared/lib/cn'
 
 import { useBottlePreload } from '../hooks/useBottlePreload'
@@ -258,13 +259,22 @@ export function ShelfWall({
     })
   }
 
-  useBottlePreload(
+  const firstScreenIn = useBottlePreload(
     trackRef,
     layout.sections,
     view.start,
     metrics.clear,
     measured,
   )
+  /*
+   * 메인에서 잠수로 들어왔으면 커튼에 **첫 화면 병까지 섰다**고 알립니다 — 여기가 그걸 아는
+   * 유일한 자리입니다(사진을 푸는 것이 이 벽입니다). 잠수로 들어온 것이 아니면 아무 일도
+   * 일어나지 않습니다.
+   *
+   * ⚠ 유예를 안 겁니다. 이쪽이 **빠른 길**이고, 늦어질 때를 받치는 유예는 화면 쪽
+   *   목록 신호가 듭니다 (`MyShelfPage` 의 `READY_GRACE_MS`). 둘 중 먼저 온 쪽이 이깁니다.
+   */
+  useDiveReady(firstScreenIn)
 
   /*
    * 병을 눌렀을 때. 화면이 넘기는 함수(useShelfBrowser 의 select)는 그릴 때마다 새로 만들어져서,
