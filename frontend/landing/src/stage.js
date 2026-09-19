@@ -3,10 +3,13 @@ import { PARAMS as P } from './params.js';
 import { CONFIG } from './config.js';
 import { SKY_GLSL, SKY_UNIFORMS } from './sky.js';
 import { timeNow, timeKey } from './times.js';
+import { diveNow } from './dive.js';   // 잠수 — 하늘이 짙은 바다색 한 색으로 눕는다 (2026-09-18)
 
 // 하늘 판의 바탕색 (stageAmount 가 1 아래일 때 하늘과 섞인다). 시간대가 켜져 있으면 그 표의 bg
 const bgNow = () => { const T = timeNow(); return T ? T.bg : CONFIG.color.bg; };
 let _tk = '';
+// 지난 프레임에 잠수 색을 칠했는가 — 끝나는 프레임에 바탕색을 한 번 되돌린다 (update 안 주석)
+let _dived = false;
 
 // ───────── 무대 : 하늘 ─────────
 // 2026-09-09 부터 이 바다에는 **수평선이 있다** (`docs/무대와-존-연출.md` §12).
@@ -96,6 +99,18 @@ export function createStage(scene, sunUniform) {
       mesh.position.copy(cam.position);
       // 시간대가 바뀌면 바탕색도 (콘솔에서 sceneTime 만 바꾸고 apply 를 안 불러도 따라온다)
       if (timeKey() !== _tk) { _tk = timeKey(); uni.uBg.value.set(bgNow()); }
+      // ⭐⭐ 잠수 (2026-09-18, dive.js) — **하늘의 결을 지우고 바탕을 짙은 바다색으로 눕힌다.**
+      //   `uAmount` 0 = 바탕색 한 색(위 FRAG)이라, 지평선 그라데이션 · 해무리가 같이 사라진다.
+      //   ⚠⚠ 물의 `uFadeSky` 도 **같은 식**으로 내린다 (water.js) — 갈라지면 물끝에 밝은 띠가 남는다.
+      //   ⚠⚠ 시간대 열쇠(_tk)는 잠수 중에 안 바뀌므로 위 한 줄이 되돌려 주지 않는다 — `_dived` 로
+      //     **끝나는 프레임에 한 번** `bgNow()` 에서 다시 칠한다 (main.js `applyDiveBg` 와 같은 규율)
+      const D = diveNow();
+      if (D || _dived) {
+        uni.uBg.value.set(bgNow());
+        if (D) uni.uBg.value.lerp(D.deep, D.dim);
+        _dived = !!D;   // ⚠ 잠수가 끝나는 **그 프레임**에 한 번 되돌린다
+      }
+      if (D) uni.uAmount.value *= 1 - (P.diveSkyOff === undefined ? 1 : P.diveSkyOff) * D.dim;
     },
 
     // 색·세기 값이 바뀌었을 때 (PB.apply())

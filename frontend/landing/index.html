@@ -405,6 +405,22 @@
       --pb-info-shadow: 0 1px 2px var(--pb-halo, transparent), 0 2px 14px var(--pb-halo-2, transparent);
     }
   }
+
+  /* ⭐⭐ 잠수 — 진열대로 넘어가는 전환 (2026-09-18, src/dive.js · params.diveUi).
+     앱 커튼이 `PB.dive(k)` 를 밀기 시작하면 dive.js 가 <html data-dive> 를 달고, 엔진 UI 가 **먼저 비킨다** —
+     검색창 · 정보 블록 · 존 표시 · 미니맵 · 말풍선 카드 · 부표 이름표 · DRIFT 바가 한 번에.
+     ⚠⚠ **매 프레임 opacity 를 쓰지 않는다.** 칠하기 단계라 커튼이 올라오는 그 순간과 겹친다 —
+       속성 한 번 달고 CSS 전환에 맡기면 합성 스레드가 민다 (앱 로딩 커튼과 같은 이유).
+     ⚠⚠ `!important` 인 까닭 : 이 UI 들은 자기 opacity 를 **인라인 style 로** 쥐고 있다 (ui.js 가 매번 쓴다).
+       인라인은 선택자를 이기므로 이것 말고는 덮을 길이 없다 (불변식 23 의 변수 규약도 opacity 에는 없다).
+     ⚠ `#mount`(캔버스)만 뺀다 — 3D 는 계속 그려야 카메라가 내려가는 것이 보인다. #fog 는 평소 0 이라 걸려도 무해하다.
+     ⚠ 되돌릴 때는 전환 없이 제자리로 돌아온다 (규칙이 통째로 빠지므로) — 잠수는 곧 화면이 바뀌는 길이라 괜찮다.
+       취소가 흔해지면 전환을 기본 규칙 쪽으로 옮기는데, 그러면 ui.js 의 등장 · 퇴장과 두 번 겹친다 */
+  html[data-dive] #stage > *:not(#mount) {
+    opacity: 0 !important;
+    transition: opacity var(--pb-dive-ui, 260ms) ease-out !important;
+    pointer-events: none !important;
+  }
 </style>
 </head>
 <body>
