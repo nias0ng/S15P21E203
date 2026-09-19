@@ -19,6 +19,7 @@ import {
 } from '@/features/community'
 import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
+import { readPage, withQueryParams, writePage } from '@/shared/lib/queryParams'
 import { useIsLoggedIn } from '@/shared/store/authStore'
 import { AuthLinkButton } from '@/shared/ui/AuthLinkButton'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
@@ -49,7 +50,7 @@ export default function FreeBoardPage() {
   const sort = (searchParams.get('sort') as PostSort | null) ?? 'RECENT'
   const category =
     (searchParams.get('category') as CategoryFilter | null) ?? 'ALL'
-  const page = Math.max(0, Number(searchParams.get('page') ?? 1) - 1)
+  const page = readPage(searchParams)
 
   const listParams = {
     // 'ALL' 은 백엔드 값이 아닙니다. 조건을 아예 빼면 전체입니다.
@@ -124,17 +125,18 @@ export default function FreeBoardPage() {
     category?: CategoryFilter
     page?: number
   }) => {
-    const params = new URLSearchParams(searchParams)
-    if (next.sort !== undefined) params.set('sort', next.sort)
-    if (next.category !== undefined) {
-      if (next.category === 'ALL') params.delete('category')
-      else params.set('category', next.category)
-    }
+    let params = withQueryParams(searchParams, {
+      ...(next.sort !== undefined && { sort: next.sort }),
+      // 'ALL' 은 백엔드 값이 아닙니다 — 조건을 아예 빼면 전체입니다
+      ...(next.category !== undefined && {
+        category: next.category === 'ALL' ? null : next.category,
+      }),
+    })
     // 거르는 조건이 바뀌면 첫 쪽부터 다시 봅니다 — 3쪽에 있던 자리는 의미가 없습니다
     if (next.sort !== undefined || next.category !== undefined) {
-      params.delete('page')
+      params = writePage(params, 0)
     }
-    if (next.page !== undefined) params.set('page', String(next.page + 1))
+    if (next.page !== undefined) params = writePage(params, next.page)
     setSearchParams(params)
   }
 

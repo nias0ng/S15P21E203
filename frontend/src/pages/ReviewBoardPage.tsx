@@ -18,6 +18,7 @@ import {
 import { likeReview, reviewKeys, unlikeReview } from '@/features/perfume'
 import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
+import { readPage, withQueryParams, writePage } from '@/shared/lib/queryParams'
 import { useIsLoggedIn } from '@/shared/store/authStore'
 import { AuthLinkButton } from '@/shared/ui/AuthLinkButton'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
@@ -47,7 +48,7 @@ const PAGE_SIZE = 10
 export default function ReviewBoardPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const sort = (searchParams.get('sort') as ReviewSort | null) ?? 'RECENT'
-  const page = Math.max(0, Number(searchParams.get('page') ?? 1) - 1)
+  const page = readPage(searchParams)
 
   const reviews = useQuery(reviewBoardQuery({ sort, page, size: PAGE_SIZE }))
   const trending = useQuery(trendingPerfumesQuery())
@@ -100,13 +101,12 @@ export default function ReviewBoardPage() {
   })
 
   const updateParams = (next: { sort?: ReviewSort; page?: number }) => {
-    const params = new URLSearchParams(searchParams)
+    let params = searchParams
     if (next.sort !== undefined) {
-      params.set('sort', next.sort)
       // 정렬을 바꾸면 첫 쪽부터 다시 봅니다 — 3쪽에 있던 자리는 의미가 없습니다
-      params.delete('page')
+      params = writePage(withQueryParams(params, { sort: next.sort }), 0)
     }
-    if (next.page !== undefined) params.set('page', String(next.page + 1))
+    if (next.page !== undefined) params = writePage(params, next.page)
     setSearchParams(params)
   }
 
