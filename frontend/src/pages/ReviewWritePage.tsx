@@ -384,11 +384,7 @@ export default function ReviewWritePage() {
         submitDisabled={!canSubmit}
         onSubmit={() => mutation.mutate()}
       >
-        {/*
-          대상 향수는 필수이고 한 개만 답니다. 이 화면에서 가장 먼저 정해야 하는
-          값이라 다른 항목과 달리 칸으로 감싸 무게를 줍니다 — 고르지 않으면
-          [포스팅] 이 꺼져 있는데, 그 이유가 눈에 보여야 합니다.
-        */}
+        {/* 대상 향수는 필수이고 한 개만 답니다 */}
         <fieldset
           className={cn(
             'rounded-card border p-3.75',
@@ -437,10 +433,6 @@ export default function ReviewWritePage() {
           )}
         </fieldset>
 
-        {/*
-          라벨을 보이게 두었습니다. placeholder 로만 알려주면 한 글자라도 치는
-          순간 무엇을 적는 칸인지 사라집니다.
-        */}
         <Input
           label="제목"
           placeholder="제목을 입력하세요"
@@ -462,18 +454,11 @@ export default function ReviewWritePage() {
 
         {/*
           계절별 평가 (DTL-16). 예전에는 향수 상세의 [계절 등록] 단추가 모달을
-          띄웠는데, 이 향을 어느 계절에 맡았는지는 후기와 같은 순간에 남기는
-          값이라 여기로 옮겼습니다. 입구가 둘이면 한쪽만 쓰이고 다른 쪽은
-          잊힙니다.
+          띄웠는데, 입구가 둘이면 한쪽만 쓰이고 다른 쪽은 잊혀서 여기로 모았습니다.
 
-          네 칸을 같은 폭으로 늘여 한 줄에 놓습니다. 칩이 글자 폭대로 떨어져
-          있으면 "봄" 과 "여름" 의 크기가 달라 고르는 대상이 아니라 태그처럼
-          보입니다.
-
-          여러 개 고를 수 있습니다 — 봄과 가을에 다 어울리는 향이 있습니다.
-
-          **필수입니다.** 예전에 "(선택)" 이라고 적혀 있었는데 서버는 1개 이상을
-          요구합니다(`@NotEmpty`). 그대로 두면 아무것도 안 고르고 저장할 때 400 입니다.
+          여러 개 고를 수 있고 **필수입니다.** 예전에 "(선택)" 이라고 적혀 있었는데
+          서버는 1개 이상을 요구합니다(`@NotEmpty`) — 그대로 두면 아무것도 안 고르고
+          저장할 때 400 입니다.
         */}
         <fieldset className="space-y-2">
           <legend className="text-ink text-caption font-medium">
