@@ -9,6 +9,7 @@ import {
   type BrandSort,
 } from '@/features/brand'
 import { cn } from '@/shared/lib/cn'
+import { readPage, withQueryParams, writePage } from '@/shared/lib/queryParams'
 import { Button } from '@/shared/ui/Button'
 import { Pagination } from '@/shared/ui/Pagination'
 import { GLASS_PANEL } from '@/shared/ui/panel'
@@ -43,8 +44,7 @@ export default function BrandListPage() {
   const keyword = searchParams.get('keyword') ?? ''
   const sort =
     (searchParams.get('sort') as BrandSort | null) ?? DEFAULT_BRAND_SORT
-  // 주소에는 1부터 세는 번호가 적혀 있고 안에서는 0부터 셉니다(Pagination 과 같습니다)
-  const page = Math.max(0, Number(searchParams.get('page') ?? 1) - 1)
+  const page = readPage(searchParams)
 
   const { data, isPending } = useQuery(brandListQuery({ keyword, sort }))
   const brands = data ?? []
@@ -63,20 +63,14 @@ export default function BrandListPage() {
   const hasFilter = keyword !== '' || sort !== DEFAULT_BRAND_SORT
 
   const setParam = (key: 'keyword' | 'sort', value: string | null) => {
-    const next = new URLSearchParams(searchParams)
-    if (value) next.set(key, value)
-    else next.delete(key)
     // 조건이 바뀌면 첫 쪽으로 돌아갑니다 — 200쪽을 보다 검색하면 빈 화면이 됩니다
-    next.delete('page')
-    setSearchParams(next)
+    setSearchParams(
+      writePage(withQueryParams(searchParams, { [key]: value }), 0),
+    )
   }
 
   const goToPage = (next: number) => {
-    const params = new URLSearchParams(searchParams)
-    // 첫 쪽은 주소에 적지 않습니다 — `?page=1` 이 붙은 주소와 안 붙은 주소가 갈립니다
-    if (next <= 0) params.delete('page')
-    else params.set('page', String(next + 1))
-    setSearchParams(params)
+    setSearchParams(writePage(searchParams, next))
     // 쪽을 넘기면 격자 꼭대기로 올립니다. 그대로 두면 6줄 아래에서 다음 쪽이 시작됩니다
     window.scrollTo({ top: 0 })
   }

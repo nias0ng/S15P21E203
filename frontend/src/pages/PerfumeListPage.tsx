@@ -11,6 +11,7 @@ import {
 } from '@/features/perfume'
 import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
+import { withQueryParams } from '@/shared/lib/queryParams'
 import { Button } from '@/shared/ui/Button'
 import { GLASS_PANEL } from '@/shared/ui/panel'
 import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
@@ -68,9 +69,7 @@ export default function PerfumeListPage() {
   const resetFilters = () => {
     setRanking(null)
     setGender(null)
-    const next = new URLSearchParams(searchParams)
-    next.delete('brand')
-    setSearchParams(next)
+    setSearchParams(withQueryParams(searchParams, { brand: null }))
   }
 
   return (
@@ -105,11 +104,9 @@ export default function PerfumeListPage() {
             <button
               type="button"
               aria-label={`브랜드 필터 ${brand} 해제`}
-              onClick={() => {
-                const next = new URLSearchParams(searchParams)
-                next.delete('brand')
-                setSearchParams(next)
-              }}
+              onClick={() =>
+                setSearchParams(withQueryParams(searchParams, { brand: null }))
+              }
               className="text-ink-muted hover:text-ink"
             >
               <span aria-hidden>×</span>

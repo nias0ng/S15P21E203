@@ -1,5 +1,5 @@
-import { http, isApiError } from '@/shared/api/http'
-import { env } from '@/shared/config/env'
+import { http } from '@/shared/api/http'
+import { withDevFallback } from '@/shared/api/withDevFallback'
 import type { PerfumeViewSource } from '@/shared/config/perfumeViewSource'
 import { toScentFamilyKey } from '@/shared/config/scentFamilies'
 
@@ -26,35 +26,6 @@ import type {
   SeasonStatisticsResponse,
 } from './types'
 
-/**
- * ⚠️ 개발 중 백엔드가 안 떠 있을 때만 대체값으로 넘어갑니다.
- *
- * **요청이 백엔드에 닿지도 못했을 때만**(status 0 · 502~504) 끼어듭니다.
- * 400 · 401 · 404 처럼 백엔드가 대답한 오류는 그대로 올려보냅니다 — 그것까지
- * 삼키면 진짜 버그가 자리표시자에 가려집니다. 운영에서는 끼어들지 않습니다.
- *
- * 지울 때는 이 함수와 `placeholder.ts` 를 함께 지우세요.
- */
-async function withDevFallback<T>(
-  request: () => Promise<T>,
-  fallback: () => T,
-): Promise<T> {
-  try {
-    return await request()
-  } catch (error) {
-    const unreachable =
-      isApiError(error) &&
-      (error.status === 0 || (error.status >= 502 && error.status <= 504))
-
-    if (!env.isDev || !unreachable) throw error
-
-    console.warn(
-      '[perfume] 백엔드에 닿지 못해 개발용 대체 데이터를 씁니다. 실제 값이 아닙니다.',
-    )
-    return fallback()
-  }
-}
-
 // 경로에 '/api/v1' 을 붙이지 않습니다 — http 의 baseURL 에 이미 있습니다
 
 /**
@@ -68,6 +39,7 @@ async function withDevFallback<T>(
  */
 export async function searchPerfumes(params: PerfumeSearchParams) {
   return withDevFallback(
+    'perfume',
     async () => {
       const { data } = await http.get<PerfumeSearchResponse>('/perfumes', {
         params,
@@ -91,6 +63,7 @@ export async function searchPerfumes(params: PerfumeSearchParams) {
  */
 export async function getPerfumeDetail(perfumeId: number) {
   return withDevFallback(
+    'perfume',
     async () => {
       const { data } = await http.get<PerfumeDetail>(`/perfumes/${perfumeId}`)
       return data
@@ -106,6 +79,7 @@ export async function getPerfumeDetail(perfumeId: number) {
  */
 export async function getPerfumeNotes(perfumeId: number) {
   return withDevFallback(
+    'perfume',
     async () => {
       const { data } = await http.get<PerfumeNotesResponse>(
         `/perfumes/${perfumeId}/notes`,
@@ -119,6 +93,7 @@ export async function getPerfumeNotes(perfumeId: number) {
 /** DTL-14 계절별 평가. 후기가 없는 향수도 네 계절이 0 으로 채워져 옵니다. */
 export async function getPerfumeSeasonStatistics(perfumeId: number) {
   return withDevFallback(
+    'perfume',
     async () => {
       const { data } = await http.get<SeasonStatisticsResponse>(
         `/perfumes/${perfumeId}/season-statistics`,
@@ -132,6 +107,7 @@ export async function getPerfumeSeasonStatistics(perfumeId: number) {
 /** DTL-23 AI 후기 요약. 요약이 없으면 세 값이 모두 null 인 200 입니다. */
 export async function getPerfumeReviewSummary(perfumeId: number) {
   return withDevFallback(
+    'perfume',
     async () => {
       const { data } = await http.get<ReviewSummary>(
         `/perfumes/${perfumeId}/review-summary`,
@@ -145,6 +121,7 @@ export async function getPerfumeReviewSummary(perfumeId: number) {
 /** DTL-10 후기 통계. 후기 수만 있고 평균 평점은 없습니다. */
 export async function getPerfumeReviewStatistics(perfumeId: number) {
   return withDevFallback(
+    'perfume',
     async () => {
       const { data } = await http.get<ReviewStatistics>(
         `/perfumes/${perfumeId}/review-statistics`,
@@ -165,6 +142,7 @@ export async function getPerfumeReviews(
   params: { page?: number; size?: number } = {},
 ) {
   return withDevFallback(
+    'perfume',
     async () => {
       const { data } = await http.get<ReviewsResponse>(
         `/perfumes/${perfumeId}/reviews`,

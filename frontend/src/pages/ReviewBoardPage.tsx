@@ -1,5 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router'
 
 import {
@@ -17,8 +16,9 @@ import {
 // 두 도메인은 서로 import 할 수 없으므로 화면에서 조합합니다.
 import { likeReview, reviewKeys, unlikeReview } from '@/features/perfume'
 import { ROUTES } from '@/shared/config/routes'
+import { useLikeToggle } from '@/shared/hooks/useLikeToggle'
 import { cn } from '@/shared/lib/cn'
-import { useIsLoggedIn } from '@/shared/store/authStore'
+import { readPage, withQueryParams, writePage } from '@/shared/lib/queryParams'
 import { AuthLinkButton } from '@/shared/ui/AuthLinkButton'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { Pagination } from '@/shared/ui/Pagination'
@@ -47,7 +47,7 @@ const PAGE_SIZE = 10
 export default function ReviewBoardPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const sort = (searchParams.get('sort') as ReviewSort | null) ?? 'RECENT'
-  const page = Math.max(0, Number(searchParams.get('page') ?? 1) - 1)
+  const page = readPage(searchParams)
 
   const reviews = useQuery(reviewBoardQuery({ sort, page, size: PAGE_SIZE }))
   const trending = useQuery(trendingPerfumesQuery())
@@ -60,24 +60,19 @@ export default function ReviewBoardPage() {
     trending.isPending || (trending.data?.perfumes.length ?? 0) > 0
 
   const queryClient = useQueryClient()
-  const isLoggedIn = useIsLoggedIn()
-  const [loginOpen, setLoginOpen] = useState(false)
   const boardKey = communityKeys.reviewBoard({ sort, page, size: PAGE_SIZE })
 
   /**
-   * 좋아요 토글 (CMT-05).
+   * 좋아요 토글 (CMT-05). 비로그인 안내 · 누르기/취소 고르기는 훅이 맡습니다
+   * (`shared/hooks/useLikeToggle`). 여기서는 **캐시 고치는 일만** 합니다.
    *
-   * 응답에 `liked` 와 `likeCount` 가 함께 오므로 화면이 숫자를 직접 더하고 빼지
-   * 않습니다 — 그 사이 다른 사람이 누른 것도 같이 반영됩니다. 그래서 무효화 대신
-   * **응답 값을 그 줄에만 덮어씁니다.** 목록 전체를 다시 부르면 보고 있던 자리가
-   * 흔들리고, 정렬이 '좋아요순'이면 방금 누른 줄이 눈앞에서 이동합니다.
-   *
-   * 서버가 멱등이라(이미 누른 것에 또 눌러도 같은 결과) 따닥 누름을 막지 않습니다.
+   * 무효화 대신 **응답 값을 그 줄에만 덮어씁니다.** 목록 전체를 다시 부르면 보고
+   * 있던 자리가 흔들리고, 정렬이 '좋아요순'이면 방금 누른 줄이 눈앞에서 이동합니다.
    */
-  const toggleLike = useMutation({
-    mutationFn: ({ id, liked }: { id: number; liked: boolean }) =>
-      liked ? unlikeReview(id) : likeReview(id),
-    onSuccess: (result) => {
+  const likeToggle = useLikeToggle({
+    like: likeReview,
+    unlike: unlikeReview,
+    onToggled: (result) => {
       queryClient.setQueryData(boardKey, (old: typeof reviews.data) =>
         old === undefined
           ? old
@@ -100,13 +95,12 @@ export default function ReviewBoardPage() {
   })
 
   const updateParams = (next: { sort?: ReviewSort; page?: number }) => {
-    const params = new URLSearchParams(searchParams)
+    let params = searchParams
     if (next.sort !== undefined) {
-      params.set('sort', next.sort)
       // 정렬을 바꾸면 첫 쪽부터 다시 봅니다 — 3쪽에 있던 자리는 의미가 없습니다
-      params.delete('page')
+      params = writePage(withQueryParams(params, { sort: next.sort }), 0)
     }
-    if (next.page !== undefined) params.set('page', String(next.page + 1))
+    if (next.page !== undefined) params = writePage(params, next.page)
     setSearchParams(params)
   }
 
@@ -174,14 +168,9 @@ export default function ReviewBoardPage() {
             <PostList
               items={(reviews.data?.reviews ?? []).map(reviewToBoardItem)}
               isPending={reviews.isPending}
-              onToggleLike={(item) => {
-                // 비로그인은 401 이라, 보내 보는 대신 먼저 안내합니다
-                if (!isLoggedIn) {
-                  setLoginOpen(true)
-                  return
-                }
-                toggleLike.mutate({ id: item.id, liked: item.liked })
-              }}
+              onToggleLike={(item) =>
+                likeToggle.toggle({ id: item.id, liked: item.liked })
+              }
               emptyAction={
                 <AuthLinkButton
                   to={ROUTES.REVIEW_WRITE}
@@ -211,8 +200,8 @@ export default function ReviewBoardPage() {
       </div>
 
       <LoginRequiredDialog
-        open={loginOpen}
-        onClose={() => setLoginOpen(false)}
+        open={likeToggle.loginRequired}
+        onClose={likeToggle.closeLoginRequired}
         redirectTo={ROUTES.COMMUNITY_REVIEWS}
         description="좋아요는 로그인한 뒤에 누를 수 있습니다. 글은 로그인 없이도 읽을 수 있습니다."
       />
