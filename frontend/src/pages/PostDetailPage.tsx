@@ -54,11 +54,7 @@ const COMMENT_PAGE_SIZE = 20
  * wide(1440px)를 꽉 채우면 한 줄이 100자를 넘어가고, 줄을 바꿀 때마다 눈이 왼쪽 끝을
  * 다시 찾아야 합니다.
  *
- * 게시판(A22b)에서 한 번에 넘어오는 화면이라 **어두운 방 + 유리판**을 그대로 씁니다
- * (라우트의 `handle.night`). 판 구성은 향수 상세(A10)와 같습니다 — 머리 구역(분류 ·
- * 제목 · 작성자)은 판 없이 어둠에 바로 놓고, 읽을 덩어리인 본문과 댓글이 각자 판을
- * 답니다. 머리까지 판에 올리면 판이 세 장 쌓여 어디부터가 글인지가 흐려집니다.
- */
+ * 어두운 방 · 유리판 구성 — docs/어두운-방-유리판.md */
 export default function PostDetailPage() {
   const { postId } = useParams<{ postId: string }>()
   const numericId = Number(postId)

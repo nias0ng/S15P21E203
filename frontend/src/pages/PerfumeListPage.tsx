@@ -125,14 +125,6 @@ export default function PerfumeListPage() {
         onGenderChange={setGender}
       />
 
-      {/*
-        유리판. 향수 격자는 이 판 위에 놓입니다 — 어두운 방 안의 밝은 표면이라
-        판 안쪽은 색 토큰이 다시 밝은 화면 값으로 돌아갑니다
-        (styles/scent-display.css 의 .scent-glass).
-
-        구분선(hr)을 걷어냈습니다. 판 테두리가 이미 "여기서부터 목록" 을 긋고 있어
-        선을 또 그으면 경계가 두 겹이 됩니다.
-      */}
       <section className={GLASS_PANEL}>
         <div className="mb-6.25 flex items-baseline gap-2.5">
           {/* 글자 크기·굵기는 S15P21E203-162 타이포 스케일에서 확정합니다 */}

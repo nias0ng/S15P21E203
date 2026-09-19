@@ -38,12 +38,7 @@ const PAGE_SIZE = 10
  * 줄을 누르면 후기 상세(A12)로 갑니다. 향수 상세에서 후기를 눌렀을 때와 같은
  * 화면입니다 — 게시판용 상세를 따로 두면 같은 후기가 두 주소를 갖게 됩니다.
  *
- * 생김새는 향수 목록(A33) · 브랜드(A34) · 노트(A35)와 한 벌입니다 — **어두운 방 ·
- * 알약 필터 · 유리판 위 목록.** 상단 메뉴에서 향수와 커뮤니티를 오가는데 한쪽만
- * 밝으면 누를 때마다 화면이 통째로 뒤집힙니다. 어둠은 라우트의
- * `handle.night`(app/router)이 켜고, 판 · 알약의 생김새는
- * `styles/scent-display.css` 에 있습니다.
- */
+ * 어두운 방 · 유리판 구성 — docs/어두운-방-유리판.md */
 export default function ReviewBoardPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const sort = (searchParams.get('sort') as ReviewSort | null) ?? 'RECENT'
@@ -154,11 +149,6 @@ export default function ReviewBoardPage() {
             className="flex-wrap justify-center"
           />
 
-          {/*
-            유리판. 목록과 쪽 번호가 이 판 위에 놓입니다 — 어두운 방 안의 밝은
-            표면이라 판 안쪽은 색 토큰이 다시 정의됩니다
-            (styles/scent-display.css 의 .scent-glass).
-          */}
           <section className={GLASS_PANEL}>
             <div className="mb-6.25 flex items-baseline gap-2.5">
               {/* 판 위 제목은 향수 · 브랜드 · 노트의 판과 같은 크기입니다 */}

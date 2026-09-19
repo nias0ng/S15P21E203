@@ -41,9 +41,7 @@ const PAGE_SIZE = 20
  * 사라집니다. 셋 다 URL 쿼리에 두어 새로고침 · 뒤로가기 · 링크 공유가 같은 결과를
  * 보여줍니다.
  *
- * 생김새는 후기 게시판(A22a)과 한 벌이고, 그 한 벌은 향수 목록(A33) · 브랜드(A34) ·
- * 노트(A35)의 **어두운 방 · 알약 필터 · 유리판 위 목록**을 그대로 씁니다.
- */
+ * 어두운 방 · 유리판 구성 — docs/어두운-방-유리판.md */
 export default function FreeBoardPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const sort = (searchParams.get('sort') as PostSort | null) ?? 'RECENT'
@@ -198,11 +196,6 @@ export default function FreeBoardPage() {
             />
           </div>
 
-          {/*
-            유리판. 목록과 쪽 번호가 이 판 위에 놓입니다 — 어두운 방 안의 밝은
-            표면이라 판 안쪽은 색 토큰이 다시 정의됩니다
-            (styles/scent-display.css 의 .scent-glass).
-          */}
           <section className={GLASS_PANEL}>
             <div className="mb-6.25 flex items-baseline gap-2.5">
               <h2 className="text-ink font-serif text-2xl">
