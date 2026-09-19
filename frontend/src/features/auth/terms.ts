@@ -10,7 +10,7 @@ export const TERMS = [
   { id: 'marketing', label: '마케팅 정보 수신', required: false },
 ] as const
 
-export type TermId = (typeof TERMS)[number]['id']
+type TermId = (typeof TERMS)[number]['id']
 export type TermsState = Record<TermId, boolean>
 
 export const EMPTY_TERMS: TermsState = {

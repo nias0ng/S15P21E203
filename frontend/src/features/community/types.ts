@@ -53,7 +53,7 @@ export interface LinkedPerfume {
 
 /* ── 자유 게시판 (GET /posts) ──────────────────────────────── */
 
-export interface PostSummary {
+interface PostSummary {
   postId: number
   /** 분류 코드. 번호가 아니라 코드입니다 — 번호는 환경마다 다릅니다 */
   category: PostCategory
@@ -132,7 +132,7 @@ export interface CommentsResponse {
  * (와이어프레임 A22a — "분류 필터는 없다") 후기에는 댓글을 달지 않습니다.
  * 대신 어느 향수 이야기인지가 반드시 실립니다.
  */
-export interface ReviewBoardItem {
+interface ReviewBoardItem {
   reviewId: number
   title: string
   content: string

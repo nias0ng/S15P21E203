@@ -66,7 +66,7 @@ export interface NoteDetail extends Note {
  * 베껴 적은 타입이 낡는 것이 걱정되지만, 화면이 이 값을 그대로 `PerfumeGrid` 에
  * 넘기므로 **한쪽이 바뀌면 타입 에러로 바로 드러납니다.** 조용히 어긋나지 않습니다.
  */
-export interface NotePerfume {
+interface NotePerfume {
   perfumeId: number
   name: string
   nameKo: string | null

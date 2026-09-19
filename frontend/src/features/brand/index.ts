@@ -8,13 +8,5 @@
  * 화면(`pages/BrandDetailPage`)에서 향수 도메인을 직접 부릅니다.
  */
 export { BrandGrid } from './components/BrandGrid'
-export { brandDetailQuery, brandKeys, brandListQuery } from './queries'
-export {
-  BRAND_SORTS,
-  DEFAULT_BRAND_SORT,
-  type Brand,
-  type BrandDetail,
-  type BrandSearchParams,
-  type BrandSort,
-  type BrandsResponse,
-} from './types'
+export { brandDetailQuery, brandListQuery } from './queries'
+export { BRAND_SORTS, DEFAULT_BRAND_SORT, type BrandSort } from './types'

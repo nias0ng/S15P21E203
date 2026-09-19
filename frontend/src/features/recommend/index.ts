@@ -12,17 +12,5 @@
  */
 export { RecommendModal } from './components/RecommendModal'
 export { RecommendPeekCard } from './components/RecommendPeekCard'
-export { RecommendResultList } from './components/RecommendResultList'
-export {
-  personalRecommendationQuery,
-  recommendationQuery,
-  recommendKeys,
-} from './queries'
-export {
-  RECOMMEND_MIN_SHELF_ITEMS,
-  type PersonalRecommendation,
-  type RecommendReason,
-  type RecommendResult,
-  type RecommendStatus,
-  type RecommendedPerfume,
-} from './types'
+export { personalRecommendationQuery } from './queries'
+export { RECOMMEND_MIN_SHELF_ITEMS } from './types'

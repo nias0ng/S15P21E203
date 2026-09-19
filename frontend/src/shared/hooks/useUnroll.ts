@@ -21,7 +21,7 @@ import { useEffect, useRef, useState } from 'react'
  */
 
 /** 풀리는 곡선 — 끝에서 천천히 멈춥니다 */
-export const UNROLL_CURVE = 'ease-[cubic-bezier(0.45,0,0.2,1)]'
+const UNROLL_CURVE = 'ease-[cubic-bezier(0.45,0,0.2,1)]'
 
 /** 풀 때. 말아 올릴 때(`duration-450`)보다 느립니다 — 펴는 것은 조심스럽고 걷는 것은 빠릅니다 */
 export const UNROLL = `duration-700 ${UNROLL_CURVE}`

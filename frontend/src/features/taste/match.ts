@@ -28,7 +28,7 @@ import type {
  * 값을 올리려면 `match.test.ts` 의 희소 조합 검증을 먼저 통과시켜야 합니다.
  */
 export const PRIMARY_WEIGHT = 0.58
-export const SECONDARY_WEIGHT = 1 - PRIMARY_WEIGHT
+const SECONDARY_WEIGHT = 1 - PRIMARY_WEIGHT
 
 /** 부동소수 비교 오차. 유사도 동점을 판정할 때 씁니다. */
 const EPSILON = 1e-9

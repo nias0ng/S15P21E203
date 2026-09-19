@@ -105,7 +105,7 @@ export async function getTrendingPerfumes(
  */
 
 /** 글 작성에 보내는 값 (CMT-03) */
-export interface PostCreateInput {
+interface PostCreateInput {
   category: PostCategory
   title: string
   content: string
@@ -129,10 +129,10 @@ export interface PostCreateInput {
  * `collectionId: null` 은 첨부를 뗍니다. 보내지 않으면 글을 쓸 때 박제한 컬렉션이
  * 그대로 남습니다 — 제목만 고쳤는데 향수가 바뀌면 안 되기 때문입니다.
  */
-export type PostUpdateInput = Partial<PostCreateInput>
+type PostUpdateInput = Partial<PostCreateInput>
 
 /** `PUT · DELETE /posts/{postId}/like` 응답 */
-export interface PostLikeResult {
+interface PostLikeResult {
   postId: number
   liked: boolean
   likeCount: number

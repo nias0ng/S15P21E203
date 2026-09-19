@@ -8,7 +8,7 @@
  * 와이어프레임 예시: "'차분한' → 시더 · 베티버", "가을 어울림 평가 71%".
  * 입력한 표현과 그것이 어떤 근거로 이어졌는지를 한 줄로 보여줍니다.
  */
-export interface RecommendReason {
+interface RecommendReason {
   /** 사용자가 입력한 표현. 근거가 입력어와 무관하면 비워둡니다. */
   phrase: string | null
   /** 그 표현이 가리키는 노트 · 평가 */
@@ -43,7 +43,7 @@ export interface RecommendedPerfume {
  * - `NO_CONDITION` 향 조건을 하나도 못 뽑음 → 다시 쓰도록 유도
  * - `NO_RESULT` 조건은 찾았으나 보여줄 향수가 없음 → 다시 쓰도록 유도
  */
-export type RecommendStatus = 'OK' | 'OK_RELAXED' | 'NO_CONDITION' | 'NO_RESULT'
+type RecommendStatus = 'OK' | 'OK_RELAXED' | 'NO_CONDITION' | 'NO_RESULT'
 
 /** 향수는 0~5개입니다. `OK` · `OK_RELAXED` 면 비어 있지 않습니다 */
 export interface RecommendResult {

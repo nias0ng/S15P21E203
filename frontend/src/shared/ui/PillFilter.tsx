@@ -30,8 +30,8 @@ type PillFilterProps<T extends string> = {
  * 생김새는 `styles/scent-display.css` 의 `.scent-pill` 이 그립니다 — 반투명 어둠에
  * 테두리만 도는 빛. **어두운 방(`.scent-night`) 안에서만 제 모양이 납니다.**
  *
- * 공용 `SegmentedFilter` 와 다릅니다. 그쪽은 칸을 고르게 나눠 채우는 한 덩이
- * (알약 안의 알약)이고, 여기는 낱개 알약이 흩어져 서는 모양이라 배치가 다릅니다.
+ * 낱개 알약이 흩어져 서는 모양입니다. 칩 토글(`ChipToggle`)과 고르는 방식은 같지만,
+ * 이쪽은 어두운 방 위에서만 제 모양이 나고 저쪽은 밝은 화면용입니다.
  */
 export function PillFilter<T extends string>({
   label,

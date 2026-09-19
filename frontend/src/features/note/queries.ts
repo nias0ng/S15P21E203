@@ -4,7 +4,7 @@ import { getNote, getNotePerfumes, getNotes } from './api'
 import { noteFamilies } from './grouping'
 import type { Note } from './types'
 
-export const noteKeys = {
+const noteKeys = {
   all: ['notes'] as const,
   lists: () => [...noteKeys.all, 'list'] as const,
   details: () => [...noteKeys.all, 'detail'] as const,
