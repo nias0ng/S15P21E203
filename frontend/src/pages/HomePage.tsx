@@ -26,7 +26,9 @@ import { isApiError } from '@/shared/api/http'
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
+import { cn } from '@/shared/lib/cn'
 import { useIsLoggedIn } from '@/shared/store/authStore'
+import { useIsDiving } from '@/shared/store/diveStore'
 import { useSceneSkyStore } from '@/shared/store/sceneSkyStore'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { Toast } from '@/shared/ui/Toast'
@@ -51,8 +53,18 @@ import { Toast } from '@/shared/ui/Toast'
  *
  * ⚠️ 취향 영역(MAP-08)은 엔진에 아직 없습니다.
  */
+/*
+ * 잠수(진열대로 넘어가기)가 걸리면 3D 위에 얹은 **앱 UI 도 같이 비킵니다** — 검색창 · 향해 일지.
+ * 엔진 안의 UI(미니맵 · 카드 · 부표 이름표)는 같은 때에 엔진이 비킵니다 (`landing/src/dive.js`).
+ * 한쪽만 남으면 바다는 내려가는데 글자만 떠 있습니다.
+ *
+ * 커튼이 아래에서 차오르는데 이 둘은 위쪽이라 마지막까지 남습니다 — 그래서 따로 비켜야 합니다.
+ */
+const DIVE_FADE = 'transition-opacity duration-300 ease-out'
+
 export default function HomePage() {
   const navigate = useNavigate()
+  const diving = useIsDiving()
   const log = useQuery(voyageLogQuery())
   // 향해 일지 상태 — 비로그인(401)이면 로그인 안내. 개발 중 서버가 없으면 api 가 대체 일지를 줍니다
   const logStatus: VoyageLogStatus = log.isPending
@@ -170,6 +182,7 @@ export default function HomePage() {
       />
 
       <SceneSearchBar
+        className={cn(DIVE_FADE, diving && 'opacity-0')}
         mode={searchMode}
         onModeChange={setSearchMode}
         onSearch={(keyword, mode) => {
@@ -199,7 +212,13 @@ export default function HomePage() {
           앱이 엔진 좌표를 하드코딩하는 자리라, 근본은 엔진에 상자를 넘기는 문이다
           (`landing/docs/분할/C-연출UI.md` 의 D 요청).
       */}
-      <div className="absolute top-30 left-7.5 max-[940px]:top-auto max-[940px]:bottom-15">
+      <div
+        className={cn(
+          'absolute top-30 left-7.5 max-[940px]:top-auto max-[940px]:bottom-15',
+          DIVE_FADE,
+          diving && 'opacity-0',
+        )}
+      >
         <VoyageLog entries={log.data ?? []} status={logStatus} />
       </div>
 

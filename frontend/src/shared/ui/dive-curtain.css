@@ -1,0 +1,357 @@
+/* ───────── 잠수 커튼 — 메인 3D 에서 진열대로 넘어갈 때 (2026-09-18) ─────────
+ *
+ * 화면 **아래끝에서** 짙은 바다색이 차올라 덮고, 진열대가 준비되면 걷힙니다.
+ * 설계 근거는 엔진 쪽 문서 `landing/docs/고도화-0917/03-로딩-전환-수중.md` §4 입니다.
+ *
+ * ⚠⚠ **이 판이 '바다 밑' 입니다.** 3D 의 바다는 위에서만 그려지는 판 한 장이라 카메라를 수면
+ *   아래로 내리면 물이 종이처럼 사라집니다 (그 문서 §4 의 표). 그래서 엔진은 수면 **위에서**
+ *   고개를 숙이며 다가가기만 하고, 물속은 이 그라데이션이 맡습니다 — 드로우콜 0, 합성 한 겹입니다.
+ *
+ * ⚠⚠⚠ **그라데이션은 늘 창 아래끝에 붙어 있고, 자라기만 합니다 (`scaleY`).**
+ *   첫 판은 높이 2H 짜리 판을 `translateY` 로 밀어 올렸는데, 그러면 **번짐의 띠가 화면을 가로질러
+ *   올라갑니다.** 2026-09-18 사용자 : *"페이지 중간에 걸쳐져서 끊김이 명확히 보이고 있음 …
+ *   페이지 제일 아래끝에서부터 자연스러운 그라데이션이 있어야 할 것 같음"*. 그 판정이 맞았고 원인은 둘이었습니다 :
+ *     ① 불투명이 끝나는 자리에서 **알파가 급히 떨어졌다** (짧은 구간에 100% → 62%) — 거기가 '물선' 으로 읽힙니다
+ *     ② 그 자리의 색이 `sea-shallow`(밝은 청록)라 **짙어진 바다보다 밝았다** — 대비가 선을 더 세웠습니다
+ *   지금은 **아래끝에 못 박은 판을 세로로만 늘립니다** (`transform-origin: 50% 100%`).
+ *   그래서 그라데이션의 **시작점이 언제나 창 아래끝**이고, 자라는 동안 번짐도 같이 늘어납니다 —
+ *   화면을 가로지르며 올라가는 경계가 **구조적으로 생길 수 없습니다.**
+ *
+ * ⚠⚠ **높이 180% 와 굳은 구간 58% 는 한 묶음입니다.**
+ *   `scaleY(c)` 면 칠해지는 높이가 `1.8H × c` 이고 창은 그 **아래 100vh** 만 봅니다. 그래서
+ *     c = 1.0   → 창이 보는 것은 판의 아래 **55.6%** = 굳은 구간(0~58%) 안 → **화면 전체가 덮인다**
+ *     c = 0.556 → 판이 딱 창 높이 → 여기서 처음으로 화면 꼭대기까지 닿는다
+ *     c → 0     → 그라데이션이 아래끝에 눌려 **얇은 띠**가 된다 (여기가 '아래끝에서부터' 다)
+ *   58% 를 55.6% 아래로 내리면 다 덮은 순간 맨 윗줄이 비칩니다. 높이를 바꾸면 굳은 구간도 같이 봅니다
+ *   (굳은 구간 ≥ 100 / 높이(%) × 100).
+ *   ⭐ **높이가 곧 '3D 가 얼마나 오래 보이는가' 입니다** (2026-09-18 사용자 : *"3D 좀 더 오래 보이게"* —
+ *     250% → 180%). 낮출수록 판이 화면 꼭대기에 늦게 닿아 3D 가 오래 남고, 대신 번짐의 띠가
+ *     짧아져 경계가 또렷해집니다 (250% 1.45 화면 → 180% **0.76 화면**). 둘의 맞바꿈입니다.
+ *   ⚠ 늘리는 방향이 아니라 **줄이는** 방향입니다 (배율이 1 을 안 넘습니다) — 래스터가 판 제 크기라 흐려지지 않습니다.
+ *
+ * ⚠⚠ **알파는 급한 구간 없이 내려갑니다.** 정지점이 촘촘한 것은 장식이 아니라, 한 번이라도 기울기가
+ *   꺾이면 거기가 선으로 보이기 때문입니다 (위 ①). 그리고 **밝기는 아래로 갈수록 단조롭게 짙어집니다** —
+ *   중간에 밝은 단이 끼면 그 띠가 곧 이음매입니다 (위 ②). 그래서 `sea-shallow` 는 알파가 이미
+ *   0.2 아래로 내려간 꼭대기에만 **속삭임으로** 남습니다.
+ *
+ * ⚠ 색은 `styles/index.css` 의 토큰입니다. 맨 아래(가장 깊은 곳)가 `--color-navy` 인 것이
+ *   중요합니다 — 3D 가 뜨기 전 자리(surface-night) · 엔진의 `diveDeep` 과 같은 색이라
+ *   메인과 커튼과 인계가 한 바다입니다.
+ *
+ * ⚠ 움직이는 것은 `transform` 과 `opacity` 뿐입니다 (합성 단계). 진열대 청크 · 데이터를 받는
+ *   동안에도, 3D 엔진이 메인 스레드를 잡고 있는 동안에도 흐릅니다 — 로딩 커튼과 같은 규율입니다.
+ */
+
+.dive-curtain {
+  /* 걷히는 시간. ⚠ `shared/lib/diveTrack.ts` 의 LIFT_MS 와 같은 값이어야 합니다 */
+  --dive-lift: 1400ms;
+  /* 다 덮은 뒤 더 내려앉는 시간 — 기다리는 동안 화면이 깊은 곳으로 가라앉습니다 */
+  --dive-settle: 900ms;
+  /* 기다리는 물결이 들어오는 시간 (아래 `-drift`) */
+  --dive-drift-in: 700ms;
+  /* 걷히는 자리 뒤를 흐리는 정도 — 진열대가 흐린 채로 드러났다 또렷해집니다 */
+  --dive-haze: 18px;
+  /*
+   * ⭐ 걷히면서 **물이 얼마나 얕아지는가** 0~1 (2026-09-19 · 아래 `-water::after`).
+   *   0 = 예전 그대로 (다 걷힐 때까지 navy 한 색) · 1 = 다 걷힐 즈음 화면이 sea-shallow.
+   *   중간값의 밝기 (측정) : 0.4 → L 0.352 · 0.6 → L 0.382 · 0.8 → L 0.414 · 1 → L 0.445.
+   */
+  --dive-rise: 1;
+  /*
+   * ⭐⭐ **얕아지는 것이 걷힘의 몇 할 안에 끝나는가.**
+   *
+   *   처음에는 쓸기와 **같은 1400ms** 를 썼는데, 그러면 물이 가장 얕아지는 순간에는 커튼이
+   *   이미 다 걷혀 있습니다 — 안 보이는 것을 밝게 만드는 셈입니다. 화면으로 재 보니
+   *   걷힘 30% 자리(창 위쪽이 아직 알파 1.0 인 곳)에서 얕아짐이 겨우 0.3 이라 차이가 안 보였고,
+   *   같은 자리에 1.0 을 넣으니 그제서야 남색이 얕은 물로 바뀌었습니다.
+   *
+   *   그래서 얕아짐을 **앞으로 당깁니다.** 0.45 면 걷힘 45% 에 다 얕아지고, 그때 창 위쪽은
+   *   아직 알파 0.93 이라 **보이는 동안 얕아집니다.**
+   *   ⚠ 1 에 가깝게 되돌리면 예전처럼 안 보이는 데서 밝아집니다. 0.2 아래로 내리면 걷히기
+   *     시작하자마자 색이 바뀌어 '물이 얕아졌다' 가 아니라 '판이 바뀌었다' 로 읽힙니다.
+   */
+  --dive-rise-span: 0.45;
+}
+
+/*
+ * ───────── 걷힘 — **아래에서부터 위로 트입니다** (2026-09-18) ─────────
+ *
+ * 2026-09-18 사용자 : *"화면이 그 자체로 사라지는게 아니라 하단부터 위로 자연스럽게 투명도가 100%가
+ * 되면 그라데이션 처럼 사라지게"*. 그전에는 판 전체에 `opacity: 0` 이라 **한꺼번에** 옅어졌습니다.
+ *
+ * ⚠⚠ **마스크를 움직이지 않고, 마스크를 쓴 겹을 움직입니다.** `mask-position` 을 미는 것은 칠하기
+ *   단계라 매 장 전 화면을 다시 칠합니다 — 로딩 커튼이 *"구멍을 키우는 것이 아니라 구멍을 가진 겹을
+ *   키운다"* 로 피한 그 자리입니다 (`features/map/scene-boot.css`).
+ *
+ * ⚠⚠⚠ **그래서 겹 둘이 서로를 상쇄합니다.**
+ *   · 바깥(`.dive-curtain`, 마스크를 쓴 겹)이 `translateY(-200vh)` — 마스크가 같이 올라갑니다
+ *   · 안(`.dive-curtain-water`)이 `translateY(200vh)` — 그만큼 되돌려 **물은 화면에서 안 움직입니다**
+ *   둘 다 `transform` 이라 합성 단계입니다. 움직이는 것은 **마스크의 경계**뿐입니다.
+ *
+ * 마스크는 **쓸기 겹(400vh)에 꽉 차게** 답니다 — 자세한 것과 `mask-clip` 함정은 아래 `-sweep` 주석에 있습니다.
+ * ⚠ `overflow: hidden` 을 쓰면 안 됩니다 — 바깥 겹이 화면 밖으로 나가면서 물까지 잘려 나갑니다
+ *   (그래서 `DiveCurtain` 의 클래스에서도 뺐습니다). 물판은 위로만 넘치므로 스크롤이 생기지 않습니다.
+ */
+.dive-curtain[data-stage='lifting'] {
+  pointer-events: none;
+}
+
+/*
+ * 쓸기 겹 — **마스크와 이동은 이 겹이 들고, 높이가 마스크 전체 길이(400vh)입니다.**
+ *
+ * ⚠⚠⚠ **`mask-clip` 의 기본값이 `border-box` 다 — 마스크를 달면 그 상자 밖은 통째로 잘린다.**
+ *   2026-09-18 에 이것 때문에 하루를 돌았습니다. 마스크를 창 높이(100vh)짜리 겹에 달고
+ *   `mask-size: 100% 400%` 로 늘렸더니, **그라데이션이 아니라 상자의 하드 컷이 화면을 쓸고
+ *   올라갔습니다** — 사용자가 본 *"무대 연극의 커튼"* 이 정확히 그것입니다.
+ *   실측 : 걷힘 35% 에서 마스크를 끄면 화면이 남색으로 꽉 차 있었는데(= 물은 멀쩡하다),
+ *   켜면 전부 트여 있었습니다. 그라데이션은 상자의 위 25% 에만 들어 있어 아무 일도 안 하고 있었습니다.
+ *   ⭐ 그래서 **겹의 높이를 마스크 길이와 같게** 합니다 (400vh · `mask-size` 는 기본값 100%).
+ *     그러면 지나가는 동안 잘릴 것이 없습니다. `mask-clip: no-clip` 은 지원이 고르지 않아 안 씁니다.
+ *
+ * 겹 좌표 0~100vh 가 불투명, 100~300vh 가 **두 화면에 걸친 S 자 그라데이션**, 300~400vh 가 투명입니다.
+ *   시작 (0)        창 = 겹 0~100vh   → 전부 불투명 (걷기 전과 똑같다)
+ *   중간 (−150vh)   창 = 겹 150~250vh → 위 0.89 → 아래 0.42 · **꺾이는 자리가 없는 옅은 막 한 장**
+ *   끝   (−300vh)   창 = 겹 300~400vh → 전부 투명
+ * ⚠ 기울기가 창보다 길어서 **경계가 화면 안에 통째로 들어오는 순간이 없습니다** — 그게 '커튼' 과 '안개' 를 가릅니다.
+ * ⚠ 직선이 아니라 S 자인 것도 같은 이유입니다 — 직선은 1 과 0 에 닿는 **양 끝에 무릎이 남고**, 그 무릎이 가장자리로 읽힙니다.
+ */
+.dive-curtain-sweep {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 400vh;
+}
+.dive-curtain[data-stage='lifting'] .dive-curtain-sweep {
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0,
+    #000 25%,
+    rgb(0 0 0 / 0.97) 31%,
+    rgb(0 0 0 / 0.88) 38%,
+    rgb(0 0 0 / 0.74) 45%,
+    rgb(0 0 0 / 0.56) 52%,
+    rgb(0 0 0 / 0.38) 59%,
+    rgb(0 0 0 / 0.2) 66%,
+    rgb(0 0 0 / 0.08) 71%,
+    transparent 75%,
+    transparent 100%
+  );
+  transform: translateY(-300vh);
+  transition: transform var(--dive-lift) cubic-bezier(0.4, 0, 0.5, 1);
+}
+
+/*
+ * 상쇄 겹 — 쓸기 겹이 올라간 만큼(300vh) 되돌립니다. **이 한 겹이 안의 것 전부를 제자리에 둡니다.**
+ * ⚠ 물판 · 물결이 각자 상쇄하면 둘 다 `transform` 을 그 일에 써 버려, 차오름(`scaleY`)과
+ *   숨(애니메이션)을 넣을 자리가 없어집니다 — 한 요소에 transform 은 하나입니다.
+ * ⚠ 높이가 **창 한 장**입니다 (쓸기 겹은 400vh 라 `inset: 0` 을 쓰면 안 됩니다).
+ */
+.dive-curtain-hold {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 100vh;
+}
+.dive-curtain[data-stage='lifting'] .dive-curtain-hold {
+  transform: translateY(300vh);
+  transition: transform var(--dive-lift) cubic-bezier(0.4, 0, 0.5, 1);
+  /*
+   * ⭐⭐ **안개가 걷히듯 — 트이는 자리 뒤를 흐립니다** (사용자 : *"그 하단 부분을 블러 처리해서"*).
+   *   진열대가 **흐린 채로 드러났다가 또렷해집니다.** 마스크가 지운 자리는 이 겹이 아예 안 칠해지므로
+   *   흐림도 같이 사라집니다 — 즉 **흐림의 경계가 곧 마스크의 기울기**라 따로 맞출 것이 없습니다.
+   * ⚠⚠ 이 흐림을 쓸기 겹에 걸면 안 됩니다 — 그쪽은 화면 밖으로 300vh 나가므로 뒤에 아무것도 없는
+   *   자리를 흐리게 됩니다. 제자리에 있는 이 겹이라야 진열대를 집습니다.
+   * ⚠ 전 화면 `backdrop-filter` 는 비쌉니다 — **걷히는 동안만** 켭니다 (엔진 `travel.js` 의 흰 안개와 같은 규율).
+   */
+  backdrop-filter: blur(var(--dive-haze));
+}
+
+.dive-curtain-water {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  /* ⚠ 위 머리말의 '180% 와 58%' 한 묶음 */
+  height: 180%;
+  /*
+   * 아래끝에 못 박고 세로로만 늘립니다 — 그라데이션의 시작점이 언제나 창 아래끝입니다.
+   * 차오른 정도 0~1 을 `DiveCurtain` 이 rAF 안에서 직접 씁니다 (React 상태가 아닙니다).
+   */
+  transform-origin: 50% 100%;
+  transform: scaleY(var(--dive-cover, 0));
+  will-change: transform;
+  background: linear-gradient(
+    to top,
+    /* 굳은 속 — 가장 깊고 가장 짙다. 인계 색(앱 navy · 엔진 diveDeep)과 같은 값 */
+    var(--color-navy) 0%,
+    var(--color-navy) 38%,
+    /* 여기까지가 '다 덮은' 구간(58%) — 밝기는 아래로 갈수록 단조롭게 짙어진다 */
+    var(--color-sea-deep) 58%,
+    /* 아래부터 알파만 내려간다. 기울기가 꺾이지 않게 촘촘히 */
+    color-mix(in srgb, var(--color-sea-deep) 93%, transparent) 65%,
+    color-mix(in srgb, var(--color-sea-deep) 78%, transparent) 73%,
+    color-mix(in srgb, var(--color-sea-deep) 58%, transparent) 81%,
+    color-mix(in srgb, var(--color-sea-deep) 36%, transparent) 88%,
+    /* 꼭대기의 속삭임 — 알파가 0.2 아래라 밝은 띠가 될 수 없다 */
+    color-mix(in srgb, var(--color-sea-shallow) 19%, transparent) 93%,
+    color-mix(in srgb, var(--color-sea-shallow) 7%, transparent) 97%,
+    transparent 100%
+  );
+}
+
+/*
+ * ───────── 걷히면서 **물이 얕아진다** (2026-09-19) ─────────
+ *
+ * 걷히는 동안 화면에 남아 있는 것은 사실상 **navy 한 색**입니다. 판은 아래끝에 못 박힌 채
+ * 높이 180% × settle 1.25 = 2.25H 라 창이 보는 것은 판의 **아래 44.4%** 뿐이고, 그 구간은
+ * 그라데이션의 굳은 속(0~38% navy)에 거의 다 들어갑니다 — 화면 안의 밝기 차가 L 0.287~0.30 입니다.
+ *
+ * ⭐ **간극은 색상이 아니라 밝기였습니다** (실측) : 커튼 L 0.287 ↔ 진열대 종이 L 0.909.
+ *   진열대 채도가 C 0.015 라 색상(H 267 ↔ 77, 색상환 반대편)은 눈에 거의 안 보입니다.
+ *   그런데 바다 팔레트에는 **0.445 와 0.87 사이에 칸이 없습니다** — sea-shallow 까지 올라가도
+ *   간극의 25% 밖에 못 메웁니다. 그래서 **양끝이 같이 움직입니다** : 여기서 커튼이 한 칸
+ *   올라오고, 도착지에서는 모래 위에 물 한 겹이 내려옵니다 (`features/shelf/shelf-display.css`).
+ *
+ * ⚠⚠ **덮을 때가 아니라 걷힐 때만입니다.** 인계 불변식(엔진 `diveDeep` == `--color-navy`)은
+ *   **덮는 순간**의 약속이고, 그때 이 겹은 알파 0 입니다. 걷히기 시작하면 엔진은 이미 언마운트라
+ *   여기서부터는 커튼 혼자입니다. 덮인 채 기다리는 동안(covered)에도 안 켭니다 — 거기서 밝아지면
+ *   아직 도착하지도 않았는데 떠오르는 것으로 읽히고, 더 가라앉는 settle 과도 반대로 답니다.
+ *
+ * ⚠ **알파를 창이 보는 구간(판의 아래 44.4%)에서 평평하게** 둡니다. 아래를 더 밝게 하면
+ *   화면이 아래로 갈수록 밝아져 *"밝기는 아래로 갈수록 단조롭게 짙어진다"* 가 깨집니다
+ *   (위 머리말 ②). 판 전체를 한 단 들어 올리는 것이지 그라데이션을 뒤집는 것이 아닙니다.
+ *
+ * ⚠ 자식이 아니라 `::after` 인 것은 **물판의 transform 을 그대로 물려받기** 위해서입니다.
+ *   형제로 두면 차오름(`--dive-cover`)과 settle(1.25)을 둘 다 똑같이 따라 해야 하고,
+ *   한 프레임만 어긋나도 두 판이 갈라진 자리가 선으로 보입니다.
+ *
+ * ⚠ 쓸기와 **같은 시계 · 같은 이징**입니다 — 얕아지는 것과 걷히는 것이 갈라지면, 물이 먼저
+ *   밝아졌다가 뒤늦게 트이거나 그 반대가 됩니다. 하나의 일이라 하나의 곡선을 씁니다.
+ */
+.dive-curtain-water::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  /* 0~60% 가 평평합니다 — 창이 보는 아래 44.4% 가 통째로 이 안에 듭니다 */
+  background: linear-gradient(
+    to top,
+    var(--color-sea-shallow) 0%,
+    var(--color-sea-shallow) 60%,
+    color-mix(in srgb, var(--color-sea-shallow) 40%, transparent) 74%,
+    /* ⚠ 알파 0 으로 끝내지 않습니다 — 크롬이 알파 0 픽셀의 색을 버립니다 (아래 `-drift` 와 같은 이유) */
+    color-mix(in srgb, var(--color-sea-shallow) 2%, transparent) 88%
+  );
+}
+.dive-curtain[data-stage='lifting'] .dive-curtain-water::after {
+  opacity: var(--dive-rise);
+  /*
+   * 쓸기와 **같은 이징**이되 **더 짧게** 갑니다 (위 `--dive-rise-span`). 같은 곡선이라 시작이
+   * 느긋해서 걷히는 첫 순간에 색이 튀지 않고, 짧아서 아직 두꺼운 동안 다 얕아집니다.
+   */
+  transition: opacity calc(var(--dive-lift) * var(--dive-rise-span))
+    cubic-bezier(0.4, 0, 0.5, 1);
+}
+
+/*
+ * 다 덮은 뒤 — 진열대를 기다리는 동안 **더 가라앉습니다.**
+ * 창이 보는 구간이 판의 아래 55.6% 에서 44.4% 로 내려가 화면이 짙은 남색 한 색이 됩니다.
+ * 멈춰 선 그라데이션보다 계속 내려가는 쪽이 '기다리는 중' 이 아니라 '가는 중' 으로 읽힙니다.
+ * ⚠ 인라인은 `--dive-cover` 라는 **변수**만 쓰므로, 여기서 `transform` 을 덮어써도 부딪히지 않습니다.
+ */
+.dive-curtain[data-stage='covered'] .dive-curtain-water,
+.dive-curtain[data-stage='lifting'] .dive-curtain-water {
+  transform: scaleY(1.25);
+  transition: transform var(--dive-settle) cubic-bezier(0.33, 0, 0.2, 1);
+}
+
+/* ───────── 기다리는 동안 — 물결이 숨을 쉽니다 (2026-09-18) ─────────
+ *
+ * 2026-09-18 사용자 : *"진열대 페이지 자체에도 무거움이 존재해서 사실상 랜딩 잔류 시간이 좀 필요함 …
+ * 혹시 메인페이지 glb 기다리는 시간 효과처럼"*. 메인의 로딩 커튼이 배 GLB(8MB)를 기다리는 동안
+ * **구름 결이 느리게 숨 쉬는** 것과 같은 장치입니다 (`features/map/scene-boot.css` 의 `-drift`) —
+ * 여기서는 그 결이 **깊은 물**입니다. 납작한 남색 한 장으로 두면 기다림이 '멈춤' 으로 읽힙니다.
+ *
+ * ⚠ 덮인 뒤에 들어옵니다 (`covered`) — 차오르는 동안에도 켜 두면 물판의 그라데이션과 겹쳐 얼룩집니다.
+ * ⚠ 흐림은 **정적**입니다. 애니메이션으로 흔들면 합성 스레드로 안 넘어갑니다 (로딩 커튼과 같은 이유).
+ * ⚠ 투명 끝을 알파 0 으로 두지 않습니다 — 크롬이 알파 0 픽셀의 색을 버립니다 (같은 파일의 실측).
+ * ⚠ 이 겹의 `transform` 은 **숨** 차지입니다. 걷힘의 상쇄는 위 `-hold` 가 맡습니다.
+ */
+.dive-curtain-drift {
+  position: absolute;
+  inset: -20%;
+  opacity: 0;
+  /*
+   * ⚠ **밝은 덩어리만 두면 밋밋합니다** — `sea-deep` 은 바탕(navy)과 너무 가까워 거의 안 보였습니다.
+   *   밝은 것 하나와 **어두운 웅덩이** 하나를 같이 둬야 물의 깊이로 읽힙니다. 안개가 아니라 물입니다.
+   */
+  background:
+    radial-gradient(
+      42% 38% at 28% 30%,
+      color-mix(in srgb, var(--color-sea-shallow) 58%, transparent),
+      color-mix(in srgb, var(--color-sea-shallow) 1%, transparent) 70%
+    ),
+    radial-gradient(
+      48% 46% at 76% 66%,
+      color-mix(in srgb, var(--color-navy) 75%, transparent),
+      color-mix(in srgb, var(--color-navy) 1%, transparent) 72%
+    ),
+    radial-gradient(
+      58% 62% at 52% 44%,
+      color-mix(in srgb, var(--color-sea-shallow) 30%, transparent),
+      color-mix(in srgb, var(--color-sea-shallow) 1%, transparent) 76%
+    );
+  filter: blur(38px);
+  transition: opacity var(--dive-drift-in) ease-out;
+  animation: dive-drift 11s ease-in-out infinite alternate;
+}
+.dive-curtain[data-stage='covered'] .dive-curtain-drift,
+.dive-curtain[data-stage='lifting'] .dive-curtain-drift {
+  opacity: 1;
+}
+
+@keyframes dive-drift {
+  from {
+    transform: translate3d(-2.4%, 1.4%, 0) scale(1.03);
+  }
+  to {
+    transform: translate3d(2.4%, -1.4%, 0) scale(1.1);
+  }
+}
+
+/*
+ * 움직임 줄이기 — 차오름과 가라앉음을 빼고 **짙은 남색이 짧게 덮였다 걷힙니다**
+ * (문서 §4-2 : *"움직임 줄이기면 카메라 잠수를 빼고 커튼 교차 페이드 200ms 만 한다"*).
+ * 3D 카메라도 안 내려갑니다 — 그쪽은 `DiveCurtain` 이 엔진을 아예 안 부릅니다.
+ * ⚠ `transform: none` 이면 판이 제 높이(180%)로 서서 창은 아래 55.6%(굳은 구간)만 봅니다 — 한 색입니다.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .dive-curtain-water,
+  .dive-curtain[data-stage='covered'] .dive-curtain-water,
+  .dive-curtain[data-stage='lifting'] .dive-curtain-water {
+    background: var(--color-navy);
+    transform: none;
+    transition: none;
+    opacity: var(--dive-cover, 0);
+  }
+  /* 얕아짐도 뺍니다 — 판이 아예 navy 한 색이라 얹을 자리가 없습니다 */
+  .dive-curtain-water::after,
+  .dive-curtain[data-stage='lifting'] .dive-curtain-water::after {
+    content: none;
+  }
+  /* 걷힘도 쓸기 대신 한 번에 옅어집니다 */
+  .dive-curtain[data-stage='lifting'] {
+    opacity: 0;
+    transition: opacity var(--dive-lift) linear;
+  }
+  .dive-curtain[data-stage='lifting'] .dive-curtain-sweep,
+  .dive-curtain[data-stage='lifting'] .dive-curtain-hold {
+    mask-image: none;
+    transform: none;
+    backdrop-filter: none;
+  }
+  /* 숨은 뺍니다. 물결 자체는 남깁니다 — 기다림을 알리는 것은 움직임이 아니라 결입니다 */
+  .dive-curtain-drift {
+    animation: none;
+    transform: none;
+  }
+}

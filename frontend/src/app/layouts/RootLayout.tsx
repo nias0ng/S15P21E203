@@ -4,6 +4,7 @@ import { GlobalHeader, type HeaderTone } from '@/app/layouts/GlobalHeader'
 import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { useSceneSkyStore } from '@/shared/store/sceneSkyStore'
+import { DiveCurtain } from '@/shared/ui/DiveCurtain'
 
 /**
  * 화면이 쓰는 본문 폭. 라우트 설정(app/router)의 `handle.width` 로 정합니다.
@@ -153,6 +154,14 @@ export function RootLayout() {
           <Outlet />
         </div>
       </main>
+
+      {/*
+        잠수 커튼 — 메인(3D 향 지도)에서 진열대로 넘어가는 전환 (2026-09-18).
+        ⚠⚠ **여기(껍데기)에 있어야 합니다.** 화면 안에 두면 경로가 바뀌는 순간 커튼도 같이
+          언마운트되어, 덮고 있어야 할 자리에 아이보리 바탕이 그대로 드러납니다.
+          평소에는 아무것도 그리지 않습니다 (DiveCurtain 이 idle 이면 null).
+      */}
+      <DiveCurtain />
     </div>
   )
 }
