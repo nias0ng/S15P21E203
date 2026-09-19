@@ -62,9 +62,7 @@ import { timeNow } from './times.js';   // 시간대 표 — 몸 색이 낮/저�
 //   사용자 : *"돌고래가 너무 느리게 점프함 약간 중력이 너무 약하다고해야하나"*. 바로 그 항이다.
 //   지금은 포물선 하나를 중력에서 푼다 : 꼭대기 h 까지 올랐다 내려오는 시간 **t = 2√(2h/g)** ·
 //   그동안 덮는 가로 거리 **D = podSpeed × t** · 솟는 각 **tan θ = √(2gh) / podSpeed**.
-//   ⚠ 크기 편차가 붙은 마리는 호가 통째로 커지므로 공중 시간도 **√크기 배**다 (같은 중력이다).
-//     ⚠⚠ 그 크기는 **거리가 정한다** (2026-09-19 · update 의 `szAt`) — 멀수록 작은 쪽으로 쏠린다.
-//       고정 편차 + 원경 보정이 겹쳐 «먼 마리가 화면에서 더 큰» 상태였다 (경위는 szAt 주석).
+//   ⚠ 크기 편차(S.sz)가 붙은 마리는 호가 통째로 커지므로 공중 시간도 **√S.sz 배**다 (같은 중력이다).
 //   ⚠ 1 월드 ≈ 1 m 로 읽는다 (배 길이 lengthW 5.0 = 5m 급 요트) — 그래서 9.8 이 뜻을 갖는다.
 //
 // ⚠ **들어갈 때는 꼬리까지 다 잠긴 뒤에 지운다.** 포물선을 양 끝으로 `m` 만큼 늘려, 몸이 가장 길게
@@ -286,16 +284,14 @@ export function createPod(scene, waterUni) {
     oz: (R() - 0.5) * 2,
     ph: R(),                      // 점프 위상 — 한 무리 안에서도 차례로 뛴다
     lr: R(),                      // 한 묶음에 몇 번 뛰나 (podLeaps 를 곱해 1~podLeaps)
-    // ⚠ 크기 **자체**가 아니라 편차 안의 **자리(0~1)** 다 — 실제 크기는 거리와 함께 update 의 szAt 이 푼다.
-    //   (뽑는 횟수는 예전과 같다 — 여기서 하나 더 뽑거나 덜 뽑으면 아래 무리 자리가 통째로 갈린다)
-    u: R()
+    sz: 0.82 + R() * 0.36         // 크기 편차
   }));
   // 유영 무리 — 뛰는 무리와 **다른 자리**에 흩는다 (같은 씨앗 줄기에서 이어 뽑는다)
   const sSlots = Array.from({ length: 12 }, (_, i) => ({
     grp: i % MAX_GROUPS,
     ox: (R() - 0.5) * 2, oz: (R() - 0.5) * 2,
     ph: R(),                      // 오르내리는 위상
-    u: R()                        // 크기 편차의 자리 — 뛰는 무리와 **같은 자**로 푼다 (szAt)
+    sz: 0.85 + R() * 0.3
   }));
   const groups = Array.from({ length: MAX_GROUPS }, (_, g) => ({
     x: (R() - 0.5) * CONFIG.area.wrapZ,   // 타일 전체에 고르게 흩는다 (marks.layout 과 같은 규약)
@@ -523,27 +519,8 @@ export function createPod(scene, waterUni) {
       //     제대로 된 원근으로는 몸이 10px 안팎이다 (영화·게임에서 쓰는 눈속임이다).
       const flatFar = clamp(P.podFlat === undefined ? 0.85 : P.podFlat, 0, 1);
       const flatNear = clamp(P.podFlatNear === undefined ? 0.35 : P.podFlatNear, 0, 1);
-      const sizeFar = Math.max(0, P.podSizeFar === undefined ? 0.4 : P.podSizeFar);
+      const sizeFar = Math.max(0, P.podSizeFar === undefined ? 0.6 : P.podSizeFar);
       const fadeOut = clamp(P.podFadeOut === undefined ? 0.35 : P.podFadeOut, 0.02, 1);
-      // ── 크기 편차를 **거리에서 푼다** (2026-09-19)
-      //   ⚠⚠ **편차를 거리와 떼어 두면 원근이 뒤집힌다.** 예전에는 마리마다 0.82~1.18 을 고정으로 들고
-      //     있었고 거기에 원경 보정(sizeFar)이 곱해져, 페이드 끝의 큰 마리가 가까운 작은 마리보다
-      //     **화면에서 1.59배 컸다** — 카메라 거리는 58 → 84 로 1.45배밖에 안 멀어지는데 몸이 1.89배가 됐다.
-      //     사용자 : *"멀리있어도 그런 오브젝트 사이즈에대한 편차의 랜덤한 값때문에 멀리있는 돌고래가 너무 크게 보임.
-      //     배 기준에서 멀리 있는 오브젝트는 확실히 작은 돌고래 오브젝트가 생성되었으면 좋겠음"*.
-      //   그래서 슬롯이 든 것은 **편차의 자리(S.u · 0~1)뿐**이고 크기는 여기서 거리와 함께 난다 :
-      //   멀수록 자리를 작은 쪽으로 당기므로 **폭과 중심이 같이 내려간다** (podSizeVaryFar 1 = 끝에서는 늘 최소).
-      //   ⚠ 두 무리가 **같은 자**를 쓴다 (예전에는 뛰는 무리 ±0.18 · 유영 무리 ±0.15 로 갈려 있었다).
-      //   ⚠ 거리의 연속 함수다 — 한 마리가 헤엄쳐 멀어지는 동안 값이 천천히 따라 내려간다 (튀는 지점이 없다).
-      //   실측 (화면에서 잰 것 · 1280×630 · 스크롤 169자리 × 시계 12점 · 표본 3천) :
-      //     **배로부터의 거리별 평균 화면 크기가 54 → 44px 로 단조 감소한다. 예전 셋에서는 53 → 58px 로 늘었다.**
-      //   ⚠⚠ **그래도 «먼 한 마리가 가까운 한 마리보다 크게» 보이는 짝은 남는다 (실측 2.06배 → 1.44배).**
-      //     남은 것은 크기 규칙이 아니라 **자리**에서 온다 — 배로부터 같은 거리라도 배 뒤 반원에 흩어지므로
-      //     카메라 거리가 √(35.8² + d²) ~ (35.8 + d) 로 **1.4배까지 갈린다** (머리 주석의 함정 : 화면 픽셀을
-      //     정하는 것은 배가 아니라 카메라 거리다). 그 몫까지 지우려면 fade 를 카메라 거리에서 재야 한다.
-      const vary = clamp(P.podSizeVary === undefined ? 0.18 : P.podSizeVary, 0, 0.6);
-      const varyFar = clamp(P.podSizeVaryFar === undefined ? 1 : P.podSizeVaryFar, 0, 1);
-      const szAt = (u, fade) => 1 - vary + 2 * vary * u * (1 - varyFar * (1 - fade));
       mat.color.copy(bodyColor());
       // 배 색 — 몸 색을 흰 쪽으로 당긴다. ⚠ 시간대가 바뀌면 몸 색이 바뀌므로 **매 프레임 다시 섞는다**
       uni.uBellyC.value.copy(mat.color).lerp(_white, clamp(P.podBelly === undefined ? 0.45 : P.podBelly, 0, 1));
@@ -576,7 +553,7 @@ export function createPod(scene, waterUni) {
       };
       // 물 밖으로 나오기 **전과 후**로 넘겨 잡는 몫. 몸이 어떤 자세로 기울어도 다 잠길 만큼 깊이 —
       //   포물선의 깊이 4m(1+m)·podHeight 가 몸 반지름(BODY_R × 크기)을 넘게 푼다.
-      //   ⚠ 크기 편차(szAt)는 깊이와 몸에 똑같이 곱해져 약분된다 — 그래서 한 번만 푼다
+      //   ⚠ 크기 편차(S.sz)는 깊이와 몸에 똑같이 곱해져 약분된다 — 그래서 한 번만 푼다
       const MARGIN_BODY = 0.5 * (Math.sqrt(1 + BODY_R * size / high) - 1);
 
       for (let i = 0; i < n; i++) {
@@ -607,12 +584,9 @@ export function createPod(scene, waterUni) {
         const c = (t / period + S.ph * cyc) % cyc;
         if (c >= N || gate <= 0.002) { _m.makeScale(0, 0, 0); mesh.setMatrixAt(i, _m); continue; }
 
-        // 이 마리의 크기 — **거리에서 푼다** (위 szAt). 멀수록 작은 쪽으로 쏠린다
-        const szI = szAt(S.u, fade);
-        // 이 마리의 호 — 몸이 크면 통째로 커지므로 공중 시간은 √szI 배다 (중력은 같다).
-        // ⚠ 그래서 **먼 마리는 낮게 뛴다** — 몸만 작아지고 호는 그대로면 몸 길이 대비 너무 높이 솟는다
-        const rt = Math.sqrt(szI);
-        const hgt = high * szI;                        // 꼭대기 높이
+        // 이 마리의 호 — 몸이 크면 통째로 커지므로 공중 시간은 √S.sz 배다 (중력은 같다)
+        const rt = Math.sqrt(S.sz);
+        const hgt = high * S.sz;                       // 꼭대기 높이
         const air = clamp(tAir * rt / period, 0.05, 0.95);   // 주기 중 물 밖에 있는 몫 — **derived**
         const leap = Math.max(1e-3, speed * tAir * rt);      // 그동안 덮는 가로 거리
         // ⚠ 잠기는 여유는 주기를 넘지 않게 자른다 (주기가 공중 시간에 가까우면 꼬리가 늦게 잠긴다)
@@ -634,12 +608,12 @@ export function createPod(scene, waterUni) {
         _q.setFromEuler(_e);
         // ⚠ 게이트가 덜 열렸으면 호를 **물 밑으로 내린다** — 지우는 게 아니라 잠기는 것이라 경계에서 안 튄다.
         //   gate 0 이면 꼭대기조차 몸 반지름만큼 수면 아래다 (그 전에 이미 꺼지지만 거기까지 이어진다)
-        _p.set(sx, wy + hop * hgt - (1 - gate) * (hgt + BODY_R * size * szI), sz);
+        _p.set(sx, wy + hop * hgt - (1 - gate) * (hgt + BODY_R * size * S.sz), sz);
         // 거리로 푸는 셋 — 눕히기 · 알파 · 크기 보정 (위 주석)
         const eF = clamp(fade / fadeOut, 0, 1);
         const alphaI = eF * eF * (3.0 - 2.0 * eF);       // smoothstep — 끝에서만 스르르 지운다
         const flatI = flatNear + (flatFar - flatNear) * (1 - fade);
-        const sc = size * szI * (1 + sizeFar * (1 - fade));
+        const sc = size * S.sz * (1 + sizeFar * (1 - fade));
         _s.set(sc, sc, sc);
         _m.compose(_p, _q, _s);
         mesh.setMatrixAt(i, _m);
@@ -693,7 +667,7 @@ export function createPod(scene, waterUni) {
           const eF = clamp(fade / fadeOut, 0, 1);
           const alphaI = eF * eF * (3.0 - 2.0 * eF);
           const flatI = flatNear + (flatFar - flatNear) * (1 - fade);
-          const sc = sSize * szAt(S.u, fade) * (1 + sizeFar * (1 - fade));
+          const sc = sSize * S.sz * (1 + sizeFar * (1 - fade));
           // 수면 위로 내민 높이. ⚠ 음수면 통째로 잠긴다 — 물이 가려 주므로 **그대로 두면 된다**
           //   (숨 쉬러 올라왔다 내려가는 리듬이 여기서 공짜로 나온다).
           //   ⚠ 게이트가 덜 열렸으면 더 내린다 — 지우는 게 아니라 잠기는 것이라 경계에서 안 튄다
