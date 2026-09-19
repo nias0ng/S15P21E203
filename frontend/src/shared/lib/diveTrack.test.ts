@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
   ⚠ `node:fs` 가 아니라 Vite 의 `?raw` 로 읽습니다 — 이 앱의 tsconfig 는 브라우저 앱이라
     node 타입을 안 싣고, 싣게 만들면 앱 코드에서도 node API 가 열립니다.
 */
+import { CONFIG } from '@landing/config'
 import { PARAMS } from '@landing/params'
 
 /*
@@ -110,6 +111,18 @@ describe('판을 건너뛰는 값이 갈라지지 않는다', () => {
     */
     const app = pick(appTokens, /^\s*--color-navy:\s*(#[0-9A-Fa-f]{6})\s*;/m)
     expect(PARAMS.diveDeep.toLowerCase()).toBe(app)
+  })
+
+  it('엔진의 crestViolet 과 앱의 --color-sea-violet 이 같은 색이다', () => {
+    /*
+      수면 바로 아래의 물이 물고 있는 보라는 3D 마루선의 그 색입니다. 갈라지면 커튼이 덮는
+      동안과 걷히는 동안, 물과 파도가 서로 다른 보라를 냅니다 — 한 바다로 안 읽힙니다.
+    */
+    const app = pick(
+      appTokens,
+      /^\s*--color-sea-violet:\s*(#[0-9A-Fa-f]{6})\s*;/m,
+    )
+    expect(CONFIG.color.crestViolet.toLowerCase()).toBe(app)
   })
 
   it('LIFT_MS 와 CSS 의 --dive-lift 가 같은 길이다', () => {

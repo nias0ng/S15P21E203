@@ -21,3 +21,21 @@ declare module '@landing/params' {
     diveDeep: string
   }
 }
+
+/**
+ * 엔진의 **마루선 색** 중 앱과 같아야 하는 것 (2026-09-19).
+ *
+ * 실체는 `landing/src/config.js` 입니다. 수면 바로 아래의 물이 이 보라를 물고 있어야
+ * 커튼과 3D 가 같은 색을 나눠 갖습니다 (`styles/index.css` 의 `--color-sea-violet`).
+ */
+declare module '@landing/config' {
+  export const CONFIG: {
+    color: {
+      /**
+       * 파도 마루선의 보라 (`#RRGGBB`).
+       * ⚠️ 앱의 `--color-sea-violet` 과 **같은 값**이어야 합니다 — `diveTrack.test.ts` 가 견줍니다.
+       */
+      crestViolet: string
+    }
+  }
+}
