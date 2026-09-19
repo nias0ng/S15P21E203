@@ -49,9 +49,12 @@ from __future__ import annotations
 import collections
 import datetime as dt
 import json
+import logging
 import pathlib
 import re
 import unicodedata
+
+LOGGER = logging.getLogger(__name__)
 
 MAX_RAW_CHARS = 500       # 설문 실측 최대가 600자(행운의 편지)였다
 RETENTION_DAYS = 30       # 이 기간이 지나면 raw_text 만 비운다
@@ -158,6 +161,12 @@ def record_corrections(result, path=DEFAULT_CORRECTION_LOG,
             "result_count": len(result.get("results") or []),
         }, ensure_ascii=False))
     if not lines:
+        # **여기 오면 안 된다.** `typo_gate` 는 `"교정"` 이면 최소 1건, `"모호"` 면 정확히
+        # 1건을 돌려주고, 빈 목록은 `"그대로"` 뿐인데 그건 위에서 걸렀다.
+        # 조용히 넘기면 판정이 소리 없이 사라지므로 남긴다 — 검문소를 계속 둘지
+        # 판단할 근거가 이 파일이다.
+        LOGGER.warning("검문소 판정이 '%s' 인데 남길 항목이 없다. "
+                       "typo_gate 와 이 함수가 어긋났다는 뜻이다", verdict)
         return 0
     with path.open("a", encoding="utf-8", newline="\n") as handle:
         handle.write("\n".join(lines) + "\n")
