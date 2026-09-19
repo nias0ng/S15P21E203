@@ -232,7 +232,7 @@ POST /nlr/recommend   { "text": "...", "structured": <위의 structured 그대�
 {
   "status": "OK",
   "query": "빨래 냄새 나는 향수 찾고 있어",
-  "lexiconVersion": "v1_15",
+  "lexiconVersion": "v1_17",
   "promptSha256": "4f0a368d98b41338",
   "conditions": {
     "core": ["fresh", "soapy"],
@@ -260,7 +260,7 @@ POST /nlr/recommend   { "text": "...", "structured": <위의 structured 그대�
     { "expression": "포근한 느낌", "normalizedKey": "포근한 느낌",
       "unmatchReason": "NOT_CORE", "entryId": "kr.sens.cozy",
       "hadConditions": true, "llmAccords": ["amber", "sweet", "vanilla"],
-      "tier": "LLM", "resultCount": 5 }
+      "tier": "LLM", "resultCount": 1 }
   ],
   "diagnostics": {
     "stage": "AND", "candidateCount": 518, "tieAtLast": 1,
@@ -293,7 +293,7 @@ POST /nlr/recommend   { "text": "...", "structured": <위의 structured 그대�
 | `hadConditions` | `had_conditions` | 그 요청이 조건을 뽑았는가 |
 | `llmAccords` | `llm_accords` | ⑤단계 추정. **`[]` 와 `null` 이 다르다** — 아래 |
 | `tier` | `tier` | `"LLM"` 또는 `null`. 사전 경로와 LLM 경로를 가른다 |
-| `resultCount` | `result_count` | 그 요청이 낸 추천 개수. **추정을 물어봤을 때만** 값이 있다 |
+| `resultCount` | `result_count` | **AI 가 찾은** 추천 개수. 사용자가 본 개수가 아니다 — 아래. **추정을 물어봤을 때만** 값이 있다 |
 
 **`llmAccords` 의 세 상태를 구분해야 한다.**
 
@@ -304,6 +304,24 @@ null                묻지 않았다 (⑤단계가 꺼졌거나 조건이 이미
 ```
 
 `[]` 를 `null` 로 뭉개면 *"향이 아니라고 답한 것"* 과 *"안 물어본 것"* 을 셀 수 없다.
+
+**`resultCount` 는 AI 가 찾은 개수다. 사용자가 본 개수가 아니다.**
+
+둘은 실제로 갈린다. AI 는 자기 데이터 13만 개에서 찾는데 **그 향수가 백엔드 DB 에 없으면
+화면에 나가지 않는다.** 그때 백엔드가 `NO_RESULT` 로 내리고 경고를 남긴다.
+
+```
+AI 가 5개를 찾았는데 5개 다 DB 에 없는 경우
+  화면                      NO_RESULT (0개)
+  nlr_recommendation_items  0줄        <- 사용자가 본 개수
+  result_count              5          <- AI 가 찾은 개수
+```
+
+**AI 기준으로 둔다.** 이 칸이 답하는 질문이 *"⑤단계 추정이 결과를 만들었나"* 이고 그것은
+AI 색인 안의 일이다. 백엔드 적재가 밀린 것을 섞으면 **추정이 실제보다 나빠 보인다.**
+
+**사용자가 본 개수를 잃지도 않는다** — `nlr_recommendation_items` 의 줄 수가 그 값이라
+두 수가 모두 남는다. **둘이 벌어진 줄은 버그가 아니라 적재가 밀렸다는 신호다.**
 
 **`llmReasoning` 은 보내지 않는다.** LLM 이 매핑한 **뒤에 붙인 설명**이지 근거가 아니다
 (`spec.md` 1장). 실측에서 없는 말을 지어냈다 — `"빨레"`(빨래의 오타)를 *"바퀴/롤러로
@@ -342,7 +360,7 @@ llm_no_effect   262건 (43.7%)   그중 조건이 나온 문장 182건
 
 | 칸 | 예 | DB 칸 | 무엇인가 |
 |---|---|---|---|
-| `lexiconVersion` | `"v1_15"` | `lexicon_version VARCHAR(20)` | 엔진이 쓴 향 사전 버전 |
+| `lexiconVersion` | `"v1_17"` | `lexicon_version VARCHAR(20)` | 엔진이 쓴 향 사전 버전 |
 | `promptSha256` | `"4f0a368d98b41338"` | `prompt_sha256 VARCHAR(16)` | ①단계 프롬프트 지문 앞 16자 |
 
 **왜 남기나** — 반년 뒤에 *"이 표현이 미매칭이었다"* 를 볼 때 **어느 사전에서 미매칭
@@ -352,7 +370,7 @@ v1.15, 프롬프트가 v1 → v4 로 움직였다.
 **⚠ 둘 다 `null` 일 수 있다.** DB 칸이 둘 다 `NULL` 허용이라 `INSERT` 가 막히지 않는다.
 
 ```
-lexiconVersion   사전 파일 이름이 `..._v1_15.csv` 규칙에 안 맞을 때 (측정용 임시 파일 등)
+lexiconVersion   사전 파일 이름이 `..._v1_17.csv` 규칙에 안 맞을 때 (측정용 임시 파일 등)
 promptSha256     프롬프트 파일을 못 읽을 때
 ```
 
@@ -369,7 +387,7 @@ promptSha256     프롬프트 파일을 못 읽을 때
 ```json
 {
   "query": "빨래 냄새 나는 향수 찾고 있어",
-  "lexiconVersion": "v1_15",
+  "lexiconVersion": "v1_17",
   "promptSha256": "4f0a368d98b41338",
   "conditions": { "core": ["fresh", "soapy"], "avoid": [],
                   "matchedExpressions": ["빨래"], "source": "llm+lexicon" },

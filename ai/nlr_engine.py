@@ -57,6 +57,13 @@ MIN_CORE_FOR_AND = 2      # AND 를 쓸 최소 조건 수. 하나뿐이면 SINGL
 # 1 로 두면 순차로 돈다 — 결과는 같고 지연만 늘어난다.
 ESTIMATE_MAX_WORKERS = 8
 
+# 오타 검문소. ⑤단계 앞에서 사전 표면형의 오타를 되돌린다.
+# [측정 기록 30번] 자모 거리 1 · 2글자 이상에서 생성 오타 3,775개 중 포착 93.0% ·
+# 엉뚱한 표면형으로 교정 0% · 실제 표현 369개에서 오교정 0건이었다.
+# 거리 2 로 올리면 사전 표면형끼리 충돌하는 쌍이 0 -> 12쌍이 되어 무엇으로 고칠지 모른다.
+TYPO_MAX_DISTANCE = 1
+TYPO_MIN_LEN = 2          # 1글자는 후보가 너무 많다. `꿀`·`숲`·`잼`·`탑` 이 서로 이웃이다
+
 # ①단계 구조화 결과에서 이 엔진이 실제로 읽는 칸. 나머지(context·performance)는 안 읽는다 —
 # 계절 데이터가 0건이라 아직 검색에 못 쓴다(spec 6장 제약 1).
 STRUCTURED_KEYS = ("scent_preference", "avoid", "additional_requirements")
@@ -64,11 +71,14 @@ STRUCTURED_KEYS = ("scent_preference", "avoid", "additional_requirements")
 # 기본 데이터 경로. 인자로 덮어쓸 수 있다.
 _DATA_DIR = Path(__file__).resolve().parent / "data"
 DEFAULT_PERFUMES = _DATA_DIR / "perfumes_nlr.csv.gz"
-DEFAULT_LEXICON = _DATA_DIR / "domain_lexicon_v1_15.csv"
+DEFAULT_LEXICON = _DATA_DIR / "domain_lexicon_v1_17.csv"
 DEFAULT_ACCORDS = _DATA_DIR / "accord_dictionary.csv"
 DEFAULT_NOTE_BRIDGE = _DATA_DIR / "note_accord_bridge.csv"
+# 오타 검문소가 **건드리면 안 되는 낱말**. EDA 의 `85_protected_words_v1_17.py` 가 만든다.
+# **사전 버전이 바뀌면 다시 만들어야 한다** — 표면형이 바뀌면 이 집합도 바뀐다.
+DEFAULT_PROTECTED_WORDS = _DATA_DIR / "protected_words_v1_17.txt"
 
-# 사전 파일 이름에서 버전을 뽑는 규칙. `domain_lexicon_v1_15.csv` -> `v1_15`.
+# 사전 파일 이름에서 버전을 뽑는 규칙. `domain_lexicon_v1_17.csv` -> `v1_17`.
 _LEXICON_VERSION = re.compile(r"_(v\d+(?:_\d+)*)$")
 
 # [측정] 노트 브리지 문턱. 측정 기록 18·19번.
@@ -112,11 +122,11 @@ KOREAN_ACCORD = {
 # ---------------------------------------------------------------------------
 def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True,
                bridge_csv=None, bridge_p_min=BRIDGE_P_MIN,
-               bridge_lift_min=BRIDGE_LIFT_MIN):
+               bridge_lift_min=BRIDGE_LIFT_MIN, protected_words=None):
     """향수 데이터와 사전을 읽어 조회용 인덱스를 만든다.
 
     perfumes_csv : str | Path | None   기본 data/perfumes_nlr.csv.gz
-    lexicon_csv  : str | Path | None   기본 data/domain_lexicon_v1_15.csv
+    lexicon_csv  : str | Path | None   기본 data/domain_lexicon_v1_17.csv
     accord_csv   : str | Path | None   기본 data/accord_dictionary.csv (accord 92개 마스터)
     verify       : bool                accord 보유 수를 마스터와 대조해 틀리면 RuntimeError
     bridge_csv   : str | Path | None   기본 data/note_accord_bridge.csv (노트→accord)
@@ -124,6 +134,8 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
                                        않는다 — 코드만 먼저 배포한 경우를 막지 않는다
     bridge_p_min : float               기본 BRIDGE_P_MIN
     bridge_lift_min : float            기본 BRIDGE_LIFT_MIN
+    protected_words : str | Path | None 기본 data/protected_words_v1_17.txt (오타 검문소).
+                                       **없으면 검문소를 끈다.** 경고를 남긴다
 
     무겁다. 13만 x 92 행렬을 만드므로 **기동 시 한 번만 부르고 재사용한다.**
 
@@ -197,7 +209,32 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
         "lexicon_entry_id": entry_ids,
         "lexicon_version": lexicon_version(lexicon_csv),
         "n_perfumes": len(perf),
+        **_load_typo_gate(Path(protected_words) if protected_words
+                          else DEFAULT_PROTECTED_WORDS, surface),
     }
+
+
+def _load_typo_gate(path, surface):
+    """오타 검문소가 쓸 두 집합. dict.
+
+    protected_words   교정하면 안 되는 낱말. 진짜 한국어이거나 향 전문 용어다
+    typo_targets      교정 후보가 될 사전 표면형 -> 그 자모 표기
+
+    **목록 파일이 없어도 엔진은 돈다.** 경고를 남기고 검문소를 끈다 — 노트 브리지와 같은
+    방침이다. 목록 없이 검문소를 돌리면 `너무` 를 `나무` 로 고치므로 **끄는 편이 안전하다**
+    [측정 기록 30번 · 목록 없이는 실제 표현의 10.3% 가 망가진다].
+    """
+    targets = {f: _to_jamo(f) for f in surface
+               if " " not in f and len(f) >= TYPO_MIN_LEN}
+    path = Path(path)
+    if not path.is_file():
+        LOGGER.warning("보호 낱말 목록이 없다: %s. **오타 검문소를 끈다** — "
+                       "목록 없이 교정하면 멀쩡한 낱말을 바꾼다", path)
+        return {"protected_words": None, "typo_targets": targets}
+    words = {w for w in path.read_text(encoding="utf-8").split("\n") if w}
+    LOGGER.info("오타 검문소 켜짐 — 보호 낱말 %d개 · 교정 후보 표면형 %d개",
+                len(words), len(targets))
+    return {"protected_words": words, "typo_targets": targets}
 
 
 def lexicon_version(path=None):
@@ -205,7 +242,7 @@ def lexicon_version(path=None):
 
     path : str | Path | None   기본 DEFAULT_LEXICON
 
-    **파일 이름에서 뽑는다.** `domain_lexicon_v1_15.csv` -> `'v1_15'`.
+    **파일 이름에서 뽑는다.** `domain_lexicon_v1_17.csv` -> `'v1_17'`.
 
     **왜 파일 이름인가** — 이 값은 응답으로 나가 `nlr_recommendations.lexicon_version`
     에 쌓인다. 목적이 *"반년 뒤에 이 기록이 어느 사전에서 나왔는지 해석하는 것"* 이라
@@ -620,6 +657,116 @@ def _rank(index, mask, score, top_k, brand_cap):
 # ---------------------------------------------------------------------------
 # 3단계 — 근거 계산과 응답 조립
 # ---------------------------------------------------------------------------
+_CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ"
+_JUNG = "ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ"
+_JONG = " ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ"
+_HANGUL_WORD = re.compile(r"[가-힣]+")
+
+
+def _to_jamo(text):
+    """한글을 자모로 편다. str.
+
+    **음절이 아니라 자모로 재는 것이 검문소의 전제다.** `빨레`/`빨래` 는 글자로는 한 글자
+    차이지만 자모로는 `ㅐ`/`ㅔ` 한 개 차이다. 음절 단위로 재면 사전 표면형끼리 충돌하는
+    쌍이 28쌍인데 자모 단위로는 0쌍이고, 설문 낱말 교정 대상이 204개에서 12개로 준다
+    [측정 기록 30번].
+    """
+    out = []
+    for ch in unicodedata.normalize("NFC", str(text)):
+        code = ord(ch) - 0xAC00
+        if 0 <= code < 11172:
+            out.append(_CHO[code // 588])
+            out.append(_JUNG[(code % 588) // 28])
+            jong = _JONG[code % 28]
+            if jong != " ":
+                out.append(jong)
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def _jamo_distance_at_most(a, b, cap=TYPO_MAX_DISTANCE):
+    """레벤슈타인 거리가 cap 이하면 그 값, 넘으면 cap+1. int.
+
+    cap 을 넘는 순간 끊는다. 낱말 하나를 표면형 200여 개와 대므로 이 가지치기가 있어야
+    요청 지연에 영향을 주지 않는다.
+    """
+    if abs(len(a) - len(b)) > cap:
+        return cap + 1
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        if min(cur) > cap:
+            return cap + 1
+        prev = cur
+    return prev[-1]
+
+
+def _typo_candidates(index, word):
+    """이 낱말을 고칠 수 있는 사전 표면형들. list[str] (없으면 빈 목록)."""
+    if word in index["lexicon_surface"]:
+        return []                          # 사전에 있는 말이다. 오타가 아니다
+    if word in index["protected_words"]:
+        return []                          # 진짜 한국어이거나 향 전문 용어다
+    if len(word) < TYPO_MIN_LEN:
+        return []                          # 1글자는 후보가 너무 많다
+    jamo = _to_jamo(word)
+    return sorted({form for form, target in index["typo_targets"].items()
+                   if _jamo_distance_at_most(jamo, target) == TYPO_MAX_DISTANCE})
+
+
+def typo_gate(index, structured):
+    """⑤단계 앞 검문소. (고친 structured, 판정, 교정 목록).
+
+    index      : dict          load_index() 결과
+    structured : dict | None   ①단계 구조화 결과
+
+    판정 셋
+        "그대로"   고칠 것이 없다. 지금까지와 똑같이 ⑤단계로 간다
+        "교정"     오타를 고쳤다. 부른 쪽이 `understand()` 를 다시 돌린다
+        "모호"     후보가 여럿이라 무엇으로 고칠지 모른다. **빈 결과를 낸다**
+
+    **사전이 조건을 하나도 못 뽑았을 때만 부른다.** 조건이 하나라도 잡혔으면 그 문장은
+    이해된 것이고, 굳이 사용자가 쓴 낱말을 바꿀 이유가 없다.
+
+    **왜 필요한가** — ⑤단계 LLM 은 그럴듯한 한국어 오타를 "모르는 단어" 로 보고 해석하려
+    든다. `빨레`(빨래의 오타)를 *"바퀴/롤러로 비유되는 고무·플라스틱 계열"* 로 설명하고
+    `rubber`·`plastic` 을 골랐다 [측정 2026-09-18 · 기록 25번]. 사용자는 정상적으로
+    요청했는데 **근거까지 지어낸 엉뚱한 결과**를 받는다.
+
+    **무엇을 못 하는가** — 오타의 결과가 진짜 한국어면 못 잡는다. `빨레` 자체가 국어
+    사전에 등재된 낱말이라 이 검문소도 `빨레` 를 통과시킨다. 생성 오타 3,775개 기준으로
+    포착 93.0% · 놓침 4.6% 다 [측정 기록 30번]. **놓쳤을 때의 동작은 지금과 같다.**
+    """
+    if not structured or index.get("protected_words") is None:
+        return structured, "그대로", []
+
+    fixed = dict(structured)
+    corrections = []
+    requirements = list(structured.get("additional_requirements") or [])
+    out = []
+    for expression in requirements:
+        text = str(expression)
+        for word in _HANGUL_WORD.findall(text):
+            candidates = _typo_candidates(index, word)
+            if len(candidates) > 1:
+                # **고르지 않는다.** 둘 중 하나를 찍으면 절반은 틀린다.
+                return structured, "모호", [{"expression": text, "word": word,
+                                             "candidates": candidates}]
+            if len(candidates) == 1:
+                corrections.append({"expression": text, "word": word,
+                                    "corrected": candidates[0]})
+                text = text.replace(word, candidates[0])
+        out.append(text)
+
+    if not corrections:
+        return structured, "그대로", []
+    fixed["additional_requirements"] = out
+    return fixed, "교정", corrections
+
+
 def recommend(index, text, structured=None, top_k=TOP_K, estimator=None):
     """문장 하나로 추천 응답을 만든다.
 
@@ -640,6 +787,17 @@ def recommend(index, text, structured=None, top_k=TOP_K, estimator=None):
     DB 도 인터넷도 없이 테스트할 수 있고, 추정 없이도 서비스가 돈다.
     """
     understood = understand(index, text, structured)
+
+    # ⑤단계 앞 검문소. **조건이 하나도 안 잡혔을 때만** 돈다.
+    # 교정하면 사전 경로를 다시 태우고, 모호하면 ⑤단계를 건너뛴다(빈 결과).
+    corrections, typo_verdict = [], "그대로"
+    if not understood["core"] and understood["unmatched"]:
+        fixed, typo_verdict, corrections = typo_gate(index, structured)
+        if typo_verdict == "교정":
+            understood = understand(index, text, fixed)
+        elif typo_verdict == "모호":
+            estimator = None       # 지어내지 않는다. 조건 0개 -> NO_CONDITION
+
     estimate = {}
     if estimator and not understood["core"] and understood["unmatched"]:
         estimate = _apply_estimates(index, understood, estimator)
@@ -700,6 +858,11 @@ def recommend(index, text, structured=None, top_k=TOP_K, estimator=None):
         "results": results,
         "unmatched": understood["unmatched"],
         "llm_estimate": estimate,
+        # 검문소가 한 일. **응답으로 나가지 않는다** — server.py 가 파일 로그에만 남긴다.
+        # 교정에 성공하면 그 표현은 미매칭이 아니게 되어 미매칭 로그에 안 남는다.
+        # 여기가 없으면 배포 뒤에 검문소가 무엇을 고쳤는지 볼 방법이 없다.
+        "typo_verdict": typo_verdict,
+        "typo_corrections": corrections,
         "diagnostics": {
             "stage": found["stage"],
             "candidate_count": found["candidate_count"],
