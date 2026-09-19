@@ -71,14 +71,14 @@ STRUCTURED_KEYS = ("scent_preference", "avoid", "additional_requirements")
 # 기본 데이터 경로. 인자로 덮어쓸 수 있다.
 _DATA_DIR = Path(__file__).resolve().parent / "data"
 DEFAULT_PERFUMES = _DATA_DIR / "perfumes_nlr.csv.gz"
-DEFAULT_LEXICON = _DATA_DIR / "domain_lexicon_v1_16.csv"
+DEFAULT_LEXICON = _DATA_DIR / "domain_lexicon_v1_17.csv"
 DEFAULT_ACCORDS = _DATA_DIR / "accord_dictionary.csv"
 DEFAULT_NOTE_BRIDGE = _DATA_DIR / "note_accord_bridge.csv"
-# 오타 검문소가 **건드리면 안 되는 낱말**. EDA 의 `84_protected_words_v1_16.py` 가 만든다.
+# 오타 검문소가 **건드리면 안 되는 낱말**. EDA 의 `85_protected_words_v1_17.py` 가 만든다.
 # **사전 버전이 바뀌면 다시 만들어야 한다** — 표면형이 바뀌면 이 집합도 바뀐다.
-DEFAULT_PROTECTED_WORDS = _DATA_DIR / "protected_words_v1_16.txt"
+DEFAULT_PROTECTED_WORDS = _DATA_DIR / "protected_words_v1_17.txt"
 
-# 사전 파일 이름에서 버전을 뽑는 규칙. `domain_lexicon_v1_16.csv` -> `v1_16`.
+# 사전 파일 이름에서 버전을 뽑는 규칙. `domain_lexicon_v1_17.csv` -> `v1_17`.
 _LEXICON_VERSION = re.compile(r"_(v\d+(?:_\d+)*)$")
 
 # [측정] 노트 브리지 문턱. 측정 기록 18·19번.
@@ -126,7 +126,7 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
     """향수 데이터와 사전을 읽어 조회용 인덱스를 만든다.
 
     perfumes_csv : str | Path | None   기본 data/perfumes_nlr.csv.gz
-    lexicon_csv  : str | Path | None   기본 data/domain_lexicon_v1_16.csv
+    lexicon_csv  : str | Path | None   기본 data/domain_lexicon_v1_17.csv
     accord_csv   : str | Path | None   기본 data/accord_dictionary.csv (accord 92개 마스터)
     verify       : bool                accord 보유 수를 마스터와 대조해 틀리면 RuntimeError
     bridge_csv   : str | Path | None   기본 data/note_accord_bridge.csv (노트→accord)
@@ -134,7 +134,7 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
                                        않는다 — 코드만 먼저 배포한 경우를 막지 않는다
     bridge_p_min : float               기본 BRIDGE_P_MIN
     bridge_lift_min : float            기본 BRIDGE_LIFT_MIN
-    protected_words : str | Path | None 기본 data/protected_words_v1_16.txt (오타 검문소).
+    protected_words : str | Path | None 기본 data/protected_words_v1_17.txt (오타 검문소).
                                        **없으면 검문소를 끈다.** 경고를 남긴다
 
     무겁다. 13만 x 92 행렬을 만드므로 **기동 시 한 번만 부르고 재사용한다.**
@@ -242,7 +242,7 @@ def lexicon_version(path=None):
 
     path : str | Path | None   기본 DEFAULT_LEXICON
 
-    **파일 이름에서 뽑는다.** `domain_lexicon_v1_16.csv` -> `'v1_16'`.
+    **파일 이름에서 뽑는다.** `domain_lexicon_v1_17.csv` -> `'v1_17'`.
 
     **왜 파일 이름인가** — 이 값은 응답으로 나가 `nlr_recommendations.lexicon_version`
     에 쌓인다. 목적이 *"반년 뒤에 이 기록이 어느 사전에서 나왔는지 해석하는 것"* 이라
