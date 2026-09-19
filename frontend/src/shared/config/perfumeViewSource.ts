@@ -7,7 +7,7 @@
  *
  * 서버 enum 과 **값이 정확히 같아야 합니다** — 모르는 값은 400 입니다.
  */
-export const PERFUME_VIEW_SOURCES = [
+const PERFUME_VIEW_SOURCES = [
   'NATURAL_LANGUAGE_RECOMMENDATION',
   'PERSONALIZED_RECOMMENDATION',
   'SCENT_MAP',
@@ -29,7 +29,7 @@ export type PerfumeViewSource = (typeof PERFUME_VIEW_SOURCES)[number]
  * 라우터 state 로 보내는 이유: 주소는 사람이 복사해 남에게 보내는 것이라, 거기 들어온
  * 길이 박히면 받은 사람의 기록까지 보낸 사람의 길로 남습니다.
  */
-export type PerfumeViewLocationState = {
+type PerfumeViewLocationState = {
   perfumeViewSource?: PerfumeViewSource
   /** 다른 향수 상세에서 건너온 경우의 이전 향수 (`RELATED_PERFUME`) */
   fromPerfumeId?: number

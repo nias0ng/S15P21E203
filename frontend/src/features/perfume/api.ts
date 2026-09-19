@@ -283,13 +283,13 @@ export async function unlikeReview(
  */
 
 /** `POST /perfume-views` 응답 */
-export interface PerfumeViewStartResponse {
+interface PerfumeViewStartResponse {
   perfumeViewId: number
   viewedAt: string
 }
 
 /** `PATCH /perfume-views/{id}/exit` 응답 */
-export interface PerfumeViewExitResponse {
+interface PerfumeViewExitResponse {
   perfumeViewId: number
   exitedAt: string
   /** 서버가 잰 체류 시간(초) */

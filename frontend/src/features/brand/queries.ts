@@ -18,7 +18,7 @@ function normalize(params: BrandSearchParams): BrandSearchParams {
   }
 }
 
-export const brandKeys = {
+const brandKeys = {
   all: ['brands'] as const,
   lists: () => [...brandKeys.all, 'list'] as const,
   list: (params: BrandSearchParams) =>
