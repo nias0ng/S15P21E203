@@ -1,6 +1,6 @@
 import { http } from '@/shared/api/http'
 
-import type { Note, NotePerfumesResponse } from './types'
+import type { Note, NoteDetail, NotePerfumesResponse } from './types'
 
 // 경로에 '/api/v1' 을 붙이지 않습니다 — http 의 baseURL 에 이미 있습니다
 
@@ -27,9 +27,15 @@ export async function getNotes(): Promise<Note[]> {
   return data.notes
 }
 
-/** 노트 하나 (A36). 목록의 한 줄과 같은 모양입니다 */
-export async function getNote(noteId: number): Promise<Note> {
-  const { data } = await http.get<Note>(`/notes/${noteId}`)
+/**
+ * 노트 하나 (A36). 목록의 한 줄에 **설명이 하나 더 붙습니다**(`NoteDetail`).
+ *
+ * 설명이 목록에 없는 것은 백엔드가 일부러 뺀 것입니다 — 246개가 한 번에 오는
+ * 목록 응답이 설명까지 실으면 크게 무거워집니다. 그래서 설명이 필요한 화면은
+ * 목록 캐시에서 골라내지 말고 이 엔드포인트를 불러야 합니다.
+ */
+export async function getNote(noteId: number): Promise<NoteDetail> {
+  const { data } = await http.get<NoteDetail>(`/notes/${noteId}`)
   return data
 }
 

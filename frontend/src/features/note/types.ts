@@ -7,10 +7,11 @@ import type { ScentFamilyKey } from '@/shared/config/scentFamilies'
  */
 
 /**
- * 노트 한 개. **목록과 상세가 같은 모양입니다** — 상세에만 있는 값이 없습니다.
+ * 노트 한 개 — **목록(A35)이 주는 모양입니다.**
  *
- * 설명(description)은 백엔드 표에 아예 없습니다. 와이어프레임 A36 의 "설명" 칸은
- * 그래서 비어 있고, 컬럼이 생기기 전까지 화면에 그 상자를 두지 않습니다.
+ * 상세는 여기에 설명이 하나 더 붙습니다(`NoteDetail`). 백엔드도 같은 이유로 DTO 를
+ * 둘로 나눠 두었습니다(`NoteSummaryResponse` · `NoteDetailResponse`) — 활성 노트
+ * 246개가 한 번에 오는 목록 응답에 설명까지 실으면 크게 무거워집니다.
  */
 export interface Note {
   noteId: number
@@ -38,6 +39,21 @@ export interface Note {
    * 화면이 이 값으로 줄을 세우지 않습니다 — 목록이 이미 그 순서로 옵니다.
    */
   popularityRank: number | null
+}
+
+/**
+ * 노트 상세 (`GET /notes/{noteId}`). 목록의 한 줄에 **설명이 붙습니다.**
+ *
+ * 설명은 `notes.description` 입니다 — V21 마이그레이션에서 생겼고 시드가 246개를
+ * 전부 채워 둡니다(두 문장, 53~81자). 한 줄짜리 문구가 아니므로 화면은 줄바꿈을
+ * 감당하는 자리에 둡니다.
+ *
+ * **비어 있을 수 있습니다.** 컬럼이 NULL 을 허용하고 설명은 채워지는 대로 들어옵니다
+ * (마이그레이션 주석과 같은 약속). 비면 화면이 설명 판을 그리지 않습니다 — 빈 판을
+ * 두면 "아직 안 불러온 것" 처럼 보입니다.
+ */
+export interface NoteDetail extends Note {
+  description: string | null
 }
 
 /**
