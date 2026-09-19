@@ -1,5 +1,5 @@
-import { http, isApiError } from '@/shared/api/http'
-import { env } from '@/shared/config/env'
+import { http } from '@/shared/api/http'
+import { withDevFallback } from '@/shared/api/withDevFallback'
 
 import type { PersonalRecommendation, RecommendResult } from './types'
 
@@ -15,11 +15,17 @@ import type { PersonalRecommendation, RecommendResult } from './types'
  * (`RecommendStatus`). 화면이 넷을 다르게 말해야 합니다.
  * ⚠️ 이 엔드포인트만 나는 오류가 둘 있습니다 — **429**(호출량 제한) · **503**(AI 서버가
  * 응답하지 않음). 둘 다 다른 기능은 멀쩡하므로 화면이 따로 말해 줍니다.
+ *
+ * ⚠️ **503 이 두 뜻이라 조심합니다.** vite 프록시가 백엔드에 못 닿아도 503 이고,
+ * 백엔드가 살아서 "AI 서버가 죽었다" 고 해도 503 입니다. 아래 `withDevFallback` 은
+ * 개발에서만 끼어들므로 뒤엣것도 개발 중에는 자리표시자로 덮입니다 — 운영에서는
+ * 늘 진짜 사정이 화면까지 전해집니다.
  */
 export async function getRecommendation(
   query: string,
 ): Promise<RecommendResult> {
   return withDevFallback(
+    'recommend',
     async () => {
       const { data } = await http.post<RecommendResult>(
         '/recommendations/natural-language',
@@ -29,40 +35,6 @@ export async function getRecommendation(
     },
     () => placeholderRecommendation(query),
   )
-}
-
-/**
- * ⚠️ 개발 중 백엔드가 안 떠 있을 때만 대체값으로 넘어갑니다 — `features/perfume/api.ts` ·
- * `features/map/api.ts` 와 같은 규칙입니다. **요청이 백엔드에 닿지도 못했을 때만**
- * (status 0 · 502~504) 끼어들고, 429 · 503 처럼 서버가 대답한 오류는 그대로 올려보냅니다.
- * 운영에서는 끼어들지 않습니다.
- *
- * ⚠️ **503 이 두 뜻이라 조심합니다.** vite 프록시가 백엔드에 못 닿아도 503 이 될 수 있고,
- * 백엔드가 살아서 "AI 서버가 죽었다" 고 해도 503 입니다. 뒤엣것은 사용자에게 알려야 하므로
- * `env.isDev` 일 때만 대체값으로 덮습니다 — 운영에서는 늘 진짜 사정이 전해집니다.
- *
- * ⚠️ 세 번째 복사본입니다. `shared/api` 로 올릴 후보인데, 올리려면 perfume · map 도메인을
- * 함께 고쳐야 하고 그 두 파일은 지금 다른 갈래에서 손보는 중이라 여기 둡니다. 세 갈래가
- * 합쳐질 때 한 번에 올립니다.
- */
-async function withDevFallback<T>(
-  request: () => Promise<T>,
-  fallback: () => T,
-): Promise<T> {
-  try {
-    return await request()
-  } catch (error) {
-    const unreachable =
-      isApiError(error) &&
-      (error.status === 0 || (error.status >= 502 && error.status <= 504))
-
-    if (!env.isDev || !unreachable) throw error
-
-    console.warn(
-      '[recommend] 백엔드에 닿지 못해 개발용 대체 추천을 씁니다. 실제 값이 아닙니다.',
-    )
-    return fallback()
-  }
 }
 
 /** 와이어프레임의 예시 결과. 백엔드 없이 화면을 볼 때만 씁니다 */
