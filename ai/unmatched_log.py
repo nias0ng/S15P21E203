@@ -49,15 +49,21 @@ from __future__ import annotations
 import collections
 import datetime as dt
 import json
+import logging
 import pathlib
 import re
 import unicodedata
+
+LOGGER = logging.getLogger(__name__)
 
 MAX_RAW_CHARS = 500       # 설문 실측 최대가 600자(행운의 편지)였다
 RETENTION_DAYS = 30       # 이 기간이 지나면 raw_text 만 비운다
 
 _LOG_DIR = pathlib.Path(__file__).resolve().parent / "logs"
 DEFAULT_LOG = _LOG_DIR / "unmatched.jsonl"
+# 오타 검문소가 한 일. **미매칭 로그와 파일을 나눈다** — 교정에 성공한 표현은 미매칭이
+# 아니게 되어 저 파일에 안 남고, 같은 파일에 섞으면 `review_queue()` 의 집계가 오염된다.
+DEFAULT_CORRECTION_LOG = _LOG_DIR / "corrections.jsonl"
 
 # 미매칭 원인 — 셋은 고쳐야 할 곳이 다르다
 NOT_IN_LEXICON = "NOT_IN_LEXICON"          # 사전에 없다 -> 항목을 추가한다
@@ -113,6 +119,55 @@ def record(result, path=DEFAULT_LOG, max_raw_chars=MAX_RAW_CHARS, now=None):
             "result_count": len(result.get("results") or []) if guess else None,
         }, ensure_ascii=False))
 
+    with path.open("a", encoding="utf-8", newline="\n") as handle:
+        handle.write("\n".join(lines) + "\n")
+    return len(lines)
+
+
+def record_corrections(result, path=DEFAULT_CORRECTION_LOG,
+                       max_raw_chars=MAX_RAW_CHARS, now=None):
+    """오타 검문소가 한 일을 한 줄씩 덧붙인다. int (쓴 줄 수).
+
+    result : dict   nlr_engine.recommend() 가 낸 것. `typo_verdict` 를 읽는다
+
+    **`"그대로"` 는 쓰지 않는다.** 대부분이 그것이라(실측 369개 중 97.8%) 쓰면 파일이
+    의미 없이 커진다. 검문소가 실제로 개입한 것만 남긴다.
+
+    **왜 남기나** — 교정에 성공하면 그 표현은 미매칭이 아니게 되어 `record()` 가 안
+    남긴다. 이 파일이 없으면 배포 뒤에 *"검문소가 무엇을 고쳤나 · 오교정은 없었나"* 를
+    볼 방법이 없다. 검문소를 계속 둘지 판단할 근거가 여기서 나온다.
+
+    개인정보는 `record()` 와 같은 규칙이다 — 원문을 `max_raw_chars` 자까지만 쓰고
+    `purge_raw_text()` 가 함께 비운다.
+    """
+    verdict = result.get("typo_verdict")
+    if verdict in (None, "그대로"):
+        return 0
+
+    path = pathlib.Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    stamp = (now or dt.datetime.now(dt.timezone.utc).astimezone()).isoformat(timespec="seconds")
+    lines = []
+    for item in (result.get("typo_corrections") or []):
+        lines.append(json.dumps({
+            "ts": stamp,
+            "raw_text": str(result.get("query", ""))[:max_raw_chars],
+            "verdict": verdict,
+            "expression": item.get("expression"),
+            "word": item.get("word"),
+            # 교정이면 고친 낱말 하나, 모호면 고르지 못한 후보들이다
+            "corrected": item.get("corrected"),
+            "candidates": item.get("candidates"),
+            "result_count": len(result.get("results") or []),
+        }, ensure_ascii=False))
+    if not lines:
+        # **여기 오면 안 된다.** `typo_gate` 는 `"교정"` 이면 최소 1건, `"모호"` 면 정확히
+        # 1건을 돌려주고, 빈 목록은 `"그대로"` 뿐인데 그건 위에서 걸렀다.
+        # 조용히 넘기면 판정이 소리 없이 사라지므로 남긴다 — 검문소를 계속 둘지
+        # 판단할 근거가 이 파일이다.
+        LOGGER.warning("검문소 판정이 '%s' 인데 남길 항목이 없다. "
+                       "typo_gate 와 이 함수가 어긋났다는 뜻이다", verdict)
+        return 0
     with path.open("a", encoding="utf-8", newline="\n") as handle:
         handle.write("\n".join(lines) + "\n")
     return len(lines)

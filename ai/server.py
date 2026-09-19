@@ -66,6 +66,9 @@ _BODY_PARSE_MESSAGE = "요청 본문을 읽지 못했습니다. UTF-8 로 인코
 
 # 환경마다 다를 수 있는 값은 환경변수로 받는다. 컨테이너에서는 볼륨 경로를 넣는다.
 LOG_PATH = pathlib.Path(os.environ.get("NLR_LOG_PATH", unmatched_log.DEFAULT_LOG))
+# 오타 검문소 기록. 미매칭 로그와 같은 디렉터리에 두되 파일을 나눈다.
+CORRECTION_LOG_PATH = pathlib.Path(
+    os.environ.get("NLR_CORRECTION_LOG_PATH", unmatched_log.DEFAULT_CORRECTION_LOG))
 
 # ⑤단계 미매칭 추정 스위치. 끄면 이 기능을 얹기 전과 똑같이 돈다.
 # 요청마다 GMS 호출이 붙을 수 있어(캐시에 없을 때만) 끌 수 있게 둔다.
@@ -314,6 +317,8 @@ def _record_unmatched(result):
     """
     try:
         unmatched_log.record(result, path=LOG_PATH)
+        # 오타 검문소가 개입했을 때만 쓴다. 파일이 다른 이유는 unmatched_log 에 적었다.
+        unmatched_log.record_corrections(result, path=CORRECTION_LOG_PATH)
     except OSError as exc:
         LOGGER.error("미매칭 로그를 쓰지 못했다. 추천은 그대로 돌려준다 — %s: %s (경로 %s)",
                      type(exc).__name__, exc, LOG_PATH)
