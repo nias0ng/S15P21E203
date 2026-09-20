@@ -36,7 +36,7 @@ import { swellCPU, swellEnvCPU, swellAmplitude, gerstnerLoopLimit } from './swel
 import * as oceanClock from './ocean-clock.js';
 // 하늘. ⚠ **파일이 아니라 함수다** — 물은 GLSL 로 직접 부르고, 배·부표는 이걸 구운
 //   환경맵을 scene.environment 로 읽는다. 둘이 **같은 하늘**을 봐야 한 장면이 된다
-import { bakeEnvironment, syncSky } from './sky.js';
+import { bakeEnvironment, syncSky, tickSky } from './sky.js';
 import { timeNow, timeKey } from './times.js';
 const { groundSpeed, turnRate } = oceanClock;
 
@@ -1703,6 +1703,12 @@ function tick() {
 
   // 시간대가 바뀌었으면 조명 · 배경 · 하늘 (콘솔에서 sceneTime 만 바꾸고 apply 를 안 불러도 따라온다. 평소에는 비교 한 번)
   applyTime();
+  // ⭐ 구름이 흐른다 (2026-09-20). ⚠ 유니폼 객체 하나를 밀면 물·하늘이 같이 따라온다 (sky.js 규율) —
+  //   그래서 부르는 자리도 **하나**다.
+  // ⚠⚠ 시계는 **물의 것(`sim.qT`)이다** (불변식 1 · pod.js 와 같은 선택). 구름은 물에 비쳐서
+  //   읽히므로 물과 다른 시계를 타면 둘이 조용히 어긋난다. 실시간 t 를 쓰면 탭이 쉬었다 온 프레임에
+  //   구름만 건너뛴다 — 실측 2026-09-20 : 펌프 600프레임에서 qT 는 20.1초인데 t 는 5.2초였다
+  tickSky(sim.qT);
   // ⚠ 씬을 실제로 그리는 카메라(view)를 넘긴다 — 하늘 구가 그 카메라를 중심으로 서야 한다.
   //   항공뷰·자유 시점에서도 하늘이 따라온다
   stage.update(view);
