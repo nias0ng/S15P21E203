@@ -627,10 +627,18 @@ def _source(index, text, structured, final_core):
 
 
 def _unmatched(index, structured, haystack, evidence):
-    """LLM 이 뽑았으나 사전이 받지 못한 표현. list[dict].
+    """LLM 이 뽑았으나 **조건을 하나도 못 만든** 표현. list[dict].
 
     조건이 잡힌 요청에서도 남은 표현을 전부 기록한다. 실측상 조건이 잡힌 쿼리 속에
     숨은 미매칭이 합성 600건에서 1,339회 있었고, 조건 0건만 보면 그게 안 보인다.
+
+    **사전이 잡은 것과 브리지가 푼 것을 둘 다 뺀다.** 346 이 한국어 노트 별칭을
+    `additional_requirements` 에 태우면서 **조건을 만들었는데도 "사전에 없는 표현"
+    으로 기록되는 표현이 생겼다** — 설문 9개 · 합성 169개다 [측정 기록 35번].
+    346 이전에는 설문 0 · 합성 1 이었으니 그때 들어온 회귀다.
+
+    이 로그는 `nlr_unmatched_expressions` 로 가서 **사전을 늘릴 근거**로 쓰인다.
+    이미 풀린 것이 섞이면 그만큼 헛짚는다.
     """
     if not structured:
         return []
@@ -646,6 +654,8 @@ def _unmatched(index, structured, haystack, evidence):
             continue
         if any(form in expression for form in matched):
             continue          # 이 표현 안에서 사전이 무언가를 잡았다
+        if _bridge_resolved(index, expression):
+            continue          # 브리지가 풀어 조건이 생겼다 (346)
         reason, entry_id = _classify_unmatch(index, expression, haystack)
         out.append({
             "expression": expression,
@@ -654,6 +664,28 @@ def _unmatched(index, structured, haystack, evidence):
             "entry_id": entry_id,
         })
     return out
+
+
+def _bridge_resolved(index, expression):
+    """이 표현을 노트 브리지가 풀어 조건이 생겼나. bool.
+
+    index      : dict  load_index() 결과
+    expression : str   ①단계가 쓴 문장 하나
+
+    **`understand()` 의 브리지 경로와 똑같이 본다.** 거기서 core 에 넣는 조건을
+    여기서 미매칭으로도 적으면 같은 표현이 두 곳에 들어간다.
+
+        "무화과 향이 나는 여성스러운향"  ->  True   (fig -> fruity · sweet)
+        "은은하고 깨끗한 느낌"          ->  False  (브리지에 없다)
+
+    ⚠ **두 곳이 같은 규칙을 쓴다.** `understand()` 쪽을 고치면 여기도 함께 고쳐야
+    한다 — 안 그러면 조용히 어긋나 이 버그가 되돌아온다.
+    """
+    text = re.sub(r"\s+", " ", str(expression).strip().lower())
+    if _bridge_lookup(index, text):
+        return True
+    return any(_bridge_lookup(index, alias)
+               for alias in _longest_alias_ko(index, text))
 
 
 def _classify_unmatch(index, expression, haystack):
