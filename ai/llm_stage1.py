@@ -330,6 +330,16 @@ def estimate_accords(expression, accords, *, top_n=ESTIMATOR_TOP_N,
     return None
 
 
+def _match_key(value):
+    """묶음 응답의 표현 이름을 견주기 위한 열쇠. str.
+
+    `unmatched_log.normalize_key` 와 **같은 규칙**이다 (겹공백 정리 + 소문자).
+    두 곳이 어긋나도 동작이 깨지지는 않지만, 같은 규칙이어야 "왜 이건 안 맞지" 를
+    한 곳만 보고 답할 수 있다.
+    """
+    return re.sub(r"\s+", " ", str(value)).strip().lower()
+
+
 def estimate_accords_batch(raw_text, expressions, accords, *, top_n=ESTIMATOR_TOP_N,
                            timeout=ESTIMATOR_TIMEOUT,
                            prompt_path=ESTIMATOR_PROMPT_V2_PATH, post=None):
@@ -374,14 +384,23 @@ def estimate_accords_batch(raw_text, expressions, accords, *, top_n=ESTIMATOR_TO
         if not isinstance(results, list):
             raise Stage1Error("NOT_LIST", f"results 가 목록이 아니다: {type(results).__name__}")
         allowed = set(accords)
-        # 보낸 순서대로 짝을 맞춘다. 같은 표현이 두 번 올 수 있으므로 쓴 자리는 지운다.
-        remaining = list(results)
+        # 보낸 순서대로 짝을 맞춘다. 같은 표현이 두 번 올 수 있으므로 쓴 자리는 지운다 —
+        # 그래야 중복된 둘이 각자의 답을 받는다.
+        #
+        # **이름은 정리해서 견준다.** 정확히 일치시키면 모델이 앞뒤 공백 하나만 더해도
+        # 그 문장의 조각이 **전부** 재호출로 가서, 이 변경이 줄이려던 호출이 오히려 는다.
+        # `unmatched_log.normalize_key` 와 같은 규칙이다 [MR 리뷰 2026-09-21].
+        # 정리해서 같아지는 표현이 둘 있어도 위의 `pop` 이 앞에서부터 소비하므로
+        # 짝을 잘못 짓지 않는다.
+        remaining = [(_match_key(item.get("expression")) if isinstance(item, dict) else None,
+                      item) for item in results]
         out = []
         for expression in expressions:
             picked = None
-            for i, item in enumerate(remaining):
-                if isinstance(item, dict) and str(item.get("expression")) == expression:
-                    picked = remaining.pop(i)
+            want = _match_key(expression)
+            for i, (key, item) in enumerate(remaining):
+                if key is not None and key == want:
+                    picked = remaining.pop(i)[1]
                     break
             if picked is None:
                 out.append(None)
