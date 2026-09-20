@@ -13,6 +13,7 @@ import { createGrids } from './grid.js';
 import { createSpray } from './spray.js';
 import { createBoat } from './boat.js';
 import { createPod } from './pod.js';
+import { createBirds } from './birds.js';
 import { createReflect } from './reflect.js';
 import { createZones } from './zones.js';
 import { createMarks } from './marks.js';
@@ -200,6 +201,9 @@ water.setReflect(reflect);
 // ⚠ 원경색(uBg)을 **참조로** 넘긴다 — 멀어지는 돌고래가 물과 **같은 색**으로 녹어야 한다.
 //   복사하면 시간대가 바뀌는 순간 둘째 수평선이 생긴다 (stage.js 가 태양 유니폼을 참조로 받는 것과 같은 규율)
 const pod = createPod(scene, water.uni);
+// 새 무리 — 하늘을 채운다 (2026-09-20). ⚠ pod 와 같은 규율이다 (레이어 0 만 · 무상태 시계 · 드로우콜 1개).
+// ⚠ 물 유니폼을 **안 받는다** — 녹아드는 목적지가 물의 원경색이 아니라 **그 방향의 하늘**이다 (birds.js 머리 주석)
+const birds = createBirds(scene);
 // 화면에 그리는 하늘. ⚠⚠ **water 뒤에 만든다** — 태양 유니폼(`uLightDir3`)을 **참조로**
 // 공유해서 물과 하늘이 갈라질 수 없게 한다 (stage.js 주석의 실측 : 태양이 세 곳에서
 // 80.8°·125.7° 로 어긋나 있었다). 복사하면 그 순간 넷째 태양이 생긴다
@@ -1806,6 +1810,9 @@ function tick() {
   //   `cl` 은 존 구도와 향수 고르기를 이미 합친 클로즈업 블렌드(위 1530줄)이고, 거기에 이동 안개를 얹는다.
   //   배 근처는 부표 · 항적 · 이름표로 붐비는 데다 클로즈업에서 돌고래가 화면을 가린다 (사용자 지적).
   pod.update(sim, { scroll: nav.scroll, cam, hide: Math.max(cl, travel.fog) });
+  // 새 무리. ⚠ pod 와 같은 시계 · 같은 `hide` 다. ⚠ 태양은 물의 유니폼을 **참조로** 넘긴다 —
+  //   실루엣 색을 제 뒤 하늘에서 내므로 하늘이 보는 태양과 같아야 한다 (stage.js 와 같은 규율)
+  birds.update(sim, { scroll: nav.scroll, cam, hide: Math.max(cl, travel.fog), sunDir: water.uni.uLightDir3.value });
   // ⚠ 아래 둘은 이번 프레임 카메라로 투영한다 — 행렬을 먼저 갱신한다 (안 하면 한 프레임 늦어 라벨이 떤다.
   //   카메라는 씬에 안 들어 있어 render 전까지 matrixWorld 가 지난 프레임 값이다)
   cam.updateMatrixWorld();
@@ -2180,6 +2187,7 @@ function disposeAll() {
   links.dispose();
   seamark.dispose();
   pod.dispose();
+  birds.dispose();
   zones.dispose();
   boat.dispose();
   spray.dispose();
