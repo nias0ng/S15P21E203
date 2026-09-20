@@ -28,6 +28,11 @@ KEEP_COLUMNS = ["id", "name", "brand", "accords", "people", "rating_avg"]
 # 원본에서 읽되 **그대로 싣지 않고 1등 방향으로 접어서** 싣는 컬럼들.
 # 투표 수를 그대로 실으면 +19.7% 인데 1등만 실으면 +7.0% 이고,
 # 엔진이 쓰는 것은 "1등이 무엇인가" 뿐이다 [측정 기록 35번].
+# 향수가 가진 노트. 원본이 네 칸으로 갈라 두었고 **서로 채운다** —
+# `notes_flat` 은 결측이 72.5% 인데 tiered 셋과 합치면 보유가 98% 가 넘는다
+# [측정 기록 34번의 정정]. 합쳐서 한 칸으로 싣는다.
+NOTE_COLUMNS = ["notes_top", "notes_middle", "notes_base", "notes_flat"]
+
 SEASON_COLUMNS = ["winter", "spring", "summer", "autumn"]
 DAYPART_COLUMNS = ["day", "night"]
 # 성별 투표 5단계 척도 -> 세 방향. **이름으로 묶는다.**
@@ -54,6 +59,29 @@ assert all(set(v) == set(GENDER_VOTE_GROUPS) for v in GENDER_PRIOR.values()), \
 HERE = Path(__file__).resolve().parent
 DATA_DIR = HERE / "data"
 OUTPUT = DATA_DIR / "perfumes_nlr.csv.gz"
+
+
+def _notes(frame: pd.DataFrame) -> pd.Series:
+    """향수가 가진 노트를 한 칸으로 합친다. pd.Series[str] — `amber|basil|cedar`.
+
+    frame : DataFrame  `NOTE_COLUMNS` 를 가진 표
+
+    네 칸을 파이프로 쪼개 합치고 **소문자로 낮춰 중복을 없앤 뒤 정렬**한다.
+    엔진이 부분 문자열로 찾으므로(`_note_rows`) 대소문자를 여기서 통일해 둔다.
+
+    **칸을 거르지 않고 전부 싣는다.** 지금 엔진이 찾는 것은 별칭표가 가리키는
+    882종뿐이지만, 걸러서 실으면 향수의 71.4% 에서 노트 목록이 달라져
+    나중에 화면에 노트를 보여 주는 기능이 이 파일을 쓸 때 곤란해진다.
+    걸렀을 때 7.15MB, 전부 실으면 7.83MB 다 [측정 기록 35번].
+    """
+    def merge(row) -> str:
+        out = []
+        for column in NOTE_COLUMNS:
+            value = row[column]
+            if isinstance(value, str):
+                out += [x.strip().lower() for x in value.split("|") if x.strip()]
+        return "|".join(sorted(set(out)))
+    return frame[NOTE_COLUMNS].apply(merge, axis=1)
 
 
 def _lead(frame: pd.DataFrame, columns: list[str]) -> pd.Series:
@@ -130,7 +158,8 @@ def build(source: Path, output: Path = OUTPUT) -> dict:
         raise FileNotFoundError(f"원본이 없습니다: {source}")
 
     source_hash = sha256_head(source)
-    usecols = KEEP_COLUMNS + SEASON_COLUMNS + DAYPART_COLUMNS + PERCEIVED_COLUMNS + ["gender"]
+    usecols = (KEEP_COLUMNS + NOTE_COLUMNS + SEASON_COLUMNS + DAYPART_COLUMNS
+               + PERCEIVED_COLUMNS + ["gender"])
     frame = pd.read_csv(source, usecols=usecols, low_memory=False)
     total = len(frame)
 
@@ -141,10 +170,12 @@ def build(source: Path, output: Path = OUTPUT) -> dict:
     # ①단계의 `context` 조건을 검색에 쓰려면 이 세 칸이 필요하다 [측정 기록 35번].
     # **투표 수가 아니라 1등 방향만 싣는다** — 지금 검색이 쓰는 것이 그것뿐이고
     # 파일이 +19.7% 대신 +7.0% 만 커진다.
+    # 사용자가 말한 노트를 가진 향수를 앞으로 당기려면 이 칸이 필요하다 [35번].
+    kept["notes"] = _notes(kept)
     kept["gender_lead"] = _gender_lead(kept)
     kept["season_lead"] = _lead(kept, SEASON_COLUMNS)
     kept["daypart_lead"] = _lead(kept, DAYPART_COLUMNS)
-    kept = kept[KEEP_COLUMNS + ["gender_lead", "season_lead", "daypart_lead"]]
+    kept = kept[KEEP_COLUMNS + ["notes", "gender_lead", "season_lead", "daypart_lead"]]
 
     output.parent.mkdir(parents=True, exist_ok=True)
     kept.to_csv(output, index=False, compression="gzip")
@@ -157,6 +188,9 @@ def build(source: Path, output: Path = OUTPUT) -> dict:
         "rows_dropped": total - len(kept),
         "output": str(output),
         "output_mb": round(output.stat().st_size / 1e6, 2),
+        "notes_empty": int((kept["notes"] == "").sum()),
+        "notes_per_perfume": round(
+            kept["notes"].map(lambda v: len(v.split("|")) if v else 0).mean(), 1),
         "gender_lead": kept["gender_lead"].value_counts().to_dict(),
         "season_lead_empty": int((kept["season_lead"] == "").sum()),
         "daypart_lead_empty": int((kept["daypart_lead"] == "").sum()),
@@ -178,6 +212,7 @@ def main() -> None:
     print(f"입력 행     {summary['rows_in']:,}")
     print(f"출력 행     {summary['rows_out']:,}  (accord 없어 제외 {summary['rows_dropped']:,})")
     print(f"출력        {summary['output']}  {summary['output_mb']}MB")
+    print(f"노트 없음    {summary['notes_empty']:,}  ·  향수당 평균 {summary['notes_per_perfume']}개")
     print(f"성별 방향    {summary['gender_lead']}")
     print(f"계절 없음    {summary['season_lead_empty']:,}  ·  낮밤 없음 {summary['daypart_lead_empty']:,}")
 
