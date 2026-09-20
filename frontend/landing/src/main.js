@@ -1313,28 +1313,9 @@ function hostDive(k) {
   else { hostHold = Math.max(0, hostHold - 1); if (!hostHold) input.setHold(false); }
 }
 
-// 미니맵의 '지금 화면' 부채꼴 (배 기준 월드 x·z). 화면 테두리 16점을 부표 높이 평면에 투영하고
-//   부표 거리 페이드(38) 밖은 잘라 낸다 — 부표가 뜰 수 있는 곳이 곧 '보이는 바다' 다
-const _footPts = [];
-function footprint(c) {
-  _footPts.length = 0;
-  const R = CONFIG.area.fade1, y = P.markHeight;
-  const edge = [];
-  for (let i = 0; i < 4; i++) edge.push([-1 + i * 0.5, 1]);   // 위
-  for (let i = 0; i < 4; i++) edge.push([1, 1 - i * 0.5]);    // 오른쪽
-  for (let i = 0; i < 4; i++) edge.push([1 - i * 0.5, -1]);   // 아래
-  for (let i = 0; i < 4; i++) edge.push([-1, -1 + i * 0.5]);  // 왼쪽
-  for (const [u, v] of edge) {
-    _v3.set(u, v, 0.5).unproject(c).sub(c.position).normalize();
-    let d = 1e3;
-    if (_v3.y < -1e-4) d = (c.position.y - y) / -_v3.y;
-    let px = c.position.x + _v3.x * d, pz = c.position.z + _v3.z * d;
-    const r = Math.hypot(px, pz);
-    if (r > R) { px *= R / r; pz *= R / r; }
-    _footPts.push([+px.toFixed(1), +pz.toFixed(1)]);
-  }
-  return _footPts;
-}
+// ⛔ `footprint(cam)` 은 2026-09-20 에 지웠다 — 미니맵 · 해도의 '지금 보는 바다' 가 부채꼴에서
+//   **반지름 하나짜리 원**이 되면서 부르는 곳이 없어졌다 (아래 tick 의 `mmArg` 머리말).
+//   화면 테두리 16점을 매 장 unproject 하던 일도 같이 없어졌다. 되살릴 일이 생기면 v0.78 이전을 본다.
 
 let raf = 0;
 // 마지막 '범위 없음' 경고의 앱 시각 (tick 의 범위 블록이 3초에 한 번만 띄운다)
@@ -1863,7 +1844,15 @@ function tick() {
       || pendingSea   // 연출이 걷히길 기다리는 바다 떠나기도 '가는 곳' 으로 그린다 (seaGo)
       || pendingTravel   // 연출이 걷히길 기다리는 먼 곳 이동도 (startTravel)
       || (zones.auto ? marks.anchorOf(zones.auto.key) : null);
-    const mmArg = { map: marks.map, boat: { x: nav.scroll.x, z: -nav.scroll.z, head: nav.head }, target: tgt, foot: footprint(cam) };
+    /*
+     * ⭐⭐ **'지금 보는 바다' 는 반지름 하나다** (2026-09-20 사용자 : *"정확한 원형 형태로 유지"*).
+     *   예전에는 `footprint(cam)` 이 화면 테두리 16점을 부표 높이 평면에 투영해 부채꼴을 냈는데,
+     *   가까운 쪽은 절두체 모양이고 먼 쪽만 `CONFIG.area.fade1` 로 눌려 **구불구불했다.**
+     *   그 38 이 곧 *부표가 뜰 수 있는 거리* = '보이는 바다' 의 뜻 그 자체라, 원 하나로 줄였다.
+     *   ⚠ 카메라를 안 보므로 **속도 · 피치가 변해도 원이 숨 쉬지 않는다** — 그게 맞다.
+     *     지도의 이 원은 '내가 얼마나 멀리까지 아는가' 이지 '이번 장에 무엇이 그려졌는가' 가 아니다.
+     */
+    const mmArg = { map: marks.map, boat: { x: nav.scroll.x, z: -nav.scroll.z, head: nav.head }, target: tgt, sight: CONFIG.area.fade1 };
     minimap.update(mmArg);
     // ⚠ 해도는 **같은 값**을 받는다 (자기 좌표를 따로 만들지 않는다 — 불변식 21).
     //   닫혀 있으면 값만 갈아 두고 그리지 않으므로 프레임 비용이 없다

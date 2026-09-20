@@ -3,7 +3,7 @@ import { PARAMS as P } from './params.js';
 // ───────── 미니맵 (2026-09-11, v0.32.0) ─────────
 // 향수 지도(scentmap.js)를 위에서 본 **추상 지도**다. 사용자 : *"미니맵을 만드는데 사실상 미니맵과 화면의
 //   연출은 조금 달라야할 것 같음 · 웹 항해 게임이라 생각하고"*.
-//   그래서 3D 바다를 줄여 그리지 않는다 — 점 · 해역 이름 · 배 화살표 · 지금 화면이 담는 부채꼴만 그린다.
+//   그래서 3D 바다를 줄여 그리지 않는다 — 점 · 해역 이름 · 배 화살표 · 지금 있는 바다의 원만 그린다.
 //
 // ⚠ 좌표는 scentmap 의 월드 좌표 그대로다 (변환식을 여기 또 적지 않는다 — 불변식 21).
 //   북(−Z, map_y 큰 쪽)이 **위**다. 배의 월드 위치는 (scroll.x, −scroll.z) 다 (불변식 0-2).
@@ -19,7 +19,7 @@ import { PARAMS as P } from './params.js';
 //      있게 지나온 영역만 밝게 … 어떤 영역, 어떤 향수 위치는 전부 보이게"*.
 //      격자(4 월드 칸)에 '가 봤다' 를 적고, 칸 하나를 한 픽셀로 둔 작은 마스크를 **부드럽게 키워** 안개에 구멍을 낸다
 //      (쌍선형 확대가 곧 부드러운 가장자리다 — 칸마다 원을 그리지 않는다). 쌓는 순서가 핵심이다 :
-//        안개(어두움, 구멍) → **점 · 해역 이름**(정적 층) → 부채꼴 · 목표 · 배
+//        안개(어두움, 구멍) → **점 · 해역 이름**(정적 층) → 시야 원 · 목표 · 배
 //      그래서 안개가 점과 이름을 **덮지 않는다.** 기록은 localStorage (지도 크기별 키) — 지우기 `PB.minimap.resetFog()`.
 //      ⚠ 순간이동(흰 안개)으로 건너뛴 바다는 밝아지지 않는다 — '지나온' 곳이 아니다. 도착한 자리만 밝아진다
 //   ② **범위 없음** (`mapBound`) — 지도 사각형 + mapMargin 밖을 **빗금 띠**로 그린다. 거기를 누르면 가지 않고 경고만 띄운다
@@ -50,7 +50,7 @@ export function createMinimap({ onPick, onBlocked } = {}) {
 
   let map = null, mapKey = '', W = 0, H = 0, dpr = 1;
   let last = '', hover = null, visible = false;
-  let boat = { x: 0, z: 0, head: 0 }, target = null, foot = null;
+  let boat = { x: 0, z: 0, head: 0 }, target = null, sight = 0;
   let PAD = 8;   // 캔버스 안쪽 여백 (CSS px)
   const LABEL_R = 16;   // 해역 이름을 '눌렀다' 로 볼 반경 (CSS px)
   // 미니맵이 담는 월드 사각형. 범위가 켜져 있으면 **갈 수 있는 바다 + 바깥 띠**, 꺼져 있으면 예전처럼 지도 사각형
@@ -64,6 +64,8 @@ export function createMinimap({ onPick, onBlocked } = {}) {
 
   // 해역 이름 자리 (캔버스 px). ⚠ 대표 향수(메도이드) 자리에 둔다 — 도착하는 곳과 이름이 같은 자리다
   let labels = [];
+  // 이름을 그린 글꼴 · 크기. 호버 강조가 **같은 글자를 같은 자리에** 다시 그리므로 정적 층에서 받아 둔다 (불변식 2)
+  let labelFont = '', labelPx = 8;
 
   // ⭐⭐ 팔레트 (2026-09-12 저녁 — docs/UI-디자인-개정.md §1). **색을 여기 적지 않는다** —
   //   `index.html` 의 `:root` 가 단일 출처이고 여기서는 읽기만 한다 (두 곳에 적으면 갈라진다, 불변식 2).
@@ -172,8 +174,19 @@ export function createMinimap({ onPick, onBlocked } = {}) {
     if ('filter' in fctx) fctx.filter = 'blur(2.5px)';
     const [ax, ay] = toC(fog.x0, fog.z0), [bx, by] = toC(fog.x0 + fog.cols * FOG_CELL, fog.z0 + fog.rows * FOG_CELL);
     fctx.drawImage(mask, ax, ay, bx - ax, by - ay);
-    if ('filter' in fctx) fctx.filter = 'none';
     fctx.globalCompositeOperation = 'source-over';
+    /*
+     * ⭐⭐ **지나온 바다에 옅은 빛 한 겹** (2026-09-20 — 밝기 사다리의 둘째 칸).
+     *   사용자 : *"현재 있는 부분이 제일 밝게 … 그다음 지나온 곳은 2번째 어둡게 갈 수 없는곳은 제일 어둡게"*.
+     *   구멍만 뚫으면 '지나온 곳' 은 그냥 **판 바탕**이라 안 지나온 곳과의 차이가 안개 한 겹(0.42)뿐이다.
+     *   ⚠⚠ 그 차이를 **안개를 더 어둡게 해서** 벌리지 않는다 — 2026-09-12 에 0.82 → 0.52 로 내린 이유가
+     *     *"미탐색 영역 너무 어둡고"* 였다. 그래서 반대로 **지나온 쪽을 밝힌다.**
+     *   같은 마스크를 흰색 그대로 얹으면 그게 곧 빛이다 (마스크는 가 본 칸만 불투명한 흰색이다).
+     */
+    fctx.globalAlpha = 0.16;
+    fctx.drawImage(mask, ax, ay, bx - ax, by - ay);
+    fctx.globalAlpha = 1;
+    if ('filter' in fctx) fctx.filter = 'none';
   }
 
 
@@ -234,13 +247,30 @@ export function createMinimap({ onPick, onBlocked } = {}) {
       // ⚠ **evenodd** — 바다 속에 갈 수 없는 웅덩이가 생기면 뚫리지 않아야 한다 (해도의 fill-rule 과 같다)
       sctx.fill('evenodd');
       sctx.globalCompositeOperation = 'source-over';
-      // 끝선 — 같은 고리. ⚠ 밝은 선이다 — 바깥이 어둡다
-      sctx.strokeStyle = rgba(PAL.rim, 0.85);
-      sctx.lineWidth = 1.4;
-      sctx.lineCap = 'round';
-      sctx.lineJoin = 'round';
-      trace();
-      sctx.stroke();
+      /*
+       * ⭐⭐ **끝선을 걷고 경계를 녹인다** (2026-09-20 사용자 : *"흰색 외곽선을 없애고 나갈 수 없는
+       *   부분을 더 어둡게 표시해주고 경계부분을 블러처리해서 자연스러운 미니맵"*).
+       *   예전에는 `rgba(PAL.rim, 0.85)` 짜리 1.4px 흰 선 한 줄이 경계의 전부였다 — 딱 잘린 금이라
+       *   '갈 수 있는 바다' 가 지도가 아니라 도형으로 읽혔다.
+       *   ⚠⚠ 이 선은 **두 번 뒤집힌 이력**이 있다 (불변식 28 : 바깥이 종이였을 땐 먹색, `--pb-void` 로
+       *     어두워지며 상아색). 이제 셋째로 **없앤다** — 경계를 말하는 것은 이제 밝기 낙차뿐이다.
+       * 어둠을 안쪽으로 **번지게** 해서 두 면을 잇는다 : 고리 안쪽만 남기고(clip) 같은 고리를 굵고
+       *   흐리게 덧긋는다. 바깥은 이미 꽉 찬 void 라 번짐이 밖으로는 안 보인다.
+       * ⚠ `filter` 를 못 쓰는 브라우저면 이 겹만 건너뛴다 — 딱 잘린 예전 경계로 떨어질 뿐 안 깨진다.
+       */
+      if ('filter' in sctx) {
+        sctx.save();
+        trace();
+        sctx.clip('evenodd');
+        sctx.filter = 'blur(3px)';
+        sctx.strokeStyle = rgba(PAL.void, 0.9);
+        sctx.lineWidth = 9;
+        sctx.lineCap = 'round';
+        sctx.lineJoin = 'round';
+        trace();
+        sctx.stroke();
+        sctx.restore();
+      }
     }
     // 지도 사각형 — 머리카락 선.
     // ⚠⚠ **범위가 켜져 있으면 안 그린다** (2026-09-12 저녁). v0.45.0 에서 갈 수 있는 바다가
@@ -265,23 +295,51 @@ export function createMinimap({ onPick, onBlocked } = {}) {
     // ⚠ 글꼴을 **여기 적지 않는다** — 판(#minimap)이 #stage 에서 물려받은 것을 읽는다.
     //   2026-09-12 저녁 실측 : 1단계에서 DOM 을 Noto Serif KR 로 바꿨는데 이 줄만 'Pretendard' 로 남아
     //   캔버스 글자만 홀로 산세리프였다 (Pretendard 는 이제 안 받으므로 실제로는 system-ui 로 떨어졌다)
-    sctx.font = '600 8px ' + (getComputedStyle(box).fontFamily || 'serif');
+    // ⭐ 글자 크기가 판 폭을 따라간다 (2026-09-20) — 판이 넓어졌는데 8px 로 못 박아 두면 지도만 커지고 이름은 더 작아 보인다.
+    //   ⚠ 좁은 단계에서 8 아래로는 안 내려간다 (읽히는 바닥) · 11 위로는 안 올린다 (이름이 점을 덮는다)
+    const labelFs = Math.max(8, Math.min(11, Math.round(W / 26)));
+    labelPx = labelFs;
+    labelFont = '600 ' + labelFs + 'px ' + (getComputedStyle(box).fontFamily || 'serif');
+    sctx.font = labelFont;
     sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
     if ('letterSpacing' in sctx) sctx.letterSpacing = '1px';
     // ⚠ 이름이 캔버스 밖으로 나가지 않게 가장자리에서 밀어 넣는다 — AQUATIC 의 대표 향수가 지도 왼쪽 끝
     //   (x −157)이라 가운데 정렬하면 반이 잘렸다 ("UATIC", 화면으로 확인). 누르는 자리도 밀린 자리다
-    labels = Object.entries(map.familyAnchors).map(([k, a]) => {
+    // ⭐⭐ **겹치면 위아래로 비킨다** (2026-09-20). 아홉을 대표 향수 자리에 그대로 찍으면 작은 판에서 서로 물린다 —
+    //   1920 실측 : AQUATIC 과 GREEN 이 겹치고 CITRUS 가 배 삼각형을 덮었다.
+    //   해도(chart.js)의 규율은 *"순위가 높은 것부터 놓고 겹치면 건너뛴다"* 인데, 미니맵은 아홉이 이름의 전부라
+    //   **건너뛰면 해역 하나가 지도에서 사라진다.** 그래서 먼저 비킬 자리를 찾고, 다섯 자리가 다 막혔을 때만 접는다.
+    //   ⚠ **큰 해역부터** 자리를 잡는다 (점이 많은 쪽이 먼저) — 비키는 쪽이 작은 해역이라야 지도가 덜 틀어진다
+    //   ⚠ 접은 이름은 `labels` 에서도 뺀다 — 안 보이는 글자에 누르는 자리만 남겨 두지 않는다
+    const OFF = [-7, 9, -18, 20, -29];   // 앵커에서 글자 중심까지. 첫 값 −7 이 예전 자리다 (안 겹치면 예전과 같은 그림)
+    const fams = Object.entries(map.familyAnchors).map(([k, a]) => {
       const [ax2, y] = toC(a.x, a.z);
       const name = map.points.find(p => p.fam.key === k).fam.name;
+      let n = 0; for (const p of map.points) if (p.fam.key === k) n++;
       const hw = sctx.measureText(name).width * 0.5 + 2;
       const x = Math.min(W - hw, Math.max(hw, ax2));
-      return { key: k, name, x, y, a };
-    });
+      return { key: k, name, x, y, a, hw, n };
+    }).sort((p, q) => q.n - p.n);
+    const taken = [];
+    const overlaps = (b) => taken.some(o => o.x0 < b.x1 && o.x1 > b.x0 && o.y0 < b.y1 && o.y1 > b.y0);
+    labels = [];
+    for (const f of fams) {
+      let ty = null;
+      for (const dy of OFF) {
+        const cy = f.y + dy;
+        if (cy - labelFs < 0 || cy + labelFs > H) continue;   // 판 밖으로는 안 내보낸다
+        const b = { x0: f.x - f.hw - 1, x1: f.x + f.hw + 1, y0: cy - labelFs * 0.62, y1: cy + labelFs * 0.62 };
+        if (overlaps(b)) continue;
+        taken.push(b); ty = cy; break;
+      }
+      if (ty === null) continue;
+      labels.push({ key: f.key, name: f.name, x: f.x, y: f.y, ty, hw: f.hw, a: f.a });
+    }
     for (const l of labels) {
       sctx.lineWidth = 3; sctx.strokeStyle = rgba(PAL.surface, 0.95);
-      sctx.strokeText(l.name, l.x, l.y - 7);
+      sctx.strokeText(l.name, l.x, l.ty);
       sctx.fillStyle = rgba(PAL.label, 0.78);
-      sctx.fillText(l.name, l.x, l.y - 7);
+      sctx.fillText(l.name, l.x, l.ty);
     }
   }
 
@@ -292,20 +350,75 @@ export function createMinimap({ onPick, onBlocked } = {}) {
     if (fogOn()) { if (fog.dirty) drawFog(); ctx.drawImage(fogCv, 0, 0, W, H); }
     ctx.drawImage(stat, 0, 0, W, H);
     const [bx, by] = toC(boat.x, boat.z);
-    // 지금 화면이 담는 바다 (배 기준 부채꼴 — main.js 가 투영으로 잰 것). 게임 미니맵의 '시야'
-    if (foot && foot.length > 2) {
+    /*
+     * ⭐⭐ **지금 있는 바다 — 반지름 하나짜리 원, 테두리 없음** (2026-09-20 사용자 :
+     *   *"정확한 원형 형태로 유지하되 … 경계선이 구별되어있지않고 그라데이션이든, 블러처리든 해서 부드럽게"*).
+     *   예전에는 `main.js` 의 `footprint(cam)` 이 화면 테두리 16점을 투영한 **부채꼴**을 넘겼다 —
+     *   가까운 쪽은 절두체 모양이고 먼 쪽만 38 로 눌려 구불구불했다. 그 38(`CONFIG.area.fade1`)이
+     *   곧 '보이는 바다' 의 뜻이라 원 하나로 줄였다.
+     * ⚠ **테두리 선을 긋지 않는다.** 선을 그으면 밝기 사다리의 제일 밝은 칸이 아니라 '영역' 이 된다 —
+     *   지우려던 흰 끝선을 여기에 다시 그리는 셈이다.
+     * ⚠ 가로·세로 배율을 따로 쓴다 — 범위가 켜져 있으면 둘이 같지만(layout 의 ratio), 꺼져 있으면 다르다.
+     *   그때는 월드의 원이 판에서 타원이 되는 것이 맞다.
+     */
+    if (sight > 0) {
       const sx = (W - 2 * PAD) / (view.x1 - view.x0), sz = (H - 2 * PAD) / (view.z1 - view.z0);
-      ctx.beginPath();
-      foot.forEach((p, i) => { const x = bx + p[0] * sx, y = by + p[1] * sz; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
-      ctx.closePath();
-      ctx.fillStyle = rgba(PAL.shimmer, 0.16); ctx.fill();
-      ctx.strokeStyle = rgba(PAL.shimmer, 0.55); ctx.lineWidth = 0.9; ctx.stroke();
+      const rx = Math.max(1, sight * sx), ry = Math.max(1, sight * sz);
+      ctx.save();
+      ctx.translate(bx, by);
+      ctx.scale(1, ry / rx);
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+      g.addColorStop(0, rgba(PAL.shimmer, 0.34));
+      g.addColorStop(0.55, rgba(PAL.shimmer, 0.20));
+      g.addColorStop(1, rgba(PAL.shimmer, 0));
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(0, 0, rx, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
     }
-    // 호버한 해역 — 이름 밑에 짧은 줄
-    if (hover && hover.label) {
+    // ⭐⭐ 해역 이름에 마우스를 올리면 **그 계열이 빛난다** (2026-09-20 사용자 지시 :
+    //   *"간단한 밑줄이 아니라 플로러 계열의 색상들이 빛나는 효과 강조되는 효과"*).
+    //   예전의 밑줄 한 줄은 '무엇을 가리키는지' 만 말하고 **그 향조가 바다 어디에 흩어져 있는지**를 못 보여 줬다.
+    //   그래서 ① 나머지를 한 겹 죽이고 ② 그 향조의 점만 제 색으로 크게 · 번지게 다시 그리고 ③ 이름도 그 색으로 다시 쓴다.
+    //   ⚠ 점 · 이름은 정적 층에 구워져 있으므로 **여기서 다시 그린다** — 정적 층을 호버마다 다시 굽지 않는다.
+    //   ⚠ 죽이는 겹은 안개색(`PAL.ink`)이다. 판 바탕색으로 덮으면 안개가 걷힌 것처럼 보여 탐색 상태가 거짓말을 한다.
+    //   ⚠ 숨을 쉰다 — `glowPulse` 가 0.75~1 사이를 오간다 (시계는 update 의 키가 민다).
+    if (hover && hover.label && map) {
       const l = hover.label;
-      ctx.strokeStyle = rgba(PAL.accent, 0.95); ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.moveTo(l.x - 12, l.y - 1); ctx.lineTo(l.x + 12, l.y - 1); ctx.stroke();
+      const fam = map.points.find(p => p.fam.key === l.key);
+      const col = (fam && fam.fam.color) || PAL.accent;
+      const pulse = 0.75 + 0.25 * (0.5 + 0.5 * Math.sin(performance.now() / 420));
+
+      ctx.save();
+      ctx.fillStyle = rgba(PAL.ink, 0.46);
+      ctx.fillRect(0, 0, W, H);
+
+      // 그 향조의 점 — 번짐 한 겹(넓고 옅게) 위에 심 한 겹. ⚠ shadowBlur 는 쌓이므로 두 번에 나눠 그린다
+      ctx.shadowColor = col;
+      ctx.shadowBlur = 7 * pulse;
+      ctx.fillStyle = col;
+      for (const p of map.points) {
+        if (p.fam.key !== l.key) continue;
+        const [x, y] = toC(p.x, p.z);
+        ctx.beginPath(); ctx.arc(x, y, 2.3, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = rgba(PAL.surface, 0.9);
+      for (const p of map.points) {
+        if (p.fam.key !== l.key) continue;
+        const [x, y] = toC(p.x, p.z);
+        ctx.beginPath(); ctx.arc(x, y, 0.9, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // 이름도 그 색으로 — 정적 층의 것과 **같은 글꼴 · 같은 자리**라 겹쳐 쓰면 한 글자로 읽힌다
+      ctx.font = labelFont;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      if ('letterSpacing' in ctx) ctx.letterSpacing = '1px';
+      ctx.lineWidth = 3; ctx.strokeStyle = rgba(PAL.ink, 0.85);
+      ctx.strokeText(l.name, l.x, l.ty);
+      ctx.shadowColor = col; ctx.shadowBlur = 6 * pulse;
+      ctx.fillStyle = col;
+      ctx.fillText(l.name, l.x, l.ty);
+      ctx.restore();
     }
     // 가는 곳 — 점선과 고리
     if (target) {
@@ -341,7 +454,9 @@ export function createMinimap({ onPick, onBlocked } = {}) {
     const r = cv.getBoundingClientRect();
     const cx = e.clientX - r.left, cy = e.clientY - r.top;
     let label = null, best = LABEL_R;
-    for (const l of labels) { const d = Math.hypot(cx - l.x, cy - (l.y - 4)); if (d < best) { best = d; label = l; } }
+    // ⚠ 앵커(l.y)가 아니라 **글자가 실제로 놓인 자리**(l.ty)를 기준으로 잰다 — 겹쳐서 비킨 이름은 앵커에서 떨어져 있다 (2026-09-20).
+    //   +3 은 예전(글자 y−7 · 판정 y−4)과 같은 '글자 조금 아래' 관계다
+    for (const l of labels) { const d = Math.hypot(cx - l.x, cy - (l.ty + 3)); if (d < best) { best = d; label = l; } }
     const [x, z] = toW(cx, cy);
     // ⚠ 범위 밖(`--pb-void` 로 칠한 곳)은 해역이 아니다 — 누르면 가지 않고 경고만 (onBlocked)
     // ⚠ 2026-09-13 : 여유(mapMargin) 없이 **그린 경계 그대로** 판정한다. 바깥을 한 색으로 칠하자 그 안쪽 20 월드를
@@ -376,8 +491,8 @@ export function createMinimap({ onPick, onBlocked } = {}) {
   window.addEventListener('pagehide', onHide);
 
   return {
-    // map : marks.map (없으면 숨긴다) · boat : {x, z(월드), head} · target : 가는 곳(월드) · foot : 배 기준 부채꼴
-    update({ map: m, boat: b, target: t, foot: f }) {
+    // map : marks.map (없으면 숨긴다) · boat : {x, z(월드), head} · target : 가는 곳(월드) · sight : 보이는 바다의 반지름(월드)
+    update({ map: m, boat: b, target: t, sight: g }) {
       // ⭐ 저녁 판 (2026-09-13 저녁, <html data-mini-eve>) — 판이 바뀌면 캔버스 색을 다시 읽고 정적 층 · 안개를 다시 굽는다
       const eve = document.documentElement.hasAttribute('data-mini-eve');
       if (eve !== palEve) { palEve = eve; PAL = readPal(); if (map) { drawStatic(); fog.dirty = true; } last = ''; }
@@ -387,14 +502,17 @@ export function createMinimap({ onPick, onBlocked } = {}) {
       // ⚠ 안개를 켜고 끄면 정적 층(점 테두리)도 달라진다 — 키에 넣는다
       const k = m.size + '|' + m.minGap + '|' + m.flipY + '|' + (boundOn() ? margin() + '@' + m.navReach : 'x') + '|' + (fogOn() ? 1 : 0);
       if (m !== map || k !== mapKey) { map = m; mapKey = k; layout(); idleHint(); }
-      boat = b; target = t; foot = f;
+      boat = b; target = t; sight = g || 0;
       // ⭐ 안개 — 배 둘레를 밝힌다. ⚠ 안개를 꺼 둬도 **기록은 계속한다** — 켰을 때 그동안 지나온 곳이 보여야 한다
       if (reveal(b.x, b.z)) { if (!hover) idleHint(); }
       fogSave(false);
       // ⚠ 값이 실제로 달라질 때만 그린다 — 배는 0.1 월드, 방향은 0.02 rad 단위로 본다
+      // ⚠ 해역 이름에 마우스가 올라가 있는 동안만 **시계를 키에 넣는다** — 빛이 숨을 쉬려면 매 장 다시 그려야 한다.
+      //   호버가 아닐 때는 예전처럼 값이 바뀔 때만 그린다 (236px 판이라 호버 중의 30장/초는 싸다)
       const key = [Math.round(b.x * 10), Math.round(b.z * 10), Math.round(b.head * 50),
         t ? Math.round(t.x) + ',' + Math.round(t.z) : '-', hover ? (hover.label ? hover.label.key : hover.out ? 'o' : 'r') : '-',
-        f ? f.length : 0, fogOn() ? fog.n : -1].join('|');
+        hover && hover.label ? Math.round(performance.now() / 33) : '-',
+        Math.round(sight), fogOn() ? fog.n : -1].join('|');
       if (key === last) return;
       last = key;
       draw();
