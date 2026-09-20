@@ -74,6 +74,7 @@ DEFAULT_PERFUMES = _DATA_DIR / "perfumes_nlr.csv.gz"
 DEFAULT_LEXICON = _DATA_DIR / "domain_lexicon_v1_17.csv"
 DEFAULT_ACCORDS = _DATA_DIR / "accord_dictionary.csv"
 DEFAULT_NOTE_BRIDGE = _DATA_DIR / "note_accord_bridge.csv"
+DEFAULT_NOTE_ALIAS_KO = _DATA_DIR / "note_alias_ko.csv"
 # 오타 검문소가 **건드리면 안 되는 낱말**. EDA 의 `85_protected_words_v1_17.py` 가 만든다.
 # **사전 버전이 바뀌면 다시 만들어야 한다** — 표면형이 바뀌면 이 집합도 바뀐다.
 DEFAULT_PROTECTED_WORDS = _DATA_DIR / "protected_words_v1_17.txt"
@@ -122,7 +123,8 @@ KOREAN_ACCORD = {
 # ---------------------------------------------------------------------------
 def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True,
                bridge_csv=None, bridge_p_min=BRIDGE_P_MIN,
-               bridge_lift_min=BRIDGE_LIFT_MIN, protected_words=None):
+               bridge_lift_min=BRIDGE_LIFT_MIN, protected_words=None,
+               note_alias_ko=None):
     """향수 데이터와 사전을 읽어 조회용 인덱스를 만든다.
 
     perfumes_csv : str | Path | None   기본 data/perfumes_nlr.csv.gz
@@ -132,6 +134,9 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
     bridge_csv   : str | Path | None   기본 data/note_accord_bridge.csv (노트→accord)
                                        **없어도 엔진은 돈다.** 경고를 남기고 노트를 해석하지
                                        않는다 — 코드만 먼저 배포한 경우를 막지 않는다
+    note_alias_ko: str | Path | None   기본 data/note_alias_ko.csv (한국어 별칭→노트)
+                                       **없어도 엔진은 돈다.** 한국어 노트 이름이 브리지로
+                                       풀리지 않고 ⑤단계로 갈 뿐이다 (측정 기록 34번)
     bridge_p_min : float               기본 BRIDGE_P_MIN
     bridge_lift_min : float            기본 BRIDGE_LIFT_MIN
     protected_words : str | Path | None 기본 data/protected_words_v1_17.txt (오타 검문소).
@@ -192,11 +197,15 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
     note_bridge = _load_note_bridge(
         Path(bridge_csv) if bridge_csv else DEFAULT_NOTE_BRIDGE,
         aidx, bridge_p_min, bridge_lift_min)
+    alias_ko = _add_note_alias_ko(
+        note_bridge,
+        Path(note_alias_ko) if note_alias_ko else DEFAULT_NOTE_ALIAS_KO)
 
     return {
         "accords": accords,
         "aidx": aidx,
         "note_bridge": note_bridge,
+        "note_alias_ko": tuple(sorted(alias_ko, key=len, reverse=True)),
         "strength": strength,
         "has": strength > 0,
         "pid": perf["id"].to_numpy(),
@@ -258,6 +267,62 @@ def lexicon_version(path=None):
     name = Path(path).stem if path else DEFAULT_LEXICON.stem
     found = _LEXICON_VERSION.search(name)
     return found.group(1) if found else None
+
+
+def _add_note_alias_ko(bridge, path):
+    """노트 브리지에 한국어 별칭 키를 더한다. list[str] (더한 키).
+
+    bridge : dict   `_load_note_bridge` 가 만든 dict. **이 자리에서 고친다**
+    path   : Path   alias · note 두 칸을 가진 CSV
+
+    ①단계 LLM 이 `scent_preference` 에 **한국어 노트 이름**을 넣는데 브리지 표는 전부
+    영어라 통째로 버려진다 [측정 기록 34번]. `미모사` 가 그래서 ⑤단계로 떨어졌고
+    LLM 이 *"샴페인 칵테일"* 로 해석했다.
+
+        "미모사"  ->  (없음)                        이 표를 얹기 전
+        "미모사"  ->  powdery · floral · yellow floral
+
+    **`note_accord_bridge.csv` 에는 한글 행을 안 넣는다.** 그 파일은 코퍼스 통계
+    (`p` · `lift`)이고 별칭은 번역이라 섞으면 한글 행의 `p` · `lift` 를 지어내야 한다.
+    그래서 파일은 그대로 두고 **읽어 들인 dict 에만** 영어 이름의 값을 가리키는 키를
+    더한다. 두 키가 같은 tuple 을 가리킨다.
+
+    **영어 이름이 브리지에 없으면 건너뛴다.** 문턱(`p` · `lift`)에 걸려 빠진 노트는
+    별칭을 붙여도 줄 값이 없다.
+
+    **파일이 없으면 경고만 남긴다.** 노트 브리지와 같은 방침이다 — 한국어 노트 이름이
+    이 표를 얹기 전처럼 ⑤단계로 갈 뿐 엔진은 정상 동작한다.
+    """
+    if not bridge:
+        return []
+    if not Path(path).exists():
+        LOGGER.warning(
+            "노트 별칭 파일이 없다: %s. 한국어 노트 이름(`미모사` 등)은 브리지로 풀리지 "
+            "않고 ⑤단계로 간다", path)
+        return []
+
+    table = pd.read_csv(path)
+    missing = [c for c in ("alias", "note") if c not in table.columns]
+    if missing:
+        raise RuntimeError(f"노트 별칭에 필요한 칸이 없다: {missing} ({path})")
+
+    added, skipped = [], 0
+    for alias, note in zip(table["alias"], table["note"]):
+        key = re.sub(r"\s+", " ", str(alias).strip().lower())
+        eng = re.sub(r"\s+", " ", str(note).strip().lower())
+        if not key or key == "nan" or len(key) < 2:
+            continue                      # 한 글자는 다른 낱말에 박힌다 (34번)
+        target = bridge.get(eng)
+        if not target:
+            skipped += 1
+            continue
+        if key in bridge:
+            continue                      # 영어 이름과 겹치면 원래 값을 지킨다
+        bridge[key] = target
+        added.append(key)
+    LOGGER.info("노트 별칭 %d개를 얹었다 (영어 이름이 브리지에 없어 건너뛴 것 %d) %s",
+                len(added), skipped, Path(path).name)
+    return added
 
 
 def _load_note_bridge(path, aidx, p_min, lift_min):
@@ -381,6 +446,19 @@ def understand(index, text, structured=None):
             # 팀이 정할 일이다. 근거가 없으면 `matched[]` 의 from·tier·rationale 이
             # null 로 나간다 — recommend() 가 이미 그렇게 처리한다.
             core.update(_bridge_lookup(index, raw))
+
+        # ①단계가 쓴 문장 안에 **박혀 있는** 한국어 노트 이름도 찾는다.
+        # 위의 `scent_preference` 경로는 표현 전체가 노트 이름일 때만 풀린다 —
+        # `무화과 향이 나는 여성스러운향` 처럼 문장이면 통째로 못 찾는다 [34번].
+        #
+        # ⚠ **여기서 푼 표현도 `_unmatched` 에는 그대로 남는다.** 그 함수는 사전이
+        # 잡은 표면형만 보고 브리지는 안 본다. 그래서 브리지가 낸 accord 와 ⑤단계가
+        # 낸 accord 가 둘 다 core 에 들어간다 (설문 2.8% · 합성 12.3% 의 표현).
+        # 고치면 미매칭 로그 기준이 바뀌어 320 표 집계와 사전 확장 근거에 영향이
+        # 가므로 **이 변경의 범위에 넣지 않았다.**
+        for raw in (structured.get("additional_requirements") or []):
+            for alias in _longest_alias_ko(index, raw):
+                core.update(_bridge_lookup(index, alias))
 
     avoid = set()
     for raw in ((structured or {}).get("avoid") or []):
@@ -563,6 +641,37 @@ def _normalize_accord(index, raw):
         if guess in index["aidx"]:
             return guess
     return None
+
+
+def _longest_alias_ko(index, raw):
+    """문장에 박힌 한국어 노트 별칭. list[str] (겹치면 **가장 긴 것**).
+
+    index : dict   load_index() 결과. `note_alias_ko` 가 없으면 빈 목록이다
+    raw   : str    ①단계가 쓴 문장 하나
+
+        "무화과 향이 나는 여성스러운향"   ->  ["무화과"]
+        "로즈마리 녹차 레몬"            ->  ["로즈마리", "녹차", "레몬"]
+        "망고나 파인애플 같은"           ->  ["파인애플", "망고"]
+
+    **겹치면 긴 것만 쓴다.** 별칭 196개 중 서로 박히는 쌍이 **31개**이고 그중 뜻이
+    틀어지는 것이 **7개**다.
+
+        로즈마리 · 로즈메리 · 튜베로즈   안의 `로즈`     -> rose 가 잘못 붙는다
+        파인애플                    안의 `애플`     -> apple
+        오렌지꽃 · 오렌지 블라썸        안의 `오렌지`    -> orange
+        산딸기                     안의 `딸기`     -> strawberry (산딸기는 raspberry 다)
+
+    나머지 24쌍은 무해하다 (`시더우드`->cedar · `화이트머스크`->musk · `청사과`->apple).
+    **343 이 `_lexicon_lookup` 에 넣은 것과 같은 규칙이다** — 한국어는 교착어라 부분
+    문자열로 찾을 수밖에 없고, 그러면 긴 것이 이긴다.
+
+    **원문(`text`)에는 쓰지 않는다.** ①단계를 거친 문장만 본다. 원문을 훑으면
+    `머스크는 싫어` 의 `머스크` 까지 집어 회피 표현이 조건이 된다 [측정 · 설문 10문장].
+    """
+    aliases = index.get("note_alias_ko") or ()
+    text = re.sub(r"\s+", " ", str(raw).strip().lower())
+    hit = [a for a in aliases if a in text]
+    return [a for a in hit if not any(a != b and a in b for b in hit)]
 
 
 def _bridge_lookup(index, raw):
