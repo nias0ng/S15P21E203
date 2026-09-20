@@ -164,12 +164,10 @@ import { perfumeDetailQuery } from '@/features/perfume/queries' // X
 | `Thumbnail` | 이미지 슬롯. 없으면 자리표시자 상자. 크기는 `className` 으로 |
 | `Checkbox` | 사각 체크박스(14px). 라벨은 호출하는 쪽에서 `<label>` 로 감싸세요 |
 | `SearchField` | 검색 입력 + 버튼. 헤더에 검색창이 없어 목록 화면마다 반복됩니다 |
-| `Card` | 목록에 반복되는 박스. `interactive` 로 호버 효과 |
 | `Badge` | 향 계열·상태 같은 짧은 라벨. `tone` brand·neutral·success·warning·danger |
 | `Thumbnail` | 이미지 슬롯. 없으면 자리표시자 상자. 크기는 `className` 으로 |
 | `PerfumeCard` | 향수 카드. 도메인 타입을 받지 않고 `name`·`brand`·`thumbnailUrl` 낱개로 받습니다 |
 | `ChipToggle` | 칩 여러 개 중 고르기 (진열대 분류 · 계절 등록) |
-| `SegmentedFilter` | 한 줄 세그먼트 필터 (A33 진열대 기준 · 성별) |
 | `StarRating` | 별점. 라디오 그룹이라 키보드 화살표로 움직입니다 |
 | `Modal` | 네이티브 `<dialog>` 기반. 포커스 가두기·Esc·배경 스크롤 잠금 자동 |
 | `ConfirmDialog` | 삭제 확인 모달. 7곳 공용. `destructive` 로 위험 표현 |
