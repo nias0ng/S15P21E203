@@ -68,6 +68,18 @@ TYPO_MIN_LEN = 2          # 1글자는 후보가 너무 많다. `꿀`·`숲`·`�
 # 계절 데이터가 0건이라 아직 검색에 못 쓴다(spec 6장 제약 1).
 STRUCTURED_KEYS = ("scent_preference", "avoid", "additional_requirements")
 
+# ①단계 `context` 의 값 -> 배포 데이터 `*_lead` 칸의 값.
+# **`neuter` 는 ①단계 프롬프트의 표기**이고 데이터 쪽은 `unisex` 다.
+CONTEXT_FIELDS = {
+    "gender": ("gender_lead", {"male": "male", "female": "female", "neuter": "unisex"}),
+    "season": ("season_lead", {s: s for s in ("spring", "summer", "autumn", "winter")}),
+    "daypart": ("daypart_lead", {s: s for s in ("day", "night")}),
+}
+
+# 조건을 걸어 후보가 이 수 밑으로 떨어지면 **그 조건을 포기한다.**
+# 완화 사다리(MIN_RESULTS)와 같은 정신이다 — 조건을 지키느라 빈손을 주지 않는다.
+CONTEXT_MIN = 3
+
 # 기본 데이터 경로. 인자로 덮어쓸 수 있다.
 _DATA_DIR = Path(__file__).resolve().parent / "data"
 DEFAULT_PERFUMES = _DATA_DIR / "perfumes_nlr.csv.gz"
@@ -150,9 +162,17 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
     lexicon_csv = Path(lexicon_csv) if lexicon_csv else DEFAULT_LEXICON
     accord_csv = Path(accord_csv) if accord_csv else DEFAULT_ACCORDS
 
+    # `context` 세 칸은 **있으면 읽고 없으면 넘어간다.** 코드를 데이터보다 먼저
+    # 배포하는 경우를 막지 않는다 — 없으면 `_load_context` 가 경고를 남긴다.
+    needed = ["id", "name", "brand", "accords", "people", "rating_avg"]
+    optional = [column for column, _ in CONTEXT_FIELDS.values()]
+    available = set(pd.read_csv(perfumes_csv, nrows=0).columns)
+    missing = [c for c in needed if c not in available]
+    if missing:
+        raise RuntimeError(f"배포 데이터에 필수 칸이 없다: {missing} ({perfumes_csv})")
     perf = pd.read_csv(
         perfumes_csv,
-        usecols=["id", "name", "brand", "accords", "people", "rating_avg"],
+        usecols=needed + [c for c in optional if c in available],
         low_memory=False,
     )
     lex = pd.read_csv(lexicon_csv, keep_default_na=False, dtype=str)
@@ -197,6 +217,7 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
     note_bridge = _load_note_bridge(
         Path(bridge_csv) if bridge_csv else DEFAULT_NOTE_BRIDGE,
         aidx, bridge_p_min, bridge_lift_min)
+    context = _load_context(perf)
     alias_ko = _add_note_alias_ko(
         note_bridge,
         Path(note_alias_ko) if note_alias_ko else DEFAULT_NOTE_ALIAS_KO)
@@ -206,6 +227,7 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
         "aidx": aidx,
         "note_bridge": note_bridge,
         "note_alias_ko": tuple(sorted(alias_ko, key=len, reverse=True)),
+        "context": context,
         "strength": strength,
         "has": strength > 0,
         "pid": perf["id"].to_numpy(),
@@ -267,6 +289,37 @@ def lexicon_version(path=None):
     name = Path(path).stem if path else DEFAULT_LEXICON.stem
     found = _LEXICON_VERSION.search(name)
     return found.group(1) if found else None
+
+
+def _load_context(perf):
+    """`*_lead` 칸을 조회용 불리언 행렬로 만든다. dict[str, dict[str, np.ndarray]].
+
+    perf : DataFrame  배포 데이터. `gender_lead`·`season_lead`·`daypart_lead` 를 본다
+
+        index["context"]["season"]["summer"][행] -> 그 향수가 여름 1등인가
+
+    ①단계가 `context.season` 등을 뽑는데 엔진이 안 읽어 버려지고 있었다.
+    실사용자 설문에서 season·gender 가 각각 19.6% 에 나온다 [측정 기록 35번].
+
+    **칸이 없어도 엔진은 돈다.** 코드만 먼저 배포하고 데이터가 아직 옛 파일인 경우를
+    막지 않는다 — 경고를 남기고 그 조건을 안 건다.
+
+    **값은 `|` 로 이어진 동률 목록이다** (`winter|autumn`). 투표가 전부 0이면 빈칸이고,
+    그 향수는 어느 쪽으로도 세지 않는다.
+    """
+    out = {}
+    for field, (column, mapping) in CONTEXT_FIELDS.items():
+        if column not in perf.columns:
+            LOGGER.warning(
+                "배포 데이터에 %s 칸이 없다. ①단계의 context.%s 조건을 못 건다 "
+                "— build_data.py 를 다시 돌려야 한다", column, field)
+            continue
+        raw = perf[column].fillna("").astype(str).to_numpy()
+        table = {}
+        for value in dict.fromkeys(mapping.values()):
+            table[value] = np.array([value in cell.split("|") for cell in raw])
+        out[field] = table
+    return out
 
 
 def _add_note_alias_ko(bridge, path):
@@ -452,10 +505,14 @@ def understand(index, text, structured=None):
         # `무화과 향이 나는 여성스러운향` 처럼 문장이면 통째로 못 찾는다 [34번].
         #
         # ⚠ **여기서 푼 표현도 `_unmatched` 에는 그대로 남는다.** 그 함수는 사전이
-        # 잡은 표면형만 보고 브리지는 안 본다. 그래서 브리지가 낸 accord 와 ⑤단계가
-        # 낸 accord 가 둘 다 core 에 들어간다 (설문 2.8% · 합성 12.3% 의 표현).
-        # 고치면 미매칭 로그 기준이 바뀌어 320 표 집계와 사전 확장 근거에 영향이
-        # 가므로 **이 변경의 범위에 넣지 않았다.**
+        # 잡은 표면형만 보고 브리지는 안 본다 (설문 2.8% · 합성 12.3% 의 표현).
+        #
+        # **동작에는 영향이 없다.** `recommend()` 는 core 가 비었을 때만 ⑤단계를
+        # 부르므로(`if estimator and not understood["core"]`) 여기서 core 를 채우면
+        # ⑤단계는 안 돈다 — 오히려 호출이 준다(합성 600 에서 237 -> 193).
+        # 남는 것은 `nlr_unmatched_expressions` 의 정확도다. 로그를 캐서 사전을
+        # 늘리려는 쪽이 **이미 풀린 것을 빈칸으로 본다.** 고치려면 `unmatch_reason`
+        # 에 네 번째 값이 필요해 응답 계약이 바뀌므로 **범위에 넣지 않았다.**
         for raw in (structured.get("additional_requirements") or []):
             for alias in _longest_alias_ko(index, raw):
                 core.update(_bridge_lookup(index, alias))
@@ -699,16 +756,98 @@ def _bridge_lookup(index, raw):
 # ---------------------------------------------------------------------------
 # 2단계 — 검색 · 정렬 · 완화
 # ---------------------------------------------------------------------------
+def context_mask(index, structured, base):
+    """①단계의 `context` 조건으로 후보를 좁힌다. (np.ndarray[bool], list[str]).
+
+    index      : dict            load_index() 결과
+    structured : dict | None     ①단계 구조화 결과
+    base       : np.ndarray[bool] 좁히기 전 후보
+
+        "여름에 쓸 남성용 향수" -> season=summer · gender=male 로 두 번 좁힌다
+
+    **한 칸씩 걸고, 후보가 `CONTEXT_MIN` 밑으로 떨어지면 그 칸은 포기한다.**
+    조건을 다 지키느라 빈손을 주는 것보다 낫다 — 완화 사다리와 같은 판단이다.
+
+    두 번째 반환값은 **실제로 걸린 칸 이름**이다. 포기한 칸은 안 들어간다.
+
+    **①단계 출력이 스키마를 어겨도 죽지 않는다.** 실측상 98% 만 지킨다 [측정 기록 14번].
+    어긴 것은 **경고를 남긴다** — 조용히 무시하면 "왜 여름 조건이 안 걸리지" 를 로그로도
+    못 찾는다.
+    """
+    applied = []
+    if not structured:
+        return base, applied
+    ctx = structured.get("context")
+    if ctx is None:
+        return base, applied
+    if not isinstance(ctx, dict):
+        LOGGER.warning("structured['context'] 가 dict 가 아니다: %r. context 조건을 건너뛴다",
+                       ctx)
+        return base, applied
+    for field, (_, mapping) in CONTEXT_FIELDS.items():
+        table = (index.get("context") or {}).get(field)
+        if not table:
+            continue
+        values, unknown = _context_values(ctx.get(field), mapping, field)
+        if unknown:
+            LOGGER.warning("context.%s 에 모르는 값이 있다: %s. 허용값은 %s 다",
+                           field, sorted(unknown), sorted(mapping))
+        if not values:
+            continue
+        want = np.zeros(len(base), dtype=bool)
+        for value in values:
+            want |= table[value]
+        narrowed = base & want
+        if narrowed.sum() >= CONTEXT_MIN:
+            base = narrowed
+            applied.append(field)
+    return base, applied
+
+
+def _context_values(raw, mapping, field):
+    """①단계가 준 값을 허용값 집합으로 바꾼다. (set[str], set[str]) — 푼 것과 못 푼 것.
+
+    raw     : 무엇이든    ①단계 출력. 리스트를 기대하지만 아닐 수 있다
+    mapping : dict       허용값 -> 데이터 쪽 값
+    field   : str        경고에 쓸 칸 이름
+
+        ["summer"]   -> ({"summer"}, set())
+        "summer"     -> ({"summer"}, set())      **문자열 하나면 한 값으로 본다**
+        ["여름"]      -> (set(), {"여름"})
+        [["summer"]] -> (set(), {"['summer']"})
+
+    **문자열을 그대로 순회하면 글자 단위로 쪼개져 조건이 조용히 사라진다.**
+    `"summer"` 가 `s`·`u`·`m`... 이 되어 아무것도 안 걸리고 경고도 안 남는다.
+    """
+    if raw is None or raw == "":
+        return set(), set()
+    items = [raw] if isinstance(raw, str) else raw
+    try:
+        items = list(items)
+    except TypeError:                       # 숫자 등 순회할 수 없는 값
+        items = [raw]
+    good, bad = set(), set()
+    for item in items:
+        if not isinstance(item, str):
+            bad.add(repr(item))
+            continue
+        target = mapping.get(item.strip().lower())
+        (good.add(target) if target else bad.add(item))
+    return good, bad
+
+
 def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
-           brand_cap=BRAND_CAP, min_results=MIN_RESULTS):
+           brand_cap=BRAND_CAP, min_results=MIN_RESULTS, structured=None):
     """조건으로 향수를 찾아 정렬한다.
 
-    반환: dict — rows(행 인덱스) / stage / candidate_count / tie_at_last / relaxed
+    structured : dict | None  ①단계 구조화 결과. 주면 `context` 로 후보를 좁힌다
+
+    반환: dict — rows / stage / candidate_count / tie_at_last / relaxed / context_applied
     """
     cols = [index["aidx"][a] for a in core if a in index["aidx"]]
     if not cols:
         return {"rows": [], "stage": "NO_CONDITION", "candidate_count": 0,
-                "tie_at_last": 0, "relaxed": []}
+                "tie_at_last": 0, "relaxed": [], "context_applied": []}
 
     # 부른 쪽이 원한 개수보다 많이 요구할 수는 없다. top_k=2 인데 min_results 가 3이면
     # AND 가 2개를 다 찾아도 부족으로 보고 완화 사다리를 타 버린다.
@@ -719,6 +858,10 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
         col = index["aidx"].get(accord)
         if col is not None:
             base &= ~index["has"][:, col]
+
+    # ①단계가 말한 성별·계절·낮밤으로 후보를 좁힌다. **정렬은 안 건드린다**
+    # (DECISIONS.md N9 — 순서는 향 조건이 정하고 인기도가 동점만 푼다).
+    base, context_applied = context_mask(index, structured, base)
 
     score = index["strength"][:, cols].sum(axis=1)
 
@@ -736,6 +879,7 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
         if len(picked["rows"]) >= min_results:
             picked["stage"] = "SINGLE_BROAD"
             picked["relaxed"] = ["향 조건이 accord 하나뿐이라 순위를 정하지 못한다"]
+            picked["context_applied"] = context_applied
             return picked
 
     if len(cols) >= MIN_CORE_FOR_AND:
@@ -746,6 +890,7 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
         if len(picked["rows"]) >= min_results:
             picked["stage"] = "AND"
             picked["relaxed"] = []
+            picked["context_applied"] = context_applied
             return picked
 
     # 완화 4 — AND 를 OR 로 (spec 3장 3의 완화 사다리)
@@ -754,9 +899,12 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
     if len(picked["rows"]) >= min_results:
         picked["stage"] = "RELAXED_OR"
         picked["relaxed"] = ["core accord 를 AND 에서 OR 로"]
+        picked["context_applied"] = context_applied
         return picked
 
-    # 완화 5 — 평가자 문턱 해제
+    # 완화 5 — 평가자 문턱 해제.
+    # **여기서는 context 조건도 함께 풀린다.** 마스크를 처음부터 다시 만들기 때문이고,
+    # 그게 맞다 — 이 단계는 "아무거나 찾아 달라" 는 마지막 수단이다.
     mask = np.ones(index["n_perfumes"], dtype=bool)
     for accord in avoid:
         col = index["aidx"].get(accord)
@@ -766,6 +914,7 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
     picked = _rank(index, mask, score, top_k, brand_cap)
     picked["stage"] = "RELAXED_OR_NO_THRESHOLD" if picked["rows"] else "NOT_ENOUGH"
     picked["relaxed"] = ["core accord 를 AND 에서 OR 로", "평가자 문턱 해제"]
+    picked["context_applied"] = []          # 이 단계는 context 도 함께 풀었다
     return picked
 
 
@@ -946,7 +1095,8 @@ def recommend(index, text, structured=None, top_k=TOP_K, estimator=None):
             # 추정이 조건을 만들었으므로 source 를 다시 적는다. understand() 가 계산한
             # 값은 추정 전 기준이라 그대로 두면 기여를 빠뜨린다.
             understood["source"] = "llm+lexicon"
-    found = search(index, understood["core"], understood["avoid"], top_k=top_k)
+    found = search(index, understood["core"], understood["avoid"], top_k=top_k,
+                   structured=structured)
 
     results = []
     for row in found["rows"]:
