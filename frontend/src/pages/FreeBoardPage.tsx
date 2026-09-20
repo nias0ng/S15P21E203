@@ -17,6 +17,7 @@ import {
   type PostSort,
 } from '@/features/community'
 import { ROUTES } from '@/shared/config/routes'
+import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { useLikeToggle } from '@/shared/hooks/useLikeToggle'
 import { cn } from '@/shared/lib/cn'
 import { readPage, withQueryParams, writePage } from '@/shared/lib/queryParams'
@@ -55,6 +56,18 @@ export default function FreeBoardPage() {
 
   const posts = useQuery(postListQuery(listParams))
   const trending = useQuery(trendingPerfumesQuery())
+
+  /*
+   * 메인에서 잠수로 들어왔으면 커튼이 짙은 바다색으로 덮은 채 이 신호를 기다립니다
+   * (안 알려도 상한에 걷힙니다 — `shared/ui/DiveCurtain`). 잠수로 들어온 것이 아니면
+   * 아무 일도 안 일어납니다.
+   *
+   * 기준은 **목록**입니다 — 아래에서 스피너가 갈리는 바로 그 조건입니다. 목록이 칠해지면
+   * 이 화면은 다 선 것이고, 여기는 진열대처럼 뒤늦게 떠오르는 사진 벽이 없습니다.
+   *
+   * ⚠ 곁판(`trending`)은 안 기다립니다 — 후기 게시판과 같은 까닭입니다.
+   */
+  useDiveReady(!posts.isPending)
 
   /*
     판 제목에 지금 보고 있는 분류를 적습니다. 알약에서 '전체' 를 없앤 대신
