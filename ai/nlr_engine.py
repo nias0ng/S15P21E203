@@ -769,17 +769,29 @@ def context_mask(index, structured, base):
     조건을 다 지키느라 빈손을 주는 것보다 낫다 — 완화 사다리와 같은 판단이다.
 
     두 번째 반환값은 **실제로 걸린 칸 이름**이다. 포기한 칸은 안 들어간다.
+
+    **①단계 출력이 스키마를 어겨도 죽지 않는다.** 실측상 98% 만 지킨다 [측정 기록 14번].
+    어긴 것은 **경고를 남긴다** — 조용히 무시하면 "왜 여름 조건이 안 걸리지" 를 로그로도
+    못 찾는다.
     """
     applied = []
     if not structured:
         return base, applied
-    ctx = structured.get("context") or {}
+    ctx = structured.get("context")
+    if ctx is None:
+        return base, applied
+    if not isinstance(ctx, dict):
+        LOGGER.warning("structured['context'] 가 dict 가 아니다: %r. context 조건을 건너뛴다",
+                       ctx)
+        return base, applied
     for field, (_, mapping) in CONTEXT_FIELDS.items():
         table = (index.get("context") or {}).get(field)
         if not table:
             continue
-        values = {mapping.get(str(v).strip().lower()) for v in (ctx.get(field) or [])}
-        values.discard(None)
+        values, unknown = _context_values(ctx.get(field), mapping, field)
+        if unknown:
+            LOGGER.warning("context.%s 에 모르는 값이 있다: %s. 허용값은 %s 다",
+                           field, sorted(unknown), sorted(mapping))
         if not values:
             continue
         want = np.zeros(len(base), dtype=bool)
@@ -790,6 +802,38 @@ def context_mask(index, structured, base):
             base = narrowed
             applied.append(field)
     return base, applied
+
+
+def _context_values(raw, mapping, field):
+    """①단계가 준 값을 허용값 집합으로 바꾼다. (set[str], set[str]) — 푼 것과 못 푼 것.
+
+    raw     : 무엇이든    ①단계 출력. 리스트를 기대하지만 아닐 수 있다
+    mapping : dict       허용값 -> 데이터 쪽 값
+    field   : str        경고에 쓸 칸 이름
+
+        ["summer"]   -> ({"summer"}, set())
+        "summer"     -> ({"summer"}, set())      **문자열 하나면 한 값으로 본다**
+        ["여름"]      -> (set(), {"여름"})
+        [["summer"]] -> (set(), {"['summer']"})
+
+    **문자열을 그대로 순회하면 글자 단위로 쪼개져 조건이 조용히 사라진다.**
+    `"summer"` 가 `s`·`u`·`m`... 이 되어 아무것도 안 걸리고 경고도 안 남는다.
+    """
+    if raw is None or raw == "":
+        return set(), set()
+    items = [raw] if isinstance(raw, str) else raw
+    try:
+        items = list(items)
+    except TypeError:                       # 숫자 등 순회할 수 없는 값
+        items = [raw]
+    good, bad = set(), set()
+    for item in items:
+        if not isinstance(item, str):
+            bad.add(repr(item))
+            continue
+        target = mapping.get(item.strip().lower())
+        (good.add(target) if target else bad.add(item))
+    return good, bad
 
 
 def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
