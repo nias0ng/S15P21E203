@@ -222,6 +222,7 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
     alias_ko, alias_target = _add_note_alias_ko(
         note_bridge,
         Path(note_alias_ko) if note_alias_ko else DEFAULT_NOTE_ALIAS_KO)
+    _check_lowercase(notes, alias_target)
 
     return {
         "accords": accords,
@@ -292,6 +293,33 @@ def lexicon_version(path=None):
     name = Path(path).stem if path else DEFAULT_LEXICON.stem
     found = _LEXICON_VERSION.search(name)
     return found.group(1) if found else None
+
+
+def _check_lowercase(notes, alias_target):
+    """노트 이름이 전부 소문자인지 확인한다. None — 아니면 RuntimeError.
+
+    notes        : dict | list  `_load_notes` 결과 (노트 이름 -> 행)
+    alias_target : dict | None  별칭 -> 영어 노트 이름. None 이면 이 표를 안 본다
+
+    **`note_rows` 가 소문자끼리 견주는 것을 전제로 한다.** 배포 데이터는
+    `build_data._notes()` 가, 별칭표는 `_add_note_alias_ko` 가 각각 낮춘다.
+    **세 군데가 따로 낮추므로 하나만 빠져도 조용히 안 걸린다** — 348 에서
+    `set.update` 가 문자열을 쪼갠 것과 같은 실패 방식이라 여기서 못 박는다 [MR 리뷰].
+
+    기동할 때 한 번만 돈다.
+    """
+    bad = [n for n in (notes or ()) if n != n.lower()]
+    if bad:
+        raise RuntimeError(
+            f"배포 데이터의 노트 이름에 대문자가 있다: {sorted(bad)[:5]}. "
+            "build_data.py 가 소문자로 낮춰야 한다")
+    if alias_target:
+        bad = [f"{k} -> {v}" for k, v in alias_target.items()
+               if k != k.lower() or v != v.lower()]
+        if bad:
+            raise RuntimeError(
+                f"노트 별칭에 대문자가 있다: {sorted(bad)[:5]}. "
+                "_add_note_alias_ko 가 소문자로 낮춰야 한다")
 
 
 def _load_notes(perf):
@@ -1018,12 +1046,16 @@ def _rank(index, mask, score, top_k, brand_cap, notes=None):
     if idx.size == 0:
         return {"rows": [], "candidate_count": 0, "tie_at_last": 0}
 
-    # 1순위 노트 보유(주어졌을 때), 2순위 strength 합, 3순위 평가자 수, 4순위 id
-    keys = [index["pid"][idx], -index["people"][idx], -score[idx]]
+    # **`np.lexsort` 는 마지막 인자를 1순위로 쓴다.** 그대로 쓰면 코드가 주석과
+    # 거꾸로 읽혀, 나중에 키를 하나 얹는 사람이 모르는 새 1순위를 빼앗는다 [MR 리뷰].
+    # 그래서 **1순위부터 적고 뒤집어서** 넘긴다.
+    ranking = []
     if notes is not None:
-        keys.append(-notes[idx].astype(np.int8))
-    order = np.lexsort(tuple(keys))
-    idx = idx[order]
+        ranking.append(-notes[idx].astype(np.int8))   # 1순위 말한 노트를 가졌나
+    ranking.append(-score[idx])                       # 2순위 strength 합
+    ranking.append(-index["people"][idx])             # 3순위 평가자 수
+    ranking.append(index["pid"][idx])                 # 4순위 id (흔들림 방지)
+    idx = idx[np.lexsort(tuple(reversed(ranking)))]
 
     sorted_score = score[idx]
     cut = min(top_k, len(idx)) - 1
