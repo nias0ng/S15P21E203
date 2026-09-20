@@ -165,7 +165,7 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
     # `context` 세 칸은 **있으면 읽고 없으면 넘어간다.** 코드를 데이터보다 먼저
     # 배포하는 경우를 막지 않는다 — 없으면 `_load_context` 가 경고를 남긴다.
     needed = ["id", "name", "brand", "accords", "people", "rating_avg"]
-    optional = [column for column, _ in CONTEXT_FIELDS.values()]
+    optional = [column for column, _ in CONTEXT_FIELDS.values()] + ["notes"]
     available = set(pd.read_csv(perfumes_csv, nrows=0).columns)
     missing = [c for c in needed if c not in available]
     if missing:
@@ -218,7 +218,8 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
         Path(bridge_csv) if bridge_csv else DEFAULT_NOTE_BRIDGE,
         aidx, bridge_p_min, bridge_lift_min)
     context = _load_context(perf)
-    alias_ko = _add_note_alias_ko(
+    notes = _load_notes(perf)
+    alias_ko, alias_target = _add_note_alias_ko(
         note_bridge,
         Path(note_alias_ko) if note_alias_ko else DEFAULT_NOTE_ALIAS_KO)
 
@@ -227,7 +228,9 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
         "aidx": aidx,
         "note_bridge": note_bridge,
         "note_alias_ko": tuple(sorted(alias_ko, key=len, reverse=True)),
+        "note_alias_target": alias_target,
         "context": context,
+        "notes": notes,
         "strength": strength,
         "has": strength > 0,
         "pid": perf["id"].to_numpy(),
@@ -291,6 +294,33 @@ def lexicon_version(path=None):
     return found.group(1) if found else None
 
 
+def _load_notes(perf):
+    """노트 이름 -> 그 노트를 가진 향수 행. dict[str, np.ndarray[bool]].
+
+    perf : DataFrame  배포 데이터. `notes` 칸을 본다 (`amber|basil|cedar`)
+
+    **역색인으로 만든다.** 요청마다 향수 13만 개를 훑으면 검색이 4.4ms 에서 135ms 로
+    30배 느려진다 [측정]. 노트 어휘는 2,519종뿐이라 이름으로 찾는 편이 훨씬 싸다.
+
+    **칸이 없어도 엔진은 돈다.** 코드를 데이터보다 먼저 배포하는 경우를 막지 않는다 —
+    경고를 남기고 노트로 정렬하지 않는다.
+
+    이름은 `build_data.py` 가 이미 소문자로 낮춰 뒀다.
+    """
+    if "notes" not in perf.columns:
+        LOGGER.warning(
+            "배포 데이터에 notes 칸이 없다. 말한 노트를 가진 향수를 앞으로 당기지 "
+            "못한다 — build_data.py 를 다시 돌려야 한다")
+        return {}
+    where = {}
+    for row, cell in enumerate(perf["notes"].fillna("").astype(str)):
+        if not cell:
+            continue
+        for note in cell.split("|"):
+            where.setdefault(note, []).append(row)
+    return {note: np.array(rows, dtype=np.int64) for note, rows in where.items()}
+
+
 def _load_context(perf):
     """`*_lead` 칸을 조회용 불리언 행렬로 만든다. dict[str, dict[str, np.ndarray]].
 
@@ -323,7 +353,10 @@ def _load_context(perf):
 
 
 def _add_note_alias_ko(bridge, path):
-    """노트 브리지에 한국어 별칭 키를 더한다. list[str] (더한 키).
+    """노트 브리지에 한국어 별칭 키를 더한다. (list[str], dict[str, str]).
+
+    돌려주는 것은 **더한 키**와 **그 키가 가리키는 영어 노트 이름**이다.
+    영어 이름은 348 이 카탈로그의 노트와 견주는 데 쓴다.
 
     bridge : dict   `_load_note_bridge` 가 만든 dict. **이 자리에서 고친다**
     path   : Path   alias · note 두 칸을 가진 CSV
@@ -347,35 +380,35 @@ def _add_note_alias_ko(bridge, path):
     이 표를 얹기 전처럼 ⑤단계로 갈 뿐 엔진은 정상 동작한다.
     """
     if not bridge:
-        return []
+        return [], {}
     if not Path(path).exists():
         LOGGER.warning(
             "노트 별칭 파일이 없다: %s. 한국어 노트 이름(`미모사` 등)은 브리지로 풀리지 "
             "않고 ⑤단계로 간다", path)
-        return []
+        return [], {}
 
     table = pd.read_csv(path)
     missing = [c for c in ("alias", "note") if c not in table.columns]
     if missing:
         raise RuntimeError(f"노트 별칭에 필요한 칸이 없다: {missing} ({path})")
 
-    added, skipped = [], 0
+    added, skipped, target = [], 0, {}
     for alias, note in zip(table["alias"], table["note"]):
         key = re.sub(r"\s+", " ", str(alias).strip().lower())
         eng = re.sub(r"\s+", " ", str(note).strip().lower())
         if not key or key == "nan" or len(key) < 2:
             continue                      # 한 글자는 다른 낱말에 박힌다 (34번)
-        target = bridge.get(eng)
-        if not target:
+        if eng not in bridge:
             skipped += 1
             continue
         if key in bridge:
             continue                      # 영어 이름과 겹치면 원래 값을 지킨다
-        bridge[key] = target
+        bridge[key] = bridge[eng]
+        target[key] = eng
         added.append(key)
     LOGGER.info("노트 별칭 %d개를 얹었다 (영어 이름이 브리지에 없어 건너뛴 것 %d) %s",
                 len(added), skipped, Path(path).name)
-    return added
+    return added, target
 
 
 def _load_note_bridge(path, aidx, p_min, lift_min):
@@ -756,6 +789,52 @@ def _bridge_lookup(index, raw):
 # ---------------------------------------------------------------------------
 # 2단계 — 검색 · 정렬 · 완화
 # ---------------------------------------------------------------------------
+def note_rows(index, structured):
+    """사용자가 말한 노트를 가진 향수. np.ndarray[bool] | None.
+
+    index      : dict         load_index() 결과
+    structured : dict | None  ①단계 구조화 결과
+
+        "무화과 향이 나는 여성스러운향" -> fig 를 가진 향수 True
+
+    **찾는 방법이 `_longest_alias_ko` 와 같다** — ①단계가 쓴 문장 안에서 한국어 별칭을
+    최장 일치로 찾고, 그 별칭이 가리키는 영어 노트 이름을 쓴다(346). `scent_preference`
+    에 영어 노트 이름이 직접 오는 경우도 받는다.
+
+    **노트 이름은 부분 문자열로 견준다.** 카탈로그가 `white jasmine` · `jasmine sambac`
+    처럼 수식어를 붙여 두어 정확히 일치시키면 대부분 놓친다.
+
+    말한 노트가 없거나 `notes` 칸이 없으면 `None` 이다 — 부른 쪽이 정렬을 안 바꾼다.
+    """
+    where = index.get("notes")
+    if not where or not structured:
+        return None
+    bridge = index.get("note_bridge") or {}
+    wanted = set()
+    for field in ("additional_requirements", "scent_preference"):
+        for raw in (structured.get(field) or []):
+            text = re.sub(r"\s+", " ", str(raw).strip().lower())
+            for alias in _longest_alias_ko(index, text):
+                wanted.add(alias)
+            # 영어 노트 이름이 직접 온 경우. **accord 이름은 뺀다** —
+            # 그건 `understand()` 가 core 로 넣어 strength 가 이미 정렬한다.
+            # 노트 키로 또 걸면 같은 조건이 두 번 순위를 흔든다.
+            if text in bridge and not _normalize_accord(index, text):
+                wanted.add(text)
+    if not wanted:
+        return None
+    # **한국어 별칭은 영어 이름으로 바꿔야 카탈로그와 견줄 수 있다.**
+    # 한글을 그대로 두면 아무 노트와도 안 맞고, 영어 이름을 set 에 `update` 로 넣으면
+    # 문자열이 글자 단위로 쪼개져 `m` 이 거의 모든 노트에 걸린다.
+    alias_target = index.get("note_alias_target") or {}
+    targets = {alias_target.get(name, name) for name in wanted}
+    hit = np.zeros(index["n_perfumes"], dtype=bool)
+    for note, rows in where.items():          # 어휘 2,519종만 훑는다
+        if any(t in note for t in targets):
+            hit[rows] = True
+    return hit if hit.any() else None
+
+
 def context_mask(index, structured, base):
     """①단계의 `context` 조건으로 후보를 좁힌다. (np.ndarray[bool], list[str]).
 
@@ -863,6 +942,10 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
     # (DECISIONS.md N9 — 순서는 향 조건이 정하고 인기도가 동점만 푼다).
     base, context_applied = context_mask(index, structured, base)
 
+    # 사용자가 말한 노트를 가진 향수를 앞으로 당긴다 (348). 말한 노트가 없으면 None 이라
+    # 정렬이 그대로다 — **노트를 말하지 않은 문장의 순서는 안 바뀐다.**
+    notes = note_rows(index, structured)
+
     score = index["strength"][:, cols].sum(axis=1)
 
     # 조건이 accord 하나뿐인 경우. AND 와 OR 이 같은 집합이라 넓힐 것이 없다.
@@ -875,7 +958,7 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
     # DECISIONS.md N2 — 직역 대응(나무=woody)의 단독 매핑을 허용하며 이 표시를 조건으로 단다.
     if len(cols) == 1:
         mask = base & index["has"][:, cols[0]]
-        picked = _rank(index, mask, score, top_k, brand_cap)
+        picked = _rank(index, mask, score, top_k, brand_cap, notes)
         if len(picked["rows"]) >= min_results:
             picked["stage"] = "SINGLE_BROAD"
             picked["relaxed"] = ["향 조건이 accord 하나뿐이라 순위를 정하지 못한다"]
@@ -886,7 +969,7 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
         mask = base.copy()
         for col in cols:
             mask &= index["has"][:, col]
-        picked = _rank(index, mask, score, top_k, brand_cap)
+        picked = _rank(index, mask, score, top_k, brand_cap, notes)
         if len(picked["rows"]) >= min_results:
             picked["stage"] = "AND"
             picked["relaxed"] = []
@@ -895,7 +978,7 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
 
     # 완화 4 — AND 를 OR 로 (spec 3장 3의 완화 사다리)
     mask = base & index["has"][:, cols].any(axis=1)
-    picked = _rank(index, mask, score, top_k, brand_cap)
+    picked = _rank(index, mask, score, top_k, brand_cap, notes)
     if len(picked["rows"]) >= min_results:
         picked["stage"] = "RELAXED_OR"
         picked["relaxed"] = ["core accord 를 AND 에서 OR 로"]
@@ -911,21 +994,35 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
         if col is not None:
             mask &= ~index["has"][:, col]
     mask &= index["has"][:, cols].any(axis=1)
-    picked = _rank(index, mask, score, top_k, brand_cap)
+    picked = _rank(index, mask, score, top_k, brand_cap, notes)
     picked["stage"] = "RELAXED_OR_NO_THRESHOLD" if picked["rows"] else "NOT_ENOUGH"
     picked["relaxed"] = ["core accord 를 AND 에서 OR 로", "평가자 문턱 해제"]
     picked["context_applied"] = []          # 이 단계는 context 도 함께 풀었다
     return picked
 
 
-def _rank(index, mask, score, top_k, brand_cap):
-    """마스크 안에서 정렬해 상위를 고른다. dict."""
+def _rank(index, mask, score, top_k, brand_cap, notes=None):
+    """마스크 안에서 정렬해 상위를 고른다. dict.
+
+    notes : np.ndarray[bool] | None  사용자가 말한 노트를 가진 향수. **최상위 키**가 된다
+
+    **`notes` 를 주면 N9 의 정렬 규칙이 바뀐다.** 향 조건(strength)보다 노트 보유가
+    앞선다. 사용자가 `미모사` 라고 말했으면 미모사가 든 향수를 먼저 보여 주는 것이
+    맞다는 판단이다 [측정 기록 35번 · DECISIONS.md N9 추기].
+
+        노트 일치   설문 2.00 -> 4.64 · 합성 2.94 -> 4.85  (5개 중)
+        확장 NDCG  +0.010286 [+0.005849, +0.014938] 유의
+        accord    0.643833 -> 0.640468  **조금 내려간다.** 그 대가다
+    """
     idx = np.flatnonzero(mask)
     if idx.size == 0:
         return {"rows": [], "candidate_count": 0, "tie_at_last": 0}
 
-    # 1순위 strength 합 내림차순, 2순위 평가자 수 내림차순(동점 깨기), 3순위 id 오름차순
-    order = np.lexsort((index["pid"][idx], -index["people"][idx], -score[idx]))
+    # 1순위 노트 보유(주어졌을 때), 2순위 strength 합, 3순위 평가자 수, 4순위 id
+    keys = [index["pid"][idx], -index["people"][idx], -score[idx]]
+    if notes is not None:
+        keys.append(-notes[idx].astype(np.int8))
+    order = np.lexsort(tuple(keys))
     idx = idx[order]
 
     sorted_score = score[idx]
