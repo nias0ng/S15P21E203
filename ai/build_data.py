@@ -30,18 +30,26 @@ KEEP_COLUMNS = ["id", "name", "brand", "accords", "people", "rating_avg"]
 # 엔진이 쓰는 것은 "1등이 무엇인가" 뿐이다 [측정 기록 35번].
 SEASON_COLUMNS = ["winter", "spring", "summer", "autumn"]
 DAYPART_COLUMNS = ["day", "night"]
-PERCEIVED_COLUMNS = ["perceived_female", "perceived_female_leaning", "perceived_unisex",
-                     "perceived_male_leaning", "perceived_male"]
+# 성별 투표 5단계 척도 -> 세 방향. **이름으로 묶는다.**
+# 위치로 묶으면 원본 컬럼 순서가 바뀌었을 때 남녀가 조용히 뒤바뀐다 — 예외도 안 난다.
+GENDER_VOTE_GROUPS = {
+    "male": ["perceived_male", "perceived_male_leaning"],
+    "female": ["perceived_female", "perceived_female_leaning"],
+    "unisex": ["perceived_unisex"],
+}
+PERCEIVED_COLUMNS = [c for group in GENDER_VOTE_GROUPS.values() for c in group]
 
 # 성별 투표가 0표인 향수를 메울 값. 공식 `gender` 등급별로 **투표 100표 이상인 향수에서
-# 잰 평균**이다 (남성 · 여성 · 중성 점수). 지어낸 값이 아니다 [측정 기록 35번].
+# 잰 평균**이다. 지어낸 값이 아니다 [측정 기록 35번].
 # 엔진 모집단(people>=10)에서 0표는 1.74% 다.
 GENDER_PRIOR = {
-    "male": (0.824, 0.027, 0.149),
-    "female": (0.020, 0.834, 0.146),
-    "unisex": (0.247, 0.310, 0.442),
+    "male": {"male": 0.824, "female": 0.027, "unisex": 0.149},
+    "female": {"male": 0.020, "female": 0.834, "unisex": 0.146},
+    "unisex": {"male": 0.247, "female": 0.310, "unisex": 0.442},
 }
-GENDER_LEAD_NAMES = ("male", "female", "unisex")
+assert set(GENDER_PRIOR) == set(GENDER_VOTE_GROUPS), "성별 방향 목록이 어긋난다"
+assert all(set(v) == set(GENDER_VOTE_GROUPS) for v in GENDER_PRIOR.values()), \
+    "GENDER_PRIOR 의 방향 이름이 어긋난다"
 
 HERE = Path(__file__).resolve().parent
 DATA_DIR = HERE / "data"
@@ -64,14 +72,18 @@ def _lead(frame: pd.DataFrame, columns: list[str]) -> pd.Series:
 
 
 def _gender_lead(frame: pd.DataFrame) -> pd.Series:
-    """커뮤니티 투표로 본 성별 방향. pd.Series[str] — male / female / unisex.
+    """커뮤니티 투표로 본 성별 방향. pd.Series[str] — `male` · `female|unisex` 등.
 
     frame : DataFrame  `PERCEIVED_COLUMNS` 와 `gender` 를 가진 표
 
     Fragrantica 의 성별 투표는 5단계 척도(여성 - 여성 쪽 - 중성 - 남성 쪽 - 남성)다.
-    세 덩어리로 묶어 비율을 내고 가장 큰 쪽을 싣는다.
+    `GENDER_VOTE_GROUPS` 대로 세 덩어리로 묶어 비율을 내고 가장 큰 쪽을 싣는다.
 
         남성 = (남성 + 남성 쪽) / 전체     여성 = (여성 + 여성 쪽) / 전체     중성 = 중성 / 전체
+
+    **칸을 위치가 아니라 이름으로 고른다.** 예전에는 `votes[:, 4] + votes[:, 3]` 처럼
+    적었는데, 그러면 `PERCEIVED_COLUMNS` 순서가 바뀌었을 때 **남녀가 조용히 뒤바뀐다**
+    — 예외도 안 나고 테스트도 없다 [MR 리뷰 지적].
 
     **공식 `gender` 3값을 쓰지 않는 이유** — 공식 `unisex` 가 후보의 47%인데 그중
     투표로도 중성인 것은 48.7% 뿐이다. 나머지는 남성 쪽이나 여성 쪽으로 기운다
@@ -79,22 +91,27 @@ def _gender_lead(frame: pd.DataFrame) -> pd.Series:
 
     **투표가 0표면 공식 `gender` 등급의 평균으로 메운다.** 엔진 모집단에서 1.74% 다.
     """
+    directions = list(GENDER_VOTE_GROUPS)                  # 칸 순서를 여기서 한 번만 정한다
     votes = frame[PERCEIVED_COLUMNS].fillna(0).to_numpy(dtype=float)
     total = votes.sum(axis=1)
-    score = np.zeros((len(frame), 3), dtype=float)
     voted = total > 0
-    score[voted, 0] = (votes[voted, 4] + votes[voted, 3]) / total[voted]   # 남성
-    score[voted, 1] = (votes[voted, 0] + votes[voted, 1]) / total[voted]   # 여성
-    score[voted, 2] = votes[voted, 2] / total[voted]                        # 중성
+
+    score = np.zeros((len(frame), len(directions)), dtype=float)
+    for i, direction in enumerate(directions):
+        group = frame[GENDER_VOTE_GROUPS[direction]].fillna(0).to_numpy(dtype=float)
+        score[voted, i] = group[voted].sum(axis=1) / total[voted]
 
     official = frame["gender"].fillna("").astype(str).to_numpy()
     for name, prior in GENDER_PRIOR.items():
-        score[(~voted) & (official == name)] = prior
+        score[(~voted) & (official == name)] = [prior[d] for d in directions]
     unknown = (~voted) & ~np.isin(official, list(GENDER_PRIOR))
     if unknown.any():                 # 공식 등급도 없고 투표도 없으면 어느 쪽도 아니다
         score[unknown] = 0.0
-    lead = np.array(GENDER_LEAD_NAMES)[score.argmax(axis=1)]
-    lead[unknown] = ""
+    # **동점이면 둘 다 싣는다** (`male|unisex`). 계절·낮밤과 같은 방식이다.
+    # `argmax` 로 하나만 고르면 **딕셔너리 순서가 승자를 정한다** — 투표가 있는
+    # 향수의 3.83% 가 동점이라 적지 않다 [MR 리뷰 지적].
+    top = (score == score.max(axis=1, keepdims=True)) & ~unknown[:, None]
+    lead = ["|".join(d for i, d in enumerate(directions) if row[i]) for row in top]
     return pd.Series(lead, index=frame.index)
 
 
