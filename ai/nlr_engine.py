@@ -438,7 +438,11 @@ def _unmatched(index, structured, haystack, evidence):
     """
     if not structured:
         return []
+    # **대표(`from`)만 보면 안 된다.** 대표는 haystack 전체에서 고른 화면용이라
+    # 이 표현 안에는 없을 수 있다. 같은 항목이 걸린 표면형 전부를 본다.
     matched = {e["from"] for e in evidence if e.get("from")}
+    for item in evidence:
+        matched |= set(item.get("matched_forms") or ())
     out = []
     for raw in (structured.get("additional_requirements") or []):
         expression = unicodedata.normalize("NFC", str(raw)).strip()
@@ -486,14 +490,39 @@ def _classify_unmatch(index, expression, haystack):
 
 
 def _lexicon_lookup(index, haystack):
-    """사전에서 표현을 찾아 core accord 와 근거를 낸다. (set, list)."""
-    hit = set()
+    """사전에서 표현을 찾아 core accord 와 근거를 낸다. (set, list).
+
+    **`evidence["from"]` 은 사용자가 쓴 표면형이다.** 사전 항목의 대표 이름이 아니다 —
+    계약 문서(`docs/nlr_api_contract.md` `matched[].from`)가 *"사용자가 쓴 표현"* 으로
+    정의했고 프론트가 그것을 `phrase` 에 그대로 쓴다.
+
+        "숲속의 비 맞은 진흙"   표면형 `숲` 이 걸린다. 그 항목의 대표 이름은 `나무` 다
+                             항목 이름을 내보내면 화면에 *"'나무' 때문에 추천"* 이 뜬다
+
+    **한 항목에 표면형이 여럿 걸리면 가장 긴 것을 쓴다.** 사용자가 쓴 말 중 가장 구체적인
+    것이 남는다 — `화이트 머스크` 와 `머스크` 가 함께 걸리면 앞의 것이다. 같은 길이면
+    원문에 먼저 나온 것이다.
+    """
+    # 항목 -> (대표 표면형, 순위, 걸린 표면형 전부)
+    #
+    # **대표는 화면용이고 `forms` 는 미매칭 판정용이다.** 대표 하나만 남기면
+    # `_unmatched()` 가 "이 표현 안에서 사전이 뭔가 잡았나" 를 잘못 본다 —
+    # haystack 전체에서 고른 대표가 그 표현 안에는 없을 수 있다.
+    hit = {}
     for form, expressions in index["lexicon_surface"].items():
-        if form and form in haystack:
-            hit |= expressions
+        if not form or form not in haystack:
+            continue
+        rank = (-len(form), haystack.find(form))     # 긴 것 · 같으면 먼저 나온 것
+        for expression in expressions:
+            best, prev, forms = hit.get(expression, (None, None, set()))
+            forms.add(form)
+            if best is None or rank < prev:
+                best, prev = form, rank
+            hit[expression] = (best, prev, forms)
 
     core, evidence = set(), []
     for expression in sorted(hit):
+        form, _, forms = hit[expression]
         for row in index["lexicon_by_expression"].get(expression, []):
             condition = row["match_condition"]
             if condition.startswith("query_contains:"):
@@ -507,7 +536,10 @@ def _lexicon_lookup(index, haystack):
                 continue
             core.add(accord)
             evidence.append({
-                "from": expression,
+                "from": form,
+                # 같은 항목을 걸리게 한 표면형 전부. `_unmatched()` 만 쓴다.
+                # **응답에 나가지 않는다** — `server.py` 가 계약에 있는 칸만 고른다
+                "matched_forms": sorted(forms),
                 "accord": accord,
                 "tier": row["evidence_tier"],
                 "entry_id": row["entry_id"],

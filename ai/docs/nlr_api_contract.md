@@ -275,7 +275,7 @@ POST /nlr/recommend   { "text": "...", "structured": <위의 structured 그대�
 | `results[].people` · `rating` | 평가자 수와 평점. **평점으로 정렬하지 마십시오** — `search_rules.md` 참고 |
 | `matched[].accord` | 향 특성 영어 이름. **사용자에게 노출하지 않는다** |
 | `matched[].strength` | 0~100. 정렬에 쓴 값 |
-| `matched[].from` | 사용자가 쓴 표현. 이걸 `phrase` 에 쓴다 |
+| `matched[].from` | 사용자가 쓴 표현. 이걸 `phrase` 에 쓴다. **사전 항목의 대표 이름이 아니라 실제로 걸린 표면형이다** — `세탁` 이라고 쓰면 `세탁` 이 온다(항목 이름은 `빨래`). 한 항목에 표면형이 여럿 걸리면 **가장 긴 것**이다 — `화이트 머스크` 와 `머스크` 가 함께 걸리면 앞의 것 |
 | `matched[].tier` | `VERIFIED`/`TEAM`/`LLM`. **내부 기록이라 사용자에게 노출하지 않는다** |
 | `matched[].rationale` | 사람이 쓴 근거 문장. **`tier` 가 `LLM` 이면 `null` 이다** (원칙 ②) |
 | `unmatched` | 사전이 받지 못한 표현. **화면에 쓰지 않는다.** 백엔드가 `nlr_unmatched_expressions` 에 남긴다 — 아래 표 |
