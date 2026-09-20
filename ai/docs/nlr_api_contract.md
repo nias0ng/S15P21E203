@@ -116,6 +116,17 @@ Content-Type: application/json
 > **`NO_CONDITION` 일 때 인기 향수를 대신 보여주면 안 된다.** 추천처럼 보이지만 근거가
 > 없다. *"왜 이게 나왔냐"* 에 답할 수 없고 요구사항 NLR-07(추천 이유 제공)을 어긴다.
 >
+> ⚠ **2026-09-21 `S15P21E203-351` — 성별·계절·낮밤·노트만 말한 경우는 여기서 빠진다.**
+> `중성적인 향수 추천해줘` 는 전에 `NO_CONDITION` 이었는데 이제 `stage=CONTEXT_ONLY` ·
+> `status=OK_RELAXED` 로 5건을 낸다. *"중성적인 향수 중에서 평가가 많은 순"* 이라고
+> **근거를 댈 수 있어** 위 금지에 안 걸린다. 근거는 `matchedData` 로 온다.
+> 조건이 하나도 없으면 여전히 `NO_CONDITION` 이고 `results` 는 `[]` 다.
+>
+> ⚠ **`CONTEXT_ONLY` 일 때는 `unmatched` 를 반드시 함께 보여 주십시오.** 이 경로는 향
+> 표현을 못 알아들었을 때만 도는 것이라 **실측상 100%(합성 20/20)가 못 알아들은 표현을
+> 갖는다.** `귀엽고 여성스러운 디저트 같은 향` 에 `여성적인` 하나로 고른 결과를 이유
+> 없이 보여주면 사용자가 말한 것을 무시한 것처럼 보인다.
+>
 > 발생 빈도는 **합성 평가셋 600건에서 22.3%, 실사용자 설문 155건에서 48.4%** 다.
 > 예외가 아니라 정상 경로로 다뤄야 한다.
 
@@ -240,6 +251,10 @@ POST /nlr/recommend   { "text": "...", "structured": <위의 structured 그대�
     "matchedExpressions": ["빨래"],
     "source": "lexicon_only"
   },
+  "matchedData": [
+    { "field": "gender", "value": "unisex", "label": "중성적인", "from": null, "tier": "DATA" },
+    { "field": "note", "value": "mimosa", "label": "미모사", "from": "미모사", "tier": "DATA" }
+  ],
   "results": [
     {
       "fragranticaId": 73368,
@@ -278,8 +293,14 @@ POST /nlr/recommend   { "text": "...", "structured": <위의 structured 그대�
 | `matched[].from` | 사용자가 쓴 표현. 이걸 `phrase` 에 쓴다. **사전 항목의 대표 이름이 아니라 실제로 걸린 표면형이다** — `세탁` 이라고 쓰면 `세탁` 이 온다(항목 이름은 `빨래`). 한 항목에 표면형이 여럿 걸리면 **가장 긴 것**이다 — `화이트 머스크` 와 `머스크` 가 함께 걸리면 앞의 것 |
 | `matched[].tier` | `VERIFIED`/`TEAM`/`LLM`. **내부 기록이라 사용자에게 노출하지 않는다** |
 | `matched[].rationale` | 사람이 쓴 근거 문장. **`tier` 가 `LLM` 이면 `null` 이다** (원칙 ②) |
+| `matchedData` | **accord 가 아닌 근거.** 성별·계절·낮밤·노트로 후보를 좁혔을 때 그 조건이 들어온다. `matched` 와 달리 **최상위에 한 번만** 온다 — 추천 5개에 똑같이 적용되기 때문이다. 조건을 안 걸었으면 `[]` |
+| `matchedData[].field` | `gender` / `season` / `daypart` / `note` |
+| `matchedData[].value` | 데이터 쪽 값. `unisex` · `summer` · `night` · `mimosa`. **사용자에게 노출하지 않는다** |
+| `matchedData[].label` | **사용자에게 보여줄 한국어.** `중성적인` · `여름에 어울리는` · `밤에 어울리는`. 노트는 사용자가 쓴 말 그대로다 |
+| `matchedData[].from` | 노트만 채운다. 성별·계절·낮밤은 ①단계가 값만 주고 원문의 어느 글자에서 왔는지는 안 줘서 `null` 이다 |
+| `matchedData[].tier` | 항상 `DATA`. Fragrantica 사용자 투표에서 직접 온 값이라 `VERIFIED`/`TEAM`/`LLM` 어디에도 안 맞는다 |
 | `unmatched` | 사전이 받지 못한 표현. **화면에 쓰지 않는다.** 백엔드가 `nlr_unmatched_expressions` 에 남긴다 — 아래 표 |
-| `diagnostics.stage` | `AND` / **`SINGLE_BROAD`** / `RELAXED_OR` / `RELAXED_OR_NO_THRESHOLD` / `NO_CONDITION` |
+| `diagnostics.stage` | `AND` / **`SINGLE_BROAD`** / **`CONTEXT_ONLY`** / `RELAXED_OR` / `RELAXED_OR_NO_THRESHOLD` / `NO_CONDITION` |
 | `diagnostics` | 문제를 볼 때 쓴다. 응답에 그대로 넘기지 않는다 |
 
 #### `unmatched[]` 의 칸

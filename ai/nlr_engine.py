@@ -68,6 +68,18 @@ CONTEXT_FIELDS = {
     "daypart": ("daypart_lead", {s: s for s in ("day", "night")}),
 }
 
+# 화면에 보여줄 한국어 표기. **값 9개가 전부다** [측정 기록 38번 · S15P21E203-351].
+# ①단계는 `context.gender: ["neuter"]` 처럼 값만 주고 원문의 어느 글자에서 왔는지는
+# 안 준다. ①단계 프롬프트에 표면형까지 내게 하면 출력 전체가 흔들려 회귀 측정이 필요해서
+# (17번 · 같은 프롬프트 재호출만으로 NDCG 가 0.06 움직였다) **고정 표로 둔다.**
+# 키는 데이터 쪽 값이다 — `CONTEXT_FIELDS` 가 `neuter` 를 `unisex` 로 옮긴 뒤의 값.
+CONTEXT_LABELS = {
+    "gender": {"male": "남성적인", "female": "여성적인", "unisex": "중성적인"},
+    "season": {"spring": "봄에 어울리는", "summer": "여름에 어울리는",
+               "autumn": "가을에 어울리는", "winter": "겨울에 어울리는"},
+    "daypart": {"day": "낮에 어울리는", "night": "밤에 어울리는"},
+}
+
 # 조건을 걸어 후보가 이 수 밑으로 떨어지면 **그 조건을 포기한다.**
 # 완화 사다리(MIN_RESULTS)와 같은 정신이다 — 조건을 지키느라 빈손을 주지 않는다.
 CONTEXT_MIN = 3
@@ -859,32 +871,50 @@ def note_rows(index, structured):
     말한 노트가 없거나 `notes` 칸이 없으면 `None` 이다 — 부른 쪽이 정렬을 안 바꾼다.
     """
     where = index.get("notes")
-    if not where or not structured:
+    if not where:
         return None
-    bridge = index.get("note_bridge") or {}
-    wanted = set()
-    for field in ("additional_requirements", "scent_preference"):
-        for raw in (structured.get(field) or []):
-            text = re.sub(r"\s+", " ", str(raw).strip().lower())
-            for alias in _longest_alias_ko(index, text):
-                wanted.add(alias)
-            # 영어 노트 이름이 직접 온 경우. **accord 이름은 뺀다** —
-            # 그건 `understand()` 가 core 로 넣어 strength 가 이미 정렬한다.
-            # 노트 키로 또 걸면 같은 조건이 두 번 순위를 흔든다.
-            if text in bridge and not _normalize_accord(index, text):
-                wanted.add(text)
-    if not wanted:
+    spoken = note_spoken(index, structured)
+    if not spoken:
         return None
-    # **한국어 별칭은 영어 이름으로 바꿔야 카탈로그와 견줄 수 있다.**
-    # 한글을 그대로 두면 아무 노트와도 안 맞고, 영어 이름을 set 에 `update` 로 넣으면
-    # 문자열이 글자 단위로 쪼개져 `m` 이 거의 모든 노트에 걸린다.
-    alias_target = index.get("note_alias_target") or {}
-    targets = {alias_target.get(name, name) for name in wanted}
+    targets = set(spoken.values())
     hit = np.zeros(index["n_perfumes"], dtype=bool)
     for note, rows in where.items():          # 어휘 2,519종만 훑는다
         if any(t in note for t in targets):
             hit[rows] = True
     return hit if hit.any() else None
+
+
+def note_spoken(index, structured):
+    """사용자가 말한 노트. dict[사용자가 쓴 말, 카탈로그 이름].
+
+    index      : dict         load_index() 결과
+    structured : dict | None  ①단계 구조화 결과
+
+        "무화과 향이 나는 여성스러운향"  ->  {"무화과": "fig"}
+
+    **키가 사용자가 쓴 말이라 화면에 그대로 쓸 수 있다.** 성별·계절과 달리 노트는
+    문장에서 별칭을 찾아 쓰므로 `from` 을 채울 수 있다 [측정 기록 38번].
+
+    **한국어 별칭은 영어 이름으로 바꿔야 카탈로그와 견줄 수 있다.** 한글을 그대로 두면
+    아무 노트와도 안 맞고, 영어 이름을 set 에 `update` 로 넣으면 문자열이 글자 단위로
+    쪼개져 `m` 이 거의 모든 노트에 걸린다.
+    """
+    if not structured:
+        return {}
+    bridge = index.get("note_bridge") or {}
+    alias_target = index.get("note_alias_target") or {}
+    spoken = {}
+    for field in ("additional_requirements", "scent_preference"):
+        for raw in (structured.get(field) or []):
+            text = re.sub(r"\s+", " ", str(raw).strip().lower())
+            for alias in _longest_alias_ko(index, text):
+                spoken[alias] = alias_target.get(alias, alias)
+            # 영어 노트 이름이 직접 온 경우. **accord 이름은 뺀다** —
+            # 그건 `understand()` 가 core 로 넣어 strength 가 이미 정렬한다.
+            # 노트 키로 또 걸면 같은 조건이 두 번 순위를 흔든다.
+            if text in bridge and not _normalize_accord(index, text):
+                spoken[text] = alias_target.get(text, text)
+    return spoken
 
 
 def context_mask(index, structured, base):
@@ -899,8 +929,10 @@ def context_mask(index, structured, base):
     **한 칸씩 걸고, 후보가 `CONTEXT_MIN` 밑으로 떨어지면 그 칸은 포기한다.**
     조건을 다 지키느라 빈손을 주는 것보다 낫다 — 완화 사다리와 같은 판단이다.
 
-    두 번째 반환값은 **실제로 걸린 칸 이름**이다. 포기한 칸은 안 들어간다.
-    `search()` 가 말한 노트로 한 번 더 좁히면 거기에 `"note"` 를 더한다 (38번).
+    두 번째 반환값은 **실제로 걸린 조건**이다 — `{"field", "values"}` 목록이고 포기한
+    칸은 안 들어간다. 값까지 주는 것은 `recommend()` 가 추천 이유(`matched_data`)를
+    만들기 때문이다. `search()` 가 말한 노트로 한 번 더 좁히면 거기에 `field="note"` 를
+    더한다 [측정 기록 38번 · S15P21E203-351].
 
     **①단계 출력이 스키마를 어겨도 죽지 않는다.** 실측상 98% 만 지킨다 [측정 기록 14번].
     어긴 것은 **경고를 남긴다** — 조용히 무시하면 "왜 여름 조건이 안 걸리지" 를 로그로도
@@ -932,7 +964,7 @@ def context_mask(index, structured, base):
         narrowed = base & want
         if narrowed.sum() >= CONTEXT_MIN:
             base = narrowed
-            applied.append(field)
+            applied.append({"field": field, "values": sorted(values)})
     return base, applied
 
 
@@ -978,8 +1010,16 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
     """
     cols = [index["aidx"][a] for a in core if a in index["aidx"]]
     if not cols:
-        return {"rows": [], "stage": "NO_CONDITION", "candidate_count": 0,
-                "tie_at_last": 0, "relaxed": [], "context_applied": []}
+        # 향 조건이 없어도 **성별·계절·낮밤·노트가 있으면 그것으로 고른다**
+        # [측정 기록 38번 · S15P21E203-351]. 전에는 여기서 바로 `NO_CONDITION` 이라
+        # `중성적인 향수 추천해줘` · `여름 향수 추천해줘` 가 빈손으로 돌아갔다 —
+        # 데이터도 로직도 있는데 **`context_mask()` 가 이 아래 줄이라 도달을 못 했다.**
+        # 실사용 설문에서 성별·계절·낮밤을 말한 52문장 중 19문장(37%)이 이 경우다.
+        #
+        # 계약서가 막은 것은 **근거 없는** 인기 향수다. `중성적인 향수 중에서 평가가
+        # 많은 순` 은 근거를 댈 수 있으므로 그 금지에 안 걸린다. 근거는 `matched_data`
+        # 로 내보낸다.
+        return _context_only(index, avoid, top_k, people_min, brand_cap, structured)
 
     # 부른 쪽이 원한 개수보다 많이 요구할 수는 없다. top_k=2 인데 min_results 가 3이면
     # AND 가 2개를 다 찾아도 부족으로 보고 완화 사다리를 타 버린다.
@@ -1013,11 +1053,7 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
     # accord NDCG 는 -0.000322 [-0.002568, +0.002050] 로 **손해가 없다** — 좋아지는
     # 것이 아니라 안 잃는 것이다. 쿼리가 말한 노트를 정답 향수가 실제로 갖는 비율이
     # 65.4% 라(35번) 좁히면 정답이 빠지는 경우가 있고, 그것이 오름 5 · 내림 9 로 상쇄됐다.
-    if notes is not None:
-        narrowed = base & notes
-        if narrowed.sum() >= CONTEXT_MIN:
-            base = narrowed
-            context_applied = list(context_applied) + ["note"]
+    base, context_applied = _note_mask(index, structured, base, context_applied, notes)
 
     score = index["strength"][:, cols].sum(axis=1)
 
@@ -1072,6 +1108,57 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
     picked["relaxed"] = ["core accord 를 AND 에서 OR 로", "평가자 문턱 해제"]
     picked["context_applied"] = []          # 이 단계는 context 도 함께 풀었다
     return picked
+
+
+def _context_only(index, avoid, top_k, people_min, brand_cap, structured):
+    """향 조건이 없을 때 성별·계절·낮밤·노트로만 고른다. dict.
+
+    걸린 조건이 하나도 없으면 `NO_CONDITION` 이다 — **아무 조건 없이 인기순을 내지
+    않는다.** `nlr_api_contract.md` 가 막은 것이 그것이다.
+
+    `score` 가 전부 0이라 `_rank` 의 2순위(strength 합)가 놀고 **3순위인 평가자 수가
+    순서를 정한다.** 향 조건이 없으니 향으로 줄 세울 수가 없다 — 이 단계가
+    `OK_RELAXED` 로 나가고 `relaxed` 에 이유를 적는 이유다.
+    """
+    base = index["people"] >= people_min
+    for accord in avoid:
+        col = index["aidx"].get(accord)
+        if col is not None:
+            base &= ~index["has"][:, col]
+    base, applied = context_mask(index, structured, base)
+    notes = note_rows(index, structured)
+    base, applied = _note_mask(index, structured, base, applied, notes)
+    if not applied:
+        return {"rows": [], "stage": "NO_CONDITION", "candidate_count": 0,
+                "tie_at_last": 0, "relaxed": [], "context_applied": []}
+    score = np.zeros(index["n_perfumes"], dtype=index["strength"].dtype)
+    picked = _rank(index, base, score, top_k, brand_cap, notes)
+    picked["stage"] = "CONTEXT_ONLY"
+    picked["relaxed"] = ["향 조건이 없어 성별·계절·낮밤·노트로만 골랐다"]
+    picked["context_applied"] = applied
+    return picked
+
+
+def _note_mask(index, structured, base, applied, notes):
+    """말한 노트로 후보를 한 번 더 좁힌다. (np.ndarray[bool], list[dict]).
+
+    notes : np.ndarray[bool] | None  `note_rows()` 결과. 없으면 아무것도 안 한다
+
+    `context_mask` 와 **같은 되돌리기**를 쓴다 — 좁혀서 후보가 `CONTEXT_MIN` 밑으로
+    떨어지면 포기한다. 측정에서 포기는 0건이었지만(설문 30 · 합성 280 전부 통과)
+    희귀한 노트를 말하는 입력을 막지 않는다 [측정 기록 38번].
+    """
+    if notes is None:
+        return base, applied
+    narrowed = base & notes
+    if narrowed.sum() < CONTEXT_MIN:
+        return base, applied
+    spoken = note_spoken(index, structured)
+    return narrowed, list(applied) + [{
+        "field": "note",
+        "values": sorted(set(spoken.values())),
+        "spoken": sorted(spoken),
+    }]
 
 
 def _rank(index, mask, score, top_k, brand_cap, notes=None):
@@ -1302,6 +1389,8 @@ def recommend(index, text, structured=None, top_k=TOP_K, estimator=None):
             "avoid_confirmed": understood["avoid"],
         })
 
+    matched_data = _matched_data(found["context_applied"])
+
     if found["stage"] == "NO_CONDITION":
         status = "NO_CONDITION"
     elif len(results) == 0:
@@ -1314,6 +1403,7 @@ def recommend(index, text, structured=None, top_k=TOP_K, estimator=None):
     return {
         "status": status,
         "query": text,
+        "matched_data": matched_data,
         "conditions": {
             "core": understood["core"],
             "avoid": understood["avoid"],
@@ -1402,6 +1492,40 @@ def _apply_estimates(index, understood, estimator, raw_text):
     understood["matched_expressions"] = sorted(
         {e["from"] for e in understood["evidence"] if e.get("from")})
     return estimate
+
+
+def _matched_data(context_applied):
+    """걸린 성별·계절·낮밤·노트를 화면에 쓸 근거로 바꾼다. list[dict].
+
+        [{"field": "gender", "value": "unisex", "label": "중성적인", "from": None,
+          "tier": "DATA"}]
+
+    **`matched` 와 나란히 쓰는 두 번째 근거 목록이다** [S15P21E203-351]. `matched` 는
+    accord 근거라 한 글자도 안 바뀐다 — 백엔드는 기존 변환을 그대로 두고 이 목록만 더
+    읽으면 된다.
+
+    **`tier` 가 `DATA` 다.** 지금 셋(`VERIFIED` 사람 검증 · `TEAM` 팀 작성 · `LLM` 추정)
+    중 어디에도 안 맞는다 — 이 값들은 Fragrantica 사용자 투표에서 직접 온 것이다.
+
+    **`from` 은 노트만 채운다.** 노트는 문장에서 별칭을 찾아 쓰므로 사용자가 쓴 말을
+    그대로 적을 수 있다. 성별·계절·낮밤은 ①단계가 값만 주고 원문의 어느 글자에서
+    왔는지는 안 줘서 `None` 이다 (`CONTEXT_LABELS` 주석 참고).
+
+    **추천 5개에 똑같이 적용되므로 결과마다 넣지 않고 최상위에 한 번만 넣는다.**
+    """
+    out = []
+    for item in context_applied:
+        field = item["field"]
+        if field == "note":
+            for spoken, value in zip(item["spoken"], item["values"]):
+                out.append({"field": "note", "value": value, "label": spoken,
+                            "from": spoken, "tier": "DATA"})
+            continue
+        labels = CONTEXT_LABELS.get(field, {})
+        for value in item["values"]:
+            out.append({"field": field, "value": value,
+                        "label": labels.get(value, value), "from": None, "tier": "DATA"})
+    return out
 
 
 def _unmatched_hint(status):
