@@ -116,7 +116,7 @@ export function PostList({
             읽습니다. 후기에만 있습니다 — 자유 게시판 목록에는 본문이 없습니다.
           */}
           {item.content && (
-            <p className="text-ink-muted text-body line-clamp-5 px-0.25 whitespace-pre-wrap">
+            <p className="text-ink-muted text-body line-clamp-5 px-1.25 whitespace-pre-wrap">
               {item.content}
             </p>
           )}
