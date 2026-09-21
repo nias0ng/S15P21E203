@@ -30,7 +30,13 @@ export function RecommendModal({ query, onClose }: Props) {
       open={query !== null}
       onClose={onClose}
       title="추천 결과"
-      className="mt-25 mb-auto w-[min(760px,calc(100vw-40px))]"
+      /*
+        NOTE: 낮은 화면에서만 판이 스스로 굴러갑니다. 1920 에서는 다섯 장이 다 들어가
+        휠이 안 생기고(실측 817px < 955px), 1280×800 처럼 낮은 화면에서는 이 상한이 없으면
+        다섯 번째 카드가 화면 밖으로 잘려 **닿을 길이 없습니다.** 목록 안쪽에 스크롤 상자를
+        두는 것과는 다릅니다 — 그쪽은 결과가 더 있는 것처럼 보이게 합니다.
+      */
+      className="scent-map-panel rounded-glass mt-25 mb-auto max-h-[calc(100vh-125px)] w-[min(560px,calc(100vw-40px))] overflow-y-auto"
     >
       {/* NOTE: `<dialog>` 는 닫혀도 children 이 DOM 에 남아, 그리지 않아야 족자가 다시 풀립니다 */}
       {query !== null && <RecommendBody query={query} />}

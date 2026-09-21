@@ -73,7 +73,7 @@ export function NlrFeedbackModal({ ready }: Props) {
       open={open}
       onClose={close}
       title="추천은 어떠셨나요"
-      className="mt-25 mb-auto w-[min(760px,calc(100vw-40px))]"
+      className="scent-map-panel rounded-glass mt-25 mb-auto max-h-[calc(100vh-125px)] w-[min(560px,calc(100vw-40px))] overflow-y-auto"
     >
       {/*
         `<dialog>` 는 닫혀도 children 이 DOM 에 남습니다. 열림과 **같은 조건**으로 그려야
@@ -157,7 +157,10 @@ function FeedbackForm({
           고맙습니다. 남겨 주신 답은 추천을 넓히는 데만 씁니다.
         </p>
         <div className="mt-5 flex justify-end">
-          <Button variant="secondary" onClick={onSettle}>
+          <Button
+            className="bg-navy border-line text-ink hover:bg-navy/85 border"
+            onClick={onSettle}
+          >
             닫기
           </Button>
         </div>
@@ -211,6 +214,8 @@ function FeedbackForm({
           건너뛰기
         </Button>
         <Button
+          // 판 위의 주 단추는 엔진 카드 단추와 같은 남색입니다 (--pb-card-btn)
+          className="bg-navy border-line text-ink hover:bg-navy/85 border"
           onClick={() => mutation.mutate()}
           disabled={satisfaction === null || tooLong}
           isLoading={mutation.isPending}
