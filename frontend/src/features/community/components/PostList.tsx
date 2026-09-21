@@ -112,6 +112,16 @@ export function PostList({
           </div>
 
           {/*
+            본문 몇 줄. 다섯 줄을 넘기면 잘라 `…` 으로 끝내고, 나머지는 상세에서
+            읽습니다. 후기에만 있습니다 — 자유 게시판 목록에는 본문이 없습니다.
+          */}
+          {item.content && (
+            <p className="text-ink-muted text-body line-clamp-5 whitespace-pre-wrap">
+              {item.content}
+            </p>
+          )}
+
+          {/*
             어느 향수 이야기인지. **누르는 곳이 아니라 표시입니다** — 링크였을 때
             글을 누르려다 밟으면 향수로 샜습니다. 건너가는 길은 글 상세뿐입니다.
           */}

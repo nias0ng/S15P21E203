@@ -157,6 +157,11 @@ export interface BoardItem {
   perfume: LinkedPerfume | null
   /** 자유 글에만 있습니다 */
   category: PostCategory | null
+  /**
+   * 카드에 몇 줄 보여줄 본문. **후기에만 있습니다** — 자유 게시판 목록 응답
+   * (`PostSummaryResponse`)에 본문이 없습니다. 붙으면 여기만 채우면 됩니다.
+   */
+  content: string | null
   likeCount: number
   liked: boolean
   viewCount: number
@@ -173,6 +178,8 @@ export function postToBoardItem(post: PostSummary): BoardItem {
     createdAt: post.createdAt,
     perfume: post.perfume,
     category: post.category,
+    // 자유 게시판 목록 응답에 본문이 없습니다
+    content: null,
     likeCount: post.likeCount,
     liked: post.liked,
     viewCount: post.viewCount,
@@ -193,6 +200,7 @@ export function reviewToBoardItem(review: ReviewBoardItem): BoardItem {
     createdAt: review.createdAt,
     perfume: review.perfume,
     category: null,
+    content: review.content,
     likeCount: review.likeCount,
     liked: review.liked,
     viewCount: review.viewCount,
