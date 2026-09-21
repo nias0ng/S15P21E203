@@ -403,6 +403,16 @@ def recommend(body: RecommendRequest, request: Request):
         "query": out["query"],
         **_version(index),
         "conditions": _camel_conditions(out["conditions"]),
+        # 성별·계절·낮밤·노트로 좁힌 근거. **추천 5개에 똑같이 적용되므로 최상위에
+        # 한 번만 넣는다** [S15P21E203-351]. `matched` 는 accord 근거라 안 바뀐다 —
+        # 백엔드는 기존 변환을 그대로 두고 이 목록만 더 읽으면 된다.
+        "matchedData": [{
+            "field": m["field"],
+            "value": m["value"],
+            "label": m["label"],
+            "from": m["from"],
+            "tier": m["tier"],
+        } for m in out["matched_data"]],
         "results": [{
             "fragranticaId": r["perfume_id"],
             "name": r["name"],
