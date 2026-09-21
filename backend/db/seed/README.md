@@ -9,7 +9,9 @@
 | --- | ---: | :---: | :---: | --- |
 | 향 지도 | 향수 200개 | O | O | `load_scent_map.sql` |
 | 향수 카탈로그 | 향수 129,161개 | O | O | `load_perfume_catalog.sh` |
+| 브랜드 로고 | 로고 5,800개 | O | O | `load_perfume_catalog.sh` |
 | 향수 카탈로그 보충 | 향수 152개 | O | O | `load_perfume_catalog_supplement.sh` |
+| 향수 gender 보강 | 향수 129,113개 | O | O | `load_perfume_genders.sh` |
 | 노트 메타데이터 | 노트 246개 | O | O | `load_notes.sh` |
 | 향수 이미지 | 일반 129,154개·종이 질감 156개 | O | O | `load_perfume_images.sh` |
 | 향수-노트 연결 | 906,133건 | O | O | `load_perfume_notes.sh` |
@@ -36,16 +38,17 @@
 2. 향 지도 데이터를 적재합니다.
 3. 향수 카탈로그를 적재합니다.
 4. 향수 카탈로그 보충 데이터를 적재합니다.
-5. 노트 메타데이터를 적재합니다.
-6. 향수 이미지 메타데이터를 적재합니다.
-7. 향수-노트 연결을 적재합니다.
+5. 향수 gender 보강 데이터를 적재합니다.
+6. 노트 메타데이터를 적재합니다.
+7. 향수 이미지 메타데이터를 적재합니다.
+8. 향수-노트 연결을 적재합니다.
 
 각 적재 스크립트는 재실행할 수 있고 자체 트랜잭션으로 처리됩니다. 환경별로 달라지는
 `perfume_id` 대신 `fragrantica_id`로 향수를 연결합니다.
 
 ### 로컬 기준 데이터 빠른 실행
 
-프로젝트 루트에서 다음 명령을 실행하면 향 지도·카탈로그·카탈로그 보충·노트·향수 이미지·
+프로젝트 루트에서 다음 명령을 실행하면 향 지도·카탈로그·카탈로그 보충·gender·노트·향수 이미지·
 향수-노트 연결을 순서대로 적재합니다.
 
 ```powershell
@@ -111,9 +114,60 @@ SELECT (SELECT count(*) FROM brands)          AS brands,          -- 7,793 이�
        (SELECT count(*) FROM accords)         AS accords,         -- 92
        (SELECT count(*) FROM perfumes)        AS perfumes,        -- 129,161 이상
        (SELECT count(*) FROM perfume_accords) AS perfume_accords; -- 1,000,570
+
+SELECT count(*) FILTER (WHERE NULLIF(btrim(gender), '') IS NULL) AS missing_gender,
+       count(*) FILTER (WHERE upper(btrim(gender)) = 'FEMALE') AS female,
+       count(*) FILTER (WHERE upper(btrim(gender)) = 'MALE') AS male,
+       count(*) FILTER (WHERE upper(btrim(gender)) = 'UNISEX') AS unisex
+FROM perfumes;
+-- gender 보강 후 missing_gender = 0
 ```
 
 한국어 향수명은 `perfume_ko.csv`, 브랜드 한국어명과 로고는 `brands_ko.csv`를 기준으로 갱신합니다.
+
+## 향수 gender 보강
+
+`perfume_genders.csv.gz`는 `fragrantica_id`, 원래 향수명, 브랜드명, `gender`를 담은 보강 원본입니다.
+주 카탈로그의 향 지도 200개를 제외한 128,961개와 보충 카탈로그 152개를 합쳐 129,113개를
+포함합니다. `load_perfume_genders.sh`는 카탈로그와 보충 카탈로그를 먼저 적재한 뒤 실행해야 합니다.
+
+성별 값은 `FEMALE`, `MALE`, `UNISEX`로 정규화합니다. ID·이름·브랜드가 맞지 않거나 기존 값과
+충돌하면 아무 행도 커밋하지 않고 중단하며, 빈 `gender`만 채웁니다. 따라서 재실행해도 안전합니다.
+
+```bash
+cd backend/db/seed
+./load_perfume_genders.sh
+```
+
+## 브랜드 로고
+
+브랜드 로고는 S3의 `brands/{slug}.png`에 저장하고 CloudFront로 제공합니다. 로컬 원본 5,803개 중
+시드 URL로 사용하는 5,800개만 올립니다. `brand.png`, `kann.png`는 대응 브랜드가 없고,
+`louis-phillippe-monaco.png`는 `Louis`의 정식 매핑 파일인 `louis.png`와 내용이 완전히 같은
+중복 파일이므로 업로드와 시드에서 제외합니다. 실제 `Louis Philippe Monaco`는 철자가 다른
+`louis-philippe-monaco.png`를 사용합니다.
+
+```text
+S3 키: brands/chanel.png
+URL:    https://djpgc0m2v54q1.cloudfront.net/brands/chanel.png
+```
+
+로고 원본이 바뀌면 `generate_brand_logo_overrides.py`로 `brands_ko.csv`의 `logo_override`를 다시
+만듭니다. 파일명 충돌은 CSV 순서에 따라 기본 슬러그와 `-2` 슬러그로 나누며, 생성기는 기대 개수와
+미매칭 파일을 검증한 뒤에만 CSV를 교체합니다.
+
+```bash
+python generate_brand_logo_overrides.py /path/to/brand_logos
+```
+
+S3 업로드를 마친 뒤 향수 카탈로그 시드를 실행하면 기존 외부 로고 주소보다 CloudFront 주소가 우선
+반영됩니다. 확인 쿼리는 다음과 같습니다.
+
+```sql
+SELECT count(*) AS cloudfront_brand_logos
+FROM brands
+WHERE logo_url LIKE 'https://djpgc0m2v54q1.cloudfront.net/brands/%.png';
+```
 
 # 향수 카탈로그 보충 데이터 적재
 
