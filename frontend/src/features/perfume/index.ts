@@ -11,7 +11,6 @@ export { PerfumeNotes } from './components/PerfumeNotes'
 export { PerfumeOverview } from './components/PerfumeOverview'
 export { PerfumeReviewList } from './components/PerfumeReviewList'
 export { PerfumeReviewSummary } from './components/PerfumeReviewSummary'
-export { PerfumeSearchResult } from './components/PerfumeSearchResult'
 export { PerfumeSeasonRatings } from './components/PerfumeSeasonRatings'
 export { PerfumeReviewDetail } from './components/PerfumeReviewDetail'
 export {
@@ -36,6 +35,8 @@ export {
   updateReview,
 } from './api'
 export {
+  readGenderFilter,
+  readRankingFilter,
   REVIEW_CONTENT_MAX_LENGTH,
   REVIEW_CONTENT_MIN_LENGTH,
   REVIEW_TITLE_MAX_LENGTH,

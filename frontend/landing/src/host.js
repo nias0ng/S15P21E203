@@ -9,6 +9,8 @@
 //   [주변 향 탐색] → exploreSimilar(ref)  **엔진이 먼저 한다** — 카드의 향을 새 중심으로 12개를 다시 띄운다 (A03 의 "누르면 그 향이 새 중심").
 //                                         앱은 알림만 받는다. neighbors 를 같이 준다 — 백엔드 /perfumes/{id}/neighbors 와 같은 목록이다
 //   검색창        → search(query)        앱 : navigate('/recommend?q=…') — A06 자연어 추천 (hostSearch). 호스트가 search 를 안 주면 예전처럼 해역으로 떠난다
+//   배를 누름      → openCabin() · closeCabin()  앱 : 배 옆의 **작은 말풍선** (진열대 · 컬렉션, 2026-09-21 · hostCabin). 인자가 없다 — 배는 한 척이라 가릴 일이 없다
+//                                         ⚠ 입력을 안 잠근다 — 말풍선은 아무 데나 누르면 닫히고, 그 누름을 엔진이 받아 closeCabin 으로 알린다
 //
 // ⚠ 향수 id : 엔진의 `id` 는 fragrantica_id 다. 앱의 경로는 DB 의 perfumeId 라 **호스트가 바꾼다**.
 //   데이터를 주입할 때 항목에 perfumeId 를 실어 주면 ref.perfumeId 로 같이 간다 (지금 perfumes-data.js 에는 없다 — null)
@@ -17,7 +19,7 @@
 let handlers = null;
 let notice = null;   // 단독일 때 알릴 곳 — main.js 가 ui.warn 을 넘긴다
 
-/** 호스트가 붙을 때 부른다. h = { openDetail, saveToShelf, exploreSimilar, search, moveBoat } — 없는 것은 기본 동작. null 이면 단독으로 돌아간다 */
+/** 호스트가 붙을 때 부른다. h = { openDetail, saveToShelf, exploreSimilar, search, moveBoat, openCabin, closeCabin } — 없는 것은 기본 동작. null 이면 단독으로 돌아간다 */
 export function setHost(h) { handlers = h || null; }
 export function setHostNotice(fn) { notice = typeof fn === 'function' ? fn : null; }
 
@@ -72,6 +74,25 @@ export function hostMove(move) {
   if (typeof fn !== 'function' || !move) return false;
   fn(move);
   return true;
+}
+
+// ───────── 선실 (2026-09-21, v0.79.0) — 배 옆에 뜨는 작은 말풍선 ─────────
+// 앱 : 배 옆구리에 꼬리를 댄 **작은 말풍선** (`features/map/components/CabinBubble`) — 줄은 둘뿐이다,
+//   진열대 · 컬렉션. 자리는 앱이 `PB.boat.screen` 을 매 프레임 읽어 잡는다 (배를 따라다닌다).
+// ⚠⚠ **인자가 없다.** 배는 한 척이라 어느 배인지 가릴 일이 없다 — 그래서 `perfumeRef` 를 타는
+//   `callHost` 가 아니라 `hostSearch` 처럼 제 문을 쓴다 (`callHost` 는 ref 가 없으면 아무 일도 안 한다).
+// ⚠⚠ **여닫이 둘 다 이 문으로 간다** (`open` true/false). 말풍선은 팝오버라 **아무 데나 누르면 닫히는데**,
+//   그 누름을 받는 것은 엔진(`onPick`)이라 닫아 달라고 말할 길이 필요하다.
+// ⚠ 여는 쪽은 **앱이 돌려준 Promise 를 그대로 되돌린다** — main.js 가 그걸로 '말풍선이 떠 있다' 를 센다.
+// ⚠ **입력을 안 잠근다** ([진열대에 저장]과 다른 점). 판이 아니라 말풍선이라 뒤의 바다가 살아 있어야 하고,
+//   어차피 포커스가 앱으로 넘어가 엔진의 키 처리기는 안 불린다. 누름은 위 규약대로 '닫기' 로 쓰인다.
+export function hostCabin(open) {
+  const fn = handlers && (open ? handlers.openCabin : handlers.closeCabin);
+  if (typeof fn === 'function') return fn();
+  if (!open) return undefined;   // 단독일 때는 뜬 것이 없으니 닫을 것도 없다
+  console.info('[paperboat] 선실 → 앱에서는 진열대 · 컬렉션으로 가는 작은 말풍선 (A13)');
+  if (notice) notice('선실', '앱에 붙으면 배 옆에 진열대 · 컬렉션 말풍선이 뜹니다');
+  return undefined;
 }
 
 /** 검색창 (main.js onSearch). 호스트가 search 를 주면 검색어를 넘기고 true — 엔진은 해역으로 떠나지 않는다. 없으면 false — 예전 그대로 엔진이 찾는다 (goSearch) */

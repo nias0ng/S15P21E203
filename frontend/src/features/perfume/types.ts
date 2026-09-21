@@ -115,6 +115,27 @@ export const GENDER_FILTERS = [
 ] as const satisfies readonly { value: GenderFilter; label: string }[]
 
 /**
+ * 주소(`?ranking=` · `?gender=`)에서 읽은 필터 값을 걸러냅니다
+ * (S15P21E203-362 로 필터가 URL 로 옮겨 왔습니다).
+ *
+ * 주소는 사람이 고쳐 쓸 수 있고 남이 보낸 링크로도 들어옵니다. **모르는 값은 "안
+ * 걸림"(`null`) 으로 봅니다** — 그대로 API 에 실으면 400 이라 화면이 통째로 빕니다.
+ * 표에 있는 값만 통과시키므로 라벨을 늘리면 받는 값도 같이 늘어납니다.
+ */
+function readFilter<T extends string>(
+  value: string | null,
+  options: readonly { value: T }[],
+): T | null {
+  return options.some((option) => option.value === value) ? (value as T) : null
+}
+
+export const readRankingFilter = (value: string | null): RankingFilter | null =>
+  readFilter(value, RANKING_FILTERS)
+
+export const readGenderFilter = (value: string | null): GenderFilter | null =>
+  readFilter(value, GENDER_FILTERS)
+
+/**
  * 영문 줄에 적는 성별. ⚠️ **표에 없는 값이면 아무것도 안 적습니다** — 타입은
  * `GenderFilter` 지만 백엔드 컬럼이 제약 없는 `VARCHAR(30)` 입니다.
  */

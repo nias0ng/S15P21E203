@@ -25,6 +25,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.BeanUtils;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -88,6 +89,23 @@ class MemoServiceTest {
                 ShelfErrorCode.SHELF_MEMO_ALREADY_EXISTS
         );
         verify(memoRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void translatesConcurrentDuplicateInsert() {
+        UserPerfume shelfItem = BeanUtils.instantiateClass(UserPerfume.class);
+        when(currentUser.id()).thenReturn(Optional.of(USER_ID));
+        when(userPerfumeRepository.findByIdAndUserIdForUpdate(SHELF_ITEM_ID, USER_ID))
+                .thenReturn(Optional.of(shelfItem));
+        when(memoRepository.findByUserPerfumeId(SHELF_ITEM_ID))
+                .thenReturn(Optional.empty());
+        when(memoRepository.saveAndFlush(any(Memo.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate"));
+
+        assertBusinessError(
+                () -> memoService.create(SHELF_ITEM_ID, "동시에 작성한 메모"),
+                ShelfErrorCode.SHELF_MEMO_ALREADY_EXISTS
+        );
     }
 
     @Test

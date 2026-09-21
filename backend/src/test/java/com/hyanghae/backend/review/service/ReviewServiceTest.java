@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
@@ -116,6 +117,31 @@ class ReviewServiceTest {
                                 ReviewErrorCode.REVIEW_ALREADY_EXISTS
                         ));
         verify(perfumeReviewRepository, never()).saveAndFlush(any(PerfumeReview.class));
+    }
+
+    @Test
+    void translatesConcurrentDuplicateInsert() {
+        ReviewCreateRequest request = new ReviewCreateRequest(
+                "제목",
+                "열 글자가 넘는 후기 내용입니다.",
+                List.of("SPRING")
+        );
+        Season spring = season(1L, "SPRING");
+        when(seasonRepository.findAllByCodeInAndActiveTrue(request.seasonCodes()))
+                .thenReturn(List.of(spring));
+        when(perfumeRepository.findByIdAndActiveTrue(1L))
+                .thenReturn(Optional.of(mock(Perfume.class)));
+        when(perfumeReviewRepository.existsByUserIdAndPerfumeId(1L, 1L))
+                .thenReturn(false);
+        when(perfumeReviewRepository.saveAndFlush(any(PerfumeReview.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate"));
+
+        assertThatThrownBy(() -> reviewService.create(1L, request))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.errorCode()).isEqualTo(
+                                ReviewErrorCode.REVIEW_ALREADY_EXISTS
+                        ));
+        verifyNoInteractions(perfumeReviewSeasonRepository);
     }
 
     @Test

@@ -142,7 +142,7 @@ export default function BrandDetailPage() {
             {perfumeCount > PERFUME_PAGE_SIZE && (
               <div className="mt-6.25 flex justify-center">
                 <LinkButton
-                  to={`${ROUTES.PERFUME_SEARCH}?keyword=${encodeURIComponent(name)}`}
+                  to={`${ROUTES.PERFUMES}?keyword=${encodeURIComponent(name)}`}
                   variant="outline"
                   size="sm"
                 >

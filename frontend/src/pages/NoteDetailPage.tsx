@@ -87,23 +87,23 @@ export default function NoteDetailPage() {
           className="aspect-7/5 h-60 shrink-0 bg-white/5"
         />
 
-        <div className="space-y-2.5">
-          <div className="space-y-0.5">
-            <h1 className="text-ink font-serif text-4xl font-semibold">
-              {data.name}
-            </h1>
-            {/*
-              한국어 이름이 없는 노트가 있습니다. 영문과 철자가 같은 노트도 빼서
-              같은 글자가 두 줄로 겹치지 않게 합니다.
-            */}
-            {data.nameKo && data.nameKo !== data.name && (
-              <p className="text-ink-muted text-heading">{data.nameKo}</p>
-            )}
-          </div>
-
-          <p className="text-ink-muted text-caption">
-            대분류 {data.accordFamily ?? '기타'}
-          </p>
+        {/*
+          대분류(`accordFamily`)는 여기 적지 않습니다 — 노트 목록이 이미 대분류로
+          묶어서 보여 주므로, 그 안에서 들어온 사람에게는 방금 지나온 제목을 한 번
+          더 읽히는 줄입니다. 값 자체는 목록의 묶기(`features/note/grouping.ts`)가
+          계속 씁니다.
+        */}
+        <div className="space-y-0.5">
+          <h1 className="text-ink font-serif text-4xl font-semibold">
+            {data.name}
+          </h1>
+          {/*
+            한국어 이름이 없는 노트가 있습니다. 영문과 철자가 같은 노트도 빼서
+            같은 글자가 두 줄로 겹치지 않게 합니다.
+          */}
+          {data.nameKo && data.nameKo !== data.name && (
+            <p className="text-ink-muted text-heading">{data.nameKo}</p>
+          )}
         </div>
       </header>
 

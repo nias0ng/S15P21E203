@@ -6,8 +6,7 @@ export const ROUTES = {
   HOME: '/',
 
   // 향수 (에픽 110)
-  PERFUMES: '/perfumes', // A33 향수 목록 + 필터
-  PERFUME_SEARCH: '/perfumes/search', // A09 향수 검색 결과
+  PERFUMES: '/perfumes', // A33 향수 목록 + 필터 · A09 검색 결과(?keyword=)
   PERFUME_DETAIL: '/perfumes/:perfumeId', // A10 향수 상세
   REVIEW_DETAIL: '/reviews/:reviewId', // A12 후기 상세
 
@@ -50,7 +49,7 @@ export const ROUTES = {
 
   // 계정 (에픽 115) — 마이페이지는 없고 헤더 닉네임 ▾ 에서 바로 들어갑니다
   LOGIN: '/login', // A28 로그인
-  SIGNUP: '/signup', // A28 회원가입 (+ A32 동의 블록)
+  SIGNUP: '/signup', // A28 회원가입
   PASSWORD_RESET: '/password/reset', // A31 비밀번호 찾기 · 재설정
   ACCOUNT: '/account', // A29 정보 변경 (+ A30 비밀번호 변경 · 탈퇴 모달)
 } as const
@@ -64,6 +63,21 @@ export const toBrandDetail = (brandId: number | string) => `/brands/${brandId}`
 export const toNoteDetail = (noteId: number | string) => `/notes/${noteId}`
 export const toCollectionDetail = (collectionId: number | string) =>
   `/collections/${collectionId}`
+
+/**
+ * 진열대의 **컬렉션 무대**로 바로 (2026-09-21 — 선실 알림 판의 [컬렉션]).
+ *
+ * 컬렉션 목록은 제 주소가 없습니다 — 진열대에 병합된 **하단 무대**라
+ * `MyShelfPage` 안의 상태입니다(`Stage`). 밖에서 초깃값을 넣는 구멍이 이
+ * 쿼리 하나이고, `MyShelfPage` 가 첫 렌더에 읽습니다.
+ *
+ * ⚠️ `ROUTES.COLLECTION_DETAIL`(`/collections/:id`)은 **컬렉션 한 개의 상세**라
+ * 다른 화면입니다. 목록으로 보내려고 그 경로를 쓰면 안 됩니다.
+ * ⚠️ 쿼리를 고르면 링크 공유와 뒤로가기가 맞아떨어집니다. 값은 `MyShelfPage` 의
+ * `SHELF_STAGE_PARAM` · `SHELF_STAGE_COLLECTION` 과 **한 벌**입니다 — 한쪽만 고치면
+ * 진열대가 열립니다(잘못된 값은 진열대로 떨어지므로 화면이 깨지지는 않습니다).
+ */
+export const toMyShelfCollection = () => `/shelf?stage=collection`
 export const toPostDetail = (postId: number | string) =>
   `/community/posts/${postId}`
 export const toReviewEdit = (reviewId: number | string) =>

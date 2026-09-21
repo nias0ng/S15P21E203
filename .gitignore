@@ -2,6 +2,7 @@
 frontend/node_modules/
 node_modules/
 .run/
+performance/provisioning/generated/
 
 # Environment files
 .env

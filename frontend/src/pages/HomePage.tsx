@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 
 import {
+  CabinBubble,
   MapSearchModal,
   SceneBootCurtain,
   SceneSearchBar,
@@ -61,11 +62,24 @@ import { Toast } from '@/shared/ui/Toast'
  *
  * 커튼이 아래에서 차오르는데 이 둘은 위쪽이라 마지막까지 남습니다 — 그래서 따로 비켜야 합니다.
  */
-const DIVE_FADE = 'transition-opacity duration-300 ease-out'
+const DIVE_FADE = 'transition-[opacity,visibility] duration-300 ease-out'
+
+/*
+ * ⚠⚠ **엔진의 전체 화면 해도가 열릴 때도 같은 둘이 비킵니다** (2026-09-21).
+ *
+ * 해도(`landing/src/chart.js`)는 iframe **안**이고 검색창 · 향해 일지는 iframe **밖**(이 문서)이라,
+ * 엔진이 z-index 를 아무리 올려도 이 둘 위로 못 올라갑니다 — 스태킹이 아니라 **문서가 다릅니다.**
+ * 그래서 덮는 대신 앱이 비킵니다 (2026-09-21 사용자 : *"검색창이 안가려지는데"*).
+ *
+ * ⚠️ 유리판 헤더는 그대로 둡니다 — 해도가 `hostTop` 만큼 그 아래에 서는 것이 원래 설계입니다(엔진 불변식 23).
+ * ⚠️ 선실 말풍선은 여기서 안 비킵니다 — 해도를 열면 포커스가 iframe 으로 넘어가 제 `blur` 로 닫힙니다(`CabinBubble`).
+ */
 
 export default function HomePage() {
   const navigate = useNavigate()
   const diving = useIsDiving()
+  /** 엔진의 전체 화면 해도가 열려 있는가 — 3D 위에 얹은 앱 UI 가 비킵니다 (위 DIVE_FADE 머리말) */
+  const [chartOpen, setChartOpen] = useState(false)
   /*
    * 진열대에서 **떠올라** 들어오는 중인가. 그동안 화면은 잠수 커튼(물)이 덮고 있으므로
    * 이 화면의 아이보리 로딩 커튼은 비킵니다 — 물 밑에서 구름이 갈라지면 걷히는 겹이 둘이 됩니다.
@@ -106,6 +120,15 @@ export default function HomePage() {
   const [loginOpen, setLoginOpen] = useState(false)
   // 엔진이 기다리는 저장 모달의 끝. 모달이 닫히면(취소 · 저장) 불러 3D 입력 잠금을 풉니다
   const releaseSave = useRef<(() => void) | null>(null)
+
+  /** 배를 눌러 연 선실 말풍선 (2026-09-21) — 진열대 · 컬렉션 두 줄 */
+  const [cabinOpen, setCabinOpen] = useState(false)
+  /*
+   * 엔진이 기다리는 말풍선의 끝. 엔진은 이 Promise 로 **말풍선이 떠 있는가**를 셉니다 —
+   * 떠 있는 동안 3D 누름은 '고르기' 가 아니라 '닫기' 가 되기 때문입니다 (landing/src/main.js).
+   * ⚠️ 저장 모달의 `releaseSave` 와 달리 입력 잠금을 푸는 것이 아닙니다 — 말풍선은 안 잠급니다.
+   */
+  const releaseCabin = useRef<(() => void) | null>(null)
   const { showToast, toastProps } = useToast()
   const isLoggedIn = useIsLoggedIn()
   const actions = useShelfActions()
@@ -134,6 +157,19 @@ export default function HomePage() {
     release()
   }
 
+  /*
+   * 선실 말풍선을 닫습니다 — Esc · **3D 아무 데나 누르기**(엔진이 알립니다) · 줄을 골라
+   * 떠날 때 모두 여기를 지납니다.
+   * ⚠️ 줄을 고르면 화면이 통째로 바뀌지만 그래도 알립니다. 엔진은 iframe 째 사라지므로
+   *   안 알려도 해롭지 않지만, "어떤 길로 끝나든 한 번은 알린다" 를 어기면 다음 사람이
+   *   길 하나를 빠뜨립니다 (저장 모달의 `release` 와 같은 규율).
+   */
+  const closeCabin = () => {
+    setCabinOpen(false)
+    releaseCabin.current?.()
+    releaseCabin.current = null
+  }
+
   return (
     /*
      * 3D 가 화면 맨 위부터 끝까지 채웁니다 — 헤더(GlobalHeader)는 그 위에 유리판으로 뜹니다.
@@ -151,13 +187,14 @@ export default function HomePage() {
         // 유리판 헤더(GlobalHeader 의 h-22.5 = 90px)가 3D 위를 가리는 높이 — 엔진이 검색창 · 해도를 그 아래로 내립니다
         coveredTop={90}
         onNightChange={(night) => setSky(night ? 'dark' : 'light')}
+        onChartChange={setChartOpen}
         onBoot={boot.report}
         onMove={reportMove}
         onOpenDetail={(perfume) => {
           // ⚠️ 엔진 데이터에는 아직 DB perfumeId 가 없습니다(fragrantica_id 뿐). 없으면 이름으로 검색 결과(A09)에 보냅니다
           navigate(
             perfume.perfumeId === null
-              ? `${ROUTES.PERFUME_SEARCH}?keyword=${encodeURIComponent(perfume.nameKo)}`
+              ? `${ROUTES.PERFUMES}?keyword=${encodeURIComponent(perfume.nameKo)}`
               : toPerfumeDetail(perfume.perfumeId),
             // 검색으로 돌려보내는 쪽은 향수 상세가 아니라 기록할 것이 없습니다
             perfume.perfumeId === null
@@ -191,12 +228,30 @@ export default function HomePage() {
             setSaving(perfume)
           })
         }
+        /*
+          배를 눌렀습니다 — 배 옆에 선실 말풍선 (2026-09-21). 돌려준 Promise 가 '닫혔다' 입니다.
+
+          ⚠️ 비로그인이어도 **엽니다.** 두 줄이 잠긴 모양으로 서고 로그인 한 줄이 붙습니다
+            (`CabinBubble` 의 `isLoggedIn` 머리말) — 여기서 `LoginRequiredDialog` 로 가로채면
+            배를 눌렀는데 배와 무관한 창이 뜹니다.
+        */
+        onOpenCabin={() =>
+          new Promise<void>((resolve) => {
+            releaseCabin.current = resolve
+            setCabinOpen(true)
+          })
+        }
+        // 3D 를 눌렀습니다 — 말풍선은 팝오버라 배경을 누르면 닫힙니다 (엔진 host.js `closeCabin`)
+        onCloseCabin={closeCabin}
         // 검색창은 앱이 그립니다 (아래 SceneSearchBar) — 엔진 알약은 자리를 비웁니다
         hideEngineSearch
       />
 
       <SceneSearchBar
-        className={cn(DIVE_FADE, diving && 'opacity-0')}
+        className={cn(
+          DIVE_FADE,
+          (diving || chartOpen) && 'invisible opacity-0',
+        )}
         mode={searchMode}
         onModeChange={setSearchMode}
         onSearch={(keyword, mode) => {
@@ -230,11 +285,27 @@ export default function HomePage() {
         className={cn(
           'absolute top-30 left-7.5 max-[940px]:top-auto max-[940px]:bottom-15',
           DIVE_FADE,
-          diving && 'opacity-0',
+          (diving || chartOpen) && 'invisible opacity-0',
         )}
       >
         <VoyageLog entries={log.data ?? []} status={logStatus} />
       </div>
+
+      {/*
+        선실 — 배를 누르면 **배 옆에 뜨는 작은 말풍선** (진열대 · 컬렉션 두 줄).
+        진열대 화면의 "배 선실이 확대되며 안으로 들어가는" 연출은 별개 작업이고, 이 말풍선은 그 **입구**입니다.
+
+        ⚠️ **자리를 여기서 안 잡습니다.** 배를 따라다녀야 해서 말풍선이 제 rAF 안에서 엔진의
+          배 화면 자리(`features/map` 의 `boatAnchor`)를 읽어 직접 씁니다 — 향해 일지 · 검색창처럼
+          화면이 자리를 잡아 주는 UI 가 아닙니다.
+        ⚠️ 그래서 **잠수 페이드(DIVE_FADE)도 안 겁니다.** 잠수가 걸리면 엔진이 배를 내리고 커튼이
+          위에서 덮는데(z-100), 말풍선은 그 밑입니다. 3D 를 떠나는 순간 화면째 사라집니다.
+      */}
+      <CabinBubble
+        open={cabinOpen}
+        onClose={closeCabin}
+        isLoggedIn={isLoggedIn}
+      />
 
       {/* 검색창의 두 방식이 내놓는 답. 뒤의 3D 는 그대로 돌아갑니다 */}
       <RecommendModal query={nlQuery} onClose={() => setNlQuery(null)} />
@@ -250,7 +321,7 @@ export default function HomePage() {
             향수를 보내는 길과 **같은 곳**입니다(위 onOpenDetail).
           */
           navigate(
-            `${ROUTES.PERFUME_SEARCH}?keyword=${encodeURIComponent(perfume.name)}`,
+            `${ROUTES.PERFUMES}?keyword=${encodeURIComponent(perfume.name)}`,
           )
         }}
       />

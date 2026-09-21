@@ -11,8 +11,7 @@ import { PageFallback } from '@/shared/ui/PageFallback'
 // 오른쪽 주석은 와이어프레임 화면 번호 · 담당 에픽입니다.
 const HomePage = lazy(() => import('@/pages/HomePage')) // A01  · 109 (A06 자연어 추천은 이 화면의 모달입니다)
 
-const PerfumeListPage = lazy(() => import('@/pages/PerfumeListPage')) // A33  · 110
-const PerfumeSearchPage = lazy(() => import('@/pages/PerfumeSearchPage')) // A09  · 110
+const PerfumeListPage = lazy(() => import('@/pages/PerfumeListPage')) // A33 · A09  · 110
 const PerfumeDetailPage = lazy(() => import('@/pages/PerfumeDetailPage')) // A10  · 110
 const ReviewDetailPage = lazy(() => import('@/pages/ReviewDetailPage')) // A12  · 110
 
@@ -76,11 +75,6 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.PERFUMES,
         element: withSuspense(<PerfumeListPage />),
-        handle: NIGHT,
-      },
-      {
-        path: ROUTES.PERFUME_SEARCH,
-        element: withSuspense(<PerfumeSearchPage />),
         handle: NIGHT,
       },
       {
@@ -168,17 +162,17 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.LOGIN,
         element: withSuspense(<LoginPage />),
-        handle: TEXT,
+        handle: TEXT_NIGHT,
       },
       {
         path: ROUTES.SIGNUP,
         element: withSuspense(<SignupPage />),
-        handle: TEXT,
+        handle: TEXT_NIGHT,
       },
       {
         path: ROUTES.PASSWORD_RESET,
         element: withSuspense(<PasswordResetPage />),
-        handle: TEXT,
+        handle: TEXT_NIGHT,
       },
       {
         path: ROUTES.ACCOUNT,
