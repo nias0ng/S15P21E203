@@ -24,6 +24,7 @@ import {
 } from '../types'
 
 import { AuthCard } from './AuthCard'
+import { EmailField } from './EmailField'
 
 /**
  * 회원가입 (A28 우측 카드 — COM-01). 이메일 · 닉네임 둘 다 [중복 확인] 이 있지만
@@ -112,19 +113,16 @@ export function SignupForm() {
           signupMutation.mutate()
         }}
       >
-        {/* 닉네임과 같은 모양 — 입력칸 옆에 [중복 확인] 이 붙습니다 */}
+        {/*
+          닉네임과 같은 모양 — 칸 옆에 [중복 확인] 이 붙습니다. 다만 이메일은 안이
+          아이디 · `@` · 도메인 셋으로 나뉘어 있어 `EmailField` 가 그 줄을 맡습니다
+          (도메인을 직접 적을 때는 아랫줄이 하나 더 생깁니다).
+        */}
         <div className="flex items-start gap-1.25">
-          <div className="flex-1">
-            <Input
-              label="이메일"
-              hideLabel
-              type="email"
-              autoComplete="email"
-              placeholder="이메일"
-              required
-              value={email}
-              onChange={(event) => {
-                setEmail(event.target.value)
+          <div className="min-w-0 flex-1">
+            <EmailField
+              onChange={(next) => {
+                setEmail(next)
                 setEmailAvailable(null)
               }}
               error={
