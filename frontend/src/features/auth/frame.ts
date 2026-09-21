@@ -20,11 +20,11 @@ export const AUTH_PAGE =
  * **꽉 찬 크림색 덩어리**로 튑니다. 알파를 내려 판에 얹힌 얇은 막으로 만듭니다.
  *
  * 글자는 `text-surface`(방에서 어두운 자두색)입니다. 막이 중간 밝기라 상아색 글자로
- * 두면 3.5:1 밖에 안 나옵니다 — 뒤집어야 기준(4.5:1)을 넘습니다. 0.35 에서 5.1:1.
+ * 두면 3.5:1 밖에 안 나옵니다 — 뒤집어야 기준(4.5:1)을 넘습니다. 0.75 에서 10.4:1.
  *
  * ⚠️ 마우스를 올리면 **흰색**입니다. 역할 토큰으로는 낼 수 없는 색이라 Tailwind 의
  * `white` 를 씁니다 — 밝은 화면의 흰색(`surface-card`)은 판 위에서 검정 22% 로
  * 뒤집히고, 판 위에서 가장 밝은 `ink` 는 상아색(#f2ede4)입니다. 흰 바탕에 어두운
  * 글자라 대비는 15.9:1 입니다.
  */
-export const AUTH_SUBMIT = 'bg-ink/35 text-surface hover:bg-white'
+export const AUTH_SUBMIT = 'bg-ink/75 text-surface hover:bg-white'
