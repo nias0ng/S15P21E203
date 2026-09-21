@@ -17,6 +17,17 @@ vi.mock('@/features/auth', async (importOriginal) => {
   return { ...actual, ...api }
 })
 
+const warm = vi.hoisted(() => vi.fn())
+
+/*
+  NOTE: 미리 받기를 시험에서 막습니다. `useWarm` 안이 화면 청크를 `import()` 로
+  부르는데 **아무도 기다리지 않습니다.** `userEvent.click` 은 누르기 전에
+  `pointerenter` 를 같이 일으켜 여기서도 그 import 가 뜨고, 시험이 먼저 끝나면
+  Vitest 가 import 한가운데 환경을 걷어 갑니다 — `EnvironmentTeardownError` 가
+  처리되지 않은 오류로 남아 **다 통과해도 종료 코드가 1** 이 됩니다.
+*/
+vi.mock('./useWarm', () => ({ useWarm: () => warm }))
+
 /** 지금 어느 주소에 서 있는지 시험이 볼 수 있게 적어 둡니다 */
 function Here() {
   return <div>{`지금: ${useLocation().pathname}`}</div>
@@ -45,6 +56,7 @@ const logIn = () =>
 
 beforeEach(() => {
   api.logout.mockReset().mockResolvedValue(undefined)
+  warm.mockClear()
 })
 
 afterEach(() => {
