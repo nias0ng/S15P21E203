@@ -18,9 +18,11 @@ import { isApiError } from '@/shared/api/http'
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
+import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { EmptyState } from '@/shared/ui/EmptyState'
+import { FOCUS_RING } from '@/shared/ui/focusRing'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { PageFallback } from '@/shared/ui/PageFallback'
 import { PerfumeCard } from '@/shared/ui/PerfumeCard'
@@ -207,7 +209,10 @@ export default function CollectionDetailPage() {
                 type="button"
                 aria-label={`${perfume.name} 컬렉션에서 제거`}
                 onClick={() => setRemoveTarget(perfume.shelfItemId)}
-                className="border-line bg-surface-card text-ink-muted hover:text-ink text-caption rounded-card absolute top-3.75 right-3.75 border px-2.5 transition-colors duration-120 ease-out"
+                className={cn(
+                  'border-line bg-surface-card text-ink-muted hover:text-ink text-caption rounded-card absolute top-3.75 right-3.75 border px-2.5 transition-colors duration-120 ease-out',
+                  FOCUS_RING,
+                )}
               >
                 <span aria-hidden>×</span>
               </button>

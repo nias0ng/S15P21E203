@@ -13,6 +13,7 @@ import { cn } from '@/shared/lib/cn'
 import { readPage, withQueryParams, writePage } from '@/shared/lib/queryParams'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
+import { FOCUS_RING } from '@/shared/ui/focusRing'
 import { Pagination } from '@/shared/ui/Pagination'
 import { GLASS_PANEL } from '@/shared/ui/panel'
 import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
@@ -182,7 +183,7 @@ export default function PerfumeListPage() {
                   withQueryParams(searchParams, { brand: null, page: null }),
                 )
               }
-              className="text-ink-muted hover:text-ink"
+              className={cn('text-ink-muted hover:text-ink', FOCUS_RING)}
             >
               <span aria-hidden>×</span>
             </button>

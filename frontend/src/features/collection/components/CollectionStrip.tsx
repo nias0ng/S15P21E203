@@ -1,4 +1,6 @@
 import { toCollectionDetail } from '@/shared/config/routes'
+import { cn } from '@/shared/lib/cn'
+import { FOCUS_RING } from '@/shared/ui/focusRing'
 import { Skeleton } from '@/shared/ui/Skeleton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 import { TileCard } from '@/shared/ui/TileCard'
@@ -58,7 +60,10 @@ export function CollectionStrip({ items, isPending = false, onCreate }: Props) {
       <button
         type="button"
         onClick={onCreate}
-        className="border-line text-ink-muted hover:bg-line-soft hover:text-ink rounded-card flex min-h-40 flex-col items-center justify-center gap-1.25 border border-dashed transition-colors duration-120 ease-out"
+        className={cn(
+          'border-line text-ink-muted hover:bg-line-soft hover:text-ink rounded-card flex min-h-40 flex-col items-center justify-center gap-1.25 border border-dashed transition-colors duration-120 ease-out',
+          FOCUS_RING,
+        )}
       >
         <span aria-hidden className="text-title">
           +
