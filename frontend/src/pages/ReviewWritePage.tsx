@@ -4,7 +4,6 @@ import { useNavigate, useParams, useSearchParams } from 'react-router'
 
 import {
   communityKeys,
-  ImageAttachField,
   LinkedPerfumeModal,
   WriteForm,
   type LinkedPerfume,
@@ -439,8 +438,6 @@ export default function ReviewWritePage() {
             최소 한 개는 골라주세요. 여러 개 고를 수 있습니다.
           </p>
         </fieldset>
-
-        <ImageAttachField />
 
         {mutation.error !== null && (
           <p className="text-danger text-caption" role="alert">

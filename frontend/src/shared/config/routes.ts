@@ -49,7 +49,7 @@ export const ROUTES = {
 
   // 계정 (에픽 115) — 마이페이지는 없고 헤더 닉네임 ▾ 에서 바로 들어갑니다
   LOGIN: '/login', // A28 로그인
-  SIGNUP: '/signup', // A28 회원가입 (+ A32 동의 블록)
+  SIGNUP: '/signup', // A28 회원가입
   PASSWORD_RESET: '/password/reset', // A31 비밀번호 찾기 · 재설정
   ACCOUNT: '/account', // A29 정보 변경 (+ A30 비밀번호 변경 · 탈퇴 모달)
 } as const

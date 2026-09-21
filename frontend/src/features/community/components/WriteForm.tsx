@@ -68,22 +68,3 @@ export function WriteForm({
     </div>
   )
 }
-
-/**
- * 이미지 첨부 칸 (A24a · A24b 공용). ⚠️ 아직 업로드를 붙이지 않았습니다 —
- * **경로는 있습니다**(`POST /posts/images` multipart 가 올린 주소를 돌려주고, 글을
- * 쓸 때 `imageUrls` 로 넘깁니다).
- */
-export function ImageAttachField() {
-  return (
-    <fieldset className="space-y-2.5">
-      <legend className="text-ink text-caption font-medium">
-        이미지 첨부 <span className="text-ink-muted">(선택)</span>
-      </legend>
-      {/* TODO: `POST /posts/images` 연결 (형식 · 용량 제한은 백엔드가 겁니다) */}
-      <Button variant="outline" size="sm" type="button">
-        + 이미지 첨부
-      </Button>
-    </fieldset>
-  )
-}
