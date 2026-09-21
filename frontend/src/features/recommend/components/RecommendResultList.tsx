@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { toPerfumeDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
+import { FOCUS_RING } from '@/shared/ui/focusRing'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
@@ -46,7 +47,10 @@ export function RecommendResultList({ perfumes, selectedId, onSelect }: Props) {
                   onSelect(perfume.perfumeId)
                   setExpandedId(expanded ? null : perfume.perfumeId)
                 }}
-                className="flex w-full items-start gap-2.5 text-left"
+                className={cn(
+                  'flex w-full items-start gap-2.5 text-left',
+                  FOCUS_RING,
+                )}
               >
                 <span className="bg-ink text-surface flex size-6.25 shrink-0 items-center justify-center text-[11px]">
                   {index + 1}

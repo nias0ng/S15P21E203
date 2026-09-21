@@ -1,5 +1,7 @@
 import { cva } from 'class-variance-authority'
 
+import { FOCUS_RING } from './focusRing'
+
 /**
  * 버튼 스타일 정의. Button 과 LinkButton 이 공유합니다 — 컴포넌트 파일과 함께
  * export 하면 Fast Refresh 가 깨지고 lint 도 실패합니다.
@@ -9,9 +11,9 @@ import { cva } from 'class-variance-authority'
  */
 export const buttonVariants = cva(
   'inline-flex items-center justify-center gap-2.5 rounded-card font-medium ' +
-    'transition-colors duration-120 ease-out outline-none ' +
-    'focus-visible:ring-2 focus-visible:ring-accent-deep focus-visible:ring-offset-2 ' +
-    'disabled:pointer-events-none disabled:border disabled:border-line ' +
+    'transition-colors duration-120 ease-out ' +
+    FOCUS_RING +
+    ' disabled:pointer-events-none disabled:border disabled:border-line ' +
     'disabled:bg-transparent disabled:text-ink-muted disabled:opacity-40',
   {
     variants: {
