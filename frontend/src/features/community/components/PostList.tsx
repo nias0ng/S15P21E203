@@ -69,7 +69,7 @@ export function PostList({
           data-slot="card"
           className={cn(
             'border-line bg-surface-card rounded-card relative border',
-            'flex flex-col gap-2.5 p-4.25',
+            'flex flex-col gap-2.5 px-4.75 py-4.25',
             'transition-[transform,box-shadow] duration-200 ease-out',
             'hover:shadow-raised hover:-translate-y-1.25',
           )}
@@ -116,7 +116,7 @@ export function PostList({
             읽습니다. 후기에만 있습니다 — 자유 게시판 목록에는 본문이 없습니다.
           */}
           {item.content && (
-            <p className="text-ink-muted text-body line-clamp-5 whitespace-pre-wrap">
+            <p className="text-ink-muted text-body line-clamp-5 px-0.25 whitespace-pre-wrap">
               {item.content}
             </p>
           )}
