@@ -1,18 +1,22 @@
 import { queryOptions } from '@tanstack/react-query'
 
 import { getBrand, getBrands } from './api'
-import { DEFAULT_BRAND_SORT, type BrandSearchParams } from './types'
+import { SERVER_DEFAULT_BRAND_SORT, type BrandSearchParams } from './types'
 
 /**
- * 빈 검색어와 기본 정렬은 **조건이 없는 것과 같습니다.** 캐시 키와 요청에서 함께
- * 빼야 조건 없는 목록과 같은 자리를 씁니다 — 안 빼면 `{keyword:''}` 와 `{}` 가
- * 서로 다른 키가 되어 같은 응답을 두 번 받습니다.
+ * 빈 검색어와 **서버 기본 정렬**은 조건이 없는 것과 같습니다. 캐시 키와 요청에서
+ * 함께 빼야 조건 없는 목록과 같은 자리를 씁니다 — 안 빼면 `{keyword:''}` 와 `{}`
+ * 가 서로 다른 키가 되어 같은 응답을 두 번 받습니다.
+ *
+ * ⚠️ 빼는 기준은 `DEFAULT_BRAND_SORT`(화면이 켜 두는 값)가 아니라
+ * `SERVER_DEFAULT_BRAND_SORT` 입니다. 지금 화면 기본은 '향수 많은 순' 인데 서버
+ * 기본은 abc 순이라, 화면 기본으로 빼면 아무것도 안 실려 abc 순이 돌아옵니다.
  */
 function normalize(params: BrandSearchParams): BrandSearchParams {
   const keyword = params.keyword?.trim()
   return {
     ...(keyword ? { keyword } : {}),
-    ...(params.sort && params.sort !== DEFAULT_BRAND_SORT
+    ...(params.sort && params.sort !== SERVER_DEFAULT_BRAND_SORT
       ? { sort: params.sort }
       : {}),
   }
