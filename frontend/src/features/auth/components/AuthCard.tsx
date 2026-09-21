@@ -1,4 +1,5 @@
 import { cn } from '@/shared/lib/cn'
+import { GLASS_PANEL } from '@/shared/ui/panel'
 
 type AuthCardProps = {
   title: string
@@ -12,7 +13,14 @@ type AuthCardProps = {
 
 /**
  * 인증 화면 공통 카드 (와이어프레임 A28 · A31)
- * 와이어프레임 규격: 폭 340px, 1px 테두리, 내부 여백 20px, 요소 간격 12px.
+ *
+ * 향수 · 브랜드 · 노트와 같은 **어두운 방 위의 유리판**입니다 — 생김새를 여기서 따로
+ * 정하지 않고 `GLASS_PANEL` 을 그대로 씁니다. ⚠️ 이 카드를 쓰는 화면은 라우트에
+ * `night` 이 켜져 있어야 합니다(`app/router`). 밝은 화면에 두면 판 위 기준으로 맞춘
+ * 글자색(`--color-ink-muted` 가 `#d8d2c9`)이 상아색 바탕에 얹혀 안 읽힙니다.
+ *
+ * 폭만 남겨 둡니다 — 와이어프레임의 340px 이고, 입력이 많은 회원가입은 `className`
+ * 으로 넓힙니다.
  */
 export function AuthCard({
   title,
@@ -22,15 +30,10 @@ export function AuthCard({
   className,
 }: AuthCardProps) {
   return (
-    <div
-      className={cn(
-        'border-line bg-surface-card w-full max-w-85 space-y-2.5 border p-5',
-        className,
-      )}
-    >
-      {eyebrow && <p className="text-ink-muted text-[10.5px]">{eyebrow}</p>}
-      <h1 className="text-ink text-[17px] font-bold">{title}</h1>
-      {description && <p className="text-ink text-xs">{description}</p>}
+    <div className={cn(GLASS_PANEL, 'w-full max-w-85 space-y-3.75', className)}>
+      {eyebrow && <p className="text-ink-muted text-caption">{eyebrow}</p>}
+      <h1 className="text-ink text-title font-serif font-bold">{title}</h1>
+      {description && <p className="text-ink-muted text-body">{description}</p>}
       {children}
     </div>
   )
