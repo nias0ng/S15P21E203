@@ -592,7 +592,7 @@ let pendingSea = null;
 // 연출 중에 고른 먼 곳 이동 (카드 '이 향의 해역으로' · 검색창 · 해도) — 들어오는 중이면 다 들어온 순간 퇴장을 걸고, 다 걷히면 틱이 travel.start 를 건다 (startTravel 주석 · travelAfterZone)
 let pendingTravel = null;
 // ⭐ 클릭 항해의 **일반 속도** (스로틀 0..1) — 자동 조타가 가속이 아닐 때의 값. 예전 틱의 숫자 0.72 를 이름으로 뺐다 (2026-09-15, v0.65.0 · 값은 그대로)
-const SAIL_NORMAL = 0.72;
+const SAIL_NORMAL = 1.0;
 // 지금 속도가 일반(0) ~ 최대 가속(1) 사이 어디인가. 일반보다 느리면 음수
 function sailBoostK() { return (nav.speed - SAIL_NORMAL) / Math.max(1e-4, CONFIG.speed.boost - SAIL_NORMAL); }
 // ⭐⭐ **클릭 항해 중 ESC · 스페이스 — 가속 ↔ 일반 속도** (2026-09-15, v0.65.0 — sailBoostKeys). 사용자 : *"클릭 이동 시에 esc 나 스페이스를 누르면 가속이 멈추고
