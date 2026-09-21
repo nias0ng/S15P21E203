@@ -405,6 +405,7 @@ class NlrFeedbackIntegrationTest {
                 "4f0a368d98b41338",
                 new NlrRecommendResponse.Conditions(
                         List.of("soapy", "fresh"), List.of(), List.of("빨래"), "llm+lexicon"),
+                List.of(),
                 List.of(
                         new NlrRecommendResponse.Result(73368L,
                                 List.of(new NlrRecommendResponse.Matched("soapy", "빨래"))),

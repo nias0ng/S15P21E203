@@ -9,7 +9,7 @@
 import { areasNow } from './areas.js';
 import { PARAMS as P } from './params.js';
 
-export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
+export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin }) {
   const $ = (id) => document.getElementById(id);
 
   const stage = $('stage');
@@ -130,6 +130,83 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
   // 경고 한 줄 (범위 없음). 처음 부를 때 만든다
   let warnEl = null, warnAnim = null, warnLineAnim = null, warnTimer = 0;
 
+  // ───────── 선실 — 배에 손을 올렸을 때 (2026-09-21, v0.79.0) ─────────
+  // **배 아이콘 하나짜리 작은 방울**이다 — 배 옆구리에 꼬리를 대고 뜬다. 하는 말은 하나뿐이다 :
+  // "이건 누를 수 있다". 글자는 없다 (2026-09-21 사용자 : *"작은 말풍선에 배 아이콘만 들어가있는
+  // 식으로 클릭이 된다라는 표현만"*) — 무엇이 들어 있는지는 누른 뒤 앱 말풍선이 말한다.
+  //
+  // ⭐⭐ **방울 자체가 누르고 올릴 수 있는 것이다** (2026-09-21 사용자 : *"작은 말풍선에도 마우스
+  //   호버기능이 있으면 좋겠음 호버해서 말풍선이 반응해야 사람들이 알아볼듯"*). 그래서 `<button>` 이고
+  //   손을 올리면 놋쇠빛 테 · 번짐 · 한 뼘 커지기로 **반응한다.** 누르면 앱 말풍선이 이 방울에서 자란다.
+  //
+  // ⚠⚠ **누르는 상자가 보이는 방울보다 넓다 — 배와의 틈(약 19px)을 건너야 하기 때문이다.**
+  //   배 히트박스 가장자리(약 +0.34r)와 방울(+0.55r + 8) 사이가 비어 있어, 방울로 마우스를 옮기는
+  //   동안 레이캐스트가 배를 놓쳐 **방울이 깜빡이며 사라진다** (말풍선 카드의 `cardHoverBridge` 와
+  //   같은 함정 · 불변식 24). 그래서 단추 상자를 배 쪽으로 PAD 만큼 늘리고, main.js 의 updateHover 가
+  //   `cabinHovered()` 로 그 위에서는 다시 집지 않는다.
+  // ⚠ 보이는 것은 안쪽 `span` 이다 — 단추는 투명한 손잡이일 뿐이다.
+  // ⚠ `#stage` 의 **직계 자식**으로 붙인다 — 잠수 전환이 `html[data-dive] #stage > *:not(#mount)`
+  //   한 줄로 엔진 UI 를 비키는데, 그 아래로 들어가야 배가 내려갈 때 같이 비킨다 (index.html).
+  // ⚠ `#mount` 밖이라 이 단추 위의 누름은 input.js 로 안 간다 — 고르기 · 바다 떠나기가 안 걸린다
+  // ⚠ z-index 는 카드(20)보다 **아래**다. 카드가 떠 있는데 방울이 그 위를 가리면 안 된다
+  let cabinEl = null, cabinSkin = null, cabinTail = null;
+  let cabinOn = false, cabinHot = false, cabinKey = '', cabinSide = 0, cabinTimer = 0;
+  const CABIN_R = 34;      // 보이는 방울 한 변
+  const CABIN_GAP = 8;     // 배 옆구리에서 방울까지 (꼬리가 지나는 틈)
+  const CABIN_PAD = 20;    // 누르는 상자를 배 쪽으로 늘리는 몫 (위 ⚠⚠ 의 틈)
+  const CABIN_EDGE = 6;    // 방울 바깥쪽 여유
+  const CABIN_W = CABIN_PAD + CABIN_GAP + CABIN_R + CABIN_EDGE;
+  const CABIN_H = CABIN_R + 12;
+  // 배 마크 — 종이배 그림 한 장. **엔진 배의 실제 색 그대로다** (boat.js 의 hullMat · sailMat · sparMat).
+  //   ⚠ 앱 말풍선의 배 아이콘(`features/map/components/CabinBubble`)과 **같은 그림 · 같은 색**이다.
+  //     한쪽을 고치면 다른 쪽도 본다
+  const CABIN_MARK = '<svg viewBox="0 0 170 160" width="22" height="22" aria-hidden="true">'
+    + '<path d="M85 14 L85 104 L136 104 Z" fill="#ffffff"/>'
+    + '<path d="M79 30 L79 104 L38 104 Z" fill="#f4f2ee"/>'
+    + '<rect x="83" y="12" width="2.5" height="96" fill="#b9b4aa"/>'
+    + '<path d="M22 108 L148 108 L124 138 L46 138 Z" fill="#dcd9d2"/>'
+    + '<path d="M22 108 L148 108 L143 114 L27 114 Z" fill="#c9c4bb"/></svg>';
+  const CABIN_LINE = 'var(--pb-cabin-line,rgba(249,246,239,0.22))';
+  const CABIN_HOT = 'var(--pb-cabin-hot,rgba(217,190,134,0.7))';
+  // 손을 올렸을 때의 반응 — 놋쇠빛 테 · 둘레 번짐 · 한 뼘 커지기. 칸의 호버와 같은 말투다
+  const paintCabin = () => {
+    if (!cabinSkin) return;
+    cabinSkin.style.borderColor = cabinHot ? CABIN_HOT : CABIN_LINE;
+    cabinSkin.style.boxShadow = cabinHot
+      ? '0 4px 14px rgba(16,10,28,0.28),0 0 14px var(--pb-cabin-glow,rgba(217,190,134,0.4))'
+      : '0 4px 14px rgba(16,10,28,0.28)';
+    cabinSkin.style.transform = cabinHot ? 'scale(1.08)' : 'scale(1)';
+  };
+  const buildCabin = () => {
+    cabinEl = document.createElement('button');
+    cabinEl.type = 'button';
+    cabinEl.setAttribute('aria-label', '선실 열기');
+    cabinEl.style.cssText = 'position:absolute;left:0;top:0;z-index:18;box-sizing:border-box;'
+      + 'width:' + CABIN_W + 'px;height:' + CABIN_H + 'px;padding:0;border:0;background:none;'
+      + 'cursor:pointer;will-change:transform;visibility:hidden;opacity:0;';
+    // 꼬리 — 45도 돌린 작은 정사각형. 방울 쪽 두 변은 지워 겹친 자리가 두 번 칠해지지 않게 한다
+    //   (말풍선 카드의 setTail 과 같은 장치 · 불변식 24)
+    cabinTail = document.createElement('span');
+    cabinTail.style.cssText = 'position:absolute;top:50%;width:7px;height:7px;margin-top:-3.5px;'
+      + 'border:1px solid ' + CABIN_LINE + ';background:var(--pb-cabin-bg,rgba(30,41,71,0.78));'
+      + 'transform:rotate(45deg);pointer-events:none;';
+    cabinSkin = document.createElement('span');
+    cabinSkin.style.cssText = 'position:absolute;top:50%;box-sizing:border-box;'
+      + 'width:' + CABIN_R + 'px;height:' + CABIN_R + 'px;margin-top:' + (-CABIN_R / 2) + 'px;'
+      + 'border:1px solid ' + CABIN_LINE + ';border-radius:9px;'
+      + 'background:var(--pb-cabin-bg,rgba(30,41,71,0.78));backdrop-filter:blur(6px);'
+      + 'display:flex;align-items:center;justify-content:center;pointer-events:none;'
+      + 'transition:border-color 120ms ease,box-shadow 120ms ease,transform 120ms ease;';
+    cabinSkin.innerHTML = CABIN_MARK;
+    cabinEl.appendChild(cabinTail);
+    cabinEl.appendChild(cabinSkin);
+    // ⚠ pointerenter/leave 다 (mouseover 가 아니다) — 안쪽 span 을 지날 때마다 켜졌다 꺼지지 않는다
+    cabinEl.addEventListener('pointerenter', () => { cabinHot = true; paintCabin(); });
+    cabinEl.addEventListener('pointerleave', () => { cabinHot = false; paintCabin(); });
+    cabinEl.addEventListener('click', () => { if (onCabin) onCabin(); });
+    paintCabin();
+    stage.appendChild(cabinEl);
+  };
   // 존 정보 블록 (우측) + 좌하단 존 표시
   const zInfo = $('zone-info'), zTitle = $('zone-title'), zDesc = $('zone-desc'), zNotes = $('zone-notes');
   const zMark = $('zone-mark'), zNo = $('zone-no'), zSub = $('zone-sub');
@@ -634,6 +711,69 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
     },
     labelHeight(top) { return Math.ceil((top ? LABEL_FS_TOP : LABEL_FS) * 1.35); },
 
+    // ── 배에 손을 올렸을 때 (2026-09-21, v0.79.0 — 선실). main.js 의 tick 이 매 프레임 부른다.
+    //   ax · ay = 꼬리를 대는 점(배 옆구리) · side 1 오른쪽 · −1 왼쪽 — 전부 #stage 기준 CSS px.
+    //   **앱의 선실 말풍선과 같은 점이다** (`PB.boat.screen`).
+    //   x · y = 배(선체)의 화면 자리 · r = 배 길이 절반의 화면 반지름 (둘 다 #stage 기준 CSS px).
+    //
+    // ⚠⚠ **이 방울이 '누를 수 있다' 는 표시다.** 부표는 이름표가 늘 떠 있어 배우게 되지만,
+    //   배는 여태 풍경이었다 — 빼면 기능이 숨는다 (같은 말을 커서가 한 번 더 한다 · main.js).
+    // ⚠ 매 프레임 불린다 — 자리가 **바뀔 때만** 쓴다 (showMarkLabels 와 같은 가드).
+    // ⚠ 자리는 transform 한 줄로 민다. left/top 을 매 프레임 바꾸면 레이아웃을 다시 계산한다
+    // ⚠ 한 번도 손을 안 올렸으면 DOM 을 아예 안 만든다 (warn 과 같은 규약)
+    setCabin(on, ax, ay, side, instant) {
+      if (!on && !cabinEl) return;
+      if (!cabinEl) buildCabin();
+      if (on !== cabinOn) {
+        cabinOn = on;
+        // 움직임을 줄이라는 설정이면 즉시 (calm — 카드 · 토스트와 같은 규율)
+        //   ⚠⚠ `instant` 는 **앱 말풍선이 이 방울에서 자라기 시작했다**는 뜻이다 (main.js 의 cabinOpen).
+        //     옅어지며 사라지게 두면 자라는 말풍선과 두 겹이 겹쳐 유리가 한 번 짙어진다 — 그 순간이
+        //     곧 '모핑' 이 끊기는 자리다. 그래서 그때만 한 프레임에 걷는다
+        const ms = calm() || instant ? 0 : 140;
+        clearTimeout(cabinTimer); cabinTimer = 0;
+        cabinEl.style.transition = ms ? 'opacity ' + ms + 'ms ease' : 'none';
+        if (on) cabinEl.style.visibility = 'visible';
+        cabinEl.style.opacity = on ? '1' : '0';
+        // ⚠ 숨길 때는 다 옅어진 **뒤에** 걷는다 — 곧바로 visibility 를 끄면 사라지는 모습이 없다
+        if (!on) {
+          cabinHot = false; paintCabin();   // 다시 뜰 때 호버가 켜진 채로 나타나지 않게
+          const hide = () => { if (cabinEl) cabinEl.style.visibility = 'hidden'; cabinTimer = 0; };
+          if (ms) cabinTimer = setTimeout(hide, ms); else hide();
+        }
+      }
+      if (!on) return;
+      // 단추 상자는 **꼬리 점에서 배 쪽으로 CABIN_PAD 만큼 물러나** 선다 (위 ⚠⚠ 의 틈 건너기).
+      //   보이는 방울과 꼬리는 그 안에서 side 에 따라 좌우가 뒤집힌다
+      const bx = side > 0 ? ax - CABIN_PAD : ax - (CABIN_W - CABIN_PAD);
+      const by = ay - CABIN_H / 2;
+      const key = bx.toFixed(1) + '|' + by.toFixed(1) + '|' + side;
+      if (key === cabinKey) return;
+      cabinKey = key;
+      cabinEl.style.transform = 'translate3d(' + bx.toFixed(1) + 'px,' + by.toFixed(1) + 'px,0)';
+      if (side === cabinSide) return;
+      cabinSide = side;
+      const inner = side > 0 ? 'left' : 'right', outer = side > 0 ? 'right' : 'left';
+      cabinSkin.style[inner] = (CABIN_PAD + CABIN_GAP) + 'px';
+      cabinSkin.style[outer] = 'auto';
+      cabinTail.style[inner] = (CABIN_PAD + CABIN_GAP - 3.5) + 'px';
+      cabinTail.style[outer] = 'auto';
+      // 꼬리는 **방울 쪽 두 변**을 지운다 — 어느 쪽에 서느냐에 따라 지우는 변이 바뀐다
+      cabinTail.style.borderTopWidth = side > 0 ? '0' : '1px';
+      cabinTail.style.borderRightWidth = side > 0 ? '0' : '1px';
+      cabinTail.style.borderBottomWidth = side > 0 ? '1px' : '0';
+      cabinTail.style.borderLeftWidth = side > 0 ? '1px' : '0';
+    },
+
+    /**
+     * 마우스가 **방울 위**인가 (2026-09-21). main.js 의 updateHover 가 읽는다 —
+     * 그 위에서는 다시 집지 않고 호버를 그대로 둔다.
+     *
+     * ⚠⚠ 이것이 없으면 배에서 방울로 마우스를 옮기는 동안 **방울이 깜빡이며 사라진다** —
+     * 둘 사이에 약 19px 의 빈 곳이 있어 레이캐스트가 배를 놓치기 때문이다 (위 머리말의 ⚠⚠).
+     */
+    cabinHovered() { return cabinOn && cabinHot; },
+
     dispose() {
       window.removeEventListener('resize', onWinResize);
       window.removeEventListener('resize', onZResize);
@@ -643,6 +783,10 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
       if (warnLineAnim) { warnLineAnim.cancel(); warnLineAnim = null; }
       clearTimeout(warnTimer);
       if (warnEl) { warnEl.remove(); warnEl = null; }
+      clearTimeout(cabinTimer); cabinTimer = 0;
+      if (cabinEl) { cabinEl.remove(); cabinEl = null; }
+      if (cabinTail) { cabinTail.remove(); cabinTail = null; }
+      cabinOn = false; cabinKey = '';
       for (const z of [zInfo, zMark]) {
         z.removeEventListener('pointerenter', onZEnter);
         z.removeEventListener('pointerleave', onZLeave);
