@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/shared/lib/cn'
 import { useDiveStore } from '@/shared/store/diveStore'
 
+import { setBoatAnchorSource, type BoatAnchor } from '../lib/boatAnchor'
 import {
   parseBootMessage,
   snapshotEvents,
@@ -56,6 +57,9 @@ interface EngineHost {
   exploreSimilar: (perfume: ScenePerfumeRef) => void
   search: (query: string) => void
   moveBoat: (move: SceneMove) => void
+  openCabin: () => Promise<void>
+  /** 엔진이 말풍선을 닫아 달라고 합니다 — 3D 아무 데나 누르면 옵니다 (팝오버의 규약) */
+  closeCabin: () => void
 }
 
 /** iframe 안 엔진이 여는 손잡이 — paperboat main.js 의 window.PB 중 여기서 쓰는 것만 */
@@ -72,6 +76,11 @@ interface EngineHandle {
    * ⚠️ 없을 수 있습니다 — 잠수가 없던 엔진 빌드입니다. 그때는 커튼만 차오릅니다.
    */
   dive?: (k: number) => void
+  /**
+   * 배 — 여기서 읽는 것은 `screen`(배의 화면 자리) 하나입니다. 선실 말풍선이 매 프레임 꺼내
+   * 제 자리를 잡습니다 (`lib/boatAnchor`). 엔진이 매 프레임 채웁니다.
+   */
+  boat?: { screen?: BoatAnchor }
 }
 
 type Props = {
@@ -82,6 +91,22 @@ type Props = {
    * 모달 위에서 누른 방향키가 배를 돌리지 않게, 모달이 닫히면(취소 · 저장) resolve 하세요.
    */
   onSaveToShelf: (perfume: ScenePerfumeRef) => Promise<void>
+  /**
+   * **배를 눌렀습니다** — 배 옆에 선실 말풍선을 띄울 자리입니다 (2026-09-21 · `CabinBubble`).
+   *
+   * 인자가 없습니다 — 배는 한 척이라 어느 배인지 가릴 일이 없습니다(엔진 `host.js` 의 `openCabin`).
+   * 돌려준 Promise 가 **'말풍선이 닫혔다'** 입니다 — 엔진이 그걸로 떠 있는지를 셉니다. 어떤 길로
+   * 닫히든(문을 골랐든 · Esc 든 · 3D 를 눌렀든) 한 번은 resolve 하세요.
+   *
+   * ⚠️ [진열대에 저장]과 달리 **엔진 입력을 안 잠급니다** — 판이 아니라 말풍선이라 뒤의 바다가
+   * 살아 있어야 합니다. 3D 누름은 잠기는 대신 `onCloseCabin` 으로 옵니다.
+   */
+  onOpenCabin?: () => Promise<void>
+  /**
+   * 엔진이 말풍선을 닫아 달라고 합니다 — 3D 아무 데나 누르면(배를 다시 눌러도) 옵니다.
+   * 팝오버라 배경 클릭으로 닫히는데, 그 클릭을 받는 것이 iframe 안의 엔진이라 이 길이 필요합니다.
+   */
+  onCloseCabin?: () => void
   /**
    * 엔진 화면 위의 검색창.
    *
@@ -113,6 +138,16 @@ type Props = {
    * 엔진은 iframe 문서에 `<html data-time="dusk|night">` 을 답니다 (없으면 낮 · paperboat 불변식 25).
    */
   onNightChange?: (night: boolean) => void
+  /**
+   * 엔진의 **전체 화면 해도**가 열렸는지 (2026-09-21 · `landing/src/chart.js`).
+   *
+   * ⚠️⚠️ **해도는 3D 위에 얹은 앱 UI 를 못 덮습니다 — 문서가 다르기 때문입니다.** 해도는 iframe
+   * 안이고 검색창 · 향해 일지 · 선실 말풍선은 iframe **밖**(부모 문서)이라, 엔진이 z-index 를
+   * 아무리 올려도 그 위로 못 올라갑니다. 그래서 덮는 대신 **앱이 비킵니다** — 잠수 전환에서
+   * 같은 UI 가 비키는 것과 같은 장치입니다(`HomePage` 의 `DIVE_FADE`).
+   * ⚠️ 유리판 헤더는 비키지 않습니다 — 해도가 `hostTop` 만큼 그 아래에 서는 것이 원래 설계입니다.
+   */
+  onChartChange?: (open: boolean) => void
   /**
    * 엔진의 부팅 단계 (host.js `bootReport` — html → script → frame → boat-bytes → boat).
    * 로딩 커튼(SceneBootCurtain)이 퍼센트를 미는 데 씁니다. 배 GLB 진행은 초당 수십 번 옵니다.
@@ -146,10 +181,13 @@ const POLL_LIMIT = 600
 export function ScentScene({
   onOpenDetail,
   onSaveToShelf,
+  onOpenCabin,
+  onCloseCabin,
   onSearch,
   hideEngineSearch = false,
   coveredTop = 0,
   onNightChange,
+  onChartChange,
   onBoot,
   onMove,
   className,
@@ -161,9 +199,12 @@ export function ScentScene({
   const latest = useRef({
     onOpenDetail,
     onSaveToShelf,
+    onOpenCabin,
+    onCloseCabin,
     onSearch,
     coveredTop,
     onNightChange,
+    onChartChange,
     onBoot,
     onMove,
   })
@@ -171,9 +212,12 @@ export function ScentScene({
     latest.current = {
       onOpenDetail,
       onSaveToShelf,
+      onOpenCabin,
+      onCloseCabin,
       onSearch,
       coveredTop,
       onNightChange,
+      onChartChange,
       onBoot,
       onMove,
     }
@@ -261,18 +305,39 @@ export function ScentScene({
         search: (query) => latest.current.onSearch?.(query),
         // 배가 든 해역이 바뀌었거나 향수를 골랐습니다 — 향해 일지가 받습니다 (host.js `hostMove`)
         moveBoat: (move) => latest.current.onMove?.(move),
+        /*
+          배를 눌렀습니다 — 선실 알림 판 (2026-09-21 · host.js `hostCabin`).
+          ⚠️ 화면이 처리기를 안 주면 **곧바로 resolve 합니다.** 엔진은 돌려받은 Promise 가
+            끝날 때까지 입력을 잠그므로, 여기서 안 풀면 배를 한 번 누른 뒤로 방향키가 죽습니다
+        */
+        openCabin: () => latest.current.onOpenCabin?.() ?? Promise.resolve(),
+        // 3D 아무 데나 누르면 말풍선을 닫습니다 (팝오버 — 엔진 host.js `hostCabin(false)`)
+        closeCabin: () => latest.current.onCloseCabin?.(),
       })
-      // 시간대 — 엔진이 iframe 문서의 <html data-time> 을 바꿉니다. 그 속성 하나만 지켜봅니다
+      /*
+        선실 말풍선이 배를 따라다니려면 배의 화면 자리를 **매 프레임** 읽어야 합니다.
+        값을 나르는 것이 아니라 **읽는 길**을 꽂습니다 — 60fps 값을 React 상태로 올리면
+        초당 60번 화면 전체가 다시 그려집니다 (`lib/boatAnchor` 의 ⚠⚠).
+      */
+      setBoatAnchorSource(() => engine.boat?.screen ?? null)
+      /*
+        엔진이 iframe 문서의 <html> 속성으로 알리는 것들을 지켜봅니다.
+          data-time   시간대 (밤이면 헤더가 남색 유리)
+          data-chart  전체 화면 해도가 열렸는가 (2026-09-21 — 위 onChartChange 머리말)
+        ⚠️ 관찰자는 하나입니다 — 둘 다 같은 요소의 속성이라 나눌 이유가 없습니다.
+      */
       timeWatch?.disconnect()
       const html = el.contentDocument?.documentElement
       if (html) {
-        const report = () =>
+        const report = () => {
           latest.current.onNightChange?.(html.dataset.time === 'night')
+          latest.current.onChartChange?.(html.dataset.chart !== undefined)
+        }
         report()
         timeWatch = new MutationObserver(report)
         timeWatch.observe(html, {
           attributes: true,
-          attributeFilter: ['data-time'],
+          attributeFilter: ['data-time', 'data-chart'],
         })
       }
       /*
@@ -316,6 +381,7 @@ export function ScentScene({
       attached?.setHost(null)
       // 엔진이 사라집니다 — 커튼은 이제 혼자 차오릅니다 (잠수로 떠나는 길이 바로 이 경로입니다)
       useDiveStore.getState().setEngine(null)
+      setBoatAnchorSource(null)
     }
   }, [])
 

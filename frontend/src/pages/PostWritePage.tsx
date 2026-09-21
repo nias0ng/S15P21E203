@@ -103,6 +103,18 @@ export default function PostWritePage() {
         brand: perfume.brand,
       })),
     )
+    /*
+      붙어 있던 컬렉션도 되살립니다. 안 되살리면 화면이 "첨부 없음" 으로 보이고,
+      아래 저장이 폼을 기준으로 판단하므로 **떼라는 요청으로 읽혀 컬렉션이 날아갑니다.**
+    */
+    setCollection(
+      post.data.collectionId !== null && post.data.collectionTitle !== null
+        ? {
+            collectionId: post.data.collectionId,
+            title: post.data.collectionTitle,
+          }
+        : null,
+    )
   }
 
   const save = useMutation({
@@ -112,15 +124,24 @@ export default function PostWritePage() {
       const perfumeIds = perfumes.map((perfume) => perfume.perfumeId)
 
       if (editing) {
+        const attachedBefore = post.data?.collectionId ?? null
+        const attachedNow = collection?.collectionId ?? null
+
         /*
-          향수는 **목록 통째로** 바뀌므로 전부 보냅니다. 컬렉션은 보내지 않습니다 —
-          보내면 서버가 다시 읽어, 제목만 고쳤는데 향수가 바뀝니다.
+          **컬렉션이 붙어 있으면 향수를 함께 보낼 수 없습니다**(400) — 향수 출처가
+          컬렉션이라서입니다. 늘 보내고 있던 탓에 컬렉션 글은 수정이 100% 실패했습니다.
+
+          컬렉션은 **바뀐 때만** 보냅니다. 그대로 보내면 서버가 컬렉션을 다시 읽어,
+          제목만 고쳤는데 향수가 바뀝니다. 뗐을 때는 `null` 을 보내야 하고, 그래야
+          같은 요청의 향수 목록이 받아들여집니다(서버가 컬렉션을 먼저 처리합니다).
         */
         await updatePost(editingId, {
           category,
           title: title.trim(),
           content: content.trim(),
-          perfumeIds,
+          ...(attachedNow !== attachedBefore && { collectionId: attachedNow }),
+          // 향수는 **목록 통째로** 바뀌므로 보낼 때는 전부 보냅니다
+          ...(attachedNow === null && { perfumeIds }),
         })
         return editingId
       }

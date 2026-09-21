@@ -5,6 +5,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { useRef, useState, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router'
 
 import {
   collectionKeys,
@@ -86,6 +87,21 @@ import { Toast } from '@/shared/ui/Toast'
 
 type Stage = 'shelf' | 'collection'
 
+/**
+ * 컬렉션 무대로 **바로 들어오는 문** (2026-09-21 — 메인 3D 의 선실 알림 판).
+ *
+ * 컬렉션 목록은 제 주소가 없습니다(진열대에 병합된 하단 무대 = 아래 `stage` 상태).
+ * 밖에서 초깃값을 넣을 구멍이 없어서 이 쿼리 하나를 냅니다 — 값이 없거나 모르는
+ * 값이면 평소대로 진열대입니다.
+ *
+ * ⚠️ 링크를 만드는 쪽은 `shared/config/routes` 의 `toMyShelfCollection()` 입니다.
+ * 이름과 값이 **한 벌**이라 한쪽만 고치면 조용히 진열대가 열립니다.
+ * ⚠️ 첫 렌더에서 **한 번만** 봅니다(`useState` 초깃값). 매 렌더 읽어 `stage` 를
+ * 덮으면 하단 띠의 단추로 무대를 바꿀 수가 없습니다 — 주소는 그대로니까요.
+ */
+const SHELF_STAGE_PARAM = 'stage'
+const SHELF_STAGE_COLLECTION = 'collection'
+
 /** 두 무대의 제목. 휴대폰 폭에서는 스케일 최대치(28px), 태블릿 폭부터 시안의 36px(위 2) */
 const STAGE_TITLE =
   'font-serif text-display font-semibold md:text-[36px] md:leading-[1.2]'
@@ -143,7 +159,12 @@ export default function MyShelfPage() {
   const actions = useShelfActions()
   const queryClient = useQueryClient()
 
-  const [stage, setStage] = useState<Stage>('shelf')
+  const [searchParams] = useSearchParams()
+  const [stage, setStage] = useState<Stage>(() =>
+    searchParams.get(SHELF_STAGE_PARAM) === SHELF_STAGE_COLLECTION
+      ? 'collection'
+      : 'shelf',
+  )
   const [registerOpen, setRegisterOpen] = useState(false)
   const [registerKeyword, setRegisterKeyword] = useState('')
   const [loginOpen, setLoginOpen] = useState(false)

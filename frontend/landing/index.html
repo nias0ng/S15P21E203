@@ -49,12 +49,38 @@
     --pb-sage: #7F8A7A;
     --pb-shimmer: #A7C8DB;                    /* SEA SHIMMER — 물빛 */
     /* ⭐ 갈 수 없는 바다 (2026-09-13 — 해도 · 미니맵 공용 토큰). 사용자 : *"영역밖은 완전한 검은색 보다 계열이 좀 낮은 색상"*.
-       CHARCOAL 72% + SEA SHIMMER 28% — 먹색에 물빛을 섞은 깊은 청회색이다 (검정이면 지도에 구멍이 뚫린 것처럼 읽힌다) */
-    --pb-void: #515A61;
+       먹색에 물빛을 섞은 깊은 청회색이다 (검정이면 지도에 구멍이 뚫린 것처럼 읽힌다).
+       ⭐⭐ 2026-09-20 : #515A61 → **#39424A** (사용자 : *"나갈 수 없는 부분을 더 어둡게"*). 밝기 사다리의 **제일 어두운 칸**이라
+          안 지나온 바다(안개 한 겹)보다 확실히 아래여야 한다. 물빛 섞는 비율은 그대로 두고 명도만 내렸다 —
+          색조까지 빼면 '구멍' 으로 돌아간다 (위 사용자 지시). */
+    --pb-void: #39424A;
+    /* ⭐ 갈 수 없는 바다의 **바깥쪽 끝** (2026-09-20 사용자 : *"외곽의 나갈 수 없는 범위가 정말 어둡게 되어있고
+       안쪽으로올수록 지금의 색상이면"*). `--pb-void` 위에 이 색이 바깥으로 갈수록 짙게 얹힌다.
+       ⚠ 검정이 아니다 — 물빛을 조금 남겨야 '깊은 바다' 지 '구멍' 이 아니다 (--pb-void 와 같은 이유) */
+    --pb-void-deep: #0D1219;
+    /* ⭐⭐ 해도에서 **바다 위에 앉는 글자** (2026-09-21 — 향조 이름 · 향수 이름).
+       갈 수 있는 바다가 판의 아이보리에서 #21282F 로 내려가면서 먹색 글자가 안 읽히게 됐다.
+       ⚠ 판 위(범례 · 머리말)의 글자는 그대로 `--pb-on-surface` 다 — 이 토큰은 **바다 위에만** 쓴다.
+       ⚠⚠ 불변식 28 이 적어 둔 *"바탕이 바뀔 때마다 뒤집힌다"* 의 **세 번째**다. 바다 색을 다시
+          만지면 이 값부터 같이 본다 (#21282F 위에서 대비 9.9:1) */
+    --pb-chart-sea-ink: #EDE8DF;
     --pb-lift: 0 10px 30px rgba(24,18,34,0.20);   /* 표면이 바다 위에 뜬 그림자 */
     /* 전체 화면 해도 (chart.js) — 바다를 덮는 너울과 그 위 종이. ⚠ 시간대를 타지 않는다 (표면이다) */
     --pb-chart-veil: rgba(24,18,34,0.58);
-    --pb-chart-bg: rgba(249,246,239,0.96);
+    /* ⭐⭐ **해도 판은 어두운 유리다** (2026-09-21 사용자 : *"미니맵을 전반적으로 더 어둡게 해줘서
+       탐험하는 느낌"*). 여태는 상아색 종이판(rgba(249,246,239,0.96))이라 **어두운 지도를 밝은 액자가
+       두른 꼴**이었다 — 화면에서 가장 밝은 것이 판이었다.
+       ⚠ 색조는 미니맵 판(`--pb-mini-bg` rgba(44,38,62,0.60))과 같은 자줏빛 저녁이다. 둘은 같은 바다를
+          보여 주는 한 쌍이라 판도 같은 말을 써야 한다 (불변식 28).
+       ⚠ 미니맵보다 불투명하다 — 판이 크고 뒤에 3D 가 그대로 비치면 지도의 어두운 계단이 안 읽힌다 */
+    --pb-chart-bg: rgba(34,29,48,0.95);
+    /* 판 위에 앉는 글자 · 선. ⚠ 전역 `--pb-on-surface` 계열을 **안 쓴다** — 검색창 · 카드가 같이 쓰는
+       토큰이라 거기까지 뒤집힌다. 해도 판만의 이름을 따로 둔다 (불변식 25 의 규약을 판 단위로 넓힘).
+       ⚠ 바다 위 글자는 또 다른 토큰이다 (`--pb-chart-sea-ink`) — 판 위와 바다 위는 바탕이 다르다 */
+    --pb-chart-ink: #F3EFE7;                    /* 제목 · 닫기 · 범례 이름 */
+    --pb-chart-ink-2: rgba(243,239,231,0.60);   /* 머리말 · 힌트 · 한글 이름 · 개수 */
+    --pb-chart-line: rgba(243,239,231,0.16);    /* 판 테두리 · 구분선 · 단추 테 */
+    --pb-chart-row: rgba(243,239,231,0.08);     /* 범례 줄에 마우스를 올렸을 때 */
     /* ⭐⭐ **흰 파도** (2026-09-18, v0.75.12) — 호버하면 아래에서 차올라 덮고 멈춘다.
        사용자 : *"2개 겹쳐서 흰색 파도같은 느낌"* · *"각 파트에있는 색상은 전부 이렇게 통일할거임"*.
        지금은 [이 향의 해역으로] 한 곳이지만 **다른 단추 · 판에도 같은 파도를 붙이려고** 여기 모았다 —
@@ -281,7 +307,7 @@
     --pb-mini-c-fog-a: 0.42;
     --pb-mini-c-rim: #FBF3EA;      /* 갈 수 있는 바다의 끝선 (예전 IVORY) */
     --pb-mini-c-accent: #D9BE86;   /* 배 · 가는 곳 (예전 AGED BRONZE — 어두운 판에서 한 단 밝힌다) */
-    --pb-mini-c-void: #2B3038;     /* 갈 수 없는 바다 (예전 --pb-void) — 판이 어두워 한 단 더 내린다 */
+    --pb-mini-c-void: #191E24;     /* 갈 수 없는 바다 — 판이 어두워 한 단 더 내린다. 2026-09-20 : #2B3038 → 더 어둡게 (--pb-void 와 같은 이유) */
   }
   /* ⭐⭐ 저녁 경고 토스트 (2026-09-13 — params.warnEve 가 <html data-warn-eve> 를 단다). 사용자 : *"다음 핸드오프 작업은 출력되었을때의
      토스트 디자인도 현재 디자인에 맞게 제작해야함"*. 낮의 종이 한 줄(불투명 0.95 · 먹 테두리 · 각진 모서리) → **저녁 유리 알약** —
@@ -641,16 +667,17 @@
     <div id="chart-veil" style="position:absolute;inset:0;background:var(--pb-chart-veil,rgba(24,18,34,0.58));"></div>
     <!-- ⚠ 높이는 정해 두고 **폭은 내용이 정한다** (fit-content) — 지도가 세로 기준이라 폭을 화면 가득 두면
          양옆에 빈 띠가 남는다. 지도의 비는 chart.js 가 #chart-stage 에 aspect-ratio 로 건다 -->
-    <div id="chart-panel" style="position:relative;height:calc(100% - 2 * var(--pb-chart-edge,40px));width:fit-content;max-width:calc(100% - 2 * var(--pb-chart-edge,40px));display:flex;flex-direction:column;padding:var(--pb-chart-pad,18px 22px 22px);border:1px solid var(--pb-line-soft,#C9C4BB);border-radius:10px;background:var(--pb-chart-bg,rgba(249,246,239,0.96));box-shadow:var(--pb-lift,0 10px 30px rgba(24,18,34,0.20));">
-      <div style="flex:none;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;padding-bottom:11px;border-bottom:1px solid var(--pb-line-soft,#C9C4BB);">
+    <div id="chart-panel" style="position:relative;height:calc(100% - 2 * var(--pb-chart-edge,40px));width:fit-content;max-width:calc(100% - 2 * var(--pb-chart-edge,40px));display:flex;flex-direction:column;padding:var(--pb-chart-pad,18px 22px 22px);border:1px solid var(--pb-chart-line,#C9C4BB);border-radius:10px;background:var(--pb-chart-bg,rgba(249,246,239,0.96));box-shadow:var(--pb-lift,0 10px 30px rgba(24,18,34,0.20));">
+      <div style="flex:none;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;padding-bottom:11px;border-bottom:1px solid var(--pb-chart-line,#C9C4BB);">
         <div style="min-width:0;">
-          <div style="font-size:10px;font-weight:600;letter-spacing:0.22em;color:var(--pb-on-surface-2,rgba(47,47,50,0.62));">SCENT CHART</div>
-          <div style="margin-top:4px;font-size:var(--pb-chart-title,23px);line-height:1.1;color:var(--pb-on-surface,#2F2F32);">해도</div>
+          <div style="font-size:10px;font-weight:600;letter-spacing:0.22em;color:var(--pb-chart-ink-2,rgba(47,47,50,0.62));">SCENT CHART</div>
+          <!-- ⚠ 2026-09-21 : '해도' → '향해 지도' (사용자). 엔진 안의 다른 '해도' 글귀(경고 · 머리말)는 그대로다 -->
+          <div style="margin-top:4px;font-size:var(--pb-chart-title,23px);line-height:1.1;color:var(--pb-chart-ink,#2F2F32);">향해 지도</div>
         </div>
         <div style="flex:none;display:flex;align-items:center;gap:9px;">
-          <span id="chart-hint" style="font-size:11px;letter-spacing:0.04em;color:var(--pb-on-surface-2,rgba(47,47,50,0.62));">—</span>
-          <button id="chart-reset" style="display:none;height:24px;padding:0 10px;border:1px solid var(--pb-line-soft,#C9C4BB);border-radius:999px;background:none;font-family:inherit;font-size:10.5px;letter-spacing:0.1em;color:var(--pb-on-surface-2,rgba(47,47,50,0.62));cursor:pointer;">처음 배율</button>
-          <button id="chart-close" title="닫기 (ESC)" aria-label="닫기" style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--pb-line-soft,#C9C4BB);border-radius:50%;background:none;font-family:inherit;font-size:16px;line-height:1;color:var(--pb-on-surface,#2F2F32);cursor:pointer;">×</button>
+          <span id="chart-hint" style="font-size:11px;letter-spacing:0.04em;color:var(--pb-chart-ink-2,rgba(47,47,50,0.62));">—</span>
+          <button id="chart-reset" style="display:none;height:24px;padding:0 10px;border:1px solid var(--pb-chart-line,#C9C4BB);border-radius:999px;background:none;font-family:inherit;font-size:10.5px;letter-spacing:0.1em;color:var(--pb-chart-ink-2,rgba(47,47,50,0.62));cursor:pointer;">처음 배율</button>
+          <button id="chart-close" title="닫기 (ESC)" aria-label="닫기" style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--pb-chart-line,#C9C4BB);border-radius:50%;background:none;font-family:inherit;font-size:16px;line-height:1;color:var(--pb-chart-ink,#2F2F32);cursor:pointer;">×</button>
         </div>
       </div>
       <div style="flex:1;min-height:0;display:flex;gap:var(--pb-chart-gap,18px);">
