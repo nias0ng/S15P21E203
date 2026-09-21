@@ -44,10 +44,12 @@ const withSuspense = (element: React.ReactNode) => (
 /*
  * 화면이 쓰는 본문 폭(RootLayout 의 PageWidth). 적지 않은 화면은 wide(1440)입니다.
  *   FULL  화면 전체를 그림으로 쓰는 곳 — 향 지도 · 진열대
- *   TEXT  글을 읽고 쓰는 곳 · 계정 폼 — 한 줄이 너무 길어지지 않게 800 으로 가둡니다
+ *
+ * 밝은 방의 `TEXT`(800) 는 S15P21E203-358 로 쓰는 곳이 없어졌습니다. 마지막
+ * 하나였던 정보 변경이 `TEXT_NIGHT` 로 옮겨 갔습니다 — 글을 읽고 쓰는 화면은
+ * 이제 전부 어두운 방입니다.
  */
 const FULL = { width: 'full' } satisfies { width: PageWidth }
-const TEXT = { width: 'text' } satisfies { width: PageWidth }
 /**
  * 어두운 방 + 유리판 화면. 폭은 적지 않습니다 — 모두 기본 wide(1440)입니다.
  * docs/어두운-방-유리판.md
@@ -177,7 +179,7 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.ACCOUNT,
         element: withSuspense(<AccountPage />),
-        handle: TEXT,
+        handle: TEXT_NIGHT,
       },
 
       { path: '*', element: <NotFoundPage /> },

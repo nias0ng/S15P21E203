@@ -5,17 +5,24 @@ import { isApiError } from '@/shared/api/http'
 import { useToast } from '@/shared/hooks/useToast'
 import { useAuthStore, useIsLoggedIn } from '@/shared/store/authStore'
 import { Button } from '@/shared/ui/Button'
+import { Input } from '@/shared/ui/Input'
 import { Toast } from '@/shared/ui/Toast'
 
 import { changeNickname, checkNicknameAvailability, toAuthUser } from '../api'
+import { AUTH_SUBMIT } from '../frame'
 import { authKeys, meQuery } from '../queries'
 import { NICKNAME_MIN_LENGTH } from '../types'
 
+import { AuthCard } from './AuthCard'
 import { PasswordChangeModal } from './PasswordChangeModal'
 import { WithdrawModal } from './WithdrawModal'
 
 /**
  * 정보 변경 (A29 — COM-04). 마이페이지 화면은 없고 계정 동작이 여기 모입니다.
+ *
+ * 로그인 · 회원가입 · 비밀번호와 **같은 유리판**(`AuthCard`)입니다
+ * (S15P21E203-358). 폭도 넷이 같은 420 입니다 — 로그인에서 넘어올 때 판이 한 번
+ * 커지면 다른 화면으로 읽힙니다.
  *
  * 이메일은 계정 식별자라 변경 불가입니다. 닉네임 저장은
  * `PATCH /users/me/nickname` 이고, 지금 쓰는 이름을 그대로 보내도 성공하며 남이
@@ -82,120 +89,118 @@ export function AccountForm() {
     <>
       <Toast {...toastProps} />
 
-      <div className="border-line bg-surface-card border">
-        <div className="space-y-3.75 p-6.25">
-          <h1 className="text-ink text-[17px] font-bold">정보 변경</h1>
-
-          {/* 프로필 이미지 */}
-          <div className="flex items-start gap-5">
-            <div className="border-line bg-line-soft text-ink-muted flex size-25 items-center justify-center border text-[10.5px]">
-              프로필
-            </div>
-            <div className="flex flex-col gap-1.25">
-              <Button variant="outline" size="sm">
-                이미지 변경
-              </Button>
-              <Button variant="outline" size="sm">
-                이미지 삭제
-              </Button>
-              <p className="text-ink-muted text-[10.5px] leading-relaxed">
-                JPG · JPEG · PNG · WEBP
-                <br />한 장당 최대 5MB
-              </p>
-            </div>
+      <AuthCard title="정보 변경">
+        {/* 프로필 이미지 */}
+        <div className="flex items-start gap-5">
+          {/*
+            ⚠️ 바탕을 `bg-line-soft` 로 칠합니다 — 어두운 방이 이 토큰을 흰 12% 로
+            뒤집어 주어, 사진이 없을 때 어둠 위에 아이보리 사각형이 남지 않습니다
+            (docs/어두운-방-유리판.md 의 5 · 6).
+          */}
+          <div className="border-line bg-line-soft text-ink-muted rounded-card text-caption flex size-25 shrink-0 items-center justify-center border">
+            프로필
           </div>
-
-          {/* 이메일 — 계정 식별자라 바꿀 수 없습니다 */}
-          <div className="flex items-center gap-2.5">
-            <span className="text-ink-muted w-20 shrink-0 text-[10.5px]">
-              이메일
-            </span>
-            <span className="text-ink text-[10.5px]">{me?.email ?? '—'}</span>
-            <span className="text-ink-muted text-[10.5px]">
-              (변경 불가 · 계정 식별자)
-            </span>
+          <div className="flex flex-col gap-1.25">
+            <Button variant="outline" size="sm">
+              이미지 변경
+            </Button>
+            <Button variant="outline" size="sm">
+              이미지 삭제
+            </Button>
+            <p className="text-ink-muted text-caption leading-relaxed">
+              JPG · JPEG · PNG · WEBP
+              <br />한 장당 최대 5MB
+            </p>
           </div>
+        </div>
 
-          {/* 닉네임 + 중복 확인 */}
-          <form
-            id="account-nickname-form"
-            className="flex items-center gap-2.5"
-            onSubmit={(event) => {
-              event.preventDefault()
-              if (nicknameChanged) save.mutate()
+        {/*
+          이메일 — 계정 식별자라 바꿀 수 없습니다. 라벨 모양을 `Input` 과 맞춥니다
+          (`text-caption font-medium`), 값만 칸 없이 글자로 둡니다. 못 고치는 값에
+          입력칸을 그려 두면 눌러 보게 됩니다.
+        */}
+        <div className="space-y-2.5">
+          <p className="text-caption font-medium">이메일</p>
+          <p className="text-ink text-body">{me?.email ?? '—'}</p>
+          <p className="text-ink-muted text-caption">
+            변경할 수 없습니다 — 계정을 가리키는 이름입니다
+          </p>
+        </div>
+
+        {/* 닉네임 + 중복 확인 */}
+        <form
+          id="account-nickname-form"
+          className="space-y-2.5"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (nicknameChanged) save.mutate()
+          }}
+        >
+          {/*
+            쓸 수 있는지 여부를 `Input` 의 hint · error 로 넘깁니다 — 옆에 글자를
+            따로 놓으면 읽어주기가 입력칸과 이어 주지 못합니다(`aria-describedby`).
+          */}
+          <Input
+            label="닉네임"
+            value={nickname}
+            onChange={(event) => {
+              setNicknameDraft(event.target.value)
+              setNicknameAvailable(null)
+            }}
+            hint={
+              nicknameAvailable === true
+                ? '사용할 수 있는 닉네임입니다'
+                : undefined
+            }
+            error={
+              nicknameAvailable === false
+                ? '이미 사용 중인 닉네임입니다'
+                : undefined
+            }
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            type="button"
+            disabled={
+              trimmedNickname.length < NICKNAME_MIN_LENGTH ||
+              nicknameCheck.isPending
+            }
+            onClick={() => nicknameCheck.mutate()}
+          >
+            중복 확인
+          </Button>
+        </form>
+
+        <div className="flex gap-1.25">
+          <Button
+            type="submit"
+            form="account-nickname-form"
+            className={AUTH_SUBMIT}
+            disabled={
+              !nicknameChanged ||
+              trimmedNickname.length < NICKNAME_MIN_LENGTH ||
+              save.isPending
+            }
+          >
+            저장
+          </Button>
+          <Button
+            variant="outline"
+            type="button"
+            onClick={() => {
+              setNicknameDraft(null)
+              setNicknameAvailable(null)
             }}
           >
-            <label
-              htmlFor="account-nickname"
-              className="text-ink-muted w-20 shrink-0 text-[10.5px]"
-            >
-              닉네임
-            </label>
-            <input
-              id="account-nickname"
-              value={nickname}
-              onChange={(event) => {
-                setNicknameDraft(event.target.value)
-                setNicknameAvailable(null)
-              }}
-              className="border-line text-ink focus-visible:ring-accent-deep h-10 w-70 border px-2.5 text-xs outline-none focus-visible:ring-2"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              disabled={
-                trimmedNickname.length < NICKNAME_MIN_LENGTH ||
-                nicknameCheck.isPending
-              }
-              onClick={() => nicknameCheck.mutate()}
-            >
-              중복 확인
-            </Button>
-            {nicknameAvailable !== null && (
-              <span
-                className={
-                  nicknameAvailable
-                    ? 'text-ink-muted text-[10.5px]'
-                    : 'text-danger text-[10.5px]'
-                }
-              >
-                {nicknameAvailable
-                  ? '사용할 수 있는 닉네임입니다'
-                  : '이미 사용 중인 닉네임입니다'}
-              </span>
-            )}
-          </form>
+            취소
+          </Button>
+        </div>
 
-          <hr className="border-line" />
+        <hr className="border-line" />
 
-          <div className="flex gap-1.25">
-            <Button
-              type="submit"
-              form="account-nickname-form"
-              disabled={
-                !nicknameChanged ||
-                trimmedNickname.length < NICKNAME_MIN_LENGTH ||
-                save.isPending
-              }
-            >
-              저장
-            </Button>
-            <Button
-              variant="outline"
-              type="button"
-              onClick={() => {
-                setNicknameDraft(null)
-                setNicknameAvailable(null)
-              }}
-            >
-              취소
-            </Button>
-          </div>
-
-          <hr className="border-line" />
-
-          <p className="text-ink-muted text-[10.5px]">계정</p>
+        <div className="space-y-2.5">
+          <p className="text-ink-muted text-caption">계정</p>
           <div className="flex gap-1.25">
             <Button variant="outline" onClick={() => setPasswordOpen(true)}>
               비밀번호 변경
@@ -205,13 +210,7 @@ export function AccountForm() {
             </Button>
           </div>
         </div>
-
-        {/* 와이어프레임의 점선 주석 영역 */}
-        <div className="text-ink-muted space-y-0.5 border-t border-dashed border-[#d2d2d2] px-6.25 py-2.5 text-[10.5px] leading-relaxed">
-          <p>비밀번호는 이 화면에 표시하지 않는다 — 변경은 별도 모달로만</p>
-          <p>닉네임은 다른 사용자와 겹칠 수 없습니다</p>
-        </div>
-      </div>
+      </AuthCard>
 
       <PasswordChangeModal
         open={passwordOpen}
