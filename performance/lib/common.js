@@ -8,14 +8,23 @@ export const MODE = (__ENV.MODE || 'smoke').toLowerCase();
 export const LOAD_LEVELS = [5, 10, 20, 30, 50];
 
 const stageSeconds = positiveInteger(__ENV.STAGE_SECONDS || '60', 'STAGE_SECONDS');
+const graceSeconds = nonNegativeInteger(__ENV.GRACE_SECONDS || '10', 'GRACE_SECONDS');
 const thinkTimeSeconds = nonNegativeNumber(__ENV.THINK_TIME_SECONDS || '0', 'THINK_TIME_SECONDS');
 
-export function testOptions() {
+export function testOptions(testName) {
+    const normalized = testName.replace(/-/g, '_');
+    const levels = MODE === 'smoke' ? ['smoke'] : LOAD_LEVELS.map(String);
+    const thresholds = Object.fromEntries(levels.map((level) => [
+        `${normalized}_vu_${level}_failure_rate`,
+        ['rate==0'],
+    ]));
+
     if (MODE === 'smoke') {
         return {
             vus: 1,
             iterations: 1,
             discardResponseBodies: false,
+            thresholds,
         };
     }
     if (MODE !== 'load') {
@@ -28,11 +37,11 @@ export function testOptions() {
             executor: 'constant-vus',
             vus,
             duration: `${stageSeconds}s`,
-            startTime: `${index * stageSeconds}s`,
-            gracefulStop: '0s',
+            startTime: `${index * (stageSeconds + graceSeconds)}s`,
+            gracefulStop: `${graceSeconds}s`,
         };
     });
-    return { scenarios, discardResponseBodies: false };
+    return { scenarios, discardResponseBodies: false, thresholds };
 }
 
 export function createEndpointMetrics(testName) {
@@ -139,9 +148,15 @@ function loginTestUsers() {
 
     const emails = testUserEmails();
     const tokens = [];
+    const jar = http.cookieJar();
+    const loginUrl = `${BASE_URL}/api/v1/auth/login`;
     emails.forEach((email) => {
+        // 로그인 응답의 Refresh Token 쿠키가 다음 사용자의 로그인에 실리면 서버는 이전
+        // 세션을 폐기합니다. 사용자별 로그인을 완전히 독립시키기 위해 매번 비웁니다.
+        // 쿠키 Path가 /api/v1/auth라 루트 URL이 아니라 로그인 URL로 지워야 합니다.
+        jar.clear(loginUrl);
         const response = http.post(
-            `${BASE_URL}/api/v1/auth/login`,
+            loginUrl,
             JSON.stringify({ email, password }),
             {
                 headers: { 'Content-Type': 'application/json' },
@@ -162,6 +177,7 @@ function loginTestUsers() {
             fail(`테스트 계정 로그인 실패: ${email}, status=${response.status}`);
         }
         tokens.push(response.json('accessToken'));
+        jar.clear(loginUrl);
     });
     return tokens;
 }
@@ -223,6 +239,14 @@ function nonNegativeNumber(value, name) {
     const parsed = Number(value);
     if (!Number.isFinite(parsed) || parsed < 0) {
         throw new Error(`${name}은 0 이상의 숫자여야 합니다. 현재 값: ${value}`);
+    }
+    return parsed;
+}
+
+function nonNegativeInteger(value, name) {
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed < 0) {
+        throw new Error(`${name}은 0 이상의 정수여야 합니다. 현재 값: ${value}`);
     }
     return parsed;
 }
