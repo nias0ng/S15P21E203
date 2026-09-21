@@ -73,7 +73,7 @@ export function WithdrawModal({ open, onClose }: Props) {
       }
     >
       <div className="space-y-2.5">
-        <div className="border-line bg-line-soft text-ink space-y-1.25 border p-2.5 text-[11px] leading-relaxed">
+        <div className="border-line bg-line-soft text-ink text-caption space-y-1.25 border p-2.5 leading-relaxed">
           <p>진열대 · 컬렉션 · 메모가 함께 삭제됩니다.</p>
           <p>
             작성한 게시글 · 댓글 · 후기는{' '}

@@ -116,7 +116,7 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
           <span className="text-ink text-xs">
             {review.nickname ?? '탈퇴한 회원'}
           </span>
-          <span className="text-ink-muted text-[10.5px]">
+          <span className="text-ink-muted text-caption">
             · {formatRelativeTime(review.createdAt)}
           </span>
 
@@ -220,7 +220,7 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
         <hr className="border-line" />
 
         {/* 조회수는 이번 조회를 포함한 수입니다 */}
-        <p className="text-ink-muted text-[10.5px]">
+        <p className="text-ink-muted text-caption">
           좋아요 {review.likeCount} · 조회 {review.viewCount}
         </p>
 
