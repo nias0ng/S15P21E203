@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router'
 
 import {
+  boardTitle,
   BoardHeader,
   communityKeys,
   FREE_SORTS,
@@ -71,7 +72,8 @@ export default function FreeBoardPage() {
 
   /*
     판 제목에 지금 보고 있는 분류를 적습니다. 알약에서 '전체' 를 없앤 대신
-    (아래 주석) 무엇으로 걸러진 목록인지는 제목이 말해 줍니다.
+    (아래 주석) 무엇으로 걸러진 목록인지는 제목이 말해 줍니다 — 정렬이 앞에
+    붙어도 이 역할은 그대로입니다(`boardTitle`).
   */
   const categoryLabel =
     category === 'ALL'
@@ -192,7 +194,7 @@ export default function FreeBoardPage() {
           <section className={GLASS_PANEL}>
             <div className="mb-6.25 flex items-baseline gap-2.5">
               <h2 className="text-ink font-serif text-2xl">
-                {categoryLabel ? `${categoryLabel} 글` : '전체 글'}
+                {boardTitle(sort, '글', categoryLabel)}
               </h2>
               {!posts.isPending && !!posts.data?.totalElements && (
                 <span className="text-ink-muted text-caption">

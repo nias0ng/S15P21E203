@@ -34,6 +34,33 @@ export const FREE_SORTS = [
   { value: 'COMMENTS', label: '댓글 많은 순' },
 ] as const satisfies readonly { value: PostSort; label: string }[]
 
+/**
+ * 정렬을 **판 제목에 적을 때** 쓰는 말. 알약의 라벨(`조회 순`)을 그대로 넣으면
+ * "조회 순 글" 이 되어 어색합니다 — 수식어 꼴이 따로 필요합니다.
+ */
+const SORT_TITLES = {
+  RECENT: '최근',
+  VIEWS: '많이 본',
+  LIKES: '좋아요 많은',
+  COMMENTS: '댓글 많은',
+} as const satisfies Record<PostSort, string>
+
+/**
+ * 판 제목 (A22a · A22b). 고른 정렬이 앞에 오고 그 뒤에 무엇을 보고 있는지 옵니다 —
+ * `좋아요 많은 컬렉션 공유 글`.
+ *
+ * **분류를 빼지 않습니다.** 자유 게시판의 분류 알약에는 '전체' 가 없어서, 무엇으로
+ * 걸러진 목록인지 말해 주는 곳이 제목뿐입니다.
+ */
+export function boardTitle(
+  sort: PostSort,
+  /** 이 게시판이 담는 것 — `글` 또는 `후기` */
+  noun: string,
+  categoryLabel?: string,
+) {
+  return [SORT_TITLES[sort], categoryLabel, noun].filter(Boolean).join(' ')
+}
+
 /** 글에 걸린 향수. 브랜드가 없는 향수가 있어 brand 는 null 일 수 있습니다. */
 export interface LinkedPerfume {
   perfumeId: number

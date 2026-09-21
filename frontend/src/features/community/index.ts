@@ -27,6 +27,7 @@ export {
   trendingPerfumesQuery,
 } from './queries'
 export {
+  boardTitle,
   FREE_SORTS,
   POST_CATEGORIES,
   postToBoardItem,
