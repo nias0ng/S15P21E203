@@ -98,6 +98,10 @@ $env:TEST_PASSWORD = [System.Net.NetworkCredential]::new(
   '',
   (Read-Host '부하 테스트 계정 비밀번호' -AsSecureString)
 ).Password
+
+$fixtures = Get-Content `
+  .\performance\provisioning\generated\load-kim.fixtures.json -Raw | ConvertFrom-Json
+$env:SHELF_ITEM_IDS = ($fixtures.users.memoShelfItemId -join ',')
 ```
 
 API별 ID는 fixture manifest에서 읽습니다.
