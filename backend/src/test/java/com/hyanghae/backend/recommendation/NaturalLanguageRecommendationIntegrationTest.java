@@ -149,6 +149,35 @@ class NaturalLanguageRecommendationIntegrationTest {
                 .andExpect(jsonPath("$.perfumes[0].reasons[0].evidence").value("중성적인"));
     }
 
+    /**
+     * 향 근거와 향이 아닌 근거가 <b>한 응답에 섞여 나갑니다.</b>
+     *
+     * <p>향 조건이 있어도 노트·성별로 후보를 좁힐 수 있어 둘이 함께 오는 것이 흔합니다.
+     * 화면은 {@code reasons} 하나로 두 종류를 함께 그리므로 <b>모양이 같아야 합니다</b> —
+     * 노트는 사용자가 쓴 말이 {@code phrase} 에 들어가고, 성별은 {@code from} 이 없어
+     * {@code phrase} 가 빕니다.
+     */
+    @Test
+    void servesScentAndDataReasonsTogether() throws Exception {
+        given(nlrClient.recommend(anyString())).willReturn(mixedReasonResponse());
+
+        mockMvc.perform(request(QUERY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("OK"))
+                .andExpect(jsonPath("$.matchedData.length()").value(2))
+                .andExpect(jsonPath("$.matchedData[0].field").value("note"))
+                .andExpect(jsonPath("$.matchedData[0].label").value("미모사"))
+                .andExpect(jsonPath("$.matchedData[1].field").value("gender"))
+                .andExpect(jsonPath("$.matchedData[1].label").value("중성적인"))
+                .andExpect(jsonPath("$.perfumes[0].reasons.length()").value(3))
+                .andExpect(jsonPath("$.perfumes[0].reasons[0].phrase").value("빨래"))
+                .andExpect(jsonPath("$.perfumes[0].reasons[0].evidence").value("soapy"))
+                .andExpect(jsonPath("$.perfumes[0].reasons[1].phrase").value("미모사"))
+                .andExpect(jsonPath("$.perfumes[0].reasons[1].evidence").value("미모사"))
+                .andExpect(jsonPath("$.perfumes[0].reasons[2].phrase").doesNotExist())
+                .andExpect(jsonPath("$.perfumes[0].reasons[2].evidence").value("중성적인"));
+    }
+
     /** 조건을 안 걸었으면 {@code matchedData} 는 {@code null} 이 아니라 빈 배열입니다. */
     @Test
     void servesEmptyMatchedDataWhenNoDataCondition() throws Exception {
@@ -292,6 +321,22 @@ class NaturalLanguageRecommendationIntegrationTest {
             String status, NlrRecommendResponse.Result... results) {
         return new NlrRecommendResponse(
                 status, QUERY, null, null, null, List.of(), List.of(results), null, null);
+    }
+
+    /** 향 근거와 향이 아닌 근거가 함께 있는 응답입니다. 실사용에서 가장 흔한 모양입니다. */
+    private static NlrRecommendResponse mixedReasonResponse() {
+        return new NlrRecommendResponse(
+                "OK", QUERY, null, null,
+                new NlrRecommendResponse.Conditions(
+                        List.of("soapy"), List.of(), List.of("빨래"), "lexicon_only"),
+                List.of(new NlrRecommendResponse.MatchedData(
+                                "note", "mimosa", "미모사", "미모사", "DATA"),
+                        new NlrRecommendResponse.MatchedData(
+                                "gender", "unisex", "중성적인", null, "DATA")),
+                List.of(new NlrRecommendResponse.Result(73368L,
+                        List.of(new NlrRecommendResponse.Matched("soapy", "빨래")))),
+                List.of(),
+                new NlrRecommendResponse.Diagnostics("AND", 618, 1, List.of(), null));
     }
 
     /** 향 조건 없이 성별로만 고른 응답입니다. {@code matched} 가 비고 {@code matchedData} 만 찹니다. */

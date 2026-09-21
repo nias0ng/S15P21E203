@@ -327,6 +327,41 @@ class NaturalLanguageRecommendationServiceTest {
     }
 
     /**
+     * 둘이 섞여 한도를 넘으면 <b>향 근거가 남고 그다음 자리를 {@code matchedData} 가 채웁니다.</b>
+     *
+     * <p>{@code dropsMatchedDataWhenScentReasonsAlreadyFillTheLimit} 는 향 근거만으로 셋이
+     * 차는 경우고, 여기는 <b>경계</b>입니다 — 향 둘에 향이 아닌 근거 셋이면 다섯 줄이 되고
+     * 그중 셋만 나갑니다. 무엇이 먼저 빠지는지는 이 배치에서만 드러납니다.
+     */
+    @Test
+    void keepsScentReasonsFirstWhenBothKindsCompeteForTheLimit() {
+        given(nlrClient.recommend(QUERY)).willReturn(aiResponse(
+                "OK",
+                List.of(data("note", "mimosa", "미모사", "미모사"),
+                        data("note", "rose", "장미", "장미"),
+                        data("gender", "unisex", "중성적인", null)),
+                result(73368L, matched("soapy", "빨래"), matched("fresh", "세탁"))));
+        given(perfumeRepository.findIdentitiesByFragranticaIds(anyCollection()))
+                .willReturn(List.of(identity(73368L, 1L, "Laundry", "브랜드")));
+
+        NaturalLanguageRecommendationResponse response = service.recommend(QUERY);
+
+        // 향 둘이 남고 남은 한 자리를 첫 노트가 가져갑니다. 장미와 성별은 빠집니다.
+        assertThat(response.perfumes().getFirst().reasons())
+                .extracting(RecommendationReasonResponse::phrase,
+                        RecommendationReasonResponse::evidence)
+                .containsExactly(
+                        tuple("빨래", "soapy"),
+                        tuple("세탁", "fresh"),
+                        tuple("미모사", "미모사"));
+
+        // 잘린 것도 최상위에는 그대로 있습니다 — 목록 위 한 줄이 쓸 재료입니다.
+        assertThat(response.matchedData())
+                .extracting(RecommendationDataResponse::label)
+                .containsExactly("미모사", "장미", "중성적인");
+    }
+
+    /**
      * 최상위 {@code matchedData} 는 <b>내부 값을 뺀 채</b> 나갑니다.
      *
      * <p>{@code value}({@code unisex})와 {@code tier}({@code DATA})는 내부 기록이라 화면에
