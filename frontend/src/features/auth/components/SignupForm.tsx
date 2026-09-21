@@ -138,14 +138,15 @@ export function SignupForm() {
               }
             />
           </div>
-          <button
+          <Button
+            variant="outline"
             type="button"
+            className="shrink-0"
             disabled={email.trim().length === 0 || emailCheck.isPending}
             onClick={() => emailCheck.mutate()}
-            className="border-line text-ink hover:bg-line-soft h-10 shrink-0 border px-2.5 text-[11px] disabled:opacity-50"
           >
             중복 확인
-          </button>
+          </Button>
         </div>
 
         <Input
@@ -197,18 +198,19 @@ export function SignupForm() {
               }
             />
           </div>
-          <button
+          <Button
+            variant="outline"
             type="button"
+            className="shrink-0"
             disabled={
               nicknameTooShort ||
               nicknameError !== undefined ||
               nicknameCheck.isPending
             }
             onClick={() => nicknameCheck.mutate()}
-            className="border-line text-ink hover:bg-line-soft h-10 shrink-0 border px-2.5 text-[11px] disabled:opacity-50"
           >
             중복 확인
-          </button>
+          </Button>
         </div>
 
         {signupMutation.error !== null && (
