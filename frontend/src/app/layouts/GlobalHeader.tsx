@@ -113,8 +113,8 @@ export function GlobalHeader({ tone = 'surface' }: { tone?: HeaderTone }) {
     /*
      * ⚠ 폭은 **화면 폭(100vw)** 입니다 — 스크롤바를 뺀 폭이면 세로 스크롤이 있는
      * 화면에서 메뉴가 왼쪽으로 밀려 메인과 어긋납니다. 나간 15px 은 RootLayout 이
-     * 잘라냅니다. ⚠⚠ `sm`(640) 부터입니다 — 더 좁으면 돋보기 · 계정이 밖으로
-     * 나가고, 잘라내면 아예 못 누릅니다.
+     * 잘라냅니다. ⚠⚠ `sm`(640) 부터입니다 — 더 좁으면 계정이 밖으로 나가고,
+     * 잘라내면 아예 못 누릅니다.
      */
     <header
       className={cn(
@@ -129,22 +129,11 @@ export function GlobalHeader({ tone = 'surface' }: { tone?: HeaderTone }) {
         <BrandMark ink={ink} />
         <PrimaryNav isLoggedIn={isLoggedIn} ink={ink} />
 
-        {/* 돋보기 · 계정 (시안 우측 묶음 — 구분선 · '오늘도, 좋은 향과 함께.' 문구는 2026-09-16 에 뺐습니다) */}
-        <div className="flex shrink-0 items-center gap-7.5">
-          <Link
-            to={ROUTES.PERFUME_SEARCH}
-            aria-label="향수 검색"
-            className={cn(
-              ink.text,
-              ink.hover,
-              'transition-colors duration-120 ease-out',
-              FOCUS,
-              ink.ring,
-            )}
-          >
-            <SearchIcon />
-          </Link>
-
+        {/*
+          계정 (시안 우측 묶음). 구분선 · '오늘도, 좋은 향과 함께.' 문구는 2026-09-16 에,
+          돋보기는 2026-09-21 에 뺐습니다 — 검색은 목록 화면 안에 있습니다(A33 · A34 · A35).
+        */}
+        <div className="flex shrink-0 items-center">
           {isLoggedIn ? <AccountMenu ink={ink} /> : <LoginButton ink={ink} />}
         </div>
       </div>
@@ -533,24 +522,6 @@ function LoginButton({ ink }: { ink: Ink }) {
 }
 
 /* ------------------------------------------------------------------ */
-
-/** 돋보기. 아이콘 하나 때문에 라이브러리를 붙이지 않습니다 */
-function SearchIcon() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      className="size-5"
-    >
-      <circle cx="9" cy="9" r="5.75" />
-      <path d="m13.5 13.5 4 4" />
-    </svg>
-  )
-}
 
 /** 사람 실루엣 */
 function AccountIcon() {

@@ -194,7 +194,7 @@ export default function HomePage() {
           // ⚠️ 엔진 데이터에는 아직 DB perfumeId 가 없습니다(fragrantica_id 뿐). 없으면 이름으로 검색 결과(A09)에 보냅니다
           navigate(
             perfume.perfumeId === null
-              ? `${ROUTES.PERFUME_SEARCH}?keyword=${encodeURIComponent(perfume.nameKo)}`
+              ? `${ROUTES.PERFUMES}?keyword=${encodeURIComponent(perfume.nameKo)}`
               : toPerfumeDetail(perfume.perfumeId),
             // 검색으로 돌려보내는 쪽은 향수 상세가 아니라 기록할 것이 없습니다
             perfume.perfumeId === null
@@ -321,7 +321,7 @@ export default function HomePage() {
             향수를 보내는 길과 **같은 곳**입니다(위 onOpenDetail).
           */
           navigate(
-            `${ROUTES.PERFUME_SEARCH}?keyword=${encodeURIComponent(perfume.name)}`,
+            `${ROUTES.PERFUMES}?keyword=${encodeURIComponent(perfume.name)}`,
           )
         }}
       />

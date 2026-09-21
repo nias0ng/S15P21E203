@@ -11,7 +11,6 @@ export { PerfumeNotes } from './components/PerfumeNotes'
 export { PerfumeOverview } from './components/PerfumeOverview'
 export { PerfumeReviewList } from './components/PerfumeReviewList'
 export { PerfumeReviewSummary } from './components/PerfumeReviewSummary'
-export { PerfumeSearchResult } from './components/PerfumeSearchResult'
 export { PerfumeSeasonRatings } from './components/PerfumeSeasonRatings'
 export { PerfumeReviewDetail } from './components/PerfumeReviewDetail'
 export {
