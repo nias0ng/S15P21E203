@@ -1,13 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 
 import {
   perfumeListQuery,
   PerfumeFilters,
   PerfumeGrid,
-  type GenderFilter,
-  type RankingFilter,
+  readGenderFilter,
+  readRankingFilter,
 } from '@/features/perfume'
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { cn } from '@/shared/lib/cn'
@@ -35,8 +34,20 @@ const PAGE_SIZE = 30
  */
 export default function PerfumeListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const [ranking, setRanking] = useState<RankingFilter | null>(null)
-  const [gender, setGender] = useState<GenderFilter | null>(null)
+
+  /*
+    ⚠️ **필터는 `useState` 가 아니라 주소에 둡니다** (S15P21E203-362).
+
+    `useState` 는 이 화면이 내려가면 같이 사라집니다. 상세로 갔다 오면 목록이 새로
+    만들어지면서 필터가 처음 값으로 돌아가, 고르고 → 눌러 보고 → 돌아오면 조건이
+    풀려 있었습니다. 브랜드 · 검색어 · 쪽은 이미 주소에 있어 살아남았는데 이 둘만
+    아니어서, 같은 화면의 필터가 서로 다르게 굴었습니다.
+
+    주소에 두면 뒤로 가기 · 새로 고침 · 링크 붙여넣기가 전부 같은 화면을 냅니다.
+    값은 사람이 고쳐 쓸 수 있으므로 읽을 때 거릅니다(`readRankingFilter`).
+  */
+  const ranking = readRankingFilter(searchParams.get('ranking'))
+  const gender = readGenderFilter(searchParams.get('gender'))
 
   // A34 브랜드 페이지에서 카드를 누르면 ?brand= 를 달고 옵니다
   const brand = searchParams.get('brand')
@@ -71,12 +82,13 @@ export default function PerfumeListPage() {
   const filtered = ranking !== null || gender !== null || brand !== null
 
   /*
-    거르는 조건이 바뀌면 쪽을 처음으로 돌립니다 — 3쪽을 보다 '여성' 을 켜면 결과가 줄어
-    그 쪽이 비어 있을 수 있습니다. 검색 중이 아니면 쪽이 없어 할 일이 없습니다.
+    필터 한 칸을 주소에 적습니다. 끈 것은 `null` 이라 쿼리에서 빠집니다.
+
+    쪽도 함께 처음으로 돌립니다 — 3쪽을 보다 '여성' 을 켜면 결과가 줄어 그 쪽이 비어
+    있을 수 있습니다. 검색 중이 아니면 애초에 `page` 가 없어 지워도 그대로입니다.
   */
-  const toFirstPage = () => {
-    if (searching)
-      setSearchParams(withQueryParams(searchParams, { page: null }))
+  const setFilter = (key: 'ranking' | 'gender', value: string | null) => {
+    setSearchParams(withQueryParams(searchParams, { [key]: value, page: null }))
   }
 
   // 검색어·필터로 걸러 0건이 됐을 때만 [초기화] 를 보여줍니다.
@@ -85,10 +97,10 @@ export default function PerfumeListPage() {
     <Button
       variant="outline"
       onClick={() => {
-        setRanking(null)
-        setGender(null)
         setSearchParams(
           withQueryParams(searchParams, {
+            ranking: null,
+            gender: null,
             brand: null,
             keyword: null,
             page: null,
@@ -181,14 +193,8 @@ export default function PerfumeListPage() {
       <PerfumeFilters
         ranking={ranking}
         gender={gender}
-        onRankingChange={(next) => {
-          setRanking(next)
-          toFirstPage()
-        }}
-        onGenderChange={(next) => {
-          setGender(next)
-          toFirstPage()
-        }}
+        onRankingChange={(next) => setFilter('ranking', next)}
+        onGenderChange={(next) => setFilter('gender', next)}
       />
 
       <section className={GLASS_PANEL}>
