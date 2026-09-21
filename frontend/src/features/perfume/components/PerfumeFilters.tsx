@@ -15,13 +15,8 @@ type PerfumeFiltersProps = {
 }
 
 /**
- * 향수 목록 필터 (A33 — 유리판 시안)
- *
- * 위 세 개는 **전체 사용자 집계**(보유 · 희망 · 조회), 뒤 세 개는 향의 성별이고
- * 앞뒤는 **겹쳐 걸 수 있습니다.** 아무것도 안 고른 상태가 기본이라 둘 다 null 로
- * 시작하고, 고른 것을 다시 누르면 해제됩니다.
- *
- * 한 줄에 늘어놓되 가운데를 선으로 가릅니다 — 선이 없으면 서로 다른 두 필터가
+ * 향수 목록 필터 (A33). 앞 세 개는 **전체 사용자 집계**, 뒤 세 개는 향의 성별이고
+ * 둘은 **겹쳐 걸 수 있습니다.** 가운데를 선으로 가르지 않으면 서로 다른 두 필터가
  * "여섯 중 하나" 로 읽힙니다.
  */
 export function PerfumeFilters({
@@ -39,7 +34,7 @@ export function PerfumeFilters({
         onChange={onRankingChange}
       />
 
-      {/* 두 필터를 눈으로 가릅니다. 좁은 화면에서 줄이 접히면 가를 것이 없어 숨깁니다 */}
+      {/* 좁은 화면에서 줄이 접히면 가를 것이 없어 숨깁니다 */}
       <span
         aria-hidden
         className="bg-line mx-1.25 hidden h-5 w-px shrink-0 sm:block"

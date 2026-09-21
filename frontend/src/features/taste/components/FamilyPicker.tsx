@@ -9,10 +9,7 @@ type FamilyPickerProps = {
   onChange: (next: ScentFamilyKey[]) => void
 }
 
-/**
- * 향 계열 고르기 (TST-03). 최대 2개이고 두 개를 고르면 나머지 타일은 꺼집니다.
- * **고른 순서가 그대로 1순위 · 2순위**입니다.
- */
+/** 향 계열 고르기 (TST-03). 최대 2개이고, 고른 순서가 그대로 1순위 · 2순위입니다. */
 export function FamilyPicker({ value, onChange }: FamilyPickerProps) {
   const full = value.length >= MAX_PICKS
 

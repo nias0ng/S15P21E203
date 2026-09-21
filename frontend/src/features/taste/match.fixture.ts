@@ -1,13 +1,6 @@
 /**
- * 매칭 테스트용 향수 200개 고정값. **앱 코드가 아니라 `match.test.ts` 전용입니다** —
- * 화면은 `api.ts` 의 `GET /map/scent-vectors` 를 씁니다. 지어낸 열 줄로는 확인할 수
- * 없는 **알고리즘의 성질**(희소 조합 · 동점 · 순서 의존)을 지키는 값이라, 서버와
- * 조금 어긋나도 됩니다.
- *
- * - 출처: `backend/db/seed` 의 `perfume_map_points.csv` · `perfume_map_families.csv`
- * - `perfumeId` 자리에 `fragrantica_id` 가 들어 있습니다
- * - `families` 의 합은 1 이 아닙니다(0.2~1.0) — `1 - 합` 은 "기타 계열" 이 아닙니다
- * - `x` 0~100 · `y` 0~83.056 — `api.ts` 가 응답(0~1)을 100배 한 것과 같은 스케일
+ * `match.test.ts` 전용 향수 200개 고정값 — 화면은 `api.ts` 의 `GET /map/scent-vectors` 를 씁니다.
+ * 출처는 `backend/db/seed` 이고, `perfumeId` 자리에 `fragrantica_id` 가 들어 있습니다.
  */
 import type { ScentVector } from './types'
 

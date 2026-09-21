@@ -1,9 +1,6 @@
-/**
- * 경로 문자열은 여기서만 정의합니다. 오른쪽 주석은 와이어프레임 화면 번호입니다.
- */
+/** 경로 문자열은 여기서만 정의합니다. 오른쪽 주석은 와이어프레임 화면 번호입니다 */
 export const ROUTES = {
-  /** A01 랜딩 · 향 지도 — 개인화 추천도 이 화면의 취향 영역으로 표시됩니다 */
-  HOME: '/',
+  HOME: '/', // A01 랜딩 · 향 지도 (개인화 추천도 이 화면의 취향 영역)
 
   // 향수 (에픽 110)
   PERFUMES: '/perfumes', // A33 향수 목록 + 필터 · A09 검색 결과(?keyword=)
@@ -17,17 +14,12 @@ export const ROUTES = {
   NOTE_DETAIL: '/notes/:noteId', // A36 노트 상세
 
   /*
-   * 추천 (에픽 109) — **주소가 없습니다.** A06 자연어 추천은 메인(A01)의
-   * **모달**이 됐습니다(`RecommendModal`).
-   *
-   * ⚠️ 그래서 추천 결과는 **링크로 공유할 수 없습니다.** 공유가 필요해지면 메인에
-   * `/?q=` 를 내는 쪽이지, 화면을 되살리는 쪽이 아닙니다.
+   * NOTE: 추천(에픽 109)은 주소가 없습니다 — 메인의 모달입니다(`RecommendModal`).
+   * 그래서 추천 결과는 링크로 공유할 수 없습니다. 공유가 필요해지면 메인에 `/?q=` 를
+   * 내는 쪽이지, 화면을 되살리는 쪽이 아닙니다.
    */
 
-  // 취향 테스트 (요구사항 TST-03)
-  // 원래 자리는 회원가입 직후 온보딩 스텝입니다. 백엔드가 붙기 전까지 화면을 바로
-  // 열어볼 수 있도록 둔 임시 경로라, 가입이 동작하면 이 상수와 라우트를 지웁니다.
-  TASTE_TEST: '/test',
+  TASTE_TEST: '/test', // TST-03 취향 테스트 — 첫 로그인이면 여기로 보냅니다
 
   // 진열대 · 컬렉션 (에픽 113)
   MY_SHELF: '/shelf', // A13 진열대 + 컬렉션 한 화면
@@ -38,14 +30,10 @@ export const ROUTES = {
   COMMUNITY_FREE: '/community/free', // A22b 자유 게시판
   POST_DETAIL: '/community/posts/:postId', // A23 게시글 상세 + 댓글
   REVIEW_WRITE: '/community/reviews/write', // A24a 후기 작성
-  /**
-   * A24a 후기 수정. 작성과 같은 화면을 쓰고 주소만 다릅니다 — 부르는 API 가
-   * 다르고(`POST` · `PATCH`) 보호 라우트를 붙일 자리가 필요합니다.
-   */
+  // A24a 후기 수정. 작성과 같은 화면이고 주소만 다릅니다 — 부르는 API 가 갈립니다
   REVIEW_EDIT: '/community/reviews/:reviewId/edit',
   POST_WRITE: '/community/free/write', // A24b 자유 글 작성
-  /** A24b 자유 글 수정. `REVIEW_EDIT` 와 같은 방식입니다 */
-  POST_EDIT: '/community/free/:postId/edit',
+  POST_EDIT: '/community/free/:postId/edit', // A24b 자유 글 수정
 
   // 계정 (에픽 115) — 마이페이지는 없고 헤더 닉네임 ▾ 에서 바로 들어갑니다
   LOGIN: '/login', // A28 로그인
@@ -54,7 +42,7 @@ export const ROUTES = {
   ACCOUNT: '/account', // A29 정보 변경 (+ A30 비밀번호 변경 · 탈퇴 모달)
 } as const
 
-/** ROUTES.PERFUME_DETAIL 같은 동적 경로에 값을 채워 실제 링크를 만듭니다. */
+/* 동적 경로(`/perfumes/:perfumeId`)에 값을 채워 실제 링크를 만듭니다 */
 export const toPerfumeDetail = (perfumeId: number | string) =>
   `/perfumes/${perfumeId}`
 export const toReviewDetail = (reviewId: number | string) =>
@@ -65,17 +53,15 @@ export const toCollectionDetail = (collectionId: number | string) =>
   `/collections/${collectionId}`
 
 /**
- * 진열대의 **컬렉션 무대**로 바로 (2026-09-21 — 선실 알림 판의 [컬렉션]).
+ * 진열대의 **컬렉션 무대**로 바로 보냅니다. 컬렉션 목록은 제 주소가 없고
+ * `MyShelfPage` 안의 상태라, 밖에서 초깃값을 넣는 구멍이 이 쿼리 하나입니다.
  *
- * 컬렉션 목록은 제 주소가 없습니다 — 진열대에 병합된 **하단 무대**라
- * `MyShelfPage` 안의 상태입니다(`Stage`). 밖에서 초깃값을 넣는 구멍이 이
- * 쿼리 하나이고, `MyShelfPage` 가 첫 렌더에 읽습니다.
+ * NOTE: `COLLECTION_DETAIL`(`/collections/:id`)은 컬렉션 **한 개**의 상세라 다른
+ * 화면입니다. 목록으로 보내려고 그 경로를 쓰면 안 됩니다.
+ * NOTE: 값은 `MyShelfPage` 의 `SHELF_STAGE_PARAM` · `SHELF_STAGE_COLLECTION` 과 한
+ * 벌입니다 — 한쪽만 고치면 진열대가 열립니다.
  *
- * ⚠️ `ROUTES.COLLECTION_DETAIL`(`/collections/:id`)은 **컬렉션 한 개의 상세**라
- * 다른 화면입니다. 목록으로 보내려고 그 경로를 쓰면 안 됩니다.
- * ⚠️ 쿼리를 고르면 링크 공유와 뒤로가기가 맞아떨어집니다. 값은 `MyShelfPage` 의
- * `SHELF_STAGE_PARAM` · `SHELF_STAGE_COLLECTION` 과 **한 벌**입니다 — 한쪽만 고치면
- * 진열대가 열립니다(잘못된 값은 진열대로 떨어지므로 화면이 깨지지는 않습니다).
+ * @returns `/shelf?stage=collection`
  */
 export const toMyShelfCollection = () => `/shelf?stage=collection`
 export const toPostDetail = (postId: number | string) =>

@@ -2,7 +2,7 @@ import { cn } from '@/shared/lib/cn'
 
 type ThumbnailProps = {
   /**
-   * 이미지 주소. ⚠️ 백엔드가 아직 이미지를 거의 안 내려줘 대부분 값 없이 씁니다 —
+   * 이미지 주소. 백엔드가 아직 이미지를 거의 안 내려줘 대부분 값 없이 씁니다 —
    * 없는 경우가 기본 동작입니다.
    */
   src?: string | null

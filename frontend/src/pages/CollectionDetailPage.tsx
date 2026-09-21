@@ -50,10 +50,8 @@ export default function CollectionDetailPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
-  /**
-   * 컬렉션 수정 (COL-05). 목록도 함께 갱신합니다 — 진열대 하단 띠가 같은 제목을
-   * 보여주고 있어 상세만 고치면 옛 제목이 남습니다.
-   */
+  // 목록도 함께 갱신합니다 — 진열대 하단 띠가 같은 제목을 보여주고 있어 상세만
+  // 고치면 옛 제목이 남습니다
   const edit = useMutation({
     mutationFn: (input: CollectionInput) => updateCollection(numericId, input),
     onSuccess: () => {
@@ -65,12 +63,12 @@ export default function CollectionDetailPage() {
     },
     onError: (error) =>
       showToast(
-        // 이름이 겹치면 409 입니다. 서버 문구가 그 사정을 그대로 설명합니다
+        // 이름이 겹치면 409 이고, 서버 문구가 그 사정을 그대로 설명합니다
         isApiError(error) ? error.message : '컬렉션을 수정하지 못했습니다',
       ),
   })
 
-  /** 컬렉션 삭제 (COL-06). 캐시를 버리지 않으면 뒤로가기로 다시 뜹니다 */
+  // 캐시를 버리지 않으면 뒤로가기로 다시 뜹니다
   const remove = useMutation({
     mutationFn: () => deleteCollection(numericId),
     onSuccess: () => {
@@ -83,10 +81,8 @@ export default function CollectionDetailPage() {
     onError: () => showToast('컬렉션을 삭제하지 못했습니다'),
   })
 
-  /**
-   * 향수 담기 (COL-03). 서버가 한 번에 하나씩 받아 고른 만큼 요청이 나가고,
-   * **하나가 실패해도 나머지는 계속 보냅니다.**
-   */
+  // 서버가 한 번에 하나씩 받아 고른 만큼 요청이 나가고, 하나가 실패해도 나머지는
+  // 계속 보냅니다
   const addPerfumes = useMutation({
     mutationFn: async (shelfItemIds: number[]) => {
       const results = await Promise.allSettled(
@@ -100,7 +96,6 @@ export default function CollectionDetailPage() {
       void queryClient.invalidateQueries({
         queryKey: collectionKeys.detail(numericId),
       })
-      // 개수가 바뀌어 진열대 하단 띠의 "향수 N개" 도 낡습니다
       void queryClient.invalidateQueries({ queryKey: collectionKeys.mine() })
       showToast(
         failed === 0
@@ -111,7 +106,7 @@ export default function CollectionDetailPage() {
     onError: () => showToast('향수를 추가하지 못했습니다'),
   })
 
-  /** 향수 빼기 (COL-04). 진열대 저장은 그대로 남습니다 */
+  // 컬렉션에서 빼도 진열대 저장은 그대로 남습니다
   const removePerfume = useMutation({
     mutationFn: (shelfItemId: number) =>
       removeCollectionPerfume(numericId, shelfItemId),
@@ -142,10 +137,8 @@ export default function CollectionDetailPage() {
 
   const data = collection.data
   const inCollection = new Set(data.perfumes.map((item) => item.perfumeId))
-  /*
-    ⚠️ **들고 있는 id 는 `shelfItemId`** 입니다 — `perfumeId` 로 찾으면 이름도 못
-    찾고 지우는 요청도 404 입니다.
-  */
+  // NOTE: 들고 있는 id 는 `shelfItemId` 입니다 — `perfumeId` 로 찾으면 이름도 못 찾고
+  // 지우는 요청도 404 입니다
   const removeTargetName = data.perfumes.find(
     (item) => item.shelfItemId === removeTarget,
   )?.name
@@ -204,7 +197,6 @@ export default function CollectionDetailPage() {
                 to={toPerfumeDetail(perfume.perfumeId)}
                 state={perfumeViewState('COLLECTION')}
               />
-              {/* 제거해도 진열대 저장은 유지됩니다 */}
               <button
                 type="button"
                 aria-label={`${perfume.name} 컬렉션에서 제거`}
@@ -234,11 +226,10 @@ export default function CollectionDetailPage() {
       <AddToCollectionModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        // 진열대에 있고 아직 이 컬렉션에 없는 향수만 후보입니다
         /*
           진열대에 있고 아직 이 컬렉션에 없는 향수만 후보입니다. 서버가 담을 때
-          shelfItemId 를 받으므로 진열대 항목을 그대로 넘깁니다 — perfumeId 로
-          바꿔 넘기면 담고 뺄 번호를 잃습니다.
+          shelfItemId 를 받으므로 진열대 항목을 그대로 넘깁니다 — perfumeId 로 바꿔
+          넘기면 담고 뺄 번호를 잃습니다.
         */
         candidates={(shelf.data ?? []).filter(
           (item) => !inCollection.has(item.perfumeId),

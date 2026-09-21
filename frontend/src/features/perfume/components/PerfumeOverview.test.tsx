@@ -18,10 +18,7 @@ const PERFUME: PerfumeDetail = {
   myReviewId: null,
 }
 
-/**
- * 단추 하나가 두 가지 일을 합니다 — 담기와 빼기. 라벨이 상태를 잘못 말하면
- * 사용자가 담으려다 빼게 되므로, 그 갈림만 잡아 둡니다.
- */
+/* 단추 하나가 담기와 빼기를 겸해, 라벨이 상태를 잘못 말하면 담으려다 빼게 됩니다 */
 describe('PerfumeOverview', () => {
   it('진열대에 없으면 [진열대 저장] 이다', async () => {
     const onShelfAction = vi.fn()
@@ -50,10 +47,7 @@ describe('PerfumeOverview', () => {
     ).not.toBeInTheDocument()
   })
 
-  /**
-   * 브랜드 아래 영문 줄은 조각 둘을 이어 만듭니다. 한쪽이 빠졌을 때 가운뎃점이
-   * 혼자 남는 것이 이 줄에서 가장 나기 쉬운 오류라, 세 경우를 다 잡아 둡니다.
-   */
+  /* 한쪽이 빠졌을 때 가운뎃점이 혼자 남는 것이 이 줄에서 가장 나기 쉬운 오류입니다 */
   it('영문 이름 옆에 향의 성별을 적는다', () => {
     render(
       <PerfumeOverview

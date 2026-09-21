@@ -18,7 +18,7 @@ type StarRatingProps = {
 
 type RatingSize = 'md' | 'lg'
 
-/** 원 지름. 활자가 아니라 그림이라 활자 스케일이 아니고, 끝자리 0/5 규칙을 따릅니다 */
+/** 원 지름. 활자가 아니라 그림이라 활자 스케일을 안 씁니다 */
 const CIRCLE_SIZE: Record<RatingSize, string> = {
   md: 'size-3.75',
   lg: 'size-5',
@@ -27,19 +27,14 @@ const CIRCLE_SIZE: Record<RatingSize, string> = {
 /** 원 개수. 백엔드가 1.0~5.0 만 받습니다(`@DecimalMin("1.0") @DecimalMax("5.0")`) */
 const CIRCLES = 5
 
-/**
- * 고를 수 있는 값 아홉 개. **열이 아니라 아홉인 이유는 최소가 1.0 이라서입니다** —
- * 0.5 를 보내면 백엔드가 400 이라, 첫 원은 통째로 1.0 입니다.
- */
+/** 고를 수 있는 값. 열이 아니라 아홉입니다 — 0.5 를 보내면 백엔드가 400 입니다 */
 const VALUES = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 /**
- * 취향 적합도 (A15 — SHF-12 · DTL-18 · DTL-19). **별이 아니라 원을 그립니다**(파일
- * 이름은 그대로 둡니다).
+ * 취향 적합도 (A15 — SHF-12 · DTL-18 · DTL-19). 0.5 단위이고 **별이 아니라 원**입니다.
  *
- * **0.5 단위입니다.** 예전에는 정수만 받았고 `'★'.repeat(4.5)` 가 소수를 버려
- * 오류 없이 원이 네 개만 그려졌습니다. 라디오 그룹이라 화살표 키 이동은 직접
- * 처리합니다 — `role="radio"` 만으로는 안 움직입니다.
+ * NOTE: 라디오 그룹이라 화살표 키 이동을 직접 처리합니다 — `role="radio"` 만으로는
+ * 안 움직입니다.
  */
 export function StarRating({
   label,
@@ -139,8 +134,7 @@ function EditableRating({
       <span className="flex items-center gap-1.25">
         {Array.from({ length: CIRCLES }, (_, index) => {
           const fill = fillOf(value, index)
-          // 원 index 는 (index + 0.5, index + 1) 두 값을 맡습니다.
-          // 첫 원만 왼쪽 반이 없습니다 — 0.5 는 백엔드가 안 받습니다.
+          // 원 하나가 (index + 0.5, index + 1) 두 값을 맡습니다. 첫 원만 왼쪽 반이 없습니다
           const half = index === 0 ? null : index + 0.5
           const full = index + 1
 
@@ -171,7 +165,6 @@ function EditableRating({
                 anyChecked={checkedIndex !== -1}
                 first={index === 0}
                 onSelect={onChange}
-                // 첫 원은 반이 없어 원 전체가 1.0 입니다
                 className={index === 0 ? 'left-0 w-full' : 'right-0 w-1/2'}
               />
             </span>
@@ -191,10 +184,7 @@ function EditableRating({
   )
 }
 
-/**
- * 누르는 자리. 그림이 아니라 이 투명한 칸이 단추입니다 — 원을 직접 단추로 만들면
- * 반쪽을 누를 수가 없습니다.
- */
+/** 누르는 자리. 원을 직접 단추로 만들면 반쪽을 누를 수가 없어 투명한 칸을 얹습니다 */
 function HitArea({
   ref,
   score,
@@ -231,7 +221,7 @@ function HitArea({
   )
 }
 
-/** 원 하나가 얼마나 찼는지. 4.5 면 다섯 번째 원이 반만 찹니다. */
+/** 원 하나가 얼마나 찼는지. 4.5 면 다섯 번째 원이 반만 찹니다 */
 function fillOf(
   value: number | null,
   index: number,
@@ -243,11 +233,9 @@ function fillOf(
 }
 
 /**
- * 원 하나. 글자(`●`)가 아니라 SVG 입니다 — 반만 채우려면 도형을 잘라야 하는데
- * 글자는 못 자릅니다. 반원은 위에서 아래로 **왼쪽을 지나는** 호입니다(sweep 0).
+ * 원 하나. 글자(`●`)가 아니라 SVG 인 것은 반만 채우려면 도형을 잘라야 해서입니다.
  *
- * 색은 `currentColor` 입니다. `fill-ink` 로 못 박혀 있던 때, 색을 따로 쓰는
- * 화면(진열대 상세 카드)에 얹으면 원만 차가운 먹색으로 떠 보였습니다.
+ * NOTE: 색은 `currentColor` 입니다. 못 박으면 색을 따로 쓰는 화면에서 원만 떠 보입니다.
  */
 function RatingCircle({
   fill,

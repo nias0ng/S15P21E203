@@ -22,10 +22,6 @@ export const collectionDetailQuery = (collectionId: number) =>
     queryFn: () => getCollectionDetail(collectionId),
   })
 
-/**
- * 컬렉션 카드에 얹을 미리보기 사진 (A13 하단). ⚠️ **목록 응답에 썸네일이 없어
- * 컬렉션마다 상세를 한 번씩 부릅니다.** BE 가 `previewThumbnails` 를 실어 주면
- * 이 훅을 지우세요.
- */
+/** NOTE: 목록 응답에 썸네일이 없어 컬렉션마다 상세를 한 번씩 부릅니다 */
 export const collectionPreviewsQuery = (collectionIds: number[]) =>
   collectionIds.map((collectionId) => collectionDetailQuery(collectionId))

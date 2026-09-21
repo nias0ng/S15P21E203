@@ -17,7 +17,6 @@ const CANDIDATES: ShelfItemCandidate[] = [
   { shelfItemId: 3, perfumeId: 13, name: '오르페옹', brand: null },
 ]
 
-/** 검색어는 모달이 들고 있는 값이라, 테스트에서도 같은 모양으로 감싸 줍니다 */
 function Harness({
   candidates = CANDIDATES,
 }: {

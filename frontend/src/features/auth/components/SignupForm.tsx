@@ -28,9 +28,8 @@ import { AuthCard } from './AuthCard'
 import { EmailField } from './EmailField'
 
 /**
- * 회원가입 (A28 우측 카드 — COM-01). 이메일 · 닉네임 둘 다 [중복 확인] 이 있지만
- * "쓸 수 있다" 고 해도 가입 시점에 409 로 한 번 더 걸립니다. 가입해도 로그인은
- * 되지 않습니다 — 응답에 토큰이 없습니다.
+ * 회원가입 (A28 우측 카드 — COM-01). [중복 확인] 을 통과해도 가입 시점에 409 로 한
+ * 번 더 걸리고, 가입해도 로그인은 되지 않습니다 — 응답에 토큰이 없습니다.
  */
 export function SignupForm() {
   const navigate = useNavigate()
@@ -74,10 +73,6 @@ export function SignupForm() {
     onSuccess: (available) => setNicknameAvailable(available),
   })
 
-  /*
-    서버가 앞뒤 공백을 떼고 소문자로 바꿔 검사합니다. 화면이 다르게 다듬으면
-    "쓸 수 있다" 고 해 놓고 가입에서 막힙니다 — 보낼 때도 같은 값을 씁니다.
-  */
   const emailCheck = useMutation({
     mutationFn: () => checkEmailAvailability(email.trim()),
     onSuccess: (available) => setEmailAvailable(available),
@@ -85,11 +80,7 @@ export function SignupForm() {
 
   const signupMutation = useMutation({
     mutationFn: () => signup({ email, password, nickname: trimmedNickname }),
-    /*
-      가입이 끝나면 로그인으로 넘기면서 **돌아갈 경로를 같이 들려 보냅니다.**
-      로그인 유도 모달에서 [회원가입] 으로 들어온 사람은 원래 하려던 일이 있는데,
-      여기서 경로를 흘리면 로그인까지 마치고 홈에 떨어집니다.
-    */
+    // 돌아갈 경로를 로그인까지 들려 보냅니다 — 흘리면 로그인을 마치고 홈에 떨어집니다
     onSuccess: () =>
       navigate(withReturnPath(ROUTES.LOGIN, returnTo), {
         replace: true,
@@ -114,11 +105,6 @@ export function SignupForm() {
           signupMutation.mutate()
         }}
       >
-        {/*
-          닉네임과 같은 모양 — 칸 옆에 [중복 확인] 이 붙습니다. 다만 이메일은 안이
-          아이디 · `@` · 도메인 셋으로 나뉘어 있어 `EmailField` 가 그 줄을 맡습니다
-          (도메인을 직접 적을 때는 아랫줄이 하나 더 생깁니다).
-        */}
         <div className="flex items-start gap-1.25">
           <div className="min-w-0 flex-1">
             <EmailField
@@ -172,7 +158,6 @@ export function SignupForm() {
           error={passwordConfirmError}
         />
 
-        {/* 와이어프레임에서 입력칸과 [중복 확인] 이 한 줄에 붙어 있습니다 */}
         <div className="flex items-start gap-1.25">
           <div className="flex-1">
             <Input
@@ -231,15 +216,7 @@ export function SignupForm() {
         </Button>
       </form>
 
-      {/*
-        로그인 화면의 [회원가입 →] 과 같은 모양입니다 — 두 화면이 서로를 가리켜야
-        잘못 들어온 사람이 되돌아갑니다. 돌아갈 경로도 같이 들고 갑니다(가입을
-        하려다 말고 로그인으로 가는 사람이 있습니다).
-
-        자리도 저쪽과 같은 왼쪽입니다 — 두 화면을 오갈 때 링크가 같은 자리에 있어야
-        눈이 찾지 않습니다. 5px 만 들여씁니다. 화살표까지 왼쪽 끝에 딱 붙이면 판의
-        모서리가 둥글어 글자가 밖으로 새어 나간 것처럼 보입니다.
-      */}
+      {/* 돌아갈 경로를 들고 갑니다 — 가입하려다 말고 로그인으로 가는 사람이 있습니다 */}
       <div className="text-caption flex items-center pl-1.25">
         <Link
           to={withReturnPath(ROUTES.LOGIN, returnTo)}

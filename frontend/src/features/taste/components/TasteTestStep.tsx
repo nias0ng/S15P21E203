@@ -16,19 +16,13 @@ import { FamilyPicker } from './FamilyPicker'
 import { TasteResultModal } from './TasteResultModal'
 
 type TasteTestStepProps = {
-  /**
-   * 결과 모달에서 확인을 눌렀을 때. 뽑힌 향수 id 를 넘기지 않습니다 — 확인을 누를 때
-   * 이 컴포넌트가 결과를 남겨(`POST /users/me/taste-test`) **서버가 이미 압니다**.
-   */
+  /** 뽑힌 향수 id 를 넘기지 않습니다 — 확인할 때 이 컴포넌트가 남겨 서버가 이미 압니다 */
   onComplete: () => void
 }
 
 /**
- * 취향 테스트 온보딩 스텝 (TST-03). 계열을 1~2개 고르면 결과 모달이 뜨고,
- * **건너뛰기는 없습니다.**
- *
- * **첫 로그인 직후에 열립니다** — 로그인 화면이 `GET /users/me/taste-test` 로 아직
- * 치르지 않은 사람을 가려내 보냅니다. 그다음 이동은 부르는 쪽이 정합니다.
+ * 취향 테스트 온보딩 스텝 (TST-03). 계열 1~2개를 고르면 결과 모달이 뜨고 건너뛰기는 없습니다.
+ * 로그인 화면이 아직 치르지 않은 사람을 가려 보내고, 그다음 이동은 부르는 쪽이 정합니다.
  */
 export function TasteTestStep({ onComplete }: TasteTestStepProps) {
   const vectors = useQuery(scentVectorsQuery())
@@ -43,9 +37,8 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
   }
 
   /**
-   * 결과를 서버에 남깁니다 (TST-03). **이미 마친 사람은 409 인데 성공으로 다룹니다** —
-   * 막으면 주소로 다시 들어온 사람이 아무 데도 못 갑니다. 저장한 기록은 캐시에
-   * 넣어 둡니다(로그인 화면이 온보딩을 띄울지 볼 때 씁니다).
+   * NOTE: 이미 마친 사람은 409 인데 성공으로 다룹니다 — 막으면 주소로 다시 들어온
+   * 사람이 아무 데도 못 갑니다. 저장한 기록은 로그인 화면이 보도록 캐시에 넣습니다.
    */
   const save = useMutation({
     mutationFn: (result: TasteMatch) =>
@@ -85,7 +78,7 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
 
       {vectors.isPending && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          {/* 로딩 자리표시자는 타일과 같은 크기여야 끝나는 순간 레이아웃이 튀지 않습니다 */}
+          {/* 타일과 같은 크기여야 로딩이 끝나는 순간 레이아웃이 튀지 않습니다 */}
           {Array.from({ length: 9 }, (_, index) => (
             <Skeleton key={index} className="h-18" />
           ))}

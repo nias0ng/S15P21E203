@@ -52,10 +52,6 @@ afterEach(() => {
   useDiveStore.setState({ stage: 'idle', to: null })
 })
 
-/*
-  드롭다운 둘이 `useDismissable` 하나를 같이 씁니다 — 397 에서 헤더 밖으로 옮긴
-  훅이라, 바깥 클릭 · Esc 가 옮긴 뒤에도 그대로인지 여기서 봅니다.
-*/
 describe('헤더 드롭다운', () => {
   it.each([
     ['커뮤니티', false],
@@ -98,10 +94,8 @@ describe('헤더 드롭다운', () => {
   })
 })
 
-/*
-  메인에서 나갈 때만 잠수입니다(`useDiveOut`). **주소를 바로 바꾸지 않고** 커튼이
-  덮은 뒤에 옮겨 가므로, 누른 직후에는 아직 메인에 서 있어야 합니다.
-*/
+// 잠수는 주소를 바로 바꾸지 않고 커튼이 덮은 뒤에 옮겨 가므로, 누른 직후에는
+// 아직 메인에 서 있어야 합니다
 describe('메인에서 나가는 잠수', () => {
   it('메인에서 향수를 누르면 주소가 바로 바뀌지 않고 잠수가 걸린다', async () => {
     const user = userEvent.setup()
@@ -124,10 +118,6 @@ describe('메인에서 나가는 잠수', () => {
     expect(useDiveStore.getState().stage).toBe('idle')
   })
 
-  /*
-    보조키를 누른 채 누르는 것은 새 탭 · 새 창입니다 — 가로채면 링크가 링크이기를
-    그만둡니다(`opensElsewhere`).
-  */
   it('Ctrl 을 누른 채 누르면 가로채지 않는다', async () => {
     const user = userEvent.setup()
     renderHeader(ROUTES.HOME)
@@ -153,7 +143,6 @@ describe('로그아웃', () => {
     expect(api.logout).toHaveBeenCalled()
     expect(await screen.findByText(`지금: ${ROUTES.HOME}`)).toBeVisible()
     expect(useAuthStore.getState().accessToken).toBeNull()
-    // 다음 사람이 앞 사람 화면을 보지 않게 캐시도 함께 비웁니다
     expect(queryClient.getQueryData(['anything'])).toBeUndefined()
   })
 

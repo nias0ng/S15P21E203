@@ -22,30 +22,20 @@ import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
 const PAGE_SIZE = 30
 
 /**
- * 향수 (A33 — 상단 메뉴 [향수] 목적지) + 검색 결과 (A09 — COM-05)
+ * 향수 (A33 — 상단 메뉴 [향수] 목적지) + 검색 결과 (A09 — COM-05). 검색어 `?keyword=`
+ * 는 필터 · 브랜드와 AND 로 묶입니다.
  *
- * **A09 는 `/perfumes/search` 로 따로 있던 화면인데 여기로 들어왔습니다**
- * (S15P21E203-359). 검색어는 `?keyword=` 이고 위 줄 필터 · 브랜드와 **AND** 로 함께
- * 겁니다 — 백엔드가 조건을 그렇게 묶습니다(`features/perfume/api.ts` 의 `searchPerfumes`).
- *
- * ⚠️ **쪽 넘김은 검색할 때만입니다.** 검색어가 없으면 예전처럼 첫 30개가 전부입니다 —
- * 목록은 무한 스크롤로 갈 자리라(`docs/UI-명세.md` §6) 쪽 단추를 달아 두면 그때 뗍니다.
- * ⚠️ **검색 중에는 순위 숫자를 끕니다.** 순서가 인기가 아니라 검색 적합도라 전체 순위로
- * 잘못 읽힙니다.
+ * NOTE: 쪽 넘김은 검색할 때만이고, 검색어가 없으면 첫 30개가 전부입니다 — 목록은 무한
+ * 스크롤로 갈 자리입니다(docs/UI-명세.md §6). 검색 중에는 순서가 인기가 아니라 검색
+ * 적합도라 순위 숫자를 끕니다.
  */
 export default function PerfumeListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   /*
-    ⚠️ **필터는 `useState` 가 아니라 주소에 둡니다** (S15P21E203-362).
-
-    `useState` 는 이 화면이 내려가면 같이 사라집니다. 상세로 갔다 오면 목록이 새로
-    만들어지면서 필터가 처음 값으로 돌아가, 고르고 → 눌러 보고 → 돌아오면 조건이
-    풀려 있었습니다. 브랜드 · 검색어 · 쪽은 이미 주소에 있어 살아남았는데 이 둘만
-    아니어서, 같은 화면의 필터가 서로 다르게 굴었습니다.
-
-    주소에 두면 뒤로 가기 · 새로 고침 · 링크 붙여넣기가 전부 같은 화면을 냅니다.
-    값은 사람이 고쳐 쓸 수 있으므로 읽을 때 거릅니다(`readRankingFilter`).
+    NOTE: 필터는 `useState` 가 아니라 주소에 둡니다 — 상세로 갔다 오면 이 화면이
+    새로 만들어져 `useState` 는 처음 값으로 돌아갑니다. 값은 사람이 고쳐 쓸 수
+    있으므로 읽을 때 거릅니다.
   */
   const ranking = readRankingFilter(searchParams.get('ranking'))
   const gender = readGenderFilter(searchParams.get('gender'))
@@ -62,7 +52,6 @@ export default function PerfumeListPage() {
       ranking: ranking ?? undefined,
       gender: gender ?? undefined,
       brand: brand ?? undefined,
-      // 검색일 때만 쪽을 셉니다 — 아니면 늘 첫 쪽이라 쿼리 키에 넣을 것이 없습니다
       page: searching ? page : undefined,
       size: PAGE_SIZE,
     }),
@@ -70,30 +59,17 @@ export default function PerfumeListPage() {
 
   const items = data?.perfumes ?? []
 
-  /*
-   * 메인에서 잠수로 들어왔으면 커튼이 짙은 바다색으로 덮은 채 이 신호를 기다립니다
-   * (안 알려도 상한에 걷힙니다 — `shared/ui/DiveCurtain`). 잠수로 들어온 것이 아니면
-   * 아무 일도 안 일어납니다.
-   *
-   * 기준은 **목록**입니다 — 아래에서 스피너가 갈리는 바로 그 조건입니다. 목록이 칠해지면
-   * 이 화면은 다 선 것이고, 여기는 진열대처럼 뒤늦게 떠오르는 사진 벽이 없습니다.
-   */
+  // 잠수로 들어왔으면 커튼이 이 신호를 기다립니다 — 목록이 칠해지면 다 선 것입니다
   useDiveReady(!isPending)
 
   const filtered = ranking !== null || gender !== null || brand !== null
 
-  /*
-    필터 한 칸을 주소에 적습니다. 끈 것은 `null` 이라 쿼리에서 빠집니다.
-
-    쪽도 함께 처음으로 돌립니다 — 3쪽을 보다 '여성' 을 켜면 결과가 줄어 그 쪽이 비어
-    있을 수 있습니다. 검색 중이 아니면 애초에 `page` 가 없어 지워도 그대로입니다.
-  */
+  // 쪽도 함께 처음으로 돌립니다 — 3쪽을 보다 조건을 켜면 결과가 줄어 그 쪽이 빕니다
   const setFilter = (key: 'ranking' | 'gender', value: string | null) => {
     setSearchParams(withQueryParams(searchParams, { [key]: value, page: null }))
   }
 
-  // 검색어·필터로 걸러 0건이 됐을 때만 [초기화] 를 보여줍니다.
-  // 원래 데이터가 없는 경우에는 초기화해도 달라지지 않으니 버튼을 걸지 않습니다.
+  // 걸러서 0건일 때만 [초기화] 입니다 — 원래 자료가 없으면 눌러도 달라지지 않습니다
   const resetButton = (filtered || searching) && (
     <Button
       variant="outline"
@@ -113,11 +89,8 @@ export default function PerfumeListPage() {
     </Button>
   )
 
-  /*
-    검색이 0건인 두 가지. **건수로 가릅니다** — 줄 수로 보면 범위를 넘은 쪽(주소를 직접
-    고친 경우)에서도 "검색 결과가 없습니다" 가 떠서, 결과가 있는데 없다고 말합니다.
-    검색이 아닐 때는 `undefined` 라 격자의 기본 문구가 나옵니다.
-  */
+  // 0건인지는 그린 줄 수가 아니라 건수로 가릅니다 — 범위를 넘은 쪽에서도 "결과가
+  // 없습니다" 가 떠서 결과가 있는데 없다고 말하게 됩니다
   const searchEmpty =
     !searching || !data ? undefined : data.totalElements > 0 ? (
       <EmptyState
@@ -138,10 +111,8 @@ export default function PerfumeListPage() {
       ? '조건에 맞는 향수'
       : '최근 인기 향수'
 
-  /*
-    검색은 **전체 건수**, 목록은 **그린 개수**입니다. 목록은 첫 30개만 부르므로 전체
-    건수를 적으면 "1,284개" 라 써 놓고 서른 장을 그리게 됩니다.
-  */
+  // 검색은 전체 건수, 목록은 그린 개수입니다 — 목록은 첫 30개만 불러서 전체 건수를
+  // 적으면 "1,284개" 라 써 놓고 서른 장을 그리게 됩니다
   const count = searching
     ? (data?.totalElements ?? null)
     : items.length > 0
@@ -161,7 +132,6 @@ export default function PerfumeListPage() {
         // key 를 주어 주소가 바뀌면 입력값도 따라옵니다 (초기화 · 뒤로 가기)
         key={keyword}
         onSearch={(next) => {
-          // 새로 검색하면 첫 쪽부터 봅니다 — 3쪽에 있던 자리는 의미가 없습니다
           setSearchParams(
             withQueryParams(searchParams, {
               keyword: next.trim() || null,
@@ -200,7 +170,6 @@ export default function PerfumeListPage() {
 
       <section className={GLASS_PANEL}>
         <div className="mb-6.25 flex items-baseline gap-2.5">
-          {/* 글자 크기·굵기는 S15P21E203-162 타이포 스케일에서 확정합니다 */}
           <h2 className="text-ink font-serif text-2xl">{heading}</h2>
           {count !== null && (
             <span className="text-ink-muted text-caption">{count}개</span>
@@ -228,7 +197,6 @@ export default function PerfumeListPage() {
           />
         )}
 
-        {/* 쪽 넘김은 검색할 때만. 한 쪽뿐이면 Pagination 이 스스로 안 그립니다 */}
         {searching && data && (
           <Pagination
             className="mt-6.25"

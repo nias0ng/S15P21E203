@@ -11,20 +11,14 @@ import type { PersonalRecommendation } from '../types'
 /** 접었을 때 화면에 남는 손잡이 띠의 폭. 아래 -translate-x-72 와 짝입니다 */
 const BODY_WIDTH = 'w-72'
 
-/**
- * 개인화 맞춤 향수 추천 카드 (REC-12 · REC-13). 묻지 않았는데 온 것이라 ✕ 로 아예
- * 치울 수 있어야 합니다.
- */
+/** 개인화 맞춤 추천 카드 (REC-12 · REC-13). 묻지 않았는데 온 것이라 아예 치울 수 있어야 합니다. */
 export function RecommendPeekCard({
   recommendation,
 }: {
   recommendation: PersonalRecommendation
 }) {
   const [open, setOpen] = useState(false)
-  /*
-   * 닫으면 이 화면을 떠날 때까지 다시 뜨지 않습니다. ⚠️ 기억해 두지는 않습니다 —
-   * 어디에 담을지는 추천 API 를 붙일 때 함께 정합니다.
-   */
+  // 닫으면 이 화면을 떠날 때까지만 안 뜹니다 — 어디에 기억할지는 추천 API 를 붙일 때 정합니다
   const [dismissed, setDismissed] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -32,8 +26,7 @@ export function RecommendPeekCard({
 
   /*
    * 펼친 동안만 듣습니다 — 접혀 있을 때도 들으면 다른 Esc(모달 닫기)와 겹칩니다.
-   * 바깥 판정이 rootRef 기준인 이유: 띠를 누르는 pointerdown 도 여기 도착해서,
-   * 카드 안을 넘기지 않으면 열자마자 다시 닫힙니다.
+   * 바깥 판정은 띠까지 담은 rootRef 기준이어야 열자마자 다시 닫히지 않습니다.
    */
   useEffect(() => {
     if (!open) return
@@ -65,9 +58,8 @@ export function RecommendPeekCard({
 
   return (
     /*
-      **빈 자리는 클릭을 먹지 않습니다.** 접혀서 안쪽이 화면 밖에 나가도 바깥 상자는
-      337px 을 그대로 차지합니다 — transform 은 그림만 옮기고 자리는 안 옮깁니다.
-      진열대 왼쪽 화살표와 병이 이 보이지 않는 상자에 가려 안 눌렸습니다.
+      NOTE: 접혀서 안쪽이 화면 밖에 나가도 바깥 상자는 자리를 그대로 차지해(transform 은
+      그림만 옮깁니다) 뒤의 진열대를 가립니다 — 빈 자리는 클릭을 먹지 않게 둡니다.
     */
     <div
       ref={rootRef}
@@ -92,7 +84,6 @@ export function RecommendPeekCard({
           className={cn(
             BODY_WIDTH,
             'shrink-0 space-y-4 p-5 outline-none',
-            // 세로로 길어져도 화면 밖으로 넘치지 않게 합니다
             'max-h-[calc(100dvh-3rem)] overflow-y-auto',
           )}
         >
@@ -115,7 +106,6 @@ export function RecommendPeekCard({
               'group',
             )}
           >
-            {/* contain 으로 병 실루엣을 자르지 않습니다 */}
             <Thumbnail
               src={thumbnailUrl}
               fallback="이미지"

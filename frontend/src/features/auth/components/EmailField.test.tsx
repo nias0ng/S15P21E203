@@ -42,18 +42,7 @@ describe('EmailField', () => {
     expect(screen.getByText('알린 주소: "hyanghae@ssafy.com"')).toBeVisible()
   })
 
-  /*
-    세 칸이 서로의 값을 조합해 바깥에 알립니다. **바뀐 칸은 이벤트에서, 나머지 둘은
-    지금 렌더의 값에서** 가져오는데, 이것이 한 박자 늦지 않는지를 봅니다.
-
-    늦지 않는 이유는 둘입니다. 바뀐 칸의 값은 `event.target.value` 라 DOM 이 들고
-    있는 지금 값이고, 나머지 둘은 **같은 이벤트에서 함께 바뀔 수 없는 다른 칸**이라
-    지난 렌더의 값이 곧 현재 값입니다. 빨리 쳐도 입력 하나하나가 따로 처리됩니다.
-
-    이 시험은 그 전제를 붙잡아 둡니다 — `useEffect` 로 옮기자는 이야기가 나오면
-    여기가 왜 그대로여도 되는지의 근거입니다(그렇게 옮기면 렌더가 한 번 더 돌고
-    처음 켤 때도 빈 값을 한 번 알리게 됩니다).
-  */
+  // 나머지 두 칸을 지난 렌더의 값에서 가져와도 한 박자 늦지 않는다는 전제를 붙잡습니다
   it('빨리 이어 쳐도 알리는 주소가 한 박자 늦지 않는다', async () => {
     const onChange = vi.fn()
     render(<EmailField onChange={onChange} />)
@@ -68,10 +57,6 @@ describe('EmailField', () => {
 
     expect(onChange).toHaveBeenLastCalledWith('hyanghae99@naver.com')
 
-    /*
-      한 번이라도 어긋난 조합을 알린 적이 없어야 합니다. 도메인을 고르기 전에는
-      빈 문자열이고, 고른 뒤에는 그때그때의 아이디에 도메인이 붙은 값입니다.
-    */
     const reported = onChange.mock.calls.map(([value]) => value as string)
     const joined = reported.filter((value) => value !== '')
 
@@ -95,7 +80,6 @@ describe('EmailField', () => {
 
     expect(onChange).toHaveBeenLastCalledWith('hyanghae@ssafy.com')
 
-    // 목록으로 되돌리면 직접 적어 둔 값이 아니라 고른 값이 붙습니다
     await userEvent.selectOptions(
       screen.getByLabelText('이메일 도메인'),
       'gmail.com',

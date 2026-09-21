@@ -2,10 +2,7 @@ import { useId, useState } from 'react'
 
 import { cn } from '@/shared/lib/cn'
 
-/**
- * 고를 수 있는 메일 도메인. 국내에서 쓰는 여섯 개만 둡니다 — 목록이 길어지면
- * 고르는 시간이 직접 적는 시간보다 오래 걸립니다. 나머지는 직접입력입니다.
- */
+/** 국내에서 쓰는 여섯 개만 둡니다 — 길어지면 고르는 게 직접 적는 것보다 느립니다 */
 const EMAIL_DOMAINS = [
   'naver.com',
   'gmail.com',
@@ -15,13 +12,9 @@ const EMAIL_DOMAINS = [
   'kakao.com',
 ] as const
 
-/** 목록에 없는 도메인을 직접 적겠다는 표시. 도메인 값과 섞이지 않는 값입니다 */
 const DIRECT = 'direct'
 
-/**
- * `shared/ui/Input` 과 같은 생김새. 이 칸은 입력창 · `@` · 고르는 칸이 한 줄로
- * 붙어 있어 `Input` 을 그대로 쓰면 라벨 · 에러가 세 벌 생깁니다.
- */
+/** `Input` 을 그대로 쓰면 한 줄에 붙은 칸 셋마다 라벨 · 에러가 따로 생깁니다 */
 const CONTROL = cn(
   'rounded-card text-body bg-surface-card h-10 w-full border px-2.5',
   'placeholder:text-ink-muted/70',
@@ -29,20 +22,14 @@ const CONTROL = cn(
 )
 
 type Props = {
-  /** 아이디와 도메인이 다 갖춰지면 이어 붙인 주소, 아니면 빈 문자열 */
   onChange: (email: string) => void
-  /** 값이 있으면 테두리가 빨개지고 메시지가 아래에 붙습니다 */
   error?: string
-  /** 통과했을 때의 안내 같은 보조 설명 */
   hint?: string
 }
 
 /**
- * 회원가입 이메일 칸 (A28 — COM-01). **아이디와 도메인을 따로 받습니다** —
- * `@` 는 고정으로 찍어 두고, 도메인은 목록에서 고르거나 직접 적습니다.
- *
- * 바깥에는 **다 갖춰졌을 때만** 주소를 알립니다. 반쪽짜리(`hyanghae@`)를 넘기면
- * 회원가입 화면이 그걸 이메일로 알고 [중복 확인] 과 [가입하기] 를 켭니다.
+ * 회원가입 이메일 칸. 아이디와 도메인을 따로 받고, 다 갖춰졌을 때만 주소를
+ * 알립니다 — 반쪽짜리(`hyanghae@`)를 넘기면 가입 화면이 [가입하기] 를 켭니다.
  */
 export function EmailField({ onChange, error, hint }: Props) {
   const [local, setLocal] = useState('')
@@ -78,11 +65,7 @@ export function EmailField({ onChange, error, hint }: Props) {
           id={localId}
           className={cn(CONTROL, borderClass, 'min-w-0 flex-1')}
           placeholder="이메일"
-          /*
-            반쪽짜리 값이라 자동완성을 끕니다. `username` 을 걸면 비밀번호 관리자가
-            아이디만(`hyanghae`) 계정명으로 저장해, 전체 주소를 적는 로그인과
-            어긋납니다.
-          */
+          // `username` 을 걸면 비밀번호 관리자가 아이디만 계정명으로 저장해, 전체 주소를 적는 로그인과 어긋납니다
           autoComplete="off"
           required
           value={local}
