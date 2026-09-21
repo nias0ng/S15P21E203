@@ -8,7 +8,7 @@ import {
     testOptions,
 } from './lib/common.js';
 
-export const options = testOptions();
+export const options = testOptions('review_board_likes');
 const metrics = createEndpointMetrics('review_board_likes');
 const pageSize = __ENV.PAGE_SIZE || '20';
 

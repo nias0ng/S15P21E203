@@ -10,7 +10,7 @@ import {
     testOptions,
 } from './lib/common.js';
 
-export const options = testOptions();
+export const options = testOptions('review_like');
 const metrics = createEndpointMetrics('review_like');
 const reviewId = Number(__ENV.REVIEW_ID || '1');
 
