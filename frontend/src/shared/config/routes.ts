@@ -6,8 +6,7 @@ export const ROUTES = {
   HOME: '/',
 
   // 향수 (에픽 110)
-  PERFUMES: '/perfumes', // A33 향수 목록 + 필터
-  PERFUME_SEARCH: '/perfumes/search', // A09 향수 검색 결과
+  PERFUMES: '/perfumes', // A33 향수 목록 + 필터 · A09 검색 결과(?keyword=)
   PERFUME_DETAIL: '/perfumes/:perfumeId', // A10 향수 상세
   REVIEW_DETAIL: '/reviews/:reviewId', // A12 후기 상세
 

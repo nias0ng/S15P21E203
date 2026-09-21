@@ -132,7 +132,7 @@ export function GlobalHeader({ tone = 'surface' }: { tone?: HeaderTone }) {
         {/* 돋보기 · 계정 (시안 우측 묶음 — 구분선 · '오늘도, 좋은 향과 함께.' 문구는 2026-09-16 에 뺐습니다) */}
         <div className="flex shrink-0 items-center gap-7.5">
           <Link
-            to={ROUTES.PERFUME_SEARCH}
+            to={ROUTES.PERFUMES}
             aria-label="향수 검색"
             className={cn(
               ink.text,

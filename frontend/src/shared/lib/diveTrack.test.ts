@@ -163,7 +163,6 @@ describe('깊이', () => {
       expect([child, riseDepthOf(child)]).toEqual([child, diveDepthOf(list)])
 
     같음('/perfumes/12', ROUTES.PERFUMES)
-    같음('/perfumes/search', ROUTES.PERFUMES)
     같음('/brands/79', ROUTES.BRANDS)
     같음('/notes/5', ROUTES.NOTES)
     // 주소가 제 목록 아래에 안 달린 둘 — 화면은 그 방 것이다
@@ -205,7 +204,6 @@ describe('깊이', () => {
     const 방: Record<keyof typeof ROUTES, string | null> = {
       HOME: null, // 출발지
       PERFUMES: ROUTES.PERFUMES,
-      PERFUME_SEARCH: ROUTES.PERFUMES,
       PERFUME_DETAIL: ROUTES.PERFUMES,
       REVIEW_DETAIL: ROUTES.COMMUNITY_REVIEWS,
       BRANDS: ROUTES.BRANDS,
