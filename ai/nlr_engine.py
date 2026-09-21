@@ -548,8 +548,32 @@ def understand(index, text, structured=None):
 
     core, evidence = _extract(index, haystack)
 
+    # **원문만으로 만들 수 있는 조건**과 **회피가 가리키는 것.** 둘 다 ①단계 출력을
+    # 안 보거나(앞) 회피 칸만 보므로(뒤) 아래 판정이 회차마다 흔들리지 않는다.
+    acc_support, note_support = _text_support(index, text)
+    avoid_accords, avoid_notes = _avoid_targets(index, structured)
+    alias_target = index.get("note_alias_target") or {}
+
+    # 한국어 노트 이름을 **원문에서 직접** 찾는다 [S15P21E203-391 · 측정 기록 40번].
+    # 346 은 ①단계가 쓴 문장 안에서만 찾았는데, ①단계가 원문을 요약하면서 한국어를
+    # 지우면 조건이 통째로 사라진다.
+    #
+    #     "시원하고 깨끗한 코코넛 향이 나면서"
+    #       한 회차   additional_requirements=["시원하고 깨끗한 코코넛 향"]  -> 조건 5개
+    #       다른 회차  additional_requirements=["시원한 느낌"]               -> 조건 3개
+    #
+    # 원문은 안 바뀌므로 여기서 찾으면 **회차와 무관하게 같은 조건**이 된다.
+    for alias in _longest_alias_ko(index, text):
+        if alias_target.get(alias, alias) in avoid_notes:
+            continue
+        core.update(_bridge_lookup(index, alias))
+
     if structured:
         for raw in (structured.get("scent_preference") or []):
+            # **원문에 근거가 없는 조각은 버린다** [S15P21E203-391 · 측정 기록 40번].
+            # ①단계가 `포근한` 에 Vanilla, `우아한` 에 Rose 를 붙였다 안 붙였다 한다.
+            if not _grounded(index, text, raw, acc_support, note_support):
+                continue
             accord = _normalize_accord(index, raw)
             if accord:
                 core.add(accord)
@@ -580,6 +604,8 @@ def understand(index, text, structured=None):
         # 에 네 번째 값이 필요해 응답 계약이 바뀌므로 **범위에 넣지 않았다.**
         for raw in (structured.get("additional_requirements") or []):
             for alias in _longest_alias_ko(index, raw):
+                if alias_target.get(alias, alias) in avoid_notes:
+                    continue
                 core.update(_bridge_lookup(index, alias))
 
     avoid = set()
@@ -588,12 +614,18 @@ def understand(index, text, structured=None):
         if accord:
             avoid.add(accord)
 
+    # **`avoid` 는 그대로 둔다.** 그 값만 `search()` 의 하드 제외로 나간다.
+    # `blocked` 는 조건에서 빼기만 하고 후보를 지우지 않는다 — 브리지가 한 방향으로만
+    # 맞아서 하드 제외로 넘기면 `rose` 하나에 `floral` 전체가 지워진다 [측정 기록 40번].
+    blocked = avoid | avoid_accords
+    final = core - blocked
+
     return {
-        "core": sorted(core - avoid),
+        "core": sorted(final),
         "avoid": sorted(avoid),
         "matched_expressions": sorted({e["from"] for e in evidence}),
         "evidence": evidence,
-        "source": _source(index, text, structured, core - avoid),
+        "source": _source(index, text, structured, final),
         "unmatched": _unmatched(index, structured, haystack, evidence),
     }
 
@@ -819,8 +851,17 @@ def _longest_alias_ko(index, raw):
     **343 이 `_lexicon_lookup` 에 넣은 것과 같은 규칙이다** — 한국어는 교착어라 부분
     문자열로 찾을 수밖에 없고, 그러면 긴 것이 이긴다.
 
-    **원문(`text`)에는 쓰지 않는다.** ①단계를 거친 문장만 본다. 원문을 훑으면
-    `머스크는 싫어` 의 `머스크` 까지 집어 회피 표현이 조건이 된다 [측정 · 설문 10문장].
+    **원문(`text`)에도 쓴다** [S15P21E203-391 · 측정 기록 40번]. 346 은 ①단계를 거친
+    문장만 봤는데, ①단계가 원문을 요약하며 한국어를 지우면 조건이 통째로 사라졌다 —
+    실사용 설문에서 원문에 별칭이 박힌 58문장 중 **36.2%** 가 그렇게 잃고 있었다.
+
+    ⚠ **회피 가드 없이 쓰면 안 된다.** 원문을 그대로 훑으면 `머스크는 싫어` 의
+    `머스크` 까지 집는다(설문 10문장 · 합성 2문장). 부르는 쪽이 `_avoid_targets()` 로
+    걸러서 넘긴다 — `understand()` 와 `note_spoken()` 이 그렇게 한다.
+
+    ⚠ **회피를 `search()` 의 하드 제외로 넘기지는 않는다.** 브리지가 한 방향으로만
+    맞아서 `rose` 하나를 싫다고 하면 `floral` 전체가 지워진다 — 실측에서 카탈로그의
+    중앙 35% · 최대 **83.9%** 가 날아갔다. 조건에서 빼기만 한다.
     """
     aliases = index.get("note_alias_ko") or ()
     text = re.sub(r"\s+", " ", str(raw).strip().lower())
@@ -850,10 +891,113 @@ def _bridge_lookup(index, raw):
     return bridge.get(re.sub(r"\s+", " ", str(raw).strip().lower()), ())
 
 
+def _note_key(index, raw):
+    """노트 이름을 브리지 표에 있는 형태로 맞춘다. str.
+
+    ①단계가 같은 노트를 `tropical fruit` 과 `tropical fruits` 로 번갈아 내놓는다
+    [측정 기록 40번]. `_normalize_accord` 는 accord 에만 단수/복수를 맞춰 주고 노트
+    경로에는 그것이 없어서 **회차마다 다른 조건**이 됐다. 표에 있는 형태를 돌려준다.
+    """
+    value = re.sub(r"\s+", " ", str(raw).strip().lower())
+    bridge = index.get("note_bridge") or {}
+    # **단수를 먼저 본다.** `tropical fruit`(72개)과 `tropical fruits`(364개)는 둘 다
+    # 진짜 카탈로그 노트라 "표에 있는 쪽" 으로는 못 모은다. `note_rows()` 가 부분
+    # 문자열로 견주므로 단수를 쓰면 복수까지 함께 걸려 **조건이 넓어지고 고정된다.**
+    for guess in (re.sub(r"s$", "", value), value, value + "s"):
+        if guess in bridge:
+            return guess
+    return value
+
+
+def _text_support(index, text):
+    """**원문만으로** 만들 수 있는 조건. (accord 집합, 노트 집합).
+
+    ①단계 출력을 전혀 안 본다. 그래서 같은 문장이면 몇 번을 불러도 같다 —
+    `_grounded()` 가 이것을 기준으로 ①단계 조각을 판정한다 [측정 기록 40번].
+    """
+    accords, _ = _extract(index, text)
+    targets = index.get("note_alias_target") or {}
+    notes = set()
+    for alias in _longest_alias_ko(index, text):
+        notes.add(targets.get(alias, alias))
+        accords.update(_bridge_lookup(index, alias))
+    return accords, notes
+
+
+def _avoid_targets(index, structured):
+    """`avoid` 칸이 가리키는 (accord 집합, 노트 집합).
+
+    **`understand()` 의 `avoid` 와 다르다.** 그쪽은 `_normalize_accord` 로 푼 accord 만
+    담아 `search()` 의 **하드 제외**로 나가고, 이쪽은 원문 경로가 조건을 만들 때 **빼기
+    위한 목록**이다. 하드 제외로는 안 넘긴다 — 브리지가 한 방향으로만 맞아서
+    `rose` 하나를 싫다고 하면 `floral` 전체가 지워진다(카탈로그 최대 83.9%)
+    [측정 기록 40번].
+
+        "꽃향은 좋은데 로즈는 싫어"   avoid=['Rose']  ->  노트 rose 를 조건에서 뺀다
+        "우드·머스크는 빼줘"         avoid=['우드','머스크']  ->  한국어도 푼다
+    """
+    targets = index.get("note_alias_target") or {}
+    bridge = index.get("note_bridge") or {}
+    accords, notes = set(), set()
+    for raw in ((structured or {}).get("avoid") or []):
+        accord = _normalize_accord(index, raw)
+        if accord:
+            accords.add(accord)
+        for alias in _longest_alias_ko(index, raw):
+            notes.add(targets.get(alias, alias))
+            accords.update(_bridge_lookup(index, alias))
+        # **accord 로 풀리는 이름도 노트로 뺀다.** `Rose` 는 accord 이름이기도 하고
+        # 노트 이름이기도 하다. accord 쪽만 빼면 노트 조건으로 되살아난다.
+        key = _note_key(index, raw)
+        if key in bridge:
+            notes.add(targets.get(key, key))
+            accords.update(_bridge_lookup(index, key))
+        # **회피 문구 안의 사전 표현도 본다.** `평범한 과일 향 말고` 에서 ①단계가
+        # `avoid: ['평범한 과일 향']` 을 냈는데, 사전이 원문의 `과일` 을 잡아 fruity 를
+        # 조건으로 만들면 **싫다고 한 것을 추천**하게 된다.
+        lexicon_accords, _ = _extract(index, str(raw))
+        accords.update(lexicon_accords)
+    return accords, notes
+
+
+def _grounded(index, text, raw, acc_support, note_support):
+    """①단계가 낸 향 조각에 **원문 근거가 있나.** bool.
+
+    ①단계는 회차마다 원문에 없는 향을 지어낸다 — `포근한` 에 `Vanilla`, `우아한` 에
+    `Rose` 를 붙인다. ①단계 프롬프트가 *"이미지·감각 표현을 임의의 향으로 바꾸지
+    마세요"* 로 금지한 것인데 **지켰다 안 지켰다 한다.** 그것이 같은 문장에서 추천이
+    통째로 바뀌는 가장 큰 원인이었다 [측정 기록 40번].
+
+    근거는 셋 중 하나다.
+
+        원문에 글자 그대로 있다            `citrus 계열로` 처럼 영어로 쓴 경우
+        그 accord 를 원문이 이미 만든다     `상큼한` -> citrus 가 있으면 `citrus` 통과
+        그 노트를 원문이 이미 만든다        `시트러스` -> citruses 가 있으면 통과
+
+    ⚠ **"그 노트가 부르는 accord 를 원문이 만들면 통과" 를 넣으면 안 된다.**
+    `달달` 이 sweet 을 만들면 sweet 을 부르는 노트 전부(vanilla·honey·caramel …)가
+    통과한다. 그 규칙으로 재면 흔들리는 문장이 65개 중 **2개가 아니라 12개**였다.
+    """
+    value = re.sub(r"\s+", " ", str(raw).strip().lower())
+    if not value:
+        return False
+    if value in text.lower():
+        return True
+    accord = _normalize_accord(index, value)
+    if accord and accord in acc_support:
+        return True
+    key = _note_key(index, value)
+    if key in (index.get("note_bridge") or {}):
+        target = (index.get("note_alias_target") or {}).get(key, key)
+        if _note_key(index, target) in {_note_key(index, n) for n in note_support}:
+            return True
+    return False
+
+
 # ---------------------------------------------------------------------------
 # 2단계 — 검색 · 정렬 · 완화
 # ---------------------------------------------------------------------------
-def note_rows(index, structured):
+def note_rows(index, structured, raw_text=None):
     """사용자가 말한 노트를 가진 향수. np.ndarray[bool] | None.
 
     index      : dict         load_index() 결과
@@ -873,7 +1017,7 @@ def note_rows(index, structured):
     where = index.get("notes")
     if not where:
         return None
-    spoken = note_spoken(index, structured)
+    spoken = note_spoken(index, structured, raw_text)
     if not spoken:
         return None
     targets = set(spoken.values())
@@ -884,7 +1028,7 @@ def note_rows(index, structured):
     return hit if hit.any() else None
 
 
-def note_spoken(index, structured):
+def note_spoken(index, structured, raw_text=None):
     """사용자가 말한 노트. dict[사용자가 쓴 말, 카탈로그 이름].
 
     index      : dict         load_index() 결과
@@ -899,21 +1043,49 @@ def note_spoken(index, structured):
     아무 노트와도 안 맞고, 영어 이름을 set 에 `update` 로 넣으면 문자열이 글자 단위로
     쪼개져 `m` 이 거의 모든 노트에 걸린다.
     """
-    if not structured:
-        return {}
     bridge = index.get("note_bridge") or {}
     alias_target = index.get("note_alias_target") or {}
+    _, avoid_notes = _avoid_targets(index, structured)
     spoken = {}
+
+    # **원문에서도 찾는다** [S15P21E203-391]. ①단계가 원문을 요약하며 한국어를 지워도
+    # 노트 조건이 남는다. `understand()` 의 별칭 경로와 같은 가드를 쓴다.
+    for alias in _longest_alias_ko(index, str(raw_text or "")):
+        target = alias_target.get(alias, alias)
+        if target in avoid_notes:
+            continue
+        spoken[alias] = _note_key(index, target)
+
+    if not structured:
+        return spoken
+
+    # **①단계가 쓴 문장에서 찾은 것도 원문에 근거가 있어야 쓴다**
+    # [S15P21E203-391 · 측정 기록 40번]. 이 가드가 없으면 `understand()` 만 조각을
+    # 거르고 여기서는 안 걸러, 같은 문장인데 노트 조건만 회차마다 달라진다.
+    lowered = str(raw_text or "").lower()
+    acc_support, note_support = _text_support(index, raw_text or "")
     for field in ("additional_requirements", "scent_preference"):
         for raw in (structured.get(field) or []):
             text = re.sub(r"\s+", " ", str(raw).strip().lower())
             for alias in _longest_alias_ko(index, text):
-                spoken[alias] = alias_target.get(alias, alias)
+                target = alias_target.get(alias, alias)
+                if target in avoid_notes:
+                    continue
+                if raw_text is not None and alias not in lowered:
+                    continue          # 원문에 없는 한국어를 ①단계가 지어낸 것이다
+                spoken[alias] = _note_key(index, target)
             # 영어 노트 이름이 직접 온 경우. **accord 이름은 뺀다** —
             # 그건 `understand()` 가 core 로 넣어 strength 가 이미 정렬한다.
             # 노트 키로 또 걸면 같은 조건이 두 번 순위를 흔든다.
-            if text in bridge and not _normalize_accord(index, text):
-                spoken[text] = alias_target.get(text, text)
+            key = _note_key(index, text)
+            if key in bridge and not _normalize_accord(index, key):
+                target = alias_target.get(key, key)
+                if target in avoid_notes:
+                    continue
+                if raw_text is not None and not _grounded(
+                        index, str(raw_text), text, acc_support, note_support):
+                    continue          # 원문에 근거가 없는 영어 노트 이름이다
+                spoken[text] = _note_key(index, target)
     return spoken
 
 
@@ -1001,7 +1173,7 @@ def _context_values(raw, mapping, field):
 
 
 def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
-           brand_cap=BRAND_CAP, min_results=MIN_RESULTS, structured=None):
+           brand_cap=BRAND_CAP, min_results=MIN_RESULTS, structured=None, raw_text=None):
     """조건으로 향수를 찾아 정렬한다.
 
     structured : dict | None  ①단계 구조화 결과. 주면 `context` 로 후보를 좁힌다
@@ -1019,7 +1191,8 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
         # 계약서가 막은 것은 **근거 없는** 인기 향수다. `중성적인 향수 중에서 평가가
         # 많은 순` 은 근거를 댈 수 있으므로 그 금지에 안 걸린다. 근거는 `matched_data`
         # 로 내보낸다.
-        return _context_only(index, avoid, top_k, people_min, brand_cap, structured)
+        return _context_only(index, avoid, top_k, people_min, brand_cap, structured,
+                             raw_text)
 
     # 부른 쪽이 원한 개수보다 많이 요구할 수는 없다. top_k=2 인데 min_results 가 3이면
     # AND 가 2개를 다 찾아도 부족으로 보고 완화 사다리를 타 버린다.
@@ -1037,7 +1210,7 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
 
     # 사용자가 말한 노트를 가진 향수를 앞으로 당긴다 (348). 말한 노트가 없으면 None 이라
     # 정렬이 그대로다 — **노트를 말하지 않은 문장의 순서는 안 바뀐다.**
-    notes = note_rows(index, structured)
+    notes = note_rows(index, structured, raw_text)
 
     # **말한 노트로 후보도 좁힌다** [측정 기록 38번]. 348 은 정렬만 바꿨는데, accord
     # 조건을 여럿 만족하는 좁은 후보 안에 그 노트를 가진 향수가 아예 없으면 정렬로는
@@ -1054,7 +1227,8 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
     # 것이 아니라 안 잃는 것이다. 쿼리가 말한 노트를 정답 향수가 실제로 갖는 비율이
     # 65.4% 라(35번) 좁히면 정답이 빠지는 경우가 있고, 그것이 오름 5 · 내림 9 로 상쇄됐다.
     base_without_note = base
-    base, context_applied = _note_mask(index, structured, base, context_applied, notes)
+    base, context_applied = _note_mask(index, structured, base, context_applied, notes,
+                                       raw_text)
     note_applied = any(item["field"] == "note" for item in context_applied)
 
     score = index["strength"][:, cols].sum(axis=1)
@@ -1140,7 +1314,7 @@ def _note_cause(index, base_without_note, cols, score, top_k, brand_cap, notes,
     return ["말한 노트로 좁혀 조건을 다 만족하는 향수가 모자랐다"]
 
 
-def _context_only(index, avoid, top_k, people_min, brand_cap, structured):
+def _context_only(index, avoid, top_k, people_min, brand_cap, structured, raw_text=None):
     """향 조건이 없을 때 성별·계절·낮밤·노트로만 고른다. dict.
 
     걸린 조건이 하나도 없으면 `NO_CONDITION` 이다 — **아무 조건 없이 인기순을 내지
@@ -1156,8 +1330,8 @@ def _context_only(index, avoid, top_k, people_min, brand_cap, structured):
         if col is not None:
             base &= ~index["has"][:, col]
     base, applied = context_mask(index, structured, base)
-    notes = note_rows(index, structured)
-    base, applied = _note_mask(index, structured, base, applied, notes)
+    notes = note_rows(index, structured, raw_text)
+    base, applied = _note_mask(index, structured, base, applied, notes, raw_text)
     if not applied:
         return {"rows": [], "stage": "NO_CONDITION", "candidate_count": 0,
                 "tie_at_last": 0, "relaxed": [], "context_applied": []}
@@ -1169,7 +1343,7 @@ def _context_only(index, avoid, top_k, people_min, brand_cap, structured):
     return picked
 
 
-def _note_mask(index, structured, base, applied, notes):
+def _note_mask(index, structured, base, applied, notes, raw_text=None):
     """말한 노트로 후보를 한 번 더 좁힌다. (np.ndarray[bool], list[dict]).
 
     notes : np.ndarray[bool] | None  `note_rows()` 결과. 없으면 아무것도 안 한다
@@ -1183,7 +1357,7 @@ def _note_mask(index, structured, base, applied, notes):
     narrowed = base & notes
     if narrowed.sum() < CONTEXT_MIN:
         return base, applied
-    spoken = note_spoken(index, structured)
+    spoken = note_spoken(index, structured, raw_text)
     return narrowed, list(applied) + [{
         "field": "note",
         "values": sorted(set(spoken.values())),
@@ -1387,7 +1561,7 @@ def recommend(index, text, structured=None, top_k=TOP_K, estimator=None):
             # 값은 추정 전 기준이라 그대로 두면 기여를 빠뜨린다.
             understood["source"] = "llm+lexicon"
     found = search(index, understood["core"], understood["avoid"], top_k=top_k,
-                   structured=structured)
+                   structured=structured, raw_text=text)
 
     results = []
     for row in found["rows"]:
