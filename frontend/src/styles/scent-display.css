@@ -108,6 +108,12 @@
     --color-ink-muted: #5f5c58;
     --color-surface-sunken: rgb(255 255 255 / 0.35);
     --color-line: rgb(255 255 255 / 0.5);
+    /*
+     * 카드 안은 밝은 면이라 경고색도 밝은 화면 값으로 되돌립니다. 방 값(#f2b7a2)은
+     * 어둠 위에서 4.7:1 인 연한 산호색이라, 흰 카드에 얹으면 거의 안 보입니다
+     * (게시판 카드의 눌린 좋아요 하트가 그랬습니다).
+     */
+    --color-danger: var(--color-rust);
     /* 위 `.scent-night` 과 같은 이유 — 물려받기만 하는 글자도 따라오게 합니다 */
     color: var(--color-ink);
   }

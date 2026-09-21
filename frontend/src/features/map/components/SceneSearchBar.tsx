@@ -91,6 +91,12 @@ export function SceneSearchBar({
           onSearch(trimmed, mode)
         }}
         leading={<ModeSwitch mode={mode} onModeChange={onModeChange} />}
+        /*
+          메인만 예전 물빛-금빛 그대로입니다 (S15P21E203-374). 여기는 판이 아니라
+          바다 · 하늘 위고, 3D 안의 검색창(엔진 `landing/index.html`)이 같은 색을
+          따로 들고 있어 바꾸면 안팎이 갈립니다.
+        */
+        tone="scene"
       />
 
       {/*

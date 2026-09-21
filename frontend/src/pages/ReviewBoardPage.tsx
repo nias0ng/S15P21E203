@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router'
 
 import {
+  boardTitle,
   BoardHeader,
   communityKeys,
   PostList,
@@ -141,7 +142,9 @@ export default function ReviewBoardPage() {
           <section className={GLASS_PANEL}>
             <div className="mb-6.25 flex items-baseline gap-2.5">
               {/* 판 위 제목은 향수 · 브랜드 · 노트의 판과 같은 크기입니다 */}
-              <h2 className="text-ink font-serif text-2xl">전체 후기</h2>
+              <h2 className="text-ink font-serif text-2xl">
+                {boardTitle(sort, '후기')}
+              </h2>
               {!reviews.isPending && !!reviews.data?.totalElements && (
                 <span className="text-ink-muted text-caption">
                   {reviews.data.totalElements.toLocaleString()}개

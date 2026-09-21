@@ -37,13 +37,27 @@ export interface BrandDetail extends Brand {
 }
 
 /**
- * A34 정렬. 기본은 영문 abc 순입니다. 이름이 `NAME` 하나가 아닌 것은 브랜드가
- * 이름을 둘 가져, 어느 쪽으로 줄 세우는지가 값에 드러나야 해서입니다.
+ * A34 정렬. 이름이 `NAME` 하나가 아닌 것은 브랜드가 이름을 둘 가져, 어느 쪽으로
+ * 줄 세우는지가 값에 드러나야 해서입니다.
  */
 export type BrandSort = 'NAME_KO' | 'NAME_EN' | 'PERFUME_COUNT'
 
-/** 백엔드 기본값과 같습니다. 같아야 "정렬을 고르지 않음" 과 한자리를 씁니다. */
-export const DEFAULT_BRAND_SORT: BrandSort = 'NAME_EN'
+/**
+ * **화면이 처음 켜 두는 정렬** (S15P21E203-364). 브랜드가 7,793개라 abc 순으로
+ * 열면 첫 쪽이 숫자 · 기호로 시작하는 낯선 이름으로 찹니다. 향수가 많은 곳부터
+ * 보이는 편이 "무엇부터 볼지" 에 답이 됩니다.
+ */
+export const DEFAULT_BRAND_SORT: BrandSort = 'PERFUME_COUNT'
+
+/**
+ * **서버가 `sort` 를 못 받았을 때 쓰는 값** (`BrandController` 의
+ * `@RequestParam(defaultValue = "NAME_EN")`).
+ *
+ * ⚠️ 화면 기본값과 다릅니다. 둘을 한 상수로 묶으면 요청에서 `sort` 를 빼는 조건이
+ * 화면 기본값을 따라가, 알약은 '향수 많은 순' 에 켜져 있는데 서버에는 아무것도 안
+ * 실려 abc 순이 돌아옵니다 — 화면과 자료가 조용히 어긋납니다.
+ */
+export const SERVER_DEFAULT_BRAND_SORT: BrandSort = 'NAME_EN'
 
 export const BRAND_SORTS = [
   { value: 'NAME_EN', label: 'abc 순' },

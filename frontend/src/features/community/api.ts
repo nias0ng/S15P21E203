@@ -120,6 +120,25 @@ interface PostLikeResult {
   likeCount: number
 }
 
+/**
+ * 게시글 이미지 올리기. **한 번에 한 장**입니다 — 여러 장은 화면이 이 함수를 여러 번
+ * 부릅니다. 그래야 한 장이 실패해도 나머지가 살고, 어느 장이 실패했는지 압니다.
+ *
+ * 돌려받은 주소를 글 작성 · 수정의 `imageUrls` 에 그대로 담아 보냅니다. 글이 만들어지기
+ * 전에 미리보기를 보여줘야 해서 두 단계로 나뉩니다.
+ *
+ * 형식 · 용량은 **서버가** 봅니다 — 415(형식) · 413(용량) · 400(빈 파일) · 401(로그인).
+ * 화면이 같은 규칙을 한 벌 더 들고 있으면 서버가 설정을 바꾼 날 둘이 갈라집니다.
+ * `Content-Type` 은 적지 않습니다. 브라우저가 `FormData` 의 경계 문자열까지 붙여야 합니다.
+ */
+export async function uploadPostImage(file: File): Promise<string> {
+  const body = new FormData()
+  body.append('file', file)
+
+  const { data } = await http.post<{ imageUrl: string }>('/posts/images', body)
+  return data.imageUrl
+}
+
 /** 글 작성 (CMT-03). 만들어진 글 번호를 돌려줍니다 — 화면이 그 글로 이동합니다 */
 export async function createPost(input: PostCreateInput): Promise<number> {
   const { data } = await http.post<{ postId: number; createdAt: string }>(
