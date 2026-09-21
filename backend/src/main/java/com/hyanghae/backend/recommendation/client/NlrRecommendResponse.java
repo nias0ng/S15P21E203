@@ -31,6 +31,7 @@ public record NlrRecommendResponse(
         String lexiconVersion,
         String promptSha256,
         Conditions conditions,
+        List<MatchedData> matchedData,
         List<Result> results,
         List<Unmatched> unmatched,
         Diagnostics diagnostics
@@ -60,6 +61,39 @@ public record NlrRecommendResponse(
     }
 
     public record Matched(String accord, String from) {
+    }
+
+    /**
+     * 향이 아닌 추천 근거 하나입니다 — 성별 · 계절 · 낮밤 · 노트로 후보를 좁혔을 때 옵니다.
+     *
+     * <p><b>{@code results} 안이 아니라 응답 최상위에 옵니다.</b> 추천 다섯 개 전부에 똑같이
+     * 걸린 조건이라 향수마다 반복하지 않습니다. 조건을 안 걸었으면 빈 목록입니다.
+     *
+     * <p>향 조건이 하나도 없을 때({@code diagnostics.stage} 가 {@code CONTEXT_ONLY}) 는
+     * <b>{@code matched} 가 비고 이 목록만 찹니다.</b> 그때 추천 이유가 하나도 없는 카드가
+     * 나가지 않도록 {@code NaturalLanguageRecommendationService} 가 이 값을 이유로 옮깁니다.
+     *
+     * @param field 근거의 종류입니다. {@code gender} · {@code season} · {@code daypart} ·
+     *              {@code note}.
+     * @param value 데이터 쪽 값입니다({@code unisex} · {@code summer} · {@code mimosa}).
+     *              <b>내부 값이라 화면에 내보내지 않습니다</b> — {@code label} 을 씁니다.
+     * @param label 화면에 그대로 쓸 한국어입니다({@code 중성적인} · {@code 여름에 어울리는}).
+     *              AI 가 한국어로 주므로 {@code matched[].accord} 와 달리
+     *              {@link com.hyanghae.backend.recommendation.service.AccordLabeler} 를
+     *              태우지 않습니다.
+     * @param from  사용자가 쓴 말입니다. <b>노트만 채워집니다</b> — 성별·계절·낮밤은 AI 의
+     *              ①단계가 값만 주고 원문의 어느 글자에서 왔는지는 안 줘서 {@code null} 입니다.
+     * @param tier  항상 {@code "DATA"} 입니다. Fragrantica 사용자 투표에서 직접 온 값이라
+     *              {@code matched[].tier} 의 {@code VERIFIED}/{@code TEAM}/{@code LLM} 중
+     *              어디에도 안 맞습니다. <b>내부 기록이라 화면에 내보내지 않습니다.</b>
+     */
+    public record MatchedData(
+            String field,
+            String value,
+            String label,
+            String from,
+            String tier
+    ) {
     }
 
     /**

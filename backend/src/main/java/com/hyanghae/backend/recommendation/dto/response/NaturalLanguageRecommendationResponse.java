@@ -35,6 +35,11 @@ import java.util.UUID;
  *                 클릭·만족도를 보내지 않으면 됩니다. 추천 자체는 정상입니다.
  * @param status   위 네 가지 중 하나입니다.
  * @param query    사용자가 쓴 말 그대로입니다.
+ * @param matchedData 향이 아닌 근거입니다. 성별·계절·낮밤·노트로 후보를 좁혔을 때만 찹니다.
+ *                 <b>이 목록이 비어 있지 않은데 {@code perfumes[].reasons} 에 향 근거가 없으면
+ *                 향으로 고른 것이 아닙니다</b> — 그때 순서를 정한 것은 평가자 수입니다.
+ *                 화면이 <i>"중성적인 향수를 찾았어요"</i> 처럼 향을 보고 고른 것처럼 쓰면
+ *                 거짓말이 됩니다. 조건을 안 걸었으면 빈 배열입니다.
  * @param perfumes 0~5개입니다. {@code status} 가 {@code OK} 또는 {@code OK_RELAXED} 면
  *                 비어 있지 않습니다.
  */
@@ -53,6 +58,11 @@ public record NaturalLanguageRecommendationResponse(
         @Schema(description = "사용자가 쓴 말 그대로입니다.",
                 example = "빨래 냄새 나는 향수 찾고 있어")
         String query,
+
+        @Schema(description = "향이 아닌 근거입니다. 성별 · 계절 · 낮밤 · 노트로 고른 경우에만"
+                + " 찹니다. 비어 있지 않은데 perfumes[].reasons 에 향 근거가 없으면 향으로 고른"
+                + " 것이 아닙니다. 조건을 안 걸었으면 빈 배열입니다.")
+        List<RecommendationDataResponse> matchedData,
 
         @Schema(description = "추천된 향수입니다. 0~5개이고, 없으면 빈 배열입니다.")
         List<RecommendedPerfumeResponse> perfumes

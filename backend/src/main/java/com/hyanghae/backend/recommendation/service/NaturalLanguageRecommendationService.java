@@ -8,6 +8,7 @@ import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.recommendation.client.NlrClient;
 import com.hyanghae.backend.recommendation.client.NlrRecommendResponse;
 import com.hyanghae.backend.recommendation.dto.response.NaturalLanguageRecommendationResponse;
+import com.hyanghae.backend.recommendation.dto.response.RecommendationDataResponse;
 import com.hyanghae.backend.recommendation.dto.response.RecommendationReasonResponse;
 import com.hyanghae.backend.recommendation.dto.response.RecommendedPerfumeResponse;
 import java.util.ArrayList;
@@ -32,9 +33,12 @@ import org.springframework.stereotype.Service;
  *
  * <ol>
  *   <li>{@code fragranticaId} 로 우리 DB 를 조회해 {@code perfumeId}·이름·브랜드를 채웁니다.</li>
- *   <li>{@code matched} 를 사용자가 쓴 표현별로 묶어 추천 이유를 만듭니다.</li>
+ *   <li>{@code matched} 와 {@code matchedData} 를 사용자가 쓴 표현별로 묶어 추천 이유를
+ *       만듭니다.</li>
  *   <li>내부 기록({@code accord}·{@code tier}·{@code diagnostics})을 응답에서 뺍니다.
- *       뺄 것도 없습니다 — {@link NlrRecommendResponse} 가 애초에 받지 않습니다.</li>
+ *       대부분은 뺄 것도 없습니다 — {@link NlrRecommendResponse} 가 애초에 받지 않습니다.
+ *       {@code matchedData} 만 예외로 {@code value}·{@code tier} 를 받아 두고 여기서
+ *       떨굽니다. 나중에 {@code nlr_*} 표에 남길 때 필요한 값입니다.</li>
  * </ol>
  *
  * <p><b>{@code @Transactional} 이 없습니다.</b> 이 메서드는 AI 서버를 최대 8초 기다립니다.
@@ -106,16 +110,34 @@ public class NaturalLanguageRecommendationService {
         NlrRecommendResponse ai = nlrClient.recommend(query);
         List<NlrRecommendResponse.Result> results =
                 ai.results() == null ? List.of() : ai.results();
+        List<NlrRecommendResponse.MatchedData> matchedData =
+                ai.matchedData() == null ? List.of() : ai.matchedData();
 
-        List<RecommendedPerfumeResponse> perfumes = toPerfumes(results);
+        List<RecommendedPerfumeResponse> perfumes = toPerfumes(results, matchedData);
         String status = resolveStatus(ai.status(), results.size(), perfumes.size());
 
         return new NaturalLanguageRecommendationResponse(
                 record(query, status, ai, perfumes),
                 status,
                 query,
+                toDataReasons(matchedData),
                 perfumes
         );
+    }
+
+    /**
+     * 향이 아닌 근거를 화면이 쓸 모양으로 바꿉니다.
+     *
+     * <p><b>{@code value} 와 {@code tier} 는 빼고 내보냅니다.</b> 둘 다 내부 기록이고,
+     * {@code matched[].accord}·{@code tier} 를 안 내보내는 것과 같은 규칙입니다.
+     */
+    private static List<RecommendationDataResponse> toDataReasons(
+            List<NlrRecommendResponse.MatchedData> matchedData
+    ) {
+        return matchedData.stream()
+                .filter(data -> data.label() != null)
+                .map(data -> new RecommendationDataResponse(data.field(), data.label()))
+                .toList();
     }
 
     /**
@@ -158,7 +180,10 @@ public class NaturalLanguageRecommendationService {
      * <p>DB 에 없는 향수는 빠집니다. {@code perfumeId} 를 채울 수 없고, 못 채운 채 이름만
      * 내보내면 눌러도 아무 데도 가지 않는 카드가 됩니다.
      */
-    private List<RecommendedPerfumeResponse> toPerfumes(List<NlrRecommendResponse.Result> results) {
+    private List<RecommendedPerfumeResponse> toPerfumes(
+            List<NlrRecommendResponse.Result> results,
+            List<NlrRecommendResponse.MatchedData> matchedData
+    ) {
         List<Long> fragranticaIds = results.stream()
                 .map(NlrRecommendResponse.Result::fragranticaId)
                 .filter(Objects::nonNull)
@@ -190,7 +215,7 @@ public class NaturalLanguageRecommendationService {
                     displayName(identity.nameKo(), identity.name()),
                     displayName(identity.brandNameKo(), identity.brandName()),
                     thumbnails.get(identity.perfumeId()),
-                    reasonsOf(result)));
+                    reasonsOf(result, matchedData)));
         }
         return List.copyOf(perfumes);
     }
@@ -218,7 +243,7 @@ public class NaturalLanguageRecommendationService {
     }
 
     /**
-     * 사용자가 쓴 표현별로 향 특성을 묶어 추천 이유를 만듭니다.
+     * 사용자가 쓴 표현별로 근거를 묶어 추천 이유를 만듭니다.
      *
      * <pre>
      * matched  [ {from:"빨래", accord:"soapy"}, {from:"빨래", accord:"fresh"} ]
@@ -230,25 +255,45 @@ public class NaturalLanguageRecommendationService {
      * 화면은 그때 표현 없이 이유만 보여줍니다. {@link LinkedHashMap} 이 {@code null} 키를
      * 받으므로 따로 다루지 않습니다.
      *
-     * <p>순서는 AI 가 준 {@code matched} 순서입니다. 그쪽이 세기 순이라 사용자가 가장 크게
-     * 걸린 이유를 먼저 봅니다. 그래서 잘라 낼 때도 뒤에서 자릅니다.
+     * <p><b>{@code matchedData} 를 함께 넣습니다.</b> 향 조건이 하나도 없으면
+     * {@code matched} 가 비어서 이유가 한 줄도 없는 카드가 나갑니다 — 계약이 정한 "1~3개" 를
+     * 어기고 요구사항 NLR-07(추천 이유 제공)도 어깁니다. 성별·계절·낮밤·노트는 그때 실제로
+     * 후보를 좁힌 근거이므로 이유로 쓸 수 있습니다.
+     *
+     * <p><b>{@code matchedData} 를 뒤에 붙입니다.</b> 순서는 AI 가 준 {@code matched} 순서이고
+     * 그쪽이 세기 순이라 사용자가 가장 크게 걸린 이유를 먼저 봅니다. 그래서 {@code MAX_REASONS}
+     * 로 자를 때도 뒤에서 자릅니다 — 사용자가 말한 향이 성별·계절 필터보다 앞섭니다. 향 조건이
+     * 없는 경우에는 {@code matched} 가 비어 있어 이 근거가 잘릴 일이 없습니다.
+     *
+     * <p><b>같은 표현을 향 근거가 이미 설명하고 있으면 노트는 건너뜁니다.</b>
+     * {@code 미모사 향수} 는 {@code matched} 도 {@code matchedData} 도 {@code from} 이
+     * {@code 미모사} 라, 그대로 두면 <i>"'미모사' → 플로럴 · 파우더리 · 미모사"</i> 처럼 같은
+     * 말이 근거로 또 붙습니다. 그 accord 가 애초에 그 노트에서 나온 것이라 이미 설명돼 있습니다.
      */
-    private List<RecommendationReasonResponse> reasonsOf(NlrRecommendResponse.Result result) {
-        if (result.matched() == null) {
-            return List.of();
-        }
-
+    private List<RecommendationReasonResponse> reasonsOf(
+            NlrRecommendResponse.Result result,
+            List<NlrRecommendResponse.MatchedData> matchedData
+    ) {
         Map<String, List<String>> labelsByPhrase = new LinkedHashMap<>();
-        for (NlrRecommendResponse.Matched matched : result.matched()) {
-            String label = accordLabeler.label(matched.accord());
+
+        List<NlrRecommendResponse.Matched> matched =
+                result.matched() == null ? List.of() : result.matched();
+        for (NlrRecommendResponse.Matched one : matched) {
+            String label = accordLabeler.label(one.accord());
             if (label == null) {
                 continue;
             }
-            List<String> labels =
-                    labelsByPhrase.computeIfAbsent(matched.from(), phrase -> new ArrayList<>());
-            if (!labels.contains(label)) {
-                labels.add(label);
+            addLabel(labelsByPhrase, one.from(), label);
+        }
+
+        for (NlrRecommendResponse.MatchedData data : matchedData) {
+            if (data.label() == null) {
+                continue;
             }
+            if (data.from() != null && labelsByPhrase.containsKey(data.from())) {
+                continue;       // 향 근거가 이미 이 표현을 설명하고 있다
+            }
+            addLabel(labelsByPhrase, data.from(), data.label());
         }
 
         return labelsByPhrase.entrySet().stream()
@@ -256,6 +301,16 @@ public class NaturalLanguageRecommendationService {
                 .map(entry -> new RecommendationReasonResponse(
                         entry.getKey(), String.join(EVIDENCE_DELIMITER, entry.getValue())))
                 .toList();
+    }
+
+    /** 표현 하나에 근거 한 줄을 더합니다. 이미 있는 말은 두 번 넣지 않습니다. */
+    private static void addLabel(
+            Map<String, List<String>> labelsByPhrase, String phrase, String label
+    ) {
+        List<String> labels = labelsByPhrase.computeIfAbsent(phrase, key -> new ArrayList<>());
+        if (!labels.contains(label)) {
+            labels.add(label);
+        }
     }
 
     /**
