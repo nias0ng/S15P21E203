@@ -10,7 +10,7 @@ import {
     testOptions,
 } from './lib/common.js';
 
-export const options = testOptions();
+export const options = testOptions('personalized_recommendation');
 const metrics = createEndpointMetrics('personalized_recommendation');
 
 export function setup() {

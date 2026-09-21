@@ -93,6 +93,7 @@ Counter의 `rate`는 전체 실행 시간을 분모로 삼을 수 있으므로 V
 | --- | --- | --- |
 | `MODE` | `smoke` | `smoke` 또는 `load` |
 | `STAGE_SECONDS` | `60` | load의 각 VU 구간 시간(초) |
+| `GRACE_SECONDS` | `10` | 진행 중 요청의 종료 대기 및 다음 구간까지 간격(초) |
 | `THINK_TIME_SECONDS` | `0` | 반복 사이 대기 시간 |
 | `PAGE_SIZE` | `20` | 후기·진열대 목록 크기 |
 | `SHELF_CATEGORY` | `OWNED` | `OWNED`, `TRIED`, `WISH` |

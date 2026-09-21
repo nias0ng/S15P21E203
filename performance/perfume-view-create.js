@@ -10,7 +10,7 @@ import {
     testOptions,
 } from './lib/common.js';
 
-export const options = testOptions();
+export const options = testOptions('perfume_view_create');
 const metrics = createEndpointMetrics('perfume_view_create');
 const perfumeId = Number(__ENV.PERFUME_ID || '3');
 const sourceType = __ENV.VIEW_SOURCE || 'SEARCH';
