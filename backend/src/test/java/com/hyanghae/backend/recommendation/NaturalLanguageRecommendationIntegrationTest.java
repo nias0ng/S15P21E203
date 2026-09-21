@@ -139,6 +139,7 @@ class NaturalLanguageRecommendationIntegrationTest {
         mockMvc.perform(request(QUERY))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("OK_RELAXED"))
+                .andExpect(jsonPath("$.pickedWithoutScentCondition").value(true))
                 .andExpect(jsonPath("$.matchedData.length()").value(1))
                 .andExpect(jsonPath("$.matchedData[0].field").value("gender"))
                 .andExpect(jsonPath("$.matchedData[0].label").value("중성적인"))
@@ -150,32 +151,32 @@ class NaturalLanguageRecommendationIntegrationTest {
     }
 
     /**
-     * 향 근거와 향이 아닌 근거가 <b>한 응답에 섞여 나갑니다.</b>
+     * 향 근거가 있으면 향이 아닌 근거는 <b>최상위로만</b> 나갑니다.
      *
-     * <p>향 조건이 있어도 노트·성별로 후보를 좁힐 수 있어 둘이 함께 오는 것이 흔합니다.
-     * 화면은 {@code reasons} 하나로 두 종류를 함께 그리므로 <b>모양이 같아야 합니다</b> —
-     * 노트는 사용자가 쓴 말이 {@code phrase} 에 들어가고, 성별은 {@code from} 이 없어
-     * {@code phrase} 가 빕니다.
+     * <p>⚠ <b>노트를 브리지로 푼 accord 는 {@code from} 이 {@code null} 입니다</b>(AI 실측).
+     * 성별·낮밤도 {@code from} 이 없어, 둘을 한 목록에 넣으면 같은 줄로 합쳐져
+     * <i>"floral · rose · 밤에 어울리는"</i> 처럼 영어 accord 와 화면용 한국어가 섞입니다.
+     * 그래서 {@code reasons} 에는 향 근거만 넣고 나머지는 {@code matchedData} 로 보냅니다.
+     *
+     * <p>화면은 {@code pickedWithoutScentCondition} 으로 두 경우를 가릅니다. 여기서는 향으로
+     * 골랐으므로 {@code false} 입니다.
      */
     @Test
-    void servesScentAndDataReasonsTogether() throws Exception {
+    void servesDataReasonsOnlyAtTopLevelWhenScentReasonsExist() throws Exception {
         given(nlrClient.recommend(anyString())).willReturn(mixedReasonResponse());
 
         mockMvc.perform(request(QUERY))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("OK"))
+                .andExpect(jsonPath("$.pickedWithoutScentCondition").value(false))
                 .andExpect(jsonPath("$.matchedData.length()").value(2))
                 .andExpect(jsonPath("$.matchedData[0].field").value("note"))
-                .andExpect(jsonPath("$.matchedData[0].label").value("미모사"))
-                .andExpect(jsonPath("$.matchedData[1].field").value("gender"))
-                .andExpect(jsonPath("$.matchedData[1].label").value("중성적인"))
-                .andExpect(jsonPath("$.perfumes[0].reasons.length()").value(3))
-                .andExpect(jsonPath("$.perfumes[0].reasons[0].phrase").value("빨래"))
-                .andExpect(jsonPath("$.perfumes[0].reasons[0].evidence").value("soapy"))
-                .andExpect(jsonPath("$.perfumes[0].reasons[1].phrase").value("미모사"))
-                .andExpect(jsonPath("$.perfumes[0].reasons[1].evidence").value("미모사"))
-                .andExpect(jsonPath("$.perfumes[0].reasons[2].phrase").doesNotExist())
-                .andExpect(jsonPath("$.perfumes[0].reasons[2].evidence").value("중성적인"));
+                .andExpect(jsonPath("$.matchedData[0].label").value("장미"))
+                .andExpect(jsonPath("$.matchedData[1].field").value("daypart"))
+                .andExpect(jsonPath("$.matchedData[1].label").value("밤에 어울리는"))
+                .andExpect(jsonPath("$.perfumes[0].reasons.length()").value(1))
+                .andExpect(jsonPath("$.perfumes[0].reasons[0].phrase").doesNotExist())
+                .andExpect(jsonPath("$.perfumes[0].reasons[0].evidence").value("floral · rose"));
     }
 
     /** 조건을 안 걸었으면 {@code matchedData} 는 {@code null} 이 아니라 빈 배열입니다. */
@@ -323,18 +324,25 @@ class NaturalLanguageRecommendationIntegrationTest {
                 status, QUERY, null, null, null, List.of(), List.of(results), null, null);
     }
 
-    /** 향 근거와 향이 아닌 근거가 함께 있는 응답입니다. 실사용에서 가장 흔한 모양입니다. */
+    /**
+     * 향 근거와 향이 아닌 근거가 함께 있는 응답입니다. 실사용에서 가장 흔한 모양입니다.
+     *
+     * <p><b>{@code matched[].from} 이 {@code null} 입니다.</b> {@code 장미} 를 노트 브리지가
+     * {@code floral}·{@code rose} 로 풀 때 AI 는 어느 글자에서 왔는지를 안 채웁니다 —
+     * 사전이 직접 잡은 {@code 빨래} 와 다른 점이고, 둘을 한 목록에 섞으면 깨지는 이유입니다.
+     */
     private static NlrRecommendResponse mixedReasonResponse() {
         return new NlrRecommendResponse(
                 "OK", QUERY, null, null,
                 new NlrRecommendResponse.Conditions(
-                        List.of("soapy"), List.of(), List.of("빨래"), "lexicon_only"),
+                        List.of("floral", "rose"), List.of(), List.of(), "lexicon_only"),
                 List.of(new NlrRecommendResponse.MatchedData(
-                                "note", "mimosa", "미모사", "미모사", "DATA"),
+                                "note", "rose", "장미", "장미", "DATA"),
                         new NlrRecommendResponse.MatchedData(
-                                "gender", "unisex", "중성적인", null, "DATA")),
-                List.of(new NlrRecommendResponse.Result(73368L,
-                        List.of(new NlrRecommendResponse.Matched("soapy", "빨래")))),
+                                "daypart", "night", "밤에 어울리는", null, "DATA")),
+                List.of(new NlrRecommendResponse.Result(73368L, List.of(
+                        new NlrRecommendResponse.Matched("floral", null),
+                        new NlrRecommendResponse.Matched("rose", null)))),
                 List.of(),
                 new NlrRecommendResponse.Diagnostics("AND", 618, 1, List.of(), null));
     }

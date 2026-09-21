@@ -364,7 +364,6 @@ class NlrClientTest {
                 """.formatted(QUERY);
     }
 
-    /** {@code llmAccords} 만 바꿔 가며 보는 최소 응답입니다. */
     /**
      * 향 조건 없이 성별로만 고른 응답입니다 (AI {@code S15P21E203-351}).
      *
@@ -402,6 +401,7 @@ class NlrClientTest {
                 """.formatted(QUERY);
     }
 
+    /** {@code llmAccords} 만 바꿔 가며 보는 최소 응답입니다. */
     private String unmatchedAccordsResponse(String accordsJson) {
         return """
                 {

@@ -281,36 +281,45 @@ class NaturalLanguageRecommendationServiceTest {
     }
 
     /**
-     * 같은 표현을 향 근거가 이미 설명하고 있으면 노트는 안 겹칩니다.
+     * 향 근거가 있으면 {@code matchedData} 는 <b>{@code reasons} 에 안 들어갑니다.</b>
      *
-     * <p>{@code 미모사} 는 {@code matched} 도 {@code matchedData} 도 {@code from} 이 같습니다.
-     * 그대로 두면 <i>"'미모사' → 플로럴 · 미모사"</i> 처럼 같은 말이 근거로 또 붙습니다.
+     * <p>⚠ <b>노트를 브리지로 푼 accord 는 {@code from} 이 {@code null} 입니다.</b> AI 실측 —
+     * {@code 장미} 는 {@code floral}·{@code rose} 를 만들면서 {@code from} 을 안 채웁니다.
+     * 성별·낮밤도 {@code from} 이 {@code null} 이라, 둘을 한 목록에 넣으면 같은 칸으로 들어가
+     * <i>"floral · rose · 밤에 어울리는"</i> 이 됩니다 — 영어 accord 와 화면용 한국어가 한
+     * 문자열에 섞이고, 뒤에서 자르는 규칙도 이 근거에 안 닿습니다.
      */
     @Test
-    void doesNotRepeatNoteAlreadyExplainedByAccord() {
+    void keepsDataReasonsOutOfReasonsWhenScentReasonsExist() {
         given(nlrClient.recommend(QUERY)).willReturn(aiResponse(
                 "OK",
-                List.of(data("note", "mimosa", "미모사", "미모사")),
-                result(73368L, matched("floral", "미모사"))));
+                List.of(data("daypart", "night", "밤에 어울리는", null),
+                        data("note", "rose", "장미", "장미")),
+                // 브리지가 푼 accord 는 from 이 없다 — 실제 AI 출력 모양이다.
+                result(73368L, matched("floral", null), matched("rose", null))));
         given(perfumeRepository.findIdentitiesByFragranticaIds(anyCollection()))
-                .willReturn(List.of(identity(73368L, 1L, "Petal Poetry", "브랜드")));
+                .willReturn(List.of(identity(73368L, 1L, "Rose Petal", "브랜드")));
 
         NaturalLanguageRecommendationResponse response = service.recommend(QUERY);
 
         assertThat(response.perfumes().getFirst().reasons())
                 .extracting(RecommendationReasonResponse::phrase,
                         RecommendationReasonResponse::evidence)
-                .containsExactly(tuple("미모사", "floral"));
+                .containsExactly(tuple(null, "floral · rose"));
+
+        // 빠진 것이 아니라 최상위로 갑니다. 목록 위 한 줄이 쓸 재료입니다.
+        assertThat(response.matchedData())
+                .extracting(RecommendationDataResponse::label)
+                .containsExactly("밤에 어울리는", "장미");
     }
 
     /**
-     * 향 근거가 셋이면 성별·계절은 잘립니다.
+     * 향 근거가 셋이어도 {@code matchedData} 때문에 잘리지 않습니다.
      *
-     * <p>이유는 1~3개입니다. <b>사용자가 말한 향이 성별·계절 필터보다 앞섭니다</b> — 뒤에
-     * 붙이므로 자를 때 이쪽이 먼저 빠집니다.
+     * <p>이유는 1~3개입니다. 섞지 않으므로 {@code matchedData} 가 자리를 뺏지 않습니다.
      */
     @Test
-    void dropsMatchedDataWhenScentReasonsAlreadyFillTheLimit() {
+    void keepsAllThreeScentReasonsWhenMatchedDataAlsoExists() {
         given(nlrClient.recommend(QUERY)).willReturn(aiResponse(
                 "OK",
                 List.of(data("gender", "unisex", "중성적인", null)),
@@ -327,38 +336,46 @@ class NaturalLanguageRecommendationServiceTest {
     }
 
     /**
-     * 둘이 섞여 한도를 넘으면 <b>향 근거가 남고 그다음 자리를 {@code matchedData} 가 채웁니다.</b>
+     * 향 조건이 없으면 {@code pickedWithoutScentCondition} 이 {@code true} 입니다.
      *
-     * <p>{@code dropsMatchedDataWhenScentReasonsAlreadyFillTheLimit} 는 향 근거만으로 셋이
-     * 차는 경우고, 여기는 <b>경계</b>입니다 — 향 둘에 향이 아닌 근거 셋이면 다섯 줄이 되고
-     * 그중 셋만 나갑니다. 무엇이 먼저 빠지는지는 이 배치에서만 드러납니다.
+     * <p><b>화면이 이것 하나로 분기합니다.</b> {@code status} 는 {@code OK_RELAXED} 라 조건을
+     * 넓힌 경우와 구분되지 않고, {@code reasons} 의 글자를 {@code matchedData} 와 대조해
+     * 알아내게 두면 화면이 우리 문자열 조립 규칙에 묶입니다.
      */
     @Test
-    void keepsScentReasonsFirstWhenBothKindsCompeteForTheLimit() {
+    void flagsRecommendationPickedWithoutScentCondition() {
         given(nlrClient.recommend(QUERY)).willReturn(aiResponse(
-                "OK",
-                List.of(data("note", "mimosa", "미모사", "미모사"),
-                        data("note", "rose", "장미", "장미"),
-                        data("gender", "unisex", "중성적인", null)),
-                result(73368L, matched("soapy", "빨래"), matched("fresh", "세탁"))));
+                "OK_RELAXED", List.of(data("gender", "unisex", "중성적인", null)),
+                result(73368L)));
         given(perfumeRepository.findIdentitiesByFragranticaIds(anyCollection()))
                 .willReturn(List.of(identity(73368L, 1L, "Laundry", "브랜드")));
 
-        NaturalLanguageRecommendationResponse response = service.recommend(QUERY);
+        assertThat(service.recommend(QUERY).pickedWithoutScentCondition()).isTrue();
+    }
 
-        // 향 둘이 남고 남은 한 자리를 첫 노트가 가져갑니다. 장미와 성별은 빠집니다.
-        assertThat(response.perfumes().getFirst().reasons())
-                .extracting(RecommendationReasonResponse::phrase,
-                        RecommendationReasonResponse::evidence)
-                .containsExactly(
-                        tuple("빨래", "soapy"),
-                        tuple("세탁", "fresh"),
-                        tuple("미모사", "미모사"));
+    /** 향 조건이 있으면 {@code false} 입니다. {@code matchedData} 가 함께 와도 그렇습니다. */
+    @Test
+    void doesNotFlagRecommendationThatUsedScentCondition() {
+        given(nlrClient.recommend(QUERY)).willReturn(aiResponse(
+                "OK", List.of(data("gender", "unisex", "중성적인", null)),
+                result(73368L, matched("soapy", "빨래"))));
+        given(perfumeRepository.findIdentitiesByFragranticaIds(anyCollection()))
+                .willReturn(List.of(identity(73368L, 1L, "Laundry", "브랜드")));
 
-        // 잘린 것도 최상위에는 그대로 있습니다 — 목록 위 한 줄이 쓸 재료입니다.
-        assertThat(response.matchedData())
-                .extracting(RecommendationDataResponse::label)
-                .containsExactly("미모사", "장미", "중성적인");
+        assertThat(service.recommend(QUERY).pickedWithoutScentCondition()).isFalse();
+    }
+
+    /**
+     * 보여줄 향수가 없으면 {@code false} 입니다.
+     *
+     * <p>{@code NO_CONDITION} 은 화면에 할 말이 따로 있습니다. 여기에 {@code true} 를 주면
+     * <i>"성별로 골랐어요"</i> 를 향수 0개와 함께 띄우게 됩니다.
+     */
+    @Test
+    void doesNotFlagWhenThereIsNothingToShow() {
+        given(nlrClient.recommend(QUERY)).willReturn(aiResponse("NO_CONDITION"));
+
+        assertThat(service.recommend(QUERY).pickedWithoutScentCondition()).isFalse();
     }
 
     /**

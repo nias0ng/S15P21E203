@@ -35,11 +35,16 @@ import java.util.UUID;
  *                 클릭·만족도를 보내지 않으면 됩니다. 추천 자체는 정상입니다.
  * @param status   위 네 가지 중 하나입니다.
  * @param query    사용자가 쓴 말 그대로입니다.
+ * @param pickedWithoutScentCondition 향으로 고른 것이 아닙니다. <b>화면이 이것으로 분기합니다.</b>
+ *                 향 조건을 하나도 못 뽑았는데 성별·계절·낮밤·노트로 후보를 좁힐 수는 있었던
+ *                 경우이고, 그때 순서를 정한 것은 <b>평가자 수</b>입니다. 화면이
+ *                 <i>"중성적인 향수를 찾았어요"</i> 처럼 향을 보고 고른 것처럼 쓰면 거짓말이
+ *                 됩니다. <b>{@code status} 로는 알 수 없습니다</b> — 이때도
+ *                 {@code OK_RELAXED} 라 조건을 넓힌 경우와 같은 값입니다.
  * @param matchedData 향이 아닌 근거입니다. 성별·계절·낮밤·노트로 후보를 좁혔을 때만 찹니다.
- *                 <b>이 목록이 비어 있지 않은데 {@code perfumes[].reasons} 에 향 근거가 없으면
- *                 향으로 고른 것이 아닙니다</b> — 그때 순서를 정한 것은 평가자 수입니다.
- *                 화면이 <i>"중성적인 향수를 찾았어요"</i> 처럼 향을 보고 고른 것처럼 쓰면
- *                 거짓말이 됩니다. 조건을 안 걸었으면 빈 배열입니다.
+ *                 <b>추천 다섯 개에 똑같이 걸린 조건이라 목록 위 한 줄로 쓰는 자리입니다</b> —
+ *                 향수마다 붙는 {@code perfumes[].reasons} 와 다릅니다. 조건을 안 걸었으면
+ *                 빈 배열입니다.
  * @param perfumes 0~5개입니다. {@code status} 가 {@code OK} 또는 {@code OK_RELAXED} 면
  *                 비어 있지 않습니다.
  */
@@ -59,9 +64,15 @@ public record NaturalLanguageRecommendationResponse(
                 example = "빨래 냄새 나는 향수 찾고 있어")
         String query,
 
+        @Schema(description = "향으로 고른 것이 아닙니다. 성별 · 계절 · 낮밤 · 노트로만 좁혔고"
+                + " 순서는 평가자 수가 정했습니다. 화면이 향을 보고 고른 것처럼 쓰면 거짓말이"
+                + " 됩니다. status 로는 알 수 없습니다 — 이때도 OK_RELAXED 입니다.",
+                example = "false")
+        boolean pickedWithoutScentCondition,
+
         @Schema(description = "향이 아닌 근거입니다. 성별 · 계절 · 낮밤 · 노트로 고른 경우에만"
-                + " 찹니다. 비어 있지 않은데 perfumes[].reasons 에 향 근거가 없으면 향으로 고른"
-                + " 것이 아닙니다. 조건을 안 걸었으면 빈 배열입니다.")
+                + " 찹니다. 추천 다섯 개에 똑같이 걸린 조건이라 목록 위 한 줄로 쓰는 자리입니다."
+                + " 조건을 안 걸었으면 빈 배열입니다.")
         List<RecommendationDataResponse> matchedData,
 
         @Schema(description = "추천된 향수입니다. 0~5개이고, 없으면 빈 배열입니다.")

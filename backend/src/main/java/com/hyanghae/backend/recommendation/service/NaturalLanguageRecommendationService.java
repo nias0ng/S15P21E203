@@ -120,9 +120,42 @@ public class NaturalLanguageRecommendationService {
                 record(query, status, ai, perfumes),
                 status,
                 query,
+                pickedWithoutScentCondition(results, matchedData, perfumes),
                 toDataReasons(matchedData),
                 perfumes
         );
+    }
+
+    /**
+     * 향으로 고른 것이 아닌지 가립니다.
+     *
+     * <p><b>화면이 이것 하나로 분기합니다.</b> {@code status} 는 이때도 {@code OK_RELAXED} 라
+     * 조건을 넓힌 경우와 구분되지 않고, {@code reasons} 의 글자를 {@code matchedData} 와
+     * 대조해 알아내게 두면 화면이 우리 문자열 조립 규칙에 묶입니다.
+     *
+     * <p>판단은 <b>어느 향수에도 향 근거가 없는데 향이 아닌 조건은 걸렸다</b> 입니다. 그것이
+     * 곧 {@code reasons} 를 {@code matchedData} 로 채운 경우라 화면이 보는 것과 어긋나지
+     * 않습니다. AI 협의 문서 3-2 는 {@code conditions.core} 로 보라고 했는데, 그 칸은 화면에
+     * 안 나가는 데다 응답에서 빠질 수 있어 <b>빠졌을 때 정상 추천을 향 없이 골랐다고 표시하게
+     * 됩니다.</b> 여기서 보는 두 값은 화면에 나가는 것과 같은 재료입니다.
+     *
+     * <p>{@code diagnostics.stage} 로도 가릴 수 있지만 쓰지 않습니다. AI 가 단계 이름을 바꾸면
+     * 조용히 {@code false} 로 굳고, 그 실패는 화면이 거짓말을 하는 쪽입니다.
+     *
+     * <p>보여줄 향수가 없으면({@code NO_CONDITION}·{@code NO_RESULT}) {@code false} 입니다.
+     * 화면에 할 말이 따로 있고, 여기에 {@code true} 를 주면 <i>"성별로 골랐어요"</i> 를 향수
+     * 0개와 함께 띄우게 됩니다.
+     */
+    private static boolean pickedWithoutScentCondition(
+            List<NlrRecommendResponse.Result> results,
+            List<NlrRecommendResponse.MatchedData> matchedData,
+            List<RecommendedPerfumeResponse> perfumes
+    ) {
+        if (perfumes.isEmpty() || matchedData.isEmpty()) {
+            return false;
+        }
+        return results.stream()
+                .allMatch(result -> result.matched() == null || result.matched().isEmpty());
     }
 
     /**
@@ -255,20 +288,27 @@ public class NaturalLanguageRecommendationService {
      * 화면은 그때 표현 없이 이유만 보여줍니다. {@link LinkedHashMap} 이 {@code null} 키를
      * 받으므로 따로 다루지 않습니다.
      *
-     * <p><b>{@code matchedData} 를 함께 넣습니다.</b> 향 조건이 하나도 없으면
+     * <p><b>향 근거가 하나도 없을 때만 {@code matchedData} 로 채웁니다.</b> 향 조건이 없으면
      * {@code matched} 가 비어서 이유가 한 줄도 없는 카드가 나갑니다 — 계약이 정한 "1~3개" 를
-     * 어기고 요구사항 NLR-07(추천 이유 제공)도 어깁니다. 성별·계절·낮밤·노트는 그때 실제로
+     * 어기고 요구사항 NLR-07(추천 이유 제공)도 어깁니다. 성별·계절·낮밤·노트가 그때 실제로
      * 후보를 좁힌 근거이므로 이유로 쓸 수 있습니다.
      *
-     * <p><b>{@code matchedData} 를 뒤에 붙입니다.</b> 순서는 AI 가 준 {@code matched} 순서이고
-     * 그쪽이 세기 순이라 사용자가 가장 크게 걸린 이유를 먼저 봅니다. 그래서 {@code MAX_REASONS}
-     * 로 자를 때도 뒤에서 자릅니다 — 사용자가 말한 향이 성별·계절 필터보다 앞섭니다. 향 조건이
-     * 없는 경우에는 {@code matched} 가 비어 있어 이 근거가 잘릴 일이 없습니다.
+     * <p>⚠ <b>둘을 한 목록에 섞지 않습니다.</b> 섞으면 두 가지가 깨집니다.
      *
-     * <p><b>같은 표현을 향 근거가 이미 설명하고 있으면 노트는 건너뜁니다.</b>
-     * {@code 미모사 향수} 는 {@code matched} 도 {@code matchedData} 도 {@code from} 이
-     * {@code 미모사} 라, 그대로 두면 <i>"'미모사' → 플로럴 · 파우더리 · 미모사"</i> 처럼 같은
-     * 말이 근거로 또 붙습니다. 그 accord 가 애초에 그 노트에서 나온 것이라 이미 설명돼 있습니다.
+     * <ol>
+     *   <li><b>{@code matchedData} 가 향 근거를 제치고 앞줄에 섭니다.</b> 노트를 브리지로 푼
+     *       accord 는 {@code from} 이 {@code null} 입니다 — {@code 장미} 는
+     *       {@code floral}·{@code rose} 를 만들면서 {@code from} 을 안 채웁니다. 성별·계절도
+     *       {@code from} 이 {@code null} 이라 같은 칸에 들어가 첫 줄에 붙고, 뒤에서 자르는
+     *       규칙이 이 근거에는 닿지 않습니다.</li>
+     *   <li><b>영어 accord 와 화면용 한국어가 한 문자열에 섞입니다.</b>
+     *       <i>"floral · rose · 밤에 어울리는"</i> 이 됩니다. 영어가 나가는 것은
+     *       {@link AccordLabeler} 의 표가 비어 있는 별개 문제지만, 섞이는 것은 여기서
+     *       생깁니다.</li>
+     * </ol>
+     *
+     * <p>섞인 요청에서 이 근거는 <b>최상위 {@code matchedData} 로만</b> 나갑니다. 추천 다섯
+     * 개에 똑같이 걸린 조건이라 목록 위 한 줄이 제자리입니다.
      */
     private List<RecommendationReasonResponse> reasonsOf(
             NlrRecommendResponse.Result result,
@@ -286,14 +326,13 @@ public class NaturalLanguageRecommendationService {
             addLabel(labelsByPhrase, one.from(), label);
         }
 
-        for (NlrRecommendResponse.MatchedData data : matchedData) {
-            if (data.label() == null) {
-                continue;
+        if (labelsByPhrase.isEmpty()) {
+            for (NlrRecommendResponse.MatchedData data : matchedData) {
+                if (data.label() == null) {
+                    continue;
+                }
+                addLabel(labelsByPhrase, data.from(), data.label());
             }
-            if (data.from() != null && labelsByPhrase.containsKey(data.from())) {
-                continue;       // 향 근거가 이미 이 표현을 설명하고 있다
-            }
-            addLabel(labelsByPhrase, data.from(), data.label());
         }
 
         return labelsByPhrase.entrySet().stream()
