@@ -17,6 +17,7 @@ import {
   checkNicknameAvailability,
   signup,
 } from '../api'
+import { AUTH_SUBMIT } from '../frame'
 import {
   NICKNAME_MAX_LENGTH,
   NICKNAME_MIN_LENGTH,
@@ -220,7 +221,12 @@ export function SignupForm() {
           </p>
         )}
 
-        <Button type="submit" fullWidth disabled={!canSubmit}>
+        <Button
+          type="submit"
+          fullWidth
+          disabled={!canSubmit}
+          className={AUTH_SUBMIT}
+        >
           {signupMutation.isPending ? '가입 중' : '가입하기'}
         </Button>
       </form>

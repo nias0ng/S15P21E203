@@ -12,3 +12,14 @@
  */
 export const AUTH_PAGE =
   '-mt-15 -mb-15 flex min-h-[calc(100dvh-90px)] items-center justify-center pt-15 pb-27.5'
+
+/**
+ * 인증 화면의 주요 단추(로그인 · 가입하기 · 메일 받기).
+ *
+ * 기본 단추는 `bg-ink` 인데 어두운 방에서 그 값이 상아색(#f2ede4)이라, 판 위에서
+ * **꽉 찬 크림색 덩어리**로 튑니다. 알파를 내려 판에 얹힌 얇은 막으로 만듭니다.
+ *
+ * 글자는 `text-surface`(방에서 어두운 자두색)입니다. 막이 중간 밝기라 상아색 글자로
+ * 두면 3.5:1 밖에 안 나옵니다 — 뒤집어야 기준(4.5:1)을 넘습니다. 0.35 에서 5.1:1.
+ */
+export const AUTH_SUBMIT = 'bg-ink/35 text-surface hover:bg-ink/50'

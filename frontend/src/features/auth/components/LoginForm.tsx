@@ -14,6 +14,7 @@ import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
 
 import { getMe, login, toAuthUser } from '../api'
+import { AUTH_SUBMIT } from '../frame'
 
 import { AuthCard } from './AuthCard'
 
@@ -133,7 +134,12 @@ export function LoginForm({ onLoggedIn }: LoginFormProps = {}) {
           </p>
         )}
 
-        <Button type="submit" fullWidth disabled={isPending}>
+        <Button
+          type="submit"
+          fullWidth
+          className={AUTH_SUBMIT}
+          disabled={isPending}
+        >
           {isPending ? '로그인 중' : '로그인'}
         </Button>
       </form>
