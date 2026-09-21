@@ -19,8 +19,8 @@ type AuthCardProps = {
  * `night` 이 켜져 있어야 합니다(`app/router`). 밝은 화면에 두면 판 위 기준으로 맞춘
  * 글자색(`--color-ink-muted` 가 `#d8d2c9`)이 상아색 바탕에 얹혀 안 읽힙니다.
  *
- * 폭만 남겨 둡니다 — 와이어프레임의 340px 이고, 입력이 많은 회원가입은 `className`
- * 으로 넓힙니다.
+ * 폭은 **세 화면이 같습니다**(420px). 와이어프레임은 340px 이었지만 회원가입만 넓혀
+ * 두니, 로그인에서 회원가입으로 넘어갈 때 판이 한 번 커졌습니다.
  */
 export function AuthCard({
   title,
@@ -30,7 +30,9 @@ export function AuthCard({
   className,
 }: AuthCardProps) {
   return (
-    <div className={cn(GLASS_PANEL, 'w-full max-w-85 space-y-3.75', className)}>
+    <div
+      className={cn(GLASS_PANEL, 'w-full max-w-105 space-y-3.75', className)}
+    >
       {eyebrow && <p className="text-ink-muted text-caption">{eyebrow}</p>}
       <h1 className="text-ink text-title font-serif font-bold">{title}</h1>
       {description && <p className="text-ink-muted text-body">{description}</p>}

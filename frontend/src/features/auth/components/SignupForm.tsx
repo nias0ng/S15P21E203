@@ -105,7 +105,7 @@ export function SignupForm() {
     !signupMutation.isPending
 
   return (
-    <AuthCard title="회원가입" className="max-w-105">
+    <AuthCard title="회원가입">
       <form
         className="space-y-2.5"
         onSubmit={(event) => {
