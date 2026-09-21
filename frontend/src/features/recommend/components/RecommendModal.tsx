@@ -65,8 +65,8 @@ function RecommendBody({ query }: { query: string }) {
   const token = result.data?.recommendationToken ?? null
   const hasPerfumes = perfumes.length > 0
   useEffect(() => {
-    if (token !== null && hasPerfumes) hold(token)
-  }, [token, hasPerfumes, hold])
+    if (token !== null && hasPerfumes) hold({ token, query })
+  }, [token, query, hasPerfumes, hold])
 
   return (
     <div

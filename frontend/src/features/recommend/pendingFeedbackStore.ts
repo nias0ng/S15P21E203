@@ -1,9 +1,23 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
+/** 아직 답하지 않은 설문 하나 */
+export interface PendingFeedback {
+  /** 만족도를 보낼 때 쓰는 추천의 손잡이 */
+  token: string
+  /**
+   * 그때 검색한 자연어 말. 설문에 같이 보여줍니다.
+   *
+   * NOTE: 손잡이만 들고 다니면 상세에 다녀와 받는 설문이 **무엇에 대한 답인지 화면에
+   * 없습니다.** 결과 목록은 이미 닫혔고 검색창도 비어 있어, 그 사이에 향수 상세를 보고 온
+   * 사람은 방금 무엇을 물었는지 기억에만 의존하게 됩니다.
+   */
+  query: string
+}
+
 interface PendingFeedbackState {
-  /** 아직 답하지 않은 설문의 손잡이. `null` 이면 물을 것이 없습니다 */
-  token: string | null
+  /** 아직 답하지 않은 설문. `null` 이면 물을 것이 없습니다 */
+  pending: PendingFeedback | null
   /** 답했거나 건너뛴 손잡이. 같은 추천을 다시 열어도 또 묻지 않습니다 */
   settled: string[]
   /**
@@ -12,8 +26,8 @@ interface PendingFeedbackState {
    */
   snoozed: boolean
 
-  /** 결과 모달을 닫았습니다. 아직 답하지 않은 추천이면 설문을 걸어 둡니다 */
-  hold: (token: string) => void
+  /** 추천 결과가 도착했습니다. 아직 답하지 않은 추천이면 설문을 걸어 둡니다 */
+  hold: (pending: PendingFeedback) => void
   /** 답했거나 건너뛰었습니다. 이 손잡이는 끝입니다 */
   settle: (token: string) => void
   /** 답하지 않은 채 창을 닫았습니다(× · Esc · 배경). 걸어 둔 것은 그대로 둡니다 */
@@ -39,17 +53,17 @@ interface PendingFeedbackState {
 export const usePendingFeedbackStore = create<PendingFeedbackState>()(
   persist(
     (set, get) => ({
-      token: null,
+      pending: null,
       settled: [],
       snoozed: false,
 
-      hold: (token) => {
-        if (get().settled.includes(token)) return
-        set({ token, snoozed: false })
+      hold: (pending) => {
+        if (get().settled.includes(pending.token)) return
+        set({ pending, snoozed: false })
       },
       settle: (token) =>
         set((state) => ({
-          token: null,
+          pending: null,
           snoozed: false,
           // 한 세션에 스무 번이면 충분합니다 — 손잡이를 끝없이 쌓을 자리가 아닙니다
           settled: [...state.settled, token].slice(-20),
@@ -60,8 +74,11 @@ export const usePendingFeedbackStore = create<PendingFeedbackState>()(
     {
       name: 'hyanghae-nlr-feedback',
       storage: createJSONStorage(() => sessionStorage),
+      // 손잡이만 담던 시절의 값이 남아 있으면 검색어 없이 뜹니다 — 그 판은 버립니다
+      version: 1,
+      migrate: () => ({ pending: null, settled: [] }),
       // 접어 둔 것은 이번 화면에서만입니다 — 새로고침하면 다시 물어야 합니다
-      partialize: ({ token, settled }) => ({ token, settled }),
+      partialize: ({ pending, settled }) => ({ pending, settled }),
     },
   ),
 )

@@ -44,37 +44,43 @@ const OPTIONS = [
  * 잘못 눌러 기록이 통째로 사라지는 일도 막습니다.
  */
 export function NlrFeedbackModal({ ready }: Props) {
-  const token = usePendingFeedbackStore((state) => state.token)
+  const pending = usePendingFeedbackStore((state) => state.pending)
   const snoozed = usePendingFeedbackStore((state) => state.snoozed)
   const settle = usePendingFeedbackStore((state) => state.settle)
   const snooze = usePendingFeedbackStore((state) => state.snooze)
 
   /** 답을 보낸 손잡이. 손잡이가 바뀌면 저절로 풀립니다 */
   const [answeredToken, setAnsweredToken] = useState<string | null>(null)
-  const answered = token !== null && answeredToken === token
+  const answered = pending !== null && answeredToken === pending.token
 
   const close = () => {
-    if (token === null) return
+    if (pending === null) return
     // 답한 뒤에 [×] 로 나가는 것은 접어 두는 것이 아니라 끝낸 것입니다
-    if (answered) settle(token)
+    if (answered) settle(pending.token)
     else snooze()
   }
 
+  const open = ready && pending !== null && !snoozed
+
   return (
     <Modal
-      open={ready && token !== null && !snoozed}
+      open={open}
       onClose={close}
       title="추천은 어떠셨나요"
       className="w-[min(460px,calc(100vw-40px))]"
     >
-      {/* `<dialog>` 는 닫혀도 children 이 DOM 에 남아, 그리지 않아야 다음 설문이 빈 칸에서 시작합니다 */}
-      {token !== null && (
+      {/*
+        `<dialog>` 는 닫혀도 children 이 DOM 에 남습니다. 열림과 **같은 조건**으로 그려야
+        다음 설문이 빈 칸에서 시작하고, 로딩 중에 검색어가 화면 밖 DOM 에 먼저 앉지도 않습니다.
+      */}
+      {open && pending !== null && (
         <FeedbackBody
-          key={token}
-          token={token}
+          key={pending.token}
+          token={pending.token}
+          query={pending.query}
           answered={answered}
-          onAnswered={() => setAnsweredToken(token)}
-          onSettle={() => settle(token)}
+          onAnswered={() => setAnsweredToken(pending.token)}
+          onSettle={() => settle(pending.token)}
         />
       )}
     </Modal>
@@ -84,11 +90,13 @@ export function NlrFeedbackModal({ ready }: Props) {
 /** 손잡이마다 새로 마운트됩니다 — 앞 추천에 쓴 한마디가 다음 설문에 남으면 안 됩니다 */
 function FeedbackBody({
   token,
+  query,
   answered,
   onAnswered,
   onSettle,
 }: {
   token: string
+  query: string
   answered: boolean
   onAnswered: () => void
   onSettle: () => void
@@ -129,6 +137,16 @@ function FeedbackBody({
 
   return (
     <>
+      {/*
+        무엇에 답하는 설문인지 먼저 밝힙니다. 상세에 다녀와 받는 설문은 결과 목록도 닫혔고
+        검색창도 비어 있어, 이 줄이 없으면 방금 무엇을 물었는지가 화면 어디에도 없습니다.
+        결과 모달의 같은 줄과 문구를 맞췄습니다.
+      */}
+      <p className="text-ink-muted text-caption mb-3.75">
+        입력한 말 ·{' '}
+        <strong className="text-ink font-medium">&lsquo;{query}&rsquo;</strong>
+      </p>
+
       <ChipToggle
         label="추천 만족도"
         options={OPTIONS}
