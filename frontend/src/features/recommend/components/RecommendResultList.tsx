@@ -7,6 +7,7 @@ import { FOCUS_RING } from '@/shared/ui/focusRing'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
+import { accordLabel } from '../accordNames'
 import type { RecommendedPerfume } from '../types'
 
 type Props = {
@@ -78,12 +79,19 @@ export function RecommendResultList({ perfumes, selectedId, onSelect }: Props) {
                         key={reason.evidence}
                         className="text-ink text-caption leading-relaxed"
                       >
+                        {/*
+                          NOTE: 근거는 `citrus` 같은 **영어**로 옵니다. 번역은 백엔드
+                          `AccordLabeler` 의 몫이지만 이름표가 아직 안 와서 영어가 그대로
+                          나오고, 3D 향 지도의 향수 카드는 같은 향 특성을 이미 한국어로
+                          보여줍니다. 한 서비스 안에서 두 말이 되지 않게 여기서 덮습니다.
+                        */}
                         {reason.phrase ? (
                           <>
-                            · &lsquo;{reason.phrase}&rsquo; → {reason.evidence}
+                            · &lsquo;{reason.phrase}&rsquo; →{' '}
+                            {accordLabel(reason.evidence)}
                           </>
                         ) : (
-                          <>· {reason.evidence}</>
+                          <>· {accordLabel(reason.evidence)}</>
                         )}
                       </li>
                     ))}
