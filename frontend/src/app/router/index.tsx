@@ -168,17 +168,17 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.LOGIN,
         element: withSuspense(<LoginPage />),
-        handle: TEXT,
+        handle: TEXT_NIGHT,
       },
       {
         path: ROUTES.SIGNUP,
         element: withSuspense(<SignupPage />),
-        handle: TEXT,
+        handle: TEXT_NIGHT,
       },
       {
         path: ROUTES.PASSWORD_RESET,
         element: withSuspense(<PasswordResetPage />),
-        handle: TEXT,
+        handle: TEXT_NIGHT,
       },
       {
         path: ROUTES.ACCOUNT,

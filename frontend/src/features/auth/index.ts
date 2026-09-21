@@ -5,6 +5,7 @@
  * **비밀번호 재설정(A31)만 엔드포인트가 없어** 화면만 있습니다.
  */
 export { AccountForm } from './components/AccountForm'
+export { AUTH_PAGE, AUTH_SUBMIT } from './frame'
 export { LoginForm } from './components/LoginForm'
 export {
   PasswordFindForm,

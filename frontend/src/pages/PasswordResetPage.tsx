@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router'
 
-import { PasswordFindForm, PasswordResetForm } from '@/features/auth'
+import { AUTH_PAGE, PasswordFindForm, PasswordResetForm } from '@/features/auth'
 
 /**
  * 비밀번호 찾기 · 재설정 (A31). 한 경로에서 두 단계입니다 — `?token=` 없이
@@ -11,7 +11,7 @@ export default function PasswordResetPage() {
   const hasToken = Boolean(searchParams.get('token'))
 
   return (
-    <div className="flex justify-center py-6.25">
+    <div className={AUTH_PAGE}>
       {hasToken ? <PasswordResetForm /> : <PasswordFindForm />}
     </div>
   )
