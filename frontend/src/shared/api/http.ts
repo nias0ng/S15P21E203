@@ -7,7 +7,7 @@ import axios, {
 import { env } from '@/shared/config/env'
 import { useAuthStore } from '@/shared/store/authStore'
 
-/** 서버가 내려주는 공통 에러 응답 형태. 백엔드와 스펙 확정 후 맞춰서 수정하세요. */
+/** 서버가 내려주는 공통 에러 응답 형태 */
 interface ApiErrorResponse {
   code: string
   message: string
@@ -31,11 +31,11 @@ export function isApiError(error: unknown): error is ApiError {
 }
 
 /**
- * 세션이 끊겼을 때 이어서 할 정리 작업. 쿼리 캐시에 앞 사람의 응답이 남으면 다음에
- * 로그인한 사람이 그 화면을 잠깐 봅니다.
+ * 세션이 끊겼을 때 이어서 할 정리. 캐시에 앞 사람 응답이 남으면 다음 사람이 그 화면을
+ * 잠깐 봅니다.
  *
- * 여기서 `queryClient` 를 import 하면 그쪽이 `isApiError` 로 이 파일을 다시 import 해
- * 순환이 됩니다 — 그래서 **캐시 쪽이 자기를 등록하는** 방향입니다.
+ * NOTE: 여기서 `queryClient` 를 import 하면 순환이 되어, **캐시 쪽이 자기를 등록하는**
+ * 방향입니다.
  */
 let onSessionExpired: (() => void) | null = null
 
@@ -73,7 +73,6 @@ export const http: AxiosInstance = axios.create({
  */
 const NO_AUTH_HEADER_PATHS = ['/auth/login', '/auth/signup', '/auth/refresh']
 
-// 요청 인터셉터: 액세스 토큰 주입
 http.interceptors.request.use((config) => {
   const { accessToken } = useAuthStore.getState()
   const isAuthPath = NO_AUTH_HEADER_PATHS.some((path) =>
