@@ -11,8 +11,8 @@ import { LinkButton } from '@/shared/ui/LinkButton'
 import { PageFallback } from '@/shared/ui/PageFallback'
 
 /**
- * 후기 상세 (A12 — DTL-03 · 05 · 06). 비로그인도 볼 수 있고, **여는 것이 곧 조회라
- * 조회수가 하나 오릅니다** — 창 포커스 · 재연결 재요청을 꺼 두었습니다.
+ * 후기 상세 (A12 — DTL-03 · 05 · 06). 비로그인도 볼 수 있고, 여는 것이 곧 조회라
+ * 조회수가 하나 오릅니다 — 창 포커스 · 재연결 재요청을 꺼 두었습니다.
  */
 export default function ReviewDetailPage() {
   const navigate = useNavigate()
@@ -57,12 +57,9 @@ export default function ReviewDetailPage() {
   return (
     <PerfumeReviewDetail
       review={data}
-      // 같은 후기 작성 화면입니다 — 주소로 수정 모드가 켜집니다
       editTo={toReviewEdit(data.reviewId)}
-      /*
-       * 삭제 뒤 정리는 여기서 합니다. 게시판 목록(community)과 후기(perfume)는
-       * 서로 import 할 수 없는 두 도메인이라, 둘 다 아는 화면이 맡습니다.
-       */
+      // 삭제 뒤 정리는 여기서 합니다 — 게시판 목록(community)과 후기(perfume)는 서로
+      // import 할 수 없는 두 도메인이라 둘 다 아는 화면이 맡습니다
       onDeleted={() => {
         void queryClient.invalidateQueries({ queryKey: communityKeys.all })
         navigate(toPerfumeDetail(data.perfume.perfumeId), {

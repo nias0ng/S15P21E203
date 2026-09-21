@@ -13,13 +13,8 @@ const COMMUNITY_ITEMS = [
   { to: ROUTES.COMMUNITY_FREE, label: '자유' },
 ]
 
-/** 커뮤니티 ▾ — 하위가 있는 유일한 메뉴 */
 export function CommunityMenu({ ink }: { ink: Ink }) {
   const { open, setOpen, containerRef } = useDismissable()
-  /*
-    후기 · 자유도 잠수 대상입니다 (2026-09-20). 주요 메뉴와 **같은 자리**를 씁니다 — 펼침
-    메뉴라고 규칙이 다르면 같은 바다인데 어떤 문은 잠기고 어떤 문은 안 잠깁니다.
-  */
   const diveOut = useDiveOut()
   const warm = useWarm()
 
@@ -44,7 +39,6 @@ export function CommunityMenu({ ink }: { ink: Ink }) {
 
       {open && (
         <ul
-          // 와이어프레임 기준 폭 120px
           className={cn(
             'absolute top-full left-0 z-30 mt-2.5 w-30 border',
             ink.menu,
@@ -59,10 +53,8 @@ export function CommunityMenu({ ink }: { ink: Ink }) {
                 onPointerEnter={() => warm(item.to)}
                 onFocus={() => warm(item.to)}
                 onClick={(event) => {
-                  /*
-                    ⚠ 메뉴는 **어느 쪽이든 닫습니다.** 잠수로 가로채면 주소가 1.4초 뒤에
-                      바뀌는데, 그때까지 열려 있으면 커튼 위에 메뉴가 남습니다.
-                  */
+                  // NOTE: 잠수든 아니든 먼저 닫습니다 — 잠수는 주소가 1.4초 뒤에 바뀌어,
+                  // 그때까지 열려 있으면 커튼 위에 메뉴가 남습니다
                   setOpen(false)
                   diveOut(item.to)?.(event)
                 }}

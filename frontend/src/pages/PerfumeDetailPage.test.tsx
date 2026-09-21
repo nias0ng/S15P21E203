@@ -26,10 +26,8 @@ const detail = {
   myReviewId: null,
 }
 
-/*
-  상세 한 건만 답하게 하고 나머지(향조 · 후기 · 통계 …)는 그대로 둡니다 — 각자
-  자리표시자를 그리므로 뒤로 가기 단추를 보는 데 지장이 없습니다.
-*/
+// 상세 한 건만 답하게 하고 나머지는 그대로 둡니다 — 각자 자리표시자를 그려서
+// 뒤로 가기 단추를 보는 데 지장이 없습니다
 const api = vi.hoisted(() => ({ getPerfumeDetail: vi.fn() }))
 
 vi.mock('@/features/perfume/api', async (importOriginal) => {
@@ -82,10 +80,7 @@ describe('향수 상세 뒤로 가기 (S15P21E203-361)', () => {
     expect(await screen.findByRole('button', { name: label })).toBeVisible()
   })
 
-  /*
-    이 이슈의 핵심입니다. 앞 기록으로 한 칸 되돌리므로 목록이 걸고 있던 `?gender=`
-    까지 그대로 돌아와야 합니다. 주소를 새로 지으면 여기서 필터가 떨어집니다.
-  */
+  // 앞 기록으로 한 칸 되돌리므로 목록이 걸고 있던 `?gender=` 까지 돌아와야 합니다
   it('되돌아간 화면은 걸고 있던 필터를 그대로 갖고 있다', async () => {
     const user = userEvent.setup()
     renderFrom('SEARCH')
@@ -97,10 +92,7 @@ describe('향수 상세 뒤로 가기 (S15P21E203-361)', () => {
     ).toBeVisible()
   })
 
-  /*
-    주소를 붙여 넣거나 새로 고치면 state 가 비어 `DIRECT` 입니다. 돌아갈 기록이
-    없으므로 한 칸 되돌리면 서비스 밖으로 나갑니다 — 링크로 향수 목록에 보냅니다.
-  */
+  // `DIRECT` 는 돌아갈 기록이 없어 한 칸 되돌리면 서비스 밖으로 나갑니다
   it('들어온 길을 모르면 향수 목록으로 가는 링크다', async () => {
     renderFrom(null)
 

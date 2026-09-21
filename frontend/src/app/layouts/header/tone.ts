@@ -2,18 +2,11 @@ import { cn } from '@/shared/lib/cn'
 
 /**
  * 헤더가 앉는 바탕 — 어느 화면 위인지는 껍데기(RootLayout)가 정합니다.
- *
- *   surface     종이 한 장(ivory) — 기본
- *   paper       진열대의 종이 결 — 본문과 같은 종이
- *   glass       3D 향 지도 위의 거의 투명한 유리 — 밤하늘 위라 상아색 글자
- *   glassLight  같은 유리 — 밝은 하늘(낮 · 저녁) 위라 먹색 글자
+ * surface 기본 · paper 진열대 종이 결 · glass 밤하늘 위 유리 · glassLight 밝은 하늘 위 유리
  */
 export type HeaderTone = 'surface' | 'paper' | 'glass' | 'glassLight'
 
-/*
- * 유리판 (3D 향 지도 위). `fixed` 라 3D 가 헤더 뒤까지 깔리고, 판이 옅어 **판의 색 ·
- * 글자색 · 그림자가 뒤의 하늘을 따릅니다**(아래 GLASS_INK · GLASS_LIGHT_INK).
- */
+// 유리판(3D 향 지도 위). `fixed` 라 3D 가 헤더 뒤까지 깔립니다
 export const GLASS = cn(
   'fixed inset-x-0',
   'before:pointer-events-none before:absolute before:inset-0 before:-z-10',
@@ -37,9 +30,7 @@ export type Ink = {
   login: string
 }
 
-/*
- * 밤하늘 위 유리. 2026-09-16 실측 — 상아색 최저 7.4:1, 먹색으로 두면 1.2:1 입니다.
- */
+// 밤하늘 위 유리 — 상아색 글자가 최저 7.4:1, 먹색으로 두면 1.2:1 입니다
 const GLASS_INK: Ink = {
   tint: 'before:from-surface-night/25',
   shadow: 'text-shadow-xs text-shadow-surface-night/40',
@@ -53,11 +44,8 @@ const GLASS_INK: Ink = {
   login: 'border-surface/40 text-surface hover:bg-surface/10',
 }
 
-/*
- * 밝은 하늘(낮 · 저녁) 위 유리. 상아색 글자는 살구색 하늘이 비쳐 1.7:1 까지
- * 떨어졌습니다. 2026-09-16 실측(헤더 띠 저녁 하늘 상대 휘도 0.38 ~ 0.56) —
- * 먹색 + 남색 판 최저 4.3:1, 먹색 + 상아색 판(25%) 최저 6.4:1.
- */
+// 밝은 하늘(낮 · 저녁) 위 유리 — 상아색 글자는 살구색 하늘이 비쳐 1.7:1 까지
+// 떨어져 먹색 + 상아색 판(25%, 최저 6.4:1)으로 둡니다
 const GLASS_LIGHT_INK: Ink = {
   tint: 'before:from-surface/25',
   shadow: 'text-shadow-xs text-shadow-surface/40',
@@ -71,10 +59,6 @@ const GLASS_LIGHT_INK: Ink = {
   login: 'border-ink/40 text-ink hover:bg-surface/40',
 }
 
-/*
- * 종이 화면 — **메인의 밝은 하늘과 같은 값**입니다(2026-09-16 "헤더 통일화").
- * 따로 들고 있던 때는 그림자 · hover · 테두리가 메인과 조금씩 달랐습니다.
- */
 const PAPER_INK: Ink = {
   ...GLASS_LIGHT_INK,
   tint: '',
@@ -85,7 +69,6 @@ const PAPER_INK: Ink = {
 export const FOCUS =
   'rounded-card outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
 
-/** 바탕이 정해지면 글자 · 선 · 메뉴 색이 따라옵니다 */
 export const inkOf = (tone: HeaderTone): Ink =>
   tone === 'glass'
     ? GLASS_INK
@@ -93,6 +76,5 @@ export const inkOf = (tone: HeaderTone): Ink =>
       ? GLASS_LIGHT_INK
       : PAPER_INK
 
-/** 유리판(3D 향 지도 위)인지 — 바탕을 `fixed` 로 띄울지 가릅니다 */
 export const isGlass = (tone: HeaderTone) =>
   tone === 'glass' || tone === 'glassLight'
