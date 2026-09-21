@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router'
 
-import { LoginForm } from '@/features/auth'
+import { AUTH_PAGE, LoginForm } from '@/features/auth'
 import { myTasteTestQuery } from '@/features/taste'
 import { ROUTES } from '@/shared/config/routes'
 import { RETURN_PATH_PARAM, safeReturnPath } from '@/shared/lib/returnPath'
@@ -25,7 +25,7 @@ export default function LoginPage() {
     safeReturnPath(searchParams.get(RETURN_PATH_PARAM)) ?? ROUTES.HOME
 
   return (
-    <div className="flex justify-center py-6.25">
+    <div className={AUTH_PAGE}>
       <LoginForm
         onLoggedIn={() => {
           /*

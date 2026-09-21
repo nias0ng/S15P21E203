@@ -3,6 +3,8 @@ import { useState } from 'react'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
 
+import { AUTH_SUBMIT } from '../frame'
+
 import { AuthCard } from './AuthCard'
 
 /**
@@ -34,7 +36,7 @@ export function PasswordFindForm() {
           placeholder="이메일"
           required
         />
-        <Button type="submit" fullWidth>
+        <Button type="submit" fullWidth className={AUTH_SUBMIT}>
           메일 받기
         </Button>
       </form>
@@ -82,7 +84,7 @@ export function PasswordResetForm() {
           placeholder="새 비밀번호 확인"
           required
         />
-        <Button type="submit" fullWidth>
+        <Button type="submit" fullWidth className={AUTH_SUBMIT}>
           변경하고 로그인
         </Button>
       </form>

@@ -14,6 +14,7 @@ import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
 
 import { getMe, login, toAuthUser } from '../api'
+import { AUTH_SUBMIT } from '../frame'
 
 import { AuthCard } from './AuthCard'
 
@@ -133,12 +134,21 @@ export function LoginForm({ onLoggedIn }: LoginFormProps = {}) {
           </p>
         )}
 
-        <Button type="submit" fullWidth disabled={isPending}>
+        <Button
+          type="submit"
+          fullWidth
+          className={AUTH_SUBMIT}
+          disabled={isPending}
+        >
           {isPending ? '로그인 중' : '로그인'}
         </Button>
       </form>
 
-      <div className="text-caption flex items-center justify-between">
+      {/*
+        양옆을 5px 씩 들여씁니다 — 판의 모서리가 둥글어 끝에 딱 붙이면 글자가 밖으로
+        새어 나간 것처럼 보입니다. 회원가입의 [로그인하기 →] 와 같은 값입니다.
+      */}
+      <div className="text-caption flex items-center justify-between px-1.25">
         {/*
           돌아갈 경로를 회원가입까지 들고 갑니다. 안 들려 보내면 "로그인하려다
           계정이 없어서 가입" 한 사람만 원래 자리를 잃습니다.
