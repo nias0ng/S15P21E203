@@ -16,6 +16,7 @@ import {
 // 두 도메인은 서로 import 할 수 없으므로 화면에서 조합합니다.
 import { likeReview, reviewKeys, unlikeReview } from '@/features/perfume'
 import { ROUTES } from '@/shared/config/routes'
+import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { useLikeToggle } from '@/shared/hooks/useLikeToggle'
 import { cn } from '@/shared/lib/cn'
 import { readPage, withQueryParams, writePage } from '@/shared/lib/queryParams'
@@ -43,6 +44,19 @@ export default function ReviewBoardPage() {
 
   const reviews = useQuery(reviewBoardQuery({ sort, page, size: PAGE_SIZE }))
   const trending = useQuery(trendingPerfumesQuery())
+
+  /*
+   * 메인에서 잠수로 들어왔으면 커튼이 짙은 바다색으로 덮은 채 이 신호를 기다립니다
+   * (안 알려도 상한에 걷힙니다 — `shared/ui/DiveCurtain`). 잠수로 들어온 것이 아니면
+   * 아무 일도 안 일어납니다.
+   *
+   * 기준은 **목록**입니다 — 아래에서 스피너가 갈리는 바로 그 조건입니다. 목록이 칠해지면
+   * 이 화면은 다 선 것이고, 여기는 진열대처럼 뒤늦게 떠오르는 사진 벽이 없습니다.
+   *
+   * ⚠ 곁판(`trending`)은 안 기다립니다 — 본문이 아니라 옆에 붙는 칸이고, 늦게 와도 목록이
+   *   밀리지 않습니다. 기다리면 곁판 하나에 커튼이 상한까지 서 있게 됩니다.
+   */
+  useDiveReady(!reviews.isPending)
 
   /* 언급된 향수가 없으면 `TrendingPerfumes` 가 비어서 칸도 같이 접습니다 */
   const showTrending =
