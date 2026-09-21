@@ -95,17 +95,19 @@ services:
       - bash
       - -euc
       - |
-        echo "[1/6] 향 지도 데이터를 넣습니다."
+        echo "[1/7] 향 지도 데이터를 넣습니다."
         psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f load_scent_map.sql
-        echo "[2/6] 향수 카탈로그를 넣습니다."
+        echo "[2/7] 향수 카탈로그를 넣습니다."
         bash ./load_perfume_catalog.sh
-        echo "[3/6] 보충 향수 카탈로그를 넣습니다."
+        echo "[3/7] 보충 향수 카탈로그를 넣습니다."
         bash ./load_perfume_catalog_supplement.sh
-        echo "[4/6] 노트 메타데이터를 넣습니다."
+        echo "[4/7] 향수 gender를 보강합니다."
+        bash ./load_perfume_genders.sh
+        echo "[5/7] 노트 메타데이터를 넣습니다."
         bash ./load_notes.sh
-        echo "[5/6] 향수 이미지를 넣습니다."
+        echo "[6/7] 향수 이미지를 넣습니다."
         bash ./load_perfume_images.sh
-        echo "[6/6] 향수-노트 연결을 넣습니다."
+        echo "[7/7] 향수-노트 연결을 넣습니다."
         bash ./load_perfume_notes.sh
         echo "모든 초기 데이터 적재가 끝났습니다."
 
