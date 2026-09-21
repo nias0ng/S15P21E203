@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import { useLocation, useParams } from 'react-router'
+import { useLocation, useNavigate, useParams } from 'react-router'
 
 import {
   perfumeDetailQuery,
@@ -28,7 +28,10 @@ import {
   useShelfActions,
 } from '@/features/shelf'
 import { isApiError } from '@/shared/api/http'
-import { readPerfumeViewState } from '@/shared/config/perfumeViewSource'
+import {
+  PERFUME_VIEW_BACK_LABEL,
+  readPerfumeViewState,
+} from '@/shared/config/perfumeViewSource'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
 import { useIsLoggedIn } from '@/shared/store/authStore'
@@ -65,6 +68,21 @@ export default function PerfumeDetailPage() {
   const { state } = useLocation()
   const { source, fromPerfumeId } = readPerfumeViewState(state)
   usePerfumeViewLog(numericId, source, fromPerfumeId)
+
+  /*
+    뒤로 가기 (S15P21E203-361). `source` 가 `DIRECT` 가 아니라는 것은 **앱 안의 어느
+    화면이 state 를 실어 보냈다**는 뜻이고, 그 화면은 바로 앞 기록입니다. 그래서 주소를
+    새로 짜지 않고 기록을 한 칸 되돌립니다 — 그래야 그 화면의 필터 · 쪽 번호 · 스크롤
+    자리까지 그대로 돌아옵니다. 주소를 다시 지으면 그 셋이 다 처음으로 갑니다.
+
+    `DIRECT` 면 돌아갈 기록이 없습니다(주소 붙여넣기 · 새로 고침 · 밖에서 온 링크).
+    한 칸 되돌리면 이 서비스 밖으로 나갈 수 있어 향수 목록으로 보냅니다.
+
+    ⚠️ 여기만 `LinkButton` 이 아닙니다. 되돌리기는 갈 곳이 있는 것이 아니라 기록을
+    거슬러 가는 동작이라 적을 주소가 없습니다.
+  */
+  const navigate = useNavigate()
+  const knowsOrigin = source !== 'DIRECT'
 
   const [shelfOpen, setShelfOpen] = useState(false)
   const [removeOpen, setRemoveOpen] = useState(false)
@@ -141,10 +159,15 @@ export default function PerfumeDetailPage() {
 
   return (
     <div className="space-y-6.25">
-      {/* 들어온 길(`perfumeViewSource`)로 되돌리지 않고 향수 목록으로 고정합니다 */}
-      <LinkButton to={ROUTES.PERFUMES} variant="outline" size="sm">
-        ← 향수 목록
-      </LinkButton>
+      {knowsOrigin ? (
+        <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+          ← {PERFUME_VIEW_BACK_LABEL[source]}
+        </Button>
+      ) : (
+        <LinkButton to={ROUTES.PERFUMES} variant="outline" size="sm">
+          ← {PERFUME_VIEW_BACK_LABEL.DIRECT}
+        </LinkButton>
+      )}
 
       <PerfumeOverview
         perfume={data}
