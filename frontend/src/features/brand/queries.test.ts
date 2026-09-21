@@ -20,10 +20,6 @@ beforeEach(() => {
 })
 
 describe('brandListQuery', () => {
-  /*
-    S15P21E203-364 의 함정입니다. 화면 기본값으로 뺐다가는 알약이 '향수 많은 순'
-    에 켜져 있는데 요청에는 아무것도 안 실려 서버가 abc 순을 돌려줍니다.
-  */
   it('화면 기본 정렬은 서버 기본값과 달라서 요청에 실린다', async () => {
     expect(DEFAULT_BRAND_SORT).not.toBe(SERVER_DEFAULT_BRAND_SORT)
 
@@ -44,7 +40,6 @@ describe('brandListQuery', () => {
     expect(getBrands).toHaveBeenCalledWith({})
   })
 
-  /* 서버 기본 정렬과 "고르지 않음" 이 같은 응답을 두 번 받지 않게 합니다 */
   it('서버 기본 정렬과 정렬 없음은 캐시 자리를 함께 쓴다', () => {
     expect(
       brandListQuery({ sort: SERVER_DEFAULT_BRAND_SORT }).queryKey,

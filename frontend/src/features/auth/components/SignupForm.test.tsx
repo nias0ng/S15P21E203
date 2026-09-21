@@ -22,7 +22,6 @@ const renderForm = () =>
     </QueryClientProvider>,
   )
 
-/** 이메일 도메인 말고 나머지 칸을 전부 채웁니다 */
 const fillExceptDomain = async () => {
   await userEvent.type(screen.getByLabelText('이메일 아이디'), 'hyanghae')
   await userEvent.type(screen.getByLabelText('비밀번호'), 'password1234')
@@ -31,10 +30,7 @@ const fillExceptDomain = async () => {
 }
 
 describe('SignupForm 이메일 도메인', () => {
-  /*
-    반쪽짜리 주소(`hyanghae@`)로는 가입이 안 됩니다. 도메인을 안 고른 채 [가입하기]
-    가 켜지면, 누른 뒤에야 서버에서 막힙니다.
-  */
+  // 반쪽짜리 주소로 [가입하기] 가 켜지면 누른 뒤에야 서버에서 막힙니다
   it('도메인을 고르기 전에는 가입할 수 없다', async () => {
     renderForm()
 

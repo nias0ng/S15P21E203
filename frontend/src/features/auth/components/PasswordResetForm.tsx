@@ -11,15 +11,8 @@ import { PASSWORD_MIN_LENGTH } from '../types'
 import { AuthCard } from './AuthCard'
 
 /**
- * 로그인으로 돌아가는 줄. 두 카드가 같이 씁니다.
- *
- * 비밀번호 화면은 **막다른 곳이었습니다** — 로그인에서 들어올 수는 있는데 나가는
- * 길이 없어 헤더로 올라가야 했습니다. 회원가입이 357 에서 같은 이유로 길을
- * 냈습니다(`SignupForm` 의 [로그인하기 →]).
- *
- * 모양 · 자리 · 들여쓰기를 저쪽과 같게 둡니다 — 화면을 오갈 때 링크가 같은 자리에
- * 있어야 눈이 찾지 않습니다. 5px 을 들여쓰는 것은 판의 모서리가 둥글어 왼쪽 끝에
- * 딱 붙이면 글자가 밖으로 새어 나간 것처럼 보이기 때문입니다.
+ * 로그인으로 돌아가는 줄. 두 카드가 같이 쓰고, 모양 · 자리는 `SignupForm` 의
+ * [로그인하기 →] 와 같게 둡니다 — 판의 모서리가 둥글어 5px 을 들여씁니다.
  */
 function BackToLogin() {
   return (
@@ -31,12 +24,7 @@ function BackToLogin() {
   )
 }
 
-/**
- * 비밀번호 찾기 (와이어프레임 A31 좌측 카드)
- *
- * 메일을 보낸 뒤에는 **폼을 안내로 바꿉니다.** 폼을 두고 안내만 덧붙이면 보낸
- * 것인지 아닌지가 화면에 함께 떠 있어, 같은 메일을 몇 번씩 부르게 됩니다.
- */
+/** 비밀번호 찾기 (A31 좌측). 보낸 뒤 폼을 안내로 바꿉니다 — 폼이 남으면 보냈는지가 흐려져 같은 메일을 몇 번씩 부릅니다 */
 export function PasswordFindForm() {
   const [sentTo, setSentTo] = useState<string | null>(null)
 
@@ -55,11 +43,7 @@ export function PasswordFindForm() {
           확인해주세요.
         </p>
 
-        {/*
-          다시 보내기는 **폼으로 되돌리는 것**입니다. 여기서 바로 부르지 않는 이유는
-          주소를 잘못 적어 못 받는 경우가 대부분이라, 같은 주소로 또 보내면 같은 일이
-          반복됩니다.
-        */}
+        {/* 여기서 바로 다시 보내지 않고 폼으로 되돌립니다 — 주소를 잘못 적어 못 받는 경우가 대부분입니다 */}
         <Button variant="outline" fullWidth onClick={() => setSentTo(null)}>
           다른 이메일로 다시 받기
         </Button>
@@ -103,11 +87,8 @@ export function PasswordFindForm() {
 }
 
 /**
- * 비밀번호 재설정 (와이어프레임 A31 우측 카드 — 메일 링크로 진입)
- *
- * 두 칸이 같은지 화면에서 봅니다. 규칙 · 문구는 정보 변경의
- * `PasswordChangeModal` 과 같은 것을 씁니다 — 같은 일을 하는 칸이 화면마다 다른
- * 말을 하면 둘 중 하나가 틀린 것처럼 읽힙니다.
+ * 비밀번호 재설정 (A31 우측 — 메일 링크로 진입). 규칙 · 문구는
+ * `PasswordChangeModal` 과 같은 것을 씁니다.
  */
 export function PasswordResetForm() {
   const [password, setPassword] = useState('')

@@ -13,11 +13,7 @@ type FamilyTileProps = {
   onToggle: (family: ScentFamilyKey) => void
 }
 
-/**
- * 향 계열 타일 (TST-03 계열 선택). 고르지 않은 타일은 형용사를 보여주고 마우스 ·
- * 포커스가 가면 계열명으로 바뀌며, **고른 타일은 계열명으로 고정합니다.**
- * 낱말이 바뀌는 것은 눈으로만 알 수 있어 `aria-label` 에 둘을 함께 읽힙니다.
- */
+/** 향 계열 타일 (TST-03). 낱말이 바뀌는 것은 눈으로만 알 수 있어 `aria-label` 에 둘을 함께 읽힙니다. */
 export function FamilyTile({
   family,
   selected,

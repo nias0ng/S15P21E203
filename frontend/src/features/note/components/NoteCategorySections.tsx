@@ -13,14 +13,12 @@ import type { Note } from '../types'
 type Props = {
   notes: Note[]
   isPending?: boolean
-  /** 0건 안내 아래 버튼. 검색어·대분류로 걸러 0건이 된 경우 [초기화] 를 답니다. */
   emptyAction?: React.ReactNode
 }
 
 /**
- * 대분류별 노트 섹션 (A35). **고정 목록을 두지 않고 받은 순서를 끊습니다** —
- * 대분류는 열린 문자열이라, 화면이 목록을 들고 있으면 새 값이 생긴 날 그 노트들이
- * 조용히 사라집니다(규칙은 `../grouping`).
+ * 대분류별 노트 섹션 (A35). 고정 목록을 두지 않고 받은 순서를 끊습니다 — 대분류는 열린
+ * 문자열이라, 목록을 들고 있으면 새 값이 생긴 날 그 노트들이 조용히 사라집니다.
  */
 export function NoteCategorySections({
   notes,
@@ -43,7 +41,6 @@ export function NoteCategorySections({
                   className="border-line rounded-card flex flex-col gap-2.5 border p-2.5"
                 >
                   <Skeleton className="aspect-7/5 w-full" />
-                  {/* 영문 이름 · 한국어 이름 두 줄 */}
                   <Skeleton className="h-5 w-3/5" />
                   <Skeleton className="h-4 w-2/5" />
                 </div>

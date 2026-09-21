@@ -16,12 +16,8 @@ type Props = {
   onSelect: (perfumeId: number) => void
 }
 
-/**
- * 자연어 추천 결과 카드 목록 (A06 좌측 — NLR-06 · NLR-07). 결과는 3~5개 가변이고
- * 1번 카드만 펼친 상태이며, 추천 이유를 입력한 표현과 짝지어 보여줍니다.
- */
+/** 자연어 추천 결과 카드 목록 (NLR-06 · NLR-07). 추천 이유를 입력한 표현과 짝지어 보여줍니다. */
 export function RecommendResultList({ perfumes, selectedId, onSelect }: Props) {
-  // 1번 카드만 펼친 상태로 시작합니다
   const [expandedId, setExpandedId] = useState<number | null>(
     perfumes[0]?.perfumeId ?? null,
   )
