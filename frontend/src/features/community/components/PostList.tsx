@@ -69,7 +69,7 @@ export function PostList({
           data-slot="card"
           className={cn(
             'border-line bg-surface-card rounded-card relative border',
-            'flex flex-col gap-2.5 p-3.75',
+            'flex flex-col gap-2.5 p-4.25',
             'transition-[transform,box-shadow] duration-200 ease-out',
             'hover:shadow-raised hover:-translate-y-1.25',
           )}
