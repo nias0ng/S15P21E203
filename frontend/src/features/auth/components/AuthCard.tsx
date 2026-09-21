@@ -3,8 +3,6 @@ import { GLASS_PANEL } from '@/shared/ui/panel'
 
 type AuthCardProps = {
   title: string
-  /** 카드 위에 붙는 작은 안내 (와이어프레임 A31 의 "찾기", "재설정 (메일 링크 진입)") */
-  eyebrow?: string
   /** 제목 아래 설명 한 줄 */
   description?: string
   children: React.ReactNode
@@ -24,7 +22,6 @@ type AuthCardProps = {
  */
 export function AuthCard({
   title,
-  eyebrow,
   description,
   children,
   className,
@@ -33,7 +30,6 @@ export function AuthCard({
     <div
       className={cn(GLASS_PANEL, 'w-full max-w-105 space-y-3.75', className)}
     >
-      {eyebrow && <p className="text-ink-muted text-caption">{eyebrow}</p>}
       <h1 className="text-ink text-title font-serif font-bold">{title}</h1>
       {description && <p className="text-ink-muted text-body">{description}</p>}
       {children}
