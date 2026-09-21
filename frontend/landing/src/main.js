@@ -598,6 +598,8 @@ function pickSail(m) {
   zones.goTo({ key: null, name: m.nameKo || m.name, x: m.x, z: m.z, custom: true, sea: true, pick: true, boost: false, arrive });
 }
 function arriveAt(key) {
+  // ⚠ 거절돼 미뤄지는 길(pendingArrive)에서도 받아 둔다 — 틱이 다시 걸 때는 받을 시간이 없다
+  gate.preload(key);
   if (!phase.enter(key, { hold: P.zoneHold })) pendingArrive = key;
 }
 // 향수 고르기의 카메라 섞임 (선형 진행 0..1 — 틱이 이징을 먹인다)
@@ -612,6 +614,9 @@ const _obs = [];
 // 떠나기. ⚠ 들어가 있는 연출·향수 고르기는 접고 떠난다 — 안 접으면 안개 뒤에서 두 층이 같은 카메라를 잡는다
 function startTravel(target) {
   if (!target || travel.busy) return false;
+  // ⭐ 그 존의 윙 6판을 **미리 받아 둔다** (2026-09-21 — gate.preload). 안개 전환이 1~2초라 그동안
+  //   받으면 연출이 시작될 때 이미 와 있다. ⚠ 빈 바다(sea)는 존 연출을 안 걸므로 안 받는다
+  if (target.key && !target.sea) gate.preload(target.key);
   if (marks.focusing) { marks.focusOff(); marks.clearSelect(); clickMark = null; }
   pendingArrive = null;
   pendingSea = null;   // 먼 곳 이동이 이긴다 — 연출이 걷히길 기다리던 바다 떠나기는 버린다 (seaGo)

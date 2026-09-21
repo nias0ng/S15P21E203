@@ -42,6 +42,13 @@ export const EASE = {
 // ⚠⚠ **좌우 0.14s 시차가 "순서대로" 의 전부다** (§3). 이보다 크면 두 동작으로 쪼개져 보이고,
 //   0 이면 자동문이 된다. 이 한 숫자가 사용자 요청 *"하단 좌우 오브젝트가 순서대로 좌, 우로
 //   등장하고"* 의 실행 가능한 판본이다.
+//
+// ⭐⭐ **2026-09-21 : 윙이 3층이 되면서 트랙이 둘에서 여섯이 됐다** (`docs/존-좌우윙-3층-0921.md` §2).
+//   사용자 : *"왼쪽 2, 오른쪽 2, 왼쪽 3, 오른쪽 3, 왼쪽 1, 오른쪽 1 순서로 좌우에서 시작하면 됨"*
+//   (1 = 맨앞 `near` · 2 = 중앙 `mid` · 3 = 맨뒤 `far`) → **중앙 → 맨뒤 → 맨앞**, 층마다 왼쪽 먼저.
+//   ⚠⚠ **층 시차(0.30s)가 좌우 시차(0.18s)보다 커야 한다.** 작으면 시작 시각이
+//     `좌중(0) → 좌뒤(0.18) → 우중(0.22)` 로 뒤섞여 **요청한 순서가 깨진다.** 그래서 예전의
+//     좌우 0.22 를 0.18 로 되돌리고 층을 0.30 으로 벌렸다 — 여섯이 엄밀히 커지는 유일한 배분이다.
 // ⚠ 타이포는 **가장 빠르고 가장 짧게** 간다 — 프레임이 닫히는 동안 그 안에서 솟아 **먼저
 //   멈춘다.** 셋이 같이 끝나면 슬라이드쇼가 된다.
 const TL = {
@@ -51,8 +58,14 @@ const TL = {
   //   같은 시차는 상대적으로 짧아져 *"순서대로 좌, 우로"* 가 안 읽힌다.
   enter: {
     look:  [0.00, 2.00, 'inOutCubic'],   // 카메라 구도
-    openL: [0.00, 1.15, 'outCubic'],     // 좌 윙
-    openR: [0.22, 1.40, 'outCubic'],     // 우 윙 — ⚠ 0.22s 시차
+    // 좌우 윙 3층 — 판 하나가 드는 시간은 **1.10s 로 같고** 시작만 0.18 · 0.30 으로 벌어진다.
+    // ⚠ 마지막 판이 1.88s 에 서므로 `look`(2.00)이 여전히 가장 늦다 — **ENTER_DUR 은 2.00s 그대로다**
+    openLmid:  [0.00, 1.10, 'outCubic'],   // 좌 중앙 (사용자 표기 2)
+    openRmid:  [0.18, 1.28, 'outCubic'],   // 우 중앙 — ⚠ 0.18s 좌우 시차
+    openLfar:  [0.30, 1.40, 'outCubic'],   // 좌 맨뒤 (3) — ⚠ 0.30s 층 시차
+    openRfar:  [0.48, 1.58, 'outCubic'],   // 우 맨뒤
+    openLnear: [0.60, 1.70, 'outCubic'],   // 좌 맨앞 (1)
+    openRnear: [0.78, 1.88, 'outCubic'],   // 우 맨앞
     dim:   [0.15, 1.00, 'outQuad'],      // 원경 안개가 짙어진다
     rise:  [0.55, 1.45, 'outBack'],      // 수면 타이포
     ui:    [1.20, 1.85, 'outQuad'],      // 우측 향조 정보 · 좌하단 03 ZONE
@@ -72,8 +85,14 @@ const TL = {
   leave: {
     rise:  [0.00, 0.60, 'inCubic'],
     ui:    [0.00, 0.40, 'outQuad'],
-    openL: [0.25, 1.20, 'inCubic'],
-    openR: [0.25, 1.20, 'inCubic'],
+    // ⚠ 여섯이 **같이** 나간다 — 층 시차도 안 넣는다. 나가는 3층은 어차피 `dist` 가 달라 서로 다른
+    //   속도로 미끄러지므로 공간감은 유지된다 (`docs/존-좌우윙-3층-0921.md` §2-2)
+    openLmid:  [0.25, 1.20, 'inCubic'],
+    openRmid:  [0.25, 1.20, 'inCubic'],
+    openLfar:  [0.25, 1.20, 'inCubic'],
+    openRfar:  [0.25, 1.20, 'inCubic'],
+    openLnear: [0.25, 1.20, 'inCubic'],
+    openRnear: [0.25, 1.20, 'inCubic'],
     dim:   [0.25, 1.10, 'outQuad'],
     look:  [0.45, 1.90, 'inOutCubic'],
     // ⚠ 배 — 나아간 만큼(main.js 가 쌓아 둔 오프셋)을 이 값으로 곱해 **0 으로 되돌린다.** 끝(1.90s)이 `look` 과 같아서
@@ -83,7 +102,9 @@ const TL = {
   }
 };
 
-const KEYS = ['look', 'openL', 'openR', 'dim', 'rise', 'ui', 'swing'];
+// ⚠ 새 필드를 넣으려면 KEYS 와 TL 양쪽에 같이 넣는다 — 한쪽만 넣으면 조용히 0 으로 남는다
+export const OPEN_KEYS = ['openLmid', 'openRmid', 'openLfar', 'openRfar', 'openLnear', 'openRnear'];
+const KEYS = ['look', ...OPEN_KEYS, 'dim', 'rise', 'ui', 'swing'];
 // ⭐ 머묾 시계를 멈췄다가 다시 흐를 때 **최소한 남겨 두는 초** (2026-09-11 오후, `pauseHold`).
 //   정보 블록을 다 읽고 마우스를 떼는 순간 닫히면 쫓겨나는 느낌이다 — 뗀 뒤에도 이만큼은 머문다.
 //   ⚠ 남은 시간이 이미 더 길면 건드리지 않는다 (호버가 시계를 **늘리지는** 않는다)
@@ -116,7 +137,9 @@ export function createPhase() {
     // 머묾 시계가 멈춰 있는가 (2026-09-11 오후). 사용자 : *"마우스를 올린 동안에는 머물게하고 5초 뒤에는 걷히게"*.
     //   ⚠ 이 층은 DOM 을 모른다 — 누가 멈추는지(main.js 가 ui 의 호버를 보고) 모르고 **멈춤만** 받는다
     holdPaused: false,
-    look: 0, openL: 0, openR: 0, dim: 0, rise: 0, ui: 0,
+    look: 0, dim: 0, rise: 0, ui: 0,
+    // 좌우 윙 3층 (0 = 화면 밖 · 1 = 들어온 상태). ⚠ gate.js 가 `open<측><층>` 이름 그대로 읽는다
+    openLmid: 0, openRmid: 0, openLfar: 0, openRfar: 0, openLnear: 0, openRnear: 0,
     // 배 — swing 1 = 시작 자리에 놓였다 (그 뒤 움직임은 main.js 가 속도로 민다) · 0 = 항해 자리
     swing: 0
   };
@@ -211,8 +234,9 @@ export function createPhase() {
     // 콘솔 검증용 한 줄 (§8 의 판정 기준)
     report() {
       const f = (v) => v.toFixed(3);
+      // 등장 순서대로 읽는다 (좌중 · 우중 · 좌뒤 · 우뒤 · 좌앞 · 우앞) — 화면에서 본 순서와 같은 줄이라야 검산이 된다
       return `${cue.phase}${cue.zone ? ' · ' + cue.zone : ''}  t=${f(cue.t)} p=${f(cue.p)}  ` +
-             `look=${f(cue.look)} open=${f(cue.openL)}/${f(cue.openR)} ` +
+             `look=${f(cue.look)} open=${OPEN_KEYS.map(k => f(cue[k])).join('/')} ` +
              `dim=${f(cue.dim)} rise=${f(cue.rise)} ui=${f(cue.ui)} ` +
              `swing=${f(cue.swing)}` +
              (cue.hold > 0 ? `  hold ${f(cue.holdT)}/${f(cue.hold)}${cue.holdPaused ? ' (멈춤)' : ''}` : '');
