@@ -9,8 +9,10 @@ import {
   createComment,
   deleteComment,
   deletePost,
+  likePost,
   POST_CATEGORIES,
   postDetailQuery,
+  unlikePost,
   updateComment,
 } from '@/features/community'
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
@@ -20,6 +22,7 @@ import {
   toPostDetail,
   toPostEdit,
 } from '@/shared/config/routes'
+import { useLikeToggle } from '@/shared/hooks/useLikeToggle'
 import { useToast } from '@/shared/hooks/useToast'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
@@ -116,6 +119,29 @@ export default function PostDetailPage() {
     },
   })
 
+  /**
+   * 좋아요 토글 (CMT-05). 비로그인 안내 · 누르기/취소 고르기는 `useLikeToggle` 이
+   * 맡고, 여기서는 캐시만 고칩니다 — 다시 부르지 않고 **응답 값을 이 글에만
+   * 덮어씁니다.** 다시 부르면 조회수가 한 번 더 오릅니다(여는 것이 곧 조회라서).
+   *
+   * 게시판 목록은 비우지 않습니다. `staleTime` 이 없어 되돌아가면 어차피 다시
+   * 받는데, 여기서 `communityKeys.all` 을 비우면 방금 덮어쓴 이 글까지 딸려가
+   * 조회수가 또 오릅니다.
+   */
+  const likeToggle = useLikeToggle({
+    like: likePost,
+    unlike: unlikePost,
+    onToggled: (result) => {
+      queryClient.setQueryData(
+        communityKeys.postDetail(numericId),
+        (old: typeof post.data) =>
+          old === undefined
+            ? old
+            : { ...old, liked: result.liked, likeCount: result.likeCount },
+      )
+    },
+  })
+
   if (post.isPending) return <PageFallback />
   if (post.isError || !post.data) {
     return (
@@ -165,24 +191,53 @@ export default function PostDetailPage() {
               · {formatRelativeTime(data.createdAt)} · 조회 {data.viewCount}
             </span>
 
-            {data.mine && (
-              <span className="ml-auto flex gap-2.5">
-                <LinkButton
-                  to={toPostEdit(numericId)}
-                  variant="outline"
-                  size="sm"
-                >
-                  수정
-                </LinkButton>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setDeleteOpen(true)}
-                >
-                  삭제
-                </Button>
-              </span>
-            )}
+            <span className="ml-auto flex items-center gap-2.5">
+              {data.mine && (
+                <>
+                  <LinkButton
+                    to={toPostEdit(numericId)}
+                    variant="outline"
+                    size="sm"
+                  >
+                    수정
+                  </LinkButton>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDeleteOpen(true)}
+                  >
+                    삭제
+                  </Button>
+                </>
+              )}
+
+              {/*
+                비로그인은 401 이라 보내 보지 않고 먼저 안내합니다 — 401 이 나면
+                인터셉터가 재발급을 시도하다 세션을 정리해 버립니다.
+              */}
+              <button
+                type="button"
+                aria-pressed={data.liked}
+                aria-label={`좋아요 ${data.likeCount}`}
+                disabled={likeToggle.isPending}
+                onClick={() =>
+                  likeToggle.toggle({ id: numericId, liked: data.liked })
+                }
+                className={cn(
+                  'rounded-card text-caption flex items-center gap-1.25',
+                  'transition-colors duration-120 ease-out',
+                  'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
+                  data.liked
+                    ? 'text-danger'
+                    : 'text-ink-muted hover:text-danger',
+                )}
+              >
+                <span aria-hidden className="text-heading leading-none">
+                  {data.liked ? '♥' : '♡'}
+                </span>
+                <span aria-hidden>{data.likeCount}</span>
+              </button>
+            </span>
           </div>
         </header>
 
@@ -257,6 +312,12 @@ export default function PostDetailPage() {
             </section>
           )}
         </div>
+
+        {likeToggle.error !== null && (
+          <p className="text-danger text-caption" role="alert">
+            좋아요를 누르지 못했습니다. 잠시 후 다시 시도해주세요.
+          </p>
+        )}
       </article>
 
       <CommentSection
@@ -297,6 +358,14 @@ export default function PostDetailPage() {
         onClose={() => setLoginOpen(false)}
         redirectTo={toPostDetail(numericId)}
         description="댓글은 로그인한 뒤에 쓸 수 있습니다."
+      />
+
+      {/* 댓글용과 따로 둡니다 — 무엇을 하려다 막혔는지 문구가 달라야 합니다 */}
+      <LoginRequiredDialog
+        open={likeToggle.loginRequired}
+        onClose={likeToggle.closeLoginRequired}
+        redirectTo={toPostDetail(numericId)}
+        description="좋아요는 로그인한 뒤에 누를 수 있습니다. 글은 로그인 없이도 읽을 수 있습니다."
       />
 
       <Toast {...toastProps} />
