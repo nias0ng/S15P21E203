@@ -103,27 +103,27 @@ export default function PostWritePage() {
     enabled: pickedCollectionId !== null,
   })
 
-  /*
-    도착하면 관련 향수를 그 컬렉션의 향수로 바꿉니다. `filledFor` 와 같은 방식으로
-    한 번만 합니다 — 매 렌더 덮으면 아래 분류를 옮겨도 되돌아옵니다.
-  */
-  const [filledFromCollection, setFilledFromCollection] = useState<
-    number | null
-  >(null)
-  if (
-    pickedCollectionId !== null &&
-    pickedCollection.data &&
-    filledFromCollection !== pickedCollectionId
-  ) {
-    setFilledFromCollection(pickedCollectionId)
-    setPerfumes(
-      pickedCollection.data.perfumes.map((perfume) => ({
-        perfumeId: perfume.perfumeId,
-        name: perfume.name,
-        brand: perfume.brand,
-        thumbnailUrl: perfume.thumbnailUrl,
-      })),
-    )
+  /**
+   * 고른 컬렉션이 정하는 향수. **상태로 베끼지 않고 파생 값으로 둡니다** — 한 번만
+   * 채우는 방식이면 "이미 채웠다" 표시가 남아, 분류를 옮겼다 돌아와 같은 컬렉션을
+   * 다시 골랐을 때 아무 일도 일어나지 않습니다.
+   */
+  const collectionPerfumes: LinkedPerfume[] | null =
+    pickedCollection.data?.perfumes.map((perfume) => ({
+      perfumeId: perfume.perfumeId,
+      name: perfume.name,
+      brand: perfume.brand,
+      thumbnailUrl: perfume.thumbnailUrl,
+    })) ?? null
+
+  /** 화면에 그리고 서버로 보낼 향수. 컬렉션이 정하면 그것, 아니면 직접 고른 것 */
+  const shownPerfumes = collectionPerfumes ?? perfumes
+
+  /** 컬렉션을 뗄 때, 컬렉션이 정하던 향수를 직접 고른 것으로 넘겨받습니다 */
+  const releaseCollection = () => {
+    if (collectionPerfumes) setPerfumes(collectionPerfumes)
+    setCollection(null)
+    setPickedCollectionId(null)
   }
 
   /*
@@ -164,7 +164,7 @@ export default function PostWritePage() {
     mutationFn: async () => {
       if (category === null) throw new Error('분류를 골라야 합니다')
 
-      const perfumeIds = perfumes.map((perfume) => perfume.perfumeId)
+      const perfumeIds = shownPerfumes.map((perfume) => perfume.perfumeId)
 
       if (editing) {
         const attachedBefore = post.data?.collectionId ?? null
@@ -279,10 +279,7 @@ export default function PostWritePage() {
                 풀지 않으면 **보이지 않는 채로 글에 붙고**, 거기에 향수까지 고르면
                 서버가 400 으로 막습니다.
               */
-              if (next !== 'COLLECTION') {
-                setCollection(null)
-                setPickedCollectionId(null)
-              }
+              if (next !== 'COLLECTION') releaseCollection()
             }}
           />
         </fieldset>
@@ -320,10 +317,7 @@ export default function PostWritePage() {
                 <button
                   type="button"
                   aria-label={`${collection.title} 첨부 해제`}
-                  onClick={() => {
-                    setCollection(null)
-                    setPickedCollectionId(null)
-                  }}
+                  onClick={releaseCollection}
                   className="text-ink-muted hover:text-ink"
                 >
                   <span aria-hidden>×</span>
@@ -355,7 +349,7 @@ export default function PostWritePage() {
             </span>
           </legend>
 
-          {fromCollection && perfumes.length === 0 && (
+          {fromCollection && shownPerfumes.length === 0 && (
             <p className="text-ink-muted text-caption">
               {collection
                 ? '이 컬렉션에 담긴 향수가 없습니다.'
@@ -364,7 +358,7 @@ export default function PostWritePage() {
           )}
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {perfumes.map((perfume) => (
+            {shownPerfumes.map((perfume) => (
               <span
                 key={perfume.perfumeId}
                 className="border-line-soft bg-surface-sunken text-ink text-caption rounded-card flex items-center gap-2.5 border px-2.5 py-2.5"

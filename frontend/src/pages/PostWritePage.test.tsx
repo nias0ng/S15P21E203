@@ -254,4 +254,29 @@ describe('PostWritePage 컬렉션 공유 글의 향수', () => {
       screen.getByRole('button', { name: '+ 내 컬렉션에서' }),
     ).toBeInTheDocument()
   })
+
+  /*
+    분류를 옮겼다 돌아와 **같은 컬렉션을 다시 고르는** 경우입니다. "이미 채웠다" 는
+    표시가 컬렉션 번호로만 남아 있으면, 그 사이 향수를 손댔어도 같은 번호라 다시
+    채우지 않습니다 — 컬렉션을 골랐는데 아무 일도 안 일어납니다.
+  */
+  it('분류를 옮겼다 돌아와 같은 컬렉션을 다시 골라도 향수가 채워진다', async () => {
+    renderWrite()
+
+    await pickCategory('컬렉션 공유')
+    await attachCollection()
+    await screen.findByText('향수 하나')
+
+    // 잡담에서는 직접 뺄 수 있습니다
+    await pickCategory('잡담')
+    await userEvent.click(
+      screen.getByRole('button', { name: '향수 하나 제거' }),
+    )
+    expect(screen.queryByText('향수 하나')).not.toBeInTheDocument()
+
+    await pickCategory('컬렉션 공유')
+    await attachCollection()
+
+    expect(await screen.findByText('향수 하나')).toBeInTheDocument()
+  })
 })
