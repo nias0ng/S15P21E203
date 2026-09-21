@@ -16,7 +16,11 @@ import {
   type SceneSearchMode,
   type VoyageLogStatus,
 } from '@/features/map'
-import { RecommendModal } from '@/features/recommend'
+import {
+  NlrFeedbackModal,
+  RecommendModal,
+  usePendingFeedbackStore,
+} from '@/features/recommend'
 // 진열대 저장은 진열대 도메인의 어휘입니다. 화면에서 두 도메인을 조합합니다.
 import {
   ShelfRegisterModal,
@@ -141,6 +145,14 @@ export default function HomePage() {
   // 로딩 커튼 — 엔진의 부팅 신호(ScentScene onBoot)를 모아 커튼의 퍼센트를 밉니다.
   // 커튼이 걷히면(finish) 내립니다. 화면을 떠났다 돌아오면 엔진이 처음부터 다시 뜨므로 커튼도 다시 섭니다
   const boot = useSceneBoot()
+
+  /*
+    답하지 않은 추천 만족도 설문을 이어받습니다 (NLR-08). 결과에서 [자세히 보기]로 상세에
+    다녀오면 이 화면이 통째로 다시 서는데, 그때 접어 둔 설문을 다시 폅니다.
+    NOTE: 커튼이 걷힌 뒤에 뜹니다(`ready`) — 로딩 위에 올리면 바다를 보기도 전에 답부터 묻습니다.
+  */
+  const resumeFeedback = usePendingFeedbackStore((state) => state.resume)
+  useEffect(() => resumeFeedback(), [resumeFeedback])
 
   // 향해 일지(MAP-24) — 배가 든 해역이 바뀌거나 향수를 고르면 서버에 남기고 일지를 다시 읽습니다.
   // 기록할지는 서버가 정합니다 (향수는 늘 · 빈 바다는 향 영역이 바뀐 경우만)
@@ -309,6 +321,13 @@ export default function HomePage() {
 
       {/* 검색창의 두 방식이 내놓는 답. 뒤의 3D 는 그대로 돌아갑니다 */}
       <RecommendModal query={nlQuery} onClose={() => setNlQuery(null)} />
+
+      {/*
+        결과를 닫으면 뜹니다. 답을 안 하고 상세로 나갔다 돌아와도 여기서 이어받습니다.
+        NOTE: 결과 모달이 떠 있는 동안에는 묻지 않습니다 — 향수를 보는 중에 답을 물으면
+        그 답은 추천이 아니라 화면에 대한 답입니다.
+      */}
+      <NlrFeedbackModal ready={boot.done && nlQuery === null} />
 
       <MapSearchModal
         keyword={mapKeyword}
