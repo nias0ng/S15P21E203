@@ -33,7 +33,6 @@ import json
 import logging
 import re
 import unicodedata
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -50,13 +49,6 @@ PEOPLE_MIN = 10           # [측정] 평가자 문턱. 커버리지 손실 0.3%p
 BRAND_CAP = 1             # [제안] 브랜드당 최대 개수
 MIN_CORE_FOR_AND = 2      # AND 를 쓸 최소 조건 수. 하나뿐이면 SINGLE_BROAD 로 간다
 
-# ⑤단계 미매칭 추정을 동시에 몇 개까지 부를지. 표현 하나당 호출 하나다.
-# [측정] 한 문장의 미매칭 표현은 중앙 2~3개 · 최대 7개였다(측정 기록 20번).
-# 순차로 부르면 문장당 중앙 2.3~3.5초가 붙어 실사용 2.1% 가 8초 예산을 넘었다.
-# GMS 한도는 분당 30,000요청(= 초당 500)이라 이 동시성은 1.4% 수준이다 [측정 2026-09-17].
-# 1 로 두면 순차로 돈다 — 결과는 같고 지연만 늘어난다.
-ESTIMATE_MAX_WORKERS = 8
-
 # 오타 검문소. ⑤단계 앞에서 사전 표면형의 오타를 되돌린다.
 # [측정 기록 30번] 자모 거리 1 · 2글자 이상에서 생성 오타 3,775개 중 포착 93.0% ·
 # 엉뚱한 표면형으로 교정 0% · 실제 표현 369개에서 오교정 0건이었다.
@@ -68,12 +60,25 @@ TYPO_MIN_LEN = 2          # 1글자는 후보가 너무 많다. `꿀`·`숲`·`�
 # 계절 데이터가 0건이라 아직 검색에 못 쓴다(spec 6장 제약 1).
 STRUCTURED_KEYS = ("scent_preference", "avoid", "additional_requirements")
 
+# ①단계 `context` 의 값 -> 배포 데이터 `*_lead` 칸의 값.
+# **`neuter` 는 ①단계 프롬프트의 표기**이고 데이터 쪽은 `unisex` 다.
+CONTEXT_FIELDS = {
+    "gender": ("gender_lead", {"male": "male", "female": "female", "neuter": "unisex"}),
+    "season": ("season_lead", {s: s for s in ("spring", "summer", "autumn", "winter")}),
+    "daypart": ("daypart_lead", {s: s for s in ("day", "night")}),
+}
+
+# 조건을 걸어 후보가 이 수 밑으로 떨어지면 **그 조건을 포기한다.**
+# 완화 사다리(MIN_RESULTS)와 같은 정신이다 — 조건을 지키느라 빈손을 주지 않는다.
+CONTEXT_MIN = 3
+
 # 기본 데이터 경로. 인자로 덮어쓸 수 있다.
 _DATA_DIR = Path(__file__).resolve().parent / "data"
 DEFAULT_PERFUMES = _DATA_DIR / "perfumes_nlr.csv.gz"
 DEFAULT_LEXICON = _DATA_DIR / "domain_lexicon_v1_17.csv"
 DEFAULT_ACCORDS = _DATA_DIR / "accord_dictionary.csv"
 DEFAULT_NOTE_BRIDGE = _DATA_DIR / "note_accord_bridge.csv"
+DEFAULT_NOTE_ALIAS_KO = _DATA_DIR / "note_alias_ko.csv"
 # 오타 검문소가 **건드리면 안 되는 낱말**. EDA 의 `85_protected_words_v1_17.py` 가 만든다.
 # **사전 버전이 바뀌면 다시 만들어야 한다** — 표면형이 바뀌면 이 집합도 바뀐다.
 DEFAULT_PROTECTED_WORDS = _DATA_DIR / "protected_words_v1_17.txt"
@@ -122,7 +127,8 @@ KOREAN_ACCORD = {
 # ---------------------------------------------------------------------------
 def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True,
                bridge_csv=None, bridge_p_min=BRIDGE_P_MIN,
-               bridge_lift_min=BRIDGE_LIFT_MIN, protected_words=None):
+               bridge_lift_min=BRIDGE_LIFT_MIN, protected_words=None,
+               note_alias_ko=None):
     """향수 데이터와 사전을 읽어 조회용 인덱스를 만든다.
 
     perfumes_csv : str | Path | None   기본 data/perfumes_nlr.csv.gz
@@ -132,6 +138,9 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
     bridge_csv   : str | Path | None   기본 data/note_accord_bridge.csv (노트→accord)
                                        **없어도 엔진은 돈다.** 경고를 남기고 노트를 해석하지
                                        않는다 — 코드만 먼저 배포한 경우를 막지 않는다
+    note_alias_ko: str | Path | None   기본 data/note_alias_ko.csv (한국어 별칭→노트)
+                                       **없어도 엔진은 돈다.** 한국어 노트 이름이 브리지로
+                                       풀리지 않고 ⑤단계로 갈 뿐이다 (측정 기록 34번)
     bridge_p_min : float               기본 BRIDGE_P_MIN
     bridge_lift_min : float            기본 BRIDGE_LIFT_MIN
     protected_words : str | Path | None 기본 data/protected_words_v1_17.txt (오타 검문소).
@@ -145,9 +154,17 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
     lexicon_csv = Path(lexicon_csv) if lexicon_csv else DEFAULT_LEXICON
     accord_csv = Path(accord_csv) if accord_csv else DEFAULT_ACCORDS
 
+    # `context` 세 칸은 **있으면 읽고 없으면 넘어간다.** 코드를 데이터보다 먼저
+    # 배포하는 경우를 막지 않는다 — 없으면 `_load_context` 가 경고를 남긴다.
+    needed = ["id", "name", "brand", "accords", "people", "rating_avg"]
+    optional = [column for column, _ in CONTEXT_FIELDS.values()] + ["notes"]
+    available = set(pd.read_csv(perfumes_csv, nrows=0).columns)
+    missing = [c for c in needed if c not in available]
+    if missing:
+        raise RuntimeError(f"배포 데이터에 필수 칸이 없다: {missing} ({perfumes_csv})")
     perf = pd.read_csv(
         perfumes_csv,
-        usecols=["id", "name", "brand", "accords", "people", "rating_avg"],
+        usecols=needed + [c for c in optional if c in available],
         low_memory=False,
     )
     lex = pd.read_csv(lexicon_csv, keep_default_na=False, dtype=str)
@@ -192,11 +209,21 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
     note_bridge = _load_note_bridge(
         Path(bridge_csv) if bridge_csv else DEFAULT_NOTE_BRIDGE,
         aidx, bridge_p_min, bridge_lift_min)
+    context = _load_context(perf)
+    notes = _load_notes(perf)
+    alias_ko, alias_target = _add_note_alias_ko(
+        note_bridge,
+        Path(note_alias_ko) if note_alias_ko else DEFAULT_NOTE_ALIAS_KO)
+    _check_lowercase(notes, alias_target)
 
     return {
         "accords": accords,
         "aidx": aidx,
         "note_bridge": note_bridge,
+        "note_alias_ko": tuple(sorted(alias_ko, key=len, reverse=True)),
+        "note_alias_target": alias_target,
+        "context": context,
+        "notes": notes,
         "strength": strength,
         "has": strength > 0,
         "pid": perf["id"].to_numpy(),
@@ -258,6 +285,150 @@ def lexicon_version(path=None):
     name = Path(path).stem if path else DEFAULT_LEXICON.stem
     found = _LEXICON_VERSION.search(name)
     return found.group(1) if found else None
+
+
+def _check_lowercase(notes, alias_target):
+    """노트 이름이 전부 소문자인지 확인한다. None — 아니면 RuntimeError.
+
+    notes        : dict | list  `_load_notes` 결과 (노트 이름 -> 행)
+    alias_target : dict | None  별칭 -> 영어 노트 이름. None 이면 이 표를 안 본다
+
+    **`note_rows` 가 소문자끼리 견주는 것을 전제로 한다.** 배포 데이터는
+    `build_data._notes()` 가, 별칭표는 `_add_note_alias_ko` 가 각각 낮춘다.
+    **세 군데가 따로 낮추므로 하나만 빠져도 조용히 안 걸린다** — 348 에서
+    `set.update` 가 문자열을 쪼갠 것과 같은 실패 방식이라 여기서 못 박는다 [MR 리뷰].
+
+    기동할 때 한 번만 돈다.
+    """
+    bad = [n for n in (notes or ()) if n != n.lower()]
+    if bad:
+        raise RuntimeError(
+            f"배포 데이터의 노트 이름에 대문자가 있다: {sorted(bad)[:5]}. "
+            "build_data.py 가 소문자로 낮춰야 한다")
+    if alias_target:
+        bad = [f"{k} -> {v}" for k, v in alias_target.items()
+               if k != k.lower() or v != v.lower()]
+        if bad:
+            raise RuntimeError(
+                f"노트 별칭에 대문자가 있다: {sorted(bad)[:5]}. "
+                "_add_note_alias_ko 가 소문자로 낮춰야 한다")
+
+
+def _load_notes(perf):
+    """노트 이름 -> 그 노트를 가진 향수 행. dict[str, np.ndarray[bool]].
+
+    perf : DataFrame  배포 데이터. `notes` 칸을 본다 (`amber|basil|cedar`)
+
+    **역색인으로 만든다.** 요청마다 향수 13만 개를 훑으면 검색이 4.4ms 에서 135ms 로
+    30배 느려진다 [측정]. 노트 어휘는 2,519종뿐이라 이름으로 찾는 편이 훨씬 싸다.
+
+    **칸이 없어도 엔진은 돈다.** 코드를 데이터보다 먼저 배포하는 경우를 막지 않는다 —
+    경고를 남기고 노트로 정렬하지 않는다.
+
+    이름은 `build_data.py` 가 이미 소문자로 낮춰 뒀다.
+    """
+    if "notes" not in perf.columns:
+        LOGGER.warning(
+            "배포 데이터에 notes 칸이 없다. 말한 노트를 가진 향수를 앞으로 당기지 "
+            "못한다 — build_data.py 를 다시 돌려야 한다")
+        return {}
+    where = {}
+    for row, cell in enumerate(perf["notes"].fillna("").astype(str)):
+        if not cell:
+            continue
+        for note in cell.split("|"):
+            where.setdefault(note, []).append(row)
+    return {note: np.array(rows, dtype=np.int64) for note, rows in where.items()}
+
+
+def _load_context(perf):
+    """`*_lead` 칸을 조회용 불리언 행렬로 만든다. dict[str, dict[str, np.ndarray]].
+
+    perf : DataFrame  배포 데이터. `gender_lead`·`season_lead`·`daypart_lead` 를 본다
+
+        index["context"]["season"]["summer"][행] -> 그 향수가 여름 1등인가
+
+    ①단계가 `context.season` 등을 뽑는데 엔진이 안 읽어 버려지고 있었다.
+    실사용자 설문에서 season·gender 가 각각 19.6% 에 나온다 [측정 기록 35번].
+
+    **칸이 없어도 엔진은 돈다.** 코드만 먼저 배포하고 데이터가 아직 옛 파일인 경우를
+    막지 않는다 — 경고를 남기고 그 조건을 안 건다.
+
+    **값은 `|` 로 이어진 동률 목록이다** (`winter|autumn`). 투표가 전부 0이면 빈칸이고,
+    그 향수는 어느 쪽으로도 세지 않는다.
+    """
+    out = {}
+    for field, (column, mapping) in CONTEXT_FIELDS.items():
+        if column not in perf.columns:
+            LOGGER.warning(
+                "배포 데이터에 %s 칸이 없다. ①단계의 context.%s 조건을 못 건다 "
+                "— build_data.py 를 다시 돌려야 한다", column, field)
+            continue
+        raw = perf[column].fillna("").astype(str).to_numpy()
+        table = {}
+        for value in dict.fromkeys(mapping.values()):
+            table[value] = np.array([value in cell.split("|") for cell in raw])
+        out[field] = table
+    return out
+
+
+def _add_note_alias_ko(bridge, path):
+    """노트 브리지에 한국어 별칭 키를 더한다. (list[str], dict[str, str]).
+
+    돌려주는 것은 **더한 키**와 **그 키가 가리키는 영어 노트 이름**이다.
+    영어 이름은 348 이 카탈로그의 노트와 견주는 데 쓴다.
+
+    bridge : dict   `_load_note_bridge` 가 만든 dict. **이 자리에서 고친다**
+    path   : Path   alias · note 두 칸을 가진 CSV
+
+    ①단계 LLM 이 `scent_preference` 에 **한국어 노트 이름**을 넣는데 브리지 표는 전부
+    영어라 통째로 버려진다 [측정 기록 34번]. `미모사` 가 그래서 ⑤단계로 떨어졌고
+    LLM 이 *"샴페인 칵테일"* 로 해석했다.
+
+        "미모사"  ->  (없음)                        이 표를 얹기 전
+        "미모사"  ->  powdery · floral · yellow floral
+
+    **`note_accord_bridge.csv` 에는 한글 행을 안 넣는다.** 그 파일은 코퍼스 통계
+    (`p` · `lift`)이고 별칭은 번역이라 섞으면 한글 행의 `p` · `lift` 를 지어내야 한다.
+    그래서 파일은 그대로 두고 **읽어 들인 dict 에만** 영어 이름의 값을 가리키는 키를
+    더한다. 두 키가 같은 tuple 을 가리킨다.
+
+    **영어 이름이 브리지에 없으면 건너뛴다.** 문턱(`p` · `lift`)에 걸려 빠진 노트는
+    별칭을 붙여도 줄 값이 없다.
+
+    **파일이 없으면 경고만 남긴다.** 노트 브리지와 같은 방침이다 — 한국어 노트 이름이
+    이 표를 얹기 전처럼 ⑤단계로 갈 뿐 엔진은 정상 동작한다.
+    """
+    if not bridge:
+        return [], {}
+    if not Path(path).exists():
+        LOGGER.warning(
+            "노트 별칭 파일이 없다: %s. 한국어 노트 이름(`미모사` 등)은 브리지로 풀리지 "
+            "않고 ⑤단계로 간다", path)
+        return [], {}
+
+    table = pd.read_csv(path)
+    missing = [c for c in ("alias", "note") if c not in table.columns]
+    if missing:
+        raise RuntimeError(f"노트 별칭에 필요한 칸이 없다: {missing} ({path})")
+
+    added, skipped, target = [], 0, {}
+    for alias, note in zip(table["alias"], table["note"]):
+        key = re.sub(r"\s+", " ", str(alias).strip().lower())
+        eng = re.sub(r"\s+", " ", str(note).strip().lower())
+        if not key or key == "nan" or len(key) < 2:
+            continue                      # 한 글자는 다른 낱말에 박힌다 (34번)
+        if eng not in bridge:
+            skipped += 1
+            continue
+        if key in bridge:
+            continue                      # 영어 이름과 겹치면 원래 값을 지킨다
+        bridge[key] = bridge[eng]
+        target[key] = eng
+        added.append(key)
+    LOGGER.info("노트 별칭 %d개를 얹었다 (영어 이름이 브리지에 없어 건너뛴 것 %d) %s",
+                len(added), skipped, Path(path).name)
+    return added, target
 
 
 def _load_note_bridge(path, aidx, p_min, lift_min):
@@ -382,6 +553,23 @@ def understand(index, text, structured=None):
             # null 로 나간다 — recommend() 가 이미 그렇게 처리한다.
             core.update(_bridge_lookup(index, raw))
 
+        # ①단계가 쓴 문장 안에 **박혀 있는** 한국어 노트 이름도 찾는다.
+        # 위의 `scent_preference` 경로는 표현 전체가 노트 이름일 때만 풀린다 —
+        # `무화과 향이 나는 여성스러운향` 처럼 문장이면 통째로 못 찾는다 [34번].
+        #
+        # ⚠ **여기서 푼 표현도 `_unmatched` 에는 그대로 남는다.** 그 함수는 사전이
+        # 잡은 표면형만 보고 브리지는 안 본다 (설문 2.8% · 합성 12.3% 의 표현).
+        #
+        # **동작에는 영향이 없다.** `recommend()` 는 core 가 비었을 때만 ⑤단계를
+        # 부르므로(`if estimator and not understood["core"]`) 여기서 core 를 채우면
+        # ⑤단계는 안 돈다 — 오히려 호출이 준다(합성 600 에서 237 -> 193).
+        # 남는 것은 `nlr_unmatched_expressions` 의 정확도다. 로그를 캐서 사전을
+        # 늘리려는 쪽이 **이미 풀린 것을 빈칸으로 본다.** 고치려면 `unmatch_reason`
+        # 에 네 번째 값이 필요해 응답 계약이 바뀌므로 **범위에 넣지 않았다.**
+        for raw in (structured.get("additional_requirements") or []):
+            for alias in _longest_alias_ko(index, raw):
+                core.update(_bridge_lookup(index, alias))
+
     avoid = set()
     for raw in ((structured or {}).get("avoid") or []):
         accord = _normalize_accord(index, raw)
@@ -431,10 +619,18 @@ def _source(index, text, structured, final_core):
 
 
 def _unmatched(index, structured, haystack, evidence):
-    """LLM 이 뽑았으나 사전이 받지 못한 표현. list[dict].
+    """LLM 이 뽑았으나 **조건을 하나도 못 만든** 표현. list[dict].
 
     조건이 잡힌 요청에서도 남은 표현을 전부 기록한다. 실측상 조건이 잡힌 쿼리 속에
     숨은 미매칭이 합성 600건에서 1,339회 있었고, 조건 0건만 보면 그게 안 보인다.
+
+    **사전이 잡은 것과 브리지가 푼 것을 둘 다 뺀다.** 346 이 한국어 노트 별칭을
+    `additional_requirements` 에 태우면서 **조건을 만들었는데도 "사전에 없는 표현"
+    으로 기록되는 표현이 생겼다** — 설문 9개 · 합성 169개다 [측정 기록 35번].
+    346 이전에는 설문 0 · 합성 1 이었으니 그때 들어온 회귀다.
+
+    이 로그는 `nlr_unmatched_expressions` 로 가서 **사전을 늘릴 근거**로 쓰인다.
+    이미 풀린 것이 섞이면 그만큼 헛짚는다.
     """
     if not structured:
         return []
@@ -450,6 +646,8 @@ def _unmatched(index, structured, haystack, evidence):
             continue
         if any(form in expression for form in matched):
             continue          # 이 표현 안에서 사전이 무언가를 잡았다
+        if _bridge_resolved(index, expression):
+            continue          # 브리지가 풀어 조건이 생겼다 (346)
         reason, entry_id = _classify_unmatch(index, expression, haystack)
         out.append({
             "expression": expression,
@@ -458,6 +656,28 @@ def _unmatched(index, structured, haystack, evidence):
             "entry_id": entry_id,
         })
     return out
+
+
+def _bridge_resolved(index, expression):
+    """이 표현을 노트 브리지가 풀어 조건이 생겼나. bool.
+
+    index      : dict  load_index() 결과
+    expression : str   ①단계가 쓴 문장 하나
+
+    **`understand()` 의 브리지 경로와 똑같이 본다.** 거기서 core 에 넣는 조건을
+    여기서 미매칭으로도 적으면 같은 표현이 두 곳에 들어간다.
+
+        "무화과 향이 나는 여성스러운향"  ->  True   (fig -> fruity · sweet)
+        "은은하고 깨끗한 느낌"          ->  False  (브리지에 없다)
+
+    ⚠ **두 곳이 같은 규칙을 쓴다.** `understand()` 쪽을 고치면 여기도 함께 고쳐야
+    한다 — 안 그러면 조용히 어긋나 이 버그가 되돌아온다.
+    """
+    text = re.sub(r"\s+", " ", str(expression).strip().lower())
+    if _bridge_lookup(index, text):
+        return True
+    return any(_bridge_lookup(index, alias)
+               for alias in _longest_alias_ko(index, text))
 
 
 def _classify_unmatch(index, expression, haystack):
@@ -565,6 +785,37 @@ def _normalize_accord(index, raw):
     return None
 
 
+def _longest_alias_ko(index, raw):
+    """문장에 박힌 한국어 노트 별칭. list[str] (겹치면 **가장 긴 것**).
+
+    index : dict   load_index() 결과. `note_alias_ko` 가 없으면 빈 목록이다
+    raw   : str    ①단계가 쓴 문장 하나
+
+        "무화과 향이 나는 여성스러운향"   ->  ["무화과"]
+        "로즈마리 녹차 레몬"            ->  ["로즈마리", "녹차", "레몬"]
+        "망고나 파인애플 같은"           ->  ["파인애플", "망고"]
+
+    **겹치면 긴 것만 쓴다.** 별칭 196개 중 서로 박히는 쌍이 **31개**이고 그중 뜻이
+    틀어지는 것이 **7개**다.
+
+        로즈마리 · 로즈메리 · 튜베로즈   안의 `로즈`     -> rose 가 잘못 붙는다
+        파인애플                    안의 `애플`     -> apple
+        오렌지꽃 · 오렌지 블라썸        안의 `오렌지`    -> orange
+        산딸기                     안의 `딸기`     -> strawberry (산딸기는 raspberry 다)
+
+    나머지 24쌍은 무해하다 (`시더우드`->cedar · `화이트머스크`->musk · `청사과`->apple).
+    **343 이 `_lexicon_lookup` 에 넣은 것과 같은 규칙이다** — 한국어는 교착어라 부분
+    문자열로 찾을 수밖에 없고, 그러면 긴 것이 이긴다.
+
+    **원문(`text`)에는 쓰지 않는다.** ①단계를 거친 문장만 본다. 원문을 훑으면
+    `머스크는 싫어` 의 `머스크` 까지 집어 회피 표현이 조건이 된다 [측정 · 설문 10문장].
+    """
+    aliases = index.get("note_alias_ko") or ()
+    text = re.sub(r"\s+", " ", str(raw).strip().lower())
+    hit = [a for a in aliases if a in text]
+    return [a for a in hit if not any(a != b and a in b for b in hit)]
+
+
 def _bridge_lookup(index, raw):
     """노트(원료) 이름 하나가 부르는 accord 목록. tuple[str, ...].
 
@@ -590,16 +841,144 @@ def _bridge_lookup(index, raw):
 # ---------------------------------------------------------------------------
 # 2단계 — 검색 · 정렬 · 완화
 # ---------------------------------------------------------------------------
+def note_rows(index, structured):
+    """사용자가 말한 노트를 가진 향수. np.ndarray[bool] | None.
+
+    index      : dict         load_index() 결과
+    structured : dict | None  ①단계 구조화 결과
+
+        "무화과 향이 나는 여성스러운향" -> fig 를 가진 향수 True
+
+    **찾는 방법이 `_longest_alias_ko` 와 같다** — ①단계가 쓴 문장 안에서 한국어 별칭을
+    최장 일치로 찾고, 그 별칭이 가리키는 영어 노트 이름을 쓴다(346). `scent_preference`
+    에 영어 노트 이름이 직접 오는 경우도 받는다.
+
+    **노트 이름은 부분 문자열로 견준다.** 카탈로그가 `white jasmine` · `jasmine sambac`
+    처럼 수식어를 붙여 두어 정확히 일치시키면 대부분 놓친다.
+
+    말한 노트가 없거나 `notes` 칸이 없으면 `None` 이다 — 부른 쪽이 정렬을 안 바꾼다.
+    """
+    where = index.get("notes")
+    if not where or not structured:
+        return None
+    bridge = index.get("note_bridge") or {}
+    wanted = set()
+    for field in ("additional_requirements", "scent_preference"):
+        for raw in (structured.get(field) or []):
+            text = re.sub(r"\s+", " ", str(raw).strip().lower())
+            for alias in _longest_alias_ko(index, text):
+                wanted.add(alias)
+            # 영어 노트 이름이 직접 온 경우. **accord 이름은 뺀다** —
+            # 그건 `understand()` 가 core 로 넣어 strength 가 이미 정렬한다.
+            # 노트 키로 또 걸면 같은 조건이 두 번 순위를 흔든다.
+            if text in bridge and not _normalize_accord(index, text):
+                wanted.add(text)
+    if not wanted:
+        return None
+    # **한국어 별칭은 영어 이름으로 바꿔야 카탈로그와 견줄 수 있다.**
+    # 한글을 그대로 두면 아무 노트와도 안 맞고, 영어 이름을 set 에 `update` 로 넣으면
+    # 문자열이 글자 단위로 쪼개져 `m` 이 거의 모든 노트에 걸린다.
+    alias_target = index.get("note_alias_target") or {}
+    targets = {alias_target.get(name, name) for name in wanted}
+    hit = np.zeros(index["n_perfumes"], dtype=bool)
+    for note, rows in where.items():          # 어휘 2,519종만 훑는다
+        if any(t in note for t in targets):
+            hit[rows] = True
+    return hit if hit.any() else None
+
+
+def context_mask(index, structured, base):
+    """①단계의 `context` 조건으로 후보를 좁힌다. (np.ndarray[bool], list[str]).
+
+    index      : dict            load_index() 결과
+    structured : dict | None     ①단계 구조화 결과
+    base       : np.ndarray[bool] 좁히기 전 후보
+
+        "여름에 쓸 남성용 향수" -> season=summer · gender=male 로 두 번 좁힌다
+
+    **한 칸씩 걸고, 후보가 `CONTEXT_MIN` 밑으로 떨어지면 그 칸은 포기한다.**
+    조건을 다 지키느라 빈손을 주는 것보다 낫다 — 완화 사다리와 같은 판단이다.
+
+    두 번째 반환값은 **실제로 걸린 칸 이름**이다. 포기한 칸은 안 들어간다.
+
+    **①단계 출력이 스키마를 어겨도 죽지 않는다.** 실측상 98% 만 지킨다 [측정 기록 14번].
+    어긴 것은 **경고를 남긴다** — 조용히 무시하면 "왜 여름 조건이 안 걸리지" 를 로그로도
+    못 찾는다.
+    """
+    applied = []
+    if not structured:
+        return base, applied
+    ctx = structured.get("context")
+    if ctx is None:
+        return base, applied
+    if not isinstance(ctx, dict):
+        LOGGER.warning("structured['context'] 가 dict 가 아니다: %r. context 조건을 건너뛴다",
+                       ctx)
+        return base, applied
+    for field, (_, mapping) in CONTEXT_FIELDS.items():
+        table = (index.get("context") or {}).get(field)
+        if not table:
+            continue
+        values, unknown = _context_values(ctx.get(field), mapping, field)
+        if unknown:
+            LOGGER.warning("context.%s 에 모르는 값이 있다: %s. 허용값은 %s 다",
+                           field, sorted(unknown), sorted(mapping))
+        if not values:
+            continue
+        want = np.zeros(len(base), dtype=bool)
+        for value in values:
+            want |= table[value]
+        narrowed = base & want
+        if narrowed.sum() >= CONTEXT_MIN:
+            base = narrowed
+            applied.append(field)
+    return base, applied
+
+
+def _context_values(raw, mapping, field):
+    """①단계가 준 값을 허용값 집합으로 바꾼다. (set[str], set[str]) — 푼 것과 못 푼 것.
+
+    raw     : 무엇이든    ①단계 출력. 리스트를 기대하지만 아닐 수 있다
+    mapping : dict       허용값 -> 데이터 쪽 값
+    field   : str        경고에 쓸 칸 이름
+
+        ["summer"]   -> ({"summer"}, set())
+        "summer"     -> ({"summer"}, set())      **문자열 하나면 한 값으로 본다**
+        ["여름"]      -> (set(), {"여름"})
+        [["summer"]] -> (set(), {"['summer']"})
+
+    **문자열을 그대로 순회하면 글자 단위로 쪼개져 조건이 조용히 사라진다.**
+    `"summer"` 가 `s`·`u`·`m`... 이 되어 아무것도 안 걸리고 경고도 안 남는다.
+    """
+    if raw is None or raw == "":
+        return set(), set()
+    items = [raw] if isinstance(raw, str) else raw
+    try:
+        items = list(items)
+    except TypeError:                       # 숫자 등 순회할 수 없는 값
+        items = [raw]
+    good, bad = set(), set()
+    for item in items:
+        if not isinstance(item, str):
+            bad.add(repr(item))
+            continue
+        target = mapping.get(item.strip().lower())
+        (good.add(target) if target else bad.add(item))
+    return good, bad
+
+
 def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
-           brand_cap=BRAND_CAP, min_results=MIN_RESULTS):
+           brand_cap=BRAND_CAP, min_results=MIN_RESULTS, structured=None):
     """조건으로 향수를 찾아 정렬한다.
 
-    반환: dict — rows(행 인덱스) / stage / candidate_count / tie_at_last / relaxed
+    structured : dict | None  ①단계 구조화 결과. 주면 `context` 로 후보를 좁힌다
+
+    반환: dict — rows / stage / candidate_count / tie_at_last / relaxed / context_applied
     """
     cols = [index["aidx"][a] for a in core if a in index["aidx"]]
     if not cols:
         return {"rows": [], "stage": "NO_CONDITION", "candidate_count": 0,
-                "tie_at_last": 0, "relaxed": []}
+                "tie_at_last": 0, "relaxed": [], "context_applied": []}
 
     # 부른 쪽이 원한 개수보다 많이 요구할 수는 없다. top_k=2 인데 min_results 가 3이면
     # AND 가 2개를 다 찾아도 부족으로 보고 완화 사다리를 타 버린다.
@@ -610,6 +989,14 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
         col = index["aidx"].get(accord)
         if col is not None:
             base &= ~index["has"][:, col]
+
+    # ①단계가 말한 성별·계절·낮밤으로 후보를 좁힌다. **정렬은 안 건드린다**
+    # (DECISIONS.md N9 — 순서는 향 조건이 정하고 인기도가 동점만 푼다).
+    base, context_applied = context_mask(index, structured, base)
+
+    # 사용자가 말한 노트를 가진 향수를 앞으로 당긴다 (348). 말한 노트가 없으면 None 이라
+    # 정렬이 그대로다 — **노트를 말하지 않은 문장의 순서는 안 바뀐다.**
+    notes = note_rows(index, structured)
 
     score = index["strength"][:, cols].sum(axis=1)
 
@@ -623,52 +1010,76 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
     # DECISIONS.md N2 — 직역 대응(나무=woody)의 단독 매핑을 허용하며 이 표시를 조건으로 단다.
     if len(cols) == 1:
         mask = base & index["has"][:, cols[0]]
-        picked = _rank(index, mask, score, top_k, brand_cap)
+        picked = _rank(index, mask, score, top_k, brand_cap, notes)
         if len(picked["rows"]) >= min_results:
             picked["stage"] = "SINGLE_BROAD"
             picked["relaxed"] = ["향 조건이 accord 하나뿐이라 순위를 정하지 못한다"]
+            picked["context_applied"] = context_applied
             return picked
 
     if len(cols) >= MIN_CORE_FOR_AND:
         mask = base.copy()
         for col in cols:
             mask &= index["has"][:, col]
-        picked = _rank(index, mask, score, top_k, brand_cap)
+        picked = _rank(index, mask, score, top_k, brand_cap, notes)
         if len(picked["rows"]) >= min_results:
             picked["stage"] = "AND"
             picked["relaxed"] = []
+            picked["context_applied"] = context_applied
             return picked
 
     # 완화 4 — AND 를 OR 로 (spec 3장 3의 완화 사다리)
     mask = base & index["has"][:, cols].any(axis=1)
-    picked = _rank(index, mask, score, top_k, brand_cap)
+    picked = _rank(index, mask, score, top_k, brand_cap, notes)
     if len(picked["rows"]) >= min_results:
         picked["stage"] = "RELAXED_OR"
         picked["relaxed"] = ["core accord 를 AND 에서 OR 로"]
+        picked["context_applied"] = context_applied
         return picked
 
-    # 완화 5 — 평가자 문턱 해제
+    # 완화 5 — 평가자 문턱 해제.
+    # **여기서는 context 조건도 함께 풀린다.** 마스크를 처음부터 다시 만들기 때문이고,
+    # 그게 맞다 — 이 단계는 "아무거나 찾아 달라" 는 마지막 수단이다.
     mask = np.ones(index["n_perfumes"], dtype=bool)
     for accord in avoid:
         col = index["aidx"].get(accord)
         if col is not None:
             mask &= ~index["has"][:, col]
     mask &= index["has"][:, cols].any(axis=1)
-    picked = _rank(index, mask, score, top_k, brand_cap)
+    picked = _rank(index, mask, score, top_k, brand_cap, notes)
     picked["stage"] = "RELAXED_OR_NO_THRESHOLD" if picked["rows"] else "NOT_ENOUGH"
     picked["relaxed"] = ["core accord 를 AND 에서 OR 로", "평가자 문턱 해제"]
+    picked["context_applied"] = []          # 이 단계는 context 도 함께 풀었다
     return picked
 
 
-def _rank(index, mask, score, top_k, brand_cap):
-    """마스크 안에서 정렬해 상위를 고른다. dict."""
+def _rank(index, mask, score, top_k, brand_cap, notes=None):
+    """마스크 안에서 정렬해 상위를 고른다. dict.
+
+    notes : np.ndarray[bool] | None  사용자가 말한 노트를 가진 향수. **최상위 키**가 된다
+
+    **`notes` 를 주면 N9 의 정렬 규칙이 바뀐다.** 향 조건(strength)보다 노트 보유가
+    앞선다. 사용자가 `미모사` 라고 말했으면 미모사가 든 향수를 먼저 보여 주는 것이
+    맞다는 판단이다 [측정 기록 35번 · DECISIONS.md N9 추기].
+
+        노트 일치   설문 2.00 -> 4.64 · 합성 2.94 -> 4.85  (5개 중)
+        확장 NDCG  +0.010286 [+0.005849, +0.014938] 유의
+        accord    0.643833 -> 0.640468  **조금 내려간다.** 그 대가다
+    """
     idx = np.flatnonzero(mask)
     if idx.size == 0:
         return {"rows": [], "candidate_count": 0, "tie_at_last": 0}
 
-    # 1순위 strength 합 내림차순, 2순위 평가자 수 내림차순(동점 깨기), 3순위 id 오름차순
-    order = np.lexsort((index["pid"][idx], -index["people"][idx], -score[idx]))
-    idx = idx[order]
+    # **`np.lexsort` 는 마지막 인자를 1순위로 쓴다.** 그대로 쓰면 코드가 주석과
+    # 거꾸로 읽혀, 나중에 키를 하나 얹는 사람이 모르는 새 1순위를 빼앗는다 [MR 리뷰].
+    # 그래서 **1순위부터 적고 뒤집어서** 넘긴다.
+    ranking = []
+    if notes is not None:
+        ranking.append(-notes[idx].astype(np.int8))   # 1순위 말한 노트를 가졌나
+    ranking.append(-score[idx])                       # 2순위 strength 합
+    ranking.append(-index["people"][idx])             # 3순위 평가자 수
+    ranking.append(index["pid"][idx])                 # 4순위 id (흔들림 방지)
+    idx = idx[np.lexsort(tuple(reversed(ranking)))]
 
     sorted_score = score[idx]
     cut = min(top_k, len(idx)) - 1
@@ -832,12 +1243,13 @@ def recommend(index, text, structured=None, top_k=TOP_K, estimator=None):
 
     estimate = {}
     if estimator and not understood["core"] and understood["unmatched"]:
-        estimate = _apply_estimates(index, understood, estimator)
+        estimate = _apply_estimates(index, understood, estimator, text)
         if estimate:
             # 추정이 조건을 만들었으므로 source 를 다시 적는다. understand() 가 계산한
             # 값은 추정 전 기준이라 그대로 두면 기여를 빠뜨린다.
             understood["source"] = "llm+lexicon"
-    found = search(index, understood["core"], understood["avoid"], top_k=top_k)
+    found = search(index, understood["core"], understood["avoid"], top_k=top_k,
+                   structured=structured)
 
     results = []
     for row in found["rows"]:
@@ -905,30 +1317,39 @@ def recommend(index, text, structured=None, top_k=TOP_K, estimator=None):
     }
 
 
-def _apply_estimates(index, understood, estimator, max_workers=ESTIMATE_MAX_WORKERS):
+def _apply_estimates(index, understood, estimator, raw_text):
     """사전이 못 받은 표현을 추정해 조건에 넣는다. dict[key, dict].
+
+    raw_text : str   사용자 원문. 표현을 읽을 맥락으로 함께 보낸다
 
     등급은 `LLM` 이고 **`rationale` 은 비운다.** 사전의 `rationale` 은 사람이 판단한 뒤
     쓴 근거이고 LLM 이 붙인 설명은 사후 해석이다. 한 칸에 섞으면 나중에 구분할 수 없다
     (spec 1장). 추정 설명은 `llm_reasoning` 에 따로 담는다.
+
+    **표현을 묶어 한 번에 묻는다** [측정 기록 37번]. 전에는 표현마다 병렬로 불렀다.
+    합성 600 에서 호출이 **175 -> 51회**로 준다(-71%). `evidence` 의 `from` 은 그대로다
+    — 표현별로 답을 받으므로 응답 계약이 안 바뀐다.
     """
     items = understood["unmatched"]
     if not items:
         return {}
 
-    # **호출만 동시에 한다. 적용은 입력 순서 그대로다.**
-    # `ThreadPoolExecutor.map` 이 입력 순서를 지키므로 `guesses[i]` 가 `items[i]` 에
-    # 대응한다. 그래서 `core` 도 `evidence` 도 순차로 부를 때와 똑같이 나온다.
-    # **결과가 달라지면 이 함수가 잘못된 것이다** — 병렬은 "언제 부르나" 만 바꾼다.
-    #
-    # 예외를 삼키지 않는다. `llm_stage1` 의 추정 함수가 실패 시 `None` 을 돌려주므로
-    # 정상 경로에서는 예외가 올라오지 않는다. 그래도 올라오면 요청을 실패시킨다.
-    workers = min(max_workers, len(items))
-    if workers > 1:
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            guesses = list(pool.map(lambda it: estimator(it["expression"]), items))
-    else:
-        guesses = [estimator(it["expression"]) for it in items]
+    expressions = [it["expression"] for it in items]
+    guesses = estimator(raw_text, expressions)
+    if guesses is None:
+        # 호출 자체가 실패했다. 다시 물어도 같은 이유로 실패하므로 그냥 못 푼 것으로 둔다.
+        return {}
+    guesses = list(guesses)
+
+    # **모델이 조각을 조용히 빠뜨리는 일이 있다** [측정 기록 36번 추기 · 55건 중 1건].
+    # 그 자리만 하나씩 다시 묻는다. 한 번만 다시 묻고 그래도 없으면 못 푼 것으로 둔다 —
+    # 여기서 되풀이하면 실패한 문장 하나가 호출을 끝없이 늘린다.
+    for i, guess in enumerate(guesses):
+        if guess is not None:
+            continue
+        retry = estimator(raw_text, [expressions[i]])
+        if retry:
+            guesses[i] = retry[0]
 
     estimate, core = {}, set(understood["core"])
     for item, guess in zip(items, guesses):
