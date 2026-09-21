@@ -2,7 +2,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 
-import { myCollectionsQuery } from '@/features/collection'
+import {
+  collectionDetailQuery,
+  myCollectionsQuery,
+} from '@/features/collection'
 import {
   communityKeys,
   createPost,
@@ -87,6 +90,43 @@ export default function PostWritePage() {
   })
 
   /*
+    **사람이 방금 고른** 컬렉션입니다. 고칠 글에서 되살린 첨부는 여기 들어오지
+    않습니다 — 글의 향수는 쓸 때 박제된 것이라, 지금의 컬렉션으로 덮으면 그 사이
+    컬렉션에서 뺀 향수가 글에서도 사라진 것처럼 보입니다.
+  */
+  const [pickedCollectionId, setPickedCollectionId] = useState<number | null>(
+    null,
+  )
+
+  const pickedCollection = useQuery({
+    ...collectionDetailQuery(pickedCollectionId ?? Number.NaN),
+    enabled: pickedCollectionId !== null,
+  })
+
+  /*
+    도착하면 관련 향수를 그 컬렉션의 향수로 바꿉니다. `filledFor` 와 같은 방식으로
+    한 번만 합니다 — 매 렌더 덮으면 아래 분류를 옮겨도 되돌아옵니다.
+  */
+  const [filledFromCollection, setFilledFromCollection] = useState<
+    number | null
+  >(null)
+  if (
+    pickedCollectionId !== null &&
+    pickedCollection.data &&
+    filledFromCollection !== pickedCollectionId
+  ) {
+    setFilledFromCollection(pickedCollectionId)
+    setPerfumes(
+      pickedCollection.data.perfumes.map((perfume) => ({
+        perfumeId: perfume.perfumeId,
+        name: perfume.name,
+        brand: perfume.brand,
+        thumbnailUrl: perfume.thumbnailUrl,
+      })),
+    )
+  }
+
+  /*
     고칠 글이 도착하면 칸을 한 번 채웁니다. 렌더 중에 맞추는 이유: `useEffect` 는
     한 박자 늦어 첫 프레임에 빈 칸이 보입니다. 채운 뒤에는 사람이 고친 값이 이깁니다.
   */
@@ -116,6 +156,9 @@ export default function PostWritePage() {
         : null,
     )
   }
+
+  /** 향수를 컬렉션이 정하는 상태. 이때는 고르지도 빼지도 못합니다 */
+  const fromCollection = category === 'COLLECTION'
 
   const save = useMutation({
     mutationFn: async () => {
@@ -195,7 +238,7 @@ export default function PostWritePage() {
     <>
       <WriteForm
         title={editing ? '글 수정' : '글쓰기'}
-        description="분류는 필수입니다. 컬렉션 첨부는 컬렉션 공유를 골랐을 때만 나타나고, 관련 향수와 이미지는 없어도 됩니다."
+        description="분류는 필수입니다. 컬렉션 공유 글의 향수는 첨부한 컬렉션이 정하고, 그 밖의 분류에서는 직접 고릅니다. 이미지는 없어도 됩니다."
         cancelTo={editing ? toPostDetail(editingId) : ROUTES.COMMUNITY_FREE}
         submitLabel={editing ? '수정' : '포스팅'}
         /*
@@ -229,7 +272,18 @@ export default function PostWritePage() {
             label="게시글 분류"
             options={POST_CATEGORIES}
             value={category}
-            onChange={setCategory}
+            onChange={(next) => {
+              setCategory(next)
+              /*
+                컬렉션 첨부 칸은 '컬렉션 공유' 에서만 보입니다. 분류를 옮길 때
+                풀지 않으면 **보이지 않는 채로 글에 붙고**, 거기에 향수까지 고르면
+                서버가 400 으로 막습니다.
+              */
+              if (next !== 'COLLECTION') {
+                setCollection(null)
+                setPickedCollectionId(null)
+              }
+            }}
           />
         </fieldset>
 
@@ -266,7 +320,10 @@ export default function PostWritePage() {
                 <button
                   type="button"
                   aria-label={`${collection.title} 첨부 해제`}
-                  onClick={() => setCollection(null)}
+                  onClick={() => {
+                    setCollection(null)
+                    setPickedCollectionId(null)
+                  }}
                   className="text-ink-muted hover:text-ink"
                 >
                   <span aria-hidden>×</span>
@@ -281,22 +338,31 @@ export default function PostWritePage() {
             >
               {collection ? '다른 컬렉션 고르기' : '+ 내 컬렉션에서'}
             </Button>
-            {/*
-              컬렉션을 붙이면 향수를 따로 걸 수 없습니다(서버가 400 으로 막습니다) —
-              그 컬렉션의 향수가 곧 글의 향수입니다.
-            */}
-            {collection && perfumes.length > 0 && (
-              <p className="text-ink-muted text-caption">
-                컬렉션을 붙이면 아래에서 고른 향수는 글에 걸리지 않습니다.
-              </p>
-            )}
           </fieldset>
         )}
 
+        {/*
+          **컬렉션 공유 글에서는 향수를 고르지 않습니다** — 첨부한 컬렉션의 향수가
+          곧 글의 향수입니다(서버가 둘을 함께 받으면 400). 예전에는 고를 수는 있고
+          "글에 걸리지 않습니다" 라고 알리기만 했는데, 고를 수 있는데 안 걸리는 것이
+          더 헷갈립니다.
+        */}
         <fieldset className="space-y-2.5">
           <legend className="text-ink text-caption font-medium">
-            관련 향수 <span className="text-ink-muted">(선택)</span>
+            관련 향수{' '}
+            <span className="text-ink-muted">
+              {fromCollection ? '(컬렉션에 담긴 향수)' : '(선택)'}
+            </span>
           </legend>
+
+          {fromCollection && perfumes.length === 0 && (
+            <p className="text-ink-muted text-caption">
+              {collection
+                ? '이 컬렉션에 담긴 향수가 없습니다.'
+                : '컬렉션을 첨부하면 그 향수가 여기에 나타납니다.'}
+            </p>
+          )}
+
           <div className="flex flex-wrap items-center gap-2.5">
             {perfumes.map((perfume) => (
               <span
@@ -304,34 +370,38 @@ export default function PostWritePage() {
                 className="border-line-soft bg-surface-sunken text-ink text-caption rounded-card flex items-center gap-2.5 border px-2.5 py-2.5"
               >
                 {perfume.name}
-                <button
-                  type="button"
-                  aria-label={`${perfume.name} 제거`}
-                  onClick={() =>
-                    setPerfumes((prev) =>
-                      prev.filter(
-                        (item) => item.perfumeId !== perfume.perfumeId,
-                      ),
-                    )
-                  }
-                  className={cn(
-                    'text-ink-muted hover:text-ink rounded-card',
-                    'transition-colors duration-120 ease-out',
-                    'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
-                  )}
-                >
-                  <span aria-hidden>×</span>
-                </button>
+                {!fromCollection && (
+                  <button
+                    type="button"
+                    aria-label={`${perfume.name} 제거`}
+                    onClick={() =>
+                      setPerfumes((prev) =>
+                        prev.filter(
+                          (item) => item.perfumeId !== perfume.perfumeId,
+                        ),
+                      )
+                    }
+                    className={cn(
+                      'text-ink-muted hover:text-ink rounded-card',
+                      'transition-colors duration-120 ease-out',
+                      'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
+                    )}
+                  >
+                    <span aria-hidden>×</span>
+                  </button>
+                )}
               </span>
             ))}
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              onClick={() => setPickOpen(true)}
-            >
-              + 향수 선택
-            </Button>
+            {!fromCollection && (
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() => setPickOpen(true)}
+              >
+                + 향수 선택
+              </Button>
+            )}
           </div>
         </fieldset>
 
@@ -399,6 +469,8 @@ export default function PostWritePage() {
                       collectionId: item.collectionId,
                       title: item.title,
                     })
+                    // 이 컬렉션의 향수가 곧 글의 향수입니다 — 받아서 아래에 채웁니다
+                    setPickedCollectionId(item.collectionId)
                     setCollectionOpen(false)
                   }}
                   className={cn(
