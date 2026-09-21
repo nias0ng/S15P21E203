@@ -2,11 +2,6 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 
-import {
-  EMPTY_TERMS,
-  hasAgreedRequired,
-  type TermsState,
-} from '@/features/auth/terms'
 import { isApiError } from '@/shared/api/http'
 import { ROUTES } from '@/shared/config/routes'
 import {
@@ -29,12 +24,11 @@ import {
 } from '../types'
 
 import { AuthCard } from './AuthCard'
-import { TermsAgreement } from './TermsAgreement'
 
 /**
- * 회원가입 (A28 우측 카드 + A32 동의 블록 — COM-01). 이메일 · 닉네임 둘 다 [중복
- * 확인] 이 있지만 "쓸 수 있다" 고 해도 가입 시점에 409 로 한 번 더 걸립니다.
- * 가입해도 로그인은 되지 않습니다 — 응답에 토큰이 없습니다.
+ * 회원가입 (A28 우측 카드 — COM-01). 이메일 · 닉네임 둘 다 [중복 확인] 이 있지만
+ * "쓸 수 있다" 고 해도 가입 시점에 409 로 한 번 더 걸립니다. 가입해도 로그인은
+ * 되지 않습니다 — 응답에 토큰이 없습니다.
  */
 export function SignupForm() {
   const navigate = useNavigate()
@@ -46,7 +40,6 @@ export function SignupForm() {
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
   const [nickname, setNickname] = useState('')
-  const [terms, setTerms] = useState<TermsState>(EMPTY_TERMS)
 
   /** 중복 확인 결과. 값을 고치면 지웁니다 — 옛 답이 남으면 거짓말이 됩니다 */
   const [nicknameAvailable, setNicknameAvailable] = useState<boolean | null>(
@@ -103,7 +96,6 @@ export function SignupForm() {
   })
 
   const canSubmit =
-    hasAgreedRequired(terms) &&
     email.length > 0 &&
     password.length >= PASSWORD_MIN_LENGTH &&
     passwordConfirm === password &&
@@ -112,16 +104,7 @@ export function SignupForm() {
     !signupMutation.isPending
 
   return (
-    <AuthCard
-      title="회원가입"
-      className="max-w-105"
-      notes={[
-        '이메일 형식 · 비밀번호 정책 검증',
-        '이메일 · 닉네임은 다른 계정과 겹칠 수 없습니다 — 가입할 때 최종 확인합니다',
-        '필수 미동의 시 [가입하기] 비활성',
-        '약관 전문 화면은 별도 · 항목 구성은 법무 확인 필요',
-      ]}
-    >
+    <AuthCard title="회원가입" className="max-w-105">
       <form
         className="space-y-2.5"
         onSubmit={(event) => {
@@ -228,8 +211,6 @@ export function SignupForm() {
             중복 확인
           </button>
         </div>
-
-        <TermsAgreement value={terms} onChange={setTerms} />
 
         {signupMutation.error !== null && (
           <p className="text-danger text-caption" role="alert">
