@@ -81,6 +81,16 @@ interface EngineHandle {
    * 제 자리를 잡습니다 (`lib/boatAnchor`). 엔진이 매 프레임 채웁니다.
    */
   boat?: { screen?: BoatAnchor }
+  /**
+   * 배를 **취향 테스트가 고른 자리**에서 출발시킵니다 (엔진 `main.js` 의 `startAt`).
+   *
+   * ⚠️ 좌표는 **정규화 0~1** 입니다 (백엔드 `perfume_map_points` · 엔진 `scentmap.toWorld` 와 같은 공간).
+   * `features/taste/api.ts` 의 `getScentVectors` 는 100 을 곱하지만 `getMyTasteTest` 는 안 곱합니다 —
+   * 여기로 넘기는 것은 **안 곱한 쪽**입니다.
+   *
+   * ⚠️ 없을 수 있습니다 — 그 기능이 없던 엔진 빌드입니다. 그때는 예전처럼 원점에서 시작합니다.
+   */
+  startAt?: (pos: { x: number; y: number }) => boolean
 }
 
 type Props = {
@@ -158,6 +168,16 @@ type Props = {
    * 이걸 받아 `PUT /map/exploration/me` 를 부릅니다. 기록할지는 서버가 정합니다.
    */
   onMove?: (move: SceneMove) => void
+  /**
+   * **취향 테스트가 고른 출발점** (정규화 0~1). 주면 배가 원점이 아니라 그 향수 곁에서 시작하고,
+   * 그 해역 연출이 바로 걸립니다 (`frontend/docs/취향-출발점과-영역-진입-0921.md` §A).
+   *
+   * ⚠️⚠️ **엔진이 붙는 순간 딱 한 번만 넘깁니다.** 항해 중에 다시 부르면 배가 출발점으로 되돌아갑니다 —
+   * 그래서 `latest` ref 가 아니라 **마운트 때 값**을 씁니다. 쿼리가 늦게 와서 그때 없었으면
+   * 그 세션은 원점에서 시작합니다(로딩 커튼이 5초 안팎이라 보통은 제때 옵니다).
+   * ⚠️ 비로그인이면 `GET /users/me/taste-test` 가 401 이라 없습니다 — 예전 동작 그대로입니다.
+   */
+  start?: { x: number; y: number } | null
   className?: string
 }
 
@@ -190,10 +210,21 @@ export function ScentScene({
   onChartChange,
   onBoot,
   onMove,
+  start,
   className,
 }: Props) {
   const frame = useRef<HTMLIFrameElement>(null)
   const [ready, setReady] = useState(false)
+
+  /*
+   * 출발점은 **엔진이 붙은 뒤 딱 한 번** 넘깁니다 (아래 별도 effect).
+   * ⚠️ 다른 처리기들처럼 `latest` ref 에 담아 `attach` 안에서 부르면, 취향 쿼리가 엔진보다
+   * 늦게 오는 경우에 영영 못 넘깁니다 — 그래서 `ready` 와 `start` 둘 다 갖춰지면 도는
+   * effect 로 따로 뺐습니다. 두 번 부르는 것은 `started` 가 막습니다
+   * (항해 중에 다시 부르면 배가 출발점으로 되돌아갑니다).
+   */
+  const engineRef = useRef<EngineHandle | null>(null)
+  const started = useRef(false)
 
   // 엔진에는 처리기를 한 번만 꽂습니다. 렌더마다 새로 만들어지는 props 는 여기서 최신 것으로 부릅니다
   const latest = useRef({
@@ -295,6 +326,8 @@ export function ScentScene({
       engine.params.siteHeader = 0
       engine.params.hostTop = latest.current.coveredTop
       engine.apply()
+      // 출발점을 넘길 effect 가 이걸 봅니다 (위 startRef 주석)
+      engineRef.current = engine
       engine.setHost({
         openDetail: (perfume) => latest.current.onOpenDetail(perfume),
         saveToShelf: (perfume) => latest.current.onSaveToShelf(perfume),
@@ -382,8 +415,25 @@ export function ScentScene({
       // 엔진이 사라집니다 — 커튼은 이제 혼자 차오릅니다 (잠수로 떠나는 길이 바로 이 경로입니다)
       useDiveStore.getState().setEngine(null)
       setBoatAnchorSource(null)
+      engineRef.current = null
     }
   }, [])
+
+  /*
+   * 취향 테스트가 고른 출발점 — 배를 그 향수 곁에 놓고 그 해역 연출을 겁니다 (`start` prop · §A).
+   *
+   * ⚠️⚠️ **한 번만 부릅니다.** 항해 중에 다시 부르면 배가 출발점으로 되돌아갑니다 — `started` 가 막습니다.
+   * ⚠️ 엔진과 `start` 중 늦게 오는 쪽을 기다립니다. 보통은 쿼리가 먼저지만, 느린 회선에서
+   * 순서가 뒤집혀도 이 effect 가 다시 돌아 잡습니다.
+   * ⚠️ 엔진에 `startAt` 이 없으면(그 기능 전 빌드) 조용히 지나갑니다 — 예전처럼 원점에서 시작합니다.
+   */
+  useEffect(() => {
+    const engine = engineRef.current
+    if (!ready || !engine || !start || started.current) return
+    if (typeof engine.startAt !== 'function') return
+    started.current = true
+    engine.startAt(start)
+  }, [ready, start])
 
   return (
     // 준비되면 짧게 드러납니다 — 로딩 커튼이 걷힐 때 그 뒤에서 이미 그려져 있고, 커튼 없이 뜰 때도 툭 나타나지 않습니다

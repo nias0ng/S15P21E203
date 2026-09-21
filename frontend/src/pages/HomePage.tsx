@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 
 import {
@@ -23,6 +23,8 @@ import {
   ShelfRegisterPartialError,
   useShelfActions,
 } from '@/features/shelf'
+// 취향 테스트가 고른 출발점을 3D 지도의 배 자리로 씁니다 (TST-03 → MAP · 아래 tasteStart)
+import { myTasteTestQuery } from '@/features/taste'
 import { isApiError } from '@/shared/api/http'
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
@@ -53,7 +55,11 @@ import { Toast } from '@/shared/ui/Toast'
  *
  * 향해 일지(MAP-24)는 다른 화면의 데이터와 맞추기 쉽도록 엔진이 아니라 앱이 3D 위에 얹습니다.
  *
- * ⚠️ 취향 영역(MAP-08)은 엔진에 아직 없습니다.
+ * **취향 테스트 결과는 배의 출발 자리입니다** (2026-09-21 · `tasteStart` → `ScentScene` 의 `start`).
+ * 메인에 들어오면 배가 원점이 아니라 내 취향 향수 곁에서 시작하고 그 해역 연출이 바로 걸립니다
+ * (`docs/취향-출발점과-영역-진입-0921.md`).
+ *
+ * ⚠️ 취향 **영역**(MAP-08 — 지도 위의 검은 원)은 아직 엔진에 없습니다. 출발점과 다른 것입니다.
  */
 /*
  * 잠수(진열대로 넘어가기)가 걸리면 3D 위에 얹은 **앱 UI 도 같이 비킵니다** — 검색창 · 향해 일지.
@@ -146,6 +152,26 @@ export default function HomePage() {
   // 기록할지는 서버가 정합니다 (향수는 늘 · 빈 바다는 향 영역이 바뀐 경우만)
   const reportMove = useExplorationMove()
 
+  /*
+   * **취향 테스트가 고른 출발점** (TST-03 → MAP). 배를 그 향수 곁에 놓고 그 해역 연출을 겁니다
+   * (`docs/취향-출발점과-영역-진입-0921.md` §A). 여기 오기 전까지 이 결과는 어디에도 안 쓰이고
+   * 있었습니다 — 지도는 늘 원점에서 시작했습니다.
+   *
+   * ⚠️ 좌표는 **0~1 정규화**입니다. `getMyTasteTest` 는 서버 값을 그대로 주고, 100 을 곱하는 것은
+   * SVG 지도를 그리는 `getScentVectors` 뿐입니다 — 엔진에는 안 곱한 값을 줍니다.
+   * ⚠️ `completed` 여도 `x`·`y` 가 null 일 수 있습니다 (지도를 다시 만들며 그 향수가 빠진 경우).
+   * ⚠️ 비로그인이면 401 이라 `taste.data` 가 없습니다 — 예전처럼 원점에서 시작합니다.
+   * ⚠️ 첫 로그인만이 아니라 **메인에 들어올 때마다** 내 취향 자리에서 시작합니다.
+   */
+  const taste = useQuery(myTasteTestQuery())
+  const tx = taste.data?.completed ? taste.data.x : null
+  const ty = taste.data?.completed ? taste.data.y : null
+  // ⚠️ 값이 같으면 같은 객체를 돌려줍니다 — `ScentScene` 의 출발점 effect 가 이걸 의존성으로 봅니다
+  const tasteStart = useMemo(
+    () => (tx !== null && ty !== null ? { x: tx, y: ty } : null),
+    [tx, ty],
+  )
+
   /** 3D 입력 잠금을 풉니다. 어떤 길로 끝나든 반드시 한 번은 불러야 합니다 */
   const release = () => {
     releaseSave.current?.()
@@ -190,6 +216,7 @@ export default function HomePage() {
         onChartChange={setChartOpen}
         onBoot={boot.report}
         onMove={reportMove}
+        start={tasteStart}
         onOpenDetail={(perfume) => {
           // ⚠️ 엔진 데이터에는 아직 DB perfumeId 가 없습니다(fragrantica_id 뿐). 없으면 이름으로 검색 결과(A09)에 보냅니다
           navigate(

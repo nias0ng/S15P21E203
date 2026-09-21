@@ -104,13 +104,56 @@ const TL = {
 
 // ⚠ 새 필드를 넣으려면 KEYS 와 TL 양쪽에 같이 넣는다 — 한쪽만 넣으면 조용히 0 으로 남는다
 export const OPEN_KEYS = ['openLmid', 'openRmid', 'openLfar', 'openRfar', 'openLnear', 'openRnear'];
+// ───────── ⭐⭐ 짧은 연출 — 항해하다 해역에 들어섰을 때 (2026-09-21, 브랜치 378) ─────────
+// 사용자 : *"일반적인 클릭이 아닌 배의 위치가 해당 영역에 진입했을때도 **지금과 다른 짧은 연출**이
+//   이루어져야함"*. 설계는 `frontend/docs/취향-출발점과-영역-진입-0921.md` §B 다.
+//
+// ⚠⚠⚠ **빠른 재생이 아니라 다른 종류다.** 위 표를 짧게 돌리면 카메라가 존 구도로 돌고 배가 정박하는데,
+//   그건 *몰고 있는 배가 제멋대로 서는 것*이다. 그래서 **`look` 과 `swing` 이 이 표에 없다.**
+//   ⭐ 트랙이 표에서 빠지면 `track(undefined)` 가 0 을 돌려주므로, 카메라·배는 **끄는 코드가 아니라
+//     적지 않는 것**으로 빠진다 — 소비자(main.js 카메라 블록 · `_shipOff`)는 한 줄도 안 바뀐다.
+// ⚠ 윙은 끝까지 안 닫힌다 — 값이 `zoneBriefOpen`(기본 0.45) 배로 눌린다 (update 에서 곱한다).
+//   가장자리에서 살짝 드는 정도라 항해 시야를 안 막는다.
+// ⚠ 좌우 · 층 순서는 긴 연출과 **같다** (좌중 → 우중 → 좌뒤 → 우뒤 → 좌앞 → 우앞). 시차만 0.10 · 0.18s 로 좁혔다 —
+//   1초 안에 여섯이 다 들어와야 하므로 0.18 · 0.30 을 그대로 쓰면 마지막 판이 끝에 걸린다.
+const TL_BRIEF = {
+  enter: {
+    dim:       [0.00, 0.50, 'outQuad'],
+    openLmid:  [0.00, 0.55, 'outCubic'],
+    openRmid:  [0.10, 0.65, 'outCubic'],
+    openLfar:  [0.18, 0.73, 'outCubic'],
+    openRfar:  [0.28, 0.83, 'outCubic'],
+    openLnear: [0.36, 0.91, 'outCubic'],
+    openRnear: [0.46, 1.01, 'outCubic'],
+    rise:      [0.25, 0.85, 'outBack'],
+    ui:        [0.45, 1.00, 'outQuad']
+  },
+  // ⚠ 퇴장은 긴 연출과 같은 규율 — 역순이 아니고 좌우 시차도 없다 (§3). 여섯이 같이 나간다
+  leave: {
+    rise:      [0.00, 0.35, 'inCubic'],
+    ui:        [0.00, 0.28, 'outQuad'],
+    openLmid:  [0.10, 0.70, 'inCubic'],
+    openRmid:  [0.10, 0.70, 'inCubic'],
+    openLfar:  [0.10, 0.70, 'inCubic'],
+    openRfar:  [0.10, 0.70, 'inCubic'],
+    openLnear: [0.10, 0.70, 'inCubic'],
+    openRnear: [0.10, 0.70, 'inCubic'],
+    dim:       [0.10, 0.60, 'outQuad']
+  }
+};
+
 const KEYS = ['look', ...OPEN_KEYS, 'dim', 'rise', 'ui', 'swing'];
+const OPEN_SET = new Set(OPEN_KEYS);
 // ⭐ 머묾 시계를 멈췄다가 다시 흐를 때 **최소한 남겨 두는 초** (2026-09-11 오후, `pauseHold`).
 //   정보 블록을 다 읽고 마우스를 떼는 순간 닫히면 쫓겨나는 느낌이다 — 뗀 뒤에도 이만큼은 머문다.
 //   ⚠ 남은 시간이 이미 더 길면 건드리지 않는다 (호버가 시계를 **늘리지는** 않는다)
 const HOLD_AFTER = 1.5;
 const dur = (tl) => KEYS.reduce((m, k) => tl[k] ? Math.max(m, tl[k][1]) : m, 0);
 const ENTER_DUR = dur(TL.enter), LEAVE_DUR = dur(TL.leave);
+const BRIEF_ENTER_DUR = dur(TL_BRIEF.enter), BRIEF_LEAVE_DUR = dur(TL_BRIEF.leave);
+
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+const num = (v, d) => (v === undefined ? d : v);
 
 // 한 줄의 값을 지금 시각에서 낸다. 구간 밖은 0 또는 1 로 물린다
 function track(row, t) {
@@ -131,6 +174,10 @@ export function createPhase() {
     t: 0,             // 지금 상태 안에서 흐른 초
     p: 0,             // 그 상태의 진행도 0~1 (전환이 아닌 상태에서는 1)
     busy: false,      // ⚠ 전환 중인가. input.js 가 이걸 보고 클릭을 막는다 (§9-4)
+    // ⭐⭐ **짧은 연출인가** (2026-09-21 — 항해하다 해역에 들어섰을 때 · TL_BRIEF 주석).
+    //   카메라·배가 안 움직이고 윙이 살짝만 든다. ⚠ main.js 의 **상호작용 가드가 이걸 본다** —
+    //   `cue.zone` 만으로 막으면 항해 중에 부표 고르기·호버가 몇 초씩 죽는다 (문서 §B-3).
+    brief: false,
     // ⭐ 도착 연출의 **머무는 시간**(초, 2026-09-11 · v0.32.0). 0 이면 ESC 까지 머문다 (예전 동작).
     //   사용자 : *"해당 영역에 도착하면 좌우 연출이 시작되고 몇초 후 사라지게"*. holdT 는 inspecting 에서 흐른 초
     hold: 0, holdT: 0,
@@ -146,6 +193,18 @@ export function createPhase() {
 
   const setAll = (v) => { for (const k of KEYS) cue[k] = v; };
 
+  // 지금 쓰는 타임라인 한 쌍
+  const tlOf = () => (cue.brief ? TL_BRIEF : TL);
+  // 그 타임라인에서 트랙 하나의 **멈춰 있을 때의 값**. ⚠⚠ 예전에는 `setAll(amt)` 로 전부 1 이었는데,
+  //   짧은 연출에는 `look`·`swing` 이 아예 없어서 그러면 **카메라가 1 로 튀어 존 구도로 순간이동한다.**
+  //   표에 있으면 amt · 없으면 0 이다 — 트랙을 안 적는 것만으로 층이 빠지는 규약(TL_BRIEF 주석)의 짝이다.
+  const steadyOf = (amt) => {
+    const tl = tlOf().enter;
+    for (const k of KEYS) cue[k] = tl[k] ? amt * briefK(k) : 0;
+  };
+  // 짧은 연출에서 윙을 눌러 두는 배수. 다른 키와 긴 연출은 1 이다
+  const briefK = (k) => (cue.brief && OPEN_SET.has(k) ? clamp01(num(P.zoneBriefOpen, 0.45)) : 1);
+
   const api = {
     cue,
 
@@ -154,10 +213,14 @@ export function createPhase() {
     //   다른 향조로 갈아타려면 leave() 가 끝난 뒤 다시 부른다.
     // opts.hold (초) — 들어온 뒤 이만큼 머물다 **스스로 나간다** (도착 연출). 없으면 ESC 까지 머문다
     //   ⚠ 개발 바 '연출' 행은 hold 없이 부른다 — 시안을 볼 때 저절로 닫히면 못 본다
+    // ⭐ opts.brief — **짧은 연출**로 든다 (항해하다 해역에 들어섰을 때 · TL_BRIEF 주석).
+    //   카메라·배를 안 건드리고 윙이 살짝만 들었다 짧게 나간다
     enter(zone, opts) {
       if (cue.busy) return false;
       if (cue.phase === 'inspecting' && cue.zone === zone) return false;
       cue.zone = zone ?? cue.zone;
+      // ⚠ 종류는 **들어가는 순간에만** 정한다 — 도중에 바뀌면 타임라인이 갈려 값이 튄다
+      cue.brief = !!(opts && opts.brief);
       cue.phase = 'entering'; cue.t = 0; cue.p = 0; cue.busy = true;
       cue.hold = opts && opts.hold > 0 ? opts.hold : 0; cue.holdT = 0;
       return true;
@@ -180,10 +243,32 @@ export function createPhase() {
       return true;
     },
 
+    // ⭐⭐ **짧은 연출을 비킨다** (2026-09-21) — 누르거나 방향키를 잡으면 부른다 (main.js).
+    //   `leave()` 와 다른 점 둘 : ① **들어오는 중에도** 나간다 ② 짧은 연출에만 듣는다.
+    //   ⚠ 자발적인 행동이 우선이라는 규율은 `travelAfterZone`(v0.59.5)과 같은 방향이다.
+    //   ⚠⚠ 들어오는 중에 끊으면 퇴장 커브가 **지금 값보다 큰 값에서** 시작해 한 번 튄다 —
+    //     그래서 흐른 시각을 **퇴장 쪽으로 옮겨 심는다** (진행도가 같은 지점에서 이어 받는다).
+    //   돌려주는 값 = 실제로 비켰는가 (부르는 쪽이 굳이 볼 일은 없다)
+    dismiss() {
+      if (!cue.brief || !cue.zone) return false;
+      if (cue.phase === 'leaving') return false;
+      if (cue.phase === 'entering') {
+        // 들어온 만큼(0~1)을 퇴장의 **남은 만큼**으로 읽는다 — 덜 들어왔으면 덜 나간다
+        const k = Math.min(1, cue.t / Math.max(1e-4, BRIEF_ENTER_DUR));
+        cue.t = BRIEF_LEAVE_DUR * (1 - k);
+      } else {
+        cue.t = 0;
+      }
+      cue.phase = 'leaving'; cue.p = 0; cue.busy = true;
+      cue.hold = 0; cue.holdT = 0;
+      return true;
+    },
+
     // ⚠ 트윈 없이 즉시 그 상태로 (검증·초기화용)
     snap(phase, zone = null) {
       cue.phase = phase; cue.t = 0; cue.p = phase === 'inspecting' ? 1 : 0; cue.busy = false;
       cue.hold = 0; cue.holdT = 0;   // ⚠ 값 잡으려고 고정한 상태가 저절로 풀리면 안 된다
+      cue.brief = false;             // ⚠ 값 잡는 용도라 늘 **긴 연출**로 세운다 (짧은 것은 enter 로만 든다)
       if (zone !== null) cue.zone = zone;
       setAll(phase === 'inspecting' ? 1 : 0);
       if (phase === 'sailing') cue.zone = null;
@@ -209,23 +294,30 @@ export function createPhase() {
       const ph = cue.phase;
       if (ph === 'entering' || ph === 'leaving') {
         cue.t += dt * sp;
-        const tl = ph === 'entering' ? TL.enter : TL.leave;
-        const total = ph === 'entering' ? ENTER_DUR : LEAVE_DUR;
+        const T = tlOf();
+        const tl = ph === 'entering' ? T.enter : T.leave;
+        const total = cue.brief
+          ? (ph === 'entering' ? BRIEF_ENTER_DUR : BRIEF_LEAVE_DUR)
+          : (ph === 'entering' ? ENTER_DUR : LEAVE_DUR);
         cue.p = Math.min(1, cue.t / total);
         for (const k of KEYS) {
+          // ⚠⚠ 커브를 **amt 가 아니라 그 트랙의 꼭대기**에 곱한다. 짧은 연출은 `look`·`swing` 이
+          //   표에 없어 꼭대기가 0 이고 윙은 `zoneBriefOpen` 배로 눌려 있다 — amt 로 곱하면
+          //   퇴장(1 − v)에서 카메라가 1 로 튄다 (steadyOf 주석과 같은 이야기다)
+          const top = T.enter[k] ? amt * briefK(k) : 0;
           const v = track(tl[k], cue.t);
-          // 퇴장은 같은 커브를 1 → 0 으로 읽는다
-          cue[k] = (ph === 'entering' ? v : 1 - v) * amt;
+          // 퇴장은 같은 커브를 꼭대기 → 0 으로 읽는다
+          cue[k] = (ph === 'entering' ? v : 1 - v) * top;
         }
         if (cue.t >= total) {
           cue.phase = ph === 'entering' ? 'inspecting' : 'sailing';
           cue.busy = false; cue.t = 0; cue.p = 1;
-          setAll(ph === 'entering' ? amt : 0);
-          if (cue.phase === 'sailing') cue.zone = null;
+          if (ph === 'entering') steadyOf(amt); else setAll(0);
+          if (cue.phase === 'sailing') { cue.zone = null; cue.brief = false; }
         }
       } else {
         // 정지 상태. ⚠ amt 를 곱해 둬야 슬라이더를 내렸을 때 inspecting 도 같이 옅어진다
-        setAll(ph === 'inspecting' ? amt : 0);
+        if (ph === 'inspecting') steadyOf(amt); else setAll(0);
         cue.p = 1; cue.busy = false;
       }
       return cue;
@@ -235,7 +327,7 @@ export function createPhase() {
     report() {
       const f = (v) => v.toFixed(3);
       // 등장 순서대로 읽는다 (좌중 · 우중 · 좌뒤 · 우뒤 · 좌앞 · 우앞) — 화면에서 본 순서와 같은 줄이라야 검산이 된다
-      return `${cue.phase}${cue.zone ? ' · ' + cue.zone : ''}  t=${f(cue.t)} p=${f(cue.p)}  ` +
+      return `${cue.phase}${cue.zone ? ' · ' + cue.zone : ''}${cue.brief ? ' (짧게)' : ''}  t=${f(cue.t)} p=${f(cue.p)}  ` +
              `look=${f(cue.look)} open=${OPEN_KEYS.map(k => f(cue[k])).join('/')} ` +
              `dim=${f(cue.dim)} rise=${f(cue.rise)} ui=${f(cue.ui)} ` +
              `swing=${f(cue.swing)}` +
@@ -243,11 +335,11 @@ export function createPhase() {
     },
 
     // 이 층은 GPU 자원이 없다. 규율상 둔다 (불변식 10)
-    dispose() { setAll(0); cue.phase = 'sailing'; cue.zone = null; cue.busy = false; cue.hold = 0; cue.holdT = 0; cue.holdPaused = false; }
+    dispose() { setAll(0); cue.phase = 'sailing'; cue.zone = null; cue.busy = false; cue.brief = false; cue.hold = 0; cue.holdT = 0; cue.holdPaused = false; }
   };
 
   return api;
 }
 
 // 문서·검증에서 인용할 때 여기서 가져온다 (숫자를 손으로 옮겨 적지 않는다)
-export const PHASE_DUR = { enter: ENTER_DUR, leave: LEAVE_DUR };
+export const PHASE_DUR = { enter: ENTER_DUR, leave: LEAVE_DUR, briefEnter: BRIEF_ENTER_DUR, briefLeave: BRIEF_LEAVE_DUR };

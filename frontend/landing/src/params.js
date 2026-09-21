@@ -1677,6 +1677,26 @@ export const PARAMS = {
   //   ⚠ 떼면 최소 1.5초를 남기고 다시 흐른다 (phase.js HOLD_AFTER) — 다 읽고 떼는 순간 닫히면 쫓겨나는 느낌이다
   //   ⚠ 개발 바 '연출' 행은 hold 없이 걸므로 여기와 무관하다 (원래 ESC 까지 머문다)
   zoneHoldHover: 1,
+  // ───────── 취향 출발점과 근접 진입 연출 (2026-09-21, 브랜치 378) ─────────
+  // 설계는 `frontend/docs/취향-출발점과-영역-진입-0921.md` 다.
+  // ⭐ **취향 테스트가 고른 향수 자리에서 배가 출발한다** (main.js `startAt` · 앱이 `PB.startAt` 로 부른다).
+  //   사용자 : *"취향테스트 결과에 대한 결과값이 있는데 현재 지도에는 바로 기존 값으로 랜딩시켜버려서
+  //   이걸 지금 바다에 띄워져있는 배의 위치에도 연관지어야하며"*. 0 = 예전처럼 원점에서 시작한다
+  zoneStart: 1,
+  zoneStartEnter: 1,   // 출발점에 놓은 뒤 그 해역 **긴 연출**을 거는가 (*"바로 해당 영역 연출이 시작되어야함"*)
+  // ⭐⭐ **근접 진입 연출** — 항해하다 해역에 들어서면 뜨는 **짧은 연출** (main.js `zoneNear` · phase.js TL_BRIEF).
+  //   사용자 : *"일반적인 클릭이 아닌 배의 위치가 해당 영역에 진입했을때도 지금과 다른 짧은 연출이"*.
+  //   ⚠ 긴 연출의 빠른 재생이 아니다 — **카메라와 배를 안 건드린다** (그 표에 `look`·`swing` 이 없다).
+  //   0 = 끈다 (비트 단위 롤백 — 도착·클릭 연출은 그대로다)
+  zoneBrief: 1,
+  zoneBriefOpen: 0.45, // 짧은 연출에서 윙이 드는 최대치. 1 이면 긴 연출과 같은 깊이로 닫힌다
+  zoneBriefHold: 2.2,  // 짧은 연출이 머무는 초 (긴 연출의 zoneHold 5 와 따로다)
+  // ⭐⭐ **같은 향조에 근접 진입 연출을 다시 걸기까지의 초.** 해역 경계는 보로노이라 경계 근처에서는
+  //   몇 초 만에 넘나들 수 있다 — 없으면 배를 조금만 돌려도 같은 연출이 계속 뜬다.
+  //   사용자 : *"근처에서 다시 그 연출에 들어갔을때 꽤 시간이 지난 이후에야 다시 영역 연출이 뜨는 걸로"*.
+  //   ⚠⚠ 막는 것은 **근접 진입뿐이다** — 카드 · 검색 · 해도로 간 도착은 사용자가 보러 간 것이라 늘 뜬다.
+  //     다만 도장은 둘 다 찍는다 (보고 나면 근처를 배회해도 다시 안 뜬다). 0 = 쿨다운 없음
+  zoneRecap: 90,
   // 향수 고르기 (marks.js focus) — 0 이면 부표를 눌러도 카드만 뜬다 (예전 동작)
   focusOn: 1,
   focusCount: 12,     // 떠오르는 수. 배에서 가까운 순 (사용자 지정 12)
@@ -2984,6 +3004,8 @@ export const PARAM_RANGES = {
   seaMarkArc: [0.3, 3, 0.05], seaMarkDot: [0, 1, 1], seaMarkDiag: [0, 1, 1], seaMarkTrail: [0.1, 0.9, 0.05], seaMarkWidth: [0.03, 0.4, 0.01], seaMarkSpeed: [0.2, 2, 0.05], seaMarkPersp: [0, 1, 1],
   seaMarkRipple: [0, 1, 1], seaMarkRingDur: [0.2, 3, 0.05], seaMarkRingGrow: [1, 6, 0.1],
   zoneHold: [0, 12, 0.1], zoneHoldHover: [0, 1, 1],
+  zoneStart: [0, 1, 1], zoneStartEnter: [0, 1, 1],
+  zoneBrief: [0, 1, 1], zoneBriefOpen: [0, 1, 0.01], zoneBriefHold: [0, 12, 0.1], zoneRecap: [0, 600, 5],
   focusOn: [0, 1, 1], focusCount: [1, 24, 1], focusSinkT: [0.05, 2, 0.05], focusRiseAt: [0, 2, 0.05],
   focusRiseT: [0.05, 2, 0.05], focusCamIn: [0.1, 4, 0.05], focusCamOut: [0.1, 4, 0.05],
   focusSinkEase: [0, 1, 1], focusSinkSpread: [0, 2, 0.05], focusRiseSpread: [0, 2, 0.05], focusSpreadJitter: [0, 1, 0.05],
