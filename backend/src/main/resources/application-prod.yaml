@@ -3,6 +3,20 @@ spring:
     activate:
       on-profile: prod
 
+  # 운영에서도 스키마의 주인은 Flyway 이고, Hibernate 는 맞는지 보기만 합니다.
+  #
+  # ⚠ 이 두 블록은 반드시 spring 아래에 둡니다. 예전에 server 아래로 들어가 있었는데,
+  # ServerProperties 가 모르는 키를 조용히 버려서 애플리케이션은 그대로 뜨고 대신 운영만
+  # ddl-auto 기본값(none)으로 돕니다. 즉 엔티티와 표가 어긋나도 기동이 성공합니다.
+  # 틀린 설정이 아니라 없는 설정이 되므로 경고 하나 남지 않습니다.
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+  flyway:
+    enabled: true
+
 # ⚠ 자연어 추천의 호출량 제한이 이 값에 걸려 있습니다. 배포 구성을 아는 쪽이 정해야 합니다.
 #
 # 비회원은 IP 로 셉니다. 앞에 리버스 프록시(nginx 등)가 있으면 getRemoteAddr() 가 전부
@@ -18,14 +32,6 @@ spring:
 # 넘기지 않는지) 함께 확인해야 합니다.
 server:
   forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:none}
-
-  jpa:
-    open-in-view: false
-    hibernate:
-      ddl-auto: validate
-
-  flyway:
-    enabled: true
 
 logging:
   level:
