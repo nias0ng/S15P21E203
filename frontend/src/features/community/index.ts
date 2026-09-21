@@ -13,7 +13,8 @@ export {
   updatePost,
 } from './api'
 export { BoardHeader } from './components/BoardHeader'
-export { ImageAttachField, WriteForm } from './components/WriteForm'
+export { ImageAttachField } from './components/ImageAttachField'
+export { WriteForm } from './components/WriteForm'
 export { CommentSection } from './components/CommentSection'
 export { LinkedPerfumeModal } from './components/LinkedPerfumeModal'
 export { PostList } from './components/PostList'

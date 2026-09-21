@@ -51,6 +51,8 @@ export default function PostWritePage() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [perfumes, setPerfumes] = useState<LinkedPerfume[]>([])
+  /** 미리 올려 둔 사진 주소. 글을 저장할 때 통째로 보냅니다 */
+  const [imageUrls, setImageUrls] = useState<string[]>([])
   const [pickOpen, setPickOpen] = useState(false)
   const [keyword, setKeyword] = useState('')
   const [collection, setCollection] = useState<{
@@ -147,6 +149,7 @@ export default function PostWritePage() {
       붙어 있던 컬렉션도 되살립니다. 안 되살리면 화면이 "첨부 없음" 으로 보이고,
       아래 저장이 폼을 기준으로 판단하므로 **떼라는 요청으로 읽혀 컬렉션이 날아갑니다.**
     */
+    setImageUrls(post.data.imageUrls)
     setCollection(
       post.data.collectionId !== null && post.data.collectionTitle !== null
         ? {
@@ -185,6 +188,8 @@ export default function PostWritePage() {
           ...(attachedNow !== attachedBefore && { collectionId: attachedNow }),
           // 향수는 **목록 통째로** 바뀌므로 보낼 때는 전부 보냅니다
           ...(attachedNow === null && { perfumeIds }),
+          // 사진도 보낸 목록으로 통째로 바뀝니다 — 지운 것까지 그대로 반영됩니다
+          imageUrls,
         })
         return editingId
       }
@@ -199,6 +204,7 @@ export default function PostWritePage() {
           title: title.trim(),
           content: content.trim(),
           collectionId: collection.collectionId,
+          ...(imageUrls.length > 0 ? { imageUrls } : {}),
         })
       }
 
@@ -207,6 +213,7 @@ export default function PostWritePage() {
         title: title.trim(),
         content: content.trim(),
         ...(perfumeIds.length > 0 ? { perfumeIds } : {}),
+        ...(imageUrls.length > 0 ? { imageUrls } : {}),
       })
     },
     onSuccess: (savedId) => {
@@ -399,7 +406,7 @@ export default function PostWritePage() {
           </div>
         </fieldset>
 
-        <ImageAttachField />
+        <ImageAttachField value={imageUrls} onChange={setImageUrls} />
       </WriteForm>
 
       {/*

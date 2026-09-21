@@ -378,6 +378,10 @@ React 를 처음 다룰 때 가장 많이 틀리는 지점입니다.
 생겼습니다.** 없다고 적혀 있으면 다음 사람이 찾아보지도 않으니, 붙일 때 이 문단을 같이
 고쳐 주세요.
 
+게시글 이미지 첨부도 붙었습니다(S15P21E203-368) — `features/community/ImageAttachField` 가 고른
+사진을 먼저 올리고, 글을 저장할 때 그 주소를 `imageUrls` 로 넘깁니다. ⚠️ **후기에는 이미지가
+없습니다** — `ReviewCreateRequest` 가 제목 · 본문 · 계절만 받습니다.
+
 향수·브랜드·후기는 대부분 붙어 있고, **인증·회원도 붙었습니다**(로그인 · 회원가입 · 내 정보 ·
 닉네임 중복 확인 · 닉네임 변경 · 비밀번호 변경 · 탈퇴 · 로그아웃 · 토큰 재발급).
 
@@ -388,9 +392,6 @@ React 를 처음 다룰 때 가장 많이 틀리는 지점입니다.
 **화면만 아직 안 붙인 것**(백엔드는 있습니다)도 적어 둡니다. 없다고 적혀 있으면 다음 사람이
 찾아보지도 않습니다.
 
-- 게시글 이미지 — `POST /posts/images`(multipart)가 올린 주소를 돌려줍니다. 글을 쓸 때 그
-  주소를 `imageUrls` 로 넘깁니다. 화면은 `WriteForm` 의 `ImageAttachField` 가 자리만 잡아 둔
-  상태입니다
 - 프로필 사진 — `POST /users/me/profile-image`(multipart, 필드 `file`) ·
   `DELETE /users/me/profile-image`. 화면은 `AccountForm` 에 TODO 로 남아 있습니다.
   ⚠️ 제한이 화면 주석과 다릅니다 — 백엔드는 JPG · PNG · GIF · WEBP 에 기본 1MB 이고 형식을
