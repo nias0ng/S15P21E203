@@ -2,6 +2,8 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 
 import { isApiError } from '@/shared/api/http'
+import { UNROLL, useUnroll } from '@/shared/hooks/useUnroll'
+import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { ChipToggle } from '@/shared/ui/ChipToggle'
 import { Modal } from '@/shared/ui/Modal'
@@ -39,6 +41,10 @@ const OPTIONS = [
  * 무엇을 물을지는 스토어(`usePendingFeedbackStore`)가 들고 있습니다. 결과에서 [자세히 보기]로
  * 상세에 다녀오면 이 화면이 통째로 다시 서는데, 답하지 않은 설문은 그때 이어서 떠야 합니다.
  *
+ * 자리와 움직임은 **결과 모달과 같습니다** — 같은 검색의 뒷장이라, 위쪽에 붙는 것(`mt-25`)도
+ * 폭도 족자가 풀리는 것도 맞췄습니다. 자리가 달라지면 사람이 보기에 답을 잇는 화면이 아니라
+ * 다른 기능이 끼어든 것으로 읽힙니다 (`MapSearchModal` 이 같은 이유로 같은 자리를 씁니다).
+ *
  * NOTE: 건너뛰기와 [×] 는 다릅니다. **건너뛰기는 그 추천을 끝내고**, [×] · Esc · 배경은
  * 접어 두기만 해서 메인으로 돌아올 때 다시 묻습니다. 답을 강요하지 않으면서, 나가는 길을
  * 잘못 눌러 기록이 통째로 사라지는 일도 막습니다.
@@ -67,11 +73,11 @@ export function NlrFeedbackModal({ ready }: Props) {
       open={open}
       onClose={close}
       title="추천은 어떠셨나요"
-      className="w-[min(460px,calc(100vw-40px))]"
+      className="mt-25 mb-auto w-[min(760px,calc(100vw-40px))]"
     >
       {/*
         `<dialog>` 는 닫혀도 children 이 DOM 에 남습니다. 열림과 **같은 조건**으로 그려야
-        다음 설문이 빈 칸에서 시작하고, 로딩 중에 검색어가 화면 밖 DOM 에 먼저 앉지도 않습니다.
+        족자가 다음에 다시 풀리고, 로딩 중에 검색어가 화면 밖 DOM 에 먼저 앉지도 않습니다.
       */}
       {open && pending !== null && (
         <FeedbackBody
@@ -88,7 +94,33 @@ export function NlrFeedbackModal({ ready }: Props) {
 }
 
 /** 손잡이마다 새로 마운트됩니다 — 앞 추천에 쓴 한마디가 다음 설문에 남으면 안 됩니다 */
-function FeedbackBody({
+function FeedbackBody(props: {
+  token: string
+  query: string
+  answered: boolean
+  onAnswered: () => void
+  onSettle: () => void
+}) {
+  const { bodyRef, style, inert } = useUnroll()
+
+  return (
+    <div
+      className={cn(
+        'overflow-hidden transition-[height] motion-reduce:transition-none',
+        UNROLL,
+      )}
+      style={style}
+      inert={inert}
+    >
+      <div ref={bodyRef}>
+        <FeedbackForm {...props} />
+      </div>
+    </div>
+  )
+}
+
+/** 족자 안에 들어가는 알맹이 */
+function FeedbackForm({
   token,
   query,
   answered,
