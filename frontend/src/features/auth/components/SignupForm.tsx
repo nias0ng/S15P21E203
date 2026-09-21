@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 
 import { isApiError } from '@/shared/api/http'
 import { ROUTES } from '@/shared/config/routes'
@@ -230,6 +230,23 @@ export function SignupForm() {
           {signupMutation.isPending ? '가입 중' : '가입하기'}
         </Button>
       </form>
+
+      {/*
+        로그인 화면의 [회원가입 →] 과 같은 모양입니다 — 두 화면이 서로를 가리켜야
+        잘못 들어온 사람이 되돌아갑니다. 돌아갈 경로도 같이 들고 갑니다(가입을
+        하려다 말고 로그인으로 가는 사람이 있습니다).
+
+        자리는 가운데입니다. 로그인 쪽은 링크가 둘이라 양 끝으로 벌렸는데, 여기는
+        하나뿐이라 왼쪽에 붙여 두면 한쪽으로 쏠려 보입니다.
+      */}
+      <div className="text-caption flex items-center justify-center">
+        <Link
+          to={withReturnPath(ROUTES.LOGIN, returnTo)}
+          className="text-ink-muted hover:text-ink"
+        >
+          로그인하기 →
+        </Link>
+      </div>
     </AuthCard>
   )
 }
