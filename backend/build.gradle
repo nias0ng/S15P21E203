@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'jacoco'
     id 'org.springframework.boot' version '3.5.16'
     id 'io.spring.dependency-management' version '1.1.7'
 }
@@ -61,6 +62,31 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    // 팀 표준 명령이 `./gradlew test` 라 리포트를 따로 부르지 않아도 나오게 합니다.
+    // finalizedBy 이므로 테스트가 실패해도 그때까지의 리포트는 남습니다.
+    finalizedBy tasks.named('jacocoTestReport')
+}
+
+// 커버리지는 측정만 하고 임계값은 걸지 않습니다. 기준선을 먼저 기록한 뒤
+// 도메인별 목표를 정합니다.
+jacoco {
+    toolVersion = '0.8.12'
+}
+
+tasks.named('jacocoTestReport') {
+    dependsOn tasks.named('test')
+
+    // JPA 복합키를 리포트에서 뺍니다. equals/hashCode 를 영속성 컨텍스트만 호출하므로
+    // 테스트가 직접 실행할 일이 없는데, Objects.equals 하나가 분기 4개로 잡혀 향수 도메인
+    // 분기 커버리지를 25%p 넘게 끌어내렸습니다. 남은 수치가 곧 손댈 곳이 되도록 뺍니다.
+    classDirectories.setFrom(files(classDirectories.files.collect { dir ->
+        fileTree(dir) { exclude '**/entity/*Id.class' }
+    }))
+
+    reports {
+        html.required = true
+        xml.required = true
+    }
 }
 
 // 로컬 데이터 도구는 서버 JAR에 포함하지 않습니다.
