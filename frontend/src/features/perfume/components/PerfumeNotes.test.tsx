@@ -11,15 +11,10 @@ const note = (
   noteType: string | null,
 ): PerfumeNote => ({ noteId, name, noteType })
 
-/** 화면에 난 단계 라벨을 나온 순서대로 읽습니다 */
 const stages = () =>
   screen.queryAllByText(/^(Top|Middle|Base)$/).map((el) => el.textContent)
 
-/**
- * `noteType` 은 컬럼에 값 제약이 없어 문자열 그대로 내려옵니다(시드는 `top` ·
- * `middle` · `base` · `flat` 과 조합). 쪼개고 묶는 일이 화면 몫이라, 모르는 값이
- * 와도 노트가 사라지지 않는지를 여기서 지킵니다.
- */
+/* `noteType` 에 값 제약이 없어, 모르는 값이 와도 노트가 사라지지 않는지를 지킵니다 */
 describe('PerfumeNotes', () => {
   it('향조가 없으면 안내 문구를 보여준다', () => {
     render(<PerfumeNotes notes={[]} />)
@@ -67,7 +62,6 @@ describe('PerfumeNotes', () => {
     expect(screen.getAllByText('머스크')).toHaveLength(3)
   })
 
-  /** 향수의 27% 입니다 — 원본에 피라미드가 없어 단계를 지어낼 수 없습니다 */
   it('flat 은 라벨 없이 한 줄로 보여준다', () => {
     render(
       <PerfumeNotes

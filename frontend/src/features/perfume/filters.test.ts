@@ -2,11 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { readGenderFilter, readRankingFilter } from './types'
 
-/*
-  필터가 주소로 옮겨 오면서(S15P21E203-362) 값이 바깥에서 들어옵니다 — 주소창을
-  손으로 고치거나 남이 보낸 링크로도 옵니다. 모르는 값을 그대로 API 에 실으면
-  400 이라 목록이 통째로 빕니다.
-*/
+/* 필터 값은 주소에서 오므로 바깥에서 들어옵니다 — 모르는 값을 그대로 API 에 실으면 400 이라 목록이 통째로 빕니다 */
 describe('readRankingFilter', () => {
   it.each(['OWNED', 'WISH', 'VIEWED'] as const)(
     '표에 있는 %s 는 통과한다',

@@ -13,19 +13,14 @@ import type { Review } from '../types'
 
 type Props = {
   reviews: Review[]
-  /** 이 향수의 전체 후기 수 (DTL-10). 페이지 수를 세는 값이기도 합니다 */
   totalElements: number
   /** 0부터 시작합니다 */
   page: number
   size: number
   onPageChange: (page: number) => void
   isPending?: boolean
-  /**
-   * 이 향수에 내가 쓴 후기 번호. 있으면 [후기 쓰기] 대신 [후기 수정] 을 띄웁니다 —
-   * 한 사람은 한 향수에 후기를 하나만 쓸 수 있어, 모르고 또 쓰면 409 로 막힙니다.
-   */
+  /** 있으면 [후기 쓰기] 대신 [후기 수정] 입니다 — 한 향수에 후기는 하나라 또 쓰면 409 입니다 */
   myReviewId: number | null
-  /** 이 후기 목록이 달린 향수. 작성 화면에 실어 보내 미리 골라 둡니다 */
   perfumeId: number
 }
 
@@ -49,11 +44,7 @@ export function PerfumeReviewList({
         {!isPending && (
           <span className="text-ink-muted text-caption">{totalElements}개</span>
         )}
-        {/*
-          작성으로 갈 때는 이 향수를 주소에 실어 보냅니다 — 작성 화면이 그 향수를
-          미리 골라 둡니다. 이미 쓴 후기가 있으면 수정으로 보냅니다(한 향수에 후기는
-          하나라, 모르고 또 쓰면 409 로 막힙니다).
-        */}
+        {/* 작성 화면이 미리 골라 둘 수 있게 이 향수를 주소에 실어 보냅니다 */}
         <AuthLinkButton
           to={
             myReviewId === null
@@ -89,7 +80,6 @@ export function PerfumeReviewList({
         </ul>
       )}
 
-      {/* 페이지가 하나뿐이면 버튼을 아예 안 그립니다 — 늘 비활성인 버튼은 군더더기입니다 */}
       {!isPending && lastPage > 0 && (
         <div className="flex items-center justify-center gap-2.5">
           <Button
@@ -117,7 +107,6 @@ export function PerfumeReviewList({
   )
 }
 
-/** 후기 한 줄. 누르면 후기 상세(A12)로 갑니다. */
 function ReviewRow({ review }: { review: Review }) {
   return (
     <Link
@@ -136,7 +125,6 @@ function ReviewRow({ review }: { review: Review }) {
       </span>
 
       <span className="text-ink-muted text-caption block">
-        {/* 탈퇴한 회원의 후기는 글만 남고 작성자가 지워집니다 */}
         {review.nickname ?? '탈퇴한 회원'} ·{' '}
         {formatRelativeTime(review.createdAt)}
       </span>
