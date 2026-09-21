@@ -1053,7 +1053,9 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
     # accord NDCG 는 -0.000322 [-0.002568, +0.002050] 로 **손해가 없다** — 좋아지는
     # 것이 아니라 안 잃는 것이다. 쿼리가 말한 노트를 정답 향수가 실제로 갖는 비율이
     # 65.4% 라(35번) 좁히면 정답이 빠지는 경우가 있고, 그것이 오름 5 · 내림 9 로 상쇄됐다.
+    base_without_note = base
     base, context_applied = _note_mask(index, structured, base, context_applied, notes)
+    note_applied = any(item["field"] == "note" for item in context_applied)
 
     score = index["strength"][:, cols].sum(axis=1)
 
@@ -1090,7 +1092,9 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
     picked = _rank(index, mask, score, top_k, brand_cap, notes)
     if len(picked["rows"]) >= min_results:
         picked["stage"] = "RELAXED_OR"
-        picked["relaxed"] = ["core accord 를 AND 에서 OR 로"]
+        picked["relaxed"] = _note_cause(index, base_without_note, cols, score, top_k,
+                                        brand_cap, notes, min_results, note_applied) + [
+            "core accord 를 AND 에서 OR 로"]
         picked["context_applied"] = context_applied
         return picked
 
@@ -1105,9 +1109,35 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
     mask &= index["has"][:, cols].any(axis=1)
     picked = _rank(index, mask, score, top_k, brand_cap, notes)
     picked["stage"] = "RELAXED_OR_NO_THRESHOLD" if picked["rows"] else "NOT_ENOUGH"
-    picked["relaxed"] = ["core accord 를 AND 에서 OR 로", "평가자 문턱 해제"]
+    picked["relaxed"] = _note_cause(index, base_without_note, cols, score, top_k, brand_cap,
+                                    notes, min_results, note_applied) + [
+        "core accord 를 AND 에서 OR 로", "평가자 문턱 해제"]
     picked["context_applied"] = []          # 이 단계는 context 도 함께 풀었다
     return picked
+
+
+def _note_cause(index, base_without_note, cols, score, top_k, brand_cap, notes,
+                min_results, note_applied):
+    """완화가 **말한 노트 때문인지** 가린다. list[str] — 맞으면 한 줄, 아니면 빈 목록.
+
+    `_note_mask` 가 후보를 좁히면 `AND` 단이 깨져 완화 사다리로 내려가는 일이 있다
+    [측정 · 설문 2문장 · 합성 11문장]. 그때 `relaxed` 에 *"core accord 를 AND 에서
+    OR 로"* 만 적히면 **넓혔다고만 나가고 좁힌 것이 원인이라는 사실이 빠진다.**
+    로그와 화면이 사실과 다르게 나가는 자리라 원인을 함께 적는다 [MR !211 리뷰].
+
+    ⚠ **노트를 안 걸었어도 `AND` 가 깨졌을 문장에는 적지 않는다.** 그러면 그것도
+    거짓 보고다. 노트를 빼고 `AND` 를 다시 세어 **노트가 없었으면 통과했을 때만** 적는다.
+    이 계산은 완화로 내려온 요청에서만 돈다.
+    """
+    if not note_applied or len(cols) < MIN_CORE_FOR_AND:
+        return []
+    mask = base_without_note.copy()
+    for col in cols:
+        mask &= index["has"][:, col]
+    would_pass = _rank(index, mask, score, top_k, brand_cap, notes)
+    if len(would_pass["rows"]) < min_results:
+        return []          # 노트가 없었어도 어차피 깨졌다
+    return ["말한 노트로 좁혀 조건을 다 만족하는 향수가 모자랐다"]
 
 
 def _context_only(index, avoid, top_k, people_min, brand_cap, structured):
