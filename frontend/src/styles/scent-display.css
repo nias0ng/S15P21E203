@@ -291,10 +291,14 @@
  */
 @layer components {
   .scent-map-panel {
-    /* 엔진 카드의 --pb-card-bg (44 38 62 = --color-dusk) · --pb-card-a 0.86 */
-    background: rgb(44 38 62 / 0.86);
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
+    /*
+     * 엔진 카드와 같은 색이되 **알파를 안 씁니다** (--pb-card-bg 는 0.86 입니다).
+     * 카드는 손바닥만 해서 뒤가 비쳐도 글자가 버티지만, 이 판은 화면의 절반을 덮고
+     * 그 아래 3D 바다는 물마루가 흰색으로 부서집니다 — 0.86 에서도 마루가 지나갈 때마다
+     * 글자 뒤가 밝아져 읽는 자리가 흔들립니다. 판을 꽉 채우고 대신 배경(::backdrop)만
+     * 얕게 덮어 바다는 판 밖에서 보이게 둡니다.
+     */
+    background: #2c263e;
     border: 1px solid rgb(255 244 236 / 0.16);
     box-shadow: 0 14px 34px rgb(16 10 28 / 0.32);
 
