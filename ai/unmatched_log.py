@@ -26,7 +26,7 @@
 
 LLM 추정을 붙이려면 추정 함수를 만들어 넘긴다. 이 모듈과 엔진은 네트워크를 모른다.
 
-    estimate = ulog.cached_estimator(my_gms_call)   # 같은 표현은 한 번만 부른다
+    estimate = ulog.cached_estimator(my_gms_call)   # 같은 원문은 한 번만 부른다
     out = recommend(index, text, estimator=estimate)
 
 저장 형식
@@ -246,7 +246,7 @@ def load_estimates(path=DEFAULT_LOG):
 def cached_estimator(estimate):
     """추정 함수를 캐시로 감싼다. callable.
 
-    estimate : callable  표현 하나(str)를 받아 {"accords": [...], "reasoning": str} 를 낸다
+    estimate : callable  (원문, 표현 목록) 을 받아 표현마다 하나씩 담긴 list 를 낸다
 
     같은 표현을 두 번 물으면 같은 답이 나오게 한다. 측정(노트북 26)상 LLM 은 같은 뜻에
     다른 답을 내므로, 캐시가 없으면 한 요청 안에서도 표현마다 답이 갈린다.
@@ -273,23 +273,46 @@ def cached_estimator(estimate):
     **기록은 그대로 쌓인다.** `record()`(쓰기)와 이 함수(읽기)는 원래 분리돼 있어서
     읽기만 끊으면 미매칭 표현 기록은 남는다. 사전 확장 근거를 잃지 않는다.
 
-    **⚠ 키는 사용자 원문이 아니라 ①단계가 뽑은 표현이다.** 표현이 달라지면 키가
-    안 맞는다. **같은 표현의 흔들림만 막고 표현 자체의 흔들림은 막지 못한다**
+    **⚠ 키는 원문과 표현 목록을 함께 쓴다.** 표현이 달라지면 키가 안 맞는다.
+    **같은 요청의 흔들림만 막고 표현 자체의 흔들림은 막지 못한다**
     [측정 2026-09-17 · 측정 기록 21번].
+
+    **표현 단위가 아니라 원문 단위다** [측정 기록 37번]. 묶음 판은 답이 원문에 따라
+    달라지므로, 표현 이름만으로 기억하면 **다른 문장에서 나온 답**을 가져다 쓴다.
+    그리고 표현 단위로 남겨 두면 캐시에 든 것이 묶음에서 빠져 **같은 문장인데 부를
+    때마다 모델이 보는 조각 수가 달라진다.** 잃는 재사용은 작다 — ⑤단계가 도는
+    문장 안에서 같은 표현이 두 번 나오는 자리가 **합성 1.0% · 설문 0.8%** 다.
+
+    ⚠ 31번이 적은 `설문 2.6% · 합성 10.1%` 는 **⑤단계가 안 도는 문장까지 센 값**이다
+    (재현해 9.9% · 2.5% 로 확인했다). ⑤단계는 조건이 0개인 문장에서만 도는데 그
+    문장들의 표현은 거의 안 겹친다.
     """
     cache = {}
 
-    def wrapped(expression):
-        key = normalize_key(expression)
+    def wrapped(raw_text, expressions):
+        key = (normalize_key(raw_text), tuple(expressions))
         if key not in cache:
-            guess = estimate(expression)
+            guesses = estimate(raw_text, list(expressions))
             # **실패(`None`)를 캐시에 넣지 않는다.** 넣으면 네트워크가 한 번 끊긴
-            # 표현이 "향이 아님" 으로 굳어 영영 안 풀린다. 다음 요청에서 다시 묻는다.
-            if guess is None:
+            # 문장이 "향이 아님" 으로 굳어 영영 안 풀린다. 다음 요청에서 다시 묻는다.
+            if guesses is None:
                 return None
-            cache[key] = {"accords": list(guess.get("accords") or []),
-                          "reasoning": guess.get("reasoning")}
-        return cache[key]
+            # **빠진 자리(`None`)가 하나라도 있으면 캐시하지 않는다.** 부른 쪽이 그
+            # 자리만 다시 묻고, 그 재호출은 표현 하나짜리 목록이라 키가 달라 따로 캐시된다.
+            #
+            # **왜 부분 성공을 안 담는가** — 담으면 묶음 호출 1회는 아끼지만 **누락된
+            # 자리가 굳어** 그 문장은 올 때마다 재호출을 낸다. 위에서 실패를 안 담는 것과
+            # 같은 판단이다(N15 · `빨레` 가 rubber/plastic 으로 굳던 일). 다음에 깨끗한
+            # 답을 받을 기회를 남긴다.
+            #
+            # 잃는 것은 작다 — 서식 오류가 났고(측정 0/55) **그리고** 같은 원문이 같은
+            # 표현 목록으로 다시 와야 하는데, ①단계의 `additional_requirements` 일치율이
+            # 9.2% 라 목록까지 같을 확률이 낮다 [측정 기록 17·23번]. [MR 리뷰 2026-09-21]
+            if any(g is None for g in guesses):
+                return list(guesses)
+            cache[key] = [{"accords": list(g.get("accords") or []),
+                           "reasoning": g.get("reasoning")} for g in guesses]
+        return list(cache[key])
 
     wrapped.cache = cache
     return wrapped
