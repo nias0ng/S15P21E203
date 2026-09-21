@@ -14,6 +14,7 @@ import com.hyanghae.backend.collection.dto.request.CollectionUpdateRequest;
 import com.hyanghae.backend.collection.dto.response.CollectionSummaryResponse;
 import com.hyanghae.backend.collection.entity.Collection;
 import com.hyanghae.backend.collection.entity.CollectionPerfume;
+import com.hyanghae.backend.collection.exception.CollectionErrorCode;
 import com.hyanghae.backend.collection.repository.CollectionPerfumeRepository;
 import com.hyanghae.backend.collection.repository.CollectionRepository;
 import com.hyanghae.backend.global.exception.BusinessException;
@@ -25,6 +26,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
@@ -104,6 +106,26 @@ class CollectionServiceTest {
         assertThatThrownBy(() -> service.addPerfume(1L, 2L))
                 .isInstanceOf(BusinessException.class);
         verifyNoInteractions(collectionRepository);
+    }
+
+    @Test
+    void translatesConcurrentDuplicatePerfumeInsert() {
+        UserPerfume shelfItem = mock(UserPerfume.class);
+        Collection collection = mock(Collection.class);
+        when(userPerfumeRepository.findByIdAndUserIdForUpdate(2L, 1L))
+                .thenReturn(Optional.of(shelfItem));
+        when(collectionRepository.findByIdAndUserIdForUpdate(1L, 1L))
+                .thenReturn(Optional.of(collection));
+        when(collectionPerfumeRepository.existsByCollectionIdAndShelfItemId(1L, 2L))
+                .thenReturn(false);
+        when(collectionPerfumeRepository.saveAndFlush(any(CollectionPerfume.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate"));
+
+        assertThatThrownBy(() -> service.addPerfume(1L, 2L))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.errorCode()).isEqualTo(
+                                CollectionErrorCode.COLLECTION_PERFUME_ALREADY_EXISTS
+                        ));
     }
 
     @Test
