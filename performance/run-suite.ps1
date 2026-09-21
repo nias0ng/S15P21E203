@@ -23,6 +23,7 @@ $scripts = @(
     'personalized-recommendation.js',
     'review-board-likes.js',
     'shelf-items.js',
+    'shelf-item-detail.js',
     'perfume-view-create.js',
     'review-like.js'
 )

@@ -53,6 +53,27 @@ LOGGER = logging.getLogger(__name__)
 DEFAULT_ENDPOINT = "https://gms.ssafy.io/gmsapi/api.openai.com/v1/chat/completions"
 DEFAULT_MODEL = "gpt-5.4-nano"
 
+# **같은 문장에 같은 추천이 나오게 하는 설정** [측정 기록 39번 · S15P21E203-388].
+# 이 값을 안 보내면 모델 기본값(창의적으로 답하는 쪽)으로 도는데, 그러면 같은 문장을
+# 다시 물을 때마다 **문장을 다르게 조각낸다.** 사전과 엔진은 결정론적이므로
+# 흔들림은 전부 여기서 온다 — 같은 `structured` 를 넣으면 추천은 5회 반복해도 같다.
+#
+#     [측정] 시연 문장 4개를 각 3회 호출했을 때 추천 5개가 매번 같은 문장 수
+#            기본값        **1/4**
+#            temperature=0  1차 **4/4**  ·  2차 **2/4**
+#
+# ⚠ **효과를 증명하지 못했다.** 같은 설정으로 두 번 쟀는데 4/4 와 2/4 다. 1차의 4/4 는
+# 표본 3회의 운일 수 있다. 게다가 `gpt-5.4-nano` 계열은 `temperature` 를 무시하기도 해서
+# 값이 먹혔는지조차 확인할 방법이 없다(호출은 실패하지 않았다).
+#
+# **해가 없어 남겨 두는 것이지 일관성을 보장하는 것이 아니다.** 보장하려면 ①단계 결과를
+# 캐시해야 하는데, 그건 `DECISIONS.md` N15 가 뺀 결정이고 **잘못 조각낸 것이 프로세스가
+# 살아 있는 동안 굳는다**는 문제가 있다. 2026-09-21 에 여기서 멈췄다 [측정 기록 39번].
+#
+# `DECISIONS.md` N15 한계 9 가 *"temperature 를 건드리지 않았다"* 로 남긴 자리다.
+# 그때는 ⑤단계 얘기였고 캐시가 흔들림을 막아 줬는데, **①단계에는 캐시가 없었다.**
+LLM_TEMPERATURE = 0
+
 # [측정] 호출 958회(Golden Set 203 · 합성 600 · 설문 155)의 1회 호출 소요 시간
 #   중앙 1.53초 · p90 2.00 · p95 2.20 · p99 3.17 · 최대 7.15
 # 5초로 자르면 958회 중 1회(0.10%)가 잘리고, 잘려도 사전 매칭으로 내려갈 뿐이다.
@@ -240,6 +261,7 @@ def structure(text, *, timeout=DEFAULT_TIMEOUT, prompt_path=PROMPT_PATH, post=No
 
     payload = {
         "model": os.environ.get("GMS_MODEL", DEFAULT_MODEL),
+        "temperature": LLM_TEMPERATURE,
         "messages": [
             {"role": "developer", "content": load_prompt(prompt_path)},
             {"role": "user", "content": build_user_prompt(text)},
@@ -307,6 +329,7 @@ def estimate_accords(expression, accords, *, top_n=ESTIMATOR_TOP_N,
             .replace("%ACCORDS%", "\n".join(f"- {a}" for a in accords))
             .replace("%EXPRESSION%", str(expression)))
     payload = {"model": os.environ.get("GMS_MODEL", DEFAULT_MODEL),
+               "temperature": LLM_TEMPERATURE,
                "messages": [{"role": "user", "content": body}]}
     endpoint = os.environ.get("GMS_ENDPOINT", DEFAULT_ENDPOINT)
     send = post or _post_json
@@ -373,6 +396,7 @@ def estimate_accords_batch(raw_text, expressions, accords, *, top_n=ESTIMATOR_TO
             .replace("%RAW_TEXT%", str(raw_text))
             .replace("%EXPRESSIONS%", "\n".join(f"- {x}" for x in expressions)))
     payload = {"model": os.environ.get("GMS_MODEL", DEFAULT_MODEL),
+               "temperature": LLM_TEMPERATURE,
                "messages": [{"role": "user", "content": body}]}
     endpoint = os.environ.get("GMS_ENDPOINT", DEFAULT_ENDPOINT)
     send = post or _post_json

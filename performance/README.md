@@ -1,6 +1,6 @@
 # 핵심 API k6 부하 테스트
 
-조회 3개와 쓰기 2개를 API별로 독립 측정합니다. 기본값은 안전한 smoke 모드(1 VU, 1회)입니다.
+조회 4개와 쓰기 2개를 API별로 독립 측정합니다. 기본값은 안전한 smoke 모드(1 VU, 1회)입니다.
 `MODE=load`일 때만 5, 10, 20, 30, 50 VU를 순서대로 실행합니다.
 
 ## 1. 준비
@@ -28,13 +28,14 @@ $env:TEST_USER_EMAIL = 'demo41@demo.hyanghae.test'
 $env:TEST_PASSWORD = $env:SEED_LOGIN_PASSWORD
 $env:PERFUME_ID = '3'
 $env:REVIEW_ID = '1'
+$env:SHELF_ITEM_ID = '사용자_진열대_항목_ID'
 ```
 
 `PERFUME_ID`는 활성 향수, `REVIEW_ID`는 실제 존재하는 후기로 바꿉니다.
 
 ## 2. 로컬 smoke
 
-저장소 루트에서 한 명령으로 다섯 스크립트를 실행합니다.
+저장소 루트에서 한 명령으로 여섯 스크립트를 실행합니다.
 
 ```powershell
 .\performance\run-suite.ps1 -Mode smoke -BaseUrl 'http://localhost:8080'
@@ -73,10 +74,11 @@ $env:STAGE_SECONDS = '60'
 k6 run performance/personalized-recommendation.js
 k6 run performance/review-board-likes.js
 k6 run performance/shelf-items.js
+k6 run performance/shelf-item-detail.js
 k6 run performance/perfume-view-create.js
 k6 run performance/review-like.js
 
-# 전체 묶음(각 API당 5분, 총 약 25분)
+# 전체 묶음(기본 설정 기준 각 API 약 6분, 총 약 35분)
 .\performance\run-suite.ps1 -Mode load -BaseUrl 'https://운영-API-주소' -StageSeconds 60
 ```
 
@@ -97,4 +99,6 @@ Counter의 `rate`는 전체 실행 시간을 분모로 삼을 수 있으므로 V
 | `THINK_TIME_SECONDS` | `0` | 반복 사이 대기 시간 |
 | `PAGE_SIZE` | `20` | 후기·진열대 목록 크기 |
 | `SHELF_CATEGORY` | `OWNED` | `OWNED`, `TRIED`, `WISH` |
+| `SHELF_ITEM_IDS` | 없음 | 사용자 이메일 순서와 같은 개인 메모·상세용 진열대 항목 ID 목록 |
+| `SHELF_ITEM_ID` | 없음 | smoke에서 한 사용자로 상세를 확인할 때 쓰는 단일 진열대 항목 ID |
 | `VIEW_SOURCE` | `SEARCH` | 향수 상세 유입 경로 |
