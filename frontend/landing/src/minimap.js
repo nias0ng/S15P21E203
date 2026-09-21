@@ -50,6 +50,8 @@ export function createMinimap({ onPick, onBlocked } = {}) {
 
   let map = null, mapKey = '', W = 0, H = 0, dpr = 1;
   let last = '', hover = null, visible = false;
+  // 정적 층이 구워질 때의 안개 상태 — `statSeen` 이 달라질 때만 다시 굽는다 (update 의 머리말)
+  let statFogN = -1, statSeen = -1;
   let boat = { x: 0, z: 0, head: 0 }, target = null, sight = 0;
   let PAD = 8;   // 캔버스 안쪽 여백 (CSS px)
   const LABEL_R = 16;   // 해역 이름을 '눌렀다' 로 볼 반경 (CSS px)
@@ -97,6 +99,34 @@ export function createMinimap({ onPick, onBlocked } = {}) {
     const h = hex.replace('#', '');
     const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
     return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+  };
+  /*
+   * ⭐⭐ **미니맵의 향조 색은 거의 무채색이다** (2026-09-21 사용자 : *"각 향조마다 색상이 밝게 표현되어
+   *   있는 부분을 다 아주 약간 무채색에 가깝게 표현해야함"* — 개인화 추천이 이 자리를 쓴다).
+   *   채도만 빼고 **명도는 남긴다** (chart.js 의 `desat` 과 같은 식 · 불변식 2 의 규율로 두 곳이 같은 계산).
+   *   ⚠ 부표 색이 **일부러 등휘도**라(불변식 21 : 선형 휘도 0.33~0.45) 채도를 전부 빼면 아홉이 **한 회색**이
+   *     된다 (불변식 29-2 가 같은 함정을 적어 뒀다). 그래서 1 이 아니라 0.78 — *"아주 약간"* 남긴다.
+   *   ⚠ 해도(`chart.js`)의 향 영역은 따로다 (`TERR_DESAT` 0.18) — 거기는 면이라 색이 더 필요하다.
+   */
+  const MINI_DESAT = 0.78;
+  /*
+   * ⭐ **탐색한 곳은 색이 조금 돌아온다** (2026-09-21 사용자 : *"지역을 탐색했을때는 채도를 조금 올려줄
+   *   수 있나? 무채색을 빼고? 너무 채도를 올리면 그 영역이 튀어나올 수 도있으니 색상만 좀 보정"*).
+   *   해도가 이미 쓰는 규율과 **같은 말**이다 — 불변식 29-2 : *"지나온 바다에는 색이 한 겹 더 얹힌다 —
+   *   탐색하면 색이 돌아온다"*. 미니맵에만 없던 것을 맞춘 것이다.
+   *   ⚠ 제 색(0)으로 돌려주지 않는다 — 그러면 탐색한 해역이 **튀어나온다** (사용자가 먼저 짚었다).
+   *     0.78 → 0.58 이라 채도가 약 **1.8배**만 오른다 (CITRUS 0.11 → 0.19).
+   */
+  const MINI_DESAT_SEEN = 0.58;
+  // 해역 이름 호버의 계열 강조 — 0 이면 안 그린다 (아래 `MINI_FAM_GLOW` 머리말)
+  const MINI_FAM_GLOW = 0;
+  const desat = (hex, k) => {
+    const h = (hex || '').trim();
+    if (h[0] !== '#' || h.length !== 7) return h;
+    const r = parseInt(h.slice(1, 3), 16), g = parseInt(h.slice(3, 5), 16), b = parseInt(h.slice(5, 7), 16);
+    const y = 0.299 * r + 0.587 * g + 0.114 * b;
+    const m = (v) => Math.round(v + (y - v) * k).toString(16).padStart(2, '0');
+    return '#' + m(r) + m(g) + m(b);
   };
 
   // ── 안개 격자 ─────────────────────────────────────────────
@@ -152,6 +182,13 @@ export function createMinimap({ onPick, onBlocked } = {}) {
     }
     if (changed) { fog.dirty = true; fog.unsaved = true; }
     return changed;
+  }
+  // 그 자리가 밝혀진 칸인가 — `reveal` 의 칸 계산과 **같은 식**이어야 한다 (두 곳에 적으면 갈라진다)
+  function seenAt(x, z) {
+    if (!fog.bits) return false;
+    const i = Math.floor((x - fog.x0) / FOG_CELL), j = Math.floor((z - fog.z0) / FOG_CELL);
+    if (i < 0 || j < 0 || i >= fog.cols || j >= fog.rows) return false;
+    return !!fog.bits[j * fog.cols + i];
   }
   function drawFog() {
     fog.dirty = false;
@@ -288,7 +325,9 @@ export function createMinimap({ onPick, onBlocked } = {}) {
     for (const p of map.points) {
       const [x, y] = toC(p.x, p.z);
       if (halo) { sctx.beginPath(); sctx.arc(x, y, 2.2, 0, Math.PI * 2); sctx.fillStyle = rgba(PAL.surface, 0.55); sctx.fill(); }
-      sctx.fillStyle = p.fam.color;
+      // ⚠ 제 색이 아니라 **채도를 뺀 색**이다 (MINI_DESAT 머리말) — 밝은 향조 색은 개인화 추천 몫으로 비워 둔다.
+      //   ⭐ 탐색한 칸 위의 점만 채도를 조금 돌려받는다 (MINI_DESAT_SEEN)
+      sctx.fillStyle = desat(p.fam.color, halo && seenAt(p.x, p.z) ? MINI_DESAT_SEEN : MINI_DESAT);
       sctx.beginPath(); sctx.arc(x, y, halo ? 1.6 : 1.7, 0, Math.PI * 2); sctx.fill();
     }
     // 해역 이름. ⚠ 흰 테두리를 먼저 그어 점 위에서도 읽히게 한다 — 안개 위에서도 같은 이유로 읽힌다
@@ -375,14 +414,16 @@ export function createMinimap({ onPick, onBlocked } = {}) {
       ctx.beginPath(); ctx.arc(0, 0, rx, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
-    // ⭐⭐ 해역 이름에 마우스를 올리면 **그 계열이 빛난다** (2026-09-20 사용자 지시 :
-    //   *"간단한 밑줄이 아니라 플로러 계열의 색상들이 빛나는 효과 강조되는 효과"*).
-    //   예전의 밑줄 한 줄은 '무엇을 가리키는지' 만 말하고 **그 향조가 바다 어디에 흩어져 있는지**를 못 보여 줬다.
-    //   그래서 ① 나머지를 한 겹 죽이고 ② 그 향조의 점만 제 색으로 크게 · 번지게 다시 그리고 ③ 이름도 그 색으로 다시 쓴다.
-    //   ⚠ 점 · 이름은 정적 층에 구워져 있으므로 **여기서 다시 그린다** — 정적 층을 호버마다 다시 굽지 않는다.
-    //   ⚠ 죽이는 겹은 안개색(`PAL.ink`)이다. 판 바탕색으로 덮으면 안개가 걷힌 것처럼 보여 탐색 상태가 거짓말을 한다.
-    //   ⚠ 숨을 쉰다 — `glowPulse` 가 0.75~1 사이를 오간다 (시계는 update 의 키가 민다).
-    if (hover && hover.label && map) {
+    /*
+     * ⛔⛔ **해역 이름 호버의 '계열이 빛나는' 강조는 껐다** (2026-09-21 사용자 : *"메인페이지에서 작은
+     *   창에서의 마우스 올렸을때 향 영역 밝음은 없애도댐 여기에 개인화 추천 로직이 들어갈꺼라서"*).
+     *   2026-09-20 에 사용자 지시로 넣었던 것을(*"플로러 계열의 색상들이 빛나는 효과"*) **되돌린 것이다** —
+     *   취향이 바뀐 게 아니라 **이 자리를 개인화 추천이 쓸 것**이라 미리 비워 두는 결정이다.
+     *   ⚠ 밝기로 무언가를 말하는 장치를 여기 다시 넣기 전에 그 로직과 겹치는지 먼저 본다.
+     *   ⚠ 호버 자체는 살아 있다 (`hover` — 머리말 글귀 · 누르면 그 해역으로 간다). 그림만 안 그린다.
+     *   ⚠ 되살리려면 `MINI_FAM_GLOW` 를 1 로. 코드는 그대로 두었다 (값 단위로 2026-09-20 그림이다).
+     */
+    if (MINI_FAM_GLOW && hover && hover.label && map) {
       const l = hover.label;
       const fam = map.points.find(p => p.fam.key === l.key);
       const col = (fam && fam.fam.color) || PAL.accent;
@@ -505,6 +546,19 @@ export function createMinimap({ onPick, onBlocked } = {}) {
       boat = b; target = t; sight = g || 0;
       // ⭐ 안개 — 배 둘레를 밝힌다. ⚠ 안개를 꺼 둬도 **기록은 계속한다** — 켰을 때 그동안 지나온 곳이 보여야 한다
       if (reveal(b.x, b.z)) { if (!hover) idleHint(); }
+      /*
+       * ⭐ 점의 채도가 탐색을 따라가므로 **정적 층을 다시 구워야** 한다 (MINI_DESAT_SEEN 머리말).
+       * ⚠⚠ `fog.n` 이 바뀔 때마다 굽지 않는다 — 배가 나아가면 칸은 쉴 새 없이 켜지는데 그 대부분은
+       *   **향수가 없는 칸**이라 그림이 한 픽셀도 안 바뀐다. 200개의 탐색 여부를 세어 그 수가 달라질
+       *   때만 굽는다 (200번 조회는 프레임당 해도 공짜고, 굽기는 향수를 처음 지날 때만 돈다).
+       * ⚠ 안개가 꺼져 있으면(`halo` 가 false) 점 색이 탐색을 안 타므로 셀 필요도 없다.
+       */
+      if (fogOn() && fog.bits && fog.n !== statFogN) {
+        statFogN = fog.n;
+        let n = 0;
+        for (const p of map.points) if (seenAt(p.x, p.z)) n++;
+        if (n !== statSeen) { statSeen = n; drawStatic(); }
+      }
       fogSave(false);
       // ⚠ 값이 실제로 달라질 때만 그린다 — 배는 0.1 월드, 방향은 0.02 rad 단위로 본다
       // ⚠ 해역 이름에 마우스가 올라가 있는 동안만 **시계를 키에 넣는다** — 빛이 숨을 쉬려면 매 장 다시 그려야 한다.
