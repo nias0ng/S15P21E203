@@ -236,10 +236,10 @@ export function SignupForm() {
         잘못 들어온 사람이 되돌아갑니다. 돌아갈 경로도 같이 들고 갑니다(가입을
         하려다 말고 로그인으로 가는 사람이 있습니다).
 
-        자리는 가운데입니다. 로그인 쪽은 링크가 둘이라 양 끝으로 벌렸는데, 여기는
-        하나뿐이라 왼쪽에 붙여 두면 한쪽으로 쏠려 보입니다.
+        자리도 저쪽과 같은 왼쪽 끝입니다 — 두 화면을 오갈 때 링크가 같은 자리에
+        있어야 눈이 찾지 않습니다.
       */}
-      <div className="text-caption flex items-center justify-center">
+      <div className="text-caption flex items-center">
         <Link
           to={withReturnPath(ROUTES.LOGIN, returnTo)}
           className="text-ink-muted hover:text-ink"
