@@ -3,8 +3,9 @@
 -- 실행 (이 디렉터리에서):
 --     psql "$DATABASE_URL" -f load_review_seed.sql
 --
--- 스키마는 V6 까지 적용돼 있어야 합니다. 향 지도 적재(load_scent_map.sql)를 먼저 돌려
--- 향수가 들어 있어야 합니다. 이 스크립트는 향수를 만들지 않고 이미 있는 향수에 후기를 붙입니다.
+-- 스키마는 V18 까지 적용돼 있어야 합니다. 후기에 계절을 붙이는데 그 표를 V18 이 채웁니다.
+-- 향 지도 적재(load_scent_map.sql)를 먼저 돌려 향수가 들어 있어야 합니다. 이 스크립트는
+-- 향수를 만들지 않고 이미 있는 향수에 후기를 붙입니다.
 --
 -- 몇 번을 다시 돌려도 결과가 같습니다. 지난 실행이 넣은 후기와 사용자를 지운 뒤 다시 넣습니다.
 -- 전체가 한 트랜잭션이라 중간에 하나라도 어긋나면 아무것도 반영되지 않습니다.
@@ -201,7 +202,76 @@ JOIN seed_perfumes sp ON sp.slot = sr.slot
 JOIN users u ON u.email = format('seed%s@seed.hyanghae.test', lpad(sr.seq::text, 2, '0'));
 
 -- ---------------------------------------------------------------------------
--- 6. 적재 확인.
+-- 6. 후기가 고른 계절.
+--
+-- 후기 작성 API 는 계절을 1개 이상 4개 이하로 받습니다(ReviewCreateRequest 의 @NotEmpty 와
+-- @Size(max = 4)). 계절 없는 후기는 화면으로 만들 수 없는 모양이라, 시드가 그런 후기를 넣으면
+-- 목록·상세를 수동으로 볼 때 실제와 다른 화면을 보게 됩니다.
+--
+-- 번호가 아니라 code 로 잇습니다. season_id 는 IDENTITY 라 환경마다 다른 값이 붙습니다.
+--
+-- 배정은 후기 본문에 맞춥니다. "봄에 잘 맞습니다" 라고 써 놓고 겨울을 고른 후기가 있으면
+-- 요약 결과를 눈으로 검토할 때 본문과 계절 중 어느 쪽이 틀린 것인지 알 수 없습니다.
+-- 계절을 언급하지 않는 후기는 향 계열에 어울리는 쪽으로 하나만 답니다.
+--
+-- 개수도 일부러 흩어 둡니다. 1개짜리가 대부분이고, 2개짜리가 몇 건, "사계절 무난" 이라고 쓴
+-- (2, 12) 하나가 상한인 4개입니다. 화면이 계절을 여러 개 그릴 때의 경계를 볼 수 있습니다.
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE
+    found INTEGER;
+BEGIN
+    SELECT count(*) INTO found FROM seasons WHERE is_active;
+    IF found <> 4 THEN
+        RAISE EXCEPTION '활성 계절이 4개여야 하는데 %개입니다. V18 마이그레이션이 적용됐는지 확인하세요.', found;
+    END IF;
+END $$;
+
+CREATE TEMP TABLE seed_review_seasons (
+    slot INTEGER NOT NULL,
+    seq  INTEGER NOT NULL,
+    code VARCHAR(20) NOT NULL,
+    PRIMARY KEY (slot, seq, code)
+) ON COMMIT DROP;
+
+INSERT INTO seed_review_seasons (slot, seq, code) VALUES
+    -- 1번 자리: 달콤하고 포근한 계열.
+    (1,  1, 'WINTER'),                                       -- "겨울에 니트 위에 뿌리면"
+    (1,  2, 'AUTUMN'), (1, 2, 'WINTER'),                      -- 포근한 계열, 계절 언급 없음
+    (1,  3, 'WINTER'),                                       -- "파우더 느낌", "따뜻한 인상"
+    (1,  4, 'SPRING'),                                       -- "봄에 잘 맞습니다"
+    (1,  5, 'AUTUMN'),                                       -- 배송 이야기, 향 언급 옅음
+    (1,  6, 'WINTER'),                                       -- 정보가 거의 없는 후기
+    -- 2번 자리: 시트러스에서 우디로.
+    (2,  1, 'SUMMER'),                                       -- "시원하게 시작해서 나무로"
+    (2,  2, 'SUMMER'),                                       -- "여름 출근용으로 씁니다"
+    (2,  3, 'SUMMER'),
+    (2,  4, 'AUTUMN'),                                       -- "생각보다 묵직합니다"
+    (2,  5, 'SPRING'), (2, 5, 'SUMMER'),                      -- "깔끔한 비누 향"
+    (2,  6, 'SPRING'), (2, 6, 'SUMMER'),                      -- "남녀 모두", 중성적
+    (2,  7, 'SUMMER'),                                       -- "레몬 향이 강합니다"
+    (2,  8, 'AUTUMN'),                                       -- "나무와 옅은 머스크"
+    (2,  9, 'SUMMER'),                                       -- "환기되는 느낌"
+    (2, 10, 'SUMMER'), (2, 10, 'AUTUMN'),                     -- "가을에도 괜찮습니다"
+    (2, 11, 'SUMMER'),
+    (2, 12, 'SPRING'), (2, 12, 'SUMMER'),
+    (2, 12, 'AUTUMN'), (2, 12, 'WINTER'),                     -- "사계절 무난합니다" — 상한 4개
+    -- 3번 자리: 묵직한 우디.
+    (3,  1, 'WINTER'),                                       -- "나무와 향신료가 섞인 무거운 향"
+    (3,  2, 'AUTUMN'), (3, 2, 'WINTER'),                      -- "밤에 어울립니다", 진한 향
+    (3,  3, 'WINTER'),
+    (3,  4, 'WINTER');                                       -- "가죽과 담배", 어른스러운 인상
+
+INSERT INTO perfume_review_seasons (review_id, season_id)
+SELECT r.id, s.season_id
+FROM seed_review_seasons srs
+JOIN seed_perfumes sp ON sp.slot = srs.slot
+JOIN users u ON u.email = format('seed%s@seed.hyanghae.test', lpad(srs.seq::text, 2, '0'))
+JOIN perfume_reviews r ON r.perfume_id = sp.perfume_id AND r.user_id = u.user_id
+JOIN seasons s ON s.code = srs.code;
+
+-- ---------------------------------------------------------------------------
+-- 7. 적재 확인.
 --
 -- 후기 수가 어긋나면 배치의 정책 경계(최소 5건)를 확인할 수 없으므로 여기서 멈춥니다.
 -- ---------------------------------------------------------------------------
@@ -230,6 +300,22 @@ BEGIN
     WHERE d.actual <> e.expected;
     IF mismatch > 0 THEN
         RAISE EXCEPTION '자리별 후기 수가 기대와 다릅니다(%자리). 대상 향수에 시드가 아닌 후기가 이미 있을 수 있습니다.', mismatch;
+    END IF;
+
+    -- 계절 연결은 조용히 실패하기 쉽습니다. code 가 하나라도 틀리면 그 후기만 0건이 되고
+    -- 나머지는 정상이라 눈에 띄지 않습니다. 후기마다 1~4개가 붙었는지 확인합니다.
+    SELECT count(*) INTO mismatch
+    FROM (
+        SELECT r.id, count(prs.season_id) AS seasons
+        FROM perfume_reviews r
+        JOIN users u ON u.user_id = r.user_id
+        LEFT JOIN perfume_review_seasons prs ON prs.review_id = r.id
+        WHERE u.email LIKE '%@seed.hyanghae.test'
+        GROUP BY r.id
+    ) d
+    WHERE d.seasons < 1 OR d.seasons > 4;
+    IF mismatch > 0 THEN
+        RAISE EXCEPTION '계절이 1~4개가 아닌 시드 후기가 %건입니다.', mismatch;
     END IF;
 END $$;
 
