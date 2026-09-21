@@ -31,7 +31,7 @@ type SearchFieldProps = Omit<
   className?: string
 }
 
-export type SearchFieldTone = 'archive' | 'scene'
+type SearchFieldTone = 'archive' | 'scene'
 
 /**
  * ⚠️ `archive` 는 **한 가지 색**입니다. 청동(`accent` #a68f5b) 위의 아이보리 화살표는

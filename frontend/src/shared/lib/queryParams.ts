@@ -8,7 +8,7 @@
  */
 
 /** 쪽 번호가 담기는 쿼리 이름 */
-export const PAGE_PARAM = 'page'
+const PAGE_PARAM = 'page'
 
 /**
  * 쿼리 일부만 바꾼 새 `URLSearchParams` 를 만듭니다.
