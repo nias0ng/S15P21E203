@@ -122,6 +122,75 @@ class NaturalLanguageRecommendationIntegrationTest {
                 .andExpect(jsonPath("$.perfumes[0].reasons[0].tier").doesNotExist());
     }
 
+    /**
+     * 향 조건 없이 고른 추천도 <b>이유가 붙어서</b> 나갑니다 (AI {@code S15P21E203-351}).
+     *
+     * <p>{@code matched} 가 비어 있어 예전 같으면 이유 없는 카드가 나갔습니다. 요구사항
+     * NLR-07 은 추천마다 이유를 요구하고 계약은 1~3개로 정했습니다.
+     *
+     * <p>최상위 {@code matchedData} 도 함께 나갑니다. <b>화면이 이것으로 "향으로 고른 것이
+     * 아니다" 를 압니다</b> — {@code status} 는 {@code OK_RELAXED} 라 조건을 넓힌 경우와
+     * 구분되지 않습니다. 내부 값인 {@code value}·{@code tier} 는 빠집니다.
+     */
+    @Test
+    void servesReasonsWhenPickedWithoutScentCondition() throws Exception {
+        given(nlrClient.recommend(anyString())).willReturn(contextOnlyResponse());
+
+        mockMvc.perform(request(QUERY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("OK_RELAXED"))
+                .andExpect(jsonPath("$.pickedWithoutScentCondition").value(true))
+                .andExpect(jsonPath("$.matchedData.length()").value(1))
+                .andExpect(jsonPath("$.matchedData[0].field").value("gender"))
+                .andExpect(jsonPath("$.matchedData[0].label").value("중성적인"))
+                .andExpect(jsonPath("$.matchedData[0].value").doesNotExist())
+                .andExpect(jsonPath("$.matchedData[0].tier").doesNotExist())
+                .andExpect(jsonPath("$.perfumes[0].reasons.length()").value(1))
+                .andExpect(jsonPath("$.perfumes[0].reasons[0].phrase").doesNotExist())
+                .andExpect(jsonPath("$.perfumes[0].reasons[0].evidence").value("중성적인"));
+    }
+
+    /**
+     * 향 근거가 있으면 향이 아닌 근거는 <b>최상위로만</b> 나갑니다.
+     *
+     * <p>⚠ <b>노트를 브리지로 푼 accord 는 {@code from} 이 {@code null} 입니다</b>(AI 실측).
+     * 성별·낮밤도 {@code from} 이 없어, 둘을 한 목록에 넣으면 같은 줄로 합쳐져
+     * <i>"floral · rose · 밤에 어울리는"</i> 처럼 영어 accord 와 화면용 한국어가 섞입니다.
+     * 그래서 {@code reasons} 에는 향 근거만 넣고 나머지는 {@code matchedData} 로 보냅니다.
+     *
+     * <p>화면은 {@code pickedWithoutScentCondition} 으로 두 경우를 가릅니다. 여기서는 향으로
+     * 골랐으므로 {@code false} 입니다.
+     */
+    @Test
+    void servesDataReasonsOnlyAtTopLevelWhenScentReasonsExist() throws Exception {
+        given(nlrClient.recommend(anyString())).willReturn(mixedReasonResponse());
+
+        mockMvc.perform(request(QUERY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("OK"))
+                .andExpect(jsonPath("$.pickedWithoutScentCondition").value(false))
+                .andExpect(jsonPath("$.matchedData.length()").value(2))
+                .andExpect(jsonPath("$.matchedData[0].field").value("note"))
+                .andExpect(jsonPath("$.matchedData[0].label").value("장미"))
+                .andExpect(jsonPath("$.matchedData[1].field").value("daypart"))
+                .andExpect(jsonPath("$.matchedData[1].label").value("밤에 어울리는"))
+                .andExpect(jsonPath("$.perfumes[0].reasons.length()").value(1))
+                .andExpect(jsonPath("$.perfumes[0].reasons[0].phrase").doesNotExist())
+                .andExpect(jsonPath("$.perfumes[0].reasons[0].evidence").value("floral · rose"));
+    }
+
+    /** 조건을 안 걸었으면 {@code matchedData} 는 {@code null} 이 아니라 빈 배열입니다. */
+    @Test
+    void servesEmptyMatchedDataWhenNoDataCondition() throws Exception {
+        given(nlrClient.recommend(anyString())).willReturn(aiResponse("OK",
+                result(73368L, matched("soapy", "빨래"))));
+
+        mockMvc.perform(request(QUERY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.matchedData").isArray())
+                .andExpect(jsonPath("$.matchedData.length()").value(0));
+    }
+
     /** 브랜드가 없는 향수도 나갑니다. {@code brand} 만 {@code null} 입니다. */
     @Test
     void servesPerfumeWithoutBrand() throws Exception {
@@ -252,7 +321,42 @@ class NaturalLanguageRecommendationIntegrationTest {
     private static NlrRecommendResponse aiResponse(
             String status, NlrRecommendResponse.Result... results) {
         return new NlrRecommendResponse(
-                status, QUERY, null, null, null, List.of(results), null, null);
+                status, QUERY, null, null, null, List.of(), List.of(results), null, null);
+    }
+
+    /**
+     * 향 근거와 향이 아닌 근거가 함께 있는 응답입니다. 실사용에서 가장 흔한 모양입니다.
+     *
+     * <p><b>{@code matched[].from} 이 {@code null} 입니다.</b> {@code 장미} 를 노트 브리지가
+     * {@code floral}·{@code rose} 로 풀 때 AI 는 어느 글자에서 왔는지를 안 채웁니다 —
+     * 사전이 직접 잡은 {@code 빨래} 와 다른 점이고, 둘을 한 목록에 섞으면 깨지는 이유입니다.
+     */
+    private static NlrRecommendResponse mixedReasonResponse() {
+        return new NlrRecommendResponse(
+                "OK", QUERY, null, null,
+                new NlrRecommendResponse.Conditions(
+                        List.of("floral", "rose"), List.of(), List.of(), "lexicon_only"),
+                List.of(new NlrRecommendResponse.MatchedData(
+                                "note", "rose", "장미", "장미", "DATA"),
+                        new NlrRecommendResponse.MatchedData(
+                                "daypart", "night", "밤에 어울리는", null, "DATA")),
+                List.of(new NlrRecommendResponse.Result(73368L, List.of(
+                        new NlrRecommendResponse.Matched("floral", null),
+                        new NlrRecommendResponse.Matched("rose", null)))),
+                List.of(),
+                new NlrRecommendResponse.Diagnostics("AND", 618, 1, List.of(), null));
+    }
+
+    /** 향 조건 없이 성별로만 고른 응답입니다. {@code matched} 가 비고 {@code matchedData} 만 찹니다. */
+    private static NlrRecommendResponse contextOnlyResponse() {
+        return new NlrRecommendResponse(
+                "OK_RELAXED", QUERY, null, null,
+                new NlrRecommendResponse.Conditions(List.of(), List.of(), List.of(), "lexicon_only"),
+                List.of(new NlrRecommendResponse.MatchedData(
+                        "gender", "unisex", "중성적인", null, "DATA")),
+                List.of(new NlrRecommendResponse.Result(73368L, List.of())),
+                List.of(),
+                new NlrRecommendResponse.Diagnostics("CONTEXT_ONLY", 21341, 21341, List.of(), null));
     }
 
     private static NlrRecommendResponse.Result result(

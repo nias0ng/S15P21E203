@@ -142,6 +142,53 @@ class NlrClientTest {
     }
 
     /**
+     * 향이 아닌 근거 {@code matchedData} 를 JSON 이름 그대로 읽습니다.
+     *
+     * <p><b>{@code results} 안이 아니라 최상위에 옵니다.</b> 추천 다섯 개에 똑같이 걸린
+     * 조건이라 향수마다 반복하지 않습니다.
+     */
+    @Test
+    void readsMatchedDataFromTheTopLevel() {
+        responseBody = okResponse();
+
+        NlrRecommendResponse response = client().recommend(QUERY);
+
+        assertThat(response.matchedData())
+                .extracting(NlrRecommendResponse.MatchedData::field,
+                        NlrRecommendResponse.MatchedData::value,
+                        NlrRecommendResponse.MatchedData::label,
+                        NlrRecommendResponse.MatchedData::from,
+                        NlrRecommendResponse.MatchedData::tier)
+                .containsExactly(
+                        org.assertj.core.api.Assertions.tuple(
+                                "gender", "unisex", "중성적인", null, "DATA"),
+                        org.assertj.core.api.Assertions.tuple(
+                                "note", "mimosa", "미모사", "미모사", "DATA"));
+    }
+
+    /**
+     * 향 조건이 없어 고른 응답을 읽습니다 — {@code stage} 가 {@code CONTEXT_ONLY} 입니다.
+     *
+     * <p><b>{@code matched} 가 비고 {@code matchedData} 만 찹니다.</b> 향 조건이 하나도
+     * 없으므로 향으로 댈 근거가 없습니다. {@code status} 는 {@code OK_RELAXED} 라
+     * 우리가 아는 네 값 그대로입니다.
+     */
+    @Test
+    void readsContextOnlyResponse() {
+        responseBody = contextOnlyResponse();
+
+        NlrRecommendResponse response = client().recommend(QUERY);
+
+        assertThat(response.status()).isEqualTo("OK_RELAXED");
+        assertThat(response.diagnostics().stage()).isEqualTo("CONTEXT_ONLY");
+        assertThat(response.conditions().core()).isEmpty();
+        assertThat(response.results().getFirst().matched()).isEmpty();
+        assertThat(response.matchedData())
+                .extracting(NlrRecommendResponse.MatchedData::label)
+                .containsExactly("중성적인");
+    }
+
+    /**
      * {@code llmAccords} 가 빈 배열이면 빈 목록으로 읽습니다. <b>{@code null} 이 아닙니다.</b>
      *
      * <p>빈 배열은 LLM 이 "향이 아니다" 라고 답한 것이고 {@code null} 은 묻지 않은 것입니다.
@@ -273,6 +320,12 @@ class NlrClientTest {
                     "core": ["fresh", "soapy"], "avoid": [],
                     "matchedExpressions": ["빨래"], "source": "lexicon_only"
                   },
+                  "matchedData": [
+                    {"field": "gender", "value": "unisex", "label": "중성적인",
+                     "from": null, "tier": "DATA"},
+                    {"field": "note", "value": "mimosa", "label": "미모사",
+                     "from": "미모사", "tier": "DATA"}
+                  ],
                   "results": [
                     {
                       "fragranticaId": 73368, "name": "Laundry",
@@ -306,6 +359,43 @@ class NlrClientTest {
                   "diagnostics": {
                     "stage": "AND", "candidateCount": 518, "tieAtLast": 1,
                     "relaxed": [], "unmatchedHint": null
+                  }
+                }
+                """.formatted(QUERY);
+    }
+
+    /**
+     * 향 조건 없이 성별로만 고른 응답입니다 (AI {@code S15P21E203-351}).
+     *
+     * <p>계약서의 {@code CONTEXT_ONLY} 예시를 그대로 씁니다. {@code core} 와 {@code matched}
+     * 가 비어 있는 것이 이 경로의 특징입니다.
+     */
+    private String contextOnlyResponse() {
+        return """
+                {
+                  "status": "OK_RELAXED",
+                  "query": "%s",
+                  "lexiconVersion": "v1_15",
+                  "promptSha256": "4f0a368d98b41338",
+                  "conditions": {
+                    "core": [], "avoid": [],
+                    "matchedExpressions": [], "source": "lexicon_only"
+                  },
+                  "matchedData": [
+                    {"field": "gender", "value": "unisex", "label": "중성적인",
+                     "from": null, "tier": "DATA"}
+                  ],
+                  "results": [
+                    {"fragranticaId": 73368, "name": "Black Orchid",
+                     "brand": "Tom Ford", "people": 31742, "rating": 3.9,
+                     "score": 0, "matched": []}
+                  ],
+                  "unmatched": [],
+                  "diagnostics": {
+                    "stage": "CONTEXT_ONLY", "candidateCount": 21341,
+                    "tieAtLast": 21341,
+                    "relaxed": ["향 조건이 없어 성별·계절·낮밤·노트로만 골랐다"],
+                    "unmatchedHint": null
                   }
                 }
                 """.formatted(QUERY);
