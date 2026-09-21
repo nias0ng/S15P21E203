@@ -7,13 +7,11 @@ type AuthCardProps = {
   /** 제목 아래 설명 한 줄 */
   description?: string
   children: React.ReactNode
-  /** 카드 아래 회색 주석 — 팀 확정이 필요한 항목을 화면에 남겨둡니다 */
-  notes?: string[]
   className?: string
 }
 
 /**
- * 인증 화면 공통 카드 (와이어프레임 A28 · A31 · A32)
+ * 인증 화면 공통 카드 (와이어프레임 A28 · A31)
  * 와이어프레임 규격: 폭 340px, 1px 테두리, 내부 여백 20px, 요소 간격 12px.
  */
 export function AuthCard({
@@ -21,23 +19,19 @@ export function AuthCard({
   eyebrow,
   description,
   children,
-  notes,
   className,
 }: AuthCardProps) {
   return (
-    <div className={cn('w-full max-w-85 space-y-1.25', className)}>
-      <div className="border-line bg-surface-card space-y-2.5 border p-5">
-        {eyebrow && <p className="text-ink-muted text-[10.5px]">{eyebrow}</p>}
-        <h1 className="text-ink text-[17px] font-bold">{title}</h1>
-        {description && <p className="text-ink text-xs">{description}</p>}
-        {children}
-      </div>
-
-      {notes?.map((note) => (
-        <p key={note} className="text-ink-muted text-[10.5px] leading-relaxed">
-          {note}
-        </p>
-      ))}
+    <div
+      className={cn(
+        'border-line bg-surface-card w-full max-w-85 space-y-2.5 border p-5',
+        className,
+      )}
+    >
+      {eyebrow && <p className="text-ink-muted text-[10.5px]">{eyebrow}</p>}
+      <h1 className="text-ink text-[17px] font-bold">{title}</h1>
+      {description && <p className="text-ink text-xs">{description}</p>}
+      {children}
     </div>
   )
 }
