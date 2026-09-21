@@ -74,7 +74,7 @@ function RecommendBody({ query }: { query: string }) {
     >
       <div ref={bodyRef}>
         {/* 무엇을 물었는지 결과 위에 남깁니다 — 모달이라 검색창이 뒤에 가려 안 보입니다 */}
-        <p className="text-ink-muted mb-3.75 text-[11px]">
+        <p className="text-ink-muted text-caption mb-3.75">
           입력한 말 ·{' '}
           <strong className="text-ink font-medium">
             &lsquo;{query}&rsquo;
@@ -92,7 +92,7 @@ function RecommendBody({ query }: { query: string }) {
               밝힙니다 — 안 밝히면 "차분한 향" 하나로 나온 다섯 개를 정확한 추천으로 읽습니다
             */}
             {result.data.status === 'OK_RELAXED' && perfumes.length > 0 && (
-              <p className="border-line text-ink-muted mb-3.75 border-l-2 pl-2.5 text-[11px] leading-relaxed">
+              <p className="border-line text-ink-muted text-caption mb-3.75 border-l-2 pl-2.5 leading-relaxed">
                 조건이 넓어 비슷한 향까지 함께 골랐습니다. 상황이나 계절을
                 덧붙이면 더 좁혀 드릴 수 있습니다.
               </p>

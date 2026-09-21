@@ -172,7 +172,7 @@ export default function PerfumeListPage() {
 
       {brand && (
         <div className="flex items-center gap-2.5">
-          <span className="border-line text-ink flex items-center gap-2.5 border px-2.5 py-1.25 text-[11px]">
+          <span className="border-line text-ink text-caption flex items-center gap-2.5 border px-2.5 py-1.25">
             브랜드: {brand}
             <button
               type="button"
