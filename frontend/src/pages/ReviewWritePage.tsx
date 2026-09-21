@@ -430,7 +430,6 @@ export default function ReviewWritePage() {
           <ChipToggle
             label="이 향이 잘 어울리는 계절"
             multiple
-            tone="warm"
             options={SEASONS}
             value={seasons}
             onChange={(next) => setSeasonsDraft(next)}

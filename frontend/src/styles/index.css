@@ -99,6 +99,14 @@
   ); /* 테두리 · 아이콘. 글자로는 쓰지 않습니다 (2.90:1) */
   --color-accent-deep: var(--color-bronze-deep); /* 버튼 바탕 · 포커스 링 */
 
+  /*
+   * 고른 것의 바탕 (칩 · 알약). 밝은 화면에서는 먹색이고, **유리판 위에서는
+   * `scent-display.css` 가 흰색으로 덮습니다** — 판 위의 `ink` 는 상아색(#f2ede4)
+   * 이라 "골랐다" 가 베이지로 보입니다. 글자는 `text-surface` 가 두 방에서 알아서
+   * 뒤집힙니다.
+   */
+  --color-selected: var(--color-ink);
+
   /* 상태 — 색만으로 뜻을 구분하지 말고 글자도 함께 답니다 */
   --color-success: var(--color-sage-deep);
   --color-danger: var(--color-rust);
