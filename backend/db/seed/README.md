@@ -1,274 +1,211 @@
 # 데이터 적재
 
-## 로컬 화면 테스트 데이터
+현재 서비스가 사용하는 기준 데이터와 화면 확인용 seed의 실행 방법을 설명합니다.
+모든 명령은 별도 안내가 없으면 저장소 루트 또는 `backend/db/seed`에서 실행합니다.
 
-기존 향수 데이터를 유지하면서 이미지가 있는 156개 향수 중심으로 사용자 활동을 채웁니다.
-서버와 분리된 도구이며 운영 서버 JAR에는 포함되지 않습니다.
+## 적용 범위
 
-### 실행 명령
+| 데이터 | 규모 | 개발 | 운영 | 적재 도구 |
+| --- | ---: | :---: | :---: | --- |
+| 향 지도 | 향수 200개 | O | O | `load_scent_map.sql` |
+| 향수 카탈로그 | 향수 129,161개 | O | O | `load_perfume_catalog.sh` |
+| 브랜드 로고 | 로고 5,800개 | O | O | `load_perfume_catalog.sh` |
+| 향수 카탈로그 보충 | 향수 152개 | O | O | `load_perfume_catalog_supplement.sh` |
+| 향수 gender 보강 | 향수 129,113개 | O | O | `load_perfume_genders.sh` |
+| 노트 메타데이터 | 노트 246개 | O | O | `load_notes.sh` |
+| 향수 이미지 | 일반 129,154개·종이 질감 156개 | O | O | `load_perfume_images.sh` |
+| 향수-노트 연결 | 906,133건 | O | O | `load_perfume_notes.sh` |
+| 로컬 화면 테스트 데이터 | 사용자 활동 데이터 | O | X | `seed-local` |
+| 운영 발표용 데모 데이터 | 발표 계정과 활동 데이터 | 선택 | 발표 환경만 | `run_demo_seed.sh` |
+| 후기 테스트 seed | 후기 22건 | O | X | `load_review_seed.sql` |
 
-먼저 프로젝트 루트에서 기존 환경과 기준 데이터를 준비합니다. 이미 준비했다면 생략합니다.
+기준 데이터는 서비스 기능이 직접 사용하므로 개발과 운영 DB에 모두 적용합니다. 로컬 화면 테스트
+데이터와 후기 테스트 seed는 운영 DB에서 실행하지 않습니다.
+
+## Seed 분류와 팀 공통 원칙
+
+- Flyway는 테이블 구조와 계절처럼 모든 환경에 항상 필요한 소규모 고정값을 관리합니다.
+- 기준 Seed는 외부 원본에서 받은 대용량 데이터를 관리하며 개발·운영에 같은 순서로 적용합니다.
+- 보충 Seed는 주 원본의 제외 조건 때문에 빠졌지만 서비스 관계 데이터가 존재하는 항목만 별도로
+  복원합니다. 주 카탈로그에 임의로 합치지 않고 제외 이유와 한계를 함께 기록합니다.
+- 로컬·데모·후기 테스트 Seed는 사용자 활동을 만들기 위한 데이터이므로 운영에 적용하지 않습니다.
+- 환경마다 달라지는 `perfume_id`를 파일에 고정하지 않고 `fragrantica_id`로 향수를 연결합니다.
+- 모든 기준·보충 Seed는 재실행 가능해야 하며, 운영 적용 전 행 수와 외래키 연결을 검증합니다.
+
+## 기준 데이터 적재 순서
+
+1. 애플리케이션을 실행해 현재 Flyway 마이그레이션을 모두 적용합니다.
+2. 향 지도 데이터를 적재합니다.
+3. 향수 카탈로그를 적재합니다.
+4. 향수 카탈로그 보충 데이터를 적재합니다.
+5. 향수 gender 보강 데이터를 적재합니다.
+6. 노트 메타데이터를 적재합니다.
+7. 향수 이미지 메타데이터를 적재합니다.
+8. 향수-노트 연결을 적재합니다.
+
+각 적재 스크립트는 재실행할 수 있고 자체 트랜잭션으로 처리됩니다. 환경별로 달라지는
+`perfume_id` 대신 `fragrantica_id`로 향수를 연결합니다.
+
+### 로컬 기준 데이터 빠른 실행
+
+프로젝트 루트에서 다음 명령을 실행하면 향 지도·카탈로그·카탈로그 보충·gender·노트·향수 이미지·
+향수-노트 연결을 순서대로 적재합니다.
 
 ```powershell
 docker compose -f compose.manual-test.yaml up -d --build --wait
 docker compose -f compose.manual-test.yaml run --rm seed
 ```
 
-비밀번호를 숨겨서 입력한 뒤 활동 데이터를 넣습니다. 비밀번호는 8~64자, UTF-8 기준 72바이트
-이하이며 저장소에 기록하지 않습니다.
+## 운영 적용 전 확인
 
-```powershell
-$env:SEED_LOGIN_PASSWORD = [System.Net.NetworkCredential]::new('', (Read-Host '테스트 계정 비밀번호' -AsSecureString)).Password
-docker compose -f compose.manual-test.yaml run --build --rm seed-local
-```
+- S3 객체를 먼저 업로드하고 CloudFront URL이 열리는지 확인합니다.
+- DB 비밀번호는 명령행에 직접 쓰지 않고 환경변수로 전달합니다.
+- 후기 테스트 seed와 `seed-local`은 운영 DB에서 실행하지 않습니다.
+- `fragrantica_id`가 없는 기존 향수는 카탈로그 적재 전에 확인합니다.
 
-일반 실행은 기존 행을 수정하지 않고 빠진 seed 행을 복원합니다. 보유/위시가 3명 미만이면 아직
-그 향수를 담지 않은 집계용 사용자로 보충합니다. 충분한 상태에서는 반복해도 행이 늘지 않습니다.
+  ```sql
+  SELECT perfume_id, name FROM perfumes WHERE fragrantica_id IS NULL;
+  ```
 
-테스트하며 수정한 seed 데이터를 처음 값으로 되돌릴 때만 아래 명령을 사용합니다.
-
-```powershell
-docker compose -f compose.manual-test.yaml run --rm -e SEED_MODE=reset seed-local
-```
-
-예: seed가 만든 향수 A를 보유에서 위시로 바꿨다면, 초기화 후 다시 보유가 됩니다.
-전체 DB 삭제가 아닙니다. 기존 seed 행은 같은 번호로 갱신하고 삭제된 행은 복원합니다.
-사람이 새로 만든 글·댓글·컬렉션과 연결은 삭제하지 않습니다. 수동 데이터가 남으므로 전체 DB가
-완전히 처음과 같아지는 것은 아닙니다. 기존 후기 seed는 초기화 대상이 아닙니다.
-
-복원할 컬렉션 이름이나 대표 향수가 수동 데이터와 충돌하면 **활동 적재 전체를 취소**합니다.
-충돌을 해결한 뒤 다시 실행하세요. 수동 데이터를 강제로 삭제하거나 seed 소유로 바꾸지 않습니다.
-DB 전체를 지우는 `down -v`는 이 명령과 다르며 수동 데이터도 삭제합니다.
-
-### 구성과 계정
-
-| 항목 | 구성 |
-| --- | --- |
-| 향수·브랜드 | 전체 카탈로그, `perfume_ko.csv` 향수 한국어 이름, `brands_ko.csv` 브랜드 이름·로고 유지 |
-| 보유·위시 | 대상마다 각각 최소 3명, 향수별 기록 수 차이와 동점 포함 |
-| 조회 | 대상마다 1~30건 |
-| 국내 선정 | 기존 200개 순위 유지 |
-| 신규 테스트 사용자 | 43명 (`demo01`~`demo43`) |
-| 활동 많은 사용자 | `demo41@demo.hyanghae.test`: 진열대 156개, 컬렉션 30개, 메모 52개 |
-| 다른 사용자 | `demo42@demo.hyanghae.test`: 진열대 8개, 잡담 작성자 |
-| 빈 사용자 | `demo43@demo.hyanghae.test`: 최초 생성 시 활동 없음 |
-| 후기 | 보호 대상 외 향수마다 0~7건, 계절·좋아요 포함 |
-| 커뮤니티 | 카테고리별 30개씩 총 90개, 컬렉션 공유·댓글·좋아요 포함 |
-
-계정 비밀번호는 **처음 생성할 때 입력한 값**입니다. 일반 실행 시 다른 값을 입력해도 기존
-비밀번호는 유지합니다. 초기화 시에는 장부에 기록된 최초 해시로 돌아갑니다.
-
-기존 `load_review_seed.sql`은 해당 사용자가 없을 때 한 번 실행합니다. 이미 있으면 재실행하지
-않습니다. 기존 향수 3개의 후기 **6·12·4건**을 보존하며 새 후기를 추가하지 않습니다. 새 사용자
-도메인도 기존 `@seed.hyanghae.test`와 다릅니다. 기존 후기 수가 바뀌어 있으면 임의로 고치지 않고
-중단하므로 해당 시나리오부터 확인하세요. 외부 AI 호출이나 가짜 분석 결과 생성은 하지 않습니다.
-
-### 구현과 검증
-
-- 앱 스키마는 기존 Flyway를 사용합니다. 생성 행의 번호와 최초 값은 별도 `local_seed` 스키마에
-  기록하며 이 장부도 로컬 도구 전용 Flyway로 관리합니다. 운영 마이그레이션과 별개입니다.
-- 장부만 지우면 생성 데이터의 소유 관계를 잃습니다. `local_seed`를 따로 삭제하지 마세요.
-- 일반 실행은 사람이 수정한 seed 행도 유지합니다. 초기화는 그 수정 내용을 최초 값으로 되돌립니다.
-- 쓰기 작업은 실행 중 잠시 대기하며 읽기는 가능합니다. 실패 시 활동 데이터 변경은 함께 롤백됩니다.
-- `SEED_ENV=manual-test`이고 DB 이름이 `_test`로 끝날 때만 실행합니다.
-- 생성 시각은 2026-09-01을 기준으로 고정합니다. 현재 순위는 전체 기간 집계입니다.
-- 향수 선택에는 환경마다 달라지는 DB 번호 대신 CSV의 `fragrantica_id`를 사용합니다.
-- 도구는 이미지의 DB 연결과 URL 존재를 검증합니다. 실제 CDN 접근은 별도 확인이 필요합니다.
-
-백엔드를 직접 실행하는 경우에는 `backend`에서 다음 환경변수를 설정하고 Gradle로 실행합니다.
-DB 접속 값은 본인의 로컬 환경에 맞게 바꾸세요.
-
-```powershell
-$env:SEED_ENV = 'manual-test'
-$env:SEED_JDBC_URL = 'jdbc:postgresql://localhost:5432/hyanghae_test'
-$env:SEED_DB_USER = 'hyanghae'
-$env:SEED_DB_PASSWORD = [System.Net.NetworkCredential]::new('', (Read-Host '로컬 DB 비밀번호' -AsSecureString)).Password
-$env:SEED_LOGIN_PASSWORD = [System.Net.NetworkCredential]::new('', (Read-Host '테스트 계정 비밀번호' -AsSecureString)).Password
-$env:SEED_MODE = 'fill' # 초기화할 때만 reset
-.\gradlew.bat seedLocal
-```
-
-검증: `.\gradlew.bat test --tests com.hyanghae.seed.LocalSeedIntegrationTest` (Docker 필요).
-별도 Testcontainers DB를 사용하므로 개발 중인 DB는 변경하지 않습니다.
-
-## 기준 데이터와 기존 후기 seed
-
-- [향 지도 데이터](#향-지도-데이터-적재) — 향수 200개와 좌표·향 계열·닮은 향수·향 특성
-- [노트 메타데이터](#노트-메타데이터-적재) — 노트 246개의 한국어명·분류·이미지·인기 순위·설명
-- [향수 이미지](#향수-이미지-적재) — 향 지도 향수 156개의 일반·종이 질감 이미지
-- [향수 카탈로그](#향수-카탈로그-적재) — 향수 129,161개와 브랜드·향 특성. **운영에도 들어갑니다**
-- [향수-노트 연결](#향수-노트-연결-적재) — 향수와 노트를 잇는 905,542건. **운영에도 들어갑니다**
-- [후기 시드](#후기-시드-적재) — 후기 요약 배치를 수동으로 확인할 때 쓰는 후기
-
-여섯 가지의 성격이 다릅니다. 향 지도·노트 메타데이터·향수 이미지·향수 카탈로그·향수-노트
-연결은 **서비스가 실제로 쓰는 데이터**라 운영에도 들어가야 하고, 후기 시드는 **개발용 가짜
-데이터**라 운영에서 돌리면 안 됩니다.
-
-## 권장 실행 순서
-
-새 데이터베이스를 구성할 때는 다음 순서를 사용합니다. 각 스크립트는 재실행할 수 있지만, 이미
-적재된 대용량 향수 카탈로그를 배포할 때마다 실행할 필요는 없습니다.
-
-| 순서 | 작업 | 실행 또는 확인 | 선행 조건 |
-| ---: | --- | --- | --- |
-| 1 | DB 스키마 적용 | 애플리케이션 실행으로 Flyway `V16`까지 적용 | PostgreSQL 실행 |
-| 2 | 향 지도 데이터 | `load_scent_map.sql` | Flyway `V16` |
-| 3 | 향수 카탈로그 | `./load_perfume_catalog.sh` | Flyway `V16`; 향 지도와 어느 쪽을 먼저 실행해도 되지만 향 지도를 먼저 권장 |
-| 4 | 정적 이미지 업로드 | 노트 246개와 향수 312개를 S3에 업로드하고 CloudFront 접근 확인 | S3·CloudFront 구성 |
-| 5 | 노트 메타데이터 | `./load_notes.sh` | Flyway `V21`, 노트 이미지 업로드 |
-| 6 | 향수 이미지 | `./load_perfume_images.sh` | Flyway `V16`, 향 지도 데이터, 향수 이미지 업로드 |
-| 7 | 향수-노트 연결 | `./load_perfume_notes.sh` | **노트 메타데이터와 향수 카탈로그 둘 다** |
-
-노트 메타데이터는 향 지도나 향수 카탈로그에 의존하지 않지만, 깨진 이미지 URL을 먼저 DB에 넣지
-않도록 S3 업로드 확인 뒤 실행합니다. 향수-노트 연결은 **잇기만 하고 아무것도 만들지 않아** 노트와
-향수가 모두 들어온 뒤라야 합니다 — 빠뜨리면 노트별 향수 조회가 모든 노트에서 빈 목록을 돌려줍니다. 향수 이미지는 `fragrantica_id`와 향 지도 선정 순위를 함께
-검증하므로 반드시 향 지도 데이터 뒤에 실행합니다.
-
-후기 시드는 위 운영 순서에 포함하지 않습니다. 개발 환경에서 후기 요약 배치를 확인할 때만 향
-지도 데이터 적재 후 별도로 실행합니다.
+- 향수 카탈로그는 약 100만 개의 향 특성 행을 한 트랜잭션으로 갱신하므로 서비스가 한가할 때
+  실행합니다.
 
 # 향 지도 데이터 적재
 
-국내 대표 향수 200개의 향 지도 데이터입니다. 향수마다 지도 위 좌표가 있고, 어떤 향 계열에
-속하는지, 어떤 향수와 닮았는지, 어떤 향 특성을 갖는지가 붙어 있습니다.
-
-## 먼저 확인할 것
-
-이 문서의 명령은 **모두 이 디렉터리(`backend/db/seed`)에서** 실행합니다. `\copy`가 CSV를
-psql의 현재 디렉터리에서 찾기 때문입니다.
-
-적재 전에 아래 두 가지가 끝나 있어야 합니다. **둘 다 저장소 루트에서** 하는 일입니다.
-
-1. PostgreSQL 실행 — `docker compose -f compose.manual-test.yaml up -d postgres`
-   ([compose 파일은 저장소 루트에 있습니다](../../../compose.manual-test.yaml))
-2. 애플리케이션을 한 번 실행해 Flyway가 현재 스키마인 `V16`까지 적용
-
-절차 전체는 [backend/README.md](../../README.md)의 "향 지도 초기 데이터 적재"에 있습니다.
-
-## 실행
+국내 대표 향수 200개의 좌표·향 계열·닮은 향수·향 특성을 적재합니다.
 
 ```bash
 cd backend/db/seed
-
-docker cp . hyanghae-manual-test-postgres-1:/tmp/seed
-docker exec -w /tmp/seed hyanghae-manual-test-postgres-1 \
-  psql -U hyanghae -d hyanghae_test -f load_scent_map.sql
+psql "$DATABASE_URL" -f load_scent_map.sql
 ```
 
-컨테이너 안의 psql을 씁니다. 로컬에 psql이 설치돼 있지 않아도 되고, 접속 정보를 적을 필요도
-없습니다. `docker cp .` 는 이 디렉터리의 내용을 컨테이너로 복사하며, 여러 번 실행해도 덮어쓰기만
-합니다.
+정상 결과:
 
-로컬에 `psql`이 설치돼 있다면 이 한 줄로도 됩니다.
-
-```bash
-psql "postgresql://hyanghae:hyanghae_test@localhost:5432/hyanghae_test" -f load_scent_map.sql
-```
-
-몇 번을 다시 돌려도 결과가 같습니다. 전체가 한 트랜잭션이라 중간에 하나라도 어긋나면 아무것도
-반영되지 않습니다. 마지막에 적재된 행 수를 출력하니 아래와 같은지 확인하세요.
-
-```
+```text
  perfumes | map_points | scent_families | neighbors | perfume_accords | accords | regions_with_polygon
       200 |        200 |            303 |      2000 |            1598 |      60 |                    9
 ```
 
-## 파일
+관련 CSV는 UTF-8(BOM)이며 향수를 `fragrantica_id`로 지목합니다. 닮은 향수는 방향이 있고,
+향 계열 비중의 합은 1이 아닐 수 있습니다. `perfume_map_accords.csv`의 `strength`는 0~100이며
+적재 시 0~1 범위의 `weight`로 변환합니다.
 
-| 파일 | 행 | 내용 |
-| --- | ---: | --- |
-| `accords.csv` | 60 | 향 특성 이름 |
-| `scent_families.csv` | 9 | 향 계열의 영역(폴리곤)과 라벨 위치 |
-| `perfume_map_points.csv` | 200 | 향수 좌표와 국내 선정 순위 |
-| `perfume_map_families.csv` | 303 | 향수 ↔ 향 계열 (향수당 1~3개) |
-| `perfume_map_neighbors.csv` | 2000 | 닮은 향수 (향수당 10개) |
-| `perfume_map_accords.csv` | 1598 | 향수의 향 특성 (향수당 7~8개) |
+# 향수 카탈로그 적재
 
-모두 UTF-8(BOM) CSV이고 향수를 `fragrantica_id`로 지목합니다. 스크립트가 `perfumes`와
-조인해 `perfume_id`로 바꿔 넣습니다.
+향수 129,161개, 브랜드 7,793개와 향 특성 1,000,570건을 적재합니다. 향 지도 향수와 겹치는
+항목은 `fragrantica_id`로 갱신하고 나머지는 새로 생성합니다. `is_active`는 변경하지 않습니다.
 
-## 데이터를 다루기 전에 알아야 할 것
+```bash
+cd backend/db/seed
+./load_perfume_catalog.sh
+```
 
-적재를 실패시키거나 데이터를 조용히 버리게 만드는 것들입니다. 스키마(`V6`)와 스크립트가 이미
-반영하고 있지만, 조회 코드를 쓸 때도 같은 전제가 필요합니다.
+접속 대상은 환경변수로 지정할 수 있습니다.
 
-- **향수 하나가 향 계열 여러 개에 걸쳐 있습니다.** 200개 중 1개가 105, 2개가 87, 3개가 8입니다.
-  대표 계열은 따로 저장하지 않고 비중이 가장 큰 행으로 정합니다. 200개 전부 비중 1위가 동점이
-  아니고 CSV의 `primary_family_key`와 일치하는 것을 확인했고, 스크립트가 적재할 때마다 다시
-  확인합니다.
-- **계열 비중의 합은 1이 아닙니다.** 향수별로 0.2~1.0입니다. 기준 미달인 계열이 빠진 뒤
-  정규화하지 않았기 때문입니다. `1 - SUM(weight)`를 "기타 계열"로 읽으면 안 됩니다.
-- **계열 비중의 최솟값은 0.24가 아니라 0.2입니다.** 계열을 뽑는 기준은 0.24지만 비중이 가장 큰
-  계열은 기준에 못 미쳐도 반드시 넣습니다.
-- **계열 영역의 좌표는 0~1을 벗어납니다.** 향수 좌표(x 0~1, y 0~0.83056)와 좌표계가 달라
-  지도 바깥 여백까지 뻗어 있습니다(x -0.05~1.05, y -0.04565~0.88056). 0~1 제약은 향수 좌표에만
-  걸어야 합니다.
-- **닮은 향수는 방향이 있습니다.** 2000행 중 810행이 한쪽 방향뿐입니다. 순서 없는 쌍으로 접으면
-  그만큼 사라집니다.
-- **향 특성의 `strength`는 0~100이고 `perfume_accords.weight`는 0~1입니다.** 스크립트가
-  100으로 나눠 넣습니다.
+```bash
+DATABASE_URL="postgresql://..." ./load_perfume_catalog.sh
+DB_NAME=... DB_USER=... PG_CONTAINER=... ./load_perfume_catalog.sh
+```
 
-## 지도를 다시 만들면
+정상 기준:
 
-향수 200개의 좌표와 계열 영역이 전부 바뀝니다. 일부만 바뀌는 일이 없으므로, CSV 6개를 새것으로
-바꾸고 스크립트를 다시 돌리면 됩니다. 계열 9개의 구성이나 순서가 바뀐 경우에만 마이그레이션이
-추가로 필요합니다.
+```sql
+SELECT (SELECT count(*) FROM brands)          AS brands,          -- 7,793 이상
+       (SELECT count(*) FROM accords)         AS accords,         -- 92
+       (SELECT count(*) FROM perfumes)        AS perfumes,        -- 129,161 이상
+       (SELECT count(*) FROM perfume_accords) AS perfume_accords; -- 1,000,570
 
-## 아직 정하지 않은 것
+SELECT count(*) FILTER (WHERE NULLIF(btrim(gender), '') IS NULL) AS missing_gender,
+       count(*) FILTER (WHERE upper(btrim(gender)) = 'FEMALE') AS female,
+       count(*) FILTER (WHERE upper(btrim(gender)) = 'MALE') AS male,
+       count(*) FILTER (WHERE upper(btrim(gender)) = 'UNISEX') AS unisex
+FROM perfumes;
+-- gender 보강 후 missing_gender = 0
+```
 
-- **향수별 계절·시간대 투표** — 데이터는 있지만(200개 중 185개·181개) 담을 표가 없어 이번
-  CSV에서 뺐습니다. 쓰려면 표를 하나 더 만들어야 합니다.
-- **지도 배경**(땅·바다·해안선) — 향수별 데이터가 아니라 지도를 128×108 칸으로 나눈 격자라
-  DB에 넣지 않습니다. `scent_map_terrain.json`으로 따로 받아 정적 파일로 내려주기로 했는데
-  아직 전달받지 못했습니다.
+한국어 향수명은 `perfume_ko.csv`, 브랜드 한국어명과 로고는 `brands_ko.csv`를 기준으로 갱신합니다.
+
+## 향수 gender 보강
+
+`perfume_genders.csv.gz`는 `fragrantica_id`, 원래 향수명, 브랜드명, `gender`를 담은 보강 원본입니다.
+주 카탈로그의 향 지도 200개를 제외한 128,961개와 보충 카탈로그 152개를 합쳐 129,113개를
+포함합니다. `load_perfume_genders.sh`는 카탈로그와 보충 카탈로그를 먼저 적재한 뒤 실행해야 합니다.
+
+성별 값은 `FEMALE`, `MALE`, `UNISEX`로 정규화합니다. ID·이름·브랜드가 맞지 않거나 기존 값과
+충돌하면 아무 행도 커밋하지 않고 중단하며, 빈 `gender`만 채웁니다. 따라서 재실행해도 안전합니다.
+
+```bash
+cd backend/db/seed
+./load_perfume_genders.sh
+```
+
+## 브랜드 로고
+
+브랜드 로고는 S3의 `brands/{slug}.png`에 저장하고 CloudFront로 제공합니다. 로컬 원본 5,803개 중
+시드 URL로 사용하는 5,800개만 올립니다. `brand.png`, `kann.png`는 대응 브랜드가 없고,
+`louis-phillippe-monaco.png`는 `Louis`의 정식 매핑 파일인 `louis.png`와 내용이 완전히 같은
+중복 파일이므로 업로드와 시드에서 제외합니다. 실제 `Louis Philippe Monaco`는 철자가 다른
+`louis-philippe-monaco.png`를 사용합니다.
+
+```text
+S3 키: brands/chanel.png
+URL:    https://djpgc0m2v54q1.cloudfront.net/brands/chanel.png
+```
+
+로고 원본이 바뀌면 `generate_brand_logo_overrides.py`로 `brands_ko.csv`의 `logo_override`를 다시
+만듭니다. 파일명 충돌은 CSV 순서에 따라 기본 슬러그와 `-2` 슬러그로 나누며, 생성기는 기대 개수와
+미매칭 파일을 검증한 뒤에만 CSV를 교체합니다.
+
+```bash
+python generate_brand_logo_overrides.py /path/to/brand_logos
+```
+
+S3 업로드를 마친 뒤 향수 카탈로그 시드를 실행하면 기존 외부 로고 주소보다 CloudFront 주소가 우선
+반영됩니다. 확인 쿼리는 다음과 같습니다.
+
+```sql
+SELECT count(*) AS cloudfront_brand_logos
+FROM brands
+WHERE logo_url LIKE 'https://djpgc0m2v54q1.cloudfront.net/brands/%.png';
+```
+
+# 향수 카탈로그 보충 데이터 적재
+
+전체 Fragrantica 원본 131,930개 중 accord가 없는 2,769개는 자연어 추천용 주 카탈로그에서
+제외됐습니다. 그중 노트 연결이 존재하는 향수 152개를 검색·상세·노트 조회가 가능하도록 별도로
+적재합니다. ID·영문명·브랜드는 `perfume_notes.csv.gz`, 한국어명은 `perfume_ko.csv`에서
+대조한 결과를 `perfume_catalog_supplement.csv`에 고정했습니다.
+
+```bash
+cd backend/db/seed
+./load_perfume_catalog_supplement.sh
+```
+
+보충 데이터는 향수 152개와 필요한 신규 브랜드 5개를 생성합니다. 원본에 accord와 평가자 수가
+없어 `perfume_accords`는 만들지 않고 `fragrantica_rating_count`는 기본값 0을 사용하므로, 이
+향수들은 자연어 향 추천 대상이 아닙니다. 보충 향수의 원본 이미지는 모두 존재하지만 현재 이미지
+Seed에는 포함하지 않으며, S3 업로드와 URL 검증을 마친 뒤 별도 반영합니다. 다른 수동 데이터가
+없는 DB라면 주 카탈로그와 보충 데이터를 합쳐 향수는 129,313개가 됩니다.
+
+정상 결과:
+
+```text
+ supplemental_perfumes | referenced_brands | pending_note_links
+------------------------+-------------------+--------------------
+                    152 |               131 |                591
+```
 
 # 노트 메타데이터 적재
 
-가장 많이 언급된 노트 246개의 한국어 이름, 대표 어코드 분류, CloudFront 이미지 주소, 인기
-순위와 설명을 적재합니다. 서비스가 실제로 쓰는 마스터 데이터이므로 개발과 운영 DB에 모두
-적용합니다.
-
-설명은 노트 상세(`GET /api/v1/notes/{noteId}`)가 "이 향이 어떤 향인지"를 문장으로 보여줄 때
-씁니다. 목록에는 나가지 않습니다.
-
-## 먼저 확인할 것
-
-- 애플리케이션을 한 번 실행해 Flyway `V21`까지 적용합니다. `description` 컬럼이 `V21`에서
-  생겼습니다.
-- S3 버킷의 `notes/` 아래에 `notes.csv`의 이미지 246개를 먼저 업로드합니다. DB 적재 자체는
-  이미지가 없어도 성공하지만 화면에서 깨진 주소를 반환하게 됩니다.
-- `notes.csv`의 `popularity_rank`는 통계 순위이며 DB의 `note_id`가 아닙니다.
-- `description`은 비어 있어도 됩니다. 컬럼이 `NULL`을 허용하는 이유와 같습니다 — 설명이 아직
-  없는 노트를 넣을 수 있어야 합니다. 대신 **빈 설명은 기존 설명을 덮어쓰지 않습니다.** 다른
-  열과 달리 비어 있음을 검증하지 않으므로, 덮어쓰게 두면 재실행 한 번에 조용히 사라집니다.
-  한두 글자짜리 설명은 열이 밀린 흔적으로 보고 적재를 막습니다.
-
-기존 노트는 유일한 영문 `name`으로 찾아 `note_id`와 `is_active`를 보존하고 표시 메타데이터만
-갱신합니다. 없는 노트는 DB가 새 `note_id`를 자동 생성합니다. CSV에 없는 노트는 건드리지 않습니다.
-
-## 실행
-
-Git Bash 또는 Linux/macOS 셸에서 이 디렉터리로 이동해 실행합니다.
+노트 246개의 한국어명·분류·이미지 URL·인기 순위·설명을 적재합니다. `notes.csv`의 S3 이미지를
+먼저 업로드해야 합니다.
 
 ```bash
 cd backend/db/seed
 ./load_notes.sh
 ```
 
-로컬에 `psql`이 없으면 기본 수동 테스트 컨테이너인
-`hyanghae-manual-test-postgres-1`에서 자동 실행합니다. 다른 환경은 다음 변수로 지정할 수 있습니다.
-
-```bash
-DB_NAME=hyanghae DB_USER=hyanghae PG_CONTAINER=postgres-container ./load_notes.sh
-```
-
-직접 `psql`을 사용할 때는 `notes.csv`와 `load_notes.sql`이 있는 이 디렉터리에서 실행합니다.
-
-```bash
-psql "$DATABASE_URL" -f load_notes.sql
-```
-
-정상 결과는 네 값이 모두 246입니다. 스크립트를 다시 실행해도 수가 늘어나지 않습니다.
+정상 결과:
 
 ```text
  loaded_notes | notes_with_image | ranked_notes
@@ -276,193 +213,109 @@ psql "$DATABASE_URL" -f load_notes.sql
           246 |              246 |          246
 ```
 
+기존 노트는 영문 `name`으로 갱신하고 `note_id`와 `is_active`를 유지합니다. 빈 설명은 기존 설명을
+덮어쓰지 않습니다.
+
 # 향수 이미지 적재
 
-향 지도 향수 200개 중 이미지가 준비된 156개에 일반 이미지와 종이 질감 이미지를 각각 한 장씩
-연결합니다. 이미지 파일은 S3에, 메타데이터 312행은 `perfume_images` 테이블에 들어갑니다.
+향수 129,154개의 일반 WebP 이미지와 156개의 종이 질감 PNG를 연결합니다.
 
-## 먼저 확인할 것
-
-- 애플리케이션을 한 번 실행해 Flyway `V16`까지 적용합니다.
-- [향 지도 데이터](#향-지도-데이터-적재)를 먼저 적재합니다. 이미지 CSV는 향 지도 순위와
-  `fragrantica_id`가 모두 맞는 향수만 받으며, DB의 환경별 `perfume_id`를 직접 사용하지 않습니다.
-- S3에 CSV의 `object_key` 경로로 이미지 312개를 올리고 CloudFront 접근을 확인합니다.
-
-이미지 타입과 대표 이미지 순서는 다음과 같습니다.
-
-| 타입 | 용도 | `display_order` |
+| 타입 | 객체 키 | 표시 순서 |
 | --- | --- | ---: |
-| `ORIGINAL` | 검색·상세·지도·컬렉션의 대표 이미지 | 1 |
-| `PAPER_TEXTURE` | 진열대용 종이 질감 이미지 | 2 |
+| `ORIGINAL` | `perfumes/{fragrantica_id}/original.webp` | 1 |
+| `PAPER_TEXTURE` | `perfumes/{fragrantica_id}/paper-texture.png` | 2 |
 
-기존 API는 표시 순서가 가장 빠른 이미지를 사용하므로 일반 이미지가 계속 대표로 반환됩니다.
-종이 질감 이미지를 화면에서 사용하려면 후속 API 작업에서 타입별 조회를 추가해야 합니다.
-
-## 실행
+향수 카탈로그와 S3 업로드가 완료된 뒤 실행합니다.
 
 ```bash
 cd backend/db/seed
 ./load_perfume_images.sh
 ```
 
-로컬 `psql`이 없으면 기본 수동 테스트 PostgreSQL 컨테이너에서 자동 실행합니다. 정상 결과는
-각 이미지가 156개이며, 다시 실행해도 중복되지 않습니다.
+정상 결과:
 
 ```text
  perfumes_with_images | original_images | paper_texture_images
 -----------------------+-----------------+----------------------
-                  156 |             156 |                  156
+               129154 |          129154 |                  156
 ```
 
-# 향수 카탈로그 적재
+이미지 URL은 `perfume_images.csv`에 있으며, 적재 스크립트가 객체 키·CloudFront URL·중복·카탈로그
+연결 여부를 검증합니다.
 
-자연어 추천이 쓰는 향수 129,161개입니다. 브랜드 7,793개와 향 특성 100만 행이 함께 들어갑니다.
-데이터는 AI 쪽이 `ai/delivery/for_db/` 로 넘겨준 CSV와 이 디렉터리의 `perfume_ko.csv`,
-`brands_ko.csv`이며, 만든 과정은
-[ai/docs/perfume_load_handoff.md](../../../ai/docs/perfume_load_handoff.md) 에 있습니다.
+일반 이미지 원본이 없는 향수의 `fragrantica_id`는 다음 7개입니다.
 
-향 지도 200개와 **겹칩니다.** 그 200개가 이 CSV 에 전부 들어 있어서, `fragrantica_id` 로 맞춰
-이미 있으면 갱신하고 없으면 넣습니다. 두 번 만들면 지도가 가리키는 향수와 추천이 가리키는
-향수가 갈립니다.
-
-## 먼저 확인할 것
-
-**스키마가 `V21` 까지 적용돼 있어야 합니다.** `V14` 가 향수 적재에 필요한 컬럼을 만들고,
-`V21` 이 여러 브랜드가 같은 한국어 이름을 사용할 수 있도록 제약을 바꿉니다. 애플리케이션을
-한 번 띄우면 Flyway가 적용됩니다.
-
-## 실행
-
-```bash
-cd backend/db/seed
-./load_perfume_catalog.sh
+```text
+86740, 111527, 112623, 113318, 120122, 133490, 133610
 ```
 
-셸 스크립트가 두 가지를 대신합니다. 넘겨받은 CSV 둘이 gzip 이라 `\copy` 가 읽지 못해 풀어 주고,
-로컬에 psql 이 없으면 컨테이너 안에서 돌립니다(`\copy` 는 psql 이 도는 쪽의 파일을 읽습니다).
-
-접속 대상은 환경변수로 바꿉니다. 기본값은 `compose.manual-test.yaml` 의 것입니다.
-
-```bash
-DATABASE_URL="postgresql://..." ./load_perfume_catalog.sh   # 로컬에 psql 이 있을 때
-DB_NAME=... DB_USER=... PG_CONTAINER=... ./load_perfume_catalog.sh
-```
-
-`perfume_ko.csv`는 영문 원이름과 한국어 번역명을 담습니다. 이 파일을 향수 한국어 이름의 기준으로
-사용하므로, 번역이 바뀌면 기존 DB 값도 새 값으로 갱신됩니다. 같은 영문 이름에 서로 다른 번역이
-여러 개 있으면 어느 값이 맞는지 알 수 없어 그 이름만 건너뜁니다.
-
-`brands_ko.csv`는 브랜드의 `name_ko`, `logo_domain`, `logo_override`를 담습니다. 이 파일에 값이
-있으면 기존 DB 값도 새 값으로 갱신됩니다. 서로 다른 브랜드가 같은 한국어 이름을 사용하는 것은
-허용합니다. 같은 영문 브랜드 하나에 서로 다른 번역이 여러 개 있을 때만 한국어 이름을
-건너뜁니다.
-
-로고는 `logo_override`가 있으면 그 주소를 사용합니다. 없으면 현재 CSV의 `logo_domain`으로
-`https://img.logo.dev/{logo_domain}` 주소를 만듭니다. CSV에 두 값이 모두 없을 때만 기존 DB 로고를
-유지합니다.
-
-노트는 `notes_top300_1.csv`의 이름·분류와 `notes_top300_with_explain.csv`의 설명을 합쳐
-`notes.csv`에 넣습니다. 새 원본의 `image_url`이 비어 있으므로, 기존에 확인한 노트 이미지 주소는
-`notes.csv`에 계속 보존합니다.
-
-몇 번을 다시 돌려도 결과가 같습니다. 전체가 한 트랜잭션이라 중간에 하나라도 어긋나면 아무것도
-반영되지 않습니다. 끝나면 아래와 같은지 확인하세요.
+`perfume_id`는 DB 환경마다 새로 생성되므로 문서에 고정하지 않습니다. 적재된 환경에서의 번호와
+향수명은 다음 쿼리로 확인합니다.
 
 ```sql
-SELECT (SELECT count(*) FROM brands)          AS brands,          -- 7,793 이상
-       (SELECT count(*) FROM accords)         AS accords,         -- 92
-       (SELECT count(*) FROM perfumes)        AS perfumes,        -- 129,161 이상
-       (SELECT count(*) FROM perfume_accords) AS perfume_accords; -- 1,000,570
+SELECT perfume_id, fragrantica_id, name
+FROM perfumes
+WHERE fragrantica_id IN (86740, 111527, 112623, 113318, 120122, 133490, 133610)
+ORDER BY fragrantica_id;
 ```
-
-`perfumes` 가 129,161 보다 클 수 있습니다. 이 CSV 에 없는 향수가 이미 있으면 그대로 남습니다.
 
 # 향수-노트 연결 적재
 
-향수와 노트를 잇는 905,542건을 적재합니다. 노트별 향수 조회
-(`GET /api/v1/notes/{noteId}/perfumes`)가 읽는 표입니다. 서비스가 실제로 쓰는 데이터이므로
-개발과 운영 DB에 모두 적용합니다.
-
-## 먼저 확인할 것
-
-- **`notes` 와 `perfumes` 가 모두 채워져 있어야 합니다.** 이 표는 둘을 잇기만 하고 아무것도
-  만들지 않습니다. `./load_notes.sh` 와 `./load_perfume_catalog.sh` 뒤에 실행합니다. 비어 있으면
-  어느 쪽이 빠졌는지 알려주며 멈춥니다.
-- **빠뜨리면 증상이 조용합니다.** 노트 목록은 멀쩡히 나오고 인기 순위도 정상입니다 — 그것은
-  `notes` 테이블의 컬럼이라 이 표와 무관하기 때문입니다. 대신 노트별 향수 조회가 **모든 노트에서
-  `totalElements: 0`** 을 돌려줍니다.
-
-## ⚠ CSV 의 `perfume_id` 는 `fragrantica_id` 입니다
-
-우리 `perfumes.perfume_id` 가 아닙니다. 둘 다 1부터 촘촘한 정수라 **잘못 조인해도 12만 건이
-"붙습니다".** 오류도 나지 않고 행 수도 그럴듯해서, 화면에서 엉뚱한 노트를 보고야 알아챕니다.
-
-```
-perfume_id=1   CSV "Orange Tonic / Azzaro"   우리 perfume_id=1 은 "Bleu de Chanel"
-               → fragrantica_id=1 로 이으면 "Orange Tonic", 우리 PK 는 603
-```
-
-`load_perfume_notes.sql` 이 이것을 검증합니다. CSV 가 향수 이름과 브랜드를 함께 싣고 있어,
-이은 향수의 이름이 CSV 와 같은지 대조할 수 있습니다. 99% 미만이면 적재를 멈춥니다. 실제
-수치는 `fragrantica_id` 로 이었을 때 127,003/127,009 일치, 우리 PK 로 이었을 때 4/121,980
-일치입니다.
-
-## 실행
+향수와 노트를 잇는 905,542건을 적재합니다. 노트 메타데이터와 향수 카탈로그가 모두 먼저
+적재돼 있어야 합니다.
 
 ```bash
 cd backend/db/seed
 ./load_perfume_notes.sh
 ```
 
-`perfume_notes.csv.gz` 를 풀어 적재합니다. 로컬에 `psql` 이 없으면 수동 테스트 컨테이너에서
-자동 실행합니다. 다른 환경은 `DB_NAME` · `DB_USER` · `PG_CONTAINER` 로 지정합니다.
+정상 결과:
 
-정상 결과입니다.
-
-```
+```text
 COPY 906133
-INSERT 0 905542
-NOTICE:  연결 905542건을 반영했습니다. 카탈로그에 없는 향수를 가리켜 건너뛴 행 591건.
+INSERT 0 906133
+NOTICE: 연결 906133건을 반영했습니다. 카탈로그에 없는 향수를 가리켜 건너뛴 행 0건.
 
  loaded_links | linked_notes | linked_perfumes
 --------------+--------------+-----------------
-       905542 |          246 |          127009
+       906133 |          246 |          127161
 ```
 
-**건너뛴 591건은 정상입니다.** 카탈로그에 없는 향수 152개를 가리키는 행이고, 없는 향수에 노트만
-달아 둘 수는 없습니다. 다시 실행해도 수가 늘지 않습니다.
+`perfume_notes.csv.gz`의 `perfume_id` 열은 DB PK가 아니라 `fragrantica_id`입니다. 스크립트가
+향수명과 브랜드까지 대조합니다. 주 카탈로그에서 제외됐던 향수 152개는 보충 Seed가 먼저 생성하므로
+591개 연결도 함께 적재됩니다.
 
-## 파일
+# 로컬 화면 테스트 데이터
 
-`perfume_notes.csv.gz` 입니다. 압축을 푼 원본은 58MB 라 그대로 두지 않습니다 — `\copy` 가 압축을
-풀지 못해 `.sh` 가 대신 풉니다.
+이미지가 있는 향수를 중심으로 사용자 43명의 보유·위시·조회·컬렉션·게시글·댓글·좋아요를
+생성합니다. `SEED_ENV=manual-test`이고 DB 이름이 `_test`로 끝날 때만 실행됩니다.
 
-열은 `note` · `name_ko` · `accord_family` · `perfume_id` · `perfume_name` · `brand` ·
-`positions` 입니다. 이 중 실제로 넣는 것은 `note` · `perfume_id` · `positions` 셋뿐이고,
-`perfume_name` 과 `brand` 는 **위의 조인 검증에 씁니다.** `name_ko` 와 `accord_family` 는
-`notes` 가 이미 갖고 있어 쓰지 않습니다. 지우지 않고 남겨 둔 것은 나중에 데이터를 다시 받았을
-때 같은 검증을 할 수 있어야 하기 때문입니다.
+```powershell
+$env:SEED_LOGIN_PASSWORD = [System.Net.NetworkCredential]::new('', (Read-Host '테스트 계정 비밀번호' -AsSecureString)).Password
+docker compose -f compose.manual-test.yaml run --build --rm seed-local
+```
 
-`positions` 는 `perfume_notes.note_type` 이 됩니다 — `top` · `middle` · `base` · `flat` 과 그
-조합입니다. 알 수 없는 값이 있으면 적재를 멈춥니다.
+일반 실행은 사람이 수정한 seed 행을 유지하면서 누락된 행만 복원합니다. seed가 만든 데이터를
+최초 값으로 되돌릴 때만 다음 명령을 사용합니다.
+
+```powershell
+docker compose -f compose.manual-test.yaml run --rm -e SEED_MODE=reset seed-local
+```
+
+수동으로 만든 데이터는 삭제하지 않습니다. 생성한 seed 행의 번호와 최초 값은 `local_seed`
+스키마에서 관리하므로 이 스키마만 따로 삭제하지 마세요.
+
+검증:
+
+```powershell
+cd backend
+.\gradlew.bat test --tests com.hyanghae.seed.LocalSeedIntegrationTest
+```
 
 # 운영 발표용 데모 seed
 
-정적 데이터만 적재한 운영 DB에서 진열대·컬렉션·커뮤니티·후기·조회 순위 화면을 보여 주기 위한
-별도 도구입니다. 로컬 전용 `seed-local`과 실행 파일 및 장부를 분리합니다.
-
-- `demo01@demo.hyanghae.test`부터 `demo43@demo.hyanghae.test`까지 데모 계정을 만듭니다.
-- `demo41@demo.hyanghae.test`는 진열대 18개, 컬렉션 3개와 메모 6개를 가진 발표 계정입니다.
-- 전체 컬렉션 30개와 게시글 90개는 여러 가상 사용자에게 분산됩니다. 계정별 닉네임과 활동량을
-  다르게 구성하고 시향·여행·출근 등 상황별 문구를 사용합니다. 실제 사용자 후기는 아닙니다.
-- 작성 시간은 최초 실행 전 약 48일 동안 분산되며, 재실행해도 기존 작성 시간은 유지됩니다.
-- 모든 데모 계정은 실행할 때 지정한 `SEED_LOGIN_PASSWORD`를 사용합니다.
-- 생성한 행은 `demo_seed.records`에 기록합니다. 실제 사용자가 만든 행은 소유하거나 수정하지 않습니다.
-- 운영에서는 `fill`만 허용합니다. 다시 실행해도 기존 데모 행의 사용자 수정을 덮어쓰지 않습니다.
-- 정적 seed 네 가지를 모두 적재한 뒤 실행해야 합니다.
-
-운영 서버에서 저장소 루트 기준으로 다음 환경변수를 준비합니다. JDBC 주소의 호스트에는 운영
-PostgreSQL 컨테이너의 Compose 서비스명을 사용합니다.
+정적 기준 데이터가 적재된 발표 환경에 데모 계정과 활동 데이터를 생성합니다. 실제 사용자 데이터는
+수정하지 않으며 운영에서는 `fill`만 허용합니다.
 
 ```bash
 export DEMO_SEED_CONFIRM=CREATE_DEMO_DATA
@@ -475,82 +328,25 @@ export SEED_LOGIN_PASSWORD='발표용계정비밀번호'
 bash backend/db/seed/run_demo_seed.sh
 ```
 
-DB 비밀번호와 로그인 비밀번호를 명령행에 직접 붙이지 말고 현재 셸의 환경변수로 전달합니다.
-완료 메시지에 표시되는 `demo41@demo.hyanghae.test`로 로그인하여 진열대와 커뮤니티를 확인합니다.
-
-## 운영에 넣기 전에
-
-- **`fragrantica_id` 가 없는 향수를 먼저 보십시오.** 손으로 넣어 둔 향수가 카탈로그에도 있으면
-  같은 이름이 두 줄로 남습니다. 적재가 만드는 중복이 아니라 짝지을 번호가 없어 생기는 일이고,
-  어느 쪽이 진짜인지는 사람이 정해야 합니다.
-
-  ```sql
-  SELECT perfume_id, name FROM perfumes WHERE fragrantica_id IS NULL;
-  ```
-
-- **100만 행을 한 트랜잭션으로 넣습니다.** 로컬에서 9초 걸렸습니다. 운영 사양에 따라 더 걸릴 수
-  있고 그동안 `perfume_accords` 에 잠금이 걸립니다. 서비스가 한가한 때를 고르십시오.
-- **표가 커집니다.** 적재 뒤 `perfume_accords` 88MB · `perfumes` 18MB · `brands` 1.8MB 입니다.
-- **건드리지 않는 값이 있습니다.** `gender` · `description` · `concentration` 과
-  `is_active` 는 이 CSV 에 없어 그대로 둡니다. 운영에서 내린 향수를 적재가 되살리지 않습니다.
-- 마지막에 `ANALYZE` 를 돌립니다. 향수가 200개에서 13만 개로 늘어난 뒤 통계가 옛 크기를 들고
-  있으면 조회가 인덱스를 건너뜁니다.
+`demo01@demo.hyanghae.test`부터 `demo43@demo.hyanghae.test`까지 생성하며,
+`demo41@demo.hyanghae.test`가 주요 발표 계정입니다.
 
 # 후기 시드 적재
 
-후기 요약 배치([문서](../../docs/review-analysis-batch.md))는 후기가 쌓인 향수를 찾아
-AI 로 요약을 만듭니다. 후기 작성 API 가 아직 없어서, 수동으로 확인하려면 후기를 직접 넣어야
-합니다. `load_review_seed.sql` 이 그 일을 합니다.
-
-향 지도 적재를 먼저 끝내야 합니다. 이 스크립트는 향수를 만들지 않고 **이미 있는 활성 향수 중
-번호가 가장 작은 3개**에 후기를 붙입니다.
-
-## 실행
+후기 요약 배치를 확인하기 위한 개발 전용 데이터입니다. 활성 향수 3개에 후기 6건·12건·4건을
+연결하며 운영 DB에서는 실행하지 않습니다.
 
 ```bash
 cd backend/db/seed
-
-docker cp . hyanghae-manual-test-postgres-1:/tmp/seed
-docker exec -w /tmp/seed hyanghae-manual-test-postgres-1 \
-  psql -U hyanghae -d hyanghae_test -f load_review_seed.sql
+psql "$DATABASE_URL" -f load_review_seed.sql
 ```
 
-몇 번을 다시 돌려도 결과가 같습니다. 마지막에 아래처럼 출력됩니다. 향수 이름은 향 지도
-데이터에 따라 다를 수 있습니다.
+대상 향수에 seed가 아닌 후기가 있거나 기대한 후기 수가 다르면 적재를 중단합니다.
 
-```
- perfume_id |             name             | reviews | summary_target
-------------+------------------------------+---------+----------------
-          1 | Orphéon Eau de Parfum        |       6 | t
-          2 | Green Tea                    |      12 | t
-          3 | Wood Sage & Sea Salt Cologne |       4 | f
-```
+# Seed 변경 과정
 
-## 무엇을 넣는가
-
-후기 22건과 그 후기를 쓴 사용자 12명입니다. 향수마다 후기 수를 다르게 둔 이유는 배치의 최소
-개수 정책(기본 5건)이 어디서 갈리는지 한 번의 실행으로 보이게 하려는 것입니다.
-
-| 자리 | 후기 | 배치 대상 | 내용 |
-| ---: | ---: | --- | --- |
-| 1 | 6건 | 예 | 달콤·포근한 계열 |
-| 2 | 12건 | 예 | 시트러스에서 우디로 넘어가는 계열 |
-| 3 | 4건 | 아니오 | 묵직한 우디. 최소 개수에 하나 모자랍니다 |
-
-1번 자리에는 일부러 두 종류의 후기를 섞었습니다.
-
-- 배송·가격·용기 이야기가 섞인 후기 — 지시문이 향과 무관한 표현을 키워드로 뽑지 말라고 하는데,
-  그 규칙이 실제로 지켜지는지 볼 수 있습니다.
-- 향 표현이 아예 없는 후기 — 키워드가 빈 배열로 오는 경우입니다. 이 후기가 키워드 백분율의
-  분모에서 빠지는 것까지가 정상입니다.
-
-## 알아야 할 것
-
-- **운영 데이터베이스에서 돌리지 마세요.** 사람이 쓴 후기와 섞이면 어느 것이 시드인지 구분되지
-  않습니다. 구분 근거는 사용자의 이메일 도메인(`@seed.hyanghae.test`)뿐입니다.
-- **시드 계정으로는 로그인할 수 없습니다.** `password_hash` 에 해시가 아닌 문자열을 넣어
-  어떤 비밀번호도 맞지 않게 해 두었습니다.
-- **대상 향수의 요약 행도 지웁니다.** 지금 배치는 요약을 만들지 않지만, 예전에 만들어졌거나 손으로
-  넣어 둔 행이 남아 있으면 이제 존재하지 않는 후기로 만든 요약이 화면에 계속 보입니다.
-- **대상 향수에 시드가 아닌 후기가 이미 있으면 적재가 중단됩니다.** 후기 수가 표와 달라지면
-  정책 경계를 확인할 수 없기 때문입니다.
+- 초기에는 향 지도 200개, 노트 246개와 일부 향수 이미지·후기 테스트 데이터를 제공했습니다.
+- 전체 향수 카탈로그 129,161개와 향수-노트 연결 데이터를 추가해 서비스 기준 데이터를 완성했습니다.
+- `S15P21E203-344`에서 일반 이미지를 129,154개의 WebP로 확대하고, 기존 종이 질감 PNG 156개를
+  유지하도록 이미지 seed와 검증 규칙을 갱신했습니다. accord가 없어 주 카탈로그에서 제외됐지만
+  노트 연결이 존재하는 향수 152개도 보충 Seed로 분리했습니다.

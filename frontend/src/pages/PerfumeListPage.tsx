@@ -10,6 +10,7 @@ import {
   type RankingFilter,
 } from '@/features/perfume'
 import { ROUTES } from '@/shared/config/routes'
+import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { cn } from '@/shared/lib/cn'
 import { withQueryParams } from '@/shared/lib/queryParams'
 import { Button } from '@/shared/ui/Button'
@@ -47,6 +48,16 @@ export default function PerfumeListPage() {
   )
 
   const items = data?.perfumes ?? []
+
+  /*
+   * 메인에서 잠수로 들어왔으면 커튼이 짙은 바다색으로 덮은 채 이 신호를 기다립니다
+   * (안 알려도 상한에 걷힙니다 — `shared/ui/DiveCurtain`). 잠수로 들어온 것이 아니면
+   * 아무 일도 안 일어납니다.
+   *
+   * 기준은 **목록**입니다 — 아래에서 스피너가 갈리는 바로 그 조건입니다. 목록이 칠해지면
+   * 이 화면은 다 선 것이고, 여기는 진열대처럼 뒤늦게 떠오르는 사진 벽이 없습니다.
+   */
+  useDiveReady(!isPending)
 
   // 검색어·필터로 걸러 0건이 됐을 때만 [초기화] 를 보여줍니다.
   // 원래 데이터가 없는 경우에는 초기화해도 달라지지 않으니 버튼을 걸지 않습니다.
