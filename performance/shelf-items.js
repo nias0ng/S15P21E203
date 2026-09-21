@@ -10,7 +10,7 @@ import {
     testOptions,
 } from './lib/common.js';
 
-export const options = testOptions();
+export const options = testOptions('shelf_items');
 const metrics = createEndpointMetrics('shelf_items');
 const category = __ENV.SHELF_CATEGORY || 'OWNED';
 const pageSize = __ENV.PAGE_SIZE || '20';
