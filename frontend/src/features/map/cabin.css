@@ -1,0 +1,167 @@
+/*
+ * 선실 — 3D 향 지도의 **배 옆에 뜨는 작은 말풍선** (2026-09-21)
+ *
+ * 여기 있는 것은 **색 · 비켜서기 · 꼬리**입니다. 줄의 내용과 크기는
+ * `components/CabinBubble.tsx` 의 Tailwind 클래스입니다.
+ *
+ * 왜 나눴는가 — 말풍선은 배 옆구리의 **한 점**에 서고 상자는 그 점에서 비켜서야 하는데,
+ * 비켜서는 방향이 배의 어느 쪽이냐(`data-side`)에 따라 뒤집힙니다. 그 규칙과 꼬리의 두 변은
+ * 유틸 클래스로 적으면 한 줄이 화면을 넘어가고, 색을 `rgb(…)` 로 박게 됩니다. 토큰
+ * (`--color-dusk-gold` · `--color-ivory`)을 그대로 쓰려면 CSS 쪽이 맞습니다 —
+ * `features/shelf/shelf-display.css` 가 물빛을 다루는 방식과 같습니다.
+ *
+ * ⚠️ 엔진의 호버 방울(`landing/src/ui.js` 의 `setCabin`)과 **같은 점 · 같은 틈(8px) · 같은 꼬리**
+ * 입니다. 그래야 방울이 있던 자리에서 그대로 말풍선이 열립니다 — 한쪽을 고치면 다른 쪽도 봅니다.
+ */
+
+.cabin-anchor {
+  /* 배 옆구리에서 말풍선까지 — 꼬리가 지나는 틈 */
+  --cabin-gap: 8px;
+  /*
+   * 한 단 가라앉은 아래 줄(컬렉션)의 그늘. **팔레트 밖 색이라 이 말풍선에서만 씁니다** —
+   * 판(dusk → navy)보다 한 단 어두운 남색 한 겹이고, "컬렉션은 진열대 아래 칸" 을 말 대신
+   * 깊이로 말하는 장치입니다.
+   */
+  --cabin-sunken: rgb(16 22 39 / 0.4);
+  --cabin-press: rgb(16 22 39 / 0.55);
+}
+
+/*
+ * 상자가 그 점에서 비켜섭니다 — 세로는 늘 가운데, 가로는 배의 반대쪽.
+ * ⚠️ `translate` 를 씁니다 (`transform` 이 아니라) — 자리는 rAF 가 바깥 칸의 `transform` 에
+ * 쓰고 있어서, 같은 속성을 쓰면 둘이 서로를 지웁니다.
+ */
+.cabin-bubble {
+  position: relative;
+  border-radius: var(--radius-glass);
+  border: 1px solid color-mix(in srgb, var(--color-ivory) 22%, transparent);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-dusk) 94%, transparent),
+    color-mix(in srgb, var(--color-navy) 95%, transparent)
+  );
+  box-shadow: var(--shadow-glass);
+  backdrop-filter: blur(6px);
+  translate: var(--cabin-gap) -50%;
+  /*
+   * ⭐⭐ **호버 방울이 그대로 자라납니다** (2026-09-21 사용자 : *"클릭했을땐 모핑처럼 그 말풍선이
+   * 커져서 진열대, 컬렉션 띄우면"*). 처음에 엔진 방울과 **똑같은 34 × 34 둥근 네모**로 잘려 있다가
+   * 제 상자까지 펴집니다 — 엔진이 그 순간 방울을 한 프레임에 걷으므로(ui.js `setCabin` 의 instant)
+   * 걷힌 자리를 이 상자가 이어받아 하나로 보입니다.
+   *
+   * ⚠️ **크기가 아니라 `clip-path` 를 움직입니다.** width/height 를 애니메이션하면 줄이 매 장
+   * 다시 배치되며 글자가 찌그러지고, 끝 크기가 로그인 여부에 따라 달라 CSS 로 적을 수도 없습니다.
+   * ⚠️ 끝 값은 `inset(0)` = 테두리 상자라 다 자란 뒤에는 아무것도 안 자릅니다.
+   * ⚠️ 34 · 17(그 절반) · 9(모서리)는 엔진 방울의 `CABIN_R` · `border-radius` 와 **같은 값**입니다.
+   */
+  animation: cabin-morph 220ms cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+.cabin-anchor[data-side='left'] .cabin-bubble {
+  translate: calc(-100% - var(--cabin-gap)) -50%;
+  animation-name: cabin-morph-left;
+}
+
+/* 줄은 상자가 펴진 뒤에 들어옵니다 — 같이 나타나면 자라는 것이 안 보이고 통째로 뜬 것이 됩니다 */
+.cabin-bubble > * {
+  animation: cabin-fade 160ms 90ms backwards;
+}
+
+@keyframes cabin-morph {
+  from {
+    clip-path: inset(
+      calc(50% - 17px) calc(100% - 34px) calc(50% - 17px) 0 round 9px
+    );
+  }
+  to {
+    clip-path: inset(0 round var(--radius-glass));
+  }
+}
+
+@keyframes cabin-morph-left {
+  from {
+    clip-path: inset(
+      calc(50% - 17px) 0 calc(50% - 17px) calc(100% - 34px) round 9px
+    );
+  }
+  to {
+    clip-path: inset(0 round var(--radius-glass));
+  }
+}
+
+@keyframes cabin-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cabin-bubble,
+  .cabin-bubble > * {
+    animation: none;
+  }
+}
+
+/*
+ * 꼬리 — 45도 돌린 작은 정사각형. 말풍선 쪽 두 변은 지워 겹친 자리가 두 번 칠해지지 않게 합니다
+ * (엔진 말풍선 카드의 `setTail` 과 같은 장치 · 불변식 24).
+ * ⚠️ 말풍선의 **형제**입니다 — 자라는 모습이 말풍선의 `clip-path` 라서, 꼬리가 그 안에 있으면
+ * 상자 밖으로 나간 꼬리가 통째로 잘립니다. 바깥 칸이 이미 꼬리 점에 서 있으므로 여기서는
+ * 세로만 반 올립니다.
+ */
+.cabin-bubble-tail {
+  position: absolute;
+  top: -3.5px;
+  left: 4.5px;
+  width: 7px;
+  height: 7px;
+  border: 1px solid color-mix(in srgb, var(--color-ivory) 22%, transparent);
+  border-top: 0;
+  border-right: 0;
+  background: color-mix(in srgb, var(--color-dusk) 94%, transparent);
+  rotate: 45deg;
+}
+
+.cabin-anchor[data-side='left'] .cabin-bubble-tail {
+  right: 4.5px;
+  left: auto;
+  border: 1px solid color-mix(in srgb, var(--color-ivory) 22%, transparent);
+  border-bottom: 0;
+  border-left: 0;
+}
+
+/* 줄(문) 둘. 호버는 **밝히는 것이 아니라 등불이 테두리에 번지는 것**입니다 */
+.cabin-row {
+  border: 1px solid transparent;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.cabin-row-open:hover {
+  border-color: color-mix(in srgb, var(--color-dusk-gold) 70%, transparent);
+  background: color-mix(in srgb, var(--color-ivory) 10%, transparent);
+}
+
+.cabin-row-open:active {
+  background: var(--cabin-press);
+}
+
+/* 아래 줄 — 진열대 **아래** 무대라는 것을 깊이로 말합니다 (위 `--cabin-sunken` 주석) */
+.cabin-row-lower {
+  background: var(--cabin-sunken);
+  box-shadow: inset 0 1px 3px rgb(16 22 39 / 0.5);
+}
+
+.cabin-row-open.cabin-row-lower:hover {
+  background: color-mix(in srgb, var(--color-ivory) 10%, var(--cabin-sunken));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cabin-row {
+    transition: none;
+  }
+}

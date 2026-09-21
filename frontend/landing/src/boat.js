@@ -205,6 +205,37 @@ export function createBoat(scene) {
   pivot.add(boat);
   scene.add(pivot);
 
+  // ───────── 누를 수 있는 배 (2026-09-21, v0.79.0 — 선실) ─────────
+  // 배를 누르면 앱이 **선실 알림 판**(진열대 · 컬렉션)을 연다. 여기는 그 입구인 **히트박스 하나**다 —
+  // 누름을 받는 것도(main.js onPick), 앱에 알리는 것도(host.js openCabin) 이 파일 밖이다.
+  //
+  // ⚠⚠ **볼록 하나다 — 돛과 돛대는 안 넣는다.** 배의 실제 메시로 레이캐스트하면 돛 두 장이
+  //   화면을 가로질러 서서 그 뒤의 부표를 통째로 가린다 (돛대 끝이 월드 y 5.0 — 선체 높이의 5배).
+  //   그래서 선체와 붐 언저리만 감싸는 타원체 하나로 둔다. 크기는 `cabinHit` 로 만진다.
+  // ⚠ **부표가 먼저다** — main.js 의 onPick · updateHover 가 `marks.pick` 을 먼저 보고 빈손일 때만
+  //   여기를 묻는다. 그래서 배 앞뒤에 겹친 부표는 여전히 부표가 이긴다.
+  // ⚠ 재질의 `visible:false` 로 감춘다 (marks.js 의 히트박스와 같은 규약) — `object.visible = false`
+  //   로 끄면 three 버전에 따라 레이캐스트에서 통째로 빠져 클릭이 죽는다.
+  // ⚠ 반사 · 잠긴 선체 패스에 들어가지 않게 noReflect 를 단다 (부표의 발광 쌍둥이와 같은 표시).
+  const hitGeo = new THREE.SphereGeometry(1, 10, 6);
+  const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+  const boatHit = new THREE.Mesh(hitGeo, hitMat);
+  boatHit.layers.enable(1);   // 레이캐스터가 이 레이어만 본다 — 수면 메시가 절대 안 걸린다
+  boatHit.userData.noReflect = true;
+  boatHit.frustumCulled = false;
+  pivot.add(boatHit);
+  // 배 길이(lengthW 5.0) 기준 비율 하나로 잡는다 — 배 크기를 바꾸면 히트박스도 같이 따라온다.
+  //   선체는 로컬 z ±2.5 · x ±0.85 · y −0.40~0.64 다 (위 좌표 규약 × lengthW/2)
+  const fitHit = () => {
+    const L = CONFIG.boat.lengthW, k = P.cabinHit === undefined ? 1 : P.cabinHit;
+    boatHit.position.set(0, L * 0.11, 0);
+    boatHit.scale.set(L * 0.22 * k, L * 0.30 * k, L * 0.54 * k);
+  };
+  fitHit();
+  const hitRay = new THREE.Raycaster();
+  hitRay.layers.set(1);
+  const hitNdc = new THREE.Vector2();
+
   // ───────── GLB 모델 (1단계 : 보기만 한다) ─────────
   // 외부 GLB 모델을 축·크기·높이만 맞춰 얹는다. PB.params.boatModel 로 종이배(0) ↔ GLB(1).
   //
@@ -628,11 +659,38 @@ export function createBoat(scene) {
     // ⚠ 모델 전환을 밖에서도 부를 수 있게 연다. update() 안에서만 돌면 **rAF 가 멈춘 환경
     //   (창이 가려짐 · 계측 중)에서 값을 바꿔도 아무 일이 안 일어난다** — 실제로 그렇게 헤맸다.
     //   main.js 의 apply() 가 이걸 부르므로 패널에서 바꾸면 즉시 반영된다.
-    syncModel: () => { syncModel(); syncGlbMat(); },
+    syncModel: () => { syncModel(); syncGlbMat(); fitHit(); },
+
+    /**
+     * 화면의 이 자리(NDC)가 **배 위**인가 (2026-09-21 — 선실). 누름과 호버에서만 부른다,
+     * 렌더 루프에서 매 프레임 부르지 않는다.
+     *
+     * ⚠ 타원체 하나뿐이라 값이 싸다. 그래도 `marks.pick` 뒤에 두는 것은 비용이 아니라 **차례**
+     *   때문이다 — 부표가 먼저 이겨야 배 앞의 부표를 누를 수 있다 (위 히트박스 머리말).
+     * ⚠ `cabinOn 0` 이면 늘 false — 선실 기능 전체가 비트 단위로 롤백된다.
+     */
+    hitTest(cam, nx, ny) {
+      if ((P.cabinOn === undefined ? 1 : P.cabinOn) < 0.5) return false;
+      hitNdc.set(nx, ny);
+      hitRay.setFromCamera(hitNdc, cam);
+      return hitRay.intersectObject(boatHit, false).length > 0;
+    },
     // 부력 프로브 [월드 x 오프셋, 월드 z 오프셋, 그 자리에서 읽은 수면 높이] × 5.
     // probes.js(개발 전용)가 이걸 그린다 — CPU 부력과 GPU 수면이 갈라졌는지 눈으로 보는 유일한 수단
     probes: [[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],
     stepped: false,   // 이번 프레임에 배가 갱신됐는가 (sim.stepped 와 짝. perf.js 가 본다)
+
+    // ⭐⭐ **배가 지금 화면 어디에 있는가** (2026-09-21, v0.79.0 — 선실). 전부 #mount 기준 CSS px.
+    //   main.js 의 tick 이 매 프레임 투영해서 채우고, **둘이 읽는다** :
+    //     ① 엔진의 호버 방울 (ui.setCabin)  ② **앱의 선실 말풍선** (`window.PB.boat.screen`)
+    //   ⚠⚠ 앱이 이걸 매 프레임 읽어 DOM 에 직접 쓴다 — React 상태로 올리면 초당 60번 앱 전체가
+    //     다시 그린다 (잠수 커튼이 진행도를 다루는 것과 같은 규율 · `shared/ui/DiveCurtain`).
+    //   ⚠ `ax` · `ay` 는 말풍선이 **꼬리를 대는 점**이다 (배 옆구리). `side` 1 = 배의 오른쪽 ·
+    //     −1 = 왼쪽 (배가 화면 오른끝에 붙으면 뒤집는다). 두 말풍선이 **같은 점**을 써야
+    //     호버 방울이 있던 자리에서 그대로 창이 열린다.
+    //   ⚠ `on` 이 false 면 값이 낡았다 (호버도 아니고 창도 안 떠 있어 갱신을 쉰다).
+    //   ⚠ 부력 프로브(`probes`)와 같은 규약이다 — api 에 자리만 두고 채우는 것은 main.js 다.
+    screen: { x: 0, y: 0, r: 0, ax: 0, ay: 0, side: 1, on: false },
 
     // ⚠ `offX` · `offZ` — 배가 씬 원점을 벗어난 양 (존 연출). 0 이면 예전과 비트 단위로 같다.
     //   자리를 놓는 것은 main.js 다 (pivot.position) — 여기는 **물을 어디서 읽을지**에만 쓴다.

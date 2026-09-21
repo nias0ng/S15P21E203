@@ -9,7 +9,10 @@
  */
 // 로딩 커튼의 향 안개 · 걷힘 (SceneBootCurtain). 배치는 컴포넌트의 Tailwind 입니다
 import './scene-boot.css'
+// 선실 말풍선의 색 · 비켜서기 · 꼬리 (2026-09-21). 줄의 내용과 크기는 컴포넌트의 Tailwind 입니다
+import './cabin.css'
 
+export { CabinBubble } from './components/CabinBubble'
 export { MapPointPopover } from './components/MapPointPopover'
 export { MapSearchModal } from './components/MapSearchModal'
 export { MiniMap } from './components/MiniMap'

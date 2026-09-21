@@ -5,7 +5,7 @@ import { createBloom } from './bloom.js';
 import { createSubmerged } from './submerged.js';
 import { lerp, clamp, wrapPi } from './util.js';
 import { createUI } from './ui.js';
-import { bootNow, bootReport, callHost, hostMove, hostSearch, perfumeRef, setHost, setHostNotice } from './host.js';   // 카드의 서비스 동작 · 검색창이 앱(호스트)으로 나가는 문 (v0.68.0) · 부팅 신호 (v0.75.0)
+import { bootNow, bootReport, callHost, hostCabin, hostMove, hostSearch, perfumeRef, setHost, setHostNotice } from './host.js';   // 카드의 서비스 동작 · 검색창이 앱(호스트)으로 나가는 문 (v0.68.0) · 부팅 신호 (v0.75.0) · 선실 (v0.79.0)
 import { createInput } from './input.js';
 import { createSim } from './sim.js';
 import { createWater } from './water.js';
@@ -65,6 +65,9 @@ const ui = createUI({
   //   말풍선은 누른 부표 옆에 붙어 **이웃 칸을 덮을 수 있어서**, × 가 12개까지 거두면 덮였던 향수를 누를 길이 없다.
   //   12개를 거두는 문은 그대로 셋이다 — 빈 바다 · ESC · 방향키
   //   ⚠ 비교 패널 [원본](cardBubble 0 — 좌하단 카드)에서는 예전처럼 같이 접는다
+  // ⭐ 배 옆 방울을 눌렀다 (2026-09-21) — 배를 누른 것과 **같은 문**이다.
+  //   ⚠ 방울은 #mount 밖이라 이 누름은 input.js 의 onPick 으로 안 간다 — 그래서 따로 받는다
+  onCabin: () => { if (cabinOpen) closeCabin(); else openCabin(); },
   onCloseCard: () => {
     marks.clearSelect();
     // ⚠ 돌아갈 곳도 같이 지운다 (2026-09-12 저녁) — 안 지우면 호버가 벗어날 때
@@ -267,6 +270,10 @@ const input = createInput(ui.mount, {
   },
   onPick: (nx, ny, e) => {
     if (hostHold) return;   // ⚠ 앱이 띄운 창(진열대 저장 모달)이 열려 있는 동안은 고르지 않는다 (v0.68.0 — holdWhile)
+    // ⭐⭐ **선실 말풍선이 떠 있으면 어디를 누르든 닫기다** (2026-09-21 — 팝오버의 규약).
+    //   그 누름은 **먹는다** — 닫으면서 동시에 부표를 고르거나 바다로 떠나면 한 번 누른 것이 두 가지 일을 한다.
+    //   ⚠ 배를 다시 누른 것도 여기서 닫힌다 (여닫이 토글). 창을 안 잠그는 대신 이 한 줄이 그 몫을 한다
+    if (cabinOpen) { closeCabin(); return; }
     // ⚠⚠ **전환 중에는 고르지 않는다** (§9-4). phase 쪽 가드는 이미 있어서 cue.zone 이
     //   찢어지진 않지만, 여기서 막지 않으면 트윈이 도는 동안 카드가 바뀌어 **화면과 카드가
     //   서로 다른 향을 가리킨다.** 안개가 덮여 있는 동안도 같다
@@ -285,6 +292,13 @@ const input = createInput(ui.mount, {
       marks.focusOff(); marks.clearSelect(); clickMark = null; hoverMark = null;
       return;
     }
+    // ⭐⭐ **배를 누르면 배 옆에 작은 말풍선이 뜬다** (2026-09-21, v0.79.0 — host.js openCabin · boat.js hitTest).
+    //   진열대 · 컬렉션 줄 둘짜리 말풍선을 앱이 띄운다. 엔진은 '배를 눌렀다' 만 넘긴다.
+    //   ⚠⚠ **자리는 여기라야 한다.** 아래 `seaGo` 보다 앞이다 — 배를 뚫고 지나간 광선은 그 뒤의
+    //     수면과 만나므로, 뒤에 두면 배를 누를 때마다 **배가 제 자리로 항해를 떠난다.**
+    //   ⚠ 부표(`m`)가 이미 잡혔으면 여기 안 온다 — 배 앞뒤에 겹친 부표는 부표가 이긴다 (boat.js 머리말).
+    //   ⚠ 향수 고르기(12개) 중에는 위에서 이미 return 했다 — 그때 배 위의 누름은 **연출 끝내기**다.
+    if (!m && boat.hitTest(view, nx, ny)) { openCabin(); return; }
     if (!m && (seaClick || seaShift) && seaGo(nx, ny)) return;
     // ── 향수 고르기 중 : 떠오른 12개만 받는다. 빈 바다를 누르면 접는다
     if (marks.focusing) {
@@ -368,12 +382,22 @@ function reportRegion(t) {
 // ⭐ 호버 카드의 틈 (2026-09-15, v0.65.0 — cardHoverBridge). hoverGrace = 부표와 카드 밖으로 나간 앱 시각 (−1 = 유예 없음) ·
 //   hoverOnCard = 이번 프레임에 마우스가 떠 있는 카드 위다 (틱의 setScentPeek 가 읽는다 — 카드 위면 통과를 끄고 진하게)
 let hoverGrace = -1, hoverOnCard = false;
+// ⭐ 배 위에 마우스가 있는가 (2026-09-21, v0.79.0 — 선실). tick 이 이것으로 호버 방울을 켠다.
+//   ⚠ 마우스가 멈춰 있는 프레임에는 updateHover 가 일찍 돌아가므로 **값을 유지한다** — 켜고 끄는 것은 판정한 프레임뿐이다
+let boatHover = false;
+// ⭐ 앱의 선실 말풍선이 떠 있는가. 입력을 잠그는 대신 이 값 하나로 '누름은 닫기' · '호버 방울은 쉰다' 를 가른다
+let cabinOpen = false;
 function updateHover(view) {
-  if ((P.cardHover === undefined ? 1 : P.cardHover) < 0.5) { hoverMark = null; hoverOnCard = false; return; }
+  if ((P.cardHover === undefined ? 1 : P.cardHover) < 0.5) { hoverMark = null; hoverOnCard = false; boatHover = false; return; }
   // ⚠ 전환·안개·존 연출 중에는 안 한다 — onPick 과 같은 가드다 (§9-4).
   //   존 연출 중에 카드가 뜨면 정보 블록과 같은 자리를 두 층이 잡는다
-  if (phase.cue.busy || travel.busy || phase.cue.zone) return;
-  if (hostHold) return;   // 앱 창이 열려 있는 동안 카드를 바꾸지 않는다 — 닫히면 고른 향수 그대로다 (v0.68.0)
+  if (phase.cue.busy || travel.busy || phase.cue.zone) { boatHover = false; return; }
+  // 앱 창이 열려 있는 동안 카드를 바꾸지 않는다 — 닫히면 고른 향수 그대로다 (v0.68.0)
+  if (hostHold) { boatHover = false; return; }
+  // ⭐⭐ 선실 말풍선이 떠 있으면 **호버 방울은 쉰다** (2026-09-21) — 둘이 같은 자리에 서기 때문이다.
+  //   ⚠⚠ 이 줄이 없으면 방울이 말풍선 밑에 그대로 남는다. 마우스가 앱 말풍선 위로 올라가는 순간
+  //     iframe 밖이라 pointermove 가 끊겨 `input.state` 가 **배 위에서 얼어붙기** 때문이다 (벗어난 줄 모른다)
+  if (cabinOpen) { boatHover = false; return; }
   // ⭐⭐ **마우스가 한 번도 안 움직였으면 아무것도 집지 않는다** (2026-09-20).
   //   `input.state.mx/my` 의 시작값은 0,0 인데 그것은 NDC 의 **화면 한가운데**다. 그래서 부팅 직후
   //   첫 틱이 한가운데로 레이캐스트해, 아무도 마우스를 움직이지 않았는데 거기 있던 부표의 카드가 열렸다
@@ -394,13 +418,22 @@ function updateHover(view) {
   //   0 = v0.64.0 (벗어나는 첫 프레임에 놓는다)
   const bridge = (P.cardHoverBridge === undefined ? 1 : P.cardHoverBridge) >= 0.5;
   const hpx = input.state.px, hpy = input.state.py;
+  // ⭐⭐ **방울 위면 다시 안 집는다** (2026-09-21) — 배와 방울 사이에 약 19px 의 빈 곳이 있어,
+  //   그냥 두면 방울로 마우스를 옮기는 동안 레이캐스트가 배를 놓쳐 **방울이 깜빡이며 사라진다.**
+  //   호버 카드의 `cardHoverBridge` 와 같은 함정이고, 여기서는 방울이 제 pointerenter 로
+  //   알려 주므로 상자를 따로 잴 필요가 없다 (ui.cabinHovered)
+  if (ui.cabinHovered()) { hoverX = mx; hoverY = my; boatHover = true; return; }
   hoverOnCard = bridge && !!shownMark && ui.scentCardHit(hpx, hpy, 8);
-  if (hoverOnCard) { hoverX = mx; hoverY = my; hoverGrace = -1; return; }
+  if (hoverOnCard) { hoverX = mx; hoverY = my; hoverGrace = -1; boatHover = false; return; }
   if (mx === hoverX && my === hoverY && hoverGrace < 0) return;
   hoverX = mx; hoverY = my;
   const m = marks.pick(view, mx, my);
   // 고르기 중에는 **떠오른 12개만** 받는다 — 가라앉은 것은 눌러도 안 되는 것과 같아야 한다
   const next = (m && (!marks.focusing || marks.inFocus(m))) ? m : null;
+  // ⭐ **배에 손을 올렸다** (2026-09-21, v0.79.0 — 선실). 빛무리와 이름표가 같이 뜬다 (tick · ui.setCabin).
+  //   ⚠ 차례는 onPick 과 **같다** — 부표가 먼저다. 안 맞추면 눈에 보이는 것(빛무리)과 눌리는 것이 갈라진다
+  //   ⚠ 향수 고르기(12개) 중에는 안 띄운다 — 그때 배 위의 누름은 창 열기가 아니라 연출 끝내기다
+  boatHover = !next && !marks.focusing && boat.hitTest(view, mx, my);
   if (bridge && !next && hoverMark && shownMark === hoverMark) {
     if (ui.scentZoneHit(hpx, hpy, 8)) { hoverGrace = -1; return; }
     if (hoverGrace < 0) hoverGrace = t;
@@ -1296,6 +1329,28 @@ function holdWhile(ret) {
   const done = () => { hostHold = Math.max(0, hostHold - 1); if (!hostHold) input.setHold(false); };
   ret.then(done, done);
 }
+
+// ───────── 선실 말풍선 여닫기 (2026-09-21, v0.79.0 — host.js hostCabin) ─────────
+// ⚠⚠ **입력을 안 잠근다** ([진열대에 저장]의 `holdWhile` 과 다른 점). 판이 아니라 배 옆의 말풍선이라
+//   뒤의 바다가 살아 있어야 하고, 누름은 잠그는 대신 **닫기로 쓴다** (onPick 의 첫 줄).
+//   키는 어차피 포커스가 앱 말풍선으로 넘어가 이 문서까지 안 온다.
+// ⚠ 앱이 준 Promise 가 '말풍선이 닫혔다' 다 — 문을 골라 떠나든 ESC 든 그 하나로 돌아온다.
+//   호스트가 없으면(단독) 뜬 것이 없으므로 곧바로 되돌린다 — 안 그러면 누름이 영영 '닫기' 로만 간다.
+function openCabin() {
+  if (cabinOpen) return;
+  cabinOpen = true;
+  const ret = hostCabin(true);
+  if (ret && typeof ret.then === 'function') {
+    const done = () => { cabinOpen = false; };
+    ret.then(done, done);
+  } else cabinOpen = false;
+}
+function closeCabin() {
+  if (!cabinOpen) return false;
+  cabinOpen = false;
+  hostCabin(false);
+  return true;
+}
 // ───────── 잠수 (2026-09-18, dive.js) — 앱 커튼이 진행도를 넘기는 문 ─────────
 // 앱 : 헤더 '진열대' 를 누르면 커튼이 시계를 쥐고 매 프레임 `PB.dive(k)` 로 0 → 1 을 민다 (k = 1 이 화면을 다 덮은 순간).
 //   그 뒤 앱이 `/shelf` 로 옮겨 가며 엔진은 통째로 사라지므로, 엔진 쪽에서 되돌릴 일은 **취소했을 때**뿐이다.
@@ -1909,6 +1964,43 @@ function tick() {
     }
     ui.placeScent({ x, y, r, obs: _obs, bubble: (P.cardBubble === undefined ? 1 : P.cardBubble) >= 0.5 });
   }
+  // ⭐⭐ **배가 화면 어디에 있는가** (2026-09-21, v0.79.0 — 선실). 말풍선 둘이 이 점에 꼬리를 댄다 :
+  //   엔진의 호버 방울(ui.setCabin)과 **앱의 선실 말풍선**(`PB.boat.screen` 을 매 프레임 읽는다).
+  //   **이번 프레임 카메라**로 투영한다 — 배가 너울에 오르내리고 카메라가 밀리면 말풍선도 같이 간다
+  //   (카드 자리와 같은 식).
+  //   ⚠ 기준점은 **선체 가운데**다 (돛까지 넣으면 배가 기울 때 말풍선이 돛을 따라 끌려간다).
+  //   ⚠ 화면 반지름은 카메라의 위 방향으로 배 길이 절반을 투영해 잰다 — fov 를 쓰지 않는다
+  //     (항공뷰는 직교 카메라라 fov 가 없다 · reflect.js 의 NaN 교훈)
+  //   ⚠ 호버도 아니고 말풍선도 없으면 **안 잰다** — 투영 두 번을 매 프레임 헛돌리지 않는다 (screen.on = false)
+  if (boatHover || cabinOpen) {
+    const bp = boat.pivot.position, hy = bp.y + CONFIG.boat.lengthW * 0.11;
+    view.updateMatrixWorld();
+    _v3.set(bp.x, hy, bp.z).project(view);
+    const x = (_v3.x * 0.5 + 0.5) * W(), y = (-_v3.y * 0.5 + 0.5) * H();
+    const e = view.matrixWorld.elements, R = CONFIG.boat.lengthW * 0.5;
+    _v3.set(bp.x + e[4] * R, hy + e[5] * R, bp.z + e[6] * R).project(view);
+    const r = Math.abs((-_v3.y * 0.5 + 0.5) * H() - y);
+    // 꼬리를 대는 점 = 배 **옆구리**. 선체 반폭이 r 의 0.34 배라 그 밖이다 (boat.js 의 좌표 규약).
+    //   ⚠ 오른쪽이 기본이고, 그쪽에 말풍선이 안 들어가면 왼쪽으로 뒤집는다 (앱 말풍선 폭 160 + 꼬리 + 여백)
+    const gap = r * (P.cabinGap === undefined ? 0.55 : P.cabinGap);
+    let side = 1, ax = x + gap;
+    if (ax + 190 > W() - 20) { side = -1; ax = x - gap; }
+    const s = boat.screen;
+    s.x = x; s.y = y; s.r = r; s.ax = ax; s.ay = y; s.side = side; s.on = true;
+    // ⚠ 다섯째 인자 = **앱 말풍선이 이 방울에서 자라기 시작했다** — 옅어지며 사라지게 두면
+    //   자라는 말풍선과 두 겹이 겹쳐 유리가 한 번 짙어진다 (ui.setCabin 의 ⚠⚠)
+    ui.setCabin(boatHover, ax, y, side, cabinOpen);
+  } else {
+    boat.screen.on = false;
+    ui.setCabin(false, 0, 0, 1, false);
+  }
+  // 누를 수 있다는 것을 **커서로도** 말한다 — 방울을 못 보는 사람에게도 남는 신호다.
+  //   ⚠ 켜고 끄는 자리가 여기 하나라야 한다 (updateHover 는 일찍 돌아가는 갈래가 여럿이다 — 말풍선이
+  //     떠 있는 동안 손가락 커서가 남는다). ⚠ 값이 바뀔 때만 쓴다
+  {
+    const want = boatHover ? 'pointer' : '';
+    if (ui.mount.style.cursor !== want) ui.mount.style.cursor = want;
+  }
   ui.setDrift(s);
   // 반사를 먼저 찍는다 (배와 같은 게이트라 8fps). 본 렌더가 그 그림을 되읽는다
   submerged.update(view, boat.stepped);
@@ -2099,6 +2191,10 @@ const onKeyExit = (e) => {
     return;
   }
   if (e.key !== 'Escape') return;
+  // ⭐ 선실 말풍선이 가장 먼저다 (2026-09-21) — 마지막에 연 것을 먼저 닫는다.
+  //   ⚠ 대개는 여기까지 안 온다 — 말풍선이 열릴 때 포커스가 앱으로 넘어가 키가 그쪽에서 끝난다.
+  //     그래도 둔다 : 사용자가 3D 를 다시 누르지 않고 탭으로 포커스를 되돌린 경우가 남는다
+  if (cabinOpen) { closeCabin(); return; }
   // 향수 고르기가 먼저다 — 떠 있는 12개를 거두고 끝낸다 (연출까지 한 번에 나가지 않는다)
   if (marks.focusing) { marks.focusOff(); marks.clearSelect(); clickMark = null; return; }
   if (phase.cue.zone) { if (!phase.cue.busy) phase.leave(); return; }
