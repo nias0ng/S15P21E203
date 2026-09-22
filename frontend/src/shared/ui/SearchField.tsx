@@ -28,10 +28,37 @@ type SearchFieldTone = 'archive' | 'scene'
  * 아이보리 모달 · 진열대 종이에서는 둘 다 비어 있어 아래 짙은 청동이 섭니다.
  * 짙은 청동인 까닭은 대비입니다 — 옅은 청동(`accent`) 위의 아이보리 화살표는
  * 2.90:1 로 기준(3:1)에 못 미치고 `accent-deep` 이라야 4.54:1 입니다.
+ *
+ * NOTE: `scene` 의 두 색은 밝아서 아이보리 화살표가 1.67:1 · 1.94:1 입니다 — 그림 요소
+ * 기준(3:1)에 못 미칩니다. 3D 바다 위라 알약이 바탕에서 이미 떠 있고, 화살표보다 단추의
+ * 둥근 면이 '누를 것' 을 말하는 자리라 색을 살렸습니다.
  */
 const SUBMIT_TONE: Record<SearchFieldTone, string> = {
   archive: 'bg-accent-deep',
-  scene: 'from-glow to-accent bg-gradient-to-br',
+  scene: 'from-scene-send to-scene-send-deep bg-gradient-to-br',
+}
+
+/**
+ * 알약에 두르는 포커스 링. `archive` 만 답니다.
+ *
+ * NOTE: `scene` 은 일부러 비워 둡니다 — 짙은 청동 링이 모래빛 알약과 3D 하늘 사이에서
+ * 따로 놉니다. 글쇠로 들어와도 자리를 알리는 것은 입력 커서뿐입니다.
+ */
+const PILL_FOCUS: Record<SearchFieldTone, string> = {
+  archive: 'has-[:focus-visible]:ring-accent-deep has-[:focus-visible]:ring-2',
+  scene: '',
+}
+
+/**
+ * 실행 단추의 지름. 알약 높이에 맞춰 갈립니다.
+ *
+ * NOTE: `scene` 의 알약은 목록(56)보다 낮은 50 이라, 두 방이 같은 42 를 쓰면 메인에서만
+ * 위아래 숨이 4 밖에 안 남아 단추가 알약을 꽉 채웁니다. 알약이 42 · 40 으로 줄어드는
+ * 좁은 창에서는 아예 같은 높이가 됩니다 — 그래서 단계마다 같이 줄입니다.
+ */
+const SUBMIT_SIZE: Record<SearchFieldTone, string> = {
+  archive: 'size-10.5',
+  scene: 'size-8.75 max-[760px]:size-7.5 [@media(max-height:560px)]:size-7.5',
 }
 
 /**
@@ -57,6 +84,12 @@ export function SearchField({
   tone = 'archive',
   className,
   name = 'keyword',
+  /*
+   * NOTE: 브라우저가 기억한 지난 검색어 목록을 끕니다. 검색창이 모두 같은 `name` 이라
+   * 켜 두면 한 칸에 친 말이 다른 화면 · 모달의 검색창에서 그대로 떠오르고, 그 목록에
+   * 마우스를 올리면 브라우저가 값을 미리 채우며 입력칸에 제 강조 바탕을 칠합니다.
+   */
+  autoComplete = 'off',
   ...props
 }: SearchFieldProps) {
   return (
@@ -83,7 +116,7 @@ export function SearchField({
         'before:-z-10 before:rounded-full before:blur-xl',
         'before:bg-[radial-gradient(ellipse_at_center,var(--search-glow,transparent),transparent_70%)]',
         /* 포커스 링은 input 이 아니라 알약에 겁니다 */
-        'has-[:focus-visible]:ring-accent-deep has-[:focus-visible]:ring-2',
+        PILL_FOCUS[tone],
         className,
       )}
       onSubmit={(event) => {
@@ -102,6 +135,7 @@ export function SearchField({
         id={`search-${name}`}
         name={name}
         type="search"
+        autoComplete={autoComplete}
         className={cn(
           'text-charcoal placeholder:text-charcoal-soft text-body h-full min-w-0 flex-1',
           'bg-transparent outline-none',
@@ -114,7 +148,8 @@ export function SearchField({
         aria-label="검색"
         className={cn(
           /* `relative` 는 빛무리(`-z-10`) 위에 확실히 세우려는 것입니다 */
-          'relative grid size-10.5 shrink-0 place-items-center rounded-full',
+          'relative grid shrink-0 place-items-center rounded-full',
+          SUBMIT_SIZE[tone],
           'text-[var(--search-submit-ink,var(--color-ivory))]',
           tone === 'archive'
             ? cn(
@@ -124,7 +159,30 @@ export function SearchField({
               )
             : SUBMIT_TONE[tone],
           'shadow-[0_2px_8px_rgb(24_18_34/0.18)]',
-          'transition-transform duration-120 ease-out active:scale-95',
+          /*
+           * 손을 올리면 단추만 한 단 밝아집니다. **메인(`scene`)은 빼 둡니다** —
+           * 거기 단추는 이미 모래빛이라 더 밝히면 알약에 녹고, 3D 안의 엔진이 같은
+           * 검색창을 따로 그리고 있어 둘이 어긋납니다(위 컴포넌트 머리말).
+           *
+           * 색이 아니라 `brightness` 인 까닭: 이 단추의 바탕을 정하는 것은 **방**입니다
+           * (어두운 방은 남색 그라데이션 · 아이보리 모달은 짙은 청동). 호버 색을 박으면
+           * 방마다 짝을 하나씩 더 들고 있어야 하는데, 밝기는 어느 바탕에서든 한 뜻입니다.
+           *
+           * ⚠️ **한 값으로는 안 됩니다** — 올릴 수 있는 천장이 방마다 다릅니다. 화살표는
+           * 어디서나 아이보리라, 바탕을 밝힐수록 그림 요소 기준(3:1)에 가까워집니다.
+           *
+           *   아이보리 모달 · 진열대 종이 : 짙은 청동(#7f6f4d) 4.54:1 → 1.15 에서 3.57:1.
+           *     1.25 면 3.07:1 이라 기준에 닿습니다. 그래서 **기본값이 1.15** 입니다.
+           *   어두운 방 : 남색이 깊어 여유가 큽니다 — 방이 `--search-submit-hover` 로
+           *     따로 올립니다(`styles/scent-display.css`). 1.15 로는 눈에 안 띕니다.
+           *
+           * 기본값을 여기 뒤에 두는 것은 나머지 `--search-*` 와 같습니다 — 방이 안
+           * 채우면 이 값이 섭니다.
+           */
+          tone === 'archive' &&
+            'hover:brightness-[var(--search-submit-hover,1.15)]',
+          /* 밝아지는 것도 눌리는 것과 같은 속도로 — `filter` 를 빼면 호버가 딱딱 끊깁니다 */
+          'transition-[transform,filter] duration-120 ease-out active:scale-95',
           'focus-visible:ring-accent-deep outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
         )}
       >

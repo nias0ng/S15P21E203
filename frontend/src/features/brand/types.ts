@@ -28,10 +28,11 @@ export const DEFAULT_BRAND_SORT: BrandSort = 'PERFUME_COUNT'
  */
 export const SERVER_DEFAULT_BRAND_SORT: BrandSort = 'NAME_EN'
 
+/** 화면에 서는 차례입니다. 처음 켜져 있는 것(`DEFAULT_BRAND_SORT`)이 맨 앞입니다 */
 export const BRAND_SORTS = [
+  { value: 'PERFUME_COUNT', label: '향수 많은 순' },
   { value: 'NAME_EN', label: 'abc 순' },
   { value: 'NAME_KO', label: '가나다순' },
-  { value: 'PERFUME_COUNT', label: '향수 많은 순' },
 ] as const satisfies readonly { value: BrandSort; label: string }[]
 
 export interface BrandSearchParams {

@@ -162,7 +162,7 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
           to={toPerfumeDetail(review.perfume.perfumeId)}
           state={perfumeViewState('COMMUNITY')}
           className={cn(
-            'border-line hover:border-accent rounded-card',
+            'border-line hover:border-accent-blush rounded-card',
             'flex items-center gap-3.75 border p-2.5',
             'transition-colors duration-120 ease-out',
             'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',

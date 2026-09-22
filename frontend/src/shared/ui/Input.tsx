@@ -51,7 +51,8 @@ export function Input({
           // 바탕을 한 단 밝게 칠합니다 — 비워 두면 테두리 한 줄로만 칸을 알려야 합니다
           'bg-surface-card',
 
-          'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
+          // NOTE: 포커스 링을 일부러 안 답니다. 자리를 알리는 것은 입력 커서뿐입니다
+          'outline-none',
           'disabled:bg-line-soft disabled:opacity-60',
           error ? 'border-danger' : 'border-line',
           className,

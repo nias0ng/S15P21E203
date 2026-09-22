@@ -83,7 +83,6 @@ export function PostList({
               to={item.to}
               className={cn(
                 'text-ink text-heading block font-serif font-bold',
-                'underline-offset-4 hover:underline',
                 'focus-visible:ring-accent-deep rounded-card outline-none focus-visible:ring-2',
                 'after:absolute after:inset-0',
               )}
