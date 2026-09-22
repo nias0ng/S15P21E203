@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { isApiError } from '@/shared/api/http'
 import { UNROLL, useUnroll } from '@/shared/hooks/useUnroll'
@@ -8,6 +8,7 @@ import { EmptyState } from '@/shared/ui/EmptyState'
 import { Modal } from '@/shared/ui/Modal'
 import { Skeleton } from '@/shared/ui/Skeleton'
 
+import { usePendingFeedbackStore } from '../pendingFeedbackStore'
 import { recommendationQuery } from '../queries'
 
 import { RecommendResultList } from './RecommendResultList'
@@ -29,7 +30,13 @@ export function RecommendModal({ query, onClose }: Props) {
       open={query !== null}
       onClose={onClose}
       title="추천 결과"
-      className="mt-25 mb-auto w-[min(760px,calc(100vw-40px))]"
+      /*
+        NOTE: 낮은 화면에서만 판이 스스로 굴러갑니다. 1920 에서는 다섯 장이 다 들어가
+        휠이 안 생기고(실측 817px < 955px), 1280×800 처럼 낮은 화면에서는 이 상한이 없으면
+        다섯 번째 카드가 화면 밖으로 잘려 **닿을 길이 없습니다.** 목록 안쪽에 스크롤 상자를
+        두는 것과는 다릅니다 — 그쪽은 결과가 더 있는 것처럼 보이게 합니다.
+      */
+      className="scent-map-panel rounded-glass mt-25 mb-auto max-h-[calc(100vh-125px)] w-[min(560px,calc(100vw-40px))] overflow-y-auto"
     >
       {/* NOTE: `<dialog>` 는 닫혀도 children 이 DOM 에 남아, 그리지 않아야 족자가 다시 풀립니다 */}
       {query !== null && <RecommendBody query={query} />}
@@ -49,6 +56,29 @@ function RecommendBody({ query }: { query: string }) {
   })
 
   const perfumes = result.data?.perfumes ?? []
+  /*
+    계약상 늘 오는 자리지만 `?? []` 로 받습니다 — 이 줄이 없으면 필드가 빠진 응답 하나에
+    `length` 를 읽다 모달이 통째로 에러 바운더리로 떨어집니다. 서버가 낡아 이 필드를
+    모르는 동안, 안 나와도 되는 근거 한 줄 때문에 추천 전체가 안 보이면 안 됩니다.
+  */
+  const matchedData = result.data?.matchedData ?? []
+
+  /*
+    결과가 **도착하는 순간** 설문을 걸어 둡니다. 닫을 때 걸면 늦습니다 — 결과에서
+    [자세히 보기]는 링크라, 상세로 넘어갈 때 이 모달의 `onClose` 가 불리지 않고
+    화면째 언마운트됩니다. 그때 걸어 둘 곳이 없으면 답하지 않은 설문이 통째로 사라집니다.
+
+    NOTE: 향수가 0개면 걸지 않습니다. `NO_CONDITION` · `NO_RESULT` 는 추천이 없었던 것이라
+    "추천은 어떠셨나요" 에 답할 것이 없고, 그 답을 만족도로 세면 추천의 품질이 아니라
+    입력을 못 알아들은 횟수를 만족도에 섞게 됩니다.
+    NOTE: 손잡이가 `null` 인 경우도 있습니다 — 서버가 기록에 실패한 것이라 보낼 곳이 없습니다.
+  */
+  const hold = usePendingFeedbackStore((state) => state.hold)
+  const token = result.data?.recommendationToken ?? null
+  const hasPerfumes = perfumes.length > 0
+  useEffect(() => {
+    if (token !== null && hasPerfumes) hold({ token, query })
+  }, [token, query, hasPerfumes, hold])
 
   return (
     <div
@@ -74,11 +104,31 @@ function RecommendBody({ query }: { query: string }) {
 
         {result.isSuccess && (
           <>
+            {/*
+              NOTE: 향이 아닌 근거는 **반드시 그립니다.** 노트를 말한 문장은 AI 가 그 말을
+              accord 로 풀어 보내면서 어느 글자에서 왔는지를 안 채워, 카드의 추천 이유에는
+              사용자가 쓴 말이 안 남습니다. 이 줄을 빼면 "미모사랑 장미 들어간 향수" 를 찾은
+              사람의 화면에서 미모사도 장미도 사라집니다.
+            */}
+            {matchedData.length > 0 && perfumes.length > 0 && (
+              <p className="border-line text-ink-muted text-caption mb-3.75 border-l-2 pl-2.5 leading-relaxed">
+                <strong className="text-ink font-medium">
+                  {matchedData.map((data) => data.label).join(' · ')}
+                </strong>{' '}
+                조건으로 좁혔습니다.
+              </p>
+            )}
+
             {/* 왜 헐거운지 안 밝히면 조건 하나로 나온 다섯 개를 정확한 추천으로 읽습니다 */}
             {result.data.status === 'OK_RELAXED' && perfumes.length > 0 && (
               <p className="border-line text-ink-muted text-caption mb-3.75 border-l-2 pl-2.5 leading-relaxed">
-                조건이 넓어 비슷한 향까지 함께 골랐습니다. 상황이나 계절을
-                덧붙이면 더 좁혀 드릴 수 있습니다.
+                {result.data.pickedWithoutScentCondition
+                  ? /*
+                      NOTE: 향으로 고른 것이 아닌 경우를 "조건이 넓다" 로 묶으면 거짓말이 됩니다.
+                      향 조건을 하나도 못 뽑았고 순서를 정한 것은 평가자 수입니다.
+                    */
+                    '향을 말씀하신 것으로 읽지 못해, 위 조건에 맞는 향수를 평가가 많은 순으로 골랐습니다. 냄새로 풀어서 한 줄 덧붙이면 향으로 골라 드릴 수 있습니다.'
+                  : '조건이 넓어 비슷한 향까지 함께 골랐습니다. 상황이나 계절을 덧붙이면 더 좁혀 드릴 수 있습니다.'}
               </p>
             )}
 
