@@ -28,7 +28,7 @@ export function BrandGrid({
     return (
       <div className={gridClass}>
         {Array.from({ length: skeletonCount }, (_, index) => (
-          // 카드 한 장의 높이(로고 160 + 이름 두 줄 + 안쪽 여백 = 242)와 맞춥니다
+          // 카드 한 장과 비슷한 높이 — 로고(h-40) + 제목 · 캡션 + 안쪽 여백입니다
           <Skeleton key={index} className="h-60" />
         ))}
       </div>

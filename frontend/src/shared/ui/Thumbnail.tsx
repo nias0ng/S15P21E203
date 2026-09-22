@@ -15,7 +15,7 @@ type ThumbnailProps = {
    * PNG(향수병)용입니다. **없을 때는 상자를 그대로 그립니다**(자리표시자).
    */
   bare?: boolean
-  /** 크기·배치. 실제로 13가지가 쓰여 enum 으로 두지 않았습니다 */
+  /** 크기·배치. 부르는 곳마다 달라 enum 으로 두지 않았습니다 */
   className?: string
   /**
    * img 의 alt. 기본값은 빈 문자열입니다 — 호출부 대부분이 이미지 옆에 향수명·브랜드명을
@@ -28,8 +28,8 @@ type ThumbnailProps = {
  * 이미지 슬롯. 있으면 그리고, 없으면 자리표시자 상자를 그립니다. 아바타
  * (`rounded-full`)도 같은 상자라 이걸 씁니다.
  *
- *   <Thumbnail src={perfume.thumbnailUrl} fallback="이미지" className="size-13.75" />
- *   <Thumbnail src={brand.logoUrl} fallback="로고" fit="contain" className="h-23.75" />
+ *   <Thumbnail src={review.profileImageUrl} className="size-7.5 shrink-0 rounded-full" />
+ *   <Thumbnail src={brand.logoUrl} fallback="로고" fit="contain" className="h-40 w-full" />
  */
 export function Thumbnail({
   src,
