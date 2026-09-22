@@ -1,38 +1,37 @@
 import { toBrandDetail } from '@/shared/config/routes'
+import { cn } from '@/shared/lib/cn'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Skeleton } from '@/shared/ui/Skeleton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 import { TileCard } from '@/shared/ui/TileCard'
 
+import { BRAND_PLATE } from '../plate'
 import type { Brand } from '../types'
 
 type Props = {
   items: Brand[]
   isPending?: boolean
-  /** 자리표시자 수. **한 쪽에 담는 수와 같게** 주지 않으면 화면이 튑니다 */
+  /** 한 쪽에 담는 수와 같게 주지 않으면 화면이 튑니다 */
   skeletonCount?: number
-  /** 0건 안내 아래 버튼. 검색어·정렬로 걸러 0건이 된 경우 [초기화] 를 답니다. */
   emptyAction?: React.ReactNode
 }
 
-/**
- * 브랜드 카드 그리드 (A34 — 5열). 브랜드를 누르면 **브랜드 상세**로 갑니다 —
- * 와이어프레임의 `?brand=` 필터 링크도 그대로 살아 있습니다.
- */
+/** 브랜드 카드 그리드 (A34 — 5열) */
 export function BrandGrid({
   items,
   isPending = false,
   skeletonCount = 10,
   emptyAction,
 }: Props) {
+  /* NOTE: 열 수는 향수 · 노트 격자와 같은 값입니다 — 여기만 바꾸면 카드 폭이 화면마다 달라집니다 */
   const gridClass = 'grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-5'
 
   if (isPending) {
     return (
       <div className={gridClass}>
         {Array.from({ length: skeletonCount }, (_, index) => (
-          // 카드 한 장의 높이(로고 80 + 이름 두 줄 + 안쪽 여백 = 162)와 맞춥니다
-          <Skeleton key={index} className="h-40" />
+          // 카드 한 장과 비슷한 높이 — 로고(h-40) + 제목 · 캡션 + 안쪽 여백입니다
+          <Skeleton key={index} className="h-60" />
         ))}
       </div>
     )
@@ -59,14 +58,11 @@ export function BrandGrid({
                 src={brand.logoUrl}
                 fallback="로고"
                 fit="contain"
-                className="h-20 w-full"
+                className={cn(BRAND_PLATE, 'h-40 w-full')}
               />
             }
             title={brand.nameKo ?? brand.name}
-            /*
-              한국어 이름이 없는 브랜드는 적을 것이 없어도 **줄자리는 남깁니다** —
-              안 남기면 그 카드만 한 줄 짧아집니다(7,793개 중 68개).
-            */
+            /* 한국어 이름이 없어도 줄자리는 남깁니다 — 안 남기면 그 카드만 한 줄 짧아집니다 */
             caption={
               brand.nameKo ? brand.name : <span aria-hidden>&nbsp;</span>
             }

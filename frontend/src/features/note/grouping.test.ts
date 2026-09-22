@@ -35,7 +35,6 @@ describe('groupByAccordFamily', () => {
     ])
   })
 
-  /* 몰래 합치면 정렬이 깨진 것을 아무도 모르고 넘어갑니다 */
   it('같은 대분류가 떨어져 두 번 나오면 섹션도 둘로 둔다', () => {
     const 흐트러진순서 = [NOTES[0]!, NOTES[2]!, NOTES[1]!]
 
@@ -52,7 +51,6 @@ describe('noteFamilies', () => {
     expect(noteFamilies(NOTES)).toEqual(['CITRUS', 'MUSK', UNCATEGORIZED])
   })
 
-  /* 알약은 섹션과 달라야 합니다 — 똑같은 알약이 둘 서면 어느 쪽을 눌러야 할지 모릅니다 */
   it('섹션이 갈라져도 같은 알약을 두 번 만들지 않는다', () => {
     const 흐트러진순서 = [NOTES[0]!, NOTES[2]!, NOTES[1]!]
 
@@ -65,7 +63,6 @@ describe('filterByFamily', () => {
     expect(filterByFamily(NOTES, 'MUSK').map((n) => n.name)).toEqual(['Musk'])
   })
 
-  /* 알약에 '기타' 가 서므로 눌렀을 때도 걸려야 합니다 — 화면과 같은 기준 */
   it("'기타' 를 고르면 대분류가 비어 있는 노트가 걸린다", () => {
     expect(filterByFamily(NOTES, UNCATEGORIZED).map((n) => n.name)).toEqual([
       'Vetiver',

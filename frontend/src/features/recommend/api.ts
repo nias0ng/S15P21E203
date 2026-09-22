@@ -1,18 +1,17 @@
 import { http } from '@/shared/api/http'
 import { withDevFallback } from '@/shared/api/withDevFallback'
 
-import type { PersonalRecommendation, RecommendResult } from './types'
+import type {
+  PersonalRecommendation,
+  RecommendResult,
+  Satisfaction,
+} from './types'
 
 /**
- * NLR-01 자연어 기반 추천. **조회인데 `POST`** 입니다 — 문장이 최대 500자이고,
- * 쿼리스트링에 담으면 접근 로그에 그대로 남습니다. 비회원도 부를 수 있습니다.
- *
- * ⚠️ **향수를 못 찾아도 200 입니다** — 0개인 경우가 두 종류라 `status` 로 넷을
- * 구분합니다. ⚠️ 이 엔드포인트만 나는 오류가 둘 — **429**(호출량) · **503**(AI 서버).
- *
- * ⚠️ **503 이 두 뜻입니다** — vite 프록시가 백엔드에 못 닿아도, 백엔드가 살아서
- * "AI 서버가 죽었다" 고 해도 503 입니다. `withDevFallback` 은 둘을 못 가려 개발
- * 중에는 뒤엣것도 자리표시자로 덮습니다. 운영에서는 끼어들지 않습니다.
+ * NLR-01 자연어 기반 추천. 조회인데 `POST` 입니다 — 문장 500자를 쿼리스트링에 담으면
+ * 접근 로그에 그대로 남습니다. 비회원도 부르고, 향수를 못 찾아도 200 입니다.
+ * NOTE: 429(호출량) · 503(AI 서버) 은 이 엔드포인트만 납니다. 503 은 개발 프록시 실패와
+ * 구분되지 않아 `withDevFallback` 이 개발 환경에서만 자리표시자로 덮습니다.
  */
 export async function getRecommendation(
   query: string,
@@ -33,8 +32,12 @@ export async function getRecommendation(
 /** 와이어프레임의 예시 결과. 백엔드 없이 화면을 볼 때만 씁니다 */
 function placeholderRecommendation(query: string): RecommendResult {
   return {
+    // 손잡이가 없으니 설문도 안 뜹니다 — 보낼 곳이 없는데 묻는 것은 거짓 화면입니다
+    recommendationToken: null,
     status: 'OK',
     query,
+    pickedWithoutScentCondition: false,
+    matchedData: [],
     perfumes: [
       {
         perfumeId: 1,
@@ -72,17 +75,30 @@ function placeholderRecommendation(query: string): RecommendResult {
 }
 
 /**
- * REC-12 · REC-13 개인화 맞춤 추천 — 진열대 화면의 추천 카드.
+ * NLR-08 추천 만족도. 결과 모달을 닫을 때 한 번 묻고 보냅니다.
  *
- * ⚠️ 백엔드 · AI 추천 API 가 아직 없어 고정값을 돌려줍니다. 준비되면 본문만 바꾸세요.
+ * NOTE: **`withDevFallback` 을 쓰지 않습니다.** 그것은 읽기용입니다 — 쓰기를 대체값으로
+ * 덮으면 아무 데도 안 남은 답을 보낸 것처럼 보이고, 화면은 고맙다고 인사합니다.
  *
- *   const { data } = await http.get<PersonalRecommendation>('/recommendations/personal')
- *
- * 추천할 것이 없으면 null 이고, 화면은 그때 카드를 아예 그리지 않습니다.
- *
- * ⚠️ **이미 진열대에 있는 향수를 거르는 일은 추천 엔진의 몫입니다** — 화면에서 걸러
- * 내면 "추천을 받았는데 다 걸러져 0개" 를 화면이 떠안습니다. 어느 칸까지 뺄지는
- * 연동 때 백엔드와 맞춥니다.
+ * NOTE: 한 추천에 한 번입니다. 두 번째는 **409** 이고, 그것은 오류가 아니라 이미 남겼다는
+ * 뜻이라 화면이 실패로 다루면 안 됩니다. **429**(호출량)도 이 경로에 걸립니다.
+ */
+export async function sendRecommendFeedback(
+  recommendationToken: string,
+  body: { satisfaction: Satisfaction; comment?: string },
+): Promise<void> {
+  await http.post(
+    `/recommendations/natural-language/${recommendationToken}/feedback`,
+    body,
+  )
+}
+
+/**
+ * REC-12 · REC-13 개인화 맞춤 추천 — 진열대 화면의 추천 카드. 추천할 것이 없으면 null 이고,
+ * 화면은 그때 카드를 아예 그리지 않습니다.
+ * NOTE: 백엔드 · AI 추천 API 가 아직 없어 고정값을 돌려줍니다. 준비되면 본문만 바꾸세요.
+ * NOTE: 진열대에 이미 있는 향수를 거르는 일은 추천 엔진의 몫입니다 — 화면에서 거르면
+ * "추천을 받았는데 다 걸러져 0개" 를 화면이 떠안습니다.
  */
 export async function getPersonalRecommendation(): Promise<PersonalRecommendation | null> {
   return {

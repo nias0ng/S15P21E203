@@ -269,7 +269,7 @@ POST /nlr/recommend   { "text": "...", "structured": <위의 structured 그대�
 {
   "status": "OK",
   "query": "빨래 냄새 나는 향수 찾고 있어",
-  "lexiconVersion": "v1_17",
+  "lexiconVersion": "v1_18",
   "promptSha256": "4f0a368d98b41338",
   "conditions": {
     "core": ["fresh", "soapy"],
@@ -407,7 +407,7 @@ llm_no_effect   262건 (43.7%)   그중 조건이 나온 문장 182건
 
 | 칸 | 예 | DB 칸 | 무엇인가 |
 |---|---|---|---|
-| `lexiconVersion` | `"v1_17"` | `lexicon_version VARCHAR(20)` | 엔진이 쓴 향 사전 버전 |
+| `lexiconVersion` | `"v1_18"` | `lexicon_version VARCHAR(20)` | 엔진이 쓴 향 사전 버전 |
 | `promptSha256` | `"4f0a368d98b41338"` | `prompt_sha256 VARCHAR(16)` | ①단계 프롬프트 지문 앞 16자 |
 
 **왜 남기나** — 반년 뒤에 *"이 표현이 미매칭이었다"* 를 볼 때 **어느 사전에서 미매칭
@@ -417,7 +417,7 @@ v1.15, 프롬프트가 v1 → v4 로 움직였다.
 **⚠ 둘 다 `null` 일 수 있다.** DB 칸이 둘 다 `NULL` 허용이라 `INSERT` 가 막히지 않는다.
 
 ```
-lexiconVersion   사전 파일 이름이 `..._v1_17.csv` 규칙에 안 맞을 때 (측정용 임시 파일 등)
+lexiconVersion   사전 파일 이름이 `..._v1_18.csv` 규칙에 안 맞을 때 (측정용 임시 파일 등)
 promptSha256     프롬프트 파일을 못 읽을 때
 ```
 
@@ -434,7 +434,7 @@ promptSha256     프롬프트 파일을 못 읽을 때
 ```json
 {
   "query": "빨래 냄새 나는 향수 찾고 있어",
-  "lexiconVersion": "v1_17",
+  "lexiconVersion": "v1_18",
   "promptSha256": "4f0a368d98b41338",
   "conditions": { "core": ["fresh", "soapy"], "avoid": [],
                   "matchedExpressions": ["빨래"], "source": "llm+lexicon" },

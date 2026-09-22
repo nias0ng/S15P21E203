@@ -20,7 +20,7 @@ import {
   type SceneSearchMode,
   type VoyageLogStatus,
 } from '@/features/map'
-import { RecommendModal } from '@/features/recommend'
+import { NlrFeedbackModal, RecommendModal } from '@/features/recommend'
 // 진열대 저장은 진열대 도메인의 어휘입니다. 화면에서 두 도메인을 조합합니다.
 import {
   ShelfRegisterModal,
@@ -221,8 +221,13 @@ export default function HomePage() {
 
       <ScentScene
         className="absolute inset-0"
-        // 유리판 헤더(GlobalHeader 의 h-22.5 = 90px)가 3D 위를 가리는 높이 — 엔진이 검색창 · 해도를 그 아래로 내립니다
-        coveredTop={90}
+        /*
+          유리판 헤더(GlobalHeader 의 `--header-h`)가 3D 위를 가리는 높이 — 엔진이 검색창 ·
+          해도를 그 아래로 내립니다.
+          ⚠️ 숫자가 아니라 **계산되는 길이**를 넘깁니다. 헤더는 `--spacing` 을 타 1920 에서 90 ·
+            1536 에서 72 라, 90 을 박으면 좁은 화면에서 18px 이 어긋납니다 (`ScentScene` 의 probe).
+        */
+        coveredTop="var(--header-h)"
         onNightChange={(night) => setSky(night ? 'dark' : 'light')}
         onChartChange={setChartOpen}
         onBoot={boot.report}
@@ -250,7 +255,7 @@ export default function HomePage() {
 
           navigate(
             perfumeId === null
-              ? `${ROUTES.PERFUME_SEARCH}?keyword=${encodeURIComponent(perfume.nameKo)}`
+              ? `${ROUTES.PERFUMES}?keyword=${encodeURIComponent(perfume.nameKo)}`
               : toPerfumeDetail(perfumeId),
             // 검색으로 돌려보내는 쪽은 향수 상세가 아니라 기록할 것이 없습니다
             perfumeId === null
@@ -317,8 +322,11 @@ export default function HomePage() {
       />
 
       {/*
-        향해 일지 — 3D 위 왼쪽 위에 계속 떠 있습니다. 유리판 헤더(90px) 아래 30 · 왼쪽 30 —
+        향해 일지 — 3D 위 왼쪽 위에 계속 떠 있습니다. 유리판 헤더 아래 30 · 왼쪽 30 —
         엔진 미니맵(SCENT MAP)이 오른쪽 아래 28px 에 서는 것과 마주 보게 둡니다
+
+        ⚠ `top-30` 이 곧 "헤더(22.5) + 30" 입니다 — 둘 다 `--spacing` 을 타므로 한 숫자로 적힙니다.
+          1920 에서 90+30=120 · 1536 에서 72+24=96 으로 헤더 아래 간격까지 같은 비율로 따라갑니다.
 
         ⭐ 2026-09-16 : 엔진 검색창이 이 판의 **윗변(120)에 맞춰** 올라왔습니다 (`params.searchDrop` 40 → 0 ·
           `--pb-search-top` 44 → 30). 그래서 넓은 창에서는 판과 검색창이 **같은 높이로 나란히** 섭니다.
@@ -366,6 +374,13 @@ export default function HomePage() {
       {/* 검색창의 두 방식이 내놓는 답. 뒤의 3D 는 그대로 돌아갑니다 */}
       <RecommendModal query={nlQuery} onClose={() => setNlQuery(null)} />
 
+      {/*
+        결과를 닫으면 뜹니다. 답을 안 하고 상세로 나갔다 돌아와도 여기서 이어받습니다.
+        NOTE: 결과 모달이 떠 있는 동안에는 묻지 않습니다 — 향수를 보는 중에 답을 물으면
+        그 답은 추천이 아니라 화면에 대한 답입니다.
+      */}
+      <NlrFeedbackModal ready={boot.done && nlQuery === null} />
+
       <MapSearchModal
         keyword={mapKeyword}
         onClose={() => setMapKeyword(null)}
@@ -377,7 +392,7 @@ export default function HomePage() {
             향수를 보내는 길과 **같은 곳**입니다(위 onOpenDetail).
           */
           navigate(
-            `${ROUTES.PERFUME_SEARCH}?keyword=${encodeURIComponent(perfume.name)}`,
+            `${ROUTES.PERFUMES}?keyword=${encodeURIComponent(perfume.name)}`,
           )
         }}
       />

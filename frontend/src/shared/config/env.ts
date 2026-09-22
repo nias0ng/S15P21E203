@@ -1,6 +1,9 @@
 /**
- * 환경변수는 여기서만 읽습니다.
- * import.meta.env 를 코드 전역에 흩뿌리지 않으면 오타/누락을 앱 시작 시점에 잡을 수 있습니다.
+ * 환경변수는 이 파일에서만 읽습니다 — 흩어 두면 오타 · 누락이 앱을 켠 뒤에야 드러납니다.
+ *
+ * @param key 환경변수 이름 (오류 문구에 씁니다)
+ * @param value `import.meta.env` 에서 읽은 값
+ * @returns 비어 있지 않은 값. 비었으면 던집니다
  */
 function required(key: string, value: string | undefined): string {
   if (!value) {

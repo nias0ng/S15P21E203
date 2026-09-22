@@ -57,7 +57,8 @@ export function PillFilter<T extends string>({
             className={cn(
               'scent-pill text-caption rounded-full px-6.25 py-1.75',
               'text-ink transition-colors duration-120 ease-out',
-              'focus-visible:ring-accent outline-none focus-visible:ring-2',
+              // NOTE: 포커스 링을 일부러 안 답니다. 글쇠로 옮겨 다닐 때 어느 알약에 와 있는지 보이지 않습니다
+              'outline-none',
             )}
           >
             {option.label}

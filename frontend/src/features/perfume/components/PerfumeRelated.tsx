@@ -15,11 +15,7 @@ type Props = {
   isPending?: boolean
 }
 
-/**
- * 향수 상세 ⑥ 비슷한 향수 (A10 아래). **향수가 없으면 구역을 그리지 않습니다** —
- * 향 지도에 실린 200개 밖은 늘 빈 배열입니다. 건너갈 때 어느 향수에서 왔는지
- * (`RELATED_PERFUME`)를 조회 기록에 남깁니다.
- */
+/** **향수가 없으면 구역을 그리지 않습니다** — 향 지도에 실린 200개 밖은 늘 빈 배열입니다 */
 export function PerfumeRelated({
   fromPerfumeId,
   perfumes,
@@ -43,7 +39,6 @@ export function PerfumeRelated({
         <ul className="grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-5">
           {perfumes.map((perfume) => (
             <li key={perfume.perfumeId}>
-              {/* 향수 목록과 같은 약속 — 영문을 크게, 한국어를 그 아래 */}
               <PerfumeCard
                 name={perfume.name}
                 subName={perfume.nameKo}

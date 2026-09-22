@@ -7,10 +7,7 @@ export const authKeys = {
   me: () => [...authKeys.all, 'me'] as const,
 }
 
-/**
- * 내 정보. **로그인했을 때만 켜세요**(`enabled: isLoggedIn`) — 비로그인으로 부르면
- * 401 이고 응답 인터셉터가 그 401 을 로그아웃으로 처리합니다.
- */
+/** 로그인했을 때만 켜세요 — 비로그인 401 을 인터셉터가 로그아웃으로 처리합니다 */
 export const meQuery = () =>
   queryOptions({
     queryKey: authKeys.me(),

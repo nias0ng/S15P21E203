@@ -592,8 +592,8 @@ let pendingSea = null;
 // 연출 중에 고른 먼 곳 이동 (카드 '이 향의 해역으로' · 검색창 · 해도) — 들어오는 중이면 다 들어온 순간 퇴장을 걸고, 다 걷히면 틱이 travel.start 를 건다 (startTravel 주석 · travelAfterZone)
 let pendingTravel = null;
 // ⭐ 클릭 항해의 **일반 속도** (스로틀 0..1) — 자동 조타가 가속이 아닐 때의 값. 예전 틱의 숫자 0.72 를 이름으로 뺐다 (2026-09-15, v0.65.0 · 값은 그대로)
-const SAIL_NORMAL = 0.72;
-// 지금 속도가 일반(0) ~ 최대 가속(1) 사이 어디인가. 일반보다 느리면 음수
+const SAIL_NORMAL = 1.0;
+// 지금 속도가 일반(0) ~ 최대 가속(1) 사이 어디인가. 일반보다 느리면 음수. ⚠ 2026-09-22 : cruise = boost = 1.0 인 지금 분모가 0 이고 nav.speed 는 목표에 아래에서 수렴하므로 **k 는 늘 0 이하다** — sailBoostKeys 를 0 으로 꺼 둔 까닭이다
 function sailBoostK() { return (nav.speed - SAIL_NORMAL) / Math.max(1e-4, CONFIG.speed.boost - SAIL_NORMAL); }
 // ⭐⭐ **클릭 항해 중 ESC · 스페이스 — 가속 ↔ 일반 속도** (2026-09-15, v0.65.0 — sailBoostKeys). 사용자 : *"클릭 이동 시에 esc 나 스페이스를 누르면 가속이 멈추고
 //   일반 속도로 항해한다 아마 무작위로 누르는 사람이 있어서 어지러울 수 있는데 일반 속도로 도착하기전에는 가속을 다시 할 수 없게 해주고 반대로 최대 가속에
@@ -1436,7 +1436,7 @@ function tick() {
     target = Math.max(target, input.state.wheel);
     input.state.wheel = Math.max(0, input.state.wheel - dt * CONFIG.speed.wheelDecay);
   }
-  // ⚠ Shift 바다 누르기(boost)는 부스트 속도로 간다 — 그 밖의 자동 조타(검색 · 먼 곳 이동의 lead)는 예전 0.72 그대로
+  // ⚠ Shift 바다 누르기(boost)는 부스트 속도로 간다 — 그 밖의 자동 조타(검색 · 먼 곳 이동의 lead)는 SAIL_NORMAL(1.0) 이다. ⚠ 지금은 boost 도 1.0 이라 셋이 같은 속도고, Shift 누르기는 카메라만 물러나게 한다
   if (zones.auto) target = Math.max(target, zones.auto.boost ? CONFIG.speed.boost : SAIL_NORMAL);
   // ⭐ **가속은 예전 그대로, 감속은 관성으로 미끄러지게** (2026-09-14, speedGlide). 사용자 : *"클릭 했을때나 키보드로 이동이 멈추었을때 속도 값이 빠르게 0으로
   //   떨어지는데 출발하는 속도는 빨라도 멈췄을때는 급브레이크를 잡아도 제동이 관성에의해 미끄러지듯이 … 지금보다는 천천히 감속되게"*.

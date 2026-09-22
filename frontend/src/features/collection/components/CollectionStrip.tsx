@@ -1,4 +1,6 @@
 import { toCollectionDetail } from '@/shared/config/routes'
+import { cn } from '@/shared/lib/cn'
+import { FOCUS_RING } from '@/shared/ui/focusRing'
 import { Skeleton } from '@/shared/ui/Skeleton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 import { TileCard } from '@/shared/ui/TileCard'
@@ -8,14 +10,10 @@ import type { CollectionSummary } from '../types'
 type Props = {
   items: CollectionSummary[]
   isPending?: boolean
-  /** 마지막 자리를 눌렀을 때 — 컬렉션 만들기(A19)로 갑니다 */
   onCreate: () => void
 }
 
-/**
- * 내 컬렉션 목록 (A13 하단). 진열대와 컬렉션이 한 페이지라 컬렉션 목록 화면도
- * 하위 탭도 없고, 마지막 다음 자리는 늘 플러스(A19)입니다.
- */
+/** 내 컬렉션 목록 (A13 하단). 진열대와 한 페이지라 별도 목록 화면도 하위 탭도 없습니다 */
 export function CollectionStrip({ items, isPending = false, onCreate }: Props) {
   /* 한 줄에 셋. 440 x 3 + 가로 간격 40 x 2 = 1400 */
   const gridClass =
@@ -58,7 +56,10 @@ export function CollectionStrip({ items, isPending = false, onCreate }: Props) {
       <button
         type="button"
         onClick={onCreate}
-        className="border-line text-ink-muted hover:bg-line-soft hover:text-ink rounded-card flex min-h-40 flex-col items-center justify-center gap-1.25 border border-dashed transition-colors duration-120 ease-out"
+        className={cn(
+          'border-line text-ink-muted hover:bg-line-soft hover:text-ink rounded-card flex min-h-40 flex-col items-center justify-center gap-1.25 border border-dashed transition-colors duration-120 ease-out',
+          FOCUS_RING,
+        )}
       >
         <span aria-hidden className="text-title">
           +

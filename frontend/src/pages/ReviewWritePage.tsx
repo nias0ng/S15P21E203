@@ -4,7 +4,6 @@ import { useNavigate, useParams, useSearchParams } from 'react-router'
 
 import {
   communityKeys,
-  ImageAttachField,
   LinkedPerfumeModal,
   WriteForm,
   type LinkedPerfume,
@@ -430,7 +429,6 @@ export default function ReviewWritePage() {
           <ChipToggle
             label="이 향이 잘 어울리는 계절"
             multiple
-            tone="warm"
             options={SEASONS}
             value={seasons}
             onChange={(next) => setSeasonsDraft(next)}
@@ -440,8 +438,6 @@ export default function ReviewWritePage() {
             최소 한 개는 골라주세요. 여러 개 고를 수 있습니다.
           </p>
         </fieldset>
-
-        <ImageAttachField />
 
         {mutation.error !== null && (
           <p className="text-danger text-caption" role="alert">

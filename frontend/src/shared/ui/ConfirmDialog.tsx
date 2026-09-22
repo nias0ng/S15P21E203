@@ -15,7 +15,7 @@ type ConfirmDialogProps = {
 }
 
 /**
- * 삭제 확인 모달 (C01 — 7곳 공용). ⚠️ 대상 이름을 문구에 넣을지는 팀 확정 전이라
+ * 삭제 확인 모달 (C01 — 7곳 공용). 대상 이름을 문구에 넣을지는 팀 확정 전이라
  * prop 으로 열어 두었습니다.
  */
 export function ConfirmDialog({

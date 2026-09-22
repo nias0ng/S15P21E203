@@ -41,6 +41,27 @@ export function perfumeViewState(
 }
 
 /**
+ * 향수 상세의 뒤로 가기 단추에 적는 곳 이름 (S15P21E203-361).
+ *
+ * "← 향수 목록" 하나로 두면 커뮤니티나 진열대에서 들어온 사람에게 **가 본 적 없는
+ * 곳**을 가리킵니다. 들어온 길은 이미 `source` 로 알고 있으니 이름도 거기서 냅니다.
+ *
+ * `DIRECT` 는 들어온 길을 모르는 경우(주소 붙여넣기 · 새로 고침)라 향수 목록입니다 —
+ * 어디로도 돌아갈 데가 없을 때 이 서비스에서 가장 넓은 자리입니다.
+ */
+export const PERFUME_VIEW_BACK_LABEL: Record<PerfumeViewSource, string> = {
+  NATURAL_LANGUAGE_RECOMMENDATION: '추천 결과',
+  PERSONALIZED_RECOMMENDATION: '추천 결과',
+  SCENT_MAP: '향 지도',
+  COMMUNITY: '커뮤니티',
+  SEARCH: '향수 목록',
+  SHELF: '진열대',
+  COLLECTION: '컬렉션',
+  RELATED_PERFUME: '이전 향수',
+  DIRECT: '향수 목록',
+}
+
+/**
  * 라우터 state 에서 읽어냅니다. **새로 고침하거나 링크를 붙여 넣으면 비어 있고** 아무
  * 값이나 들어올 수 있어 `unknown` 에서 좁히고, 모르는 값은 `DIRECT` 입니다.
  */

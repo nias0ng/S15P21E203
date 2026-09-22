@@ -3,11 +3,8 @@ import { SEASONS, type SeasonStatistic } from '../types'
 type Props = { seasons: SeasonStatistic[] }
 
 /**
- * 계절별 평가 (A10 ③ — DTL-14). 파이가 아니라 도넛 네 개인 것은 계절을 여러 개
- * 골라 **합이 100이 아니기** 때문입니다 — 서로 독립인 비율 넷입니다.
- *
- * 응답에 네 계절이 늘 있지만 화면은 SEASONS 순서로 그립니다 — 응답 순서에 기대면
- * 정렬이 바뀌는 날 자리가 뒤섞입니다.
+ * 파이가 아니라 도넛 네 개인 것은 계절을 여러 개 골라 **합이 100이 아니기** 때문입니다.
+ * 응답 순서에 기대면 정렬이 바뀌는 날 자리가 뒤섞여 SEASONS 순서로 그립니다.
  */
 export function SeasonRatingChart({ seasons }: Props) {
   const bySeason = new Map(seasons.map((item) => [item.code, item.percentage]))
@@ -24,27 +21,30 @@ export function SeasonRatingChart({ seasons }: Props) {
   )
 }
 
-/* 도넛 하나. 와이어프레임은 지름 88 · 링 12 인데, 치수 끝자리 0/5 규칙에 맞춰 지름만 90 으로 올렸습니다. */
+/*
+ * 와이어프레임은 지름 88 인데 치수 끝자리 0/5 규칙에 맞춰 90 으로 올렸습니다.
+ *
+ * NOTE: 화면 픽셀이 아니라 viewBox 안의 좌표입니다. 실제 지름은 바깥 상자의
+ *   `size-22.5`(=90/4)가 정하고, 그래서 `--spacing` 을 타 화면 폭을 따라 줄어듭니다.
+ *   여기서 px 로 박으면 도넛만 안 줄어 1536 에서 혼자 커 보입니다.
+ */
 const SIZE = 90
 const STROKE = 12
 const RADIUS = (SIZE - STROKE) / 2
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 
 function SeasonDonut({ percentage }: { percentage: number }) {
-  // 소수점 한 자리까지 옵니다. 40.0 은 "40%" 로, 33.3 은 그대로 보여줍니다.
+  // 소수점 한 자리까지 옵니다. 40.0 은 "40%" 로, 33.3 은 그대로 보여줍니다
   const clamped = Number(Math.min(100, Math.max(0, percentage)).toFixed(1))
   const filled = (clamped / 100) * CIRCUMFERENCE
 
   return (
-    <div className="relative" style={{ width: SIZE, height: SIZE }}>
-      {/* 수치는 아래 글자로 읽히므로 그림은 보조입니다 */}
+    <div className="relative size-22.5">
       <svg
         aria-hidden
-        width={SIZE}
-        height={SIZE}
         viewBox={`0 0 ${SIZE} ${SIZE}`}
         // 12시 방향에서 시계방향으로 채우도록 90도 돌립니다
-        className="-rotate-90"
+        className="size-full -rotate-90"
       >
         <circle
           cx={SIZE / 2}

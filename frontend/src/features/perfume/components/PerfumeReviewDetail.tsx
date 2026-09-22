@@ -23,32 +23,20 @@ import type { ReviewDetail } from '../types'
 
 type Props = {
   review: ReviewDetail
-  /** 후기 수정 화면 경로 (A24a 가 후기 대상을 걸고 열립니다) */
   editTo: string
-  /**
-   * 삭제 뒤 화면을 옮기는 일은 부르는 쪽이 합니다 — 커뮤니티 목록도 낡는데
-   * `features/perfume` 은 `features/community` 를 import 할 수 없습니다.
-   */
+  /** 삭제 뒤 화면 이동은 부르는 쪽 몫입니다 — `features/perfume` 은 `features/community` 를 import 할 수 없습니다 */
   onDeleted?: () => void
 }
 
 /**
- * 후기 상세 (A12 — DTL-03 · 05 · 06)
- *
- * `review.mine` 일 때만 수정 · 삭제를 그립니다. 화면에서 숨기는 것만으로는 권한이
- * 지켜지지 않아 백엔드도 작성자를 다시 확인합니다.
- *
- * 어두운 방 · 유리판 구성 — docs/어두운-방-유리판.md
+ * 후기 상세 (A12). 어두운 방 · 유리판 구성은 docs/어두운-방-유리판.md 이고, 화면이
+ * 수정 · 삭제를 숨기는 것과 별개로 백엔드도 작성자를 다시 확인합니다.
  */
 export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
   const queryClient = useQueryClient()
   const [deleteOpen, setDeleteOpen] = useState(false)
 
-  /*
-    사진 · 한국어 이름 · 성별은 **후기 응답에 없어** 향수 상세를 따로 부릅니다
-    (`review.perfume` 은 번호 · 영문 이름 · 브랜드 셋뿐). 향수 상세 화면과 같은
-    쿼리 키라 거기서 넘어왔으면 캐시에 있습니다.
-  */
+  /* 사진 · 한국어 이름 · 성별은 **후기 응답에 없어** 향수 상세를 따로 부릅니다 */
   const perfume = useQuery(perfumeDetailQuery(review.perfume.perfumeId))
   const brandName = perfume.data?.brand?.name ?? review.perfume.brand
   /* 둘 다 없을 수 있어 배열로 모아 잇습니다 — 직접 붙이면 가운뎃점만 남습니다 */
@@ -63,10 +51,7 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
     mutationFn: () => deleteReview(review.reviewId),
     onSuccess: () => {
       setDeleteOpen(false)
-      /*
-       * 지운 후기의 캐시를 남겨두면 뒤로가기로 그 화면이 다시 뜹니다.
-       * 향수 상세의 후기 목록 · 계절 통계 · 요약도 함께 낡습니다.
-       */
+      /* 지운 후기의 캐시를 남겨두면 뒤로가기로 그 화면이 다시 뜹니다 */
       queryClient.removeQueries({
         queryKey: reviewKeys.detail(review.reviewId),
       })
@@ -78,11 +63,7 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
     },
   })
 
-  /**
-   * 좋아요 토글 (CMT-05). 비로그인 안내 · 누르기/취소 고르기는 `useLikeToggle` 이
-   * 맡고, 여기서는 캐시만 고칩니다 — 다시 부르지 않고 **응답 값을 이 후기에만
-   * 덮어씁니다.** 다시 부르면 조회수가 한 번 더 오릅니다(여는 것이 곧 조회라서).
-   */
+  /** 다시 부르지 않고 캐시에 덮어씁니다 — 여는 것이 곧 조회라 조회수가 한 번 더 오릅니다 */
   const likeToggle = useLikeToggle({
     like: likeReview,
     unlike: unlikeReview,
@@ -100,7 +81,6 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
   return (
     <article className={GLASS_PANEL}>
       <div className="space-y-3.75">
-        {/* 예전에는 이 자리가 향수 상세로 가서, [뒤로] 에 오지 않은 곳이 적혀 있었습니다 */}
         <LinkButton to={ROUTES.COMMUNITY_REVIEWS} variant="outline" size="sm">
           ← 후기 게시판
         </LinkButton>
@@ -110,17 +90,21 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
         </h1>
 
         <div className="flex items-center gap-2.5">
-          {/* TODO: 프로필 이미지 연동 */}
+          {/* NOTE: 작성자 사진은 응답에 없습니다 — `ReviewDetailResponse` 가 닉네임만 줍니다.
+              내 사진은 `GET /users/me` 로 알지만 남의 사진은 알 길이 없어, 필드를 요청해 뒀습니다 */}
           <Thumbnail className="size-7.5 shrink-0 rounded-full" />
-          {/* 탈퇴한 회원의 후기는 글만 남고 작성자가 지워집니다 */}
-          <span className="text-ink text-xs">
+          {/* 줄어드는 자리를 닉네임(최대 20자) 하나로 못 박습니다 — 상대시각과 오른쪽 단추 ·
+              하트가 밀려 나가지 않게 합니다.
+              NOTE: 1920 · 1536 에서는 이 줄에 여유가 있어(글 폭 800 · 640 에 최악값 약 485 · 473)
+                아무 일도 하지 않습니다. 실제로 무는 것은 뷰포트가 700 아래로 내려간 좁은 화면입니다 */}
+          <span className="text-ink min-w-0 truncate text-xs">
             {review.nickname ?? '탈퇴한 회원'}
           </span>
-          <span className="text-ink-muted text-[10.5px]">
+          <span className="text-ink-muted text-caption shrink-0">
             · {formatRelativeTime(review.createdAt)}
           </span>
 
-          <span className="ml-auto flex items-center gap-2.5">
+          <span className="ml-auto flex shrink-0 items-center gap-2.5">
             {review.mine && (
               <>
                 <LinkButton to={editTo} variant="outline" size="sm">
@@ -137,10 +121,7 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
               </>
             )}
 
-            {/*
-              비로그인은 401 이라 보내 보지 않고 먼저 안내합니다 — 401 이 나면
-              인터셉터가 재발급을 시도하다 세션을 정리해 버립니다.
-            */}
+            {/* 비로그인은 보내 보지 않고 먼저 안내합니다 — 401 이 나면 인터셉터가 재발급을 시도하다 세션을 정리해 버립니다 */}
             <button
               type="button"
               aria-pressed={review.liked}
@@ -156,9 +137,7 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
                 'rounded-card text-title leading-none',
                 'transition-colors duration-120 ease-out',
                 'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
-                review.liked
-                  ? 'text-danger'
-                  : 'text-ink-muted hover:text-danger',
+                review.liked ? 'text-like' : 'text-ink-muted hover:text-like',
               )}
             >
               <span aria-hidden>{review.liked ? '♥' : '♡'}</span>
@@ -187,7 +166,7 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
           to={toPerfumeDetail(review.perfume.perfumeId)}
           state={perfumeViewState('COMMUNITY')}
           className={cn(
-            'border-line hover:border-accent rounded-card',
+            'border-line hover:border-accent-blush rounded-card',
             'flex items-center gap-3.75 border p-2.5',
             'transition-colors duration-120 ease-out',
             'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
@@ -201,14 +180,12 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
           />
 
           <div className="min-w-0 space-y-0.5">
-            {/* 브랜드가 없는 향수가 있습니다 */}
             {brandName && (
               <p className="text-ink-muted text-caption">{brandName}</p>
             )}
             <p className="text-ink text-body font-medium">
               {review.perfume.name}
             </p>
-            {/* 한국어 이름도 성별도 없으면 줄 자체를 그리지 않습니다 */}
             {sub && <p className="text-ink-muted text-caption">{sub}</p>}
           </div>
 
@@ -219,8 +196,7 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
 
         <hr className="border-line" />
 
-        {/* 조회수는 이번 조회를 포함한 수입니다 */}
-        <p className="text-ink-muted text-[10.5px]">
+        <p className="text-ink-muted text-caption">
           좋아요 {review.likeCount} · 조회 {review.viewCount}
         </p>
 

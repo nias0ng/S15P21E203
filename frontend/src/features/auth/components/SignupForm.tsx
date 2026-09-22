@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 
 import { isApiError } from '@/shared/api/http'
 import { ROUTES } from '@/shared/config/routes'
@@ -17,6 +17,7 @@ import {
   checkNicknameAvailability,
   signup,
 } from '../api'
+import { AUTH_SUBMIT } from '../frame'
 import {
   NICKNAME_MAX_LENGTH,
   NICKNAME_MIN_LENGTH,
@@ -24,11 +25,11 @@ import {
 } from '../types'
 
 import { AuthCard } from './AuthCard'
+import { EmailField } from './EmailField'
 
 /**
- * 회원가입 (A28 우측 카드 — COM-01). 이메일 · 닉네임 둘 다 [중복 확인] 이 있지만
- * "쓸 수 있다" 고 해도 가입 시점에 409 로 한 번 더 걸립니다. 가입해도 로그인은
- * 되지 않습니다 — 응답에 토큰이 없습니다.
+ * 회원가입 (A28 우측 카드 — COM-01). [중복 확인] 을 통과해도 가입 시점에 409 로 한
+ * 번 더 걸리고, 가입해도 로그인은 되지 않습니다 — 응답에 토큰이 없습니다.
  */
 export function SignupForm() {
   const navigate = useNavigate()
@@ -72,10 +73,6 @@ export function SignupForm() {
     onSuccess: (available) => setNicknameAvailable(available),
   })
 
-  /*
-    서버가 앞뒤 공백을 떼고 소문자로 바꿔 검사합니다. 화면이 다르게 다듬으면
-    "쓸 수 있다" 고 해 놓고 가입에서 막힙니다 — 보낼 때도 같은 값을 씁니다.
-  */
   const emailCheck = useMutation({
     mutationFn: () => checkEmailAvailability(email.trim()),
     onSuccess: (available) => setEmailAvailable(available),
@@ -83,11 +80,7 @@ export function SignupForm() {
 
   const signupMutation = useMutation({
     mutationFn: () => signup({ email, password, nickname: trimmedNickname }),
-    /*
-      가입이 끝나면 로그인으로 넘기면서 **돌아갈 경로를 같이 들려 보냅니다.**
-      로그인 유도 모달에서 [회원가입] 으로 들어온 사람은 원래 하려던 일이 있는데,
-      여기서 경로를 흘리면 로그인까지 마치고 홈에 떨어집니다.
-    */
+    // 돌아갈 경로를 로그인까지 들려 보냅니다 — 흘리면 로그인을 마치고 홈에 떨어집니다
     onSuccess: () =>
       navigate(withReturnPath(ROUTES.LOGIN, returnTo), {
         replace: true,
@@ -104,7 +97,7 @@ export function SignupForm() {
     !signupMutation.isPending
 
   return (
-    <AuthCard title="회원가입" className="max-w-105">
+    <AuthCard title="회원가입">
       <form
         className="space-y-2.5"
         onSubmit={(event) => {
@@ -112,19 +105,11 @@ export function SignupForm() {
           signupMutation.mutate()
         }}
       >
-        {/* 닉네임과 같은 모양 — 입력칸 옆에 [중복 확인] 이 붙습니다 */}
         <div className="flex items-start gap-1.25">
-          <div className="flex-1">
-            <Input
-              label="이메일"
-              hideLabel
-              type="email"
-              autoComplete="email"
-              placeholder="이메일"
-              required
-              value={email}
-              onChange={(event) => {
-                setEmail(event.target.value)
+          <div className="min-w-0 flex-1">
+            <EmailField
+              onChange={(next) => {
+                setEmail(next)
                 setEmailAvailable(null)
               }}
               error={
@@ -139,14 +124,15 @@ export function SignupForm() {
               }
             />
           </div>
-          <button
+          <Button
+            variant="outline"
             type="button"
+            className="shrink-0"
             disabled={email.trim().length === 0 || emailCheck.isPending}
             onClick={() => emailCheck.mutate()}
-            className="border-line text-ink hover:bg-line-soft h-10 shrink-0 border px-2.5 text-[11px] disabled:opacity-50"
           >
             중복 확인
-          </button>
+          </Button>
         </div>
 
         <Input
@@ -172,9 +158,8 @@ export function SignupForm() {
           error={passwordConfirmError}
         />
 
-        {/* 와이어프레임에서 입력칸과 [중복 확인] 이 한 줄에 붙어 있습니다 */}
         <div className="flex items-start gap-1.25">
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <Input
               label="닉네임"
               hideLabel
@@ -198,18 +183,19 @@ export function SignupForm() {
               }
             />
           </div>
-          <button
+          <Button
+            variant="outline"
             type="button"
+            className="shrink-0"
             disabled={
               nicknameTooShort ||
               nicknameError !== undefined ||
               nicknameCheck.isPending
             }
             onClick={() => nicknameCheck.mutate()}
-            className="border-line text-ink hover:bg-line-soft h-10 shrink-0 border px-2.5 text-[11px] disabled:opacity-50"
           >
             중복 확인
-          </button>
+          </Button>
         </div>
 
         {signupMutation.error !== null && (
@@ -220,10 +206,25 @@ export function SignupForm() {
           </p>
         )}
 
-        <Button type="submit" fullWidth disabled={!canSubmit}>
+        <Button
+          type="submit"
+          fullWidth
+          disabled={!canSubmit}
+          className={AUTH_SUBMIT}
+        >
           {signupMutation.isPending ? '가입 중' : '가입하기'}
         </Button>
       </form>
+
+      {/* 돌아갈 경로를 들고 갑니다 — 가입하려다 말고 로그인으로 가는 사람이 있습니다 */}
+      <div className="text-caption flex items-center pl-1.25">
+        <Link
+          to={withReturnPath(ROUTES.LOGIN, returnTo)}
+          className="text-ink-muted hover:text-ink"
+        >
+          로그인하기 →
+        </Link>
+      </div>
     </AuthCard>
   )
 }

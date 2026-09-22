@@ -15,13 +15,8 @@ import { PASSWORD_MIN_LENGTH } from '../types'
 type Props = { open: boolean; onClose: () => void }
 
 /**
- * 비밀번호 변경 모달 (A30 좌측 — A29 [비밀번호 변경] 도착)
- *
- * **새 비밀번호 확인란은 서버로 보내지 않습니다.** 현재 비밀번호가 틀리면 400
- * (`AUTH_CURRENT_PASSWORD_MISMATCH`) 입니다.
- *
- * **성공하면 로그아웃됩니다** — 서버가 그 사람의 모든 세션을 끊어(`revokeAll`)
- * 들고 있는 토큰도 죽습니다. 여기서 스스로 정리하고 로그인 화면으로 보냅니다.
+ * 비밀번호 변경 모달 (A30 좌측). 성공하면 로그아웃됩니다 — 서버가 그 사람의 모든
+ * 세션을 끊어(`revokeAll`) 들고 있는 토큰도 죽습니다.
  */
 export function PasswordChangeModal({ open, onClose }: Props) {
   const navigate = useNavigate()
@@ -53,7 +48,6 @@ export function PasswordChangeModal({ open, onClose }: Props) {
     },
   })
 
-  // 닫을 때 입력과 지난 오류를 함께 비웁니다 — 다시 열었을 때 남아 있으면 안 됩니다
   const close = () => {
     reset()
     mutation.reset()

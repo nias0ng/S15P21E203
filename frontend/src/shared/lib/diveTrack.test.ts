@@ -163,7 +163,6 @@ describe('깊이', () => {
       expect([child, riseDepthOf(child)]).toEqual([child, diveDepthOf(list)])
 
     같음('/perfumes/12', ROUTES.PERFUMES)
-    같음('/perfumes/search', ROUTES.PERFUMES)
     같음('/brands/79', ROUTES.BRANDS)
     같음('/notes/5', ROUTES.NOTES)
     // 주소가 제 목록 아래에 안 달린 둘 — 화면은 그 방 것이다
@@ -205,7 +204,6 @@ describe('깊이', () => {
     const 방: Record<keyof typeof ROUTES, string | null> = {
       HOME: null, // 출발지
       PERFUMES: ROUTES.PERFUMES,
-      PERFUME_SEARCH: ROUTES.PERFUMES,
       PERFUME_DETAIL: ROUTES.PERFUMES,
       REVIEW_DETAIL: ROUTES.COMMUNITY_REVIEWS,
       BRANDS: ROUTES.BRANDS,
@@ -270,7 +268,7 @@ describe('깊이', () => {
  * 있습니다. 여태 이것을 묶고 있던 것은 주석뿐이었고, 갈라져도 화면을 봐야만 드러났습니다.
  * 한쪽만 고치면 여기서 먼저 걸립니다.
  *
- * ⚠ 값을 **옮겨 적지 않습니다.** 옮겨 적으면 이 파일이 세 번째 출처가 되어, 셋이 갈라질 자리가
+ * NOTE: 값을 **옮겨 적지 않습니다.** 옮겨 적으면 이 파일이 세 번째 출처가 되어, 셋이 갈라질 자리가
  *   하나 더 늘어납니다. 파일에서 읽어 서로 견줍니다.
  */
 describe('판을 건너뛰는 값이 갈라지지 않는다', () => {

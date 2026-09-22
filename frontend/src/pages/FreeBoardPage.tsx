@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router'
 
 import {
+  boardTitle,
   BoardHeader,
   communityKeys,
   FREE_SORTS,
@@ -71,7 +72,8 @@ export default function FreeBoardPage() {
 
   /*
     판 제목에 지금 보고 있는 분류를 적습니다. 알약에서 '전체' 를 없앤 대신
-    (아래 주석) 무엇으로 걸러진 목록인지는 제목이 말해 줍니다.
+    (아래 주석) 무엇으로 걸러진 목록인지는 제목이 말해 줍니다 — 정렬이 앞에
+    붙어도 이 역할은 그대로입니다(`boardTitle`).
   */
   const categoryLabel =
     category === 'ALL'
@@ -158,78 +160,84 @@ export default function FreeBoardPage() {
       {/* 곁판이 없으면 한 칸으로 폅니다. 불러오는 중에는 칸을 비워 둡니다 */}
       <div
         className={cn(
-          'grid gap-6.25',
-          showTrending && 'lg:grid-cols-[1fr_255px]',
+          /*
+            알약은 윗줄에 혼자 서고, 유리판과 곁판이 아랫줄에서 나란히 섭니다 —
+            한 칸 안에 알약을 넣으면 곁판만 그 높이만큼 위에서 시작합니다.
+          */
+          'grid gap-x-6.25 gap-y-3.75',
+          /* 곁판 255px. 임의값 px 는 `--spacing` 을 안 타서 좁은 화면에서 곁판만 안 줄어듭니다 */
+          showTrending && 'lg:grid-cols-[1fr_calc(var(--spacing)*63.75)]',
         )}
       >
-        <div className="min-w-0 space-y-3.75">
-          {/*
-            분류에는 '전체' 알약이 없습니다 — 켜진 것을 다시 누르면 꺼집니다.
-            정렬은 `required` 라 안 꺼집니다(꺼지면 줄 세울 기준이 없어집니다).
-          */}
-          <div
-            role="group"
-            aria-label="글 거르기"
-            className="flex flex-col gap-2.5"
-          >
-            <PillFilter
-              label="정렬"
-              options={FREE_SORTS}
-              value={sort}
-              onChange={(next) => updateParams({ sort: next ?? 'RECENT' })}
-              required
-              className="flex-wrap justify-center"
-            />
-            <PillFilter
-              label="분류"
-              options={POST_CATEGORIES}
-              value={category === 'ALL' ? null : category}
-              onChange={(next) => updateParams({ category: next ?? 'ALL' })}
-              className="flex-wrap justify-center"
-            />
-          </div>
-
-          <section className={GLASS_PANEL}>
-            <div className="mb-6.25 flex items-baseline gap-2.5">
-              <h2 className="text-ink font-serif text-2xl">
-                {categoryLabel ? `${categoryLabel} 글` : '전체 글'}
-              </h2>
-              {!posts.isPending && !!posts.data?.totalElements && (
-                <span className="text-ink-muted text-caption">
-                  {posts.data.totalElements.toLocaleString()}개
-                </span>
-              )}
-            </div>
-
-            <PostList
-              items={(posts.data?.posts ?? []).map(postToBoardItem)}
-              isPending={posts.isPending}
-              emptyAction={
-                <AuthLinkButton
-                  to={ROUTES.POST_WRITE}
-                  size="sm"
-                  description="글은 로그인한 뒤에 쓸 수 있습니다."
-                >
-                  글쓰기
-                </AuthLinkButton>
-              }
-              onToggleLike={(item) =>
-                likeToggle.toggle({ id: item.id, liked: item.liked })
-              }
-            />
-
-            <Pagination
-              className="mt-6.25"
-              label="자유 게시판 페이지"
-              page={page}
-              size={PAGE_SIZE}
-              totalElements={posts.data?.totalElements ?? 0}
-              onPageChange={(next) => updateParams({ page: next })}
-            />
-          </section>
+        {/*
+          분류에는 '전체' 알약이 없습니다 — 켜진 것을 다시 누르면 꺼집니다.
+          정렬은 `required` 라 안 꺼집니다(꺼지면 줄 세울 기준이 없어집니다).
+        */}
+        <div
+          role="group"
+          aria-label="글 거르기"
+          className="flex flex-col gap-2.5 lg:col-span-2 lg:col-start-1 lg:row-start-1"
+        >
+          <PillFilter
+            label="정렬"
+            options={FREE_SORTS}
+            value={sort}
+            onChange={(next) => updateParams({ sort: next ?? 'RECENT' })}
+            required
+            className="flex-wrap justify-center"
+          />
+          <PillFilter
+            label="분류"
+            options={POST_CATEGORIES}
+            value={category === 'ALL' ? null : category}
+            onChange={(next) => updateParams({ category: next ?? 'ALL' })}
+            className="flex-wrap justify-center"
+          />
         </div>
 
+        <section
+          className={cn(GLASS_PANEL, 'min-w-0 lg:col-start-1 lg:row-start-2')}
+        >
+          <div className="mb-6.25 flex items-baseline gap-2.5">
+            <h2 className="text-ink font-serif text-2xl">
+              {boardTitle(sort, '글', categoryLabel)}
+            </h2>
+            {!posts.isPending && !!posts.data?.totalElements && (
+              <span className="text-ink-muted text-caption">
+                {posts.data.totalElements.toLocaleString()}개
+              </span>
+            )}
+          </div>
+
+          <PostList
+            items={(posts.data?.posts ?? []).map(postToBoardItem)}
+            isPending={posts.isPending}
+            emptyAction={
+              <AuthLinkButton
+                to={ROUTES.POST_WRITE}
+                size="sm"
+                description="글은 로그인한 뒤에 쓸 수 있습니다."
+              >
+                글쓰기
+              </AuthLinkButton>
+            }
+            onToggleLike={(item) =>
+              likeToggle.toggle({ id: item.id, liked: item.liked })
+            }
+          />
+
+          <Pagination
+            className="mt-6.25"
+            label="자유 게시판 페이지"
+            page={page}
+            size={PAGE_SIZE}
+            totalElements={posts.data?.totalElements ?? 0}
+            onPageChange={(next) => updateParams({ page: next })}
+          />
+        </section>
+
         <TrendingPerfumes
+          className="lg:col-start-2 lg:row-start-2"
           items={trending.data?.perfumes ?? []}
           days={trending.data?.days}
         />

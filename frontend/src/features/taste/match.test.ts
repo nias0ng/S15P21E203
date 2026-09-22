@@ -14,16 +14,7 @@ import {
   type ScentVector,
 } from './types'
 
-/**
- * 아래 둘은 데이터가 갱신되면 조용히 깨져 전수로 확인합니다.
- * - 희소 조합(후보 1개)에서 그 유일한 향수를 놓치지 않는가
- * - 유사도 동점일 때 결과가 배열 순서에 좌우되지 않는가
- */
-
-/**
- * 실제 200개를 그대로 씁니다(`match.fixture.ts`) — 지어낸 몇 줄로는 데이터의 모양에
- * 기대는 성질을 확인할 수 없습니다. 앱은 이 값을 쓰지 않습니다.
- */
+/** 희소 조합과 동점 · 순서 의존은 데이터가 갱신되면 조용히 깨져 실제 200개로 전수 확인합니다. */
 const vectors: ScentVector[] = SCENT_VECTORS_FIXTURE
 
 /** 두 계열을 고르는 모든 순서쌍 (9 × 8 = 72가지) */
@@ -52,8 +43,6 @@ describe('buildTasteVector', () => {
 
 describe('cosineSimilarity', () => {
   it('절대 강도가 아니라 계열 사이의 비율을 본다', () => {
-    // 1순위 FLORAL · 2순위 MUSK 를 골랐을 때,
-    // FLORAL 이 압도적인 향수보다 둘이 비슷하게 섞인 향수가 더 가깝습니다.
     const taste = buildTasteVector(['FLORAL', 'MUSK'])
     const balanced = cosineSimilarity(taste, { FLORAL: 0.52, MUSK: 0.48 })
     const lopsided = cosineSimilarity(taste, { FLORAL: 0.7, MUSK: 0.2 })
@@ -137,8 +126,7 @@ describe('matchStartingPoint', () => {
     for (const picks of orderedPairs()) {
       const candidates = countCandidates(vectors, picks)
       const match = matchStartingPoint(vectors, picks)
-      // 기대값을 먼저 정하고 한 번만 단언합니다.
-      // expect 를 if/else 안에 두면 분기가 안 타도 테스트가 통과해버립니다.
+      // expect 를 if/else 안에 두면 분기가 안 타도 통과해버려 기대값을 먼저 정합니다.
       const expected =
         candidates === 0 ? 'NO_OVERLAP' : candidates === 1 ? 'RARE' : 'NORMAL'
 

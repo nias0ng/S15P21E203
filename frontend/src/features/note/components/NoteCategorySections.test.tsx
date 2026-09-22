@@ -42,7 +42,6 @@ describe('NoteCategorySections', () => {
     expect(headings).toEqual(['CITRUS', 'MUSK', '기타'])
   })
 
-  /* 목록에 없는 대분류가 와도 노트가 사라지면 안 됩니다 — 고정 목록을 두지 않는 이유입니다 */
   it('처음 보는 대분류도 그대로 그린다', () => {
     renderSections([
       note({ noteId: 9, name: 'Ambergris', accordFamily: 'ANIMAL' }),

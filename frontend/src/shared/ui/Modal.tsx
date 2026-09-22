@@ -14,7 +14,7 @@ type ModalProps = {
    * **읽고 답만 하는 짧은 안내 모달** 모양 (확인 · 경고 C01). 제목이 가운데로
    * 모이고, [×] 가 빠지고, 단추 위 구분선을 걷고, 본문 숨이 넓어집니다.
    *
-   * ⚠️ **[×] 가 없으므로 닫는 단추를 `footer` 에 반드시 두세요** — Esc 와 배경
+   * NOTE: **[×] 가 없으므로 닫는 단추를 `footer` 에 반드시 두세요** — Esc 와 배경
    * 클릭은 눈에 보이지 않아, 그것만으로는 나가는 길이 화면에 없습니다.
    *
    * 칸이 있는 모달에는 쓰지 마세요 — 입력이 왼쪽에서 시작해 축이 두 개가 됩니다.
@@ -62,7 +62,7 @@ export function Modal({
         if (event.target === dialogRef.current) onClose()
       }}
       className={cn(
-        'rounded-card m-auto w-[min(510px,calc(100vw-40px))] p-0',
+        'rounded-card m-auto w-127.5 max-w-[calc(100vw-var(--spacing)*10)] p-0',
         'backdrop:bg-ink/40 open:flex open:flex-col',
         className,
       )}

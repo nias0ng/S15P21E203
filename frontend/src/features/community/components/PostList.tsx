@@ -9,6 +9,15 @@ import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import { POST_CATEGORIES, type BoardItem } from '../types'
 
+/**
+ * 두 게시판이 같이 쓰는 격자. **불러오는 중과 다 온 뒤가 같은 값이어야** 자리표시자
+ * 자리에 카드가 그대로 앉습니다 — 다르면 목록이 뜨는 순간 화면이 한 번 튑니다.
+ *
+ * 좁은 화면에서는 한 줄입니다. 자유 게시판은 곁판(255px)까지 있어 `sm` 아래에서
+ * 2열로 쪼개면 카드 하나가 제목 두 줄도 못 담습니다.
+ */
+const GRID = 'grid gap-3.75 sm:grid-cols-2'
+
 type Props = {
   items: BoardItem[]
   isPending?: boolean
@@ -33,9 +42,9 @@ export function PostList({
 }: Props) {
   if (isPending) {
     return (
-      <div className="space-y-2.5">
+      <div className={GRID}>
         {Array.from({ length: 4 }, (_, index) => (
-          <Skeleton key={index} className="rounded-card h-25" />
+          <Skeleton key={index} className="rounded-card h-40" />
         ))}
       </div>
     )
@@ -52,14 +61,17 @@ export function PostList({
   }
 
   return (
-    <ul className="divide-line divide-y">
+    <ul className={GRID}>
       {items.map((item) => (
         <li
           key={item.id}
+          /* 화면 테마가 붙잡을 자리 이름 — 유리판 위에서 밝은 카드가 됩니다 */
+          data-slot="card"
           className={cn(
-            'relative space-y-2.5 px-2.5 py-3.75',
-            'hover:bg-surface-sunken rounded-card',
-            'transition-colors duration-120 ease-out',
+            'border-line bg-surface-card rounded-card relative border',
+            'flex flex-col gap-2.5 px-4.75 py-4.25',
+            'transition-[transform,box-shadow] duration-200 ease-out',
+            'hover:shadow-raised hover:-translate-y-1.25',
           )}
         >
           <div className="space-y-2.5">
@@ -71,7 +83,6 @@ export function PostList({
               to={item.to}
               className={cn(
                 'text-ink text-heading block font-serif font-bold',
-                'underline-offset-4 hover:underline',
                 'focus-visible:ring-accent-deep rounded-card outline-none focus-visible:ring-2',
                 'after:absolute after:inset-0',
               )}
@@ -100,6 +111,16 @@ export function PostList({
           </div>
 
           {/*
+            본문 몇 줄. 다섯 줄을 넘기면 잘라 `…` 으로 끝내고, 나머지는 상세에서
+            읽습니다. 후기에만 있습니다 — 자유 게시판 목록에는 본문이 없습니다.
+          */}
+          {item.content && (
+            <p className="text-ink-muted text-body line-clamp-5 px-1.25 whitespace-pre-wrap">
+              {item.content}
+            </p>
+          )}
+
+          {/*
             어느 향수 이야기인지. **누르는 곳이 아니라 표시입니다** — 링크였을 때
             글을 누르려다 밟으면 향수로 샜습니다. 건너가는 길은 글 상세뿐입니다.
           */}
@@ -118,7 +139,7 @@ export function PostList({
           )}
 
           {/* 점수나 별점은 없습니다. 좋아요만 있습니다. */}
-          <div className="text-ink-muted text-caption flex items-center gap-3.75">
+          <div className="text-ink-muted text-caption mt-auto flex items-center gap-3.75">
             {onToggleLike ? (
               /*
                 위 제목 링크가 줄 전체를 덮고 있으므로 `relative` 로 그 위에
@@ -130,18 +151,29 @@ export function PostList({
                 aria-label={`좋아요 ${item.likeCount}`}
                 onClick={() => onToggleLike(item)}
                 className={cn(
-                  'hover:text-danger rounded-card relative transition-colors duration-120 ease-out',
+                  'rounded-card relative transition-colors duration-120 ease-out',
                   'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
-                  item.liked && 'text-danger',
+                  'hover:[&>[aria-hidden]]:text-like',
                 )}
               >
-                <span aria-hidden>{item.liked ? '♥' : '♡'}</span> 좋아요{' '}
-                {item.likeCount}
+                {/* 색은 하트에만 — 옆 글자까지 칠하면 읽기가 나빠집니다(`styles/index.css` 의 `--color-like`) */}
+                <span
+                  aria-hidden
+                  className={item.liked ? 'text-like' : undefined}
+                >
+                  {item.liked ? '♥' : '♡'}
+                </span>{' '}
+                좋아요 {item.likeCount}
               </button>
             ) : (
-              <span className={item.liked ? 'text-danger' : undefined}>
-                <span aria-hidden>{item.liked ? '♥' : '♡'}</span> 좋아요{' '}
-                {item.likeCount}
+              <span>
+                <span
+                  aria-hidden
+                  className={item.liked ? 'text-like' : undefined}
+                >
+                  {item.liked ? '♥' : '♡'}
+                </span>{' '}
+                좋아요 {item.likeCount}
               </span>
             )}
             {item.commentCount !== null && (

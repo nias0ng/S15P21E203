@@ -1,8 +1,4 @@
-/**
- * ⚠️ **개발 중 백엔드가 안 떠 있을 때만 쓰는 대체 데이터입니다**(조건은 api.ts 의
- * `withDevFallback`). 지울 때는 이 파일과 그 함수를 함께 지우세요. 브랜드는
- * 자리표시자가 없어, 여기 브랜드명은 브랜드 화면과 이어지지 않습니다.
- */
+/** 개발 중 백엔드가 안 떠 있을 때만 쓰는 대체 데이터입니다 — `withDevFallback` 과 함께 지우세요 */
 import { ApiError } from '@/shared/api/http'
 
 import type {
@@ -140,10 +136,7 @@ const PERFUMES: PerfumeSummary[] = [
     scentFamily: 'WOODY',
   },
   {
-    /*
-      ⚠️ 이 한 건만 한국어 이름이 없습니다 — 일부러입니다. 전부 채워 두면 카드가
-      원어명만으로 서는 길을 개발 화면에서 한 번도 밟지 않습니다.
-    */
+    /* 이 한 건만 한국어 이름이 없습니다 — 전부 채워 두면 카드가 원어명만으로 서는 길을 개발 화면에서 한 번도 밟지 않습니다 */
     perfumeId: 15,
     name: 'Oud Wood',
     nameKo: null,
@@ -163,7 +156,6 @@ export function placeholderSearch(
   const keyword = params.keyword?.trim().toLowerCase() ?? ''
 
   const matched = PERFUMES.filter((perfume) => {
-    // 브랜드는 완전 일치입니다(실제 API 와 같습니다). 부분 일치는 keyword 몫입니다.
     if (params.brand && perfume.brandName !== params.brand) return false
     if (!keyword) return true
     return (

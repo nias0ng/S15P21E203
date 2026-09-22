@@ -28,11 +28,7 @@ import type {
 
 // 경로에 '/api/v1' 을 붙이지 않습니다 — http 의 baseURL 에 이미 있습니다
 
-/**
- * COM-05 향수 검색. 조건은 모두 선택이고 함께 오면 AND 입니다.
- * **`scentFamily` 는 받는 자리에서 거릅니다** — 열린 문자열이라 타입만 좁히면
- * 거짓말입니다. ⚠️ gender · ranking 에 없는 값을 보내면 400 입니다.
- */
+/** 조건은 함께 오면 AND 입니다. gender · ranking 에 없는 값을 보내면 400 입니다 */
 export async function searchPerfumes(params: PerfumeSearchParams) {
   return withDevFallback(
     'perfume',
@@ -52,10 +48,7 @@ export async function searchPerfumes(params: PerfumeSearchParams) {
   )
 }
 
-/**
- * DTL-01 향수 기본 정보 조회. 없는 향수는 404 `PERFUME_NOT_FOUND` 이고,
- * 향조 · 계절 · 요약 · 후기는 아래 함수들이 각각 따로 부릅니다.
- */
+/** DTL-01 향수 기본 정보. 없는 향수는 404 `PERFUME_NOT_FOUND` 입니다 */
 export async function getPerfumeDetail(perfumeId: number) {
   return withDevFallback(
     'perfume',
@@ -67,10 +60,6 @@ export async function getPerfumeDetail(perfumeId: number) {
   )
 }
 
-/**
- * DTL-02 향조. 노트와 어코드를 함께 돌려줍니다. 향조가 없는 향수도 200 이고 두
- * 목록이 빈 배열입니다 — 없는 향수만 404 입니다.
- */
 export async function getPerfumeNotes(perfumeId: number) {
   return withDevFallback(
     'perfume',
@@ -84,7 +73,6 @@ export async function getPerfumeNotes(perfumeId: number) {
   )
 }
 
-/** DTL-14 계절별 평가. 후기가 없는 향수도 네 계절이 0 으로 채워져 옵니다. */
 export async function getPerfumeSeasonStatistics(perfumeId: number) {
   return withDevFallback(
     'perfume',
@@ -98,7 +86,6 @@ export async function getPerfumeSeasonStatistics(perfumeId: number) {
   )
 }
 
-/** DTL-23 AI 후기 요약. 요약이 없으면 세 값이 모두 null 인 200 입니다. */
 export async function getPerfumeReviewSummary(perfumeId: number) {
   return withDevFallback(
     'perfume',
@@ -112,7 +99,6 @@ export async function getPerfumeReviewSummary(perfumeId: number) {
   )
 }
 
-/** DTL-10 후기 통계. 후기 수만 있고 평균 평점은 없습니다. */
 export async function getPerfumeReviewStatistics(perfumeId: number) {
   return withDevFallback(
     'perfume',
@@ -126,10 +112,7 @@ export async function getPerfumeReviewStatistics(perfumeId: number) {
   )
 }
 
-/**
- * DTL-03 후기 목록. 최신 작성 순이고 비로그인도 볼 수 있습니다.
- * 백엔드 기본 size 는 10 이고 최대 100 입니다.
- */
+/** DTL-03 후기 목록. 최신 작성 순 · 비로그인도 볼 수 있고 size 는 기본 10 · 최대 100 입니다 */
 export async function getPerfumeReviews(
   perfumeId: number,
   params: { page?: number; size?: number } = {},
@@ -152,25 +135,15 @@ export async function getPerfumeReviews(
   )
 }
 
-/**
- * A12 후기 상세. 비로그인도 볼 수 있고, **여는 것이 곧 조회라 조회수가 하나 오릅니다.**
- * 그래서 화면에서 staleTime 을 길게 두지 않습니다 — 다시 부르면 또 오릅니다.
- */
+/** **여는 것이 곧 조회라 조회수가 하나 오릅니다** — 화면에서 staleTime 을 길게 두지 않습니다 */
 export async function getReviewDetail(reviewId: number) {
   const { data } = await http.get<ReviewDetail>(`/reviews/${reviewId}`)
   return data
 }
 
-/*
- * ── 후기 쓰기 ───────────────────────────────────────────────
- * 전부 로그인이 필요합니다(401). `withDevFallback` 을 쓰지 않습니다 — 저장되지
- * 않은 것을 저장된 것처럼 보여주게 됩니다.
- */
+// 후기 쓰기에 `withDevFallback` 을 쓰지 않습니다 — 저장되지 않은 것을 저장된 것처럼 보여주게 됩니다
 
-/**
- * 후기 작성. 대상 향수는 **경로로** 정해지고 나중에 바꿀 수 없습니다. 한 사람이 같은
- * 향수에 두 개를 못 써서, 이미 썼으면 409 `REVIEW_ALREADY_EXISTS` 입니다.
- */
+/** 대상 향수는 **경로로** 정해져 나중에 못 바꿉니다. 이미 썼으면 409 `REVIEW_ALREADY_EXISTS` 입니다 */
 export async function createReview(
   perfumeId: number,
   input: ReviewCreateInput,
@@ -182,10 +155,7 @@ export async function createReview(
   return data
 }
 
-/**
- * 후기 수정. 제목 · 내용만 바뀌고 보내지 않은 항목은 유지되지만, **둘 다 비우면
- * 400** 입니다 — 담을 게 없으면 아예 부르지 않습니다.
- */
+/** 보내지 않은 항목은 유지되지만 **둘 다 비우면 400** 이라 담을 게 없으면 부르지 않습니다 */
 export async function updateReview(
   reviewId: number,
   input: ReviewUpdateInput,
@@ -193,10 +163,7 @@ export async function updateReview(
   await http.patch(`/reviews/${reviewId}`, input)
 }
 
-/**
- * 후기의 계절을 통째로 바꿉니다(더하기 · 빼기가 아니라 교체). 빈 배열은 400 이라
- * 계절을 지우기만 할 수는 없습니다.
- */
+/** 계절을 통째로 바꿉니다(더하기·빼기가 아니라 교체). 빈 배열은 400 이라 지우기만 할 수는 없습니다 */
 export async function replaceReviewSeasons(
   reviewId: number,
   seasonCodes: Season[],
@@ -213,10 +180,7 @@ export async function deleteReview(reviewId: number): Promise<void> {
   await http.delete(`/reviews/${reviewId}`)
 }
 
-/**
- * 후기 좋아요. **여러 번 눌러도 같은 결과입니다** — 이미 누른 후기에 또 눌러도
- * 오류가 아니고 숫자도 오르지 않아, 따닥 누름을 화면에서 막지 않아도 됩니다.
- */
+/** **여러 번 눌러도 같은 결과입니다** — 따닥 누름을 화면에서 막지 않아도 됩니다 */
 export async function likeReview(
   reviewId: number,
 ): Promise<ReviewLikeResponse> {
@@ -236,33 +200,21 @@ export async function unlikeReview(
   return data
 }
 
-/*
- * ── 향수 상세 조회 기록 (VIEW-01) ──────────────────────────
- *
- * 들어올 때 `POST`, 나갈 때 `PATCH .../exit` 입니다. **체류 시간은 서버가 잽니다** —
- * 화면이 잰 값은 시계가 틀어진 기기나 잠든 탭이 몇 시간짜리 체류를 만듭니다.
- * 로그인이 필요하고(401), 실패해도 화면은 그대로 돕니다.
- */
+// VIEW-01 조회 기록은 로그인이 필요하고(401), 실패해도 화면은 그대로 돕니다.
 
-/** `POST /perfume-views` 응답 */
 interface PerfumeViewStartResponse {
   perfumeViewId: number
   viewedAt: string
 }
 
-/** `PATCH /perfume-views/{id}/exit` 응답 */
 interface PerfumeViewExitResponse {
   perfumeViewId: number
   exitedAt: string
-  /** 서버가 잰 체류 시간(초) */
+  /** 화면이 아니라 **서버가** 잰 체류 시간(초) — 잠든 탭이 몇 시간짜리를 만듭니다 */
   durationSeconds: number
 }
 
-/**
- * 상세 화면에 들어왔다고 남깁니다. `fromLocationType` 은 **들어온 길**이고
- * (`shared/config/perfumeViewSource`) `fromPerfumeId` 는 다른 향수 상세에서 건너온
- * 경우에만 싣습니다 — 없는 향수를 실으면 404 입니다.
- */
+/** `fromPerfumeId` 는 다른 향수 상세에서 건너온 경우에만 싣습니다 — 없는 향수를 실으면 404 입니다 */
 export async function startPerfumeView(input: {
   perfumeId: number
   fromLocationType: PerfumeViewSource
@@ -292,11 +244,8 @@ export async function exitPerfumeView(
 export const RELATED_PERFUME_LIMIT = 5
 
 /**
- * 비슷한 향수 (DTL — A10 아래쪽).
- *
- * `/similar` 과 `/neighbors` 가 **같은 데이터를 같은 모양으로** 줍니다(서버도 같은
- * 메서드) — 하나만 씁니다. `size` 는 쪽 크기가 아니라 **최대 개수**입니다(응답에
- * `page` 도 `totalElements` 도 없습니다). 향 지도 밖 향수는 빈 배열입니다.
+ * `/similar` 과 `/neighbors` 가 같은 데이터를 주어 하나만 씁니다. `size` 는 쪽 크기가
+ * 아니라 **최대 개수**이고, 향 지도 밖 향수는 빈 배열입니다.
  */
 export async function getRelatedPerfumes(
   perfumeId: number,
@@ -309,13 +258,7 @@ export async function getRelatedPerfumes(
   return data.perfumes
 }
 
-/**
- * 후기에서 자주 나온 향 표현 (DTL).
- *
- * ⚠️ **지금은 모든 향수가 빈 배열입니다** — 키워드를 적재하는 코드가 아직 없습니다.
- * 화면은 값이 있을 때만 구역을 그려, 적재가 도는 날 손대지 않아도 나타납니다.
- * `size` 는 최대 개수이고, 몇 개를 받든 백분율은 같습니다(분모가 따로 세어집니다).
- */
+/** NOTE: 키워드를 적재하는 코드가 아직 없어 **지금은 모든 향수가 빈 배열**입니다 */
 export async function getPerfumeReviewKeywords(
   perfumeId: number,
   size = 8,

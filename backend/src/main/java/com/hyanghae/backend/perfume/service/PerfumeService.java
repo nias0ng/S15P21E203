@@ -8,6 +8,7 @@ import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeNotesResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumePostResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumePostsResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumeReviewAggregatesResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeReviewKeywordResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeReviewKeywordsResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeReviewStatisticsResponse;
@@ -222,19 +223,7 @@ public class PerfumeService {
     public PerfumeReviewKeywordsResponse getReviewKeywords(Long perfumeId, int size) {
         requireExistingPerfume(perfumeId);
 
-        long reviewsWithKeyword =
-                perfumeReviewKeywordRepository.countReviewsWithKeywordByPerfumeId(perfumeId);
-
-        return new PerfumeReviewKeywordsResponse(
-                perfumeReviewKeywordRepository.findKeywordCountsByPerfumeId(
-                                perfumeId, PageRequest.of(0, Math.clamp(size, 1, MAX_PAGE_SIZE)))
-                        .stream()
-                        .map(keyword -> new PerfumeReviewKeywordResponse(
-                                keyword.keyword(),
-                                percentageOf(keyword.count(), reviewsWithKeyword)
-                        ))
-                        .toList()
-        );
+        return loadReviewKeywords(perfumeId, size);
     }
 
     /**
@@ -251,9 +240,7 @@ public class PerfumeService {
     public PerfumeReviewStatisticsResponse getReviewStatistics(Long perfumeId) {
         requireExistingPerfume(perfumeId);
 
-        return new PerfumeReviewStatisticsResponse(
-                perfumeReviewRepository.countByPerfumeId(perfumeId)
-        );
+        return loadReviewStatistics(perfumeId);
     }
 
     /**
@@ -267,6 +254,89 @@ public class PerfumeService {
     public PerfumeSeasonStatisticsResponse getSeasonStatistics(Long perfumeId) {
         requireExistingPerfume(perfumeId);
 
+        return loadSeasonStatistics(perfumeId);
+    }
+
+    /**
+     * AI 가 생성한 후기 요약을 반환합니다.
+     *
+     * <p>요약이 없는 향수는 필드가 모두 {@code null} 인 200 응답입니다. 404 로 하면 향수 자체가
+     * 없는 경우와 구분되지 않습니다. 요약은 후기 요약 배치가 적재하므로, 후기가 최소 개수만큼
+     * 쌓이기 전인 향수는 빈 응답입니다.
+     */
+    @Transactional(readOnly = true)
+    public PerfumeReviewSummaryResponse getReviewSummary(Long perfumeId) {
+        requireExistingPerfume(perfumeId);
+
+        return loadReviewSummary(perfumeId);
+    }
+
+    /**
+     * 상세 화면이 함께 쓰는 후기 집계 네 가지를 한 번에 읽습니다.
+     *
+     * <p>위의 네 메서드와 <b>같은 값</b>을 같은 규칙으로 돌려줍니다. 각 조각을 만드는 코드가
+     * 아래 {@code load...} 로 한 벌만 있고 양쪽이 그것을 함께 쓰므로, 한쪽만 고쳐져 두 경로의
+     * 답이 갈라지는 일이 없습니다.
+     *
+     * <p>다른 것은 둘입니다. 향수 존재 확인이 네 번이 아니라 <b>한 번</b>이고, 네 조각이
+     * <b>한 트랜잭션</b>에서 읽힙니다. 나누어 부르면 조각 사이에 다른 트랜잭션이 끼어들어
+     * {@code reviewCount} 와 계절 분포가 서로 다른 시점을 볼 수 있는데, 여기서는 그렇지 않습니다.
+     *
+     * <p>격리 수준은 기본값 그대로입니다. {@link #getPosts} 는 목록과 개수가 어긋나면 화면에
+     * 목록에 없는 건수가 표시되어 {@code REPEATABLE_READ} 가 필요했지만, 여기 네 조각은 서로
+     * 다른 질문이라 한 문장 사이의 차이가 화면에서 모순으로 보이지 않습니다. 격리 수준을 올리면
+     * 스냅샷을 더 오래 잡아 읽기마다 비용이 붙습니다.
+     *
+     * <p>{@code size} 는 키워드에만 걸립니다. 나머지 셋은 받을 개수를 정할 것이 없습니다.
+     */
+    @Transactional(readOnly = true)
+    public PerfumeReviewAggregatesResponse getReviewAggregates(Long perfumeId, int size) {
+        requireExistingPerfume(perfumeId);
+
+        return new PerfumeReviewAggregatesResponse(
+                loadReviewSummary(perfumeId),
+                loadReviewKeywords(perfumeId, size),
+                loadReviewStatistics(perfumeId),
+                loadSeasonStatistics(perfumeId)
+        );
+    }
+
+    /**
+     * 키워드 집계를 읽습니다. 향수가 있는지는 부르는 쪽이 이미 확인했다고 봅니다.
+     *
+     * <p>분모를 따로 세는 이유는 {@code size} 로 잘라도 백분율이 변하지 않아야 하기 때문입니다.
+     * 잘린 목록에서 다시 세면 상위 세 개만 받았을 때 합이 100 이 되어 버립니다.
+     */
+    private PerfumeReviewKeywordsResponse loadReviewKeywords(Long perfumeId, int size) {
+        long reviewsWithKeyword =
+                perfumeReviewKeywordRepository.countReviewsWithKeywordByPerfumeId(perfumeId);
+
+        return new PerfumeReviewKeywordsResponse(
+                perfumeReviewKeywordRepository.findKeywordCountsByPerfumeId(
+                                perfumeId, PageRequest.of(0, Math.clamp(size, 1, MAX_PAGE_SIZE)))
+                        .stream()
+                        .map(keyword -> new PerfumeReviewKeywordResponse(
+                                keyword.keyword(),
+                                percentageOf(keyword.count(), reviewsWithKeyword)
+                        ))
+                        .toList()
+        );
+    }
+
+    /** 후기 수를 읽습니다. 향수가 있는지는 부르는 쪽이 이미 확인했다고 봅니다. */
+    private PerfumeReviewStatisticsResponse loadReviewStatistics(Long perfumeId) {
+        return new PerfumeReviewStatisticsResponse(
+                perfumeReviewRepository.countByPerfumeId(perfumeId)
+        );
+    }
+
+    /**
+     * 계절 집계를 읽습니다. 향수가 있는지는 부르는 쪽이 이미 확인했다고 봅니다.
+     *
+     * <p>분모가 "계절을 하나라도 고른 후기 수"입니다. 전체 후기 수를 쓰면 계절을 답한 사람들의
+     * 분포가 희석됩니다.
+     */
+    private PerfumeSeasonStatisticsResponse loadSeasonStatistics(Long perfumeId) {
         long reviewsWithSeason = perfumeReviewRepository.countReviewsWithSeasonByPerfumeId(perfumeId);
 
         return new PerfumeSeasonStatisticsResponse(
@@ -283,16 +353,12 @@ public class PerfumeService {
     }
 
     /**
-     * AI 가 생성한 후기 요약을 반환합니다.
+     * AI 후기 요약을 읽습니다. 향수가 있는지는 부르는 쪽이 이미 확인했다고 봅니다.
      *
-     * <p>요약이 없는 향수는 필드가 모두 {@code null} 인 200 응답입니다. 404 로 하면 향수 자체가
-     * 없는 경우와 구분되지 않습니다. 요약은 후기 요약 배치가 적재하므로, 후기가 최소 개수만큼
-     * 쌓이기 전인 향수는 빈 응답입니다.
+     * <p>요약이 없으면 404 가 아니라 필드가 모두 {@code null} 인 값입니다. 없는 향수와 구분되어야
+     * 하기 때문입니다.
      */
-    @Transactional(readOnly = true)
-    public PerfumeReviewSummaryResponse getReviewSummary(Long perfumeId) {
-        requireExistingPerfume(perfumeId);
-
+    private PerfumeReviewSummaryResponse loadReviewSummary(Long perfumeId) {
         return perfumeReviewSummaryRepository.findResponseByPerfumeId(perfumeId)
                 .orElseGet(PerfumeReviewSummaryResponse::empty);
     }

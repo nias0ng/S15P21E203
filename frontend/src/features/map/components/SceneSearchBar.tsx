@@ -91,6 +91,12 @@ export function SceneSearchBar({
           onSearch(trimmed, mode)
         }}
         leading={<ModeSwitch mode={mode} onModeChange={onModeChange} />}
+        /*
+          메인만 모래빛입니다 (`--color-scene-send`). 여기는 판이 아니라 3D 바다 · 하늘
+          위라 뒤의 밝기가 시간대마다 바뀌는데, 방을 따르는 `archive` 의 청동 · 남색은
+          노을 하늘에서 바탕에 잠깁니다.
+        */
+        tone="scene"
       />
 
       {/*
@@ -151,11 +157,18 @@ export function SceneSearchBar({
 /**
  * 엔진 검색창과 **같은 자리**.
  *
- * 무대 기준 `--pb-search-top` 에 앱 헤더 높이(90 · `coveredTop`)를 더한 값입니다.
+ * 무대 기준 `--pb-search-top` 에 앱 헤더 높이(`--header-h` · `coveredTop`)를 더한 값이고,
  * 엔진의 반응형 단계(`landing/index.html` 의 @media)를 그대로 옮겼습니다 —
- * 폭 1280 · 1024 · 760, 높이 700 · 560.
+ * 폭 1280 · 1024 · 760, 높이 700 · 560. 1920 기준으로 적습니다.
  *
  *   기본 90+30=120 · 폭 760 이하 90+12=102 · 높이 700 이하 90+22=112 · 높이 560 이하 90+10=100
+ *
+ * ⚠️ **한 숫자로 적히는 것은 헤더도 `--spacing` 을 타기 때문입니다** — `--header-h` 가
+ *   `--spacing × 22.5` 라 "헤더 + 30" 이 곧 `top-30` 입니다. 좁은 화면에서는 헤더와 그 아래
+ *   간격이 **같은 비율로** 줄어듭니다 (1536 에서 72+24=96).
+ * ⚠️ 엔진의 `--pb-search-top` 은 고정 px 이라 1536 에서 엔진 알약은 102, 이 알약은 96 으로
+ *   6px 갈라집니다. 엔진 알약은 `hideEngineSearch` 로 숨겨져 **상자만 남으므로**(카드가 피할
+ *   자리) 눈에 보이는 어긋남은 없고, 피할 띠가 이 알약보다 아래·넓어 카드는 그대로 비켜섭니다.
  *
  * ⚠️ `pointer-events-none` 은 이 껍데기에만 겁니다. 3D 는 이 띠 뒤로도 이어지고
  *   빈자리를 드래그하면 배가 돌아야 합니다 — 알약 자신은 `pointer-events-auto` 로 되돌립니다.
@@ -168,16 +181,22 @@ const POSITION = cn(
 )
 
 /**
- * 엔진 검색창과 **같은 크기** (`--pb-search-w` · `--pb-search-h`).
+ * 엔진 검색창과 **같은 크기** (`--pb-search-w` · `--pb-search-h`) — 1920 기준으로 적습니다.
  *
  * 기본 450×50 · 1280 이하 420 · 1024 이하 400 · 760 이하 `100vw - 104px` 에 높이 42 ·
  * 화면 높이 560 이하 40.
+ *
+ * ⚠️ **치수는 유틸리티로 적습니다** (`w-112.5` = 450/4). 임의값 px 로 박으면 `--spacing` 을
+ *   안 타 이 알약만 안 줄고, 같이 서는 향해 일지 판(`top-30 left-7.5 w-60`)과 어긋납니다.
+ *   옆 여백처럼 `calc` 안에 들어가는 자리는 `var(--spacing)` 을 곱해 씁니다.
+ * ⚠️ **글자는 안 줄어듭니다** — 알약이 1536 에서 360 으로 줄어도 방식 칸(12px) · 입력
+ *   (13px)은 그대로라 안내 문구가 먼저 잘립니다. 두 폭에서 다 보고 정합니다.
  */
 const SIZE = cn(
-  'h-12.5 w-[450px]',
-  'max-[1280px]:w-[420px]',
-  'max-[1024px]:w-[400px]',
-  'max-[760px]:h-10.5 max-[760px]:w-[calc(100vw-104px)]',
+  'h-12.5 w-112.5',
+  'max-[1280px]:w-105',
+  'max-[1024px]:w-100',
+  'max-[760px]:h-10.5 max-[760px]:w-[calc(100vw-var(--spacing)*26)]',
   '[@media(max-height:560px)]:h-10',
 )
 
@@ -199,8 +218,8 @@ const SIZE = cn(
  *   도착 ~140ms · 최대 늘어남 **+62%** · 되돌아옴 7% 남짓 · 다 앉기까지 ~350ms
  *
  * ⭐ **꼬리를 길게 · 천천히** (2026-09-20 사용자 : *"레이아웃의 꼬리를 더 길게 주고 … 더 천천히
- * 움직이며 스며들듯이"*). 참고 쪽보다 일부러 느립니다 — 색이 스며드는 것을 보여 주는 것이
- * 이 움직임의 목적이 됐고, 350ms 에서는 그 번짐이 지나가 버립니다.
+ * 움직이며 스며들듯이"*). 참고 쪽보다 일부러 느립니다 — 늘어났다 오므라드는 꼬리가 이 알약이
+ * 보여 주는 전부라, 350ms 면 그것이 눈에 남기도 전에 끝납니다.
  *
  * 지금 값의 실측 (2026-09-20) : 늘어난 폭 **87.1 / 89.1px**(칸 줄 105 의 84%) · 안착 **763 / 756ms** ·
  * 판 밖으로 **0px**. 양방향이 거의 같습니다.
@@ -220,26 +239,11 @@ const STEP_MS = 1000 / 60
  * 두 모서리가 다 앉았다고 보는 선 (px · px/장).
  *
  * ⚠ 0.05 로 두면 **보이지도 않는 꼬리를 400ms 더 깁니다** — 뒤 모서리가 과감쇠라 마지막
- * 0.35px 를 기는 데 18장이 더 듭니다. 그동안 그라데이션을 매 장 다시 칠하므로, 멈춘 것처럼
+ * 0.35px 를 기는 데 18장이 더 듭니다. 그동안 알약의 자리와 글자색을 매 장 다시 쓰므로, 멈춘 것처럼
  * 보이는 알약이 화소 경계에서 아른거립니다. 0.2px 면 기기 화소(배율 2)의 반보다 작아
  * 멈추는 순간의 보정이 눈에 안 보입니다.
  */
 const REST = 0.2
-/**
- * 색이 다 바뀌는 데 드는 장 수 (18장 ≈ 300ms — 알약이 앉는 때와 같이 끝납니다).
- *
- * ⚠⚠ **색을 알약의 자리에서 뽑지 않습니다.** 처음엔 알약 한가운데가 두 칸 사이 어디인지로
- * 섞었는데, 늘어나는 동안 **가운데가 앞서 달립니다** — 실측 2026-09-20 : 102ms 에 이미 남색의
- * 90%(`rgb(30,42,64)`)였고 알약은 300ms 까지 움직였습니다. 색이 가장 빠르고 크게 늘어난
- * 구간에 다 끝나 버려, 눈이 움직임을 좇는 동안 변화가 지나가 **안 바뀐 것처럼 보였습니다.**
- * 그래서 색만 **제 시계**로 갑니다 — 가운데가 느린 `inOutCubic` 이라 변화가 중간에 몰립니다.
- */
-const TINT_STEPS = 40
-/**
- * 스며드는 띠의 폭 (알약 폭 대비). 넓을수록 경계가 없는 **넓은 물듦**이고, 좁으면 색이
- * 한 줄로 쓸고 지나갑니다. 0.55 면 알약의 절반이 늘 섞이는 중이라 선이 안 보입니다.
- */
-const TINT_SOFT = 0.55
 
 function ModeSwitch({
   mode,
@@ -250,20 +254,8 @@ function ModeSwitch({
   const tabRefs = useRef<Partial<Record<SceneSearchMode, HTMLButtonElement>>>(
     {},
   )
-  /**
-   * 움직이는 알약의 두 모서리와 그 속도. `live` 는 '한 번은 그렸다' 입니다.
-   * `tint` 는 색이 어디까지 왔는가(0 자연어 · 1 이름)이고 `tintFrom` · `tintStep` 이 그 제 시계입니다.
-   */
-  const edge = useRef({
-    l: 0,
-    r: 0,
-    vl: 0,
-    vr: 0,
-    tint: 0,
-    tintFrom: 0,
-    tintStep: 0,
-    live: false,
-  })
+  /** 움직이는 알약의 두 모서리와 그 속도. `live` 는 '한 번은 그렸다' 입니다 */
+  const edge = useRef({ l: 0, r: 0, vl: 0, vr: 0, live: false })
   /** 마지막으로 본 칸 줄의 폭. ResizeObserver 가 **정말 달라졌을 때만** 일하게 하는 자물쇠입니다 */
   const trackW = useRef(0)
 
@@ -281,11 +273,10 @@ function ModeSwitch({
     const root = getComputedStyle(document.documentElement)
     const token = (name: string, fallback: string) =>
       rgbOf((root.getPropertyValue(name) || '').trim() || fallback)
-    // 칸의 색 — 왼쪽(자연어) 짙은 녹색에서 오른쪽(이름) 심해 남색으로 섞입니다
-    const fill = [
-      token('--color-pine-deep', '#1a5c2f'),
-      token('--color-navy', '#1e2947'),
-    ]
+    /*
+     * 글자색만 여기서 섞습니다 — 알약의 색(`--color-scene-pill`)은 한 가지라 클래스로 답니다.
+     * 덮인 만큼 섞어야 하는 까닭은 아래 paint 의 머리말에 있습니다.
+     */
     const inkOff = token('--color-charcoal-soft', '#727170')
     const inkOn = token('--color-ivory', '#f9f6ef')
 
@@ -312,8 +303,6 @@ function ModeSwitch({
       const g = spot(mode)
       return g && g.w ? { l: g.l, r: g.l + g.w } : null
     }
-    /** 색의 목적지 — 왼쪽 칸이 0, 오른쪽 칸이 1 입니다 */
-    const goalTint = MODES.indexOf(mode) / (MODES.length - 1)
     /**
      * 알약이 넘어가면 안 되는 **칸 줄의 안쪽 상자**.
      *
@@ -330,9 +319,6 @@ function ModeSwitch({
         : null
     }
 
-    /** 이번 이동이 오른쪽으로 가는가. 새 색이 **들어오는 쪽**을 정합니다 */
-    const sweepRight = goalTint >= edge.current.tint
-
     /*
      * ⚠⚠ **두 모서리를 기기 화소에 맞춰 놓고, 폭은 그 둘의 차로 냅니다.**
      *   `transform` 과 `width` 를 따로 반올림하면 **붙어 있어야 할 오른끝이 장마다 반 화소씩
@@ -343,55 +329,21 @@ function ModeSwitch({
     const snap = (v: number) => Math.round(v * dpr) / dpr
 
     /**
-     * `rl` · `rr` · `rStep` 은 **그릴 값**이고, 안 넘기면 적분된 지금 값입니다.
+     * `rl` · `rr` 은 **그릴 값**이고, 안 넘기면 적분된 지금 값입니다.
      *
      * ⚠⚠ 적분은 1/60 초 고정 칸인데 화면의 장은 그 칸과 **안 맞습니다** (60 · 120Hz · 게다가
      *   이 화면은 같은 스레드에서 3D 엔진이 돌아 장을 자주 놓칩니다). 그대로 그리면 어떤 장은
      *   한 칸, 어떤 장은 두 칸을 민 자리를 그려 **덜덜 떨려 보입니다.** 그래서 마지막 칸과
      *   지금 칸 **사이를 남은 시간만큼 이어서** 그립니다 — 장이 언제 오든 그 순간의 자리가 됩니다.
      */
-    const paint = (rl?: number, rr?: number, rStep?: number) => {
+    const paint = (rl?: number, rr?: number) => {
       const e = edge.current
       const l = rl ?? e.l
       const r = rr ?? e.r
-      const tintStep = rStep ?? e.tintStep
-      const { tint, tintFrom } = e
       const l0 = snap(l)
       const r0 = snap(r)
       pill.style.transform = `translate3d(${l0}px,0,0)`
       pill.style.width = `${Math.max(0, r0 - l0)}px`
-
-      /*
-       * ⭐⭐ 색은 **판을 갈아끼우지 않고 한쪽에서 스며듭니다** (2026-09-20 사용자 :
-       *   *"그라데이션이 퍼져나가듯 더 천천히 움직이며 스며들듯이"*).
-       *   새 색이 **가는 쪽 모서리**에서 들어와 꼬리 쪽으로 번집니다 — 알약이 두 칸에 걸쳐
-       *   늘어나 있는 동안 앞머리는 이미 새 색이고 꼬리는 아직 옛 색이라, 색이 건너가는 것이
-       *   한 장면으로 보입니다. 한 색을 섞기만 하면 알약 전체가 동시에 변해 '갈아끼웠다' 로 읽힙니다.
-       * ⚠ 띠는 알약 **제 폭 기준**이라 늘어나면 같이 늘어납니다 — 번짐이 곧 늘어남입니다.
-       * ⚠ 다 스민 뒤에는 **한 색으로 굳힙니다.** 그라데이션을 남겨 두면 가만히 있는 알약이
-       *   늘 옅게 갈려 보이고, 글자 뒤 대비가 자리마다 달라집니다.
-       */
-      if (tintStep >= TINT_STEPS) {
-        pill.style.backgroundImage = 'none'
-        pill.style.backgroundColor = mix(fill[0]!, fill[1]!, unit(tint))
-      } else {
-        const p = inOutCubic(tintStep / TINT_STEPS)
-        const from = mix(fill[0]!, fill[1]!, unit(tintFrom))
-        const to = mix(fill[0]!, fill[1]!, goalTint)
-        /*
-         * 띠의 중심은 알약 밖(−soft/2)에서 반대쪽 밖(1+soft/2)까지 지나갑니다 — 양끝을 넘어야
-         * 시작과 끝이 **완전한 한 색**입니다. 안 넘기면 p=0 인데 앞머리가 이미 섞여 있어 툭 튑니다.
-         */
-        const span = 1 + TINT_SOFT
-        const x = sweepRight
-          ? 1 + TINT_SOFT / 2 - p * span
-          : -TINT_SOFT / 2 + p * span
-        const s1 = ((x - TINT_SOFT / 2) * 100).toFixed(1)
-        const s2 = ((x + TINT_SOFT / 2) * 100).toFixed(1)
-        pill.style.backgroundImage = sweepRight
-          ? `linear-gradient(90deg, ${from} ${s1}%, ${to} ${s2}%)`
-          : `linear-gradient(90deg, ${to} ${s1}%, ${from} ${s2}%)`
-      }
 
       /*
        * 글자색은 **알약이 그 칸을 덮은 만큼** 상아색으로 갑니다.
@@ -411,15 +363,7 @@ function ModeSwitch({
     const at = goal()
     if (!at) return
 
-    const settled = {
-      ...at,
-      vl: 0,
-      vr: 0,
-      tint: goalTint,
-      tintFrom: goalTint,
-      tintStep: TINT_STEPS,
-      live: true,
-    }
+    const settled = { ...at, vl: 0, vr: 0, live: true }
 
     // 첫 장 · 움직임을 줄여 달라는 설정이면 그냥 가져다 놓습니다
     const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -429,17 +373,12 @@ function ModeSwitch({
       if (still) return
     }
 
-    // 색의 시계를 **여기 있는 색에서** 다시 겁니다 — 달리는 중에 눌러도 그 색에서 이어집니다
-    edge.current.tintFrom = edge.current.tint
-    edge.current.tintStep = 0
-
     let raf = 0
     let last = performance.now()
     let lag = 0
     // 마지막 칸 **직전**의 자리. 장과 칸 사이를 이어 그리는 데 씁니다 (paint 머리말)
     let prevL = edge.current.l
     let prevR = edge.current.r
-    let prevStep = edge.current.tintStep
     const tick = (now: number) => {
       // ⚠ 창이 뒤로 갔다 오면 dt 가 몇 초입니다 — 한 번에 몰아 적분하면 알약이 날아갑니다
       lag = Math.min(lag + (now - last), 200)
@@ -453,7 +392,6 @@ function ModeSwitch({
         const e = edge.current
         prevL = e.l
         prevR = e.r
-        prevStep = e.tintStep
         // 가는 쪽을 **보는** 모서리가 앞이다 — 방향은 매 장 다시 본다 (달리는 중에 눌러도 자연스럽게 돌아선다)
         const toRight = (to.l + to.r) / 2 >= (e.l + e.r) / 2
         const kFront = SPRING.speed / 60
@@ -473,18 +411,12 @@ function ModeSwitch({
             if (e.vr > 0) e.vr = 0
           }
         }
-        // 색은 제 시계로 — 가운데가 느린 곡선이라 변화가 움직임의 한가운데에 몰립니다
-        if (e.tintStep < TINT_STEPS) e.tintStep += 1
-        e.tint =
-          e.tintFrom +
-          (goalTint - e.tintFrom) * inOutCubic(e.tintStep / TINT_STEPS)
       }
       // 남은 시간만큼 마지막 칸과 지금 칸 사이를 이어서 그립니다 — 장이 칸과 안 맞아도 매끈합니다
       const a = lag / STEP_MS
       paint(
         prevL + (edge.current.l - prevL) * a,
         prevR + (edge.current.r - prevR) * a,
-        prevStep + (edge.current.tintStep - prevStep) * a,
       )
 
       const e = edge.current
@@ -492,8 +424,7 @@ function ModeSwitch({
         Math.abs(to.l - e.l) < REST &&
         Math.abs(to.r - e.r) < REST &&
         Math.abs(e.vl) < REST &&
-        Math.abs(e.vr) < REST &&
-        e.tintStep >= TINT_STEPS
+        Math.abs(e.vr) < REST
       if (rest) {
         edge.current = { ...settled }
         paint()
@@ -539,13 +470,13 @@ function ModeSwitch({
         스타디움이고, 이 칸은 위아래로 9px 안쪽에 있으므로 같은 중심을 쓰면 25 − 9 = 16,
         곧 제 높이(32)의 반입니다. `rounded-full` 이 그 값입니다 — 둘이 한 곡선 위에 놓입니다.
       */
-      className="bg-charcoal/8 relative flex shrink-0 items-center gap-0.5 rounded-full p-1"
+      className="bg-scene-track relative flex shrink-0 items-center gap-0.5 rounded-full p-1"
     >
-      {/* 미끄러지는 알약 — 글자 **뒤**에 깔립니다. 자리 · 폭 · 색은 위 rAF 가 씁니다 */}
+      {/* 미끄러지는 알약 — 글자 **뒤**에 깔립니다. 자리와 폭은 위 rAF 가 씁니다 */}
       <span
         ref={pillRef}
         aria-hidden
-        className="pointer-events-none absolute top-1 bottom-1 left-0 rounded-full"
+        className="bg-scene-pill pointer-events-none absolute top-1 bottom-1 left-0 rounded-full"
       />
 
       {MODES.map((item) => (
@@ -607,16 +538,7 @@ function mix(
   return `rgb(${c(0)} ${c(1)} ${c(2)})`
 }
 
-/** 0~1 로 자릅니다. 알약이 목표를 지나쳤을 때 색이 범위를 벗어나지 않게 */
+/** 0~1 로 자릅니다. 알약이 목표를 지나쳤을 때 글자색이 범위를 벗어나지 않게 */
 function unit(v: number) {
   return v < 0 ? 0 : v > 1 ? 1 : v
-}
-
-/**
- * 가운데가 빠른 곡선. 색이 **시작과 끝에서 천천히** 움직여, 바뀌는 구간이 알약이 가장 크게
- * 늘어나 있는 한가운데에 몰립니다 — 그때 두 칸이 모두 덮여 있어 색이 제일 잘 읽힙니다.
- */
-function inOutCubic(p: number) {
-  const t = unit(p)
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
 }

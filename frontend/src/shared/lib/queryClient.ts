@@ -2,18 +2,15 @@ import { QueryClient } from '@tanstack/react-query'
 
 import { isApiError, setSessionExpiredHandler } from '@/shared/api/http'
 
-/**
- * 전역 QueryClient.
- * 기본값을 팀 컨벤션으로 한 곳에서 고정해두고, 개별 쿼리에서 필요할 때만 덮어씁니다.
- */
+/** 전역 QueryClient. 기본값을 여기서 고정하고 개별 쿼리가 필요할 때만 덮어씁니다 */
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60, // 1분간은 캐시를 신선한 것으로 간주
+      staleTime: 1000 * 60,
       gcTime: 1000 * 60 * 10,
       refetchOnWindowFocus: false,
       retry: (failureCount, error) => {
-        // 4xx 는 재시도해도 결과가 같으므로 즉시 실패 처리
+        // 4xx 는 다시 보내도 답이 같습니다
         if (isApiError(error) && error.status >= 400 && error.status < 500) {
           return false
         }
@@ -26,11 +23,7 @@ export const queryClient = new QueryClient({
   },
 })
 
-/*
- * 토큰이 만료돼 응답 인터셉터가 로그아웃시킬 때 캐시도 함께 비웁니다.
- * 수동 로그아웃(GlobalHeader)과 탈퇴(WithdrawModal)는 각자 비우고 있었는데,
- * 세션이 저절로 끊기는 이 경로에만 빠져 있었습니다.
- */
+/* 세션이 저절로 끊길 때도 캐시를 비웁니다 — 다음 사람이 앞 사람 화면을 보지 않게 */
 setSessionExpiredHandler(() => {
   queryClient.clear()
 })

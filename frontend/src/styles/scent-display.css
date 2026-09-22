@@ -6,41 +6,100 @@
  * 들어오면 안 되는 버그였습니다. `main.tsx` 에서 한 번만 싣습니다.
  */
 @layer components {
+  /*
+   * 바다 속 (S15P21E203-407). 메인에서 잠수해 들어온 자리라 물빛으로 둡니다 —
+   * 커튼이 끝나는 색(`--color-navy`)과 이어져야 한 장면으로 읽힙니다.
+   *
+   * 위에서 아래로 몸통(`--night`)을 절반까지 붙잡았다가 바닥(`--night-abyss`)으로
+   * 가라앉고, 왼쪽 위에 수면에서 든 빛 한 덩이가 얹힙니다.
+   */
   .scent-night {
-    --night: #261925;
-    --night-soft: #362f26;
+    --night: #1a2b4d;
+    --night-abyss: #0e1224;
+    --night-soft: #24385c;
     --glass-edge: rgb(255 255 255 / 0.55);
 
-    background-color: var(--night);
-    background-image:
-      radial-gradient(
-        circle at 15% 25%,
-        rgb(166 143 91 / 0.18) 0%,
-        transparent 40%
-      ),
-      radial-gradient(
-        circle at 85% 20%,
-        rgb(166 143 91 / 0.13) 0%,
-        transparent 35%
-      ),
-      radial-gradient(
-        circle at 50% 95%,
-        rgb(127 111 77 / 0.12) 0%,
-        transparent 50%
-      );
-    /* 헤더와 본문이 각자 자기 크기로 그러데이션을 그리면 경계에 띠가 집니다 */
-    background-attachment: fixed;
-
     --color-surface: var(--night);
-    --color-ink: #f2ede4; /* 어둠 위 본문 (13.0:1) */
+    --color-ink: #ffffff; /* 빛 든 자리 위 본문 9.1:1 · 바닥에서는 18.6:1 */
     /* ⚠️ 변수만 바꾸면 모자랍니다 — 물려받기만 하는 글자가 먹색으로 남습니다 */
     color: var(--color-ink);
-    --color-ink-muted: #b3aba0; /* 보조 (6.4:1) */
+    /*
+     * 대비는 **빛무리가 든 가장 밝은 자리**(#2E4970)로 잽니다 — 거기서 통과하면
+     * 나머지는 다 통과합니다. 바탕을 밝히면 여기가 먼저 기준 아래로 떨어집니다.
+     *
+     * 따뜻한 회색이 아니라 **찬 회백**입니다 — 남색 위에서 베이지는 누렇게 뜹니다.
+     */
+    --color-ink-muted: #dfe6f0; /* 보조 — 빛 든 자리 7.2:1 */
     --color-line: rgb(255 255 255 / 0.22);
     --color-line-soft: rgb(255 255 255 / 0.12);
     --color-surface-card: var(--night-soft); /* 헤더 드롭다운 */
 
-    --color-danger: #f2b7a2; /* 어둠 · 판 위 경고 (4.7:1). 밝은 화면 값은 1.3:1 */
+    --color-danger: #f2b7a2; /* 어둠 · 판 위 경고 (5.2:1). 밝은 화면 값은 1.3:1 */
+    --color-like: #ff5a6b; /* 어둠 · 유리판 위 눌린 하트 — 밝은 화면 값은 여기서 1.4:1 */
+
+    /*
+     * 검색창 — 바다 위에서만 갈아입습니다. `SearchField` 가 이 값들을 기본값과 함께
+     * 읽어서, 방 밖(아이보리 모달 · 진열대 종이)에서는 손대지 않습니다.
+     *
+     * 알약이 거의 흰색이라 **실행 단추는 어둡게** 둡니다 — 밝은 단추를 밝은 알약에
+     * 얹으면 눌 자리가 흐려집니다. 청동(`accent-deep`)으로 돌아가지 않는 것은 그 색이
+     * 바다 위에서 2.86:1 로 요소 기준(3:1)에 못 미쳐서입니다.
+     */
+    --search-pill: rgb(248 252 255 / 0.96);
+    --search-pill-edge: rgb(167 200 219 / 0.55);
+    --search-submit: var(
+      --night
+    ); /* 알약 위 13.6:1 — 그림이 못 실릴 때의 바탕 */
+    /* 왼쪽 위에서 오른쪽 아래로 물이 한 번 도는 결. 두 끝 다 아이보리 화살표가 6.9:1 이상입니다 */
+    --search-submit-image: linear-gradient(
+      135deg,
+      var(--night) 0%,
+      var(--color-sea-shallow) 100%
+    );
+    /*
+     * 손을 올렸을 때 단추가 밝아지는 배수 (`shared/ui/SearchField`). 방 밖의 기본값은
+     * 1.15 인데, 여기 남색은 깊어서 그만큼으로는 밝아진 줄을 모릅니다.
+     *
+     * ⚠️ 1.5 가 천장입니다 — 그라데이션 **끝 색**(sea-shallow)이 6.9:1 에서 3.7:1 로
+     * 내려옵니다. 1.6 이면 3.29:1, 1.75 면 2.78:1 로 그림 요소 기준(3:1) 아래입니다.
+     * 시작 색(navy)은 9.4:1 이라 여기서 기준을 정하는 것은 늘 끝 색입니다.
+     */
+    --search-submit-hover: 1.5;
+    --search-submit-ink: var(--color-ivory); /* 남색 위 13.0:1 */
+    --search-glow: rgb(167 200 219 / 0.38);
+
+    /*
+     * 고른 필터 알약. `shimmer`(#a7c8db)를 45% 밝힌 값입니다 — 팔레트 토큰은 다른
+     * 자리(빛무리 · 메인 3D)가 같이 써서 여기서만 올립니다.
+     */
+    --pill-selected: #cfe1eb;
+    --pill-selected-ink: var(--night-abyss); /* 13.8:1 */
+  }
+
+  /*
+   * 방과 헤더가 **그림 한 장을 나눠 그립니다.** `background-attachment: fixed` 라 둘 다
+   * 창을 기준으로 칠해져, 따로 그려도 자리가 정확히 맞습니다 — 헤더에 단색을 두면
+   * 빛무리가 든 위쪽에서 본문만 밝아져 가로 띠가 집니다.
+   *
+   * 헤더를 투명하게 두는 방법은 못 씁니다 — `sticky` 라 스크롤한 글이 헤더를 뚫고
+   * 비칩니다. 그래서 같은 그림을 한 장 더 깝니다.
+   */
+  .scent-night,
+  .scent-night-header {
+    background-color: var(--night-abyss);
+    background-image:
+      radial-gradient(
+        ellipse 55% 93% at 25% -5%,
+        rgb(62 95 138 / 0.6) 0%,
+        rgb(62 95 138 / 0) 100%
+      ),
+      linear-gradient(
+        180deg,
+        var(--night) 0%,
+        var(--night) 55%,
+        var(--night-abyss) 100%
+      );
+    background-attachment: fixed;
   }
 
   /*
@@ -67,13 +126,20 @@
     --color-line: rgb(255 255 255 / 0.45);
     --color-line-soft: rgb(255 255 255 / 0.2);
 
-    --color-ink-muted: #d8d2c9; /* 판 위 4.8:1 (방 값은 여기서 3.15:1) */
+    --color-ink-muted: #e2e8f0; /* 판 위 5.0:1 — 옛 값 #d8d2c9 는 실측 4.1:1 로 기준 미달이었습니다 */
 
     /* 판 위 hover 는 밝히지 않고 어둡게 — 밝히면 글자와 바탕이 가까워집니다 */
     --color-surface-sunken: rgb(0 0 0 / 0.14);
 
     /* 판 위 입력칸 — 방 값을 그대로 두면 판보다 어두운 갈색 덩어리가 됩니다 */
     --color-surface-card: rgb(0 0 0 / 0.22);
+
+    /*
+     * 판 위에서 고른 칩은 **흰색**입니다. 방 값(`ink` = #f2ede4)을 그대로 두면
+     * 베이지로 보여 "골랐다" 가 약하게 읽힙니다. 알파를 조금 남겨 꽉 찬 흰색이
+     * 종이를 오려 붙인 것처럼 뜨지 않게 합니다.
+     */
+    --color-selected: rgb(255 255 255 / 0.85);
   }
 
   /*
@@ -101,6 +167,14 @@
     --color-ink-muted: #5f5c58;
     --color-surface-sunken: rgb(255 255 255 / 0.35);
     --color-line: rgb(255 255 255 / 0.5);
+    /*
+     * 카드 안은 밝은 면이라 경고색도 밝은 화면 값으로 되돌립니다. 방 값(#f2b7a2)은
+     * 어둠 위에서 4.7:1 인 연한 산호색이라, 흰 카드에 얹으면 거의 안 보입니다
+     * (게시판 카드의 눌린 좋아요 하트가 그랬습니다).
+     */
+    --color-danger: var(--color-rust);
+    /* 카드는 밝은 면이라 하트도 밝은 화면 값으로 — 방 값(#ff5a6b)은 여기서 1.5:1 입니다 */
+    --color-like: #e8283f;
     /* 위 `.scent-night` 과 같은 이유 — 물려받기만 하는 글자도 따라오게 합니다 */
     color: var(--color-ink);
   }
@@ -132,7 +206,8 @@
   /* 어둠 위에 놓이는 필터 알약 */
   .scent-pill {
     position: relative;
-    background: rgb(40 40 45 / 0.45);
+    /* 심해색을 깔아 바다에 속한 어둠으로 둡니다 — 먹빛은 이 방에서 이물입니다 */
+    background: rgb(14 18 36 / 0.6);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
@@ -187,7 +262,7 @@
    * 여기 적으면 유틸리티에 밀립니다.
    */
   .scent-pill[aria-pressed='true'] {
-    background: rgb(250 247 241 / 0.9);
+    background: var(--pill-selected, rgb(250 247 241 / 0.9));
   }
   .scent-pill[aria-pressed='true']::before {
     background: linear-gradient(
@@ -227,7 +302,7 @@
 
 /* 고른 알약의 글자색. 유틸리티에 밀려 흰 알약에 흰 글자가 됐던 자리입니다 */
 .scent-pill[aria-pressed='true'] {
-  color: #2f2f32;
+  color: var(--pill-selected-ink, #2f2f32); /* 물빛 위 13.8:1 */
 }
 
 /* 아래 셋은 `Modal` 이 유틸리티로 정해 둔 값이라 같은 이유로 레이어 밖입니다 */
@@ -236,8 +311,12 @@
   border-radius: 24px;
 }
 
+/*
+ * ⚠️ `Modal` 의 `py-3.75` 를 덮는 자리라 **같은 자로 적습니다** — 30px 로 박으면 모달의
+ * 나머지 숨은 `--spacing` 을 타 줄어드는데 머리줄만 안 줄어 어두운 방에서만 머리가 큽니다.
+ */
 .scent-night dialog > header {
-  padding-block: 30px;
+  padding-block: calc(var(--spacing) * 7.5);
 }
 
 /* 뒷막. `backdrop:bg-ink/40` 은 어두운 방에서 뒤집혀 흰 천을 덮은 꼴이 됩니다 */
@@ -261,4 +340,55 @@
  */
 .scent-night [data-slot='toast'] {
   background-color: rgb(255 255 255 / 0.75);
+}
+
+/*
+ * 3D 향 지도 위의 판 — 메인의 모달(추천 결과 · 만족도 설문)이 쓰는 어두운 유리입니다.
+ *
+ * 색과 재질은 **엔진 카드에서 그대로 가져왔습니다** (`landing/index.html` 의 `--pb-card-*`).
+ * 부표를 눌러 뜨는 카드와 검색이 내놓는 모달은 같은 바다 위에 같이 떠 있는 판이라, 한쪽만
+ * 상아색 종이면 3D 위에 웹페이지를 오려 붙인 것으로 읽힙니다.
+ *
+ * ⚠️ 값을 고칠 때 `landing/index.html` 의 카드 토큰도 같이 봅니다 — 둘이 갈라지면 같은
+ * 화면에 재질이 다른 판 두 장이 뜹니다.
+ *
+ * NOTE: 바탕만 칠하지 않고 **역할 토큰을 다시 정의합니다.** 어두운 방(`.scent-night`)과 같은
+ * 규율입니다 — 바탕만 뒤집으면 물려받기만 하는 글자가 먹색으로 남습니다.
+ */
+@layer components {
+  .scent-map-panel {
+    /*
+     * 엔진 카드와 같은 색이되 **알파를 안 씁니다** (--pb-card-bg 는 0.86 입니다).
+     * 카드는 손바닥만 해서 뒤가 비쳐도 글자가 버티지만, 이 판은 화면의 절반을 덮고
+     * 그 아래 3D 바다는 물마루가 흰색으로 부서집니다 — 0.86 에서도 마루가 지나갈 때마다
+     * 글자 뒤가 밝아져 읽는 자리가 흔들립니다. 판을 꽉 채우고 대신 배경(::backdrop)만
+     * 얕게 덮어 바다는 판 밖에서 보이게 둡니다.
+     */
+    background: #2c263e;
+    border: 1px solid rgb(255 244 236 / 0.16);
+    box-shadow: 0 14px 34px rgb(16 10 28 / 0.32);
+
+    --color-ink: #fbf3ea; /* --pb-card-ink */
+    --color-ink-muted: rgb(251 243 234 / 0.72); /* --pb-card-ink-2 */
+    --color-line: rgb(255 244 236 / 0.16); /* --pb-card-border */
+    --color-line-soft: rgb(255 244 236 / 0.1);
+    /* 판 위에 얹는 칸(결과 카드 · 입력칸) — 엔진 카드의 --pb-card-img-bg 와 같은 값 */
+    --color-surface-card: rgb(251 243 234 / 0.06);
+    --color-surface-sunken: rgb(251 243 234 / 0.06);
+    /*
+     * ⚠️ 밝은 채움 위의 글자가 이 값을 씁니다(`text-surface` — 순위 딱지 · 고른 칩).
+     * 상아색으로 두면 상아 바탕에 상아 글자가 되어 통째로 사라집니다.
+     */
+    --color-surface: #2c263e;
+    /* 고른 칩은 판 위에서 상아색입니다 — 남색으로 두면 판에 잠겨 "골랐다" 가 안 읽힙니다 */
+    --color-selected: #fbf3ea;
+
+    /* 브라우저 기본 스타일이 dialog 에 color: CanvasText(검정)를 박습니다 */
+    color: var(--color-ink);
+  }
+
+  /* 판 위의 배경(`::backdrop`)은 바다를 가리지 않게 얕게만 덮습니다 */
+  .scent-map-panel::backdrop {
+    background: rgb(16 10 28 / 0.38);
+  }
 }

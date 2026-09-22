@@ -86,7 +86,7 @@ export function ShelfToolbar({
         510)을 계속 차지하면 검색창은 있던 자리에 그대로 섭니다. 칩은 그 안에서
         오른쪽 끝, 즉 검색창 옆에 붙습니다.
       */}
-      <div className="-m-1 flex [scrollbar-width:none] items-center gap-2.5 overflow-x-auto p-1 lg:m-0 lg:w-[510px] lg:justify-end lg:overflow-visible lg:p-0">
+      <div className="-m-1 flex [scrollbar-width:none] items-center gap-2.5 overflow-x-auto p-1 lg:m-0 lg:w-127.5 lg:justify-end lg:overflow-visible lg:p-0">
         {/*
         칩이 곧 진열대 벽의 세 칸입니다. 라벨을 여기 적지 않고 SHELF_CATEGORIES 에서
         끌어옵니다 — 예전에는 목업 문구를 옮겨 적어서 저장 모달의 "시향해 봄" 을

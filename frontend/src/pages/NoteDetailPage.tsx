@@ -14,13 +14,11 @@ import { GLASS_PANEL } from '@/shared/ui/panel'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 /**
- * 노트 상세 (A36 — A35 에서 노트를 누른 화면)
+ * 노트 상세 (A36 — A35 에서 노트를 누른 화면). 향수는 쪽 넘김입니다 — 인기 노트 하나에
+ * 향수가 수만 개 달립니다(머스크 49,571개).
  *
- * 향수는 **쪽 넘김**입니다 — 인기 노트 하나에 향수가 수만 개 달려(머스크 49,571개)
- * 이어 붙이면 끝이 없습니다. ⚠️ **[향수 전체 보기]로 넘기지 못합니다** — 향수 검색
- * 파라미터에 `note` 가 없어 노트의 향수는 `/notes/{noteId}/perfumes` 에만 있습니다.
- *
- * 어두운 방 · 유리판 구성 — docs/어두운-방-유리판.md
+ * NOTE: 브랜드 상세와 달리 [향수 전체 보기] 로 넘기지 못합니다 — 향수 검색 파라미터에
+ * `note` 가 없어 노트의 향수는 `/notes/{noteId}/perfumes` 에만 있습니다.
  */
 export default function NoteDetailPage() {
   const { noteId } = useParams<{ noteId: string }>()
@@ -30,9 +28,9 @@ export default function NoteDetailPage() {
   const [page, setPage] = useState(0)
 
   /*
-    노트를 옮겨 다니면(A36 → A35 → A36) 쪽 번호가 남아, 3쪽을 보다가 향수가 20개뿐인
-    노트로 들어가면 빈 격자가 나옵니다. 렌더 중에 맞추는 이유는 `useEffect` 로 한 박자
-    늦게 되돌리면 첫 프레임에 그 빈 격자가 보여서입니다.
+    노트를 옮겨 다니면 쪽 번호가 남아, 3쪽을 보다가 향수가 20개뿐인 노트로 들어가면 빈
+    격자가 나옵니다. 렌더 중에 맞추는 것은 `useEffect` 로 한 박자 늦게 되돌리면 첫
+    프레임에 그 빈 격자가 보여서입니다.
   */
   const [pagedNoteId, setPagedNoteId] = useState(numericId)
   if (pagedNoteId !== numericId) {
@@ -80,37 +78,28 @@ export default function NoteDetailPage() {
         <Thumbnail
           src={data.imageUrl}
           fallback="노트 이미지"
-          /*
-            ⚠️ **바탕을 여기서 덮어씁니다** — 그대로 두면 어둠 위에 아이보리
-            사각형이 남습니다(docs/어두운-방-유리판.md 의 5).
-          */
+          // NOTE: 바탕을 덮어씁니다 — 그대로 두면 어둠 위에 아이보리 사각형이 남습니다
           className="aspect-7/5 h-60 shrink-0 bg-white/5"
         />
 
-        <div className="space-y-2.5">
-          <div className="space-y-0.5">
-            <h1 className="text-ink font-serif text-4xl font-semibold">
-              {data.name}
-            </h1>
-            {/*
-              한국어 이름이 없는 노트가 있습니다. 영문과 철자가 같은 노트도 빼서
-              같은 글자가 두 줄로 겹치지 않게 합니다.
-            */}
-            {data.nameKo && data.nameKo !== data.name && (
-              <p className="text-ink-muted text-heading">{data.nameKo}</p>
-            )}
-          </div>
-
-          <p className="text-ink-muted text-caption">
-            대분류 {data.accordFamily ?? '기타'}
-          </p>
+        {/*
+          대분류(`accordFamily`)는 여기 적지 않습니다 — 목록이 이미 대분류로 묶어 보여
+          주므로 방금 지나온 제목을 한 번 더 읽히는 줄이 됩니다.
+        */}
+        <div className="space-y-0.5">
+          <h1 className="text-ink font-serif text-4xl font-semibold">
+            {data.name}
+          </h1>
+          {/* 영문과 철자가 같은 노트는 빼서 같은 글자가 두 줄로 겹치지 않게 합니다 */}
+          {data.nameKo && data.nameKo !== data.name && (
+            <p className="text-ink-muted text-heading">{data.nameKo}</p>
+          )}
         </div>
       </header>
 
       {/*
-        설명 판. `notes.description` 은 컬럼이 NULL 을 허용하고 채워지는 대로
-        들어옵니다(V21 마이그레이션). 없으면 판째로 그리지 않습니다 — 빈 판을 두면
-        "아직 안 불러온 것" 처럼 보입니다.
+        설명은 채워지는 대로 들어와 없는 노트가 있습니다. 없으면 판째로 그리지
+        않습니다 — 빈 판을 두면 "아직 안 불러온 것" 처럼 보입니다.
       */}
       {data.description && (
         <section className={GLASS_PANEL}>
@@ -125,7 +114,6 @@ export default function NoteDetailPage() {
           <h2 className="text-ink font-serif text-2xl">
             이 노트가 들어간 향수
           </h2>
-          {/* 자릿수 구분은 인기 노트가 다섯 자리여서입니다(머스크 49,571) */}
           {!perfumes.isPending && !!perfumes.data?.totalElements && (
             <span className="text-ink-muted text-caption">
               {perfumes.data.totalElements.toLocaleString('ko-KR')}개
@@ -145,7 +133,6 @@ export default function NoteDetailPage() {
           />
         ) : (
           <>
-            {/* 백엔드 기본값인 20개가 옵니다(api.ts 가 `size` 를 안 보냅니다) */}
             <PerfumeGrid
               items={perfumes.data?.perfumes ?? []}
               isPending={perfumes.isPending}
@@ -158,10 +145,7 @@ export default function NoteDetailPage() {
               }
             />
 
-            {/*
-              응답이 오기 전에는 그리지 않습니다. `size` 를 0 으로 넘기면 쪽 수
-              계산이 NaN 이 되어 쪽 번호가 깨진 채로 한 프레임 보입니다.
-            */}
+            {/* 응답 전에 `size` 가 0 이면 쪽 수 계산이 NaN 이 되어 한 프레임 깨집니다 */}
             {perfumes.data && (
               <Pagination
                 className="mt-6.25"
