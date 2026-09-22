@@ -76,7 +76,9 @@ export function RootLayout() {
       ? sky === 'light'
         ? 'glassLight'
         : 'glass'
-      : 'surface'
+      : onNight
+        ? 'night'
+        : 'surface'
 
   return (
     /*
