@@ -5,13 +5,15 @@ import { createBloom } from './bloom.js';
 import { createSubmerged } from './submerged.js';
 import { lerp, clamp, wrapPi } from './util.js';
 import { createUI } from './ui.js';
-import { callHost, hostSearch, perfumeRef, setHost, setHostNotice } from './host.js';   // 카드의 서비스 동작 · 검색창이 앱(호스트)으로 나가는 문 (v0.68.0)
+import { bootNow, bootReport, callHost, hostCabin, hostMove, hostSearch, perfumeRef, setHost, setHostNotice } from './host.js';   // 카드의 서비스 동작 · 검색창이 앱(호스트)으로 나가는 문 (v0.68.0) · 부팅 신호 (v0.75.0) · 선실 (v0.79.0)
 import { createInput } from './input.js';
 import { createSim } from './sim.js';
 import { createWater } from './water.js';
 import { createGrids } from './grid.js';
 import { createSpray } from './spray.js';
 import { createBoat } from './boat.js';
+import { createPod } from './pod.js';
+import { createBirds } from './birds.js';
 import { createReflect } from './reflect.js';
 import { createZones } from './zones.js';
 import { createMarks } from './marks.js';
@@ -20,6 +22,7 @@ import { createSeaMark } from './seamark.js';
 import { createStage } from './stage.js';
 import { createPhase, EASE } from './phase.js';
 import { createTravel } from './travel.js';
+import { diveNow, setDive, disposeDive, diveReport } from './dive.js';   // 잠수 — 진열대로 넘어가는 전환 (2026-09-18). 진행도는 앱 커튼이 넘긴다 (PB.dive)
 import { createMinimap } from './minimap.js';
 import { createChart } from './chart.js';
 import { areaOf, findArea } from './areas.js';
@@ -34,7 +37,7 @@ import { swellCPU, swellEnvCPU, swellAmplitude, gerstnerLoopLimit } from './swel
 import * as oceanClock from './ocean-clock.js';
 // 하늘. ⚠ **파일이 아니라 함수다** — 물은 GLSL 로 직접 부르고, 배·부표는 이걸 구운
 //   환경맵을 scene.environment 로 읽는다. 둘이 **같은 하늘**을 봐야 한 장면이 된다
-import { bakeEnvironment, syncSky } from './sky.js';
+import { bakeEnvironment, syncSky, tickSky } from './sky.js';
 import { timeNow, timeKey } from './times.js';
 const { groundSpeed, turnRate } = oceanClock;
 
@@ -43,6 +46,8 @@ const { groundSpeed, turnRate } = oceanClock;
 // 그래서 scroll 은 "배의 위치"이자 "월드가 흐른 양"이다. 두 뜻이 같은 값이다.
 
 const P = PARAMS;
+// ⭐ 부팅 신호 ② (v0.75.0) — import 가 전부 평가됐다. 앱의 로딩 커튼이 듣는다 (host.js bootReport)
+bootReport('script');
 // 앱(호스트)이 띄운 창이 열려 있는 수 (2026-09-15, v0.68.0 — holdWhile). 0 보다 크면 누르기 · 호버 · ESC · 스페이스를 안 받는다.
 //   ⚠ 입력을 만들기 전인 여기에 선언한다 — onPick · updateHover · onKeyExit 가 읽는다 (TDZ)
 let hostHold = 0;
@@ -61,6 +66,9 @@ const ui = createUI({
   //   말풍선은 누른 부표 옆에 붙어 **이웃 칸을 덮을 수 있어서**, × 가 12개까지 거두면 덮였던 향수를 누를 길이 없다.
   //   12개를 거두는 문은 그대로 셋이다 — 빈 바다 · ESC · 방향키
   //   ⚠ 비교 패널 [원본](cardBubble 0 — 좌하단 카드)에서는 예전처럼 같이 접는다
+  // ⭐ 배 옆 방울을 눌렀다 (2026-09-21) — 배를 누른 것과 **같은 문**이다.
+  //   ⚠ 방울은 #mount 밖이라 이 누름은 input.js 의 onPick 으로 안 간다 — 그래서 따로 받는다
+  onCabin: () => { if (cabinOpen) closeCabin(); else openCabin(); },
   onCloseCard: () => {
     marks.clearSelect();
     // ⚠ 돌아갈 곳도 같이 지운다 (2026-09-12 저녁) — 안 지우면 호버가 벗어날 때
@@ -139,6 +147,8 @@ scene.add(hemiLight, dirLight);
 //   ⚠ 바뀔 때만 돈다 — applySky 가 환경맵(PMREM)을 다시 굽는 데 수십 ms 다
 const LIGHT0 = { hemiSky: hemiLight.color.clone(), hemiGround: hemiLight.groundColor.clone(), hemi: hemiLight.intensity,
                  dir: dirLight.color.clone(), dirI: dirLight.intensity };
+// 시간대 표가 정한 배경색 (잠수가 이 값에서 짙은 바다색으로 간다 — applyDiveBg)
+const _bgBase = new THREE.Color(CONFIG.color.bg);
 let _timeKey = null;
 function applyTime() {
   const k = timeKey();
@@ -153,12 +163,29 @@ function applyTime() {
     dirLight.color.copy(LIGHT0.dir); dirLight.intensity = LIGHT0.dirI;
   }
   scene.background.set(T ? T.bg : CONFIG.color.bg);
+  _bgBase.copy(scene.background);   // 잠수가 여기서부터 짙은 바다색으로 간다 (아래 applyDiveBg)
   // 글자색 변수 (index.html <style>). 낮이면 속성을 지운다 — 인라인의 예전 값이 그대로 산다
   if (T && T.ui) document.documentElement.dataset.time = T.ui;
   else delete document.documentElement.dataset.time;
   applySky();
 }
 applyTime();
+
+// ⭐ 잠수 — 배경색이 짙은 바다색으로 눕는다 (2026-09-18, dive.js).
+// ⚠⚠ `applyTime()` 은 **시간대가 바뀔 때만** 배경을 쓰므로, 잠수가 매 프레임 덮으면 끝난 뒤에 되돌릴 사람이 없다.
+//   그래서 그 표의 값을 `_bgBase` 에 챙겨 두고, 잠수 중에만 섞어 덮고 **끝나는 프레임에 한 번** 되돌린다.
+//   ⚠ 물(`uBg`) · 하늘(stage) 은 자기 update 안에서 같은 일을 한다 — 셋이 같은 `dim` 을 보므로 갈라지지 않는다
+let _bgDived = false;
+function applyDiveBg() {
+  const D = diveNow();
+  if (D) {
+    scene.background.copy(_bgBase).lerp(D.deep, D.dim);   // ⚠ `dim` 에 diveDim 이 이미 들어 있다 (dive.js)
+    _bgDived = true;
+  } else if (_bgDived) {
+    scene.background.copy(_bgBase);
+    _bgDived = false;
+  }
+}
 
 const sim = createSim(renderer);
 const water = createWater(scene, sim.texture);
@@ -171,6 +198,15 @@ const boat = createBoat(scene);
 const reflect = createReflect(renderer, scene, boat, [hemiLight, dirLight]);
 water.setBoat(boat.pivot);
 water.setReflect(reflect);
+// 돌고래 무리 — 원경을 채운다 (2026-09-18). ⚠ 반사·물속·발광 패스에 **안 넣는다** (pod.js 머리 주석) —
+// 씬을 한 번 더 그리는 값은 그대로 나가는데 원경이라 반사에는 거의 안 보이고, 반사 패스의
+// 클리핑 평면(reflectSlice)이 점프 꼭대기를 어차피 자른다. GLB 는 podAmount > 0 일 때 처음으로 받는다
+// ⚠ 원경색(uBg)을 **참조로** 넘긴다 — 멀어지는 돌고래가 물과 **같은 색**으로 녹어야 한다.
+//   복사하면 시간대가 바뀌는 순간 둘째 수평선이 생긴다 (stage.js 가 태양 유니폼을 참조로 받는 것과 같은 규율)
+const pod = createPod(scene, water.uni);
+// 새 무리 — 하늘을 채운다 (2026-09-20). ⚠ pod 와 같은 규율이다 (레이어 0 만 · 무상태 시계 · 드로우콜 1개).
+// ⚠ 물 유니폼을 **안 받는다** — 녹아드는 목적지가 물의 원경색이 아니라 **그 방향의 하늘**이다 (birds.js 머리 주석)
+const birds = createBirds(scene);
 // 화면에 그리는 하늘. ⚠⚠ **water 뒤에 만든다** — 태양 유니폼(`uLightDir3`)을 **참조로**
 // 공유해서 물과 하늘이 갈라질 수 없게 한다 (stage.js 주석의 실측 : 태양이 세 곳에서
 // 80.8°·125.7° 로 어긋나 있었다). 복사하면 그 순간 넷째 태양이 생긴다
@@ -238,6 +274,10 @@ const input = createInput(ui.mount, {
   },
   onPick: (nx, ny, e) => {
     if (hostHold) return;   // ⚠ 앱이 띄운 창(진열대 저장 모달)이 열려 있는 동안은 고르지 않는다 (v0.68.0 — holdWhile)
+    // ⭐⭐ **선실 말풍선이 떠 있으면 어디를 누르든 닫기다** (2026-09-21 — 팝오버의 규약).
+    //   그 누름은 **먹는다** — 닫으면서 동시에 부표를 고르거나 바다로 떠나면 한 번 누른 것이 두 가지 일을 한다.
+    //   ⚠ 배를 다시 누른 것도 여기서 닫힌다 (여닫이 토글). 창을 안 잠그는 대신 이 한 줄이 그 몫을 한다
+    if (cabinOpen) { closeCabin(); return; }
     // ⚠⚠ **전환 중에는 고르지 않는다** (§9-4). phase 쪽 가드는 이미 있어서 cue.zone 이
     //   찢어지진 않지만, 여기서 막지 않으면 트윈이 도는 동안 카드가 바뀌어 **화면과 카드가
     //   서로 다른 향을 가리킨다.** 안개가 덮여 있는 동안도 같다
@@ -256,6 +296,13 @@ const input = createInput(ui.mount, {
       marks.focusOff(); marks.clearSelect(); clickMark = null; hoverMark = null;
       return;
     }
+    // ⭐⭐ **배를 누르면 배 옆에 작은 말풍선이 뜬다** (2026-09-21, v0.79.0 — host.js openCabin · boat.js hitTest).
+    //   진열대 · 컬렉션 줄 둘짜리 말풍선을 앱이 띄운다. 엔진은 '배를 눌렀다' 만 넘긴다.
+    //   ⚠⚠ **자리는 여기라야 한다.** 아래 `seaGo` 보다 앞이다 — 배를 뚫고 지나간 광선은 그 뒤의
+    //     수면과 만나므로, 뒤에 두면 배를 누를 때마다 **배가 제 자리로 항해를 떠난다.**
+    //   ⚠ 부표(`m`)가 이미 잡혔으면 여기 안 온다 — 배 앞뒤에 겹친 부표는 부표가 이긴다 (boat.js 머리말).
+    //   ⚠ 향수 고르기(12개) 중에는 위에서 이미 return 했다 — 그때 배 위의 누름은 **연출 끝내기**다.
+    if (!m && boat.hitTest(view, nx, ny)) { openCabin(); return; }
     if (!m && (seaClick || seaShift) && seaGo(nx, ny)) return;
     // ── 향수 고르기 중 : 떠오른 12개만 받는다. 빈 바다를 누르면 접는다
     if (marks.focusing) {
@@ -279,6 +326,10 @@ const input = createInput(ui.mount, {
       //   ⚠ **알림만이다** — 앱이 Promise 를 줘도 `holdWhile` 로 입력을 잠그지 않는다. 엔진이 이미 한 일이라 기다릴 것이 없다 ([진열대에 저장]과 다른 점).
       const exRef = perfumeRef(m);
       if (exRef) callHost('exploreSimilar', exRef);
+      // ⭐ **들른 향수** (2026-09-18, v0.75.12 — 향해 일지). 서버는 향수를 고른 이동을 **언제나** 남기고,
+      //   지금 구역의 진입 줄에 그 향수를 매단다 (ExplorationController — 새 줄이 되지 않는다).
+      //   ⚠ 좌표는 부표의 정규화 자리(mx · my)다 — `perfumeId` 가 있으면 서버가 제 좌표로 덮어쓴다
+      if (exRef) hostMove({ perfumeId: exRef.perfumeId, x: exRef.mx, y: exRef.my, regionKey: exRef.family });
     }
   }
 });
@@ -303,15 +354,63 @@ const input = createInput(ui.mount, {
 let hoverMark = null, clickMark = null, hoverX = NaN, hoverY = NaN;
 let _miniHidden = false;   // 존 연출 중 미니맵 숨김 (zoneMiniHide — tick). ⚠ tick 보다 먼저 선언한다 (TDZ)
 let seaBlockT = 0;         // Shift 바다 누르기가 경계에 막혀 있던 시간 (tick). ⚠ 같은 이유로 여기서 선언한다
+
+// ───────── 배가 든 해역이 바뀌면 앱에 알린다 (2026-09-18, v0.75.12) — 향해 일지 ─────────
+// 앱은 이것을 받아 `PUT /map/exploration/me` 를 부른다 (host.js `hostMove`). 일지 한 줄이 "○○ 구역 진입"
+// 이므로 **바뀌는 순간**이 곧 한 줄이다 — 매 프레임 보내면 서버가 같은 구역을 몇백 번 받는다.
+// ⚠⚠ `zones.onArrive` 로는 모자라다 — 그건 **자동 조타 목표에 닿았을 때**만 뜬다. 방향키로 자유 항해하면
+//   영영 안 온다 (사용자 : *"향 영역으로 이동했을때 향해 일지가 작성 안되고 있음"*).
+// ⚠ 해역은 `map.regionAt` (가장 가까운 향수의 향조 — 향수들로 나눈 보로노이)이다. 200개 순회라
+//   **REGION_MS 마다 한 번**만 돈다 (같은 틱의 `navDist` 도 200개를 도므로 두 배가 되지 않게).
+// ⚠ 갈 수 있는 바다 **밖**이면 보내지 않는다 — 배가 경계에 붙어 미끄러지는 동안 값이 흔들린다.
+// ⚠ 좌표는 `map.toNorm` 이 낸 정규화 좌표다 (불변식 21). 첫 해역도 한 줄이다 (배가 그 바다에서 시작한다).
+const REGION_MS = 400;
+let regionKey = null, regionT = -1e9;
+function reportRegion(t) {
+  const map = marks.map;
+  if (!map || t - regionT < REGION_MS / 1000) return;
+  regionT = t;
+  const wx = nav.scroll.x, wz = -nav.scroll.z;
+  if (!map.inNav(wx, wz, 0)) return;
+  const reg = map.regionAt(wx, wz);
+  if (!reg || reg.key === regionKey) return;
+  const [nx, ny] = map.toNorm(wx, wz);
+  // ⚠ perfumeId 는 **DB 번호**라 엔진 데이터에 아직 없다 (불변식 32 · 지금은 늘 null) — 그동안은 좌표로 간다.
+  //   좌표만 오면 서버는 '빈 바다로 간 이동' 으로 보고 **향 영역이 바뀐 경우에만** 기록한다. 여기가 정확히 그 순간이다
+  const told = hostMove({ x: nx, y: ny, regionKey: reg.key, regionName: reg.name, perfumeId: null });
+  // ⚠⚠ **알린 뒤에만 기억한다.** 첫 틱은 호스트(앱)가 `window.PB` 를 찾아 붙기 **전**이라 아무 데도 안 간다 —
+  //   그때 기억해 버리면 배가 그 해역을 떠날 때까지 영영 다시 안 알리고, 첫 해역이 일지에서 통째로 빠진다
+  //   (실측 2026-09-18 : 앱을 열자마자 `hostMove` 가 false 로 한 번 돌고 그대로 잠겼다).
+  if (told) regionKey = reg.key;
+}
 // ⭐ 호버 카드의 틈 (2026-09-15, v0.65.0 — cardHoverBridge). hoverGrace = 부표와 카드 밖으로 나간 앱 시각 (−1 = 유예 없음) ·
 //   hoverOnCard = 이번 프레임에 마우스가 떠 있는 카드 위다 (틱의 setScentPeek 가 읽는다 — 카드 위면 통과를 끄고 진하게)
 let hoverGrace = -1, hoverOnCard = false;
+// ⭐ 배 위에 마우스가 있는가 (2026-09-21, v0.79.0 — 선실). tick 이 이것으로 호버 방울을 켠다.
+//   ⚠ 마우스가 멈춰 있는 프레임에는 updateHover 가 일찍 돌아가므로 **값을 유지한다** — 켜고 끄는 것은 판정한 프레임뿐이다
+let boatHover = false;
+// ⭐ 앱의 선실 말풍선이 떠 있는가. 입력을 잠그는 대신 이 값 하나로 '누름은 닫기' · '호버 방울은 쉰다' 를 가른다
+let cabinOpen = false;
 function updateHover(view) {
-  if ((P.cardHover === undefined ? 1 : P.cardHover) < 0.5) { hoverMark = null; hoverOnCard = false; return; }
+  if ((P.cardHover === undefined ? 1 : P.cardHover) < 0.5) { hoverMark = null; hoverOnCard = false; boatHover = false; return; }
   // ⚠ 전환·안개·존 연출 중에는 안 한다 — onPick 과 같은 가드다 (§9-4).
   //   존 연출 중에 카드가 뜨면 정보 블록과 같은 자리를 두 층이 잡는다
-  if (phase.cue.busy || travel.busy || phase.cue.zone) return;
-  if (hostHold) return;   // 앱 창이 열려 있는 동안 카드를 바꾸지 않는다 — 닫히면 고른 향수 그대로다 (v0.68.0)
+  if (phase.cue.busy || travel.busy || phase.cue.zone) { boatHover = false; return; }
+  // 앱 창이 열려 있는 동안 카드를 바꾸지 않는다 — 닫히면 고른 향수 그대로다 (v0.68.0)
+  if (hostHold) { boatHover = false; return; }
+  // ⭐⭐ 선실 말풍선이 떠 있으면 **호버 방울은 쉰다** (2026-09-21) — 둘이 같은 자리에 서기 때문이다.
+  //   ⚠⚠ 이 줄이 없으면 방울이 말풍선 밑에 그대로 남는다. 마우스가 앱 말풍선 위로 올라가는 순간
+  //     iframe 밖이라 pointermove 가 끊겨 `input.state` 가 **배 위에서 얼어붙기** 때문이다 (벗어난 줄 모른다)
+  if (cabinOpen) { boatHover = false; return; }
+  // ⭐⭐ **마우스가 한 번도 안 움직였으면 아무것도 집지 않는다** (2026-09-20).
+  //   `input.state.mx/my` 의 시작값은 0,0 인데 그것은 NDC 의 **화면 한가운데**다. 그래서 부팅 직후
+  //   첫 틱이 한가운데로 레이캐스트해, 아무도 마우스를 움직이지 않았는데 거기 있던 부표의 카드가 열렸다
+  //   (사용자 : *"첫페이지에 마우스가 자동적으로 중앙에 위치해서 그런지 항상 특정 가운데 향수가 뜬걸"*).
+  //   2026-09-18 에 이것을 '호버가 카드를 연다' 로 읽고 `markHoverCard` 를 통째로 껐는데, 막았어야 할
+  //   것은 **안 움직인 마우스** 한 프레임이었다 — 그래서 여기서 막고 방아쇠는 도로 켰다.
+  //   ⚠ `px` 는 첫 pointermove 까지 NaN 이다 (`input.js` 의 state 주석) — 그것이 '움직였다' 의 표시다.
+  //     `mx/my` 로는 못 가린다. 0,0 은 '안 움직였다' 이기도 하고 '한가운데로 움직였다' 이기도 하다
+  if (Number.isNaN(input.state.px)) return;
   const mx = input.state.mx, my = input.state.my;
   // ⭐⭐ **카드 위 · 부표와 카드 사이의 틈** (2026-09-15, v0.65.0 — cardHoverBridge). 사용자 : *"향수 부표 마우스 오버시 모달창과 마우스 이동이 끊김
   //   옆 모달창에 마우스를 올리면 그 사이 공백으로 모달창이 사라지고있음"*.
@@ -323,13 +422,22 @@ function updateHover(view) {
   //   0 = v0.64.0 (벗어나는 첫 프레임에 놓는다)
   const bridge = (P.cardHoverBridge === undefined ? 1 : P.cardHoverBridge) >= 0.5;
   const hpx = input.state.px, hpy = input.state.py;
+  // ⭐⭐ **방울 위면 다시 안 집는다** (2026-09-21) — 배와 방울 사이에 약 19px 의 빈 곳이 있어,
+  //   그냥 두면 방울로 마우스를 옮기는 동안 레이캐스트가 배를 놓쳐 **방울이 깜빡이며 사라진다.**
+  //   호버 카드의 `cardHoverBridge` 와 같은 함정이고, 여기서는 방울이 제 pointerenter 로
+  //   알려 주므로 상자를 따로 잴 필요가 없다 (ui.cabinHovered)
+  if (ui.cabinHovered()) { hoverX = mx; hoverY = my; boatHover = true; return; }
   hoverOnCard = bridge && !!shownMark && ui.scentCardHit(hpx, hpy, 8);
-  if (hoverOnCard) { hoverX = mx; hoverY = my; hoverGrace = -1; return; }
+  if (hoverOnCard) { hoverX = mx; hoverY = my; hoverGrace = -1; boatHover = false; return; }
   if (mx === hoverX && my === hoverY && hoverGrace < 0) return;
   hoverX = mx; hoverY = my;
   const m = marks.pick(view, mx, my);
   // 고르기 중에는 **떠오른 12개만** 받는다 — 가라앉은 것은 눌러도 안 되는 것과 같아야 한다
   const next = (m && (!marks.focusing || marks.inFocus(m))) ? m : null;
+  // ⭐ **배에 손을 올렸다** (2026-09-21, v0.79.0 — 선실). 빛무리와 이름표가 같이 뜬다 (tick · ui.setCabin).
+  //   ⚠ 차례는 onPick 과 **같다** — 부표가 먼저다. 안 맞추면 눈에 보이는 것(빛무리)과 눌리는 것이 갈라진다
+  //   ⚠ 향수 고르기(12개) 중에는 안 띄운다 — 그때 배 위의 누름은 창 열기가 아니라 연출 끝내기다
+  boatHover = !next && !marks.focusing && boat.hitTest(view, mx, my);
   if (bridge && !next && hoverMark && shownMark === hoverMark) {
     if (ui.scentZoneHit(hpx, hpy, 8)) { hoverGrace = -1; return; }
     if (hoverGrace < 0) hoverGrace = t;
@@ -338,15 +446,16 @@ function updateHover(view) {
   hoverGrace = -1;
   if (next === hoverMark) return;
   hoverMark = next;
-  if (next) marks.select(next);
+  // ⭐⭐ **카드는 누를 때만 뜬다** (2026-09-18) — 사용자 : *"일단 카드 자동으로 열리는거 삭제하셈 안그래도
+  //   이거 다시 디벨롭 올릴때 삭제 예정이었음"*. 부표 위를 **지나가기만 해도** 카드가 열려 화면 절반이 덮였다.
+  //   ⚠ 고르기(클릭) · 카드 위 호버 다리(cardHoverBridge)는 그대로다 — **여는 방아쇠만** 뺐다.
+  //   ⚠ `markHoverCard 1` 이면 예전과 비트 단위로 같다 (되돌릴 수 있게 둔다)
+  const hoverCard = (PARAMS.markHoverCard === undefined ? 0 : PARAMS.markHoverCard) >= 0.5;
+  if (next && hoverCard) marks.select(next);
   // 벗어났다 — 클릭으로 고른 것이 아직 화면에 있으면 그리로 돌아간다
   else if (clickMark && clickMark.on && clickMark.fade > 0.02) marks.select(clickMark);
   else marks.clearSelect();
 }
-
-// ⚠ 개발 패널(계측 HUD · 파라미터 · 조작 바 · 시점 · 원본 비교 · 자유 시점 · 부력 프로브 · 프레임 잡기)은
-//   develop 에 넣지 않는다 (2026-09-16 사용자 : "최종 develop 에 올릴 때는 노출 안 되게 삭제").
-//   엔진 원본 작업 브랜치에만 있다 — 이 파일에서 그 자리를 다시 만들지 않는다.
 
 // 픽셀 밀도 페이드가 쓸 실제 버퍼 해상도. 드라이버가 clamp 할 수 있으니 getSize 기준
 function syncRes() {
@@ -463,7 +572,7 @@ function cameraPose(cl, s, aspect, out) {
 }
 
 // ── 먼 곳 이동 · 미니맵 · 향수 고르기 (2026-09-11, v0.32.0)
-// ⚠⚠ tick() **보다 먼저** 만든다 — 루프가 첫 프레임부터 부른다 (아래에서 const 로 만들면 첫 프레임이 TDZ 에 걸린다)
+// ⚠⚠ tick() **보다 먼저** 만든다 — 루프가 첫 프레임부터 부른다 (위 campanel 의 TDZ 교훈)
 const travel = createTravel({ nav, zones, pivotOf: () => boat.pivot });
 // ⭐ onBlocked — 미니맵의 바깥(범위 밖 · 2026-09-13 부터 `--pb-void` 한 색)을 누르면 가지 않고 경고만 (2026-09-11 오후)
 const minimap = createMinimap({ onPick: (t) => startTravel(t), onBlocked: () => ui.warn('범위 없음', '이 너머는 갈 수 없는 해역입니다') });
@@ -531,6 +640,8 @@ function pickSail(m) {
   zones.goTo({ key: null, name: m.nameKo || m.name, x: m.x, z: m.z, custom: true, sea: true, pick: true, boost: false, arrive });
 }
 function arriveAt(key) {
+  // ⚠ 거절돼 미뤄지는 길(pendingArrive)에서도 받아 둔다 — 틱이 다시 걸 때는 받을 시간이 없다
+  gate.preload(key);
   if (!phase.enter(key, { hold: P.zoneHold })) pendingArrive = key;
 }
 // 향수 고르기의 카메라 섞임 (선형 진행 0..1 — 틱이 이징을 먹인다)
@@ -545,6 +656,9 @@ const _obs = [];
 // 떠나기. ⚠ 들어가 있는 연출·향수 고르기는 접고 떠난다 — 안 접으면 안개 뒤에서 두 층이 같은 카메라를 잡는다
 function startTravel(target) {
   if (!target || travel.busy) return false;
+  // ⭐ 그 존의 윙 6판을 **미리 받아 둔다** (2026-09-21 — gate.preload). 안개 전환이 1~2초라 그동안
+  //   받으면 연출이 시작될 때 이미 와 있다. ⚠ 빈 바다(sea)는 존 연출을 안 걸므로 안 받는다
+  if (target.key && !target.sea) gate.preload(target.key);
   if (marks.focusing) { marks.focusOff(); marks.clearSelect(); clickMark = null; }
   pendingArrive = null;
   pendingSea = null;   // 먼 곳 이동이 이긴다 — 연출이 걷히길 기다리던 바다 떠나기는 버린다 (seaGo)
@@ -1224,28 +1338,48 @@ function holdWhile(ret) {
   const done = () => { hostHold = Math.max(0, hostHold - 1); if (!hostHold) input.setHold(false); };
   ret.then(done, done);
 }
-// 미니맵의 '지금 화면' 부채꼴 (배 기준 월드 x·z). 화면 테두리 16점을 부표 높이 평면에 투영하고
-//   부표 거리 페이드(38) 밖은 잘라 낸다 — 부표가 뜰 수 있는 곳이 곧 '보이는 바다' 다
-const _footPts = [];
-function footprint(c) {
-  _footPts.length = 0;
-  const R = CONFIG.area.fade1, y = P.markHeight;
-  const edge = [];
-  for (let i = 0; i < 4; i++) edge.push([-1 + i * 0.5, 1]);   // 위
-  for (let i = 0; i < 4; i++) edge.push([1, 1 - i * 0.5]);    // 오른쪽
-  for (let i = 0; i < 4; i++) edge.push([1 - i * 0.5, -1]);   // 아래
-  for (let i = 0; i < 4; i++) edge.push([-1, -1 + i * 0.5]);  // 왼쪽
-  for (const [u, v] of edge) {
-    _v3.set(u, v, 0.5).unproject(c).sub(c.position).normalize();
-    let d = 1e3;
-    if (_v3.y < -1e-4) d = (c.position.y - y) / -_v3.y;
-    let px = c.position.x + _v3.x * d, pz = c.position.z + _v3.z * d;
-    const r = Math.hypot(px, pz);
-    if (r > R) { px *= R / r; pz *= R / r; }
-    _footPts.push([+px.toFixed(1), +pz.toFixed(1)]);
-  }
-  return _footPts;
+
+// ───────── 선실 말풍선 여닫기 (2026-09-21, v0.79.0 — host.js hostCabin) ─────────
+// ⚠⚠ **입력을 안 잠근다** ([진열대에 저장]의 `holdWhile` 과 다른 점). 판이 아니라 배 옆의 말풍선이라
+//   뒤의 바다가 살아 있어야 하고, 누름은 잠그는 대신 **닫기로 쓴다** (onPick 의 첫 줄).
+//   키는 어차피 포커스가 앱 말풍선으로 넘어가 이 문서까지 안 온다.
+// ⚠ 앱이 준 Promise 가 '말풍선이 닫혔다' 다 — 문을 골라 떠나든 ESC 든 그 하나로 돌아온다.
+//   호스트가 없으면(단독) 뜬 것이 없으므로 곧바로 되돌린다 — 안 그러면 누름이 영영 '닫기' 로만 간다.
+function openCabin() {
+  if (cabinOpen) return;
+  cabinOpen = true;
+  const ret = hostCabin(true);
+  if (ret && typeof ret.then === 'function') {
+    const done = () => { cabinOpen = false; };
+    ret.then(done, done);
+  } else cabinOpen = false;
 }
+function closeCabin() {
+  if (!cabinOpen) return false;
+  cabinOpen = false;
+  hostCabin(false);
+  return true;
+}
+// ───────── 잠수 (2026-09-18, dive.js) — 앱 커튼이 진행도를 넘기는 문 ─────────
+// 앱 : 헤더 '진열대' 를 누르면 커튼이 시계를 쥐고 매 프레임 `PB.dive(k)` 로 0 → 1 을 민다 (k = 1 이 화면을 다 덮은 순간).
+//   그 뒤 앱이 `/shelf` 로 옮겨 가며 엔진은 통째로 사라지므로, 엔진 쪽에서 되돌릴 일은 **취소했을 때**뿐이다.
+// ⚠ 잠수 동안 입력을 잠근다 — 방향키로 배를 몰면 카메라가 잠수 트윈과 조타를 같이 탄다.
+//   ⚠⚠ 잠금은 `hostHold` **세는 자물쇠**를 같이 쓴다 (holdWhile 과 같은 것). 직접 `input.setHold(false)` 로
+//     풀면 모달이 걸어 둔 잠금까지 같이 풀린다.
+// ⚠ 혼자 볼 때 : `PB.dive(0.6)` 으로 중간 장면을 세워 두고 `PB.dive(0)` 으로 되돌린다. `PB.diveReport()` 가 값 한 줄.
+let _diveHeld = false;
+function hostDive(k) {
+  setDive(k);
+  const on = !!diveNow();
+  if (on === _diveHeld) return;
+  _diveHeld = on;
+  if (on) { hostHold++; input.setHold(true); }
+  else { hostHold = Math.max(0, hostHold - 1); if (!hostHold) input.setHold(false); }
+}
+
+// ⛔ `footprint(cam)` 은 2026-09-20 에 지웠다 — 미니맵 · 해도의 '지금 보는 바다' 가 부채꼴에서
+//   **반지름 하나짜리 원**이 되면서 부르는 곳이 없어졌다 (아래 tick 의 `mmArg` 머리말).
+//   화면 테두리 16점을 매 장 unproject 하던 일도 같이 없어졌다. 되살릴 일이 생기면 v0.78 이전을 본다.
 
 let raf = 0;
 // 마지막 '범위 없음' 경고의 앱 시각 (tick 의 범위 블록이 3초에 한 번만 띄운다)
@@ -1381,6 +1515,7 @@ function tick() {
   } else seaBlockT = 0;
   nav.scroll.z += vZ * dt;
   nav.scroll.x += vX * dt;
+  reportRegion(t);
   nav.latV += (vX - nav.latV) * 0.08;
   // ⭐ `_shipMv` — 존 연출에서 배가 씬 안을 실제로 가로지르는 속도 (2026-09-16). 그게 없으면 배만 옮겨지고
   //   물은 가만히 있다 (연출 중 nav.speed 는 0 이라 항적 · 물보라 · 흘수가 전부 죽는다). ⚠ 한 프레임 전 값이다 (아래 카메라 블록이 채운다)
@@ -1456,6 +1591,27 @@ function tick() {
   //   섞임(focusT)만큼 속도의 몫(후퇴 · 상승 · 화각)을 뺀다 — 배는 일반 속도로 가도 화면이 선다. 존 연출은 그대로 · 0 = v0.64.0
   const sCam = (P.focusCamStill === undefined ? 1 : P.focusCamStill) >= 0.5 ? s * (1 - EASE.inOutCubic(focusT)) : s;
   cameraPose(cl, sCam, cam.aspect, _pose);
+  // ⭐⭐ **잠수** (2026-09-18, dive.js) — 카메라가 고개를 숙이며 수면으로 다가간다.
+  //   ⚠⚠ **여기 한 곳에서만 건다.** `cameraPose()` 안에 넣으면 존 구도 카메라(`_poseZ`)와 향수 고르기 슬롯(focusCamera)도
+  //     같이 잠겨, 연출 중에 잠수를 걸면 배가 놓인 자리와 12개의 자리가 통째로 어긋난다.
+  //   ⚠ 수면(y 0)을 뚫지 않는다 — `diveEndY` 위에 서고 그 앞에 앱 커튼이 덮는다 (dive.js 머리 주석).
+  //   ⚠ 패럴랙스 축(`_pose.rgt · upv`)은 잠수 전 방향 그대로 둔다 — 1초 동안 커튼 아래에서 감지 않는 차이고,
+  //     다시 풀면 `cameraPose` 의 식을 여기에 한 번 더 적게 된다 (불변식 2).
+  {
+    const D = diveNow();
+    if (D) {
+      const d = D.cam;
+      // 시선이 물속으로 내려간다 — 내려다보는 각이 깊어진다
+      _pose.tgt.y -= (P.diveLookY === undefined ? 0 : P.diveLookY) * d;
+      // 수면 쪽으로 내려앉는다
+      _pose.pos.y += ((P.diveEndY === undefined ? 2 : P.diveEndY) - _pose.pos.y) * d;
+      // look 점 쪽으로 **수평으로만** 당긴다 (높이는 바로 위에서 이미 정했다)
+      const kIn = 1 - (1 - (P.diveDist === undefined ? 1 : P.diveDist)) * d;
+      _pose.pos.x = _pose.tgt.x + (_pose.pos.x - _pose.tgt.x) * kIn;
+      _pose.pos.z = _pose.tgt.z + (_pose.pos.z - _pose.tgt.z) * kIn;
+      _pose.fov += (P.diveFov === undefined ? 0 : P.diveFov) * d;
+    }
+  }
   // ⭐⭐ **배 등장 · 정박** (2026-09-16, `zoneBoatEnter`) — 존 연출에서 배가 화면 밖 왼쪽으로 빠졌다가 왼쪽에 정박한다.
   //   ⚠⚠ **카메라는 안 건드린다.** 처음에는 시선 목표(zoneLookX)를 밀어서 했는데 바다 · 부표 · 게이트가 통째로 흔들렸다
   //     (사용자 : *"지금 카메라가 너무 출렁이는데"*). 그래서 **배만** 카메라의 오른쪽 축(−rgt)으로 민다.
@@ -1512,7 +1668,13 @@ function tick() {
       ? clamp(Math.hypot(_shipOff.x - pX, _shipOff.z - pZ) / dt / Math.max(1e-4, groundSpeed(1)), 0, 1)
       : 0;
   }
-  const kD = _pose.kD;
+  // ⭐ 잠수는 이 값을 줄여 **원경을 가까이 당긴다** — 물이 짙은 바다색에 더 빨리 먹힌다 (dive.js · `diveFade`).
+  //   ⚠ 물의 거리 페이드 · LOD 가 전부 이 하나를 곱해 따라오므로(§23-1) 카메라와 물이 갈라지지 않는다
+  let kD = _pose.kD;
+  {
+    const D = diveNow();
+    if (D) kD *= 1 - (1 - (P.diveFade === undefined ? 1 : P.diveFade)) * D.dim;
+  }
   // ⚠⚠ **camYaw — look 점을 축으로 카메라를 옆으로 돌린다** (2026-09-06, 세일보트와 같이 들어왔다).
   //   배의 진행 방향은 로컬 −z 라 뱃머리가 화면 안쪽을 향한다. 예전 종이배는 길이축이 로컬 x
   //   였으므로 그 구도에서 **옆모습**이 보였는데, 뱃머리가 있는 배를 제대로 놓으니 같은
@@ -1595,9 +1757,17 @@ function tick() {
 
   // 시간대가 바뀌었으면 조명 · 배경 · 하늘 (콘솔에서 sceneTime 만 바꾸고 apply 를 안 불러도 따라온다. 평소에는 비교 한 번)
   applyTime();
+  // ⭐ 구름이 흐른다 (2026-09-20). ⚠ 유니폼 객체 하나를 밀면 물·하늘이 같이 따라온다 (sky.js 규율) —
+  //   그래서 부르는 자리도 **하나**다.
+  // ⚠⚠ 시계는 **물의 것(`sim.qT`)이다** (불변식 1 · pod.js 와 같은 선택). 구름은 물에 비쳐서
+  //   읽히므로 물과 다른 시계를 타면 둘이 조용히 어긋난다. 실시간 t 를 쓰면 탭이 쉬었다 온 프레임에
+  //   구름만 건너뛴다 — 실측 2026-09-20 : 펌프 600프레임에서 qT 는 20.1초인데 t 는 5.2초였다
+  tickSky(sim.qT);
   // ⚠ 씬을 실제로 그리는 카메라(view)를 넘긴다 — 하늘 구가 그 카메라를 중심으로 서야 한다.
   //   항공뷰·자유 시점에서도 하늘이 따라온다
   stage.update(view);
+  // ⭐ 배경색 — 잠수 중에는 짙은 바다색으로 (applyTime 바로 뒤 · 위 applyDiveBg 주석)
+  applyDiveBg();
   // ⚠ 카메라에서 좌표를 파생시키므로 **본 카메라(cam)** 를 넘긴다 — view(항공뷰·자유시점)가
   //   아니다. 그래야 개발 시점으로 옮겨도 글자가 제자리에 서서 검증이 된다 (§11)
   // ⭐ 천장 — 우측 정보 블록 아래끝 + 18px (2026-09-11 오후, titleCeil). title.js 는 DOM 을 모르므로 여기서 재서 넘긴다
@@ -1685,6 +1855,14 @@ function tick() {
   links.update(marks.linkItems(), dt);   // ⚠ dt 로 '하나씩 뻗는' 시계를 돌린다 (links.js)
   // 바다 누르기 화살표 — 누른 월드 자리를 이번 프레임 scroll 로 씬에 옮기고 수면 높이에 앉힌다 (seamark.js). 떠 있지 않으면 곧장 돌아온다
   seamark.update({ dt, scroll: nav.scroll, sim, cam: view });
+  // 돌고래 무리. ⚠ 시계는 물의 것(sim.qT)이라 dt 를 안 넘긴다 (pod.js)
+  // ⚠⚠ `hide` 는 **연출이 비키라고 넘기는 값 하나**다 — 돌고래는 연출을 모른다 (dive.js 와 같은 규율).
+  //   `cl` 은 존 구도와 향수 고르기를 이미 합친 클로즈업 블렌드(위 1530줄)이고, 거기에 이동 안개를 얹는다.
+  //   배 근처는 부표 · 항적 · 이름표로 붐비는 데다 클로즈업에서 돌고래가 화면을 가린다 (사용자 지적).
+  pod.update(sim, { scroll: nav.scroll, cam, hide: Math.max(cl, travel.fog) });
+  // 새 무리. ⚠ pod 와 같은 시계 · 같은 `hide` 다. ⚠ 태양은 물의 유니폼을 **참조로** 넘긴다 —
+  //   실루엣 색을 제 뒤 하늘에서 내므로 하늘이 보는 태양과 같아야 한다 (stage.js 와 같은 규율)
+  birds.update(sim, { scroll: nav.scroll, cam, hide: Math.max(cl, travel.fog), sunDir: water.uni.uLightDir3.value });
   // ⚠ 아래 둘은 이번 프레임 카메라로 투영한다 — 행렬을 먼저 갱신한다 (안 하면 한 프레임 늦어 라벨이 떤다.
   //   카메라는 씬에 안 들어 있어 render 전까지 matrixWorld 가 지난 프레임 값이다)
   cam.updateMatrixWorld();
@@ -1739,7 +1917,15 @@ function tick() {
       || pendingSea   // 연출이 걷히길 기다리는 바다 떠나기도 '가는 곳' 으로 그린다 (seaGo)
       || pendingTravel   // 연출이 걷히길 기다리는 먼 곳 이동도 (startTravel)
       || (zones.auto ? marks.anchorOf(zones.auto.key) : null);
-    const mmArg = { map: marks.map, boat: { x: nav.scroll.x, z: -nav.scroll.z, head: nav.head }, target: tgt, foot: footprint(cam) };
+    /*
+     * ⭐⭐ **'지금 보는 바다' 는 반지름 하나다** (2026-09-20 사용자 : *"정확한 원형 형태로 유지"*).
+     *   예전에는 `footprint(cam)` 이 화면 테두리 16점을 부표 높이 평면에 투영해 부채꼴을 냈는데,
+     *   가까운 쪽은 절두체 모양이고 먼 쪽만 `CONFIG.area.fade1` 로 눌려 **구불구불했다.**
+     *   그 38 이 곧 *부표가 뜰 수 있는 거리* = '보이는 바다' 의 뜻 그 자체라, 원 하나로 줄였다.
+     *   ⚠ 카메라를 안 보므로 **속도 · 피치가 변해도 원이 숨 쉬지 않는다** — 그게 맞다.
+     *     지도의 이 원은 '내가 얼마나 멀리까지 아는가' 이지 '이번 장에 무엇이 그려졌는가' 가 아니다.
+     */
+    const mmArg = { map: marks.map, boat: { x: nav.scroll.x, z: -nav.scroll.z, head: nav.head }, target: tgt, sight: CONFIG.area.fade1 };
     minimap.update(mmArg);
     // ⚠ 해도는 **같은 값**을 받는다 (자기 좌표를 따로 만들지 않는다 — 불변식 21).
     //   닫혀 있으면 값만 갈아 두고 그리지 않으므로 프레임 비용이 없다
@@ -1796,14 +1982,52 @@ function tick() {
     }
     ui.placeScent({ x, y, r, obs: _obs, bubble: (P.cardBubble === undefined ? 1 : P.cardBubble) >= 0.5 });
   }
+  // ⭐⭐ **배가 화면 어디에 있는가** (2026-09-21, v0.79.0 — 선실). 말풍선 둘이 이 점에 꼬리를 댄다 :
+  //   엔진의 호버 방울(ui.setCabin)과 **앱의 선실 말풍선**(`PB.boat.screen` 을 매 프레임 읽는다).
+  //   **이번 프레임 카메라**로 투영한다 — 배가 너울에 오르내리고 카메라가 밀리면 말풍선도 같이 간다
+  //   (카드 자리와 같은 식).
+  //   ⚠ 기준점은 **선체 가운데**다 (돛까지 넣으면 배가 기울 때 말풍선이 돛을 따라 끌려간다).
+  //   ⚠ 화면 반지름은 카메라의 위 방향으로 배 길이 절반을 투영해 잰다 — fov 를 쓰지 않는다
+  //     (항공뷰는 직교 카메라라 fov 가 없다 · reflect.js 의 NaN 교훈)
+  //   ⚠ 호버도 아니고 말풍선도 없으면 **안 잰다** — 투영 두 번을 매 프레임 헛돌리지 않는다 (screen.on = false)
+  if (boatHover || cabinOpen) {
+    const bp = boat.pivot.position, hy = bp.y + CONFIG.boat.lengthW * 0.11;
+    view.updateMatrixWorld();
+    _v3.set(bp.x, hy, bp.z).project(view);
+    const x = (_v3.x * 0.5 + 0.5) * W(), y = (-_v3.y * 0.5 + 0.5) * H();
+    const e = view.matrixWorld.elements, R = CONFIG.boat.lengthW * 0.5;
+    _v3.set(bp.x + e[4] * R, hy + e[5] * R, bp.z + e[6] * R).project(view);
+    const r = Math.abs((-_v3.y * 0.5 + 0.5) * H() - y);
+    // 꼬리를 대는 점 = 배 **옆구리**. 선체 반폭이 r 의 0.34 배라 그 밖이다 (boat.js 의 좌표 규약).
+    //   ⚠ 오른쪽이 기본이고, 그쪽에 말풍선이 안 들어가면 왼쪽으로 뒤집는다 (앱 말풍선 폭 160 + 꼬리 + 여백)
+    const gap = r * (P.cabinGap === undefined ? 0.55 : P.cabinGap);
+    let side = 1, ax = x + gap;
+    if (ax + 190 > W() - 20) { side = -1; ax = x - gap; }
+    const s = boat.screen;
+    s.x = x; s.y = y; s.r = r; s.ax = ax; s.ay = y; s.side = side; s.on = true;
+    // ⚠ 다섯째 인자 = **앱 말풍선이 이 방울에서 자라기 시작했다** — 옅어지며 사라지게 두면
+    //   자라는 말풍선과 두 겹이 겹쳐 유리가 한 번 짙어진다 (ui.setCabin 의 ⚠⚠)
+    ui.setCabin(boatHover, ax, y, side, cabinOpen);
+  } else {
+    boat.screen.on = false;
+    ui.setCabin(false, 0, 0, 1, false);
+  }
+  // 누를 수 있다는 것을 **커서로도** 말한다 — 방울을 못 보는 사람에게도 남는 신호다.
+  //   ⚠ 켜고 끄는 자리가 여기 하나라야 한다 (updateHover 는 일찍 돌아가는 갈래가 여럿이다 — 말풍선이
+  //     떠 있는 동안 손가락 커서가 남는다). ⚠ 값이 바뀔 때만 쓴다
+  {
+    const want = boatHover ? 'pointer' : '';
+    if (ui.mount.style.cursor !== want) ui.mount.style.cursor = want;
+  }
   ui.setDrift(s);
-
   // 반사를 먼저 찍는다 (배와 같은 게이트라 8fps). 본 렌더가 그 그림을 되읽는다
   submerged.update(view, boat.stepped);
   reflect.update(view, water.uni.uBoatPos.value, boat.stepped);
   bloom.render(scene, view);
 }
 tick();
+// ⭐ 부팅 신호 ③ (v0.75.0) — 첫 장이 그려졌다 (셰이더 컴파일 포함). 배 GLB 는 아직 오는 중일 수 있다 (boat.js 가 따로 알린다)
+bootReport('frame');
 
 // 리사이즈는 rAF 로 디바운스한다 — 드래그로 창을 늘리면 ResizeObserver 가 프레임마다 터지고,
 // setSize 는 백버퍼를 재할당한다. 모니터를 옮기면 devicePixelRatio 도 바뀌므로 같이 다시 잡는다
@@ -1985,6 +2209,10 @@ const onKeyExit = (e) => {
     return;
   }
   if (e.key !== 'Escape') return;
+  // ⭐ 선실 말풍선이 가장 먼저다 (2026-09-21) — 마지막에 연 것을 먼저 닫는다.
+  //   ⚠ 대개는 여기까지 안 온다 — 말풍선이 열릴 때 포커스가 앱으로 넘어가 키가 그쪽에서 끝난다.
+  //     그래도 둔다 : 사용자가 3D 를 다시 누르지 않고 탭으로 포커스를 되돌린 경우가 남는다
+  if (cabinOpen) { closeCabin(); return; }
   // 향수 고르기가 먼저다 — 떠 있는 12개를 거두고 끝낸다 (연출까지 한 번에 나가지 않는다)
   if (marks.focusing) { marks.focusOff(); marks.clearSelect(); clickMark = null; return; }
   if (phase.cue.zone) { if (!phase.cue.busy) phase.leave(); return; }
@@ -1993,7 +2221,7 @@ const onKeyExit = (e) => {
 };
 window.addEventListener('keydown', onKeyExit);
 
-window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, goRegion, startTravel, startFocus, setHost, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
+window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, dive: hostDive, diveReport, goRegion, startTravel, startFocus, setHost, boot: bootNow, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, pod, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
   // ⭐ 반응형 검산 (2026-09-11 오후) — 제품 UI 상자들의 자리 · 서로 겹침 · 화면 밖 · 스크롤 · 수면 타이포 꼭대기와 정보 블록의 간격.
   //   ⚠ 창 크기를 바꾼 뒤에는 **스크린샷 한 장으로 먼저 칠하고** 부른다 (숨긴 패널에서는 ResizeObserver 가 안 불린다 — 교훈 ⑧)
   layout: () => layoutReport(),
@@ -2003,7 +2231,7 @@ window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel
     get: () => marks.map
   } };
 
-// PB.layout() — 위 주석. 제품 UI 만 본다
+// PB.layout() — 위 주석. 제품 UI 만 본다 (개발 패널은 solo 로 숨기고 잰다)
 function layoutReport() {
   const st = ui.stage.getBoundingClientRect();
   const box = (el) => {
@@ -2057,6 +2285,8 @@ function disposeAll() {
   marks.dispose();   // ⚠ 새 모듈은 여기 등록한다 (불변식 10)
   links.dispose();
   seamark.dispose();
+  pod.dispose();
+  birds.dispose();
   zones.dispose();
   boat.dispose();
   spray.dispose();
@@ -2068,6 +2298,8 @@ function disposeAll() {
   title.dispose();
   gate.dispose();
   travel.dispose();    // ⚠ 안개를 걷어 둔다 — HMR 뒤에 흰 화면이 남으면 "바다가 날아갔다" 로 오진한다
+  hostDive(0);         // ⚠ 잠수를 풀어 둔다 — `<html data-dive>` 가 남으면 엔진 UI 가 영영 안 보인다 (불변식 10)
+  disposeDive();
   chart.dispose();     // ⚠ 미니맵보다 먼저 — 안개 격자를 그쪽에서 읽는다
   minimap.dispose();   // (향수 고르기 라벨은 ui.dispose() 가 거둔다)
   window.removeEventListener('keydown', onKeyExit);

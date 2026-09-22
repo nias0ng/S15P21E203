@@ -16,26 +16,26 @@ const TABS = [
 ]
 
 /**
- * 커뮤니티 게시판 머리말 (와이어프레임 A22a · A22b 상단)
+ * 커뮤니티 게시판 머리말 (A22a · A22b 상단). 두 게시판이 같이 씁니다.
  *
- * 두 게시판이 같은 머리말을 씁니다. 제목이 "커뮤니티" 인 이유: 게시판 이름을
- * 제목으로 쓰면 바로 아래 탭과 같은 말이 두 번 보입니다.
- * 설명을 게시판마다 받는 이유: 두 게시판은 규칙이 다른데 탭 라벨만으로는 모릅니다.
+ * 설명을 게시판마다 받는 이유: 규칙이 다른데 탭 라벨만으로는 모릅니다.
  */
 export function BoardHeader({ description, action }: Props) {
   return (
     <header className="space-y-6.25">
-      <div className="space-y-2.5">
+      <div className="space-y-2.5 text-center">
         <h1 className="text-ink text-display font-serif font-bold">커뮤니티</h1>
         <p className="text-ink-muted text-body">{description}</p>
       </div>
 
       {/*
-        탭과 단추가 한 줄에 놓입니다. 밑줄(border-b)은 줄 전체에 그어서 탭이
-        그 위에 얹힌 것처럼 보이게 합니다 — 탭에만 그으면 단추 쪽이 허전합니다.
+        **1fr | auto | 1fr** 입니다. `justify-between` 으로 두면 단추가 한쪽에만
+        있어 탭이 왼쪽 끝으로 밀립니다 — 왼쪽 빈 칸은 자리를 지켜야 해서 둡니다.
       */}
-      <div className="border-line flex items-end justify-between gap-3.75 border-b">
-        <nav aria-label="게시판" className="flex">
+      <div className="border-line grid grid-cols-[1fr_auto_1fr] items-end gap-3.75 border-b">
+        <div aria-hidden />
+
+        <nav aria-label="게시판" className="flex justify-center">
           {TABS.map((tab) => (
             <NavLink
               key={tab.to}
@@ -56,11 +56,7 @@ export function BoardHeader({ description, action }: Props) {
           ))}
         </nav>
 
-        {/*
-          단추를 밑줄 위로 4px 띄웁니다. 줄에 딱 붙이면 단추가 탭의 일부처럼 읽혀서,
-          "글을 쓴다" 와 "게시판을 옮긴다" 가 같은 종류의 조작으로 보입니다.
-        */}
-        {action && <div className="mb-1.25 shrink-0">{action}</div>}
+        <div className="mb-1.25 flex justify-end">{action}</div>
       </div>
     </header>
   )

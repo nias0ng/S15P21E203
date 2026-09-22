@@ -9,17 +9,14 @@ type TasteResultModalProps = {
   match: TasteMatch | null
   /** 다시 하기 · Esc · 배경 클릭 — 모달만 닫고 계열 선택 화면에 머무릅니다 */
   onRetry: () => void
-  /** 확인 — 결과를 저장하고 향 지도로 이동합니다 */
   onConfirm: () => void
-  /** 저장하는 동안 확인 단추를 잠급니다 */
   saving?: boolean
-  /** 저장이 실패했을 때 할 말. 확인을 다시 누르면 다시 보냅니다 */
+  /** 확인을 다시 누르면 저장을 다시 보냅니다 */
   saveError?: string | null
 }
 
 const CLOSING = '내 취향을 향 지도에서 확인하러 가볼까요?'
 
-/** 모드별 제목. 모달 제목 자리에 들어갑니다. */
 function headlineOf(match: TasteMatch): string {
   switch (match.mode) {
     case 'RARE':
@@ -31,7 +28,6 @@ function headlineOf(match: TasteMatch): string {
   }
 }
 
-/** 모드별 설명 한 문단. 고른 계열의 형용사를 그대로 문장에 씁니다. */
 function leadOf(match: TasteMatch): string {
   const [first, second] = match.picks
 
@@ -54,13 +50,7 @@ function leadOf(match: TasteMatch): string {
 }
 
 /**
- * 취향 테스트 결과 모달 (TST-03)
- *
- * 지도 위가 아니라 **계열 선택 화면 위**에 뜹니다. 확인을 눌러야 향 지도로 넘어갑니다.
- * 향수 이름 · 지도 미리보기는 넣지 않습니다 — 실제 향수와 출발점은 지도에서 봅니다.
- *
- * `shared/ui/Modal` 이 네이티브 `<dialog>` 라 포커스 가두기 · Esc · 배경 스크롤 잠금은
- * 브라우저가 처리합니다. 닫기(×)와 Esc 는 "다시 하기" 와 같은 동작입니다.
+ * 취향 테스트 결과 모달 (TST-03). 향수 이름 · 지도 미리보기는 넣지 않습니다 — 그건 지도에서 봅니다.
  */
 export function TasteResultModal({
   open,
@@ -90,10 +80,7 @@ export function TasteResultModal({
     >
       <p className="text-ink">{leadOf(match)}</p>
       <p className="text-ink-muted mt-4">{CLOSING}</p>
-      {/*
-        저장이 실패해도 결과 문구는 그대로 둡니다 — 고른 것과 뽑힌 향수는 화면에서
-        이미 정해졌고, 못 한 것은 그것을 서버에 남기는 일뿐입니다.
-      */}
+      {/* 저장이 실패해도 결과 문구는 그대로 둡니다 — 뽑힌 향수는 화면에서 이미 정해졌습니다 */}
       {saveError !== null && (
         <p role="alert" className="text-danger mt-4">
           {saveError}

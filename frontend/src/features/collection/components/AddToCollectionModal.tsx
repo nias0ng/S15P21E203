@@ -8,24 +8,13 @@ import { ShelfItemPickList, type ShelfItemCandidate } from './ShelfItemPickList'
 type Props = {
   open: boolean
   onClose: () => void
-  /**
-   * 고를 수 있는 향수. 와이어프레임 주석대로 진열대에 있는 향수만 넘겨주세요
-   * ("진열대에 없는 향수는 추가 불가"). 목록은 화면(pages)에서 진열대 데이터로 만듭니다.
-   */
+  /** 진열대에 있는 향수만 넘깁니다 — 진열대에 없는 향수는 컬렉션에 넣을 수 없습니다 */
   candidates: ShelfItemCandidate[]
-  /** **진열대 항목 번호**입니다 — 서버가 `shelfItemIds` 로 받습니다 */
+  /** 진열대 항목 번호입니다 — 서버가 `shelfItemIds` 로 받습니다 */
   onSubmit: (shelfItemIds: number[]) => void
 }
 
-/**
- * 컬렉션에 향수 추가 모달 (와이어프레임 A19 우 — COL-03)
- *
- * 여러 개를 고를 수 있습니다. 진열대에 없는 향수는 애초에 후보에 들어오지 않습니다.
- *
- * 앱에 "향수를 고르는 모달" 이 셋이라 이름에 목적지를 넣었습니다 —
- * 여기(컬렉션), `ShelfRegisterModal` 1단계(진열대), `LinkedPerfumeModal`(글).
- * 셋 다 향수를 고르지만 고른 뒤에 벌어지는 일이 전혀 다릅니다.
- */
+/** 컬렉션에 향수 추가 모달 (A19 우 — COL-03) */
 export function AddToCollectionModal({
   open,
   onClose,
@@ -42,11 +31,7 @@ export function AddToCollectionModal({
         : [...prev, shelfItemId],
     )
 
-  /*
-   * `Modal` 이 `<dialog>` 라 **닫아도 언마운트되지 않습니다.** 검색어를 비우지
-   * 않으면 다음에 열었을 때 지난번 검색어가 남아, 담을 수 있는 향수 일부가
-   * 가려진 채로 보입니다.
-   */
+  /* NOTE: `Modal` 이 `<dialog>` 라 닫아도 언마운트되지 않습니다 — 칸을 직접 비웁니다 */
   const close = () => {
     setPicked([])
     setKeyword('')

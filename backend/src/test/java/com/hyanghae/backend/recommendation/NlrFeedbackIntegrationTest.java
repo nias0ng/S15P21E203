@@ -151,24 +151,28 @@ class NlrFeedbackIntegrationTest {
     }
 
     /**
-     * AI 계약에 아직 없는 칸은 비어 있습니다.
+     * 계약이 넓어져 채워지게 된 칸들입니다.
      *
-     * <p><b>이 단언이 깨지면 계약이 넓어졌다는 뜻입니다.</b> 그때는 값을 채우도록 고치고 이
-     * 테스트를 값 검증으로 바꾸면 됩니다. {@code had_conditions} 를 {@code NOT NULL} 로 두지
-     * 않은 이유가 여기에 있습니다 — 그랬다면 미매칭이 한 줄도 안 남습니다.
+     * <p>전에는 이 자리에서 <b>비어 있음</b>을 고정하면서 "계약이 넓어지면 값 검증으로 바꾸라"
+     * 고 적어 두었습니다. AI 가 보내기 시작해 그대로 바꾼 것입니다. 경계값({@code null} 인
+     * 경우, 빈 배열과 {@code NULL} 의 차이)은 {@link NlrRecordVersionFieldsIntegrationTest}
+     * 가 따로 봅니다. 여기서는 평범한 응답 하나가 빠짐없이 남는지만 봅니다.
      */
     @Test
-    void leavesColumnsTheAiDoesNotSendYetEmpty() throws Exception {
+    void recordsColumnsTheAiStartedSending() throws Exception {
         given(nlrClient.recommend(anyString())).willReturn(aiResponse());
         long id = idOf(recommend());
 
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT had_conditions FROM nlr_unmatched_expressions"
                         + " WHERE recommendation_id = ?", Boolean.class, id))
-                .isNull();
+                .isTrue();
         assertThat(queryForString(
                 "SELECT lexicon_version FROM nlr_recommendations WHERE recommendation_id = ?", id))
-                .isNull();
+                .isEqualTo("v1_15");
+        assertThat(queryForString(
+                "SELECT prompt_sha256 FROM nlr_recommendations WHERE recommendation_id = ?", id))
+                .isEqualTo("4f0a368d98b41338");
     }
 
     /** 누른 순위가 남습니다. */
@@ -397,15 +401,19 @@ class NlrFeedbackIntegrationTest {
         return new NlrRecommendResponse(
                 "OK",
                 QUERY,
+                "v1_15",
+                "4f0a368d98b41338",
                 new NlrRecommendResponse.Conditions(
                         List.of("soapy", "fresh"), List.of(), List.of("빨래"), "llm+lexicon"),
+                List.of(),
                 List.of(
                         new NlrRecommendResponse.Result(73368L,
                                 List.of(new NlrRecommendResponse.Matched("soapy", "빨래"))),
                         new NlrRecommendResponse.Result(1234L,
                                 List.of(new NlrRecommendResponse.Matched("fresh", "빨래")))),
                 List.of(new NlrRecommendResponse.Unmatched(
-                        "무겁지 않게", "무겁지않게", "NOT_IN_LEXICON", null)),
+                        "무겁지 않게", "무겁지않게", "NOT_IN_LEXICON", null,
+                        true, List.of("white floral", "warm spicy"), "LLM", 2)),
                 new NlrRecommendResponse.Diagnostics("AND", 172, 1, List.of(), null));
     }
 

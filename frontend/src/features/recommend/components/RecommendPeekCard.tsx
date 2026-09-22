@@ -11,29 +11,14 @@ import type { PersonalRecommendation } from '../types'
 /** 접었을 때 화면에 남는 손잡이 띠의 폭. 아래 -translate-x-72 와 짝입니다 */
 const BODY_WIDTH = 'w-72'
 
-/**
- * 개인화 맞춤 향수 추천 카드 (REC-12 · REC-13)
- *
- * 화면 왼쪽 가장자리에 **오른쪽 끝만 내놓고** 붙어 있다가, 누르면 통째로 미끄러져
- * 나옵니다. 띠 위쪽의 ✕ 로 아예 치울 수 있습니다 — 묻지 않았는데 온 것이라
- * "지금은 됐다" 고 말할 방법이 있어야 합니다.
- *
- * 진열대 화면은 한 화면에 들어가야 해서 세로로 넣을 자리가 없고, 가로로 겹치면
- * 병을 고르는 동안 걸립니다. 그래서 가장자리에 붙되 본문 폭을 차지하지 않습니다.
- */
+/** 개인화 맞춤 추천 카드 (REC-12 · REC-13). 묻지 않았는데 온 것이라 아예 치울 수 있어야 합니다. */
 export function RecommendPeekCard({
   recommendation,
 }: {
   recommendation: PersonalRecommendation
 }) {
   const [open, setOpen] = useState(false)
-  /*
-   * 닫으면 이 화면을 떠날 때까지 다시 뜨지 않습니다.
-   *
-   * ⚠️ 기억해 두지는 않습니다 — 화면을 다시 들어오면 또 나타납니다. "이 추천 그만
-   * 보기" 를 계속 기억하려면 저장할 곳이 있어야 하는데, 그건 브라우저에 담을지
-   * 계정에 담을지 정해야 하는 문제라 추천 API 를 붙일 때 함께 정합니다.
-   */
+  // 닫으면 이 화면을 떠날 때까지만 안 뜹니다 — 어디에 기억할지는 추천 API 를 붙일 때 정합니다
   const [dismissed, setDismissed] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -41,8 +26,7 @@ export function RecommendPeekCard({
 
   /*
    * 펼친 동안만 듣습니다 — 접혀 있을 때도 들으면 다른 Esc(모달 닫기)와 겹칩니다.
-   * 바깥 판정이 rootRef 기준인 이유: 띠를 누르는 pointerdown 도 여기 도착해서,
-   * 카드 안을 넘기지 않으면 열자마자 다시 닫힙니다.
+   * 바깥 판정은 띠까지 담은 rootRef 기준이어야 열자마자 다시 닫히지 않습니다.
    */
   useEffect(() => {
     if (!open) return
@@ -74,13 +58,8 @@ export function RecommendPeekCard({
 
   return (
     /*
-      세로 가운데. 헤더(z-10)보다 위이고 모달·토스트보다 아래입니다.
-
-      **빈 자리는 클릭을 먹지 않습니다.** 접혀 있을 때 안쪽이 `-translate-x-72` 로
-      화면 밖에 나가도 바깥 상자는 그대로 337px 을 차지합니다 — transform 은 그림만
-      옮기고 자리는 안 옮기기 때문입니다. 그래서 진열대 왼쪽 화살표와 병이 이
-      보이지 않는 상자에 가려 안 눌렸습니다. 바깥은 통과시키고, 실제로 누를 수 있는
-      안쪽만 다시 받게 합니다.
+      NOTE: 접혀서 안쪽이 화면 밖에 나가도 바깥 상자는 자리를 그대로 차지해(transform 은
+      그림만 옮깁니다) 뒤의 진열대를 가립니다 — 빈 자리는 클릭을 먹지 않게 둡니다.
     */
     <div
       ref={rootRef}
@@ -105,7 +84,6 @@ export function RecommendPeekCard({
           className={cn(
             BODY_WIDTH,
             'shrink-0 space-y-4 p-5 outline-none',
-            // 세로로 길어져도 화면 밖으로 넘치지 않게 합니다
             'max-h-[calc(100dvh-3rem)] overflow-y-auto',
           )}
         >
@@ -118,10 +96,7 @@ export function RecommendPeekCard({
             </p>
           </div>
 
-          {/*
-            이미지 · 이름 · 브랜드가 한 덩어리로 향수 상세로 갑니다. 셋을 따로
-            링크로 만들면 같은 곳으로 가는 링크가 탭 순서에 세 번 잡힙니다.
-          */}
+          {/* 셋을 따로 링크로 만들면 같은 곳이 탭 순서에 세 번 잡힙니다 */}
           <Link
             to={toPerfumeDetail(perfumeId)}
             state={perfumeViewState('PERSONALIZED_RECOMMENDATION')}
@@ -131,7 +106,6 @@ export function RecommendPeekCard({
               'group',
             )}
           >
-            {/* contain 으로 병 실루엣을 자르지 않습니다 */}
             <Thumbnail
               src={thumbnailUrl}
               fallback="이미지"
@@ -167,11 +141,7 @@ export function RecommendPeekCard({
           </div>
         </div>
 
-        {/*
-          손잡이 띠. 문구가 세로쓰기인 이유는 폭 48px 에 가로로 두 글자밖에 안 들어가서입니다.
-          **닫기와 펼치기를 따로 둡니다** — 한 단추에 두 뜻을 담으면 치우려고 눌렀는데
-          펼쳐집니다.
-        */}
+        {/* 닫기와 펼치기를 따로 둡니다 — 한 단추면 치우려다 펼쳐집니다 */}
         <div className="border-line/50 flex w-12 shrink-0 flex-col border-l">
           <button
             type="button"

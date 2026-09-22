@@ -182,8 +182,11 @@ class NlrFeedbackConcurrencyIntegrationTest {
         return new NlrRecommendResponse(
                 "OK",
                 QUERY,
+                "v1_15",
+                "4f0a368d98b41338",
                 new NlrRecommendResponse.Conditions(
                         List.of("soapy"), List.of(), List.of("빨래"), "lexicon_only"),
+                List.of(),
                 List.of(new NlrRecommendResponse.Result(73368L,
                         List.of(new NlrRecommendResponse.Matched("soapy", "빨래")))),
                 List.of(),

@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { scentFamilyName } from '@/shared/config/scentFamilies'
 import { UNROLL, useUnroll } from '@/shared/hooks/useUnroll'
 import { cn } from '@/shared/lib/cn'
+import { Badge } from '@/shared/ui/Badge'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Modal } from '@/shared/ui/Modal'
 import { Skeleton } from '@/shared/ui/Skeleton'
@@ -86,7 +87,7 @@ function MapSearchBody({
       inert={inert}
     >
       <div ref={bodyRef}>
-        <p className="text-ink-muted mb-3.75 text-[11px]">
+        <p className="text-ink-muted text-caption mb-3.75">
           찾는 말 ·{' '}
           <strong className="text-ink font-medium">
             &lsquo;{keyword}&rsquo;
@@ -101,7 +102,7 @@ function MapSearchBody({
         </p>
 
         {perfumes.isPending && (
-          <ul className="space-y-2.5">
+          <ul className="space-y-3.75">
             {[0, 1, 2].map((row) => (
               <li key={row}>
                 <Skeleton className="h-15 w-full" />
@@ -124,24 +125,34 @@ function MapSearchBody({
               description="지도에는 향수 200개만 떠 있습니다. 브랜드 이름으로 다시 찾아보거나, 검색 방식을 자연어로 바꿔 보세요."
             />
           ) : (
-            <ul className="max-h-127.5 space-y-2.5 overflow-y-auto pr-1.25">
+            // 줄 사이 15 · 줄 안쪽 15 — 화면의 여백 격자(바깥 240 : 판 안쪽 30 : 항목 사이 15)를 따릅니다
+            <ul className="max-h-127.5 space-y-3.75 overflow-y-auto pr-1.25">
               {results.map((perfume) => (
                 <li key={perfume.fragranticaId}>
                   <button
                     type="button"
                     onClick={() => onSelect(perfume)}
-                    className="border-line bg-surface-card hover:border-ink flex w-full items-center gap-3.75 border p-2.5 text-left transition-colors duration-120"
+                    className="border-line bg-surface-card hover:border-ink flex w-full items-center gap-3.75 border p-3.75 text-left transition-colors duration-120"
                   >
-                    {/* 지도 순위 — 이 목록의 차례가 곧 화해 기준 순위입니다 */}
-                    <span className="bg-ink text-surface flex size-6.25 shrink-0 items-center justify-center text-[11px]">
+                    {/*
+                      지도 순위 — 이 목록의 차례가 곧 화해 기준 순위입니다.
+
+                      ⚠️ 정사각형(size-6.25)이 아니라 **최소 너비 + 좌우 여백**입니다. 순위는
+                      1 부터 200 까지라 자릿수가 셋까지 가는데, 25px 정사각에 11px 로 적으면
+                      세 자리가 상자에 꽉 차 글자가 테두리에 붙었습니다(실측 100 · 136 · 157).
+                      ⚠️ 무슨 수인지 글자로도 말합니다 — 칠한 숫자만으로는 화면 낭독기에서
+                      이름과 구분되지 않습니다
+                    */}
+                    <span className="bg-ink text-surface text-caption flex h-6.25 min-w-6.25 shrink-0 items-center justify-center rounded-full px-1.5">
+                      <span className="sr-only">지도 순위 </span>
                       {perfume.rank}
                     </span>
 
                     <span className="min-w-0 flex-1">
-                      <span className="text-ink block truncate text-xs font-bold">
+                      <span className="text-ink text-body block truncate font-bold">
                         {perfume.name}
                       </span>
-                      <span className="text-ink-muted block truncate text-[10.5px]">
+                      <span className="text-ink-muted text-caption block truncate">
                         {perfume.brand}
                         {/*
                           한글 이름으로 찾았어도 영문 원명을 함께 둡니다 — 같은 향수를
@@ -154,10 +165,11 @@ function MapSearchBody({
                       </span>
                     </span>
 
+                    {/* 지도 카드(A02)의 향 계열 배지와 **같은 것**입니다 — 같은 값을 두 곳에서 다르게 그리지 않습니다 */}
                     {perfume.family && (
-                      <span className="border-line text-ink-muted shrink-0 border px-2 py-1 text-[10.5px]">
+                      <Badge tone="outline" className="shrink-0">
                         {scentFamilyName(perfume.family)}
-                      </span>
+                      </Badge>
                     )}
                   </button>
                 </li>

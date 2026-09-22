@@ -9,8 +9,10 @@ import {
   createComment,
   deleteComment,
   deletePost,
+  likePost,
   POST_CATEGORIES,
   postDetailQuery,
+  unlikePost,
   updateComment,
 } from '@/features/community'
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
@@ -20,6 +22,7 @@ import {
   toPostDetail,
   toPostEdit,
 } from '@/shared/config/routes'
+import { useLikeToggle } from '@/shared/hooks/useLikeToggle'
 import { useToast } from '@/shared/hooks/useToast'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
@@ -31,6 +34,7 @@ import { EmptyState } from '@/shared/ui/EmptyState'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { PageFallback } from '@/shared/ui/PageFallback'
+import { GLASS_PANEL } from '@/shared/ui/panel'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 import { Toast } from '@/shared/ui/Toast'
 
@@ -38,21 +42,15 @@ import { Toast } from '@/shared/ui/Toast'
 const COMMENT_PAGE_SIZE = 20
 
 /**
- * 게시글 상세 + 댓글 (와이어프레임 A23 — CMT-02 · 07 · 08 · 09 · 10 · 11)
+ * 게시글 상세 + 댓글 (A23 — CMT-02 · 07 ~ 11)
  *
- * **자유 게시판 전용입니다.** 후기는 백엔드에서 다른 자원이라
- * `/reviews/:reviewId` 에서 보여줍니다. 후기에는 댓글을 달지 않습니다(A22a).
+ * **자유 게시판 전용입니다.** 후기는 백엔드에서 다른 자원이라 `/reviews/:reviewId`
+ * 에서 보여주고, 후기에는 댓글을 달지 않습니다(A22a).
  *
  * 여는 것이 곧 조회라 조회수가 하나 오릅니다 — 창 포커스 · 재연결 재요청은
- * queries.ts 에서 꺼 두었습니다.
+ * queries.ts 에서 꺼 두었습니다. 연결 향수 · 첨부는 값이 있을 때만 그립니다.
  *
- * 와이어프레임 주석: "연결 향수와 첨부 이미지가 없으면 이 영역들을 표시하지 않는다".
- * 자유 글은 향수를 걸지 않아도 되므로 값이 있을 때만 그립니다.
- *
- * 폭은 라우트의 text(800px)입니다. 이 화면은 목록이 아니라 **읽는 화면**이라 본문이
- * wide(1440px)를 꽉 채우면 한 줄이 100자를 넘어가고, 줄을 바꿀 때마다 눈이 왼쪽 끝을
- * 다시 찾아야 합니다.
- */
+ * 어두운 방 · 유리판 구성 — docs/어두운-방-유리판.md */
 export default function PostDetailPage() {
   const { postId } = useParams<{ postId: string }>()
   const numericId = Number(postId)
@@ -121,6 +119,29 @@ export default function PostDetailPage() {
     },
   })
 
+  /**
+   * 좋아요 토글 (CMT-05). 비로그인 안내 · 누르기/취소 고르기는 `useLikeToggle` 이
+   * 맡고, 여기서는 캐시만 고칩니다 — 다시 부르지 않고 **응답 값을 이 글에만
+   * 덮어씁니다.** 다시 부르면 조회수가 한 번 더 오릅니다(여는 것이 곧 조회라서).
+   *
+   * 게시판 목록은 비우지 않습니다. `staleTime` 이 없어 되돌아가면 어차피 다시
+   * 받는데, 여기서 `communityKeys.all` 을 비우면 방금 덮어쓴 이 글까지 딸려가
+   * 조회수가 또 오릅니다.
+   */
+  const likeToggle = useLikeToggle({
+    like: likePost,
+    unlike: unlikePost,
+    onToggled: (result) => {
+      queryClient.setQueryData(
+        communityKeys.postDetail(numericId),
+        (old: typeof post.data) =>
+          old === undefined
+            ? old
+            : { ...old, liked: result.liked, likeCount: result.likeCount },
+      )
+    },
+  })
+
   if (post.isPending) return <PageFallback />
   if (post.isError || !post.data) {
     return (
@@ -139,15 +160,18 @@ export default function PostDetailPage() {
   const data = post.data
 
   return (
-    // 폭은 라우트의 TEXT(800) 가 정합니다 — 글 읽는 화면 공통 폭
-    <div className="space-y-7.5">
+    // 폭은 라우트의 TEXT_NIGHT(800) 가 정합니다 — 글 읽는 화면 공통 폭
+    <div className="space-y-6.25">
       <LinkButton to={ROUTES.COMMUNITY_FREE} variant="outline" size="sm">
         ← 자유 게시판
       </LinkButton>
 
-      <article className="space-y-6.25">
-        {/* 제목 묶음. 아래 선으로 본문과 나눕니다 — hr 을 따로 두면 간격이 두 번 생깁니다 */}
-        <header className="border-line space-y-2.5 border-b pb-6.25">
+      <article className="space-y-3.75">
+        {/*
+          제목 묶음. 어둠에 바로 놓입니다 — 아래 본문 판의 위 테두리가 이미
+          "여기서부터 글" 을 긋고 있어, 밑줄(border-b)까지 두면 경계가 두 겹입니다.
+        */}
+        <header className="space-y-2.5">
           {/* 자유 글은 분류가 필수라 늘 있습니다 */}
           <Badge tone="neutral">
             {
@@ -167,97 +191,134 @@ export default function PostDetailPage() {
               · {formatRelativeTime(data.createdAt)} · 조회 {data.viewCount}
             </span>
 
-            {data.mine && (
-              <span className="ml-auto flex gap-2.5">
-                <LinkButton
-                  to={toPostEdit(numericId)}
-                  variant="outline"
-                  size="sm"
-                >
-                  수정
-                </LinkButton>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setDeleteOpen(true)}
-                >
-                  삭제
-                </Button>
-              </span>
-            )}
+            <span className="ml-auto flex items-center gap-2.5">
+              {data.mine && (
+                <>
+                  <LinkButton
+                    to={toPostEdit(numericId)}
+                    variant="outline"
+                    size="sm"
+                  >
+                    수정
+                  </LinkButton>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDeleteOpen(true)}
+                  >
+                    삭제
+                  </Button>
+                </>
+              )}
+
+              {/*
+                비로그인은 401 이라 보내 보지 않고 먼저 안내합니다 — 401 이 나면
+                인터셉터가 재발급을 시도하다 세션을 정리해 버립니다.
+              */}
+              <button
+                type="button"
+                aria-pressed={data.liked}
+                aria-label={`좋아요 ${data.likeCount}`}
+                disabled={likeToggle.isPending}
+                onClick={() =>
+                  likeToggle.toggle({ id: numericId, liked: data.liked })
+                }
+                className={cn(
+                  'rounded-card text-caption flex items-center gap-1.25',
+                  'transition-colors duration-120 ease-out',
+                  'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
+                  data.liked
+                    ? 'text-danger'
+                    : 'text-ink-muted hover:text-danger',
+                )}
+              >
+                <span aria-hidden className="text-heading leading-none">
+                  {data.liked ? '♥' : '♡'}
+                </span>
+                <span aria-hidden>{data.likeCount}</span>
+              </button>
+            </span>
           </div>
         </header>
 
-        <p className="text-ink text-body whitespace-pre-wrap">{data.content}</p>
+        <div className={cn(GLASS_PANEL, 'space-y-6.25')}>
+          <p className="text-ink text-heading leading-relaxed whitespace-pre-wrap">
+            {data.content}
+          </p>
 
-        {/* 첨부 이미지가 없으면 영역 자체를 그리지 않습니다 */}
-        {data.imageUrls.length > 0 && (
-          <section className="space-y-2.5">
-            <h2 className="text-ink-muted text-caption font-medium">
-              첨부 이미지
-            </h2>
-            <ul className="flex flex-wrap gap-2.5">
-              {data.imageUrls.map((url) => (
-                <li key={url}>
-                  <Thumbnail src={url} className="h-32.5" />
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+          {/* 첨부 이미지가 없으면 영역 자체를 그리지 않습니다 */}
+          {data.imageUrls.length > 0 && (
+            <section className="space-y-2.5">
+              <h2 className="text-ink-muted text-caption font-medium">
+                첨부 이미지
+              </h2>
+              <ul className="flex flex-wrap gap-2.5">
+                {data.imageUrls.map((url) => (
+                  <li key={url}>
+                    <Thumbnail src={url} className="h-32.5" />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
-        {/* 컬렉션 공유 글에만 붙습니다 */}
-        {data.collectionTitle && (
-          <section className="space-y-2.5">
-            <h2 className="text-ink-muted text-caption font-medium">
-              첨부 컬렉션
-            </h2>
-            <p className="border-line-soft bg-surface-sunken text-ink text-body rounded-card inline-flex w-fit max-w-full border px-2.5 py-2.5">
-              {data.collectionTitle}
-            </p>
-          </section>
-        )}
+          {/* 컬렉션 공유 글에만 붙습니다 */}
+          {data.collectionTitle && (
+            <section className="space-y-2.5">
+              <h2 className="text-ink-muted text-caption font-medium">
+                첨부 컬렉션
+              </h2>
+              <p className="border-line-soft bg-surface-sunken text-ink text-body rounded-card inline-flex w-fit max-w-full border px-2.5 py-2.5">
+                {data.collectionTitle}
+              </p>
+            </section>
+          )}
 
-        {/* 연결 향수가 없으면 영역 자체를 그리지 않습니다 */}
-        {data.relatedPerfumes.length > 0 && (
-          <section className="space-y-2.5">
-            <h2 className="text-ink-muted text-caption font-medium">
-              연결된 향수
-            </h2>
-            <ul className="space-y-2.5">
-              {data.relatedPerfumes.map((perfume) => (
-                <li key={perfume.perfumeId}>
-                  <Link
-                    to={toPerfumeDetail(perfume.perfumeId)}
-                    state={perfumeViewState('COMMUNITY')}
-                    className={cn(
-                      'border-line-soft bg-surface-sunken hover:border-accent rounded-card',
-                      'inline-flex w-fit max-w-full items-baseline gap-2.5 border px-2.5 py-2.5',
-                      'transition-colors duration-120 ease-out',
-                      'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
-                    )}
-                  >
-                    <span className="text-ink text-body font-medium">
-                      {perfume.name}
-                    </span>
-                    {/* 브랜드가 없는 향수가 있습니다 */}
-                    {perfume.brand && (
-                      <span className="text-ink-muted text-caption">
-                        {perfume.brand}
+          {/* 연결 향수가 없으면 영역 자체를 그리지 않습니다 */}
+          {data.relatedPerfumes.length > 0 && (
+            <section className="space-y-2.5">
+              <h2 className="text-ink-muted text-caption font-medium">
+                연결된 향수
+              </h2>
+              <ul className="space-y-2.5">
+                {data.relatedPerfumes.map((perfume) => (
+                  <li key={perfume.perfumeId}>
+                    <Link
+                      to={toPerfumeDetail(perfume.perfumeId)}
+                      state={perfumeViewState('COMMUNITY')}
+                      className={cn(
+                        'border-line-soft bg-surface-sunken hover:border-accent rounded-card',
+                        'inline-flex w-fit max-w-full items-baseline gap-2.5 border px-2.5 py-2.5',
+                        'transition-colors duration-120 ease-out',
+                        'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
+                      )}
+                    >
+                      <span className="text-ink text-body font-medium">
+                        {perfume.name}
                       </span>
-                    )}
-                    <span className="text-ink-muted text-caption ml-auto">
-                      향수 상세 →
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
+                      {/* 브랜드가 없는 향수가 있습니다 */}
+                      {perfume.brand && (
+                        <span className="text-ink-muted text-caption">
+                          {perfume.brand}
+                        </span>
+                      )}
+                      <span className="text-ink-muted text-caption ml-auto">
+                        향수 상세 →
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
+
+        {likeToggle.error !== null && (
+          <p className="text-danger text-caption" role="alert">
+            좋아요를 누르지 못했습니다. 잠시 후 다시 시도해주세요.
+          </p>
         )}
       </article>
-
-      <hr className="border-line" />
 
       <CommentSection
         comments={comments.data?.comments ?? []}
@@ -297,6 +358,14 @@ export default function PostDetailPage() {
         onClose={() => setLoginOpen(false)}
         redirectTo={toPostDetail(numericId)}
         description="댓글은 로그인한 뒤에 쓸 수 있습니다."
+      />
+
+      {/* 댓글용과 따로 둡니다 — 무엇을 하려다 막혔는지 문구가 달라야 합니다 */}
+      <LoginRequiredDialog
+        open={likeToggle.loginRequired}
+        onClose={likeToggle.closeLoginRequired}
+        redirectTo={toPostDetail(numericId)}
+        description="좋아요는 로그인한 뒤에 누를 수 있습니다. 글은 로그인 없이도 읽을 수 있습니다."
       />
 
       <Toast {...toastProps} />

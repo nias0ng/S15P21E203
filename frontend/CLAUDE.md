@@ -132,12 +132,26 @@ git commit -m "design: S15P21E203-{번호} 진열대를 컬렉션 진열장 시�
 
 ```bash
 npm run dev          # 개발 서버 (5173, /api 는 localhost:8080 으로 프록시)
+npm run dev:mock     # 백엔드 없이 목데이터로 개발 서버 (아래 "목데이터 모드")
 npm run test         # 테스트 1회 실행
 npm run test:watch   # 테스트 감시 모드
 npm run verify       # format:check + lint + typecheck + test + build — MR 전에 반드시 통과
 ```
 
 `npm run verify`가 MR 통과 기준입니다. lint 는 `--max-warnings=0`이라 경고도 실패입니다.
+
+### 목데이터 모드 (`npm run dev:mock`)
+
+백엔드(Docker) 없이 화면을 만들 때 씁니다. 개발 서버가 `/api/v1` 요청 가운데 **로그인 · 진열대 ·
+컬렉션 · 향해 일지 · 향수 검색**만 대신 답하고(`mock/api.ts`), 나머지는 평소처럼 백엔드 프록시로
+넘깁니다. 앱 코드는 목데이터를 모릅니다 — 화면에서 목데이터인지 가르지 않습니다.
+
+- 로그인: 이메일 · 비밀번호는 아무 값이나 됩니다(폼 검사만 통과하면) → 향해테스터
+- 처음 상태: 진열대 30병(보유 중 · 시향해 봄 · 보유 희망 10병씩) · 컬렉션 6개 · 향해 일지 11줄
+  (`mock/seed.ts`). 바꾼 값은 메모리에만 있어 개발 서버를 다시 켜면 처음으로 돌아갑니다.
+- 병 사진: `src/assets/bottles/`(로컬 전용)가 있으면 그 사진을, 없으면 서버의 종이 질감 사진을 씁니다.
+  서버 사진은 투명 여백을 자르지 않아 병이 작게 섭니다.
+- 응답 모양은 백엔드 DTO 를 옮긴 것입니다. 백엔드가 바뀌면 `mock/api.ts` 도 맞춥니다.
 
 ## 코드를 어디에 둘지 — 판단 순서
 
@@ -221,11 +235,9 @@ import { perfumeDetailQuery } from '@/features/perfume/queries'   // X
 | `shared/ui/Thumbnail` | 이미지 슬롯. 이미지가 없으면 자리표시자 상자. 크기는 `className` 으로. 아바타(`rounded-full`)도 이걸 씁니다 |
 | `shared/ui/Checkbox` | 사각 체크박스(14px). 라벨은 호출하는 쪽에서 `<label>` 로 감싸세요 |
 | `shared/ui/SearchField` | 검색 입력 + 버튼. 헤더에 검색창이 없어 목록 화면마다 반복됩니다 |
-| `shared/ui/Card` | 목록에 반복되는 박스. `interactive` 로 호버 효과 |
-| `shared/ui/Badge` | 향 계열·상태 같은 짧은 라벨. `tone` brand·neutral·success·warning·danger |
+| `shared/ui/Badge` | 향 계열·상태 같은 짧은 라벨. `tone` neutral·accent·success·danger·outline |
 | `shared/ui/PerfumeCard` | 향수 카드. 도메인 타입을 받지 않고 `name`·`brand`·`thumbnailUrl` 낱개로 받습니다 |
 | `shared/ui/ChipToggle` | 칩 여러 개 중 고르기 (A11 진열대 분류 · 계절 등록, A15) |
-| `shared/ui/SegmentedFilter` | 한 줄 세그먼트 필터 (A33 진열대 기준 · 성별) |
 | `shared/ui/StarRating` | 별점. 라디오 그룹이라 키보드 화살표로 움직입니다 |
 | `shared/ui/Modal` | 네이티브 `<dialog>` 기반. 포커스 가두기·Esc·배경 스크롤 잠금 자동 |
 | `shared/ui/ConfirmDialog` | 삭제 확인 모달 (C01). 7곳 공용. `destructive` 로 위험 표현 |
@@ -235,6 +247,12 @@ import { perfumeDetailQuery } from '@/features/perfume/queries'   // X
 | `shared/ui/EmptyState` | 결과 0건 화면 |
 | `shared/ui/PageFallback` | 라우트 lazy 로딩용 전체 스피너 |
 | `shared/ui/LinkButton` | 버튼처럼 보이는 링크. **화면 이동은 `onClick` + navigate 대신 이걸 쓰세요** |
+| `shared/ui/AuthLinkButton` | 로그인해야 갈 수 있는 곳으로 보내는 단추 (C01). 비로그인이면 가지 않고 모달을 띄웁니다 |
+| `shared/ui/TileCard` | 격자에 반복되는 타일 (브랜드 · 노트 · 컬렉션). 이미지 슬롯 · 제목 · 한 줄 캡션 |
+| `shared/ui/PillFilter` | 어둠 위에 놓이는 알약 필터. `required` 면 해제가 없습니다 — 밝은 화면은 `ChipToggle` |
+| `shared/ui/Pagination` | 쪽 넘김. `page` 는 **0부터**(백엔드와 같습니다) · 번호 다섯 개 · 한 쪽뿐이면 안 그립니다 |
+| `shared/ui/BottleSilhouette` | 사진이 없는 향수병 자리에 세우는 실루엣. 색은 `currentColor` 로 부르는 쪽이 정합니다 |
+| `shared/ui/DiveCurtain` | 메인에서 진열대로 넘어가는 잠수 커튼 (진열대 · 메인 담당) |
 
 variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 **variant 를 추가**합니다
 (`class-variance-authority` 사용). `PrimaryButton`, `SmallButton` 같은 파생 컴포넌트를 만들지 않습니다.
@@ -244,6 +262,9 @@ variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 
 | 훅 | 용도 |
 | --- | --- |
 | `shared/hooks/useToast` | 토스트 한 개의 열림 상태. `const { showToast, toastProps } = useToast()` 후 `<Toast {...toastProps} />` |
+| `shared/hooks/useLikeToggle` | 좋아요 토글 (CMT-05). 비로그인이면 보내지 않고 안내부터 — 캐시를 고치는 일은 화면이 맡습니다 |
+| `shared/hooks/useUnroll` | 족자처럼 풀리는 열림. **쓰는 쪽을 조건부로 렌더해야** 다음에 열 때 다시 풀립니다 |
+| `shared/hooks/useDiveReady` | 잠수 커튼에 "화면이 다 섰다" 를 알립니다 (진열대 · 메인 담당) |
 
 `onClose` 를 인라인 화살표로 넘기면 `Toast` 의 타이머가 렌더마다 초기화되어 토스트가
 사라지지 않습니다. 이 훅이 `useCallback` 으로 그 문제를 막아주니 직접 `useState` 로
@@ -292,6 +313,25 @@ variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 
 - 메인의 헤더는 **거의 투명한 유리**입니다 — `bleed` 화면이면 `RootLayout` 이 3D 하늘에 따라 `GlobalHeader` 에 `tone="glassLight"`(밝은 하늘 · 상아색 판 · 먹색 글자) 또는 `tone="glass"`(밤 · 남색 판 · 상아색 글자)를 줍니다. 하늘은 `HomePage` 가 엔진의 `<html data-time>` 을 받아(`ScentScene` 의 `onNightChange`) `shared/store/sceneSkyStore` 에 적습니다.
   3D 가 헤더 뒤까지 깔리고, 헤더가 가리는 90px 은 `ScentScene` 의 `coveredTop` → 엔진 `hostTop` 으로 알립니다. 엔진은 검색창 · 정보 블록 · 해도를 그 아래로 내리고 향수 고르기의 12개를 그 띠에 세우지 않습니다.
   엔진의 자리표시 헤더(`siteHeader`)는 끕니다 — 무대를 헤더만큼 줄이는 방식이라 유리판 뒤가 비어 버립니다. 헤더 높이를 바꾸면 `coveredTop` 도 같이 바꿉니다.
+- **로딩 커튼** (2026-09-17) — 메인에 들어오면 흰 바탕에 짙고 작은 점이 차례로 연막탄처럼 터져 향 원 세 개(대 왼쪽 — 원 모양 마스크 안에서 물빛 · 금빛 · 세이지가 번짐 · 중 오른쪽 위 금빛 한 색 · 소 오른쪽 아래 물빛 한 색)로 번지고, 화면 가운데에 '향해' 글자가 그려지고 그 아래 굵은 퍼센트(Noto Serif KR 900)가 자리마다 굴러 올라가며 주황(`--color-dusk-orange`)에서 남색으로 바뀌다가 5초 안팎에 걷힙니다.
+  **엔진이 뜨는 동안 메인 스레드가 1~3초 막힙니다**(엔진 iframe 이 같은 스레드). 그래서 커튼의 움직임은 전부 합성 단계 애니메이션입니다 — 원은 CSS 애니메이션(시각 기준), 퍼센트는 `lib/bootCounter.ts` 가 앞으로 4초 치 흐름을 미리 계산해 Web Animations 로 넘깁니다. 자바스크립트로 매 장 값을 밀면 막힌 동안 멈춥니다.
+  첫 진입은 `index.html` 의 `#boot`(React 전 · head 의 `<style>`)가 흰 바탕과 세 원을 그리고, `features/map` 의 `SceneBootCurtain` 은 그 위에 퍼센트만 얹었다가 같이 걷습니다(`useSceneBoot` · 진행률 모델 `lib/bootProgress.ts` · 원 · 칸 `scene-boot.css`). 앱 안에서 다시 들어오면 `SceneBootCurtain` 이 세 원을 두 배 빠르게 그립니다. `#boot` 와 `scene-boot.css` 의 원은 자리 · 크기 · 색 · 시각이 같아야 합니다 — 한쪽을 고치면 다른 쪽도 봅니다. 퍼센트 글꼴은 `index.html` 의 `&text=` 링크(숫자 · % 만)입니다.
+  **'향해' 글자** (2026-09-18) — 대 원이 터진 직후(0.9초)부터 2초 동안 쓰는 순서대로 그려집니다. 보이는 것은 아웃라인(면 · 남색)이고, 중앙패스를 굵게 칠한 마스크가 자라며 그 면을 드러냅니다(애프터이펙트의 트림 패스 + 루마 매트). 획 하나 = 마스크 하나 = 면 하나이고, 두 SVG 는 사용자가 그린 것입니다(`lib/bootWordmark.ts` 의 `WORDMARK_PARTS` 13쌍 · 아트보드 1920×1080).
+  자리 : SVG 의 틀(viewBox)이 **글자 테두리**(`WORDMARK_BOX`)라 상자가 곧 글자입니다 — 화면 가운데에 놓고 폭(`--boot-word-w`)만 정합니다(1920 에서 460px · 좁은 화면은 74vw 까지). 퍼센트는 그 아래에 매달려 글자 폭의 0.2 배로 섭니다. ⚠ 마스크 영역(x · y · width · height)도 같은 상자로 못 박습니다 — `userSpaceOnUse` 의 기본 영역은 좌표 원점에서 잰 −10%~120% 라, 글자가 원점에서 떨어져 있으면 **통째로 가려집니다**.
+  마스크를 자라게 하는 `stroke-dashoffset` 은 합성 스레드가 못 다뤄 **엔진이 막는 동안 획이 섭니다**. 그래서 시각을 흐른 시간이 아니라 **그려진 장**으로 재고(`wordmarkDashoffsets`), 막힘이 풀리면 멈춘 자리에서 이어 그립니다 — Web Animations 로 넘기면 막힌 1~2초 사이에 글자가 다 그려져 버려 그리는 모습이 사라집니다. 커튼은 다 그릴 때까지 1.2초까지 기다렸다 걷습니다.
+  엔진이 `postMessage({type:'pb:boot', stage})` 로 부팅 단계(html → script → frame → boat-bytes → boat)를 알리고(`landing/src/host.js` `bootReport`), `ScentScene` 의 `onBoot` 가 받습니다. `ScentScene` 은 엔진 주소를 두 장 뒤에 넣습니다 — 커튼이 먼저 합성 스레드로 넘어가게.
+  퍼센트는 **페이스 곡선과 "실제 진행 + 조금" 중 작은 값을 느슨하게 따라갑니다** — 목표 아래면 최소 속도로 오르고, 목표에 닿아도 조금 더 기어가며, 100 은 다 떴을 때만입니다. ⚠ 숫자 칸 하나에는 transform 애니메이션을 하나만 둡니다(둘이 겹치면 크롬이 합성 스레드로 못 넘겨 막힌 동안 섭니다).
+- **진열대로 넘어가는 잠수 전환** (2026-09-18) — 메인에서 헤더 '진열대' 를 누르면 곧바로 옮겨 가지 않고, 3D 카메라가 수면으로 고개를 숙이며 다가가는 1초 동안 화면 아래에서 **짙은 바다색이 차올라** 덮은 뒤 진열대로 넘어가 걷힙니다.
+  시계는 **앱이 쥡니다** — `shared/ui/DiveCurtain` 이 rAF 안에서 진행도 `k`(0~1)를 커튼(CSS 변수)과 엔진(`PB.dive(k)` · `landing/src/dive.js`)에 **직접** 씁니다. React 상태로 올리면 초당 60번 앱 전체가 다시 그립니다.
+  갈래 : `shared/lib/diveTrack.ts`(시계 · 곡선) · `shared/store/diveStore.ts`(단계 — 헤더가 걸고, `ScentScene` 이 엔진 문을 꽂고, 진열대가 `useDiveReady` 로 준비를 알립니다) · `shared/ui/dive-curtain.css`(그라데이션 · **아래끝에 못 박고 `scaleY` 로 자랍니다** — 높이 180% 와 굳은 구간 58% 가 한 묶음이고, 그 높이가 곧 '3D 가 얼마나 오래 보이는가' 입니다).
+  **걷힐 때는 안개가 걷히듯 아래에서부터 트입니다** — 쓸기 겹(`-sweep`)과 상쇄 겹(`-hold`)이 서로를 지우며 움직여(±300vh) **마스크의 경계만** 지나가고, 상쇄 겹의 `backdrop-filter` 가 트이는 자리 뒤를 흐려 진열대가 흐린 채로 드러났다 또렷해집니다. `mask-position` 을 미는 것은 칠하기 단계라 안 씁니다.
+  ⚠⚠ **`mask-clip` 의 기본값은 `border-box` 라 마스크를 단 겹의 상자 밖이 통째로 잘립니다** — 그래서 쓸기 겹의 **높이가 마스크 길이(400vh)와 같아야** 합니다. 창 높이짜리 겹에 `mask-size` 로 늘렸더니 그라데이션이 아니라 **상자의 하드 컷**이 화면을 쓸어 '무대 커튼' 이 됐습니다 (2026-09-18 실측).
+  **덮인 채로 머무는 동안 물결이 숨을 쉽니다**(`-drift`) — 메인 로딩 커튼이 배 GLB 를 기다리며 구름을 숨 쉬게 하는 것과 같은 장치입니다. 진열대가 무거워 잔류가 길어서(최소 0.42초 · 상한 2.60초) 납작한 남색 한 장이면 '멈춤' 으로 읽힙니다. 준비 신호는 데이터가 온 **다음 장이 칠해진 뒤**에 갑니다 (`useDiveReady` 의 rAF 두 번).
+  커튼은 **`RootLayout`** 에 섭니다 — 화면 안에 두면 경로가 바뀌는 순간 같이 사라져 아이보리 바탕이 드러납니다.
+  **왜 커튼인가** : 3D 의 바다는 위에서만 그려지는 판 한 장이라 카메라를 수면 아래로 내리면 물이 종이처럼 사라집니다. 그래서 카메라는 수면 위에 남고 물속은 이 판이 맡습니다 (`landing/docs/고도화-0917/03-로딩-전환-수중.md` §4).
+  ⚠ 엔진의 `params.diveDeep` 과 앱의 `--color-navy` 는 **같은 값**이어야 합니다 — 갈라지면 커튼이 덮는 순간 색이 한 번 튑니다. 값을 만지는 손잡이는 엔진 `params.js` 의 `dive*` 묶음입니다 (`diveDim` · `diveSkyOff` · `diveFade` · `diveEndY` … · `diveAmount 0` 이 전체 롤백).
+  ⚠ **이어서 할 일과 이미 밟은 함정은 `landing/docs/다음-세션.md` 맨 위**에 있습니다 (남은 것은 진열대와의 색 연결 하나입니다).
+  ⚠ 진열대에서 메인으로 **돌아오는** 연출은 없습니다 — 돌아가면 엔진이 처음부터 다시 뜨고 로딩 커튼이 그 자리를 덮습니다. 넣으려면 '엔진을 살려 두기' (그 문서 §3-1 의 6) 결정이 먼저입니다.
 - **원본은 이 폴더(`landing/`)입니다** (2026-09-15 결정). paperboat 저장소는 v0.63.0 에서 멈췄고 v0.64 부터는 여기에만 있으므로, paperboat 에서 가져와 덮어쓰지 않습니다.
 - 메인 3D 를 여러 워크트리로 나눠 작업할 때의 갈래 · 맡는 파일 · 통합 순서는 `landing/docs/워크트리-분할.md` 를 따릅니다.
 
@@ -321,6 +361,53 @@ React 를 처음 다룰 때 가장 많이 틀리는 지점입니다.
 
 `pages/PerfumeDetailPage.tsx` + `features/perfume/`가 1~6번을 관통하는 참고 구현입니다.
 
+## 주석 규약
+
+주석은 **왜(Why)** 를 적는 자리입니다. **무엇을(What)** 하는지는 이름으로 말합니다 —
+주석을 달고 싶어지면 함수명 · 변수명으로 풀 수 있는지 먼저 봅니다.
+
+코드를 고치면 주석도 같이 고칩니다. **틀린 주석은 없는 것보다 해롭습니다.**
+
+### 남기는 주석
+
+| | 예 |
+| --- | --- |
+| **함수 · 컴포넌트 계약** — JSDoc 으로, `@param` · `@returns` 를 씁니다 | 아래 예시 |
+| **비즈니스 규칙 · 기획 예외** — 모르면 지우거나 고칠 코드 | `가입 7일 안에는 수신 거부여도 웰컴 쿠폰을 보냅니다(기획 v1.2)` |
+| **우회 · 최적화의 까닭** — 안 적으면 "리팩토링 대상" 으로 오해받는 코드 | `Tailwind v4 preflight 가 기본 outline 을 지워 링을 직접 답니다` |
+
+```ts
+/**
+ * 주소의 쪽 번호를 읽습니다. **주소는 1부터, 안에서는 0부터** 셉니다.
+ *
+ * @param params 화면의 `useSearchParams` 값
+ * @returns 0부터 세는 쪽 번호. 숫자가 아니거나 범위를 벗어나면 0
+ */
+```
+
+### 걷는 주석
+
+- **코드를 그대로 옮겨 적은 것** — `const name = ...` 위의 `// 이름을 담습니다`
+- **히스토리** — "전에는 ~ 했습니다", "2026-09-16 에 바꿨습니다". `git log` 가 합니다
+- **주석 처리된 코드** — 지웁니다. 되살릴 것은 git 에 다 있습니다
+- **구역 나누기 선** — `/* ------- */`. 파일이 그만큼 길면 파일을 가릅니다
+
+### 태그는 표준만 씁니다
+
+IDE 와 `grep` 이 찾을 수 있어야 합니다.
+
+```ts
+// TODO: 프로필 이미지 업로드 연결 (S15P21E203-000)
+// FIXME: 목록이 길어지면 매 글자마다 다시 거릅니다
+// NOTE: 이 값은 엔진 params.js 의 diveDeep 과 같아야 합니다
+```
+
+- `TODO:` 아직 안 한 일. **이슈 키를 같이 적습니다** — 없으면 이슈부터 만듭니다
+- `FIXME:` 돌긴 하는데 고쳐야 하는 것
+- `NOTE:` 읽는 사람이 놓치기 쉬운 주의점
+
+`⚠` · `⭐` 같은 표시는 쓰지 않습니다. 눈에는 띄지만 검색이 안 되고 등급도 없습니다.
+
 ## 테스트
 
 - 파일 위치는 **대상 파일 옆**입니다. `Button.tsx` → `Button.test.tsx`. `__tests__/` 폴더는 쓰지 않습니다.
@@ -340,26 +427,35 @@ React 를 처음 다룰 때 가장 많이 틀리는 지점입니다.
 - `console.log` — lint 경고이고 경고도 빌드 실패입니다. `console.warn`/`console.error` 만 허용됩니다.
 - `any` 로 타입 회피 — 백엔드 응답이 불확실하면 `unknown` 후 좁히거나 타입에 주석으로 남깁니다.
 
-## 백엔드가 아직 없는 엔드포인트
+## 백엔드와 화면이 붙은 정도
 
-**주석을 믿지 말고 백엔드 소스를 먼저 확인하세요.** 이 문단도 금방 낡습니다 — 실제로
-인증·회원과 노트 두 항목이 틀린 채로 남아 있었습니다.
+**주석을 믿지 말고 백엔드 소스를 먼저 확인하세요.** 이 문단은 금방 낡습니다 — 인증·회원과
+노트가 한 번 틀린 채로 남아 있었고, 그 뒤 **파일 업로드와 닉네임 변경도 "없다" 고 적힌 채로
+생겼습니다.** 없다고 적혀 있으면 다음 사람이 찾아보지도 않으니, 붙일 때 이 문단을 같이
+고쳐 주세요.
+
+게시글 이미지 첨부도 붙었습니다(S15P21E203-368) — `features/community/ImageAttachField` 가 고른
+사진을 먼저 올리고, 글을 저장할 때 그 주소를 `imageUrls` 로 넘깁니다. ⚠️ **후기에는 이미지가
+없습니다** — `ReviewCreateRequest` 가 제목 · 본문 · 계절만 받습니다.
 
 향수·브랜드·후기는 대부분 붙어 있고, **인증·회원도 붙었습니다**(로그인 · 회원가입 · 내 정보 ·
-닉네임 중복 확인 · 비밀번호 변경 · 탈퇴 · 로그아웃 · 토큰 재발급).
+닉네임 중복 확인 · 닉네임 변경 · 비밀번호 변경 · 탈퇴 · 로그아웃 · 토큰 재발급).
 
-아직 **백엔드에 없는** 것은 이 셋입니다.
+아직 **백엔드에 없는** 것은 하나입니다.
 
-- 비밀번호 재설정 (A31) — 화면만 있고 `PasswordResetForm` 에 TODO 두 곳
-- 닉네임 · 프로필 수정 (A29 [저장]) — `PATCH /users/me` 같은 수정 경로가 없습니다
-- **파일 업로드 전부** (프로필 이미지 · 게시글 이미지) — `MultipartFile` 을 받는 컨트롤러가
-  백엔드 어디에도 없습니다
+- 비밀번호 재설정 (A31) — 화면만 있고 `PasswordResetForm` 에 NOTE 두 곳. 붙일 계획이
+  없어 TODO 가 아닙니다 — 두 폼은 눌러도 서버로 아무것도 가지 않습니다
 
-**노트는 반대 경우입니다.** 백엔드에 `GET /notes` · `/notes/{noteId}` · `/notes/{noteId}/perfumes`
-가 이미 있는데 `features/note/api.ts` 가 아직 자리표시자를 돌려줍니다. 그 파일 맨 위의
-"엔드포인트가 아직 없습니다" 주석도 같이 낡았으니, 연결할 때 함께 지우세요.
+**화면만 아직 안 붙인 것**(백엔드는 있습니다)도 적어 둡니다. 없다고 적혀 있으면 다음 사람이
+찾아보지도 않습니다.
+
+- 프로필 사진 — `POST /users/me/profile-image`(multipart, 필드 `file`) ·
+  `DELETE /users/me/profile-image`. 화면은 `AccountForm` 에 TODO 로 남아 있습니다
+  (S15P21E203-404 — 헤더 · 정보 변경 · 후기 상세 세 곳).
+  ⚠️ 제한이 화면 주석과 다릅니다 — 백엔드는 JPG · PNG · GIF · WEBP 에 기본 1MB 이고 형식을
+  파일 내용으로 판별합니다
 
 붙어 있는 API 도 **값이 비는 필드가 많습니다** — `nameKo`·`imageUrl`·`scentFamily`·`logoUrl` 은
 null 로 옵니다. **타입이 필수라고 믿고 바로 접근하면 화면이 죽습니다.** 값 없는 경우를 먼저
-처리하고, 없는 API 를 임시로 채울 때는 `features/perfume/api.ts` 의 `withDevFallback` 처럼
-개발 환경에서만 끼어들게 하세요. 운영에서 자리표시자가 나가면 버그가 가려집니다.
+처리하고, 없는 API 를 임시로 채울 때는 `shared/api/withDevFallback` 로 감싸 개발 환경에서만
+끼어들게 하세요. 운영에서 자리표시자가 나가면 버그가 가려집니다.

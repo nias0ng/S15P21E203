@@ -9,7 +9,7 @@
 import { areasNow } from './areas.js';
 import { PARAMS as P } from './params.js';
 
-export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
+export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin }) {
   const $ = (id) => document.getElementById(id);
 
   const stage = $('stage');
@@ -21,7 +21,7 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
   const card = $('scent-card');
   const bubble = $('scent-bubble'), tail = $('scent-tail');
   const rows = card ? [...card.querySelectorAll('[data-row]')] : [];
-  const cName = $('scent-name'), cSub = $('scent-sub'), cNotes = $('scent-notes');
+  const cName = $('scent-name'), cSub = $('scent-sub'), cNotes = $('scent-notes'), cNotesLabel = $('scent-notes-label');
   const cEn = $('scent-en');   // 영문 원명 (한글 제목 밑, 2026-09-12)
   const cZone = $('scent-zone'), cDot = $('scent-zone-dot');
   const cClose = $('scent-close'), cSail = $('scent-sail');
@@ -48,9 +48,44 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
     const A = p(a), B = p(b);
     return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join('');
   };
+  // ⭐ 어코드 동그라미 색 (v0.75.7 글자색 → v0.75.8 앞 동그라미) — 어코드가 속한 향조(해역)의 색 **계열**. 사용자 : *"전부 같은 색이 아니라 유사한 계열 색상"*.
+  //   ⚠ v0.75.8 : 글자를 칠하고 굵게 한 것은 사용자가 *"너무 촌스러워서 차라리 앞에 O 동그라미 아이콘에 색상을 넣어줘"* — 글자는 카드 글자색 그대로 · 색은 동그라미에만.
+  //   향조 색(CONFIG.families[].color · areasNow)의 HSL 에서 채도 × 1.5 · 명도 0.72 로 어두운 유리 위에서 또렷하게 하고,
+  //   어코드 이름의 해시로 색상 ±12° · 채도 ±0.07 · 명도 ±0.05 를 흔든다 (같은 어코드는 어느 카드에서나 같은 색).
+  //   ⚠ 대비 바닥 `floor` (동그라미는 그림이라 3:1) — 카드 바탕을 밝은 하늘이 비칠 때의 값(#473D4D, dusk 86% + 살구색 하늘 14%)으로 재고, 모자라면 상아색 쪽으로 20% 씩 밝힌다.
+  //   향조를 모르면(예전 더미 · 표에 없는 어코드) '' · 낮 카드(종이)면 향조 제 색 그대로
+  const ACCORD_BG = '#473D4D', ACCORD_IVORY = '#FBF3EA';
+  const hexRgb = (h) => { const n = parseInt(h.replace('#', ''), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const rgbHex = (a) => '#' + a.map(v => Math.round(Math.min(255, Math.max(0, v))).toString(16).padStart(2, '0')).join('');
+  const lumOf = (a) => { const f = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }; return 0.2126 * f(a[0]) + 0.7152 * f(a[1]) + 0.0722 * f(a[2]); };
+  const contrastOf = (a, b) => { const x = lumOf(a), y = lumOf(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  const hash01 = (s, k) => { let h = (2166136261 ^ k) >>> 0; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return (h % 1000) / 999; };
+  const accordColor = (fam, name, floor) => {
+    if (!fam) return '';
+    const area = areasNow().find(a => String(a.key).toUpperCase() === fam);
+    if (!area || !area.color) return '';
+    if (!document.documentElement.hasAttribute('data-card-eve')) return area.color;
+    const [r0, g0, b0] = hexRgb(area.color).map(v => v / 255);
+    const mx = Math.max(r0, g0, b0), mn = Math.min(r0, g0, b0), l0 = (mx + mn) / 2;
+    let h = 0, s = 0;
+    if (mx !== mn) {
+      const d = mx - mn;
+      s = l0 > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+      h = (mx === r0 ? (g0 - b0) / d + (g0 < b0 ? 6 : 0) : mx === g0 ? (b0 - r0) / d + 2 : (r0 - g0) / d + 4) * 60;
+    }
+    const H = (h + (hash01(name, 1) - 0.5) * 24 + 360) % 360;
+    const S = Math.min(1, Math.max(0, s * 1.5 + (hash01(name, 2) - 0.5) * 0.14));
+    const L = Math.min(1, Math.max(0, 0.72 + (hash01(name, 3) - 0.5) * 0.10));
+    const c = (1 - Math.abs(2 * L - 1)) * S, x = c * (1 - Math.abs((H / 60) % 2 - 1)), m0 = L - c / 2;
+    const [r1, g1, b1] = H < 60 ? [c, x, 0] : H < 120 ? [x, c, 0] : H < 180 ? [0, c, x] : H < 240 ? [0, x, c] : H < 300 ? [x, 0, c] : [c, 0, x];
+    let rgb = [(r1 + m0) * 255, (g1 + m0) * 255, (b1 + m0) * 255];
+    const bg = hexRgb(ACCORD_BG), iv = hexRgb(ACCORD_IVORY);
+    for (let i = 0; i < 8 && contrastOf(rgb, bg) < floor; i++) rgb = rgb.map((v, k) => v + (iv[k] - v) * 0.2);
+    return rgbHex(rgb);
+  };
   // 말풍선 상태. side = 부표의 어느 쪽에 서는가 (1 오른쪽 · −1 왼쪽)
   //   x · y = 자리 잡은 카드의 왼쪽 위 · ax · ay · ar = 가리키는 부표 (둘 다 #stage 기준 CSS px — 호버 카드의 틈 판정이 읽는다, v0.65.0). x 가 null 이면 아직 · 좌하단 고정
-  const bub = { on: false, m: null, side: 1, w: 296, h: 280, key: '', tailKey: '', mode: '', anim: null, peek: false, x: null, y: 0, ax: 0, ay: 0, ar: 0 };
+  const bub = { on: false, m: null, side: 1, w: 325, h: 280, key: '', tailKey: '', mode: '', anim: null, peek: false, x: null, y: 0, ax: 0, ay: 0, ar: 0 };
   // 피해야 할 자리 (CSS px, #stage 기준). ⚠ 매 프레임 재지 않는다 — 보일 때 · 창 크기가 바뀔 때만
   let avoid = { top: 110, mini: null };
   const measureAvoid = () => {
@@ -62,7 +97,7 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
       top: sb ? sb.bottom - sr.top + 12 : 110,
       mini: mr && mr.width > 0 ? { x0: mr.left - sr.left - 10, y0: mr.top - sr.top - 10, x1: mr.right - sr.left + 10, y1: mr.bottom - sr.top + 10 } : null
     };
-    if (card) { bub.w = card.offsetWidth || 296; bub.h = card.offsetHeight || 280; }
+    if (card) { bub.w = card.offsetWidth || 325; bub.h = card.offsetHeight || 280; }   // 325 = #scent-card 폭 대체값 (v0.75.11 — 어코드 한 줄)
   };
   const onWinResize = () => { if (bub.on) measureAvoid(); bub.key = ''; bub.tailKey = ''; };
   window.addEventListener('resize', onWinResize);
@@ -95,6 +130,83 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
   // 경고 한 줄 (범위 없음). 처음 부를 때 만든다
   let warnEl = null, warnAnim = null, warnLineAnim = null, warnTimer = 0;
 
+  // ───────── 선실 — 배에 손을 올렸을 때 (2026-09-21, v0.79.0) ─────────
+  // **배 아이콘 하나짜리 작은 방울**이다 — 배 옆구리에 꼬리를 대고 뜬다. 하는 말은 하나뿐이다 :
+  // "이건 누를 수 있다". 글자는 없다 (2026-09-21 사용자 : *"작은 말풍선에 배 아이콘만 들어가있는
+  // 식으로 클릭이 된다라는 표현만"*) — 무엇이 들어 있는지는 누른 뒤 앱 말풍선이 말한다.
+  //
+  // ⭐⭐ **방울 자체가 누르고 올릴 수 있는 것이다** (2026-09-21 사용자 : *"작은 말풍선에도 마우스
+  //   호버기능이 있으면 좋겠음 호버해서 말풍선이 반응해야 사람들이 알아볼듯"*). 그래서 `<button>` 이고
+  //   손을 올리면 놋쇠빛 테 · 번짐 · 한 뼘 커지기로 **반응한다.** 누르면 앱 말풍선이 이 방울에서 자란다.
+  //
+  // ⚠⚠ **누르는 상자가 보이는 방울보다 넓다 — 배와의 틈(약 19px)을 건너야 하기 때문이다.**
+  //   배 히트박스 가장자리(약 +0.34r)와 방울(+0.55r + 8) 사이가 비어 있어, 방울로 마우스를 옮기는
+  //   동안 레이캐스트가 배를 놓쳐 **방울이 깜빡이며 사라진다** (말풍선 카드의 `cardHoverBridge` 와
+  //   같은 함정 · 불변식 24). 그래서 단추 상자를 배 쪽으로 PAD 만큼 늘리고, main.js 의 updateHover 가
+  //   `cabinHovered()` 로 그 위에서는 다시 집지 않는다.
+  // ⚠ 보이는 것은 안쪽 `span` 이다 — 단추는 투명한 손잡이일 뿐이다.
+  // ⚠ `#stage` 의 **직계 자식**으로 붙인다 — 잠수 전환이 `html[data-dive] #stage > *:not(#mount)`
+  //   한 줄로 엔진 UI 를 비키는데, 그 아래로 들어가야 배가 내려갈 때 같이 비킨다 (index.html).
+  // ⚠ `#mount` 밖이라 이 단추 위의 누름은 input.js 로 안 간다 — 고르기 · 바다 떠나기가 안 걸린다
+  // ⚠ z-index 는 카드(20)보다 **아래**다. 카드가 떠 있는데 방울이 그 위를 가리면 안 된다
+  let cabinEl = null, cabinSkin = null, cabinTail = null;
+  let cabinOn = false, cabinHot = false, cabinKey = '', cabinSide = 0, cabinTimer = 0;
+  const CABIN_R = 34;      // 보이는 방울 한 변
+  const CABIN_GAP = 8;     // 배 옆구리에서 방울까지 (꼬리가 지나는 틈)
+  const CABIN_PAD = 20;    // 누르는 상자를 배 쪽으로 늘리는 몫 (위 ⚠⚠ 의 틈)
+  const CABIN_EDGE = 6;    // 방울 바깥쪽 여유
+  const CABIN_W = CABIN_PAD + CABIN_GAP + CABIN_R + CABIN_EDGE;
+  const CABIN_H = CABIN_R + 12;
+  // 배 마크 — 종이배 그림 한 장. **엔진 배의 실제 색 그대로다** (boat.js 의 hullMat · sailMat · sparMat).
+  //   ⚠ 앱 말풍선의 배 아이콘(`features/map/components/CabinBubble`)과 **같은 그림 · 같은 색**이다.
+  //     한쪽을 고치면 다른 쪽도 본다
+  const CABIN_MARK = '<svg viewBox="0 0 170 160" width="22" height="22" aria-hidden="true">'
+    + '<path d="M85 14 L85 104 L136 104 Z" fill="#ffffff"/>'
+    + '<path d="M79 30 L79 104 L38 104 Z" fill="#f4f2ee"/>'
+    + '<rect x="83" y="12" width="2.5" height="96" fill="#b9b4aa"/>'
+    + '<path d="M22 108 L148 108 L124 138 L46 138 Z" fill="#dcd9d2"/>'
+    + '<path d="M22 108 L148 108 L143 114 L27 114 Z" fill="#c9c4bb"/></svg>';
+  const CABIN_LINE = 'var(--pb-cabin-line,rgba(249,246,239,0.22))';
+  const CABIN_HOT = 'var(--pb-cabin-hot,rgba(217,190,134,0.7))';
+  // 손을 올렸을 때의 반응 — 놋쇠빛 테 · 둘레 번짐 · 한 뼘 커지기. 칸의 호버와 같은 말투다
+  const paintCabin = () => {
+    if (!cabinSkin) return;
+    cabinSkin.style.borderColor = cabinHot ? CABIN_HOT : CABIN_LINE;
+    cabinSkin.style.boxShadow = cabinHot
+      ? '0 4px 14px rgba(16,10,28,0.28),0 0 14px var(--pb-cabin-glow,rgba(217,190,134,0.4))'
+      : '0 4px 14px rgba(16,10,28,0.28)';
+    cabinSkin.style.transform = cabinHot ? 'scale(1.08)' : 'scale(1)';
+  };
+  const buildCabin = () => {
+    cabinEl = document.createElement('button');
+    cabinEl.type = 'button';
+    cabinEl.setAttribute('aria-label', '선실 열기');
+    cabinEl.style.cssText = 'position:absolute;left:0;top:0;z-index:18;box-sizing:border-box;'
+      + 'width:' + CABIN_W + 'px;height:' + CABIN_H + 'px;padding:0;border:0;background:none;'
+      + 'cursor:pointer;will-change:transform;visibility:hidden;opacity:0;';
+    // 꼬리 — 45도 돌린 작은 정사각형. 방울 쪽 두 변은 지워 겹친 자리가 두 번 칠해지지 않게 한다
+    //   (말풍선 카드의 setTail 과 같은 장치 · 불변식 24)
+    cabinTail = document.createElement('span');
+    cabinTail.style.cssText = 'position:absolute;top:50%;width:7px;height:7px;margin-top:-3.5px;'
+      + 'border:1px solid ' + CABIN_LINE + ';background:var(--pb-cabin-bg,rgba(30,41,71,0.78));'
+      + 'transform:rotate(45deg);pointer-events:none;';
+    cabinSkin = document.createElement('span');
+    cabinSkin.style.cssText = 'position:absolute;top:50%;box-sizing:border-box;'
+      + 'width:' + CABIN_R + 'px;height:' + CABIN_R + 'px;margin-top:' + (-CABIN_R / 2) + 'px;'
+      + 'border:1px solid ' + CABIN_LINE + ';border-radius:9px;'
+      + 'background:var(--pb-cabin-bg,rgba(30,41,71,0.78));backdrop-filter:blur(6px);'
+      + 'display:flex;align-items:center;justify-content:center;pointer-events:none;'
+      + 'transition:border-color 120ms ease,box-shadow 120ms ease,transform 120ms ease;';
+    cabinSkin.innerHTML = CABIN_MARK;
+    cabinEl.appendChild(cabinTail);
+    cabinEl.appendChild(cabinSkin);
+    // ⚠ pointerenter/leave 다 (mouseover 가 아니다) — 안쪽 span 을 지날 때마다 켜졌다 꺼지지 않는다
+    cabinEl.addEventListener('pointerenter', () => { cabinHot = true; paintCabin(); });
+    cabinEl.addEventListener('pointerleave', () => { cabinHot = false; paintCabin(); });
+    cabinEl.addEventListener('click', () => { if (onCabin) onCabin(); });
+    paintCabin();
+    stage.appendChild(cabinEl);
+  };
   // 존 정보 블록 (우측) + 좌하단 존 표시
   const zInfo = $('zone-info'), zTitle = $('zone-title'), zDesc = $('zone-desc'), zNotes = $('zone-notes');
   const zMark = $('zone-mark'), zNo = $('zone-no'), zSub = $('zone-sub');
@@ -178,7 +290,31 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
       cName.textContent = (ko ? m.nameKo : m.name) || '—';
       if (cEn) { cEn.textContent = ko && m.name !== m.nameKo ? m.name : ''; cEn.style.display = cEn.textContent ? '' : 'none'; }
       cSub.textContent = (ko ? m.subKo : m.sub) || '—';
-      cNotes.textContent = m.notes || '—';
+      // ⭐ 어코드 상위 3개 (2026-09-17, v0.75.3 — 사용자 : *"어코드로 진행해줘 상위 3개만"*). 지도 향수의 이 줄은 **어코드**다 — 노트는 데이터가 없다 (marks.js).
+      //   이름마다 nowrap 칸에 담고 가운뎃점은 앞 이름에 붙인다 — 줄은 점 뒤에서만 바뀐다 ('화이트 플로럴' 이 둘로 쪼개지지 않는다).
+      //   markNameKo 0 이면 영문 이름. 어코드가 없는 부표(예전 더미)는 notes 글자 그대로 · 라벨 NOTES
+      // ⭐⭐ 2026-09-18 (v0.75.8) : 어코드마다 **앞에 제 향조 색 동그라미**(accordColor — 같은 향조라도 어코드마다 조금씩 다르다) · 글자는 카드 글자색 · 보통 굵기.
+      //   사용자 : *"폰트 굵기 색상 바꾸니까 너무 촌스러워서 차라리 앞에 O 동그라미 아이콘에 색상을 넣어줘"* (v0.75.7 은 글자를 칠하고 굵게 했다).
+      //   동그라미가 이름을 가르므로 가운뎃점은 뺐다 — 사이는 #scent-notes 의 column-gap. 한 칸(동그라미 + 이름)은 안 쪼개지고 줄은 칸 사이에서만 바뀐다
+      const acc = m.accords;
+      if (acc && acc.length) {
+        const koA = (P.markNameKo === undefined ? 1 : P.markNameKo) >= 0.5;
+        cNotes.replaceChildren(...acc.map(a => {
+          const item = document.createElement('span');
+          // 동그라미 9px (v0.75.9 — 사용자 : *"동그라미 조금만 더 크게"* · 예전 7px 은 위 향조 라벨 점과 같은 크기였다) · 동그라미와 이름 사이 4px (v0.75.11 에 5 → 4 — 모든 카드를 한 줄로).
+          //   칸들은 #scent-notes 가 한 줄 안에 고르게 벌린다 (space-evenly — index.html 주석)
+          item.style.cssText = 'display:inline-flex;align-items:center;gap:var(--pb-card-accord-dot-gap,4px);white-space:nowrap;';
+          const dot = document.createElement('span');
+          dot.setAttribute('aria-hidden', 'true');
+          dot.style.cssText = 'flex:none;width:var(--pb-card-accord-dot,9px);height:var(--pb-card-accord-dot,9px);border-radius:50%;';
+          dot.style.background = accordColor(a.fam, a.en, 3) || 'var(--pb-card-ink-3, #8A8A8A)';
+          const word = document.createElement('span');
+          word.textContent = (koA ? a.ko : a.en) || a.en;
+          item.append(dot, word);
+          return item;
+        }));
+      } else cNotes.textContent = m.notes || '—';
+      if (cNotesLabel) cNotesLabel.textContent = acc && acc.length ? 'ACCORDS' : 'NOTES';
       // 이미지 자리 (v0.64.0) — 주소가 있으면 그림, 없거나 못 불러온 주소면 자리표시. ⚠ 자리 높이는 CSS 가 고정한다 (그림이 늦게 떠도 카드 높이가 안 튄다)
       if (cImg) {
         const src = m.img || '';
@@ -195,6 +331,13 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
       const zc = eveCard && m.zone.area && m.zone.area.color ? mixHex(m.zone.area.color, '#FBF3EA', 0.25) : m.zone.color;
       cZone.style.color = zc;
       cDot.style.background = zc;
+      // ⭐ [이 향의 해역으로] 호버 물결은 **향조 색을 안 쓴다** (2026-09-18, v0.75.12 — 사용자 : *"내부는 그냥 흰색"* ·
+      //   *"각 파트에있는 색상은 전부 이렇게 통일"*). v0.75.5 ~ v0.75.6 은 향수마다 --pb-sail-zone* 넷을 넣어
+      //   물결과 그 위 글자색을 해역 색으로 칠했는데, 지금은 흰 파도라 넣을 값이 없다 (index.html #scent-sail).
+      //   ⚠ 예전 값이 인라인에 남아 있을 수 있어 지운다 — 카드는 한 벌이라 향수를 바꿔도 같은 요소를 다시 쓴다.
+      for (const k of ['--pb-sail-zone', '--pb-sail-zone-ink', '--pb-sail-zone-back', '--pb-sail-zone-back-ink']) {
+        cSail.style.removeProperty(k);
+      }
       card.style.visibility = 'visible';
       card.style.opacity = '1';
       card.style.pointerEvents = bub.peek ? 'none' : 'auto';
@@ -568,6 +711,69 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
     },
     labelHeight(top) { return Math.ceil((top ? LABEL_FS_TOP : LABEL_FS) * 1.35); },
 
+    // ── 배에 손을 올렸을 때 (2026-09-21, v0.79.0 — 선실). main.js 의 tick 이 매 프레임 부른다.
+    //   ax · ay = 꼬리를 대는 점(배 옆구리) · side 1 오른쪽 · −1 왼쪽 — 전부 #stage 기준 CSS px.
+    //   **앱의 선실 말풍선과 같은 점이다** (`PB.boat.screen`).
+    //   x · y = 배(선체)의 화면 자리 · r = 배 길이 절반의 화면 반지름 (둘 다 #stage 기준 CSS px).
+    //
+    // ⚠⚠ **이 방울이 '누를 수 있다' 는 표시다.** 부표는 이름표가 늘 떠 있어 배우게 되지만,
+    //   배는 여태 풍경이었다 — 빼면 기능이 숨는다 (같은 말을 커서가 한 번 더 한다 · main.js).
+    // ⚠ 매 프레임 불린다 — 자리가 **바뀔 때만** 쓴다 (showMarkLabels 와 같은 가드).
+    // ⚠ 자리는 transform 한 줄로 민다. left/top 을 매 프레임 바꾸면 레이아웃을 다시 계산한다
+    // ⚠ 한 번도 손을 안 올렸으면 DOM 을 아예 안 만든다 (warn 과 같은 규약)
+    setCabin(on, ax, ay, side, instant) {
+      if (!on && !cabinEl) return;
+      if (!cabinEl) buildCabin();
+      if (on !== cabinOn) {
+        cabinOn = on;
+        // 움직임을 줄이라는 설정이면 즉시 (calm — 카드 · 토스트와 같은 규율)
+        //   ⚠⚠ `instant` 는 **앱 말풍선이 이 방울에서 자라기 시작했다**는 뜻이다 (main.js 의 cabinOpen).
+        //     옅어지며 사라지게 두면 자라는 말풍선과 두 겹이 겹쳐 유리가 한 번 짙어진다 — 그 순간이
+        //     곧 '모핑' 이 끊기는 자리다. 그래서 그때만 한 프레임에 걷는다
+        const ms = calm() || instant ? 0 : 140;
+        clearTimeout(cabinTimer); cabinTimer = 0;
+        cabinEl.style.transition = ms ? 'opacity ' + ms + 'ms ease' : 'none';
+        if (on) cabinEl.style.visibility = 'visible';
+        cabinEl.style.opacity = on ? '1' : '0';
+        // ⚠ 숨길 때는 다 옅어진 **뒤에** 걷는다 — 곧바로 visibility 를 끄면 사라지는 모습이 없다
+        if (!on) {
+          cabinHot = false; paintCabin();   // 다시 뜰 때 호버가 켜진 채로 나타나지 않게
+          const hide = () => { if (cabinEl) cabinEl.style.visibility = 'hidden'; cabinTimer = 0; };
+          if (ms) cabinTimer = setTimeout(hide, ms); else hide();
+        }
+      }
+      if (!on) return;
+      // 단추 상자는 **꼬리 점에서 배 쪽으로 CABIN_PAD 만큼 물러나** 선다 (위 ⚠⚠ 의 틈 건너기).
+      //   보이는 방울과 꼬리는 그 안에서 side 에 따라 좌우가 뒤집힌다
+      const bx = side > 0 ? ax - CABIN_PAD : ax - (CABIN_W - CABIN_PAD);
+      const by = ay - CABIN_H / 2;
+      const key = bx.toFixed(1) + '|' + by.toFixed(1) + '|' + side;
+      if (key === cabinKey) return;
+      cabinKey = key;
+      cabinEl.style.transform = 'translate3d(' + bx.toFixed(1) + 'px,' + by.toFixed(1) + 'px,0)';
+      if (side === cabinSide) return;
+      cabinSide = side;
+      const inner = side > 0 ? 'left' : 'right', outer = side > 0 ? 'right' : 'left';
+      cabinSkin.style[inner] = (CABIN_PAD + CABIN_GAP) + 'px';
+      cabinSkin.style[outer] = 'auto';
+      cabinTail.style[inner] = (CABIN_PAD + CABIN_GAP - 3.5) + 'px';
+      cabinTail.style[outer] = 'auto';
+      // 꼬리는 **방울 쪽 두 변**을 지운다 — 어느 쪽에 서느냐에 따라 지우는 변이 바뀐다
+      cabinTail.style.borderTopWidth = side > 0 ? '0' : '1px';
+      cabinTail.style.borderRightWidth = side > 0 ? '0' : '1px';
+      cabinTail.style.borderBottomWidth = side > 0 ? '1px' : '0';
+      cabinTail.style.borderLeftWidth = side > 0 ? '1px' : '0';
+    },
+
+    /**
+     * 마우스가 **방울 위**인가 (2026-09-21). main.js 의 updateHover 가 읽는다 —
+     * 그 위에서는 다시 집지 않고 호버를 그대로 둔다.
+     *
+     * ⚠⚠ 이것이 없으면 배에서 방울로 마우스를 옮기는 동안 **방울이 깜빡이며 사라진다** —
+     * 둘 사이에 약 19px 의 빈 곳이 있어 레이캐스트가 배를 놓치기 때문이다 (위 머리말의 ⚠⚠).
+     */
+    cabinHovered() { return cabinOn && cabinHot; },
+
     dispose() {
       window.removeEventListener('resize', onWinResize);
       window.removeEventListener('resize', onZResize);
@@ -577,6 +783,10 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction }) {
       if (warnLineAnim) { warnLineAnim.cancel(); warnLineAnim = null; }
       clearTimeout(warnTimer);
       if (warnEl) { warnEl.remove(); warnEl = null; }
+      clearTimeout(cabinTimer); cabinTimer = 0;
+      if (cabinEl) { cabinEl.remove(); cabinEl = null; }
+      if (cabinTail) { cabinTail.remove(); cabinTail = null; }
+      cabinOn = false; cabinKey = '';
       for (const z of [zInfo, zMark]) {
         z.removeEventListener('pointerenter', onZEnter);
         z.removeEventListener('pointerleave', onZLeave);

@@ -1,9 +1,11 @@
 import { useState } from 'react'
 
+import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { Pagination } from '@/shared/ui/Pagination'
+import { GLASS_PANEL } from '@/shared/ui/panel'
 import { Textarea } from '@/shared/ui/Textarea'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
@@ -24,10 +26,8 @@ type Props = {
 }
 
 /**
- * 댓글 (와이어프레임 A23 — CMT-08 · 09 · 10 · 11)
- *
- * 수정은 그 자리에서 편집 상태로 바뀝니다. 본인 댓글에만 보이지만, 화면에서 숨기는
- * 것만으로는 권한이 지켜지지 않으니 백엔드에서도 작성자를 확인해야 합니다.
+ * 댓글 (A23 — CMT-08 ~ 11). 본인 댓글에만 수정 · 삭제가 보이지만, 화면에서 숨기는
+ * 것만으로는 권한이 안 지켜져 백엔드도 작성자를 확인합니다.
  */
 export function CommentSection({
   comments,
@@ -45,12 +45,8 @@ export function CommentSection({
   const [editDraft, setEditDraft] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null)
 
-  /*
-   * 댓글 묶음은 판에 올리지 않습니다 — 흰 칸이 입력창 하나뿐이어야 "쓰는 자리" 가
-   * 한눈에 보입니다. 위쪽 게시글 본문은 반대로 판에 올립니다(읽는 덩어리는 경계 필요).
-   */
   return (
-    <section className="space-y-3.75">
+    <section className={cn(GLASS_PANEL, 'space-y-3.75')}>
       <h2 className="text-ink text-title font-serif font-bold">
         댓글 {totalElements}
       </h2>
@@ -81,11 +77,6 @@ export function CommentSection({
         </Button>
       </form>
 
-      {/*
-        상자로 감싸지 않고 줄로만 나눕니다. 댓글은 글 하나하나가 카드가 될 만큼
-        길지 않고, 테두리를 두르면 본문보다 댓글 쪽이 더 무거워 보입니다.
-        py-3.75 는 위아래 여백이고 가로 여백은 없습니다 — 본문과 왼쪽 선을 맞춥니다.
-      */}
       {isPending && (
         <p className="text-ink-muted text-caption">댓글을 불러오는 중입니다.</p>
       )}

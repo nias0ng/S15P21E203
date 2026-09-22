@@ -4,16 +4,7 @@ import {
   type ScentFamilyLabel,
 } from './types'
 
-/**
- * 계열 9개의 화면 문구.
- *
- * 타일에는 **형용사만** 보이고, 마우스를 올리거나 키보드 포커스가 가면 계열명으로
- * 바뀝니다("화사하고 우아한" → "플로럴"). 화면 낭독기에는 둘을 함께 읽힙니다
- * (`familyAriaLabel`) — 보이는 글자가 바뀌는 것을 소리로는 알 수 없기 때문입니다.
- *
- * 배열 순서는 `SCENT_FAMILY_KEYS` 와 같습니다. 타일 3×3 그리드가 가벼운 향에서
- * 무거운 향으로 내려갑니다.
- */
+/** 계열 9개의 화면 문구. 배열 순서는 `SCENT_FAMILY_KEYS` 와 같습니다. */
 export const SCENT_FAMILIES: readonly ScentFamilyLabel[] = [
   { key: 'FLORAL', adjective: '화사한', name: '플로럴' },
   { key: 'GREEN', adjective: '싱그러운', name: '그린' },
@@ -33,12 +24,10 @@ export const MAX_PICKS = 2
 
 export function scentFamilyLabel(key: ScentFamilyKey): ScentFamilyLabel {
   const found = BY_KEY.get(key)
-  // SCENT_FAMILIES 가 SCENT_FAMILY_KEYS 를 전부 덮는지는 아래 단언으로 보장됩니다.
   if (!found) throw new Error(`알 수 없는 향 계열입니다: ${key}`)
   return found
 }
 
-/** "화사하고 우아한" — 결과 문구에 끼워 넣을 때 씁니다. */
 export function familyAdjective(key: ScentFamilyKey): string {
   return scentFamilyLabel(key).adjective
 }
@@ -49,8 +38,7 @@ export function familyAriaLabel(key: ScentFamilyKey): string {
   return `${adjective} · ${name}`
 }
 
-// 계열 9개가 빠짐없이 문구를 갖는지 모듈 로드 시점에 확인합니다.
-// 계열이 늘어나면 화면이 아니라 여기서 먼저 터지게 하려는 것입니다.
+// 계열이 늘어나면 화면이 아니라 여기서 먼저 터지게 합니다.
 if (SCENT_FAMILIES.length !== SCENT_FAMILY_KEYS.length) {
   throw new Error('SCENT_FAMILIES 가 SCENT_FAMILY_KEYS 를 전부 덮지 않습니다')
 }

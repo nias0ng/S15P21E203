@@ -74,7 +74,7 @@ class RecommendationRateLimitIntegrationTest {
         currentUser.logout();
         given(nlrClient.recommend(anyString()))
                 .willReturn(new NlrRecommendResponse(
-                        "NO_CONDITION", QUERY, null, List.of(), null, null));
+                        "NO_CONDITION", QUERY, null, null, null, List.of(), List.of(), null, null));
     }
 
     /** 한도 안에서는 그대로 통과합니다. */

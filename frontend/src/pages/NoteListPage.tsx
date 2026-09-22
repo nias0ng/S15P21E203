@@ -7,26 +7,16 @@ import {
   noteFamiliesQuery,
   noteListQuery,
 } from '@/features/note'
+import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { cn } from '@/shared/lib/cn'
+import { withQueryParams } from '@/shared/lib/queryParams'
 import { Button } from '@/shared/ui/Button'
 import { PillFilter } from '@/shared/ui/PillFilter'
 import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
 
 /**
- * 노트 (와이어프레임 A35 — 상단 메뉴 [노트] 목적지)
- *
- * 와이어프레임 주석:
- * - 대분류(CITRUS · WOOD · FLORAL …)로 묶어 세로로 쌓는다 — 대분류 순서는 고정
- * - 노트를 누르면 노트 상세(A36)
- *
- * 구성은 향수 목록(A33) · 브랜드(A34)와 한 벌입니다 — 어두운 방 · 가운데 검색창 ·
- * 알약 필터 · 유리판 위 격자. 셋은 상단 메뉴에서 바로 오가는 사이라 서로 다른
- * 모양이면 메뉴를 누를 때마다 화면이 뒤집힙니다. 어둠을 켜는 자리는 라우트의
- * `handle.night`(app/router)이고, 유리판·알약의 생김새는 styles/scent-display.css
- * 에 있습니다. 다른 점은 판이 대분류마다 한 장씩이라는 것뿐입니다.
- *
- * 검색어와 대분류를 URL 쿼리에 둡니다. 새로고침 · 뒤로가기 · 링크 공유가 같은
- * 결과를 보여주게 하려는 것입니다.
+ * 노트 (A35). 대분류로 묶어 세로로 쌓고 순서는 고정이며, 검색어와 대분류는 URL
+ * 쿼리에 둡니다 — docs/어두운-방-유리판.md
  */
 export default function NoteListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -36,29 +26,24 @@ export default function NoteListPage() {
   const { data, isPending } = useQuery(noteListQuery(keyword))
   const { data: families } = useQuery(noteFamiliesQuery)
 
-  /*
-    검색어는 `noteListQuery` 의 select 가 이미 걸렀습니다. 대분류는 여기서 겹쳐
-    겁니다 — 둘 다 캐시된 같은 목록 위에서 하는 일이라 요청이 늘지 않습니다.
-  */
+  // 잠수로 들어왔으면 커튼이 이 신호를 기다립니다 — 대분류(`families`)는 늦게 와도
+  // 목록 위에 한 줄이 더해질 뿐이라 안 기다립니다
+  useDiveReady(!isPending)
+
+  // 검색어는 `noteListQuery` 의 select 가 걸렀고 대분류는 여기서 겹쳐 겁니다 —
+  // 둘 다 캐시된 같은 목록 위라 요청이 늘지 않습니다
   const shown = filterByFamily(data ?? [], family)
   const hasFilter = keyword !== '' || family !== null
 
   const setParam = (key: 'keyword' | 'family', value: string | null) => {
-    const next = new URLSearchParams(searchParams)
-    if (value) next.set(key, value)
-    else next.delete(key)
-    setSearchParams(next)
+    setSearchParams(withQueryParams(searchParams, { [key]: value }))
   }
 
   return (
     <div className="space-y-3.75">
       <h1 className="sr-only">노트</h1>
 
-      {/*
-        헤더에 검색창이 없고 검색은 각 페이지 안에 있다는 와이어프레임 규칙.
-        향수 목록 · 브랜드와 **같은 폭 · 같은 자리**에 둡니다 — 상단 메뉴로 세 화면을
-        오갈 때 검색창이 움직이면 같은 자리를 여러 번 겨냥하게 됩니다.
-      */}
+      {/* 향수 목록 · 브랜드와 같은 폭 · 같은 자리입니다 (와이어프레임 규칙) */}
       <SearchField
         className={cn(SEARCH_FIELD_LIST_WIDTH, 'mx-auto w-full')}
         label="노트명으로 검색"
@@ -68,14 +53,7 @@ export default function NoteListPage() {
         onSearch={(next) => setParam('keyword', next.trim() || null)}
       />
 
-      {/*
-        대분류 알약. 브랜드의 정렬 알약과 달리 `required` 가 아닙니다 — 켜진 것을
-        다시 누르면 꺼지고 전체로 돌아갑니다. 정렬은 꺼지면 줄 세울 기준이 없지만
-        이건 "거르지 않음" 이 멀쩡한 상태입니다.
-
-        목록이 오기 전에는 그리지 않습니다. 빈 묶음을 미리 두면 낭독기가 아무것도
-        없는 필터를 읽습니다.
-      */}
+      {/* 브랜드 정렬과 달리 `required` 가 아닙니다 — "거르지 않음" 이 멀쩡한 상태입니다 */}
       {families && families.length > 0 && (
         <PillFilter
           label="노트 대분류"

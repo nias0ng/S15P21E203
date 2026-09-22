@@ -53,6 +53,27 @@ LOGGER = logging.getLogger(__name__)
 DEFAULT_ENDPOINT = "https://gms.ssafy.io/gmsapi/api.openai.com/v1/chat/completions"
 DEFAULT_MODEL = "gpt-5.4-nano"
 
+# **같은 문장에 같은 추천이 나오게 하는 설정** [측정 기록 39번 · S15P21E203-388].
+# 이 값을 안 보내면 모델 기본값(창의적으로 답하는 쪽)으로 도는데, 그러면 같은 문장을
+# 다시 물을 때마다 **문장을 다르게 조각낸다.** 사전과 엔진은 결정론적이므로
+# 흔들림은 전부 여기서 온다 — 같은 `structured` 를 넣으면 추천은 5회 반복해도 같다.
+#
+#     [측정] 시연 문장 4개를 각 3회 호출했을 때 추천 5개가 매번 같은 문장 수
+#            기본값        **1/4**
+#            temperature=0  1차 **4/4**  ·  2차 **2/4**
+#
+# ⚠ **효과를 증명하지 못했다.** 같은 설정으로 두 번 쟀는데 4/4 와 2/4 다. 1차의 4/4 는
+# 표본 3회의 운일 수 있다. 게다가 `gpt-5.4-nano` 계열은 `temperature` 를 무시하기도 해서
+# 값이 먹혔는지조차 확인할 방법이 없다(호출은 실패하지 않았다).
+#
+# **해가 없어 남겨 두는 것이지 일관성을 보장하는 것이 아니다.** 보장하려면 ①단계 결과를
+# 캐시해야 하는데, 그건 `DECISIONS.md` N15 가 뺀 결정이고 **잘못 조각낸 것이 프로세스가
+# 살아 있는 동안 굳는다**는 문제가 있다. 2026-09-21 에 여기서 멈췄다 [측정 기록 39번].
+#
+# `DECISIONS.md` N15 한계 9 가 *"temperature 를 건드리지 않았다"* 로 남긴 자리다.
+# 그때는 ⑤단계 얘기였고 캐시가 흔들림을 막아 줬는데, **①단계에는 캐시가 없었다.**
+LLM_TEMPERATURE = 0
+
 # [측정] 호출 958회(Golden Set 203 · 합성 600 · 설문 155)의 1회 호출 소요 시간
 #   중앙 1.53초 · p90 2.00 · p95 2.20 · p99 3.17 · 최대 7.15
 # 5초로 자르면 958회 중 1회(0.10%)가 잘리고, 잘려도 사전 매칭으로 내려갈 뿐이다.
@@ -240,6 +261,7 @@ def structure(text, *, timeout=DEFAULT_TIMEOUT, prompt_path=PROMPT_PATH, post=No
 
     payload = {
         "model": os.environ.get("GMS_MODEL", DEFAULT_MODEL),
+        "temperature": LLM_TEMPERATURE,
         "messages": [
             {"role": "developer", "content": load_prompt(prompt_path)},
             {"role": "user", "content": build_user_prompt(text)},
@@ -269,6 +291,10 @@ def structure(text, *, timeout=DEFAULT_TIMEOUT, prompt_path=PROMPT_PATH, post=No
 # ⑤단계 — 사전이 못 받은 표현을 accord 로 추정
 # ---------------------------------------------------------------------------
 ESTIMATOR_PROMPT_PATH = pathlib.Path(__file__).resolve().parent / "data" / "estimator_prompt_v1.txt"
+# 원문과 표현 목록을 한 번에 보내는 판. 표현마다 부르던 것을 문장마다 한 번으로 줄인다
+# [측정 기록 37번]. v1 은 남겨 둔다 — 되돌릴 때 파일을 다시 만들지 않아도 된다.
+ESTIMATOR_PROMPT_V2_PATH = (pathlib.Path(__file__).resolve().parent
+                            / "data" / "estimator_prompt_v2.txt")
 ESTIMATOR_TOP_N = 3          # 표현 하나가 만들 accord 개수 상한. 측정 기록 20번의 E3
 ESTIMATOR_TIMEOUT = 8.0      # [측정] 호출 지연 중앙 1.16s · 최대 3.43s (측정 기록 20번)
 
@@ -303,6 +329,7 @@ def estimate_accords(expression, accords, *, top_n=ESTIMATOR_TOP_N,
             .replace("%ACCORDS%", "\n".join(f"- {a}" for a in accords))
             .replace("%EXPRESSION%", str(expression)))
     payload = {"model": os.environ.get("GMS_MODEL", DEFAULT_MODEL),
+               "temperature": LLM_TEMPERATURE,
                "messages": [{"role": "user", "content": body}]}
     endpoint = os.environ.get("GMS_ENDPOINT", DEFAULT_ENDPOINT)
     send = post or _post_json
@@ -326,6 +353,102 @@ def estimate_accords(expression, accords, *, top_n=ESTIMATOR_TOP_N,
     return None
 
 
+def _match_key(value):
+    """묶음 응답의 표현 이름을 견주기 위한 열쇠. str.
+
+    `unmatched_log.normalize_key` 와 **같은 규칙**이다 (겹공백 정리 + 소문자).
+    두 곳이 어긋나도 동작이 깨지지는 않지만, 같은 규칙이어야 "왜 이건 안 맞지" 를
+    한 곳만 보고 답할 수 있다.
+    """
+    return re.sub(r"\s+", " ", str(value)).strip().lower()
+
+
+def estimate_accords_batch(raw_text, expressions, accords, *, top_n=ESTIMATOR_TOP_N,
+                           timeout=ESTIMATOR_TIMEOUT,
+                           prompt_path=ESTIMATOR_PROMPT_V2_PATH, post=None):
+    """원문 하나와 그 안의 표현 여러 개를 **한 번에** 보낸다. list 또는 None.
+
+    raw_text    : str              사용자 원문. 표현을 읽을 맥락으로 준다
+    expressions : list[str]        사전이 못 받은 표현들. **순서를 지킨다**
+    accords     : list[str]        고를 수 있는 accord 이름. 목록 밖은 버린다
+
+    반환 — `expressions` 와 **길이가 같은 list**. 자리마다
+    `{"accords": [...], "reasoning": str}` 이거나, 모델이 그 표현을 빠뜨렸으면 `None`.
+    호출 자체가 실패하면 목록이 아니라 **`None` 하나**를 낸다.
+
+    **둘을 가르는 것이 중요하다.** 호출 실패는 다시 물어도 같은 이유로 실패할 수
+    있지만, 빠진 자리는 그 표현만 다시 물으면 대개 답이 온다 — 부른 쪽이 그렇게
+    나눠서 처리한다(`nlr_engine._apply_estimates`).
+
+    **모델이 조각을 조용히 빠뜨린다.** 측정에서 JSON 은 멀쩡한데 표현 하나가 사라진
+    일이 있었다 [측정 기록 36번 추기 · 55건 중 1건]. 예외가 안 나므로 **보낸 목록과
+    받은 목록을 견줘야** 안다. 여기서 순서대로 맞춰 보고 못 찾은 자리를 `None` 으로 둔다.
+    """
+    api_key = os.environ.get("GMS_API_KEY")
+    if not api_key:
+        LOGGER.warning("GMS_API_KEY 가 없어 ⑤단계 추정을 건너뛴다")
+        return None
+    if not expressions:
+        return []
+
+    body = (load_prompt(prompt_path)
+            .replace("%ACCORDS%", "\n".join(f"- {a}" for a in accords))
+            .replace("%RAW_TEXT%", str(raw_text))
+            .replace("%EXPRESSIONS%", "\n".join(f"- {x}" for x in expressions)))
+    payload = {"model": os.environ.get("GMS_MODEL", DEFAULT_MODEL),
+               "temperature": LLM_TEMPERATURE,
+               "messages": [{"role": "user", "content": body}]}
+    endpoint = os.environ.get("GMS_ENDPOINT", DEFAULT_ENDPOINT)
+    send = post or _post_json
+
+    try:
+        response = send(endpoint, payload, api_key, timeout)
+        parsed = parse_content(response["choices"][0]["message"]["content"])
+        results = parsed.get("results")
+        if not isinstance(results, list):
+            raise Stage1Error("NOT_LIST", f"results 가 목록이 아니다: {type(results).__name__}")
+        allowed = set(accords)
+        # 보낸 순서대로 짝을 맞춘다. 같은 표현이 두 번 올 수 있으므로 쓴 자리는 지운다 —
+        # 그래야 중복된 둘이 각자의 답을 받는다.
+        #
+        # **이름은 정리해서 견준다.** 정확히 일치시키면 모델이 앞뒤 공백 하나만 더해도
+        # 그 문장의 조각이 **전부** 재호출로 가서, 이 변경이 줄이려던 호출이 오히려 는다.
+        # `unmatched_log.normalize_key` 와 같은 규칙이다 [MR 리뷰 2026-09-21].
+        # 정리해서 같아지는 표현이 둘 있어도 위의 `pop` 이 앞에서부터 소비하므로
+        # 짝을 잘못 짓지 않는다.
+        remaining = [(_match_key(item.get("expression")) if isinstance(item, dict) else None,
+                      item) for item in results]
+        out = []
+        for expression in expressions:
+            picked = None
+            want = _match_key(expression)
+            for i, (key, item) in enumerate(remaining):
+                if key is not None and key == want:
+                    picked = remaining.pop(i)[1]
+                    break
+            if picked is None:
+                out.append(None)
+                continue
+            got = [a for a in (picked.get("accords") or []) if a in allowed][:top_n]
+            out.append({"accords": got, "reasoning": str(picked.get("reasoning") or "")})
+        missing = sum(1 for x in out if x is None)
+        if missing or remaining:
+            LOGGER.warning(
+                "⑤단계 묶음 응답이 보낸 표현과 다르다 — 보낸 %d개 중 %d개가 빠졌고 "
+                "모르는 항목이 %d개다. 빠진 것은 하나씩 다시 묻는다",
+                len(expressions), missing, len(remaining))
+        return out
+    except urllib.error.HTTPError as exc:
+        LOGGER.error("⑤단계 묶음 추정 HTTP %s — 이 문장은 못 푼 것으로 둔다", exc.code)
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        LOGGER.error("⑤단계 묶음 추정 호출 실패 %s: %s", type(exc).__name__, exc)
+    except Stage1Error as exc:
+        LOGGER.error("⑤단계 묶음 추정 출력이 형식에 안 맞는다 %s: %s", exc.code, exc)
+    except (KeyError, IndexError, TypeError) as exc:
+        LOGGER.error("⑤단계 묶음 추정 응답에 choices[0].message.content 가 없다: %s", exc)
+    return None
+
+
 def make_estimator(index, **kwargs):
     """엔진이 바로 넣을 수 있는 `estimator` 를 만든다. callable.
 
@@ -334,6 +457,11 @@ def make_estimator(index, **kwargs):
 
     accord 목록을 인덱스에서 꺼내 고정해 둔다. 엔진은 accord 이름을 모르는 함수를
     원하지 않는다 — 목록 밖 값은 어차피 버려진다.
+
+    **원문과 표현 목록을 받는다.** 전에는 표현 하나를 받아 표현마다 불렀다. 합성 600
+    에서 호출이 175 -> 51회로 준다 [측정 기록 37번]. 표현마다 부르던 판은
+    `estimate_accords` 로 남아 있다.
     """
     accords = list(index["accords"])
-    return lambda expression: estimate_accords(expression, accords, **kwargs)
+    return lambda raw_text, expressions: estimate_accords_batch(
+        raw_text, expressions, accords, **kwargs)

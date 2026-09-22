@@ -2,10 +2,8 @@ import { cn } from '@/shared/lib/cn'
 
 type ThumbnailProps = {
   /**
-   * 이미지 주소. 없으면 자리표시자 상자를 그립니다.
-   *
-   * ⚠️ 백엔드가 아직 이미지를 거의 내려주지 않아 대부분의 호출부가 값 없이 씁니다.
-   * 그래서 optional 이고, 없는 경우가 기본 동작입니다.
+   * 이미지 주소. 백엔드가 아직 이미지를 거의 안 내려줘 대부분 값 없이 씁니다 —
+   * 없는 경우가 기본 동작입니다.
    */
   src?: string | null
   /** 자리표시자 안에 보일 문구("이미지" · "로고"). 없으면 빈 상자만 그립니다. */
@@ -13,21 +11,11 @@ type ThumbnailProps = {
   /** 잘리면 안 되는 이미지(브랜드 로고)는 'contain'. 기본은 꽉 채우는 'cover'. */
   fit?: 'cover' | 'contain'
   /**
-   * 이미지가 있을 때 상자(테두리 · 바탕)를 그리지 않습니다.
-   *
-   * 배경이 투명한 PNG(향수병)를 넣는 자리용입니다. 상자를 그대로 두면 투명한
-   * 영역이 네모로 드러나 **병이 상자에 담긴 것처럼** 보입니다. 진열대 상세 패널은
-   * 이것 때문에 Thumbnail 을 안 쓰고 `<img>` 를 직접 적고 있었습니다.
-   *
-   * 이미지가 **없을 때는 상자를 그대로 그립니다** — 자리표시자는 "여기에 무언가
-   * 들어온다" 를 상자로 알려주는 것이라, 상자를 지우면 "이미지" 라는 글자만 허공에
-   * 뜹니다.
+   * 이미지가 있을 때 상자(테두리 · 바탕)를 그리지 않습니다 — 배경이 투명한
+   * PNG(향수병)용입니다. **없을 때는 상자를 그대로 그립니다**(자리표시자).
    */
   bare?: boolean
-  /**
-   * 크기·배치. 사용처마다 달라서(size-13.75 · h-23.75 w-full · flex-1 …) 여기서 받습니다.
-   * 크기를 prop enum 으로 두지 않은 이유는 실제로 13가지가 쓰이고 있어서입니다.
-   */
+  /** 크기·배치. 부르는 곳마다 달라 enum 으로 두지 않았습니다 */
   className?: string
   /**
    * img 의 alt. 기본값은 빈 문자열입니다 — 호출부 대부분이 이미지 옆에 향수명·브랜드명을
@@ -37,17 +25,11 @@ type ThumbnailProps = {
 }
 
 /**
- * 이미지 슬롯. 이미지가 있으면 그리고, 없으면 와이어프레임의 자리표시자 상자를 그립니다.
+ * 이미지 슬롯. 있으면 그리고, 없으면 자리표시자 상자를 그립니다. 아바타
+ * (`rounded-full`)도 같은 상자라 이걸 씁니다.
  *
- * 이걸 만들기 전에는 `border-line bg-surface-sunken border` 상자와 그 fallback 분기가
- * 16개 파일에 흩어져 있었습니다. 백엔드가 이미지를 붙이는 시점에 16곳을 고쳐야 했습니다.
- *
- * 아바타(`size-6.25 rounded-full`)도 같은 상자라서 이걸 씁니다. 나중에 아바타에 이니셜이나
- * 기본 아이콘이 필요해지면 그때 Avatar 를 따로 만듭니다(미리 만들지 않습니다).
- *
- *   <Thumbnail src={perfume.thumbnailUrl} fallback="이미지" className="size-13.75 shrink-0" />
- *   <Thumbnail src={brand.logoUrl} fallback="로고" fit="contain" className="h-23.75 w-full" />
- *   <Thumbnail className="size-6.25 shrink-0 rounded-full" />
+ *   <Thumbnail src={review.profileImageUrl} className="size-7.5 shrink-0 rounded-full" />
+ *   <Thumbnail src={brand.logoUrl} fallback="로고" fit="contain" className="h-40 w-full" />
  */
 export function Thumbnail({
   src,

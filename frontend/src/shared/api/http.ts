@@ -7,8 +7,8 @@ import axios, {
 import { env } from '@/shared/config/env'
 import { useAuthStore } from '@/shared/store/authStore'
 
-/** 서버가 내려주는 공통 에러 응답 형태. 백엔드와 스펙 확정 후 맞춰서 수정하세요. */
-export interface ApiErrorResponse {
+/** 서버가 내려주는 공통 에러 응답 형태 */
+interface ApiErrorResponse {
   code: string
   message: string
 }
@@ -31,14 +31,11 @@ export function isApiError(error: unknown): error is ApiError {
 }
 
 /**
- * 세션이 끊겼을 때 이어서 할 정리 작업.
+ * 세션이 끊겼을 때 이어서 할 정리. 캐시에 앞 사람 응답이 남으면 다음 사람이 그 화면을
+ * 잠깐 봅니다.
  *
- * 스토어를 비우는 것만으로는 부족합니다 — 쿼리 캐시에 앞 사람의 응답이 남으면
- * 같은 브라우저에서 다음에 로그인한 사람이 그 화면을 잠깐 봅니다.
- *
- * 그렇다고 여기서 `queryClient` 를 import 하면 `queryClient` 가 `isApiError` 때문에
- * 다시 이 파일을 import 해 순환이 됩니다. 그래서 **캐시 쪽이 자기를 등록하는**
- * 방향으로 두어 의존을 한쪽으로만 흐르게 합니다.
+ * NOTE: 여기서 `queryClient` 를 import 하면 순환이 되어, **캐시 쪽이 자기를 등록하는**
+ * 방향입니다.
  */
 let onSessionExpired: (() => void) | null = null
 
@@ -62,27 +59,20 @@ export const http: AxiosInstance = axios.create({
 /**
  * **Authorization 을 붙이면 안 되는 경로.**
  *
- * 백엔드에서 이 셋은 `permitAll` 이지만, `oauth2ResourceServer.jwt()` 가 깔아 둔
- * `BearerTokenAuthenticationFilter` 는 **인가 단계보다 먼저** 돕니다. Authorization
- * 헤더가 있으면 무조건 검증하고, 만료된 토큰이면 그 자리에서 401 을 던집니다.
- * `permitAll` 은 거기까지 오지도 못합니다.
- *
- * 그래서 만료된 토큰을 그대로 달고 `/auth/refresh` 를 부르면 **재발급이 반드시
- * 실패합니다** — 재발급이 필요한 순간은 정의상 토큰이 만료된 순간이라, 이 헤더
- * 하나 때문에 재발급이 한 번도 성공하지 못하고 30분(`access-token-ttl`)마다
- * 자동 로그아웃됐습니다.
+ * 이 셋은 `permitAll` 이지만 `BearerTokenAuthenticationFilter` 가 **인가 단계보다
+ * 먼저** 돌아, 헤더가 있으면 만료된 토큰을 그 자리에서 401 로 막습니다. 그래서
+ * 만료된 토큰을 달고 `/auth/refresh` 를 부르면 **재발급이 반드시 실패합니다** —
+ * 이 헤더 하나 때문에 30분(`access-token-ttl`)마다 자동 로그아웃됐습니다.
  *
  *   Authorization 없음  →  401 AUTH_INVALID_REFRESH_TOKEN  (컨트롤러까지 도달)
  *   Authorization 있음  →  401 AUTH_LOGIN_REQUIRED         (보안 필터가 먼저 차단)
  *
- * **`/auth/logout` 은 여기 넣지 않습니다.** 백엔드가 `authenticated()` 로 잡아 두어
- * 토큰이 있어야 세션을 지울 수 있습니다. 아래 `NO_REFRESH_PATHS` 와 목록이 겹쳐
- * 보이지만 **다른 질문에 답하는 목록입니다** — 여기는 "토큰을 붙일 것인가",
- * 저기는 "401 을 재발급으로 볼 것인가" 입니다.
+ * **`/auth/logout` 은 여기 넣지 않습니다** — `authenticated()` 라 토큰이 있어야
+ * 세션을 지웁니다. 아래 `NO_REFRESH_PATHS` 와 겹쳐 보이지만 **다른 질문**입니다:
+ * 여기는 "토큰을 붙일 것인가", 저기는 "401 을 재발급으로 볼 것인가".
  */
 const NO_AUTH_HEADER_PATHS = ['/auth/login', '/auth/signup', '/auth/refresh']
 
-// 요청 인터셉터: 액세스 토큰 주입
 http.interceptors.request.use((config) => {
   const { accessToken } = useAuthStore.getState()
   const isAuthPath = NO_AUTH_HEADER_PATHS.some((path) =>
@@ -97,12 +87,9 @@ http.interceptors.request.use((config) => {
 })
 
 /**
- * 재발급을 시도하지 않는 경로.
- *
- * 로그인 실패(`AUTH_INVALID_CREDENTIALS`)도 401 입니다. 여기서 빼지 않으면
- * 비밀번호를 틀릴 때마다 재발급을 부르고, 그 재발급이 또 401 이 되어
- * 요청이 두 배로 나갑니다. **만료된 토큰과 틀린 자격 증명은 같은 상태
- * 코드지만 다른 일입니다.**
+ * 재발급을 시도하지 않는 경로. 로그인 실패(`AUTH_INVALID_CREDENTIALS`)도 401 이라,
+ * 빼지 않으면 비밀번호를 틀릴 때마다 재발급이 나가고 그것도 401 이 됩니다.
+ * **만료된 토큰과 틀린 자격 증명은 같은 상태 코드지만 다른 일입니다.**
  */
 const NO_REFRESH_PATHS = [
   '/auth/login',
@@ -117,13 +104,9 @@ const NO_REFRESH_PATHS = [
  *   0        요청 자체가 나가지 못했습니다 (네트워크 끊김 · CORS · 타임아웃)
  *   502~504  중간의 프록시 · 게이트웨이가 백엔드에 못 닿았습니다
  *
- * 이때는 백엔드가 우리 형식(`{ code, message }`)으로 답한 것이 아니라서 axios 의
- * 원문("Request failed with status code 502")이 그대로 화면에 나갑니다. 사용자에게
- * 아무 뜻이 없고, 개발 중에도 원인이 안 읽힙니다 — 로컬에서는 대개 백엔드가 꺼진
- * 것입니다. 그래서 여기서만 우리 문구로 바꿔 답니다.
- *
- * 400 · 404 처럼 **백엔드가 대답한 오류는 건드리지 않습니다.** 그 문구가 사정을
- * 훨씬 정확히 설명합니다.
+ * 백엔드가 우리 형식(`{ code, message }`)으로 답한 것이 아니라 axios 원문
+ * ("Request failed with status code 502")이 그대로 화면에 나갑니다. 여기서만 우리
+ * 문구로 바꾸고, 400 · 404 처럼 **백엔드가 대답한 오류는 건드리지 않습니다.**
  */
 function isUnreachable(status: number): boolean {
   return status === 0 || status === 502 || status === 503 || status === 504
@@ -141,11 +124,8 @@ const unreachableMessage = (status: number) =>
 type RetriedConfig = InternalAxiosRequestConfig & { _retried?: boolean }
 
 /**
- * 진행 중인 재발급 하나를 모두가 같이 기다립니다.
- *
- * 한 화면이 쿼리를 여러 쓰면 토큰이 만료되는 순간 전부 401 이 됩니다.
- * 각자 재발급하면 `/auth/refresh` 가 동시에 여러 번 나가고, 서버가
- * 회전시키는 refresh 토큰과 어긋나 멀쩅한 세션이 끊깁니다.
+ * 진행 중인 재발급 하나를 모두가 같이 기다립니다. 한 화면의 쿼리가 동시에 401 이 될
+ * 때 각자 재발급하면, 서버가 회전시키는 refresh 토큰과 어긋나 세션이 끊깁니다.
  */
 let refreshing: Promise<string> | null = null
 
@@ -164,14 +144,9 @@ function refreshAccessToken(): Promise<string> {
 }
 
 /**
- * 재발급 실패가 **세션이 끝났다는 뜻인지** 가립니다.
- *
- * 서버가 거절한 것(401 · 403)만 세션의 끝입니다. 닿지 못했거나(0 · 502~504) 서버가
- * 아픈 것(5xx)은 **다음에 다시 물어보면 되는 일**입니다.
- *
- * `/auth/refresh` 요청도 이 인터셉터를 지나므로, 여기 오는 실패는 이미
- * `ApiError` 로 정규화돼 있습니다. `ApiError` 가 아닌 것은 axios 밖에서 터진
- * 예외라 세션과 무관하므로 역시 끝내지 않습니다.
+ * 재발급 실패가 **세션이 끝났다는 뜻인지** 가립니다. 서버가 거절한 것(401 · 403)만
+ * 세션의 끝이고, 닿지 못했거나(0 · 502~504) 서버가 아픈 것(5xx)은 다시 물어보면
+ * 되는 일입니다. `ApiError` 가 아닌 것은 axios 밖 예외라 역시 끝내지 않습니다.
  */
 function isSessionRejected(error: unknown): boolean {
   return isApiError(error) && (error.status === 401 || error.status === 403)
@@ -205,16 +180,11 @@ http.interceptors.response.use(
             return http(config)
           } catch (refreshError) {
             /*
-             * **실패한 이유를 가립니다.** 전에는 `catch(() => null)` 로 전부 뭉개서,
-             * 서버에 못 물어본 것까지 "세션이 끝났다" 로 읽고 로그아웃시켰습니다.
-             * 백엔드를 재시작하는 몇 초, 배포 중 순단, 지하철에서 끊긴 와이파이가
-             * 전부 로그아웃이었습니다 — 토큰은 멀쩡한데 말입니다.
-             *
-             * 세션을 끝내는 것은 **서버가 이 리프레시 토큰을 못 쓴다고 답했을 때뿐**
-             * 입니다. 그 외에는 원래 실패를 그대로 올려 화면이 "잠시 후 다시 시도" 를
-             * 말하게 두고, 로그인은 유지합니다. 만료된 액세스 토큰은 스토어에 남지만
-             * 다음 요청이 다시 401 을 받아 재발급을 새로 시도하므로, 서버가 돌아오면
-             * 저절로 이어집니다.
+             * **실패한 이유를 가립니다.** 전에는 `catch(() => null)` 로 전부 뭉개서
+             * 백엔드 재시작 몇 초 · 배포 중 순단 · 끊긴 와이파이가 전부 로그아웃이었
+             * 습니다 — 토큰은 멀쩡한데 말입니다. 세션을 끝내는 것은 **서버가 이
+             * 리프레시 토큰을 못 쓴다고 답했을 때뿐**이고, 그 외에는 로그인을 유지해
+             * 서버가 돌아오면 다음 401 의 재발급으로 저절로 이어집니다.
              */
             if (!isSessionRejected(refreshError)) {
               return Promise.reject(refreshError)
@@ -223,9 +193,8 @@ http.interceptors.response.use(
         }
 
         /*
-         * 끝낼 세션이 있을 때만 정리합니다. 로그인 실패도 401 이라, 여기서 걸러내지
-         * 않으면 **로그인한 적 없는 방문자**가 비밀번호를 틀릴 때마다 보고 있던
-         * 향수 목록 캐시까지 같이 날아갑니다.
+         * 끝낼 세션이 있을 때만 정리합니다. 로그인 실패도 401 이라, 안 거르면
+         * 비밀번호를 틀릴 때마다 보고 있던 향수 목록 캐시까지 날아갑니다.
          */
         if (accessToken !== null) {
           endSession()

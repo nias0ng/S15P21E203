@@ -4,7 +4,6 @@ import { useNavigate, useParams, useSearchParams } from 'react-router'
 
 import {
   communityKeys,
-  ImageAttachField,
   LinkedPerfumeModal,
   WriteForm,
   type LinkedPerfume,
@@ -40,12 +39,8 @@ import { PageFallback } from '@/shared/ui/PageFallback'
 import { Textarea } from '@/shared/ui/Textarea'
 
 /**
- * 수정이 절반만 저장된 경우.
- *
- * 제목 · 본문(`PATCH`)과 계절(`PUT .../seasons`)이 **서버에서 각자 트랜잭션**이라,
- * 앞이 커밋된 뒤 뒤가 실패할 수 있습니다. 화면이 되돌릴 수는 없으니 무엇이
- * 남았는지라도 정확히 알려주려고 원인 오류를 감싸 둡니다.
- *
+ * 수정이 절반만 저장된 경우. 제목 · 본문(`PATCH`)과 계절(`PUT .../seasons`)이
+ * **서버에서 각자 트랜잭션**이라 앞이 커밋된 뒤 뒤가 실패할 수 있습니다.
  * 한 번의 `PATCH` 로 합치려면 백엔드가 `seasonCodes` 를 받아야 합니다(별도 이슈).
  */
 class PartialSaveError extends Error {
@@ -74,19 +69,14 @@ function saveErrorMessage(error: unknown): string {
 }
 
 /**
- * 후기 게시글 작성 · 수정 (와이어프레임 A24a — CMT-03 · CMT-06 · DTL-05 · DTL-16)
- *
- * **한 화면이 두 모드입니다.** 주소로 가릅니다.
+ * 후기 작성 · 수정 (A24a — CMT-03 · 06 · DTL-05 · 16). **한 화면이 두 모드**입니다.
  *
  *   /community/reviews/write?perfumeId=7    작성 → POST /perfumes/7/reviews
  *   /community/reviews/12/edit              수정 → PATCH /reviews/12 (+ 계절)
  *
- * 분류가 없고(전부 후기라서) 대상 향수는 필수 · 한 개입니다.
- *
- * **수정에서는 대상 향수를 바꿀 수 없습니다.** 백엔드에 향수를 옮기는 경로가 없고
- * (`PATCH /reviews/{id}` 는 제목 · 내용만 받습니다), 한 사람이 같은 향수에 후기를
- * 두 개 쓸 수 없어 옮기면 중복이 생깁니다. 버튼을 살려두면 바꿔놓고 저장했는데
- * 조용히 원래대로 남습니다 — 서버가 에러도 내지 않으니 화면이 막아야 합니다.
+ * **수정에서는 대상 향수를 바꿀 수 없습니다.** 백엔드에 옮기는 경로가 없고
+ * (`PATCH` 는 제목 · 내용만 받습니다) 서버가 에러도 안 내서, 버튼을 살려두면
+ * 바꿔놓고 저장했는데 조용히 원래대로 남습니다.
  */
 export default function ReviewWritePage() {
   const navigate = useNavigate()
@@ -126,10 +116,8 @@ export default function ReviewWritePage() {
     seasonsDraft ?? loaded?.seasons.map((season) => season.code) ?? []
 
   /**
-   * 작성 모드의 대상 향수 번호.
-   *
-   * `?perfumeId=abc` 처럼 숫자가 아닌 값이 오면 `null` 입니다 — 여기서 걸러야
-   * [포스팅] 이 켜졌다가 저장할 때에야 실패하는 일이 없습니다.
+   * 작성 모드의 대상 향수 번호. `?perfumeId=abc` 는 `null` 입니다 — 여기서 걸러야
+   * [포스팅] 이 켜졌다가 저장할 때에야 실패하지 않습니다.
    */
   const preselectedId = (() => {
     const raw = searchParams.get('perfumeId')
@@ -138,12 +126,7 @@ export default function ReviewWritePage() {
     return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null
   })()
 
-  /*
-    작성 모드에서 고른 향수. 주소로 실려 온 향수(`?perfumeId=`)가 첫 값이고,
-    [향수 선택] 으로 바꾸면 이 값이 이깁니다.
-
-    향수 상세에서 [후기 쓰기] 로 들어오면 그 향수가 이미 골라져 있습니다.
-  */
+  /* 주소로 실려 온 향수(`?perfumeId=`)가 첫 값이고, [향수 선택] 이 이깁니다 */
   const [pickedPerfume, setPickedPerfume] = useState<LinkedPerfume | null>(null)
   const [pickOpen, setPickOpen] = useState(false)
   const [keyword, setKeyword] = useState('')
@@ -152,10 +135,7 @@ export default function ReviewWritePage() {
     ? loaded?.perfume.perfumeId
     : (pickedPerfume?.perfumeId ?? preselectedId)
 
-  /*
-    주소로 실려 온 향수의 이름 · 브랜드는 서버에 물어봅니다. 예전에는 고정값을
-    적어 두어서, 어느 향수로 들어오든 같은 이름이 보였습니다.
-  */
+  /* 예전에는 고정값이라 어느 향수로 들어오든 같은 이름이 보였습니다 */
   const preselected = useQuery({
     ...perfumeDetailQuery(preselectedId ?? Number.NaN),
     enabled: !isEdit && preselectedId !== null && pickedPerfume === null,
@@ -174,10 +154,7 @@ export default function ReviewWritePage() {
           }
         : null
 
-  /*
-    후보는 이 화면이 만듭니다 — 모달은 `features/community` 에 있어 향수 도메인을
-    import 할 수 없습니다. 검색어를 치기 전에는 부르지 않습니다.
-  */
+  /* 후보는 이 화면이 만듭니다 — 모달(`features/community`)은 향수를 모릅니다 */
   const perfumeSearch = useQuery({
     ...perfumeListQuery({ keyword, size: 20 }),
     enabled: keyword.trim().length > 0,
@@ -245,10 +222,8 @@ export default function ReviewWritePage() {
             await replaceReviewSeasons(reviewId, seasons)
           } catch (error) {
             /*
-             * 두 요청은 서버에서 **각자 다른 트랜잭션**입니다(`update` ·
-             * `replaceSeasons` 가 각각 `@Transactional`). 앞이 커밋된 뒤 뒤가
-             * 실패하면 되돌릴 방법이 없으므로, 무엇이 남았는지 알려주기라도 합니다.
-             * 그냥 "저장 실패"라고만 하면 이미 바뀐 제목을 사용자가 모릅니다.
+             * 두 요청이 **각자 다른 트랜잭션**이라 앞만 커밋될 수 있습니다. 그냥
+             * "저장 실패" 라고만 하면 이미 바뀐 제목을 사용자가 모릅니다.
              */
             throw new PartialSaveError(textSaved, error)
           }
@@ -290,16 +265,11 @@ export default function ReviewWritePage() {
       if (!isEdit) return
 
       /*
-       * **성공이든 실패든** 이 후기를 낡은 것으로 표시합니다.
+       * **성공이든 실패든** 낡은 것으로 표시합니다 — 앞만 성공했을 때 캐시를 두면
+       * 상세에 옛 제목이 보여 아무것도 저장 안 된 줄 압니다.
        *
-       * 수정은 요청이 둘로 갈려서 앞만 성공하고 뒤가 실패할 수 있습니다. 그때
-       * 캐시를 그대로 두면 사용자가 상세로 돌아갔을 때 옛 제목이 보여 "아무것도
-       * 저장 안 됐구나" 하고 떠납니다 — 서버에는 이미 바뀌어 있는데도요.
-       *
-       * `refetchType: 'none'` 인 이유: `GET /reviews/{id}` 는 부를 때마다
-       * 조회수가 오릅니다. 여기서 바로 다시 부르면 저장에 실패한 사람이 자기
-       * 후기 조회수를 올리게 됩니다. 표시만 해두면 다음에 상세를 열 때 —
-       * 어차피 조회인 그 순간에 — 새로 읽습니다.
+       * `refetchType: 'none'` 인 이유: `GET /reviews/{id}` 는 부를 때마다 조회수가
+       * 올라, 여기서 다시 부르면 실패한 사람이 제 조회수를 올립니다.
        */
       void queryClient.invalidateQueries({
         queryKey: reviewKeys.detail(reviewId),
@@ -323,8 +293,7 @@ export default function ReviewWritePage() {
   }
 
   /*
-   * 불러오지 못했으면 폼을 그리지 않습니다. 빈 칸으로 두면 "내용이 지워진 수정
-   * 화면"으로 보이고, 그 상태로 저장하면 바뀐 게 없어 요청이 하나도 안 나간 채
+   * 빈 칸으로 두면 그 상태로 저장할 때 바뀐 게 없어 요청이 하나도 안 나간 채
    * 상세로 넘어갑니다 — 저장된 것처럼 보이는 가장 나쁜 실패입니다.
    */
   if (isEdit && (existing.isError || loaded === undefined)) {
@@ -354,10 +323,7 @@ export default function ReviewWritePage() {
     )
   }
 
-  /*
-    주소로 바로 들어오거나 즐겨찾기로 열면 단추를 거치지 않습니다. 다 쓰고 [등록]
-    에서야 막히면 쓴 것을 잃으므로 여기서도 한 번 더 봅니다.
-  */
+  /* 주소로 바로 들어오면 단추를 안 거칩니다. 다 쓰고 막히면 쓴 것을 잃습니다 */
   if (!isLoggedIn) {
     return (
       <LoginRequiredDialog
@@ -384,11 +350,7 @@ export default function ReviewWritePage() {
         submitDisabled={!canSubmit}
         onSubmit={() => mutation.mutate()}
       >
-        {/*
-          대상 향수는 필수이고 한 개만 답니다. 이 화면에서 가장 먼저 정해야 하는
-          값이라 다른 항목과 달리 칸으로 감싸 무게를 줍니다 — 고르지 않으면
-          [포스팅] 이 꺼져 있는데, 그 이유가 눈에 보여야 합니다.
-        */}
+        {/* 대상 향수는 필수이고 한 개만 답니다 */}
         <fieldset
           className={cn(
             'rounded-card border p-3.75',
@@ -437,10 +399,6 @@ export default function ReviewWritePage() {
           )}
         </fieldset>
 
-        {/*
-          라벨을 보이게 두었습니다. placeholder 로만 알려주면 한 글자라도 치는
-          순간 무엇을 적는 칸인지 사라집니다.
-        */}
         <Input
           label="제목"
           placeholder="제목을 입력하세요"
@@ -461,19 +419,8 @@ export default function ReviewWritePage() {
         />
 
         {/*
-          계절별 평가 (DTL-16). 예전에는 향수 상세의 [계절 등록] 단추가 모달을
-          띄웠는데, 이 향을 어느 계절에 맡았는지는 후기와 같은 순간에 남기는
-          값이라 여기로 옮겼습니다. 입구가 둘이면 한쪽만 쓰이고 다른 쪽은
-          잊힙니다.
-
-          네 칸을 같은 폭으로 늘여 한 줄에 놓습니다. 칩이 글자 폭대로 떨어져
-          있으면 "봄" 과 "여름" 의 크기가 달라 고르는 대상이 아니라 태그처럼
-          보입니다.
-
-          여러 개 고를 수 있습니다 — 봄과 가을에 다 어울리는 향이 있습니다.
-
-          **필수입니다.** 예전에 "(선택)" 이라고 적혀 있었는데 서버는 1개 이상을
-          요구합니다(`@NotEmpty`). 그대로 두면 아무것도 안 고르고 저장할 때 400 입니다.
+          계절별 평가 (DTL-16). 예전에 "(선택)" 이라고 적혀 있었는데 서버는 1개
+          이상을 요구합니다(`@NotEmpty`) — 안 고르고 저장하면 400 이었습니다.
         */}
         <fieldset className="space-y-2">
           <legend className="text-ink text-caption font-medium">
@@ -482,7 +429,6 @@ export default function ReviewWritePage() {
           <ChipToggle
             label="이 향이 잘 어울리는 계절"
             multiple
-            tone="warm"
             options={SEASONS}
             value={seasons}
             onChange={(next) => setSeasonsDraft(next)}
@@ -492,8 +438,6 @@ export default function ReviewWritePage() {
             최소 한 개는 골라주세요. 여러 개 고를 수 있습니다.
           </p>
         </fieldset>
-
-        <ImageAttachField />
 
         {mutation.error !== null && (
           <p className="text-danger text-caption" role="alert">

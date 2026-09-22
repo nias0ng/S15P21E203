@@ -1,116 +1,159 @@
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router'
+import { useSearchParams } from 'react-router'
 
 import {
   perfumeListQuery,
   PerfumeFilters,
   PerfumeGrid,
-  type GenderFilter,
-  type RankingFilter,
+  readGenderFilter,
+  readRankingFilter,
 } from '@/features/perfume'
-import { ROUTES } from '@/shared/config/routes'
+import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { cn } from '@/shared/lib/cn'
+import { readPage, withQueryParams, writePage } from '@/shared/lib/queryParams'
 import { Button } from '@/shared/ui/Button'
+import { EmptyState } from '@/shared/ui/EmptyState'
+import { FOCUS_RING } from '@/shared/ui/focusRing'
+import { Pagination } from '@/shared/ui/Pagination'
 import { GLASS_PANEL } from '@/shared/ui/panel'
 import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
 
-/**
- * 한 화면에 깔 향수 수. 백엔드 기본값은 20 입니다.
- *
- * 6열이라 30이면 정확히 다섯 줄로 떨어집니다 — 20이면 마지막 줄에 두 장만 남아
- * 격자 오른쪽이 비어 끝이 잘린 것처럼 보였습니다.
- */
+/** 한 화면에 깔 향수 수(백엔드 기본값은 20). 6열이라 30이면 다섯 줄로 떨어집니다 */
 const PAGE_SIZE = 30
 
 /**
- * 향수 (와이어프레임 A33 — 상단 메뉴 [향수] 목적지)
+ * 향수 (A33 — 상단 메뉴 [향수] 목적지) + 검색 결과 (A09 — COM-05). 검색어 `?keyword=`
+ * 는 필터 · 브랜드와 AND 로 묶입니다.
  *
- * 와이어프레임 주석:
- * - 아무 필터도 고르지 않은 상태가 기본 — 전체 향수를 보여준다
- * - 카드를 누르면 향수 상세(A10) · 스크롤하면 이어서 로드
- *
- * 필터를 고르기 전에는 "최근 인기 향수" 라는 제목으로 전체를 깔아 둡니다.
- * 첫 화면이 빈 상태로 시작하면 무엇을 하는 화면인지 알 수 없기 때문입니다.
- *
- * 조건을 하나도 보내지 않으면 백엔드가 활성 향수 전체를 돌려줍니다.
- *
- * 위 줄 필터(ranking)는 **전체 사용자 집계** 기준입니다. 내 진열대가 아니라
- * 많은 사람이 진열대에 담은 순으로 좁힙니다. 로그인이 필요 없습니다.
- *
- * TODO: 스크롤 이어서 로드(무한 스크롤). 백엔드 페이지네이션은 이미 준비돼 있어
- * useInfiniteQuery 로 바꾸면 됩니다. 지금은 첫 페이지만 불러옵니다.
+ * NOTE: 쪽 넘김은 검색할 때만이고, 검색어가 없으면 첫 30개가 전부입니다 — 목록은 무한
+ * 스크롤로 갈 자리입니다(docs/UI-명세.md §6). 검색 중에는 순서가 인기가 아니라 검색
+ * 적합도라 순위 숫자를 끕니다.
  */
 export default function PerfumeListPage() {
-  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [ranking, setRanking] = useState<RankingFilter | null>(null)
-  const [gender, setGender] = useState<GenderFilter | null>(null)
+
+  /*
+    NOTE: 필터는 `useState` 가 아니라 주소에 둡니다 — 상세로 갔다 오면 이 화면이
+    새로 만들어져 `useState` 는 처음 값으로 돌아갑니다. 값은 사람이 고쳐 쓸 수
+    있으므로 읽을 때 거릅니다.
+  */
+  const ranking = readRankingFilter(searchParams.get('ranking'))
+  const gender = readGenderFilter(searchParams.get('gender'))
 
   // A34 브랜드 페이지에서 카드를 누르면 ?brand= 를 달고 옵니다
   const brand = searchParams.get('brand')
+  const keyword = (searchParams.get('keyword') ?? '').trim()
+  const searching = keyword.length > 0
+  const page = readPage(searchParams)
 
-  const { data, isPending } = useQuery(
+  const { data, isPending, isError, refetch } = useQuery(
     perfumeListQuery({
+      keyword: searching ? keyword : undefined,
       ranking: ranking ?? undefined,
       gender: gender ?? undefined,
       brand: brand ?? undefined,
+      page: searching ? page : undefined,
       size: PAGE_SIZE,
     }),
   )
 
   const items = data?.perfumes ?? []
 
-  // 검색어·필터로 걸러 0건이 됐을 때만 [초기화] 를 보여줍니다.
-  // 원래 데이터가 없는 경우에는 초기화해도 달라지지 않으니 버튼을 걸지 않습니다.
-  const hasFilter = ranking !== null || gender !== null || brand !== null
+  // 잠수로 들어왔으면 커튼이 이 신호를 기다립니다 — 목록이 칠해지면 다 선 것입니다
+  useDiveReady(!isPending)
 
-  const resetFilters = () => {
-    setRanking(null)
-    setGender(null)
-    const next = new URLSearchParams(searchParams)
-    next.delete('brand')
-    setSearchParams(next)
+  const filtered = ranking !== null || gender !== null || brand !== null
+
+  // 쪽도 함께 처음으로 돌립니다 — 3쪽을 보다 조건을 켜면 결과가 줄어 그 쪽이 빕니다
+  const setFilter = (key: 'ranking' | 'gender', value: string | null) => {
+    setSearchParams(withQueryParams(searchParams, { [key]: value, page: null }))
   }
+
+  // 걸러서 0건일 때만 [초기화] 입니다 — 원래 자료가 없으면 눌러도 달라지지 않습니다
+  const resetButton = (filtered || searching) && (
+    <Button
+      variant="outline"
+      onClick={() => {
+        setSearchParams(
+          withQueryParams(searchParams, {
+            ranking: null,
+            gender: null,
+            brand: null,
+            keyword: null,
+            page: null,
+          }),
+        )
+      }}
+    >
+      초기화
+    </Button>
+  )
+
+  // 0건인지는 그린 줄 수가 아니라 건수로 가릅니다 — 범위를 넘은 쪽에서도 "결과가
+  // 없습니다" 가 떠서 결과가 있는데 없다고 말하게 됩니다
+  const searchEmpty =
+    !searching || !data ? undefined : data.totalElements > 0 ? (
+      <EmptyState
+        title="이 쪽에는 결과가 없습니다"
+        description="앞쪽으로 돌아가 주세요."
+      />
+    ) : (
+      <EmptyState
+        title="검색 결과가 없습니다"
+        description={`'${keyword}' 와 일치하는 향수를 찾지 못했습니다.`}
+        action={resetButton}
+      />
+    )
+
+  const heading = searching
+    ? '검색 결과'
+    : filtered
+      ? '조건에 맞는 향수'
+      : '최근 인기 향수'
+
+  // 검색은 전체 건수, 목록은 그린 개수입니다 — 목록은 첫 30개만 불러서 전체 건수를
+  // 적으면 "1,284개" 라 써 놓고 서른 장을 그리게 됩니다
+  const count = searching
+    ? (data?.totalElements ?? null)
+    : items.length > 0
+      ? items.length
+      : null
 
   return (
     <div className="space-y-3.75">
       <h1 className="sr-only">향수</h1>
 
-      {/*
-        헤더에 검색창이 없고 검색은 각 페이지 안에 있다는 와이어프레임 규칙.
-
-        폭을 본문 끝까지 늘리지 않고 **가운데**에 둡니다 — 1440 에서 꽉 채우면
-        입력칸 하나가 화면 위쪽을 가로지르는 가장 큰 덩이가 되어, 아래 향수 격자보다
-        먼저 눈에 듭니다. 가운데에 두는 것은 메인(3D 향 지도)과 같은 자리입니다.
-      */}
+      {/* 헤더에 검색창이 없고 검색은 각 페이지 안에 있다는 와이어프레임 규칙 */}
       <SearchField
         className={cn(SEARCH_FIELD_LIST_WIDTH, 'mx-auto w-full')}
         label="향수명 또는 브랜드명으로 검색"
         placeholder="향수명 · 브랜드로 검색해주세요."
-        onSearch={(keyword) => {
-          const trimmed = keyword.trim()
-          if (!trimmed) return
-          // 검색을 누르면 검색 결과 화면(A09)으로 넘깁니다
-          navigate(
-            `${ROUTES.PERFUME_SEARCH}?keyword=${encodeURIComponent(trimmed)}`,
+        defaultValue={keyword}
+        // key 를 주어 주소가 바뀌면 입력값도 따라옵니다 (초기화 · 뒤로 가기)
+        key={keyword}
+        onSearch={(next) => {
+          setSearchParams(
+            withQueryParams(searchParams, {
+              keyword: next.trim() || null,
+              page: null,
+            }),
           )
         }}
       />
 
       {brand && (
         <div className="flex items-center gap-2.5">
-          <span className="border-line text-ink flex items-center gap-2.5 border px-2.5 py-1.25 text-[11px]">
+          <span className="border-line text-ink text-caption flex items-center gap-2.5 border px-2.5 py-1.25">
             브랜드: {brand}
             <button
               type="button"
               aria-label={`브랜드 필터 ${brand} 해제`}
-              onClick={() => {
-                const next = new URLSearchParams(searchParams)
-                next.delete('brand')
-                setSearchParams(next)
-              }}
-              className="text-ink-muted hover:text-ink"
+              onClick={() =>
+                setSearchParams(
+                  withQueryParams(searchParams, { brand: null, page: null }),
+                )
+              }
+              className={cn('text-ink-muted hover:text-ink', FOCUS_RING)}
             >
               <span aria-hidden>×</span>
             </button>
@@ -121,44 +164,51 @@ export default function PerfumeListPage() {
       <PerfumeFilters
         ranking={ranking}
         gender={gender}
-        onRankingChange={setRanking}
-        onGenderChange={setGender}
+        onRankingChange={(next) => setFilter('ranking', next)}
+        onGenderChange={(next) => setFilter('gender', next)}
       />
 
-      {/*
-        유리판. 향수 격자는 이 판 위에 놓입니다 — 어두운 방 안의 밝은 표면이라
-        판 안쪽은 색 토큰이 다시 밝은 화면 값으로 돌아갑니다
-        (styles/scent-display.css 의 .scent-glass).
-
-        구분선(hr)을 걷어냈습니다. 판 테두리가 이미 "여기서부터 목록" 을 긋고 있어
-        선을 또 그으면 경계가 두 겹이 됩니다.
-      */}
       <section className={GLASS_PANEL}>
         <div className="mb-6.25 flex items-baseline gap-2.5">
-          {/* 글자 크기·굵기는 S15P21E203-162 타이포 스케일에서 확정합니다 */}
-          <h2 className="text-ink font-serif text-2xl">
-            {hasFilter ? '조건에 맞는 향수' : '최근 인기 향수'}
-          </h2>
-          {items.length > 0 && (
-            <span className="text-ink-muted text-caption">
-              {items.length}개
-            </span>
+          <h2 className="text-ink font-serif text-2xl">{heading}</h2>
+          {count !== null && (
+            <span className="text-ink-muted text-caption">{count}개</span>
           )}
         </div>
 
-        <PerfumeGrid
-          items={items}
-          isPending={isPending}
-          columns={6}
-          rankable
-          emptyAction={
-            hasFilter && (
-              <Button variant="outline" onClick={resetFilters}>
-                초기화
+        {isError ? (
+          <EmptyState
+            title="향수를 불러오지 못했습니다"
+            description="다시 시도해주세요."
+            action={
+              <Button variant="outline" onClick={() => refetch()}>
+                다시 시도
               </Button>
-            )
-          }
-        />
+            }
+          />
+        ) : (
+          <PerfumeGrid
+            items={items}
+            isPending={isPending}
+            columns={6}
+            rankable={!searching}
+            empty={searchEmpty}
+            emptyAction={resetButton}
+          />
+        )}
+
+        {searching && data && (
+          <Pagination
+            className="mt-6.25"
+            label="검색 결과 페이지"
+            page={page}
+            size={PAGE_SIZE}
+            totalElements={data.totalElements}
+            onPageChange={(next) =>
+              setSearchParams(writePage(searchParams, next))
+            }
+          />
+        )}
       </section>
     </div>
   )

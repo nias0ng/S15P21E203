@@ -26,7 +26,7 @@
 
 LLM 추정을 붙이려면 추정 함수를 만들어 넘긴다. 이 모듈과 엔진은 네트워크를 모른다.
 
-    estimate = ulog.cached_estimator(my_gms_call)   # 같은 표현은 한 번만 부른다
+    estimate = ulog.cached_estimator(my_gms_call)   # 같은 원문은 한 번만 부른다
     out = recommend(index, text, estimator=estimate)
 
 저장 형식
@@ -49,15 +49,21 @@ from __future__ import annotations
 import collections
 import datetime as dt
 import json
+import logging
 import pathlib
 import re
 import unicodedata
+
+LOGGER = logging.getLogger(__name__)
 
 MAX_RAW_CHARS = 500       # 설문 실측 최대가 600자(행운의 편지)였다
 RETENTION_DAYS = 30       # 이 기간이 지나면 raw_text 만 비운다
 
 _LOG_DIR = pathlib.Path(__file__).resolve().parent / "logs"
 DEFAULT_LOG = _LOG_DIR / "unmatched.jsonl"
+# 오타 검문소가 한 일. **미매칭 로그와 파일을 나눈다** — 교정에 성공한 표현은 미매칭이
+# 아니게 되어 저 파일에 안 남고, 같은 파일에 섞으면 `review_queue()` 의 집계가 오염된다.
+DEFAULT_CORRECTION_LOG = _LOG_DIR / "corrections.jsonl"
 
 # 미매칭 원인 — 셋은 고쳐야 할 곳이 다르다
 NOT_IN_LEXICON = "NOT_IN_LEXICON"          # 사전에 없다 -> 항목을 추가한다
@@ -113,6 +119,55 @@ def record(result, path=DEFAULT_LOG, max_raw_chars=MAX_RAW_CHARS, now=None):
             "result_count": len(result.get("results") or []) if guess else None,
         }, ensure_ascii=False))
 
+    with path.open("a", encoding="utf-8", newline="\n") as handle:
+        handle.write("\n".join(lines) + "\n")
+    return len(lines)
+
+
+def record_corrections(result, path=DEFAULT_CORRECTION_LOG,
+                       max_raw_chars=MAX_RAW_CHARS, now=None):
+    """오타 검문소가 한 일을 한 줄씩 덧붙인다. int (쓴 줄 수).
+
+    result : dict   nlr_engine.recommend() 가 낸 것. `typo_verdict` 를 읽는다
+
+    **`"그대로"` 는 쓰지 않는다.** 대부분이 그것이라(실측 369개 중 97.8%) 쓰면 파일이
+    의미 없이 커진다. 검문소가 실제로 개입한 것만 남긴다.
+
+    **왜 남기나** — 교정에 성공하면 그 표현은 미매칭이 아니게 되어 `record()` 가 안
+    남긴다. 이 파일이 없으면 배포 뒤에 *"검문소가 무엇을 고쳤나 · 오교정은 없었나"* 를
+    볼 방법이 없다. 검문소를 계속 둘지 판단할 근거가 여기서 나온다.
+
+    개인정보는 `record()` 와 같은 규칙이다 — 원문을 `max_raw_chars` 자까지만 쓰고
+    `purge_raw_text()` 가 함께 비운다.
+    """
+    verdict = result.get("typo_verdict")
+    if verdict in (None, "그대로"):
+        return 0
+
+    path = pathlib.Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    stamp = (now or dt.datetime.now(dt.timezone.utc).astimezone()).isoformat(timespec="seconds")
+    lines = []
+    for item in (result.get("typo_corrections") or []):
+        lines.append(json.dumps({
+            "ts": stamp,
+            "raw_text": str(result.get("query", ""))[:max_raw_chars],
+            "verdict": verdict,
+            "expression": item.get("expression"),
+            "word": item.get("word"),
+            # 교정이면 고친 낱말 하나, 모호면 고르지 못한 후보들이다
+            "corrected": item.get("corrected"),
+            "candidates": item.get("candidates"),
+            "result_count": len(result.get("results") or []),
+        }, ensure_ascii=False))
+    if not lines:
+        # **여기 오면 안 된다.** `typo_gate` 는 `"교정"` 이면 최소 1건, `"모호"` 면 정확히
+        # 1건을 돌려주고, 빈 목록은 `"그대로"` 뿐인데 그건 위에서 걸렀다.
+        # 조용히 넘기면 판정이 소리 없이 사라지므로 남긴다 — 검문소를 계속 둘지
+        # 판단할 근거가 이 파일이다.
+        LOGGER.warning("검문소 판정이 '%s' 인데 남길 항목이 없다. "
+                       "typo_gate 와 이 함수가 어긋났다는 뜻이다", verdict)
+        return 0
     with path.open("a", encoding="utf-8", newline="\n") as handle:
         handle.write("\n".join(lines) + "\n")
     return len(lines)
@@ -188,44 +243,76 @@ def load_estimates(path=DEFAULT_LOG):
     return out
 
 
-def cached_estimator(estimate, path=DEFAULT_LOG):
+def cached_estimator(estimate):
     """추정 함수를 캐시로 감싼다. callable.
 
-    estimate : callable  표현 하나(str)를 받아 {"accords": [...], "reasoning": str} 를 낸다
+    estimate : callable  (원문, 표현 목록) 을 받아 표현마다 하나씩 담긴 list 를 낸다
 
     같은 표현을 두 번 물으면 같은 답이 나오게 한다. 측정(노트북 26)상 LLM 은 같은 뜻에
-    다른 답을 내므로, 캐시가 없으면 사용자마다 다른 향수를 받고 `llm_accords` 기록도
-    표현마다 값이 여러 개가 되어 검토할 수 없다.
+    다른 답을 내므로, 캐시가 없으면 한 요청 안에서도 표현마다 답이 갈린다.
 
-    캐시는 별도 파일이 아니라 **이 로그 자체**다. 기동 시 한 번 읽어 메모리에 둔다.
+    **이 프로세스 안에서만 캐시한다. 파일을 읽지 않는다.**
 
-    **읽기와 쓰기가 나뉘어 있다.** 이 함수는 읽기만 하고 파일에 쓰지 않는다.
+    전에는 기동할 때 미매칭 로그를 읽어 캐시를 채웠다. 그러면 **LLM 이 한 번 잘못
+    추정한 값이 파일에 남아 영구히 되풀이된다.** 실제로 확인했다 [측정 2026-09-18].
 
-        읽기   기동 시 `load_estimates(path)` 한 번 (아래 `cache = ...`)
-        쓰기   `server.py` 가 매 요청 뒤 `unmatched_log.record()` 를 부른다.
-               `recommend()` 가 돌려준 `llm_estimate` 가 `llm_accords` 로 들어간다
+        "빨레 냄새 나는 향수"      <- `빨래` 의 오타
+          ⑤단계 추정 -> rubber · plastic   ("빨레 = 고무 같은 재질" 이라고 지어냈다)
+          조건 ['plastic','rubber'] -> 1위 Garage
+          그 줄이 로그에 남아 프로세스를 다시 띄워도 같은 결과가 나왔다
 
-    그래서 `wrapped()` 안에서 `cache[key] = ...` 만 보고 "파일에 안 쓴다" 로 읽기 쉽다.
-    실제로는 그 요청의 응답이 기록될 때 함께 남고, 재시작하면 위 읽기로 복구된다.
+    LLM 의 일시적 오류가 파일을 거치면서 **시스템의 지속적 규칙**이 된다. 재현성은
+    올라가지만 틀린 답의 재현성이다.
 
-    **⚠ 키는 사용자 원문이 아니라 ①단계가 뽑은 표현이다.** ①단계는 같은 문장에서도
-    매번 조금 다른 표현을 뽑는다(`포근한 향` · `포근한 느낌` · `cozy`). 표현이 달라지면
-    키가 안 맞아 캐시에 있어도 다시 묻는다. **같은 표현의 흔들림만 막고 표현 자체의
-    흔들림은 막지 못한다** [측정 2026-09-17 · 측정 기록 21번].
+    **잃는 것은 작다.** 캐시 키가 ①단계가 뽑은 표현인데 그 표현이 같은 문장에서도
+    매번 달라진다 — `additional_requirements` 일치율 **9.2%** [측정 기록 17·23번].
+    즉 재시작 뒤에 키가 맞을 확률이 10% 남짓이라 파일로 이어 붙일 실익이 원래 작았다.
+    측정 기록 23번도 *"캐시는 한 프로세스 안에서 같은 표현이 두 번 나올 때만 맞는다"*
+    로 같은 것을 적었다.
+
+    **기록은 그대로 쌓인다.** `record()`(쓰기)와 이 함수(읽기)는 원래 분리돼 있어서
+    읽기만 끊으면 미매칭 표현 기록은 남는다. 사전 확장 근거를 잃지 않는다.
+
+    **⚠ 키는 원문과 표현 목록을 함께 쓴다.** 표현이 달라지면 키가 안 맞는다.
+    **같은 요청의 흔들림만 막고 표현 자체의 흔들림은 막지 못한다**
+    [측정 2026-09-17 · 측정 기록 21번].
+
+    **표현 단위가 아니라 원문 단위다** [측정 기록 37번]. 묶음 판은 답이 원문에 따라
+    달라지므로, 표현 이름만으로 기억하면 **다른 문장에서 나온 답**을 가져다 쓴다.
+    그리고 표현 단위로 남겨 두면 캐시에 든 것이 묶음에서 빠져 **같은 문장인데 부를
+    때마다 모델이 보는 조각 수가 달라진다.** 잃는 재사용은 작다 — ⑤단계가 도는
+    문장 안에서 같은 표현이 두 번 나오는 자리가 **합성 1.0% · 설문 0.8%** 다.
+
+    ⚠ 31번이 적은 `설문 2.6% · 합성 10.1%` 는 **⑤단계가 안 도는 문장까지 센 값**이다
+    (재현해 9.9% · 2.5% 로 확인했다). ⑤단계는 조건이 0개인 문장에서만 도는데 그
+    문장들의 표현은 거의 안 겹친다.
     """
-    cache = load_estimates(path)
+    cache = {}
 
-    def wrapped(expression):
-        key = normalize_key(expression)
+    def wrapped(raw_text, expressions):
+        key = (normalize_key(raw_text), tuple(expressions))
         if key not in cache:
-            guess = estimate(expression)
+            guesses = estimate(raw_text, list(expressions))
             # **실패(`None`)를 캐시에 넣지 않는다.** 넣으면 네트워크가 한 번 끊긴
-            # 표현이 "향이 아님" 으로 굳어 영영 안 풀린다. 다음 요청에서 다시 묻는다.
-            if guess is None:
+            # 문장이 "향이 아님" 으로 굳어 영영 안 풀린다. 다음 요청에서 다시 묻는다.
+            if guesses is None:
                 return None
-            cache[key] = {"accords": list(guess.get("accords") or []),
-                          "reasoning": guess.get("reasoning")}
-        return cache[key]
+            # **빠진 자리(`None`)가 하나라도 있으면 캐시하지 않는다.** 부른 쪽이 그
+            # 자리만 다시 묻고, 그 재호출은 표현 하나짜리 목록이라 키가 달라 따로 캐시된다.
+            #
+            # **왜 부분 성공을 안 담는가** — 담으면 묶음 호출 1회는 아끼지만 **누락된
+            # 자리가 굳어** 그 문장은 올 때마다 재호출을 낸다. 위에서 실패를 안 담는 것과
+            # 같은 판단이다(N15 · `빨레` 가 rubber/plastic 으로 굳던 일). 다음에 깨끗한
+            # 답을 받을 기회를 남긴다.
+            #
+            # 잃는 것은 작다 — 서식 오류가 났고(측정 0/55) **그리고** 같은 원문이 같은
+            # 표현 목록으로 다시 와야 하는데, ①단계의 `additional_requirements` 일치율이
+            # 9.2% 라 목록까지 같을 확률이 낮다 [측정 기록 17·23번]. [MR 리뷰 2026-09-21]
+            if any(g is None for g in guesses):
+                return list(guesses)
+            cache[key] = [{"accords": list(g.get("accords") or []),
+                           "reasoning": g.get("reasoning")} for g in guesses]
+        return list(cache[key])
 
     wrapped.cache = cache
     return wrapped

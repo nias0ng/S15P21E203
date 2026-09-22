@@ -66,6 +66,9 @@ _BODY_PARSE_MESSAGE = "요청 본문을 읽지 못했습니다. UTF-8 로 인코
 
 # 환경마다 다를 수 있는 값은 환경변수로 받는다. 컨테이너에서는 볼륨 경로를 넣는다.
 LOG_PATH = pathlib.Path(os.environ.get("NLR_LOG_PATH", unmatched_log.DEFAULT_LOG))
+# 오타 검문소 기록. 미매칭 로그와 같은 디렉터리에 두되 파일을 나눈다.
+CORRECTION_LOG_PATH = pathlib.Path(
+    os.environ.get("NLR_CORRECTION_LOG_PATH", unmatched_log.DEFAULT_CORRECTION_LOG))
 
 # ⑤단계 미매칭 추정 스위치. 끄면 이 기능을 얹기 전과 똑같이 돈다.
 # 요청마다 GMS 호출이 붙을 수 있어(캐시에 없을 때만) 끌 수 있게 둔다.
@@ -113,14 +116,13 @@ async def lifespan(app: FastAPI):
                 llm["model"], llm["prompt_sha256"])
 
     # ⑤단계 미매칭 추정. **조건이 하나도 안 잡혔을 때만** 돈다.
-    # `cached_estimator` 가 미매칭 로그를 캐시로 쓴다 — 같은 표현은 항상 같은 답이고
-    # 재시작해도 파일에서 다시 채운다. 캐시가 없으면 같은 문장에 매번 다른 향수가
-    # 나온다 [측정 2026-09-17 · 같은 설정으로 두 번 불러 5문장 중 5문장이 달랐다].
+    # `cached_estimator` 는 **이 프로세스 안에서만** 캐시한다. 재시작하면 비워진다 —
+    # 파일에서 이어받으면 LLM 이 한 번 잘못 추정한 값이 영구히 되풀이된다
+    # [측정 2026-09-18 · `"빨레"` 가 rubber/plastic 으로 굳어 재기동 뒤에도 같았다].
     if ESTIMATOR_ENABLED and llm["enabled"]:
         app.state.estimator = unmatched_log.cached_estimator(
-            llm_stage1.make_estimator(app.state.index), path=LOG_PATH)
-        LOGGER.info("⑤단계 미매칭 추정 켜짐 — 캐시 %d개를 %s 에서 읽었다",
-                    len(app.state.estimator.cache), LOG_PATH)
+            llm_stage1.make_estimator(app.state.index))
+        LOGGER.info("⑤단계 미매칭 추정 켜짐 — 캐시는 이 프로세스 안에서만 유지된다")
     else:
         app.state.estimator = None
         LOGGER.info("⑤단계 미매칭 추정 꺼짐 (NLR_ESTIMATOR=%s · GMS 키 %s)",
@@ -315,6 +317,8 @@ def _record_unmatched(result):
     """
     try:
         unmatched_log.record(result, path=LOG_PATH)
+        # 오타 검문소가 개입했을 때만 쓴다. 파일이 다른 이유는 unmatched_log 에 적었다.
+        unmatched_log.record_corrections(result, path=CORRECTION_LOG_PATH)
     except OSError as exc:
         LOGGER.error("미매칭 로그를 쓰지 못했다. 추천은 그대로 돌려준다 — %s: %s (경로 %s)",
                      type(exc).__name__, exc, LOG_PATH)
@@ -399,6 +403,16 @@ def recommend(body: RecommendRequest, request: Request):
         "query": out["query"],
         **_version(index),
         "conditions": _camel_conditions(out["conditions"]),
+        # 성별·계절·낮밤·노트로 좁힌 근거. **추천 5개에 똑같이 적용되므로 최상위에
+        # 한 번만 넣는다** [S15P21E203-351]. `matched` 는 accord 근거라 안 바뀐다 —
+        # 백엔드는 기존 변환을 그대로 두고 이 목록만 더 읽으면 된다.
+        "matchedData": [{
+            "field": m["field"],
+            "value": m["value"],
+            "label": m["label"],
+            "from": m["from"],
+            "tier": m["tier"],
+        } for m in out["matched_data"]],
         "results": [{
             "fragranticaId": r["perfume_id"],
             "name": r["name"],

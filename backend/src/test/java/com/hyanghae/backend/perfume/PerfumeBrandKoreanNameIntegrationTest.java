@@ -29,6 +29,9 @@ import org.springframework.test.web.servlet.MockMvc;
  *   <li>브랜드 1 {@code Chanel} / 샤넬 — 한국어 이름이 있습니다.
  *   <li>브랜드 2 {@code Diptyque} — 한국어 이름이 <b>없습니다.</b> 아직 못 채운 브랜드가 있고,
  *       표기만 다른 중복 브랜드는 한쪽만 한국어 이름을 갖습니다.
+ *   <li>브랜드 3 {@code Le Labo} / 르 라보 — 한국어 이름이 <b>어느 향수 이름에도 없습니다.</b>
+ *       검색어가 브랜드 한국어 이름에만 걸리는지 보려면 이런 브랜드가 필요합니다. 샤넬로는
+ *       확인되지 않습니다. 향수 1번의 이름이 "블루 드 샤넬"이라 브랜드를 보지 않아도 걸립니다.
  * </ul>
  */
 @IntegrationTest
@@ -40,6 +43,7 @@ class PerfumeBrandKoreanNameIntegrationTest {
 
     private static final long CHANEL = 1;
     private static final long DIPTYQUE = 2;
+    private static final long LE_LABO = 3;
 
     @Autowired
     private MockMvc mockMvc;
@@ -53,11 +57,13 @@ class PerfumeBrandKoreanNameIntegrationTest {
 
         insertBrand(CHANEL, "Chanel", "샤넬");
         insertBrand(DIPTYQUE, "Diptyque", null);
+        insertBrand(LE_LABO, "Le Labo", "르 라보");
 
         insertPerfume(1, CHANEL, "Bleu de Chanel", "블루 드 샤넬");
         insertPerfume(2, CHANEL, "Chance", "챤스");
         insertPerfume(3, DIPTYQUE, "Do Son", "두 손");
         insertPerfume(4, null, "Orphan Scent", null);
+        insertPerfume(5, LE_LABO, "Santal 33", "산탈 33");
     }
 
     @AfterEach
@@ -184,6 +190,78 @@ class PerfumeBrandKoreanNameIntegrationTest {
                         .param("ranking", "OWNED")
                         .param("brandId", String.valueOf(DIPTYQUE)))
                 .andExpect(jsonPath("$.perfumes.length()").value(0));
+    }
+
+    /**
+     * 브랜드 한국어 이름으로도 향수가 검색됩니다.
+     *
+     * <p>영문 이름만 보던 때는 "르 라보"가 0건이었습니다. 한국어 서비스에서 브랜드를 한글로 치는
+     * 것이 자연스러운 입력인데, 사용자에게는 그 브랜드가 없는 것으로 보였습니다.
+     *
+     * <p>브랜드 3번으로 확인합니다. 샤넬로는 이 동작이 검증되지 않습니다. 향수 1번의 한국어
+     * 이름이 "블루 드 샤넬"이라 브랜드를 보지 않아도 걸려서, 고치기 전에도 통과합니다.
+     */
+    @Test
+    void findsPerfumesByBrandKoreanName() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "르 라보"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(5))
+                .andExpect(jsonPath("$.perfumes[0].brandNameKo").value("르 라보"));
+    }
+
+    /**
+     * 브랜드 한국어 이름도 부분 일치입니다.
+     *
+     * <p>다른 이름들과 같은 규칙입니다. 실제 데이터가 이것을 요구합니다 — 사용자는 "조 말론"을
+     * 치지만 저장된 이름은 "조 말론 런던"입니다. 완전 일치면 그 검색이 다시 0건이 됩니다.
+     */
+    @Test
+    void findsPerfumesByPartialBrandKoreanName() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "라보"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(5));
+    }
+
+    /**
+     * 집계 정렬에도 브랜드 한국어 이름이 걸립니다.
+     *
+     * <p>{@code ranking} 이 있으면 <b>다른 쿼리</b>가 돕니다. 검색 조건이 두 벌이라 한쪽만
+     * 고치면 정렬 칩을 누르는 순간 같은 검색어가 0건이 됩니다.
+     */
+    @Test
+    void findsByBrandKoreanNameInRankingQueryToo() throws Exception {
+        insertShelfItem(1, 5);
+        insertShelfItem(2, 5);
+        insertShelfItem(3, 5);
+
+        mockMvc.perform(get(SEARCH_URL)
+                        .param("ranking", "OWNED")
+                        .param("keyword", "르 라보"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(5));
+    }
+
+    /**
+     * 한국어 이름이 없는 브랜드가 섞여 있어도 검색이 깨지지 않습니다.
+     *
+     * <p>{@code LEFT JOIN} 이라 브랜드가 없는 향수도, 한국어 이름이 비어 있는 브랜드도 있습니다.
+     * 새 조건이 그 행들을 떨어뜨리거나 잘못 끌어오지 않는지 봅니다.
+     */
+    @Test
+    void keepsSearchingBrandsWithoutKoreanName() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "Diptyque"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(3))
+                .andExpect(jsonPath("$.perfumes[0].brandNameKo").doesNotExist());
+
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "Orphan"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(4));
     }
 
     private void insertBrand(long id, String name, String nameKo) {

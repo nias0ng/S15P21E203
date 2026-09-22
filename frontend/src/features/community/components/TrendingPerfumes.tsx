@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { toPerfumeDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
+import { GLASS_PANEL_ASIDE } from '@/shared/ui/panel'
 
 import type { TrendingPerfume } from '../types'
 
@@ -13,18 +14,16 @@ type Props = {
 }
 
 /**
- * 지금 많이 언급되는 향수 (와이어프레임 A22a · A22b 우측)
+ * 지금 많이 언급되는 향수 (A22a · A22b 우측). 향수를 누르면 향수 상세(A10)로
+ * 갑니다 — "그 향수의 후기만 모아 보는" 별도 화면은 만들지 않기로 확정됐습니다.
  *
- * 향수를 누르면 향수 상세(A10)로 갑니다 — "그 향수의 후기만 모아 보는" 별도 화면은
- * 만들지 않기로 확정됐고, 상세의 후기 구역이 그 역할을 합니다.
- *
- * 순위 숫자를 붙인 이유: 숫자가 없으면 그냥 향수 세 개를 나열한 것으로 읽힙니다.
+ * 곁판도 유리입니다(`GLASS_PANEL_ASIDE`) — docs/어두운-방-유리판.md
  */
 export function TrendingPerfumes({ items, days }: Props) {
   if (items.length === 0) return null
 
   return (
-    <aside className="border-line rounded-card bg-surface-card self-start border p-3.75">
+    <aside className={cn(GLASS_PANEL_ASIDE, 'self-start')}>
       <h2 className="text-ink text-heading font-serif font-bold">
         지금 많이 언급되는 향수
       </h2>
@@ -36,7 +35,8 @@ export function TrendingPerfumes({ items, days }: Props) {
               to={toPerfumeDetail(item.perfumeId)}
               state={perfumeViewState('COMMUNITY')}
               className={cn(
-                'hover:bg-line-soft rounded-card flex items-baseline gap-2.5 px-2.5 py-2.5',
+                /* 판 위의 hover 는 **어둡게** — docs/어두운-방-유리판.md */
+                'hover:bg-surface-sunken rounded-card flex items-baseline gap-2.5 px-2.5 py-2.5',
                 'transition-colors duration-120 ease-out',
                 'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
               )}

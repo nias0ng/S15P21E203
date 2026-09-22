@@ -52,3 +52,68 @@ export function h2f(h) {
   if (e === 31) return 0;
   return s * Math.pow(2, e - 15) * (1 + f / 1024);
 }
+
+// ───────── 격자 → 부드러운 닫힌 고리 (2026-09-18) ─────────
+// 마칭 스퀘어로 칸 경계를 잇고 Chaikin 으로 둥글린다. **경계를 격자에서 뽑는 곳은 전부 여기를 쓴다** —
+//   `scentmap.navLoops`(갈 수 있는 바다 · 해도와 미니맵이 같이 읽는다) · `chart.js` 의 안개 윤곽.
+//   두 곳에 적으면 같은 자리가 다른 모양으로 갈라진다 (불변식 2).
+//
+//   C · R    칸 수 (가로 · 세로)
+//   at(i,j)  그 칸이 안쪽이면 1 (격자 밖은 0)
+//   toXZ(k)  꼭짓점 키 → [x, z]. 키는 **두 배 정수 좌표**다 (아래 key2 참고)
+//   rounds   Chaikin 횟수. 칸이 성기면 3, 촘촘하면 2 — 더 돌린다고 더 부드러워지지 않고 **면적만 준다**
+export function traceGrid(C, R, at, toXZ, rounds) {
+  // 변 중점을 두 배 정수 좌표로 적는다 — (2i+1, 2j) 는 칸 중점 (i,j)–(i+1,j) 사이다.
+  //   같은 점이 같은 키가 되므로 이웃 칸의 선분이 저절로 이어진다
+  const key2 = (X, Y) => (X + 4) * 65536 + (Y + 4);
+  const adj = new Map();
+  const seg = (p, q) => {
+    const a = key2(p[0], p[1]), b = key2(q[0], q[1]);
+    if (!adj.has(a)) adj.set(a, []);
+    if (!adj.has(b)) adj.set(b, []);
+    adj.get(a).push(b); adj.get(b).push(a);
+  };
+  // ⚠ 격자 바깥 한 줄까지 돈다 — 가장자리에 닿은 덩어리도 닫힌 고리가 된다
+  for (let j = -1; j < R; j++) for (let i = -1; i < C; i++) {
+    const c = (at(i, j) << 3) | (at(i + 1, j) << 2) | (at(i + 1, j + 1) << 1) | at(i, j + 1);
+    if (c === 0 || c === 15) continue;
+    const T = [2 * i + 1, 2 * j], Rt = [2 * i + 2, 2 * j + 1], B = [2 * i + 1, 2 * j + 2], L = [2 * i, 2 * j + 1];
+    switch (c) {
+      case 1: case 14: seg(L, B); break;
+      case 2: case 13: seg(B, Rt); break;
+      case 3: case 12: seg(L, Rt); break;
+      case 4: case 11: seg(T, Rt); break;
+      case 6: case 9: seg(T, B); break;
+      case 7: case 8: seg(L, T); break;
+      // 대각 안장 — 둘을 **갈라** 둔다 (꼭짓점만 닿은 칸은 이어진 덩어리가 아니다)
+      case 5: seg(T, Rt); seg(L, B); break;
+      case 10: seg(L, T); seg(B, Rt); break;
+    }
+  }
+  const chaikin = (p) => {
+    const o = [];
+    for (let i = 0; i < p.length; i++) {
+      const a = p[i], b = p[(i + 1) % p.length];
+      o.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
+    }
+    return o;
+  };
+  const done = new Set(), loops = [];
+  for (const start of adj.keys()) {
+    if (done.has(start)) continue;
+    const lp = [];
+    let prev = -1, cur = start;
+    for (let guard = 0; guard < 100000; guard++) {
+      done.add(cur); lp.push(cur);
+      const nb = adj.get(cur);
+      const next = nb[0] !== prev ? nb[0] : nb[1];
+      prev = cur; cur = next;
+      if (cur === start || cur === undefined) break;
+    }
+    if (lp.length < 4) continue;
+    let pts = lp.map(toXZ);
+    for (let n = 0; n < rounds; n++) pts = chaikin(pts);
+    loops.push(pts);
+  }
+  return loops;
+}

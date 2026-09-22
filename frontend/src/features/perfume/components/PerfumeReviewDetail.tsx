@@ -1,60 +1,57 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { Link } from 'react-router'
 
 import { isApiError } from '@/shared/api/http'
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
+import { ROUTES, toPerfumeDetail, toReviewDetail } from '@/shared/config/routes'
+import { useLikeToggle } from '@/shared/hooks/useLikeToggle'
+import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { LinkButton } from '@/shared/ui/LinkButton'
+import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
+import { GLASS_PANEL } from '@/shared/ui/panel'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
-import { deleteReview } from '../api'
-import { perfumeKeys, reviewKeys } from '../queries'
+import { deleteReview, likeReview, unlikeReview } from '../api'
+import { perfumeDetailQuery, perfumeKeys, reviewKeys } from '../queries'
+import { GENDER_TEXT } from '../types'
 import type { ReviewDetail } from '../types'
 
 type Props = {
   review: ReviewDetail
-  /** 이 후기가 달린 향수 상세로 돌아갈 경로 */
-  backTo: string
-  /** 후기 수정 화면 경로 (A24a 가 후기 대상을 걸고 열립니다) */
   editTo: string
-  /**
-   * 삭제가 끝난 뒤 화면을 옮기는 일은 부르는 쪽이 합니다.
-   *
-   * 여기서 직접 하지 않는 이유: 삭제하면 커뮤니티 게시판 목록도 낡는데,
-   * `features/perfume` 은 `features/community` 를 import 할 수 없습니다. 키를
-   * 문자열로 적어 넘어갈 수는 있지만 그건 린트만 피하고 경계는 넘는 것입니다.
-   * 두 도메인을 다 아는 곳은 화면(`pages/`)이라 거기서 정리합니다.
-   */
+  /** 삭제 뒤 화면 이동은 부르는 쪽 몫입니다 — `features/perfume` 은 `features/community` 를 import 할 수 없습니다 */
   onDeleted?: () => void
 }
 
 /**
- * 후기 상세 (와이어프레임 A12 — DTL-03 · DTL-05 · DTL-06)
- *
- * 와이어프레임 주석: "본인이 작성한 후기에만 수정 · 삭제가 보인다".
- * 그래서 review.mine 일 때만 두 버튼을 그립니다. 화면에서 숨기는 것만으로는
- * 권한이 지켜지지 않으니 백엔드도 수정 · 삭제 때 작성자를 다시 확인합니다.
+ * 후기 상세 (A12). 어두운 방 · 유리판 구성은 docs/어두운-방-유리판.md 이고, 화면이
+ * 수정 · 삭제를 숨기는 것과 별개로 백엔드도 작성자를 다시 확인합니다.
  */
-export function PerfumeReviewDetail({
-  review,
-  backTo,
-  editTo,
-  onDeleted,
-}: Props) {
+export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
   const queryClient = useQueryClient()
   const [deleteOpen, setDeleteOpen] = useState(false)
+
+  /* 사진 · 한국어 이름 · 성별은 **후기 응답에 없어** 향수 상세를 따로 부릅니다 */
+  const perfume = useQuery(perfumeDetailQuery(review.perfume.perfumeId))
+  const brandName = perfume.data?.brand?.name ?? review.perfume.brand
+  /* 둘 다 없을 수 있어 배열로 모아 잇습니다 — 직접 붙이면 가운뎃점만 남습니다 */
+  const sub = [
+    perfume.data?.nameKo,
+    perfume.data?.gender ? GENDER_TEXT[perfume.data.gender] : null,
+  ]
+    .filter((part): part is string => typeof part === 'string')
+    .join(' · ')
 
   const removal = useMutation({
     mutationFn: () => deleteReview(review.reviewId),
     onSuccess: () => {
       setDeleteOpen(false)
-      /*
-       * 지운 후기의 캐시를 남겨두면 뒤로가기로 그 화면이 다시 뜹니다.
-       * 향수 상세의 후기 목록 · 계절 통계 · 요약도 함께 낡습니다.
-       */
+      /* 지운 후기의 캐시를 남겨두면 뒤로가기로 그 화면이 다시 뜹니다 */
       queryClient.removeQueries({
         queryKey: reviewKeys.detail(review.reviewId),
       })
@@ -66,20 +63,26 @@ export function PerfumeReviewDetail({
     },
   })
 
+  /** 다시 부르지 않고 캐시에 덮어씁니다 — 여는 것이 곧 조회라 조회수가 한 번 더 오릅니다 */
+  const likeToggle = useLikeToggle({
+    like: likeReview,
+    unlike: unlikeReview,
+    onToggled: (result) => {
+      queryClient.setQueryData(
+        reviewKeys.detail(review.reviewId),
+        (old: ReviewDetail | undefined) =>
+          old === undefined
+            ? old
+            : { ...old, liked: result.liked, likeCount: result.likeCount },
+      )
+    },
+  })
+
   return (
-    <article className="border-line bg-surface-card border">
-      <div className="space-y-3.75 p-6.25">
-        {/*
-          후기를 읽다 향수로 건너가는 길입니다 — 들어온 길은 늘 커뮤니티입니다
-          (후기 게시판 · 향수 상세의 후기 목록 어느 쪽에서 왔든 읽던 것은 후기입니다).
-        */}
-        <LinkButton
-          to={backTo}
-          state={perfumeViewState('COMMUNITY')}
-          variant="outline"
-          size="sm"
-        >
-          ← {review.perfume.name}
+    <article className={GLASS_PANEL}>
+      <div className="space-y-3.75">
+        <LinkButton to={ROUTES.COMMUNITY_REVIEWS} variant="outline" size="sm">
+          ← 후기 게시판
         </LinkButton>
 
         <h1 className="text-ink text-title font-serif font-semibold">
@@ -87,31 +90,56 @@ export function PerfumeReviewDetail({
         </h1>
 
         <div className="flex items-center gap-2.5">
-          {/* TODO: 프로필 이미지 연동 */}
+          {/* TODO: 프로필 이미지 연동 (S15P21E203-404) */}
           <Thumbnail className="size-7.5 shrink-0 rounded-full" />
-          {/* 탈퇴한 회원의 후기는 글만 남고 작성자가 지워집니다 */}
           <span className="text-ink text-xs">
             {review.nickname ?? '탈퇴한 회원'}
           </span>
-          <span className="text-ink-muted text-[10.5px]">
+          <span className="text-ink-muted text-caption">
             · {formatRelativeTime(review.createdAt)}
           </span>
 
-          {review.mine && (
-            <span className="ml-auto flex gap-1.25">
-              <LinkButton to={editTo} variant="outline" size="sm">
-                수정
-              </LinkButton>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={removal.isPending}
-                onClick={() => setDeleteOpen(true)}
-              >
-                {removal.isPending ? '삭제 중' : '삭제'}
-              </Button>
-            </span>
-          )}
+          <span className="ml-auto flex items-center gap-2.5">
+            {review.mine && (
+              <>
+                <LinkButton to={editTo} variant="outline" size="sm">
+                  수정
+                </LinkButton>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={removal.isPending}
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  {removal.isPending ? '삭제 중' : '삭제'}
+                </Button>
+              </>
+            )}
+
+            {/* 비로그인은 보내 보지 않고 먼저 안내합니다 — 401 이 나면 인터셉터가 재발급을 시도하다 세션을 정리해 버립니다 */}
+            <button
+              type="button"
+              aria-pressed={review.liked}
+              aria-label={`좋아요 ${review.likeCount}`}
+              disabled={likeToggle.isPending}
+              onClick={() =>
+                likeToggle.toggle({
+                  id: review.reviewId,
+                  liked: review.liked,
+                })
+              }
+              className={cn(
+                'rounded-card text-title leading-none',
+                'transition-colors duration-120 ease-out',
+                'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
+                review.liked
+                  ? 'text-danger'
+                  : 'text-ink-muted hover:text-danger',
+              )}
+            >
+              <span aria-hidden>{review.liked ? '♥' : '♡'}</span>
+            </button>
+          </span>
         </div>
 
         <hr className="border-line" />
@@ -130,13 +158,42 @@ export function PerfumeReviewDetail({
           </div>
         )}
 
+        {/* 들어온 길을 실어 보내 조회 기록에 "커뮤니티에서 왔다" 가 남습니다 */}
+        <Link
+          to={toPerfumeDetail(review.perfume.perfumeId)}
+          state={perfumeViewState('COMMUNITY')}
+          className={cn(
+            'border-line hover:border-accent rounded-card',
+            'flex items-center gap-3.75 border p-2.5',
+            'transition-colors duration-120 ease-out',
+            'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
+          )}
+        >
+          <Thumbnail
+            src={perfume.data?.images[0] ?? null}
+            fit="contain"
+            bare
+            className="size-15 shrink-0"
+          />
+
+          <div className="min-w-0 space-y-0.5">
+            {brandName && (
+              <p className="text-ink-muted text-caption">{brandName}</p>
+            )}
+            <p className="text-ink text-body font-medium">
+              {review.perfume.name}
+            </p>
+            {sub && <p className="text-ink-muted text-caption">{sub}</p>}
+          </div>
+
+          <span className="text-ink-muted text-caption ml-auto shrink-0">
+            향수 상세 →
+          </span>
+        </Link>
+
         <hr className="border-line" />
 
-        {/*
-          조회수는 이번 조회를 포함한 수입니다. **상세에서는 읽기 전용입니다** —
-          좋아요를 누르는 것은 후기 게시판(A22a)에서만 합니다.
-        */}
-        <p className="text-ink-muted text-[10.5px]">
+        <p className="text-ink-muted text-caption">
           좋아요 {review.likeCount} · 조회 {review.viewCount}
         </p>
 
@@ -147,12 +204,25 @@ export function PerfumeReviewDetail({
               : '삭제하지 못했습니다. 잠시 후 다시 시도해주세요.'}
           </p>
         )}
+
+        {likeToggle.error !== null && (
+          <p className="text-danger text-caption" role="alert">
+            좋아요를 누르지 못했습니다. 잠시 후 다시 시도해주세요.
+          </p>
+        )}
       </div>
 
       <ConfirmDialog
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
         onConfirm={() => removal.mutate()}
+      />
+
+      <LoginRequiredDialog
+        open={likeToggle.loginRequired}
+        onClose={likeToggle.closeLoginRequired}
+        redirectTo={toReviewDetail(review.reviewId)}
+        description="좋아요는 로그인한 뒤에 누를 수 있습니다. 후기는 로그인 없이도 읽을 수 있습니다."
       />
     </article>
   )

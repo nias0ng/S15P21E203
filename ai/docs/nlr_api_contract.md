@@ -109,12 +109,49 @@ Content-Type: application/json
 | `status` | 뜻 | 화면에서 |
 |---|---|---|
 | `OK` | 조건을 **전부** 만족하는 향수를 찾음 | 그대로 보여준다 |
-| `OK_RELAXED` | 조건을 넓혔거나(`RELAXED_OR`) **향 조건이 하나뿐이라 순위를 못 정함**(`SINGLE_BROAD`) | **"조건이 넓습니다"** 를 함께 보여주고 더 자세한 입력을 유도한다. 이유는 `diagnostics.relaxed` 에 있다 |
+| `OK_RELAXED` | 조건을 넓혔거나(`RELAXED_OR`) · **향 조건이 하나뿐이라 순위를 못 정함**(`SINGLE_BROAD`) · **향 조건 없이 성별·계절·낮밤·노트로만 고름**(`CONTEXT_ONLY`) | 더 자세한 입력을 유도한다. **이유는 `diagnostics.relaxed` 에 있고 세 경우의 문구가 달라야 한다** — 아래 |
 | `NO_CONDITION` | 향 조건을 하나도 못 뽑음. `perfumes` 는 `[]` | 다시 입력하도록 유도한다 |
 | `NO_RESULT` | 조건은 찾았으나 결과가 없음. `perfumes` 는 `[]` | 현재 발생하지 않는다 |
 
 > **`NO_CONDITION` 일 때 인기 향수를 대신 보여주면 안 된다.** 추천처럼 보이지만 근거가
 > 없다. *"왜 이게 나왔냐"* 에 답할 수 없고 요구사항 NLR-07(추천 이유 제공)을 어긴다.
+>
+> ⚠ **2026-09-21 `S15P21E203-351` — 성별·계절·낮밤·노트만 말한 경우는 여기서 빠진다.**
+> `중성적인 향수 추천해줘` 는 전에 `NO_CONDITION` 이었는데 이제 `stage=CONTEXT_ONLY` ·
+> `status=OK_RELAXED` 로 5건을 낸다. *"중성적인 향수 중에서 평가가 많은 순"* 이라고
+> **근거를 댈 수 있어** 위 금지에 안 걸린다. 근거는 `matchedData` 로 온다.
+> 조건이 하나도 없으면 여전히 `NO_CONDITION` 이고 `results` 는 `[]` 다.
+>
+> ⚠ **`OK_RELAXED` 를 한 문구로 뭉치면 안 된다** [MR !211 리뷰]. **"조건이 넓습니다"**
+> 는 `RELAXED_OR` 의 문구이지 세 경우 공통이 아니다.
+>
+> ```
+> 말한 노트로 좁혀서 완화됨   **좁혔는데 넓혔다고 나간다.** `relaxed` 첫 줄이
+>                        "말한 노트로 좁혀 조건을 다 만족하는 향수가 모자랐다" 다
+>                        [측정 · 설문 2문장 · 합성 11문장]
+> SINGLE_BROAD          향 조건이 하나뿐이라 순위를 못 정했다
+> CONTEXT_ONLY          향 조건이 아예 없었다 — 아래 상자 참고
+> ```
+>
+> **`relaxed` 의 첫 줄을 보고 갈라 주십시오.** 노트가 원인일 때만 그 줄이 붙고,
+> 노트를 안 걸었어도 어차피 완화됐을 문장에는 안 붙는다 [확인 · 13/13 정확].
+
+> ⚠ **`CONTEXT_ONLY` 일 때는 화면 문구가 두 가지를 지켜야 합니다.**
+>
+> ```
+> 1  향으로 골랐다고 읽히지 않게 한다        순서는 평가자 수다. 향으로는 못 가렸다
+> 2  다 알아들었다고 읽히지 않게 한다        **실측상 100%(합성 20/20)가 못 알아들은
+>                                      표현을 갖는다** — 이 경로는 향 표현을
+>                                      못 알아들었을 때만 돌기 때문이다
+> ```
+>
+> `귀엽고 여성스러운 디저트 같은 향` 에 `여성적인` 하나로 고른 결과를 *"여성스러운
+> 향수를 골랐어요"* 로만 보여주면 **사용자는 디저트·달콤함을 고려했다고 믿는다.**
+>
+> **`unmatched` 를 화면에 띄우라는 뜻이 아니다** — 위의 *"화면에 쓰지 않는다"* 는
+> 그대로다. 못 알아들은 **내용**을 보여주지 않고 못 알아들었다는 **사실**만 밝히면 된다.
+> 문구는 프론트가 정한다. 협의 문서는 개인 저장소
+> `docs/plans/NLR_CONTEXT_CONDITION_DISCUSSION.md` 에 있다.
 >
 > 발생 빈도는 **합성 평가셋 600건에서 22.3%, 실사용자 설문 155건에서 48.4%** 다.
 > 예외가 아니라 정상 경로로 다뤄야 한다.
@@ -232,7 +269,7 @@ POST /nlr/recommend   { "text": "...", "structured": <위의 structured 그대�
 {
   "status": "OK",
   "query": "빨래 냄새 나는 향수 찾고 있어",
-  "lexiconVersion": "v1_15",
+  "lexiconVersion": "v1_18",
   "promptSha256": "4f0a368d98b41338",
   "conditions": {
     "core": ["fresh", "soapy"],
@@ -240,6 +277,10 @@ POST /nlr/recommend   { "text": "...", "structured": <위의 structured 그대�
     "matchedExpressions": ["빨래"],
     "source": "lexicon_only"
   },
+  "matchedData": [
+    { "field": "gender", "value": "unisex", "label": "중성적인", "from": null, "tier": "DATA" },
+    { "field": "note", "value": "mimosa", "label": "미모사", "from": "미모사", "tier": "DATA" }
+  ],
   "results": [
     {
       "fragranticaId": 73368,
@@ -260,7 +301,7 @@ POST /nlr/recommend   { "text": "...", "structured": <위의 structured 그대�
     { "expression": "포근한 느낌", "normalizedKey": "포근한 느낌",
       "unmatchReason": "NOT_CORE", "entryId": "kr.sens.cozy",
       "hadConditions": true, "llmAccords": ["amber", "sweet", "vanilla"],
-      "tier": "LLM", "resultCount": 5 }
+      "tier": "LLM", "resultCount": 1 }
   ],
   "diagnostics": {
     "stage": "AND", "candidateCount": 518, "tieAtLast": 1,
@@ -275,11 +316,17 @@ POST /nlr/recommend   { "text": "...", "structured": <위의 structured 그대�
 | `results[].people` · `rating` | 평가자 수와 평점. **평점으로 정렬하지 마십시오** — `search_rules.md` 참고 |
 | `matched[].accord` | 향 특성 영어 이름. **사용자에게 노출하지 않는다** |
 | `matched[].strength` | 0~100. 정렬에 쓴 값 |
-| `matched[].from` | 사용자가 쓴 표현. 이걸 `phrase` 에 쓴다 |
+| `matched[].from` | 사용자가 쓴 표현. 이걸 `phrase` 에 쓴다. **사전 항목의 대표 이름이 아니라 실제로 걸린 표면형이다** — `세탁` 이라고 쓰면 `세탁` 이 온다(항목 이름은 `빨래`). 한 항목에 표면형이 여럿 걸리면 **가장 긴 것**이다 — `화이트 머스크` 와 `머스크` 가 함께 걸리면 앞의 것 |
 | `matched[].tier` | `VERIFIED`/`TEAM`/`LLM`. **내부 기록이라 사용자에게 노출하지 않는다** |
 | `matched[].rationale` | 사람이 쓴 근거 문장. **`tier` 가 `LLM` 이면 `null` 이다** (원칙 ②) |
+| `matchedData` | **accord 가 아닌 근거.** 성별·계절·낮밤·노트로 후보를 좁혔을 때 그 조건이 들어온다. `matched` 와 달리 **최상위에 한 번만** 온다 — 추천 5개에 똑같이 적용되기 때문이다. 조건을 안 걸었으면 `[]` |
+| `matchedData[].field` | `gender` / `season` / `daypart` / `note` |
+| `matchedData[].value` | 데이터 쪽 값. `unisex` · `summer` · `night` · `mimosa`. **사용자에게 노출하지 않는다** |
+| `matchedData[].label` | **사용자에게 보여줄 한국어.** `중성적인` · `여름에 어울리는` · `밤에 어울리는`. 노트는 사용자가 쓴 말 그대로다 |
+| `matchedData[].from` | 노트만 채운다. 성별·계절·낮밤은 ①단계가 값만 주고 원문의 어느 글자에서 왔는지는 안 줘서 `null` 이다 |
+| `matchedData[].tier` | 항상 `DATA`. Fragrantica 사용자 투표에서 직접 온 값이라 `VERIFIED`/`TEAM`/`LLM` 어디에도 안 맞는다 |
 | `unmatched` | 사전이 받지 못한 표현. **화면에 쓰지 않는다.** 백엔드가 `nlr_unmatched_expressions` 에 남긴다 — 아래 표 |
-| `diagnostics.stage` | `AND` / **`SINGLE_BROAD`** / `RELAXED_OR` / `RELAXED_OR_NO_THRESHOLD` / `NO_CONDITION` |
+| `diagnostics.stage` | `AND` / **`SINGLE_BROAD`** / **`CONTEXT_ONLY`** / `RELAXED_OR` / `RELAXED_OR_NO_THRESHOLD` / `NO_CONDITION` |
 | `diagnostics` | 문제를 볼 때 쓴다. 응답에 그대로 넘기지 않는다 |
 
 #### `unmatched[]` 의 칸
@@ -293,7 +340,7 @@ POST /nlr/recommend   { "text": "...", "structured": <위의 structured 그대�
 | `hadConditions` | `had_conditions` | 그 요청이 조건을 뽑았는가 |
 | `llmAccords` | `llm_accords` | ⑤단계 추정. **`[]` 와 `null` 이 다르다** — 아래 |
 | `tier` | `tier` | `"LLM"` 또는 `null`. 사전 경로와 LLM 경로를 가른다 |
-| `resultCount` | `result_count` | 그 요청이 낸 추천 개수. **추정을 물어봤을 때만** 값이 있다 |
+| `resultCount` | `result_count` | **AI 가 찾은** 추천 개수. 사용자가 본 개수가 아니다 — 아래. **추정을 물어봤을 때만** 값이 있다 |
 
 **`llmAccords` 의 세 상태를 구분해야 한다.**
 
@@ -304,6 +351,24 @@ null                묻지 않았다 (⑤단계가 꺼졌거나 조건이 이미
 ```
 
 `[]` 를 `null` 로 뭉개면 *"향이 아니라고 답한 것"* 과 *"안 물어본 것"* 을 셀 수 없다.
+
+**`resultCount` 는 AI 가 찾은 개수다. 사용자가 본 개수가 아니다.**
+
+둘은 실제로 갈린다. AI 는 자기 데이터 13만 개에서 찾는데 **그 향수가 백엔드 DB 에 없으면
+화면에 나가지 않는다.** 그때 백엔드가 `NO_RESULT` 로 내리고 경고를 남긴다.
+
+```
+AI 가 5개를 찾았는데 5개 다 DB 에 없는 경우
+  화면                      NO_RESULT (0개)
+  nlr_recommendation_items  0줄        <- 사용자가 본 개수
+  result_count              5          <- AI 가 찾은 개수
+```
+
+**AI 기준으로 둔다.** 이 칸이 답하는 질문이 *"⑤단계 추정이 결과를 만들었나"* 이고 그것은
+AI 색인 안의 일이다. 백엔드 적재가 밀린 것을 섞으면 **추정이 실제보다 나빠 보인다.**
+
+**사용자가 본 개수를 잃지도 않는다** — `nlr_recommendation_items` 의 줄 수가 그 값이라
+두 수가 모두 남는다. **둘이 벌어진 줄은 버그가 아니라 적재가 밀렸다는 신호다.**
 
 **`llmReasoning` 은 보내지 않는다.** LLM 이 매핑한 **뒤에 붙인 설명**이지 근거가 아니다
 (`spec.md` 1장). 실측에서 없는 말을 지어냈다 — `"빨레"`(빨래의 오타)를 *"바퀴/롤러로
@@ -342,7 +407,7 @@ llm_no_effect   262건 (43.7%)   그중 조건이 나온 문장 182건
 
 | 칸 | 예 | DB 칸 | 무엇인가 |
 |---|---|---|---|
-| `lexiconVersion` | `"v1_15"` | `lexicon_version VARCHAR(20)` | 엔진이 쓴 향 사전 버전 |
+| `lexiconVersion` | `"v1_18"` | `lexicon_version VARCHAR(20)` | 엔진이 쓴 향 사전 버전 |
 | `promptSha256` | `"4f0a368d98b41338"` | `prompt_sha256 VARCHAR(16)` | ①단계 프롬프트 지문 앞 16자 |
 
 **왜 남기나** — 반년 뒤에 *"이 표현이 미매칭이었다"* 를 볼 때 **어느 사전에서 미매칭
@@ -352,7 +417,7 @@ v1.15, 프롬프트가 v1 → v4 로 움직였다.
 **⚠ 둘 다 `null` 일 수 있다.** DB 칸이 둘 다 `NULL` 허용이라 `INSERT` 가 막히지 않는다.
 
 ```
-lexiconVersion   사전 파일 이름이 `..._v1_15.csv` 규칙에 안 맞을 때 (측정용 임시 파일 등)
+lexiconVersion   사전 파일 이름이 `..._v1_18.csv` 규칙에 안 맞을 때 (측정용 임시 파일 등)
 promptSha256     프롬프트 파일을 못 읽을 때
 ```
 
@@ -369,7 +434,7 @@ promptSha256     프롬프트 파일을 못 읽을 때
 ```json
 {
   "query": "빨래 냄새 나는 향수 찾고 있어",
-  "lexiconVersion": "v1_15",
+  "lexiconVersion": "v1_18",
   "promptSha256": "4f0a368d98b41338",
   "conditions": { "core": ["fresh", "soapy"], "avoid": [],
                   "matchedExpressions": ["빨래"], "source": "llm+lexicon" },

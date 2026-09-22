@@ -9,11 +9,8 @@ import { http, isApiError } from './http'
 const originalAdapter = http.defaults.adapter
 
 /**
- * 나가는 요청을 가로채 헤더만 들여다봅니다 — 네트워크를 타지 않습니다.
- *
- * 인터셉터 배열(`http.interceptors.request.handlers`)을 직접 들추지 않는 이유는
- * axios 내부 모양이라 판이 바뀌면 테스트만 조용히 통과하기 때문입니다. 어댑터는
- * 공개 API 이고, **실제로 요청이 나갈 때의 헤더**를 봅니다.
+ * 나가는 요청을 가로채 헤더만 들여다봅니다. 인터셉터 배열을 직접 들추지 않는 것은
+ * axios 내부 모양이라 판이 바뀌면 테스트만 조용히 통과해서입니다.
  */
 function captureRequests(): InternalAxiosRequestConfig[] {
   const seen: InternalAxiosRequestConfig[] = []
@@ -89,12 +86,8 @@ describe('요청 인터셉터의 Authorization', () => {
 })
 
 /**
- * 경로마다 다른 답을 주는 어댑터.
- *
- * `status` 가 2xx 면 응답으로, 아니면 axios 가 실제로 던지는 모양(`AxiosError` +
- * `response`)으로 거절합니다. `status: 0` 은 **응답 자체가 없는** 네트워크 실패라
- * `response` 를 달지 않습니다 — 인터셉터가 `error.response?.status ?? 0` 으로 읽는
- * 바로 그 경우입니다.
+ * 경로마다 다른 답을 주는 어댑터. `status: 0` 은 **응답 자체가 없는** 네트워크
+ * 실패라 `response` 를 달지 않습니다 — 인터셉터가 `?? 0` 으로 읽는 그 경우입니다.
  */
 function respondWith(
   answer: (url: string, attempt: number) => { status: number; data?: unknown },

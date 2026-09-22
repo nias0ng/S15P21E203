@@ -49,13 +49,54 @@
     --pb-sage: #7F8A7A;
     --pb-shimmer: #A7C8DB;                    /* SEA SHIMMER — 물빛 */
     /* ⭐ 갈 수 없는 바다 (2026-09-13 — 해도 · 미니맵 공용 토큰). 사용자 : *"영역밖은 완전한 검은색 보다 계열이 좀 낮은 색상"*.
-       CHARCOAL 72% + SEA SHIMMER 28% — 먹색에 물빛을 섞은 깊은 청회색이다 (검정이면 지도에 구멍이 뚫린 것처럼 읽힌다) */
-    --pb-void: #515A61;
+       먹색에 물빛을 섞은 깊은 청회색이다 (검정이면 지도에 구멍이 뚫린 것처럼 읽힌다).
+       ⭐⭐ 2026-09-20 : #515A61 → **#39424A** (사용자 : *"나갈 수 없는 부분을 더 어둡게"*). 밝기 사다리의 **제일 어두운 칸**이라
+          안 지나온 바다(안개 한 겹)보다 확실히 아래여야 한다. 물빛 섞는 비율은 그대로 두고 명도만 내렸다 —
+          색조까지 빼면 '구멍' 으로 돌아간다 (위 사용자 지시). */
+    --pb-void: #39424A;
+    /* ⭐ 갈 수 없는 바다의 **바깥쪽 끝** (2026-09-20 사용자 : *"외곽의 나갈 수 없는 범위가 정말 어둡게 되어있고
+       안쪽으로올수록 지금의 색상이면"*). `--pb-void` 위에 이 색이 바깥으로 갈수록 짙게 얹힌다.
+       ⚠ 검정이 아니다 — 물빛을 조금 남겨야 '깊은 바다' 지 '구멍' 이 아니다 (--pb-void 와 같은 이유) */
+    --pb-void-deep: #0D1219;
+    /* ⭐⭐ 해도에서 **바다 위에 앉는 글자** (2026-09-21 — 향조 이름 · 향수 이름).
+       갈 수 있는 바다가 판의 아이보리에서 #21282F 로 내려가면서 먹색 글자가 안 읽히게 됐다.
+       ⚠ 판 위(범례 · 머리말)의 글자는 그대로 `--pb-on-surface` 다 — 이 토큰은 **바다 위에만** 쓴다.
+       ⚠⚠ 불변식 28 이 적어 둔 *"바탕이 바뀔 때마다 뒤집힌다"* 의 **세 번째**다. 바다 색을 다시
+          만지면 이 값부터 같이 본다 (#21282F 위에서 대비 9.9:1) */
+    --pb-chart-sea-ink: #EDE8DF;
     --pb-lift: 0 10px 30px rgba(24,18,34,0.20);   /* 표면이 바다 위에 뜬 그림자 */
     /* 전체 화면 해도 (chart.js) — 바다를 덮는 너울과 그 위 종이. ⚠ 시간대를 타지 않는다 (표면이다) */
     --pb-chart-veil: rgba(24,18,34,0.58);
-    --pb-chart-bg: rgba(249,246,239,0.96);
-  }
+    /* ⭐⭐ **해도 판은 어두운 유리다** (2026-09-21 사용자 : *"미니맵을 전반적으로 더 어둡게 해줘서
+       탐험하는 느낌"*). 여태는 상아색 종이판(rgba(249,246,239,0.96))이라 **어두운 지도를 밝은 액자가
+       두른 꼴**이었다 — 화면에서 가장 밝은 것이 판이었다.
+       ⚠ 색조는 미니맵 판(`--pb-mini-bg` rgba(44,38,62,0.60))과 같은 자줏빛 저녁이다. 둘은 같은 바다를
+          보여 주는 한 쌍이라 판도 같은 말을 써야 한다 (불변식 28).
+       ⚠ 미니맵보다 불투명하다 — 판이 크고 뒤에 3D 가 그대로 비치면 지도의 어두운 계단이 안 읽힌다 */
+    --pb-chart-bg: rgba(34,29,48,0.95);
+    /* 판 위에 앉는 글자 · 선. ⚠ 전역 `--pb-on-surface` 계열을 **안 쓴다** — 검색창 · 카드가 같이 쓰는
+       토큰이라 거기까지 뒤집힌다. 해도 판만의 이름을 따로 둔다 (불변식 25 의 규약을 판 단위로 넓힘).
+       ⚠ 바다 위 글자는 또 다른 토큰이다 (`--pb-chart-sea-ink`) — 판 위와 바다 위는 바탕이 다르다 */
+    --pb-chart-ink: #F3EFE7;                    /* 제목 · 닫기 · 범례 이름 */
+    --pb-chart-ink-2: rgba(243,239,231,0.60);   /* 머리말 · 힌트 · 한글 이름 · 개수 */
+    --pb-chart-line: rgba(243,239,231,0.16);    /* 판 테두리 · 구분선 · 단추 테 */
+    --pb-chart-row: rgba(243,239,231,0.08);     /* 범례 줄에 마우스를 올렸을 때 */
+    /* ⭐⭐ **흰 파도** (2026-09-18, v0.75.12) — 호버하면 아래에서 차올라 덮고 멈춘다.
+       사용자 : *"2개 겹쳐서 흰색 파도같은 느낌"* · *"각 파트에있는 색상은 전부 이렇게 통일할거임"*.
+       지금은 [이 향의 해역으로] 한 곳이지만 **다른 단추 · 판에도 같은 파도를 붙이려고** 여기 모았다 —
+       붙이는 법은 아래 `.pb-wave` 주석. 색을 바꿀 일은 여기 한 곳이다 (불변식 2). */
+    --pb-wave-top: rgba(255,255,255,0.20);      /* 속 — 위 */
+    --pb-wave-bottom: rgba(255,255,255,0.02);   /* 속 — 아래 */
+    --pb-wave-front: 0.9;                       /* 앞 겹 짙기 */
+    --pb-wave-back: 0.55;                       /* 뒤 겹 짙기 (옅은 물마루) */
+    --pb-wave-period: 80px;                     /* 물결 한 주기. 뒤 겹은 이 값의 반만큼 어긋난다 */
+    --pb-wave-h: 200%;                          /* 겹 높이 (덮는 쪽 높이 기준) */
+    --pb-wave-lift: -30%;                       /* 다 올랐을 때 자리. ⚠ 키우면 --pb-wave-h 도 같이 본다 */
+    --pb-wave-rise: 900ms;                      /* 오르는 시간 */
+    /* 물결의 길 — 면(마스크)과 마루선(배경)이 **같은 길**이다. 선은 굵게(3) 그어 마스크가 바깥 절반을 자른다.
+       ⚠ 둘의 `d` 가 다르면 선과 면이 어긋난다 — 같이 고친다 */
+    --pb-wave-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 50' preserveAspectRatio='none'%3E%3Cpath d='M0 5 Q20 -3 40 5 T80 5 V50 H0 Z' fill='black'/%3E%3C/svg%3E");
+    --pb-wave-line: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 50' preserveAspectRatio='none'%3E%3Cpath d='M0 5 Q20 -3 40 5 T80 5' fill='none' stroke='%23ffffff' stroke-width='3'/%3E%3C/svg%3E");  }
 
   /* ⭐⭐ 저녁 카드 (2026-09-13 저녁 — params.cardEve 가 <html data-card-eve> 를 단다). 사용자 : *"향수 마우스 클릭했을때의 그 디자인도
      옛날 껄로 되어있는데 약간만 분위기를 지금 저녁 느낌으로"* · 호버 카드가 *"투명도가 설정없어서 다음 부표가 어디떠있는지 가리는"*.
@@ -75,11 +116,32 @@
     --pb-card-btn: #1E2947;                          /* 짙은 남색 (2026-09-13 저녁 사용자 요청 — 첫 시안 브론즈는 아래 data-card-btn-bronze) */
     --pb-card-btn-line: rgba(255,244,236,0.18);
     --pb-card-btn-ink: #FFF9F0;
-    --pb-card-btn-radius: 999px;                     /* 검색창 알약과 같은 말투 */
+    --pb-card-btn-radius: var(--pb-card-radius, 10px); /* 단추 모서리 = 카드 모서리 (v0.75.5 — 사용자 : *"표시창의 라운드에 맞춰 같게 · 너무 지금 둥글게 나옴"*). 예전 999px 알약은 검색창 말투였다 */
     --pb-card-tail-line: rgba(255,244,236,0.16);
     --pb-card-tail-blur: blur(5px);
     --pb-card-img-bg: rgba(251,243,234,0.06);        /* 이미지 자리 받침 (v0.64.0) — 투명 PNG 뒤에 옅게. ⚠ 색 알파다 (줄의 opacity 는 등장 애니메이션이 덮는다 — v0.53.2) */
     --pb-card-img-line: rgba(255,244,236,0.16);
+    --pb-card-img-shadow: drop-shadow(0 4px 8px rgba(6,3,14,0.70));   /* 향수 사진 뒤 그림자 (v0.75.4) — 아래 #scent-img 주석. 어두운 유리 위라 낮 카드보다 진하다 */
+    /* ⭐⭐ 카드 단추 (2026-09-17, v0.75.5 — v0.75.4 의 금빛 규격을 사용자가 다시 정했다) :
+       *"자세히보기, 진열대에 저장, 해역으로 전부 표시창의 라운드에 맞춰 같게 · 반투명으로 있으면 안될 것 같고 · 자세히보기나 진열대에 저장은 배경이 더 짙어야함 ·
+         폰트는 그냥 흰색 · 이 향의 해역으로를 더 짙게 만들어주고 마우스를 올리면 천천히 그 해역 색상으로 스며들듯이 · 밝으면 폰트가 검정, 짙으면 흰색"*
+       · 세 단추 모두 **꽉 찬 색**(알파 없음) · 테두리는 채움과 같은 색 · 글자 흰색 · 모서리는 카드와 같다 (위 --pb-card-btn-radius)
+       · [자세히 보기] · [진열대에 저장] — 짙은 dusk `#231E31` (카드 유리보다 어둡다) · 호버는 한 단계 밝게 `#302A42`
+       · [이 향의 해역으로] — 더 짙은 남색 `#141B2F` (예전 #1E2947 의 명도 20% → 13%) · 호버는 **아래에서 해역(향조) 색 물결이 차오른다** (v0.75.6 — 아래 #scent-sail 주석) —
+         v0.75.12 부터 **흰 파도**다 — 해역 색을 안 쓴다 (아래 #scent-sail 주석)
+       · 포커스 링은 dusk-gold 1px 그대로다 (키보드로 고를 때만 보인다)
+       ⚠ v0.75.4 의 금빛 글자 · 반투명 테두리 · 상아색 10% 호버는 이것으로 바뀌었다. 흰 글자 대비 : #231E31 약 16:1 · #141B2F 약 17:1 */
+    --pb-card-accent: #D9BE86;
+    --pb-card-act-bg: #231E31;
+    --pb-card-act-ink: #FFFFFF;
+    --pb-card-act-line: #231E31;
+    --pb-card-act-hover-bg: #302A42;
+    --pb-card-act-hover-ink: #FFFFFF;
+    --pb-card-act-hover-line: #302A42;
+    --pb-card-sail-bg: #141B2F;
+    --pb-card-sail-ink: #FFFFFF;
+    --pb-card-sail-line: #141B2F;
+    --pb-card-focus: var(--pb-card-accent);
   }
   /* ⭐ 호버 미리보기 (#scent-card[data-peek] — ui.js setScentPeek 가 단다). 훑어보는 동안은 **더 비치고 덜 흐리게** —
      작은 부표(반지름 6px 안팎)는 흐림 5px 뒤에서 자리가 안 읽혔다 (1440×780 화면 확인). 누른 향수의 카드는 위의 진하기 그대로다.
@@ -98,6 +160,9 @@
   html[data-card-eve][data-card-btn-bronze] {
     --pb-card-btn: rgba(166,143,91,0.86);
     --pb-card-btn-line: rgba(233,208,160,0.50);
+    --pb-card-sail-line: rgba(233,208,160,0.50);     /* v0.75.4 부터 [이 향의 해역으로] 테두리 · 채움 · 글자는 제 토큰이다 — [원본] 비교가 예전 모양 그대로이게 같이 넣는다 */
+    --pb-card-sail-bg: rgba(166,143,91,0.86);
+    --pb-card-sail-ink: #FFF9F0;
   }
   /* 카드 구분선 — 옅게 (v0.53.0 의 상아색 18%). params.cardRuleSolid 0 이면 main.js 가 <html data-card-rule-faint> 를 단다 (비교 패널 '카드 구분선' [원본]) */
   html[data-card-eve][data-card-rule-faint] {
@@ -107,6 +172,21 @@
      향조 줄과 제목 사이 · 안쪽 폭 가득 · 높이 `--pb-card-img-h` (넓은 창 150px · 반응형은 아래 미디어 쿼리). 그림은 contain 이라 비율이 안 깨진다.
      ⚠ 자리를 켜고 끄는 것도 **변수**다 (display — 불변식 7 · 23). 속성이 없으면 자리가 없다 = v0.63.0 카드 */
   html[data-card-img] { --pb-card-img-d: flex; }
+  /* ⭐ 향수 사진 뒤의 은은한 그림자 (2026-09-17, v0.75.4 — 사용자 : *"부표 탭이 처음 생성 되고 향수 사진 뒤로 은은하게 그림자가 있어야 더 잘 부각되겠다"*).
+     사진이 투명 PNG 라 네모 그림자(box-shadow)가 아니라 **병 윤곽을 따르는 drop-shadow** 다 (`--pb-card-img-shadow` · 저녁 카드 값은 위 토큰).
+     사진이 보일 때마다 — 카드가 뜨거나 향수가 바뀌어 ui.js 가 display none → block 으로 켤 때 — 그림자가 0 에서 번져 나온다 (CSS 애니메이션은 display 가 켜지면 처음부터 다시 돈다).
+     ⚠ 자리(`#scent-img-slot`)가 overflow:hidden · 안쪽 여백 10px 이다 — 그림자가 그 안에서 사라져야 자리 끝에 잘린 선이 안 생긴다 (불변식 19).
+       그래서 아래로 4px · 흐림 8px (σ 4px → 여백 끝에서 봉우리의 약 7% · 저녁 카드 알파 0.70 이면 약 5% — 어두운 바탕에서 2~3단계라 안 보인다). 더 크게 하려면 자리의 padding 을 같이 키운다.
+       ⚠ 처음 값(아래로 3px · 흐림 6px · 알파 0.55)은 어두운 사진 자리 위에서 거의 안 보였다 (1920 확대 캡처).
+     ⚠ 사진에는 transform 을 안 건다 — 줄(data-row) 등장 애니메이션이 자리 상자에 transform · opacity 를 쓴다 */
+  #scent-img { animation: pb-card-img-shadow 560ms cubic-bezier(0.65, 0, 0.35, 1) 120ms both; }
+  @keyframes pb-card-img-shadow {
+    from { filter: drop-shadow(0 0 0 rgba(6,3,14,0)); }
+    to { filter: var(--pb-card-img-shadow, drop-shadow(0 4px 8px rgba(26,26,26,0.22))); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #scent-img { animation: none; filter: var(--pb-card-img-shadow, drop-shadow(0 4px 8px rgba(26,26,26,0.22))); }
+  }
   /* ⭐ 카드의 서비스 동작 세 가지 (2026-09-15, v0.68.0 — params.cardActions 가 <html data-card-actions> 를 단다). 프론트 HomePage 팝오버(A02)와 같은 셋 —
      [자세히 보기] · [진열대에 저장] · [주변 향 탐색]. 동작은 main.js cardAction → host.js
      ⭐⭐ 2026-09-16 : **밑줄 글자 → 테두리 단추**로 (사용자 : *"부표 정보창에 이 문구들 버튼으로 만들어줘"*). v0.68.0 주석의 *"디자인 전 자리"* 를 닫는다.
@@ -116,11 +196,90 @@
          단추는 같은 일을 두 번 내놓고 있었다.
        ⭐ 그래서 `cardAction` 의 `explore` 갈래 · `canExplore` · `exploreAround` 는 걷었고, 호스트 문 `exploreSimilar` 는
          **`onPick` 의 부표 갈래**(`startFocus` 옆)에서 알린다 — 앱(`ScentScene.tsx`)의 핸들러는 그대로 산다 (불변식 32).
-     ⚠ 둘이 남아 **한 줄에 들어간다** (84 + 5 + 95 = 184 ≤ 246). 셋일 때는 266px 이라 두 줄이었다. */
+     ⚠ 둘이 남아 **한 줄에 들어간다** (84 + 5 + 95 = 184 ≤ 246). 셋일 때는 266px 이라 두 줄이었다.
+     ⭐ 2026-09-17 (v0.75.2) : **두 단추가 줄을 반씩 나눠 채운다** (단추 `flex: 1 1 0` · 틈 5 → 10px). 사용자 : *"자세히 보기 및 진열대에 저장을 배치에 맞게 정렬"*.
+       글자 폭만큼 왼쪽에 몰려 오른쪽이 62px 비어 있었다 — 이제 위 이미지 자리 · 아래 [이 향의 해역으로]와 **좌우 끝이 맞는다** (넓은 창 118 + 10 + 118 = 246).
+       ⚠ 줄바꿈(wrap)은 안전장치로 남겼다 — 칸이 글자(최소 95px)보다 좁아지면 두 줄로 내려간다. 되돌리기 : 틈 5px · 단추의 flex 를 지운다 */
   html[data-card-actions] { --pb-card-actions-d: flex; }
   #scent-actions button:disabled { opacity: 0.4; cursor: default !important; }
-  /* 호버는 **배경이 아니라 글자 · 테두리**를 진하게 — 밝은 카드(낮)와 저녁 카드 양쪽에서 같이 읽힌다 (배경 틴트는 한쪽에서 안 보인다) */
-  #scent-actions button:not(:disabled):hover { color: var(--pb-card-ink, #1A1A1A); border-color: var(--pb-card-ink-2, #555555); }
+  /* 호버는 **배경이 아니라 글자 · 테두리**를 진하게 — 밝은 카드(낮)와 저녁 카드 양쪽에서 같이 읽힌다 (배경 틴트는 한쪽에서 안 보인다)
+     ⭐ 2026-09-17 (v0.75.4) : 저녁 카드는 앱 규격대로 **상아색 10% 바탕**이다 (위 --pb-card-act-* 토큰) — 낮 카드는 토큰이 없어 예전 글자 · 테두리 호버 그대로다.
+     ⚠⚠ 예전 규칙(`color` · `border-color` 를 직접 씀)은 **먹히지 않았다** — 단추의 인라인 style 이 같은 속성을 적어서, 인라인이 선택자보다 늘 이긴다.
+       그래서 호버는 속성이 아니라 **단추에 얹은 변수**(`--pb-act-*`)를 바꾸고, 인라인이 그 변수를 읽는다 */
+  #scent-actions button {
+    --pb-act-ink: var(--pb-card-act-ink, var(--pb-card-ink-2, #555555));
+    --pb-act-line: var(--pb-card-act-line, var(--pb-card-btn-line, #1A1A1A));
+    --pb-act-bg: var(--pb-card-act-bg, transparent);
+  }
+  #scent-actions button:not(:disabled):hover {
+    --pb-act-ink: var(--pb-card-act-hover-ink, var(--pb-card-ink, #1A1A1A));
+    --pb-act-line: var(--pb-card-act-hover-line, var(--pb-card-ink-2, #555555));
+    --pb-act-bg: var(--pb-card-act-hover-bg, var(--pb-card-act-bg, transparent));
+  }
+  /* ⭐⭐ **흰 파도** — 호버하면 아래에서 두 겹이 차올라 덮고 **멈춘다** (2026-09-18, v0.75.12).
+     사용자 : *"외곽선 올라오고 내부는 그냥 흰색 불투명도 10% 정도 · 2겹 · 상단에서 밑으로 내려오는 그라데이션"* ·
+     *"지속적인 모션은 필요없음 파도가 올라가고 끝나는 걸로"* · *"각 파트에있는 색상은 전부 이렇게 통일할거임"*.
+
+     ── 붙이는 법 (다른 단추 · 판에도 같은 파도를 붙일 때)
+       ① 덮을 요소에 `class="pb-wave-host"` — `position: relative` · `overflow: hidden` 이어야 한다
+       ② 그 안에 겹 둘을 **뒤 → 앞 순서로** 넣는다 (글자보다 뒤에 두면 글자가 위에 남는다) :
+            <span class="pb-wave" data-wave="back" aria-hidden="true"></span>
+            <span class="pb-wave" data-wave="front" aria-hidden="true"></span>
+       ③ 글자는 파도 **아래** 그대로 둔다 — 속이 반투명이라 비친다 (물결 안에 글자를 또 넣지 않는다)
+       ④ 값(색 · 높이 · 시간 · 물결 모양)은 전부 `:root` 의 `--pb-wave-*` 다. 한 곳만 고치면 붙인 데가 다 따라온다
+
+     ── 어떻게 생겼나
+       · 겹 하나 = **윗변의 흰 마루선** + **속**(위 → 아래로 옅어지는 흰 그라데이션).
+         마루선은 마스크와 **같은 길**을 굵게 그은 것이라, 마스크가 바깥 절반을 잘라 마루에 딱 붙는다.
+       · 두 겹은 반 주기 어긋나 마루 모양이 서로 다르다. **흐르는 애니메이션은 없다** — 오르는 동안만 움직인다.
+       · 다 오르면 마루가 위로 넘어가 잘려 **고른 흰 겹**만 남는다.
+         ⚠⚠ 그래서 겹이 host 보다 높다(`--pb-wave-h` 200%). 올리는 몫(`--pb-wave-lift`)을 키울 때는
+            **높이도 같이** 본다 — 한쪽만 키우면 아래가 빈다. 실측 : −12% · −20% 는 마루가 윗변에 걸쳐 선이 남았다.
+       · 들어갈 때 앞 겹이 90ms 늦게 오르고, 나갈 때 먼저 내려간다 (뒤 겹이 옅은 물마루로 앞선다).
+         ⚠ 트랜지션은 **바뀐 뒤 규칙**의 것을 쓴다 — 들어갈 때 지연은 :hover 규칙에, 나갈 때 지연은 기본 규칙에 적는다 */
+  .pb-wave {
+    position: absolute; left: 0; right: 0; top: 0; height: var(--pb-wave-h, 200%); pointer-events: none;
+    background-image: var(--pb-wave-line), linear-gradient(to bottom, var(--pb-wave-top), var(--pb-wave-bottom));
+    background-size: var(--pb-wave-period, 80px) 100%, auto;
+    background-repeat: repeat-x, no-repeat;
+    -webkit-mask: var(--pb-wave-mask) 0 0 / var(--pb-wave-period, 80px) 100% repeat-x;
+            mask: var(--pb-wave-mask) 0 0 / var(--pb-wave-period, 80px) 100% repeat-x;
+    transform: translateY(100%);
+    transition: transform var(--pb-wave-rise, 900ms) cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  .pb-wave[data-wave="front"] { opacity: var(--pb-wave-front, 0.9); background-position: 0 0, 0 0; }
+  /* 뒤 겹은 반 주기 어긋나 마루가 앞 겹과 다른 자리에서 솟는다 — 선과 면을 **같이** 밀어야 붙어 간다 */
+  .pb-wave[data-wave="back"] {
+    opacity: var(--pb-wave-back, 0.55);
+    background-position: calc(var(--pb-wave-period, 80px) / 2) 0, 0 0;
+    -webkit-mask-position: calc(var(--pb-wave-period, 80px) / 2) 0;
+            mask-position: calc(var(--pb-wave-period, 80px) / 2) 0;
+    transition-delay: 90ms;
+  }
+  .pb-wave-host:hover .pb-wave { transform: translateY(var(--pb-wave-lift, -30%)); }
+  .pb-wave-host:hover .pb-wave[data-wave="back"] { transition-delay: 0ms; }
+  .pb-wave-host:hover .pb-wave[data-wave="front"] { transition-delay: 90ms; }
+  @media (prefers-reduced-motion: reduce) {
+    .pb-wave { transition-duration: 1ms; }
+  }
+
+  /* [이 향의 해역으로] — 위 흰 파도를 쓰는 첫 자리다. 여기 남은 것은 이 단추만의 색 · 글자 자리다.
+     ⚠ 인라인 style 이 background · color · border 를 적으므로 그 색은 변수로 바꾼다 (--pb-act-* 와 같은 까닭).
+     · 테두리도 흰색으로 밝아진다 — 금빛 테두리에 흰 파도는 서로 겉돈다 (사용자 : *"전부 이렇게 통일"*).
+       물결은 overflow:hidden 이라 테두리 안쪽까지만 찬다. 그래서 테두리는 물결이 다 오른 무렵 밝아지고, 나갈 때 먼저 돌아간다 */
+  #scent-sail {
+    --pb-sail-bg: var(--pb-card-sail-bg, var(--pb-card-btn, #1A1A1A));
+    --pb-sail-ink: var(--pb-card-sail-ink, var(--pb-card-btn-ink, #F6F5F2));
+    --pb-sail-line: var(--pb-card-sail-line, var(--pb-card-btn-line, #1A1A1A));
+    transition: border-color 200ms linear;
+  }
+  #scent-sail:hover {
+    --pb-sail-line: rgba(255, 255, 255, 0.45);
+    transition: border-color 250ms linear 600ms;
+  }
+  #scent-sail-label { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+  /* 포커스 링 — 앱 규격(VoyageLog)의 ring-1 과 같은 1px. 저녁 카드는 dusk-gold (--pb-card-focus) */
+  #scent-card button:focus-visible { outline: 1px solid var(--pb-card-focus, #1A1A1A); outline-offset: 0; }
   /* ⭐⭐ 사이트 헤더 자리 (2026-09-15, v0.66.0 — params.siteHeader 가 <html data-site-header> 를 단다 · 첫 칠이 튀지 않게 <html> 에 미리 적어 두었다).
      사용자 : *"90px 정도의 헤더가 추가될 예정임 그래서 해당 공간 만큼 채팅 및 연출 문구를 아래로 내려서 해당 헤더 공간을 확보해야함 …
      1차 시안을 보기위해서 다른 프론트, 백엔드 작업물들과 결합을 해야함"*.
@@ -148,7 +307,7 @@
     --pb-mini-c-fog-a: 0.42;
     --pb-mini-c-rim: #FBF3EA;      /* 갈 수 있는 바다의 끝선 (예전 IVORY) */
     --pb-mini-c-accent: #D9BE86;   /* 배 · 가는 곳 (예전 AGED BRONZE — 어두운 판에서 한 단 밝힌다) */
-    --pb-mini-c-void: #2B3038;     /* 갈 수 없는 바다 (예전 --pb-void) — 판이 어두워 한 단 더 내린다 */
+    --pb-mini-c-void: #191E24;     /* 갈 수 없는 바다 — 판이 어두워 한 단 더 내린다. 2026-09-20 : #2B3038 → 더 어둡게 (--pb-void 와 같은 이유) */
   }
   /* ⭐⭐ 저녁 경고 토스트 (2026-09-13 — params.warnEve 가 <html data-warn-eve> 를 단다). 사용자 : *"다음 핸드오프 작업은 출력되었을때의
      토스트 디자인도 현재 디자인에 맞게 제작해야함"*. 낮의 종이 한 줄(불투명 0.95 · 먹 테두리 · 각진 모서리) → **저녁 유리 알약** —
@@ -219,7 +378,7 @@
   } }
   @media (max-width: 1024px) { :root:not([data-fixed]) {
     --pb-edge: 28px; --pb-info-top: 112px; --pb-info-w: 250px; --pb-mini-w: 190px; --pb-mini-edge: 18px;
-    --pb-search-w: 400px; --pb-card-w: 272px; --pb-drift-w: 200px;
+    --pb-search-w: 400px; --pb-card-w: 310px; --pb-drift-w: 200px; --pb-card-accord-size: 12px;
     /* 해도 — 좁은 창에서는 범례를 접는다 (지도에 폭을 다 준다). ⚠ display 도 변수로 끈다 (클래스를 새로 만들지 않는다, 불변식 7) */
     --pb-chart-edge: 18px; --pb-chart-legend-d: none; --pb-chart-title: 20px;
   } }
@@ -228,7 +387,7 @@
     --pb-search-top: 12px; --pb-search-w: calc(100vw - 104px); --pb-search-h: 42px; --pb-search-fs: 14px; --pb-search-pad: 0 14px; --pb-btn-pad: 0 16px;
     --pb-edge: 16px; --pb-info-top: 66px; --pb-info-w: calc(100vw - 32px); --pb-info-title: 13px; --pb-info-desc: 12px; --pb-info-lh: 1.7;
     --pb-mini-w: 148px; --pb-mini-edge: 10px; --pb-mini-pad: 6px 8px 8px;
-    --pb-card-w: min(280px, calc(100vw - 32px)); --pb-card-pad: 16px 18px 16px; --pb-card-name: 18px; --pb-card-img-h: 120px;
+    --pb-card-w: min(295px, calc(100vw - 32px)); --pb-card-pad: 16px 18px 16px; --pb-card-name: 18px; --pb-card-img-h: 120px; --pb-card-accord-size: 12px;
     --pb-drift-w: 72px; --pb-drift-bottom: 18px; --pb-help: none; --pb-drift-align: flex-start; --pb-drift-pad: 0 0 0 16px;
     --pb-warn-top: 64px; --pb-mark-bottom: 58px; --pb-mark-no: 18px;
     --pb-chart-edge: 10px; --pb-chart-pad: 12px 13px 14px; --pb-chart-title: 17px; --pb-chart-name: 10px; --pb-chart-gap: 0px;
@@ -271,6 +430,22 @@
            밤에는 상아색이 맞고(불변식 25), 하늘을 따라 뒤집는 것은 앱 헤더가 하는 큰 장치다. */
       --pb-info-shadow: 0 1px 2px var(--pb-halo, transparent), 0 2px 14px var(--pb-halo-2, transparent);
     }
+  }
+
+  /* ⭐⭐ 잠수 — 진열대로 넘어가는 전환 (2026-09-18, src/dive.js · params.diveUi).
+     앱 커튼이 `PB.dive(k)` 를 밀기 시작하면 dive.js 가 <html data-dive> 를 달고, 엔진 UI 가 **먼저 비킨다** —
+     검색창 · 정보 블록 · 존 표시 · 미니맵 · 말풍선 카드 · 부표 이름표 · DRIFT 바가 한 번에.
+     ⚠⚠ **매 프레임 opacity 를 쓰지 않는다.** 칠하기 단계라 커튼이 올라오는 그 순간과 겹친다 —
+       속성 한 번 달고 CSS 전환에 맡기면 합성 스레드가 민다 (앱 로딩 커튼과 같은 이유).
+     ⚠⚠ `!important` 인 까닭 : 이 UI 들은 자기 opacity 를 **인라인 style 로** 쥐고 있다 (ui.js 가 매번 쓴다).
+       인라인은 선택자를 이기므로 이것 말고는 덮을 길이 없다 (불변식 23 의 변수 규약도 opacity 에는 없다).
+     ⚠ `#mount`(캔버스)만 뺀다 — 3D 는 계속 그려야 카메라가 내려가는 것이 보인다. #fog 는 평소 0 이라 걸려도 무해하다.
+     ⚠ 되돌릴 때는 전환 없이 제자리로 돌아온다 (규칙이 통째로 빠지므로) — 잠수는 곧 화면이 바뀌는 길이라 괜찮다.
+       취소가 흔해지면 전환을 기본 규칙 쪽으로 옮기는데, 그러면 ui.js 의 등장 · 퇴장과 두 번 겹친다 */
+  html[data-dive] #stage > *:not(#mount) {
+    opacity: 0 !important;
+    transition: opacity var(--pb-dive-ui, 260ms) ease-out !important;
+    pointer-events: none !important;
   }
 </style>
 </head>
@@ -326,7 +501,8 @@
            ⚠ 막대는 여전히 `backdrop-filter: blur(7px)` 과 상아색 테두리로 물 위에 뜬다 — 그림자만 뺀 것이지 판을 없앤 게 아니다.
          · **버튼을 남색 → 주황 그라데이션으로** (`--pb-search-btn-a` #1E2947 · `--pb-search-btn-b` #E2833C).
            예전은 물빛 → 브론즈 `linear-gradient(140deg,var(--pb-shimmer,#A7C8DB),var(--pb-accent,#A68F5B))` 였다.
-           ⚠ 남색은 말풍선 카드 단추와 같은 값이다 (`--pb-card-btn` #1E2947) — 그쪽을 바꾸면 여기도 같이 본다. 주황은 저녁 하늘(살구색)에 맞춘 새 값이라 팔레트 토큰이 아직 없다. -->
+           ⚠ 남색은 말풍선 카드 단추와 같은 값이다 (`--pb-card-btn` #1E2947) — 그쪽을 바꾸면 여기도 같이 본다. 주황은 저녁 하늘(살구색)에 맞춘 새 값이라 팔레트 토큰이 아직 없다.
+           ⚠ 2026-09-17 (v0.75.5) : 카드의 [이 향의 해역으로]는 사용자 요청으로 **더 짙은 남색 #141B2F** 가 됐다 (`--pb-card-sail-bg`). 이 단추와 앱 헤더의 #1E2947 은 그대로 뒀다 — 요청 밖이다. -->
     <div style="pointer-events:auto;position:relative;display:flex;align-items:center;width:var(--pb-search-w,520px);height:var(--pb-search-h,56px);padding:0 7px 0 20px;border-radius:999px;background:var(--pb-surface-glass,rgba(249,246,239,0.88));border:1px solid var(--pb-line-soft,#C9C4BB);backdrop-filter:blur(7px);">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" style="color:var(--pb-on-surface-2,rgba(47,47,50,0.62));flex:none;margin-right:12px;">
         <circle cx="10.5" cy="10.5" r="6.8"/><line x1="15.6" y1="15.6" x2="20.5" y2="20.5"/>
@@ -390,7 +566,7 @@
        ⚠ 배경을 거의 불투명(0.95)으로 둔 이유 : 꼬리가 상자 테두리를 **덮어서** 이음매를 지운다 (반투명이면 겹친 자리가 짙어진다)
        ⭐ 2026-09-13 저녁 카드(<html data-card-eve>)는 바탕이 **비친다** — 그래서 꼬리를 바깥 삼각형으로 잘라 상자와 안 겹치게 한다 (ui.js setTail).
          색은 전부 `var(--pb-card-…, 예전 값)` 이라 속성이 없으면 예전 종이 카드 그대로다 -->
-  <div id="scent-card" style="position:absolute;left:0;top:0;z-index:20;width:var(--pb-card-w,296px);opacity:0;visibility:hidden;pointer-events:none;will-change:transform;">
+  <div id="scent-card" style="position:absolute;left:0;top:0;z-index:20;width:var(--pb-card-w,325px);opacity:0;visibility:hidden;pointer-events:none;will-change:transform;">
     <div id="scent-bubble" style="position:relative;transform-origin:0 50%;">
       <!-- ⚠⚠ color 를 **여기서 끊는다** (2026-09-12 저녁). 이 상자는 자기 바탕(종이색)이 있으므로
            화면 잉크(`--pb-ink`)를 상속하면 안 된다 — 저녁이 기본이 되자(sceneTime 1) 밝은 바탕에
@@ -418,16 +594,35 @@
         <div data-row id="scent-en" lang="en" style="margin-top:2px;font-size:11px;letter-spacing:0.02em;color:var(--pb-card-ink-3,#8A8A8A);display:none;">—</div>
         <div data-row id="scent-sub" style="margin-top:3px;font-size:12px;letter-spacing:0.04em;color:var(--pb-card-ink-2,#555555);">—</div>
         <div data-row style="margin-top:16px;height:1px;background:var(--pb-card-rule,rgba(26,26,26,0.16));"></div>
-        <div data-row style="margin-top:14px;font-size:10px;letter-spacing:0.18em;color:var(--pb-card-ink-2,#555555);">NOTES</div>
-        <div data-row id="scent-notes" style="margin-top:6px;font-size:13px;line-height:1.6;">—</div>
+        <!-- ⭐ 어코드 상위 3개 (2026-09-17, v0.75.3) — 지도 향수는 ACCORDS (노트 데이터가 없다). 라벨 글자는 ui.js showScent 가 정한다 (어코드가 없는 예전 더미 부표는 NOTES) -->
+        <div data-row id="scent-notes-label" style="margin-top:14px;font-size:10px;letter-spacing:0.18em;color:var(--pb-card-ink-2,#555555);">ACCORDS</div>
+        <!-- ⭐ 어코드 줄 (2026-09-18, v0.75.7 — 사용자 : *"생각보다 중요한 정보일 수 있으니 폰트를 키우고 … 사이의 마진을 작게 만들어서 어코드 3가지를 조금 더 강조"*).
+             글자 13 → 16px(좁은 창 15px · --pb-card-accord-size) · 라벨과 틈 6 → 5px · 아래 단추 줄과 틈 14 → 10px · [이 향의 해역으로]와 틈 18 → 10px (두 단추 사이 틈과 같다).
+             ⭐⭐ v0.75.8 : 색은 **글자가 아니라 앞 동그라미**다 (사용자 : *"폰트 굵기 색상 바꾸니까 너무 촌스러워서 차라리 앞에 O 동그라미 아이콘에 색상을 넣어줘"*) —
+             글자는 카드 글자색 · 보통 굵기 · 칸(동그라미 + 틈 5px + 이름)마다 ui.js 가 만든다 · 가운뎃점은 뺐다.
+             ⭐⭐ v0.75.9 (사용자 : *"폰트 더 작게 · 동그라미 조금만 더 크게 · 왼쪽 정렬이 아니라 … 해당 소속된 레이아웃 중앙 순차 정렬해서 가로로 꽉 차게"*) :
+             글자 16 → 14px (폭 1024 이하 · 760 이하 13px) · 동그라미 7 → 9px · 세 칸을 이 줄(카드 안쪽 폭) 안에 **고르게 벌려** 가운데 기준으로 선다 (space-evenly — 칸 사이 · 양끝 여백이 같다).
+             ⚠ 폭을 똑같이 삼등분하지 않았다 — 칸 하나(75px)에 긴 이름(프레시 스파이시 112px)이 안 들어가는 향수가 200개 중 91개다. 이름 길이대로 두고 남는 폭을 나눈다.
+             ⚠ 한 줄에 안 드는 향수는 칸 단위로 다음 줄로 가고 그 줄도 가운데로 선다. 칸 사이 최소 10px.
+             ⭐ v0.75.10 (사용자 : *"그대로 두고 글자 한 단계 줄여줘"* — `프레시 스파이시` 를 `스파이시` 로 줄이지 않는다 · 웜 · 소프트 스파이시와 뜻이 갈린다) :
+             글자 14 → 13px (폭 1024 이하 · 760 이하 13 → 12px — 토큰 명세의 가장 작은 글자)
+             ⭐⭐ v0.75.11 (사용자 : *"간격 좁혀서 한 줄로 · 모든 카드가 한줄로 적힐 수 있게 간격 좁히고 최소 단위로만 좁히게 한다음 아직도 남아있으면 카드를 최소 단위로 좌우로 넓혀"*) :
+             ① 간격을 한 번만 좁혔다 — 칸 사이 최소 10 → 6px · 동그라미 틈 5 → 4px (ui.js). 여기서 멈춘다 — 4 · 3px 까지 좁혀도 가장 긴 조합(오, 러브 · 네롤리 보타니카 · 해피 필스 — 프레시/소프트 스파이시 + 화이트 플로럴 + 시트러스)이 넘친다.
+             ② 남은 것은 **카드를 넓혀** 맞췄다 — `#scent-card` 폭 (5px 단위로 가장 긴 조합이 한 줄에 드는 가장 작은 값) :
+                넓은 창 296 → 325px (안쪽 275.7 ≥ 가장 긴 272.6) · 폭 1024 이하 272 → 310px (12px 글자 · 가장 긴 255.5 — 305 는 여유 0.2px 라 글꼴 차이로 넘칠 수 있어 한 단계 더) · 760 이하 280 → 295px (여백 18 · 여유 2.2px).
+             ⚠ 어코드 이름 · 한글 표기 · 글자 크기를 바꾸면 이 폭을 다시 잰다 — 넘치면 두 줄로 내려갈 뿐 깨지지는 않는다 -->
+        <div data-row id="scent-notes" style="margin-top:5px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-evenly;column-gap:6px;row-gap:2px;font-size:var(--pb-card-accord-size,13px);line-height:1.45;">—</div>
         <!-- ⭐ 서비스 동작 세 가지 (2026-09-15, v0.68.0 — cardActions · <html data-card-actions>). [자세히 보기] · [진열대에 저장]은 앱(호스트)으로 나가고
              ui.js 는 data-act 만 넘긴다 (main.js cardAction · host.js)
              ⭐ 2026-09-16 : 밑줄 글자 → **테두리 단추** · [주변 향 탐색]을 뺐다 (부표 누르기가 곧 그 동작이다). 값 · 까닭은 위 <style> 의 #scent-actions 주석 -->
-        <div data-row id="scent-actions" style="display:var(--pb-card-actions-d,none);margin-top:14px;flex-wrap:wrap;gap:5px;">
-          <button type="button" data-act="detail" style="padding:0 10px;height:30px;border:1px solid var(--pb-card-btn-line,#1A1A1A);border-radius:var(--pb-card-btn-radius,999px);background:none;font-family:inherit;font-size:12px;color:var(--pb-card-ink-2,#555555);white-space:nowrap;cursor:pointer;transition:color 140ms ease, border-color 140ms ease;">자세히 보기</button>
-          <button type="button" data-act="save" style="padding:0 10px;height:30px;border:1px solid var(--pb-card-btn-line,#1A1A1A);border-radius:var(--pb-card-btn-radius,999px);background:none;font-family:inherit;font-size:12px;color:var(--pb-card-ink-2,#555555);white-space:nowrap;cursor:pointer;transition:color 140ms ease, border-color 140ms ease;">진열대에 저장</button>
+        <div data-row id="scent-actions" style="display:var(--pb-card-actions-d,none);margin-top:10px;flex-wrap:wrap;gap:10px;">
+          <button type="button" data-act="detail" style="flex:1 1 0;padding:0 10px;height:30px;border:1px solid var(--pb-act-line,#1A1A1A);border-radius:var(--pb-card-btn-radius,var(--pb-card-radius,5px));background:var(--pb-act-bg,transparent);font-family:inherit;font-size:12px;color:var(--pb-act-ink,#555555);white-space:nowrap;cursor:pointer;transition:color 140ms ease, border-color 140ms ease, background-color 140ms ease;">자세히 보기</button>
+          <button type="button" data-act="save" style="flex:1 1 0;padding:0 10px;height:30px;border:1px solid var(--pb-act-line,#1A1A1A);border-radius:var(--pb-card-btn-radius,var(--pb-card-radius,5px));background:var(--pb-act-bg,transparent);font-family:inherit;font-size:12px;color:var(--pb-act-ink,#555555);white-space:nowrap;cursor:pointer;transition:color 140ms ease, border-color 140ms ease, background-color 140ms ease;">진열대에 저장</button>
         </div>
-        <button data-row id="scent-sail" style="margin-top:18px;width:100%;height:40px;border:1px solid var(--pb-card-btn-line,#1A1A1A);border-radius:var(--pb-card-btn-radius,5px);background:var(--pb-card-btn,#1A1A1A);color:var(--pb-card-btn-ink,#F6F5F2);font-family:inherit;font-size:13px;font-weight:600;letter-spacing:0.02em;cursor:pointer;">이 향의 해역으로</button>
+        <!-- ⭐⭐ [이 향의 해역으로] — 호버하면 아래에서 **흰 파도 두 겹**이 차오른다 (v0.75.12).
+             흰 글자(#scent-sail-label) 위로 흰 파도 두 겹이 차오른다 — 속이 반투명이라 글자가 그대로 비친다.
+             값 · 까닭은 위 <style> 의 #scent-sail 주석 -->
+        <button data-row id="scent-sail" class="pb-wave-host" style="position:relative;overflow:hidden;margin-top:10px;width:100%;height:40px;border:1px solid var(--pb-sail-line,#1A1A1A);border-radius:var(--pb-card-btn-radius,var(--pb-card-radius,5px));background:var(--pb-sail-bg,#1A1A1A);color:var(--pb-sail-ink,#F6F5F2);font-family:inherit;font-size:13px;font-weight:600;letter-spacing:0.02em;cursor:pointer;"><span id="scent-sail-label">이 향의 해역으로</span><span class="pb-wave" data-wave="back" aria-hidden="true"></span><span class="pb-wave" data-wave="front" aria-hidden="true"></span></button>
       </div>
       <!-- 꼬리 : 45° 돌린 정사각형의 **바깥 두 변**만 긋는다. 상자 **위에** 얹어 안쪽 절반이 상자 테두리를 덮는다 -->
       <span id="scent-tail" aria-hidden="true" style="position:absolute;left:-7px;top:50%;width:13px;height:13px;margin-top:-6.5px;background:var(--pb-card-bg,rgba(246,245,242,0.95));backdrop-filter:var(--pb-card-tail-blur,none);border-left:1px solid #1A1A1A;border-bottom:1px solid #1A1A1A;transform:rotate(45deg);pointer-events:none;transition:background-color var(--pb-card-peek-ms,200ms) ease, backdrop-filter var(--pb-card-peek-ms,200ms) ease;"></span>
@@ -472,16 +667,17 @@
     <div id="chart-veil" style="position:absolute;inset:0;background:var(--pb-chart-veil,rgba(24,18,34,0.58));"></div>
     <!-- ⚠ 높이는 정해 두고 **폭은 내용이 정한다** (fit-content) — 지도가 세로 기준이라 폭을 화면 가득 두면
          양옆에 빈 띠가 남는다. 지도의 비는 chart.js 가 #chart-stage 에 aspect-ratio 로 건다 -->
-    <div id="chart-panel" style="position:relative;height:calc(100% - 2 * var(--pb-chart-edge,40px));width:fit-content;max-width:calc(100% - 2 * var(--pb-chart-edge,40px));display:flex;flex-direction:column;padding:var(--pb-chart-pad,18px 22px 22px);border:1px solid var(--pb-line-soft,#C9C4BB);border-radius:10px;background:var(--pb-chart-bg,rgba(249,246,239,0.96));box-shadow:var(--pb-lift,0 10px 30px rgba(24,18,34,0.20));">
-      <div style="flex:none;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;padding-bottom:11px;border-bottom:1px solid var(--pb-line-soft,#C9C4BB);">
+    <div id="chart-panel" style="position:relative;height:calc(100% - 2 * var(--pb-chart-edge,40px));width:fit-content;max-width:calc(100% - 2 * var(--pb-chart-edge,40px));display:flex;flex-direction:column;padding:var(--pb-chart-pad,18px 22px 22px);border:1px solid var(--pb-chart-line,#C9C4BB);border-radius:10px;background:var(--pb-chart-bg,rgba(249,246,239,0.96));box-shadow:var(--pb-lift,0 10px 30px rgba(24,18,34,0.20));">
+      <div style="flex:none;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;padding-bottom:11px;border-bottom:1px solid var(--pb-chart-line,#C9C4BB);">
         <div style="min-width:0;">
-          <div style="font-size:10px;font-weight:600;letter-spacing:0.22em;color:var(--pb-on-surface-2,rgba(47,47,50,0.62));">SCENT CHART</div>
-          <div style="margin-top:4px;font-size:var(--pb-chart-title,23px);line-height:1.1;color:var(--pb-on-surface,#2F2F32);">해도</div>
+          <div style="font-size:10px;font-weight:600;letter-spacing:0.22em;color:var(--pb-chart-ink-2,rgba(47,47,50,0.62));">SCENT CHART</div>
+          <!-- ⚠ 2026-09-21 : '해도' → '향해 지도' (사용자). 엔진 안의 다른 '해도' 글귀(경고 · 머리말)는 그대로다 -->
+          <div style="margin-top:4px;font-size:var(--pb-chart-title,23px);line-height:1.1;color:var(--pb-chart-ink,#2F2F32);">향해 지도</div>
         </div>
         <div style="flex:none;display:flex;align-items:center;gap:9px;">
-          <span id="chart-hint" style="font-size:11px;letter-spacing:0.04em;color:var(--pb-on-surface-2,rgba(47,47,50,0.62));">—</span>
-          <button id="chart-reset" style="display:none;height:24px;padding:0 10px;border:1px solid var(--pb-line-soft,#C9C4BB);border-radius:999px;background:none;font-family:inherit;font-size:10.5px;letter-spacing:0.1em;color:var(--pb-on-surface-2,rgba(47,47,50,0.62));cursor:pointer;">처음 배율</button>
-          <button id="chart-close" title="닫기 (ESC)" aria-label="닫기" style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--pb-line-soft,#C9C4BB);border-radius:50%;background:none;font-family:inherit;font-size:16px;line-height:1;color:var(--pb-on-surface,#2F2F32);cursor:pointer;">×</button>
+          <span id="chart-hint" style="font-size:11px;letter-spacing:0.04em;color:var(--pb-chart-ink-2,rgba(47,47,50,0.62));">—</span>
+          <button id="chart-reset" style="display:none;height:24px;padding:0 10px;border:1px solid var(--pb-chart-line,#C9C4BB);border-radius:999px;background:none;font-family:inherit;font-size:10.5px;letter-spacing:0.1em;color:var(--pb-chart-ink-2,rgba(47,47,50,0.62));cursor:pointer;">처음 배율</button>
+          <button id="chart-close" title="닫기 (ESC)" aria-label="닫기" style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--pb-chart-line,#C9C4BB);border-radius:50%;background:none;font-family:inherit;font-size:16px;line-height:1;color:var(--pb-chart-ink,#2F2F32);cursor:pointer;">×</button>
         </div>
       </div>
       <div style="flex:1;min-height:0;display:flex;gap:var(--pb-chart-gap,18px);">
@@ -510,6 +706,20 @@
 </div>
 
 <!-- 스크립트 경로는 상대다 (2026-09-15) — 팀 프론트가 이 페이지를 /landing/ 아래 두 번째 입구로 같이 빌드한다. 이 저장소에서도(base './') 그대로 뜬다 -->
+<!-- ⭐ 부팅 신호 ① (2026-09-17, v0.75.0) — 앱(ScentScene)의 로딩 커튼이 듣는다. 모듈보다 앞이라 host.js 의 bootReport 를
+     못 부르므로 같은 모양({type:'pb:boot', stage})으로 직접 보낸다. ② script · ③ frame 은 main.js, GLB 는 boat.js 가 알린다.
+     ⚠ 창(window)에 오는 error 는 **스크립트 오류**다 — 자원(폰트 · 사진) 실패는 요소에서 끝나고 여기까지 안 올라온다.
+     ⚠ 단독으로 열면(부모가 나 자신) 아무것도 안 한다 -->
+<script>
+(function () {
+  if (window.parent === window) return;
+  var post = function (msg) { try { window.parent.postMessage(msg, location.origin); } catch (e) { /* file: 등 */ } };
+  post({ type: 'pb:boot', stage: 'html' });
+  window.addEventListener('error', function (e) {
+    post({ type: 'pb:boot', stage: 'error', where: 'script', message: String((e && e.message) || '') });
+  });
+})();
+</script>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>
