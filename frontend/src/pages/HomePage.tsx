@@ -184,8 +184,13 @@ export default function HomePage() {
 
       <ScentScene
         className="absolute inset-0"
-        // 유리판 헤더(GlobalHeader 의 h-22.5 = 90px)가 3D 위를 가리는 높이 — 엔진이 검색창 · 해도를 그 아래로 내립니다
-        coveredTop={90}
+        /*
+          유리판 헤더(GlobalHeader 의 `--header-h`)가 3D 위를 가리는 높이 — 엔진이 검색창 ·
+          해도를 그 아래로 내립니다.
+          ⚠️ 숫자가 아니라 **계산되는 길이**를 넘깁니다. 헤더는 `--spacing` 을 타 1920 에서 90 ·
+            1536 에서 72 라, 90 을 박으면 좁은 화면에서 18px 이 어긋납니다 (`ScentScene` 의 probe).
+        */
+        coveredTop="var(--header-h)"
         onNightChange={(night) => setSky(night ? 'dark' : 'light')}
         onChartChange={setChartOpen}
         onBoot={boot.report}
@@ -261,8 +266,11 @@ export default function HomePage() {
       />
 
       {/*
-        향해 일지 — 3D 위 왼쪽 위에 계속 떠 있습니다. 유리판 헤더(90px) 아래 30 · 왼쪽 30 —
+        향해 일지 — 3D 위 왼쪽 위에 계속 떠 있습니다. 유리판 헤더 아래 30 · 왼쪽 30 —
         엔진 미니맵(SCENT MAP)이 오른쪽 아래 28px 에 서는 것과 마주 보게 둡니다
+
+        ⚠ `top-30` 이 곧 "헤더(22.5) + 30" 입니다 — 둘 다 `--spacing` 을 타므로 한 숫자로 적힙니다.
+          1920 에서 90+30=120 · 1536 에서 72+24=96 으로 헤더 아래 간격까지 같은 비율로 따라갑니다.
 
         ⭐ 2026-09-16 : 엔진 검색창이 이 판의 **윗변(120)에 맞춰** 올라왔습니다 (`params.searchDrop` 40 → 0 ·
           `--pb-search-top` 44 → 30). 그래서 넓은 창에서는 판과 검색창이 **같은 높이로 나란히** 섭니다.
