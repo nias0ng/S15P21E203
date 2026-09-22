@@ -32,6 +32,8 @@ export interface UserResponse {
   userId: number
   email: string
   nickname: string
+  /** 프로필 사진 주소. `null` 이면 설정하지 않은 상태입니다 */
+  profileImageUrl: string | null
 }
 
 export interface NicknameAvailabilityResponse {

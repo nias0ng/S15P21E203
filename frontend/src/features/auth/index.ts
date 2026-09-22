@@ -8,3 +8,4 @@ export {
 } from './components/PasswordResetForm'
 export { SignupForm } from './components/SignupForm'
 export { logout } from './api'
+export { meQuery } from './queries'
