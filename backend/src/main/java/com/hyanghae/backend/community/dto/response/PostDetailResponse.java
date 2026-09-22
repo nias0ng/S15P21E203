@@ -1,5 +1,6 @@
 package com.hyanghae.backend.community.dto.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -14,6 +15,10 @@ import java.util.List;
  *
  * <p>{@code nickname} 이 비어 있을 수 있습니다. 회원이 탈퇴하면 글은 남고 작성자만 지워집니다.
  * 그런 글은 주인이 없어 아무도 고칠 수 없고 {@code mine} 도 항상 거짓입니다.
+ * {@code profileImageUrl} 도 함께 비어 나갑니다.
+ *
+ * <p>{@code profileImageUrl} 의 값 규칙은 {@code UserResponse} 와 같습니다. 사진을 설정하지
+ * 않았으면 {@code null} 이고 화면이 기본 아바타를 보여줍니다.
  *
  * <p>{@code collectionTitle} 은 <b>글을 쓸 때 박제한</b> 컬렉션 이름입니다. 그 뒤에 컬렉션
  * 이름이 바뀌거나 컬렉션이 지워져도 이 값은 그대로입니다. 글은 그때 그 컬렉션을 소개한
@@ -39,6 +44,12 @@ public record PostDetailResponse(
         Long postId,
         String category,
         String nickname,
+
+        @Schema(description = "작성자 프로필 사진 주소. 설정하지 않았거나 탈퇴한 작성자면 null",
+                nullable = true,
+                example = "/api/v1/users/profile-images/2026/09/0a1b2c3d-4e5f-6071-8293-a4b5c6d7e8f9.jpg")
+        String profileImageUrl,
+
         String title,
         String content,
         List<String> imageUrls,

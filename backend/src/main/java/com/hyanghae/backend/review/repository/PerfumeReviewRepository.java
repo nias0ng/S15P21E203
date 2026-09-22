@@ -67,6 +67,7 @@ public interface PerfumeReviewRepository extends JpaRepository<PerfumeReview, Lo
                    r.title AS title,
                    r.content AS content,
                    u.nickname AS nickname,
+                   u.profile_image_url AS profileImageUrl,
                    p.perfume_id AS perfumeId,
                    p.name AS perfumeName,
                    b.name AS brand,
@@ -154,6 +155,7 @@ public interface PerfumeReviewRepository extends JpaRepository<PerfumeReview, Lo
             value = """
                     SELECT r.id AS reviewId,
                            u.nickname AS nickname,
+                           u.profile_image_url AS profileImageUrl,
                            r.title AS title,
                            r.content AS content,
                            CASE WHEN r.user_id = :currentUserId THEN TRUE ELSE FALSE END AS mine,

@@ -35,7 +35,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
      */
     String SELECT_COLUMNS = """
             SELECT p.post_id AS postId, c.code AS category, p.title AS title,
-                   u.nickname AS nickname, p.created_at AS createdAt,
+                   u.nickname AS nickname,
+                   u.profile_image_url AS profileImageUrl,
+                   p.created_at AS createdAt,
                    p.view_count AS viewCount,
                    (SELECT COUNT(*)
                       FROM comments cm
@@ -166,12 +168,17 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     List<PostPerfumeRow> findRepresentativePerfumes(@Param("postIds") Collection<Long> postIds);
 
     /**
-     * 작성자 닉네임입니다. 사용자 엔티티가 없어 따로 읽습니다.
+     * 글 상세에 실을 작성자입니다. 사용자 엔티티가 없어 따로 읽습니다.
      *
-     * <p>탈퇴한 작성자는 빈 {@link Optional} 입니다. 글은 남고 작성자만 지워집니다.
+     * <p>탈퇴한 작성자는 빈 {@link Optional} 입니다. 글은 남고 작성자만 지워집니다. 화면은 그런
+     * 글을 "탈퇴한 회원" 으로 그리고 기본 아바타를 보여줍니다.
      */
-    @Query(value = "SELECT nickname FROM users WHERE user_id = :userId", nativeQuery = true)
-    Optional<String> findNickname(@Param("userId") Long userId);
+    @Query(value = """
+            SELECT nickname AS nickname, profile_image_url AS profileImageUrl
+            FROM users
+            WHERE user_id = :userId
+            """, nativeQuery = true)
+    Optional<PostAuthorRow> findAuthor(@Param("userId") Long userId);
 
     /** 상세의 댓글 수입니다. */
     @Query("""
