@@ -446,14 +446,15 @@ IDE 와 `grep` 이 찾을 수 있어야 합니다.
 - 비밀번호 재설정 (A31) — 화면만 있고 `PasswordResetForm` 에 NOTE 두 곳. 붙일 계획이
   없어 TODO 가 아닙니다 — 두 폼은 눌러도 서버로 아무것도 가지 않습니다
 
-**화면만 아직 안 붙인 것**(백엔드는 있습니다)도 적어 둡니다. 없다고 적혀 있으면 다음 사람이
-찾아보지도 않습니다.
+프로필 사진도 붙었습니다(S15P21E203-404) — `features/auth/ProfileImageField` 가 고른 사진을
+`POST · DELETE /users/me/profile-image`(multipart, 필드 `file`) 로 보내고, 정보 변경 화면과
+헤더 아바타가 `meQuery` 캐시 하나를 같이 봅니다. 제한은 **JPG · PNG · GIF · WEBP · 1MB** 이고
+형식을 파일 내용으로 판별합니다 — 화면에서 미리 거르지 않고 서버 문구(413 · 415)를 그대로 보여줍니다.
 
-- 프로필 사진 — `POST /users/me/profile-image`(multipart, 필드 `file`) ·
-  `DELETE /users/me/profile-image`. 화면은 `AccountForm` 에 TODO 로 남아 있습니다
-  (S15P21E203-404 — 헤더 · 정보 변경 · 후기 상세 세 곳).
-  ⚠️ 제한이 화면 주석과 다릅니다 — 백엔드는 JPG · PNG · GIF · WEBP 에 기본 1MB 이고 형식을
-  파일 내용으로 판별합니다
+⚠️ **작성자 사진은 아직 못 붙입니다.** `profileImageUrl` 이 `UserResponse` 에만 있어서 내 사진만
+알 수 있습니다. 후기 · 게시글 · 댓글 응답(`ReviewDetailResponse` · `ReviewResponse` ·
+`ReviewBoardItemResponse` · `PostDetailResponse` · `PostSummaryResponse` · `CommentResponse`)에
+필드를 추가해 달라고 요청해 두었고, 오면 그 자리의 `NOTE:` 를 걷으면 됩니다.
 
 붙어 있는 API 도 **값이 비는 필드가 많습니다** — `nameKo`·`imageUrl`·`scentFamily`·`logoUrl` 은
 null 로 옵니다. **타입이 필수라고 믿고 바로 접근하면 화면이 죽습니다.** 값 없는 경우를 먼저

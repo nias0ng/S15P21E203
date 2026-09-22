@@ -1,10 +1,11 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router'
 
-import { logout } from '@/features/auth'
+import { logout, meQuery } from '@/features/auth'
 import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
-import { useAuthStore } from '@/shared/store/authStore'
+import { useAuthStore, useIsLoggedIn } from '@/shared/store/authStore'
+import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import { FOCUS, type Ink } from './tone'
 import { useDismissable } from './useDismissable'
@@ -31,6 +32,10 @@ export function AccountMenu({ ink }: { ink: Ink }) {
   const queryClient = useQueryClient()
   const clear = useAuthStore((state) => state.clear)
   const { open, setOpen, containerRef } = useDismissable()
+
+  /* 사진 주소는 서버가 쥔 값이라 쿼리에서 읽습니다 — 정보 변경 화면과 같은 캐시라 요청이 늘지 않습니다 */
+  const isLoggedIn = useIsLoggedIn()
+  const { data: me } = useQuery({ ...meQuery(), enabled: isLoggedIn })
 
   /*
    * refresh 토큰이 httpOnly 쿠키라 서버에도 알려야 로그아웃입니다. 실패해도 이
@@ -62,8 +67,17 @@ export function AccountMenu({ ink }: { ink: Ink }) {
           open && ink.open,
         )}
       >
-        {/* TODO: 프로필 이미지 연동 — A29 정보 변경에서 업로드 (S15P21E203-404) */}
-        <AccountIcon />
+        {/* 사진이 없을 때 `Thumbnail` 을 쓰면 빈 상자가 서서, 그때는 원래 아이콘을 둡니다 */}
+        {me?.profileImageUrl != null ? (
+          <Thumbnail
+            src={me.profileImageUrl}
+            alt="내 프로필 사진"
+            bare
+            className="size-5 rounded-full object-cover"
+          />
+        ) : (
+          <AccountIcon />
+        )}
       </button>
 
       {open && (

@@ -90,7 +90,8 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
         </h1>
 
         <div className="flex items-center gap-2.5">
-          {/* TODO: 프로필 이미지 연동 (S15P21E203-404) */}
+          {/* NOTE: 작성자 사진은 응답에 없습니다 — `ReviewDetailResponse` 가 닉네임만 줍니다.
+              내 사진은 `GET /users/me` 로 알지만 남의 사진은 알 길이 없어, 필드를 요청해 뒀습니다 */}
           <Thumbnail className="size-7.5 shrink-0 rounded-full" />
           <span className="text-ink text-xs">
             {review.nickname ?? '탈퇴한 회원'}

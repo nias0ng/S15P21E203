@@ -10,12 +10,30 @@ import { useDiveStore } from '@/shared/store/diveStore'
 
 import { GlobalHeader } from '../GlobalHeader'
 
-const api = vi.hoisted(() => ({ logout: vi.fn() }))
+const api = vi.hoisted(() => ({ logout: vi.fn(), getMe: vi.fn() }))
 
 vi.mock('@/features/auth', async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>()
   return { ...actual, ...api }
 })
+
+/*
+  NOTE: 계정 단추가 아바타를 그리려고 `meQuery` 를 켭니다. 아래 `logIn()` 이 도는
+  시험은 전부 그 쿼리가 참이 되므로, 막지 않으면 진짜 요청이 나가고 401 인터셉터가
+  스토어를 비웁니다 — `accessToken` 단언이 깨지고, 시험이 끝난 뒤 도착하는 거절이
+  위 `useWarm` 과 같은 방식으로 종료 코드를 흔듭니다.
+*/
+vi.mock('@/features/auth/api', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>()
+  return { ...actual, ...api }
+})
+
+const ME = {
+  userId: 1,
+  email: 'tester@hyanghae.dev',
+  nickname: '향해테스터',
+  profileImageUrl: null as string | null,
+}
 
 const warm = vi.hoisted(() => vi.fn())
 
@@ -56,6 +74,7 @@ const logIn = () =>
 
 beforeEach(() => {
   api.logout.mockReset().mockResolvedValue(undefined)
+  api.getMe.mockReset().mockResolvedValue(ME)
   warm.mockClear()
 })
 
@@ -188,5 +207,37 @@ describe('로그인 여부', () => {
 
     expect(screen.getByRole('link', { name: '진열대' })).toBeVisible()
     expect(screen.getByRole('button', { name: '내 계정' })).toBeVisible()
+  })
+})
+
+describe('계정 단추의 프로필 사진', () => {
+  it('사진이 있으면 아바타가 선다', async () => {
+    api.getMe.mockResolvedValue({
+      ...ME,
+      profileImageUrl: '/api/v1/users/profile-images/2026/09/a.jpg',
+    })
+    logIn()
+    renderHeader(ROUTES.PERFUMES)
+
+    expect(
+      await screen.findByRole('img', { name: '내 프로필 사진' }),
+    ).toBeVisible()
+  })
+
+  /* 사진이 없으면 자리표시자 상자가 아니라 원래 아이콘이 서야 합니다 */
+  it('사진이 없으면 아바타 없이 기본 아이콘만 선다', async () => {
+    logIn()
+    renderHeader(ROUTES.PERFUMES)
+
+    expect(await screen.findByRole('button', { name: '내 계정' })).toBeVisible()
+    expect(
+      screen.queryByRole('img', { name: '내 프로필 사진' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('비로그인이면 내 정보를 묻지 않는다', () => {
+    renderHeader(ROUTES.PERFUMES)
+
+    expect(api.getMe).not.toHaveBeenCalled()
   })
 })

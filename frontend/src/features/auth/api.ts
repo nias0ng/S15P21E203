@@ -87,3 +87,25 @@ export async function changeNickname(nickname: string): Promise<UserResponse> {
   })
   return data
 }
+
+/**
+ * 프로필 사진 올리기. 새 주소를 돌려줍니다.
+ *
+ * 형식 · 용량은 서버가 봅니다 — 415 는 형식, 413 은 용량이고 둘 다 사람이 읽을
+ * 문구를 함께 줍니다. 화면은 그 말을 그대로 옮기면 됩니다.
+ */
+export async function uploadProfileImage(file: File): Promise<string> {
+  const body = new FormData()
+  body.append('file', file)
+
+  const { data } = await http.post<{ profileImageUrl: string }>(
+    '/users/me/profile-image',
+    body,
+  )
+  return data.profileImageUrl
+}
+
+/** 프로필 사진 지우기. 기본 아이콘으로 돌아갑니다 */
+export async function removeProfileImage(): Promise<void> {
+  await http.delete('/users/me/profile-image')
+}

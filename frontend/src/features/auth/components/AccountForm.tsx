@@ -15,6 +15,7 @@ import { NICKNAME_MIN_LENGTH } from '../types'
 
 import { AuthCard } from './AuthCard'
 import { PasswordChangeModal } from './PasswordChangeModal'
+import { ProfileImageField } from './ProfileImageField'
 import { WithdrawModal } from './WithdrawModal'
 
 /** 정보 변경 (A29 — COM-04). 마이페이지 화면이 없어 계정 동작이 여기 모입니다 */
@@ -70,26 +71,20 @@ export function AccountForm() {
       <Toast {...toastProps} />
 
       <AuthCard title="정보 변경">
-        {/* TODO: 프로필 이미지 업로드 · 삭제 붙이기 — POST · DELETE /users/me/profile-image (multipart, 필드 file) (S15P21E203-404) */}
-        {/* NOTE: 백엔드 제한은 JPG · PNG · GIF · WEBP · 1MB 로 아래 안내와 다릅니다 */}
-        <div className="flex items-start gap-5">
-          {/* 어두운 방이 `bg-line-soft` 를 흰 12% 로 뒤집어, 사진이 없을 때 어둠 위에 아이보리 사각형이 남지 않습니다 */}
-          <div className="border-line bg-line-soft text-ink-muted rounded-card text-caption flex size-25 shrink-0 items-center justify-center border">
-            프로필
-          </div>
-          <div className="flex flex-col gap-1.25">
-            <Button variant="outline" size="sm">
-              이미지 변경
-            </Button>
-            <Button variant="outline" size="sm">
-              이미지 삭제
-            </Button>
-            <p className="text-ink-muted text-caption leading-relaxed">
-              JPG · JPEG · PNG · WEBP
-              <br />한 장당 최대 5MB
-            </p>
-          </div>
-        </div>
+        {/* 사진 주소는 쿼리 캐시가 쥡니다 — 헤더의 아바타가 같은 캐시를 봐서 함께 바뀝니다 */}
+        <ProfileImageField
+          value={me?.profileImageUrl ?? null}
+          onChange={(next) => {
+            queryClient.setQueryData(authKeys.me(), (old?: typeof me) =>
+              old == null ? old : { ...old, profileImageUrl: next },
+            )
+            showToast(
+              next === null
+                ? '프로필 사진을 지웠습니다'
+                : '프로필 사진을 바꿨습니다',
+            )
+          }}
+        />
 
         {/* 못 고치는 값이라 칸 없이 글자로 둡니다 — 입력칸이 있으면 눌러 보게 됩니다 */}
         <div className="space-y-2.5">
