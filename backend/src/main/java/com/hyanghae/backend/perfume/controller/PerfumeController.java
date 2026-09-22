@@ -5,6 +5,7 @@ import com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.RelatedPerfumesResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeNotesResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumePostsResponse;
+import com.hyanghae.backend.perfume.dto.response.PerfumeReviewAggregatesResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeReviewKeywordsResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeReviewStatisticsResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeReviewSummaryResponse;
@@ -226,5 +227,36 @@ public class PerfumeController {
     @GetMapping("/{perfumeId}/season-statistics")
     public PerfumeSeasonStatisticsResponse getSeasonStatistics(@PathVariable Long perfumeId) {
         return perfumeService.getSeasonStatistics(perfumeId);
+    }
+
+    /**
+     * 후기 집계 4종을 한 번에 조회합니다. 상세 화면이 네 번 부르던 것을 한 번으로 줄입니다.
+     *
+     * <p>{@code review-summary} · {@code review-keywords} · {@code review-statistics} ·
+     * {@code season-statistics} 가 내려주던 응답을 각각 {@code reviewSummary} ·
+     * {@code reviewKeywords} · {@code reviewStatistics} · {@code seasonStatistics} 필드에
+     * <b>그대로</b> 담습니다. 각 조각의 모양과 의미는 하나도 바뀌지 않았습니다.
+     *
+     * <p><b>기존 네 엔드포인트는 그대로 둡니다.</b> 화면이 옮겨오기 전에 지우면 그 사이에 상세
+     * 화면이 깨집니다. 옮긴 것을 확인한 뒤 따로 지웁니다.
+     *
+     * <p>{@code size} 는 키워드에만 걸립니다. 나머지 셋은 받을 개수를 정할 것이 없습니다.
+     * {@code review-keywords} 의 {@code size} 와 같은 뜻이고 같은 기본값(20)·상한(100)입니다.
+     */
+    @Operation(
+            summary = "후기 집계 4종 일괄 조회",
+            description = "후기 요약·키워드 통계·후기 수·계절 통계를 한 응답에 담습니다."
+                    + " 네 조각은 각각의 단건 엔드포인트가 내려주던 응답과 같습니다."
+                    + " size 는 키워드 개수 상한이며 나머지 셋에는 영향이 없습니다."
+    )
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "404", description = "향수 없음")
+    @GetMapping("/{perfumeId}/review-aggregates")
+    public PerfumeReviewAggregatesResponse getReviewAggregates(
+            @PathVariable Long perfumeId,
+            @Parameter(description = "키워드를 받을 최대 개수. 페이지 크기가 아니라 상한입니다.")
+            @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size
+    ) {
+        return perfumeService.getReviewAggregates(perfumeId, size);
     }
 }

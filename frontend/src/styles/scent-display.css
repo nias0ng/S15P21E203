@@ -341,3 +341,54 @@
 .scent-night [data-slot='toast'] {
   background-color: rgb(255 255 255 / 0.75);
 }
+
+/*
+ * 3D 향 지도 위의 판 — 메인의 모달(추천 결과 · 만족도 설문)이 쓰는 어두운 유리입니다.
+ *
+ * 색과 재질은 **엔진 카드에서 그대로 가져왔습니다** (`landing/index.html` 의 `--pb-card-*`).
+ * 부표를 눌러 뜨는 카드와 검색이 내놓는 모달은 같은 바다 위에 같이 떠 있는 판이라, 한쪽만
+ * 상아색 종이면 3D 위에 웹페이지를 오려 붙인 것으로 읽힙니다.
+ *
+ * ⚠️ 값을 고칠 때 `landing/index.html` 의 카드 토큰도 같이 봅니다 — 둘이 갈라지면 같은
+ * 화면에 재질이 다른 판 두 장이 뜹니다.
+ *
+ * NOTE: 바탕만 칠하지 않고 **역할 토큰을 다시 정의합니다.** 어두운 방(`.scent-night`)과 같은
+ * 규율입니다 — 바탕만 뒤집으면 물려받기만 하는 글자가 먹색으로 남습니다.
+ */
+@layer components {
+  .scent-map-panel {
+    /*
+     * 엔진 카드와 같은 색이되 **알파를 안 씁니다** (--pb-card-bg 는 0.86 입니다).
+     * 카드는 손바닥만 해서 뒤가 비쳐도 글자가 버티지만, 이 판은 화면의 절반을 덮고
+     * 그 아래 3D 바다는 물마루가 흰색으로 부서집니다 — 0.86 에서도 마루가 지나갈 때마다
+     * 글자 뒤가 밝아져 읽는 자리가 흔들립니다. 판을 꽉 채우고 대신 배경(::backdrop)만
+     * 얕게 덮어 바다는 판 밖에서 보이게 둡니다.
+     */
+    background: #2c263e;
+    border: 1px solid rgb(255 244 236 / 0.16);
+    box-shadow: 0 14px 34px rgb(16 10 28 / 0.32);
+
+    --color-ink: #fbf3ea; /* --pb-card-ink */
+    --color-ink-muted: rgb(251 243 234 / 0.72); /* --pb-card-ink-2 */
+    --color-line: rgb(255 244 236 / 0.16); /* --pb-card-border */
+    --color-line-soft: rgb(255 244 236 / 0.1);
+    /* 판 위에 얹는 칸(결과 카드 · 입력칸) — 엔진 카드의 --pb-card-img-bg 와 같은 값 */
+    --color-surface-card: rgb(251 243 234 / 0.06);
+    --color-surface-sunken: rgb(251 243 234 / 0.06);
+    /*
+     * ⚠️ 밝은 채움 위의 글자가 이 값을 씁니다(`text-surface` — 순위 딱지 · 고른 칩).
+     * 상아색으로 두면 상아 바탕에 상아 글자가 되어 통째로 사라집니다.
+     */
+    --color-surface: #2c263e;
+    /* 고른 칩은 판 위에서 상아색입니다 — 남색으로 두면 판에 잠겨 "골랐다" 가 안 읽힙니다 */
+    --color-selected: #fbf3ea;
+
+    /* 브라우저 기본 스타일이 dialog 에 color: CanvasText(검정)를 박습니다 */
+    color: var(--color-ink);
+  }
+
+  /* 판 위의 배경(`::backdrop`)은 바다를 가리지 않게 얕게만 덮습니다 */
+  .scent-map-panel::backdrop {
+    background: rgb(16 10 28 / 0.38);
+  }
+}

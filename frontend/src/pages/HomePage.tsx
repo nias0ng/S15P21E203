@@ -16,7 +16,7 @@ import {
   type SceneSearchMode,
   type VoyageLogStatus,
 } from '@/features/map'
-import { RecommendModal } from '@/features/recommend'
+import { NlrFeedbackModal, RecommendModal } from '@/features/recommend'
 // 진열대 저장은 진열대 도메인의 어휘입니다. 화면에서 두 도메인을 조합합니다.
 import {
   ShelfRegisterModal,
@@ -317,6 +317,13 @@ export default function HomePage() {
 
       {/* 검색창의 두 방식이 내놓는 답. 뒤의 3D 는 그대로 돌아갑니다 */}
       <RecommendModal query={nlQuery} onClose={() => setNlQuery(null)} />
+
+      {/*
+        결과를 닫으면 뜹니다. 답을 안 하고 상세로 나갔다 돌아와도 여기서 이어받습니다.
+        NOTE: 결과 모달이 떠 있는 동안에는 묻지 않습니다 — 향수를 보는 중에 답을 물으면
+        그 답은 추천이 아니라 화면에 대한 답입니다.
+      */}
+      <NlrFeedbackModal ready={boot.done && nlQuery === null} />
 
       <MapSearchModal
         keyword={mapKeyword}
