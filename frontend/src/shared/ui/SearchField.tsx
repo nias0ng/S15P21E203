@@ -23,8 +23,11 @@ type SearchFieldProps = Omit<
 type SearchFieldTone = 'archive' | 'scene'
 
 /**
- * NOTE: `archive` 가 짙은 청동인 것은 대비 때문입니다 — 옅은 청동(`accent`) 위의
- * 아이보리 화살표는 2.90:1 로 기준(3:1)에 못 미치고, `accent-deep` 이라야 4.54:1 입니다.
+ * NOTE: `archive` 의 색은 **방이 정합니다** — 어두운 방이 `--search-submit` ·
+ * `--search-submit-image` 를 채워 남색 그라데이션이 되고(`styles/scent-display.css`),
+ * 아이보리 모달 · 진열대 종이에서는 둘 다 비어 있어 아래 짙은 청동이 섭니다.
+ * 짙은 청동인 까닭은 대비입니다 — 옅은 청동(`accent`) 위의 아이보리 화살표는
+ * 2.90:1 로 기준(3:1)에 못 미치고 `accent-deep` 이라야 4.54:1 입니다.
  */
 const SUBMIT_TONE: Record<SearchFieldTone, string> = {
   archive: 'bg-accent-deep',
@@ -60,13 +63,25 @@ export function SearchField({
     <form
       role="search"
       className={cn(
-        'flex h-14 items-center gap-2.5 rounded-full pr-1.75 pl-5',
+        /* `isolate` 는 아래 빛무리(`-z-10`)를 이 알약 안에 가둡니다 — 없으면 조상 쌓임 맥락에 따라 뒤로 빠져 안 보일 수 있습니다 */
+        'relative isolate flex h-14 items-center gap-2.5 rounded-full pr-1.75 pl-5',
         /*
           NOTE: 색을 의미 토큰이 아니라 팔레트에서 직접 가져옵니다 — 토큰을 쓰면
           어두운 방에서 같이 뒤집혀 검색창이 바탕에 녹습니다.
+
+          NOTE: `--search-*` 는 **어두운 방만 채웁니다**(`styles/scent-display.css`).
+          채워지지 않은 곳(아이보리 모달 · 진열대 종이)은 뒤의 기본값이 섭니다.
         */
-        'border-stonegray bg-ivory/90 border backdrop-blur-[7px]',
+        'border-[var(--search-pill-edge,var(--color-stonegray))]',
+        'border bg-[var(--search-pill,rgb(249_246_239/0.9))] backdrop-blur-[7px]',
         'shadow-[0_10px_30px_rgb(24_18_34/0.2)]',
+        /*
+          빛무리. `-z-10` 이라 알약 뒤에 깔려, 단추를 포함한 모든 자식이 그 위에
+          섭니다 — 알약 밖으로 번지도록 상자를 키우고 흐립니다.
+        */
+        'before:pointer-events-none before:absolute before:-inset-x-6 before:-inset-y-4',
+        'before:-z-10 before:rounded-full before:blur-xl',
+        'before:bg-[radial-gradient(ellipse_at_center,var(--search-glow,transparent),transparent_70%)]',
         /* 포커스 링은 input 이 아니라 알약에 겁니다 */
         'has-[:focus-visible]:ring-accent-deep has-[:focus-visible]:ring-2',
         className,
@@ -98,9 +113,16 @@ export function SearchField({
         type="submit"
         aria-label="검색"
         className={cn(
-          'grid size-10.5 shrink-0 place-items-center rounded-full',
-          'text-ivory',
-          SUBMIT_TONE[tone],
+          /* `relative` 는 빛무리(`-z-10`) 위에 확실히 세우려는 것입니다 */
+          'relative grid size-10.5 shrink-0 place-items-center rounded-full',
+          'text-[var(--search-submit-ink,var(--color-ivory))]',
+          tone === 'archive'
+            ? cn(
+                'bg-[var(--search-submit,var(--color-accent-deep))]',
+                /* 그림 겹은 바탕색 위에 얹힙니다 — 방 밖에서는 비어 있어 바탕색만 섭니다 */
+                'bg-[image:var(--search-submit-image,none)]',
+              )
+            : SUBMIT_TONE[tone],
           'shadow-[0_2px_8px_rgb(24_18_34/0.18)]',
           'transition-transform duration-120 ease-out active:scale-95',
           'focus-visible:ring-accent-deep outline-none focus-visible:ring-2 focus-visible:ring-offset-2',

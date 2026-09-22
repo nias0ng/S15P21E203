@@ -2,9 +2,13 @@ import { cn } from '@/shared/lib/cn'
 
 /**
  * 헤더가 앉는 바탕 — 어느 화면 위인지는 껍데기(RootLayout)가 정합니다.
- * surface 기본 · paper 진열대 종이 결 · glass 밤하늘 위 유리 · glassLight 밝은 하늘 위 유리
+ * surface 기본 · night 어두운 방 · paper 진열대 종이 결 · glass 밤하늘 위 유리 ·
+ * glassLight 밝은 하늘 위 유리
+ *
+ * NOTE: night 의 글자색은 surface 와 같습니다 — 어두운 방이 색 토큰을 통째로 뒤집어
+ * 놓아서(`styles/scent-display.css`) 같은 클래스가 알아서 밝은 글자가 됩니다.
  */
-export type HeaderTone = 'surface' | 'paper' | 'glass' | 'glassLight'
+export type HeaderTone = 'surface' | 'night' | 'paper' | 'glass' | 'glassLight'
 
 // 유리판(3D 향 지도 위). `fixed` 라 3D 가 헤더 뒤까지 깔립니다
 export const GLASS = cn(
