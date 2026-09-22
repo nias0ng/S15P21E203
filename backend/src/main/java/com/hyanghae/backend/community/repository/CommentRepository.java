@@ -24,6 +24,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     String SELECT_COLUMNS = """
             SELECT c.comment_id AS commentId, c.user_id AS authorId, u.nickname AS nickname,
+                   u.profile_image_url AS profileImageUrl,
                    c.content AS content, c.created_at AS createdAt, c.updated_at AS updatedAt
             FROM comments c
             LEFT JOIN users u ON u.user_id = c.user_id

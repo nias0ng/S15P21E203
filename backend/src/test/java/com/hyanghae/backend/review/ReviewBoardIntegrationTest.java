@@ -57,6 +57,9 @@ class ReviewBoardIntegrationTest {
 
     private static final long MISSING_ID = 999;
 
+    private static final String PROFILE_IMAGE_URL =
+            "/api/v1/users/profile-images/2026/09/0a1b2c3d-4e5f-6071-8293-a4b5c6d7e8f9.jpg";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -129,6 +132,35 @@ class ReviewBoardIntegrationTest {
                 .andExpect(jsonPath("$.reviews[0].viewCount").value(0))
                 .andExpect(jsonPath("$.reviews[0].liked").value(false))
                 .andExpect(jsonPath("$.reviews[0].createdAt").isNotEmpty());
+    }
+
+    /**
+     * 목록과 상세에 작성자 프로필 사진 주소가 함께 실립니다.
+     *
+     * <p>남의 프로필을 따로 조회할 길이 없어, 여기서 주지 않으면 화면이 작성자 아바타 자리를 비운
+     * 채 둬야 합니다. 값 규칙은 {@code /users/me} 와 같습니다 — 사진을 설정하지 않았으면
+     * {@code null} 이고 화면이 기본 아바타를 보여줍니다.
+     */
+    @Test
+    void putsTheAuthorProfileImageInListAndDetail() throws Exception {
+        insertReview(1, WRITER_ID, 1, "사진 있는 사람의 후기", "본문입니다.");
+
+        mockMvc.perform(get(BOARD_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reviews[0].profileImageUrl").doesNotExist());
+
+        jdbcTemplate.update("UPDATE users SET profile_image_url = ? WHERE user_id = ?",
+                PROFILE_IMAGE_URL, WRITER_ID);
+
+        mockMvc.perform(get(BOARD_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reviews[0].nickname").value("글쓴이"))
+                .andExpect(jsonPath("$.reviews[0].profileImageUrl").value(PROFILE_IMAGE_URL));
+
+        mockMvc.perform(get(REVIEW_URL, 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nickname").value("글쓴이"))
+                .andExpect(jsonPath("$.profileImageUrl").value(PROFILE_IMAGE_URL));
     }
 
     /**
@@ -353,10 +385,12 @@ class ReviewBoardIntegrationTest {
                         .value(ReviewErrorCode.REVIEW_NOT_FOUND.code()));
     }
 
-    /** 작성자가 탈퇴해도 후기는 남고 닉네임만 비어 나갑니다. */
+    /** 작성자가 탈퇴해도 후기는 남고 닉네임과 프로필 사진만 비어 나갑니다. */
     @Test
     void keepsReviewAfterTheWriterLeaves() throws Exception {
         insertReview(1, WRITER_ID, 1, "남는 후기", "본문");
+        jdbcTemplate.update("UPDATE users SET profile_image_url = ? WHERE user_id = ?",
+                PROFILE_IMAGE_URL, WRITER_ID);
 
         jdbcTemplate.update("DELETE FROM users WHERE user_id = ?", WRITER_ID);
 
@@ -364,6 +398,7 @@ class ReviewBoardIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("남는 후기"))
                 .andExpect(jsonPath("$.nickname").doesNotExist())
+                .andExpect(jsonPath("$.profileImageUrl").doesNotExist())
                 .andExpect(jsonPath("$.mine").value(false));
     }
 
