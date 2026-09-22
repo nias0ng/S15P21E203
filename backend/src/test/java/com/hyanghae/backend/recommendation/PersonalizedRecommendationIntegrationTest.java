@@ -6,22 +6,33 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.hyanghae.backend.global.security.CurrentUser;
+import com.hyanghae.backend.recommendation.repository.PersonalizedRecommendationCandidate;
+import com.hyanghae.backend.recommendation.repository.PersonalizedRecommendationRepository;
 import com.hyanghae.backend.support.IntegrationTest;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @IntegrationTest
 @AutoConfigureMockMvc
@@ -43,6 +54,75 @@ class PersonalizedRecommendationIntegrationTest {
 
     @Autowired
     private FakeCurrentUser currentUser;
+
+    @Autowired
+    private PersonalizedRecommendationRepository recommendationRepository;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1, 3, 5})
+    void preservesDeployedCandidatesScoresAndEvidence(int rating) throws Exception {
+        Long regionId = jdbcTemplate.queryForObject(
+                "SELECT scent_region_id FROM scent_regions WHERE code = 'WOODY'", Long.class);
+        // 10개 제한과 동일 점수일 때 perfume_id 정렬까지 비교합니다.
+        for (long perfumeId = 92100; perfumeId < 92112; perfumeId++) {
+            insertPerfume(perfumeId, "Extra Candidate " + perfumeId);
+            insertFamily(perfumeId, regionId, 1.0);
+        }
+        if (rating != 0) {
+            jdbcTemplate.update("UPDATE user_perfumes SET fit_rating = ? WHERE user_id = ?",
+                    rating, USER_ID);
+        }
+        jdbcTemplate.update("INSERT INTO user_perfume_views (user_id, perfume_id, viewed_at) "
+                + "VALUES (?, ?, NOW() - INTERVAL '1 day')", USER_ID, TASTE_PERFUME);
+        insertExposure(FIRST_CANDIDATE, Instant.now().minus(1, ChronoUnit.DAYS));
+
+        String baseline = new ClassPathResource("recommendation/personalized-baseline.sql")
+                .getContentAsString(StandardCharsets.UTF_8);
+        // NOW() 기반 감쇠를 두 SQL에서 동일하게 비교하기 위해 한 트랜잭션으로 실행합니다.
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            var jdbc = new NamedParameterJdbcTemplate(jdbcTemplate);
+            List<PersonalizedRecommendationCandidate> expected = jdbc.query(baseline,
+                    Map.of("userId", USER_ID, "limit", 10),
+                    (rs, rowNum) -> new PersonalizedRecommendationCandidate(
+                            rs.getLong("perfume_id"), rs.getString("display_name"),
+                            rs.getString("image_url"), rs.getDouble("score"),
+                            rs.getString("evidence_source"), rs.getString("evidence_name"),
+                            rs.getObject("last_recommended_at", java.time.OffsetDateTime.class)));
+            var actual = recommendationRepository.findTopCandidates(USER_ID, 10);
+            assertThat(actual).hasSize(expected.size());
+            for (int i = 0; i < expected.size(); i++) {
+                assertThat(actual.get(i)).usingRecursiveComparison()
+                        .withComparatorForType((a, b) -> Math.abs(a - b) < 1e-12
+                                ? 0 : Double.compare(a, b), Double.class)
+                        .isEqualTo(expected.get(i));
+            }
+            assertThat(actual).hasSize(10);
+        });
+    }
+
+    @Test
+    void usesRecentEvidenceWithAllCandidateAccordsInTheNorm() {
+        jdbcTemplate.update("DELETE FROM perfume_scent_families WHERE perfume_id = ?",
+                FIRST_CANDIDATE);
+        jdbcTemplate.update("INSERT INTO accords (accord_id, name, is_active) "
+                + "VALUES (?, 'unmatched', TRUE)", ACCORD_ID + 1);
+        jdbcTemplate.update("INSERT INTO perfume_accords (perfume_id, accord_id, rank, weight) "
+                + "VALUES (?, ?, 2, 0.8)", FIRST_CANDIDATE, ACCORD_ID + 1);
+        jdbcTemplate.update("INSERT INTO user_perfume_views (user_id, perfume_id, viewed_at) "
+                + "VALUES (?, ?, NOW())", USER_ID, TASTE_PERFUME);
+
+        var candidate = recommendationRepository.findTopCandidates(USER_ID, 10).stream()
+                .filter(value -> value.perfumeId() == FIRST_CANDIDATE).findFirst().orElseThrow();
+        assertThat(candidate.evidenceSource()).isEqualTo("RECENT");
+        assertThat(candidate.evidenceName()).isEqualTo("woody");
+        // 0.9 / sqrt(0.9² + 0.8²) * 0.15
+        double expectedScore = 0.9 / Math.sqrt(0.9 * 0.9 + 0.8 * 0.8) * 0.15;
+        assertThat(candidate.score()).isCloseTo(expectedScore,
+                org.assertj.core.data.Offset.offset(1e-12));
+    }
 
     @BeforeEach
     void setUp() {
@@ -203,6 +283,7 @@ class PersonalizedRecommendationIntegrationTest {
     }
 
     private void clearData() {
+        jdbcTemplate.update("DELETE FROM perfumes WHERE perfume_id >= 92100 AND perfume_id < 92112");
         jdbcTemplate.update("DELETE FROM personalized_recommendation_exposures WHERE user_id = ?", USER_ID);
         jdbcTemplate.update("DELETE FROM user_perfume_views WHERE user_id = ?", USER_ID);
         jdbcTemplate.update("DELETE FROM user_perfumes WHERE user_id = ?", USER_ID);
@@ -216,6 +297,7 @@ class PersonalizedRecommendationIntegrationTest {
         jdbcTemplate.update("DELETE FROM perfumes WHERE perfume_id IN (?, ?, ?)",
                 TASTE_PERFUME, FIRST_CANDIDATE, SECOND_CANDIDATE);
         jdbcTemplate.update("DELETE FROM accords WHERE accord_id = ?", ACCORD_ID);
+        jdbcTemplate.update("DELETE FROM accords WHERE accord_id = ?", ACCORD_ID + 1);
         jdbcTemplate.update("DELETE FROM users WHERE user_id = ?", USER_ID);
     }
 
