@@ -84,7 +84,8 @@ export function RecommendPeekCard({
           className={cn(
             BODY_WIDTH,
             'shrink-0 space-y-4 p-5 outline-none',
-            'max-h-[calc(100dvh-3rem)] overflow-y-auto',
+            // 위아래로 남기는 24씩. `--spacing` 을 곱해 다른 상자와 같은 비율로 줄입니다
+            'max-h-[calc(100dvh-var(--spacing)*12)] overflow-y-auto',
           )}
         >
           <div className="space-y-1 text-center">

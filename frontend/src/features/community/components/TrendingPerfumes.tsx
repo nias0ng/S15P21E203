@@ -43,8 +43,12 @@ export function TrendingPerfumes({ items, days, className }: Props) {
                 'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
               )}
             >
-              {/* tabular-nums 는 두 자리가 되어도 이름 시작점이 안 밀리게 합니다 */}
-              <span className="text-ink-muted text-caption w-3.75 shrink-0 tabular-nums">
+              {/*
+                tabular-nums 는 두 자리가 되어도 이름 시작점이 안 밀리게 합니다.
+                폭은 좁은 화면에서 줄어든 뒤에도 두 자리(10위)가 들어갈 만큼입니다 —
+                글자는 안 줄어들어 15px 로는 1536 에서 숫자가 이름에 닿습니다.
+              */}
+              <span className="text-ink-muted text-caption w-5 shrink-0 tabular-nums">
                 {rank + 1}
               </span>
               <span className="text-ink text-body min-w-0 flex-1 truncate">

@@ -68,7 +68,7 @@ const SUBMIT_SIZE: Record<SearchFieldTone, string> = {
  * NOTE: 모달에는 쓰지 마세요 — 모달 폭이 510 이라 아무 일도 하지 않고, 모달이
  * 넓어지면 검색창만 안 따라와 어긋납니다.
  */
-export const SEARCH_FIELD_LIST_WIDTH = 'max-w-[540px]'
+export const SEARCH_FIELD_LIST_WIDTH = 'max-w-135'
 
 /**
  * 검색 입력 + 둥근 보내기 단추 (A33 · A34 · A35 · C02 공용).

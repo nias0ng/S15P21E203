@@ -581,15 +581,16 @@ export function ShelfWall({
 
                 **자리를 패널에 매지 않습니다.** `--panel-inset` 을 따라가게 두면 카드를
                 옮길 때마다 화살표가 같이 움직여, 벽을 넘기는 손잡이가 자리를 못 잡습니다.
-                `--clear-w` 는 패널이 벽 오른쪽 끝에 붙어 있다고 치고 센 값이라 50 을
-                빼 두면 카드가 10 물러난 지금 자리에서 5px 떨어져 섭니다.
+                `--clear-w` 는 패널이 벽 오른쪽 끝에 붙어 있다고 치고 센 값이라(카드
+                왼쪽 끝 + `--panel-inset`) 70 을 빼 두면 화살표(35) 오른쪽 끝이 카드에서
+                30 떨어져 섭니다. 70 은 화면 치수라 `--spacing` 을 곱해 적습니다.
                 ⚠️ 카드를 더 왼쪽으로 옮기면(`--panel-inset` 을 키우면) 다시 겹칩니다.
               */}
               <PageArrow
                 direction={1}
                 disabled={view.start >= max}
                 onClick={() => flow.go(flow.destination() + step)}
-                className="left-[calc(var(--clear-w)-70px)]"
+                className="left-[calc(var(--clear-w)_-_var(--spacing)*17.5)]"
               />
             </>
           )}

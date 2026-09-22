@@ -311,8 +311,12 @@
   border-radius: 24px;
 }
 
+/*
+ * ⚠️ `Modal` 의 `py-3.75` 를 덮는 자리라 **같은 자로 적습니다** — 30px 로 박으면 모달의
+ * 나머지 숨은 `--spacing` 을 타 줄어드는데 머리줄만 안 줄어 어두운 방에서만 머리가 큽니다.
+ */
 .scent-night dialog > header {
-  padding-block: 30px;
+  padding-block: calc(var(--spacing) * 7.5);
 }
 
 /* 뒷막. `backdrop:bg-ink/40` 은 어두운 방에서 뒤집혀 흰 천을 덮은 꼴이 됩니다 */

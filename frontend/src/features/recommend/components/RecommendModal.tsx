@@ -29,7 +29,8 @@ export function RecommendModal({ query, onClose }: Props) {
       open={query !== null}
       onClose={onClose}
       title="추천 결과"
-      className="mt-25 mb-auto w-[min(760px,calc(100vw-40px))]"
+      // 760(=190×4). 좁은 창의 상한은 `Modal` 의 `max-w` 가 이미 같은 값으로 잡습니다
+      className="mt-25 mb-auto w-190"
     >
       {/* NOTE: `<dialog>` 는 닫혀도 children 이 DOM 에 남아, 그리지 않아야 족자가 다시 풀립니다 */}
       {query !== null && <RecommendBody query={query} />}

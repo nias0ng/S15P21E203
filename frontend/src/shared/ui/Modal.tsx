@@ -62,7 +62,7 @@ export function Modal({
         if (event.target === dialogRef.current) onClose()
       }}
       className={cn(
-        'rounded-card m-auto w-[min(510px,calc(100vw-40px))] p-0',
+        'rounded-card m-auto w-127.5 max-w-[calc(100vw-var(--spacing)*10)] p-0',
         'backdrop:bg-ink/40 open:flex open:flex-col',
         className,
       )}
