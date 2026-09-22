@@ -158,6 +158,48 @@ INFO:llm_stage1:stage1 프롬프트 적재 stage1_prompt_v1.txt sha256=4f0a368d9
 INFO:server:①단계 LLM 구조화 켜짐 (model=gpt-5.4-nano prompt=4f0a368d98b41338)
 ```
 
+### 키를 넣고 띄우기 — **루트 `.env` 는 자동으로 안 읽힙니다**
+
+**이 폴더에는 `.env` 를 읽는 코드가 없습니다.** `python-dotenv` 를 쓰지 않고
+`os.environ` 만 봅니다. 루트 `.env` 에 `GMS_API_KEY` 를 적어 두어도 **`uvicorn` 을
+직접 띄우면 전달되지 않습니다.** 도커로 띄울 때만 `compose.manual-test.yaml` 이
+넣어 줍니다.
+
+키가 없어도 서버는 **에러 없이 정상 기동합니다.** 위의 `llm` 이 `false` 가 될 뿐이라
+모르고 지나치기 쉽습니다.
+
+**Git Bash**
+
+```bash
+GMS_API_KEY=<키> uvicorn server:app --host 0.0.0.0 --port 8000
+```
+
+**PowerShell**
+
+```powershell
+$env:GMS_API_KEY = "<키>"
+uvicorn server:app --host 0.0.0.0 --port 8000
+```
+
+루트 `.env` 를 그대로 쓰고 싶으면 **내보내기까지 해야 합니다.**
+
+```bash
+set -a; source ../.env; set +a
+uvicorn server:app --host 0.0.0.0 --port 8000
+```
+
+> **⚠ `source ../.env` 만 하면 듣지 않습니다.** 루트 `.env` 에는 `export` 가 없어서
+> 셸 변수만 생기고 `uvicorn` 프로세스로 넘어가지 않습니다. 앞뒤의 `set -a` · `set +a`
+> 가 그 사이에 정해진 값을 전부 내보내게 합니다. 이것 없이 돌리면 **에러 없이
+> `llm:false`** 가 됩니다.
+
+> **⚠ 모델 변수는 이름이 다릅니다.** 루트 `.env` 는 `NLR_GMS_MODEL` 인데 이 폴더는
+> **`GMS_MODEL`** 을 읽습니다. compose 가 `GMS_MODEL: ${NLR_GMS_MODEL:-…}` 로 옮겨
+> 주기 때문에 **도커에서만 맞습니다.** 직접 띄울 때 `NLR_GMS_MODEL` 은 아무 효과가
+> 없고 기본값 `gpt-5.4-nano` 로 돕니다. 모델을 바꾸려면 `GMS_MODEL` 로 넣으십시오.
+
+**들어갔는지 확인합니다.** 위의 `/health` 에서 `"llm": true` 면 된 것입니다.
+
 ### 한글을 보낼 때 — Windows 에서 주의하십시오
 
 **한글을 명령줄 인자로 직접 넘기면 안 됩니다.** 셸이 인자의 한글을 깨뜨려 서버에
@@ -213,7 +255,8 @@ Invoke-RestMethod -Uri "http://localhost:8000/nlr/recommend" -Method Post `
 | `NLR_LEXICON_PATH` | `data/domain_lexicon_v1_15.csv` | 사전 버전을 바꿔 비교할 때 |
 | `NLR_PERFUMES_PATH` | `data/perfumes_nlr.csv.gz` | — |
 
-**키를 코드나 파일에 적지 마십시오.** 환경변수로만 받습니다. 만료되면 HTTP 401 로
+**키를 코드나 파일에 적지 마십시오.** 환경변수로만 받습니다 — **루트 `.env` 를
+자동으로 읽지 않습니다.** 넣는 방법은 위의 「키를 넣고 띄우기」에 있습니다. 만료되면 HTTP 401 로
 `[GMS 에러] Invalid or expired GMS key` 가 오고 **재시도로 풀리지 않습니다** — 포털에서
 재발급받아야 합니다. 그동안에도 서버는 사전 매칭으로 계속 돕니다.
 
