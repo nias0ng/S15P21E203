@@ -123,8 +123,12 @@ type Props = {
    *
    * ⚠️ 엔진 DOM 을 직접 건드리는 **유일한 자리**입니다. 엔진에 끄는 입구
    * (`params.searchBar` 같은 것)가 생기면 그걸로 바꾸세요 — 그때까지는 알약을 감싼
-   * 칸을 찾아 `display:none` 합니다. 엔진 `index.html` 의 마크업 모양에 기대고
+   * 칸을 찾아 `visibility:hidden` 합니다. 엔진 `index.html` 의 마크업 모양에 기대고
    * 있어서, 못 찾으면 **조용히 아무 일도 하지 않습니다**(알약 둘이 겹쳐 보입니다).
+   *
+   * ⚠️ `display:none` 이 아닌 까닭은 향수 카드가 이 알약의 상자를 재어 그 아래로
+   * 서기 때문입니다 — 아래 effect 의 긴 머리말을 보세요. 끄는 입구로 바꿀 때도
+   * **자리는 남겨야** 합니다.
    */
   hideEngineSearch?: boolean
   /**
@@ -237,7 +241,27 @@ export function ScentScene({
       // 알약(`div`)을 감싼 **가운데 정렬 칸**까지 숨깁니다 — 알약만 숨기면 빈 칸이 남고,
       // 그 칸은 `pointer-events:none` 이라 3D 를 가리지는 않지만 자리를 계속 잡습니다
       const band = input?.parentElement?.parentElement
-      if (band) band.style.display = hideEngineSearch ? 'none' : ''
+      /*
+       * ⚠️ **`display:none` 이 아니라 `visibility:hidden` 입니다.**
+       *
+       * 엔진은 향수 카드를 띄울 때 제 검색창 아래로만 세웁니다 — 그 자리를 알약의
+       * `getBoundingClientRect()` 로 잽니다 (`landing/src/ui.js` 의 `measureAvoid`
+       * → `avoid.top`). `display:none` 이면 그 상자가 **0 이 되어** 금지 띠가
+       * 12px 로 주저앉고, 카드가 앱 검색창 **뒤로** 올라옵니다 (2026-09-22 사용자 :
+       * *"향수 카드가 검색창 뒤로 보여져"*).
+       *
+       * iframe 안팎이라 z-index 로는 못 올립니다 — 스태킹이 아니라 문서가 다릅니다
+       * (`HomePage` 의 해도 머리말과 같은 사정). 그래서 **카드를 올리는 대신 엔진이
+       * 그 띠를 계속 피하게** 둡니다. `visibility:hidden` 은 상자를 남기므로 알약이
+       * 보이지 않아도 금지 띠는 그대로입니다.
+       *
+       * 재는 자리와 앱 검색창의 자리가 같다는 전제입니다 — `SceneSearchBar` 가
+       * 일부러 엔진 값에 맞춰 서 있습니다(그 컴포넌트 머리말). 둘 다 y 120~170.
+       *
+       * ⚠️ 칸은 `position:absolute` 라 되살아나도 다른 엔진 UI 를 안 밀고,
+       * `pointer-events:none` 이라 3D 도 안 가립니다 — 둘 다 화면에서 확인했습니다.
+       */
+      if (band) band.style.visibility = hideEngineSearch ? 'hidden' : ''
     }
 
     apply()
