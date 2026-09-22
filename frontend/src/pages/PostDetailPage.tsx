@@ -290,7 +290,8 @@ export default function PostDetailPage() {
                         'border-line-soft bg-surface-sunken hover:border-accent rounded-card',
                         'inline-flex w-fit max-w-full items-baseline gap-2.5 border px-2.5 py-2.5',
                         'transition-colors duration-120 ease-out',
-                        'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
+                        // NOTE: 포커스 링을 일부러 안 답니다. 글쇠로 왔을 때 이 태그가 잡혔는지 보이지 않습니다
+                        'outline-none',
                       )}
                     >
                       <span className="text-ink text-body font-medium">
