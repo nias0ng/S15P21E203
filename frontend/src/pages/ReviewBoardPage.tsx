@@ -129,7 +129,8 @@ export default function ReviewBoardPage() {
             한 칸 안에 알약을 넣으면 곁판만 그 높이만큼 위에서 시작합니다.
           */
           'grid gap-x-6.25 gap-y-3.75',
-          showTrending && 'lg:grid-cols-[1fr_255px]',
+          /* 곁판 255px. 임의값 px 는 `--spacing` 을 안 타서 좁은 화면에서 곁판만 안 줄어듭니다 */
+          showTrending && 'lg:grid-cols-[1fr_calc(var(--spacing)*63.75)]',
         )}
       >
         {/* 분류 필터는 없습니다(전부 후기). 정렬은 꺼지면 기준이 없어 `required` */}

@@ -69,7 +69,12 @@ export function NlrFeedbackModal({ ready }: Props) {
       open={open}
       onClose={close}
       title="추천은 어떠셨나요"
-      className="scent-map-panel rounded-glass mt-25 mb-auto max-h-[calc(100vh-125px)] w-[min(560px,calc(100vw-40px))] overflow-y-auto"
+      /*
+        자리 · 크기는 `RecommendModal` 과 **한 벌입니다** — 설문이 추천 결과와 같은 자리에서
+        이어지게 하려는 것이라, 한쪽만 고치면 두 판이 어긋납니다.
+        560(=140×4) 과 125(=31.25×4) 는 1920 기준이고 `--spacing` 을 타 함께 줄어듭니다.
+      */
+      className="scent-map-panel rounded-glass mt-25 mb-auto max-h-[calc(100vh-var(--spacing)*31.25)] w-140 overflow-y-auto"
     >
       {/*
         `<dialog>` 는 닫혀도 children 이 DOM 에 남습니다. 열림과 **같은 조건**으로 그려야
