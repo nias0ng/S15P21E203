@@ -159,7 +159,30 @@ export function SearchField({
               )
             : SUBMIT_TONE[tone],
           'shadow-[0_2px_8px_rgb(24_18_34/0.18)]',
-          'transition-transform duration-120 ease-out active:scale-95',
+          /*
+           * 손을 올리면 단추만 한 단 밝아집니다. **메인(`scene`)은 빼 둡니다** —
+           * 거기 단추는 이미 모래빛이라 더 밝히면 알약에 녹고, 3D 안의 엔진이 같은
+           * 검색창을 따로 그리고 있어 둘이 어긋납니다(위 컴포넌트 머리말).
+           *
+           * 색이 아니라 `brightness` 인 까닭: 이 단추의 바탕을 정하는 것은 **방**입니다
+           * (어두운 방은 남색 그라데이션 · 아이보리 모달은 짙은 청동). 호버 색을 박으면
+           * 방마다 짝을 하나씩 더 들고 있어야 하는데, 밝기는 어느 바탕에서든 한 뜻입니다.
+           *
+           * ⚠️ **한 값으로는 안 됩니다** — 올릴 수 있는 천장이 방마다 다릅니다. 화살표는
+           * 어디서나 아이보리라, 바탕을 밝힐수록 그림 요소 기준(3:1)에 가까워집니다.
+           *
+           *   아이보리 모달 · 진열대 종이 : 짙은 청동(#7f6f4d) 4.54:1 → 1.15 에서 3.57:1.
+           *     1.25 면 3.07:1 이라 기준에 닿습니다. 그래서 **기본값이 1.15** 입니다.
+           *   어두운 방 : 남색이 깊어 여유가 큽니다 — 방이 `--search-submit-hover` 로
+           *     따로 올립니다(`styles/scent-display.css`). 1.15 로는 눈에 안 띕니다.
+           *
+           * 기본값을 여기 뒤에 두는 것은 나머지 `--search-*` 와 같습니다 — 방이 안
+           * 채우면 이 값이 섭니다.
+           */
+          tone === 'archive' &&
+            'hover:brightness-[var(--search-submit-hover,1.15)]',
+          /* 밝아지는 것도 눌리는 것과 같은 속도로 — `filter` 를 빼면 호버가 딱딱 끊깁니다 */
+          'transition-[transform,filter] duration-120 ease-out active:scale-95',
           'focus-visible:ring-accent-deep outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
         )}
       >
