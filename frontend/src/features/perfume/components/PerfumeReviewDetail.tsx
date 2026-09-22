@@ -90,7 +90,8 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
         </h1>
 
         <div className="flex items-center gap-2.5">
-          {/* TODO: 프로필 이미지 연동 (S15P21E203-404) */}
+          {/* NOTE: 작성자 사진은 응답에 없습니다 — `ReviewDetailResponse` 가 닉네임만 줍니다.
+              내 사진은 `GET /users/me` 로 알지만 남의 사진은 알 길이 없어, 필드를 요청해 뒀습니다 */}
           <Thumbnail className="size-7.5 shrink-0 rounded-full" />
           <span className="text-ink text-xs">
             {review.nickname ?? '탈퇴한 회원'}
@@ -132,9 +133,7 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
                 'rounded-card text-title leading-none',
                 'transition-colors duration-120 ease-out',
                 'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
-                review.liked
-                  ? 'text-danger'
-                  : 'text-ink-muted hover:text-danger',
+                review.liked ? 'text-like' : 'text-ink-muted hover:text-like',
               )}
             >
               <span aria-hidden>{review.liked ? '♥' : '♡'}</span>
@@ -163,7 +162,7 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
           to={toPerfumeDetail(review.perfume.perfumeId)}
           state={perfumeViewState('COMMUNITY')}
           className={cn(
-            'border-line hover:border-accent rounded-card',
+            'border-line hover:border-accent-blush rounded-card',
             'flex items-center gap-3.75 border p-2.5',
             'transition-colors duration-120 ease-out',
             'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',

@@ -124,63 +124,68 @@ export default function ReviewBoardPage() {
       {/* 곁판이 없으면 한 칸으로 폅니다. 불러오는 중에는 칸을 비워 둡니다 */}
       <div
         className={cn(
-          'grid gap-6.25',
+          /*
+            알약은 윗줄에 혼자 서고, 유리판과 곁판이 아랫줄에서 나란히 섭니다 —
+            한 칸 안에 알약을 넣으면 곁판만 그 높이만큼 위에서 시작합니다.
+          */
+          'grid gap-x-6.25 gap-y-3.75',
           showTrending && 'lg:grid-cols-[1fr_255px]',
         )}
       >
-        <div className="min-w-0 space-y-3.75">
-          {/* 분류 필터는 없습니다(전부 후기). 정렬은 꺼지면 기준이 없어 `required` */}
-          <PillFilter
-            label="정렬"
-            options={REVIEW_SORTS}
-            value={sort}
-            onChange={(next) => updateParams({ sort: next ?? 'RECENT' })}
-            required
-            className="flex-wrap justify-center"
+        {/* 분류 필터는 없습니다(전부 후기). 정렬은 꺼지면 기준이 없어 `required` */}
+        <PillFilter
+          label="정렬"
+          options={REVIEW_SORTS}
+          value={sort}
+          onChange={(next) => updateParams({ sort: next ?? 'RECENT' })}
+          required
+          className="flex-wrap justify-center lg:col-span-2 lg:col-start-1 lg:row-start-1"
+        />
+
+        <section
+          className={cn(GLASS_PANEL, 'min-w-0 lg:col-start-1 lg:row-start-2')}
+        >
+          <div className="mb-6.25 flex items-baseline gap-2.5">
+            {/* 판 위 제목은 향수 · 브랜드 · 노트의 판과 같은 크기입니다 */}
+            <h2 className="text-ink font-serif text-2xl">
+              {boardTitle(sort, '후기')}
+            </h2>
+            {!reviews.isPending && !!reviews.data?.totalElements && (
+              <span className="text-ink-muted text-caption">
+                {reviews.data.totalElements.toLocaleString()}개
+              </span>
+            )}
+          </div>
+
+          <PostList
+            items={(reviews.data?.reviews ?? []).map(reviewToBoardItem)}
+            isPending={reviews.isPending}
+            onToggleLike={(item) =>
+              likeToggle.toggle({ id: item.id, liked: item.liked })
+            }
+            emptyAction={
+              <AuthLinkButton
+                to={ROUTES.REVIEW_WRITE}
+                size="sm"
+                description="후기는 로그인한 뒤에 쓸 수 있습니다."
+              >
+                후기 쓰기
+              </AuthLinkButton>
+            }
           />
 
-          <section className={GLASS_PANEL}>
-            <div className="mb-6.25 flex items-baseline gap-2.5">
-              {/* 판 위 제목은 향수 · 브랜드 · 노트의 판과 같은 크기입니다 */}
-              <h2 className="text-ink font-serif text-2xl">
-                {boardTitle(sort, '후기')}
-              </h2>
-              {!reviews.isPending && !!reviews.data?.totalElements && (
-                <span className="text-ink-muted text-caption">
-                  {reviews.data.totalElements.toLocaleString()}개
-                </span>
-              )}
-            </div>
-
-            <PostList
-              items={(reviews.data?.reviews ?? []).map(reviewToBoardItem)}
-              isPending={reviews.isPending}
-              onToggleLike={(item) =>
-                likeToggle.toggle({ id: item.id, liked: item.liked })
-              }
-              emptyAction={
-                <AuthLinkButton
-                  to={ROUTES.REVIEW_WRITE}
-                  size="sm"
-                  description="후기는 로그인한 뒤에 쓸 수 있습니다."
-                >
-                  후기 쓰기
-                </AuthLinkButton>
-              }
-            />
-
-            <Pagination
-              className="mt-6.25"
-              label="후기 게시판 페이지"
-              page={page}
-              size={PAGE_SIZE}
-              totalElements={reviews.data?.totalElements ?? 0}
-              onPageChange={(next) => updateParams({ page: next })}
-            />
-          </section>
-        </div>
+          <Pagination
+            className="mt-6.25"
+            label="후기 게시판 페이지"
+            page={page}
+            size={PAGE_SIZE}
+            totalElements={reviews.data?.totalElements ?? 0}
+            onPageChange={(next) => updateParams({ page: next })}
+          />
+        </section>
 
         <TrendingPerfumes
+          className="lg:col-start-2 lg:row-start-2"
           items={trending.data?.perfumes ?? []}
           days={trending.data?.days}
         />

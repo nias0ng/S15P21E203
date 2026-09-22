@@ -199,6 +199,7 @@ public class ReviewService {
                 .map(row -> new ReviewResponse(
                         row.getReviewId(),
                         row.getNickname(),
+                        row.getProfileImageUrl(),
                         row.getTitle(),
                         row.getContent(),
                         seasonsByReview.getOrDefault(row.getReviewId(), List.of()),
@@ -297,6 +298,7 @@ public class ReviewService {
                         row.getTitle(),
                         row.getContent(),
                         row.getNickname(),
+                        row.getProfileImageUrl(),
                         perfumeOf(row),
                         row.getLikeCount(),
                         row.getViewCount(),
@@ -332,6 +334,7 @@ public class ReviewService {
                 row.getTitle(),
                 row.getContent(),
                 row.getNickname(),
+                row.getProfileImageUrl(),
                 perfumeOf(row),
                 loadSeasons(List.of(reviewId)).getOrDefault(reviewId, List.of()),
                 row.getLikeCount(),

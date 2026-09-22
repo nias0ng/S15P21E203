@@ -1,9 +1,11 @@
 import { toBrandDetail } from '@/shared/config/routes'
+import { cn } from '@/shared/lib/cn'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Skeleton } from '@/shared/ui/Skeleton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 import { TileCard } from '@/shared/ui/TileCard'
 
+import { BRAND_PLATE } from '../plate'
 import type { Brand } from '../types'
 
 type Props = {
@@ -56,7 +58,7 @@ export function BrandGrid({
                 src={brand.logoUrl}
                 fallback="로고"
                 fit="contain"
-                className="h-40 w-full"
+                className={cn(BRAND_PLATE, 'h-40 w-full')}
               />
             }
             title={brand.nameKo ?? brand.name}

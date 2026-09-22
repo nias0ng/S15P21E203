@@ -34,6 +34,8 @@ export function GlobalHeader({ tone = 'surface' }: { tone?: HeaderTone }) {
         onGlass ? cn(GLASS, ink.tint) : 'sticky',
         tone === 'paper' && 'shelf-scope shelf-paper shelf-grain',
         tone === 'surface' && 'bg-surface',
+        /* 어두운 방은 방과 같은 그림을 나눠 그립니다 — 단색을 두면 위쪽에 띠가 집니다 */
+        tone === 'night' && 'scent-night-header',
       )}
     >
       <div className="max-w-frame mx-auto grid h-22.5 grid-cols-[auto_1fr_auto] items-center gap-5 px-[var(--gutter)]">

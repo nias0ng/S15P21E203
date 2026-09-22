@@ -1,5 +1,6 @@
 package com.hyanghae.backend.review.dto.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
 
@@ -16,6 +17,11 @@ import java.util.List;
  *
  * <p>{@code seasons} 는 작성자가 고른 계절입니다. 고르지 않았으면 빈 배열입니다.
  *
+ * <p>{@code profileImageUrl} 은 작성자의 프로필 사진 주소입니다. 값 규칙은 {@code UserResponse}
+ * 와 같아서, 사진을 설정하지 않았으면 {@code null} 이고 화면이 기본 아바타를 보여줍니다. 작성자가
+ * 탈퇴했으면 {@code nickname} 과 함께 비어 나갑니다. 이 주소는 인증 없이 열리는 경로라
+ * 비회원에게도 보입니다.
+ *
  * <p>댓글 수가 없습니다. 후기에는 댓글을 달지 않습니다(와이어프레임 A22a).
  */
 public record ReviewDetailResponse(
@@ -23,6 +29,12 @@ public record ReviewDetailResponse(
         String title,
         String content,
         String nickname,
+
+        @Schema(description = "작성자 프로필 사진 주소. 설정하지 않았거나 탈퇴한 작성자면 null",
+                nullable = true,
+                example = "/api/v1/users/profile-images/2026/09/0a1b2c3d-4e5f-6071-8293-a4b5c6d7e8f9.jpg")
+        String profileImageUrl,
+
         ReviewPerfumeResponse perfume,
         List<ReviewSeasonResponse> seasons,
         long likeCount,

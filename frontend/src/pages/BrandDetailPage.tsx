@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router'
 
-import { brandDetailQuery } from '@/features/brand'
+import { BRAND_PLATE, brandDetailQuery } from '@/features/brand'
 // 브랜드의 향수는 향수 검색 API 가 돌려줍니다 — features 끼리는 서로 import 할 수
 // 없어 화면에서 두 도메인을 조합합니다
 import { PerfumeGrid, perfumeListQuery } from '@/features/perfume'
@@ -145,12 +145,7 @@ export default function BrandDetailPage() {
   )
 }
 
-/**
- * 브랜드 표식. 로고가 있으면 로고를, 없으면 영문 첫 글자를 씁니다.
- *
- * NOTE: 판을 흰색으로 못박고 그 위 글자도 역할 토큰을 못 씁니다 — 로고는 투명 PNG 에
- * 검은 글자라 어둠에 묻히고, 어두운 방의 `text-ink-muted` 는 흰 판 위에서 사라집니다.
- */
+/** 브랜드 표식. 로고가 있으면 로고를, 없으면 영문 첫 글자를 씁니다 */
 function BrandMark({
   name,
   logoUrl,
@@ -158,7 +153,7 @@ function BrandMark({
   name: string
   logoUrl: string | null
 }) {
-  const plate = 'rounded-panel border border-black/10 bg-white'
+  const plate = cn('rounded-panel', BRAND_PLATE)
 
   if (logoUrl) {
     return (
@@ -178,7 +173,7 @@ function BrandMark({
       className={cn(
         plate,
         // 로고 판(h-36)과 키를 맞춥니다 — 브랜드를 옮겨 다닐 때 아래 판이 튑니다
-        'text-charcoal-soft flex size-36 text-4xl',
+        'flex size-36 text-4xl',
         'items-center justify-center font-serif',
       )}
     >

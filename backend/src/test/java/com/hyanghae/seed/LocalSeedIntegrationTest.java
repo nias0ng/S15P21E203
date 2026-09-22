@@ -34,6 +34,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class LocalSeedIntegrationTest {
     private static final Path DATA = Path.of("db/seed");
     private static final String HASH = new BCryptPasswordEncoder(4).encode("test-only-password");
+    private static final int TARGET_PERFUME_COUNT = 200;
     @Autowired DataSource dataSource;
     @Autowired JdbcTemplate jdbc;
     @Autowired PerfumeRankingRepository ranking;
@@ -54,12 +55,15 @@ class LocalSeedIntegrationTest {
         jdbc.execute("TRUNCATE users, perfumes, brands RESTART IDENTITY CASCADE");
         jdbc.update("INSERT INTO brands(name, name_ko) VALUES ('Seed Brand', '테스트 브랜드')");
         Map<Long, Integer> manifest = new HashMap<>();
-        for (String line : Files.readAllLines(DATA.resolve("perfume_images.csv")).subList(1, 313)) {
+        List<String> lines = Files.readAllLines(DATA.resolve("perfume_images.csv"));
+        for (String line : lines.subList(1, lines.size())) {
             String[] cells = line.split(",", 3);
-            manifest.put(Long.parseLong(cells[1].replace("\"", "")), Integer.parseInt(cells[0].replace("\"", "")));
+            String rawRank = cells[0].replace("\"", "");
+            if (rawRank.isBlank()) continue;
+            manifest.put(Long.parseLong(cells[1].replace("\"", "")), Integer.parseInt(rawRank));
         }
         // 실제 manifest를 쓰되 DB PK는 외부 번호와 다르게 만듭니다.
-        for (int rank = 1; rank <= 200; rank++) {
+        for (int rank = 1; rank <= TARGET_PERFUME_COUNT; rank++) {
             int selection = rank;
             long external = manifest.entrySet().stream().filter(e -> e.getValue() == selection)
                     .mapToLong(Map.Entry::getKey).findFirst().orElse(900000L + rank);
@@ -99,8 +103,8 @@ class LocalSeedIntegrationTest {
         seed(false);
         assertThat(counts()).isEqualTo(first);
         assertThat(first.get("users")).isEqualTo(55);
-        assertThat(first.get("perfumes")).isEqualTo(200);
-        assertThat(first.get("perfume_images")).isEqualTo(312);
+        assertThat(first.get("perfumes")).isEqualTo(TARGET_PERFUME_COUNT);
+        assertThat(first.get("perfume_images")).isEqualTo(TARGET_PERFUME_COUNT * 2L);
         assertThat(first.get("collections")).isEqualTo(30);
         assertThat(first.get("posts")).isEqualTo(90);
         assertThat(count("SELECT count(*) FROM user_perfumes up JOIN users u ON u.user_id=up.user_id "
@@ -108,20 +112,20 @@ class LocalSeedIntegrationTest {
         String hash = jdbc.queryForObject("SELECT password_hash FROM users WHERE email='demo41@demo.hyanghae.test'", String.class);
         assertThat(new BCryptPasswordEncoder().matches("test-only-password", hash)).isTrue();
         for (RankingType type : List.of(RankingType.OWNED, RankingType.WISH, RankingType.VIEWED)) {
-            assertThat(ranking.count(type, null, null, null, null)).isEqualTo(156);
+            assertThat(ranking.count(type, null, null, null, null)).isEqualTo(TARGET_PERFUME_COUNT);
             var expected = jdbc.queryForList("SELECT DISTINCT perfume_id FROM perfume_images ORDER BY perfume_id", Long.class);
             var actual = new java.util.ArrayList<Long>();
-            for (int page = 0; page < 8; page++) {
+            for (int page = 0; page < TARGET_PERFUME_COUNT / 20; page++) {
                 actual.addAll(ranking.findPage(type, null, null, null, null, page * 20, 20).stream()
                         .map(r -> r.perfumeId()).toList());
             }
             assertThat(actual).doesNotHaveDuplicates().containsExactlyInAnyOrderElementsOf(expected);
-            mvc.perform(get("/api/v1/perfumes").param("ranking", type.name()).param("page", "7"))
-                    .andExpect(status().isOk()).andExpect(jsonPath("$.perfumes.length()").value(16));
+            mvc.perform(get("/api/v1/perfumes").param("ranking", type.name()).param("page", "9"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.perfumes.length()").value(20));
             assertThat(ranking.count(type, null, "Seed Brand", null, "MALE"))
                     .isEqualTo(count("SELECT count(DISTINCT p.perfume_id) FROM perfumes p JOIN perfume_images i USING(perfume_id) WHERE p.gender='MALE'"));
         }
-        assertThat(ranking.count(RankingType.POPULAR, null, null, null, null)).isEqualTo(200);
+        assertThat(ranking.count(RankingType.POPULAR, null, null, null, null)).isEqualTo(TARGET_PERFUME_COUNT);
         assertThat(ranking.findPage(RankingType.OWNED, null, null, null, null, 0, 20))
                 .isNotEqualTo(ranking.findPage(RankingType.WISH, null, null, null, null, 0, 20));
         assertThat(count("SELECT count(*) FROM perfume_reviews r JOIN users u ON u.user_id=r.user_id "

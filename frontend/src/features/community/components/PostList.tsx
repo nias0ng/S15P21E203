@@ -83,7 +83,6 @@ export function PostList({
               to={item.to}
               className={cn(
                 'text-ink text-heading block font-serif font-bold',
-                'underline-offset-4 hover:underline',
                 'focus-visible:ring-accent-deep rounded-card outline-none focus-visible:ring-2',
                 'after:absolute after:inset-0',
               )}
@@ -152,18 +151,29 @@ export function PostList({
                 aria-label={`좋아요 ${item.likeCount}`}
                 onClick={() => onToggleLike(item)}
                 className={cn(
-                  'hover:text-danger rounded-card relative transition-colors duration-120 ease-out',
+                  'rounded-card relative transition-colors duration-120 ease-out',
                   'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
-                  item.liked && 'text-danger',
+                  'hover:[&>[aria-hidden]]:text-like',
                 )}
               >
-                <span aria-hidden>{item.liked ? '♥' : '♡'}</span> 좋아요{' '}
-                {item.likeCount}
+                {/* 색은 하트에만 — 옆 글자까지 칠하면 읽기가 나빠집니다(`styles/index.css` 의 `--color-like`) */}
+                <span
+                  aria-hidden
+                  className={item.liked ? 'text-like' : undefined}
+                >
+                  {item.liked ? '♥' : '♡'}
+                </span>{' '}
+                좋아요 {item.likeCount}
               </button>
             ) : (
-              <span className={item.liked ? 'text-danger' : undefined}>
-                <span aria-hidden>{item.liked ? '♥' : '♡'}</span> 좋아요{' '}
-                {item.likeCount}
+              <span>
+                <span
+                  aria-hidden
+                  className={item.liked ? 'text-like' : undefined}
+                >
+                  {item.liked ? '♥' : '♡'}
+                </span>{' '}
+                좋아요 {item.likeCount}
               </span>
             )}
             {item.commentCount !== null && (

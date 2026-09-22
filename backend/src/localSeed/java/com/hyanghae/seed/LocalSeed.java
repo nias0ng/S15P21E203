@@ -21,6 +21,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 public final class LocalSeed {
     private static final OffsetDateTime BASE = OffsetDateTime.parse("2026-09-01T09:00:00+09:00");
     private static final String DOMAIN = "@demo.hyanghae.test";
+    private static final int TARGET_PERFUME_COUNT = 200;
     private final Connection db;
     private final SeedStore store;
     private final long[] users = new long[44];
@@ -104,8 +105,8 @@ public final class LocalSeed {
                 seed.populate();
                 seed.verify();
                 db.commit();
-                System.out.printf("%s 완료: 향수 156개, 새로 삽입/복원 %d행, 초기값 갱신 %d행%n",
-                        options.label(), seed.store.inserted, seed.store.restored);
+                System.out.printf("%s 완료: 향수 %d개, 새로 삽입/복원 %d행, 초기값 갱신 %d행%n",
+                        options.label(), perfumes.size(), seed.store.inserted, seed.store.restored);
                 System.out.println("활동 계정: demo41@demo.hyanghae.test / 다른 사용자: demo42@demo.hyanghae.test");
                 System.out.println("빈 계정: demo43@demo.hyanghae.test (직접 활동했다면 그 기록은 유지됩니다)");
                 System.out.println("비밀번호는 최초 생성 시의 SEED_LOGIN_PASSWORD입니다.");
@@ -136,12 +137,16 @@ public final class LocalSeed {
         for (String line : lines.subList(1, lines.size())) {
             if (line.isBlank()) continue;
             String[] columns = line.split(",", 3);
+            String rawRank = columns[0].replace("\"", "");
+            if (rawRank.isBlank()) continue;
             long externalId = Long.parseLong(columns[1].replace("\"", ""));
-            int rank = Integer.parseInt(columns[0].replace("\"", ""));
+            int rank = Integer.parseInt(rawRank);
             Integer previous = manifest.put(externalId, rank);
             if (previous != null && previous != rank) throw new IllegalStateException("이미지 manifest 순위 불일치");
         }
-        if (manifest.size() != 156) throw new IllegalStateException("이미지 manifest의 대상 향수가 156개가 아닙니다.");
+        if (manifest.size() != TARGET_PERFUME_COUNT) {
+            throw new IllegalStateException("이미지 manifest의 대상 향수가 " + TARGET_PERFUME_COUNT + "개가 아닙니다.");
+        }
         List<Perfume> result = new ArrayList<>();
         for (var entry : manifest.entrySet()) {
             var found = query(db, "SELECT p.perfume_id, p.name FROM perfumes p "

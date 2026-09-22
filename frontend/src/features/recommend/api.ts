@@ -1,7 +1,11 @@
 import { http } from '@/shared/api/http'
 import { withDevFallback } from '@/shared/api/withDevFallback'
 
-import type { PersonalRecommendation, RecommendResult } from './types'
+import type {
+  PersonalRecommendation,
+  RecommendResult,
+  Satisfaction,
+} from './types'
 
 /**
  * NLR-01 자연어 기반 추천. 조회인데 `POST` 입니다 — 문장 500자를 쿼리스트링에 담으면
@@ -28,8 +32,12 @@ export async function getRecommendation(
 /** 와이어프레임의 예시 결과. 백엔드 없이 화면을 볼 때만 씁니다 */
 function placeholderRecommendation(query: string): RecommendResult {
   return {
+    // 손잡이가 없으니 설문도 안 뜹니다 — 보낼 곳이 없는데 묻는 것은 거짓 화면입니다
+    recommendationToken: null,
     status: 'OK',
     query,
+    pickedWithoutScentCondition: false,
+    matchedData: [],
     perfumes: [
       {
         perfumeId: 1,
@@ -64,6 +72,25 @@ function placeholderRecommendation(query: string): RecommendResult {
       },
     ],
   }
+}
+
+/**
+ * NLR-08 추천 만족도. 결과 모달을 닫을 때 한 번 묻고 보냅니다.
+ *
+ * NOTE: **`withDevFallback` 을 쓰지 않습니다.** 그것은 읽기용입니다 — 쓰기를 대체값으로
+ * 덮으면 아무 데도 안 남은 답을 보낸 것처럼 보이고, 화면은 고맙다고 인사합니다.
+ *
+ * NOTE: 한 추천에 한 번입니다. 두 번째는 **409** 이고, 그것은 오류가 아니라 이미 남겼다는
+ * 뜻이라 화면이 실패로 다루면 안 됩니다. **429**(호출량)도 이 경로에 걸립니다.
+ */
+export async function sendRecommendFeedback(
+  recommendationToken: string,
+  body: { satisfaction: Satisfaction; comment?: string },
+): Promise<void> {
+  await http.post(
+    `/recommendations/natural-language/${recommendationToken}/feedback`,
+    body,
+  )
 }
 
 /**

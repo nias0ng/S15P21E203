@@ -11,6 +11,8 @@ type Props = {
   items: TrendingPerfume[]
   /** 집계한 기간(일). 서버가 알려준 값을 그대로 적습니다 */
   days?: number
+  /** 게시판이 그리드에서 어느 칸 · 어느 줄에 놓을지 정합니다 */
+  className?: string
 }
 
 /**
@@ -19,11 +21,11 @@ type Props = {
  *
  * 곁판도 유리입니다(`GLASS_PANEL_ASIDE`) — docs/어두운-방-유리판.md
  */
-export function TrendingPerfumes({ items, days }: Props) {
+export function TrendingPerfumes({ items, days, className }: Props) {
   if (items.length === 0) return null
 
   return (
-    <aside className={cn(GLASS_PANEL_ASIDE, 'self-start')}>
+    <aside className={cn(GLASS_PANEL_ASIDE, 'self-start', className)}>
       <h2 className="text-ink text-heading font-serif font-bold">
         지금 많이 언급되는 향수
       </h2>
