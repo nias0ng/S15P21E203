@@ -63,7 +63,8 @@ export function PasswordFindForm() {
         onSubmit={(event) => {
           event.preventDefault()
           const form = new FormData(event.currentTarget)
-          // TODO: 재설정 메일 발송 API 연결
+          // NOTE: 서버에 붙이지 않습니다 — 백엔드에 재설정 메일 API 가 없습니다.
+          // 메일은 가지 않고 아래 안내 화면으로만 바뀝니다
           setSentTo(String(form.get('email') ?? ''))
         }}
       >
@@ -116,7 +117,8 @@ export function PasswordResetForm() {
         className="space-y-2.5"
         onSubmit={(event) => {
           event.preventDefault()
-          // TODO: 비밀번호 재설정 API 연결 후 로그인 처리
+          // NOTE: 서버에 붙이지 않습니다 — 백엔드에 재설정 API 가 없습니다.
+          // 눌러도 아무 일도 일어나지 않습니다
         }}
       >
         <Input

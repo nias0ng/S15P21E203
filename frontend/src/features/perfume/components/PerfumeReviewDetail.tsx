@@ -90,7 +90,7 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
         </h1>
 
         <div className="flex items-center gap-2.5">
-          {/* TODO: 프로필 이미지 연동 */}
+          {/* TODO: 프로필 이미지 연동 (S15P21E203-404) */}
           <Thumbnail className="size-7.5 shrink-0 rounded-full" />
           <span className="text-ink text-xs">
             {review.nickname ?? '탈퇴한 회원'}

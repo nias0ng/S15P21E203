@@ -81,7 +81,7 @@ export default function PerfumeDetailPage() {
 
   // 이 향수가 이미 내 진열대에 있는지 — 단추가 [저장] ↔ [해제] 로 갈리고, 뺄 때 필요한
   // `shelfItemId` 도 이 목록에만 있습니다
-  // TODO: 상세 응답의 `myShelfItemId` 가 오면 이 쿼리를 지웁니다
+  // NOTE: 상세 응답의 `myShelfItemId` 가 오면 이 쿼리를 지웁니다
   const myShelf = useQuery({ ...shelfItemsQuery(), enabled: isLoggedIn })
   const shelfItem =
     myShelf.data?.find((item) => item.perfumeId === numericId) ?? null

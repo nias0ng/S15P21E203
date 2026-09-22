@@ -23,7 +23,7 @@ type PerfumeGridProps = {
   source?: PerfumeViewSource
 }
 
-/** 향수 카드 그리드 (A33 — 5열 2줄). 로딩 중에는 카드와 같은 크기의 Skeleton 을 깔아 레이아웃이 안 튑니다 */
+/** 향수 카드 그리드. 로딩 중에는 카드와 같은 크기의 Skeleton 을 깔아 레이아웃이 안 튑니다 */
 export function PerfumeGrid({
   items,
   isPending = false,

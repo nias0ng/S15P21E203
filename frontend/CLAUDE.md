@@ -235,7 +235,7 @@ import { perfumeDetailQuery } from '@/features/perfume/queries'   // X
 | `shared/ui/Thumbnail` | 이미지 슬롯. 이미지가 없으면 자리표시자 상자. 크기는 `className` 으로. 아바타(`rounded-full`)도 이걸 씁니다 |
 | `shared/ui/Checkbox` | 사각 체크박스(14px). 라벨은 호출하는 쪽에서 `<label>` 로 감싸세요 |
 | `shared/ui/SearchField` | 검색 입력 + 버튼. 헤더에 검색창이 없어 목록 화면마다 반복됩니다 |
-| `shared/ui/Badge` | 향 계열·상태 같은 짧은 라벨. `tone` brand·neutral·success·warning·danger |
+| `shared/ui/Badge` | 향 계열·상태 같은 짧은 라벨. `tone` neutral·accent·success·danger·outline |
 | `shared/ui/PerfumeCard` | 향수 카드. 도메인 타입을 받지 않고 `name`·`brand`·`thumbnailUrl` 낱개로 받습니다 |
 | `shared/ui/ChipToggle` | 칩 여러 개 중 고르기 (A11 진열대 분류 · 계절 등록, A15) |
 | `shared/ui/StarRating` | 별점. 라디오 그룹이라 키보드 화살표로 움직입니다 |
@@ -247,6 +247,12 @@ import { perfumeDetailQuery } from '@/features/perfume/queries'   // X
 | `shared/ui/EmptyState` | 결과 0건 화면 |
 | `shared/ui/PageFallback` | 라우트 lazy 로딩용 전체 스피너 |
 | `shared/ui/LinkButton` | 버튼처럼 보이는 링크. **화면 이동은 `onClick` + navigate 대신 이걸 쓰세요** |
+| `shared/ui/AuthLinkButton` | 로그인해야 갈 수 있는 곳으로 보내는 단추 (C01). 비로그인이면 가지 않고 모달을 띄웁니다 |
+| `shared/ui/TileCard` | 격자에 반복되는 타일 (브랜드 · 노트 · 컬렉션). 이미지 슬롯 · 제목 · 한 줄 캡션 |
+| `shared/ui/PillFilter` | 어둠 위에 놓이는 알약 필터. `required` 면 해제가 없습니다 — 밝은 화면은 `ChipToggle` |
+| `shared/ui/Pagination` | 쪽 넘김. `page` 는 **0부터**(백엔드와 같습니다) · 번호 다섯 개 · 한 쪽뿐이면 안 그립니다 |
+| `shared/ui/BottleSilhouette` | 사진이 없는 향수병 자리에 세우는 실루엣. 색은 `currentColor` 로 부르는 쪽이 정합니다 |
+| `shared/ui/DiveCurtain` | 메인에서 진열대로 넘어가는 잠수 커튼 (진열대 · 메인 담당) |
 
 variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 **variant 를 추가**합니다
 (`class-variance-authority` 사용). `PrimaryButton`, `SmallButton` 같은 파생 컴포넌트를 만들지 않습니다.
@@ -256,6 +262,9 @@ variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 
 | 훅 | 용도 |
 | --- | --- |
 | `shared/hooks/useToast` | 토스트 한 개의 열림 상태. `const { showToast, toastProps } = useToast()` 후 `<Toast {...toastProps} />` |
+| `shared/hooks/useLikeToggle` | 좋아요 토글 (CMT-05). 비로그인이면 보내지 않고 안내부터 — 캐시를 고치는 일은 화면이 맡습니다 |
+| `shared/hooks/useUnroll` | 족자처럼 풀리는 열림. **쓰는 쪽을 조건부로 렌더해야** 다음에 열 때 다시 풀립니다 |
+| `shared/hooks/useDiveReady` | 잠수 커튼에 "화면이 다 섰다" 를 알립니다 (진열대 · 메인 담당) |
 
 `onClose` 를 인라인 화살표로 넘기면 `Toast` 의 타이머가 렌더마다 초기화되어 토스트가
 사라지지 않습니다. 이 훅이 `useCallback` 으로 그 문제를 막아주니 직접 `useState` 로
@@ -434,13 +443,15 @@ IDE 와 `grep` 이 찾을 수 있어야 합니다.
 
 아직 **백엔드에 없는** 것은 하나입니다.
 
-- 비밀번호 재설정 (A31) — 화면만 있고 `PasswordResetForm` 에 TODO 두 곳
+- 비밀번호 재설정 (A31) — 화면만 있고 `PasswordResetForm` 에 NOTE 두 곳. 붙일 계획이
+  없어 TODO 가 아닙니다 — 두 폼은 눌러도 서버로 아무것도 가지 않습니다
 
 **화면만 아직 안 붙인 것**(백엔드는 있습니다)도 적어 둡니다. 없다고 적혀 있으면 다음 사람이
 찾아보지도 않습니다.
 
 - 프로필 사진 — `POST /users/me/profile-image`(multipart, 필드 `file`) ·
-  `DELETE /users/me/profile-image`. 화면은 `AccountForm` 에 TODO 로 남아 있습니다.
+  `DELETE /users/me/profile-image`. 화면은 `AccountForm` 에 TODO 로 남아 있습니다
+  (S15P21E203-404 — 헤더 · 정보 변경 · 후기 상세 세 곳).
   ⚠️ 제한이 화면 주석과 다릅니다 — 백엔드는 JPG · PNG · GIF · WEBP 에 기본 1MB 이고 형식을
   파일 내용으로 판별합니다
 

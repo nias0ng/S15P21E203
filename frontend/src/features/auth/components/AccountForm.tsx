@@ -70,7 +70,7 @@ export function AccountForm() {
       <Toast {...toastProps} />
 
       <AuthCard title="정보 변경">
-        {/* TODO: 프로필 이미지 업로드 · 삭제 붙이기 — POST · DELETE /users/me/profile-image (multipart, 필드 file) */}
+        {/* TODO: 프로필 이미지 업로드 · 삭제 붙이기 — POST · DELETE /users/me/profile-image (multipart, 필드 file) (S15P21E203-404) */}
         {/* NOTE: 백엔드 제한은 JPG · PNG · GIF · WEBP · 1MB 로 아래 안내와 다릅니다 */}
         <div className="flex items-start gap-5">
           {/* 어두운 방이 `bg-line-soft` 를 흰 12% 로 뒤집어, 사진이 없을 때 어둠 위에 아이보리 사각형이 남지 않습니다 */}
