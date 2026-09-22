@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 
 import {
@@ -8,7 +8,11 @@ import {
   SceneBootCurtain,
   SceneSearchBar,
   ScentScene,
+  buildPerfumeIdIndex,
+  explorationStateQuery,
+  mapPerfumePointsQuery,
   useExplorationMove,
+  useSaveBoatPosition,
   useSceneBoot,
   VoyageLog,
   voyageLogQuery,
@@ -146,6 +150,39 @@ export default function HomePage() {
   // 기록할지는 서버가 정합니다 (향수는 늘 · 빈 바다는 향 영역이 바뀐 경우만)
   const reportMove = useExplorationMove()
 
+  /*
+   * **배 자리를 이어 갑니다** (MAP-24 · `docs/배-자리와-향해일지-0921.md` §A).
+   *
+   * 들어올 때 마지막 자리를 읽어 배를 거기 놓고, 떠날 때 있던 자리를 한 번 남깁니다.
+   * 저장은 백엔드가 예전부터 하고 있었는데(`PUT` 이 자리를 늘 덮어씁니다) **앱이 안 읽고
+   * 있었습니다** — 그래서 늘 원점에서 시작했습니다.
+   *
+   * ⚠️ 비로그인이면 401 이라 `data` 가 없습니다 — 예전처럼 원점에서 시작합니다.
+   * ⚠️ 한 번도 안 움직인 사람은 세 필드가 모두 null 인 200 입니다 (404 가 아닙니다).
+   * ⚠️ 값이 같으면 같은 객체를 돌려줍니다 — `ScentScene` 의 출발점 effect 가 의존성으로 봅니다.
+   */
+  const boatState = useQuery(explorationStateQuery())
+  const bx = boatState.data?.x ?? null
+  const by = boatState.data?.y ?? null
+  const lastBoatAt = useMemo(
+    () => (bx !== null && by !== null ? { x: bx, y: by } : null),
+    [bx, by],
+  )
+  const saveBoatAt = useSaveBoatPosition()
+
+  /*
+   * **엔진 좌표 → DB 향수 번호** (§B). [자세히 보기] 를 눌렀을 때 일지에 남기고 상세로 보내는 데 씁니다.
+   *
+   * ⚠️ 아직 안 왔으면 null 을 돌려줍니다 — 그러면 예전처럼 이름 검색으로 갑니다.
+   *   지도를 여는 동안 조용히 받아 두므로 실제로 눌릴 때는 거의 늘 와 있습니다.
+   */
+  const perfumePoints = useQuery(mapPerfumePointsQuery())
+  const perfumeIndex = useMemo(
+    () => (perfumePoints.data ? buildPerfumeIdIndex(perfumePoints.data) : null),
+    [perfumePoints.data],
+  )
+  const perfumeIdAt = (x: number, y: number) => perfumeIndex?.at(x, y) ?? null
+
   /** 3D 입력 잠금을 풉니다. 어떤 길로 끝나든 반드시 한 번은 불러야 합니다 */
   const release = () => {
     releaseSave.current?.()
@@ -190,14 +227,33 @@ export default function HomePage() {
         onChartChange={setChartOpen}
         onBoot={boot.report}
         onMove={reportMove}
+        start={lastBoatAt}
+        onLeave={saveBoatAt}
         onOpenDetail={(perfume) => {
-          // ⚠️ 엔진 데이터에는 아직 DB perfumeId 가 없습니다(fragrantica_id 뿐). 없으면 이름으로 검색 결과(A09)에 보냅니다
+          /*
+           * ⭐ **좌표로 DB 향수 번호를 찾습니다** (2026-09-21 · `lib/perfumeIdAt`).
+           *
+           * 엔진 데이터에는 DB 번호가 한 건도 없고 `fragrantica_id` 만 있어, 여태 이름으로
+           * 검색 결과(A09)에 보내고 있었습니다. 엔진의 `mx`·`my` 와 `GET /map` 의 `x`·`y` 가
+           * **같은 0~1 공간**이라(엔진 불변식 21) 좌표로 이을 수 있습니다.
+           */
+          const perfumeId =
+            perfume.perfumeId ?? perfumeIdAt(perfume.mx, perfume.my)
+
+          /*
+           * ⭐ **향해 일지에 남깁니다** (MAP-24 · `docs/배-자리와-향해일지-0921.md` §B).
+           * 사용자 : *"메인페이지에서만 자세히보기를 눌렸을때 기록되면댐"* — 그래서 **여기 한 곳**
+           * 입니다. 다른 화면에서 향수 상세로 간 것은 안 남깁니다 (일지는 배가 지나온 자리입니다).
+           * ⚠️ 서버는 향수를 고른 이동을 **언제나** 남깁니다. 좌표는 서버가 채우므로 안 보냅니다.
+           */
+          if (perfumeId !== null) reportMove({ perfumeId })
+
           navigate(
-            perfume.perfumeId === null
+            perfumeId === null
               ? `${ROUTES.PERFUME_SEARCH}?keyword=${encodeURIComponent(perfume.nameKo)}`
-              : toPerfumeDetail(perfume.perfumeId),
+              : toPerfumeDetail(perfumeId),
             // 검색으로 돌려보내는 쪽은 향수 상세가 아니라 기록할 것이 없습니다
-            perfume.perfumeId === null
+            perfumeId === null
               ? undefined
               : { state: perfumeViewState('SCENT_MAP') },
           )

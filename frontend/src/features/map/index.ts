@@ -30,10 +30,14 @@ export {
 export { SimilarExplorer } from './components/SimilarExplorer'
 export { VoyageLog, type VoyageLogStatus } from './components/VoyageLog'
 export { useExplorationMove } from './hooks/useExplorationMove'
+export { useSaveBoatPosition } from './hooks/useSaveBoatPosition'
 export { useSceneBoot } from './hooks/useSceneBoot'
 export { type SceneBootEvent } from './lib/bootProgress'
+export { buildPerfumeIdIndex, type PerfumeIdIndex } from './lib/perfumeIdAt'
 export {
+  explorationStateQuery,
   mapKeys,
+  mapPerfumePointsQuery,
   mapPerfumesQuery,
   mapPointsQuery,
   tasteAreaQuery,

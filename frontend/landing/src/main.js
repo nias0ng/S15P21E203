@@ -644,6 +644,40 @@ function arriveAt(key) {
   gate.preload(key);
   if (!phase.enter(key, { hold: P.zoneHold })) pendingArrive = key;
 }
+
+// ───────── 배 자리를 이어 간다 (2026-09-21, 브랜치 387) ─────────
+// 설계는 `frontend/docs/배-자리와-향해일지-0921.md` §A 다.
+// ⚠⚠ **좌표는 정규화 공간이다** (CSV 의 map_x·map_y · 백엔드 `perfume_map_points` 와 같은 공간).
+//   옮기는 것은 `scentmap` 의 `toNorm`/`toWorld` 한 곳이다 (불변식 21).
+
+/** 배가 지금 떠 있는 정규화 좌표 {x, y}. 지도가 아직 없으면 null — 앱이 **떠날 때** 읽는다 */
+function boatAt() {
+  const map = marks.map;
+  if (!map) return null;
+  // ⚠ 배의 월드 위치는 (scroll.x, −scroll.z) 다 (불변식 0-2)
+  const [x, y] = map.toNorm(nav.scroll.x, -nav.scroll.z);
+  return { x, y };
+}
+
+// ⭐⭐ 배를 그 자리에 놓는다 — 앱이 `PB.startAt({x, y})` 로 **들어올 때 한 번** 부른다.
+// ⚠ **안개 전환(travel)을 쓰지 않는다.** '이동' 이 아니라 '처음 서는 자리' 이고, 그때 화면은
+//   로딩 커튼이 덮고 있다. 순간이동이 안전한 까닭은 travel.js 의 teleport 주석 그대로다 —
+//   시뮬은 스크롤 차가 아니라 **속도**로 이류하므로 위치를 한 번에 옮겨도 항적이 안 밀린다.
+// ⚠ 갈 수 있는 바다 밖이면 놓지 않는다 — 배가 경계 밖에서 밀려나며 시작하는 것을 막는다.
+// ⚠ **연출은 안 건다.** 이어서 항해하는 것이지 새로 도착한 것이 아니다.
+//   ⚠⚠ 대신 `reportRegion` 이 다음 틱에 '해역이 바뀌었다' 로 읽어 향해 일지에 한 줄을 더한다 —
+//     그건 맞는 동작이다 (배가 실제로 그 해역에 있다). 서버도 영역이 바뀐 경우에만 남긴다.
+function startAt(pos) {
+  const map = marks.map;
+  if (!map || !pos || !isFinite(pos.x) || !isFinite(pos.y)) return false;
+  const [tx, tz] = map.toWorld(pos.x, pos.y);
+  if (!map.inNav(tx, tz, 0)) { console.warn('[paperboat] startAt : 갈 수 있는 바다 밖이라 건너뛴다', pos); return false; }
+  nav.scroll.x = tx; nav.scroll.z = -tz;
+  nav.headV = 0; nav.latV = 0;
+  zones.clearAuto();
+  return true;
+}
+
 // 향수 고르기의 카메라 섞임 (선형 진행 0..1 — 틱이 이징을 먹인다)
 let focusT = 0;
 let focusLabelsOn = false;
@@ -2221,7 +2255,7 @@ const onKeyExit = (e) => {
 };
 window.addEventListener('keydown', onKeyExit);
 
-window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, dive: hostDive, diveReport, goRegion, startTravel, startFocus, setHost, boot: bootNow, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, pod, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
+window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, dive: hostDive, diveReport, goRegion, startTravel, startFocus, startAt, boatAt, setHost, boot: bootNow, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, pod, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
   // ⭐ 반응형 검산 (2026-09-11 오후) — 제품 UI 상자들의 자리 · 서로 겹침 · 화면 밖 · 스크롤 · 수면 타이포 꼭대기와 정보 블록의 간격.
   //   ⚠ 창 크기를 바꾼 뒤에는 **스크린샷 한 장으로 먼저 칠하고** 부른다 (숨긴 패널에서는 ResizeObserver 가 안 불린다 — 교훈 ⑧)
   layout: () => layoutReport(),
