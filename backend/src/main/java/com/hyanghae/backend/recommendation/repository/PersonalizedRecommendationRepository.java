@@ -191,9 +191,52 @@ public class PersonalizedRecommendationRepository {
             FROM top_candidates candidate
             JOIN LATERAL (
                 SELECT source, evidence_name
-                FROM contributions
-                WHERE perfume_id = candidate.perfume_id
-                  AND contribution > 0.0
+                FROM (
+                    -- 상위 후보의 근거만 다시 계산합니다. 전체 contributions를 후보마다
+                    -- 재탐색하지 않으며, 정규화 분모에는 해당 향수의 모든 성분을 포함합니다.
+                    SELECT 'TASTE' AS source, r.name AS evidence_name,
+                           psf.weight::double precision * tp.preference
+                           / NULLIF((
+                               SELECT SQRT(SUM(f.weight::double precision
+                                               * f.weight::double precision))
+                               FROM perfume_scent_families f
+                               WHERE f.perfume_id = candidate.perfume_id
+                           ) * (SELECT value FROM taste_norm), 0.0)
+                           * 0.35 AS contribution
+                    FROM perfume_scent_families psf
+                    JOIN taste_profile tp ON tp.scent_region_id = psf.scent_region_id
+                    JOIN scent_regions r ON r.scent_region_id = psf.scent_region_id
+                    WHERE psf.perfume_id = candidate.perfume_id
+                    UNION ALL
+                    SELECT 'FIT', a.name,
+                           pa.weight::double precision * rp.preference
+                           / NULLIF((
+                               SELECT SQRT(SUM(n.weight::double precision
+                                               * n.weight::double precision))
+                               FROM perfume_accords n
+                               WHERE n.perfume_id = candidate.perfume_id
+                           ) * (SELECT value FROM rating_norm), 0.0)
+                           * 0.50
+                    FROM perfume_accords pa
+                    JOIN rating_profile rp ON rp.accord_id = pa.accord_id
+                    JOIN accords a ON a.accord_id = pa.accord_id
+                    WHERE pa.perfume_id = candidate.perfume_id
+                    UNION ALL
+                    SELECT 'RECENT', a.name,
+                           pa.weight::double precision * rp.preference
+                           / NULLIF((
+                               SELECT SQRT(SUM(n.weight::double precision
+                                               * n.weight::double precision))
+                               FROM perfume_accords n
+                               WHERE n.perfume_id = candidate.perfume_id
+                           ) * (SELECT value FROM recent_norm), 0.0)
+                           * 0.15
+                    FROM perfume_accords pa
+                    JOIN recent_profile_raw rp ON rp.accord_id = pa.accord_id
+                    JOIN accords a ON a.accord_id = pa.accord_id
+                    WHERE pa.perfume_id = candidate.perfume_id
+                ) candidate_contributions
+                WHERE contribution > 0.0
                   AND evidence_name IS NOT NULL
                 ORDER BY contribution DESC, evidence_name, source
                 LIMIT 1

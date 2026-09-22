@@ -50,7 +50,9 @@ describe('ProfileImageField', () => {
 
     await pick(file())
 
-    expect(await screen.findByText(`알린 주소: ${UPLOADED}`)).toBeInTheDocument()
+    expect(
+      await screen.findByText(`알린 주소: ${UPLOADED}`),
+    ).toBeInTheDocument()
     expect(api.uploadProfileImage).toHaveBeenCalledOnce()
     // 고른 그 파일이 그대로 올라갔는지
     expect(api.uploadProfileImage.mock.calls[0]?.[0]).toHaveProperty(

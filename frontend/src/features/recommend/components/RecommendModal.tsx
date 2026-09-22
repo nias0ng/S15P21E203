@@ -35,8 +35,13 @@ export function RecommendModal({ query, onClose }: Props) {
         휠이 안 생기고(실측 817px < 955px), 1280×800 처럼 낮은 화면에서는 이 상한이 없으면
         다섯 번째 카드가 화면 밖으로 잘려 **닿을 길이 없습니다.** 목록 안쪽에 스크롤 상자를
         두는 것과는 다릅니다 — 그쪽은 결과가 더 있는 것처럼 보이게 합니다.
+
+        NOTE: 560(=140×4) 과 125(=31.25×4) 는 **1920 기준**입니다 — 둘 다 `--spacing` 을 타
+        좁은 화면에서 같은 비율로 줄어듭니다. 위 실측값도 1920 기준이고, 1536 에서는 판과
+        카드가 함께 80% 로 줄어 관계가 그대로 유지됩니다. 가로의 좁은 창 상한은 `Modal` 의
+        `max-w` 가 이미 같은 값으로 잡습니다.
       */
-      className="scent-map-panel rounded-glass mt-25 mb-auto max-h-[calc(100vh-125px)] w-[min(560px,calc(100vw-40px))] overflow-y-auto"
+      className="scent-map-panel rounded-glass mt-25 mb-auto max-h-[calc(100vh-var(--spacing)*31.25)] w-140 overflow-y-auto"
     >
       {/* NOTE: `<dialog>` 는 닫혀도 children 이 DOM 에 남아, 그리지 않아야 족자가 다시 풀립니다 */}
       {query !== null && <RecommendBody query={query} />}

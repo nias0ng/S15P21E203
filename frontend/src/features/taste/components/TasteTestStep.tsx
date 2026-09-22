@@ -2,8 +2,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
 import { isApiError } from '@/shared/api/http'
+import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
+import { GLASS_PANEL } from '@/shared/ui/panel'
 import { Skeleton } from '@/shared/ui/Skeleton'
 
 import { completeTasteTest } from '../api'
@@ -98,7 +100,11 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
       )}
 
       {vectors.isSuccess && (
-        <>
+        /*
+          계열 고르기와 아래 줄은 유리판 한 장입니다 — 향수 · 브랜드 · 노트와 같은 층
+          구조입니다(docs/어두운-방-유리판.md). 머리 구역은 판 없이 어둠에 바로 둡니다.
+        */
+        <section className={cn(GLASS_PANEL, 'space-y-8')}>
           <FamilyPicker value={picks} onChange={setPicks} />
 
           <div className="border-line-soft flex items-center justify-between gap-6 border-t pt-6">
@@ -118,7 +124,7 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
               출발점 찾기
             </Button>
           </div>
-        </>
+        </section>
       )}
 
       <TasteResultModal

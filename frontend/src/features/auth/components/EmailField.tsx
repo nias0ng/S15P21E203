@@ -86,7 +86,13 @@ export function EmailField({ onChange, error, hint }: Props) {
         </label>
         <select
           id={choiceId}
-          className={cn(CONTROL, borderClass, 'min-w-0 flex-1')}
+          /*
+           * 바닥(`min-w`)이 있는 이유 — 칸은 `--spacing` 을 타 1536 에서 80% 로 줄지만
+           * 도메인 글자는 13px 그대로입니다. 바닥이 없으면 가장 긴 `hanmail.net` 을 비롯해
+           * 여섯 중 넷이 네이티브 화살표에 잘립니다. 11 글자 + 화살표 + 좌우 여백이라
+           * `16ch` 이고, 1920 에서는 칸이 더 넓어 바닥이 무시됩니다.
+           */
+          className={cn(CONTROL, borderClass, 'min-w-[16ch] flex-1')}
           value={choice}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
