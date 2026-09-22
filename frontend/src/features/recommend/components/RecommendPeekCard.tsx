@@ -69,7 +69,7 @@ export function RecommendPeekCard({
         className={cn(
           'pointer-events-auto',
           'border-line/50 bg-surface-card shadow-raised flex items-stretch',
-          'rounded-r-panel overflow-hidden border border-l-0',
+          'overflow-hidden border border-l-0',
           'transition-transform duration-200 ease-out',
           open ? 'translate-x-0' : '-translate-x-72',
         )}
@@ -104,17 +104,14 @@ export function RecommendPeekCard({
             className={cn(
               'block space-y-2 rounded-md p-1 text-center',
               'focus-visible:ring-accent outline-none focus-visible:ring-2',
-              'group',
             )}
           >
+            {/* 향수병은 배경이 투명한 PNG 라 상자를 그리지 않습니다 — 테두리 · 바탕 둘 다 */}
             <Thumbnail
               src={thumbnailUrl}
               fallback="이미지"
               fit="contain"
-              className={cn(
-                'bg-surface-veil rounded-card h-56 w-full border-transparent p-3',
-                'group-hover:shadow-card transition-shadow duration-200 ease-out',
-              )}
+              className="rounded-card h-56 w-full border-transparent bg-transparent p-3"
             />
             <span className="block space-y-0.5">
               <span className="text-ink text-title block font-serif font-semibold">

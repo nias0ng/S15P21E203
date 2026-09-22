@@ -239,7 +239,15 @@ function VoyageLogBody({ entries, status }: Props) {
               <span className="text-surface/90 text-[11px] tracking-[0.08em] tabular-nums">
                 {entry.enteredAt.slice(5, 10).replace('-', '.')}
               </span>
-              <span className="text-body text-surface font-semibold">
+              {/*
+                1536 에서 이 줄은 **1px 차이로 넘칩니다** — 판 192 안에서 줄이 쓸 수 있는 폭이
+                158 인데, 가장 긴 해역 이름(시트러스 · 아쿠아틱 · 오리엔탈)이면 158.9 입니다
+                (세모 8 + 틈 8x2 + 날짜 31.9 + 글자 103, 실측). 판은 `--spacing` 을 타 줄어드는데
+                날짜(11px) · 이름(13px)은 안 줄어서 생기는 차이라, 짧은 이름은 그대로 한 줄입니다.
+                접힐 때 낱글자가 아니라 띄어쓰기에서 끊게 해 둡니다. 1920 에서는 198 대 164.9 로
+                넉넉해 아무 일도 하지 않습니다.
+              */}
+              <span className="text-body text-surface font-semibold break-keep">
                 {familyLabel(entry.region)} 해역 진입
               </span>
             </p>
