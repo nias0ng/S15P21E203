@@ -95,7 +95,11 @@ export const router = createBrowserRouter([
         handle: NIGHT,
       },
 
-      { path: ROUTES.TASTE_TEST, element: withSuspense(<TasteTestPage />) },
+      {
+        path: ROUTES.TASTE_TEST,
+        element: withSuspense(<TasteTestPage />),
+        handle: NIGHT,
+      },
 
       {
         path: ROUTES.MY_SHELF,
