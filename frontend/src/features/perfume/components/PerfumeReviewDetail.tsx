@@ -132,9 +132,7 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
                 'rounded-card text-title leading-none',
                 'transition-colors duration-120 ease-out',
                 'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
-                review.liked
-                  ? 'text-danger'
-                  : 'text-ink-muted hover:text-danger',
+                review.liked ? 'text-like' : 'text-ink-muted hover:text-like',
               )}
             >
               <span aria-hidden>{review.liked ? '♥' : '♡'}</span>
