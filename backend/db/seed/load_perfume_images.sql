@@ -79,7 +79,7 @@ DECLARE
         WHERE object_key <> 'perfumes/' || fragrantica_id || '/'
             || CASE image_type
                    WHEN 'ORIGINAL' THEN 'original.webp'
-                   WHEN 'PAPER_TEXTURE' THEN 'paper-texture.png'
+                   WHEN 'PAPER_TEXTURE' THEN 'paper-texture.webp'
                END
            OR image_url <> 'https://djpgc0m2v54q1.cloudfront.net/' || object_key
     );

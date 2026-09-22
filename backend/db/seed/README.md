@@ -13,7 +13,7 @@
 | 향수 카탈로그 보충 | 향수 152개 | O | O | `load_perfume_catalog_supplement.sh` |
 | 향수 gender 보강 | 향수 129,113개 | O | O | `load_perfume_genders.sh` |
 | 노트 메타데이터 | 노트 246개 | O | O | `load_notes.sh` |
-| 향수 이미지 | 일반 129,154개·종이 질감 156개 | O | O | `load_perfume_images.sh` |
+| 향수 이미지 | 일반 129,154개·종이 질감 200개 | O | O | `load_perfume_images.sh` |
 | 향수-노트 연결 | 906,133건 | O | O | `load_perfume_notes.sh` |
 | 로컬 화면 테스트 데이터 | 사용자 활동 데이터 | O | X | `seed-local` |
 | 운영 발표용 데모 데이터 | 발표 계정과 활동 데이터 | 선택 | 발표 환경만 | `run_demo_seed.sh` |
@@ -218,12 +218,12 @@ cd backend/db/seed
 
 # 향수 이미지 적재
 
-향수 129,154개의 일반 WebP 이미지와 156개의 종이 질감 PNG를 연결합니다.
+향수 129,154개의 일반 WebP 이미지와 한국 선정 향수 200개의 종이 질감 WebP를 연결합니다.
 
 | 타입 | 객체 키 | 표시 순서 |
 | --- | --- | ---: |
 | `ORIGINAL` | `perfumes/{fragrantica_id}/original.webp` | 1 |
-| `PAPER_TEXTURE` | `perfumes/{fragrantica_id}/paper-texture.png` | 2 |
+| `PAPER_TEXTURE` | `perfumes/{fragrantica_id}/paper-texture.webp` | 2 |
 
 향수 카탈로그와 S3 업로드가 완료된 뒤 실행합니다.
 
@@ -237,7 +237,7 @@ cd backend/db/seed
 ```text
  perfumes_with_images | original_images | paper_texture_images
 -----------------------+-----------------+----------------------
-               129154 |          129154 |                  156
+               129154 |          129154 |                  200
 ```
 
 이미지 URL은 `perfume_images.csv`에 있으며, 적재 스크립트가 객체 키·CloudFront URL·중복·카탈로그
@@ -350,3 +350,5 @@ psql "$DATABASE_URL" -f load_review_seed.sql
 - `S15P21E203-344`에서 일반 이미지를 129,154개의 WebP로 확대하고, 기존 종이 질감 PNG 156개를
   유지하도록 이미지 seed와 검증 규칙을 갱신했습니다. accord가 없어 주 카탈로그에서 제외됐지만
   노트 연결이 존재하는 향수 152개도 보충 Seed로 분리했습니다.
+- `S15P21E203-406`에서 한국 선정 향수 200개의 종이 질감 이미지를 여백을 제거한 WebP로 교체하고,
+  이미지 seed와 객체 키 검증 규칙을 갱신했습니다.
