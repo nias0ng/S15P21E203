@@ -45,15 +45,13 @@ const OPTIONS = [
  * 폭도 족자가 풀리는 것도 맞췄습니다. 자리가 달라지면 사람이 보기에 답을 잇는 화면이 아니라
  * 다른 기능이 끼어든 것으로 읽힙니다 (`MapSearchModal` 이 같은 이유로 같은 자리를 씁니다).
  *
- * NOTE: 건너뛰기와 [×] 는 다릅니다. **건너뛰기는 그 추천을 끝내고**, [×] · Esc · 배경은
- * 접어 두기만 해서 메인으로 돌아올 때 다시 묻습니다. 답을 강요하지 않으면서, 나가는 길을
- * 잘못 눌러 기록이 통째로 사라지는 일도 막습니다.
+ * NOTE: **건너뛰기와 [×] 는 같습니다.** 어느 쪽으로 닫아도 그 추천은 끝나고 다시 묻지
+ * 않습니다. 화면에는 두 단추가 나란히 있을 뿐이라 어느 쪽이 영영 끝인지 알 길이 없는데,
+ * 한쪽만 접어 두면 답하지 않기로 한 사람에게 같은 설문이 새로고침마다 다시 뜹니다.
  */
 export function NlrFeedbackModal({ ready }: Props) {
   const pending = usePendingFeedbackStore((state) => state.pending)
-  const snoozed = usePendingFeedbackStore((state) => state.snoozed)
   const settle = usePendingFeedbackStore((state) => state.settle)
-  const snooze = usePendingFeedbackStore((state) => state.snooze)
 
   /** 답을 보낸 손잡이. 손잡이가 바뀌면 저절로 풀립니다 */
   const [answeredToken, setAnsweredToken] = useState<string | null>(null)
@@ -61,12 +59,10 @@ export function NlrFeedbackModal({ ready }: Props) {
 
   const close = () => {
     if (pending === null) return
-    // 답한 뒤에 [×] 로 나가는 것은 접어 두는 것이 아니라 끝낸 것입니다
-    if (answered) settle(pending.token)
-    else snooze()
+    settle(pending.token)
   }
 
-  const open = ready && pending !== null && !snoozed
+  const open = ready && pending !== null
 
   return (
     <Modal
