@@ -374,22 +374,25 @@ export default function MyShelfPage() {
     </Button>
   )
 
-  const toolbar = (className?: string) => (
+  const toolbar = (className?: string, stacked?: boolean) => (
     <ShelfToolbar
-      counts={browser.counts}
-      value={browser.viewCategory}
-      onChange={showCategory}
       keyword={browser.keyword}
       onKeywordChange={browser.changeKeyword}
       action={registerButton}
+      stacked={stacked}
       className={className}
     />
   )
 
-  const shelfWall = (className: string, aside?: ReactNode) => (
+  const shelfWall = (
+    className: string,
+    aside?: ReactNode,
+    menuHeader?: ReactNode,
+  ) => (
     <ShelfWall
       ref={wall}
       sections={browser.sections}
+      category={browser.viewCategory}
       selectedId={browser.selected?.shelfItemId ?? null}
       onSelect={browser.select}
       onViewCategoryChange={browser.changeViewCategory}
@@ -402,6 +405,7 @@ export default function MyShelfPage() {
       }
       className={className}
       aside={aside}
+      menuHeader={menuHeader}
     />
   )
 
@@ -690,18 +694,22 @@ export default function MyShelfPage() {
             key="shelf"
             className="flex h-full flex-col px-[var(--gutter)] pt-10"
           >
-            {/* 제목과 도구 줄이 한 줄에 놓입니다. 부제를 걷어내 한 줄 높이(50)입니다 */}
-            <div className="flex min-h-12.5 items-center gap-10">
+            {/*
+              제목만 있는 줄입니다. 검색창과 등록 단추는 벽의 분류 메뉴 위로 내려갔습니다 —
+              머리줄이 화면 폭을 가로지르면 그 아래 진열장이 그만큼 낮아집니다.
+            */}
+            <div className="flex min-h-12.5 items-center">
               <h1 className="shrink-0 font-serif text-[36px] leading-[1.2] font-semibold">
                 나의 진열대
               </h1>
-              {toolbar('flex-1')}
             </div>
 
             {shelfWall(
               'mt-7.5 flex-1',
               // 높이는 벽감 + 이름표 자리까지. 작은 화면에서는 벽감을 따라 통째로 줄어듭니다(ShelfWall)
               detail('flex-1'),
+              // 좁은 기둥 안이라 검색창과 단추를 세로로 세웁니다
+              toolbar(undefined, true),
             )}
           </div>,
 
