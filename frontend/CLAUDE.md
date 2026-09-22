@@ -434,13 +434,15 @@ IDE 와 `grep` 이 찾을 수 있어야 합니다.
 
 아직 **백엔드에 없는** 것은 하나입니다.
 
-- 비밀번호 재설정 (A31) — 화면만 있고 `PasswordResetForm` 에 TODO 두 곳
+- 비밀번호 재설정 (A31) — 화면만 있고 `PasswordResetForm` 에 NOTE 두 곳. 붙일 계획이
+  없어 TODO 가 아닙니다 — 두 폼은 눌러도 서버로 아무것도 가지 않습니다
 
 **화면만 아직 안 붙인 것**(백엔드는 있습니다)도 적어 둡니다. 없다고 적혀 있으면 다음 사람이
 찾아보지도 않습니다.
 
 - 프로필 사진 — `POST /users/me/profile-image`(multipart, 필드 `file`) ·
-  `DELETE /users/me/profile-image`. 화면은 `AccountForm` 에 TODO 로 남아 있습니다.
+  `DELETE /users/me/profile-image`. 화면은 `AccountForm` 에 TODO 로 남아 있습니다
+  (S15P21E203-404 — 헤더 · 정보 변경 · 후기 상세 세 곳).
   ⚠️ 제한이 화면 주석과 다릅니다 — 백엔드는 JPG · PNG · GIF · WEBP 에 기본 1MB 이고 형식을
   파일 내용으로 판별합니다
 

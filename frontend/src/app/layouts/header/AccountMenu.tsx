@@ -62,7 +62,7 @@ export function AccountMenu({ ink }: { ink: Ink }) {
           open && ink.open,
         )}
       >
-        {/* TODO: 프로필 이미지 연동 (A29 정보 변경에서 업로드) */}
+        {/* TODO: 프로필 이미지 연동 — A29 정보 변경에서 업로드 (S15P21E203-404) */}
         <AccountIcon />
       </button>
 

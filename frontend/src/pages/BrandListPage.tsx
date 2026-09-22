@@ -18,7 +18,7 @@ import { PillFilter } from '@/shared/ui/PillFilter'
 import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
 
 // 브랜드가 7,793개라 전부 그리면 카드가 7,793장이어서 화면에서 잘라 씁니다
-// TODO: 목록 API 에 쪽이 붙으면 자르기를 걷고 `brandListQuery` 에 page 를 넘기세요
+// NOTE: 목록 API 에 쪽이 붙으면 자르기를 걷고 `brandListQuery` 에 page 를 넘기세요
 const PAGE_SIZE = 30
 
 /**
