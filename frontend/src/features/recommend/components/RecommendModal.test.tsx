@@ -71,6 +71,23 @@ describe('RecommendModal', () => {
     expect(await screen.findByText(/미모사 · 장미 · 밤/)).toBeInTheDocument()
   })
 
+  it('matchedData 가 빠진 응답에도 결과를 그린다', async () => {
+    /*
+      계약상 늘 오는 자리지만, 이 필드를 모르는 서버와 만나는 순간이 있습니다. 그때
+      `length` 를 그냥 읽으면 모달이 통째로 에러 바운더리로 떨어져, 근거 한 줄이 아니라
+      추천 목록까지 사라집니다.
+    */
+    const { matchedData: _omitted, ...withoutMatchedData } = result()
+    api.getRecommendation.mockResolvedValue(
+      withoutMatchedData as unknown as RecommendResult,
+    )
+
+    renderModal()
+
+    expect(await screen.findByText('오 로즈')).toBeInTheDocument()
+    expect(screen.queryByText(/조건으로 좁혔습니다/)).not.toBeInTheDocument()
+  })
+
   it('향으로 고른 것이 아니면 조건을 넓혔다고 말하지 않는다', async () => {
     api.getRecommendation.mockResolvedValue(
       result({ pickedWithoutScentCondition: true }),

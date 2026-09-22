@@ -56,6 +56,12 @@ function RecommendBody({ query }: { query: string }) {
   })
 
   const perfumes = result.data?.perfumes ?? []
+  /*
+    계약상 늘 오는 자리지만 `?? []` 로 받습니다 — 이 줄이 없으면 필드가 빠진 응답 하나에
+    `length` 를 읽다 모달이 통째로 에러 바운더리로 떨어집니다. 서버가 낡아 이 필드를
+    모르는 동안, 안 나와도 되는 근거 한 줄 때문에 추천 전체가 안 보이면 안 됩니다.
+  */
+  const matchedData = result.data?.matchedData ?? []
 
   /*
     결과가 **도착하는 순간** 설문을 걸어 둡니다. 닫을 때 걸면 늦습니다 — 결과에서
@@ -104,12 +110,10 @@ function RecommendBody({ query }: { query: string }) {
               사용자가 쓴 말이 안 남습니다. 이 줄을 빼면 "미모사랑 장미 들어간 향수" 를 찾은
               사람의 화면에서 미모사도 장미도 사라집니다.
             */}
-            {result.data.matchedData.length > 0 && perfumes.length > 0 && (
+            {matchedData.length > 0 && perfumes.length > 0 && (
               <p className="border-line text-ink-muted text-caption mb-3.75 border-l-2 pl-2.5 leading-relaxed">
                 <strong className="text-ink font-medium">
-                  {result.data.matchedData
-                    .map((data) => data.label)
-                    .join(' · ')}
+                  {matchedData.map((data) => data.label).join(' · ')}
                 </strong>{' '}
                 조건으로 좁혔습니다.
               </p>
