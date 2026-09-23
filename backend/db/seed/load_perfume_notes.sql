@@ -40,6 +40,9 @@ CREATE TEMP TABLE stg_perfume_notes (
 
 \copy stg_perfume_notes FROM 'perfume_notes.csv' WITH (FORMAT csv, HEADER true, ENCODING 'UTF8')
 
+-- Fragrantica 9110은 정식 Eclat d’Arpège(988)의 크롤링 중복입니다.
+DELETE FROM stg_perfume_notes WHERE fragrantica_id = '9110';
+
 -- ---------------------------------------------------------------------------
 -- 2. 전달 데이터가 형식에 맞는지 먼저 봅니다.
 -- ---------------------------------------------------------------------------

@@ -60,6 +60,10 @@ HERE = Path(__file__).resolve().parent
 DATA_DIR = HERE / "data"
 OUTPUT = DATA_DIR / "perfumes_nlr.csv.gz"
 
+# Fragrantica 9110은 정식 Eclat d’Arpège(988)를 2010년 향수로 중복 수집한 행이다.
+# 추천·DB 적재 원본을 다시 만들어도 중복이 되살아나지 않게 생성 단계에서 제외한다.
+EXCLUDED_PERFUME_IDS = {9110}
+
 
 def _notes(frame: pd.DataFrame) -> pd.Series:
     """향수가 가진 노트를 한 칸으로 합친다. pd.Series[str] — `amber|basil|cedar`.
@@ -162,6 +166,8 @@ def build(source: Path, output: Path = OUTPUT) -> dict:
                + PERCEIVED_COLUMNS + ["gender"])
     frame = pd.read_csv(source, usecols=usecols, low_memory=False)
     total = len(frame)
+
+    frame = frame[~frame["id"].isin(EXCLUDED_PERFUME_IDS)].copy()
 
     # accord 가 없으면 어떤 조건으로도 검색되지 않는다. 들고 다닐 이유가 없다.
     has_accord = frame["accords"].notna() & (frame["accords"].astype(str).str.strip() != "")

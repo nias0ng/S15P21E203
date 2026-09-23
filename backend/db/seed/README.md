@@ -8,13 +8,13 @@
 | 데이터 | 규모 | 개발 | 운영 | 적재 도구 |
 | --- | ---: | :---: | :---: | --- |
 | 향 지도 | 향수 200개 | O | O | `load_scent_map.sql` |
-| 향수 카탈로그 | 향수 129,161개 | O | O | `load_perfume_catalog.sh` |
+| 향수 카탈로그 | 향수 129,160개 | O | O | `load_perfume_catalog.sh` |
 | 브랜드 로고 | 로고 5,800개 | O | O | `load_perfume_catalog.sh` |
 | 향수 카탈로그 보충 | 향수 152개 | O | O | `load_perfume_catalog_supplement.sh` |
 | 향수 gender 보강 | 향수 129,113개 | O | O | `load_perfume_genders.sh` |
 | 노트 메타데이터 | 노트 246개 | O | O | `load_notes.sh` |
-| 향수 이미지 | 일반 129,154개·종이 질감 200개 | O | O | `load_perfume_images.sh` |
-| 향수-노트 연결 | 906,133건 | O | O | `load_perfume_notes.sh` |
+| 향수 이미지 | 일반 129,153개·종이 질감 200개 | O | O | `load_perfume_images.sh` |
+| 향수-노트 연결 | 906,127건 | O | O | `load_perfume_notes.sh` |
 | 로컬 화면 테스트 데이터 | 사용자 활동 데이터 | O | X | `seed-local` |
 | 운영 발표용 데모 데이터 | 발표 계정과 활동 데이터 | 선택 | 발표 환경만 | `run_demo_seed.sh` |
 | 후기 테스트 seed | 후기 22건 | O | X | `load_review_seed.sql` |
@@ -92,7 +92,8 @@ psql "$DATABASE_URL" -f load_scent_map.sql
 
 # 향수 카탈로그 적재
 
-향수 129,161개, 브랜드 7,793개와 향 특성 1,000,570건을 적재합니다. 향 지도 향수와 겹치는
+전달 원본 129,161개에서 Fragrantica 988의 중복 수집 행인 9110을 제외한 향수 129,160개,
+브랜드 7,793개와 향 특성 1,000,562건을 적재합니다. 향 지도 향수와 겹치는
 항목은 `fragrantica_id`로 갱신하고 나머지는 새로 생성합니다. `is_active`는 변경하지 않습니다.
 
 ```bash
@@ -112,8 +113,8 @@ DB_NAME=... DB_USER=... PG_CONTAINER=... ./load_perfume_catalog.sh
 ```sql
 SELECT (SELECT count(*) FROM brands)          AS brands,          -- 7,793 이상
        (SELECT count(*) FROM accords)         AS accords,         -- 92
-       (SELECT count(*) FROM perfumes)        AS perfumes,        -- 129,161 이상
-       (SELECT count(*) FROM perfume_accords) AS perfume_accords; -- 1,000,570
+       (SELECT count(*) FROM perfumes)        AS perfumes,        -- 129,160 이상
+       (SELECT count(*) FROM perfume_accords) AS perfume_accords; -- 1,000,562
 
 SELECT count(*) FILTER (WHERE NULLIF(btrim(gender), '') IS NULL) AS missing_gender,
        count(*) FILTER (WHERE upper(btrim(gender)) = 'FEMALE') AS female,
@@ -218,7 +219,7 @@ cd backend/db/seed
 
 # 향수 이미지 적재
 
-향수 129,154개의 일반 WebP 이미지와 한국 선정 향수 200개의 종이 질감 WebP를 연결합니다.
+향수 129,153개의 일반 WebP 이미지와 한국 선정 향수 200개의 종이 질감 WebP를 연결합니다.
 
 | 타입 | 객체 키 | 표시 순서 |
 | --- | --- | ---: |
@@ -237,7 +238,7 @@ cd backend/db/seed
 ```text
  perfumes_with_images | original_images | paper_texture_images
 -----------------------+-----------------+----------------------
-               129154 |          129154 |                  200
+               129153 |          129153 |                  200
 ```
 
 이미지 URL은 `perfume_images.csv`에 있으며, 적재 스크립트가 객체 키·CloudFront URL·중복·카탈로그
@@ -273,12 +274,12 @@ cd backend/db/seed
 
 ```text
 COPY 906133
-INSERT 0 906133
-NOTICE: 연결 906133건을 반영했습니다. 카탈로그에 없는 향수를 가리켜 건너뛴 행 0건.
+INSERT 0 906127
+NOTICE: 연결 906127건을 반영했습니다. 중복 향수 9110의 연결 6건을 제외했습니다.
 
  loaded_links | linked_notes | linked_perfumes
 --------------+--------------+-----------------
-       906133 |          246 |          127161
+       906127 |          246 |          127160
 ```
 
 `perfume_notes.csv.gz`의 `perfume_id` 열은 DB PK가 아니라 `fragrantica_id`입니다. 스크립트가
@@ -346,7 +347,7 @@ psql "$DATABASE_URL" -f load_review_seed.sql
 # Seed 변경 과정
 
 - 초기에는 향 지도 200개, 노트 246개와 일부 향수 이미지·후기 테스트 데이터를 제공했습니다.
-- 전체 향수 카탈로그 129,161개와 향수-노트 연결 데이터를 추가해 서비스 기준 데이터를 완성했습니다.
+- 중복 향수 9110을 제외한 전체 향수 카탈로그 129,160개와 향수-노트 연결 데이터를 추가해 서비스 기준 데이터를 완성했습니다.
 - `S15P21E203-344`에서 일반 이미지를 129,154개의 WebP로 확대하고, 기존 종이 질감 PNG 156개를
   유지하도록 이미지 seed와 검증 규칙을 갱신했습니다. accord가 없어 주 카탈로그에서 제외됐지만
   노트 연결이 존재하는 향수 152개도 보충 Seed로 분리했습니다.
