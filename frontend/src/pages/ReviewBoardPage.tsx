@@ -109,7 +109,6 @@ export default function ReviewBoardPage() {
   return (
     <div className="space-y-7.5">
       <BoardHeader
-        description="향수 한 개에 대한 시향 기록입니다. 점수나 별점 없이 좋아요만 있습니다."
         action={
           <AuthLinkButton
             to={ROUTES.REVIEW_WRITE}
