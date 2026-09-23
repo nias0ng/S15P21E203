@@ -2,6 +2,7 @@ package com.hyanghae.backend.shelf.service;
 
 import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.global.security.CurrentUser;
+import com.hyanghae.backend.recommendation.service.PersonalizedRecommendationInvalidator;
 import com.hyanghae.backend.shelf.dto.response.FitRatingResponse;
 import com.hyanghae.backend.shelf.entity.UserPerfume;
 import com.hyanghae.backend.shelf.exception.ShelfErrorCode;
@@ -18,10 +19,16 @@ public class FitRatingService {
 
     private final UserPerfumeRepository userPerfumeRepository;
     private final CurrentUser currentUser;
+    private final PersonalizedRecommendationInvalidator recommendationInvalidator;
 
-    public FitRatingService(UserPerfumeRepository userPerfumeRepository, CurrentUser currentUser) {
+    public FitRatingService(
+            UserPerfumeRepository userPerfumeRepository,
+            CurrentUser currentUser,
+            PersonalizedRecommendationInvalidator recommendationInvalidator
+    ) {
         this.userPerfumeRepository = userPerfumeRepository;
         this.currentUser = currentUser;
+        this.recommendationInvalidator = recommendationInvalidator;
     }
 
     @Transactional
@@ -29,7 +36,12 @@ public class FitRatingService {
         validateStep(fitRating);
 
         UserPerfume userPerfume = findOwnedShelfItem(userPerfumeId);
+        boolean changed = userPerfume.getFitRating() == null
+                || userPerfume.getFitRating().compareTo(fitRating) != 0;
         userPerfume.updateFitRating(fitRating, OffsetDateTime.now());
+        if (changed) {
+            recommendationInvalidator.invalidate(userPerfume.getUserId());
+        }
 
         return FitRatingResponse.from(userPerfume);
     }
@@ -37,7 +49,11 @@ public class FitRatingService {
     @Transactional
     public void delete(Long userPerfumeId) {
         UserPerfume userPerfume = findOwnedShelfItem(userPerfumeId);
+        boolean changed = userPerfume.getFitRating() != null;
         userPerfume.clearFitRating(OffsetDateTime.now());
+        if (changed) {
+            recommendationInvalidator.invalidate(userPerfume.getUserId());
+        }
     }
 
     private UserPerfume findOwnedShelfItem(Long userPerfumeId) {

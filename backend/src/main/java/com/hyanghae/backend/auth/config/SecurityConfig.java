@@ -65,6 +65,7 @@ public class SecurityConfig {
                                         "/api/v1/auth/logout",
                                         "/api/v1/perfume-views/**",
                                         "/api/v1/recommendations/personalized",
+                                        "/api/v1/recommendations/personalized/**",
                                         "/api/v1/map/exploration/**",
                                         "/api/v1/map/exploration-logs"
                                 ).authenticated()

@@ -8,6 +8,7 @@ import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
 import com.hyanghae.backend.perfume.repository.PerfumeNoteRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeRepository;
+import com.hyanghae.backend.recommendation.service.PersonalizedRecommendationInvalidator;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemCreateResponse;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemDetailResponse;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemsResponse;
@@ -39,6 +40,7 @@ public class ShelfItemService {
     private final PerfumeNoteRepository perfumeNoteRepository;
     private final MemoRepository memoRepository;
     private final CurrentUser currentUser;
+    private final PersonalizedRecommendationInvalidator recommendationInvalidator;
 
     public ShelfItemService(
             UserPerfumeRepository userPerfumeRepository,
@@ -46,7 +48,8 @@ public class ShelfItemService {
             PerfumeImageRepository perfumeImageRepository,
             PerfumeNoteRepository perfumeNoteRepository,
             MemoRepository memoRepository,
-            CurrentUser currentUser
+            CurrentUser currentUser,
+            PersonalizedRecommendationInvalidator recommendationInvalidator
     ) {
         this.userPerfumeRepository = userPerfumeRepository;
         this.perfumeRepository = perfumeRepository;
@@ -54,6 +57,7 @@ public class ShelfItemService {
         this.perfumeNoteRepository = perfumeNoteRepository;
         this.memoRepository = memoRepository;
         this.currentUser = currentUser;
+        this.recommendationInvalidator = recommendationInvalidator;
     }
 
     @Transactional
@@ -96,7 +100,11 @@ public class ShelfItemService {
                 throw new BusinessException(ShelfErrorCode.SHELF_LAST_COLLECTION_ITEM);
             }
         }
+        boolean removesFitRating = shelfItem.getFitRating() != null;
         userPerfumeRepository.delete(shelfItem);
+        if (removesFitRating) {
+            recommendationInvalidator.invalidate(userId);
+        }
     }
 
     @Transactional(readOnly = true)
