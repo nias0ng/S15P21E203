@@ -87,6 +87,7 @@ CONTEXT_MIN = 3
 # 기본 데이터 경로. 인자로 덮어쓸 수 있다.
 _DATA_DIR = Path(__file__).resolve().parent / "data"
 DEFAULT_PERFUMES = _DATA_DIR / "perfumes_nlr.csv.gz"
+EXCLUDED_PERFUME_IDS = {9110}
 DEFAULT_LEXICON = _DATA_DIR / "domain_lexicon_v1_18.csv"
 DEFAULT_ACCORDS = _DATA_DIR / "accord_dictionary.csv"
 DEFAULT_NOTE_BRIDGE = _DATA_DIR / "note_accord_bridge.csv"
@@ -195,6 +196,11 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
                if counts.get(r["accord"], 0) != r["perfume_count"]]
         if bad:
             raise RuntimeError(f"accord 보유 수가 마스터와 다르다: {bad[:5]}")
+
+    # 원본 검증은 배포 파일 전체로 수행하되, 알려진 크롤링 중복은 추천 후보에서 제외한다.
+    # 9110은 정식 Eclat d’Arpège(988)의 중복 행이므로 API에서 반환되면 안 된다.
+    perf = perf[~perf["id"].isin(EXCLUDED_PERFUME_IDS)].reset_index(drop=True)
+    pairs = perf["accords"].map(_parse_accords)
 
     strength = np.zeros((len(perf), len(accords)), dtype=np.float32)
     for row, ps in enumerate(pairs):

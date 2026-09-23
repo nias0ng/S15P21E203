@@ -7540,10 +7540,10 @@
    ]
   },
   {
-   "fragrantica_id": 9110,
+   "fragrantica_id": 988,
    "brand": "Lanvin",
-   "name": "Eclat d'Arpege",
-   "year": 2010,
+   "name": "Eclat d’Arpège",
+   "year": 2002,
    "gender": "female",
    "x": 0.95509,
    "y": 0.70456,
@@ -7571,18 +7571,22 @@
     },
     {
      "name": "fresh",
-     "strength": 54
+     "strength": 57
     },
     {
      "name": "green",
-     "strength": 30
-    },
-    {
-     "name": "fruity",
-     "strength": 14
+     "strength": 32
     },
     {
      "name": "musky",
+     "strength": 17
+    },
+    {
+     "name": "fruity",
+     "strength": 15
+    },
+    {
+     "name": "rose",
      "strength": 13
     },
     {
@@ -7590,12 +7594,8 @@
      "strength": 11
     },
     {
-     "name": "rose",
+     "name": "powdery",
      "strength": 11
-    },
-    {
-     "name": "fresh spicy",
-     "strength": 9
     }
    ],
    "seasons": {
@@ -8492,7 +8492,7 @@
      "sim": 0.4119
     },
     {
-     "id": 9110,
+     "id": 988,
      "sim": 0.4034
     }
    ],
@@ -8944,7 +8944,7 @@
    },
    "neighbors": [
     {
-     "id": 9110,
+     "id": 988,
      "sim": 0.4198
     },
     {
@@ -10644,7 +10644,7 @@
      "sim": 0.4007
     },
     {
-     "id": 9110,
+     "id": 988,
      "sim": 0.3859
     },
     {
@@ -12679,7 +12679,7 @@
      "sim": 0.4101
     },
     {
-     "id": 9110,
+     "id": 988,
      "sim": 0.408
     },
     {
@@ -12901,7 +12901,7 @@
      "sim": 0.4484
     },
     {
-     "id": 9110,
+     "id": 988,
      "sim": 0.4374
     },
     {
@@ -15279,7 +15279,7 @@
      "sim": 0.4229
     },
     {
-     "id": 9110,
+     "id": 988,
      "sim": 0.4142
     },
     {
@@ -25915,7 +25915,7 @@
    },
    "neighbors": [
     {
-     "id": 9110,
+     "id": 988,
      "sim": 0.4337
     },
     {

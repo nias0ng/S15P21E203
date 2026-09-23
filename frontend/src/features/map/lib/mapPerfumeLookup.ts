@@ -13,9 +13,8 @@ import type { PerfumeIdIndex } from './perfumeIdAt'
  * 일지에 남는 향수는 모두 지도 위의 향수라(지도에서 [자세히 보기] 를 누른 것 · 취향 테스트의 출발점)
  * 이 200개 안에서 다 찾힙니다.
  *
- * NOTE: DB 에도 한글 이름(`name_ko`)이 있지만 엔진 데이터와 표기가 다른 향수가 있습니다
- *   (예: 엔진 'N°5 오 프리미에르' · DB '샤넬 No. 5 오 프르미에르'). 여기서는 3D 와 맞추려고
- *   엔진 쪽을 씁니다.
+ * NOTE: DB 에도 한글 이름(`name_ko`)이 있지만 엔진 데이터와 표기가 다른 향수가 있습니다.
+ *   여기서는 3D 카드·부표와 표기를 맞추기 위해 엔진 쪽을 씁니다.
  *
  * @param index DB 향수 번호 색인 (`buildPerfumeIdIndex` — `GET /api/v1/map` 의 좌표)
  * @param perfumes 엔진 데이터의 지도 향수 (`loadMapPerfumes`)

@@ -36,7 +36,7 @@ const ROWS: readonly FixtureRow[] = [
     families: { FLORAL: 0.3211 },
   },
   {
-    fragranticaId: 9110,
+    fragranticaId: 988,
     rank: 5,
     x: 95.509,
     y: 70.456,
