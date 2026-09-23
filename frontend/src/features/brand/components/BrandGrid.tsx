@@ -58,7 +58,8 @@ export function BrandGrid({
                 src={brand.logoUrl}
                 fallback="로고"
                 fit="contain"
-                className={cn(BRAND_PLATE, 'rounded-image h-40 w-full')}
+                // 위아래로 판에 딱 붙는 로고가 있어 판 안쪽으로 조금 띄웁니다
+                className={cn(BRAND_PLATE, 'rounded-image h-40 w-full py-1.25')}
               />
             }
             title={brand.name}
