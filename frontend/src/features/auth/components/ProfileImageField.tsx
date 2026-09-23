@@ -72,7 +72,8 @@ export function ProfileImageField({ value, onChange }: Props) {
             'border-line text-ink rounded-card inline-flex h-7.5 min-h-[calc(var(--text-body)*var(--text-body--line-height)+5px)] w-fit items-center border px-2.5',
             'text-body cursor-pointer font-medium',
             'hover:bg-line-soft transition-colors duration-120 ease-out',
-            'focus-within:ring-accent-deep focus-within:ring-2',
+            /* 마우스로 눌러도 링이 뜨던 것을 글쇠로 올 때만으로 좁힙니다 (`ImageAttachField` 와 같습니다) */
+            'has-[:focus-visible]:ring-accent-deep has-[:focus-visible]:ring-2',
             busy && 'pointer-events-none opacity-50',
           )}
         >

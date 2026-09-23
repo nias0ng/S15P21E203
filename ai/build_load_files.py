@@ -1,4 +1,4 @@
-"""향수 129,161개를 DB 에 넣을 수 있는 형태로 쪼갠다.
+"""향수 129,160개를 DB 에 넣을 수 있는 형태로 쪼갠다.
 
 `data/perfumes_nlr.csv.gz` 한 칸에 뭉쳐 있는 값을 테이블 네 개로 나눈다.
 
@@ -10,9 +10,9 @@
 --------------
     brands.csv             name                                   7,793행
     accords.csv            name · is_new                             92행
-    perfumes.csv.gz        fragrantica_id · name · brand_name ·  129,161행
+    perfumes.csv.gz        fragrantica_id · name · brand_name ·  129,160행
                            people · already_in_db
-    perfume_accords.csv.gz fragrantica_id · accord_name ·      1,000,570행
+    perfume_accords.csv.gz fragrantica_id · accord_name ·      1,000,562행
                            rank · weight
 
 큰 둘만 gzip 으로 둔다. 압축하지 않으면 저장소에 넣기에 크고(각각 5.7MB·20MB),
@@ -28,7 +28,8 @@
      없으면 추천 순서를 재현할 수 없다 — 정렬 2순위가 평가자 수다.
   2. `rating_avg`(평점)는 넣지 않는다. 추천 정렬에 쓰지 않는다.
   3. `uk_perfumes_brand_name UNIQUE (brand_id, name)` 제약을 빼고
-     `UNIQUE (fragrantica_id)` 만 남긴다. 그래서 **129,161개가 전부 들어간다.**
+     `UNIQUE (fragrantica_id)` 만 남긴다. 알려진 크롤링 중복 9110을 제외한
+     **129,160개가 전부 들어간다.**
      빼지 않으면 (브랜드, 이름) 이 겹치는 1,360행이 적재를 실패시킨다.
 
 주의
@@ -53,12 +54,13 @@ HERE = Path(__file__).resolve().parent
 SOURCE = HERE / "data" / "perfumes_nlr.csv.gz"
 ACCORD_MASTER = HERE / "data" / "accord_dictionary.csv"
 OUTPUT_DIR = HERE / "delivery" / "for_db"
+EXCLUDED_PERFUME_IDS = {9110}
 
 
 def parse_accords(value):
     """'name:strength|name:strength' 한 칸을 푼다. list[tuple[str, int]].
 
-    세기 내림차순으로 이미 정렬돼 있다(129,161개 전부 확인). 순서가 곧 rank 다.
+    세기 내림차순으로 이미 정렬돼 있다(원본 129,161개 전부 확인). 순서가 곧 rank 다.
     """
     out = []
     for part in str(value).split("|"):
@@ -86,6 +88,7 @@ def build(source: Path = SOURCE, output_dir: Path = OUTPUT_DIR,
 
     df = pd.read_csv(source, usecols=["id", "name", "brand", "people", "accords"],
                      low_memory=False)
+    df = df[~df["id"].isin(EXCLUDED_PERFUME_IDS)].copy()
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # 원본에 앞뒤 공백이 붙은 이름이 있다. 브랜드 6개와 향수 이름 917개다.

@@ -47,6 +47,16 @@ const TEXT_NIGHT = { width: 'text', night: true } satisfies {
   width: PageWidth
   night: boolean
 }
+/** 어두운 방 + 물결 — 향수 · 브랜드 · 노트 · 커뮤니티 (S15P21E203-427) */
+const WATER = { night: true, caustics: true } satisfies {
+  night: boolean
+  caustics: boolean
+}
+const TEXT_WATER = { width: 'text', night: true, caustics: true } satisfies {
+  width: PageWidth
+  night: boolean
+  caustics: boolean
+}
 /** 헤더 아래 화면 끝까지 — 3D 향 지도(A01)가 씁니다 */
 const BLEED = { width: 'bleed' } satisfies { width: PageWidth }
 
@@ -61,38 +71,38 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.PERFUMES,
         element: withSuspense(<PerfumeListPage />),
-        handle: NIGHT,
+        handle: WATER,
       },
       {
         path: ROUTES.PERFUME_DETAIL,
         element: withSuspense(<PerfumeDetailPage />),
-        handle: NIGHT,
+        handle: WATER,
       },
       {
         path: ROUTES.REVIEW_DETAIL,
         element: withSuspense(<ReviewDetailPage />),
-        handle: TEXT_NIGHT,
+        handle: TEXT_WATER,
       },
 
       {
         path: ROUTES.BRANDS,
         element: withSuspense(<BrandListPage />),
-        handle: NIGHT,
+        handle: WATER,
       },
       {
         path: ROUTES.BRAND_DETAIL,
         element: withSuspense(<BrandDetailPage />),
-        handle: NIGHT,
+        handle: WATER,
       },
       {
         path: ROUTES.NOTES,
         element: withSuspense(<NoteListPage />),
-        handle: NIGHT,
+        handle: WATER,
       },
       {
         path: ROUTES.NOTE_DETAIL,
         element: withSuspense(<NoteDetailPage />),
-        handle: NIGHT,
+        handle: WATER,
       },
 
       {
@@ -114,37 +124,37 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.COMMUNITY_REVIEWS,
         element: withSuspense(<ReviewBoardPage />),
-        handle: NIGHT,
+        handle: WATER,
       },
       {
         path: ROUTES.COMMUNITY_FREE,
         element: withSuspense(<FreeBoardPage />),
-        handle: NIGHT,
+        handle: WATER,
       },
       {
         path: ROUTES.POST_DETAIL,
         element: withSuspense(<PostDetailPage />),
-        handle: TEXT_NIGHT,
+        handle: TEXT_WATER,
       },
       {
         path: ROUTES.REVIEW_WRITE,
         element: withSuspense(<ReviewWritePage />),
-        handle: TEXT_NIGHT,
+        handle: TEXT_WATER,
       },
       {
         path: ROUTES.REVIEW_EDIT,
         element: withSuspense(<ReviewWritePage />),
-        handle: TEXT_NIGHT,
+        handle: TEXT_WATER,
       },
       {
         path: ROUTES.POST_WRITE,
         element: withSuspense(<PostWritePage />),
-        handle: TEXT_NIGHT,
+        handle: TEXT_WATER,
       },
       {
         path: ROUTES.POST_EDIT,
         element: withSuspense(<PostWritePage />),
-        handle: TEXT_NIGHT,
+        handle: TEXT_WATER,
       },
 
       {

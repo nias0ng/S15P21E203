@@ -40,7 +40,7 @@ const TABLE = `
 65738 | 1 | MUSK | unisex | Diptyque | Orphéon Eau de Parfum | 딥티크 | 오르페옹 오 드 퍼퓸
 83 | 2 | GREEN | female | Elizabeth Arden | Green Tea | 엘리자베스 아덴 | 그린티
 74041 | 3 | AQUATIC | unisex | Jo Malone London | Wood Sage & Sea Salt Cologne | 조 말론 런던 | 우드 세이지 앤 씨 솔트 코롱
-9110 | 5 | FLORAL | female | Lanvin | Eclat d'Arpege | 랑방 | 에끌라 드 아르페쥬
+988 | 5 | FLORAL | female | Lanvin | Eclat d’Arpège | 랑방 | 에클라 드 아르페쥬
 10131 | 6 | MUSK | unisex | Le Labo | Another 13 | 르 라보 | 어나더 13
 14214 | 7 | FLORAL | female | Diptyque | Eau Rose | 딥티크 | 오 로즈
 32134 | 8 | GREEN | unisex | Aesop | Tacit | 이솝 | 테싯
@@ -56,7 +56,7 @@ const TABLE = `
 276 | 20 | CITRUS | unisex | Calvin Klein | CK One | 캘빈 클라인 | CK 원
 1483 | 21 | WOODY | female | Chanel | Chance Eau Fraiche | 샤넬 | 샹스 오 후레쉬
 56741 | 22 | GOURMAND | female | Ariana Grande | Thank U, Next | 아리아나 그란데 | 땡큐, 넥스트
-1360 | 23 | FLORAL | female | Chanel | Chanel N°5 Eau Premiere | 샤넬 | N°5 오 프리미에르
+1360 | 23 | FLORAL | female | Chanel | Chanel N°5 Eau Premiere | 샤넬 | 오 프르미에르
 131717 | 24 | MUSK | unisex | Diptyque | Fleur de Peau | 딥티크 | 플레르 드 뽀
 607 | 25 | CITRUS | male | Chanel | Allure Homme Sport | 샤넬 | 알뤼르 옴므 스포츠
 39970 | 26 | GOURMAND | female | Ariana Grande | Sweet Like Candy | 아리아나 그란데 | 스위트 라이크 캔디

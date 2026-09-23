@@ -12,6 +12,11 @@ type ConfirmDialogProps = {
   /** 되돌릴 수 없는 동작이면 true (기본). false 면 확인 버튼이 primary 로 바뀝니다. */
   destructive?: boolean
   isLoading?: boolean
+  /**
+   * 판의 겉모습. 3D 향 지도 위에서 뜨는 확인은 `scent-map-panel` 을 넘겨 어두운 유리로
+   * 맞춥니다 — 기본 상아색 종이로 두면 남색 판 위에 흰 종이가 한 장 끼어듭니다.
+   */
+  className?: string
 }
 
 /**
@@ -27,12 +32,14 @@ export function ConfirmDialog({
   confirmLabel = '삭제',
   destructive = true,
   isLoading = false,
+  className,
 }: ConfirmDialogProps) {
   return (
     <Modal
       open={open}
       onClose={onClose}
       title={title}
+      className={className}
       /* 안내 모양(가운데 정렬)이되 단추는 다른 모달과 같은 오른쪽 아래입니다 */
       notice
       footer={

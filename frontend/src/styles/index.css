@@ -30,6 +30,20 @@
   --color-dusk: #2c263e;
   --color-dusk-gold: #d9be86;
   /*
+   * 향 계열 아홉의 색 — 3D 부표 · 미니맵 점과 **같은 색**입니다 (엔진 `landing/src/config.js` 의
+   * `families[].color`). 향해 일지가 해역 뱃지 · 향수 아이콘에 써서 지도와 한 벌로 읽힙니다.
+   * NOTE: 엔진 값을 바꾸면 여기도 같이 바꿉니다. 글자색으로는 쓰지 않습니다 — 점 · 아이콘 전용입니다.
+   */
+  --color-family-floral: #cba0aa;
+  --color-family-fruity: #d4a48f;
+  --color-family-woody: #a38f7c;
+  --color-family-green: #94a38c;
+  --color-family-citrus: #c2b36a;
+  --color-family-aquatic: #95b4c0;
+  --color-family-amber: #cbac82;
+  --color-family-gourmand: #bf9b7a;
+  --color-family-musk: #b3aabf;
+  /*
    * 메인 검색창의 모래빛 (`features/map` 의 SceneSearchBar · `shared/ui` 의 SearchField `scene`).
    * 3D 바다 · 하늘 위에 뜨는 알약이라 어두운 방(`scent-display.css`)이 이 값을 뒤집지 않습니다.
    *

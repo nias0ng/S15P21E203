@@ -20,6 +20,15 @@ type ModalProps = {
    * 칸이 있는 모달에는 쓰지 마세요 — 입력이 왼쪽에서 시작해 축이 두 개가 됩니다.
    */
   notice?: boolean
+  /**
+   * 배경을 눌러도 닫지 않습니다(기본은 닫습니다). **쓰다 만 것이 사라지면 곤란한 모달**에
+   * 씁니다 — 입력칸이 있는 창은 글을 적다 옆을 잘못 눌러 닫히면 적던 것이 통째로 날아가고,
+   * 되돌릴 길이 없습니다.
+   *
+   * NOTE: **Esc 는 그대로 닫습니다.** 모달에서 빠져나가는 표준 길이라 막으면 키보드만 쓰는
+   * 사람이 갇힙니다. 그쪽까지 막아야 하면 닫기 전에 물어보는 쪽(확인 모달)으로 갑니다.
+   */
+  closeOnBackdrop?: boolean
   className?: string
 }
 
@@ -34,6 +43,7 @@ export function Modal({
   children,
   footer,
   notice = false,
+  closeOnBackdrop = true,
   className,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
@@ -59,6 +69,7 @@ export function Modal({
       }}
       // 배경(dialog 자체)을 클릭했을 때만 닫습니다. 내용 클릭은 통과시킵니다.
       onClick={(event) => {
+        if (!closeOnBackdrop) return
         if (event.target === dialogRef.current) onClose()
       }}
       className={cn(
