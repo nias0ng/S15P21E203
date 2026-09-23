@@ -35,6 +35,14 @@ type Props = {
   priorityId: number | null
   /** 향수가 없을 때 벽감 안에 적는 말 */
   emptyMessage: string
+  /**
+   * 벽감 면을 여기서 그릴지. 기본은 그립니다.
+   *
+   * NOTE: `false` 는 벽감이 창에 고정으로 선 배치를 뜻합니다. 그때 벽감은 흐르는 트랙 밖에
+   * 한 벌만 있고, 이 상자는 병만 싣고 그 안에서 미끄러집니다. 두 벌을 그리면 벽감이 병을
+   * 따라 같이 흘러 뒷벽이 두 겹으로 겹칩니다.
+   */
+  frame?: boolean
 }
 
 /*
@@ -88,6 +96,7 @@ export const DisplayCase = memo(function DisplayCase({
   priorityTo,
   priorityId,
   emptyMessage,
+  frame = true,
 }: Props) {
   return (
     <div
@@ -100,19 +109,21 @@ export const DisplayCase = memo(function DisplayCase({
         테두리까지 덮습니다(shelf-display.css 의 .shelf-niche-grain).
         전부 장식이라 낭독기에서 뺍니다.
       */}
-      <div
-        aria-hidden
-        className="shelf-niche absolute -inset-x-[var(--track-inset)] top-0 h-[var(--case-h)]"
-      >
-        <div className="shelf-face shelf-niche-back" />
-        <div className="shelf-face shelf-niche-light" />
-        <div className="shelf-face shelf-niche-ceiling" />
-        <div className="shelf-face shelf-niche-wall-left" />
-        <div className="shelf-face shelf-niche-wall-right" />
-        <div className="shelf-face shelf-niche-floor" />
-        <div className="shelf-face shelf-niche-bevel" />
-        <div className="shelf-face shelf-niche-grain" />
-      </div>
+      {frame && (
+        <div
+          aria-hidden
+          className="shelf-niche absolute -inset-x-[var(--track-inset)] top-0 h-[var(--case-h)]"
+        >
+          <div className="shelf-face shelf-niche-back" />
+          <div className="shelf-face shelf-niche-light" />
+          <div className="shelf-face shelf-niche-ceiling" />
+          <div className="shelf-face shelf-niche-wall-left" />
+          <div className="shelf-face shelf-niche-wall-right" />
+          <div className="shelf-face shelf-niche-floor" />
+          <div className="shelf-face shelf-niche-bevel" />
+          <div className="shelf-face shelf-niche-grain" />
+        </div>
+      )}
 
       {items.length === 0 ? (
         <p className="shelf-muted text-caption absolute inset-0 flex items-center justify-center px-2.5 text-center">

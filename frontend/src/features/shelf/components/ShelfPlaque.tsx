@@ -1,3 +1,5 @@
+import { cn } from '@/shared/lib/cn'
+
 import type { PlaqueMetrics } from '../lib'
 import type { ShelfCategory } from '../types'
 
@@ -206,5 +208,64 @@ export function ShelfReturnPlaque({
         </button>
       </div>
     </div>
+  )
+}
+
+/**
+ * 왼쪽에 세로로 쌓는 분류 메뉴 (S15P21E203-417).
+ *
+ * 벽감이 창에 고정이라 벽에는 한 번에 한 분류만 섭니다. 분류를 갈아끼우는 손잡이가 이 메뉴입니다.
+ *
+ * 판은 분류 현판과 같은 종이지만 셋이 벽감 높이 안에 들어가야 해서 낮습니다 — 높이 상한은
+ * ShelfWall 이 벽감 높이에서 세어 `plaqueMetrics` 에 넘깁니다(lib.ts 의 maxHeight).
+ *
+ * 고른 분류는 `aria-current` 로 알리고, 보이는 표시는 `data-active` 로 CSS 가 입힙니다.
+ * 낭독기에는 분류 이름과 개수가 그대로 읽힙니다(PlaqueBoard).
+ */
+export function ShelfPlaqueMenu({
+  items,
+  value,
+  plaque,
+  hintId,
+  onSelect,
+  className,
+}: {
+  items: { category: ShelfCategory; label: string; count: number }[]
+  value: ShelfCategory
+  plaque: PlaqueMetrics
+  hintId: string
+  onSelect: (category: ShelfCategory) => void
+  className?: string
+}) {
+  return (
+    <nav
+      aria-label="진열대 분류"
+      className={cn('flex flex-col items-center justify-between', className)}
+    >
+      {items.map((item) => {
+        const active = item.category === value
+        return (
+          <button
+            key={item.category}
+            type="button"
+            onClick={() => onSelect(item.category)}
+            aria-describedby={hintId}
+            aria-current={active ? 'true' : undefined}
+            data-detail={plaque.detail}
+            data-active={active ? '' : undefined}
+            // 누운 판(메뉴판)은 글자를 가로로 폅니다 — 세로로 쌓으면 판 밖으로 넘칩니다
+            data-wide={plaque.width > plaque.height ? '' : undefined}
+            style={plaqueStyle(plaque)}
+            className="shelf-plaque"
+          >
+            <PlaqueBoard
+              label={item.label}
+              count={item.count}
+              caption={PLAQUE_CAPTION[item.category]}
+            />
+          </button>
+        )
+      })}
+    </nav>
   )
 }

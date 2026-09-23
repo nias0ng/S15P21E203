@@ -78,7 +78,7 @@ type Props = {
  * 살짝 비쳐서 "종이 위에 얹힌 카드" 로 읽힙니다.
  */
 const CARD =
-  'shelf-panel relative rounded-[14px] px-6.25 pt-5 pb-5 [zoom:var(--panel-scale,1)]'
+  'shelf-panel relative rounded-[14px] px-5 pt-5 pb-5 [zoom:var(--panel-scale,1)]'
 
 /**
  * 이 카드 위 버튼의 포커스 링.
