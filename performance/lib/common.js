@@ -61,8 +61,12 @@ export function createEndpointMetrics(testName) {
 export function recordResponse(metrics, response, expectedStatus, checks = {}) {
     const level = currentLevel();
     const selected = metrics[level];
+    const expectedStatuses = Array.isArray(expectedStatus)
+        ? expectedStatus
+        : [expectedStatus];
     const passed = check(response, {
-        [`status is ${expectedStatus}`]: (res) => res.status === expectedStatus,
+        [`status is ${expectedStatuses.join(' or ')}`]: (res) =>
+            expectedStatuses.includes(res.status),
         ...checks,
     });
     selected.requests.add(1);

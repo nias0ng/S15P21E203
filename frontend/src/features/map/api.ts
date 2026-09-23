@@ -5,6 +5,7 @@ import {
   VOYAGE_LOG_SIZE,
   type ExplorationMove,
   type ExplorationState,
+  type MapPerfumePoint,
   type MapPoint,
   type VoyageLogEntry,
   type VoyageLogResponse,
@@ -78,6 +79,35 @@ export async function getVoyageLog(): Promise<VoyageLogEntry[]> {
  * ⚠️ 로그인하지 않아도 부릅니다 — 비회원도 지도를 탐색할 수 있어야 해서 배는 움직이고,
  * 서버가 `updatedAt` 을 비워 "남기지 않았다" 를 알려 줍니다(401 이 아닙니다).
  */
+/**
+ * MAP-24 **배가 지금 떠 있는 자리** (백엔드 `GET /api/v1/map/exploration/me`).
+ *
+ * 메인에 들어올 때 배를 거기에 돌려놓는 데 씁니다 — 컨트롤러 주석이 그대로 이 용도입니다
+ * (`docs/배-자리와-향해일지-0921.md` §A-2).
+ *
+ * ⚠️ 한 번도 안 움직였으면 **세 필드가 모두 null 인 200** 입니다 (404 가 아닙니다 — 처음 온
+ * 사람을 오류로 다루지 않으려고). 비로그인은 401 입니다.
+ * ⚠️ 좌표는 **정규화 0~1** 입니다 (엔진 `scentmap.toNorm()` 과 같은 공간).
+ */
+export async function getExplorationState(): Promise<ExplorationState> {
+  const { data } = await http.get<ExplorationState>('/map/exploration/me')
+  return data
+}
+
+/**
+ * 지도에 찍히는 향수 200개의 **DB 번호와 좌표** (백엔드 `GET /api/v1/map`).
+ *
+ * 쓰는 곳은 하나입니다 — 엔진이 넘긴 좌표로 DB 향수 번호를 찾는 색인
+ * (`lib/perfumeIdAt`). 엔진 데이터에는 그 번호가 없기 때문입니다.
+ *
+ * ⚠️ 로그인이 필요 없습니다. 조건도 없어 세션 중에 바뀌지 않습니다 — 쿼리에서 `staleTime` 을 길게 둡니다.
+ * ⚠️ 응답에는 `regions` 와 이름 · 이미지도 딸려 오지만 여기서는 **좌표와 번호만** 남깁니다.
+ */
+export async function getMapPerfumePoints(): Promise<MapPerfumePoint[]> {
+  const { data } = await http.get<{ perfumes: MapPerfumePoint[] }>('/map')
+  return data.perfumes.map(({ perfumeId, x, y }) => ({ perfumeId, x, y }))
+}
+
 export async function moveExploration(
   move: ExplorationMove,
 ): Promise<ExplorationState> {

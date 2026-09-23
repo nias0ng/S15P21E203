@@ -81,6 +81,27 @@ interface EngineHandle {
    * 제 자리를 잡습니다 (`lib/boatAnchor`). 엔진이 매 프레임 채웁니다.
    */
   boat?: { screen?: BoatAnchor }
+  /**
+   * 배를 그 자리에 놓습니다 — 메인에 들어올 때 **한 번** (엔진 `main.js` 의 `startAt`).
+   *
+   * ⚠️ 좌표는 **정규화 0~1** 입니다 (백엔드 `perfume_map_points` · 엔진 `scentmap.toWorld` 와 같은
+   * 공간). `features/taste/api.ts` 의 `getScentVectors` 는 100 을 곱하지만(SVG viewBox 가 100×100)
+   * 여기로 넘기는 것은 **안 곱한 쪽**입니다.
+   *
+   * ⚠️⚠️ `land` 가 **연출을 가릅니다.** 없으면 좌표에 그대로 놓고 조용히 시작하고(재방문),
+   * `true` 면 목표 앞에 뱃머리를 돌려 세우고 그 해역 연출을 겁니다(취향 테스트 직후).
+   *
+   * ⚠️ 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다. 그때는 예전처럼 원점에서 시작합니다.
+   */
+  startAt?: (
+    pos: { x: number; y: number },
+    opts?: { land?: boolean },
+  ) => boolean
+  /**
+   * 배가 지금 떠 있는 정규화 좌표 — 메인을 **떠날 때** 한 번 읽어 서버에 남깁니다
+   * (엔진 `main.js` 의 `boatAt`). 지도가 아직 없으면 null 입니다.
+   */
+  boatAt?: () => { x: number; y: number } | null
 }
 
 type Props = {
@@ -167,6 +188,33 @@ type Props = {
    * 이걸 받아 `PUT /map/exploration/me` 를 부릅니다. 기록할지는 서버가 정합니다.
    */
   onMove?: (move: SceneMove) => void
+  /**
+   * 배를 **시작할 자리** (정규화 0~1). 주면 배가 원점이 아니라 거기서 시작합니다.
+   *
+   * 서버의 **한 칸**(`exploration_state`)에서 옵니다 — 취향 테스트가 처음 한 번 떨어뜨리고,
+   * 그 뒤로는 메인을 떠날 때마다 마지막 자리가 덮어씁니다
+   * (`docs/배-자리와-향해일지-0921.md` §A-2).
+   *
+   * ⚠️⚠️ **엔진이 붙은 뒤 딱 한 번만 넘깁니다.** 항해 중에 다시 부르면 배가 되돌아갑니다.
+   * ⚠️ 비로그인이면 401 이라 없습니다 — 예전처럼 원점에서 시작합니다.
+   */
+  start?: { x: number; y: number } | null
+  /**
+   * **취향 테스트를 막 마치고 왔는가.** 그때만 배가 착륙 구도(목표 앞 · 뱃머리를 돌려)로 서고
+   * 그 해역 연출이 바로 걸립니다 (`docs/취향-출발점과-영역-진입-0921.md` §A).
+   *
+   * ⚠️⚠️ 자리(`start`)만으로는 못 가립니다 — 취향 출발점도 마지막 항해 자리도 **같은 칸**에서
+   * 같은 모양으로 오기 때문입니다. 가르는 것은 *어떻게 들어왔는가* 이고, 그건 `HomePage` 가
+   * 라우터 state 로 받습니다 (첫 로그인 직후 한 번뿐인 길입니다).
+   */
+  landing?: boolean
+  /**
+   * 메인을 **떠나는 순간** 배가 있던 정규화 좌표를 알려 줍니다 (`§A-1`).
+   *
+   * ⚠️ 여기서 보낸 요청은 SPA 화면 전환에서만 돕니다 — 브라우저를 강제로 닫으면 안 갑니다.
+   * ⚠️ 엔진이 아직 안 떴거나 지도가 없으면 안 부릅니다.
+   */
+  onLeave?: (pos: { x: number; y: number }) => void
   className?: string
 }
 
@@ -199,6 +247,9 @@ export function ScentScene({
   onChartChange,
   onBoot,
   onMove,
+  start,
+  landing,
+  onLeave,
   className,
 }: Props) {
   const frame = useRef<HTMLIFrameElement>(null)
@@ -238,6 +289,7 @@ export function ScentScene({
     onChartChange,
     onBoot,
     onMove,
+    onLeave,
   })
   useEffect(() => {
     latest.current = {
@@ -251,6 +303,7 @@ export function ScentScene({
       onChartChange,
       onBoot,
       onMove,
+      onLeave,
     }
   })
 
@@ -268,6 +321,14 @@ export function ScentScene({
     engine.params.hostTop = covered
     engine.apply()
   }, [covered, ready])
+
+  /*
+   * 배의 시작 자리는 **엔진이 붙은 뒤 딱 한 번** 넘깁니다 (아래 별도 effect).
+   * ⚠️ 다른 처리기처럼 `latest` 에 담아 `attach` 안에서 부르면, 자리 쿼리가 엔진보다 늦게 오는
+   *   경우에 영영 못 넘깁니다 — `ready` 와 `start` 가 **둘 다 갖춰지면** 도는 effect 로 뺐습니다.
+   *   두 번 부르는 것은 `started` 가 막습니다 (항해 중에 부르면 배가 되돌아갑니다).
+   */
+  const started = useRef(false)
 
   /*
    * 엔진 알약 숨기기. 엔진이 붙은 뒤(`ready`)에 겁니다 — 그 전에는 iframe 문서에
@@ -449,6 +510,15 @@ export function ScentScene({
       el.removeEventListener('load', onLoad)
       window.clearTimeout(timer)
       timeWatch?.disconnect()
+      /*
+        ⭐ **떠나기 직전에 배가 있던 자리를 알립니다** (`onLeave` · §A-1). setHost 를 풀기 전에
+        읽습니다 — 순서가 바뀌어도 값은 같지만, "엔진이 아직 살아 있을 때 읽는다" 를 코드가
+        보이게 둡니다.
+        ⚠️ 엔진이 안 떴거나(`boatAt` 없음) 지도가 아직 없으면(null) 조용히 건너뜁니다.
+      */
+      const last = attached?.boatAt?.()
+      if (last) latest.current.onLeave?.(last)
+
       attached?.setHost(null)
       handle.current = null
       // 엔진이 사라집니다 — 커튼은 이제 혼자 차오릅니다 (잠수로 떠나는 길이 바로 이 경로입니다)
@@ -456,6 +526,29 @@ export function ScentScene({
       setBoatAnchorSource(null)
     }
   }, [])
+
+  /*
+   * 저장된 자리에서 배를 시작합니다 (`start` prop · §A-2).
+   *
+   * ⚠️⚠️ **한 번만 부릅니다** — `started` 가 막습니다. 항해 중에 다시 부르면 배가 되돌아갑니다.
+   * ⚠️ 엔진과 `start` 중 늦게 오는 쪽을 기다립니다 (둘 다 의존성에 있습니다).
+   * ⚠️ `landing` 이면 착륙 구도 + 해역 연출로, 아니면 조용히 그 자리에 놓습니다 (엔진 `startAt`).
+   * ⚠️ 엔진에 `startAt` 이 없으면(그 기능 전 빌드) 조용히 지나갑니다 — 원점에서 시작합니다.
+   *
+   * NOTE: **자리가 늦게 오면 배가 눈에 보이게 순간이동합니다.** 보통은 안 그렇습니다 —
+   * 실측(2026-09-23)으로 엔진이 붙는 2.05초에 배가 놓이고 로딩 커튼은 5.28초에 걷혀
+   * **3.2초 여유**가 있으며, 배가 원점에 있는 프레임은 한 장도 관측되지 않았습니다.
+   * 다만 `GET /map/exploration/me` 가 느려 커튼이 걷힌 뒤에 오면 그 순간이동이 보입니다.
+   * 그래도 **놓습니다** — 자리를 잇는 것이 이 기능의 전부라, 한 번의 튐보다 원점에서
+   * 시작해 버리는 쪽이 나쁩니다. 막으려면 여기에 커튼 상태 조건을 더하면 됩니다.
+   */
+  useEffect(() => {
+    const engine = handle.current
+    if (!ready || !engine || !start || started.current) return
+    if (typeof engine.startAt !== 'function') return
+    started.current = true
+    engine.startAt(start, { land: landing })
+  }, [ready, start, landing])
 
   return (
     <>

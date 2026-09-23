@@ -2,6 +2,7 @@ package com.hyanghae.backend.recommendation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -16,6 +17,10 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,6 +46,7 @@ class PersonalizedRecommendationIntegrationTest {
 
     private static final String URL = "/api/v1/recommendations/personalized";
     private static final long USER_ID = 91001L;
+    private static final long OTHER_USER_ID = 91002L;
     private static final long TASTE_PERFUME = 92001L;
     private static final long FIRST_CANDIDATE = 92002L;
     private static final long SECOND_CANDIDATE = 92003L;
@@ -176,12 +182,13 @@ class PersonalizedRecommendationIntegrationTest {
     }
 
     @Test
-    void recommendsOnePerfumeAndRecordsExposure() throws Exception {
+    void recommendsOnePerfumeWithoutRecordingExposureUntilCompletion() throws Exception {
         // 두 번째 후보를 최근에 보여 줬으므로 첫 번째 후보만 3일 제한을 통과합니다.
         insertExposure(SECOND_CANDIDATE, Instant.now().minus(1, ChronoUnit.DAYS));
 
         mockMvc.perform(get(URL))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recommendationToken").isString())
                 .andExpect(jsonPath("$.recommendation.perfumeId").value((int) FIRST_CANDIDATE))
                 .andExpect(jsonPath("$.recommendation.name").value("First Candidate"))
                 .andExpect(jsonPath("$.recommendation.imageUrl")
@@ -189,13 +196,92 @@ class PersonalizedRecommendationIntegrationTest {
                 .andExpect(jsonPath("$.recommendation.reason")
                         .value("취향 테스트에서 선택한 우디 계열과 잘 맞아요."));
 
-        Integer exposures = jdbcTemplate.queryForObject(
+        Integer exposuresBeforeCompletion = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM personalized_recommendation_exposures "
                         + "WHERE user_id = ? AND perfume_id = ?",
                 Integer.class,
                 USER_ID,
                 FIRST_CANDIDATE);
-        assertThat(exposures).isEqualTo(1);
+        assertThat(exposuresBeforeCompletion).isZero();
+
+        UUID token = jdbcTemplate.queryForObject(
+                "SELECT recommendation_token FROM personalized_recommendation_offers "
+                        + "WHERE user_id = ?",
+                UUID.class,
+                USER_ID);
+        mockMvc.perform(post(URL + "/" + token + "/exposure"))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(post(URL + "/" + token + "/exposure"))
+                .andExpect(status().isNoContent());
+
+        Integer exposuresAfterCompletion = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM personalized_recommendation_exposures "
+                        + "WHERE user_id = ? AND perfume_id = ?",
+                Integer.class,
+                USER_ID,
+                FIRST_CANDIDATE);
+        assertThat(exposuresAfterCompletion).isEqualTo(1);
+    }
+
+    @Test
+    void preventsAnotherUserFromCompletingTheExposure() throws Exception {
+        mockMvc.perform(get(URL)).andExpect(status().isOk());
+        UUID token = jdbcTemplate.queryForObject(
+                "SELECT recommendation_token FROM personalized_recommendation_offers "
+                        + "WHERE user_id = ?",
+                UUID.class,
+                USER_ID);
+        jdbcTemplate.update(
+                "INSERT INTO users (user_id, email, password_hash, nickname) "
+                        + "VALUES (?, ?, 'x', '다른사용자')",
+                OTHER_USER_ID,
+                "other-personalized@hyanghae.test");
+        currentUser.id = OTHER_USER_ID;
+
+        mockMvc.perform(post(URL + "/" + token + "/exposure"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code")
+                        .value("RECOMMENDATION_EXPOSURE_NOT_FOUND"));
+
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM personalized_recommendation_exposures "
+                        + "WHERE recommendation_token = ?",
+                Integer.class,
+                token)).isZero();
+    }
+
+    @Test
+    void issuesANewTokenForEveryRecommendationRequest() throws Exception {
+        mockMvc.perform(get(URL)).andExpect(status().isOk());
+        mockMvc.perform(get(URL)).andExpect(status().isOk());
+
+        List<UUID> tokens = jdbcTemplate.queryForList(
+                "SELECT recommendation_token FROM personalized_recommendation_offers "
+                        + "WHERE user_id = ?",
+                UUID.class,
+                USER_ID);
+        assertThat(tokens).hasSize(2).doesNotHaveDuplicates();
+    }
+
+    @Test
+    void rejectsExpiredExposureToken() throws Exception {
+        mockMvc.perform(get(URL)).andExpect(status().isOk());
+        UUID token = jdbcTemplate.queryForObject(
+                "SELECT recommendation_token FROM personalized_recommendation_offers "
+                        + "WHERE user_id = ?",
+                UUID.class,
+                USER_ID);
+        jdbcTemplate.update(
+                "UPDATE personalized_recommendation_offers "
+                        + "SET issued_at = NOW() - INTERVAL '2 hours', "
+                        + "expires_at = NOW() - INTERVAL '1 hour' "
+                        + "WHERE recommendation_token = ?",
+                token);
+
+        mockMvc.perform(post(URL + "/" + token + "/exposure"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code")
+                        .value("RECOMMENDATION_EXPOSURE_NOT_FOUND"));
     }
 
     @Test
@@ -222,6 +308,167 @@ class PersonalizedRecommendationIntegrationTest {
                 .andExpect(jsonPath("$.recommendation.perfumeId").value((int) FIRST_CANDIDATE))
                 .andExpect(jsonPath("$.recommendation.reason")
                         .value("높게 평가한 향수와 woody 어코드가 비슷해요."));
+    }
+
+    @Test
+    void reusesValidCandidatesWithoutRunningTheHeavyCalculationAgain() throws Exception {
+        mockMvc.perform(get(URL)).andExpect(status().isOk());
+        deleteCandidateSignals();
+
+        mockMvc.perform(get(URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recommendation.perfumeId").isNumber());
+    }
+
+    @Test
+    void keepsEmptyResultUntilARefreshConditionOccurs() throws Exception {
+        deleteCandidateSignals();
+
+        mockMvc.perform(get(URL))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("RECOMMENDATION_NOT_FOUND"));
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT result_status FROM personalized_recommendation_cache_states "
+                        + "WHERE user_id = ?",
+                String.class,
+                USER_ID)).isEqualTo("EMPTY");
+
+        Long regionId = jdbcTemplate.queryForObject(
+                "SELECT scent_region_id FROM scent_regions WHERE code = 'WOODY'", Long.class);
+        insertFamily(FIRST_CANDIDATE, regionId, 0.9);
+
+        mockMvc.perform(get(URL))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("RECOMMENDATION_NOT_FOUND"));
+    }
+
+    @Test
+    void refreshesAtTheTenthViewIncludingRepeatedPerfumeViews() throws Exception {
+        mockMvc.perform(get(URL)).andExpect(status().isOk());
+        deleteCandidateSignals();
+        for (int index = 0; index < 9; index++) {
+            insertView(TASTE_PERFUME);
+        }
+
+        mockMvc.perform(get(URL)).andExpect(status().isOk());
+        insertView(TASTE_PERFUME);
+
+        mockMvc.perform(get(URL))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("RECOMMENDATION_NOT_FOUND"));
+    }
+
+    @Test
+    void refreshesAtTheTwentyFourHourBoundary() throws Exception {
+        mockMvc.perform(get(URL)).andExpect(status().isOk());
+        deleteCandidateSignals();
+        jdbcTemplate.update(
+                "UPDATE personalized_recommendation_cache_states "
+                        + "SET calculated_at = NOW() - INTERVAL '24 hours' WHERE user_id = ?",
+                USER_ID);
+
+        mockMvc.perform(get(URL))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("RECOMMENDATION_NOT_FOUND"));
+    }
+
+    @Test
+    void refreshesWhenEverySavedCandidateBecomesOwned() throws Exception {
+        mockMvc.perform(get(URL)).andExpect(status().isOk());
+        jdbcTemplate.update(
+                "INSERT INTO user_perfumes "
+                        + "(user_id, perfume_id, ownership_status, is_representative) "
+                        + "VALUES (?, ?, 'OWNED', FALSE), (?, ?, 'OWNED', FALSE)",
+                USER_ID, FIRST_CANDIDATE, USER_ID, SECOND_CANDIDATE);
+
+        mockMvc.perform(get(URL))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("RECOMMENDATION_NOT_FOUND"));
+    }
+
+    @Test
+    void refreshesAfterSourceVersionIsInvalidated() throws Exception {
+        mockMvc.perform(get(URL)).andExpect(status().isOk());
+        deleteCandidateSignals();
+        recommendationRepository.incrementSourceVersion(USER_ID);
+
+        mockMvc.perform(get(URL))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("RECOMMENDATION_NOT_FOUND"));
+    }
+
+    @Test
+    void failsImmediatelyWhenAnotherRequestIsRefreshingTheSameUser() throws Exception {
+        CountDownLatch locked = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        try (var executor = Executors.newSingleThreadExecutor()) {
+            var lockHolder = executor.submit(() ->
+                    new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                        jdbcTemplate.query(
+                                "SELECT pg_advisory_xact_lock(?)",
+                                resultSet -> null,
+                                USER_ID);
+                        locked.countDown();
+                        try {
+                            if (!release.await(5, TimeUnit.SECONDS)) {
+                                throw new IllegalStateException("test lock release timed out");
+                            }
+                        } catch (InterruptedException exception) {
+                            Thread.currentThread().interrupt();
+                            throw new IllegalStateException(exception);
+                        }
+                    }));
+            assertThat(locked.await(5, TimeUnit.SECONDS)).isTrue();
+
+            try {
+                mockMvc.perform(get(URL))
+                        .andExpect(status().isConflict())
+                        .andExpect(jsonPath("$.code")
+                                .value("RECOMMENDATION_REFRESH_IN_PROGRESS"))
+                        .andExpect(jsonPath("$.message").value("추천을 계산하고 있습니다."));
+            } finally {
+                release.countDown();
+            }
+            lockHolder.get(5, TimeUnit.SECONDS);
+        }
+    }
+
+    @Test
+    void keepsSourceChangeThatOccursDuringCalculationDirty() {
+        long versionAtCalculationStart =
+                recommendationRepository.ensureCacheStateAndGetSourceVersion(USER_ID);
+        recommendationRepository.incrementSourceVersion(USER_ID);
+
+        recommendationRepository.replaceCache(
+                USER_ID,
+                List.of(),
+                versionAtCalculationStart,
+                0,
+                java.time.OffsetDateTime.now());
+
+        var state = recommendationRepository.findCacheState(USER_ID).orElseThrow();
+        assertThat(state.sourceVersion()).isNotEqualTo(state.calculatedSourceVersion());
+    }
+
+    @Test
+    void keepsViewsCreatedDuringCalculationAfterTheSavedCheckpoint() {
+        recommendationRepository.ensureCacheStateAndGetSourceVersion(USER_ID);
+        long viewIdAtCalculationStart = recommendationRepository.findMaxViewId(USER_ID);
+        for (int index = 0; index < 10; index++) {
+            insertView(TASTE_PERFUME);
+        }
+
+        recommendationRepository.replaceCache(
+                USER_ID,
+                List.of(),
+                0,
+                viewIdAtCalculationStart,
+                java.time.OffsetDateTime.now());
+
+        assertThat(recommendationRepository.hasViewThresholdAfter(
+                USER_ID,
+                viewIdAtCalculationStart,
+                10)).isTrue();
     }
 
     @Test
@@ -282,9 +529,36 @@ class PersonalizedRecommendationIntegrationTest {
                 Timestamp.from(recommendedAt));
     }
 
+    private void insertView(long perfumeId) {
+        jdbcTemplate.update(
+                "INSERT INTO user_perfume_views (user_id, perfume_id, viewed_at) "
+                        + "VALUES (?, ?, NOW())",
+                USER_ID,
+                perfumeId);
+    }
+
+    private void deleteCandidateSignals() {
+        jdbcTemplate.update(
+                "DELETE FROM perfume_scent_families WHERE perfume_id IN (?, ?)",
+                FIRST_CANDIDATE,
+                SECOND_CANDIDATE);
+        jdbcTemplate.update(
+                "DELETE FROM perfume_accords WHERE perfume_id IN (?, ?)",
+                FIRST_CANDIDATE,
+                SECOND_CANDIDATE);
+    }
+
     private void clearData() {
+        jdbcTemplate.update(
+                "DELETE FROM personalized_recommendation_offers WHERE user_id IN (?, ?)",
+                USER_ID, OTHER_USER_ID);
+        jdbcTemplate.update(
+                "DELETE FROM personalized_recommendation_exposures WHERE user_id IN (?, ?)",
+                USER_ID, OTHER_USER_ID);
+        jdbcTemplate.update(
+                "DELETE FROM personalized_recommendation_cache_states WHERE user_id IN (?, ?)",
+                USER_ID, OTHER_USER_ID);
         jdbcTemplate.update("DELETE FROM perfumes WHERE perfume_id >= 92100 AND perfume_id < 92112");
-        jdbcTemplate.update("DELETE FROM personalized_recommendation_exposures WHERE user_id = ?", USER_ID);
         jdbcTemplate.update("DELETE FROM user_perfume_views WHERE user_id = ?", USER_ID);
         jdbcTemplate.update("DELETE FROM user_perfumes WHERE user_id = ?", USER_ID);
         jdbcTemplate.update("DELETE FROM user_taste_tests WHERE user_id = ?", USER_ID);
@@ -299,6 +573,7 @@ class PersonalizedRecommendationIntegrationTest {
         jdbcTemplate.update("DELETE FROM accords WHERE accord_id = ?", ACCORD_ID);
         jdbcTemplate.update("DELETE FROM accords WHERE accord_id = ?", ACCORD_ID + 1);
         jdbcTemplate.update("DELETE FROM users WHERE user_id = ?", USER_ID);
+        jdbcTemplate.update("DELETE FROM users WHERE user_id = ?", OTHER_USER_ID);
     }
 
     @TestConfiguration

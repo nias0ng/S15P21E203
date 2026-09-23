@@ -58,14 +58,12 @@ export function BrandGrid({
                 src={brand.logoUrl}
                 fallback="로고"
                 fit="contain"
-                className={cn(BRAND_PLATE, 'h-40 w-full')}
+                className={cn(BRAND_PLATE, 'rounded-image h-40 w-full')}
               />
             }
-            title={brand.nameKo ?? brand.name}
+            title={brand.name}
             /* 한국어 이름이 없어도 줄자리는 남깁니다 — 안 남기면 그 카드만 한 줄 짧아집니다 */
-            caption={
-              brand.nameKo ? brand.name : <span aria-hidden>&nbsp;</span>
-            }
+            caption={brand.nameKo ?? <span aria-hidden>&nbsp;</span>}
           />
         </li>
       ))}

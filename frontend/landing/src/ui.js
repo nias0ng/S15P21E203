@@ -129,6 +129,8 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin 
   };
   // 경고 한 줄 (범위 없음). 처음 부를 때 만든다
   let warnEl = null, warnAnim = null, warnLineAnim = null, warnTimer = 0;
+  // 해역 알림 (zoneNotice) — 항해하다 해역에 들어섰을 때 화면 하단에 지나가는 한 줄
+  let zNoteEl = null, zNoteAnim = null, zNoteTimer = 0;
 
   // ───────── 선실 — 배에 손을 올렸을 때 (2026-09-21, v0.79.0) ─────────
   // **배 아이콘 하나짜리 작은 방울**이다 — 배 옆구리에 꼬리를 대고 뜬다. 하는 말은 하나뿐이다 :
@@ -573,6 +575,8 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin 
         //   ⚠ 줄어드는 움직임이라 동작 줄이기(calm)에서는 안 민다 (scaleX 0 그대로 — 안 보인다)
         const line = warnEl.querySelector('[data-w="l"]');
         if (warnLineAnim) { warnLineAnim.cancel(); warnLineAnim = null; }
+      if (zNoteAnim) { zNoteAnim.cancel(); zNoteAnim = null; }
+      clearTimeout(zNoteTimer);
         if (line && !calm()) {
           warnLineAnim = line.animate(
             [{ transform: 'scaleX(1)' }, { transform: 'scaleX(1)', offset: 0.1 }, { transform: 'scaleX(0)', offset: 0.85 }, { transform: 'scaleX(0)' }],
@@ -583,6 +587,74 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin 
         warnTimer = setTimeout(() => { if (warnEl) warnEl.style.visibility = 'hidden'; }, 2400);
       }
     },
+    /**
+     * ⭐⭐ **해역 알림** — 항해하다 향 영역에 들어섰을 때 화면 **하단**에 지나가는 한 줄
+     * (2026-09-23). 사용자 : *"카메라 전환하지말고 아예 다른 연출이라 생각하고 화면 하단에
+     * 문구를 등장시켜야겠다 카메라랑 상관없이 그냥 지나가면서 동시에 뜨는 알림처럼"*.
+     *
+     * ⚠⚠ **연출이 아니다.** `phase` 를 안 거치므로 카메라도 배도 윙도 안 움직이고, 입력도 한
+     * 순간도 안 막힌다. 앞선 판(378 의 TL_BRIEF)은 이것을 연출로 만들려다 *"작은 연출"* 이 됐다.
+     * ⚠ 자리는 DRIFT 미터 **위**다 — 겹치면 속도를 읽는 눈과 싸운다.
+     * ⚠ 다시 부르면 처음부터 다시 뜬다 (해역을 연달아 넘는 경우). 쿨다운은 부르는 쪽(main.js
+     *   `zoneNear`)이 본다 — 여기는 시키면 띄우기만 한다.
+     */
+    zoneNotice(key, secs) {
+      const list = areasNow(), kl = String(key).toLowerCase();
+      const z = list.find(x => String(x.key).toLowerCase() === kl);
+      if (!z) return;
+      const ms = Math.max(400, (secs > 0 ? secs : 2.2) * 1000);
+
+      if (!zNoteEl) {
+        zNoteEl = document.createElement('div');
+        zNoteEl.setAttribute('role', 'status');
+        zNoteEl.setAttribute('aria-live', 'polite');
+        // ⚠ pointer-events 없음 — 알림 위를 눌러도 그 누름은 바다로 간다 (배를 모는 손을 안 먹는다)
+        // ⚠⚠ **판이 없다** (2026-09-23). 사용자 : *"흰색 네모 박스를 빼면"*. 바탕도 테두리도 그림자도
+        //   없이 **글자만** 뜬다 — 3D 위에 얹는 것이 아니라 그 안에 적히는 것처럼 읽힌다.
+        //   ⚠ 대신 글자에 옅은 후광(text-shadow)을 준다. 바다 색이 시시각각 바뀌어 어두운 물마루
+        //     위에서는 먹색 글자가 묻힌다 — 판을 뺀 값이다.
+        // ⚠ 자리는 **검색창 바로 밑**이다 (경고 토스트와 같은 계산 — `--pb-warn-top` 은 검색창 아래
+        //   간격이고 `--pb-search-drop` 은 앱 헤더가 검색창을 내린 만큼이다).
+        zNoteEl.style.cssText = 'position:absolute;left:50%;' +
+          'top:calc(var(--pb-warn-top,112px) + var(--pb-warn-drop,0px) + var(--pb-search-drop,0px) + var(--pb-znote-drop,0px));' +
+          'z-index:44;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:var(--pb-znote-gap,4px);' +
+          'pointer-events:none;visibility:hidden;white-space:nowrap;max-width:calc(100vw - 32px);text-align:center;' +
+          'text-shadow:var(--pb-znote-glow,0 1px 3px rgba(246,245,242,0.9), 0 0 10px rgba(246,245,242,0.65));';
+        // 해역 이름 · 한 줄 설명. ⚠ 남은 시간 막대는 없다 — 줄어드는 것도 움직임이라 뺐다
+        //   (사용자 : *"모션넣지말고 그냥 등장했다가 사라지는걸로"*)
+        zNoteEl.innerHTML =
+          // ⚠ 이름이 크고 설명이 작다 — 지나가며 읽는 알림이라 **무엇이 바뀌었는지**가 먼저다
+          '<span data-z="t" style="font-size:var(--pb-znote-title-size,15px);font-weight:700;letter-spacing:0.22em;"></span>' +
+          '<span data-z="s" style="font-size:var(--pb-znote-sub-size,11px);letter-spacing:0.02em;color:var(--pb-znote-ink,#3A3A3A);overflow:hidden;text-overflow:ellipsis;max-width:100%;"></span>';
+        stage.appendChild(zNoteEl);
+      }
+
+      const t = zNoteEl.querySelector('[data-z="t"]');
+      const sub = zNoteEl.querySelector('[data-z="s"]');
+      // ⚠ 색은 그 향조의 제목색이다 — 3D 수면 타이포 · 부표와 같은 색을 쓴다 (config.families[].titleColor)
+      t.textContent = z.name + ' 해역';
+      t.style.color = z.titleColor || 'var(--pb-ink,#1A1A1A)';
+      // ⚠ desc 는 두 줄짜리 배열이다 — 알림은 한 줄이라 붙여 쓴다
+      sub.textContent = (z.desc || []).join(' ');
+      zNoteEl.style.visibility = 'visible';
+
+      if (zNoteAnim) zNoteAnim.cancel();
+      if (zNoteEl.animate) {
+        // ⚠⚠ **움직이지 않는다 — 옅어졌다 짙어질 뿐이다.** 사용자 : *"모션넣지말고 그냥 등장했다가
+        //   사라지는걸로 스스륵하고 나왔다가 스스륵 사라지게"*. transform 을 건드리지 않으므로
+        //   가운데 맞춤(translateX(-50%))이 그대로 살아 있다 — 겹마다 transform 은 하나다(불변식 24).
+        // ⚠ 들 때보다 **날 때를 길게** 둔다 (0.16 → 0.78 → 1). 지나가며 읽는 글이라 사라지는 쪽이
+        //   급하면 놓친 느낌이 든다. calm 에서도 같은 값이다 — 여기엔 뺄 움직임이 없다
+        zNoteAnim = zNoteEl.animate(
+          [{ opacity: 0 }, { opacity: 1, offset: 0.16 }, { opacity: 1, offset: 0.78 }, { opacity: 0 }],
+          { duration: ms, easing: 'linear', fill: 'forwards' });
+        zNoteAnim.onfinish = () => { if (zNoteEl) zNoteEl.style.visibility = 'hidden'; zNoteAnim = null; };
+      } else {
+        clearTimeout(zNoteTimer);
+        zNoteTimer = setTimeout(() => { if (zNoteEl) zNoteEl.style.visibility = 'hidden'; }, ms);
+      }
+    },
+
     get warning() { return !!warnEl && warnEl.style.visibility === 'visible'; },
 
     // ── 존 정보 블록. `cue.zone` 과 `cue.ui` 만 받는다 (title.js·gate.js 와 같은 규약)

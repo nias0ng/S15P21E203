@@ -72,6 +72,7 @@ $env:STAGE_SECONDS = '60'
 
 ```powershell
 k6 run performance/personalized-recommendation.js
+k6 run performance/personalized-recommendation-same-user.js
 k6 run performance/review-board-likes.js
 k6 run performance/shelf-items.js
 k6 run performance/shelf-item-detail.js
@@ -88,6 +89,22 @@ Counter의 `rate`는 전체 실행 시간을 분모로 삼을 수 있으므로 V
 후기 좋아요 테스트는 매번 실제 INSERT가 일어나도록 `DELETE unlike` 후 `PUT like`를 수행합니다.
 따라서 결과표에는 **unlike + like 반복 부하에서 PUT like를 측정**했다고 기록합니다. 향수 조회 기록은
 행을 계속 생성하므로 테스트 후 생성량을 확인하고 테스트 데이터 정리 정책에 따라 처리합니다.
+
+### 개인화 후보 재사용 상태별 측정
+
+개인화 추천은 아래 상태를 서로 섞지 않고 먼저 개별 측정합니다. 캐시 상태를 조작할 때는 반드시
+부하 테스트 전용 사용자만 대상으로 하고, 운영 실행 전에는 별도 승인을 받습니다.
+
+1. 후보 상태 행을 지운 뒤 첫 요청으로 최초 계산을 측정합니다.
+2. 최초 계산이 성공한 사용자를 그대로 호출해 후보 재사용을 측정합니다.
+3. 적합도를 실제로 바꾸거나 View 10건을 추가한 뒤 갱신 재계산을 측정합니다.
+4. 유효 캐시 사용자와 갱신 대상 사용자의 토큰을 섞어 혼합 요청을 측정합니다.
+5. 한 사용자 토큰만 전달하고 `personalized-recommendation-same-user.js`를 실행해 동시 계산과
+   `RECOMMENDATION_REFRESH_IN_PROGRESS` 수를 측정합니다.
+
+각 실행에서 p95·오류율·정상 200 처리량과 함께 Hikari active/pending/timeout, PostgreSQL CPU를
+기록합니다. 409는 동일 사용자 계산 충돌을 의도적으로 즉시 돌려준 결과이므로 정상 추천 처리량과
+분리해 해석합니다.
 
 ## 선택 환경변수
 
