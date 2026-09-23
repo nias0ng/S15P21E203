@@ -145,3 +145,19 @@ export interface ExplorationState {
   y: number | null
   updatedAt: string | null
 }
+
+/**
+ * `GET /api/v1/map` 의 향수 한 점 (백엔드 `MapPerfumeResponse`) — 여기서 쓰는 것만.
+ *
+ * ⚠️⚠️ **이 `perfumeId` 가 DB 번호입니다.** 엔진(`MapPerfume`)이 가진 것은 `fragranticaId` 라
+ * 서로 다릅니다. 둘을 잇는 다리가 **좌표**입니다 — `x`·`y` 는 `perfume_map_points.map_x/map_y`
+ * 를 그대로 준 값이고, 엔진의 `mx`·`my` 도 같은 CSV 에서 왔습니다 (엔진 불변식 21).
+ * 짝짓는 곳은 `lib/perfumeIdAt.ts` 한 곳입니다.
+ */
+export interface MapPerfumePoint {
+  perfumeId: number
+  /** 정규화 0~1 — 엔진 `mx` 와 같은 공간 */
+  x: number
+  /** 정규화 0~1 — 엔진 `my` 와 같은 공간 */
+  y: number
+}
