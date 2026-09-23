@@ -114,8 +114,9 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
         /*
           계열 고르기와 아래 줄은 유리판 한 장입니다 — 향수 · 브랜드 · 노트와 같은 층
           구조입니다(docs/어두운-방-유리판.md). 머리 구역은 판 없이 어둠에 바로 둡니다.
+          모서리만 안의 계열 타일과 같은 `rounded-card` 로 맞춥니다.
         */
-        <section className={cn(GLASS_PANEL, 'space-y-8')}>
+        <section className={cn(GLASS_PANEL, 'rounded-card space-y-8')}>
           <FamilyPicker value={picks} onChange={setPicks} />
 
           <div className="border-line-soft flex items-center justify-between gap-6 border-t pt-6">
