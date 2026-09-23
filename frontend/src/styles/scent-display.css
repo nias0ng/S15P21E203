@@ -17,6 +17,13 @@
     --night: #1a2b4d;
     --night-abyss: #0e1224;
     --night-soft: #24385c;
+    /*
+     * 이 방의 물빛 — 로고를 눌러 메인으로 떠오를 때 커튼(`shared/ui/DiveCurtain`)이 이 두
+     * 색으로 덮습니다. 전환을 거는 순간 한 번 읽어 가므로 방 색을 바꾸면 커튼이 따라옵니다.
+     * ⚠️ 지우면 커튼이 바다 팔레트의 청록으로 돌아가 남색 방 위에 초록 기운이 도는 띠가 집니다.
+     */
+    --room-water: var(--night);
+    --room-water-deep: var(--night-abyss);
     --glass-edge: rgb(255 255 255 / 0.55);
 
     --color-surface: var(--night);

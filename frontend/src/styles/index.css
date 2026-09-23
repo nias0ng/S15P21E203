@@ -66,6 +66,10 @@
    * ⚠⚠ navy 는 엔진의 `landing/src/params.js` `diveDeep` 과 **같은 값**이어야 합니다.
    *   3D 의 물 · 하늘도 그 색으로 눕기 때문에, 갈라지면 커튼이 덮는 순간 색이 한 번 튑니다.
    * 팔레트 7색 밖이라 이 전환에서만 씁니다.
+   * NOTE: 커튼은 2026-09-24 부터 아래 두 색을 **파랑으로 돌린 제 값**으로 칠합니다
+   *   (`shared/ui/dive-curtain.css` 의 `--dive-deep` · `--dive-shallow` — 청록이 남색 사이에서 초록으로
+   *   읽혀서입니다). 지금 `--color-sea-shallow` 는 커튼의 보랏빛(`--sea-surface`)을 섞는 바탕 ·
+   *   어두운 방의 검색 단추 · 진열대의 물 한 겹이 쓰고, `--color-sea-deep` 은 쓰는 곳이 없습니다.
    */
   --color-sea-shallow: #2e5a6e; /* 수면 바로 밑 — 빛이 남은 청록 */
   --color-sea-deep: #1e3a52; /* 더 내려간 짙은 물 */
