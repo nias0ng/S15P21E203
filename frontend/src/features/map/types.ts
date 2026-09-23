@@ -100,11 +100,12 @@ export interface Viewport {
 
 /**
  * 향해 일지 한 줄 (MAP-24). 취향 변화가 아니라 **배가 지나온 자리**를 적습니다 —
- * 다른 구역에 들어갈 때마다 한 줄이 쌓이고, 누르면 그때 본 향수가 펼쳐집니다.
+ * 다른 구역에 들어갈 때마다 한 줄이 쌓이고, 그 구역에서 들른 향수가 딸립니다.
+ * 화면은 이 줄을 날마다 묶어 해역과 향수를 따로 보여 줍니다 (`lib/voyageLogDays`).
  */
 export interface VoyageLogEntry {
   entryId: number
-  /** 진입 시각 (ISO · 오프셋 포함). 화면은 MM.DD 만 씁니다 */
+  /** 진입 시각 (ISO · 서버는 UTC 로 줍니다). 화면은 보는 사람의 시간대로 날을 가릅니다 */
   enteredAt: string
   scentRegionId: number
   /** 계열 코드 — 화면은 코드로 이름을 고릅니다 */
@@ -139,8 +140,19 @@ export interface VoyageLogResponse {
   entries: VoyageLogEntry[]
 }
 
-/** 향해 일지에 싣는 진입 줄 수 — 최근 다섯 (2026-09-16 사용자). 백엔드에도 이만큼만 달라고 합니다 */
-export const VOYAGE_LOG_SIZE = 5
+/**
+ * 향해 일지로 받아 오는 진입 줄 수 — 백엔드가 한 번에 주는 최대입니다 (`ExplorationService.MAX_ENTRIES`).
+ *
+ * 판은 줄을 날마다 묶어 싣기 때문에, 몇 줄만 받으면 오늘 해역을 몇 번 옮긴 것만으로
+ * 지난날이 판에서 사라집니다.
+ */
+export const VOYAGE_LOG_SIZE = 20
+
+/** 향해 일지 판에 싣는 날 수 — 최근 나흘 */
+export const VOYAGE_LOG_DAYS = 4
+
+/** 하루에 보이는 해역 · 향수 수 — 최근 넷. 나머지는 '…' 뒤로 가리고, 올리면 카드로 띄웁니다 */
+export const VOYAGE_DAY_SHOWN = 4
 
 /**
  * `PUT /api/v1/map/exploration/me` 요청 (백엔드 ExplorationMoveRequest) — 배를 옮깁니다.
