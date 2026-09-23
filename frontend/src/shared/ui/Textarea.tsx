@@ -57,7 +57,8 @@ export function Textarea({
            * 화면 밖으로 나갑니다. 늘어나야 하면 부르는 쪽이 `resize-y` 로 되돌립니다.
            */
           'resize-none',
-          'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
+          // NOTE: 포커스 링을 일부러 안 답니다. 자리를 알리는 것은 입력 커서뿐입니다 (`Input` 과 같습니다)
+          'outline-none',
           'disabled:bg-line-soft disabled:opacity-60',
           error ? 'border-danger' : 'border-line',
           className,
