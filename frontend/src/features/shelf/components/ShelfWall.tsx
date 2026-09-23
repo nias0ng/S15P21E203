@@ -22,20 +22,34 @@ import {
   layoutWall,
   plaqueMetrics,
   revealItem,
-  sectionAt,
   shelfLayout,
-  slotView,
   TAG_WIDTH,
   tagMetrics,
   wallStops,
   type GustDirection,
-  type SlotView,
   type WallSection,
 } from '../lib'
 import type { ShelfCategory, ShelfItem, ShelfSection } from '../types'
 
 import { DisplayCase } from './DisplayCase'
-import { ShelfPlaque, ShelfReturnPlaque } from './ShelfPlaque'
+import { ShelfPlaqueMenu } from './ShelfPlaque'
+
+/**
+ * 왼쪽 분류 메뉴에서 현판 사이에 두는 간격 — 벽감 높이 대비 비율입니다. 셋을 세로로 쌓고
+ * 남는 자리를 사이에 고루 나누므로, 현판 높이의 상한이 이 값으로 정해집니다.
+ */
+const MENU_GAP = 0.04
+
+/**
+ * 메뉴판 크기 — 기둥 폭과 벽감 높이 대비입니다. 값을 만지면 판이 통째로 커지고 작아집니다.
+ * 글자 크기는 판 폭을 따라가므로(shelf-display.css 의 .shelf-plaque-label · -count) 너무
+ * 줄이면 이름이 두 줄로 접힙니다 — 1920 에서 폭 165 언저리가 한 줄로 서는 아래끝입니다.
+ */
+const MENU_WIDTH_SHARE = 0.85
+const MENU_HEIGHT_SHARE = 0.22
+
+/** 분류 메뉴 위의 머리줄(검색창 · 등록 단추)이 기둥 높이에서 쓰는 몫 */
+const MENU_HEADER_SHARE = 0.2
 
 export type ShelfWallHandle = {
   /** 그 분류의 이름표 벽이 창 왼쪽 끝에 오도록 흘려 보냅니다 */
@@ -51,6 +65,11 @@ export type ShelfWallHandle = {
 type Props = {
   ref?: Ref<ShelfWallHandle>
   sections: ShelfSection[]
+  /**
+   * 벽에 서는 분류 (S15P21E203-417). 벽감이 창에 고정이라 한 번에 하나만 섭니다 —
+   * 갈아끼우는 것은 왼쪽 현판 메뉴입니다.
+   */
+  category: ShelfCategory
   selectedId: number | null
   onSelect: (item: ShelfItem) => void
   /** 가리지 않는 자리 가운데에 걸린 분류가 바뀔 때. 칩의 켜짐을 여기에 맞춥니다 */
@@ -66,6 +85,8 @@ type Props = {
   emptyMessage: string
   /** 벽 오른쪽 위에 얹히는 상세 패널. 주지 않으면 패널 없이 창 전체를 씁니다(쌓는 배치) */
   aside?: ReactNode
+  /** 분류 메뉴 위에 놓는 줄(검색창 · 등록 단추). 메뉴 기둥 폭 안에 세로로 섭니다 */
+  menuHeader?: ReactNode
   className?: string
 }
 
@@ -150,6 +171,7 @@ type FirstScreen = { from: number; to: number; id: number | null }
 export function ShelfWall({
   ref,
   sections,
+  category,
   selectedId,
   onSelect,
   onViewCategoryChange,
@@ -157,6 +179,7 @@ export function ShelfWall({
   resetKey,
   emptyMessage,
   aside,
+  menuHeader,
   className,
 }: Props) {
   const areaRef = useRef<HTMLDivElement>(null)
@@ -165,7 +188,6 @@ export function ShelfWall({
   const panelRef = useRef<HTMLDivElement>(null)
   const idPrefix = useId()
   const plaqueHintId = `${idPrefix}-plaque-hint`
-  const returnHintId = `${idPrefix}-return-hint`
 
   /*
    * 진열장 자리의 크기. 높이는 이 컴포넌트 전체(무대가 남긴 세로 공간), 폭은 창 전체입니다.
@@ -176,10 +198,9 @@ export function ShelfWall({
   const [size, setSize] = useState({ width: 0, height: 0 })
   useEffect(() => {
     const area = areaRef.current
-    const viewport = viewportRef.current
-    if (!area || !viewport || typeof ResizeObserver === 'undefined') return
+    if (!area || typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver(() => {
-      const width = viewport.clientWidth
+      const width = area.clientWidth
       const height = area.clientHeight
       setSize((prev) =>
         prev.width === width && prev.height === height
@@ -188,20 +209,61 @@ export function ShelfWall({
       )
     })
     observer.observe(area)
-    observer.observe(viewport)
     return () => observer.disconnect()
   }, [])
 
   const measured = size.width > 0 && size.height > 0
   const withPanel = aside != null
   const metrics = shelfLayout(size.width, size.height, { panel: withPanel })
-  const layout = useMemo(
-    () => layoutWall(sections, metrics.clear, metrics.plaqueSpan),
-    [sections, metrics.clear, metrics.plaqueSpan],
+
+  /*
+   * 칸 수 — **메뉴 기둥을 뺀 값**입니다 (S15P21E203-417).
+   *
+   * 치수(shelfLayout)는 진열장 자리 **전체 폭**으로 셉니다. 흐르는 창이 아니라 바깥 상자를
+   * 재는 까닭이 여기 있습니다 — 창은 왼쪽 메뉴 기둥(`--pitch` × `--plaque-span`)만큼 들어가
+   * 있는데, 그 기둥 폭이 다시 `--pitch` 에서 나옵니다. 창을 재면 **폭 → pitch → 창 폭** 으로
+   * 되먹임 고리가 돌아 값이 한 프레임씩 튕깁니다(1180 폭에서 881 ↔ 880 · 109.6 ↔ 109.8px).
+   *
+   * 그래서 폭은 흔들리지 않는 바깥 상자에서 재고, 창이 좁은 만큼을 **칸 수에서** 덜어냅니다.
+   * 예전 벽에서 이름표 기둥이 차지하던 그 칸입니다 — 기둥이 트랙 밖으로 나갔을 뿐, 격자에서
+   * 차지하는 자리는 같습니다.
+   */
+  const menuSpan = metrics.plaqueSpan
+  const clear = Math.max(1, metrics.clear - menuSpan)
+  const visible = Math.max(1, metrics.visible - menuSpan)
+  const whole = Math.max(1, metrics.whole - menuSpan)
+  /*
+   * 벽에 세울 분류 하나. 벽감이 창에 고정이라 한 분류만 서고, 흐르는 것은 그 안의 병뿐입니다.
+   * 현판이 트랙 밖(왼쪽 메뉴)에 서므로 기둥 칸 수는 0 입니다(lib.ts 의 layoutWall).
+   */
+  const shown = useMemo(
+    () => sections.filter((section) => section.category === category),
+    [sections, category],
   )
+  const layout = useMemo(() => layoutWall(shown, clear, 0), [shown, clear])
   // 이름표 벽의 현판. 세 분류와 "처음으로" 가 같은 치수 · 모양이라 한 번만 셉니다
   const plaque = useMemo(
-    () => plaqueMetrics(metrics.pitch, metrics.caseHeight, metrics.plaqueSpan),
+    () =>
+      plaqueMetrics(metrics.pitch, metrics.caseHeight, metrics.plaqueSpan, {
+        /*
+         * 셋이 벽감 높이 안에 들어가야 하고(사이 간격 둘을 빼고 셋으로 나눈 값), 그보다 더
+         * 작게 두고 싶으면 MENU_HEIGHT_SHARE 가 잡습니다 — 둘 중 작은 쪽이 이깁니다.
+         */
+        maxHeight: Math.min(
+          (metrics.caseHeight * (1 - MENU_HEADER_SHARE)) / 3 -
+            Math.round(metrics.caseHeight * MENU_GAP),
+          metrics.caseHeight * MENU_HEIGHT_SHARE,
+        ),
+        maxWidth: metrics.pitch * metrics.plaqueSpan * MENU_WIDTH_SHARE,
+        // 어깨를 올리지 않고 모서리만 둥근 네모로 그립니다
+        plate: true,
+        /*
+         * 폭을 벽감 높이에 묶던 굴레를 풉니다. 세로로 길던 현판은 그 비율(29%)이 기둥 안에서
+         * 알맞았지만, 낮게 누운 메뉴판이 같은 굴레를 쓰면 기둥 301 에 판 135 로 절반도 못 쓰고
+         * 정사각형이 됩니다. 풀어 두면 남은 굴레인 맨 벽 폭(PLAQUE_WALL_SHARE)이 폭을 정합니다.
+         */
+        widthPerCase: Infinity,
+      }),
     [metrics.pitch, metrics.caseHeight, metrics.plaqueSpan],
   )
   // 매달린 이름표의 모양(파낸 모서리 · 테두리선 · 아일릿)과 적는 줄 수. 태그가 전부 같아서 한 번만 셉니다
@@ -214,18 +276,15 @@ export function ShelfWall({
    * 있어야 하고, 마지막 분류도 칩으로 고르면 그 이름표가 창 왼쪽 끝에 서야 합니다. 여기에
    * 서면 "처음으로" 기둥이 패널 바로 왼쪽에 붙습니다(lib.ts 의 layoutWall).
    */
-  const lastPlaque = layout.sections.at(-1)?.plaque ?? 0
-  const max = Math.max(0, layout.total - metrics.clear, lastPlaque)
+  const max = Math.max(0, layout.total - clear)
   /** 멈출 수 있는 칸 — 이름표 벽 기둥이 창 경계에 잘리는 칸을 뺍니다(lib.ts 의 wallStops) */
   const stops = useMemo(
-    () => wallStops(layout, metrics.clear, max),
-    [layout, metrics.clear, max],
+    () => wallStops(layout, clear, max),
+    [layout, clear, max],
   )
-  const first = layout.sections[0]
 
   /** 멈춘 칸. 창 밖 병 · 화살표를 여기에 맞춥니다. 흐르는 중인지는 상태로 들지 않습니다(위 "창 밖 병") */
   const [view, setView] = useState({ start: 0 })
-  const lastCategory = useRef<ShelfCategory | null>(null)
   /** 움직이기 시작한 횟수. 멈춤을 한 박자 늦춰 그리는 사이 다시 움직이기 시작했는지 봅니다 */
   const motions = useRef(0)
   /** 이름표 흔들기 — 벽이 흐를 때(kick) · 무대가 바뀔 때(gust, 패널 자리에 data-gust) */
@@ -254,7 +313,7 @@ export function ShelfWall({
   if (measured && firstScreen === null) {
     setFirstScreen({
       from: view.start,
-      to: view.start + metrics.visible,
+      to: view.start + visible,
       id: selectedId,
     })
   }
@@ -263,7 +322,7 @@ export function ShelfWall({
     trackRef,
     layout.sections,
     view.start,
-    metrics.clear,
+    clear,
     measured,
   )
   /*
@@ -295,7 +354,7 @@ export function ShelfWall({
     pitch: metrics.pitch,
     max,
     stops,
-    clear: metrics.clear,
+    clear,
     // 쌓는 배치는 페이지가 스크롤됩니다. 벽 끝에서 더 굴린 휠은 페이지로 넘깁니다
     pageScrollAtEnds: !withPanel,
     onMoveStart: () => {
@@ -303,17 +362,7 @@ export function ShelfWall({
       markMoving(true)
       swing.kick()
     },
-    onMove: (position) => {
-      // 패널에 가리지 않는 자리의 가운데에 걸린 분류가 칩에 켜집니다
-      const category = sectionAt(
-        layout.sections,
-        position + metrics.clear / 2,
-      )?.category
-      if (category && category !== lastCategory.current) {
-        lastCategory.current = category
-        onViewCategoryChange(category)
-      }
-    },
+    // 흐르는 중 분류를 다시 세지 않습니다 (S15P21E203-417) — 벽에 한 분류만 서므로 흘러도 바뀌지 않습니다
     onSettle: (start) => {
       const settle = () =>
         setView((prev) => (prev.start === start ? prev : { start }))
@@ -369,7 +418,7 @@ export function ShelfWall({
       const next = revealItem(
         layout.sections,
         from,
-        metrics.clear,
+        clear,
         section.start + at,
         max,
         stops,
@@ -377,16 +426,10 @@ export function ShelfWall({
       if (next !== from) flow.go(next)
       return
     }
-  }, [flow, layout, max, measured, metrics.clear, selectedId, stops])
+  }, [flow, layout, max, measured, clear, selectedId, stops])
 
   /** 그 분류의 이름표 벽이 창 왼쪽 끝에 오도록 흘려 보냅니다(칩 · 이름표 벽) */
-  const showSection = useCallback(
-    (category: ShelfCategory) => {
-      const section = layout.sections.find((item) => item.category === category)
-      if (section) flow.go(section.plaque)
-    },
-    [flow, layout],
-  )
+  const showSection = useCallback(() => flow.go(0, true), [flow])
 
   useImperativeHandle(
     ref,
@@ -394,30 +437,18 @@ export function ShelfWall({
     [showSection, swing],
   )
 
-  /*
-   * 벽 칸 하나(벽 첫 칸부터 센 순서)의 처지(lib.ts 의 slotView). **멈춘 칸 기준**입니다 — 창 밖 칸과
-   * 창 끝에 걸친 칸을 탭 순서에서 뺄 뿐, 어느 칸도 투명하게 지우지 않습니다(위 "창 밖 병").
-   */
-  const slotAt = (index: number): SlotView =>
-    slotView(
-      index,
-      view.start,
-      view.start + metrics.visible,
-      view.start + metrics.whole,
-    )
+  /** 메뉴에서 분류를 고르면 — 화면이 분류를 갈고, 벽은 그 분류의 첫머리로 되돌아갑니다 */
+  const pickCategory = useCallback(
+    (next: ShelfCategory) => {
+      onViewCategoryChange(next)
+      onPlaqueSelect?.(next)
+      showSection()
+    },
+    [onPlaqueSelect, onViewCategoryChange, showSection],
+  )
 
-  /*
-   * 이름표 벽 기둥이 탭으로 닿는가. 두 칸 중 하나라도 창 끝에 걸친 칸이면 닿지 않고, 아니면 한 칸이라도
-   * 창 안일 때 닿습니다 — 현판 한 장은 반만 걸쳐도 반쯤 가려 있습니다.
-   */
-  const focusableAt = (column: number) => {
-    const slots = Array.from({ length: layout.plaqueSpan }, (_, k) =>
-      slotAt(column + k),
-    )
-    return (
-      !slots.some((slot) => slot.edge) && slots.some((slot) => !slot.hidden)
-    )
-  }
+  /** 화살표 한 번에 넘기는 칸 수. 절반쯤 남겨야 방금 본 병이 어디로 갔는지 이어집니다 */
+  const step = Math.max(1, Math.floor(clear / 2))
 
   /*
    * 벽감 기준(벽감 첫 칸이 0)의 창 경계와 첫 화면 경계. −2 ~ 칸 수 + 1 로 좁혀도 벽감 안 칸의 처지는
@@ -429,15 +460,12 @@ export function ShelfWall({
       Math.min(span + 1, Math.max(-2, index - start))
     return {
       winFrom: local(view.start),
-      winTo: local(view.start + metrics.visible),
-      edgeFrom: local(view.start + metrics.whole),
+      winTo: local(view.start + visible),
+      edgeFrom: local(view.start + whole),
       priorityFrom: local(firstScreen?.from ?? 0),
       priorityTo: local(firstScreen?.to ?? 0),
     }
   }
-
-  /** 화살표 한 번에 넘기는 칸 수. 절반쯤 남겨야 방금 본 병이 어디로 갔는지 이어집니다 */
-  const step = Math.max(1, Math.floor(metrics.clear / 2))
 
   return (
     <div
@@ -448,7 +476,12 @@ export function ShelfWall({
           '--case-h': `${metrics.caseHeight}px`,
           '--bottle-h': `${metrics.bottle}px`,
           '--pitch': `${metrics.pitch}px`,
-          '--clear-w': `${Math.max(0, metrics.clearWidth)}px`,
+          /*
+           * 패널에 가리지 않는 폭 — **메뉴 기둥을 뺀 값**입니다. 오른쪽 화살표가 이 값에서
+           * 자리를 잡는데, 창이 메뉴만큼 오른쪽으로 들어가 있어 빼지 않으면 화살표가
+           * 패널 밑으로 들어갑니다 (S15P21E203-417).
+           */
+          '--clear-w': `${Math.max(0, metrics.clearWidth - metrics.pitch * menuSpan)}px`,
           '--panel-scale': metrics.panelScale,
           '--panel-inset': '5px',
           '--plaque-span': metrics.plaqueSpan,
@@ -476,21 +509,49 @@ export function ShelfWall({
         className="relative shrink-0"
         style={{ height: metrics.caseHeight + metrics.hang }}
       >
+        {/*
+          분류 메뉴 (S15P21E203-417). 예전 이름표 기둥 자리를 그대로 씁니다 — 폭이 같은
+          칸이라 벽감 왼쪽 끝이 예전과 같은 자리에 섭니다. 흐르는 창(아래 section) 밖이라
+          벽이 흘러도 이 셋은 제자리에 있습니다.
+        */}
+        <div className="absolute top-0 left-0 flex h-[var(--case-h)] w-[calc(var(--pitch)*var(--plaque-span))] flex-col items-center gap-3.75 pr-6.25">
+          {/*
+            머리줄은 메뉴판과 **같은 폭**입니다. 기둥 폭을 꽉 채우면 검색창만 판보다 두 배
+            넓어져 기둥 안에서 줄이 맞지 않습니다.
+          */}
+          {menuHeader && (
+            <div className="shrink-0" style={{ width: plaque.width }}>
+              {menuHeader}
+            </div>
+          )}
+          <ShelfPlaqueMenu
+            className="min-h-0 w-full flex-1"
+            items={sections.map((section) => ({
+              category: section.category,
+              label: section.label,
+              count: section.items.length,
+            }))}
+            value={category}
+            plaque={plaque}
+            hintId={plaqueHintId}
+            onSelect={pickCategory}
+          />
+        </div>
         <section
           ref={viewportRef}
           aria-label="진열대"
           // 가로 끌기는 useShelfFlow 가 받고, 세로 끌기는 페이지 스크롤로 넘깁니다
-          className="group/wall absolute inset-0 touch-pan-y"
+          /*
+           * 창은 **패널 왼쪽 끝에서 끊깁니다** — 예전처럼 패널 밑까지 이어지지 않습니다.
+           * `--clear-w` 가 메뉴 기둥과 패널을 뺀 폭이라 그대로 창 폭이 됩니다. 벽이 패널을
+           * 가리지 않으니 패널 뒤로 병이 비쳐 들 일도 없습니다.
+           */
+          className="group/wall absolute inset-y-0 left-[calc(var(--pitch)*var(--plaque-span))] w-[calc(var(--clear-w)_-_var(--panel-inset)_-_var(--spacing)*5)] touch-pan-y"
         >
           {/* 이름표 벽 단추의 설명. 화면에는 보이지 않고 aria-describedby 로만 읽힙니다 */}
           <span id={plaqueHintId} hidden>
-            누르면 벽이 이 분류의 첫머리로 흐릅니다
+            누르면 이 분류의 향수가 벽에 섭니다
           </span>
-          {first && (
-            <span id={returnHintId} hidden>
-              누르면 벽이 맨 앞({first.label} 첫머리)으로 흐릅니다
-            </span>
-          )}
           {measured && (
             /*
               창 — 벽이 흐르는 자리. 창 밖으로 흘러간 벽은 마스크가 좌우 가장자리에서
@@ -498,72 +559,74 @@ export function ShelfWall({
               페이드 · 이름표 자리까지 넓혀야 상자 테두리에 흰 줄이 생기지 않습니다.
             */
             <div className="shelf-window">
+              {/*
+                벽감 — 창에 고정입니다. 여기 한 벌만 서고 병만 그 안에서 미끄러집니다.
+                그래서 DisplayCase 는 `frame={false}` 로 면을 그리지 않습니다 — 두 벌이면
+                뒷벽이 겹칩니다. 자리는 창의 안쪽 상자(페이드 여백을 뺀 자리)에 맞춥니다.
+              */}
               <div
-                ref={trackRef}
-                // 태그가 낮으면 적는 줄을 줄입니다(CSS 의 [data-tag-detail])
-                data-tag-detail={tag.detail}
-                className="shelf-case flex h-full w-max will-change-transform"
+                aria-hidden
+                className="shelf-niche absolute top-[var(--fade)] right-[var(--fade-end)] left-[var(--fade-start)] h-[var(--case-h)]"
               >
-                {layout.sections.map((section) => {
-                  const headingId = `${idPrefix}-${section.category}`
-                  return (
-                    <section
-                      key={section.category}
-                      aria-labelledby={headingId}
-                      className="flex h-full shrink-0"
-                    >
-                      <ShelfPlaque
-                        id={headingId}
-                        category={section.category}
-                        label={section.label}
-                        count={section.items.length}
-                        plaque={plaque}
-                        hintId={plaqueHintId}
-                        focusable={focusableAt(section.plaque)}
-                        onShow={() =>
-                          (onPlaqueSelect ?? showSection)(section.category)
-                        }
-                      />
-                      <DisplayCase
-                        items={section.items}
-                        span={section.span}
-                        selectedId={selectedId}
-                        onSelect={select}
-                        {...caseWindow(section)}
-                        priorityId={firstScreen?.id ?? null}
-                        emptyMessage={emptyMessage}
-                      />
-                      {/* 빈 벽 — 다음 분류의 이름표 기둥을 패널 바로 왼쪽으로 밀어 둡니다 */}
-                      {section.gap > 0 && (
-                        <div
-                          aria-hidden
-                          className="h-full shrink-0"
-                          style={{
-                            width: `calc(var(--pitch) * ${section.gap})`,
-                          }}
+                <div className="shelf-face shelf-niche-back" />
+                <div className="shelf-face shelf-niche-light" />
+                <div className="shelf-face shelf-niche-ceiling" />
+                <div className="shelf-face shelf-niche-wall-left" />
+                <div className="shelf-face shelf-niche-wall-right" />
+                <div className="shelf-face shelf-niche-floor" />
+                <div className="shelf-face shelf-niche-bevel" />
+                <div className="shelf-face shelf-niche-grain" />
+              </div>
+              {/*
+                병이 서는 자리 — 뒷벽 폭 안입니다. 좌우로 `--track-inset`(모서리 + 옆벽) 만큼
+                들이고 그 선에서 잘라, 병이 옆벽에 닿기 전에 끊기게 합니다.
+
+                NOTE: 가로만 자릅니다. 이름표는 벽감 아래로 매달려 이 상자 밖으로 내려가므로
+                  세로는 열어 둡니다 (overflow-y 가 visible 이라 `clip` 이 가로에만 걸립니다).
+              */}
+              <div className="mx-[var(--track-inset)] h-full [overflow-x:clip] [overflow-y:visible]">
+                <div
+                  ref={trackRef}
+                  // 태그가 낮으면 적는 줄을 줄입니다(CSS 의 [data-tag-detail])
+                  data-tag-detail={tag.detail}
+                  className="shelf-case flex h-full w-max will-change-transform"
+                >
+                  {layout.sections.map((section) => {
+                    const headingId = `${idPrefix}-${section.category}`
+                    return (
+                      <section
+                        key={section.category}
+                        aria-labelledby={headingId}
+                        className="flex h-full shrink-0"
+                      >
+                        {/* 제목은 현판이 트랙 밖으로 나가서 글자만 남깁니다 — 낭독기 전용 */}
+                        <h2 id={headingId} hidden>
+                          {section.label}
+                        </h2>
+                        <DisplayCase
+                          frame={false}
+                          items={section.items}
+                          span={section.span}
+                          selectedId={selectedId}
+                          onSelect={select}
+                          {...caseWindow(section)}
+                          priorityId={firstScreen?.id ?? null}
+                          emptyMessage={emptyMessage}
                         />
-                      )}
-                    </section>
-                  )
-                })}
-                {/*
-                  "처음으로" 현판 — 예전 끝 벽 자리입니다. 기둥의 첫 33px 은 마지막 벽감의 오른쪽
-                  옆벽이 쓰고, 벽 끝(max)에 서면 패널 바로 왼쪽에 붙습니다. 누르면 첫 분류의 현판을
-                  누른 것과 같은 일(첫 향수 고르기 + 맨 앞으로)을 합니다. 분류가 아니라서 section ·
-                  제목이 아니고, 칩 · 페이저 · 창 가운데 분류(sectionAt)에도 끼지 않습니다.
-                */}
-                {first && (
-                  <ShelfReturnPlaque
-                    label={first.label}
-                    count={first.items.length}
-                    plaque={plaque}
-                    hintId={returnHintId}
-                    focusable={focusableAt(layout.back)}
-                    onShow={() =>
-                      (onPlaqueSelect ?? showSection)(first.category)
-                    }
-                  />
-                )}
+                        {/* 빈 벽 — 다음 분류의 이름표 기둥을 패널 바로 왼쪽으로 밀어 둡니다 */}
+                        {section.gap > 0 && (
+                          <div
+                            aria-hidden
+                            className="h-full shrink-0"
+                            style={{
+                              width: `calc(var(--pitch) * ${section.gap})`,
+                            }}
+                          />
+                        )}
+                      </section>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           )}
@@ -590,7 +653,7 @@ export function ShelfWall({
                 direction={1}
                 disabled={view.start >= max}
                 onClick={() => flow.go(flow.destination() + step)}
-                className="left-[calc(var(--clear-w)_-_var(--spacing)*17.5)]"
+                className="right-1.25"
               />
             </>
           )}
