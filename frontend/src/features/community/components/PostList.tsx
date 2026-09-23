@@ -65,10 +65,10 @@ export function PostList({
       {items.map((item) => (
         <li
           key={item.id}
-          /* 화면 테마가 붙잡을 자리 이름 — 유리판 위에서 밝은 카드가 됩니다 */
+          /* 화면 테마가 붙잡을 자리 이름 — 유리판 위에서 흰 카드가 됩니다(`scent-paper`) */
           data-slot="card"
           className={cn(
-            'border-line bg-surface-card rounded-card relative border',
+            'scent-paper border-line bg-surface-card rounded-card relative border',
             'flex flex-col gap-2.5 px-4.75 py-4.25',
             'transition-[transform,box-shadow] duration-200 ease-out',
             'hover:shadow-raised hover:-translate-y-1.25',
@@ -115,7 +115,7 @@ export function PostList({
             읽습니다. 후기에만 있습니다 — 자유 게시판 목록에는 본문이 없습니다.
           */}
           {item.content && (
-            <p className="text-ink-muted text-body line-clamp-5 px-1.25 whitespace-pre-wrap">
+            <p className="text-ink/85 text-body line-clamp-5 px-1.25 whitespace-pre-wrap">
               {item.content}
             </p>
           )}
