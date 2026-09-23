@@ -24,7 +24,7 @@ import type { MapPerfumePoint } from '../types'
  * 실측(엔진 데이터 200개) — **가장 가까운 두 향수의 거리 0.002293** (르 뱅쾨르 / 폴로 블루) ·
  * 소수 6자리로 반올림했을 때 **같은 칸에 들어가는 쌍 0건**. 6자리면 안전합니다.
  */
-const KEY_DIGITS = 6
+export const KEY_DIGITS = 6
 
 /**
  * 키가 어긋났을 때 받아 줄 **최대 거리** (정규화 단위).
@@ -33,7 +33,7 @@ const KEY_DIGITS = 6
  * 향수 사이에서 엉뚱한 번호를 돌려줄 수 있습니다 — **못 찾는 것보다 잘못 찾는 것이 나쁩니다**
  * (일지에 안 본 향수가 남습니다).
  */
-const NEAR_LIMIT = 0.0005
+export const NEAR_LIMIT = 0.0005
 
 const keyOf = (x: number, y: number) =>
   `${x.toFixed(KEY_DIGITS)},${y.toFixed(KEY_DIGITS)}`
