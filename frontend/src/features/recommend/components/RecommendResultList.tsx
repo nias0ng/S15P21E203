@@ -54,6 +54,14 @@ function useCollapsedListHeight(itemCount: number) {
         ? second.getBoundingClientRect().top -
           first.getBoundingClientRect().bottom
         : 0
+      /*
+        **못 재면 잠그지 않습니다.** 높이를 못 재는 환경(테스트의 jsdom 등)에서는 상자마다
+        0 이 나오는데, 그 값을 그대로 박으면 목록이 `height: 0` 이 되어 통째로 사라집니다.
+        잠그지 않으면 판이 내용을 따라 자랄 뿐이라, 안 되는 쪽이 훨씬 안전합니다
+        (`useUnroll` 의 `CAN_MEASURE` 와 같은 규율입니다).
+      */
+      if (card <= 0) return
+
       const next = items.length * card + (items.length - 1) * gap
 
       // 같은 값으로 다시 그리지 않습니다 — 부동소수 오차는 0.5px 안에서 무시합니다
