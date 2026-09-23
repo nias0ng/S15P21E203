@@ -84,10 +84,19 @@ interface EngineHandle {
   /**
    * 배를 그 자리에 놓습니다 — 메인에 들어올 때 **한 번** (엔진 `main.js` 의 `startAt`).
    *
-   * ⚠️ 좌표는 **정규화 0~1** 입니다 (백엔드 `perfume_map_points` · 엔진 `scentmap` 과 같은 공간).
+   * ⚠️ 좌표는 **정규화 0~1** 입니다 (백엔드 `perfume_map_points` · 엔진 `scentmap.toWorld` 와 같은
+   * 공간). `features/taste/api.ts` 의 `getScentVectors` 는 100 을 곱하지만(SVG viewBox 가 100×100)
+   * 여기로 넘기는 것은 **안 곱한 쪽**입니다.
+   *
+   * ⚠️⚠️ `land` 가 **연출을 가릅니다.** 없으면 좌표에 그대로 놓고 조용히 시작하고(재방문),
+   * `true` 면 목표 앞에 뱃머리를 돌려 세우고 그 해역 연출을 겁니다(취향 테스트 직후).
+   *
    * ⚠️ 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다. 그때는 예전처럼 원점에서 시작합니다.
    */
-  startAt?: (pos: { x: number; y: number }) => boolean
+  startAt?: (
+    pos: { x: number; y: number },
+    opts?: { land?: boolean },
+  ) => boolean
   /**
    * 배가 지금 떠 있는 정규화 좌표 — 메인을 **떠날 때** 한 번 읽어 서버에 남깁니다
    * (엔진 `main.js` 의 `boatAt`). 지도가 아직 없으면 null 입니다.
@@ -180,13 +189,25 @@ type Props = {
    */
   onMove?: (move: SceneMove) => void
   /**
-   * 배를 **시작할 자리** (정규화 0~1). 주면 배가 원점이 아니라 거기서 시작합니다 —
-   * 메인을 떠날 때 남겨 둔 마지막 자리입니다 (`docs/배-자리와-향해일지-0921.md` §A-2).
+   * 배를 **시작할 자리** (정규화 0~1). 주면 배가 원점이 아니라 거기서 시작합니다.
+   *
+   * 서버의 **한 칸**(`exploration_state`)에서 옵니다 — 취향 테스트가 처음 한 번 떨어뜨리고,
+   * 그 뒤로는 메인을 떠날 때마다 마지막 자리가 덮어씁니다
+   * (`docs/배-자리와-향해일지-0921.md` §A-2).
    *
    * ⚠️⚠️ **엔진이 붙은 뒤 딱 한 번만 넘깁니다.** 항해 중에 다시 부르면 배가 되돌아갑니다.
    * ⚠️ 비로그인이면 401 이라 없습니다 — 예전처럼 원점에서 시작합니다.
    */
   start?: { x: number; y: number } | null
+  /**
+   * **취향 테스트를 막 마치고 왔는가.** 그때만 배가 착륙 구도(목표 앞 · 뱃머리를 돌려)로 서고
+   * 그 해역 연출이 바로 걸립니다 (`docs/취향-출발점과-영역-진입-0921.md` §A).
+   *
+   * ⚠️⚠️ 자리(`start`)만으로는 못 가립니다 — 취향 출발점도 마지막 항해 자리도 **같은 칸**에서
+   * 같은 모양으로 오기 때문입니다. 가르는 것은 *어떻게 들어왔는가* 이고, 그건 `HomePage` 가
+   * 라우터 state 로 받습니다 (첫 로그인 직후 한 번뿐인 길입니다).
+   */
+  landing?: boolean
   /**
    * 메인을 **떠나는 순간** 배가 있던 정규화 좌표를 알려 줍니다 (`§A-1`).
    *
@@ -227,6 +248,7 @@ export function ScentScene({
   onBoot,
   onMove,
   start,
+  landing,
   onLeave,
   className,
 }: Props) {
@@ -506,10 +528,11 @@ export function ScentScene({
   }, [])
 
   /*
-   * 마지막으로 남겨 둔 자리에서 배를 시작합니다 (`start` prop · §A-2).
+   * 저장된 자리에서 배를 시작합니다 (`start` prop · §A-2).
    *
    * ⚠️⚠️ **한 번만 부릅니다** — `started` 가 막습니다. 항해 중에 다시 부르면 배가 되돌아갑니다.
    * ⚠️ 엔진과 `start` 중 늦게 오는 쪽을 기다립니다 (둘 다 의존성에 있습니다).
+   * ⚠️ `landing` 이면 착륙 구도 + 해역 연출로, 아니면 조용히 그 자리에 놓습니다 (엔진 `startAt`).
    * ⚠️ 엔진에 `startAt` 이 없으면(그 기능 전 빌드) 조용히 지나갑니다 — 원점에서 시작합니다.
    */
   useEffect(() => {
@@ -517,8 +540,8 @@ export function ScentScene({
     if (!ready || !engine || !start || started.current) return
     if (typeof engine.startAt !== 'function') return
     started.current = true
-    engine.startAt(start)
-  }, [ready, start])
+    engine.startAt(start, { land: landing })
+  }, [ready, start, landing])
 
   return (
     <>

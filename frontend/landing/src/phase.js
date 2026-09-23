@@ -104,6 +104,10 @@ const TL = {
 
 // ⚠ 새 필드를 넣으려면 KEYS 와 TL 양쪽에 같이 넣는다 — 한쪽만 넣으면 조용히 0 으로 남는다
 export const OPEN_KEYS = ['openLmid', 'openRmid', 'openLfar', 'openRfar', 'openLnear', 'openRnear'];
+// ⚠ 2026-09-23 : **짧은 연출(TL_BRIEF)을 걷었다.** 항해하다 해역에 들어섰을 때의 안내는 이제
+//   연출이 아니라 **화면 하단 알림**이다 (ui.js `zoneNotice` · main.js `zoneNear`). 사용자 :
+//   *"카메라 전환하지말고 아예 다른 연출이라 생각하고 … 그냥 지나가면서 동시에 뜨는 알림처럼"*.
+//   그래서 이 파일은 다시 **표 한 장**이다 — `cue.brief` · `tlOf` · `dismiss` 도 같이 걷었다.
 const KEYS = ['look', ...OPEN_KEYS, 'dim', 'rise', 'ui', 'swing'];
 // ⭐ 머묾 시계를 멈췄다가 다시 흐를 때 **최소한 남겨 두는 초** (2026-09-11 오후, `pauseHold`).
 //   정보 블록을 다 읽고 마우스를 떼는 순간 닫히면 쫓겨나는 느낌이다 — 뗀 뒤에도 이만큼은 머문다.
@@ -111,6 +115,9 @@ const KEYS = ['look', ...OPEN_KEYS, 'dim', 'rise', 'ui', 'swing'];
 const HOLD_AFTER = 1.5;
 const dur = (tl) => KEYS.reduce((m, k) => tl[k] ? Math.max(m, tl[k][1]) : m, 0);
 const ENTER_DUR = dur(TL.enter), LEAVE_DUR = dur(TL.leave);
+
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+const num = (v, d) => (v === undefined ? d : v);
 
 // 한 줄의 값을 지금 시각에서 낸다. 구간 밖은 0 또는 1 로 물린다
 function track(row, t) {
@@ -146,6 +153,14 @@ export function createPhase() {
 
   const setAll = (v) => { for (const k of KEYS) cue[k] = v; };
 
+  // 트랙 하나의 **멈춰 있을 때의 값** — 표에 있으면 amt · 없으면 0 이다.
+  // ⚠ 표에 없는 트랙을 0 으로 두는 규율은 남긴다 : 나중에 트랙을 뺀 표를 또 만들 때, `setAll(amt)` 로
+  //   전부 1 을 주면 그 층이 꼭대기 값으로 **튄다.**
+  const steadyOf = (amt) => {
+    const tl = TL.enter;
+    for (const k of KEYS) cue[k] = tl[k] ? amt : 0;
+  };
+
   const api = {
     cue,
 
@@ -180,6 +195,7 @@ export function createPhase() {
       return true;
     },
 
+
     // ⚠ 트윈 없이 즉시 그 상태로 (검증·초기화용)
     snap(phase, zone = null) {
       cue.phase = phase; cue.t = 0; cue.p = phase === 'inspecting' ? 1 : 0; cue.busy = false;
@@ -209,23 +225,25 @@ export function createPhase() {
       const ph = cue.phase;
       if (ph === 'entering' || ph === 'leaving') {
         cue.t += dt * sp;
-        const tl = ph === 'entering' ? TL.enter : TL.leave;
+        const T = TL;
+        const tl = ph === 'entering' ? T.enter : T.leave;
         const total = ph === 'entering' ? ENTER_DUR : LEAVE_DUR;
         cue.p = Math.min(1, cue.t / total);
         for (const k of KEYS) {
+          const top = T.enter[k] ? amt : 0;
           const v = track(tl[k], cue.t);
-          // 퇴장은 같은 커브를 1 → 0 으로 읽는다
-          cue[k] = (ph === 'entering' ? v : 1 - v) * amt;
+          // 퇴장은 같은 커브를 꼭대기 → 0 으로 읽는다
+          cue[k] = (ph === 'entering' ? v : 1 - v) * top;
         }
         if (cue.t >= total) {
           cue.phase = ph === 'entering' ? 'inspecting' : 'sailing';
           cue.busy = false; cue.t = 0; cue.p = 1;
-          setAll(ph === 'entering' ? amt : 0);
+          if (ph === 'entering') steadyOf(amt); else setAll(0);
           if (cue.phase === 'sailing') cue.zone = null;
         }
       } else {
         // 정지 상태. ⚠ amt 를 곱해 둬야 슬라이더를 내렸을 때 inspecting 도 같이 옅어진다
-        setAll(ph === 'inspecting' ? amt : 0);
+        if (ph === 'inspecting') steadyOf(amt); else setAll(0);
         cue.p = 1; cue.busy = false;
       }
       return cue;

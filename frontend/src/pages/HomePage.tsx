@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 
 import {
   CabinBubble,
@@ -28,6 +28,7 @@ import {
   useShelfActions,
 } from '@/features/shelf'
 import { isApiError } from '@/shared/api/http'
+import { isTasteLanding } from '@/shared/config/mapEntryState'
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
@@ -57,7 +58,11 @@ import { Toast } from '@/shared/ui/Toast'
  *
  * 향해 일지(MAP-24)는 다른 화면의 데이터와 맞추기 쉽도록 엔진이 아니라 앱이 3D 위에 얹습니다.
  *
- * ⚠️ 취향 영역(MAP-08)은 엔진에 아직 없습니다.
+ * **취향 테스트 결과는 배의 출발 자리입니다** (2026-09-21 · `tasteStart` → `ScentScene` 의 `start`).
+ * 메인에 들어오면 배가 원점이 아니라 내 취향 향수 곁에서 시작하고 그 해역 연출이 바로 걸립니다
+ * (`docs/취향-출발점과-영역-진입-0921.md`).
+ *
+ * ⚠️ 취향 **영역**(MAP-08 — 지도 위의 검은 원)은 아직 엔진에 없습니다. 출발점과 다른 것입니다.
  */
 /*
  * 잠수(진열대로 넘어가기)가 걸리면 3D 위에 얹은 **앱 UI 도 같이 비킵니다** — 검색창 · 향해 일지.
@@ -81,6 +86,7 @@ const DIVE_FADE = 'transition-[opacity,visibility] duration-300 ease-out'
 
 export default function HomePage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const diving = useIsDiving()
   /** 엔진의 전체 화면 해도가 열려 있는가 — 3D 위에 얹은 앱 UI 가 비킵니다 (위 DIVE_FADE 머리말) */
   const [chartOpen, setChartOpen] = useState(false)
@@ -149,6 +155,24 @@ export default function HomePage() {
   // 향해 일지(MAP-24) — 배가 든 해역이 바뀌거나 향수를 고르면 서버에 남기고 일지를 다시 읽습니다.
   // 기록할지는 서버가 정합니다 (향수는 늘 · 빈 바다는 향 영역이 바뀐 경우만)
   const reportMove = useExplorationMove()
+
+  /*
+  /*
+   * **취향 테스트를 막 마치고 왔는가** (`TasteTestPage` 가 실어 보낸 표).
+   *
+   * 배를 놓을 자리는 아래 `lastBoatAt` 하나뿐입니다 — 취향 결과도 마지막 항해 자리도 서버의
+   * **같은 칸**에서 오기 때문입니다. 자리는 같고 **연출만 다릅니다.**
+   *
+   * ⚠️ **마운트 때 값만 씁니다** (게으른 초기값). 바로 아래에서 그 표를 히스토리에서 지우는데,
+   *   지운 뒤에도 이번 진입에서는 살아 있어야 합니다.
+   */
+  const [landing] = useState(() => isTasteLanding(location.state))
+  useEffect(() => {
+    if (!landing) return
+    // ⚠️ 표를 지웁니다 — 안 지우면 다른 화면에 갔다 **뒤로** 돌아올 때 착륙이 다시 걸립니다
+    //   (히스토리 항목에 state 가 그대로 붙어 있습니다)
+    navigate(ROUTES.HOME, { replace: true, state: null })
+  }, [landing, navigate])
 
   /*
    * **배 자리를 이어 갑니다** (MAP-24 · `docs/배-자리와-향해일지-0921.md` §A).
@@ -233,6 +257,7 @@ export default function HomePage() {
         onBoot={boot.report}
         onMove={reportMove}
         start={lastBoatAt}
+        landing={landing}
         onLeave={saveBoatAt}
         onOpenDetail={(perfume) => {
           /*
