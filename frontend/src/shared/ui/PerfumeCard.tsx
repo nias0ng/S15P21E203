@@ -29,6 +29,17 @@ type PerfumeCardProps = {
 const SLOT = 'aspect-square w-full px-7.5 pt-3.75 pb-5'
 
 /**
+ * 병이 앉는 판 (노트 · 브랜드 카드의 이미지 판과 같은 자리).
+ *
+ * NOTE: **흰색으로 못 박습니다.** 카탈로그 사진은 배경을 지운 PNG 인데 지우개가
+ * 병의 흰 부분(라벨 · 유리 반사 · 뚜껑 하이라이트)까지 같이 먹은 장이 많습니다 —
+ * 어두운 방의 카드 위에 그대로 두면 그 자리가 구멍처럼 뚫려 보입니다.
+ * 브랜드 로고 판(`features/brand/plate.ts`)과 같은 까닭이라, 판 위 실루엣 색도
+ * 역할 토큰을 못 씁니다(어두운 방에서 밝은 색으로 뒤집혀 흰 판에서 사라집니다).
+ */
+const PLATE = 'rounded-image border border-black/5 bg-white'
+
+/**
  * 향수 카드 (A33 · A09 · A13 · A17 · C02 공용). 도메인 타입을 받지 않고 낱개로
  * 받습니다 — `shared` 가 `features` 를 알면 ESLint 가 막습니다.
  */
@@ -48,8 +59,10 @@ export function PerfumeCard({
         예전에는 납작한 칸에 `cover` 라 3:4 세로 사진(카탈로그가 전부 432 x 577)의
         위아래가 잘려 병목과 바닥만 남았습니다. 그림자는 `drop-shadow` 입니다 —
         병 사진은 배경이 투명이라 box-shadow 의 네모 그림자가 병과 따로 놉니다.
+
+        판은 사진이 있든 없든 똑같이 깝니다 — 한쪽만 깔면 격자에 흰 칸과 빈 칸이 섞입니다.
       */}
-      <div className="relative w-full">
+      <div className={cn(PLATE, 'relative w-full')}>
         {/*
           사진이 없으면 병 실루엣을 대신 세웁니다 — 카탈로그 표본 600건 중 88건에만
           사진이 있어, "이미지" 라고 적힌 네모를 두면 화면이 고장 난 것처럼 읽힙니다.
@@ -61,11 +74,17 @@ export function PerfumeCard({
             bare
             className={cn(
               SLOT,
-              'drop-shadow-[0_6px_8px_rgb(0_0_0/0.18)] saturate-125',
+              /*
+                두 겹입니다 — 앞의 짧고 진한 겹이 병을 판에 붙이고(접지), 뒤의 넓은 겹이
+                띄웁니다. 한 겹만 쓰던 값(0 6px 8px / .18)은 연보라 카드 위에서 맞춘
+                것이라 **흰 판에서는 묻혀** 병이 배경과 안 떨어졌습니다.
+              */
+              'drop-shadow-[0_2px_2px_rgb(0_0_0/0.16),0_9px_12px_rgb(0_0_0/0.22)]',
+              'saturate-125',
             )}
           />
         ) : (
-          <BottleSilhouette className={cn(SLOT, 'text-ink-muted/30')} />
+          <BottleSilhouette className={cn(SLOT, 'text-charcoal-soft/25')} />
         )}
 
         {/*
