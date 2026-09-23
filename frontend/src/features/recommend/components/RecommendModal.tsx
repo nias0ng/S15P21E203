@@ -31,6 +31,12 @@ export function RecommendModal({ query, onClose }: Props) {
       onClose={onClose}
       title="추천 결과"
       /*
+        배경을 눌러도 닫지 않습니다. 판이 3D 바다 위에 떠 있어 배경이 화면의 대부분이고,
+        결과를 읽다 옆을 잘못 누르면 다섯 장이 통째로 사라집니다 — 다시 보려면 검색어를
+        처음부터 다시 적어야 합니다. 나가는 길은 [×] 와 Esc 입니다.
+      */
+      closeOnBackdrop={false}
+      /*
         판은 내용에 맞춰 섭니다 — 높이를 못 박으면 접혔을 때 아래가 넓게 빕니다.
         **카드를 펼쳐도 판이 안 자라는 일은 `RecommendResultList` 가 맡습니다** — 목록이
         다 접힌 높이를 지키고 넘치는 만큼 제 안에서 굴러갑니다. 그래서 여기 상한은 판이
