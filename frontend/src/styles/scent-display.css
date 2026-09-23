@@ -391,4 +391,51 @@
   .scent-map-panel::backdrop {
     background: rgb(16 10 28 / 0.38);
   }
+
+  /*
+   * 판이 넘칠 때 오른쪽에 **안쪽으로 들인 막대 하나**만 남깁니다. 브라우저 기본 스크롤바는
+   * 회색 트랙과 화살표 단추가 판 오른쪽 끝에 세로 띠를 하나 더 만드는데, 유리판 위에서는
+   * 그 띠가 판의 테두리처럼 읽혀 모서리가 두 겹으로 보입니다.
+   *
+   * NOTE: 표준 속성(`scrollbar-width` · `scrollbar-color`)과 **같이 쓰지 못합니다** —
+   *   크롬 121+ 는 표준 속성이 걸려 있으면 아래 의사요소를 통째로 무시합니다. 막대를 안쪽으로
+   *   들이는 일은 의사요소로만 되므로, 표준 속성은 의사요소를 모르는 브라우저에만 내려 줍니다.
+   */
+  .scent-map-panel::-webkit-scrollbar,
+  .scent-thin-scroll::-webkit-scrollbar {
+    width: calc(var(--spacing) * 2.5);
+  }
+  .scent-map-panel::-webkit-scrollbar-track,
+  .scent-thin-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  /* 끄지 않으면 막대 양 끝에 화살표 단추가 사각형으로 남습니다 */
+  .scent-map-panel::-webkit-scrollbar-button,
+  .scent-thin-scroll::-webkit-scrollbar-button {
+    display: none;
+  }
+  /*
+   * 투명 테두리 + `content-box` 가 막대를 판 안쪽으로 들입니다 — 스크롤바 의사요소에는
+   * `margin` 이 듣지 않아 이 방법을 씁니다.
+   */
+  .scent-map-panel::-webkit-scrollbar-thumb,
+  .scent-thin-scroll::-webkit-scrollbar-thumb {
+    background: rgb(251 243 234 / 0.3);
+    background-clip: content-box;
+    border: 2px solid transparent;
+    border-radius: 999px;
+  }
+  .scent-map-panel::-webkit-scrollbar-thumb:hover,
+  .scent-thin-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgb(251 243 234 / 0.45);
+    background-clip: content-box;
+  }
+
+  @supports not selector(::-webkit-scrollbar) {
+    .scent-map-panel,
+    .scent-thin-scroll {
+      scrollbar-width: thin;
+      scrollbar-color: rgb(251 243 234 / 0.3) transparent;
+    }
+  }
 }
