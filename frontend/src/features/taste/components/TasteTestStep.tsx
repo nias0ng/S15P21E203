@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { isApiError } from '@/shared/api/http'
 import { cn } from '@/shared/lib/cn'
+import { useCausticsStore } from '@/shared/store/causticsStore'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { GLASS_PANEL } from '@/shared/ui/panel'
@@ -39,6 +40,14 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
 
   const [picks, setPicks] = useState<ScentFamilyKey[]>([])
   const [match, setMatch] = useState<TasteMatch | null>(null)
+
+  // 고른 향 수만큼 물결이 한 겹씩 깔립니다 — 하나도 안 고르면 물결이 없습니다
+  const setCausticsLayers = useCausticsStore((state) => state.setLayers)
+  useEffect(() => {
+    setCausticsLayers(picks.length)
+  }, [picks.length, setCausticsLayers])
+  // 떠날 때 되돌려야 다른 화면이 두 겹을 그대로 받습니다
+  useEffect(() => () => setCausticsLayers(null), [setCausticsLayers])
 
   const handleSubmit = () => {
     if (!vectors.data || picks.length === 0) return

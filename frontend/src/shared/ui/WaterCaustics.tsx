@@ -21,6 +21,12 @@ import {
 const FRAME_MS = 1000 / 30
 /** 빛줄기가 원래 번져 있어, 3/4 크기로 그려 늘려도 티가 나지 않습니다 */
 const RENDER_SCALE = 0.75
+/** 겹이 깔리고 걷히는 빠르기(시간 상수). 세 배쯤 지나면 거의 다 따라갑니다 */
+const LAYER_EASE_MS = 400
+
+/** 겹 수(0 ~ 2) → 옅은 겹 · 진한 겹의 세기. 옅은 겹이 먼저 깔리고 나중에 걷힙니다 */
+const fineOf = (layers: number) => Math.min(Math.max(layers, 0), 1)
+const wideOf = (layers: number) => Math.min(Math.max(layers - 1, 0), 1)
 
 const CONTEXT = {
   alpha: true,
@@ -52,9 +58,26 @@ function readColor(style: CSSStyleDeclaration, name: string, fallback: string) {
  * - 첫 장이 그려진 뒤에 서서히 드러납니다 — three 를 따로 받아 오는 동안 빈 판이 번쩍이지 않게
  *
  * @param className 자리 · 크기 · 겹 순서. 스스로는 크기를 갖지 않습니다
+ * @param layers 깔 겹 수. 0 은 없음 · 1 은 옅은 그물만 · 2 는 하얀 그물까지(기본).
+ *   바뀌면 새 값으로 서서히 깔리거나 걷힙니다
  */
-export function WaterCaustics({ className }: { className?: string }) {
+export function WaterCaustics({
+  className,
+  layers = 2,
+}: {
+  className?: string
+  layers?: number
+}) {
   const layer = useRef<HTMLDivElement>(null)
+  // NOTE: 겹은 그리는 고리가 매 장 읽습니다 — 상태로 두면 바뀔 때마다 WebGL 을 새로 엽니다
+  const target = useRef(layers)
+  // 움직임 줄이기면 고리가 돌지 않아, 바뀐 겹을 한 장 그려 줄 손잡이입니다
+  const redraw = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    target.current = layers
+    redraw.current?.()
+  }, [layers])
 
   useEffect(() => {
     const host = layer.current
@@ -90,6 +113,9 @@ export function WaterCaustics({ className }: { className?: string }) {
       uWobble: { value: CAUSTICS.wobble },
       uGlow: { value: readColor(style, '--caustics-glow', '#a7c8db') },
       uCore: { value: readColor(style, '--caustics-core', '#f2f9ff') },
+      // 처음 뜰 때는 따라가지 않고 제 겹으로 섭니다 — 드러나는 것은 판의 불투명도가 맡습니다
+      uFine: { value: fineOf(target.current) },
+      uWide: { value: wideOf(target.current) },
     }
 
     const scene = new Scene()
@@ -107,7 +133,15 @@ export function WaterCaustics({ className }: { className?: string }) {
     scene.add(plane)
 
     const started = performance.now()
+    let lastEased = started
     const draw = (now: number) => {
+      const ease = 1 - Math.exp(-Math.max(now - lastEased, 0) / LAYER_EASE_MS)
+      lastEased = Math.max(now, lastEased)
+      uniforms.uFine.value +=
+        (fineOf(target.current) - uniforms.uFine.value) * ease
+      uniforms.uWide.value +=
+        (wideOf(target.current) - uniforms.uWide.value) * ease
+
       uniforms.uTime.value = ((now - started) / 1000) * CAUSTICS.speed
       renderer.render(scene, camera)
       host.dataset.ready = ''
@@ -117,6 +151,14 @@ export function WaterCaustics({ className }: { className?: string }) {
       '(prefers-reduced-motion: reduce)',
     ).matches
     let lastDrawn = started
+
+    if (reduced) {
+      redraw.current = () => {
+        uniforms.uFine.value = fineOf(target.current)
+        uniforms.uWide.value = wideOf(target.current)
+        draw(lastDrawn)
+      }
+    }
 
     // 크기를 바꾸면 그리기 버퍼가 비워지므로 기다리지 않고 바로 한 장 그립니다
     const fit = () => {
@@ -142,6 +184,7 @@ export function WaterCaustics({ className }: { className?: string }) {
     if (!reduced) frame = requestAnimationFrame(tick)
 
     return () => {
+      redraw.current = null
       cancelAnimationFrame(frame)
       resize.disconnect()
       geometry.dispose()

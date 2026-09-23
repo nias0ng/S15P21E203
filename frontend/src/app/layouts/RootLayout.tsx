@@ -4,6 +4,7 @@ import { Outlet, useLocation, useMatches } from 'react-router'
 import { GlobalHeader, type HeaderTone } from '@/app/layouts/GlobalHeader'
 import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
+import { useCausticsStore } from '@/shared/store/causticsStore'
 import { useSceneSkyStore } from '@/shared/store/sceneSkyStore'
 import { DiveCurtain } from '@/shared/ui/DiveCurtain'
 
@@ -79,6 +80,7 @@ export function RootLayout() {
   const onPaper = pathname === ROUTES.MY_SHELF
   const onNight = useRouteFlag('night')
   const onCaustics = useRouteFlag('caustics')
+  const causticsLayers = useCausticsStore((state) => state.layers)
   const width = usePageWidth()
   const sky = useSceneSkyStore((state) => state.sky)
   // bleed(3D 향 지도)의 유리판 헤더는 글자색이 뒤의 하늘을 따릅니다
@@ -111,7 +113,10 @@ export function RootLayout() {
             헤더는 방과 같은 그림을 불투명하게 나눠 그려 물결을 가립니다. 헤더 밑에서 물결이
             뚝 끊기면 가로 띠가 지므로, 헤더 아래에서부터 서서히 드러냅니다.
           */}
-          <WaterCaustics className="fixed inset-0 -z-10 [mask-image:linear-gradient(to_bottom,transparent_var(--header-h),#000_calc(var(--header-h)_+_var(--spacing)*40))]" />
+          <WaterCaustics
+            layers={causticsLayers ?? 2}
+            className="fixed inset-0 -z-10 [mask-image:linear-gradient(to_bottom,transparent_var(--header-h),#000_calc(var(--header-h)_+_var(--spacing)*40))]"
+          />
         </Suspense>
       )}
 

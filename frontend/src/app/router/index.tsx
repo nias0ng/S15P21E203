@@ -40,9 +40,7 @@ const withSuspense = (element: React.ReactNode) => (
 )
 
 const FULL = { width: 'full' } satisfies { width: PageWidth }
-/** 어두운 방 + 유리판 — docs/어두운-방-유리판.md */
-const NIGHT = { night: true } satisfies { night: boolean }
-/** 어두운 방 + 글 읽고 쓰는 폭 — 게시판에서 한 번에 넘어가는 사이라 같은 어둠입니다 */
+/** 어두운 방 + 유리판 + 글 읽고 쓰는 폭 — docs/어두운-방-유리판.md. — 게시판에서 한 번에 넘어가는 사이라 같은 어둠입니다 */
 const TEXT_NIGHT = { width: 'text', night: true } satisfies {
   width: PageWidth
   night: boolean
@@ -108,7 +106,8 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.TASTE_TEST,
         element: withSuspense(<TasteTestPage />),
-        handle: NIGHT,
+        // 물결은 고른 향 수만큼 한 겹씩 깔립니다(`TasteTestStep`)
+        handle: WATER,
       },
 
       {
