@@ -8,16 +8,13 @@ import {
   perfumeNotesQuery,
   PerfumeOverview,
   PerfumeReviewList,
+  perfumeReviewAggregatesQuery,
   perfumeReviewsQuery,
-  perfumeReviewStatisticsQuery,
   PerfumeRelated,
   relatedPerfumesQuery,
   PerfumeReviewKeywords,
-  perfumeReviewKeywordsQuery,
   PerfumeReviewSummary,
-  perfumeReviewSummaryQuery,
   PerfumeSeasonRatings,
-  perfumeSeasonStatisticsQuery,
   usePerfumeViewLog,
 } from '@/features/perfume'
 // 진열대 저장은 진열대 도메인의 어휘라, features 끼리 import 하지 않고 화면에서 조합합니다
@@ -95,22 +92,10 @@ export default function PerfumeDetailPage() {
   })
 
   const notes = useQuery({ ...perfumeNotesQuery(numericId), enabled })
-  const seasons = useQuery({
-    ...perfumeSeasonStatisticsQuery(numericId),
-    enabled,
-  })
   const related = useQuery({ ...relatedPerfumesQuery(numericId), enabled })
-  const reviewKeywords = useQuery({
-    ...perfumeReviewKeywordsQuery(numericId),
-    enabled,
-  })
-
-  const summary = useQuery({
-    ...perfumeReviewSummaryQuery(numericId),
-    enabled,
-  })
-  const reviewStatistics = useQuery({
-    ...perfumeReviewStatisticsQuery(numericId),
+  // 요약 · 키워드 · 후기 수 · 계절이 한 요청으로 와, 네 구역이 함께 채워집니다
+  const aggregates = useQuery({
+    ...perfumeReviewAggregatesQuery(numericId),
     enabled,
   })
   const reviews = useQuery({
@@ -175,23 +160,29 @@ export default function PerfumeDetailPage() {
       />
 
       <PerfumeSeasonRatings
-        seasons={seasons.data?.seasons ?? []}
-        isPending={seasons.isPending}
+        seasons={aggregates.data?.seasonStatistics.seasons ?? []}
+        isPending={aggregates.isPending}
       />
 
       <PerfumeReviewSummary
-        summary={summary.data?.summary ?? null}
-        sourceReviewCount={summary.data?.sourceReviewCount ?? null}
-        isPending={summary.isPending}
+        summary={aggregates.data?.reviewSummary.summary ?? null}
+        sourceReviewCount={
+          aggregates.data?.reviewSummary.sourceReviewCount ?? null
+        }
+        isPending={aggregates.isPending}
       />
 
-      <PerfumeReviewKeywords keywords={reviewKeywords.data ?? []} />
+      <PerfumeReviewKeywords
+        keywords={aggregates.data?.reviewKeywords.keywords ?? []}
+      />
 
       <PerfumeReviewList
         reviews={reviews.data?.reviews ?? []}
         // 전체 개수는 후기 통계가 정본입니다 — 쪽을 넘기는 동안 값이 흔들리지 않습니다
         totalElements={
-          reviewStatistics.data?.reviewCount ?? reviews.data?.totalElements ?? 0
+          aggregates.data?.reviewStatistics.reviewCount ??
+          reviews.data?.totalElements ??
+          0
         }
         page={reviewPage}
         size={REVIEW_PAGE_SIZE}

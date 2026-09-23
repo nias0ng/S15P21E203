@@ -273,3 +273,17 @@ export interface ReviewKeyword {
 export interface ReviewKeywordsResponse {
   keywords: ReviewKeyword[]
 }
+
+/**
+ * 상세 화면이 함께 쓰는 후기 집계 네 조각입니다.
+ *
+ * 네 조각은 각각 단건 엔드포인트가 내려주던 응답 **그대로**입니다 — 빈 값의 모양도
+ * 조각마다 그대로라, 키워드는 빈 배열 · 후기 수는 0 · 계절은 0 으로 채운 네 칸 ·
+ * 요약은 세 값이 모두 null 입니다. 한 덩어리로 묶였다고 통째로 null 이 되지 않습니다.
+ */
+export interface ReviewAggregates {
+  reviewSummary: ReviewSummary
+  reviewKeywords: ReviewKeywordsResponse
+  reviewStatistics: ReviewStatistics
+  seasonStatistics: SeasonStatisticsResponse
+}
