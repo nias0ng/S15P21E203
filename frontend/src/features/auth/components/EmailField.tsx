@@ -18,7 +18,8 @@ const DIRECT = 'direct'
 const CONTROL = cn(
   'rounded-card text-body bg-surface-card h-10 w-full border px-2.5',
   'placeholder:text-ink-muted/70',
-  'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
+  // NOTE: 포커스 링을 일부러 안 답니다. 자리를 알리는 것은 입력 커서뿐입니다 (`Input` 과 같습니다)
+  'outline-none',
 )
 
 type Props = {
