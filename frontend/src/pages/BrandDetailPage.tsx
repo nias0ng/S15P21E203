@@ -67,7 +67,6 @@ export default function BrandDetailPage() {
   }
 
   const { name, nameKo, logoUrl, perfumeCount } = brand.data
-  const title = nameKo ?? name
 
   return (
     <div className="space-y-6.25">
@@ -80,13 +79,16 @@ export default function BrandDetailPage() {
 
         <div className="space-y-2.5">
           <div className="space-y-0.5">
-            <h1 className="text-ink font-serif text-4xl font-semibold">
-              {title}
+            <h1
+              className="text-ink font-serif text-4xl font-semibold"
+              lang="en"
+            >
+              {name}
             </h1>
             {/* 제목과 같은 말이라 낭독기가 두 번 읽지 않게 합니다 */}
             {nameKo && (
               <p aria-hidden className="text-ink-muted text-heading">
-                {name}
+                {nameKo}
               </p>
             )}
           </div>
@@ -97,7 +99,7 @@ export default function BrandDetailPage() {
       </header>
 
       <section className={GLASS_PANEL}>
-        <h2 className="text-ink mb-6.25 font-serif text-2xl">{title}의 향수</h2>
+        <h2 className="text-ink mb-6.25 font-serif text-2xl">{name}의 향수</h2>
 
         {perfumes.isError ? (
           <EmptyState

@@ -2,6 +2,8 @@ package com.hyanghae.backend.recommendation.repository;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -9,8 +11,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class PersonalizedRecommendationRepository {
 
-    private static final String LOCK_USER_RECOMMENDATION = """
-            SELECT pg_advisory_xact_lock(:userId)
+    private static final String TRY_LOCK_USER_RECOMMENDATION = """
+            SELECT pg_try_advisory_xact_lock(:userId)
             """;
 
     private static final String EXISTS_TASTE_PROFILE = """
@@ -259,10 +261,144 @@ public class PersonalizedRecommendationRepository {
             ORDER BY candidate.score DESC, candidate.perfume_id
             """;
 
+    private static final String SELECT_CACHE_STATE = """
+            SELECT source_version,
+                   calculated_source_version,
+                   last_view_id,
+                   calculated_at,
+                   result_status
+            FROM personalized_recommendation_cache_states
+            WHERE user_id = :userId
+            """;
+
+    private static final String ENSURE_CACHE_STATE = """
+            INSERT INTO personalized_recommendation_cache_states (user_id)
+            VALUES (:userId)
+            ON CONFLICT (user_id) DO NOTHING
+            """;
+
+    private static final String INCREMENT_SOURCE_VERSION = """
+            INSERT INTO personalized_recommendation_cache_states (user_id, source_version)
+            VALUES (:userId, 1)
+            ON CONFLICT (user_id) DO UPDATE
+            SET source_version = personalized_recommendation_cache_states.source_version + 1
+            """;
+
+    private static final String SELECT_MAX_VIEW_ID = """
+            SELECT COALESCE(MAX(perfume_view_id), 0)
+            FROM user_perfume_views
+            WHERE user_id = :userId
+            """;
+
+    private static final String HAS_VIEW_THRESHOLD_AFTER = """
+            SELECT COUNT(*) >= :threshold
+            FROM (
+                SELECT 1
+                FROM user_perfume_views
+                WHERE user_id = :userId
+                  AND perfume_view_id > :lastViewId
+                ORDER BY perfume_view_id
+                LIMIT :threshold
+            ) recent_views
+            """;
+
+    private static final String SELECT_CACHED_CANDIDATES = """
+            SELECT cached.perfume_id,
+                   COALESCE(NULLIF(p.name_ko, ''), p.name) AS display_name,
+                   image.image_url,
+                   cached.score,
+                   cached.evidence_source,
+                   cached.evidence_name,
+                   exposure.last_recommended_at
+            FROM personalized_recommendation_candidates cached
+            JOIN perfumes p ON p.perfume_id = cached.perfume_id
+            LEFT JOIN LATERAL (
+                SELECT i.image_url
+                FROM perfume_images i
+                WHERE i.perfume_id = cached.perfume_id
+                ORDER BY CASE WHEN i.image_type = 'ORIGINAL' THEN 0 ELSE 1 END,
+                         i.display_order NULLS LAST,
+                         i.image_id
+                LIMIT 1
+            ) image ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT MAX(e.recommended_at) AS last_recommended_at
+                FROM personalized_recommendation_exposures e
+                WHERE e.user_id = :userId
+                  AND e.perfume_id = cached.perfume_id
+            ) exposure ON TRUE
+            WHERE cached.user_id = :userId
+              AND p.is_active = TRUE
+              AND COALESCE(NULLIF(p.name_ko, ''), p.name) IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM user_perfumes owned
+                  WHERE owned.user_id = :userId
+                    AND owned.perfume_id = cached.perfume_id
+                    AND owned.ownership_status = 'OWNED'
+              )
+            ORDER BY cached.candidate_rank
+            """;
+
+    private static final String DELETE_CACHED_CANDIDATES = """
+            DELETE FROM personalized_recommendation_candidates
+            WHERE user_id = :userId
+            """;
+
+    private static final String INSERT_CACHED_CANDIDATE = """
+            INSERT INTO personalized_recommendation_candidates
+                (user_id, perfume_id, candidate_rank, score, evidence_source, evidence_name)
+            VALUES (:userId, :perfumeId, :rank, :score, :evidenceSource, :evidenceName)
+            """;
+
+    private static final String UPDATE_CACHE_STATE = """
+            UPDATE personalized_recommendation_cache_states
+            SET calculated_source_version = :calculatedSourceVersion,
+                last_view_id = :lastViewId,
+                calculated_at = :calculatedAt,
+                result_status = :resultStatus
+            WHERE user_id = :userId
+            """;
+
+    private static final String INSERT_OFFER = """
+            INSERT INTO personalized_recommendation_offers
+                (recommendation_token, user_id, perfume_id, issued_at, expires_at)
+            VALUES (:token, :userId, :perfumeId, :issuedAt, :expiresAt)
+            """;
+
+    private static final String DELETE_EXPIRED_OFFERS_FOR_USER = """
+            DELETE FROM personalized_recommendation_offers
+            WHERE user_id = :userId
+              AND expires_at < :now
+            """;
+
+    private static final String EXISTS_COMPLETED_EXPOSURE = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM personalized_recommendation_exposures
+                WHERE recommendation_token = :token
+                  AND user_id = :userId
+            )
+            """;
+
+    private static final String SELECT_VALID_OFFER_FOR_UPDATE = """
+            SELECT perfume_id
+            FROM personalized_recommendation_offers
+            WHERE recommendation_token = :token
+              AND user_id = :userId
+              AND expires_at >= :now
+            FOR UPDATE
+            """;
+
     private static final String INSERT_EXPOSURE = """
             INSERT INTO personalized_recommendation_exposures
-                (user_id, perfume_id, recommended_at)
-            VALUES (:userId, :perfumeId, :recommendedAt)
+                (user_id, perfume_id, recommended_at, recommendation_token)
+            VALUES (:userId, :perfumeId, :recommendedAt, :token)
+            """;
+
+    private static final String DELETE_OFFER = """
+            DELETE FROM personalized_recommendation_offers
+            WHERE recommendation_token = :token
             """;
 
     private final JdbcClient jdbcClient;
@@ -279,11 +415,11 @@ public class PersonalizedRecommendationRepository {
                 .single();
     }
 
-    /** 같은 사용자의 동시 요청이 동일한 노출 이력을 보고 중복 추천하지 않도록 직렬화합니다. */
-    public void lockForUser(Long userId) {
-        jdbcClient.sql(LOCK_USER_RECOMMENDATION)
+    /** 계산 중인 요청을 기다리며 연결을 점유하지 않도록 잠금을 즉시 시도합니다. */
+    public boolean tryLockForUser(Long userId) {
+        return jdbcClient.sql(TRY_LOCK_USER_RECOMMENDATION)
                 .param("userId", userId)
-                .query((rs, rowNum) -> Boolean.TRUE)
+                .query(Boolean.class)
                 .single();
     }
 
@@ -305,11 +441,141 @@ public class PersonalizedRecommendationRepository {
                 .list();
     }
 
-    public void saveExposure(Long userId, Long perfumeId, OffsetDateTime recommendedAt) {
+    public Optional<PersonalizedRecommendationCacheState> findCacheState(Long userId) {
+        return jdbcClient.sql(SELECT_CACHE_STATE)
+                .param("userId", userId)
+                .query((rs, rowNum) -> new PersonalizedRecommendationCacheState(
+                        rs.getLong("source_version"),
+                        rs.getObject("calculated_source_version", Long.class),
+                        rs.getLong("last_view_id"),
+                        rs.getObject("calculated_at", OffsetDateTime.class),
+                        rs.getString("result_status")))
+                .optional();
+    }
+
+    public long ensureCacheStateAndGetSourceVersion(Long userId) {
+        jdbcClient.sql(ENSURE_CACHE_STATE).param("userId", userId).update();
+        return findCacheState(userId).orElseThrow().sourceVersion();
+    }
+
+    public void incrementSourceVersion(Long userId) {
+        jdbcClient.sql(INCREMENT_SOURCE_VERSION).param("userId", userId).update();
+    }
+
+    public long findMaxViewId(Long userId) {
+        return jdbcClient.sql(SELECT_MAX_VIEW_ID)
+                .param("userId", userId)
+                .query(Long.class)
+                .single();
+    }
+
+    public boolean hasViewThresholdAfter(Long userId, long lastViewId, int threshold) {
+        return jdbcClient.sql(HAS_VIEW_THRESHOLD_AFTER)
+                .param("userId", userId)
+                .param("lastViewId", lastViewId)
+                .param("threshold", threshold)
+                .query(Boolean.class)
+                .single();
+    }
+
+    public List<PersonalizedRecommendationCandidate> findCachedCandidates(Long userId) {
+        return jdbcClient.sql(SELECT_CACHED_CANDIDATES)
+                .param("userId", userId)
+                .query((rs, rowNum) -> new PersonalizedRecommendationCandidate(
+                        rs.getLong("perfume_id"),
+                        rs.getString("display_name"),
+                        rs.getString("image_url"),
+                        rs.getDouble("score"),
+                        rs.getString("evidence_source"),
+                        rs.getString("evidence_name"),
+                        rs.getObject("last_recommended_at", OffsetDateTime.class)))
+                .list();
+    }
+
+    public void replaceCache(
+            Long userId,
+            List<PersonalizedRecommendationCandidate> candidates,
+            long calculatedSourceVersion,
+            long lastViewId,
+            OffsetDateTime calculatedAt
+    ) {
+        jdbcClient.sql(DELETE_CACHED_CANDIDATES).param("userId", userId).update();
+        for (int index = 0; index < candidates.size(); index++) {
+            PersonalizedRecommendationCandidate candidate = candidates.get(index);
+            jdbcClient.sql(INSERT_CACHED_CANDIDATE)
+                    .param("userId", userId)
+                    .param("perfumeId", candidate.perfumeId())
+                    .param("rank", index + 1)
+                    .param("score", candidate.score())
+                    .param("evidenceSource", candidate.evidenceSource())
+                    .param("evidenceName", candidate.evidenceName())
+                    .update();
+        }
+        jdbcClient.sql(UPDATE_CACHE_STATE)
+                .param("calculatedSourceVersion", calculatedSourceVersion)
+                .param("lastViewId", lastViewId)
+                .param("calculatedAt", calculatedAt)
+                .param("resultStatus", candidates.isEmpty() ? "EMPTY" : "READY")
+                .param("userId", userId)
+                .update();
+    }
+
+    public void saveOffer(
+            UUID token,
+            Long userId,
+            Long perfumeId,
+            OffsetDateTime issuedAt,
+            OffsetDateTime expiresAt
+    ) {
+        jdbcClient.sql(DELETE_EXPIRED_OFFERS_FOR_USER)
+                .param("userId", userId)
+                .param("now", issuedAt)
+                .update();
+        jdbcClient.sql(INSERT_OFFER)
+                .param("token", token)
+                .param("userId", userId)
+                .param("perfumeId", perfumeId)
+                .param("issuedAt", issuedAt)
+                .param("expiresAt", expiresAt)
+                .update();
+    }
+
+    public boolean hasCompletedExposure(UUID token, Long userId) {
+        return jdbcClient.sql(EXISTS_COMPLETED_EXPOSURE)
+                .param("token", token)
+                .param("userId", userId)
+                .query(Boolean.class)
+                .single();
+    }
+
+    public Optional<Long> findValidOfferForUpdate(
+            UUID token,
+            Long userId,
+            OffsetDateTime now
+    ) {
+        return jdbcClient.sql(SELECT_VALID_OFFER_FOR_UPDATE)
+                .param("token", token)
+                .param("userId", userId)
+                .param("now", now)
+                .query(Long.class)
+                .optional();
+    }
+
+    public void saveExposure(
+            UUID token,
+            Long userId,
+            Long perfumeId,
+            OffsetDateTime recommendedAt
+    ) {
         jdbcClient.sql(INSERT_EXPOSURE)
                 .param("userId", userId)
                 .param("perfumeId", perfumeId)
                 .param("recommendedAt", recommendedAt)
+                .param("token", token)
                 .update();
+    }
+
+    public void deleteOffer(UUID token) {
+        jdbcClient.sql(DELETE_OFFER).param("token", token).update();
     }
 }

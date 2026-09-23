@@ -4,6 +4,7 @@ import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.map.repository.ExplorationPoint;
 import com.hyanghae.backend.map.service.ExplorationService;
+import com.hyanghae.backend.recommendation.service.PersonalizedRecommendationInvalidator;
 import com.hyanghae.backend.taste.dto.request.TasteTestCreateRequest;
 import com.hyanghae.backend.taste.dto.response.TasteTestResponse;
 import com.hyanghae.backend.taste.exception.TasteErrorCode;
@@ -39,14 +40,17 @@ public class TasteTestService {
     private final TasteTestRepository tasteTestRepository;
     private final ExplorationService explorationService;
     private final CurrentUser currentUser;
+    private final PersonalizedRecommendationInvalidator recommendationInvalidator;
 
     public TasteTestService(
             TasteTestRepository tasteTestRepository,
             ExplorationService explorationService,
-            CurrentUser currentUser) {
+            CurrentUser currentUser,
+            PersonalizedRecommendationInvalidator recommendationInvalidator) {
         this.tasteTestRepository = tasteTestRepository;
         this.explorationService = explorationService;
         this.currentUser = currentUser;
+        this.recommendationInvalidator = recommendationInvalidator;
     }
 
     /**
@@ -80,6 +84,7 @@ public class TasteTestService {
 
         InsertedTest inserted = insertOrConflict(userId, request.matchedPerfumeId());
         tasteTestRepository.insertSelections(inserted.userTestId(), scentRegionIds);
+        recommendationInvalidator.invalidate(userId);
 
         return new TasteTestResponse(
                 true,
