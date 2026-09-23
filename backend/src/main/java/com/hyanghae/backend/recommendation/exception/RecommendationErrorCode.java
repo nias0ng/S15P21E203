@@ -22,6 +22,15 @@ public enum RecommendationErrorCode implements ErrorCode {
     RECOMMENDATION_NOT_FOUND(HttpStatus.NOT_FOUND,
             "현재 추천할 수 있는 향수가 없습니다."),
 
+    RECOMMENDATION_REFRESH_IN_PROGRESS(HttpStatus.CONFLICT,
+            "추천을 계산하고 있습니다."),
+
+    RECOMMENDATION_REFRESH_FAILED(HttpStatus.SERVICE_UNAVAILABLE,
+            "추천을 지금 계산할 수 없습니다. 잠시 뒤 다시 시도해 주세요."),
+
+    RECOMMENDATION_EXPOSURE_NOT_FOUND(HttpStatus.NOT_FOUND,
+            "노출할 추천 기록을 찾을 수 없습니다."),
+
     /**
      * AI 서버가 응답하지 않거나 제한 시간을 넘겼습니다.
      *

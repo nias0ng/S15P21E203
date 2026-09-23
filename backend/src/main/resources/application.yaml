@@ -21,6 +21,11 @@ springdoc:
     enabled: false
 
 hyanghae:
+  recommendation:
+    personalized:
+      view-refresh-threshold: ${PERSONALIZED_RECOMMENDATION_VIEW_THRESHOLD:10}
+      max-age: ${PERSONALIZED_RECOMMENDATION_MAX_AGE:24h}
+      offer-ttl: ${PERSONALIZED_RECOMMENDATION_OFFER_TTL:10m}
   auth:
     access-token-ttl: 30m
     refresh-token-ttl: 7d

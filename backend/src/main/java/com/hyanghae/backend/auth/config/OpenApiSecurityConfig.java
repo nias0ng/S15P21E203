@@ -68,6 +68,7 @@ public class OpenApiSecurityConfig {
         return matchesPathTree(path, "/api/v1/users/me")
                 || path.equals("/api/v1/auth/logout")
                 || matchesPathTree(path, "/api/v1/perfume-views")
+                || matchesPathTree(path, "/api/v1/recommendations/personalized")
                 || matchesPathTree(path, "/api/v1/map/exploration")
                 || path.equals("/api/v1/map/exploration-logs");
     }
