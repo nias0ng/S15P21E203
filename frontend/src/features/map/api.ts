@@ -51,7 +51,7 @@ async function withDevFallback<T>(
 }
 
 /**
- * MAP-24 향해 일지 — 최근 해역 진입부터 다섯 줄 (VOYAGE_LOG_SIZE — 판에 싣는 수와 같습니다).
+ * MAP-24 향해 일지 — 최근 해역 진입부터 `VOYAGE_LOG_SIZE` 줄. 판은 이것을 날마다 묶어 싣습니다.
  * 로그인해야 읽을 수 있습니다 (비로그인 401 — 화면은 로그인 안내를 띄웁니다).
  *
  * 일지는 `moveExploration()` 이 쌓습니다 — 엔진이 배의 해역이 바뀔 때마다 알려 줍니다(아래).
