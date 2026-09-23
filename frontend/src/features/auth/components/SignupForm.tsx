@@ -159,7 +159,7 @@ export function SignupForm() {
         />
 
         <div className="flex items-start gap-1.25">
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <Input
               label="닉네임"
               hideLabel

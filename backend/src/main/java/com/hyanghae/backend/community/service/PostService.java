@@ -12,6 +12,7 @@ import com.hyanghae.backend.community.dto.response.PostsResponse;
 import com.hyanghae.backend.community.entity.Post;
 import com.hyanghae.backend.community.entity.PostCategory;
 import com.hyanghae.backend.community.exception.CommunityErrorCode;
+import com.hyanghae.backend.community.repository.PostAuthorRow;
 import com.hyanghae.backend.community.repository.PostCategoryRepository;
 import com.hyanghae.backend.community.repository.PostImageRepository;
 import com.hyanghae.backend.community.repository.PostLikeRepository;
@@ -260,6 +261,7 @@ public class PostService {
                         row.getCategory(),
                         row.getTitle(),
                         row.getNickname(),
+                        row.getProfileImageUrl(),
                         perfumes.get(row.getPostId()),
                         row.getCommentCount(),
                         row.getLikeCount(),
@@ -289,11 +291,13 @@ public class PostService {
             throw new BusinessException(CommunityErrorCode.COMMUNITY_POST_NOT_FOUND);
         }
         Post post = requirePost(postId);
+        PostAuthorRow author = authorOf(post);
 
         return new PostDetailResponse(
                 post.getId(),
                 post.getCategory() == null ? null : post.getCategory().getCode(),
-                nicknameOf(post),
+                author == null ? null : author.getNickname(),
+                author == null ? null : author.getProfileImageUrl(),
                 post.getTitle(),
                 post.getContent(),
                 postRepository.findImageUrls(postId),
@@ -442,12 +446,15 @@ public class PostService {
         return post;
     }
 
-    /** 탈퇴한 작성자의 글은 닉네임이 비어 나갑니다. */
-    private String nicknameOf(Post post) {
+    /**
+     * 글 상세에 실을 작성자입니다. 탈퇴한 작성자의 글은 {@code null} 이고, 닉네임과 프로필 사진이
+     * 함께 비어 나갑니다.
+     */
+    private PostAuthorRow authorOf(Post post) {
         if (post.getUserId() == null) {
             return null;
         }
-        return postRepository.findNickname(post.getUserId()).orElse(null);
+        return postRepository.findAuthor(post.getUserId()).orElse(null);
     }
 
     /**

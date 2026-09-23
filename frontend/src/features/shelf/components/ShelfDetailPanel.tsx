@@ -78,7 +78,7 @@ type Props = {
  * 살짝 비쳐서 "종이 위에 얹힌 카드" 로 읽힙니다.
  */
 const CARD =
-  'shelf-panel relative rounded-[14px] px-6.25 pt-5 pb-5 [zoom:var(--panel-scale,1)]'
+  'shelf-panel relative rounded-[14px] px-5 pt-5 pb-5 [zoom:var(--panel-scale,1)]'
 
 /**
  * 이 카드 위 버튼의 포커스 링.
@@ -152,7 +152,7 @@ export function ShelfDetailPanel({
             병 이미지는 배경이 투명한 PNG 로 들어옵니다(DisplayCase 와 같은 소스).
             그래서 Thumbnail 을 쓰지 않습니다 — 자리표시자 상자의 테두리·배경이
             투명 영역을 네모로 드러내 병이 상자에 든 것처럼 보입니다.
-            **높이 255px 은 카드가 제 자리(벽감 + 이름표 - PANEL_TRIM, 1920 에서 710)를
+            **높이 255 는 카드가 제 자리(벽감 + 이름표 - PANEL_TRIM, 1920 에서 710)를
             넘지 않는 최댓값입니다.** 사진은 세로로 긴 병이라 `object-contain` 에서
             높이가 그대로 크기를 정합니다 — 125px 이던 시절 병은 폭 55px 짜리
             조각이었습니다. 255 면 폭 110px 로 섭니다.
@@ -164,7 +164,7 @@ export function ShelfDetailPanel({
             전부 두 줄이라 화면만 보면 안 드러납니다 — 사진을 키우려면 `line-clamp-3`
             을 두 줄로 줄이거나 카드 높이(PANEL_TRIM)를 같이 만져야 합니다.
             두 단으로 넓게 설 때(쌓는 배치)는 사진과 글이 좌우로 갈라져 세로 자리가 이만큼
-            안 남으므로 시안의 180px 그대로 둡니다.
+            안 남으므로 시안의 180 그대로 둡니다.
             이미지가 없을 때도 같은 높이를 비워 둬야 아래 글이 위아래로 튀지 않습니다.
 
             고른 병의 사진이라 먼저 받고(fetchPriority high) 그 자리에서 풀어 그립니다(decoding sync).
@@ -177,10 +177,10 @@ export function ShelfDetailPanel({
               alt=""
               fetchPriority="high"
               decoding="sync"
-              className="shelf-bottle-img h-[255px] w-full object-contain @xl:h-[180px]"
+              className="shelf-bottle-img h-63.75 w-full object-contain @xl:h-45"
             />
           ) : (
-            <div aria-hidden className="h-[255px] @xl:h-[180px]" />
+            <div aria-hidden className="h-63.75 @xl:h-45" />
           )}
 
           <div className="flex flex-col items-start gap-1.25">

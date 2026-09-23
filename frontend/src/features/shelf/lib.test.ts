@@ -490,27 +490,27 @@ describe('shelfMetrics', () => {
 })
 
 describe('shelfLayout', () => {
-  it('1920 x 1080 의 진열장 자리(1800 x 800)에서 패널 380 왼쪽 끝(1420)까지 칸 여덟을 나누고, 이름표 아랫선보다 한 단 짧게 끊는다', () => {
+  it('1920 x 1080 의 진열장 자리(1800 x 800)에서 패널 362 왼쪽 끝(1438)까지 칸 여덟을 나누고, 이름표 아랫선보다 한 단 짧게 끊는다', () => {
     const layout = shelfLayout(1800, 800)
-    expect(layout.panelWidth).toBe(380)
+    expect(layout.panelWidth).toBe(362)
     /*
       패널과 벽감은 서로를 정합니다 — 패널이 넓어지면 가리지 않는 폭이 좁아지고,
       벽감은 그 폭으로 세므로 낮아지고, 배율은 벽감으로 정합니다. 그래서 규격 화면에서도
-      배율이 딱 1 이 아닙니다: PANEL_WIDTH 390 이 벽감 590 을 만들고(시안 605 보다 15 낮음)
-      590/605 = 0.975 로 380 에 섭니다. PANEL_WIDTH 를 만지면 이 세 값이 같이 움직입니다.
+      배율이 딱 1 이 아닙니다: PANEL_WIDTH 365 가 벽감 600 을 만들고(시안 605 보다 5 낮음)
+      600/605 = 0.992 로 362 에 섭니다. PANEL_WIDTH 를 만지면 이 세 값이 같이 움직입니다.
     */
-    expect(layout.panelScale).toBeCloseTo(590 / 605, 9)
+    expect(layout.panelScale).toBeCloseTo(600 / 605, 9)
     expect(layout.clear).toBe(8)
-    expect(layout.pitch).toBeCloseTo(1420 / 8, 9)
+    expect(layout.pitch).toBeCloseTo(1438 / 8, 9)
     expect(layout.visible).toBe(11)
     expect(layout.whole).toBe(10)
-    expect(layout.clearWidth).toBeCloseTo(1420, 6)
-    expect(layout.caseHeight).toBe(590)
-    expect(layout.bottle).toBe(350)
+    expect(layout.clearWidth).toBeCloseTo(1438, 6)
+    expect(layout.caseHeight).toBe(600)
+    expect(layout.bottle).toBe(360)
     expect(layout.hang).toBe(135)
     expect([layout.tagWidth, layout.tagHeight]).toEqual([135, 85])
-    // 벽감 590 + 이름표 135 에서 PANEL_TRIM 15 를 덜어냅니다
-    expect(layout.panelHeight).toBe(710)
+    // 벽감 600 + 이름표 135 에서 PANEL_TRIM 15 를 덜어냅니다
+    expect(layout.panelHeight).toBe(720)
     expect(layout.plaqueSpan).toBe(2)
   })
 
@@ -521,7 +521,7 @@ describe('shelfLayout', () => {
     expect(panelScale).toBeLessThan(1)
     expect(panelScale).toBeGreaterThan(0.85)
     expect(panelScale).toBeCloseTo(caseHeight / 605, 6)
-    expect(Math.abs(panelWidth - 390 * panelScale)).toBeLessThanOrEqual(1)
+    expect(Math.abs(panelWidth - 365 * panelScale)).toBeLessThanOrEqual(1)
     expect(panelHeight).toBe(caseHeight + hang - 15)
   })
 
@@ -535,7 +535,7 @@ describe('shelfLayout', () => {
       const { panelScale, panelWidth, panelHeight, caseHeight, hang } =
         shelfLayout(width, height)
       expect(panelScale).toBe(0.85)
-      expect(panelWidth).toBe(332)
+      expect(panelWidth).toBe(310)
       expect(panelHeight).toBe(caseHeight + hang - 15)
       expect(panelHeight).toBeLessThanOrEqual(height)
     }
@@ -554,7 +554,7 @@ describe('shelfLayout', () => {
     [1442, 634, 8],
     [1525, 634, 8],
     [1800, 657, 9],
-    [1340, 620, 7],
+    [1340, 620, 8],
     [1180, 460, 7],
     [1165, 460, 7],
     [944, 488, 5],
@@ -608,7 +608,7 @@ describe('shelfLayout', () => {
     expect(panelScale).toBeLessThanOrEqual(1)
     // 규격(1800 x 800)과 같은 값 — 높이가 남아돌아도 더 자라지 않습니다
     expect(panelWidth).toBe(shelfLayout(1800, 800).panelWidth)
-    expect(panelWidth).toBe(380)
+    expect(panelWidth).toBe(362)
   })
 })
 
@@ -1528,7 +1528,7 @@ describe('tagMetrics', () => {
       tagHeight: 85,
     })
     expect(tagOf(1340, 620, true)).toMatchObject({
-      tagWidth: 110,
+      tagWidth: 95,
       tagHeight: 80,
     })
   })

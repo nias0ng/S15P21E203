@@ -112,6 +112,7 @@ public class CommentService {
         return new CommentResponse(
                 row.getCommentId(),
                 row.getNickname(),
+                row.getProfileImageUrl(),
                 row.getContent(),
                 toOffsetDateTime(row.getCreatedAt()),
                 toOffsetDateTime(row.getUpdatedAt()),

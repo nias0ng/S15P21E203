@@ -374,22 +374,25 @@ export default function MyShelfPage() {
     </Button>
   )
 
-  const toolbar = (className?: string) => (
+  const toolbar = (className?: string, stacked?: boolean) => (
     <ShelfToolbar
-      counts={browser.counts}
-      value={browser.viewCategory}
-      onChange={showCategory}
       keyword={browser.keyword}
       onKeywordChange={browser.changeKeyword}
       action={registerButton}
+      stacked={stacked}
       className={className}
     />
   )
 
-  const shelfWall = (className: string, aside?: ReactNode) => (
+  const shelfWall = (
+    className: string,
+    aside?: ReactNode,
+    menuHeader?: ReactNode,
+  ) => (
     <ShelfWall
       ref={wall}
       sections={browser.sections}
+      category={browser.viewCategory}
       selectedId={browser.selected?.shelfItemId ?? null}
       onSelect={browser.select}
       onViewCategoryChange={browser.changeViewCategory}
@@ -402,6 +405,7 @@ export default function MyShelfPage() {
       }
       className={className}
       aside={aside}
+      menuHeader={menuHeader}
     />
   )
 
@@ -636,9 +640,13 @@ export default function MyShelfPage() {
 
           높이는 화면 폭을 따릅니다 — 페이지가 스크롤되어 남는 세로 공간이라는 기준이
           없습니다. 휴대폰에서 병 셋, 태블릿에서 병 넷 남짓이 한 화면에 섭니다.
+          위아래 끝(380 · 560)은 1920 기준이라 `--spacing` 을 곱해 적습니다 — 벽만
+          유틸리티 밖에 있으면 옆의 여백 · 카드가 줄어드는 만큼 벽이 혼자 커 보입니다.
         */}
         <div className="-mx-[var(--gutter)] mt-7.5 overflow-x-clip px-[var(--gutter)]">
-          {shelfWall('h-[clamp(380px,72vw,560px)]')}
+          {shelfWall(
+            'h-[clamp(calc(var(--spacing)*95),72vw,calc(var(--spacing)*140))]',
+          )}
         </div>
 
         <ShelfPager
@@ -664,11 +672,11 @@ export default function MyShelfPage() {
   return (
     /*
       부모 <main> 의 세로 여백(pt-15 pb-15)을 걷어내고 뷰포트 높이에 맞춥니다.
-      90px 은 헤더 높이(GlobalHeader 의 h-22.5)입니다. 헤더 높이를 바꾸면 여기도 함께
-      바꿔야 페이지에 세로 스크롤이 생기지 않습니다.
+      `--header-h` 는 헤더 높이(1920 에서 90)이고 화면을 따라 같이 줄어듭니다 — 90 을
+      손으로 적으면 헤더만 줄어들어 1536 에서 페이지에 세로 스크롤이 생깁니다.
       최소 높이 650 — 진열장 자리가 460 아래로 줄지 않는 높이입니다(위 한 장 배치 설명).
     */
-    <div className="shelf-scope -mt-15 -mb-15 flex h-[calc(100dvh_-_90px)] min-h-162.5 flex-col">
+    <div className="shelf-scope -mt-15 -mb-15 flex h-[calc(100dvh_-_var(--header-h))] min-h-162.5 flex-col">
       {paper}
       {recommendCard}
 
@@ -686,18 +694,22 @@ export default function MyShelfPage() {
             key="shelf"
             className="flex h-full flex-col px-[var(--gutter)] pt-10"
           >
-            {/* 제목과 도구 줄이 한 줄에 놓입니다. 부제를 걷어내 한 줄 높이(50)입니다 */}
-            <div className="flex min-h-12.5 items-center gap-10">
+            {/*
+              제목만 있는 줄입니다. 검색창과 등록 단추는 벽의 분류 메뉴 위로 내려갔습니다 —
+              머리줄이 화면 폭을 가로지르면 그 아래 진열장이 그만큼 낮아집니다.
+            */}
+            <div className="flex min-h-12.5 items-center">
               <h1 className="shrink-0 font-serif text-[36px] leading-[1.2] font-semibold">
                 나의 진열대
               </h1>
-              {toolbar('flex-1')}
             </div>
 
             {shelfWall(
               'mt-7.5 flex-1',
               // 높이는 벽감 + 이름표 자리까지. 작은 화면에서는 벽감을 따라 통째로 줄어듭니다(ShelfWall)
               detail('flex-1'),
+              // 좁은 기둥 안이라 검색창과 단추를 세로로 세웁니다
+              toolbar(undefined, true),
             )}
           </div>,
 

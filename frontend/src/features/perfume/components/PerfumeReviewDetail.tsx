@@ -90,16 +90,21 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
         </h1>
 
         <div className="flex items-center gap-2.5">
-          {/* TODO: 프로필 이미지 연동 (S15P21E203-404) */}
+          {/* NOTE: 작성자 사진은 응답에 없습니다 — `ReviewDetailResponse` 가 닉네임만 줍니다.
+              내 사진은 `GET /users/me` 로 알지만 남의 사진은 알 길이 없어, 필드를 요청해 뒀습니다 */}
           <Thumbnail className="size-7.5 shrink-0 rounded-full" />
-          <span className="text-ink text-xs">
+          {/* 줄어드는 자리를 닉네임(최대 20자) 하나로 못 박습니다 — 상대시각과 오른쪽 단추 ·
+              하트가 밀려 나가지 않게 합니다.
+              NOTE: 1920 · 1536 에서는 이 줄에 여유가 있어(글 폭 800 · 640 에 최악값 약 485 · 473)
+                아무 일도 하지 않습니다. 실제로 무는 것은 뷰포트가 700 아래로 내려간 좁은 화면입니다 */}
+          <span className="text-ink min-w-0 truncate text-xs">
             {review.nickname ?? '탈퇴한 회원'}
           </span>
-          <span className="text-ink-muted text-caption">
+          <span className="text-ink-muted text-caption shrink-0">
             · {formatRelativeTime(review.createdAt)}
           </span>
 
-          <span className="ml-auto flex items-center gap-2.5">
+          <span className="ml-auto flex shrink-0 items-center gap-2.5">
             {review.mine && (
               <>
                 <LinkButton to={editTo} variant="outline" size="sm">

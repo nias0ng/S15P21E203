@@ -67,10 +67,13 @@ export function ImageAttachField({ value, onChange }: Props) {
       {/*
         단추처럼 보이는 라벨입니다. `<input type="file">` 은 브라우저마다 생김새가
         다르고 색을 못 입힙니다 — 숨기고 라벨이 대신 받습니다.
+
+        NOTE: 높이 · 바닥은 `Button` 의 `sm` 과 같은 값입니다(`shared/ui/buttonVariants`).
+        옆에 나란히 서는 단추라 한쪽만 바뀌면 줄의 아랫선이 어긋납니다.
       */}
       <label
         className={cn(
-          'border-line text-ink rounded-card inline-flex h-7.5 items-center border px-2.5',
+          'border-line text-ink rounded-card inline-flex h-7.5 min-h-[calc(var(--text-body)*var(--text-body--line-height)+5px)] items-center border px-2.5',
           'text-body cursor-pointer font-medium',
           'hover:bg-line-soft transition-colors duration-120 ease-out',
           'focus-within:ring-accent-deep focus-within:ring-2',

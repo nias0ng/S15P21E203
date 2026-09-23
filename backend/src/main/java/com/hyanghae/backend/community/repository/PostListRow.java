@@ -26,6 +26,9 @@ public interface PostListRow {
 
     String getNickname();
 
+    /** 작성자가 탈퇴했거나 사진을 설정하지 않았으면 비어 있습니다. */
+    String getProfileImageUrl();
+
     Instant getCreatedAt();
 
     long getCommentCount();

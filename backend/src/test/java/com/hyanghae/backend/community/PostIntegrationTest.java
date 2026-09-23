@@ -56,6 +56,9 @@ class PostIntegrationTest {
     private static final long OTHER_COLLECTION_ID = 2;
     private static final long MISSING_COLLECTION_ID = 999;
 
+    private static final String PROFILE_IMAGE_URL =
+            "/api/v1/users/profile-images/2026/09/0a1b2c3d-4e5f-6071-8293-a4b5c6d7e8f9.jpg";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -116,6 +119,35 @@ class PostIntegrationTest {
                 .andExpect(jsonPath("$.relatedPerfumes[0].brand").value("Chanel"))
                 .andExpect(jsonPath("$.createdAt").isNotEmpty())
                 .andExpect(jsonPath("$.updatedAt").isNotEmpty());
+    }
+
+    /**
+     * 목록과 상세에 작성자 프로필 사진 주소가 함께 실립니다.
+     *
+     * <p>남의 프로필을 따로 조회할 길이 없어, 여기서 주지 않으면 화면이 작성자 아바타 자리를 비운
+     * 채 둬야 합니다. 값 규칙은 {@code /users/me} 와 같습니다 — 사진을 설정하지 않았으면
+     * {@code null} 이고 화면이 기본 아바타를 보여줍니다.
+     */
+    @Test
+    void putsTheAuthorProfileImageInListAndDetail() throws Exception {
+        long postId = write("CHAT", "사진 있는 사람의 글", "본문", null, null);
+
+        mockMvc.perform(get(POSTS_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts[0].profileImageUrl").doesNotExist());
+
+        jdbcTemplate.update("UPDATE users SET profile_image_url = ? WHERE user_id = ?",
+                PROFILE_IMAGE_URL, WRITER_ID);
+
+        mockMvc.perform(get(POSTS_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts[0].nickname").value("글쓴이"))
+                .andExpect(jsonPath("$.posts[0].profileImageUrl").value(PROFILE_IMAGE_URL));
+
+        mockMvc.perform(get(POST_URL, postId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nickname").value("글쓴이"))
+                .andExpect(jsonPath("$.profileImageUrl").value(PROFILE_IMAGE_URL));
     }
 
     /** 향수도 이미지도 없는 글을 쓸 수 있습니다. 자유 게시판 글은 향수를 걸지 않을 수 있습니다. */
@@ -629,7 +661,7 @@ class PostIntegrationTest {
     }
 
     /**
-     * 작성자가 탈퇴해도 글은 남고 닉네임만 비어 나갑니다.
+     * 작성자가 탈퇴해도 글은 남고 닉네임과 프로필 사진만 비어 나갑니다.
      *
      * <p>{@code posts.user_id} 가 {@code ON DELETE SET NULL} 이라 글이 함께 지워지지 않습니다.
      * 대신 주인이 없어져 아무도 고칠 수 없습니다.
@@ -637,6 +669,8 @@ class PostIntegrationTest {
     @Test
     void keepsPostAfterTheWriterLeaves() throws Exception {
         long postId = write("CHAT", "남는 글", "본문", null, null);
+        jdbcTemplate.update("UPDATE users SET profile_image_url = ? WHERE user_id = ?",
+                PROFILE_IMAGE_URL, WRITER_ID);
 
         jdbcTemplate.update("DELETE FROM users WHERE user_id = ?", WRITER_ID);
 
@@ -644,6 +678,7 @@ class PostIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("남는 글"))
                 .andExpect(jsonPath("$.nickname").doesNotExist())
+                .andExpect(jsonPath("$.profileImageUrl").doesNotExist())
                 .andExpect(jsonPath("$.mine").value(false));
 
         currentUser.login(OTHER_WRITER_ID);
@@ -755,6 +790,7 @@ class PostIntegrationTest {
         mockMvc.perform(get(POST_URL, postId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nickname").doesNotExist())
+                .andExpect(jsonPath("$.profileImageUrl").doesNotExist())
                 .andExpect(jsonPath("$.collectionId").doesNotExist())
                 .andExpect(jsonPath("$.collectionTitle").value("내 컬렉션"))
                 .andExpect(jsonPath("$.relatedPerfumes[*].perfumeId")

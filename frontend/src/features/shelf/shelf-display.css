@@ -108,7 +108,7 @@
      * 상세 패널 바탕. 벽 위에 얹혀서 아주 옅게 비칩니다 — 밑으로 병이 더 이어진다는 걸
      * 알 수 있을 만큼만 투명하게 둡니다(흐림은 .shelf-panel 의 backdrop-filter).
      */
-    --panel: oklch(0.948 0.009 82 / 0.82);
+    --panel: oklch(0.948 0.009 82);
     --hairline: oklch(0.53 0.016 62 / 0.34);
     --depth: oklch(0.31 0.025 59 / 0.32);
     --highlight: oklch(0.98 0.005 86 / 0.72);
@@ -452,12 +452,17 @@
   /*
    * 진열장 치수 — 벽감 면이 보이는 깊이와 병이 서는 자리.
    *
-   * 진열장 상자가 아니라 section 에 둡니다. 병 트랙과 매달린 이름표가 같은 좌우
-   * 기준(--track-inset)을 씁니다.
+   * 창(.shelf-window)에 둡니다. 병 트랙과 매달린 이름표가 같은 좌우 기준(--track-inset)을
+   * 쓰고, **벽감도 같은 값으로 면을 그립니다.**
+   *
+   * NOTE: 트랙(.shelf-case)에 두면 벽감이 닿지 못합니다. 벽감은 트랙 밖에 한 벌만 서므로
+   *   거기 두면 이 값들을 못 받아 .shelf-face 의 `inset: var(--bevel)` 이 무효가 되고,
+   *   천장 · 옆벽 · 바닥이 전부 0 으로 찌부러져 벽을 판 구멍이 아니라 납작한 색판이 됩니다.
+   *
    * 치수는 1920 규격대로 끝자리를 0 또는 5 로 맞춥니다(입구 테두리 같은 선 굵기와
    * 글자 크기는 예외).
    */
-  .shelf-case {
+  .shelf-window {
     /* 입구 테두리 두께. 두꺼우면 벽을 판 자리가 아니라 액자 틀로 읽힙니다 */
     --bevel: 3px;
     /* 천장 · 좌우 벽 · 바닥이 보이는 깊이 */
@@ -1719,6 +1724,79 @@
     text-transform: uppercase;
   }
 
+  /*
+   * 켜진 메뉴판 — **채움**으로 알립니다 (S15P21E203-417).
+   *
+   * 테두리 한 줄로 켜면 종이 위에서 눈에 안 띄고, 켜질 때만 테두리가 생기면 판이 들썩입니다
+   * (예전 머리말 칩에 적혀 있던 것과 같은 까닭입니다). 종이 층(.shelf-plaque-paper)의 색만
+   * 바꾸므로 판의 크기 · 모양 · 테두리 네 겹은 그대로입니다.
+   */
+  .shelf-scope .shelf-plaque[data-active] .shelf-plaque-paper {
+    /*
+     * 먹색을 그대로 채우면 판이 검게 막혀 답답합니다. 종이에 먹을 조금만 섞어 한 단만
+     * 진하게 둡니다 — 글자는 먹색 그대로라 대비가 유지됩니다.
+     */
+    background: color-mix(in oklch, var(--shelf-ink) 13%, var(--paper));
+  }
+  .shelf-scope .shelf-plaque[data-active] .shelf-plaque-caption {
+    color: var(--shelf-ink);
+    opacity: 0.75;
+  }
+
+  /*
+   * 누운 판 — 왼쪽 분류 메뉴판 (S15P21E203-417).
+   *
+   * 세로로 길던 현판은 이름 · 줄 · 개수 · 영문을 **위에서 아래로** 쌓았습니다. 판이 낮게 누우면
+   * 그 기둥이 판 밖으로 넘칩니다(210 x 135 에서 글자 상자 97 에 내용 130). 가로로 남는 폭을
+   * 쓰도록, 이름과 개수를 **한 줄에** 세우고 영문을 그 아래에 깝니다. 가르던 줄은 그대로 두되
+   * 가로선에서 **세로선**으로 세워 둘을 가릅니다 — 메뉴판의 구분선이 됩니다.
+   *
+   * 조각은 그대로입니다(PlaqueBoard) — 자리만 grid 로 다시 잡습니다.
+   */
+  .shelf-scope .shelf-plaque[data-wide] .shelf-plaque-text {
+    /* 좌우 · 아래로 숨 쉴 자리. 위는 핀 아래에서 시작합니다(--plaque-crown) */
+    inset: var(--plaque-crown) calc(var(--plaque-inset) + 12px)
+      calc(var(--plaque-inset) + 12px);
+    display: grid;
+    grid-template-areas:
+      'label rule count'
+      'caption caption caption';
+    grid-template-columns: auto auto auto;
+    align-items: center;
+    justify-content: center;
+    column-gap: 12px;
+    row-gap: 2px;
+  }
+  .shelf-scope .shelf-plaque[data-wide] .shelf-plaque-label {
+    grid-area: label;
+  }
+  .shelf-scope .shelf-plaque[data-wide] .shelf-plaque-count {
+    grid-area: count;
+  }
+  /* 가로선을 세로선으로 — 폭 1, 높이는 글자 키에 맞춥니다 */
+  .shelf-scope .shelf-plaque[data-wide] .shelf-plaque-rule {
+    grid-area: rule;
+    width: 1px;
+    height: 1.4em;
+  }
+  .shelf-scope .shelf-plaque[data-wide] .shelf-plaque-caption {
+    grid-area: caption;
+    width: auto;
+    margin-top: 0;
+  }
+  /*
+   * 분류 이름은 **한 줄로만** 섭니다. 두 줄이 되면 판 높이가 셋으로 나눈 자리를 넘겨 메뉴가
+   * 어긋납니다. 좁아지면 접는 대신 글자가 작아지도록, 판 폭에 매는 비율을 세로 판(0.16)보다
+   * 낮추고 아래끝을 11px 로 둡니다 — 이름 · 구분선 · 개수가 한 줄에 다 서는 비율입니다.
+   */
+  .shelf-scope .shelf-plaque[data-wide] .shelf-plaque-label {
+    white-space: nowrap;
+    font-size: clamp(11px, calc(var(--plaque-w) * 0.12), 22px);
+  }
+  .shelf-scope .shelf-plaque[data-wide] .shelf-plaque-count {
+    font-size: clamp(14px, calc(var(--plaque-w) * 0.17), 28px);
+  }
+
   /* 좁은 현판(한 칸 기둥인 좁은 태블릿 · 폭 70~95) — 영문 설명을 뺍니다 */
   .shelf-scope .shelf-plaque:not([data-detail='full']) .shelf-plaque-caption {
     display: none;
@@ -1779,34 +1857,17 @@
   }
 
   /*
-   * 상세 패널 — 종이 위에 얹힌 반투명 카드.
-   * backdrop-filter 로 뒤가 살짝 비쳐서 유리처럼 보입니다.
+   * 상세 패널 — 벽 오른쪽에 나란히 서는 카드.
+   *
+   * 벽을 가리지 않고 그 옆을 차지하므로 뒤에 비칠 것이 없습니다. 바탕은 불투명하고
+   * backdrop-filter 도 두지 않습니다 — 흐림은 화면 배율 2배의 1920 에서 680 x 1210 픽셀을
+   * 매 프레임 다시 계산하던 값이라, 걷어 내면 벽이 흐를 때의 부담도 같이 사라집니다.
    */
   .shelf-scope .shelf-panel {
     background: var(--panel);
     box-shadow:
       0 18px 32px -20px var(--depth),
       inset 0 1px var(--highlight);
-    backdrop-filter: blur(4px);
-    /*
-     * 벽이 멈추면 흐림이 서서히 돌아옵니다. 한 프레임에 돌아오면 뚝 흐려져 눈에 걸립니다.
-     * 120ms 늦게 시작합니다 — 서는 순간에는 벽감을 다시 그리고 창 끝 이웃이 사라지기 시작해서,
-     * 패널 뒤 흐림 계산까지 같은 프레임에 몰리지 않게 합니다.
-     */
-    transition: backdrop-filter 200ms ease-out 120ms;
-  }
-  /*
-   * 벽이 흐르는 동안(ShelfWall 이 패널 자리에 data-moving 을 겁니다)에는 흐림을 끕니다.
-   * 패널 뒤 벽이 매 프레임 바뀌어 흐림을 1초에 60번 새로 계산하게 되는데, 화면 배율
-   * 2배의 1920 화면에서는 680 x 1210 픽셀입니다. 끌 때는 전환 없이 바로 끕니다 —
-   * 움직이기 시작한 순간부터 가벼워야 합니다. 멈춰 있을 때의 모습은 그대로입니다.
-   *
-   * 무대가 바뀌며 이름표가 바람에 들리는 동안(useTagSwing 이 같은 자리에 data-gust 를 겁니다)도
-   * 같습니다 — 패널 밑 태그가 매 프레임 움직입니다.
-   */
-  .shelf-scope :is([data-moving], [data-gust]) > .shelf-panel {
-    backdrop-filter: none;
-    transition: none;
   }
 
   /* 칩·검색창·드롭다운의 공통 바탕. 위쪽 1px 하이라이트가 살짝 솟은 느낌을 냅니다. */

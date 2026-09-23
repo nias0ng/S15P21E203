@@ -39,7 +39,8 @@ export function MapSearchModal({ keyword, onClose, onSelect }: Props) {
       open={keyword !== null}
       onClose={onClose}
       title="지도에서 찾기"
-      className="mt-25 mb-auto w-[min(760px,calc(100vw-40px))]"
+      // 760(=190×4). 좁은 창의 상한은 `Modal` 의 `max-w` 가 이미 같은 값으로 잡습니다
+      className="mt-25 mb-auto w-190"
     >
       {/* 닫혀 있으면 내용을 안 그립니다 — 그래야 다음에 열 때 족자가 다시 풀립니다 */}
       {keyword !== null && (

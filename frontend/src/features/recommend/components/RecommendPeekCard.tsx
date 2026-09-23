@@ -8,7 +8,7 @@ import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import type { PersonalRecommendation } from '../types'
 
-/** 접었을 때 화면에 남는 손잡이 띠의 폭. 아래 -translate-x-72 와 짝입니다 */
+/** 접었을 때 화면에 남는 손잡이 띠의 폭. 아래 translate-x-72 와 짝입니다 */
 const BODY_WIDTH = 'w-72'
 
 /** 개인화 맞춤 추천 카드 (REC-12 · REC-13). 묻지 않았는데 온 것이라 아예 치울 수 있어야 합니다. */
@@ -63,15 +63,15 @@ export function RecommendPeekCard({
     */
     <div
       ref={rootRef}
-      className="pointer-events-none fixed top-1/2 left-0 z-20 -translate-y-1/2"
+      className="pointer-events-none fixed top-[calc(var(--header-h)_+_var(--spacing)*5)] right-0 z-20"
     >
       <div
         className={cn(
           'pointer-events-auto',
-          'border-line/50 bg-surface-card shadow-raised flex items-stretch',
-          'rounded-r-panel overflow-hidden border border-l-0',
+          'border-line/50 bg-surface-card shadow-raised flex flex-row-reverse items-stretch',
+          'overflow-hidden border border-r-0',
           'transition-transform duration-200 ease-out',
-          open ? 'translate-x-0' : '-translate-x-72',
+          open ? 'translate-x-0' : 'translate-x-72',
         )}
       >
         <div
@@ -84,7 +84,8 @@ export function RecommendPeekCard({
           className={cn(
             BODY_WIDTH,
             'shrink-0 space-y-4 p-5 outline-none',
-            'max-h-[calc(100dvh-3rem)] overflow-y-auto',
+            // 위아래로 남기는 24씩. `--spacing` 을 곱해 다른 상자와 같은 비율로 줄입니다
+            'max-h-[calc(100dvh-var(--header-h)-var(--spacing)*12)] overflow-y-auto',
           )}
         >
           <div className="space-y-1 text-center">
@@ -103,17 +104,14 @@ export function RecommendPeekCard({
             className={cn(
               'block space-y-2 rounded-md p-1 text-center',
               'focus-visible:ring-accent outline-none focus-visible:ring-2',
-              'group',
             )}
           >
+            {/* 향수병은 배경이 투명한 PNG 라 상자를 그리지 않습니다 — 테두리 · 바탕 둘 다 */}
             <Thumbnail
               src={thumbnailUrl}
               fallback="이미지"
               fit="contain"
-              className={cn(
-                'bg-surface-veil rounded-card h-56 w-full border-transparent p-3',
-                'group-hover:shadow-card transition-shadow duration-200 ease-out',
-              )}
+              className="rounded-card h-56 w-full border-transparent bg-transparent p-3"
             />
             <span className="block space-y-0.5">
               <span className="text-ink text-title block font-serif font-semibold">
@@ -142,7 +140,7 @@ export function RecommendPeekCard({
         </div>
 
         {/* 닫기와 펼치기를 따로 둡니다 — 한 단추면 치우려다 펼쳐집니다 */}
-        <div className="border-line/50 flex w-12 shrink-0 flex-col border-l">
+        <div className="border-line/50 flex w-12 shrink-0 flex-col border-r">
           <button
             type="button"
             aria-label="향수 추천 카드 닫기"
@@ -184,7 +182,7 @@ export function RecommendPeekCard({
               aria-hidden
               className={cn(
                 'text-body transition-transform duration-200 ease-out',
-                open && 'rotate-180',
+                !open && 'rotate-180',
               )}
             >
               ›

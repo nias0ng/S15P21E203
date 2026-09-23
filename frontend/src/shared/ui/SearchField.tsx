@@ -52,6 +52,12 @@ const PILL_FOCUS: Record<SearchFieldTone, string> = {
 /**
  * 실행 단추의 지름. 알약 높이에 맞춰 갈립니다.
  *
+ * NOTE: 아래 수치는 모두 **1920 기준**입니다 — 치수 유틸리티가 `--spacing` 을 타
+ * 1536 에서 80%(56 → 44.8 · 50 → 40 · 42 → 33.6)까지 줄어든 뒤 멈춥니다. 그 구간에서는
+ * 알약과 단추가 같은 비율로 줄어 둘의 짝이 그대로입니다 — 아래 NOTE 가 말하는 **단계**
+ * (`SceneSearchBar` 의 `SIZE`)에서는 알약만 갈아타므로 비가 움직입니다. `scene` 의 50 도
+ * 이 파일이 아니라 거기 있습니다.
+ *
  * NOTE: `scene` 의 알약은 목록(56)보다 낮은 50 이라, 두 방이 같은 42 를 쓰면 메인에서만
  * 위아래 숨이 4 밖에 안 남아 단추가 알약을 꽉 채웁니다. 알약이 42 · 40 으로 줄어드는
  * 좁은 창에서는 아예 같은 높이가 됩니다 — 그래서 단계마다 같이 줄입니다.
@@ -68,7 +74,7 @@ const SUBMIT_SIZE: Record<SearchFieldTone, string> = {
  * NOTE: 모달에는 쓰지 마세요 — 모달 폭이 510 이라 아무 일도 하지 않고, 모달이
  * 넓어지면 검색창만 안 따라와 어긋납니다.
  */
-export const SEARCH_FIELD_LIST_WIDTH = 'max-w-[540px]'
+export const SEARCH_FIELD_LIST_WIDTH = 'max-w-135'
 
 /**
  * 검색 입력 + 둥근 보내기 단추 (A33 · A34 · A35 · C02 공용).

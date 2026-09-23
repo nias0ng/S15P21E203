@@ -38,6 +38,9 @@ class ReviewIntegrationTest {
     private static final String PERFUME_REVIEWS_URL = "/api/v1/perfumes/1/reviews";
     private static final String REVIEWS_URL = "/api/v1/reviews";
 
+    private static final String PROFILE_IMAGE_URL =
+            "/api/v1/users/profile-images/2026/09/0a1b2c3d-4e5f-6071-8293-a4b5c6d7e8f9.jpg";
+
     @Autowired
     MockMvc mockMvc;
 
@@ -104,6 +107,30 @@ class ReviewIntegrationTest {
         mockMvc.perform(get(PERFUME_REVIEWS_URL))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reviews[0].mine").value(false));
+    }
+
+    /**
+     * 목록에 작성자 프로필 사진 주소가 함께 실립니다.
+     *
+     * <p>남의 프로필을 따로 조회할 길이 없어, 여기서 주지 않으면 화면이 작성자 아바타 자리를 비운
+     * 채 둬야 합니다. 값 규칙은 {@code /users/me} 와 같습니다 — 사진을 설정하지 않았으면
+     * {@code null} 이고 화면이 기본 아바타를 보여줍니다.
+     */
+    @Test
+    void listsAuthorProfileImage() throws Exception {
+        createReview("첫 후기", "향이 은은하고 잔향이 오래 남습니다.", "[\"SPRING\"]");
+
+        mockMvc.perform(get(PERFUME_REVIEWS_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reviews[0].profileImageUrl").doesNotExist());
+
+        jdbcTemplate.update(
+                "UPDATE users SET profile_image_url = ? WHERE user_id = 1", PROFILE_IMAGE_URL);
+
+        mockMvc.perform(get(PERFUME_REVIEWS_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reviews[0].nickname").value("첫째"))
+                .andExpect(jsonPath("$.reviews[0].profileImageUrl").value(PROFILE_IMAGE_URL));
     }
 
     @Test

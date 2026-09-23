@@ -38,7 +38,7 @@ export function GlobalHeader({ tone = 'surface' }: { tone?: HeaderTone }) {
         tone === 'night' && 'scent-night-header',
       )}
     >
-      <div className="max-w-frame mx-auto grid h-22.5 grid-cols-[auto_1fr_auto] items-center gap-5 px-[var(--gutter)]">
+      <div className="max-w-frame mx-auto grid h-[var(--header-h)] grid-cols-[auto_1fr_auto] items-center gap-5 px-[var(--gutter)]">
         <BrandMark ink={ink} />
         <PrimaryNav isLoggedIn={isLoggedIn} ink={ink} />
 

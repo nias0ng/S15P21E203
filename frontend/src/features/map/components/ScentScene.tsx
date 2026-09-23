@@ -132,11 +132,16 @@ type Props = {
    */
   hideEngineSearch?: boolean
   /**
-   * 앱이 3D 위에 겹쳐 올린 것(유리판 헤더)이 가리는 위쪽 높이(px).
-   * 엔진은 3D 를 그 뒤까지 그대로 그리고, 검색창 · 정보 블록 · 해도만 그 아래로 내리며
-   * 향수 고르기의 12개를 그 띠에 세우지 않습니다 (paperboat `hostTop`).
+   * 앱이 3D 위에 겹쳐 올린 것(유리판 헤더)이 가리는 위쪽 높이 — **CSS 길이**입니다
+   * (`'var(--header-h)'`). 엔진은 3D 를 그 뒤까지 그대로 그리고, 검색창 · 정보 블록 ·
+   * 해도만 그 아래로 내리며 향수 고르기의 12개를 그 띠에 세우지 않습니다 (paperboat `hostTop`).
+   *
+   * ⚠️ **px 숫자가 아닙니다.** 헤더 높이는 `--spacing` 을 타 화면 폭 · 배율을 따라 줄어듭니다
+   * (1920 에서 90 · 1536 에서 72). 90 을 숫자로 넘기면 1536 에서 18px 이 어긋나 검색창 ·
+   * 해도가 헤더 밑에 붕 뜹니다. 여기로 넘긴 길이를 **상자 하나에 재어** px 로 바꿔 엔진에
+   * 넘기고, 화면이 바뀌면 다시 넘깁니다 (아래 probe).
    */
-  coveredTop?: number
+  coveredTop?: string
   /**
    * 엔진의 하늘이 밤인지 알려 줍니다 — 엔진이 붙을 때 한 번, 시간대가 바뀔 때마다.
    * 엔진은 iframe 문서에 `<html data-time="dusk|night">` 을 답니다 (없으면 낮 · paperboat 불변식 25).
@@ -189,7 +194,7 @@ export function ScentScene({
   onCloseCabin,
   onSearch,
   hideEngineSearch = false,
-  coveredTop = 0,
+  coveredTop = '0px',
   onNightChange,
   onChartChange,
   onBoot,
@@ -197,7 +202,29 @@ export function ScentScene({
   className,
 }: Props) {
   const frame = useRef<HTMLIFrameElement>(null)
+  const probe = useRef<HTMLDivElement>(null)
+  /** 붙어 있는 엔진 (`window.PB`). 아래 두 효과가 나눠 쓰므로 ref 에 둡니다 */
+  const handle = useRef<EngineHandle | null>(null)
   const [ready, setReady] = useState(false)
+
+  /**
+   * 헤더가 가리는 높이를 **잰** px (위 `coveredTop` 머리말).
+   *
+   * 값이 아니라 상자를 재는 까닭: `--header-h` 는 `calc(var(--spacing) * 22.5)` 라
+   * `getComputedStyle` 이 계산식을 그대로 돌려줍니다. 상자 하나를 그 높이로 세워 두면
+   * 화면 폭 · 배율이 바뀔 때마다 ResizeObserver 가 새 px 을 물어옵니다.
+   */
+  const [covered, setCovered] = useState(0)
+  useEffect(() => {
+    const el = probe.current
+    if (!el) return
+    // `observe()` 는 붙는 순간 한 번 부르므로 첫 값도 여기로 옵니다
+    const watch = new ResizeObserver(() =>
+      setCovered(Math.round(el.getBoundingClientRect().height)),
+    )
+    watch.observe(el)
+    return () => watch.disconnect()
+  }, [coveredTop])
 
   // 엔진에는 처리기를 한 번만 꽂습니다. 렌더마다 새로 만들어지는 props 는 여기서 최신 것으로 부릅니다
   const latest = useRef({
@@ -206,7 +233,7 @@ export function ScentScene({
     onOpenCabin,
     onCloseCabin,
     onSearch,
-    coveredTop,
+    covered,
     onNightChange,
     onChartChange,
     onBoot,
@@ -219,13 +246,28 @@ export function ScentScene({
       onOpenCabin,
       onCloseCabin,
       onSearch,
-      coveredTop,
+      covered,
       onNightChange,
       onChartChange,
       onBoot,
       onMove,
     }
   })
+
+  /*
+   * 창 크기 · 화면 배율이 바뀌어 헤더가 줄면 엔진에도 다시 알립니다 — 안 알리면 검색창 ·
+   * 해도가 옛 헤더 높이에 남습니다. `PB.apply()` 는 **바뀐 값만** 다시 거는 손잡이라
+   * (엔진 `main.js` 의 `applyUiEve`) 같은 값으로 불러도 아무 일도 하지 않습니다.
+   *
+   * ⚠️ `ready` 를 같이 보는 것은 **엔진이 붙는 순간**을 잡으려는 것입니다 — 그때 `covered`
+   *   는 이미 정해져 있어 이 효과가 다시 돌 일이 없습니다.
+   */
+  useEffect(() => {
+    const engine = handle.current
+    if (!engine) return
+    engine.params.hostTop = covered
+    engine.apply()
+  }, [covered, ready])
 
   /*
    * 엔진 알약 숨기기. 엔진이 붙은 뒤(`ready`)에 겁니다 — 그 전에는 iframe 문서에
@@ -256,7 +298,11 @@ export function ScentScene({
        * 보이지 않아도 금지 띠는 그대로입니다.
        *
        * 재는 자리와 앱 검색창의 자리가 같다는 전제입니다 — `SceneSearchBar` 가
-       * 일부러 엔진 값에 맞춰 서 있습니다(그 컴포넌트 머리말). 둘 다 y 120~170.
+       * 일부러 엔진 값에 맞춰 서 있습니다(그 컴포넌트 머리말). 1920 에서 둘 다 y 120~170.
+       *
+       * ⚠️ 1536 에서는 앱 알약만 `--spacing` 을 타 96~136 으로 줄고 엔진 상자는 102~152 에
+       *   남습니다. 금지 띠가 앱 알약보다 **아래로 넓은** 쪽이라 카드는 그대로 비켜섭니다 —
+       *   반대로(엔진이 더 위) 갈라지면 카드가 앱 알약 뒤로 올라옵니다.
        *
        * ⚠️ 칸은 `position:absolute` 라 되살아나도 다른 엔진 UI 를 안 밀고,
        * `pointer-events:none` 이라 3D 도 안 가립니다 — 둘 다 화면에서 확인했습니다.
@@ -305,6 +351,7 @@ export function ScentScene({
       }
       if (engine === attached) return
       attached = engine
+      handle.current = engine
 
       // 놓친 부팅 신호 따라잡기 — 이미 받은 단계는 커튼 쪽에서 무시하므로 겹쳐도 됩니다
       const snapshot = engine.boot?.()
@@ -317,7 +364,7 @@ export function ScentScene({
       // 엔진의 자리표시 헤더(v0.66.0)는 끕니다 — 무대를 헤더만큼 줄이는 방식이라 3D 가 앱의 유리판 헤더
       // 뒤까지 안 깔립니다. 대신 앱 헤더가 가리는 높이를 알려 검색창 · 해도를 그 아래로 내립니다
       engine.params.siteHeader = 0
-      engine.params.hostTop = latest.current.coveredTop
+      engine.params.hostTop = latest.current.covered
       engine.apply()
       engine.setHost({
         openDetail: (perfume) => latest.current.onOpenDetail(perfume),
@@ -403,6 +450,7 @@ export function ScentScene({
       window.clearTimeout(timer)
       timeWatch?.disconnect()
       attached?.setHost(null)
+      handle.current = null
       // 엔진이 사라집니다 — 커튼은 이제 혼자 차오릅니다 (잠수로 떠나는 길이 바로 이 경로입니다)
       useDiveStore.getState().setEngine(null)
       setBoatAnchorSource(null)
@@ -410,16 +458,30 @@ export function ScentScene({
   }, [])
 
   return (
-    // 준비되면 짧게 드러납니다 — 로딩 커튼이 걷힐 때 그 뒤에서 이미 그려져 있고, 커튼 없이 뜰 때도 툭 나타나지 않습니다
-    // 주소(src)는 위 effect 가 두 장 뒤에 넣습니다
-    <iframe
-      ref={frame}
-      title="향 지도"
-      className={cn(
-        'block size-full border-0 transition-opacity duration-300',
-        ready ? 'opacity-100' : 'opacity-0',
-        className,
-      )}
-    />
+    <>
+      {/*
+        헤더가 가리는 높이를 재는 자 (위 `covered` 머리말). 폭이 0 이고 안 보이므로 3D 도
+        다른 UI 도 가리지 않습니다.
+        ⚠️ `display:none` 은 안 됩니다 — 상자가 없어져 ResizeObserver 가 불리지 않습니다.
+      */}
+      <div
+        ref={probe}
+        aria-hidden
+        className="pointer-events-none invisible absolute top-0 left-0 w-0"
+        style={{ height: coveredTop }}
+      />
+
+      {/* 준비되면 짧게 드러납니다 — 로딩 커튼이 걷힐 때 그 뒤에서 이미 그려져 있고, 커튼 없이 뜰 때도 툭 나타나지 않습니다 */}
+      {/* 주소(src)는 위 effect 가 두 장 뒤에 넣습니다 */}
+      <iframe
+        ref={frame}
+        title="향 지도"
+        className={cn(
+          'block size-full border-0 transition-opacity duration-300',
+          ready ? 'opacity-100' : 'opacity-0',
+          className,
+        )}
+      />
+    </>
   )
 }
