@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -43,7 +44,7 @@ const result = (overrides: Partial<RecommendResult> = {}): RecommendResult => ({
   ...overrides,
 })
 
-const renderModal = () =>
+const renderModal = (onClose = vi.fn()) => {
   render(
     <QueryClientProvider
       client={
@@ -51,10 +52,12 @@ const renderModal = () =>
       }
     >
       <MemoryRouter>
-        <RecommendModal query={QUERY} onClose={vi.fn()} />
+        <RecommendModal query={QUERY} onClose={onClose} />
       </MemoryRouter>
     </QueryClientProvider>,
   )
+  return onClose
+}
 
 beforeEach(() => api.getRecommendation.mockReset())
 
@@ -100,5 +103,37 @@ describe('RecommendModal', () => {
       await screen.findByText(/향을 말씀하신 것으로 읽지 못해/),
     ).toBeInTheDocument()
     expect(screen.queryByText(/조건이 넓어/)).not.toBeInTheDocument()
+  })
+
+  /*
+    판이 3D 바다 위에 떠 있어 배경이 화면의 대부분입니다. 결과를 읽다 옆을 잘못 누르면 다섯
+    장이 통째로 사라지고, 다시 보려면 검색어를 처음부터 다시 적어야 합니다.
+  */
+  it('배경을 눌러도 닫지 않는다', async () => {
+    api.getRecommendation.mockResolvedValue(result())
+
+    const onClose = renderModal()
+    const dialog = (
+      await screen.findByRole('heading', { name: '추천 결과' })
+    ).closest('dialog')!
+
+    fireEvent.click(dialog)
+
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  // 배경을 막는 것은 잘못 누르는 것을 막으려는 것이지 가두려는 것이 아닙니다
+  it('[×] 와 Esc 로는 닫힌다', async () => {
+    api.getRecommendation.mockResolvedValue(result())
+
+    const onClose = renderModal()
+    await userEvent.click(await screen.findByRole('button', { name: '닫기' }))
+    expect(onClose).toHaveBeenCalledOnce()
+
+    const dialog = screen
+      .getByRole('heading', { name: '추천 결과' })
+      .closest('dialog')!
+    fireEvent(dialog, new Event('cancel', { cancelable: true }))
+    expect(onClose).toHaveBeenCalledTimes(2)
   })
 })

@@ -67,4 +67,41 @@ describe('Modal', () => {
 
     expect(onClose).not.toHaveBeenCalled()
   })
+
+  /*
+   * Esc 는 `<dialog>` 의 `cancel` 로 옵니다. jsdom 폴리필은 글쇠를 안 받으므로 그 사건을
+   * 바로 보냅니다 — 검사하는 것은 "Esc 가 왔을 때 판이 어떻게 하는가" 입니다.
+   */
+  const esc = (dialog: HTMLElement) =>
+    fireEvent(dialog, new Event('cancel', { cancelable: true }))
+
+  it('Esc 를 누르면 닫습니다', () => {
+    const onClose = vi.fn()
+    render(
+      <Modal open onClose={onClose} title="추천 결과">
+        <p>본문</p>
+      </Modal>,
+    )
+
+    esc(dialogOf('추천 결과'))
+
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  /*
+   * 배경을 막는 것은 잘못 누르는 것을 막으려는 것이지 가두려는 것이 아닙니다. Esc 는 모달에서
+   * 빠져나가는 표준 길이라, 여기까지 막으면 글쇠만 쓰는 사람이 갇힙니다.
+   */
+  it('배경을 막아도 Esc 로는 닫힙니다', () => {
+    const onClose = vi.fn()
+    render(
+      <Modal open onClose={onClose} closeOnBackdrop={false} title="추천 결과">
+        <p>본문</p>
+      </Modal>,
+    )
+
+    esc(dialogOf('추천 결과'))
+
+    expect(onClose).toHaveBeenCalledOnce()
+  })
 })

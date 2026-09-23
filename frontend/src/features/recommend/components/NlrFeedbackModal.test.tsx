@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 
@@ -88,6 +88,24 @@ describe('NlrFeedbackModal', () => {
 
       expect(나가기묻는창()).toBeInTheDocument()
       // 아직 끝난 것이 아닙니다 — 취소하면 적던 자리로 돌아가야 합니다
+      expect(usePendingFeedbackStore.getState().pending).not.toBeNull()
+    })
+
+    /*
+      Esc 는 [×] 와 같은 길로 옵니다(`Modal` 의 onClose). 글을 적다 글쇠를 잘못 누르는 쪽이
+      오히려 흔해서, 이쪽도 물어야 합니다. jsdom 폴리필은 글쇠를 안 받으므로 `<dialog>` 의
+      `cancel` 을 바로 보냅니다.
+    */
+    it('Esc 도 바로 닫지 않고 먼저 묻는다', async () => {
+      renderModal()
+      await 한마디를적는다()
+
+      const dialog = screen
+        .getByRole('heading', { name: '추천은 어떠셨나요' })
+        .closest('dialog')!
+      fireEvent(dialog, new Event('cancel', { cancelable: true }))
+
+      expect(나가기묻는창()).toBeInTheDocument()
       expect(usePendingFeedbackStore.getState().pending).not.toBeNull()
     })
 
