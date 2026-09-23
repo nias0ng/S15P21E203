@@ -105,7 +105,11 @@ export function PerfumeCard({
         )}
       </div>
 
-      <div className="min-h-13.5 w-full space-y-0.5">
+      {/*
+        좌우 3px 은 `px-[3px]` 이 아니라 기준자(`--spacing`)를 탑니다 — 박아 두면
+        1536 에서 판과 사진은 0.8 배로 줄어드는데 이 들여쓰기만 안 줄어듭니다.
+      */}
+      <div className="min-h-13.5 w-full space-y-0.5 px-0.75">
         {/* 이름이 한 줄이어도 두 줄 높이를 차지합니다 — 격자가 어긋납니다 */}
         <p className="text-ink text-body line-clamp-2 font-serif leading-tight font-semibold">
           {name}
