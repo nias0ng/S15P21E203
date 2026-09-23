@@ -74,6 +74,13 @@
      */
     --pill-selected: #cfe1eb;
     --pill-selected-ink: var(--night-abyss); /* 13.8:1 */
+
+    /*
+     * 물결(`shared/ui/WaterCaustics`)의 빛. 빛줄기는 빛무리와 같은 물빛이고, 꼭짓점의
+     * 뜨거운 심만 거의 흰색입니다 — 심까지 물빛이면 그물이 빛이 아니라 무늬로 읽힙니다.
+     */
+    --caustics-glow: var(--color-shimmer);
+    --caustics-core: #f2f9ff;
   }
 
   /*

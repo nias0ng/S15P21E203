@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Outlet, useLocation, useMatches } from 'react-router'
 
 import { GlobalHeader, type HeaderTone } from '@/app/layouts/GlobalHeader'
@@ -40,19 +41,29 @@ function usePageWidth(): PageWidth {
 }
 
 /**
- * 어두운 방을 켜는 화면인지. 라우트의 `handle.night` 로 정합니다 — 경로 배열과
- * `pathname` 을 맞추면 `/notes/:noteId` 같은 동적 경로가 안 걸립니다.
+ * 라우트의 `handle` 에 켜 둔 화면 장치. 어두운 방(`night`) · 물결(`caustics`).
+ * 경로 배열과 `pathname` 을 맞추면 `/notes/:noteId` 같은 동적 경로가 안 걸립니다.
  */
-function useIsNight(): boolean {
+function useRouteFlag(flag: 'night' | 'caustics'): boolean {
   const matches = useMatches()
   for (let at = matches.length - 1; at >= 0; at -= 1) {
     const handle: unknown = matches[at]?.handle
-    if (typeof handle === 'object' && handle !== null && 'night' in handle) {
-      return handle.night === true
+    if (typeof handle === 'object' && handle !== null && flag in handle) {
+      return (handle as Record<string, unknown>)[flag] === true
     }
   }
   return false
 }
+
+/*
+ * three 가 무거워 물결이 있는 화면에 들어올 때 따로 받아 옵니다. 그동안은 방의 그라데이션만
+ * 보이고, 물결은 첫 장이 그려진 뒤 서서히 드러납니다.
+ */
+const WaterCaustics = lazy(() =>
+  import('@/shared/ui/WaterCaustics').then((module) => ({
+    default: module.WaterCaustics,
+  })),
+)
 
 /**
  * 모든 화면의 공통 껍데기. 넓게 쓰는 화면은 음수 마진으로 틀을 깨고 나가지 말고
@@ -66,7 +77,8 @@ export function RootLayout() {
    */
   const pathname = useLocation().pathname
   const onPaper = pathname === ROUTES.MY_SHELF
-  const onNight = useIsNight()
+  const onNight = useRouteFlag('night')
+  const onCaustics = useRouteFlag('caustics')
   const width = usePageWidth()
   const sky = useSceneSkyStore((state) => state.sky)
   // bleed(3D 향 지도)의 유리판 헤더는 글자색이 뒤의 하늘을 따릅니다
@@ -89,8 +101,20 @@ export function RootLayout() {
       className={cn(
         'flex min-h-dvh flex-col sm:overflow-x-clip',
         onNight && 'scent-night',
+        // 물결을 방의 바탕 바로 위 · 본문 아래에 끼우려고 여기서 겹을 새로 엽니다
+        onCaustics && 'isolate',
       )}
     >
+      {onCaustics && (
+        <Suspense fallback={null}>
+          {/*
+            헤더는 방과 같은 그림을 불투명하게 나눠 그려 물결을 가립니다. 헤더 밑에서 물결이
+            뚝 끊기면 가로 띠가 지므로, 헤더 아래에서부터 서서히 드러냅니다.
+          */}
+          <WaterCaustics className="fixed inset-0 -z-10 [mask-image:linear-gradient(to_bottom,transparent_var(--header-h),#000_calc(var(--header-h)_+_var(--spacing)*40))]" />
+        </Suspense>
+      )}
+
       <GlobalHeader tone={tone} />
 
       <main
