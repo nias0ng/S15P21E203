@@ -253,6 +253,7 @@ import { perfumeDetailQuery } from '@/features/perfume/queries'   // X
 | `shared/ui/Pagination` | 쪽 넘김. `page` 는 **0부터**(백엔드와 같습니다) · 번호 다섯 개 · 한 쪽뿐이면 안 그립니다 |
 | `shared/ui/BottleSilhouette` | 사진이 없는 향수병 자리에 세우는 실루엣. 색은 `currentColor` 로 부르는 쪽이 정합니다 |
 | `shared/ui/DiveCurtain` | 메인에서 진열대로 넘어가는 잠수 커튼 (진열대 · 메인 담당) |
+| `shared/ui/WaterCaustics` | 물결 — 어두운 방 위에 깔리는 수면 빛 그물(three.js 셰이더). 라우트 `handle.caustics` 로 켭니다 (docs/어두운-방-유리판.md) |
 
 variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 **variant 를 추가**합니다
 (`class-variance-authority` 사용). `PrimaryButton`, `SmallButton` 같은 파생 컴포넌트를 만들지 않습니다.
