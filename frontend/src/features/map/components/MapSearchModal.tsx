@@ -39,8 +39,32 @@ export function MapSearchModal({ keyword, onClose, onSelect }: Props) {
       open={keyword !== null}
       onClose={onClose}
       title="지도에서 찾기"
-      // 760(=190×4). 좁은 창의 상한은 `Modal` 의 `max-w` 가 이미 같은 값으로 잡습니다
-      className="mt-25 mb-auto w-190"
+      /*
+        배경을 눌러도 닫지 않습니다. 판이 3D 바다 위에 떠 있어 배경이 화면의 대부분이고,
+        결과를 훑다 옆을 잘못 누르면 찾은 목록이 통째로 사라집니다 (`RecommendModal` 과 같습니다).
+      */
+      closeOnBackdrop={false}
+      /*
+        판의 재질과 모서리는 **추천 결과 모달과 한 벌입니다**. 같은 검색창에서 갈래만 바꿔
+        부른 화면이라, 하나는 바다 위 어두운 유리이고 하나는 상아색 종이면 사람이 보기에
+        다른 기능이 끼어든 것으로 읽힙니다.
+
+        ⚠⚠ **판은 굴리지 않습니다(`overflow-hidden`)** — 굴러가는 것은 아래 향수 목록 하나뿐입니다.
+        목록이 제 안에서 잘 굴러도(`max-h-127.5`) **가려진 항목이 판의 `scrollHeight` 에 그대로
+        얹혀서**, 판은 보이는 높이가 515 인데 `scrollHeight` 를 751 로 셉니다 (2026-09-23 실측).
+        그래서 막대가 하나 더 서고, 끌어내리면 내용이 아닌 **빈 자리**가 드러납니다.
+        ⚠ 클래스를 빼는 것만으로는 안 막힙니다 — `<dialog>` 는 **브라우저 기본 스타일에
+        `overflow: auto`** 가 있어 아무것도 안 적으면 그 값이 섭니다. 못 박아야 합니다.
+        ⚠ `hidden` 이 아니라 `clip` 입니다. `hidden` 은 막대만 감추고 **굴림 상자로는 남아**,
+        목록 아래쪽 항목으로 Tab 해 들어가면 브라우저가 그것을 보이려고 판을 빈 자리로
+        밀어 올립니다 (실측 : `hidden` 에서도 238px 밀림). `clip` 은 굴림 상자가 아예 아닙니다.
+        추천 결과 모달은 안쪽에 굴림 상자가 없어 이 사정이 없습니다.
+
+        NOTE: 폭은 760(=190×4) 입니다. 추천 결과(560)에 맞춰 줄이면 순위 배지와 이름 · 브랜드가
+        한 줄에 서는 이 목록에서 이름이 먼저 잘립니다(순위는 세 자리까지 갑니다).
+        좁은 창의 상한은 `Modal` 의 `max-w` 가 이미 같은 값으로 잡습니다.
+      */
+      className="scent-map-panel rounded-glass mt-25 mb-auto w-190 overflow-clip"
     >
       {/* 닫혀 있으면 내용을 안 그립니다 — 그래야 다음에 열 때 족자가 다시 풀립니다 */}
       {keyword !== null && (
@@ -126,8 +150,14 @@ function MapSearchBody({
               description="지도에는 향수 200개만 떠 있습니다. 브랜드 이름으로 다시 찾아보거나, 검색 방식을 자연어로 바꿔 보세요."
             />
           ) : (
-            // 줄 사이 15 · 줄 안쪽 15 — 화면의 여백 격자(바깥 240 : 판 안쪽 30 : 항목 사이 15)를 따릅니다
-            <ul className="max-h-127.5 space-y-3.75 overflow-y-auto pr-1.25">
+            /*
+              줄 사이 15 · 줄 안쪽 15 — 화면의 여백 격자(바깥 240 : 판 안쪽 30 : 항목 사이 15)를 따릅니다.
+
+              NOTE: `scent-thin-scroll` 은 막대를 판 안쪽에 얇게 답니다(`styles/scent-display.css`).
+              어두운 유리 위에 브라우저 기본 막대가 서면 회색 트랙과 화살표 단추가 판의 오른쪽
+              테두리처럼 읽혀 모서리가 두 겹으로 보입니다.
+            */
+            <ul className="scent-thin-scroll max-h-127.5 space-y-3.75 overflow-y-auto pr-1.25">
               {results.map((perfume) => (
                 <li key={perfume.fragranticaId}>
                   <button
