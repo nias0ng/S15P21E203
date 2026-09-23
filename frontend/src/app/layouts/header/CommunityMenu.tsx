@@ -27,7 +27,7 @@ export function CommunityMenu({ ink }: { ink: Ink }) {
         lang="en"
         onClick={() => setOpen(!open)}
         className={cn(
-          'text-heading transition-colors duration-120 ease-out',
+          'text-body transition-colors duration-120 ease-out',
           ink.text,
           ink.hover,
           FOCUS,
