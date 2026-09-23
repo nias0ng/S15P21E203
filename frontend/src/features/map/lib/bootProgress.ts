@@ -46,6 +46,21 @@ export interface SceneBootState {
    * 커튼이 그때부터 보였으므로 그 시간도 로딩 시간에 셉니다
    */
   startedAt: number
+  /**
+   * **엔진을 기다리기 시작한 때** (performance.now 기준) — 첫 장 상한(`BOOT_FRAME_TIMEOUT_MS`)을
+   * 여기서 셉니다.
+   *
+   * ⚠⚠ `startedAt` 과 나눠 두는 까닭 : 첫 진입의 `startedAt` 은 0(항해 시작)인데, 엔진은 그때
+   * 뜨기 시작하는 것이 아니라 **앱 번들이 다 와서 `ScentScene` 이 마운트된 뒤에야** iframe 에
+   * 주소가 붙습니다. 상한을 0 부터 세면 번들 받는 시간이 엔진 예산에서 그대로 까이고, 회선이
+   * 나쁜 첫 접속에서는 **엔진이 아직 오는 중인데 커튼이 걷혀** 남색 바탕에 앱 UI 만 선 화면이
+   * 드러납니다 (2026-09-23 사용자 : *"이미 UI가 다 보이는 상태로 파란색 화면에서 로딩을 시작함"* ·
+   * 첫 장을 막고 재어 보면 정확히 20.2초에 걷힙니다).
+   *
+   * ⚠ 최소 표시 시간(`minUntil`)은 그대로 `startedAt` 에서 나옵니다 — 그쪽은 "커튼이 언제부터
+   *   보였나" 라서 항해 시작(0)이 맞습니다. 두 시계는 뜻이 다릅니다.
+   */
+  watchedAt: number
   /** 이 시각 전에는 100% 가 되지 않습니다 */
   minUntil: number
   /** 단계가 끝난 시각 */
@@ -72,7 +87,12 @@ export const BOOT_FIRST_MIN_MS = 1500
 export const BOOT_MOUNT_FLOOR_MS = 700
 /** 앱 안에서 메인으로 돌아왔을 때 — 엔진은 처음부터 다시 뜨지만 캐시가 차 있어 짧게 */
 export const BOOT_REVISIT_MIN_MS = 900
-/** 첫 장(frame)이 이만큼 안 오면 걷습니다 — 3D 가 없어도 화면은 보여야 합니다 */
+/**
+ * 첫 장(frame)이 이만큼 안 오면 걷습니다 — 3D 가 없어도 화면은 보여야 합니다.
+ *
+ * ⚠⚠ 세는 기준은 **엔진을 기다리기 시작한 때**(`watchedAt`)입니다. 항해 시작(0)부터 세면
+ *   번들 받는 시간이 엔진 예산에서 까입니다 — `watchedAt` 머리말.
+ */
 export const BOOT_FRAME_TIMEOUT_MS = 20000
 /** 첫 장 뒤 배 GLB 가 이만큼 안 오면 종이배 그대로 걷습니다 */
 export const BOOT_BOAT_TIMEOUT_MS = 12000
@@ -83,6 +103,8 @@ export function createBootState(
   return {
     firstVisit,
     startedAt: firstVisit ? 0 : now,
+    // 엔진은 첫 진입이든 아니든 **지금부터** 뜹니다 (위 watchedAt 머리말)
+    watchedAt: now,
     minUntil: firstVisit
       ? Math.max(BOOT_FIRST_MIN_MS, now + BOOT_MOUNT_FLOOR_MS)
       : now + BOOT_REVISIT_MIN_MS,
@@ -133,7 +155,7 @@ export function isBootReady(state: SceneBootState, now: number): boolean {
   if (state.doneAt.frame !== undefined) {
     return now - state.doneAt.frame >= BOOT_BOAT_TIMEOUT_MS
   }
-  return now - state.startedAt >= BOOT_FRAME_TIMEOUT_MS
+  return now - state.watchedAt >= BOOT_FRAME_TIMEOUT_MS
 }
 
 /** 다 떴고 최소 표시 시간도 지났는가 — 숫자가 100 으로 가도 됩니다 */

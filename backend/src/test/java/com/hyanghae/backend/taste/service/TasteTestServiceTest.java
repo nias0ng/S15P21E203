@@ -14,6 +14,7 @@ import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.map.repository.ExplorationPoint;
 import com.hyanghae.backend.map.service.ExplorationService;
+import com.hyanghae.backend.recommendation.service.PersonalizedRecommendationInvalidator;
 import com.hyanghae.backend.taste.dto.request.TasteTestCreateRequest;
 import com.hyanghae.backend.taste.dto.response.TasteTestResponse;
 import com.hyanghae.backend.taste.exception.TasteErrorCode;
@@ -46,8 +47,14 @@ class TasteTestServiceTest {
     private final TasteTestRepository tasteTestRepository = mock(TasteTestRepository.class);
     private final ExplorationService explorationService = mock(ExplorationService.class);
     private final CurrentUser currentUser = () -> Optional.of(USER_ID);
+    private final PersonalizedRecommendationInvalidator recommendationInvalidator =
+            mock(PersonalizedRecommendationInvalidator.class);
     private final TasteTestService service =
-            new TasteTestService(tasteTestRepository, explorationService, currentUser);
+            new TasteTestService(
+                    tasteTestRepository,
+                    explorationService,
+                    currentUser,
+                    recommendationInvalidator);
 
     /**
      * 배를 띄우지 못하면 {@code TASTE_PERFUME_NOT_ON_MAP} 이고 <b>응시가 남지 않습니다.</b>
@@ -97,6 +104,7 @@ class TasteTestServiceTest {
         assertThat(response.completedAt()).isEqualTo(completedAt);
 
         verify(tasteTestRepository).insertSelections(7L, List.of(3L, 1L));
+        verify(recommendationInvalidator).invalidate(USER_ID);
     }
 
     /**

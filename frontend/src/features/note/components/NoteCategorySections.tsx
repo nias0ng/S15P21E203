@@ -40,7 +40,7 @@ export function NoteCategorySections({
                   key={index}
                   className="border-line rounded-card flex flex-col gap-2.5 border p-2.5"
                 >
-                  <Skeleton className="aspect-7/5 w-full" />
+                  <Skeleton className="rounded-image aspect-7/5 w-full" />
                   <Skeleton className="h-5 w-3/5" />
                   <Skeleton className="h-4 w-2/5" />
                 </div>
@@ -83,7 +83,7 @@ export function NoteCategorySections({
                       src={note.imageUrl}
                       fallback="이미지"
                       /* 7:5 로 올라옵니다. 높이를 고정하면 좌우가 잘립니다 */
-                      className="aspect-7/5 w-full"
+                      className="rounded-image aspect-7/5 w-full"
                     />
                   }
                   /* 두 값이 같으면 같은 글자가 두 줄로 겹치지 않게 뺍니다 */

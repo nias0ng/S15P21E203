@@ -616,7 +616,7 @@ function measureWall(
  * 폭을 줄일 때의 바닥은 375 근처입니다. 그 아래로는 카드 안쪽 폭이 가장 긴 향수명
  * (`Eau de Parfum Orpheon`)보다 좁아져 이름이 두 줄로 꺾입니다.
  */
-const PANEL_WIDTH = 390
+const PANEL_WIDTH = 365
 const PANEL_CASE = 605
 /**
  * 벽감 높이를 셀 때 패널 옆에 비워 두는 간격. 벽감 높이에만 씁니다 — 칸은 패널 왼쪽 끝까지
@@ -798,7 +798,8 @@ export function layoutWall(
   clear = 0,
   plaqueSpan = 1,
 ): WallLayout {
-  const column = Math.max(1, plaqueSpan)
+  // NOTE: 0 을 받습니다 — 현판이 트랙 밖(왼쪽 메뉴)에 선 배치에는 벽에 기둥 칸이 없습니다
+  const column = Math.max(0, plaqueSpan)
   let at = 0
   const placed = sections.map((section) => {
     const plaque = at
@@ -1200,6 +1201,8 @@ const PLAQUE_VERTICAL_MIN_HEIGHT = 110
 const PLAQUE_NOTCH = 0.07
 const PLAQUE_ARCH = 0.14
 const PLAQUE_CORNER = 0.14
+/** 네모 판(메뉴판)의 모서리 반지름 — 짧은 변 대비. 네모로 읽히도록 현판보다 훨씬 작습니다 */
+const PLATE_CORNER = 0.05
 const PLAQUE_INSET = 0.035
 const PLAQUE_PIN = 0.07
 /** 적는 것을 줄이는 폭(위 PlaqueDetail) */
@@ -1298,12 +1301,63 @@ export function plaquePath(
  * evenodd 로 겹친 것이라, 둘 사이만 칠해져 윤곽을 따라 도는 선이 됩니다. border 로 두르면
  * 네모가 되고, SVG 선으로 그리면 선마다 그러데이션 id 를 따로 달아야 해서입니다.
  */
+/**
+ * 네모 판의 윤곽을 안쪽으로 `d` 만큼 들인 경로 (S15P21E203-417).
+ *
+ * 왼쪽 분류 메뉴판이 쓰는 모양입니다. 원호로 어깨를 올리는 `plaquePath` 와 달리 모서리만
+ * 둥근 네모라, 들인 선은 반지름을 그만큼 줄인 같은 네모입니다 — 바깥선과 어디서나 똑같은
+ * 간격으로 따라 돕니다(테두리 네 겹이 이 성질에 기댑니다).
+ *
+ * 반지름이 0 이 되면 원호는 직선으로 그려집니다(SVG 규약) — 따로 가르지 않습니다.
+ */
+export function platePath(
+  { width: w, height: h, corner }: PlaqueOutline,
+  d = 0,
+): string {
+  const r = Math.max(0, corner - d)
+  const x1 = d
+  const y1 = d
+  const x2 = w - d
+  const y2 = h - d
+  return [
+    `M${x1 + r} ${y1}`,
+    `H${x2 - r}`,
+    `A${r} ${r} 0 0 1 ${x2} ${y1 + r}`,
+    `V${y2 - r}`,
+    `A${r} ${r} 0 0 1 ${x2 - r} ${y2}`,
+    `H${x1 + r}`,
+    `A${r} ${r} 0 0 1 ${x1} ${y2 - r}`,
+    `V${y1 + r}`,
+    `A${r} ${r} 0 0 1 ${x1 + r} ${y1}`,
+    'Z',
+  ].join('')
+}
+
 export function plaqueMetrics(
   pitch: number,
   caseHeight: number,
   span = 1,
+  /**
+   * 판을 자리에 맞추는 값들 (S15P21E203-417). 아무것도 주지 않으면 예전 그대로입니다.
+   *
+   *   maxHeight     높이 상한(px). 왼쪽에 셋을 쌓는 메뉴판처럼 낮게 만들 때 줍니다
+   *   maxWidth      폭 상한(px)
+   *   widthPerCase  폭을 벽감 높이에 묶는 비율. 메뉴판은 기둥 폭을 다 쓰므로 Infinity 를 주어
+   *                 이 굴레를 풀고, 남은 굴레(맨 벽 폭)가 폭을 정하게 합니다
+   *   plate         어깨를 올리지 않고 **모서리만 둥근 네모**로 그립니다 (메뉴판)
+   */
+  fit: {
+    maxHeight?: number
+    maxWidth?: number
+    widthPerCase?: number
+    plate?: boolean
+  } = {},
 ): PlaqueMetrics {
-  const wall = pitch * span - PLAQUE_SIDE * 2
+  /*
+   * 판이 설 수 있는 맨 벽 폭. 벽 안에 기둥으로 선 현판은 좌우로 벽감의 옆벽이 들어올
+   * 자리(PLAQUE_SIDE)를 비워 둬야 하지만, 네모 판은 벽 밖 메뉴라 그 자리가 필요 없습니다.
+   */
+  const wall = pitch * span - (fit.plate ? 0 : PLAQUE_SIDE * 2)
   const width = Math.max(
     // 하한 30 도 맨 벽보다 넓게 두지는 않습니다 — 옆벽에 겹칩니다(320 휴대폰)
     Math.min(PLAQUE_MIN_WIDTH, floor5(wall)),
@@ -1311,7 +1365,8 @@ export function plaqueMetrics(
       Math.min(
         wall - PLAQUE_MARGIN * 2,
         wall * PLAQUE_WALL_SHARE,
-        caseHeight * PLAQUE_WIDTH_PER_CASE,
+        caseHeight * (fit.widthPerCase ?? PLAQUE_WIDTH_PER_CASE),
+        fit.maxWidth ?? Infinity,
       ),
     ),
   )
@@ -1327,22 +1382,42 @@ export function plaqueMetrics(
       floor5(width * PLAQUE_MAX_ASPECT),
       detail === 'vertical' ? PLAQUE_VERTICAL_MIN_HEIGHT : 0,
     ),
+    floor5(fit.maxHeight ?? Infinity),
   )
-  const inset = Math.max(3, Math.round(width * PLAQUE_INSET))
-  const notch = Math.max(3, Math.round(width * PLAQUE_NOTCH))
+  /*
+   * 모서리 파임 · 아치 · 아래 모서리 · 핀의 비율을 재는 기준 — **짧은 변**입니다.
+   *
+   * 세로로 긴 판(지금까지의 분류 현판)은 짧은 변이 곧 폭이라 예전과 값이 같습니다. 가로로 누운
+   * 메뉴판에서만 달라집니다 — 폭을 기준으로 두면 아치(폭의 14%)가 낮은 판의 3분의 1을 먹어
+   * 현판이 아니라 반원 딱지가 됩니다. 짧은 변으로 재면 눕혀도 같은 형태로 읽힙니다.
+   */
+  const base = Math.min(width, height)
+  const inset = Math.max(3, Math.round(base * PLAQUE_INSET))
+  // 네모 판은 모서리를 파지도 어깨를 올리지도 않습니다 — 글자 자리는 핀 아래에서 시작합니다
+  const notch = fit.plate ? 0 : Math.max(3, Math.round(base * PLAQUE_NOTCH))
   // 좁은 현판에서도 어깨(파임 3 + 아치 6)가 핀 아래끝(테두리선 3 + 2 + 핀 4)보다 아래에 옵니다 —
   // 글자는 어깨 아래에 서서 핀에 걸리지 않습니다
-  const arch = Math.max(6, Math.round(width * PLAQUE_ARCH))
+  const arch = fit.plate ? 0 : Math.max(6, Math.round(base * PLAQUE_ARCH))
   // 안쪽 빛 띠(inset + 2)까지 들여도 아래 모서리 원호가 남아야 합니다
-  const corner = Math.max(inset + 3, Math.round(width * PLAQUE_CORNER))
-  const pin = Math.max(4, Math.round(width * PLAQUE_PIN))
-  const crown = notch + arch
+  const corner = fit.plate
+    ? Math.max(inset + 2, Math.round(base * PLATE_CORNER))
+    : Math.max(inset + 3, Math.round(base * PLAQUE_CORNER))
+  const pin = Math.max(4, Math.round(base * PLAQUE_PIN))
+  const shoulder = fit.plate ? 0 : notch + arch
   // 핀은 어깨 조금 위에 꽂습니다. 좁은 현판에서도 안쪽 테두리선에 닿지 않게 합니다
-  const pinTop = Math.max(inset + 2, crown - pin - Math.round(notch / 2))
+  const pinTop = Math.max(inset + 2, shoulder - pin - Math.round(notch / 2))
+  /*
+   * 글자가 시작하는 높이. 어깨를 올린 현판은 어깨 아래, 어깨가 없는 네모 판은 **핀 아래**입니다 —
+   * 0 으로 두면 글자가 판 꼭대기에 붙어 핀과 겹칩니다.
+   */
+  const crown = fit.plate
+    ? pinTop + pin + Math.max(4, Math.round(base * 0.06))
+    : shoulder
 
   const outline = { width, height, notch, arch, corner }
+  const draw = fit.plate ? platePath : plaquePath
   const ring = (from: number, to: number) =>
-    `path(evenodd, "${plaquePath(outline, from)} ${plaquePath(outline, to)}")`
+    `path(evenodd, "${draw(outline, from)} ${draw(outline, to)}")`
 
   return {
     ...outline,
@@ -1351,7 +1426,7 @@ export function plaqueMetrics(
     pin,
     pinTop,
     detail,
-    shape: `path("${plaquePath(outline)}")`,
+    shape: `path("${draw(outline)}")`,
     edgeRing: ring(0, 1),
     rimRing: ring(1, 2),
     lineRing: ring(inset, inset + 1),

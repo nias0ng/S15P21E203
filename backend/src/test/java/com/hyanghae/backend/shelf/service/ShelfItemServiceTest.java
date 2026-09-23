@@ -16,6 +16,7 @@ import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
 import com.hyanghae.backend.perfume.repository.PerfumeNoteRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeRepository;
+import com.hyanghae.backend.recommendation.service.PersonalizedRecommendationInvalidator;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemCreateResponse;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemDetailResponse;
 import com.hyanghae.backend.shelf.dto.response.ShelfItemSummaryResponse;
@@ -67,6 +68,9 @@ class ShelfItemServiceTest {
     @Mock
     private CurrentUser currentUser;
 
+    @Mock
+    private PersonalizedRecommendationInvalidator recommendationInvalidator;
+
     private ShelfItemService shelfItemService;
 
     @BeforeEach
@@ -77,7 +81,8 @@ class ShelfItemServiceTest {
                 perfumeImageRepository,
                 perfumeNoteRepository,
                 memoRepository,
-                currentUser
+                currentUser,
+                recommendationInvalidator
         );
     }
 
@@ -157,6 +162,23 @@ class ShelfItemServiceTest {
         shelfItemService.delete(SHELF_ITEM_ID);
 
         verify(userPerfumeRepository).delete(shelfItem);
+    }
+
+    @Test
+    void invalidatesRecommendationWhenDeletingShelfItemWithFitRating() {
+        UserPerfume shelfItem = UserPerfume.create(
+                USER_ID,
+                perfume(),
+                OwnershipStatus.OWNED,
+                OffsetDateTime.now());
+        shelfItem.updateFitRating(new BigDecimal("4.5"), OffsetDateTime.now());
+        when(currentUser.id()).thenReturn(Optional.of(USER_ID));
+        when(userPerfumeRepository.findByIdAndUserIdForUpdate(SHELF_ITEM_ID, USER_ID))
+                .thenReturn(Optional.of(shelfItem));
+
+        shelfItemService.delete(SHELF_ITEM_ID);
+
+        verify(recommendationInvalidator).invalidate(USER_ID);
     }
 
     @Test

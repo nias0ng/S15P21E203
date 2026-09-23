@@ -18,8 +18,15 @@ import { FamilyPicker } from './FamilyPicker'
 import { TasteResultModal } from './TasteResultModal'
 
 type TasteTestStepProps = {
-  /** 뽑힌 향수 id 를 넘기지 않습니다 — 확인할 때 이 컴포넌트가 남겨 서버가 이미 압니다 */
-  onComplete: () => void
+  /**
+   * 뽑힌 향수 id 를 넘기지 않습니다 — 확인할 때 이 컴포넌트가 남겨 서버가 이미 압니다.
+   *
+   * @param landed **이번 요청이 배를 그 향수 자리에 놓았는가.** 처음 치르는 사람만 true 입니다.
+   * 이미 마친 사람(409)은 서버가 `placeStartingPoint` 까지 **같은 트랜잭션으로 되돌리므로**
+   * 배는 마지막 항해 자리에 그대로 있습니다 (`TasteTestService.complete` 주석). 그 차이를
+   * 부르는 쪽이 알아야 배를 엉뚱한 자리에 착륙시키지 않습니다.
+   */
+  onComplete: (landed: boolean) => void
 }
 
 /**
@@ -39,8 +46,10 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
   }
 
   /**
-   * NOTE: 이미 마친 사람은 409 인데 성공으로 다룹니다 — 막으면 주소로 다시 들어온
-   * 사람이 아무 데도 못 갑니다. 저장한 기록은 로그인 화면이 보도록 캐시에 넣습니다.
+   * NOTE: 이미 마친 사람은 409 인데 **넘어가는 것은** 성공으로 다룹니다 — 막으면 주소로 다시
+   * 들어온 사람이 아무 데도 못 갑니다. 저장한 기록은 로그인 화면이 보도록 캐시에 넣습니다.
+   *
+   * NOTE: 다만 `landed` 는 다릅니다. 409 는 배를 놓은 것까지 되돌아가므로 false 입니다.
    */
   const save = useMutation({
     mutationFn: (result: TasteMatch) =>
@@ -50,12 +59,12 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
       }),
     onSuccess: (record) => {
       queryClient.setQueryData(tasteKeys.mine(), record)
-      onComplete()
+      onComplete(true)
     },
     onError: (error) => {
       if (isApiError(error) && error.status === 409) {
         void queryClient.invalidateQueries({ queryKey: tasteKeys.mine() })
-        onComplete()
+        onComplete(false)
       }
     },
   })

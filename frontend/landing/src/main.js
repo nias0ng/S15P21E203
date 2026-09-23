@@ -281,7 +281,7 @@ const input = createInput(ui.mount, {
     // ⚠⚠ **전환 중에는 고르지 않는다** (§9-4). phase 쪽 가드는 이미 있어서 cue.zone 이
     //   찢어지진 않지만, 여기서 막지 않으면 트윈이 도는 동안 카드가 바뀌어 **화면과 카드가
     //   서로 다른 향을 가리킨다.** 안개가 덮여 있는 동안도 같다
-    if (phase.cue.busy || travel.busy) return;
+    if (zoneBlocks() || travel.busy) return;
     const m = marks.pick(view, nx, ny);
     // ⭐ **빈 바다** → 그 자리로 부스트 자동 조타 (seaGo). 부표 위의 누름은 예전 그대로 고르기다.
     //   2026-09-13 밤 (seaClickGo) : **Shift 없이** 누르기만 해도 간다 — v0.57.0 은 Shift 를 눌러야 갔다 (사용자 요청을 잘못 읽었다 · CHANGELOG v0.58.0).
@@ -353,6 +353,36 @@ const input = createInput(ui.mount, {
 //   마우스를 조금만 움직이면 바로 갱신되므로 호버가 굼떠지지는 않는다.
 let hoverMark = null, clickMark = null, hoverX = NaN, hoverY = NaN;
 let _miniHidden = false;   // 존 연출 중 미니맵 숨김 (zoneMiniHide — tick). ⚠ tick 보다 먼저 선언한다 (TDZ)
+
+// ───────── 향 영역 연출의 두 종류와 쿨다운 (2026-09-21, 브랜치 378) ─────────
+// 설계는 `frontend/docs/취향-출발점과-영역-진입-0921.md` §B · §C 다.
+//
+// ⚠⚠ **`zoneBlocks` 는 `function` 선언이다 — `const` 화살표로 두지 않는다.**
+//   읽는 곳(`onPick` 290줄 · `updateHover` 450줄)이 이 줄보다 **위에** 있다. 지금 호출 경로로는
+//   `const` 여도 돌지만(둘 다 런타임 콜백이라 모듈 평가가 끝난 뒤에 불린다), 2026-09-21 에
+//   이 파일을 고치는 동안 **`zoneBlocks is not defined` 가 화면에서 매 프레임 터졌다.**
+//   재현이 안 돼 원인을 못 박았다 (개발 서버의 낡은 모듈이 남은 것으로 보인다 — 서버를 다시 띄우니
+//   사라졌다). 선언을 **호이스팅되는 형태로** 두면 선언 순서가 원인일 가능성 자체가 없어진다.
+//   ⚠ 바로 위 `_miniHidden` 의 *"tick 보다 먼저 선언한다 (TDZ)"* 와 같은 방향의 조심이다.
+//
+// 연출이 입력을 막는가. ⚠ 해역 알림(zoneNear)은 phase 를 안 거치므로 여기 안 걸린다 — 항해 중에 떠도 손이 안 먹힌다
+function zoneBlocks() { return phase.cue.busy; }
+
+// ⭐⭐ **향조마다 마지막으로 연출을 보여 준 앱 시각.** 해역 경계는 보로노이라 경계 근처에서는
+//   몇 초 만에 넘나들 수 있다 — 쿨다운이 없으면 배를 조금만 돌려도 같은 연출이 계속 뜬다.
+//   사용자 : *"이 연출이 끝나고는 근처에서 다시 그 연출에 들어갔을때 **꽤 시간이 지난 이후에야** 다시"*.
+// ⚠⚠ 막는 것은 **근접 진입뿐이다** (`zoneNear`). 카드의 '이 향의 해역으로' · 검색 · 해도 · 미니맵으로
+//   간 도착은 *사용자가 그 연출을 보러 간 것*이라 막으면 눌렀는데 아무 일도 안 일어난다.
+//   다만 **도장은 둘 다 찍는다** — 보고 나면 그 뒤에 근처를 배회해도 다시 안 뜬다.
+// ⚠ 향조별이다. 우디를 보고 시트러스로 넘어가면 시트러스는 바로 뜬다.
+const zoneSeen = new Map();
+function zoneStamp(key) { if (key) zoneSeen.set(String(key).toLowerCase(), t); }
+function zoneCool(key) {
+  const gap = P.zoneRecap === undefined ? 90 : P.zoneRecap;
+  if (gap <= 0) return false;
+  const last = zoneSeen.get(String(key || '').toLowerCase());
+  return last !== undefined && t - last < gap;
+}
 let seaBlockT = 0;         // Shift 바다 누르기가 경계에 막혀 있던 시간 (tick). ⚠ 같은 이유로 여기서 선언한다
 
 // ───────── 배가 든 해역이 바뀌면 앱에 알린다 (2026-09-18, v0.75.12) — 향해 일지 ─────────
@@ -366,14 +396,27 @@ let seaBlockT = 0;         // Shift 바다 누르기가 경계에 막혀 있던 
 // ⚠ 좌표는 `map.toNorm` 이 낸 정규화 좌표다 (불변식 21). 첫 해역도 한 줄이다 (배가 그 바다에서 시작한다).
 const REGION_MS = 400;
 let regionKey = null, regionT = -1e9;
+// ⭐ 근접 진입 연출이 마지막으로 **본** 해역 (2026-09-21, 브랜치 378).
+// ⚠⚠ **`regionKey` 를 같이 쓰면 안 된다.** 그 값은 *앱에 알리는 데 성공했을 때만* 갱신된다
+//   (아래 `told` 주석) — 단독 화면이나 호스트가 붙기 전에는 영영 안 바뀌어 **400ms 마다 연출이
+//   다시 뜬다.** 연출용 기억은 따로 둔다.
+let briefKey = null;
 function reportRegion(t) {
   const map = marks.map;
   if (!map || t - regionT < REGION_MS / 1000) return;
   regionT = t;
   const wx = nav.scroll.x, wz = -nav.scroll.z;
   if (!map.inNav(wx, wz, 0)) return;
+  // ⚠ 200개 순회라 **한 번만 낸다** — 향해 일지와 근접 진입 연출이 같은 결과를 나눠 쓴다
   const reg = map.regionAt(wx, wz);
-  if (!reg || reg.key === regionKey) return;
+  if (!reg) return;
+  // ⭐⭐ **해역이 바뀌는 순간 = 들어섰다** — 짧은 연출을 건다 (§B-1). 향해 일지와 같은 순간이지만
+  //   기억이 따로라(`briefKey`) 서로의 성공 여부에 안 묶인다
+  // ⚠⚠ **맨 처음 한 번은 기억만 한다.** 안 그러면 배가 뜨자마자(그 해역에 '들어선' 적도 없이)
+  //   연출이 한 번 돈다 — 로딩 커튼이 걷히는 순간과 겹친다
+  if (briefKey === null) briefKey = reg.key;
+  else if (reg.key !== briefKey) { briefKey = reg.key; zoneNear(reg.key); }
+  if (reg.key === regionKey) return;
   const [nx, ny] = map.toNorm(wx, wz);
   // ⚠ perfumeId 는 **DB 번호**라 엔진 데이터에 아직 없다 (불변식 32 · 지금은 늘 null) — 그동안은 좌표로 간다.
   //   좌표만 오면 서버는 '빈 바다로 간 이동' 으로 보고 **향 영역이 바뀐 경우에만** 기록한다. 여기가 정확히 그 순간이다
@@ -395,7 +438,7 @@ function updateHover(view) {
   if ((P.cardHover === undefined ? 1 : P.cardHover) < 0.5) { hoverMark = null; hoverOnCard = false; boatHover = false; return; }
   // ⚠ 전환·안개·존 연출 중에는 안 한다 — onPick 과 같은 가드다 (§9-4).
   //   존 연출 중에 카드가 뜨면 정보 블록과 같은 자리를 두 층이 잡는다
-  if (phase.cue.busy || travel.busy || phase.cue.zone) { boatHover = false; return; }
+  if (zoneBlocks() || travel.busy || phase.cue.zone) { boatHover = false; return; }
   // 앱 창이 열려 있는 동안 카드를 바꾸지 않는다 — 닫히면 고른 향수 그대로다 (v0.68.0)
   if (hostHold) { boatHover = false; return; }
   // ⭐⭐ 선실 말풍선이 떠 있으면 **호버 방울은 쉰다** (2026-09-21) — 둘이 같은 자리에 서기 때문이다.
@@ -592,8 +635,8 @@ let pendingSea = null;
 // 연출 중에 고른 먼 곳 이동 (카드 '이 향의 해역으로' · 검색창 · 해도) — 들어오는 중이면 다 들어온 순간 퇴장을 걸고, 다 걷히면 틱이 travel.start 를 건다 (startTravel 주석 · travelAfterZone)
 let pendingTravel = null;
 // ⭐ 클릭 항해의 **일반 속도** (스로틀 0..1) — 자동 조타가 가속이 아닐 때의 값. 예전 틱의 숫자 0.72 를 이름으로 뺐다 (2026-09-15, v0.65.0 · 값은 그대로)
-const SAIL_NORMAL = 0.72;
-// 지금 속도가 일반(0) ~ 최대 가속(1) 사이 어디인가. 일반보다 느리면 음수
+const SAIL_NORMAL = 1.0;
+// 지금 속도가 일반(0) ~ 최대 가속(1) 사이 어디인가. 일반보다 느리면 음수. ⚠ 2026-09-22 : cruise = boost = 1.0 인 지금 분모가 0 이고 nav.speed 는 목표에 아래에서 수렴하므로 **k 는 늘 0 이하다** — sailBoostKeys 를 0 으로 꺼 둔 까닭이다
 function sailBoostK() { return (nav.speed - SAIL_NORMAL) / Math.max(1e-4, CONFIG.speed.boost - SAIL_NORMAL); }
 // ⭐⭐ **클릭 항해 중 ESC · 스페이스 — 가속 ↔ 일반 속도** (2026-09-15, v0.65.0 — sailBoostKeys). 사용자 : *"클릭 이동 시에 esc 나 스페이스를 누르면 가속이 멈추고
 //   일반 속도로 항해한다 아마 무작위로 누르는 사람이 있어서 어지러울 수 있는데 일반 속도로 도착하기전에는 가속을 다시 할 수 없게 해주고 반대로 최대 가속에
@@ -639,11 +682,131 @@ function pickSail(m) {
   seaBlockT = 0;
   zones.goTo({ key: null, name: m.nameKo || m.name, x: m.x, z: m.z, custom: true, sea: true, pick: true, boost: false, arrive });
 }
+// 콘솔 검산 한 줄 (PB.zoneReport()) — 지금 해역 · 연출 종류 · 향조별 쿨다운 남은 초.
+// ⚠ 쿨다운은 화면에 안 보이는 값이라 이것 없이는 판정할 수 없다 (`PB.diveReport` 와 같은 자리)
+function zoneReport() {
+  const map = marks.map;
+  const here = map ? map.regionAt(nav.scroll.x, -nav.scroll.z) : null;
+  const gap = P.zoneRecap === undefined ? 90 : P.zoneRecap;
+  const cool = [...zoneSeen.entries()]
+    .map(([k, at]) => `${k} ${Math.max(0, gap - (t - at)).toFixed(1)}s`)
+    .join(' · ') || '없음';
+  return `여기 ${here ? here.key : '—'} · 연출 기억 ${briefKey || '—'} · ${phase.report()}\n` +
+         `쿨다운(남은 시간, ${gap}s 기준) : ${cool}`;
+}
+
 function arriveAt(key) {
+  // ⭐⭐ **빈 바다에 도착한 것이면 연출을 안 건다** (2026-09-23 · scentmap `inZone`).
+  //   사용자 : *"빈 바다 부분에는 그냥 화면 이동으로"*. `regionAt` 은 먼 바다에도 향조 이름을
+  //   붙이므로 이름만 보고 걸면 부표가 하나도 없는 곳에서 해역 연출이 뜬다.
+  // ⚠ 판정은 **도착한 자리**로 한다 (누른 자리가 아니다) — 그래야 미니맵 · 해도 · 카드 · 검색 ·
+  //   취향 착륙이 한 규칙을 탄다. 부르는 쪽마다 표를 붙이면 갈라진다.
+  const map = marks.map;
+  if (map && !map.inZone(nav.scroll.x, -nav.scroll.z)) return;
   // ⚠ 거절돼 미뤄지는 길(pendingArrive)에서도 받아 둔다 — 틱이 다시 걸 때는 받을 시간이 없다
   gate.preload(key);
+  zoneStamp(key);
   if (!phase.enter(key, { hold: P.zoneHold })) pendingArrive = key;
 }
+
+// ───────── 배를 자리에 놓는다 (2026-09-21, 브랜치 378 · 387) ─────────
+// 설계는 `frontend/docs/배-자리와-향해일지-0921.md` §A 와
+//   `frontend/docs/취향-출발점과-영역-진입-0921.md` §A 다.
+// ⚠⚠ **좌표는 정규화 공간(0~1)이다** (CSV 의 map_x·map_y · 백엔드 `perfume_map_points` 와 같은 공간).
+//   옮기는 것은 `scentmap` 의 `toNorm`/`toWorld` 한 곳이다 (불변식 21).
+//   ⚠ 앱의 `features/taste/api.ts` 는 `getScentVectors` 에서만 100 을 곱한다 (SVG viewBox 가 100×100) —
+//     여기로 오는 것은 **안 곱한 값**이다.
+
+/** 배가 지금 떠 있는 정규화 좌표 {x, y}. 지도가 아직 없으면 null — 앱이 **떠날 때** 읽는다 */
+function boatAt() {
+  const map = marks.map;
+  if (!map) return null;
+  // ⚠ 배의 월드 위치는 (scroll.x, −scroll.z) 다 (불변식 0-2)
+  const [x, y] = map.toNorm(nav.scroll.x, -nav.scroll.z);
+  return { x, y };
+}
+
+// ⭐⭐ **근접 진입 — 항해하다 해역에 들어섰을 때 화면 하단에 지나가는 알림** (378 §B → 2026-09-23 개정).
+//
+// ⚠⚠⚠ **연출이 아니다.** 사용자 : *"카메라 전환하지말고 아예 다른 연출이라 생각하고 화면 하단에
+//   문구를 등장시켜야겠다 카메라랑 상관없이 그냥 지나가면서 동시에 뜨는 알림처럼"*.
+//   그래서 `phase` 를 **안 거친다** — 카메라·배·윙이 한 톨도 안 움직이고 입력도 안 막힌다.
+//   ⚠ 앞선 두 판이 다 연출이었다 : 378 은 윙만 살짝 드는 **다른 종류**였고(→ "작은 연출" 로 읽혔다),
+//     그 다음은 긴 연출과 **같은 구도**의 짧은 판이었다(→ 몰고 있는 배가 제멋대로 섰다).
+//     세 번째인 지금은 **층을 아예 옮겼다** — 3D 가 아니라 DOM 이다.
+// ⚠ 조건이 넷이다 : 켜져 있고 · 빈 바다가 아니고 · 화면이 한가하고 · 쿨다운이 지났다
+function zoneNear(key) {
+  if ((P.zoneBrief === undefined ? 1 : P.zoneBrief) < 0.5) return;
+  // ⚠⚠ 빈 바다는 **들어선 것이 아니다** — arriveAt 과 같은 규칙이다 (scentmap `inZone`).
+  //   보로노이 경계는 먼 바다까지 뻗어 있어, 막지 않으면 부표 한 점 없는 곳에서 알림이 뜬다
+  if (marks.map && !marks.map.inZone(nav.scroll.x, -nav.scroll.z)) return;
+  // ⚠ 연출·안개·고르기 중에는 안 띄운다 — 같은 이름이 이미 크게 떠 있거나 카드가 화면을 덮는다.
+  //   막는 것이 아니라 **겹치지 않으려는** 것이다 (알림 자체는 입력을 안 막는다)
+  if (phase.cue.zone || phase.cue.busy || travel.busy || marks.focusing) return;
+  if (zoneCool(key)) return;
+  zoneStamp(key);
+  ui.zoneNotice(key, P.zoneBriefHold === undefined ? 2.2 : P.zoneBriefHold);
+}
+
+// ⭐⭐⭐ 배를 저장된 자리에 놓는다 — 앱이 `PB.startAt({x, y}, { land })` 로 **들어올 때 한 번** 부른다.
+//
+// ⚠⚠ **갈래가 둘인데 좌표로는 못 가른다.** 취향 출발점도 마지막 항해 자리도 서버의 **같은 칸**
+//   (`exploration_state`)에 같은 모양으로 들어 있다 — 취향 테스트가 처음 한 번 떨어뜨리고
+//   그 뒤로는 항해가 덮어쓴다. 가르는 것은 **어떻게 들어왔는가** 이고 그건 앱만 안다 :
+//   · `land` 없음 — **재방문이다.** 좌표에 그대로 놓고 **연출을 안 건다.** 이어서 항해하는
+//     것이지 새로 도착한 것이 아니다 (387).
+//   · `land: true` — **취향 테스트를 막 마치고 왔다.** 목표 앞 standoff 에 뱃머리를 돌려 세우고
+//     그 해역의 **긴 연출**을 건다 (378). 사용자 : *"바로 해당 영역 연출이 시작되어야함"*.
+//     이 길은 첫 로그인 직후 한 번뿐이다 (`TasteTestPage` → `HomePage`).
+//
+// ⚠ **안개 전환(travel)을 쓰지 않는다.** '이동' 이 아니라 '처음 서는 자리' 이고, 그때 화면은
+//   로딩 커튼이 덮고 있다. 순간이동이 안전한 까닭은 travel.js 의 teleport 주석 그대로다 —
+//   시뮬은 스크롤 차가 아니라 **속도**로 이류하므로 위치를 한 번에 옮겨도 항적이 안 밀린다.
+// ⚠ 갈 수 있는 바다 밖이면 놓지 않는다 — 배가 경계 밖에서 밀려나며 시작하는 것을 막는다.
+function startAt(pos, opts) {
+  if ((P.zoneStart === undefined ? 1 : P.zoneStart) < 0.5) return false;
+  const map = marks.map;
+  if (!map || !pos || !isFinite(pos.x) || !isFinite(pos.y)) return false;
+  const [tx, tz] = map.toWorld(pos.x, pos.y);
+  if (!map.inNav(tx, tz, 0)) { console.warn('[paperboat] startAt : 갈 수 있는 바다 밖이라 건너뛴다', pos); return false; }
+  const land = !!(opts && opts.land);
+
+  // ── 재방문 : 좌표에 그대로 놓는다. 뱃머리도 연출도 안 건드린다 (387)
+  if (!land) {
+    nav.scroll.x = tx; nav.scroll.z = -tz;
+    nav.headV = 0; nav.latV = 0;
+    zones.clearAuto();
+    // ⚠⚠ 놓은 자리의 해역을 **근접 진입 기억에 심는다.** 안 심으면 배가 뜬 자리(원점)의 해역과
+    //   달라져 다음 틱에 `reportRegion` 이 '들어섰다' 로 읽고 짧은 연출이 한 번 돈다 —
+    //   재방문은 들어선 것이 아니라 **있던 자리로 돌아온 것**이다.
+    const back = map.regionAt(tx, tz);
+    if (back) briefKey = back.key;
+    return true;
+  }
+
+  // ── 착륙 : 목표를 바라보며 `travelStandoff` 만큼 물러난 자리에 선다 (travel.teleport 와 같은 규약).
+  // ⚠ 지금 자리에서 목표로 향하는 방향을 쓴다 — 원점에서 시작하므로 '오던 방향' 이 곧 그쪽이다
+  const bx = nav.scroll.x, bz = -nav.scroll.z;
+  let ux = tx - bx, uz = tz - bz;
+  const n = Math.hypot(ux, uz) || 1;
+  ux /= n; uz /= n;
+  const so = P.travelStandoff === undefined ? 8 : P.travelStandoff;
+  nav.scroll.x = tx - ux * so; nav.scroll.z = -(tz - uz * so);
+  // 뱃머리 (−sin h, −cos h) 를 (ux, uz) 에 맞춘다 → h = atan2(−ux, −uz) (불변식 0-2)
+  // ⚠⚠ head 는 **무한 누적**이라 지금 head 에 가장 가까운 등가각으로 맞춘다 (불변식 0-2-2)
+  const h = Math.atan2(-ux, -uz);
+  nav.head = h + Math.round((nav.head - h) / (2 * Math.PI)) * 2 * Math.PI;
+  nav.headV = 0; nav.latV = 0;
+  zones.clearAuto();
+  // ⭐ 그 자리의 해역으로 **긴 연출**을 건다 — 사용자 : *"바로 해당 영역 연출이 시작되어야함"*
+  const reg = map.regionAt(tx, tz);
+  // ⚠ 놓은 자리의 해역을 **근접 진입 기억에도 심는다** — 안 심으면 다음 틱에 `reportRegion` 이
+  //   '해역이 바뀌었다' 로 읽어 짧은 연출까지 겹친다
+  if (reg) briefKey = reg.key;
+  if (reg && (P.zoneStartEnter === undefined ? 1 : P.zoneStartEnter) >= 0.5) arriveAt(reg.key);
+  return true;
+}
+
 // 향수 고르기의 카메라 섞임 (선형 진행 0..1 — 틱이 이징을 먹인다)
 let focusT = 0;
 let focusLabelsOn = false;
@@ -1402,7 +1565,7 @@ function tick() {
     target = Math.max(target, input.state.wheel);
     input.state.wheel = Math.max(0, input.state.wheel - dt * CONFIG.speed.wheelDecay);
   }
-  // ⚠ Shift 바다 누르기(boost)는 부스트 속도로 간다 — 그 밖의 자동 조타(검색 · 먼 곳 이동의 lead)는 예전 0.72 그대로
+  // ⚠ Shift 바다 누르기(boost)는 부스트 속도로 간다 — 그 밖의 자동 조타(검색 · 먼 곳 이동의 lead)는 SAIL_NORMAL(1.0) 이다. ⚠ 지금은 boost 도 1.0 이라 셋이 같은 속도고, Shift 누르기는 카메라만 물러나게 한다
   if (zones.auto) target = Math.max(target, zones.auto.boost ? CONFIG.speed.boost : SAIL_NORMAL);
   // ⭐ **가속은 예전 그대로, 감속은 관성으로 미끄러지게** (2026-09-14, speedGlide). 사용자 : *"클릭 했을때나 키보드로 이동이 멈추었을때 속도 값이 빠르게 0으로
   //   떨어지는데 출발하는 속도는 빨라도 멈췄을때는 급브레이크를 잡아도 제동이 관성에의해 미끄러지듯이 … 지금보다는 천천히 감속되게"*.
@@ -1787,7 +1950,9 @@ function tick() {
     //   ⚠ opacity 는 index.html 의 CSS transition(0.45s)이 민다 — 프레임이 느려도 부드럽다. 바뀔 때만 쓴다.
     //   ⚠ visibility 는 minimap.js 가 쥐고 있어(지도가 아니면 숨긴다) 건드리지 않는다 — 대신 숨은 동안 누르기를 막는다
     {
-      const hide = (P.zoneMiniHide === undefined ? 1 : P.zoneMiniHide) >= 0.5 && (c.phase === 'entering' || c.phase === 'inspecting');
+      // ⭐ 2026-09-21 : **짧은 연출에서는 안 숨긴다** — 항해 중이라 미니맵이 사라지면 길을 잃는다 (문서 §B-3)
+      const hide = (P.zoneMiniHide === undefined ? 1 : P.zoneMiniHide) >= 0.5
+        && (c.phase === 'entering' || c.phase === 'inspecting');
       if (hide !== _miniHidden) {
         _miniHidden = hide;
         const mm = document.getElementById('minimap');
@@ -2221,7 +2386,7 @@ const onKeyExit = (e) => {
 };
 window.addEventListener('keydown', onKeyExit);
 
-window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, dive: hostDive, diveReport, goRegion, startTravel, startFocus, setHost, boot: bootNow, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, pod, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
+window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, dive: hostDive, diveReport, goRegion, startTravel, startFocus, startAt, boatAt, zoneReport, setHost, boot: bootNow, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, pod, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
   // ⭐ 반응형 검산 (2026-09-11 오후) — 제품 UI 상자들의 자리 · 서로 겹침 · 화면 밖 · 스크롤 · 수면 타이포 꼭대기와 정보 블록의 간격.
   //   ⚠ 창 크기를 바꾼 뒤에는 **스크린샷 한 장으로 먼저 칠하고** 부른다 (숨긴 패널에서는 ResizeObserver 가 안 불린다 — 교훈 ⑧)
   layout: () => layoutReport(),

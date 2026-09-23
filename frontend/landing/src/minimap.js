@@ -510,7 +510,10 @@ export function createMinimap({ onPick, onBlocked } = {}) {
     if (!map) return;
     const h = hitAt(e);
     hover = h;
-    if (hint) hint.textContent = h.out ? '범위 없음' : h.label ? h.label.name : (h.reg ? h.reg.name + ' 해역' : '—');
+    // ⚠ 글과 실제 동작이 같아야 한다 — 빈 바다는 눌러도 해역 연출이 없으므로 해역 이름을 안 적는다
+    //   (판정은 scentmap `inZone` 한 곳이다 — 불변식 21)
+    const inZone = !h.out && !!h.reg && map.inZone(h.x, h.z);
+    if (hint) hint.textContent = h.out ? '범위 없음' : h.label ? h.label.name : (inZone ? h.reg.name + ' 해역' : h.reg ? '빈 바다' : '—');
     last = '';   // 다시 그린다
   };
   const onLeave = () => { hover = null; idleHint(); last = ''; };
