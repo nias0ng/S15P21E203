@@ -130,6 +130,10 @@ interface PerfumeReviewAggregatesResponse {
 | SQL 문 | 10 | **7** |
 | 향수 존재 확인 | 4 | **1** |
 
+운영에서 실제로 재 본 결과는 [부하 테스트 결과](review-aggregates-load-test.md)에 있습니다. 요약하면
+**CPU 를 21% 덜 쓰면서 화면 처리량이 2.9배**가 됐고, 50 VU 화면 p95 가 324ms 에서 123ms 로
+떨어졌습니다.
+
 ## 7. 전후 비교 측정 방법
 
 같은 스크립트에 `MERGED` 스위치가 있습니다. VU 단계·지속 시간·think time이 같으므로 두
