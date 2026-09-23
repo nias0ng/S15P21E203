@@ -58,7 +58,7 @@ export function BrandGrid({
                 src={brand.logoUrl}
                 fallback="로고"
                 fit="contain"
-                className={cn(BRAND_PLATE, 'h-40 w-full')}
+                className={cn(BRAND_PLATE, 'rounded-image h-40 w-full')}
               />
             }
             title={brand.nameKo ?? brand.name}
