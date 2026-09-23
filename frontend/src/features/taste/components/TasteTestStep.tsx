@@ -76,14 +76,16 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
 
   return (
     <div className="space-y-8">
-      <header className="space-y-3">
+      {/* break-keep — 없으면 한글이 음절 사이에서 접혀 "향 지 / 도를" 이 됩니다 */}
+      <header className="space-y-3 break-keep">
         <p className="text-ink-muted text-caption">취향 테스트</p>
         <h1 className="text-display font-serif font-semibold">
           어떤 향에 마음이 가세요?
         </h1>
-        <p className="text-ink-muted text-body max-w-165">
-          끌리는 향의 인상을 골라주세요. 하나만 골라도 되고, 두 개까지 고를 수
-          있어요. 먼저 고른 쪽을 더 크게 반영해 가장 가까운 향수를 찾아드립니다.
+        {/* 폭을 묶지 않아 한 줄로 섭니다. 한 문장이라 길어질 일이 없고, 좁은 화면에서만 접힙니다 */}
+        <p className="text-ink-muted text-body">
+          끌리는 향을 최대 두 개까지 골라주세요. 고른 향에 가장 가까운 향수에서
+          향&nbsp;지도를 시작해요.
         </p>
       </header>
 
@@ -117,13 +119,16 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
           <FamilyPicker value={picks} onChange={setPicks} />
 
           <div className="border-line-soft flex items-center justify-between gap-6 border-t pt-6">
-            <p className="text-ink-muted text-caption">
-              {picks.length === 0 &&
-                '아직 고르지 않았어요 · 하나만 골라도 시작할 수 있어요'}
-              {picks.length === 1 &&
-                '1개 선택 · 하나 더 고르면 먼저 고른 쪽을 더 크게 반영해요'}
-              {picks.length >= MAX_PICKS &&
-                '2개 선택 · 바꾸려면 고른 것을 먼저 해제해 주세요'}
+            {/*
+              몇 개 골랐는지는 숫자가 제일 짧게 말합니다. 낭독기에는 숫자만 읽히면
+              무엇의 개수인지 알 수 없어 앞에 이름을 숨겨 둡니다.
+            */}
+            <p
+              className="text-caption text-ink font-medium tabular-nums"
+              aria-live="polite"
+            >
+              <span className="sr-only">고른 향 </span>
+              {picks.length} / {MAX_PICKS}
             </p>
             <Button
               size="lg"

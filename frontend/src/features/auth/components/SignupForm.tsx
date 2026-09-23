@@ -27,9 +27,24 @@ import {
 import { AuthCard } from './AuthCard'
 import { EmailField } from './EmailField'
 
+/** 중복 확인을 마친 값과 그 답 */
+type Checked = { value: string; available: boolean }
+
 /**
- * 회원가입 (A28 우측 카드 — COM-01). [중복 확인] 을 통과해도 가입 시점에 409 로 한
- * 번 더 걸리고, 가입해도 로그인은 되지 않습니다 — 응답에 토큰이 없습니다.
+ * 확인한 값과 지금 칸에 든 값이 같을 때만 답을 인정합니다.
+ *
+ * 값을 고칠 때 답을 지우는 방식으로는 부족합니다 — 확인 요청이 날아가 있는 사이에
+ * 값을 고치면, 늦게 도착한 옛 답이 새 값에 붙습니다.
+ */
+function answerFor(checked: Checked | null, value: string): boolean | null {
+  return checked !== null && checked.value === value ? checked.available : null
+}
+
+/**
+ * 회원가입 (A28 우측 카드 — COM-01). [중복 확인] 을 통과해야 [가입하기] 가 켜지고,
+ * 통과해도 가입 시점에 409 로 한 번 더 걸립니다 — 확인과 가입 사이에 남이 같은
+ * 이메일 · 닉네임을 가져갈 수 있습니다. 가입해도 로그인은 되지 않습니다 — 응답에
+ * 토큰이 없습니다.
  */
 export function SignupForm() {
   const navigate = useNavigate()
@@ -42,15 +57,16 @@ export function SignupForm() {
   const [passwordConfirm, setPasswordConfirm] = useState('')
   const [nickname, setNickname] = useState('')
 
-  /** 중복 확인 결과. 값을 고치면 지웁니다 — 옛 답이 남으면 거짓말이 됩니다 */
-  const [nicknameAvailable, setNicknameAvailable] = useState<boolean | null>(
-    null,
-  )
-  const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null)
+  const [emailChecked, setEmailChecked] = useState<Checked | null>(null)
+  const [nicknameChecked, setNicknameChecked] = useState<Checked | null>(null)
 
   // 서버가 앞뒤 공백을 지우고 검사하므로 화면도 같은 값으로 셉니다
+  const trimmedEmail = email.trim()
   const trimmedNickname = nickname.trim()
   const nicknameTooShort = trimmedNickname.length < NICKNAME_MIN_LENGTH
+
+  const emailAvailable = answerFor(emailChecked, trimmedEmail)
+  const nicknameAvailable = answerFor(nicknameChecked, trimmedNickname)
 
   const passwordError =
     password.length > 0 && password.length < PASSWORD_MIN_LENGTH
@@ -69,23 +85,42 @@ export function SignupForm() {
       : undefined
 
   const nicknameCheck = useMutation({
-    mutationFn: () => checkNicknameAvailability(trimmedNickname),
-    onSuccess: (available) => setNicknameAvailable(available),
+    mutationFn: (value: string) => checkNicknameAvailability(value),
+    onSuccess: (available, value) => setNicknameChecked({ value, available }),
   })
 
   const emailCheck = useMutation({
-    mutationFn: () => checkEmailAvailability(email.trim()),
-    onSuccess: (available) => setEmailAvailable(available),
+    mutationFn: (value: string) => checkEmailAvailability(value),
+    onSuccess: (available, value) => setEmailChecked({ value, available }),
   })
 
   const signupMutation = useMutation({
-    mutationFn: () => signup({ email, password, nickname: trimmedNickname }),
+    mutationFn: () =>
+      signup({ email: trimmedEmail, password, nickname: trimmedNickname }),
     // 돌아갈 경로를 로그인까지 들려 보냅니다 — 흘리면 로그인을 마치고 홈에 떨어집니다
     onSuccess: () =>
       navigate(withReturnPath(ROUTES.LOGIN, returnTo), {
         replace: true,
         state: { signedUp: true },
       }),
+    // 확인을 통과했어도 서버가 중복이라 하면 들고 있던 답이 거짓이 된 것입니다.
+    // 그 자리에서 뒤집어, 다시 확인하기 전에는 [가입하기] 가 켜지지 않게 합니다.
+    onError: (error) => {
+      if (!isApiError(error)) {
+        return
+      }
+      if (error.code === 'AUTH_EMAIL_ALREADY_EXISTS') {
+        setEmailChecked({ value: trimmedEmail, available: false })
+      }
+      if (error.code === 'AUTH_NICKNAME_ALREADY_EXISTS') {
+        setNicknameChecked({ value: trimmedNickname, available: false })
+      }
+      // 서버도 어느 쪽인지 가리지 않은 경우입니다 — 둘 다 다시 확인해야 합니다
+      if (error.code === 'AUTH_SIGNUP_CONFLICT') {
+        setEmailChecked(null)
+        setNicknameChecked(null)
+      }
+    },
   })
 
   const canSubmit =
@@ -94,6 +129,10 @@ export function SignupForm() {
     passwordConfirm === password &&
     !nicknameTooShort &&
     nicknameError === undefined &&
+    // 중복 확인을 마쳐야 켭니다. 서버는 어차피 409 로 막지만, 그때는 이미 누른
+    // 뒤라 비밀번호 두 칸을 다시 적게 됩니다.
+    emailAvailable === true &&
+    nicknameAvailable === true &&
     !signupMutation.isPending
 
   return (
@@ -102,16 +141,16 @@ export function SignupForm() {
         className="space-y-2.5"
         onSubmit={(event) => {
           event.preventDefault()
+          if (!canSubmit) {
+            return
+          }
           signupMutation.mutate()
         }}
       >
         <div className="flex items-start gap-1.25">
           <div className="min-w-0 flex-1">
             <EmailField
-              onChange={(next) => {
-                setEmail(next)
-                setEmailAvailable(null)
-              }}
+              onChange={setEmail}
               error={
                 emailAvailable === false
                   ? '이미 사용 중인 이메일입니다'
@@ -120,7 +159,9 @@ export function SignupForm() {
               hint={
                 emailAvailable === true
                   ? '사용할 수 있는 이메일입니다'
-                  : undefined
+                  : trimmedEmail.length > 0
+                    ? '[중복 확인] 을 눌러주세요'
+                    : undefined
               }
             />
           </div>
@@ -128,8 +169,8 @@ export function SignupForm() {
             variant="outline"
             type="button"
             className="shrink-0"
-            disabled={email.trim().length === 0 || emailCheck.isPending}
-            onClick={() => emailCheck.mutate()}
+            disabled={trimmedEmail.length === 0 || emailCheck.isPending}
+            onClick={() => emailCheck.mutate(trimmedEmail)}
           >
             중복 확인
           </Button>
@@ -166,10 +207,7 @@ export function SignupForm() {
               placeholder="닉네임"
               required
               value={nickname}
-              onChange={(event) => {
-                setNickname(event.target.value)
-                setNicknameAvailable(null)
-              }}
+              onChange={(event) => setNickname(event.target.value)}
               error={
                 nicknameError ??
                 (nicknameAvailable === false
@@ -179,7 +217,9 @@ export function SignupForm() {
               hint={
                 nicknameAvailable === true
                   ? '사용할 수 있는 닉네임입니다'
-                  : undefined
+                  : !nicknameTooShort
+                    ? '[중복 확인] 을 눌러주세요'
+                    : undefined
               }
             />
           </div>
@@ -192,7 +232,7 @@ export function SignupForm() {
               nicknameError !== undefined ||
               nicknameCheck.isPending
             }
-            onClick={() => nicknameCheck.mutate()}
+            onClick={() => nicknameCheck.mutate(trimmedNickname)}
           >
             중복 확인
           </Button>
