@@ -34,6 +34,7 @@ export { useSaveBoatPosition } from './hooks/useSaveBoatPosition'
 export { useSceneBoot } from './hooks/useSceneBoot'
 export { type SceneBootEvent } from './lib/bootProgress'
 export { buildPerfumeIdIndex, type PerfumeIdIndex } from './lib/perfumeIdAt'
+export { buildMapPerfumeLookup, withMapPerfumes } from './lib/mapPerfumeLookup'
 export {
   explorationStateQuery,
   mapKeys,

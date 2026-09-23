@@ -8,14 +8,17 @@ import {
   SceneBootCurtain,
   SceneSearchBar,
   ScentScene,
+  buildMapPerfumeLookup,
   buildPerfumeIdIndex,
   explorationStateQuery,
   mapPerfumePointsQuery,
+  mapPerfumesQuery,
   useExplorationMove,
   useSaveBoatPosition,
   useSceneBoot,
   VoyageLog,
   voyageLogQuery,
+  withMapPerfumes,
   type ScenePerfumeRef,
   type SceneSearchMode,
   type VoyageLogStatus,
@@ -103,15 +106,6 @@ export default function HomePage() {
    */
   const [engineUp, setEngineUp] = useState(false)
   useDiveReady(engineUp)
-  const log = useQuery(voyageLogQuery())
-  // 향해 일지 상태 — 비로그인(401)이면 로그인 안내. 개발 중 서버가 없으면 api 가 대체 일지를 줍니다
-  const logStatus: VoyageLogStatus = log.isPending
-    ? 'loading'
-    : log.isError
-      ? isApiError(log.error) && log.error.status === 401
-        ? 'guest'
-        : 'error'
-      : 'ready'
 
   /**
    * 메인 검색 — 방식과, 방식별로 열린 답.
@@ -206,6 +200,40 @@ export default function HomePage() {
     [perfumePoints.data],
   )
   const perfumeIdAt = (x: number, y: number) => perfumeIndex?.at(x, y) ?? null
+
+  /*
+   * 향해 일지. 향수는 **3D 와 같은 한글 이름 · 계열**로 채워 싣습니다 — API 는 번호와 DB 원명(대개
+   * 영문)만 주고, 3D 는 엔진 데이터를 씁니다. 둘을 위 좌표 색인으로 잇습니다 (`lib/mapPerfumeLookup`).
+   * 채울 재료(엔진 데이터 · 좌표)가 오는 동안은 일지도 불러오는 중으로 둡니다 — 영문이 먼저 떴다가
+   * 한글로 바뀌지 않게. 재료를 못 받았으면 API 이름 그대로 싣습니다.
+   */
+  const log = useQuery(voyageLogQuery())
+  const mapPerfumes = useQuery(mapPerfumesQuery())
+  const perfumeLookup = useMemo(
+    () =>
+      perfumeIndex && mapPerfumes.data
+        ? buildMapPerfumeLookup(perfumeIndex, mapPerfumes.data)
+        : null,
+    [perfumeIndex, mapPerfumes.data],
+  )
+  const logEntries = useMemo(
+    () =>
+      log.data && perfumeLookup
+        ? withMapPerfumes(log.data, perfumeLookup)
+        : (log.data ?? []),
+    [log.data, perfumeLookup],
+  )
+  const namesPending = perfumePoints.isPending || mapPerfumes.isPending
+  // 향해 일지 상태 — 비로그인(401)이면 로그인 안내. 개발 중 서버가 없으면 api 가 대체 일지를 줍니다
+  const logStatus: VoyageLogStatus = log.isPending
+    ? 'loading'
+    : log.isError
+      ? isApiError(log.error) && log.error.status === 401
+        ? 'guest'
+        : 'error'
+      : namesPending
+        ? 'loading'
+        : 'ready'
 
   /** 3D 입력 잠금을 풉니다. 어떤 길로 끝나든 반드시 한 번은 불러야 합니다 */
   const release = () => {
@@ -377,7 +405,7 @@ export default function HomePage() {
           (diving || chartOpen) && 'invisible opacity-0',
         )}
       >
-        <VoyageLog entries={log.data ?? []} status={logStatus} />
+        <VoyageLog entries={logEntries} status={logStatus} />
       </div>
 
       {/*
