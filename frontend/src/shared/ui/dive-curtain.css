@@ -419,19 +419,24 @@
  *   얻은 것(마스크 길이 = 겹 높이 · 상쇄 겹 · 아래끝 못 박기)이 그대로 따라옵니다.
  *   ⚠ 그래서 **고칠 것은 색뿐입니다.** 기하를 손대기 시작하면 저 함정들을 다시 밟습니다.
  *
- * ⭐ **색은 한 칸 얕습니다.** 나가는 길은 심해(navy)까지 내려가지만 돌아오는 길은 수면으로
- *   올라가는 길이라 그 깊이를 지날 까닭이 없습니다. `sea-deep` 에서 `sea-shallow` 까지만 씁니다.
+ * ⭐⭐ **색은 떠나는 방의 물빛입니다** (2026-09-24). 커튼이 덮는 동안 그 밑에 있는 것은 출발한
+ *   방(어두운 방 · 남색)인데, 바다 팔레트의 `sea-deep` · `sea-shallow` 로 덮었더니 남색 위로
+ *   청록 띠가 내려왔습니다 — 사용자 : *"녹색이 섞여있는 블루"*. 그래서 방이 내주는 두 색
+ *   (`--room-water` · `--room-water-deep`, `styles/scent-display.css` 의 `.scent-night`)으로 덮습니다.
+ *   ⚠⚠ **커튼은 방의 색을 모릅니다.** `DiveCurtain` 이 전환을 거는 순간 방에서 물려받은 값을
+ *     커튼에 박아 둡니다 — 메인으로 옮겨 가면 방이 사라져 물려받던 값도 같이 사라지기 때문입니다.
+ *     방 색이 바뀌면 커튼이 그대로 따라오고, 방이 안 내주는 화면이면 여태의 바다색이 섭니다.
  *
  * ⚠⚠⚠ **뒤집힌 판에서는 아래로 갈수록 밝아집니다.** 머리말 ②의 *"밝기는 단조로워야 한다"* 가
  *   여기서는 이 방향입니다 — 판이 뒤집혔으니 규칙도 같이 뒤집힙니다. 기준은 화면의 위아래가
- *   아니라 **굳은 끝에서 번지는 끝으로** 이고, 번지는 끝 너머에 밝은 곳이 있기 때문입니다.
+ *   아니라 **굳은 끝에서 번지는 끝으로, 그리고 그 끝이 덮어 가는 화면까지** 입니다.
  *   2026-09-19 사용자 : *"역으로 넘어갈때 밑에가 진하고 위에가 밝은데 이거 반대가 되어야함"*.
  *   처음에는 '깊을수록 어둡다' 를 그대로 가져와 위를 밝게(sea-shallow) 뒀는데, 그러면 화면이
  *   **밝음 → 어두움 → 밝은 도착지**가 되어 가운데에 어두운 띠가 한 줄 섭니다. 그 띠가 곧 이음매입니다.
- *   ⭐ 2026-09-20 : 돌아오는 길의 '번지는 끝 너머' 는 이제 **메인의 3D 바다**입니다 (여태도 그랬고,
- *     진열대는 *출발지* 였습니다). 즉 이 방향은 도착지가 다섯으로 늘어난 것과 **무관하게 그대로**
- *     입니다 — 올라가는 쪽 끝에 밝은 수면이 있다는 사실이 안 바뀌었습니다.
- *   ⭐ 덤 : 번지는 끝이 `sea-shallow` 라 진열대에 깔린 물 한 겹과도 **같은 색으로** 만납니다.
+ *   ⭐ 2026-09-24 : 번지는 끝(`--rise-edge`)이 **방의 몸통색**이라 이 규칙이 저절로 섭니다 — 굳은
+ *     끝은 그보다 깊이만큼 짙고(방의 바닥 쪽), 번지는 끝은 덮어 가는 방과 같은 색이라 경계가 방에
+ *     녹습니다. 여태의 `sea-shallow`(L 0.445 · H 230)는 방(L 0.293 · H 263)보다 한 단 밝은
+ *     청록이라, 방 위를 내려오는 그 끝이 곧 띠였습니다.
  *   쓰기는 나가는 길과 같은 `to top` 으로 쓰고, 뒤집기가 방향을 맡습니다 (0% 가 화면 위입니다).
  *
  * ⚠ 밝아지는 일은 **3D 가 맡습니다.** 걷히는 동안 엔진을 `RISE_ENGINE_FROM` 에서 0 으로 되밀어
@@ -449,16 +454,22 @@
   --dive-rise: 0.55;
 
   /*
-   * ⭐ **떠오르는 길의 바닥**도 같은 깊이 손잡이를 씁니다 (2026-09-20). 다만 기준색이 다릅니다 —
-   *   나가는 길은 심해(navy)까지 내려가지만 돌아오는 길은 `sea-deep` 에서 시작합니다 (아래 ⭐).
-   *   깊은 화면에서 로고를 누르면 **더 짙은 물에서 올라옵니다.** 내려간 깊이만큼 올라오는 것이라,
-   *   이 한 줄이 없으면 어디서 눌렀든 같은 높이에서 떠오릅니다.
+   * ⭐ **떠오르는 길의 바닥**도 같은 깊이 손잡이를 씁니다 (2026-09-20). 다만 양끝이 **떠나는 방의
+   *   물빛**입니다 (2026-09-24 · 위 머리말) — 깊이 0 이면 방의 몸통색(`--room-water`), 1 이면 방의
+   *   바닥색(`--room-water-deep`)입니다. 깊은 화면에서 로고를 누르면 **더 짙은 물에서 올라옵니다.**
+   *   내려간 깊이만큼 올라오는 것이라, 이 한 줄이 없으면 어디서 눌렀든 같은 높이에서 떠오릅니다.
+   * ⚠ 뒤의 값은 방이 물빛을 안 내줄 때의 바다색입니다 (여태의 `sea-deep` · `--sea-abyss`).
    */
   --dive-floor: color-mix(
     in srgb,
-    var(--sea-abyss) var(--dive-depth),
-    var(--color-sea-deep)
+    var(--room-water-deep, var(--sea-abyss)) var(--dive-depth),
+    var(--room-water, var(--color-sea-deep))
   );
+  /*
+   * 번지는 끝 — 커튼이 덮어 가는 방과 **같은 색**이라 경계가 방에 녹습니다 (위 ⚠⚠⚠).
+   * 방이 물빛을 안 내주면 여태의 `sea-shallow` 입니다.
+   */
+  --rise-edge: var(--room-water, var(--color-sea-shallow));
 }
 
 /*
@@ -508,18 +519,18 @@
 .dive-curtain[data-way='rise'] .dive-curtain-water {
   background: linear-gradient(
     to top,
-    /* 뒤집히면 여기가 화면 맨 위 — 굳은 끝이라 가장 짙다 (깊이 0 이면 sea-deep) */
+    /* 뒤집히면 여기가 화면 맨 위 — 굳은 끝이라 가장 짙다 (깊이 0 이면 방의 몸통색) */
     var(--dive-floor) 0%,
     var(--dive-floor) 38%,
     /* 다 덮은 구간(58%)의 끝. 아래로 갈수록 단조롭게 **밝아진다** (위 ⚠⚠⚠) */
-    var(--color-sea-shallow) 58%,
+    var(--rise-edge) 58%,
     /* 여기부터 알파만 내려간다 — 기울기가 꺾이지 않게 촘촘히 */
-    color-mix(in srgb, var(--color-sea-shallow) 93%, transparent) 65%,
-    color-mix(in srgb, var(--color-sea-shallow) 78%, transparent) 73%,
-    color-mix(in srgb, var(--color-sea-shallow) 58%, transparent) 81%,
-    color-mix(in srgb, var(--color-sea-shallow) 36%, transparent) 88%,
-    color-mix(in srgb, var(--color-sea-shallow) 18%, transparent) 93%,
-    color-mix(in srgb, var(--color-sea-shallow) 6%, transparent) 97%,
+    color-mix(in srgb, var(--rise-edge) 93%, transparent) 65%,
+    color-mix(in srgb, var(--rise-edge) 78%, transparent) 73%,
+    color-mix(in srgb, var(--rise-edge) 58%, transparent) 81%,
+    color-mix(in srgb, var(--rise-edge) 36%, transparent) 88%,
+    color-mix(in srgb, var(--rise-edge) 18%, transparent) 93%,
+    color-mix(in srgb, var(--rise-edge) 6%, transparent) 97%,
     transparent 100%
   );
 }
