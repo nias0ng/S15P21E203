@@ -24,6 +24,7 @@ export function CommunityMenu({ ink }: { ink: Ink }) {
         type="button"
         aria-expanded={open}
         aria-haspopup="menu"
+        lang="en"
         onClick={() => setOpen(!open)}
         className={cn(
           'text-body transition-colors duration-120 ease-out',
@@ -34,7 +35,7 @@ export function CommunityMenu({ ink }: { ink: Ink }) {
           open && ink.open,
         )}
       >
-        커뮤니티 <span aria-hidden>▾</span>
+        COMMUNITY <span aria-hidden>▾</span>
       </button>
 
       {open && (

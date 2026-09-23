@@ -13,7 +13,7 @@ import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
-import { GLASS_PANEL } from '@/shared/ui/panel'
+import { PAPER_PANEL } from '@/shared/ui/panel'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import { deleteReview, likeReview, unlikeReview } from '../api'
@@ -79,7 +79,7 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
   })
 
   return (
-    <article className={GLASS_PANEL}>
+    <article className={PAPER_PANEL}>
       <div className="space-y-3.75">
         <LinkButton to={ROUTES.COMMUNITY_REVIEWS} variant="outline" size="sm">
           ← 후기 게시판

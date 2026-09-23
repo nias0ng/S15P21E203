@@ -196,6 +196,49 @@
   }
 
   /*
+   * 흰 판 — 어두운 방 안에서 **글을 읽는 자리**만 밝은 화면으로 되돌립니다
+   * (커뮤니티 글 카드 · 글 상세 · 댓글). 유리 위 글자는 흰색이라 긴 본문을 읽기
+   * 버겁습니다. 역할 토큰을 밝은 화면 값(팔레트)으로 되짚어, 안의 단추 · 입력칸 ·
+   * 배지가 따로 손대지 않아도 흰 바탕에 맞는 색이 됩니다.
+   *
+   * 판은 `PAPER_PANEL`(`shared/ui/panel.ts`), 카드는 `data-slot='card'` 에 이 클래스를
+   * 같이 겁니다 — 카드의 바탕은 레이어 밖에서 덮습니다(아래). 카드 쪽 선택자를 따로
+   * 적는 이유: 위 유리 카드 규칙이 더 구체적이라 토큰을 도로 유리 값으로 덮습니다.
+   */
+  .scent-paper,
+  .scent-glass [data-slot='card'].scent-paper {
+    --color-ink: var(--color-charcoal);
+    /*
+     * 보조 글자는 밝은 화면 값(#727170)보다 한 단 짙습니다 — 판이 조금 비쳐 바탕이
+     * 순백보다 어두워지면 그 값은 4.5:1 아래로 떨어집니다. 유리 카드와 같은 값입니다.
+     */
+    --color-ink-muted: #5f5c58;
+    --color-line: var(--color-stonegray);
+    --color-line-soft: var(--color-bone);
+    --color-surface-card: #ffffff;
+    --color-surface-sunken: var(--color-bone);
+    --color-selected: var(--color-charcoal);
+    --color-danger: var(--color-rust);
+    --color-like: #e8283f;
+    color: var(--color-ink);
+
+    /* 흰색이되 유리입니다 — 조금 비치고, 뒤를 흐리고, 윗변에 빛이 맺힙니다 */
+    background: linear-gradient(
+      135deg,
+      rgb(255 255 255 / 0.93) 0%,
+      rgb(248 249 252 / 0.86) 50%,
+      rgb(255 255 255 / 0.9) 100%
+    );
+    backdrop-filter: blur(40px) saturate(160%);
+    -webkit-backdrop-filter: blur(40px) saturate(160%);
+    border: 1px solid rgb(255 255 255 / 0.75);
+    box-shadow:
+      0 25px 60px -15px rgb(0 0 0 / 0.45),
+      inset 0 1px 1px 0 rgb(255 255 255 / 1),
+      inset 0 0 0 1px rgb(255 255 255 / 0.35);
+  }
+
+  /*
    * 순위 딱지. **흰 판 위에 놓입니다** — 병이 앉는 판을 흰색으로 못 박은 뒤로
    * (`PerfumeCard` 의 PLATE) 거의 투명하던 옛 유리는 통째로 사라져 숫자만 허공에
    * 떠 있었습니다. 가운데는 여전히 비우되 가장자리로 갈수록 뼛빛이 짙어지게 해
@@ -310,6 +353,28 @@
 
 .scent-glass [data-slot='rank'] {
   background-color: transparent;
+}
+
+/* 흰 유리 카드 — 위 유리 카드의 옅은 그러데이션 · 투명 바탕을 덮습니다 */
+.scent-glass [data-slot='card'].scent-paper {
+  background: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.92) 0%,
+    rgb(255 255 255 / 0.84) 100%
+  );
+  border-color: rgb(255 255 255 / 0.8);
+  box-shadow:
+    0 6px 16px rgb(0 0 0 / 0.18),
+    inset 0 1px 1px rgb(255 255 255 / 1),
+    inset 0 0 0 1px rgb(255 255 255 / 0.3);
+}
+
+.scent-glass [data-slot='card'].scent-paper:hover {
+  background: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.97) 0%,
+    rgb(255 255 255 / 0.9) 100%
+  );
 }
 
 /* 고른 알약의 글자색. 유틸리티에 밀려 흰 알약에 흰 글자가 됐던 자리입니다 */

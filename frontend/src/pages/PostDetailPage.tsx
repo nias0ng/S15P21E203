@@ -34,7 +34,7 @@ import { EmptyState } from '@/shared/ui/EmptyState'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { PageFallback } from '@/shared/ui/PageFallback'
-import { GLASS_PANEL } from '@/shared/ui/panel'
+import { PAPER_PANEL } from '@/shared/ui/panel'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 import { Toast } from '@/shared/ui/Toast'
 
@@ -241,7 +241,7 @@ export default function PostDetailPage() {
           </div>
         </header>
 
-        <div className={cn(GLASS_PANEL, 'space-y-6.25')}>
+        <div className={cn(PAPER_PANEL, 'space-y-6.25')}>
           <p className="text-ink text-heading leading-relaxed whitespace-pre-wrap">
             {data.content}
           </p>

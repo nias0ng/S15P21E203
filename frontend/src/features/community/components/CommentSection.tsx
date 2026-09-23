@@ -5,7 +5,7 @@ import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { Pagination } from '@/shared/ui/Pagination'
-import { GLASS_PANEL } from '@/shared/ui/panel'
+import { PAPER_PANEL } from '@/shared/ui/panel'
 import { Textarea } from '@/shared/ui/Textarea'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
@@ -46,7 +46,7 @@ export function CommentSection({
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null)
 
   return (
-    <section className={cn(GLASS_PANEL, 'space-y-3.75')}>
+    <section className={cn(PAPER_PANEL, 'space-y-3.75')}>
       <h2 className="text-ink text-title font-serif font-bold">
         댓글 {totalElements}
       </h2>

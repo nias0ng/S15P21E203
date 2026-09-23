@@ -13,6 +13,7 @@ const twMerge = extendTailwindMerge({
         { text: ['display', 'title', 'heading', 'body', 'caption'] },
       ],
       shadow: [{ shadow: ['raised', 'overlay', 'modal'] }],
+      rounded: [{ rounded: ['card', 'image', 'glass'] }],
     },
   },
 })
