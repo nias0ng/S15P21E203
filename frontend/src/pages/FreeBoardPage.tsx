@@ -145,7 +145,6 @@ export default function FreeBoardPage() {
   return (
     <div className="space-y-7.5">
       <BoardHeader
-        description="향수 이야기를 자유롭게 나눕니다. 컬렉션을 남에게 보이는 유일한 길이기도 합니다."
         action={
           <AuthLinkButton
             to={ROUTES.POST_WRITE}

@@ -31,7 +31,9 @@ export function FamilyTile({
       disabled={dimmed}
       onClick={() => onToggle(family)}
       className={cn(
-        'group rounded-card flex h-18 items-center justify-between gap-2 border px-4',
+        'group rounded-card relative flex h-18 items-center border px-4',
+        // 좁으면 이름이 두 줄로 접혀 배지 자리가 없습니다 — 그때는 예전처럼 양 끝으로
+        'justify-between gap-2 md:justify-center md:gap-0',
         'transition-colors duration-120 ease-out',
         'focus-visible:ring-accent-deep outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
         // 비활성은 테두리만 남깁니다 — 채움을 없애면 "누를 수 없다"가 형태로 드러납니다
@@ -41,7 +43,7 @@ export function FamilyTile({
           : 'border-line bg-surface-card text-ink hover:border-accent-deep hover:bg-line-soft',
       )}
     >
-      <span className="text-heading font-serif font-semibold">
+      <span className="text-heading md:text-title font-serif font-semibold">
         {selected ? (
           // 고른 뒤에는 계열명으로 고정 — 마우스가 지나갈 때마다 글자가 바뀌지 않습니다
           name
@@ -58,7 +60,8 @@ export function FamilyTile({
       </span>
 
       {order && (
-        <span className="text-caption border-surface/50 text-surface shrink-0 rounded-full border px-2">
+        // 넓을 때만 흐름에서 뺍니다 — 그래야 고르기 전후로 계열명이 제자리에 섭니다
+        <span className="text-caption border-surface/50 text-surface shrink-0 rounded-full border px-2 md:absolute md:top-1/2 md:right-4 md:-translate-y-1/2">
           {order}순위
         </span>
       )}

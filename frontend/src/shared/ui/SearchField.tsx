@@ -39,17 +39,6 @@ const SUBMIT_TONE: Record<SearchFieldTone, string> = {
 }
 
 /**
- * 알약에 두르는 포커스 링. `archive` 만 답니다.
- *
- * NOTE: `scene` 은 일부러 비워 둡니다 — 짙은 청동 링이 모래빛 알약과 3D 하늘 사이에서
- * 따로 놉니다. 글쇠로 들어와도 자리를 알리는 것은 입력 커서뿐입니다.
- */
-const PILL_FOCUS: Record<SearchFieldTone, string> = {
-  archive: 'has-[:focus-visible]:ring-accent-deep has-[:focus-visible]:ring-2',
-  scene: '',
-}
-
-/**
  * 실행 단추의 지름. 알약 높이에 맞춰 갈립니다.
  *
  * NOTE: 아래 수치는 모두 **1920 기준**입니다 — 치수 유틸리티가 `--spacing` 을 타
@@ -121,8 +110,11 @@ export function SearchField({
         'before:pointer-events-none before:absolute before:-inset-x-6 before:-inset-y-4',
         'before:-z-10 before:rounded-full before:blur-xl',
         'before:bg-[radial-gradient(ellipse_at_center,var(--search-glow,transparent),transparent_70%)]',
-        /* 포커스 링은 input 이 아니라 알약에 겁니다 */
-        PILL_FOCUS[tone],
+        /*
+          NOTE: 포커스 링을 일부러 안 답니다. 칸을 누르면 글쇠로 온 것이 아니어도 링이 떠,
+          짙은 청동이 모래빛 알약 · 상아색 종이 어느 쪽과도 따로 놉니다. 자리를 알리는 것은
+          입력 커서뿐입니다 (`Input` · `Textarea` 와 같습니다).
+        */
         className,
       )}
       onSubmit={(event) => {

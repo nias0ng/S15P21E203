@@ -27,11 +27,14 @@ export function loadMapPerfumes(): Promise<MapPerfume[]> {
       fragranticaId: perfume.id,
       // 한글이 비어 있는 행이 있습니다 (koBasis 가 안 붙은 향수) — 그 자리는 원명으로 둡니다
       name: perfume.nameKo || perfume.name,
+      label: perfume.labelKo || perfume.nameKo || perfume.name,
       brand: perfume.brandKo || perfume.brand,
       nameEn: perfume.name,
       brandEn: perfume.brand,
       family: toScentFamilyKey(perfume.family),
       rank: perfume.rank,
+      mx: perfume.mx,
+      my: perfume.my,
     })),
   )
 

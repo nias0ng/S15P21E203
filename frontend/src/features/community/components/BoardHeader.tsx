@@ -4,8 +4,6 @@ import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 
 type Props = {
-  /** 게시판마다 다른 한 줄 설명 */
-  description: string
   /** 오른쪽 끝에 붙는 글쓰기 단추 */
   action?: React.ReactNode
 }
@@ -15,18 +13,13 @@ const TABS = [
   { to: ROUTES.COMMUNITY_FREE, label: '자유 게시판' },
 ]
 
-/**
- * 커뮤니티 게시판 머리말 (A22a · A22b 상단). 두 게시판이 같이 씁니다.
- *
- * 설명을 게시판마다 받는 이유: 규칙이 다른데 탭 라벨만으로는 모릅니다.
- */
-export function BoardHeader({ description, action }: Props) {
+/** 커뮤니티 게시판 머리말 (A22a · A22b 상단). 두 게시판이 같이 씁니다. */
+export function BoardHeader({ action }: Props) {
   return (
     <header className="space-y-6.25">
-      <div className="space-y-2.5 text-center">
-        <h1 className="text-ink text-display font-serif font-bold">커뮤니티</h1>
-        <p className="text-ink-muted text-body">{description}</p>
-      </div>
+      <h1 className="text-ink text-display text-center font-serif font-bold">
+        커뮤니티
+      </h1>
 
       {/*
         **1fr | auto | 1fr** 입니다. `justify-between` 으로 두면 단추가 한쪽에만
