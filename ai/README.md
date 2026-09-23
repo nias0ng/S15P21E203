@@ -123,7 +123,7 @@ server.py          HTTP 서버 (아래 참고)
 unmatched_log.py   사전이 못 받은 표현을 기록합니다 (아래 참고)
 build_data.py      원본 덤프에서 data/perfumes_nlr.csv.gz 를 다시 만듭니다
 data/
-  perfumes_nlr.csv.gz        5.0MB  향수 129,161개 (id·이름·브랜드·accord·평가자수·평점)
+  perfumes_nlr.csv.gz        5.0MB  원본 향수 129,161개 (추천 시 중복 9110 제외)
   domain_lexicon_v1_15.csv    31KB  한국어 향 표현 63행 -> accord
   accord_dictionary.csv        7KB  accord 92개 마스터 (적재 시 검증용)
   note_accord_bridge.csv      95KB  노트(향 원료) 이름 -> accord 2,925행
@@ -146,7 +146,7 @@ uvicorn server:app --host 0.0.0.0 --port 8000
 
 ```bash
 curl http://localhost:8000/health
-# {"status":"ok","perfumes":129161,"accords":92,"llm":true}
+# {"status":"ok","perfumes":129160,"accords":92,"llm":true}
 ```
 
 `"llm"` 이 ①단계 LLM 구조화를 쓸 수 있는 상태인지 알려줍니다. `false` 면 `GMS_API_KEY`

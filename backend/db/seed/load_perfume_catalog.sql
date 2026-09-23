@@ -1,4 +1,5 @@
--- 향수 카탈로그 적재. 자연어 추천이 쓰는 향수 129,161개와 향 특성 100만 행을 넣고
+-- 향수 카탈로그 적재. 전달 원본 129,161개 중 알려진 크롤링 중복 1개를 제외한
+-- 향수 129,160개와 향 특성 100만 행을 넣고
 -- perfume_ko.csv의 한국어 이름을 갱신합니다.
 --
 -- 실행 (이 디렉터리에서):
@@ -127,6 +128,11 @@ BEGIN
         RAISE EXCEPTION '한국어 이름 CSV에서 찾을 수 없는 브랜드 원이름이 %개입니다', unmapped_brand_count;
     END IF;
 END $$;
+
+-- Fragrantica 9110은 정식 Eclat d’Arpège(988)를 2010년 향수로 중복 수집한 행입니다.
+-- 원본 전달 파일의 행 수 검증은 그대로 유지하되, DB에는 중복 향수와 그 향 특성을 넣지 않습니다.
+DELETE FROM stg_perfume_accords WHERE fragrantica_id = '9110';
+DELETE FROM stg_perfumes        WHERE fragrantica_id = '9110';
 
 -- 영문 이름 하나에 번역이 하나로 정해지는 값만 미리 모읍니다. 이 임시 표를 분석해 두면
 -- 13만 건을 이름으로 맞출 때 PostgreSQL이 전체 표를 반복해서 훑지 않습니다.
@@ -269,7 +275,7 @@ JOIN accords a ON a.name = s.accord_name;
 -- 통째로 빠지는데, 커밋한 뒤에는 무엇이 빠졌는지 찾기 어렵습니다.
 --
 -- 세는 것은 perfumes 전체가 아니라 loaded_perfumes, 즉 이번 CSV 로 들어온 향수뿐입니다.
--- 두 수는 다릅니다. 다른 경로로 들어온 향수가 있으면 perfumes 는 129,161 보다 큽니다.
+-- 두 수는 다릅니다. 다른 경로로 들어온 향수가 있으면 perfumes 는 129,160 보다 큽니다.
 -- loaded_perfumes 는 fragrantica_id 로 안쪽 조인해 만들었고 NULL 은 무엇과도 같지 않으므로,
 -- 그 번호가 없는 향수는 애초에 들어오지 않습니다. 그래서 이 수는 CSV 행 수와 정확히 같습니다.
 -- ---------------------------------------------------------------------------
@@ -279,11 +285,11 @@ DECLARE
     pa_loaded bigint := (SELECT count(*) FROM perfume_accords pa
                          JOIN loaded_perfumes l ON l.perfume_id = pa.perfume_id);
 BEGIN
-    IF loaded <> 129161 THEN
-        RAISE EXCEPTION '적재된 향수가 모자랍니다: 기대 129161, 실제 % (브랜드 이름이 어긋난 행이 있습니다)', loaded;
+    IF loaded <> 129160 THEN
+        RAISE EXCEPTION '적재된 향수가 모자랍니다: 기대 129160, 실제 % (브랜드 이름이 어긋난 행이 있습니다)', loaded;
     END IF;
-    IF pa_loaded <> 1000570 THEN
-        RAISE EXCEPTION '적재된 향 특성이 모자랍니다: 기대 1000570, 실제 % (accord 이름이 어긋난 행이 있습니다)', pa_loaded;
+    IF pa_loaded <> 1000562 THEN
+        RAISE EXCEPTION '적재된 향 특성이 모자랍니다: 기대 1000562, 실제 % (accord 이름이 어긋난 행이 있습니다)', pa_loaded;
     END IF;
 END $$;
 
@@ -292,7 +298,7 @@ COMMIT;
 -- ---------------------------------------------------------------------------
 -- 8. 통계를 다시 모읍니다.
 --
--- 향수가 200개에서 129,161개로 늘었습니다. 통계가 옛 크기를 들고 있으면 실행 계획이 인덱스를
+-- 향수가 200개에서 129,160개로 늘었습니다. 통계가 옛 크기를 들고 있으면 실행 계획이 인덱스를
 -- 건너뛰고 전체를 훑습니다. 자동 수집을 기다리지 않고 여기서 끝냅니다.
 -- ---------------------------------------------------------------------------
 ANALYZE brands;
