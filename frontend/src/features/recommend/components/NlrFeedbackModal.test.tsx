@@ -66,4 +66,76 @@ describe('NlrFeedbackModal', () => {
 
     expect(screen.queryByText(`‘${QUERY}’`)).not.toBeInTheDocument()
   })
+
+  /*
+    설문은 한 번 닫으면 그 추천으로 다시 열리지 않습니다. 적던 한마디를 잘못 눌러 잃으면
+    되찾을 길이 없어, 닫기 전에 한 번 묻습니다.
+  */
+  describe('적던 한마디가 있을 때', () => {
+    const 한마디를적는다 = async (text = '무화과가 좋았어요') => {
+      await userEvent.type(screen.getByLabelText(/한마디/), text)
+    }
+    const 나가기묻는창 = () =>
+      screen.queryByRole('heading', {
+        name: '추천에 대한 후기를 남기지 않고 나가시겠습니까?',
+      })
+
+    it('[×] 가 바로 닫지 않고 먼저 묻는다', async () => {
+      renderModal()
+      await 한마디를적는다()
+
+      await userEvent.click(screen.getByRole('button', { name: '닫기' }))
+
+      expect(나가기묻는창()).toBeInTheDocument()
+      // 아직 끝난 것이 아닙니다 — 취소하면 적던 자리로 돌아가야 합니다
+      expect(usePendingFeedbackStore.getState().pending).not.toBeNull()
+    })
+
+    it('[취소] 면 설문이 그대로 남는다', async () => {
+      renderModal()
+      await 한마디를적는다()
+      await userEvent.click(screen.getByRole('button', { name: '닫기' }))
+
+      await userEvent.click(screen.getByRole('button', { name: '취소' }))
+
+      expect(나가기묻는창()).not.toBeInTheDocument()
+      expect(usePendingFeedbackStore.getState().pending).not.toBeNull()
+      expect(screen.getByLabelText(/한마디/)).toHaveValue('무화과가 좋았어요')
+    })
+
+    it('[나가기] 면 그때 끝난다', async () => {
+      renderModal()
+      await 한마디를적는다()
+      await userEvent.click(screen.getByRole('button', { name: '닫기' }))
+
+      await userEvent.click(screen.getByRole('button', { name: '나가기' }))
+
+      expect(usePendingFeedbackStore.getState().pending).toBeNull()
+      expect(usePendingFeedbackStore.getState().settled).toContain(TOKEN)
+    })
+
+    /*
+      이름이 이미 "건너뛰기" 라 고른 답입니다. 거기에 또 물으면 단추가 거짓말이 됩니다.
+    */
+    it('[건너뛰기] 는 되묻지 않고 바로 끝낸다', async () => {
+      renderModal()
+      await 한마디를적는다()
+
+      await userEvent.click(screen.getByRole('button', { name: '건너뛰기' }))
+
+      expect(나가기묻는창()).not.toBeInTheDocument()
+      expect(usePendingFeedbackStore.getState().pending).toBeNull()
+    })
+
+    // 공백만 친 것은 적은 것이 아닙니다 — 그것까지 붙잡으면 물음이 성가신 것이 됩니다
+    it('공백만 쳤으면 묻지 않고 닫는다', async () => {
+      renderModal()
+      await 한마디를적는다('   ')
+
+      await userEvent.click(screen.getByRole('button', { name: '닫기' }))
+
+      expect(나가기묻는창()).not.toBeInTheDocument()
+      expect(usePendingFeedbackStore.getState().pending).toBeNull()
+    })
+  })
 })

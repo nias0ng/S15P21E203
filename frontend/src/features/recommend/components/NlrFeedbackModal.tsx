@@ -1,11 +1,12 @@
 import { useMutation } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { isApiError } from '@/shared/api/http'
 import { UNROLL, useUnroll } from '@/shared/hooks/useUnroll'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { ChipToggle } from '@/shared/ui/ChipToggle'
+import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { Modal } from '@/shared/ui/Modal'
 import { Textarea } from '@/shared/ui/Textarea'
 
@@ -45,9 +46,10 @@ const OPTIONS = [
  * 폭도 족자가 풀리는 것도 맞췄습니다. 자리가 달라지면 사람이 보기에 답을 잇는 화면이 아니라
  * 다른 기능이 끼어든 것으로 읽힙니다 (`MapSearchModal` 이 같은 이유로 같은 자리를 씁니다).
  *
- * NOTE: **건너뛰기와 [×] 는 같습니다.** 어느 쪽으로 닫아도 그 추천은 끝나고 다시 묻지
- * 않습니다. 화면에는 두 단추가 나란히 있을 뿐이라 어느 쪽이 영영 끝인지 알 길이 없는데,
- * 한쪽만 접어 두면 답하지 않기로 한 사람에게 같은 설문이 새로고침마다 다시 뜹니다.
+ * NOTE: **건너뛰기와 [×] 는 끝이 같습니다.** 어느 쪽으로 닫아도 그 추천은 끝나고 다시 묻지
+ * 않습니다. 한쪽만 접어 두면 답하지 않기로 한 사람에게 같은 설문이 새로고침마다 다시 뜹니다.
+ * 다만 **가는 길은 다릅니다** — [건너뛰기] 는 고른 답이라 바로 끝내고, [×] · Esc 는 잘못
+ * 누른 것일 수 있어 적던 한마디가 있으면 한 번 묻습니다(아래 `requestClose`).
  */
 export function NlrFeedbackModal({ ready }: Props) {
   const pending = usePendingFeedbackStore((state) => state.pending)
@@ -57,40 +59,104 @@ export function NlrFeedbackModal({ ready }: Props) {
   const [answeredToken, setAnsweredToken] = useState<string | null>(null)
   const answered = pending !== null && answeredToken === pending.token
 
+  /**
+   * 적다 만 한마디. **상태가 아니라 ref 입니다** — 글자마다 판 전체가 다시 그려질 이유가
+   * 없고, 읽는 곳은 닫기를 누른 그 순간 한 번뿐입니다.
+   *
+   * 손잡이를 같이 들고 있는 까닭: 설문이 바뀌면 앞 추천에 적던 글은 없는 것이 됩니다.
+   * 손잡이가 다르면 글이 남아 있어도 안 묻습니다 — 안 그러면 새 설문에서 Esc 를 눌렀을 때
+   * 적은 적도 없는 글을 두고 나갈지 묻게 됩니다.
+   */
+  const draft = useRef({ token: '', text: '' })
+  const [confirmingExit, setConfirmingExit] = useState(false)
+
+  const rememberDraft = (text: string) => {
+    if (pending === null) return
+    draft.current = { token: pending.token, text }
+  }
+
   const close = () => {
     if (pending === null) return
+    draft.current = { token: '', text: '' }
+    setConfirmingExit(false)
     settle(pending.token)
+  }
+
+  /**
+   * [×] 와 Esc 가 지나는 길. 적던 한마디가 있으면 바로 닫지 않고 먼저 묻습니다 — 설문은 한 번
+   * 닫으면 그 추천으로 다시 열리지 않아, 잘못 눌러 날아간 글을 되찾을 길이 없습니다.
+   *
+   * 답을 이미 보냈으면(`answered`) 묻지 않습니다. 그 화면은 고맙다는 인사뿐이고 남길 것이
+   * 남아 있지 않습니다.
+   */
+  const requestClose = () => {
+    const hasDraft =
+      pending !== null &&
+      draft.current.token === pending.token &&
+      draft.current.text.trim().length > 0
+
+    if (!answered && hasDraft) {
+      setConfirmingExit(true)
+      return
+    }
+    close()
   }
 
   const open = ready && pending !== null
 
   return (
-    <Modal
-      open={open}
-      onClose={close}
-      title="추천은 어떠셨나요"
-      /*
+    <>
+      <Modal
+        open={open}
+        onClose={requestClose}
+        title="추천은 어떠셨나요"
+        /*
+        배경을 눌러도 닫지 않습니다. `한마디` 에 글을 적다 판 옆을 잘못 누르면 적던 것이
+        통째로 날아가는데, 설문은 한 번 닫으면 그 추천으로 다시 열리지 않아 되돌릴 길이
+        없습니다. 나가는 길은 [×] 와 [건너뛰기], 그리고 Esc 입니다.
+      */
+        closeOnBackdrop={false}
+        /*
         자리 · 크기는 `RecommendModal` 과 **한 벌입니다** — 설문이 추천 결과와 같은 자리에서
         이어지게 하려는 것이라, 한쪽만 고치면 두 판이 어긋납니다.
         560(=140×4) 과 125(=31.25×4) 는 1920 기준이고 `--spacing` 을 타 함께 줄어듭니다.
       */
-      className="scent-map-panel rounded-glass mt-25 mb-auto max-h-[calc(100vh-var(--spacing)*31.25)] w-140 overflow-y-auto"
-    >
-      {/*
+        className="scent-map-panel rounded-glass mt-25 mb-auto max-h-[calc(100vh-var(--spacing)*31.25)] w-140 overflow-y-auto"
+      >
+        {/*
         `<dialog>` 는 닫혀도 children 이 DOM 에 남습니다. 열림과 **같은 조건**으로 그려야
         족자가 다음에 다시 풀리고, 로딩 중에 검색어가 화면 밖 DOM 에 먼저 앉지도 않습니다.
       */}
-      {open && pending !== null && (
-        <FeedbackBody
-          key={pending.token}
-          token={pending.token}
-          query={pending.query}
-          answered={answered}
-          onAnswered={() => setAnsweredToken(pending.token)}
-          onSettle={() => settle(pending.token)}
-        />
-      )}
-    </Modal>
+        {open && pending !== null && (
+          <FeedbackBody
+            key={pending.token}
+            token={pending.token}
+            query={pending.query}
+            answered={answered}
+            onAnswered={() => setAnsweredToken(pending.token)}
+            onSettle={close}
+            onDraftChange={rememberDraft}
+          />
+        )}
+      </Modal>
+
+      {/*
+      설문 판 위에 한 겹 더 뜹니다. `<dialog>` 는 top layer 에 쌓여 나중에 연 것이 위로
+      올라오므로, 설문을 닫지 않은 채로 물을 수 있습니다.
+
+      어두운 유리(`scent-map-panel`)를 입힙니다 — 기본 상아색 종이면 남색 판 위에 흰 종이가
+      한 장 끼어들어, 같은 화면에서 온 물음으로 안 읽힙니다.
+    */}
+      <ConfirmDialog
+        open={confirmingExit}
+        onClose={() => setConfirmingExit(false)}
+        onConfirm={close}
+        title="추천에 대한 후기를 남기지 않고 나가시겠습니까?"
+        description="적던 한마디는 저장되지 않고, 이 추천에 대한 설문은 다시 뜨지 않습니다."
+        confirmLabel="나가기"
+        className="scent-map-panel rounded-glass"
+      />
+    </>
   )
 }
 
@@ -101,6 +167,7 @@ function FeedbackBody(props: {
   answered: boolean
   onAnswered: () => void
   onSettle: () => void
+  onDraftChange: (text: string) => void
 }) {
   const { bodyRef, style, inert } = useUnroll()
 
@@ -127,12 +194,15 @@ function FeedbackForm({
   answered,
   onAnswered,
   onSettle,
+  onDraftChange,
 }: {
   token: string
   query: string
   answered: boolean
   onAnswered: () => void
   onSettle: () => void
+  /** 적다 만 한마디를 판에 알립니다 — 닫을 때 물어볼지를 그 값으로 가립니다 */
+  onDraftChange: (text: string) => void
 }) {
   const [satisfaction, setSatisfaction] = useState<Satisfaction | null>(null)
   const [comment, setComment] = useState('')
@@ -195,7 +265,10 @@ function FeedbackForm({
           label="한마디 (선택)"
           rows={3}
           value={comment}
-          onChange={(event) => setComment(event.target.value)}
+          onChange={(event) => {
+            setComment(event.target.value)
+            onDraftChange(event.target.value)
+          }}
           placeholder="어떤 점이 좋았는지, 무엇이 아쉬웠는지 적어 주세요"
           error={
             tooLong ? `${FEEDBACK_COMMENT_MAX}자까지 쓸 수 있습니다` : undefined
@@ -210,7 +283,10 @@ function FeedbackForm({
       )}
 
       <div className="mt-5 flex justify-end gap-2.5">
-        {/* 답하지 않고 끝내는 길입니다 — [×] 와 달리 이 추천은 다시 묻지 않습니다 */}
+        {/*
+          답하지 않고 끝내는 길입니다. 끝은 [×] 와 같지만 **되묻지 않고 바로** 끝냅니다 —
+          이름이 이미 "건너뛰기" 라 고른 답이고, 거기에 다시 물으면 단추가 거짓말이 됩니다.
+        */}
         <Button variant="ghost" onClick={onSettle}>
           건너뛰기
         </Button>
