@@ -223,10 +223,11 @@
   .scent-glass [data-slot='card'].scent-paper {
     --color-ink: var(--color-charcoal);
     /*
-     * 보조 글자는 밝은 화면 값(#727170)보다 한 단 짙습니다 — 판이 조금 비쳐 바탕이
-     * 순백보다 어두워지면 그 값은 4.5:1 아래로 떨어집니다. 유리 카드와 같은 값입니다.
+     * 보조 글자는 밝은 화면 값(#727170)보다 두 단 짙습니다 — 판이 조금 비쳐 바탕이
+     * 순백보다 어두워지면 그 값은 4.5:1 아래로 떨어지고, 유리 카드 값(#5f5c58)도
+     * 흰 판 위에서는 흐리게 읽혔습니다. 판의 가장 어두운 자리에서도 약 5.8:1 입니다.
      */
-    --color-ink-muted: #5f5c58;
+    --color-ink-muted: #52504c;
     --color-line: var(--color-stonegray);
     --color-line-soft: var(--color-bone);
     --color-surface-card: #ffffff;
