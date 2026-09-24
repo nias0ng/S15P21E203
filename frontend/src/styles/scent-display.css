@@ -97,11 +97,18 @@
    *
    * 헤더를 투명하게 두는 방법은 못 씁니다 — `sticky` 라 스크롤한 글이 헤더를 뚫고
    * 비칩니다. 그래서 같은 그림을 한 장 더 깝니다.
+   *
+   * 맨 위 겹은 수면 아래(향수 목록)에서 가라앉은 만큼 덮는 어둠입니다. 값(`--night-sink`)은
+   * 물 판(`WaterCaustics`)이 매 장 방에 적고, 다른 방에서는 없어 투명합니다.
    */
   .scent-night,
   .scent-night-header {
     background-color: var(--night-abyss);
     background-image:
+      linear-gradient(
+        rgb(6 9 20 / var(--night-sink, 0)),
+        rgb(6 9 20 / var(--night-sink, 0))
+      ),
       radial-gradient(
         ellipse 55% 93% at 25% -5%,
         rgb(62 95 138 / 0.6) 0%,
@@ -216,10 +223,11 @@
   .scent-glass [data-slot='card'].scent-paper {
     --color-ink: var(--color-charcoal);
     /*
-     * 보조 글자는 밝은 화면 값(#727170)보다 한 단 짙습니다 — 판이 조금 비쳐 바탕이
-     * 순백보다 어두워지면 그 값은 4.5:1 아래로 떨어집니다. 유리 카드와 같은 값입니다.
+     * 보조 글자는 밝은 화면 값(#727170)보다 두 단 짙습니다 — 판이 조금 비쳐 바탕이
+     * 순백보다 어두워지면 그 값은 4.5:1 아래로 떨어지고, 유리 카드 값(#5f5c58)도
+     * 흰 판 위에서는 흐리게 읽혔습니다. 판의 가장 어두운 자리에서도 약 5.8:1 입니다.
      */
-    --color-ink-muted: #5f5c58;
+    --color-ink-muted: #52504c;
     --color-line: var(--color-stonegray);
     --color-line-soft: var(--color-bone);
     --color-surface-card: #ffffff;

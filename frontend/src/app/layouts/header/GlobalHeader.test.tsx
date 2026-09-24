@@ -80,7 +80,7 @@ beforeEach(() => {
 
 afterEach(() => {
   useAuthStore.getState().clear()
-  useDiveStore.setState({ stage: 'idle', to: null })
+  useDiveStore.getState().end()
 })
 
 describe('헤더 드롭다운', () => {
@@ -157,6 +157,35 @@ describe('메인에서 나가는 잠수', () => {
     await user.click(screen.getByRole('link', { name: 'PERFUME' }))
     await user.keyboard('{/Control}')
 
+    expect(useDiveStore.getState().stage).toBe('idle')
+  })
+})
+
+// 진열대는 바다 밑이 아니라 배 안이라, 잠수가 아니라 **선실로 들어가기**가 걸립니다
+describe('메인에서 진열대로 — 선실로 들어가기', () => {
+  it('메인에서 SHELF 를 누르면 주소가 바로 바뀌지 않고 선실로 들어간다', async () => {
+    const user = userEvent.setup()
+    logIn()
+    renderHeader(ROUTES.HOME)
+
+    await user.click(screen.getByRole('link', { name: 'SHELF' }))
+
+    expect(screen.getByText(`지금: ${ROUTES.HOME}`)).toBeVisible()
+    expect(useDiveStore.getState()).toMatchObject({
+      stage: 'diving',
+      way: 'cabin',
+      to: ROUTES.MY_SHELF,
+    })
+  })
+
+  it('메인이 아니면 SHELF 도 곧바로 넘어간다', async () => {
+    const user = userEvent.setup()
+    logIn()
+    renderHeader(ROUTES.PERFUMES)
+
+    await user.click(screen.getByRole('link', { name: 'SHELF' }))
+
+    expect(screen.getByText(`지금: ${ROUTES.MY_SHELF}`)).toBeVisible()
     expect(useDiveStore.getState().stage).toBe('idle')
   })
 })
