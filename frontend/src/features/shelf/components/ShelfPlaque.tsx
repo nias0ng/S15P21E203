@@ -1,18 +1,14 @@
 import { cn } from '@/shared/lib/cn'
 
 import type { PlaqueMetrics } from '../lib'
-import type { ShelfCategory } from '../types'
+import { SHELF_CATEGORY_CAPTION, type ShelfCategory } from '../types'
 
-/**
- * 분류 이름 아래 작게 적는 영문 설명. 넓은 현판에서만 보이고(PlaqueDetail 'full'), 대문자와
- * 자간은 CSS 가 입힙니다(.shelf-plaque-caption). 한글 분류 이름을 되풀이하는 장식이라
- * 낭독기에서는 뺍니다.
+/*
+ * 분류 이름 아래 작게 적는 영문 설명은 types.ts 의 SHELF_CATEGORY_CAPTION 입니다 — 상세 카드 머리도
+ * 같은 말을 적습니다. 넓은 현판에서만 보이고(PlaqueDetail 'full'), 대문자와 자간은 CSS 가
+ * 입힙니다(.shelf-plaque-caption).
  */
-const PLAQUE_CAPTION: Record<ShelfCategory, string> = {
-  OWNED: 'My collection',
-  TRIED: 'Tried scents',
-  WISH: 'Wish list',
-}
+const PLAQUE_CAPTION = SHELF_CATEGORY_CAPTION
 
 /** "처음으로" 현판의 영문 설명. 낭독기에는 단추 앞의 "처음으로, " 가 대신 읽힙니다 */
 const RETURN_CAPTION = 'Back to start'

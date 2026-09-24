@@ -104,11 +104,7 @@
     --shelf-ink-soft: oklch(0.455 0.014 61);
     --chip: oklch(0.947 0.009 80 / 0.74);
     --chip-active: oklch(0.29 0.015 55);
-    /*
-     * 상세 패널 바탕. 벽 위에 얹혀서 아주 옅게 비칩니다 — 밑으로 병이 더 이어진다는 걸
-     * 알 수 있을 만큼만 투명하게 둡니다(흐림은 .shelf-panel 의 backdrop-filter).
-     */
-    --panel: oklch(0.948 0.009 82);
+    /* 상세 패널 바탕은 따로 두지 않고 이름표 종이(--tag-paper)를 씁니다 — 추천 편지와 같은 종이(.shelf-panel) */
     --hairline: oklch(0.53 0.016 62 / 0.34);
     --depth: oklch(0.31 0.025 59 / 0.32);
     --highlight: oklch(0.98 0.005 86 / 0.72);
@@ -2173,9 +2169,18 @@
    * 벽을 가리지 않고 그 옆을 차지하므로 뒤에 비칠 것이 없습니다. 바탕은 불투명하고
    * backdrop-filter 도 두지 않습니다 — 흐림은 화면 배율 2배의 1920 에서 680 x 1210 픽셀을
    * 매 프레임 다시 계산하던 값이라, 걷어 내면 벽이 흐를 때의 부담도 같이 사라집니다.
+   *
+   * 종이는 개인화 추천 편지(recommend-letter.css 의 .rec-sheet)와 같습니다 — 이름표 종이(--tag-paper)에
+   * 왼쪽 위에서 크고 부드럽게 퍼지는 빛(아래 "상세 카드 — 결과지").
    */
   .shelf-scope .shelf-panel {
-    background: var(--panel);
+    background:
+      radial-gradient(
+        170% 110% at 12% 0%,
+        var(--tag-paper-active),
+        transparent 80%
+      ),
+      var(--tag-paper);
     box-shadow:
       0 18px 32px -20px var(--depth),
       inset 0 1px var(--highlight);
@@ -2191,49 +2196,131 @@
     background: var(--chip-active);
   }
 
-  /* 향조 원. 안쪽 하이라이트 + 바깥 그림자로 구슬처럼 보이게 합니다. */
-  .shelf-scope .shelf-note-swatch {
-    box-shadow:
-      inset 4px 4px 8px var(--highlight),
-      0 3px 7px var(--depth);
+  /*
+   * ───────── 상세 카드 — 결과지 (S15P21E203-431) ─────────
+   *
+   * 상세 카드(ShelfDetailPanel)는 개인화 추천 편지(features/recommend 의 RecommendLetter)와 **같은 종이 ·
+   * 같은 활자**로 씁니다. 편지가 이 카드 자리에 꼭 맞게 펼쳐지는데, 예전 카드는 글이 전부 왼쪽 끝에
+   * 붙고 향조가 색 구슬 셋이라 같은 자리의 두 카드가 다른 물건처럼 보였습니다.
+   *
+   *   머리   분류 영문 설명 — 편지의 FOR YOU 처럼 기울인 라틴 세리프, 자간 0.18em
+   *   얼굴   병(남는 높이만) · 자간 넓힌 브랜드 · 영문 이름 · 명조 이름 24 · 적합도 — 가운데로 모읍니다
+   *   향조   가는 선을 단 제목 아래 TOP / MIDDLE / BASE 표(노트 셋까지, 넘치면 "외 N")
+   *   메모   가는 선 아래 — 편지의 발치 자리. 적은 글은 명조
+   *
+   * 작은 글자는 caption(12) 이 아니라 body(13) 에서 시작합니다 — 카드가 통째로 줄어(--panel-scale)
+   * 1920 에서도 한 단 작게 그려지고, 자간을 0.18em 이나 벌린 대문자는 같은 크기의 본문보다 작아 보입니다.
+   * 머리만 caption 입니다(편지의 FOR YOU 와 같은 크기 — 꾸밈이라 한 단 작게 둡니다).
+   */
+  .shelf-scope .shelf-sheet-kicker {
+    color: var(--shelf-ink-soft);
+    font-family: var(--shelf-latin);
+    font-size: var(--text-caption);
+    font-style: italic;
+    line-height: 1.5;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
   }
 
-  /* 시안의 향조 색. 노트 종류를 색으로 구분합니다 — 글자도 함께 답니다. */
-  .shelf-scope .shelf-note-citrus {
-    background: oklch(0.72 0.15 65);
+  /* 자간을 넓힌 작은 이름표 — 브랜드 · MEMO. 한글 브랜드에는 대문자가 먹지 않을 뿐 같은 자간입니다 */
+  .shelf-scope .shelf-sheet-label {
+    color: var(--shelf-ink-soft);
+    font-size: var(--text-body);
+    line-height: 1.5;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
   }
-  .shelf-scope .shelf-note-floral {
-    background: oklch(0.72 0.08 345);
-  }
-  .shelf-scope .shelf-note-leaf {
-    background: oklch(0.48 0.07 145);
-  }
-  .shelf-scope .shelf-note-wood {
-    background: oklch(0.57 0.065 60);
-  }
-  .shelf-scope .shelf-note-pearl {
-    background: oklch(0.88 0.02 90);
+
+  /* 향수 이름 — 편지의 이름과 같은 명조 24. 두 줄이 되면 줄 길이를 고르게 나눕니다 */
+  .shelf-scope .shelf-sheet-name {
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.25;
+    word-break: keep-all;
+    text-wrap: balance;
   }
 
   /*
-   * 자간을 넓힌 소형 라벨 — 브랜드명 · SCENT NOTE · TOP/MIDDLE/BASE · MEMO.
-   *
-   * @theme 에 자간 토큰이 없어서 두 컴포넌트가 각자 `tracking-[0.18em]` 문자열
-   * 상수를 들고 있었습니다. 같은 값을 두 곳에서 관리하면 한쪽만 바뀝니다.
-   * 자간은 색·크기와 달리 시안이 확정돼도 함께 갈아끼울 대상이 아니라, 토큰을
-   * 새로 파는 대신 이 화면 전용 클래스 하나로 모았습니다.
-   *
-   * 크기까지 여기서 정하는 이유: 호출하는 쪽이 `shelf-label text-body` 두 개를
-   * 적어야 하면 결국 한쪽을 빠뜨립니다. 값은 활자 스케일의 body 토큰 그대로입니다 —
-   * caption(12) 이었는데, 자간을 0.18em 이나 벌린 대문자라 같은 크기의 본문보다
-   * 작아 보여서 한 단 올렸습니다. 이 클래스는 상세 카드 안에서만 씁니다.
+   * 병 자리 — 카드에서 남는 높이만 씁니다(150 ~ 255). 사진은 이 자리에 떠 있어(absolute) 제 크기로
+   * 자리를 요구하지 않습니다 — 이름 · 메모가 길어지면 카드를 넘기지 않고 병이 그만큼 작아집니다.
+   * 향조 줄 수가 바뀌어도 병은 255 에 닿아 있는 한 그대로입니다(남는 자리는 얼굴과 기록 사이로).
    */
-  .shelf-label {
+  .shelf-scope .shelf-sheet-bottle {
+    position: relative;
+    width: 100%;
+    min-height: 150px;
+    max-height: 255px;
+    flex: 1 1 auto;
+  }
+  .shelf-scope .shelf-sheet-bottle > img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  /* 향조 제목 — 자간 넓힌 이름표 뒤로 가는 선이 카드 끝까지 이어집니다 */
+  .shelf-scope .shelf-sheet-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     color: var(--shelf-ink-soft);
     font-size: var(--text-body);
-    line-height: var(--text-caption--line-height);
+    line-height: 1.5;
     letter-spacing: 0.18em;
     text-transform: uppercase;
+  }
+  .shelf-scope .shelf-sheet-heading::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--hairline);
+  }
+
+  /*
+   * 향조 표 — 단계 이름(자간 넓힌 대문자) | 노트. 노트 줄은 한 줄로만 서고 넘치면 말줄임입니다 — 셋까지만
+   * 적고 "외 N" 으로 줄여 두어 대개 한 줄에 듭니다. 피라미드가 없는 향수의 한 줄(data-wide)은 이름표
+   * 없이 두 칸을 다 씁니다.
+   */
+  .shelf-scope .shelf-sheet-notes {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 15px;
+    row-gap: 4px;
+    align-items: baseline;
+  }
+  .shelf-scope .shelf-sheet-notes dt {
+    color: var(--shelf-ink-soft);
+    font-size: var(--text-body);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+  .shelf-scope .shelf-sheet-notes dd {
+    overflow: hidden;
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .shelf-scope .shelf-sheet-notes dd[data-wide] {
+    grid-column: 1 / -1;
+  }
+
+  /* 메모 — 가는 선 아래. 편지의 발치(.rec-foot)와 같은 선 · 여백입니다 */
+  .shelf-scope .shelf-sheet-memo {
+    padding-top: 10px;
+    border-top: 1px solid var(--hairline);
+  }
+
+  /* 상세가 오는 중인 줄 — 곧 찰 자리를 없다고 적지 않고 옅은 띠로 비워 둡니다 */
+  .shelf-scope .shelf-sheet-skeleton {
+    display: block;
+    width: 60%;
+    height: 0.8em;
+    margin-block: 0.45em;
+    border-radius: 999px;
+    background: color-mix(in oklch, var(--shelf-ink) 7%, transparent);
   }
 
   /*

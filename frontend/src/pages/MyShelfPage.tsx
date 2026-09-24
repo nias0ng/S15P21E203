@@ -497,6 +497,8 @@ export default function MyShelfPage() {
       */
       key={`${browser.selected?.shelfItemId ?? 'empty'}:${detailReady ? 'full' : 'lite'}`}
       item={panelItem}
+      // 목록이 아는 값으로 먼저 채운 동안 — 향조 · 메모 자리를 "없어요" 대신 비워 둡니다
+      pending={!detailReady}
       onChangeRating={(rating) => {
         if (selectedId === undefined) return
         /*

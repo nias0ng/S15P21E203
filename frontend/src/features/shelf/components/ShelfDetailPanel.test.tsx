@@ -110,6 +110,63 @@ describe('ShelfDetailPanel 이름', () => {
   })
 })
 
+describe('ShelfDetailPanel 머리', () => {
+  it('병이 선 분류를 머리에 적는다 — 영문은 장식이라 낭독기에는 한글 분류가 읽힌다', () => {
+    renderPanel(WOOD_SAGE)
+
+    expect(screen.getByText('My collection')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    )
+    expect(screen.getByText('보유 중')).toBeInTheDocument()
+  })
+})
+
+describe('ShelfDetailPanel 향조', () => {
+  const NOTES: ShelfItemDetail['scentNotes'] = [
+    { noteId: 1, name: 'Sea Salt', noteType: 'top' },
+    { noteId: 2, name: 'Ambrette', noteType: 'middle' },
+    { noteId: 3, name: 'Sage', noteType: 'middle' },
+    { noteId: 4, name: 'Driftwood', noteType: 'base' },
+    { noteId: 5, name: 'Musk', noteType: 'base' },
+    { noteId: 6, name: 'Amber', noteType: 'base' },
+    { noteId: 7, name: 'Moss', noteType: 'base' },
+  ]
+
+  it('상세의 실제 노트를 탑 · 미들 · 베이스 줄로 적고, 넘치면 "외 N" 으로 줄인다', () => {
+    renderPanel({ ...WOOD_SAGE, scentNotes: NOTES })
+
+    expect(screen.getByText('Sea Salt')).toBeInTheDocument()
+    expect(screen.getByText('Ambrette · Sage')).toBeInTheDocument()
+    // 넷째부터는 "외 N" — 전부는 줄에 마우스를 올리면 보입니다
+    expect(screen.getByTitle('Driftwood, Musk, Amber, Moss')).toHaveTextContent(
+      'Driftwood · Musk · Amber 외 1',
+    )
+  })
+
+  it('향조가 없는 향수는 없다고 적는다', () => {
+    renderPanel(WOOD_SAGE)
+
+    expect(
+      screen.getByText('향조 정보가 아직 등록되지 않았어요'),
+    ).toBeInTheDocument()
+  })
+
+  it('상세가 오는 중이면 향조 · 메모를 "없어요" 로 적지 않고 비워 둔다', () => {
+    renderPanel(
+      { ...WOOD_SAGE, memo: null, memoUpdatedAt: null },
+      { pending: true },
+    )
+
+    expect(
+      screen.queryByText('향조 정보가 아직 등록되지 않았어요'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('이 향을 어디서 언제 맡았는지 적어두세요.'),
+    ).not.toBeInTheDocument()
+  })
+})
+
 describe('ShelfDetailPanel 선택 전', () => {
   it('고른 향수가 없으면 안내만 적고 조작을 보여주지 않는다', () => {
     renderPanel(null)
