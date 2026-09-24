@@ -316,6 +316,35 @@ class BrandListIntegrationTest {
                 .andExpect(jsonPath("$.brands[*].name").value(Matchers.contains("Chanel")));
     }
 
+    /**
+     * 띄어쓰기를 가리지 않습니다. 붙여 쳐도, 띄어 쳐도, 엉뚱하게 띄어도 같은 브랜드가 걸립니다.
+     *
+     * <p>브랜드 7,873곳 중 5,042곳의 한국어 이름에 공백이 있는데('빅토리아 시크릿'), 어디서
+     * 띄는지는 사람마다 다르고 저장된 이름은 한 가지입니다. 양쪽에서 공백을 지워 견줍니다.
+     *
+     * <p><b>이름에 공백이 없는 쪽도 함께 봅니다.</b> 검색어에서만 공백을 지우면 '조 말론' 처럼
+     * 띄어 친 검색어가 도로 안 걸립니다. 두 방향을 모두 확인해야 한쪽만 고친 상태가 드러납니다.
+     */
+    @Test
+    void ignoresSpacesOnBothSides() throws Exception {
+        insertBrand(9, "Jo Malone", "조 말론", null, true);
+
+        // 이름에는 공백이 있고 검색어에는 없는 방향
+        for (String keyword : new String[]{"조말론", "조 말론", "조  말  론", "jomalone"}) {
+            mockMvc.perform(get(BRANDS_URL).param("keyword", keyword))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.brands[*].name")
+                            .value(Matchers.contains("Jo Malone")));
+        }
+
+        // 이름에 공백이 없고 검색어에만 있는 방향
+        for (String keyword : new String[]{"디 올", "d ior"}) {
+            mockMvc.perform(get(BRANDS_URL).param("keyword", keyword))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.brands[*].name").value(Matchers.contains("Dior")));
+        }
+    }
+
     /** 빈 검색어는 조건을 걸지 않습니다. 공백만 보내도 마찬가지입니다. */
     @Test
     void treatsBlankKeywordAsNoFilter() throws Exception {
