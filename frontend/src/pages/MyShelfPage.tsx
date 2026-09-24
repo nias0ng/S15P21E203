@@ -16,7 +16,17 @@ import {
   myCollectionsQuery,
   type CollectionInput,
 } from '@/features/collection'
-import { perfumeListQuery } from '@/features/perfume'
+import {
+  perfumeDetailQuery,
+  perfumeListQuery,
+  perfumeNotesQuery,
+} from '@/features/perfume'
+import {
+  accordLabel,
+  personalRecommendationQuery,
+  RecommendLetter,
+  type LetterFacts,
+} from '@/features/recommend'
 import {
   ShelfDeck,
   ShelfDetailPanel,
@@ -42,7 +52,7 @@ import { ROUTES } from '@/shared/config/routes'
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { useToast } from '@/shared/hooks/useToast'
 import { READY_GRACE_MS } from '@/shared/lib/diveTrack'
-import { useIsLoggedIn } from '@/shared/store/authStore'
+import { useAuthStore, useIsLoggedIn } from '@/shared/store/authStore'
 import { useIsRising } from '@/shared/store/diveStore'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
@@ -252,6 +262,45 @@ export default function MyShelfPage() {
     ...perfumeListQuery({ keyword: registerKeyword, size: 20 }),
     enabled: registerOpen && registerKeyword.trim().length > 0,
   })
+
+  /*
+   * 개인화 추천 편지 (S15P21E203-431). 진열대에 몇 병이 있는지로 가리지 않습니다 — 서버는 진열대가
+   * 비어 있어도 취향 테스트만으로 고르고, 거꾸로 테스트를 안 했으면 진열대가 가득해도 고르지
+   * 않습니다(그때는 테스트로 이끄는 봉투가 꽂힙니다). 로그인해야 부를 수 있습니다.
+   */
+  const recommendation = useQuery({
+    ...personalRecommendationQuery(),
+    enabled: isLoggedIn,
+  })
+  const recipient = useAuthStore((state) => state.user?.nickname ?? null)
+
+  /*
+   * 편지 속 향수의 브랜드 · 영문 이름 · 향 특성. 추천 응답에는 이름 · 사진 · 근거 한 문장뿐이라 향수
+   * 상세 · 향조로 채웁니다. 편지가 알려 주는 번호(onShow)로 부르고, 캐시가 향수 상세 화면과 같은 키라
+   * 편지에서 "자세히 보기" 로 넘어가면 다시 부르지 않습니다.
+   */
+  const [letterPerfumeId, setLetterPerfumeId] = useState<number | null>(null)
+  const letterDetail = useQuery({
+    ...perfumeDetailQuery(letterPerfumeId ?? 0),
+    enabled: letterPerfumeId !== null,
+  })
+  const letterNotes = useQuery({
+    ...perfumeNotesQuery(letterPerfumeId ?? 0),
+    enabled: letterPerfumeId !== null,
+  })
+  const letterFacts: LetterFacts | undefined =
+    letterPerfumeId !== null && letterDetail.data?.perfumeId === letterPerfumeId
+      ? {
+          perfumeId: letterPerfumeId,
+          brand: letterDetail.data.brand?.name ?? null,
+          // 한국어 이름이 있을 때만 영문을 작게 답니다 — 편지의 큰 이름이 이미 영어면 되풀이입니다
+          nameEn: letterDetail.data.nameKo ? letterDetail.data.name : null,
+          // 두드러진 순서(rank 가 작을수록)로, 3D 향 지도 카드와 같은 표로 한국어로 옮겨 적습니다
+          accords: [...(letterNotes.data?.accords ?? [])]
+            .sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity))
+            .map((accord) => accordLabel(accord.name)),
+        }
+      : undefined
 
   /*
    * 컬렉션 카드에 얹을 향수 사진.
@@ -643,6 +692,58 @@ export default function MyShelfPage() {
     </div>
   )
 
+  /*
+    편지 속 향수를 진열대에 담는 단추. 추천은 "아직 없는 향수" 라 **보유 희망**에 담습니다 — 가졌다면
+    보유 중에서 고르는 편지가 오지 않습니다(서버가 보유 중만 뺍니다). 이미 담긴 향수(시향 · 희망)면
+    담았다고만 적습니다. 진열대 도메인의 일이라 편지(추천 도메인)가 아니라 화면이 만듭니다.
+  */
+  const saveFromLetter = (perfumeId: number) =>
+    inShelf.has(perfumeId) ? (
+      <Button variant="outline" size="sm" disabled className="rec-action">
+        진열대에 있어요
+      </Button>
+    ) : (
+      <Button
+        size="sm"
+        className="rec-action focus-visible:ring-[var(--shelf-ink)] focus-visible:ring-offset-[var(--paper)]"
+        isLoading={
+          actions.register.isPending &&
+          actions.register.variables?.perfumeId === perfumeId
+        }
+        onClick={() =>
+          actions.register.mutate(
+            { perfumeId, category: 'WISH', rating: null, memo: null },
+            {
+              onSuccess: () => showToast('보유 희망에 담았습니다'),
+              onError: () => showToast('진열대에 담지 못했습니다'),
+            },
+          )
+        }
+      >
+        보유 희망에 담기
+      </Button>
+    )
+
+  /*
+    개인화 추천 편지 — 상세 패널 윗변에 봉투로 꽂혀 있다가 누르면 그 패널 크기로 펼쳐집니다
+    (RecommendLetter). 패널과 **같은 자리(위치 기준 상자)** 안에 둬야 펼친 편지가 패널에 꼭 맞습니다.
+    추천할 것이 없으면(404 · 503 · 아직 모름) 아무것도 그리지 않습니다 — 빈 봉투는 아무 말도 안 합니다.
+    벽에서 다른 병을 고르면(closeKey) 편지를 접어 그 병의 상세를 보입니다.
+  */
+  const letter = (placement: 'right' | 'left') => (
+    <RecommendLetter
+      result={recommendation.data}
+      isRefreshing={recommendation.isFetching}
+      onNext={() => void recommendation.refetch()}
+      onShow={setLetterPerfumeId}
+      facts={letterFacts}
+      renderSave={saveFromLetter}
+      recipient={recipient}
+      closeKey={selectedId}
+      placement={placement}
+    />
+  )
+
   if (arrangement === 'stacked') {
     return (
       <div className="shelf-scope flex flex-col">
@@ -677,7 +778,11 @@ export default function MyShelfPage() {
           className="mt-2.5 self-end"
         />
 
-        <div className="mt-5">{detail()}</div>
+        {/* 편지 봉투는 카드 윗변 왼쪽에 꽂힙니다 — 오른쪽 위에는 페이저가 섭니다 */}
+        <div className="relative mt-5">
+          {detail()}
+          {letter('left')}
+        </div>
 
         <section aria-label="내 컬렉션" className="mt-15 flex flex-col gap-7.5">
           {collectionHeader}
@@ -725,8 +830,14 @@ export default function MyShelfPage() {
 
             {shelfWall(
               'mt-7.5 flex-1',
-              // 높이는 벽감 + 이름표 자리까지. 작은 화면에서는 벽감을 따라 통째로 줄어듭니다(ShelfWall)
-              detail('flex-1'),
+              /*
+                높이는 벽감 + 이름표 자리까지. 작은 화면에서는 벽감을 따라 통째로 줄어듭니다(ShelfWall).
+                편지는 패널과 같은 자리 안에 둡니다 — 봉투는 패널 윗변 오른쪽에 꽂히고, 펼치면 패널에 꼭 맞습니다.
+              */
+              <>
+                {detail('flex-1')}
+                {letter('right')}
+              </>,
               // 좁은 기둥 안이라 검색창과 단추를 세로로 세웁니다
               toolbar(undefined, true),
             )}
