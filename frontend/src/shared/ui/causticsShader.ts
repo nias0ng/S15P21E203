@@ -38,6 +38,9 @@ export const causticsVertex = /* glsl */ `
  * 칸(보로노이) 그물 두 겹을 서로 반대로 흘려 겹칩니다. 칸의 경계가 빛줄기, 경계가 만나는
  * 꼭짓점과 두 그물이 포개지는 자리가 하얗게 달아오르는 심입니다.
  *
+ * 두 겹은 따로 켜고 끕니다(0 ~ 1). `uFine` 은 잘고 옅은 그물과 햇살 기둥, `uWide` 는 큰
+ * 그물과 하얀 심입니다 — 취향 테스트가 고른 향 수만큼 한 겹씩 깝니다.
+ *
  * 바닥은 칠하지 않습니다 — 방의 그라데이션(`.scent-night`)이 이미 물이라, 여기서는 빛만
  * 내고 나머지는 투명하게 둡니다(프리멀티플라이드 알파).
  */
@@ -51,6 +54,8 @@ export const causticsFragment = /* glsl */ `
   uniform float uWobble;
   uniform vec3 uGlow;
   uniform vec3 uCore;
+  uniform float uFine;
+  uniform float uWide;
 
   varying vec2 vUv;
 
@@ -142,16 +147,16 @@ export const causticsFragment = /* glsl */ `
 
     // 채널마다 경계를 조금씩 밀어, 빛줄기 가장자리가 물속 빛처럼 갈라집니다
     vec3 split = vec3(1.0, 0.0, -1.0) * uDispersion * 0.012;
-    vec3 web = vec3(
+    vec3 web = uWide * vec3(
       filament(wideWeb.x + split.r, 55.0),
       filament(wideWeb.x + split.g, 55.0),
       filament(wideWeb.x + split.b, 55.0)
     );
-    web += 0.35 * filament(fineWeb.x, 70.0);
+    web += uFine * 0.35 * filament(fineWeb.x, 70.0);
 
     float knot = exp(-wideWeb.y * 22.0);
     float overlap = exp(-wideWeb.x * 40.0) * exp(-fineWeb.x * 50.0);
-    float hot = knot * 0.9 + overlap * 1.4;
+    float hot = uWide * (knot * 0.9 + overlap * 1.4);
 
     // 밝은 자리가 물결을 따라 천천히 옮겨 다닙니다
     float travel = 0.6 + 0.4 * sin(dot(p, vec2(0.55, 0.3)) - t * 0.45)
@@ -170,7 +175,7 @@ export const causticsFragment = /* glsl */ `
     float slant = vUv.x * aspect + vUv.y * 0.45;
     float shafts = pow(0.5 + 0.5 * sin(slant * 7.0 + t * 0.12), 8.0) * 0.6
                  + pow(0.5 + 0.5 * sin(slant * 12.7 - t * 0.09 + 1.3), 10.0) * 0.4;
-    light += uGlow * shafts * smoothstep(0.35, 1.0, vUv.y) * uRays * 0.06;
+    light += uFine * uGlow * shafts * smoothstep(0.35, 1.0, vUv.y) * uRays * 0.06;
 
     float alpha = clamp(max(light.r, max(light.g, light.b)), 0.0, 1.0);
     gl_FragColor = vec4(min(light, vec3(alpha)), alpha);

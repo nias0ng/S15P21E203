@@ -40,7 +40,8 @@ export function FamilyTile({
         'disabled:border-line disabled:pointer-events-none disabled:bg-transparent disabled:opacity-30',
         selected
           ? 'border-ink bg-ink text-surface'
-          : 'border-line bg-surface-card text-ink hover:border-accent-deep hover:bg-line-soft',
+          : // 올렸을 때 바탕은 밝히지 않습니다 — 밝히면 노을빛 계열명이 바탕에 묻힙니다
+            'border-line bg-surface-card text-ink hover:border-sunset',
       )}
     >
       <span className="text-heading md:text-title font-serif font-semibold">
@@ -52,7 +53,8 @@ export function FamilyTile({
             <span className="group-hover:hidden group-focus-visible:hidden">
               {adjective}
             </span>
-            <span className="text-accent-deep hidden group-hover:inline group-focus-visible:inline">
+            {/* 어두운 방의 유리 타일 위라 노을빛(`sunset`)을 씁니다 — `accent-deep` 은 여기서 거의 안 보입니다 */}
+            <span className="text-sunset hidden group-hover:inline group-focus-visible:inline">
               {name}
             </span>
           </>

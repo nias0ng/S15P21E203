@@ -97,11 +97,18 @@
    *
    * 헤더를 투명하게 두는 방법은 못 씁니다 — `sticky` 라 스크롤한 글이 헤더를 뚫고
    * 비칩니다. 그래서 같은 그림을 한 장 더 깝니다.
+   *
+   * 맨 위 겹은 수면 아래(향수 목록)에서 가라앉은 만큼 덮는 어둠입니다. 값(`--night-sink`)은
+   * 물 판(`WaterCaustics`)이 매 장 방에 적고, 다른 방에서는 없어 투명합니다.
    */
   .scent-night,
   .scent-night-header {
     background-color: var(--night-abyss);
     background-image:
+      linear-gradient(
+        rgb(6 9 20 / var(--night-sink, 0)),
+        rgb(6 9 20 / var(--night-sink, 0))
+      ),
       radial-gradient(
         ellipse 55% 93% at 25% -5%,
         rgb(62 95 138 / 0.6) 0%,
