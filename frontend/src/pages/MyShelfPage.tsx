@@ -26,6 +26,7 @@ import {
   ShelfDetailPanel,
   ShelfFooterStrip,
   ShelfPager,
+  ShelfPaper,
   ShelfRegisterModal,
   ShelfToolbar,
   ShelfWall,
@@ -494,36 +495,28 @@ export default function MyShelfPage() {
     />
   )
 
+  /*
+    제목 줄은 진열대 무대와 같은 높이 · 같은 가운데에 서고(무대가 바뀔 때 제목이 같은 줄에서 갈립니다),
+    개수는 제목 글줄의 기준선에 앉습니다 — 가운데로 맞추면 작은 글자가 제목 위쪽에 떠 보입니다.
+  */
   const collectionHeader = (
-    <div className="flex min-h-12.5 items-center gap-5">
-      <h2 className={STAGE_TITLE}>내 컬렉션</h2>
-      <span className="shelf-muted text-body tabular-nums">
-        {collectionCount}개
-      </span>
+    <div className="flex min-h-12.5 items-center">
+      <div className="flex items-baseline gap-5">
+        <h2 className={STAGE_TITLE}>내 컬렉션</h2>
+        <span className="shelf-muted text-body tabular-nums">
+          {collectionCount}개
+        </span>
+      </div>
     </div>
   )
 
-  /*
-    컬렉션을 못 받았으면 빈 띠로 그리지 않습니다. 진열대 목록과 같은 이유 —
-    아무 말이 없으면 "컬렉션이 하나도 없다" 로 읽히는데, 실제로는 못 읽어 온
-    것입니다. 여기는 화면의 한 구역이라 진열대처럼 화면 전체를 대신하지 않고
-    띠 자리에만 안내를 둡니다.
-  */
-  const collectionStrip = collections.isError ? (
-    <div className="border-line rounded-card flex min-h-40 flex-col items-center justify-center gap-2.5 border border-dashed">
-      <p className="shelf-muted text-caption">컬렉션을 불러오지 못했습니다</p>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => void collections.refetch()}
-      >
-        다시 시도
-      </Button>
-    </div>
-  ) : (
+  // 못 받았을 때도 이 자리에서 까닭과 다시 부르는 단추를 세웁니다(CollectionStrip)
+  const collectionStrip = (
     <CollectionStrip
       items={collections.data ?? []}
       isPending={collections.isPending}
+      isError={collections.isError}
+      onRetry={() => void collections.refetch()}
       onCreate={() => setCreateCollectionOpen(true)}
     />
   )
@@ -636,35 +629,8 @@ export default function MyShelfPage() {
     </>
   )
 
-  /*
-    시안의 종이 바탕과 질감. fixed 로 뷰포트를 통째로 덮습니다 — 이 div 에만
-    배경을 깔면 좌우 여백과 화면 아래쪽이 body 의 ivory 로 남아 종이 한 장
-    느낌이 끊깁니다. -z-10 이라 본문 뒤, 헤더(bg-surface · z-20) 아래에 깔립니다.
-
-    질감(shelf-grain)을 본문이 아니라 이 레이어에 얹는 이유: 노이즈는
-    mix-blend-mode 로 밑을 곱하는데, 본문 위에 두면 새 쌓임 맥락이 생겨
-    Toast(fixed)와 모달이 그 아래로 밀립니다.
-  */
-  const paper = (
-    <div
-      aria-hidden
-      className="shelf-paper shelf-grain fixed inset-0 -z-10"
-      data-rising={rising ? '' : undefined}
-    >
-      {/*
-        떠오르기 시작하면 **모래에서 멀어집니다** — 사이의 물이 두꺼워져 바닥이 한 단 가라앉습니다.
-        커튼이 위에서 덮기 전 0.3초 동안 화면에서 움직이는 것이 이것 하나입니다 (나가는 길에서
-        카메라가 먼저 고개를 숙이는 것과 같은 자리).
-      */}
-      <i className="shelf-deepen" />
-      {/*
-        수면 물결이 모래에 드리우는 빛 — 잠수해서 들어온 이 화면이 "얕은 물에 비치는 모래" 로
-        읽히게 하는 겹입니다. 종이 위 · 결 아래 · 내용 뒤(-z-10)이고, 움직이는 것은 transform
-        하나뿐입니다. 값과 까닭은 shelf-display.css 의 .shelf-caustic 에 있습니다.
-      */}
-      <i className="shelf-caustic" />
-    </div>
-  )
+  // 시안의 종이 바탕과 질감 — 뷰포트를 통째로 덮습니다(ShelfPaper). 컬렉션 상세도 같은 종이를 깝니다
+  const paper = <ShelfPaper rising={rising} />
 
   /*
     편지 속 향수를 진열대에 담는 단추. 추천은 "아직 없는 향수" 라 **보유 희망**에 담습니다 — 가졌다면
@@ -777,6 +743,7 @@ export default function MyShelfPage() {
       부모 <main> 의 세로 여백(pt-15 pb-15)을 걷어내고 뷰포트 높이에 맞춥니다.
       `--header-h` 는 헤더 높이(1920 에서 90)이고 화면을 따라 같이 줄어듭니다 — 90 을
       손으로 적으면 헤더만 줄어들어 1536 에서 페이지에 세로 스크롤이 생깁니다.
+
       최소 높이 650 — 진열장 자리가 460 아래로 줄지 않는 높이입니다(위 한 장 배치 설명).
     */
     <div className="shelf-scope -mt-15 -mb-15 flex h-[calc(100dvh_-_var(--header-h))] min-h-162.5 flex-col">
@@ -825,6 +792,10 @@ export default function MyShelfPage() {
             내 컬렉션 — 시안에는 없지만 A13 의 아래 절반이라 지우지 않고 둡니다.
             진열대 무대와 같은 자리에 같은 크기의 제목을 둬서, 바뀔 때 제목이 같은
             줄에서 갈려 올라옵니다. 컬렉션이 많아 넘치면 이 무대 안에서만 스크롤합니다.
+
+            스크롤 칸은 사방으로 5 넓혀 두고 안쪽을 같은 만큼 띄웁니다 — 진열함의 포커스 링이
+            진열함 밖 5 에 돌아서, 칸 끝에 붙으면 스크롤 칸에 잘립니다. 스크롤 막대는 가늘게
+            종이 선 색으로 둡니다(기본 회색 막대가 종이 위에 떠 보입니다).
           */
           <div
             key="collection"
@@ -832,7 +803,7 @@ export default function MyShelfPage() {
           >
             {collectionHeader}
 
-            <div className="mt-7.5 min-h-0 flex-1 overflow-y-auto pb-7.5">
+            <div className="-mx-1.25 mt-6.25 min-h-0 flex-1 [scrollbar-width:thin] [scrollbar-color:var(--hairline)_transparent] overflow-y-auto px-1.25 pt-1.25 pb-7.5">
               {collectionStrip}
             </div>
           </div>,

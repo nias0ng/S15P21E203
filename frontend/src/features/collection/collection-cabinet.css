@@ -1,0 +1,694 @@
+/*
+ * 컬렉션 — 진열함 (S15P21E203-431)
+ *
+ * 컬렉션 하나가 벽에 판 작은 벽감(진열함) 하나입니다. 내 컬렉션 무대(CollectionStrip) · 컬렉션 상세의
+ * 향수 칸(CollectionPerfumeGrid) · 향수를 고르는 모달(ShelfItemPickList)이 같은 진열함(CaseNiche)과
+ * 명판을 씁니다. 진열대 무대의 큰 벽감과 같은 재료로 읽혀야 해서 **색은 진열대 팔레트를 그대로
+ * 빌립니다** — `features/shelf/shelf-display.css` 의 `.shelf-scope` 가 내주는 변수(--niche-* ·
+ * --bevel-* · --contact · --cast · --tag-* · --plaque-* · --grain-* …)입니다. 그래서 진열함은 진열대
+ * 종이(.shelf-scope) 안에서만 섭니다 — 컬렉션 상세도 그 종이를 깝니다. 진열대 색을 다시 잡으면
+ * 진열함도 따라가서 여기는 고칠 것이 없습니다.
+ *
+ * 왜 CSS 파일인가 · 왜 @layer components 인가는 진열대 스타일시트 머리말과 같습니다 — 면마다의
+ * clip-path 와 겹친 그늘은 유틸리티로 옮기면 읽을 수 없습니다. 모양만 여기 두고 배치 · 활자는
+ * Tailwind 로 씁니다.
+ *
+ * 면을 나눠 칠하는 방식도 진열대 벽감과 같고(뒷벽 → 빛 → 천장 · 좌우 벽 · 바닥 → 입구 테두리 → 결),
+ * 깊이만 작은 상자에 맞춰 얕게 둡니다. 치수는 1920 에서 적고 --spacing 이 화면을 따라 줄입니다.
+ *
+ * ── 활자는 다섯 단입니다 ────────────────────────────────────
+ * 컬렉션 화면(무대 · 상세 · 모달)은 역할마다 한 크기만 씁니다. 크기를 늘리지 말고 역할로 고릅니다 —
+ * 같은 역할이 화면마다 다른 크기면 정돈되지 않아 보이고, 이름을 키워 눈에 띄게 하면 병보다 글이 커집니다.
+ *
+ *   36  무대 제목(내 컬렉션)        — 진열대 무대 제목과 같은 자리 · 같은 크기(MyShelfPage)
+ *   28  상세 제목(컬렉션 이름)      — text-display
+ *   16  이름 · 설명                — 명판 이름 · 설명(메모) · 이름 입력칸 · 안내 제목 (text-heading · 명조)
+ *   13  본문                      — 개수 · 설명 한 줄 · 고르는 칸 이름 · 단추 · 돌아가는 길 (text-body)
+ *   12  머리글                    — 영문 머리 · 브랜드 · 칸 이름표 · 덧붙임 (text-caption)
+ *
+ * 이름이 눈에 들어오게 하는 것은 크기가 아니라 명판(제 바탕) · 명조 · 굵기입니다.
+ */
+
+@layer components {
+  .collection-niche {
+    /* 입구 테두리 · 천장 · 좌우 벽 · 바닥이 보이는 깊이 (1920 에서 3 · 15 · 20 · 25) */
+    --cab-bevel: 3px;
+    --cab-ceil: calc(var(--spacing) * 3.75);
+    --cab-wall: calc(var(--spacing) * 5);
+    --cab-floor: calc(var(--spacing) * 6.25);
+    /* 병 발치가 바닥 앞 가장자리에서 들어간 거리 — 병이 바닥 가운데쯤 섭니다 */
+    --cab-foot: calc(var(--spacing) * 2.5);
+    /* 뒷벽 상자 — 뒷벽 · 빛 · 안쪽 글이 같이 씁니다 */
+    --cab-back: calc(var(--cab-bevel) + var(--cab-ceil))
+      calc(var(--cab-bevel) + var(--cab-wall))
+      calc(var(--cab-bevel) + var(--cab-floor));
+
+    position: relative;
+    display: block;
+    aspect-ratio: 8 / 5;
+    /* 면 사이 틈으로 페이지가 비치지 않게 접힘선 색을 깔아 둡니다 */
+    background: var(--niche-seam);
+    /* 결의 multiply 가 진열함 밖 종이까지 곱하지 않게 가둡니다 */
+    isolation: isolate;
+  }
+
+  /* 한 병이 서는 칸(컬렉션 상세)과 고르는 칸(모달) — 병 하나라 세로가 깁니다 */
+  .collection-niche[data-shape='tall'] {
+    aspect-ratio: 3 / 4;
+  }
+  .collection-niche[data-shape='square'] {
+    aspect-ratio: 1;
+  }
+
+  /* 모달 안의 작은 칸 — 면이 제 깊이면 폭 130 칸에서 옆벽 둘이 병 자리의 3분의 1 을 먹습니다 (1920 에서 10 · 10 · 15 · 5) */
+  .collection-niche[data-compact] {
+    --cab-ceil: calc(var(--spacing) * 2.5);
+    --cab-wall: calc(var(--spacing) * 2.5);
+    --cab-floor: calc(var(--spacing) * 3.75);
+    --cab-foot: calc(var(--spacing) * 1.25);
+  }
+
+  .collection-niche > i {
+    position: absolute;
+    inset: var(--cab-bevel);
+    pointer-events: none;
+  }
+
+  /* 뒷벽 — 위가 조금 어둡고 가운데~아래가 밝습니다. 접힘선 그늘은 천장 밑이 가장 깊습니다 */
+  .collection-niche > .collection-niche-back {
+    inset: var(--cab-back);
+    background: linear-gradient(
+      to bottom,
+      var(--niche-back-top),
+      var(--niche-back) 45%,
+      var(--niche-back-low)
+    );
+    box-shadow:
+      inset 0 12px 16px -10px var(--niche-ao),
+      inset 12px 0 14px -12px var(--niche-ao-soft),
+      inset -12px 0 14px -12px var(--niche-ao-soft),
+      inset 0 -8px 10px -8px var(--niche-ao-soft);
+  }
+
+  /* 뒷벽 아래에 고이는 빛. 마우스를 올리면 한 단 밝아집니다 */
+  .collection-niche > .collection-niche-light {
+    inset: var(--cab-back);
+    background: radial-gradient(
+      60% 85% at 45% 100%,
+      var(--niche-glow),
+      transparent 72%
+    );
+    opacity: 0.75;
+    transition: opacity 320ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .collection-niche > .collection-niche-ceiling {
+    clip-path: polygon(
+      0 0,
+      100% 0,
+      calc(100% - var(--cab-wall)) var(--cab-ceil),
+      var(--cab-wall) var(--cab-ceil)
+    );
+    background: linear-gradient(
+      to bottom,
+      var(--niche-ceiling),
+      var(--niche-ceiling-deep) var(--cab-ceil)
+    );
+  }
+
+  .collection-niche > .collection-niche-wall-left {
+    clip-path: polygon(
+      0 0,
+      var(--cab-wall) var(--cab-ceil),
+      var(--cab-wall) calc(100% - var(--cab-floor)),
+      0 100%
+    );
+    background:
+      linear-gradient(to bottom, var(--niche-ao-soft), transparent 45%),
+      linear-gradient(
+        to right,
+        var(--niche-wall),
+        var(--niche-wall-deep) var(--cab-wall)
+      );
+  }
+  .collection-niche > .collection-niche-wall-right {
+    clip-path: polygon(
+      100% 0,
+      100% 100%,
+      calc(100% - var(--cab-wall)) calc(100% - var(--cab-floor)),
+      calc(100% - var(--cab-wall)) var(--cab-ceil)
+    );
+    background:
+      linear-gradient(to bottom, var(--niche-ao-soft), transparent 45%),
+      linear-gradient(
+        to left,
+        var(--niche-wall),
+        var(--niche-wall-deep) var(--cab-wall)
+      );
+  }
+
+  /* 바닥 — 병이 서는 면. 뒷벽과 만나는 접힘선에 그늘을 먼저 깔아 경계가 번지게 합니다 */
+  .collection-niche > .collection-niche-floor {
+    clip-path: polygon(
+      var(--cab-wall) calc(100% - var(--cab-floor)),
+      calc(100% - var(--cab-wall)) calc(100% - var(--cab-floor)),
+      100% 100%,
+      0 100%
+    );
+    background:
+      linear-gradient(
+        to bottom,
+        var(--niche-ao) calc(100% - var(--cab-floor)),
+        transparent calc(100% - var(--cab-floor) + 8px)
+      ),
+      linear-gradient(
+        to bottom,
+        var(--niche-floor) calc(100% - var(--cab-floor)),
+        var(--niche-floor-front)
+      );
+  }
+
+  /* 입구 테두리 — 위는 아래를 보고 있어 어둡고, 아래는 빛을 받아 밝습니다 */
+  .collection-niche > .collection-niche-bevel {
+    inset: 0;
+    border: var(--cab-bevel) solid;
+    border-color: var(--bevel-top) var(--bevel-side) var(--bevel-bottom);
+    box-shadow:
+      inset 0 1px 0 var(--niche-ao),
+      0 1px 0 var(--bevel-rim);
+  }
+
+  /* 종이 결 — 페이지 · 진열대 벽감과 같은 결이라 같은 종이로 읽힙니다. 테두리까지 덮습니다 */
+  .collection-niche > .collection-niche-grain {
+    inset: 0;
+    background-image: var(--grain-fine), var(--grain-mottle);
+    background-size:
+      180px 180px,
+      700px 700px;
+    mix-blend-mode: multiply;
+    opacity: 0.32;
+  }
+
+  /* 뒷벽 한가운데 — 빈 컬렉션의 글 · 새 컬렉션 표시가 섭니다 */
+  .collection-case-inside {
+    position: absolute;
+    inset: var(--cab-back);
+    display: grid;
+    place-items: center;
+    padding: 0 calc(var(--spacing) * 5);
+    text-align: center;
+  }
+
+  /*
+   * ───────── 병 ─────────
+   *
+   * 병은 모두 같은 높이로 바닥에 서고 가운데로 모입니다 — 병 셋이 서는 진열함은 높이의 64%, 한 병이
+   * 서는 칸은 72% · 고르는 칸은 70%(병 하나라 옆이 비어 조금 더 키웁니다). 넓은 병이 겹쳐 넘치면
+   * 칸이 줄면서 사진이 그 안에 작게 앉습니다(object-fit: contain · 발치 기준).
+   * 그림자는 진열대 병과 같은 두 가지만 둡니다 — 발치의 접지 그림자, 오른쪽 뒤 벽에 지는 그림자.
+   */
+  .collection-bottles {
+    position: absolute;
+    right: calc(var(--cab-bevel) + var(--cab-wall));
+    bottom: calc(var(--cab-bevel) + var(--cab-foot));
+    left: calc(var(--cab-bevel) + var(--cab-wall));
+    height: 64%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: calc(var(--spacing) * 3.75);
+  }
+  .collection-niche[data-shape='tall'] .collection-bottles {
+    height: 72%;
+  }
+  .collection-niche[data-shape='square'] .collection-bottles {
+    height: 70%;
+  }
+
+  .collection-bottle {
+    position: relative;
+    display: flex;
+    flex: 0 1 auto;
+    align-items: flex-end;
+    min-width: 0;
+    height: 100%;
+  }
+
+  .collection-bottle > * {
+    transform-origin: 50% 100%;
+    /* 제자리로 돌아올 때 — 커질 때보다 조금 빠르게 줄어듭니다 */
+    transition:
+      scale 320ms cubic-bezier(0.4, 0, 0.2, 1),
+      opacity 200ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  /* 사진을 다 받기 전에는 병 · 그림자를 투명하게 두었다가 한 번에 드러냅니다 */
+  .collection-bottle:not([data-ready]) > * {
+    opacity: 0;
+  }
+
+  .collection-bottle-img {
+    position: relative;
+    z-index: 1;
+    width: auto;
+    max-width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: bottom;
+  }
+
+  /* 접지 그림자 — 병이 바닥에 닿아 있다는 인상은 거의 이것 하나가 만듭니다 */
+  .collection-bottle-contact {
+    position: absolute;
+    right: 14%;
+    bottom: -4px;
+    left: 14%;
+    height: 10px;
+    background:
+      radial-gradient(closest-side, var(--contact) 25%, transparent) center /
+        80% 55% no-repeat,
+      radial-gradient(closest-side, var(--contact-soft), transparent);
+  }
+
+  /*
+   * 벽에 지는 그림자 — 병 실루엣을 오른쪽으로 밀고 발치에서 뒷벽 밑선까지 올려 세웁니다. 광원이
+   * 왼쪽 앞 위라 그림자는 오른쪽 뒤 벽에 떨어집니다.
+   * 흐림은 이 층에, 오리기는 ::before 에 둡니다 — 한 요소에 두면 흐림이 오리기보다 먼저 걸려
+   * 윤곽이 칼같이 남습니다(진열대 병 그림자와 같은 까닭).
+   */
+  .collection-bottle-cast {
+    position: absolute;
+    inset: 0;
+    translate: calc(var(--spacing) * 2.5)
+      calc(var(--cab-foot) - var(--cab-floor));
+    filter: blur(2px);
+  }
+  .collection-bottle-cast::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, var(--cast), var(--cast-far));
+    mask: var(--bottle) bottom center / contain no-repeat;
+  }
+
+  /*
+   * ───────── 누를 수 있다는 표시 ─────────
+   *
+   * 마우스를 올리면 병이 발치를 축으로 조금 커지고(진열대 병과 같은 곡선) 뒷벽 빛이 밝아집니다.
+   * 키보드 포커스는 같은 움직임에 진열함 둘레의 먹색 링을 더합니다. 터치 화면은 누른 뒤에도
+   * :hover 가 남아서 마우스가 있을 때만 겁니다.
+   */
+  .collection-case:focus-visible .collection-niche {
+    outline: 2px solid var(--shelf-ink);
+    outline-offset: 3px;
+  }
+  .collection-case:focus-visible
+    .collection-bottle
+    > :is(.collection-bottle-img, .collection-bottle-cast) {
+    scale: 1.05;
+    transition:
+      scale 420ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 200ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .collection-case:focus-visible .collection-niche-light {
+    opacity: 1;
+  }
+
+  @media (hover: hover) {
+    .collection-case:hover
+      .collection-bottle
+      > :is(.collection-bottle-img, .collection-bottle-cast) {
+      scale: 1.05;
+      transition:
+        scale 420ms cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 200ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    }
+    .collection-case:hover .collection-bottle > .collection-bottle-contact {
+      scale: 1.05 1;
+    }
+    .collection-case:hover .collection-niche-light {
+      opacity: 1;
+    }
+    .collection-case:hover .collection-plate-title {
+      text-decoration-color: color-mix(in oklch, currentColor 45%, transparent);
+    }
+  }
+
+  /*
+   * ───────── 명판 ─────────
+   *
+   * 진열함 아래에 다는 크림 종이 판(CasePlate) — 진열대 메뉴판과 같은 종이 · 가장자리 · 안쪽
+   * 테두리선이고, 진열함보다 양옆 7% 좁게 가운데에 섭니다. 글은 가운데로 모읍니다.
+   *
+   *   md  컬렉션 진열함 — 명조 16 이름 한 줄 · 13 개수와 설명 한 줄
+   *   sm  향수 칸 — 12 브랜드(자간 넓힌 영문) · 명조 16 이름 두 줄까지. 두 줄 자리를 늘 잡아 한 줄에
+   *       선 명판끼리 높이가 같습니다
+   *
+   * 이름은 두 명판 모두 명조 16 입니다(머리말의 활자 단). 이름은 먹, 개수 · 설명 · 브랜드는 한 단 옅은
+   * 먹입니다. 판이 종이보다 밝아서 옅은 먹도 벽에 바로 적을 때보다 대비가 큽니다.
+   */
+  .collection-plate {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    margin: calc(var(--spacing) * 2.5) 7% 0;
+    padding: calc(var(--spacing) * 2.5) calc(var(--spacing) * 5);
+    border-radius: 2px;
+    text-align: center;
+    background: linear-gradient(
+      to bottom,
+      var(--tag-paper-active),
+      var(--plaque-paper-low)
+    );
+    box-shadow:
+      0 0 0 1px var(--plaque-edge),
+      0 10px 16px -12px var(--plaque-cast),
+      inset 0 1px var(--rim-soft);
+  }
+  /* 안쪽 테두리선 — 판 가장자리에서 4 들어와 도는 가는 선 */
+  .collection-plate::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border: 1px solid var(--plaque-line);
+    opacity: 0.55;
+    pointer-events: none;
+  }
+  .collection-plate > * {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /*
+   * 이름 밑줄 — 평소에는 투명하고 마우스를 올리면 옅은 먹색으로 드러납니다.
+   * 밑줄을 글자에 바짝 붙입니다(0.12em). 이름은 말줄임(overflow: hidden)이라 0.25em 만 내려도
+   * 글줄 상자 밖으로 나가 잘립니다.
+   */
+  .collection-plate-title {
+    color: var(--shelf-ink);
+    font-family: var(--font-serif);
+    font-size: var(--text-heading);
+    font-weight: 600;
+    line-height: 1.4;
+    text-decoration-line: underline;
+    text-decoration-color: transparent;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.12em;
+    transition: text-decoration-color 120ms ease-out;
+  }
+
+  .collection-plate-meta {
+    color: var(--shelf-ink-soft);
+    font-size: var(--text-body);
+    line-height: 1.5;
+  }
+
+  /* 브랜드 — 자간을 넓힌 작은 대문자(진열대 이름표의 브랜드와 같은 고전 세리프) */
+  .collection-plate-kicker {
+    color: var(--shelf-ink-soft);
+    font-family: var(--shelf-latin);
+    font-size: var(--text-caption);
+    line-height: 1.5;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .collection-plate[data-size='sm'] {
+    padding-inline: calc(var(--spacing) * 3.75);
+  }
+  /* 두 줄 자리를 늘 잡고 한 줄 이름은 그 가운데에 앉힙니다 — 안쪽 한 겹이 두 줄에서 자릅니다 */
+  .collection-plate[data-size='sm'] > .collection-plate-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(2em * 1.4);
+    white-space: normal;
+  }
+  .collection-plate[data-size='sm'] > .collection-plate-title > span {
+    display: -webkit-box;
+    overflow: hidden;
+    text-wrap: balance;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  /* 목록이 오는 동안 명판 자리 — 글줄 높이 안에 앉는 옅은 막대 */
+  .collection-plate-bar {
+    display: inline-block;
+    height: 0.8em;
+    vertical-align: middle;
+    border-radius: 999px;
+    background: color-mix(in oklch, var(--shelf-ink) 10%, transparent);
+    animation: collection-bar-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes collection-bar-pulse {
+    50% {
+      opacity: 0.5;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .collection-plate-bar {
+      animation: none;
+    }
+  }
+
+  /*
+   * ───────── 향수 칸의 빼기 [×] ─────────
+   *
+   * 칸(링크) 밖의 단추를 진열함 오른쪽 위에 겹쳐 올립니다. 칩과 같은 종이 원이고, 마우스를 올리면
+   * 경고색으로 바뀝니다. 늘 보입니다 — 마우스를 올려야 나오면 손가락으로는 뺄 길이 안 보입니다.
+   */
+  .collection-remove {
+    position: absolute;
+    top: calc(var(--spacing) * 2.5);
+    right: calc(var(--spacing) * 2.5);
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: calc(var(--spacing) * 7.5);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    color: var(--shelf-ink-soft);
+    background: var(--chip);
+    box-shadow:
+      0 0 0 1px var(--hairline),
+      inset 0 1px var(--highlight);
+    outline: none;
+    transition:
+      color 120ms ease-out,
+      background-color 120ms ease-out;
+  }
+  .collection-remove:hover {
+    color: var(--color-danger);
+    background: color-mix(in oklch, var(--color-danger) 10%, var(--tag-paper));
+  }
+  .collection-remove:focus-visible {
+    outline: 2px solid var(--shelf-ink);
+    outline-offset: 2px;
+  }
+
+  /*
+   * ───────── 향수 고르기 칸 (모달) ─────────
+   *
+   * 작은 정사각 진열함 + 브랜드 · 이름(두 줄까지). 오른쪽 위 원이 체크 표시입니다 — 고르기 전에는
+   * 빈 종이 원이라 여러 병을 고를 수 있다는 것이 처음부터 보이고, 고르면 먹으로 차고 진열함에 먹색
+   * 테가 돕니다. 키보드 포커스의 링도 같은 테라, 고른 것과는 체크 표시로 가립니다.
+   */
+  .collection-pick {
+    position: relative;
+    text-align: center;
+  }
+  .collection-pick[aria-pressed='true'] .collection-niche {
+    outline: 2px solid var(--shelf-ink);
+    outline-offset: 2px;
+  }
+  .collection-pick[aria-pressed='true'] .collection-niche-light {
+    opacity: 1;
+  }
+
+  /* 진열함 모서리에서 5 바깥으로 걸칩니다 — 고르는 칸의 스크롤 여유(10) 안이라 잘리지 않습니다 */
+  .collection-pick-check {
+    position: absolute;
+    top: calc(var(--spacing) * -1.25);
+    right: calc(var(--spacing) * -1.25);
+    z-index: 1;
+    display: block;
+    width: calc(var(--spacing) * 6.25);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--tag-paper-active);
+    box-shadow:
+      0 0 0 1px var(--hairline),
+      0 2px 6px -2px var(--depth);
+    transition:
+      background-color 160ms ease-out,
+      box-shadow 160ms ease-out;
+  }
+  /* 체크 — 먹 원 위의 종이색 꺾쇠. 테두리 두 변을 45도 돌려 그립니다 */
+  .collection-pick-check::after {
+    content: '';
+    position: absolute;
+    top: 44%;
+    left: 50%;
+    width: 26%;
+    height: 46%;
+    border: solid var(--tag-paper-active);
+    border-width: 0 2px 2px 0;
+    opacity: 0;
+    translate: -50% -50%;
+    rotate: 45deg;
+    transition: opacity 160ms ease-out;
+  }
+  .collection-pick[aria-pressed='true'] .collection-pick-check {
+    background: var(--chip-active);
+    box-shadow: 0 2px 6px -2px var(--depth);
+  }
+  .collection-pick[aria-pressed='true'] .collection-pick-check::after {
+    opacity: 1;
+  }
+
+  .collection-pick-brand {
+    display: block;
+    overflow: hidden;
+    margin-top: calc(var(--spacing) * 2.5);
+    color: var(--shelf-ink-soft);
+    font-family: var(--shelf-latin);
+    font-size: var(--text-caption);
+    line-height: 1.5;
+    /* 명판의 브랜드와 같은 자간 — 같은 역할이라 같은 모양입니다 */
+    letter-spacing: 0.16em;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  /* 고르는 칸은 작아서(1920 에서 130 ~ 160) 이름을 본문 단(13)으로 적습니다 — 명판 이름(16)으로 적으면 대개 두 줄이 됩니다 */
+  .collection-pick-name {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--shelf-ink);
+    font-family: var(--font-serif);
+    font-size: var(--text-body);
+    font-weight: 600;
+    line-height: 1.45;
+    text-wrap: balance;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  /* 고르는 칸의 스크롤 막대 — 가늘게 종이 선 색으로 둡니다(기본 회색 막대가 종이 위에 떠 보입니다) */
+  .collection-pick-list {
+    scrollbar-color: var(--hairline) transparent;
+    scrollbar-width: thin;
+  }
+
+  /*
+   * ───────── 모달 종이 ─────────
+   *
+   * 컬렉션 모달(만들기 · 고치기 · 향수 담기)은 흰 창이 아니라 진열대 상세 카드 · 추천 편지와 같은
+   * 크림 종이입니다 — 왼쪽 위에서 빛이 들고 아래로 한 단 가라앉습니다. 머리 · 발의 가르는 선은
+   * 모달이 유틸리티로 긋는 선이라 부르는 쪽(COLLECTION_SHEET)이 같은 유틸리티로 색만 바꿉니다.
+   */
+  .collection-sheet {
+    color: var(--shelf-ink);
+    background:
+      radial-gradient(
+        170% 110% at 12% 0%,
+        var(--tag-paper-active),
+        transparent 80%
+      ),
+      var(--tag-paper);
+    box-shadow:
+      0 40px 80px -40px var(--depth),
+      inset 0 1px var(--highlight);
+  }
+  .collection-sheet::backdrop {
+    background: color-mix(in oklch, var(--shelf-ink) 45%, transparent);
+  }
+
+  /*
+   * 모달 안 칸 제목 — 오른쪽으로 가는 선이 붙는 줄(상세 카드의 SCENT NOTE 와 같은 짜임). 한글 제목이라
+   * 영문 대문자에 주는 넓은 자간(0.18em)은 걷습니다 — 한글에 걸면 글자가 흩어져 한 낱말로 안 읽힙니다.
+   */
+  .collection-sheet-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--shelf-ink-soft);
+    font-size: var(--text-body);
+    font-weight: 500;
+    line-height: 1.5;
+  }
+  .collection-sheet-heading::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--hairline);
+  }
+
+  /*
+   * ───────── 컬렉션 상세의 머리 ─────────
+   *
+   * 돌아가는 길 · 영문 머리 · 명조 28 이름 · 짧은 선 · 설명(메모) · 개수 · 단추. 설명은 사용자가 적은
+   * 메모라 옅은 먹이 아니라 먹 명조 16 으로 적습니다 — 옅게 두면 이름 아래 부제처럼 묻힙니다. 영문
+   * 머리는 상세 카드의 머리(MY COLLECTION)와 같은 기울인 대문자입니다.
+   */
+  .collection-kicker {
+    color: var(--shelf-ink-soft);
+    font-family: var(--shelf-latin);
+    font-size: var(--text-caption);
+    font-style: italic;
+    line-height: 1.5;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  /*
+   * 새 컬렉션 표시 — 칩과 같은 종이 원에 가는 십자. 마우스를 올리면 분류 메뉴판을 고를 때처럼
+   * 먹으로 채워집니다.
+   */
+  .collection-new-mark {
+    position: relative;
+    display: block;
+    width: calc(var(--spacing) * 12.5);
+    aspect-ratio: 1;
+    border: 1px solid var(--hairline);
+    border-radius: 50%;
+    color: var(--shelf-ink-soft);
+    background: var(--chip);
+    box-shadow: inset 0 1px var(--highlight);
+    transition:
+      color 200ms ease-out,
+      background-color 200ms ease-out,
+      border-color 200ms ease-out;
+  }
+  .collection-new-mark::before,
+  .collection-new-mark::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 36%;
+    height: 1.5px;
+    background: currentColor;
+    translate: -50% -50%;
+  }
+  .collection-new-mark::after {
+    rotate: 90deg;
+  }
+  .collection-case:focus-visible .collection-new-mark {
+    color: var(--tag-paper-active);
+    background: var(--chip-active);
+    border-color: transparent;
+  }
+  @media (hover: hover) {
+    .collection-case:hover .collection-new-mark {
+      color: var(--tag-paper-active);
+      background: var(--chip-active);
+      border-color: transparent;
+    }
+  }
+}

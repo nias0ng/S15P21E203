@@ -3,7 +3,8 @@ import { useMemo } from 'react'
 import { cn } from '@/shared/lib/cn'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { SearchField } from '@/shared/ui/SearchField'
-import { Thumbnail } from '@/shared/ui/Thumbnail'
+
+import { CaseBottles, CaseNiche } from './CaseNiche'
 
 /** 컬렉션은 향수가 아니라 진열대 항목을 담습니다 — `perfumeId` 로는 지울 수 없습니다 */
 export type ShelfItemCandidate = {
@@ -23,11 +24,20 @@ type Props = {
   onKeywordChange: (keyword: string) => void
   /** 후보가 하나도 없을 때 할 말. 만들 때와 담을 때가 다릅니다 */
   emptyTitle: string
+  /**
+   * 고르는 칸(스크롤 상자)의 높이 등 — 기본은 1920 에서 440 · 화면의 48% 까지입니다. 위에 칸이 더
+   * 있는 모달(만들기)은 낮춰서 모달이 창보다 길어지지 않게 합니다.
+   */
+  listClassName?: string
 }
 
 /**
  * 진열대에서 향수를 골라 담는 목록 (A19 — COL-01 · COL-03). 검색은 서버에 묻지 않고 받아
  * 둔 후보 안에서 거릅니다 — 목록 API 에 검색어가 없습니다.
+ *
+ * 후보마다 작은 진열함에 병이 서고, 아래에 브랜드와 이름(두 줄까지)을 적습니다. 오른쪽 위 원이
+ * 체크 표시라 여러 병을 고를 수 있다는 것이 처음부터 보입니다 — 고르면 먹으로 차고 진열함에 먹색
+ * 테가 돕니다.
  */
 export function ShelfItemPickList({
   candidates,
@@ -36,6 +46,7 @@ export function ShelfItemPickList({
   keyword,
   onKeywordChange,
   emptyTitle,
+  listClassName,
 }: Props) {
   const visible = useMemo(() => {
     const needle = keyword.trim().toLowerCase()
@@ -49,7 +60,7 @@ export function ShelfItemPickList({
   }, [candidates, keyword])
 
   return (
-    <>
+    <div className="space-y-3.75">
       <SearchField
         label="향수명 또는 브랜드명으로 검색"
         placeholder="향수명 · 브랜드 검색"
@@ -70,37 +81,44 @@ export function ShelfItemPickList({
           description="다른 향수명이나 브랜드명으로 검색해 보세요."
         />
       ) : (
-        /* 체크박스 대신 카드 자체가 누르는 자리입니다 — 고른 것은 `aria-pressed` 로 알립니다 */
-        <ul className="grid max-h-90 grid-cols-2 gap-2.5 overflow-y-auto sm:grid-cols-4">
+        /*
+          체크박스 대신 칸 자체가 누르는 자리입니다 — 고른 것은 `aria-pressed` 로 알립니다.
+          스크롤 칸은 좌우 · 위로 10 넓히고 안쪽을 같은 만큼 띄웁니다 — 고른 칸의 먹색 테(진열함 밖 4)와
+          체크 원(모서리 밖 5 · 그림자)이 칸 끝에 붙으면 스크롤 칸에 잘리거나 가로 막대를 만듭니다.
+          아래로는 넓히지 않습니다 — 넓히면 스크롤되는 글이 아래 "N개 선택됨" 줄 밑으로 겹칩니다.
+        */
+        <ul
+          className={cn(
+            'collection-pick-list -mx-2.5 -mt-2.5 grid max-h-[min(calc(var(--spacing)*110),48vh)] grid-cols-[repeat(auto-fill,minmax(calc(var(--spacing)*32.5),1fr))] gap-x-3.75 gap-y-5 overflow-y-auto px-2.5 pt-2.5',
+            listClassName,
+          )}
+        >
           {visible.map((candidate) => {
             const isPicked = picked.includes(candidate.shelfItemId)
 
             return (
-              <li key={candidate.shelfItemId}>
+              <li key={candidate.shelfItemId} className="min-w-0">
                 <button
                   type="button"
                   aria-pressed={isPicked}
                   onClick={() => onToggle(candidate.shelfItemId)}
-                  className={cn(
-                    'w-full border p-2.5 text-left',
-                    'transition-colors duration-120 ease-out',
-                    'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
-                    isPicked
-                      ? 'border-accent bg-line-soft'
-                      : 'border-line hover:border-accent',
-                  )}
+                  className="collection-case collection-pick block w-full outline-none"
                 >
-                  <Thumbnail
-                    src={candidate.thumbnailUrl}
-                    fallback="이미지"
-                    className="text-caption mb-2.5 aspect-3/4 w-full"
-                  />
-                  <span className="text-ink text-body block truncate font-medium">
-                    {candidate.name}
+                  <CaseNiche shape="square" compact>
+                    <CaseBottles sources={[candidate.thumbnailUrl ?? null]} />
+                  </CaseNiche>
+                  <span aria-hidden className="collection-pick-check" />
+                  {/*
+                    긴 영문 브랜드는 좁은 칸에서 말줄임됩니다(진열대 이름표와 같은 규칙) — 마우스를 올리면
+                    다 보입니다. 브랜드가 비어 있는 향수도 줄자리는 남겨 이름 줄이 칸마다 같은 높이에 섭니다.
+                  */}
+                  <span
+                    className="collection-pick-brand"
+                    title={candidate.brand ?? undefined}
+                  >
+                    {candidate.brand ?? <span aria-hidden>&nbsp;</span>}
                   </span>
-                  <span className="text-ink-muted text-caption block truncate">
-                    {candidate.brand}
-                  </span>
+                  <span className="collection-pick-name">{candidate.name}</span>
                 </button>
               </li>
             )
@@ -109,9 +127,12 @@ export function ShelfItemPickList({
       )}
 
       {/* 검색으로 가려진 향수도 고른 채로 셉니다 */}
-      <p className="text-ink-muted text-caption">
-        {picked.length}개 선택됨 · 진열대에 없는 향수는 추가할 수 없습니다.
+      <p className="shelf-muted text-body">
+        <span className="font-semibold text-[var(--shelf-ink)] tabular-nums">
+          {picked.length}개 선택됨
+        </span>{' '}
+        · 진열대에 없는 향수는 담을 수 없습니다.
       </p>
-    </>
+    </div>
   )
 }
