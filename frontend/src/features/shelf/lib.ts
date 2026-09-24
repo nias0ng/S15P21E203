@@ -1150,7 +1150,7 @@ export function revealItem(
 /*
  * ── 이름표 벽의 현판 ─────────────────────────────────────────
  *
- * 벽감 앞 이름표 벽 기둥(두 칸, 휴대폰은 한 칸 — layoutWall)에 핀 하나로 꽂아 둔 종이 판입니다.
+ * 벽감 앞 이름표 벽 기둥(두 칸, 휴대폰은 한 칸 — layoutWall)에 붙여 둔 종이 판입니다.
  * 옆변은 곧고, 윗변은 양 모서리를 안으로 둥글게 파낸 어깨에서 가운데로 부드럽게 솟는 아치이며,
  * 아래 모서리는 둥급니다. 벽감 높이의 가운데에 섭니다.
  *
@@ -1168,8 +1168,8 @@ export function revealItem(
  *   1562 x 914   칸 144.13 · 벽감 485 → 현판 140 x 365 · 옆벽과 41 · 패널까지 74
  *   1280 x 720   칸 111.38 · 벽감 345 → 현판 100 x 260 · 옆벽과 28 · 패널까지 61
  *
- * 윗변 · 모서리 · 안쪽 테두리선 · 핀은 폭에 비례합니다. 1920 x 1080 에서 모서리 파임 12 · 아치 25 ·
- * 아래 모서리 25 · 안쪽 테두리선 6 · 핀 12 입니다.
+ * 윗변 · 모서리 · 안쪽 테두리선은 폭에 비례합니다. 1920 x 1080 에서 모서리 파임 12 · 아치 25 ·
+ * 아래 모서리 25 · 안쪽 테두리선 6 입니다. 꼭대기에 꽂던 황동 핀은 걷었습니다(S15P21E203-431).
  *
  * 폭이 좁아지면 적는 것을 줄입니다(PlaqueDetail).
  *
@@ -1194,7 +1194,7 @@ const PLAQUE_MAX_ASPECT = 3.2
 /**
  * 분류 이름을 세로로 세운 현판(vertical)의 높이 하한. 다섯 자("시향해 봄" 12px) · 짧은 선 · 개수
  * 14px 이 90 남짓이라, 어깨 아래 · 안쪽 테두리선 안에 넣으려면 110 입니다. 폭의 3.2 배로만 자르면
- * 폭 30 현판(360 휴대폰)이 95 가 되어 글자가 핀과 아래 테두리선에 걸립니다.
+ * 폭 30 현판(360 휴대폰)이 95 가 되어 글자가 어깨와 아래 테두리선에 걸립니다.
  */
 const PLAQUE_VERTICAL_MIN_HEIGHT = 110
 /** 모양 — 전부 현판 폭에 곱합니다 */
@@ -1204,7 +1204,11 @@ const PLAQUE_CORNER = 0.14
 /** 네모 판(메뉴판)의 모서리 반지름 — 짧은 변 대비. 네모로 읽히도록 현판보다 훨씬 작습니다 */
 const PLATE_CORNER = 0.05
 const PLAQUE_INSET = 0.035
-const PLAQUE_PIN = 0.07
+/**
+ * 네모 판(메뉴판)의 글자 자리 윗여백 — 안쪽 테두리선에서. 좁은 판의 좌우 · 아래 여백(shelf-display.css 의
+ * .shelf-plaque-text, 테두리선 + 5)과 같아 글자가 판 가운데에 섭니다
+ */
+const PLATE_TEXT_TOP = 5
 /** 적는 것을 줄이는 폭(위 PlaqueDetail) */
 const PLAQUE_CAPTION_MIN_WIDTH = 100
 const PLAQUE_ACROSS_MIN_WIDTH = 70
@@ -1224,14 +1228,13 @@ export type PlaqueOutline = {
 }
 
 export type PlaqueMetrics = PlaqueOutline & {
-  /** 옆변이 끝나는 높이(어깨) — 모서리 파임 + 아치. 글자는 이 아래에 섭니다 */
+  /**
+   * 글자가 시작하는 높이 — 어깨를 올린 현판은 옆변이 끝나는 어깨(모서리 파임 + 아치), 네모 판은 안쪽
+   * 테두리선 바로 아래입니다
+   */
   crown: number
   /** 바깥선에서 안쪽 테두리선까지 */
   inset: number
-  /** 핀 지름 */
-  pin: number
-  /** 핀 윗변의 높이 */
-  pinTop: number
   detail: PlaqueDetail
   /** 종이를 오리는 clip-path */
   shape: string
@@ -1385,7 +1388,7 @@ export function plaqueMetrics(
     floor5(fit.maxHeight ?? Infinity),
   )
   /*
-   * 모서리 파임 · 아치 · 아래 모서리 · 핀의 비율을 재는 기준 — **짧은 변**입니다.
+   * 모서리 파임 · 아치 · 아래 모서리의 비율을 재는 기준 — **짧은 변**입니다.
    *
    * 세로로 긴 판(지금까지의 분류 현판)은 짧은 변이 곧 폭이라 예전과 값이 같습니다. 가로로 누운
    * 메뉴판에서만 달라집니다 — 폭을 기준으로 두면 아치(폭의 14%)가 낮은 판의 3분의 1을 먹어
@@ -1393,26 +1396,19 @@ export function plaqueMetrics(
    */
   const base = Math.min(width, height)
   const inset = Math.max(3, Math.round(base * PLAQUE_INSET))
-  // 네모 판은 모서리를 파지도 어깨를 올리지도 않습니다 — 글자 자리는 핀 아래에서 시작합니다
+  // 네모 판은 모서리를 파지도 어깨를 올리지도 않습니다
   const notch = fit.plate ? 0 : Math.max(3, Math.round(base * PLAQUE_NOTCH))
-  // 좁은 현판에서도 어깨(파임 3 + 아치 6)가 핀 아래끝(테두리선 3 + 2 + 핀 4)보다 아래에 옵니다 —
-  // 글자는 어깨 아래에 서서 핀에 걸리지 않습니다
   const arch = fit.plate ? 0 : Math.max(6, Math.round(base * PLAQUE_ARCH))
   // 안쪽 빛 띠(inset + 2)까지 들여도 아래 모서리 원호가 남아야 합니다
   const corner = fit.plate
     ? Math.max(inset + 2, Math.round(base * PLATE_CORNER))
     : Math.max(inset + 3, Math.round(base * PLAQUE_CORNER))
-  const pin = Math.max(4, Math.round(base * PLAQUE_PIN))
-  const shoulder = fit.plate ? 0 : notch + arch
-  // 핀은 어깨 조금 위에 꽂습니다. 좁은 현판에서도 안쪽 테두리선에 닿지 않게 합니다
-  const pinTop = Math.max(inset + 2, shoulder - pin - Math.round(notch / 2))
   /*
-   * 글자가 시작하는 높이. 어깨를 올린 현판은 어깨 아래, 어깨가 없는 네모 판은 **핀 아래**입니다 —
-   * 0 으로 두면 글자가 판 꼭대기에 붙어 핀과 겹칩니다.
+   * 글자가 시작하는 높이. 어깨를 올린 현판은 어깨 아래, 어깨가 없는 네모 판은 안쪽 테두리선 바로
+   * 아래입니다 — 0 으로 두면 글자가 판 꼭대기의 테두리선에 붙습니다. 네모 판 위를 비워 두던 핀 자리는
+   * 핀을 걷으며 없앴습니다(판 가운데에 글자가 섭니다).
    */
-  const crown = fit.plate
-    ? pinTop + pin + Math.max(4, Math.round(base * 0.06))
-    : shoulder
+  const crown = fit.plate ? inset + PLATE_TEXT_TOP : notch + arch
 
   const outline = { width, height, notch, arch, corner }
   const draw = fit.plate ? platePath : plaquePath
@@ -1423,8 +1419,6 @@ export function plaqueMetrics(
     ...outline,
     crown,
     inset,
-    pin,
-    pinTop,
     detail,
     shape: `path("${draw(outline)}")`,
     edgeRing: ring(0, 1),

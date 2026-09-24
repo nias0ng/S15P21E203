@@ -1300,15 +1300,13 @@ describe('plaqueMetrics', () => {
     expect(plaque.width).toBe(175)
     expect(plaque.height).toBe(455)
     expect(plaque.detail).toBe('full')
-    const { notch, arch, corner, inset, pin, crown, pinTop } = plaque
-    expect({ notch, arch, corner, inset, pin, crown, pinTop }).toEqual({
+    const { notch, arch, corner, inset, crown } = plaque
+    expect({ notch, arch, corner, inset, crown }).toEqual({
       notch: 12,
       arch: 25,
       corner: 25,
       inset: 6,
-      pin: 12,
       crown: 37,
-      pinTop: 19,
     })
   })
 
@@ -1389,7 +1387,7 @@ describe('plaqueMetrics', () => {
     })
   })
 
-  it('맨 벽이 좁은 휴대폰에서도 현판은 옆벽에 겹치지 않고, 세로 이름이 핀 · 테두리선에 걸리지 않는 높이로 선다', () => {
+  it('맨 벽이 좁은 휴대폰에서도 현판은 옆벽에 겹치지 않고, 세로 이름이 어깨 · 테두리선에 걸리지 않는 높이로 선다', () => {
     // 320 · 360 · 412 · 480 휴대폰의 벽 자리(쌓는 배치)
     const phones = [
       [280, 380],
@@ -1403,15 +1401,26 @@ describe('plaqueMetrics', () => {
       expect(plaque.detail).toBe('vertical')
       expect(plaque.height).toBeGreaterThanOrEqual(110)
       expect(plaque.height).toBeLessThanOrEqual(plaque.caseHeight * 0.75 + 2.5)
-      expect(plaque.pinTop + plaque.pin).toBeLessThanOrEqual(plaque.crown)
+      // 글자는 어깨 아래 · 안쪽 테두리선 안에서 시작합니다
+      expect(plaque.crown).toBeGreaterThan(plaque.inset)
     }
   })
 
-  it('핀은 안쪽 테두리선 아래 · 어깨 위에 꽂힌다', () => {
-    for (const [width, height, panel] of WALLS) {
-      const { inset, pin, pinTop, crown } = plaqueOf(width, height, panel)
-      expect(pinTop).toBeGreaterThan(inset + 1)
-      expect(pinTop + pin).toBeLessThanOrEqual(crown)
+  /*
+   * 메뉴판 꼭대기에 꽂던 황동 핀을 걷었습니다(S15P21E203-431). 핀 자리를 비워 두면 글자가 판 아래로 쏠려
+   * 보여서, 네모 판의 글자는 안쪽 테두리선 바로 아래에서 시작합니다.
+   */
+  it('네모 판(메뉴판)의 글자는 안쪽 테두리선 바로 아래에서 시작한다 — 핀 자리를 비우지 않는다', () => {
+    for (const [pitch, caseHeight] of [
+      [1460 / 7, 605],
+      [891 / 7, 345],
+    ] as const) {
+      const plate = plaqueMetrics(pitch, caseHeight, 2, {
+        maxHeight: caseHeight * 0.22,
+        plate: true,
+        widthPerCase: Infinity,
+      })
+      expect(plate.crown).toBe(plate.inset + 5)
     }
   })
 
