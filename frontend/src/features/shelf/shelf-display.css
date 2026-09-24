@@ -840,10 +840,9 @@
   /*
    * ───────── 빈 분류 (S15P21E203-431) ─────────
    *
-   * 벽감 한가운데에 빈 병 자리와 안내가 섭니다(ShelfWall 의 ShelfWallEmptyNotice). 병 자리는 **점선
-   * 윤곽**입니다 — 칠한 실루엣은 사진이 없는 병(BottleSilhouette)과 같은 모양이라 "병이 있다" 로
-   * 읽힙니다. 윤곽만 남겨 "여기 설 자리" 로 둡니다. 점선은 굵기가 병 크기를 따라 커지지 않게
-   * 화면 픽셀로 긋습니다(non-scaling-stroke).
+   * 벽감 한가운데에 큰 글씨의 안내와 단추가 섭니다(ShelfWall 의 ShelfWallEmptyNotice). 병이 설 자리를
+   * 점선 병 윤곽으로 그리던 때가 있었는데, 빈 병 윤곽이 이상한 물건으로 읽혀 걷었습니다 — 빈 벽감은
+   * 글이 맡습니다.
    *
    * 분류를 바꾼 벽이 다 선 뒤에 떠오릅니다 — 벽이 흐르는 동안(약 0.7초)은 세우지 않고, 선 뒤
    * 0.12초 쉬었다가 0.36초에 걸쳐 아래에서 올라옵니다.
@@ -851,17 +850,6 @@
   .shelf-scope .shelf-empty {
     animation: shelf-empty-in 360ms 120ms cubic-bezier(0.2, 0.8, 0.2, 1)
       backwards;
-  }
-  .shelf-scope .shelf-empty-ghost {
-    color: var(--shelf-ink-soft);
-    opacity: 0.55;
-  }
-  .shelf-scope .shelf-empty-ghost path {
-    fill: color-mix(in oklch, var(--shelf-ink) 4%, transparent);
-    stroke: currentColor;
-    stroke-width: 1.25px;
-    stroke-dasharray: 5 4;
-    vector-effect: non-scaling-stroke;
   }
 
   @keyframes shelf-empty-in {

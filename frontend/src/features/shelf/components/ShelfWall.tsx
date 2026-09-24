@@ -14,7 +14,6 @@ import { flushSync } from 'react-dom'
 
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { cn } from '@/shared/lib/cn'
-import { BottleSilhouette } from '@/shared/ui/BottleSilhouette'
 
 import { useBottlePreload } from '../hooks/useBottlePreload'
 import { useShelfFlow } from '../hooks/useShelfFlow'
@@ -167,7 +166,7 @@ const prefersReducedMotion = () =>
  * 휠 한 번이 무엇을 할지 화면을 보고 알 수 없었습니다. 지금은 휠이 언제나 옆으로 흐릅니다.
  *
  * ── 빈 분류 ──────────────────────────────────────────────
- * 향수가 없는 분류는 벽감 한가운데에 빈 병 윤곽과 안내 · 단추를 세웁니다(`empty`). 예전에는 벽감 첫 칸에
+ * 향수가 없는 분류는 벽감 한가운데에 큰 글씨의 안내와 단추를 세웁니다(`empty`). 예전에는 벽감 첫 칸에
  * 작은 글자 한 줄이라, 빈 벽감이 "아무것도 없다" 가 아니라 "덜 그려졌다" 로 읽혔습니다.
  *
  * ── 상세 패널은 벽 위에 얹힙니다 ─────────────────────────────
@@ -940,27 +939,30 @@ export function ShelfWall({
 }
 
 /**
- * 빈 분류의 안내 (S15P21E203-431) — 벽감 한가운데에 **빈 병 자리**(점선 윤곽)와 글 · 단추를 나란히
- * 세웁니다.
+ * 빈 분류의 안내 (S15P21E203-431) — 벽감 한가운데(뒷벽 가운데)에 **큰 글씨**와 단추만 세웁니다.
  *
- * 병 자리는 병이 서는 바닥선(--base-inset)에 발을 딛고, 글은 그 옆에서 세로 가운데에 섭니다. 벽감
- * 첫 칸에 작은 글자 한 줄로 적던 때는 빈 벽감이 "비어 있다" 가 아니라 "덜 그려졌다" 로 읽혀서,
- * 병이 서야 할 자리를 먼저 보이고 그 자리를 채우는 말을 붙였습니다.
+ * 벽감 첫 칸에 작은 글자 한 줄로 적던 때는 빈 벽감이 "비어 있다" 가 아니라 "덜 그려졌다" 로 읽혔습니다.
+ * 한때 병이 설 자리를 점선 병 윤곽으로 그려 옆에 글을 붙였는데, 빈 병 윤곽이 도리어 이상한 물건으로
+ * 읽혀서 걷었습니다 — 이제 글이 빈 벽감을 맡습니다. 제목은 진열대 제목에 버금가는 명조, 짧은 선, 비어 있는
+ * 까닭과 채우는 길, 단추 순서로 가운데에 섭니다.
  *
  * 벽감과 같은 상자에 서고(창 안), 떠오르는 것은 한 번뿐입니다(분류가 바뀔 때마다 key 로 새로 섭니다).
+ * 글은 상세 패널처럼 1920 크기로 짜고 --panel-scale 로 통째로 줄입니다 — 벽감이 낮아져도 넘치지 않습니다.
  */
 function ShelfWallEmptyNotice({ title, description, action }: ShelfWallEmpty) {
   return (
-    <div className="shelf-empty absolute top-[var(--fade)] right-[var(--fade-end)] left-[var(--fade-start)] flex h-[var(--case-h)] items-end justify-center gap-10 px-15 pb-[var(--base-inset)]">
-      <BottleSilhouette className="shelf-empty-ghost h-[calc(var(--bottle-h)*0.72)] w-auto" />
-      <div className="flex max-w-100 min-w-0 flex-col items-start gap-1.25 self-center">
-        <p className="text-title font-serif font-semibold break-keep">
+    <div className="shelf-empty absolute top-[var(--fade)] right-[var(--fade-end)] left-[var(--fade-start)] flex h-[var(--case-h)] items-center justify-center px-15 pt-[calc(var(--bevel)+var(--ceil))] pb-[calc(var(--bevel)+var(--floor))]">
+      <div className="flex max-w-150 [zoom:var(--panel-scale,1)] flex-col items-center text-center">
+        <p className="font-serif text-[32px] leading-[1.3] font-semibold text-balance break-keep">
           {title}
         </p>
+        <span aria-hidden className="mt-5 h-px w-10 bg-[var(--hairline)]" />
         {description && (
-          <p className="shelf-muted text-body break-keep">{description}</p>
+          <p className="shelf-muted text-heading mt-5 break-keep">
+            {description}
+          </p>
         )}
-        {action && <div className="mt-3.75">{action}</div>}
+        {action && <div className="mt-7.5">{action}</div>}
       </div>
     </div>
   )
