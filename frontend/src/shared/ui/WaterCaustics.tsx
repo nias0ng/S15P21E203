@@ -11,11 +11,13 @@ import {
 } from 'three'
 
 import { cn } from '@/shared/lib/cn'
+import { sinkDepth } from '@/shared/lib/sinkDepth'
 import {
   CAUSTICS,
   causticsFragment,
   causticsVertex,
 } from '@/shared/ui/causticsShader'
+import { UNDERWATER, underwaterFragment } from '@/shared/ui/underwaterShader'
 
 /** 물결이 느려 초당 30장이면 충분합니다. 144Hz 화면에서 144장을 그리지 않게 묶습니다 */
 const FRAME_MS = 1000 / 30
@@ -23,6 +25,22 @@ const FRAME_MS = 1000 / 30
 const RENDER_SCALE = 0.75
 /** 겹이 깔리고 걷히는 빠르기(시간 상수). 세 배쯤 지나면 거의 다 따라갑니다 */
 const LAYER_EASE_MS = 400
+/** 가라앉기가 스크롤을 따라가는 빠르기(시간 상수) — 휠 한 칸씩 끊겨 내려가도 물은 이어서 가라앉습니다 */
+const SINK_EASE_MS = 160
+
+/**
+ * 물 모습. `caustics` 는 바닥에 비친 빛 그물, `underwater` 는 수면을 올려다보는 물속이고
+ * 내릴수록 가라앉습니다(`underwaterShader.ts`).
+ */
+export type WaterLook = 'caustics' | 'underwater'
+
+const FRAGMENT: Record<WaterLook, string> = {
+  caustics: causticsFragment,
+  underwater: underwaterFragment,
+}
+
+/** 가라앉은 만큼 방 바탕을 짙게 하는 값(0 ~ `UNDERWATER.roomDim`). `.scent-night` 의 맨 위 겹이 읽습니다 */
+const ROOM_SINK = '--night-sink'
 
 /** 겹 수(0 ~ 2) → 옅은 겹 · 진한 겹의 세기. 옅은 겹이 먼저 깔리고 나중에 걷힙니다 */
 const fineOf = (layers: number) => Math.min(Math.max(layers, 0), 1)
@@ -54,30 +72,44 @@ function readColor(style: CSSStyleDeclaration, name: string, fallback: string) {
  * 자리 · 겹 순서는 부르는 쪽이 `className` 으로 정합니다.
  *
  * - WebGL 을 못 쓰면 아무것도 그리지 않고 비켜섭니다. 뒤의 바탕이 그대로 남습니다
- * - 움직임 줄이기면 멈춘 한 장만 그립니다
+ * - 움직임 줄이기면 멈춘 한 장만 그립니다(수면 아래는 스크롤할 때만 다시 그립니다)
  * - 첫 장이 그려진 뒤에 서서히 드러납니다 — three 를 따로 받아 오는 동안 빈 판이 번쩍이지 않게
+ * - 모습이 바뀌어도 캔버스는 그대로 두고 셰이더만 갈아 끼웁니다 — 물이 있는 화면끼리 오갈 때
+ *   다시 뜨며 번쩍이지 않게
  *
  * @param className 자리 · 크기 · 겹 순서. 스스로는 크기를 갖지 않습니다
- * @param layers 깔 겹 수. 0 은 없음 · 1 은 옅은 그물만 · 2 는 하얀 그물까지(기본).
+ * @param layers 깔 겹 수. 0 은 없음 · 1 은 옅은 겹만(옅은 그물 · 수면 아래는 옅은 물빛) ·
+ *   2 는 진한 겹까지(하얀 그물 · 수면 아래는 굵은 빛줄기와 반짝임, 기본).
  *   바뀌면 새 값으로 서서히 깔리거나 걷힙니다
+ * @param look 물 모습. `underwater` 면 창을 내린 만큼 가라앉고, 바로 위 요소(방)의
+ *   `--night-sink` 에 가라앉은 만큼의 어둠을 적습니다
  */
 export function WaterCaustics({
   className,
   layers = 2,
+  look = 'caustics',
 }: {
   className?: string
   layers?: number
+  look?: WaterLook
 }) {
   const layer = useRef<HTMLDivElement>(null)
-  // NOTE: 겹은 그리는 고리가 매 장 읽습니다 — 상태로 두면 바뀔 때마다 WebGL 을 새로 엽니다
+  // NOTE: 겹 · 모습은 그리는 고리가 매 장 읽습니다 — 상태로 두면 바뀔 때마다 WebGL 을 새로 엽니다
   const target = useRef(layers)
-  // 움직임 줄이기면 고리가 돌지 않아, 바뀐 겹을 한 장 그려 줄 손잡이입니다
+  const shown = useRef(look)
+  // 움직임 줄이기면 고리가 돌지 않아, 바뀐 겹 · 스크롤을 한 장 그려 줄 손잡이입니다
   const redraw = useRef<(() => void) | null>(null)
+  const reshade = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     target.current = layers
     redraw.current?.()
   }, [layers])
+
+  useEffect(() => {
+    shown.current = look
+    reshade.current?.()
+  }, [look])
 
   useEffect(() => {
     const host = layer.current
@@ -116,6 +148,12 @@ export function WaterCaustics({
       // 처음 뜰 때는 따라가지 않고 제 겹으로 섭니다 — 드러나는 것은 판의 불투명도가 맡습니다
       uFine: { value: fineOf(target.current) },
       uWide: { value: wideOf(target.current) },
+      // 수면 아래 — 물결 셰이더는 읽지 않습니다
+      uDive: { value: 0 },
+      uDepth: { value: UNDERWATER.depth },
+      uPitch: { value: (UNDERWATER.pitch * Math.PI) / 180 },
+      uFocal: { value: 0.5 / Math.tan((UNDERWATER.fov * Math.PI) / 360) },
+      uDrop: { value: UNDERWATER.glareDrop },
     }
 
     const scene = new Scene()
@@ -124,7 +162,7 @@ export function WaterCaustics({
     const material = new ShaderMaterial({
       uniforms,
       vertexShader: causticsVertex,
-      fragmentShader: causticsFragment,
+      fragmentShader: FRAGMENT[shown.current],
       depthTest: false,
       depthWrite: false,
     })
@@ -132,15 +170,37 @@ export function WaterCaustics({
     plane.frustumCulled = false
     scene.add(plane)
 
+    /*
+     * 가라앉은 만큼의 어둠은 방(이 판의 부모 · `.scent-night`)에 적습니다. 헤더도 같은 그림을
+     * 나눠 그리므로 둘이 함께 짙어집니다 — 캔버스가 칠하면 헤더 밑만 밝은 띠로 남습니다.
+     */
+    const room = host.parentElement
+    let roomSink = ''
+    const sinkGoal = () =>
+      shown.current === 'underwater'
+        ? sinkDepth(window.scrollY, window.innerHeight, UNDERWATER.halfScreens)
+        : 0
+    const showSink = () => {
+      const value = (uniforms.uDive.value * UNDERWATER.roomDim).toFixed(3)
+      if (value === roomSink) return
+      roomSink = value
+      room?.style.setProperty(ROOM_SINK, value)
+    }
+
     const started = performance.now()
     let lastEased = started
     const draw = (now: number) => {
-      const ease = 1 - Math.exp(-Math.max(now - lastEased, 0) / LAYER_EASE_MS)
+      const elapsed = Math.max(now - lastEased, 0)
       lastEased = Math.max(now, lastEased)
+      const ease = 1 - Math.exp(-elapsed / LAYER_EASE_MS)
       uniforms.uFine.value +=
         (fineOf(target.current) - uniforms.uFine.value) * ease
       uniforms.uWide.value +=
         (wideOf(target.current) - uniforms.uWide.value) * ease
+      uniforms.uDive.value +=
+        (sinkGoal() - uniforms.uDive.value) *
+        (1 - Math.exp(-elapsed / SINK_EASE_MS))
+      showSink()
 
       uniforms.uTime.value = ((now - started) / 1000) * CAUSTICS.speed
       renderer.render(scene, camera)
@@ -156,8 +216,20 @@ export function WaterCaustics({
       redraw.current = () => {
         uniforms.uFine.value = fineOf(target.current)
         uniforms.uWide.value = wideOf(target.current)
+        uniforms.uDive.value = sinkGoal()
         draw(lastDrawn)
       }
+    }
+    // 고리가 돌지 않으면 스크롤해도 그대로라, 가라앉은 자리를 한 장 그립니다
+    const onScroll = () => {
+      if (shown.current === 'underwater') redraw.current?.()
+    }
+    if (reduced) window.addEventListener('scroll', onScroll, { passive: true })
+
+    reshade.current = () => {
+      material.fragmentShader = FRAGMENT[shown.current]
+      material.needsUpdate = true
+      if (reduced) redraw.current?.()
     }
 
     // 크기를 바꾸면 그리기 버퍼가 비워지므로 기다리지 않고 바로 한 장 그립니다
@@ -185,6 +257,9 @@ export function WaterCaustics({
 
     return () => {
       redraw.current = null
+      reshade.current = null
+      window.removeEventListener('scroll', onScroll)
+      room?.style.removeProperty(ROOM_SINK)
       cancelAnimationFrame(frame)
       resize.disconnect()
       geometry.dispose()

@@ -42,10 +42,11 @@ function usePageWidth(): PageWidth {
 }
 
 /**
- * 라우트의 `handle` 에 켜 둔 화면 장치. 어두운 방(`night`) · 물결(`caustics`).
+ * 라우트의 `handle` 에 켜 둔 화면 장치. 어두운 방(`night`) · 물결(`caustics`) ·
+ * 물결 대신 수면 아래(`underwater` — `caustics` 와 같이 켭니다).
  * 경로 배열과 `pathname` 을 맞추면 `/notes/:noteId` 같은 동적 경로가 안 걸립니다.
  */
-function useRouteFlag(flag: 'night' | 'caustics'): boolean {
+function useRouteFlag(flag: 'night' | 'caustics' | 'underwater'): boolean {
   const matches = useMatches()
   for (let at = matches.length - 1; at >= 0; at -= 1) {
     const handle: unknown = matches[at]?.handle
@@ -80,6 +81,7 @@ export function RootLayout() {
   const onPaper = pathname === ROUTES.MY_SHELF
   const onNight = useRouteFlag('night')
   const onCaustics = useRouteFlag('caustics')
+  const onUnderwater = useRouteFlag('underwater')
   const causticsLayers = useCausticsStore((state) => state.layers)
   const width = usePageWidth()
   const sky = useSceneSkyStore((state) => state.sky)
@@ -115,6 +117,7 @@ export function RootLayout() {
           */}
           <WaterCaustics
             layers={causticsLayers ?? 2}
+            look={onUnderwater ? 'underwater' : 'caustics'}
             className="fixed inset-0 -z-10 [mask-image:linear-gradient(to_bottom,transparent_var(--header-h),#000_calc(var(--header-h)_+_var(--spacing)*40))]"
           />
         </Suspense>
