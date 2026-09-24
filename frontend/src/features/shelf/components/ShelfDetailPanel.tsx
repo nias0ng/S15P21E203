@@ -407,29 +407,38 @@ function MemoField({
   const memo = item.memo ?? ''
   const writtenAt = formatShelfDate(item.memoUpdatedAt)
 
+  /*
+    향조 칸과 같은 제목줄(MEMO ─── 쓴 날) 아래 옅은 쪽지 상자에 적습니다. 가는 선 위 이름표와 옅은
+    한 줄로만 두면 카드 맨 아래 각주처럼 묻혀, 사용자가 적은 글이 카드에서 가장 안 보였습니다.
+    적은 메모는 먹 명조, 비었을 때의 안내는 한 단 옅은 명조입니다.
+  */
   return (
-    <div className="shelf-sheet-memo flex flex-col gap-1.25">
-      <div className="flex items-center justify-between gap-2.5">
-        <span className="shelf-sheet-label" lang="en">
+    <div className="flex flex-col gap-2.5">
+      <div className="flex items-center gap-2.5">
+        <p className="shelf-sheet-heading flex-1" lang="en">
           Memo
-        </span>
+        </p>
         {writtenAt && (
-          <span className="shelf-muted text-caption">{writtenAt}</span>
+          <span className="shelf-muted text-caption tabular-nums">
+            {writtenAt}
+          </span>
         )}
       </div>
 
-      {pending ? (
-        <span aria-hidden className="shelf-sheet-skeleton" />
-      ) : (
-        <p
-          className={cn(
-            'text-heading line-clamp-3 whitespace-pre-line',
-            memo ? 'font-serif' : 'shelf-muted',
-          )}
-        >
-          {memo || '이 향을 어디서 언제 맡았는지 적어두세요.'}
-        </p>
-      )}
+      <div className="shelf-sheet-note">
+        {pending ? (
+          <span aria-hidden className="shelf-sheet-skeleton" />
+        ) : (
+          <p
+            className={cn(
+              'text-heading line-clamp-3 font-serif leading-[1.6] whitespace-pre-line',
+              !memo && 'shelf-muted',
+            )}
+          >
+            {memo || '이 향을 어디서 언제 맡았는지 적어두세요.'}
+          </p>
+        )}
+      </div>
     </div>
   )
 }

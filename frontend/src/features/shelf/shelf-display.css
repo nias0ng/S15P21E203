@@ -2222,7 +2222,7 @@
     text-transform: uppercase;
   }
 
-  /* 자간을 넓힌 작은 이름표 — 브랜드 · MEMO. 한글 브랜드에는 대문자가 먹지 않을 뿐 같은 자간입니다 */
+  /* 자간을 넓힌 작은 이름표 — 브랜드. 한글 브랜드에는 대문자가 먹지 않을 뿐 같은 자간입니다 */
   .shelf-scope .shelf-sheet-label {
     color: var(--shelf-ink-soft);
     font-size: var(--text-body);
@@ -2307,10 +2307,18 @@
     grid-column: 1 / -1;
   }
 
-  /* 메모 — 가는 선 아래. 편지의 발치(.rec-foot)와 같은 선 · 여백입니다 */
-  .shelf-scope .shelf-sheet-memo {
-    padding-top: 10px;
-    border-top: 1px solid var(--hairline);
+  /*
+   * 메모 쪽지 — 카드 종이보다 한 단 가라앉은 상자에 가는 테를 두릅니다. 사용자가 적은 글이 카드의
+   * 다른 칸(향조 표 · 단추)과 떨어진 한 덩어리로 보이게 합니다. 글은 세 줄까지이고, 비었을 때도
+   * 상자는 남아 적을 자리가 보입니다.
+   */
+  .shelf-scope .shelf-sheet-note {
+    padding: 10px 14px;
+    border-radius: 2px;
+    background: color-mix(in oklch, var(--paper) 45%, var(--tag-paper));
+    box-shadow:
+      inset 0 0 0 1px color-mix(in oklch, var(--hairline) 70%, transparent),
+      inset 0 1px 2px var(--contact-soft);
   }
 
   /* 상세가 오는 중인 줄 — 곧 찰 자리를 없다고 적지 않고 옅은 띠로 비워 둡니다 */
