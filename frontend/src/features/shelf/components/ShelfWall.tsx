@@ -21,6 +21,7 @@ import { useTagSwing } from '../hooks/useTagSwing'
 import {
   doorMetrics,
   layoutWall,
+  nicheSlots,
   plaqueMetrics,
   revealItem,
   shelfLayout,
@@ -176,8 +177,8 @@ const prefersReducedMotion = () =>
  * 칸 수를 세 가지로 셉니다(lib.ts 의 shelfMetrics).
  *
  *   visible  창에 걸치는 칸(패널 밑까지, 창 오른쪽 끝에 걸린 칸 포함) — 창 밖 병 감추기
- *   whole    창 안에 온전히 드는 칸 — 창 오른쪽 끝에 걸린 칸 지우기
- *   clear    패널에 가리지 않는 칸 — 고른 병 들이기 · 벽 끝 · 칩 켜짐 · 멈출 자리 · 오른쪽 화살표 자리 · 빈 벽 길이
+ *   clear    벽감 뒷벽에 온전히 드는 칸(lib.ts 의 nicheSlots) — 고른 병 들이기 · 벽 끝 · 멈출 자리 ·
+ *            빈 벽 길이 · 그다음 칸부터 옆벽 문에 걸린 칸
  *
  * ── 크기 ─────────────────────────────────────────────────
  * 벽감 높이 · 칸 폭 · 매달린 이름표 · 상세 패널 크기는 이 자리의 크기에서 계산합니다(lib.ts 의
@@ -266,6 +267,23 @@ export function ShelfWall({
     return () => observer.disconnect()
   }, [])
 
+  /*
+   * 벽감(창) 폭 — 뒷벽에 온전히 드는 칸 수(아래 `clear`)를 셉니다. 창 폭은 `--clear-w` 에서 CSS 가
+   * 정하는데 `--spacing` 이 화면 폭을 따라 변해서, 식을 여기 되풀이하지 않고 잽니다. 이 폭으로 세는
+   * 칸 수는 치수 · 창 폭을 바꾸지 않아 되먹임이 없습니다.
+   */
+  const [nicheWidth, setNicheWidth] = useState(0)
+  useEffect(() => {
+    const niche = viewportRef.current
+    if (!niche || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => {
+      const width = niche.clientWidth
+      setNicheWidth((prev) => (prev === width ? prev : width))
+    })
+    observer.observe(niche)
+    return () => observer.disconnect()
+  }, [])
+
   const measured = size.width > 0 && size.height > 0
   const withPanel = aside != null
   const metrics = shelfLayout(size.width, size.height, { panel: withPanel })
@@ -281,11 +299,19 @@ export function ShelfWall({
    * 그래서 폭은 흔들리지 않는 바깥 상자에서 재고, 창이 좁은 만큼을 **칸 수에서** 덜어냅니다.
    * 예전 벽에서 이름표 기둥이 차지하던 그 칸입니다 — 기둥이 트랙 밖으로 나갔을 뿐, 격자에서
    * 차지하는 자리는 같습니다.
+   *
+   * `clear` 는 **병이 온전히 서는 칸 수** — 벽감 뒷벽(양 옆벽 사이)에 드는 칸입니다(lib.ts 의 nicheSlots,
+   * S15P21E203-431). 벽 끝 · 멈출 자리 · 고른 병 들이기 · 한 번에 넘기는 칸이 이 수로 셉니다. 창 폭을 칸
+   * 폭으로 나눈 수(치수의 가리지 않는 칸)로 세면 옆벽 두 장과 여백만큼 많아, 벽 끝에서 마지막 병이 오른쪽
+   * 문에 반쯤 걸린 채 섰습니다. 벽감 폭을 재기 전에는 그 수로 셉니다. 그다음 칸부터는 문에 걸리거나 창
+   * 밖이라 걸친 칸(`edgeFrom`)으로 칩니다.
    */
   const menuSpan = metrics.plaqueSpan
-  const clear = Math.max(1, metrics.clear - menuSpan)
+  const clear = Math.min(
+    Math.max(1, metrics.clear - menuSpan),
+    nicheSlots(nicheWidth, metrics.pitch) ?? Infinity,
+  )
   const visible = Math.max(1, metrics.visible - menuSpan)
-  const whole = Math.max(1, metrics.whole - menuSpan)
   /** 멈춘 칸. 창 밖 병 · 화살표를 여기에 맞춥니다. 흐르는 중인지는 상태로 들지 않습니다(위 "창 밖 병") */
   const [view, setView] = useState({ start: 0 })
 
@@ -673,7 +699,7 @@ export function ShelfWall({
     return {
       winFrom: local(view.start),
       winTo: local(view.start + visible),
-      edgeFrom: local(view.start + whole),
+      edgeFrom: local(view.start + clear),
       priorityFrom: local(firstScreen?.from ?? 0),
       priorityTo: local(firstScreen?.to ?? 0),
     }

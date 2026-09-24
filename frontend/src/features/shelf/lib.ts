@@ -1593,6 +1593,27 @@ export const NICHE_FACES = {
   floorFront: 12,
 } as const
 
+/**
+ * 벽감 뒷벽(양 옆벽 사이)에 **온전히** 드는 칸 수 — 멈춘 벽에서 병이 옆벽의 문에 걸리지 않고 다 보이는
+ * 칸입니다(S15P21E203-431). 벽 끝 · 멈출 자리 · 고른 병 들이기 · 한 번에 넘기는 칸을 이 수로 셉니다.
+ *
+ * 치수(shelfMetrics)의 "가리지 않는 칸" 은 창 폭(패널 왼쪽 끝까지)을 칸 폭으로 나눈 수라 옆벽 두 장 ·
+ * 입구 테두리 · 창 여백을 모릅니다. 그 수로 벽 끝을 세면 마지막 병이 오른쪽 옆벽의 문에 반쯤 걸린 채
+ * 섰습니다(1784 x 957 · 보유 중 8 병 — 여덟째 병이 절반만 보임). 벽감 폭을 아직 모르면 null 입니다.
+ *
+ * @param nicheWidth 벽감 폭(px) — 창(ShelfWall 의 section) 폭입니다
+ * @param pitch 칸 폭(px)
+ */
+export function nicheSlots(nicheWidth: number, pitch: number): number | null {
+  if (nicheWidth <= 0 || pitch <= 0) return null
+  const { bevel, wall } = NICHE_FACES
+  // 딱 맞아떨어지는 칸이 부동소수 오차로 하나 덜 세어지지 않게 조금 여유를 둡니다
+  return Math.max(
+    1,
+    Math.floor((nicheWidth - 2 * (bevel + wall)) / pitch + 1e-6),
+  )
+}
+
 /** 문 앞 · 뒤 가장자리의 깊이(옆벽 폭 대비, 0 이 입구). 앞기둥은 입구에서 12% 입니다 */
 const DOOR_FRONT = 0.12
 const DOOR_BACK = 0.88

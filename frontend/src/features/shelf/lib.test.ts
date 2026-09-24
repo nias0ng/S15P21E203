@@ -13,6 +13,7 @@ import {
   NICHE_FACES,
   nearStop,
   nextStop,
+  nicheSlots,
   plaqueMetrics,
   plaquePath,
   revealItem,
@@ -1596,6 +1597,23 @@ describe('ticketPath', () => {
         expect(Math.min(x, width - x, y, height - y)).toBeCloseTo(d, 1)
       })
     }
+  })
+})
+
+describe('nicheSlots — 뒷벽에 온전히 드는 칸', () => {
+  const sides = 2 * (NICHE_FACES.bevel + NICHE_FACES.wall)
+
+  it('벽감 폭에서 옆벽 · 입구 테두리 두 쌍을 뺀 뒷벽에 다 드는 칸만 센다', () => {
+    // 1784 x 957 창(벽감 960 · 칸 163.875) — 뒷벽 864 에 5.27 칸이라 여섯째 칸은 오른쪽 문에 걸립니다
+    expect(nicheSlots(960, 163.875)).toBe(5)
+    // 딱 맞아떨어지면 그 칸까지 셉니다(부동소수 오차로 하나 덜 세지 않습니다)
+    expect(nicheSlots(sides + (1460 / 8) * 7, 1460 / 8)).toBe(7)
+  })
+
+  it('벽감이 칸 하나보다 좁아도 한 칸은 둔다 · 폭을 모르면 null', () => {
+    expect(nicheSlots(sides + 50, 120)).toBe(1)
+    expect(nicheSlots(0, 120)).toBeNull()
+    expect(nicheSlots(960, 0)).toBeNull()
   })
 })
 
