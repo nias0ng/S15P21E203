@@ -461,13 +461,20 @@
    *
    * 치수는 1920 규격대로 끝자리를 0 또는 5 로 맞춥니다(입구 테두리 같은 선 굵기와
    * 글자 크기는 예외).
+   *
+   * NOTE: 면 치수 다섯(--bevel · --ceil · --wall · --floor · --floor-front)은 lib.ts 의 NICHE_FACES 와
+   *   **한 벌**입니다. 옆벽의 문 윤곽을 그 값으로 셈해서, 여기만 고치면 문이 옆벽에서 어긋납니다
+   *   (lib.test.ts 가 맞대 봅니다).
    */
   .shelf-window {
     /* 입구 테두리 두께. 두꺼우면 벽을 판 자리가 아니라 액자 틀로 읽힙니다 */
     --bevel: 3px;
-    /* 천장 · 좌우 벽 · 바닥이 보이는 깊이 */
+    /*
+     * 천장 · 좌우 벽 · 바닥이 보이는 깊이. 옆벽은 문이 설 자리라 45 입니다 — 소실점이 벽감 가운데에
+     * 오는 폭이라 천장 · 바닥과 같은 투시로 섭니다(lib.ts 의 NICHE_FACES).
+     */
     --ceil: 20px;
-    --wall: 30px;
+    --wall: 45px;
     --floor: 30px;
     /*
      * 병 발치가 바닥 앞 가장자리에서 들어간 거리. 병이 바닥 가운데쯤 섭니다.
@@ -476,8 +483,8 @@
     --floor-front: 12px;
 
     /*
-     * 병 트랙과 라벨 줄의 좌우 기준. 병은 뒷벽 폭 안에만 섭니다.
-     * ⚠️ 이름표 벽의 현판 폭을 셀 때 lib.ts 의 PLAQUE_SIDE(33)가 이 값을 씁니다 — 바꾸면 함께 고칩니다.
+     * 뒷벽의 좌우 끝(옆벽과 만나는 접힘선). 병은 이 사이에 멈춰 서고, 흐를 때는 접힘선을 지나 옆벽의
+     * 문까지 넘어갑니다(.shelf-track-clip).
      */
     --track-inset: calc(var(--bevel) + var(--wall));
     /* 병 발치 높이 (상자 아래끝 기준) */
@@ -667,6 +674,151 @@
       /* 테두리와 천장이 만나는 모서리. 이 선이 선명해야 칼로 판 자리로 읽힙니다 */
       inset 0 1px 0 var(--niche-ao),
       /* 입구 아래 가장자리가 빛을 받는 선 */ 0 1px 0 var(--bevel-rim);
+  }
+
+  /*
+   * ───────── 옆벽의 문 (S15P21E203-431) ─────────
+   *
+   * 좌우 옆벽에 병이 드나드는 아치 문. 병은 접힘선을 지나 옆벽 앞을 지나가다, 병이 선 깊이에서 벽 면을
+   * 뚫고 문 안 그늘로 들어가 앞기둥에 가려 사라집니다 — 벽 틈으로 빨려 들어가는 것이 아니라 **구멍으로
+   * 걸어 들어갑니다**. 윤곽 · 깊이는 lib.ts 의 doorMetrics 가 셈해 ShelfWall 이 넣습니다.
+   *
+   *   --door-shape   문 윤곽(왼쪽 옆벽 면 상자 기준 clip-path). 오른쪽은 좌우로 뒤집어 씁니다
+   *   --door-front   옆벽 앞끝 → 문 앞 가장자리(앞기둥 폭). 병이 여기서 가려집니다
+   *   --door-plane   옆벽 앞끝 → 병이 벽 면을 지나는 자리. 여기부터 병이 그늘에 듭니다
+   *   --door-back    옆벽 앞끝 → 문 뒤 가장자리. 문설주 두께가 빛을 받습니다
+   *
+   * 겹은 둘입니다. 문 안(.shelf-door-hole)은 벽감 면과 함께 **병 밑**에 깔리고, 문 안 그늘
+   * (.shelf-door-shade)은 **병 위**에 얹혀 문으로 들어가는 병을 어둡게 삼킵니다(.shelf-niche-front).
+   *
+   * 색은 벽감의 그늘(--niche-ao)과 같은 갈색 먹입니다 — 문 안은 벽감 밖에서 빛이 안 드는 같은 벽 속이라
+   * 따로 색을 들이지 않고 명도만 내립니다. 진열대 색이 바뀌어도 이 두 값만 따라 고치면 됩니다.
+   */
+  .shelf-scope {
+    /* 문 안 — 깊은 곳 · 문턱 쪽(벽감 빛이 조금 새어 듦) · 굴 바닥 */
+    --door-deep: oklch(0.3 0.028 58);
+    --door-mouth: oklch(0.5 0.026 64);
+    --door-floor: oklch(0.58 0.024 68 / 0.55);
+    /* 문설주 두께 — 뒷기둥의 잘린 면이 입구 쪽 빛을 받습니다 */
+    --door-lip: oklch(0.93 0.012 80 / 0.85);
+    /* 문으로 들어가는 병을 덮는 그늘. 앞기둥 쪽이 가장 짙습니다 */
+    --door-veil: oklch(0.26 0.028 58 / 0.92);
+  }
+
+  .shelf-scope .shelf-door {
+    position: absolute;
+    top: var(--bevel);
+    bottom: var(--bevel);
+    width: var(--wall);
+    pointer-events: none;
+  }
+  .shelf-scope .shelf-door-left {
+    left: var(--bevel);
+  }
+  /* 오른쪽 옆벽은 왼쪽 윤곽을 거울로 비춰 씁니다 — 앞끝이 늘 윤곽의 x 0 입니다 */
+  .shelf-scope .shelf-door-right {
+    right: var(--bevel);
+    scale: -1 1;
+  }
+  .shelf-scope .shelf-door > i {
+    position: absolute;
+    inset: 0;
+    clip-path: var(--door-shape);
+  }
+
+  /*
+   * 문 안 — 굴 속의 어둠. 문턱(뒤 가장자리) 쪽은 벽감 빛이 조금 새어 들고, 앞기둥 쪽으로 갈수록
+   * 깊어집니다. 굴 바닥이 벽감 바닥에서 이어지다 어둠에 묻히고, 아치 밑은 한 단 더 어둡습니다.
+   * 뒷기둥의 잘린 면(문설주 두께)이 입구 쪽 빛을 받아 가는 선으로 섭니다 — 이 선이 있어야 벽에 그린
+   * 검은 모양이 아니라 **뚫린 구멍**으로 읽힙니다.
+   */
+  .shelf-scope .shelf-door-hole {
+    background:
+      linear-gradient(
+        to right,
+        transparent calc(var(--door-back) - 2px),
+        var(--door-lip) calc(var(--door-back) - 2px) var(--door-back)
+      ),
+      linear-gradient(to top, var(--door-floor), transparent 9%),
+      linear-gradient(to bottom, var(--niche-ao), transparent 30%),
+      linear-gradient(
+        to right,
+        var(--door-deep) var(--door-front),
+        var(--door-deep) var(--door-plane),
+        var(--door-mouth) var(--door-back)
+      );
+  }
+
+  /*
+   * 문 안 그늘 — **병 위**에 얹혀, 벽 면을 지나 문으로 들어간 병 조각을 어둡게 덮습니다. 병이 선
+   * 깊이(--door-plane)에서 투명하게 시작해 앞기둥(--door-front)에서 가장 짙습니다. 곱하기로 얹어 병의
+   * 결은 남은 채 빛만 빠집니다.
+   *
+   * NOTE: 곱하기는 그늘(i)이 아니라 문 상자에 겁니다. 오른쪽 문은 거울(scale)이 쌓임 맥락을 만들어,
+   *   그늘에 걸면 그 상자 안에서만 섞이고 병과는 보통 겹치기로 올라갑니다 — 좌우 그늘이 달라집니다.
+   */
+  .shelf-scope .shelf-door-shade {
+    background: linear-gradient(
+      to right,
+      var(--door-veil) var(--door-front),
+      transparent var(--door-plane)
+    );
+  }
+  .shelf-scope .shelf-niche-front > .shelf-door {
+    mix-blend-mode: multiply;
+  }
+
+  /*
+   * 병 위에 얹는 겹(문 안 그늘)의 자리 — 벽감과 같은 상자입니다. 누르는 것은 병이 받아야 해서
+   * 포인터를 받지 않습니다. `.shelf-window > *` 가 자식 전부에 포인터를 켜서 여기서 다시 끕니다.
+   */
+  .shelf-scope .shelf-window > .shelf-niche-front {
+    pointer-events: none;
+  }
+
+  /*
+   * 병이 서는 자리의 가위 — **왼쪽 앞기둥에서 오른쪽 앞기둥까지**입니다.
+   *
+   * 예전에는 뒷벽 폭(--track-inset 안쪽)에서 잘라 병이 접힘선에서 끊겼습니다. 이제 상자를 앞기둥까지
+   * 넓히고 트랙은 그만큼(--door-reach) 들여 세워서, 병이 멈추는 칸은 예전처럼 접힘선에 맞고 흐를 때만
+   * 옆벽 앞을 지나 문으로 들어갑니다.
+   *
+   * 위는 커진 병 윗부분(--fade), 아래는 매달린 이름표 자리(--hang)까지 상자에 넣고 전부 자릅니다.
+   * 이름표는 벽감 밖(선반 아래)이라 문으로 들어갈 수 없어서, 접힘선을 지나면 앞기둥까지 옅어지며
+   * 사라집니다 — 아래 마스크의 둘째 겹입니다. 마스크는 상자 안에서만 쓰입니다(기본 mask-clip).
+   * 상자를 이름표 자리까지 키운 까닭이 이것입니다 — 상자 밖으로 삐져나간 이름표는 마스크에 통째로 잘립니다.
+   *
+   * NOTE: 트랙의 높이는 벽감 높이 그대로여야 합니다(병 줄이 트랙 아래끝에서 섭니다). 상자만 늘립니다.
+   */
+  .shelf-scope .shelf-track-clip {
+    --door-reach: calc(var(--wall) - var(--door-front));
+    /* 가위 상자 왼쪽 끝(앞기둥)에서 병이 벽 면을 지나는 자리까지 — 이름표가 다 사라지는 자리입니다 */
+    --door-sink: calc(var(--door-plane) - var(--door-front));
+
+    margin: calc(var(--fade) * -1) calc(var(--bevel) + var(--door-front)) 0;
+    padding: var(--fade) 0 0 var(--door-reach);
+    height: calc(var(--fade) + var(--case-h) + var(--hang));
+    overflow: clip;
+    /*
+     * 이름표는 **병이 문 안 그늘에 드는 자리(--door-plane)에서 다 사라집니다.** 앞기둥까지 끌고 가면
+     * 병은 그늘에 묻혔는데 이름표만 먼저 나와 있어, 벽 밖에서 이름표가 병을 끌고 오는 것처럼 보였습니다.
+     */
+    mask-image:
+      linear-gradient(#000, #000),
+      linear-gradient(
+        to right,
+        transparent var(--door-sink),
+        #000 var(--door-reach),
+        #000 calc(100% - var(--door-reach)),
+        transparent calc(100% - var(--door-sink))
+      );
+    mask-position:
+      top left,
+      bottom left;
+    mask-size:
+      100% calc(var(--fade) + var(--case-h)),
+      100% var(--hang);
+    mask-repeat: no-repeat;
   }
 
   /*
@@ -1725,22 +1877,122 @@
   }
 
   /*
-   * 켜진 메뉴판 — **채움**으로 알립니다 (S15P21E203-417).
+   * ───────── 누르는 맛 — 눌러 두는 메뉴판 (S15P21E203-431) ─────────
    *
-   * 테두리 한 줄로 켜면 종이 위에서 눈에 안 띄고, 켜질 때만 테두리가 생기면 판이 들썩입니다
-   * (예전 머리말 칩에 적혀 있던 것과 같은 까닭입니다). 종이 층(.shelf-plaque-paper)의 색만
-   * 바꾸므로 판의 크기 · 모양 · 테두리 네 겹은 그대로입니다.
+   * 한 단 진하게 칠하기만 하던 켜짐은 눌러도 누른 것 같지 않았습니다(색이 바뀌는 것뿐이라 손에 걸리는
+   * 것이 없습니다). 이제 판이 **벽 쪽으로 눌려 들어갑니다** — 옛 라디오의 프리셋 단추처럼 고른 판은
+   * 눌린 채 머물고, 나머지는 떠서 그림자를 드리웁니다. 셋이 같은 판이라 "하나만 들어가 있다" 가
+   * 모양으로 읽힙니다.
+   *
+   *   뜬 판      그림자가 오른쪽 아래로 떨어집니다(기본). 마우스를 올리면 1px 더 뜹니다
+   *   누르는 중  2px 내려가며 3.5% 줄고 그림자가 붙습니다 — 70ms 로 빠르게 따라옵니다
+   *   눌린 판    1px 내려가 1.5% 준 채 그림자 없이 벽에 붙고, 판 안에 먹빛과 윗턱 그늘이 듭니다
+   *              (.shelf-plaque-well). 벽 속으로 들어간 만큼 빛을 덜 받는 것입니다
+   *   떠오름     눌려 있다 풀린 판은 조금 넘쳤다 제자리로 튕깁니다(끝이 넘치는 곡선)
+   *
+   * 눌리는 순간은 한 번 더 깊이 눌렸다 앉는 짧은 움직임(shelf-plaque-press)을 틉니다 — 마우스가 아닌
+   * 키보드 · 페이저로 분류가 바뀌어도 판이 대답합니다. 옮기는 것은 transform 계열(translate · scale)과
+   * 그림자뿐이라 판의 자리 · 크기는 그대로입니다.
+   *
+   * 값은 출발점입니다 — 깊이(translate) · 줄어듦(scale) · 먹빛(--plaque-well)을 화면에서 봐 가며 고치세요.
    */
-  .shelf-scope .shelf-plaque[data-active] .shelf-plaque-paper {
-    /*
-     * 먹색을 그대로 채우면 판이 검게 막혀 답답합니다. 종이에 먹을 조금만 섞어 한 단만
-     * 진하게 둡니다 — 글자는 먹색 그대로라 대비가 유지됩니다.
-     */
-    background: color-mix(in oklch, var(--shelf-ink) 13%, var(--paper));
+  .shelf-scope {
+    /* 눌린 판의 먹빛 — 종이에 먹을 조금만 섞습니다. 먹을 그대로 채우면 판이 검게 막혀 답답합니다 */
+    --plaque-well: color-mix(in oklch, var(--shelf-ink) 15%, var(--paper));
+    /* 눌린 판 윗턱이 드리우는 그늘 — 벽 속으로 들어간 판의 위쪽이 가장 어둡습니다 */
+    --plaque-well-shade: oklch(0.3 0.03 58 / 0.18);
+    /* 떠오를 때 끝이 조금 넘치는 곡선 · 눌릴 때의 빠른 곡선 */
+    --plaque-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --plaque-press: cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .shelf-scope .shelf-plaque-board {
+    transition:
+      filter 200ms ease-out,
+      translate 320ms var(--plaque-spring),
+      scale 320ms var(--plaque-spring);
+  }
+
+  .shelf-scope .shelf-plaque-well {
+    clip-path: var(--plaque-shape);
+    background:
+      linear-gradient(to bottom, var(--plaque-well-shade), transparent 38%),
+      linear-gradient(to right, var(--plaque-well-shade), transparent 12%),
+      var(--plaque-well);
+    opacity: 0;
+    transition: opacity 160ms ease-out;
+  }
+
+  .shelf-scope .shelf-plaque[data-active] .shelf-plaque-board {
+    translate: 0 1px;
+    scale: 0.985;
+    /* 벽에 붙어 그림자가 사라지고 접지 그늘만 남습니다 */
+    filter: drop-shadow(0 0.5px 0.5px var(--contact-soft));
+    animation: shelf-plaque-press 340ms var(--plaque-press);
+  }
+  .shelf-scope .shelf-plaque[data-active] .shelf-plaque-well {
+    opacity: 1;
   }
   .shelf-scope .shelf-plaque[data-active] .shelf-plaque-caption {
     color: var(--shelf-ink);
     opacity: 0.75;
+  }
+
+  @keyframes shelf-plaque-press {
+    0% {
+      translate: 0 0;
+      scale: 1;
+    }
+    35% {
+      translate: 0 2.5px;
+      scale: 0.955;
+    }
+    100% {
+      translate: 0 1px;
+      scale: 0.985;
+    }
+  }
+
+  /*
+   * 황동 촉 — 고른 판 오른쪽에서 벽감을 가리킵니다. 메뉴(nav) 높이 그대로의 상자를 두고, 촉은 첫 판
+   * 가운데 높이에 그린 뒤 상자째 판 사이 간격만큼 내립니다. translate 의 % 는 이 상자(= 메뉴) 높이라
+   * n 번째 판 = n x (메뉴 높이 − 판 높이) / 칸 사이 수 입니다. 판이 바뀌면 끝이 조금 넘치게 미끄러집니다.
+   */
+  .shelf-scope .shelf-menu-pointer {
+    position: absolute;
+    inset-block: 0;
+    left: calc(50% + var(--plaque-w) / 2 + 7px);
+    width: 9px;
+    pointer-events: none;
+    translate: 0
+      calc(var(--menu-at) * (100% - var(--plaque-h)) / var(--menu-gaps));
+    transition: translate 460ms var(--plaque-spring);
+    /* 그림자는 오린 촉(::before)이 아니라 여기에 겁니다 — 오린 요소에 걸면 그림자까지 윤곽에 잘립니다 */
+    filter: drop-shadow(0.5px 1px 0.5px var(--contact));
+  }
+  .shelf-scope .shelf-menu-pointer::before {
+    content: '';
+    position: absolute;
+    top: calc(var(--plaque-h) / 2 - 7px);
+    left: 0;
+    width: 9px;
+    height: 14px;
+    clip-path: polygon(0 0, 100% 50%, 0 100%);
+    background: linear-gradient(
+      160deg,
+      var(--brass-hi),
+      var(--eyelet) 45%,
+      var(--brass-deep)
+    );
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .shelf-scope .shelf-plaque[data-active] .shelf-plaque-board {
+      animation: none;
+    }
+    .shelf-scope .shelf-menu-pointer {
+      transition: none;
+    }
   }
 
   /*
@@ -1826,12 +2078,13 @@
   }
 
   /*
-   * 마우스를 올리면 판이 벽에서 아주 조금 들려 그림자가 길어집니다 — 누를 수 있다는 표시.
-   * 판을 옮기거나 기울이지는 않습니다(핀에 꽂혀 있습니다). 터치 화면은 누른 뒤에도 :hover 가
-   * 남아서 마우스가 있을 때만 겁니다.
+   * 마우스를 올리면 판이 벽에서 1px 더 들려 그림자가 길어집니다 — 누를 수 있다는 표시. 눌려 있는 판은
+   * 들리지 않습니다(위 "누르는 맛" — 눌린 채 머뭅니다). 터치 화면은 누른 뒤에도 :hover 가 남아서
+   * 마우스가 있을 때만 겁니다.
    */
   @media (hover: hover) {
-    .shelf-scope .shelf-plaque:hover .shelf-plaque-board {
+    .shelf-scope .shelf-plaque:not([data-active]):hover .shelf-plaque-board {
+      translate: 0 -1px;
       filter: drop-shadow(0 0.5px 0.5px var(--contact-soft))
         drop-shadow(
           calc(var(--plaque-w) * 0.025) calc(var(--plaque-w) * 0.06)
@@ -1839,14 +2092,17 @@
         );
     }
   }
-  /* 누르는 순간에는 벽에 눌려 붙습니다. hover 규칙보다 뒤에 두어야 이깁니다 */
+  /*
+   * 누르는 순간에는 벽 쪽으로 깊이 눌려 그림자가 붙습니다 — 눌려 있던 판을 또 눌러도 같습니다(그 분류의
+   * 첫머리로 돌아갑니다). 70ms 로 손을 바로 따라오고, 떼면 위의 끝이 넘치는 곡선으로 돌아갑니다.
+   * hover · 눌린 판 규칙보다 뒤에 두어야 이깁니다.
+   */
   .shelf-scope .shelf-plaque:active .shelf-plaque-board {
-    filter: drop-shadow(0 0.5px 0.5px var(--contact-soft))
-      drop-shadow(
-        calc(var(--plaque-w) * 0.008) calc(var(--plaque-w) * 0.018)
-          calc(var(--plaque-w) * 0.025) var(--plaque-cast)
-      );
-    transition-duration: 80ms;
+    translate: 0 2px;
+    scale: 0.965;
+    filter: drop-shadow(0 0.5px 0.5px var(--contact-soft));
+    transition-duration: 70ms;
+    transition-timing-function: ease-out;
   }
   /* 고대비 모드는 배경 그림을 지워 윤곽 포커스 링이 사라집니다. 그때는 상자 링을 두릅니다 */
   @media (forced-colors: active) {

@@ -1549,3 +1549,114 @@ export function tagMetrics(width: number, height: number): TagMetrics {
     focusRing: ring(0, 2),
   }
 }
+
+/*
+ * ── 옆벽의 문 (S15P21E203-431) ─────────────────────────────────
+ *
+ * 벽감 좌우 옆벽에 병이 드나드는 아치 문을 냅니다. 문이 없을 때는 병이 뒷벽과 옆벽이 만나는
+ * 접힘선에서 칼로 자른 듯 끊겼습니다 — 옆벽은 병이 가는 방향과 수직이라 그 **뒤로** 갈 수가 없는데,
+ * 멀쩡한 벽 틈으로 미끄러져 들어가는 것처럼 보였습니다.
+ *
+ * 이제 병은 접힘선을 지나 옆벽 앞을 지나가다가, 병이 선 깊이에서 옆벽 면을 뚫고 문 안 그늘로 들어가
+ * 문 앞기둥(옆벽 중 입구 쪽 조각)에 가려 사라집니다.
+ *
+ *   깊이   0 입구 ── 앞기둥 ── 문 앞 가장자리 ── 병이 벽 면을 지남 ── 문 뒤 가장자리 ── 1 접힘선
+ *               (가림)       DOOR_FRONT        floorFront / floor      DOOR_BACK
+ *
+ * 벽감은 한 점 투시입니다. 옆벽의 위 · 아래 가장자리가 천장 · 바닥 모서리를 따라 소실점으로 모이므로
+ * 옆벽에 선 문도 깊이마다 같은 비율로 줄여 그립니다(`scale`). 그래서 문은 사다리꼴 위에 아치를 얹은
+ * 모양이고, 아치의 꼭대기도 깊이를 따라 기웁니다.
+ *
+ * 문 높이는 병 사진 칸 높이에서 셉니다 — 아치가 시작하는 높이가 병의 1.06 배, 아치가 그 위로 병의
+ * 0.2 배 솟습니다. 병이 문설주에 걸리지 않고 들어가 보여야 "병이 들어갈 구멍" 으로 읽힙니다.
+ *
+ * 모양 · 깊이를 바꿀 때는 아래 상수만 고칩니다. 문이 천장 모서리를 넘지 않는지는 테스트가 봅니다.
+ */
+
+/**
+ * 벽감 면의 치수(px). ⚠️ shelf-display.css 의 `.shelf-window` 에 적힌 --bevel · --ceil · --wall ·
+ * --floor · --floor-front 와 **한 벌**입니다 — 문 윤곽은 이 값으로 셈하고 면은 CSS 가 그려서, 한쪽만
+ * 고치면 문이 옆벽에서 어긋납니다(lib.test.ts 가 둘을 맞대 봅니다).
+ *
+ * 옆벽 45 는 소실점이 벽감 가운데에 오는 폭입니다 — 소실점은 천장 · 바닥 모서리가 만나는 높이(벽감의
+ * 40%)에 있고, 거기서 옆벽 폭 = 벽감 폭의 절반 x (천장 + 바닥) / 벽감 높이 입니다. 1920 x 1080
+ * (1100 x 605) · 1294 x 697(645 x 355) 둘 다 45 언저리입니다. 30 이던 때는 옆벽이 얇게 누워 문이 설
+ * 자리가 없었습니다.
+ */
+export const NICHE_FACES = {
+  bevel: 3,
+  ceil: 20,
+  wall: 45,
+  floor: 30,
+  floorFront: 12,
+} as const
+
+/** 문 앞 · 뒤 가장자리의 깊이(옆벽 폭 대비, 0 이 입구). 앞기둥은 입구에서 12% 입니다 */
+const DOOR_FRONT = 0.12
+const DOOR_BACK = 0.88
+/** 아치가 시작하는 높이 · 그 위로 솟는 높이 — 병 사진 칸 높이 대비 */
+const DOOR_SPRING = 1.06
+const DOOR_RISE = 0.2
+/** 아치를 꺾은선으로 나누는 수. 문 폭이 30px 남짓이라 이 정도면 꺾인 자리가 안 보입니다 */
+const DOOR_ARCH_STEPS = 12
+
+export type DoorMetrics = {
+  /** 옆벽 앞끝에서 문 앞 가장자리까지(px). 병은 여기서 앞기둥에 가려 사라집니다 */
+  front: number
+  /** 옆벽 앞끝에서 병이 옆벽 면을 지나는 자리까지(px). 여기부터 병이 문 안 그늘에 듭니다 */
+  plane: number
+  /** 옆벽 앞끝에서 문 뒤 가장자리까지(px). 문설주의 두께가 빛을 받는 자리입니다 */
+  back: number
+  /**
+   * 문 윤곽 — 왼쪽 옆벽 면 상자(벽감에서 입구 테두리를 뺀 상자의 왼쪽 옆벽 폭) 기준 clip-path.
+   * 오른쪽 옆벽은 같은 윤곽을 좌우로 뒤집어 씁니다(shelf-display.css 의 .shelf-door-right).
+   */
+  shape: string
+}
+
+/**
+ * 벽감 높이 · 병 사진 칸 높이에 맞는 옆벽 문(위 "옆벽의 문").
+ *
+ * @param caseHeight 벽감 높이(px, --case-h)
+ * @param bottle 병 사진 칸 높이(px, --bottle-h)
+ */
+export function doorMetrics(caseHeight: number, bottle: number): DoorMetrics {
+  const { bevel, ceil, wall, floor, floorFront } = NICHE_FACES
+  const f = (value: number) => +value.toFixed(2)
+  // 면 상자 높이 — 옆벽 앞끝(입구)의 높이입니다
+  const face = Math.max(1, caseHeight - bevel * 2)
+  const floorAt = (depth: number) => face - floor * depth
+  const ceilingAt = (depth: number) => ceil * depth
+  // 깊이 d 에서 입구의 1px 이 몇 px 로 줄어드는가 — 그 깊이의 옆벽 높이 / 입구 높이
+  const scale = (depth: number) => (floorAt(depth) - ceilingAt(depth)) / face
+  const spring = bottle * DOOR_SPRING
+  const rise = bottle * DOOR_RISE
+  /*
+   * 바닥에서 height 만큼 올라간 벽 위의 점. 아치 꼭대기가 천장 모서리에 닿으면(병이 벽감을 거의
+   * 채우는 좁고 낮은 창) 모서리 조금 아래에서 멈춥니다 — 문이 천장까지 뚫리면 옆벽이 두 조각이 됩니다.
+   */
+  const point = (depth: number, height: number) => {
+    const top = ceilingAt(depth) + 4
+    const y = Math.max(top, floorAt(depth) - height * scale(depth))
+    return `${f(wall * depth)} ${f(y)}`
+  }
+
+  const arch = Array.from({ length: DOOR_ARCH_STEPS + 1 }, (_, step) => {
+    const t = step / DOOR_ARCH_STEPS
+    const depth = DOOR_BACK + (DOOR_FRONT - DOOR_BACK) * t
+    return `L${point(depth, spring + rise * Math.sin(Math.PI * t))}`
+  })
+  const path = [
+    `M${point(DOOR_FRONT, 0)}`,
+    `L${point(DOOR_BACK, 0)}`,
+    ...arch,
+    'Z',
+  ].join('')
+
+  return {
+    front: f(wall * DOOR_FRONT),
+    plane: f(wall * (floorFront / floor)),
+    back: f(wall * DOOR_BACK),
+    shape: `path("${path}")`,
+  }
+}

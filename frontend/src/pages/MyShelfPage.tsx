@@ -38,7 +38,6 @@ import {
   useShelfActions,
   useShelfArrangement,
   useShelfBrowser,
-  type ShelfCategory,
   type ShelfItemDetail,
   type ShelfWallHandle,
 } from '@/features/shelf'
@@ -334,16 +333,6 @@ export default function MyShelfPage() {
   const collectionCount = collections.data?.length ?? 0
 
   /*
-   * 분류로 가기 — 칩과 벽의 이름표가 같은 곳으로 보냅니다. 그 분류의 첫 향수를 고르고,
-   * 벽을 그 분류의 첫머리(이름표가 창 왼쪽 끝)로 흘립니다. 둘이 따로 적히면 한쪽만
-   * 첫 향수를 골라서, 같은 분류로 갔는데 상세 패널이 다르게 남습니다.
-   */
-  const showCategory = (category: ShelfCategory) => {
-    browser.selectFirstOf(category)
-    wall.current?.showCategory(category)
-  }
-
-  /*
    * 두 배치가 같은 조각을 다른 자리에 놓습니다. 조각은 여기서 한 번만 적습니다 —
    * 배치마다 따로 적으면 한쪽만 고쳐져 두 배치가 조용히 달라집니다.
    */
@@ -396,7 +385,8 @@ export default function MyShelfPage() {
       selectedId={browser.selected?.shelfItemId ?? null}
       onSelect={browser.select}
       onViewCategoryChange={browser.changeViewCategory}
-      onPlaqueSelect={showCategory}
+      // 메뉴판을 누르면 그 분류의 첫 향수를 고릅니다. 벽은 분류가 바뀌면 스스로 흐릅니다
+      onPlaqueSelect={browser.selectFirstOf}
       resetKey={browser.keyword}
       emptyMessage={
         browser.keyword

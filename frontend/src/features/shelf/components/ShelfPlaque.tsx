@@ -73,6 +73,8 @@ function PlaqueBoard({
     <>
       <span aria-hidden className="shelf-plaque-board">
         <span className="shelf-plaque-paper" />
+        {/* 눌러 들어간 판에 드는 먹빛과 윗턱 그늘. 고른 판에서만 떠오릅니다(shelf-display.css) */}
+        <span className="shelf-plaque-well" />
         <span className="shelf-plaque-edge" />
         <span className="shelf-plaque-rim" />
         <span className="shelf-plaque-line" />
@@ -221,6 +223,13 @@ export function ShelfReturnPlaque({
  *
  * 고른 분류는 `aria-current` 로 알리고, 보이는 표시는 `data-active` 로 CSS 가 입힙니다.
  * 낭독기에는 분류 이름과 개수가 그대로 읽힙니다(PlaqueBoard).
+ *
+ * ── 누르는 맛 (S15P21E203-431) ──────────────────────────────
+ * 판은 **눌러 두는 단추**입니다 — 옛 라디오의 프리셋 단추처럼, 고른 판은 벽 쪽으로 눌려 들어가 그늘진
+ * 채 머물고 나머지는 벽에서 떠 그림자를 드리웁니다. 누르는 순간 판이 한 번 더 깊이 눌렸다 제자리에
+ * 앉고, 먼저 눌려 있던 판은 튕기듯 떠오릅니다. 판 오른쪽의 황동 촉이 고른 판으로 미끄러져 벽감을
+ * 가리킵니다 — "이 판이 저 벽을 정한다" 가 이어집니다. 모양은 전부 shelf-display.css 의 "누르는 맛".
+ * 벽도 같이 대답합니다 — 옛 병이 문으로 빠지고 새 병이 들어옵니다(ShelfWall 의 "분류를 바꿀 때").
  */
 export function ShelfPlaqueMenu({
   items,
@@ -237,11 +246,31 @@ export function ShelfPlaqueMenu({
   onSelect: (category: ShelfCategory) => void
   className?: string
 }) {
+  const at = Math.max(
+    0,
+    items.findIndex((item) => item.category === value),
+  )
   return (
     <nav
       aria-label="진열대 분류"
-      className={cn('flex flex-col items-center justify-between', className)}
+      className={cn(
+        'relative flex flex-col items-center justify-between',
+        className,
+      )}
+      style={
+        {
+          '--plaque-w': `${plaque.width}px`,
+          '--plaque-h': `${plaque.height}px`,
+          '--menu-at': at,
+          '--menu-gaps': Math.max(1, items.length - 1),
+        } as React.CSSProperties
+      }
     >
+      {/*
+        황동 촉 — 고른 판 오른쪽에서 벽감을 가리킵니다. 판들은 세로로 고르게 벌어져 있어(justify-between)
+        n 번째 판의 가운데가 판 높이 절반 + n x (메뉴 높이 − 판 높이) / 칸 사이 수 에 옵니다.
+      */}
+      <span aria-hidden className="shelf-menu-pointer" />
       {items.map((item) => {
         const active = item.category === value
         return (

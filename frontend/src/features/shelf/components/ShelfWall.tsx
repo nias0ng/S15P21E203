@@ -19,6 +19,7 @@ import { useBottlePreload } from '../hooks/useBottlePreload'
 import { useShelfFlow } from '../hooks/useShelfFlow'
 import { useTagSwing } from '../hooks/useTagSwing'
 import {
+  doorMetrics,
   layoutWall,
   plaqueMetrics,
   revealItem,
@@ -29,7 +30,12 @@ import {
   type GustDirection,
   type WallSection,
 } from '../lib'
-import type { ShelfCategory, ShelfItem, ShelfSection } from '../types'
+import {
+  SHELF_CATEGORIES,
+  type ShelfCategory,
+  type ShelfItem,
+  type ShelfSection,
+} from '../types'
 
 import { DisplayCase } from './DisplayCase'
 import { ShelfPlaqueMenu } from './ShelfPlaque'
@@ -52,8 +58,6 @@ const MENU_HEIGHT_SHARE = 0.22
 const MENU_HEADER_SHARE = 0.2
 
 export type ShelfWallHandle = {
-  /** 그 분류의 이름표 벽이 창 왼쪽 끝에 오도록 흘려 보냅니다 */
-  showCategory: (category: ShelfCategory) => void
   /**
    * 진열대 ↔ 내 컬렉션 무대를 바꾸기 직전에 부르세요. 이름표에 아래에서 바람이 불어 앞으로 들렸다
    * 가라앉습니다 — 진열대가 위로 빠질 때(leave) · 돌아올 때(arrive). 움직임을 줄이도록 설정한
@@ -67,16 +71,20 @@ type Props = {
   sections: ShelfSection[]
   /**
    * 벽에 서는 분류 (S15P21E203-417). 벽감이 창에 고정이라 한 번에 하나만 섭니다 —
-   * 갈아끼우는 것은 왼쪽 현판 메뉴입니다.
+   * 갈아끼우는 것은 왼쪽 현판 메뉴입니다. 값이 바뀌면 벽이 옛 분류를 한쪽 문으로 흘려보내고 새
+   * 분류를 반대쪽 문에서 들입니다(아래 "분류를 바꿀 때").
    */
   category: ShelfCategory
   selectedId: number | null
   onSelect: (item: ShelfItem) => void
-  /** 가리지 않는 자리 가운데에 걸린 분류가 바뀔 때. 칩의 켜짐을 여기에 맞춥니다 */
+  /**
+   * 벽에 서는 분류가 바뀌어야 할 때 — 메뉴를 눌렀거나, 고른 병(하단 페이저)이 다른 분류로 넘어갔을
+   * 때입니다. 화면이 받아 `category` 로 돌려줍니다.
+   */
   onViewCategoryChange: (category: ShelfCategory) => void
   /**
-   * 이름표 벽을 눌렀을 때. 칩과 같은 일(그 분류의 첫 향수 고르기 + showCategory)을 하도록
-   * 화면이 넘깁니다. 주지 않으면 벽만 그 분류의 첫머리로 흐릅니다. "처음으로" 현판은 첫 분류로 부릅니다.
+   * 메뉴에서 분류를 골랐을 때. 그 분류의 첫 향수를 고르도록 화면이 넘깁니다. 벽을 옮기는 일은
+   * 벽이 스스로 합니다(`category` 가 바뀌면).
    */
   onPlaqueSelect?: (category: ShelfCategory) => void
   /** 이 값이 바뀌면 벽을 맨 앞으로 되돌립니다(검색어) */
@@ -94,22 +102,53 @@ type Props = {
 type FirstScreen = { from: number; to: number; id: number | null }
 
 /**
- * 진열대 벽 (A13 재디자인) — 분류마다 벽감을 하나씩, 가로로 이어 붙인 벽입니다.
+ * 분류를 바꾸는 중 — 옛 분류(from)와 새 분류(to)를 벽에 나란히 세워 두고 흘려 보냅니다.
  *
- *   [보유 중 이름표][보유 중 벽감][빈 벽] [시향해 봄 이름표][시향해 봄 벽감] [보유 희망 …] [처음으로]
+ *   forward  메뉴에서 아래 분류로 → [옛][새] 로 세우고 새 분류 첫머리까지 흐릅니다(옛 병은 왼쪽 문으로)
+ *   backward 위 분류로           → [새][옛] 로 세우고 맨 앞(새 분류 첫머리)까지 거꾸로 흐릅니다
  *
- * 휠을 굴리면 벽 전체가 한 번에 한 칸씩 좌우로 흐르고(useShelfFlow), 창 왼쪽 끝이 칸 경계에
- * 자석처럼 붙어 섭니다.
- * 칸 폭이 전부 같고(이름표 벽 기둥 · 빈 벽도 칸 단위) 패널 왼쪽 끝도 칸 경계라서, 칸 단위로 끊어
- * 세우는 것만으로 창 왼쪽 끝과 패널 경계에 병이 걸리지 않습니다(lib.ts 의 "칸이 패널 경계에
- * 섭니다" · layoutWall). 이름표 벽은 두 칸 기둥이라, 기둥이 창 경계에 잘리는 칸에는 멈추지
- * 않습니다(lib.ts 의 wallStops).
+ * 옛 분류는 **바꾸던 순간 창에 보이던 병만**(`keep`, 병 순서 [처음, 끝)) 세우고, 거꾸로 갈 때는 새 분류도
+ * 첫머리 한 창만 세웁니다. 병이 서른인 분류에서 바꿔도 벽이 서른 칸을 훑지 않고 늘 한 창 남짓만
+ * 흐릅니다 — 누른 것에 대한 대답이 1초를 넘기지 않습니다. 잘린 병들은 어차피 창 밖이라 안 보입니다.
+ */
+type Passage = {
+  from: ShelfCategory
+  to: ShelfCategory
+  forward: boolean
+  keep: readonly [number, number]
+}
+
+/** 메뉴 순서(보유 중 → 시향해 봄 → 보유 희망). 벽이 흐르는 방향을 이 순서로 정합니다 */
+const categoryRank = (category: ShelfCategory) =>
+  SHELF_CATEGORIES.findIndex((entry) => entry.value === category)
+
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' &&
+  (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)
+
+/**
+ * 진열대 벽 (A13 재디자인) — 창에 고정된 벽감 하나에 한 분류의 병이 서고, 왼쪽 메뉴판이 분류를
+ * 갈아끼웁니다(S15P21E203-417).
  *
- * 병이 적어 가리지 않는 자리를 못 채우는 분류 뒤에는 빈 벽을 둡니다. 그 분류의 첫머리에 섰을 때
- * 다음 분류의 이름표 기둥이 패널 바로 왼쪽에 붙습니다 — 빈 벽이 한 화면씩 벌어지지 않고, 다음
- * 분류가 거기 있다는 게 보입니다. 가리지 않는 자리를 병으로 채우는 분류에서는 다음 기둥이 패널
- * 밑에 섭니다. 이름표 벽을 누르면(칩과 같이) 그 분류의 기둥이 창 왼쪽 끝에 오도록 벽이 흐릅니다.
- * 벽 끝에는 "처음으로" 현판이 패널 바로 왼쪽에 서고, 누르면 첫 분류를 고르며 맨 앞으로 흐릅니다.
+ *   [메뉴: 보유 중 · 시향해 봄 · 보유 희망] [문 | 벽감 — 병이 흐르는 자리 | 문] [상세 패널]
+ *
+ * 휠을 굴리면 병 줄이 한 번에 한 칸씩 좌우로 흐르고(useShelfFlow), 창 왼쪽 끝이 칸 경계에
+ * 자석처럼 붙어 섭니다. 칸 폭이 전부 같아서 칸 단위로 끊어 세우는 것만으로 병이 창 왼쪽 끝에 걸리지
+ * 않습니다(lib.ts 의 "칸이 패널 경계에 섭니다").
+ *
+ * ── 옆벽의 문 (S15P21E203-431) ────────────────────────────────
+ * 벽감 좌우 옆벽에 아치 문이 있어, 흐르는 병은 뒷벽 모서리에서 끊기지 않고 옆벽 앞을 지나 문 안
+ * 어둠으로 들어갑니다(lib.ts 의 doorMetrics · shelf-display.css 의 "옆벽의 문"). 병이 서는 자리는
+ * 앞기둥에서 앞기둥까지 자르고(.shelf-track-clip), 문 안 그늘은 병 위에 얹습니다(.shelf-niche-front).
+ *
+ * ── 분류를 바꿀 때 (S15P21E203-431) ─────────────────────────────
+ * 메뉴판을 누르면 벽이 곧바로 갈아 끼워지지 않고, **옛 병들이 한쪽 문으로 빠져나가고 새 병들이 반대쪽
+ * 문에서 들어옵니다.** 메뉴에서 아래 분류로 가면 왼쪽 문으로 빠지고(벽이 왼쪽으로 흐름), 위 분류로
+ * 가면 오른쪽 문으로 빠집니다 — 메뉴의 위아래가 벽의 좌우와 같은 순서라 어디로 갔는지 이어집니다.
+ * 그동안은 두 분류를 벽에 나란히 세워 두고(`Passage`) 휠과 같은 흐름으로 옮긴 뒤, 다 오면 옛 분류를
+ * 치우고 위치를 그만큼 되돌립니다(useShelfFlow 의 rebase) — 화면에서는 아무것도 튀지 않습니다.
+ * 이름표가 흐름을 따라 흔들려(useTagSwing) 누른 것이 벽을 움직였다는 게 보입니다.
+ * 움직임을 줄인 사용자 · 크기를 재기 전 · 전환 중에 또 누른 경우 · 둘 다 빈 분류면 곧바로 갈아 끼웁니다.
  *
  * 예전에는 세 분류가 한 자리에 겹쳐 휠로 위아래로 바뀌었고, 한 분류 안에서는 일곱 칸
  * 창을 화살표로 세 칸씩 밀었습니다. 분류를 넘나들 때와 분류 안을 훑을 때의 조작이 달라서,
@@ -232,15 +271,67 @@ export function ShelfWall({
   const clear = Math.max(1, metrics.clear - menuSpan)
   const visible = Math.max(1, metrics.visible - menuSpan)
   const whole = Math.max(1, metrics.whole - menuSpan)
+  /** 멈춘 칸. 창 밖 병 · 화살표를 여기에 맞춥니다. 흐르는 중인지는 상태로 들지 않습니다(위 "창 밖 병") */
+  const [view, setView] = useState({ start: 0 })
+
   /*
-   * 벽에 세울 분류 하나. 벽감이 창에 고정이라 한 분류만 서고, 흐르는 것은 그 안의 병뿐입니다.
+   * 분류를 바꾸는 중인가(위 "분류를 바꿀 때"). `category` 가 바뀐 그 렌더에서 곧바로 정합니다 —
+   * 효과에서 정하면 새 분류 하나만 선 벽이 한 번 그려졌다가(옛 분류의 병이 통째로 빠졌다가) 다시
+   * 두 분류로 그려져, 옛 병 사진이 새 요소로 다시 만들어집니다.
+   */
+  const [seenCategory, setSeenCategory] = useState(category)
+  const [passage, setPassage] = useState<Passage | null>(null)
+  if (seenCategory !== category) {
+    setSeenCategory(category)
+    const from = sections.find((section) => section.category === seenCategory)
+    const to = sections.find((section) => section.category === category)
+    const glides =
+      measured &&
+      passage === null &&
+      !prefersReducedMotion() &&
+      from !== undefined &&
+      to !== undefined &&
+      (from.items.length > 0 || to.items.length > 0)
+    setPassage(
+      glides
+        ? {
+            from: seenCategory,
+            to: category,
+            forward: categoryRank(category) > categoryRank(seenCategory),
+            // 창 왼쪽 문에 걸친 한 병부터 창 오른쪽 문에 걸친 병까지
+            keep: [Math.max(0, view.start - 1), view.start + visible + 1],
+          }
+        : null,
+    )
+  }
+
+  /*
+   * 벽에 세울 분류. 벽감이 창에 고정이라 평소에는 한 분류만 서고, 흐르는 것은 그 안의 병뿐입니다.
+   * 분류를 바꾸는 동안만 옛 분류와 새 분류가 흐르는 방향 순서로 나란히 섭니다(`Passage` — 옛 분류는
+   * 보이던 병만, 거꾸로 갈 때의 새 분류는 첫머리 한 창만).
    * 현판이 트랙 밖(왼쪽 메뉴)에 서므로 기둥 칸 수는 0 입니다(lib.ts 의 layoutWall).
    */
-  const shown = useMemo(
-    () => sections.filter((section) => section.category === category),
-    [sections, category],
-  )
+  const shown = useMemo(() => {
+    const pick = (value: ShelfCategory) =>
+      sections.find((section) => section.category === value)
+    if (passage === null) {
+      const only = pick(category)
+      return only ? [only] : []
+    }
+    const leaving = pick(passage.from)
+    const coming = pick(passage.to)
+    if (!leaving || !coming) return []
+    const kept = { ...leaving, items: leaving.items.slice(...passage.keep) }
+    return passage.forward
+      ? [kept, coming]
+      : [{ ...coming, items: coming.items.slice(0, clear + 1) }, kept]
+  }, [sections, category, passage, clear])
   const layout = useMemo(() => layoutWall(shown, clear, 0), [shown, clear])
+  // 옆벽의 문 — 벽감 높이 · 병 높이에서 셉니다(lib.ts 의 doorMetrics)
+  const door = useMemo(
+    () => doorMetrics(metrics.caseHeight, metrics.bottle),
+    [metrics.caseHeight, metrics.bottle],
+  )
   // 이름표 벽의 현판. 세 분류와 "처음으로" 가 같은 치수 · 모양이라 한 번만 셉니다
   const plaque = useMemo(
     () =>
@@ -283,10 +374,16 @@ export function ShelfWall({
     [layout, clear, max],
   )
 
-  /** 멈춘 칸. 창 밖 병 · 화살표를 여기에 맞춥니다. 흐르는 중인지는 상태로 들지 않습니다(위 "창 밖 병") */
-  const [view, setView] = useState({ start: 0 })
   /** 움직이기 시작한 횟수. 멈춤을 한 박자 늦춰 그리는 사이 다시 움직이기 시작했는지 봅니다 */
   const motions = useRef(0)
+  /** 흐르는 중인 분류 전환. 흐름 엔진의 콜백(onSettle)이 읽어서 상태가 아니라 ref 로도 듭니다 */
+  const passageRef = useRef<Passage | null>(null)
+  /** 벽이 섰기 때문에 끝난 전환인가. 아니면(전환 중에 또 누름 · 검색) 새 분류 첫머리로 곧바로 옮깁니다 */
+  const passageEnding = useRef(false)
+  /** 전환이 끝나 옛 분류를 치울 때 되돌릴 칸 수 */
+  const passageShift = useRef(0)
+  /** 흐름의 좌표가 가리키는 분류. 흐르지 않고 갈아 끼웠을 때 맨 앞으로 옮길지 봅니다 */
+  const placedCategory = useRef(category)
   /** 이름표 흔들기 — 벽이 흐를 때(kick) · 무대가 바뀔 때(gust, 패널 자리에 data-gust) */
   const swing = useTagSwing(trackRef, viewportRef, panelRef)
 
@@ -364,8 +461,20 @@ export function ShelfWall({
     },
     // 흐르는 중 분류를 다시 세지 않습니다 (S15P21E203-417) — 벽에 한 분류만 서므로 흘러도 바뀌지 않습니다
     onSettle: (start) => {
-      const settle = () =>
-        setView((prev) => (prev.start === start ? prev : { start }))
+      /*
+       * 분류를 바꾸며 흐르던 벽이 섰으면 옛 분류를 치웁니다. 멈춘 칸은 **치운 뒤의 벽**으로 적습니다
+       * (치운 칸 수만큼 되돌린 값). 좌표를 실제로 되돌리는 일은 벽이 다시 그려진 직후(레이아웃 효과)에
+       * 합니다 — 여기서 먼저 옮기면 한 장 동안 새 분류가 빈 자리에 섭니다.
+       */
+      const ending = passageRef.current !== null
+      const at = ending ? start + passageShift.current : start
+      const settle = () => {
+        setView((prev) => (prev.start === at ? prev : { start: at }))
+        if (ending) {
+          passageEnding.current = true
+          setPassage(null)
+        }
+      }
       // 서 있다가 곧바로 옮긴 경우(검색 · 창 크기)는 흐른 적이 없어 뗄 data-moving 도 없습니다
       if (!trackRef.current?.hasAttribute('data-moving')) {
         settle()
@@ -389,8 +498,60 @@ export function ShelfWall({
     },
   })
 
+  /*
+   * 분류를 바꿀 때의 흐름(위 "분류를 바꿀 때"). 벽이 두 분류로 다시 그려진 직후(레이아웃 효과 — 화면에
+   * 칠하기 전)에 좌표를 새 벽에 맞추고 흘려 보내고, 다 와서 옛 분류를 치운 직후에 좌표를 되돌립니다.
+   * 칠하기 전에 끝내서, 벽이 바뀌는 순간에도 화면의 병은 한 픽셀도 튀지 않습니다.
+   *
+   * NOTE: useShelfFlow 를 부른 **뒤에** 적어야 합니다 — 흐름 엔진이 새 벽의 끝(max)을 먼저 받아야
+   *   (그쪽 레이아웃 효과가 먼저 돕니다) 새 분류 첫머리까지 흘려 보낼 수 있습니다.
+   */
+  useLayoutEffect(() => {
+    const running = passageRef.current
+    passageRef.current = passage
+
+    if (passage !== null && passage !== running) {
+      const [head, tail] = layout.sections
+      const leaving = passage.forward ? head : tail
+      const coming = passage.forward ? tail : head
+      if (!leaving || !coming) return
+      // 보이던 병만 남기며 앞을 자른 만큼 당기고, 새 분류가 앞에 끼면(거꾸로) 그만큼 밉니다
+      flow.rebase(leaving.start - passage.keep[0])
+      passageShift.current = -coming.start
+      placedCategory.current = passage.to
+      flow.go(coming.start)
+      return
+    }
+
+    if (passage === null && running !== null) {
+      const ended = passageEnding.current
+      passageEnding.current = false
+      if (ended) {
+        flow.rebase(passageShift.current)
+        // 흐르던 중에 휠로 옛 분류 쪽으로 돌아가 섰으면 좌표가 새 벽 밖입니다 — 끝으로 붙입니다
+        const at = flow.destination()
+        if (at < 0 || at > max) flow.go(Math.min(Math.max(at, 0), max), true)
+        return
+      }
+      placedCategory.current = category
+      flow.go(0, true)
+      return
+    }
+
+    // 흐르지 않고 갈아 끼웠습니다(움직임 줄이기 · 크기 재기 전 · 둘 다 빈 분류)
+    if (passage === null && placedCategory.current !== category) {
+      placedCategory.current = category
+      flow.go(0, true)
+    }
+  }, [passage, category, flow, layout, max])
+
   // 검색어가 바뀌면 벽이 짧아지고 순서도 달라집니다. 맨 앞에서 다시 봅니다
   useEffect(() => {
+    // 분류를 바꾸며 흐르던 중이면 그 흐름을 끊습니다 — 위 효과가 새 분류 첫머리로 옮깁니다
+    if (passageRef.current !== null) {
+      setPassage(null)
+      return
+    }
     flow.go(0, true)
   }, [flow, resetKey])
 
@@ -403,17 +564,34 @@ export function ShelfWall({
    *
    * **고른 병이 바뀔 때만** 따라갑니다. 휠로 다른 분류를 훑어보는 중에 창 크기가
    * 바뀌었다고 고른 병 쪽으로 벽이 되돌아가면, 보던 자리를 잃습니다.
+   *
+   * 고른 병이 **다른 분류**에 있으면(페이저가 분류 끝을 넘음) 벽이 먼저 그 분류로 넘어갑니다
+   * (S15P21E203-431) — 벽에 한 분류만 서게 된 뒤로, 페이저로 넘긴 병이 벽에 없는데 패널만 그 병을
+   * 보이곤 했습니다. 넘어가는 동안은 벽에 새 분류의 첫머리만 서 있을 수 있어서, 병을 찾을 때까지
+   * "따라갔다" 로 치지 않고 벽이 선 뒤 다시 봅니다. 처음 그릴 때(아직 따라간 병이 없음)는 넘어가지
+   * 않습니다 — 들어오자마자 벽이 흐르면 누른 적 없는 움직임이 됩니다.
    */
   const revealed = useRef<number | null>(null)
   useEffect(() => {
     if (!measured || selectedId === null) return
     if (revealed.current === selectedId) return
-    revealed.current = selectedId
+    const home = sections.find((section) =>
+      section.items.some((item) => item.shelfItemId === selectedId),
+    )
+    if (
+      revealed.current !== null &&
+      home !== undefined &&
+      home.category !== category
+    ) {
+      onViewCategoryChange(home.category)
+      return
+    }
     for (const section of layout.sections) {
       const at = section.items.findIndex(
         (item) => item.shelfItemId === selectedId,
       )
       if (at < 0) continue
+      revealed.current = selectedId
       const from = flow.destination()
       const next = revealItem(
         layout.sections,
@@ -426,25 +604,35 @@ export function ShelfWall({
       if (next !== from) flow.go(next)
       return
     }
-  }, [flow, layout, max, measured, clear, selectedId, stops])
+    // 처음 그릴 때 고른 병이 다른 분류에 있으면 여기로 옵니다 — 그 병을 따라간 것으로 칩니다
+    if (revealed.current === null) revealed.current = selectedId
+  }, [
+    category,
+    clear,
+    flow,
+    layout,
+    max,
+    measured,
+    onViewCategoryChange,
+    sections,
+    selectedId,
+    stops,
+  ])
 
-  /** 그 분류의 이름표 벽이 창 왼쪽 끝에 오도록 흘려 보냅니다(칩 · 이름표 벽) */
-  const showSection = useCallback(() => flow.go(0, true), [flow])
+  useImperativeHandle(ref, () => ({ gust: swing.gust }), [swing])
 
-  useImperativeHandle(
-    ref,
-    () => ({ showCategory: showSection, gust: swing.gust }),
-    [showSection, swing],
-  )
-
-  /** 메뉴에서 분류를 고르면 — 화면이 분류를 갈고, 벽은 그 분류의 첫머리로 되돌아갑니다 */
+  /*
+   * 메뉴에서 분류를 고르면 — 화면이 분류를 갈고(벽은 `category` 가 바뀌면 스스로 흐릅니다) 그 분류의
+   * 첫 향수를 고릅니다. 이미 서 있는 분류를 또 누르면 그 분류의 첫머리로 흘러 돌아갑니다 — 누른 것에
+   * 벽이 늘 대답합니다.
+   */
   const pickCategory = useCallback(
     (next: ShelfCategory) => {
-      onViewCategoryChange(next)
+      if (next === category) flow.go(0)
+      else onViewCategoryChange(next)
       onPlaqueSelect?.(next)
-      showSection()
     },
-    [onPlaqueSelect, onViewCategoryChange, showSection],
+    [category, flow, onPlaqueSelect, onViewCategoryChange],
   )
 
   /** 화살표 한 번에 넘기는 칸 수. 절반쯤 남겨야 방금 본 병이 어디로 갔는지 이어집니다 */
@@ -501,6 +689,11 @@ export function ShelfWall({
           '--tag-edge-ring': tag.edgeRing,
           '--tag-line-ring': tag.lineRing,
           '--tag-focus-ring': tag.focusRing,
+          // 옆벽의 문(lib.ts 의 doorMetrics · shelf-display.css 의 "옆벽의 문")
+          '--door-shape': door.shape,
+          '--door-front': `${door.front}px`,
+          '--door-plane': `${door.plane}px`,
+          '--door-back': `${door.back}px`,
         } as React.CSSProperties
       }
     >
@@ -574,22 +767,28 @@ export function ShelfWall({
                 <div className="shelf-face shelf-niche-wall-left" />
                 <div className="shelf-face shelf-niche-wall-right" />
                 <div className="shelf-face shelf-niche-floor" />
+                {/* 옆벽의 문 안 — 병 밑에 깔리는 어둠(shelf-display.css 의 "옆벽의 문") */}
+                <div className="shelf-door shelf-door-left">
+                  <i className="shelf-door-hole" />
+                </div>
+                <div className="shelf-door shelf-door-right">
+                  <i className="shelf-door-hole" />
+                </div>
                 <div className="shelf-face shelf-niche-bevel" />
                 <div className="shelf-face shelf-niche-grain" />
               </div>
               {/*
-                병이 서는 자리 — 뒷벽 폭 안입니다. 좌우로 `--track-inset`(모서리 + 옆벽) 만큼
-                들이고 그 선에서 잘라, 병이 옆벽에 닿기 전에 끊기게 합니다.
-
-                NOTE: 가로만 자릅니다. 이름표는 벽감 아래로 매달려 이 상자 밖으로 내려가므로
-                  세로는 열어 둡니다 (overflow-y 가 visible 이라 `clip` 이 가로에만 걸립니다).
+                병이 서는 자리 — 왼쪽 문 앞기둥에서 오른쪽 문 앞기둥까지 자릅니다(.shelf-track-clip).
+                트랙은 그 안에서 옆벽 폭만큼 들어가 뒷벽 왼쪽 끝(접힘선)에서 시작하므로, 병이 멈추는
+                칸은 접힘선에 맞고 흐를 때만 옆벽 앞을 지나 문으로 들어갑니다.
               */}
-              <div className="mx-[var(--track-inset)] h-full [overflow-x:clip] [overflow-y:visible]">
+              <div className="shelf-track-clip">
                 <div
                   ref={trackRef}
                   // 태그가 낮으면 적는 줄을 줄입니다(CSS 의 [data-tag-detail])
                   data-tag-detail={tag.detail}
-                  className="shelf-case flex h-full w-max will-change-transform"
+                  // 높이는 벽감 그대로입니다 — 병 줄이 트랙 아래끝에서 섭니다. 가위 상자만 이름표 자리까지 깁니다
+                  className="shelf-case flex h-[var(--case-h)] w-max will-change-transform"
                 >
                   {layout.sections.map((section) => {
                     const headingId = `${idPrefix}-${section.category}`
@@ -613,7 +812,10 @@ export function ShelfWall({
                           priorityId={firstScreen?.id ?? null}
                           emptyMessage={emptyMessage}
                         />
-                        {/* 빈 벽 — 다음 분류의 이름표 기둥을 패널 바로 왼쪽으로 밀어 둡니다 */}
+                        {/*
+                          빈 벽 — 병이 가리지 않는 자리를 못 채우는 분류 뒤를 한 창까지 채웁니다. 분류를
+                          바꿀 때 옛 병이 다 빠져나간 뒤에 새 병이 들어오는 간격이 됩니다.
+                        */}
                         {section.gap > 0 && (
                           <div
                             aria-hidden
@@ -626,6 +828,18 @@ export function ShelfWall({
                       </section>
                     )
                   })}
+                </div>
+              </div>
+              {/* 문 안 그늘 — 병 위에 얹혀 문으로 들어가는 병을 삼킵니다 */}
+              <div
+                aria-hidden
+                className="shelf-niche-front absolute top-[var(--fade)] right-[var(--fade-end)] left-[var(--fade-start)] h-[var(--case-h)]"
+              >
+                <div className="shelf-door shelf-door-left">
+                  <i className="shelf-door-shade" />
+                </div>
+                <div className="shelf-door shelf-door-right">
+                  <i className="shelf-door-shade" />
                 </div>
               </div>
             </div>

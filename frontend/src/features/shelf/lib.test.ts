@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  doorMetrics,
   formatShelfDate,
   layoutWall,
   LIFT_ENVELOPE,
@@ -9,6 +10,7 @@ import {
   liftTarget,
   meterWheel,
   nameWithoutBrand,
+  NICHE_FACES,
   nearStop,
   nextStop,
   plaqueMetrics,
@@ -34,6 +36,7 @@ import {
   type WallLayout,
   type WheelMeter,
 } from './lib'
+import shelfStyle from './shelf-display.css?raw'
 import type { ShelfItem, ShelfSection } from './types'
 
 describe('nameWithoutBrand', () => {
@@ -1593,5 +1596,84 @@ describe('ticketPath', () => {
         expect(Math.min(x, width - x, y, height - y)).toBeCloseTo(d, 1)
       })
     }
+  })
+})
+
+describe('doorMetrics — 옆벽의 문', () => {
+  /** 문 윤곽(path)의 점들 — 왼쪽 옆벽 면 상자 기준 [x, y] */
+  const points = (shape: string) =>
+    [...shape.matchAll(/[ML](-?[\d.]+) (-?[\d.]+)/g)].map(([, x, y]) => [
+      Number(x),
+      Number(y),
+    ])
+
+  /*
+   * 1920 x 1080 · 앱 창(1294 x 697) · 벽감이 가장 낮아지는 창(한 장 배치 최소 높이)에서 잰 벽감과 병.
+   * 문이 옆벽 밖으로 삐져나가거나 천장 모서리를 뚫으면 옆벽이 두 조각으로 보입니다.
+   */
+  it.each([
+    [605, 360],
+    [355, 210],
+    [300, 180],
+  ])(
+    '벽감 %i · 병 %i 에서 문이 옆벽 사다리꼴 안에 선다',
+    (caseHeight, bottle) => {
+      const { bevel, ceil, wall, floor } = NICHE_FACES
+      const face = caseHeight - bevel * 2
+      for (const [x = 0, y = 0] of points(
+        doorMetrics(caseHeight, bottle).shape,
+      )) {
+        const depth = x / wall
+        expect(x).toBeGreaterThanOrEqual(0)
+        expect(x).toBeLessThanOrEqual(wall)
+        // 천장 모서리 아래 · 바닥 모서리 위(부동소수 여유 0.05)
+        expect(y).toBeGreaterThanOrEqual(ceil * depth)
+        expect(y).toBeLessThanOrEqual(face - floor * depth + 0.05)
+      }
+    },
+  )
+
+  it('문은 병이 설 만큼 높다 — 아치가 시작하는 높이가 병보다 높다(1920)', () => {
+    const { bevel, floor, wall } = NICHE_FACES
+    const face = 605 - bevel * 2
+    const door = doorMetrics(605, 360)
+    // 문 앞 가장자리(가장 얕은 곳)에서 바닥과 아치 사이의 세로 거리
+    const front = points(door.shape).filter(
+      ([x = 0]) => Math.abs(x - door.front) < 0.01,
+    )
+    const heights = front.map(([, y = 0]) => y)
+    const floorAt = face - floor * (door.front / wall)
+    expect(floorAt - Math.min(...heights)).toBeGreaterThan(360 * 0.95)
+  })
+
+  it('앞기둥 → 병이 벽 면을 지나는 자리 → 문 뒤 가장자리 순서로 선다', () => {
+    const door = doorMetrics(605, 360)
+    expect(door.front).toBeGreaterThan(0)
+    expect(door.plane).toBeGreaterThan(door.front)
+    expect(door.back).toBeGreaterThan(door.plane)
+    expect(door.back).toBeLessThan(NICHE_FACES.wall)
+  })
+
+  /*
+   * 문 윤곽은 이 값으로 셈하고 면은 CSS 가 그립니다. 한쪽만 고치면 문이 옆벽에서 어긋나는데, 둘 다
+   * 화면으로는 "조금 이상하다" 로만 보이는 자리라 여기서 잡습니다. CSS 에는 내보내는 것이 없어
+   * 원문에서 줄머리에 선언된 것만 집습니다(주석에도 같은 이름이 있습니다).
+   */
+  it('CSS 의 벽감 면 치수와 NICHE_FACES 가 한 벌이다', () => {
+    const pick = (name: string) => {
+      // 줄머리의 들여쓰기(공백) 뒤 선언만 — `var(--wall)` 처럼 쓰인 자리는 안 뭅니다
+      const found = new RegExp(`^ *${name}: *([0-9.]+)px;`, 'm').exec(
+        shelfStyle,
+      )
+      if (!found?.[1]) throw new Error(`${name} 를 못 찾았다`)
+      return Number(found[1])
+    }
+    expect({
+      bevel: pick('--bevel'),
+      ceil: pick('--ceil'),
+      wall: pick('--wall'),
+      floor: pick('--floor'),
+      floorFront: pick('--floor-front'),
+    }).toEqual(NICHE_FACES)
   })
 })
