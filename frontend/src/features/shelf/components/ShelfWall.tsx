@@ -14,6 +14,7 @@ import { flushSync } from 'react-dom'
 
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { cn } from '@/shared/lib/cn'
+import { BottleSilhouette } from '@/shared/ui/BottleSilhouette'
 
 import { useBottlePreload } from '../hooks/useBottlePreload'
 import { useShelfFlow } from '../hooks/useShelfFlow'
@@ -66,6 +67,17 @@ export type ShelfWallHandle = {
   gust: (direction: GustDirection) => void
 }
 
+/**
+ * 향수가 없는 분류의 벽감 한가운데에 세우는 안내 (S15P21E203-431).
+ * 벽감 첫 칸에 작은 글자 한 줄로 적던 것을, 빈 자리 가운데로 옮겨 "비어 있다" 가 먼저 보이게 합니다.
+ */
+export type ShelfWallEmpty = {
+  title: string
+  description?: string
+  /** 안내 아래 단추 한 개(등록 · 검색어 지우기) */
+  action?: ReactNode
+}
+
 type Props = {
   ref?: Ref<ShelfWallHandle>
   sections: ShelfSection[]
@@ -89,8 +101,8 @@ type Props = {
   onPlaqueSelect?: (category: ShelfCategory) => void
   /** 이 값이 바뀌면 벽을 맨 앞으로 되돌립니다(검색어) */
   resetKey: string
-  /** 향수가 없는 분류의 벽감에 적는 말 */
-  emptyMessage: string
+  /** 향수가 없는 분류의 벽감 한가운데에 세우는 안내. 분류마다 말이 달라 화면이 정합니다 */
+  empty: (category: ShelfCategory) => ShelfWallEmpty
   /** 벽 오른쪽 위에 얹히는 상세 패널. 주지 않으면 패널 없이 창 전체를 씁니다(쌓는 배치) */
   aside?: ReactNode
   /** 분류 메뉴 위에 놓는 줄(검색창 · 등록 단추). 메뉴 기둥 폭 안에 세로로 섭니다 */
@@ -154,6 +166,10 @@ const prefersReducedMotion = () =>
  * 창을 화살표로 세 칸씩 밀었습니다. 분류를 넘나들 때와 분류 안을 훑을 때의 조작이 달라서,
  * 휠 한 번이 무엇을 할지 화면을 보고 알 수 없었습니다. 지금은 휠이 언제나 옆으로 흐릅니다.
  *
+ * ── 빈 분류 ──────────────────────────────────────────────
+ * 향수가 없는 분류는 벽감 한가운데에 빈 병 윤곽과 안내 · 단추를 세웁니다(`empty`). 예전에는 벽감 첫 칸에
+ * 작은 글자 한 줄이라, 빈 벽감이 "아무것도 없다" 가 아니라 "덜 그려졌다" 로 읽혔습니다.
+ *
  * ── 상세 패널은 벽 위에 얹힙니다 ─────────────────────────────
  * 벽은 화면 오른쪽 끝까지 이어지고, 상세 패널이 그 오른쪽 위에 벽감과 같은 높이로 얹힙니다.
  * 화면이 작아져 벽감이 낮아지면 패널도 같은 비율로 통째로 줄어듭니다(lib.ts 의 shelfLayout).
@@ -216,7 +232,7 @@ export function ShelfWall({
   onViewCategoryChange,
   onPlaqueSelect,
   resetKey,
-  emptyMessage,
+  empty,
   aside,
   menuHeader,
   className,
@@ -639,6 +655,15 @@ export function ShelfWall({
   const step = Math.max(1, Math.floor(clear / 2))
 
   /*
+   * 향수가 없는 분류가 벽에 섰는가 — 벽감 한가운데에 안내를 세웁니다. 분류를 바꾸며 흐르는 동안은
+   * 세우지 않습니다(빈 벽감도 옛 병과 함께 문으로 흘러갑니다). 다 와서 섰을 때 떠오릅니다.
+   */
+  const shownEmpty =
+    passage === null && shown.length === 1 && shown[0]?.items.length === 0
+      ? shown[0]
+      : null
+
+  /*
    * 벽감 기준(벽감 첫 칸이 0)의 창 경계와 첫 화면 경계. −2 ~ 칸 수 + 1 로 좁혀도 벽감 안 칸의 처지는
    * 같고(lib.test.ts 의 slotView), 창에서 먼 벽감은 창이 옮겨 가도 같은 값을 받아 다시 그리지 않습니다
    * (DisplayCase 는 memo).
@@ -810,7 +835,6 @@ export function ShelfWall({
                           onSelect={select}
                           {...caseWindow(section)}
                           priorityId={firstScreen?.id ?? null}
-                          emptyMessage={emptyMessage}
                         />
                         {/*
                           빈 벽 — 병이 가리지 않는 자리를 못 채우는 분류 뒤를 한 창까지 채웁니다. 분류를
@@ -842,6 +866,12 @@ export function ShelfWall({
                   <i className="shelf-door-shade" />
                 </div>
               </div>
+              {shownEmpty && (
+                <ShelfWallEmptyNotice
+                  key={shownEmpty.category}
+                  {...empty(shownEmpty.category)}
+                />
+              )}
             </div>
           )}
 
@@ -903,6 +933,33 @@ export function ShelfWall({
             {aside}
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * 빈 분류의 안내 (S15P21E203-431) — 벽감 한가운데에 **빈 병 자리**(점선 윤곽)와 글 · 단추를 나란히
+ * 세웁니다.
+ *
+ * 병 자리는 병이 서는 바닥선(--base-inset)에 발을 딛고, 글은 그 옆에서 세로 가운데에 섭니다. 벽감
+ * 첫 칸에 작은 글자 한 줄로 적던 때는 빈 벽감이 "비어 있다" 가 아니라 "덜 그려졌다" 로 읽혀서,
+ * 병이 서야 할 자리를 먼저 보이고 그 자리를 채우는 말을 붙였습니다.
+ *
+ * 벽감과 같은 상자에 서고(창 안), 떠오르는 것은 한 번뿐입니다(분류가 바뀔 때마다 key 로 새로 섭니다).
+ */
+function ShelfWallEmptyNotice({ title, description, action }: ShelfWallEmpty) {
+  return (
+    <div className="shelf-empty absolute top-[var(--fade)] right-[var(--fade-end)] left-[var(--fade-start)] flex h-[var(--case-h)] items-end justify-center gap-10 px-15 pb-[var(--base-inset)]">
+      <BottleSilhouette className="shelf-empty-ghost h-[calc(var(--bottle-h)*0.72)] w-auto" />
+      <div className="flex max-w-100 min-w-0 flex-col items-start gap-1.25 self-center">
+        <p className="text-title font-serif font-semibold break-keep">
+          {title}
+        </p>
+        {description && (
+          <p className="shelf-muted text-body break-keep">{description}</p>
+        )}
+        {action && <div className="mt-3.75">{action}</div>}
       </div>
     </div>
   )

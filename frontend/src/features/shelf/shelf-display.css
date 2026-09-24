@@ -822,6 +822,46 @@
   }
 
   /*
+   * ───────── 빈 분류 (S15P21E203-431) ─────────
+   *
+   * 벽감 한가운데에 빈 병 자리와 안내가 섭니다(ShelfWall 의 ShelfWallEmptyNotice). 병 자리는 **점선
+   * 윤곽**입니다 — 칠한 실루엣은 사진이 없는 병(BottleSilhouette)과 같은 모양이라 "병이 있다" 로
+   * 읽힙니다. 윤곽만 남겨 "여기 설 자리" 로 둡니다. 점선은 굵기가 병 크기를 따라 커지지 않게
+   * 화면 픽셀로 긋습니다(non-scaling-stroke).
+   *
+   * 분류를 바꾼 벽이 다 선 뒤에 떠오릅니다 — 벽이 흐르는 동안(약 0.7초)은 세우지 않고, 선 뒤
+   * 0.12초 쉬었다가 0.36초에 걸쳐 아래에서 올라옵니다.
+   */
+  .shelf-scope .shelf-empty {
+    animation: shelf-empty-in 360ms 120ms cubic-bezier(0.2, 0.8, 0.2, 1)
+      backwards;
+  }
+  .shelf-scope .shelf-empty-ghost {
+    color: var(--shelf-ink-soft);
+    opacity: 0.55;
+  }
+  .shelf-scope .shelf-empty-ghost path {
+    fill: color-mix(in oklch, var(--shelf-ink) 4%, transparent);
+    stroke: currentColor;
+    stroke-width: 1.25px;
+    stroke-dasharray: 5 4;
+    vector-effect: non-scaling-stroke;
+  }
+
+  @keyframes shelf-empty-in {
+    from {
+      opacity: 0;
+      translate: 0 8px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .shelf-scope .shelf-empty {
+      animation: none;
+    }
+  }
+
+  /*
    * 벽 창 — 벽이 옆으로 흐르는 자리(ShelfWall).
    *
    * **overflow:clip 이 아니라 마스크입니다.** clip 은 경계에서 픽셀을 뚝 끊어서, 흐르는

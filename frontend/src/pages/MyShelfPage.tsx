@@ -38,6 +38,7 @@ import {
   useShelfActions,
   useShelfArrangement,
   useShelfBrowser,
+  type ShelfCategory,
   type ShelfItemDetail,
   type ShelfWallHandle,
 } from '@/features/shelf'
@@ -104,6 +105,30 @@ const SHELF_STAGE_COLLECTION = 'collection'
 /** 두 무대의 제목. 휴대폰 폭에서는 스케일 최대치(28px), 태블릿 폭부터 시안의 36px(위 2) */
 const STAGE_TITLE =
   'font-serif text-display font-semibold md:text-[36px] md:leading-[1.2]'
+
+/**
+ * 빈 분류의 안내 (S15P21E203-431). 벽감 한가운데에 섭니다(ShelfWall).
+ *
+ * 분류마다 **비어 있는 까닭과 채우는 길**이 달라서 말도 다릅니다 — "아직 담은 향수가 없습니다" 한 줄을
+ * 셋이 같이 쓰던 때는 어느 칸이 왜 비었는지 말하지 않았습니다.
+ */
+const EMPTY_COPY: Record<
+  ShelfCategory,
+  { title: string; description: string }
+> = {
+  OWNED: {
+    title: '아직 보유 중인 향수가 없어요',
+    description: '가지고 있는 향수를 올려 두면 이 벽감에 섭니다.',
+  },
+  TRIED: {
+    title: '아직 시향해 본 향수가 없어요',
+    description: '매장에서 맡아 본 향수를 적어 두면 이 벽감에 모입니다.',
+  },
+  WISH: {
+    title: '아직 갖고 싶은 향수가 없어요',
+    description: '마음에 둔 향수를 담아 두면 이 벽감에서 기다립니다.',
+  },
+}
 
 /**
  * 나의 진열대 (A13 재디자인 시안)
@@ -196,8 +221,16 @@ export default function MyShelfPage() {
   const detailReady =
     selectedDetail.data !== undefined &&
     selectedDetail.data.shelfItemId === selectedId
+  /*
+   * 벽에 선 분류의 병일 때만 패널에 올립니다 (S15P21E203-431). 빈 분류를 고르면 선택은 그대로
+   * 남아 있어서(useShelfBrowser 의 selectFirstOf), 그대로 두면 빈 벽감 옆에 다른 분류의 병이
+   * 떠 있습니다.
+   */
+  const selectedOnWall =
+    browser.selected !== null &&
+    browser.selected.category === browser.viewCategory
   const panelItem: ShelfItemDetail | null =
-    browser.selected === null
+    browser.selected === null || !selectedOnWall
       ? null
       : detailReady
         ? selectedDetail.data
@@ -388,10 +421,24 @@ export default function MyShelfPage() {
       // 메뉴판을 누르면 그 분류의 첫 향수를 고릅니다. 벽은 분류가 바뀌면 스스로 흐릅니다
       onPlaqueSelect={browser.selectFirstOf}
       resetKey={browser.keyword}
-      emptyMessage={
+      empty={(category) =>
         browser.keyword
-          ? '조건에 맞는 향수가 없습니다'
-          : '아직 담은 향수가 없습니다'
+          ? {
+              title: `'${browser.keyword.trim()}' 에 맞는 향수가 이 칸에는 없어요`,
+              description:
+                '메뉴판의 숫자로 다른 칸을 보거나 검색어를 바꿔 보세요.',
+              action: (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="focus-visible:ring-[var(--shelf-ink)] focus-visible:ring-offset-[var(--paper)]"
+                  onClick={() => browser.changeKeyword('')}
+                >
+                  검색어 지우기
+                </Button>
+              ),
+            }
+          : { ...EMPTY_COPY[category], action: registerButton }
       }
       className={className}
       aside={aside}
@@ -427,6 +474,11 @@ export default function MyShelfPage() {
       }}
       onEdit={() => setEditOpen(true)}
       onRemove={() => setRemoveOpen(true)}
+      placeholder={
+        browser.selected !== null && !selectedOnWall
+          ? '이 칸에 향수를 담으면 여기에서 자세히 볼 수 있어요'
+          : undefined
+      }
       className={className}
     />
   )

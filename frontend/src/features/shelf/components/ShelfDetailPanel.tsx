@@ -28,6 +28,11 @@ type Props = {
   onEdit: () => void
   /** 진열대에서 빼기. 되돌릴 수 없어서 화면이 확인창을 띄웁니다 */
   onRemove: () => void
+  /**
+   * 고른 병이 없을 때 카드에 적는 말. 주지 않으면 "진열대에서 향수를 선택하면 …" 입니다 — 빈 분류가
+   * 벽에 섰을 때처럼 고를 병 자체가 없는 자리에서는 화면이 다른 말을 넘깁니다.
+   */
+  placeholder?: string
   className?: string
 }
 
@@ -120,6 +125,7 @@ export function ShelfDetailPanel({
   onChangeRating,
   onEdit,
   onRemove,
+  placeholder = '진열대에서 향수를 선택하면 여기에 정보가 표시됩니다',
   className,
 }: Props) {
   if (!item) {
@@ -128,8 +134,10 @@ export function ShelfDetailPanel({
         aria-label="선택한 향수 정보"
         className={cn(CARD, 'flex items-center justify-center', className)}
       >
-        <p className={cn('shelf-muted text-caption text-center')}>
-          진열대에서 향수를 선택하면 여기에 정보가 표시됩니다
+        <p
+          className={cn('shelf-muted text-caption px-5 text-center break-keep')}
+        >
+          {placeholder}
         </p>
       </aside>
     )
