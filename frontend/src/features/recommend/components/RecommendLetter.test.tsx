@@ -247,6 +247,44 @@ describe('RecommendLetter', () => {
     }
   })
 
+  it('다른 향수를 추천받아도 새 편지가 오지 않으면 한 줄로 알린다 — 줄 향수가 없음 · 묻다 실패', async () => {
+    const user = userEvent.setup()
+    const onNext =
+      vi.fn<() => Promise<PersonalRecommendationResult | undefined>>()
+    onNext.mockResolvedValueOnce({ status: 'none' })
+    onNext.mockResolvedValueOnce(undefined)
+    renderLetter({ onNext })
+    await user.click(
+      screen.getByRole('button', { name: '새로 온 향수 편지 열기' }),
+    )
+
+    await user.click(screen.getByRole('button', { name: '다른 향수 추천받기' }))
+    expect(
+      await screen.findByText('지금은 새로 보낼 향수가 없어요'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '지금은 새로 보낼 향수가 없어요',
+    )
+
+    await user.click(screen.getByRole('button', { name: '다른 향수 추천받기' }))
+    expect(
+      await screen.findByText('새 편지를 받지 못했어요. 다시 눌러 주세요'),
+    ).toBeInTheDocument()
+    // 받아 둔 편지는 그대로 남습니다
+    expect(
+      screen.getByRole('heading', {
+        name: '마음에 든 향과 닮은 향수를 찾았어요',
+      }),
+    ).toBeInTheDocument()
+
+    // 접으면 한 줄도 지웁니다
+    await user.click(screen.getByRole('button', { name: '편지 접기' }))
+    await user.click(
+      screen.getByRole('button', { name: '향수 편지 다시 열기' }),
+    )
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+  })
+
   it('Esc 로 접으면 봉투로 포커스가 돌아온다', async () => {
     const user = userEvent.setup()
     renderLetter()

@@ -734,7 +734,11 @@ export default function MyShelfPage() {
     <RecommendLetter
       result={recommendation.data}
       isRefreshing={recommendation.isFetching}
-      onNext={() => void recommendation.refetch()}
+      // 새로 받은 결과를 돌려줍니다 — 묻다 실패하면 옛 결과가 남아 있어 undefined 로 알립니다
+      onNext={async () => {
+        const next = await recommendation.refetch()
+        return next.isError ? undefined : next.data
+      }}
       onShow={setLetterPerfumeId}
       facts={letterFacts}
       renderSave={saveFromLetter}

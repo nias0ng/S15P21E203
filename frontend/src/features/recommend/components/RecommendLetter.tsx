@@ -45,8 +45,11 @@ type Props = {
   result: PersonalRecommendationResult | undefined
   /** 다른 향수를 받는 중 */
   isRefreshing: boolean
-  /** 다른 향수를 추천받습니다 — 서버에 다시 묻습니다. 본 병은 사흘 동안 빠져 대개 다른 병이 옵니다 */
-  onNext: () => void
+  /**
+   * 다른 향수를 추천받습니다 — 서버에 다시 묻고 **새로 받은 결과**를 돌려주세요(묻다 실패하면 undefined).
+   * 본 병은 사흘 동안 빠져 대개 다른 병이 옵니다. 새 편지가 오지 않으면 편지 아래에 한 줄로 알립니다.
+   */
+  onNext: () => Promise<PersonalRecommendationResult | undefined>
   /** 편지 속 향수가 바뀔 때 — 화면이 그 번호로 `facts` 를 채웁니다 */
   onShow?: (perfumeId: number) => void
   facts?: LetterFacts
@@ -76,6 +79,15 @@ const HEADLINE: Record<PersonalReasonSource | 'unknown', string> = {
 
 const prefersReducedMotion = () =>
   window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+
+/**
+ * "다른 향수 추천받기" 가 새 편지를 못 받았을 때 편지 아래에 적는 한 줄. 누르고도 아무 일이 없으면 버튼이
+ * 고장 난 것처럼 보입니다 — 서버가 줄 향수가 없다고 답했는지(404 · 503), 묻다 실패했는지를 가립니다.
+ */
+const NEXT_NOTE = {
+  none: '지금은 새로 보낼 향수가 없어요',
+  failed: '새 편지를 받지 못했어요. 다시 눌러 주세요',
+} as const
 
 /**
  * 한 칸씩 펼치기의 시간(ms, 아래 RecommendLetter 의 "펼치기"). 봉투에서 나온 편지가 윗칸만 보이는
@@ -206,6 +218,11 @@ export function RecommendLetter({
    */
   const [letters, setLetters] = useState<PersonalRecommendation[]>([])
   const [at, setAt] = useState(0)
+  /*
+   * "다른 향수 추천받기" 가 새 편지를 못 받았을 때의 한 줄(NEXT_NOTE). 새 편지가 오거나, 앞 · 뒤 편지로
+   * 넘기거나, 편지를 펼치고 접으면 지웁니다.
+   */
+  const [nextNote, setNextNote] = useState<string | null>(null)
   const latest = result?.status === 'ready' ? result.recommendation : null
   if (
     latest !== null &&
@@ -216,6 +233,7 @@ export function RecommendLetter({
     const next = [...letters, latest]
     setLetters(next)
     setAt(next.length - 1)
+    setNextNote(null)
   }
   const letter = letters[at] ?? latest
   const invitation = result?.status === 'needs-taste-test'
@@ -231,9 +249,27 @@ export function RecommendLetter({
     unfolding.current = []
     openRef.current = next
     setOpen(next)
+    setNextNote(null)
     // Web Animations 가 없으면(오래된 브라우저 · 테스트 환경) 칸을 나누지 않고 곧바로 펼칩니다
     setFolding(next && !!root?.animate && !prefersReducedMotion())
   }, [])
+
+  /*
+   * 다른 향수를 추천받습니다. 새 손잡이의 편지가 오면 위에서 쌓여 펼쳐지고, 오지 않으면 까닭을 한 줄로
+   * 적습니다 — 서버가 줄 향수가 없다고 답했는지, 묻다 실패했는지(화면이 undefined 로 돌려줌).
+   */
+  const askNext = async () => {
+    setNextNote(null)
+    const before = latest?.recommendationToken
+    const next = await onNext()
+    if (
+      next?.status === 'ready' &&
+      next.recommendation.recommendationToken !== before
+    ) {
+      return
+    }
+    setNextNote(next === undefined ? NEXT_NOTE.failed : NEXT_NOTE.none)
+  }
 
   /*
    * 봉투 자리 → 패널 자리(또는 거꾸로). 새 상태가 칠해지기 전에 새 자리를 재어, 처음 자리에서 새 자리로
@@ -499,47 +535,62 @@ export function RecommendLetter({
       )}
 
       {!invitation && (
-        <div className="rec-foot">
-          {letters.length > 1 ? (
-            <div className="rec-pager">
-              <button
-                type="button"
-                aria-label="앞 편지"
-                disabled={at <= 0}
-                onClick={() => setAt(at - 1)}
-              >
-                ‹
-              </button>
-              <span className="tabular-nums">
-                {at + 1} / {letters.length}
-              </span>
-              <button
-                type="button"
-                aria-label="다음 편지"
-                disabled={at >= letters.length - 1}
-                onClick={() => setAt(at + 1)}
-              >
-                ›
-              </button>
-            </div>
-          ) : (
-            <span />
-          )}
-          <button
-            type="button"
-            className="rec-next"
-            disabled={isRefreshing}
-            onClick={onNext}
-          >
-            <span
-              aria-hidden
-              className={cn('rec-next-icon', isRefreshing && 'animate-spin')}
+        <>
+          <div className="rec-foot">
+            {letters.length > 1 ? (
+              <div className="rec-pager">
+                <button
+                  type="button"
+                  aria-label="앞 편지"
+                  disabled={at <= 0}
+                  onClick={() => {
+                    setAt(at - 1)
+                    setNextNote(null)
+                  }}
+                >
+                  ‹
+                </button>
+                <span className="tabular-nums">
+                  {at + 1} / {letters.length}
+                </span>
+                <button
+                  type="button"
+                  aria-label="다음 편지"
+                  disabled={at >= letters.length - 1}
+                  onClick={() => {
+                    setAt(at + 1)
+                    setNextNote(null)
+                  }}
+                >
+                  ›
+                </button>
+              </div>
+            ) : (
+              <span />
+            )}
+            <button
+              type="button"
+              className="rec-next"
+              disabled={isRefreshing}
+              onClick={() => void askNext()}
             >
-              ↻
-            </span>
-            {isRefreshing ? '새 편지를 봉하는 중' : '다른 향수 추천받기'}
-          </button>
-        </div>
+              <span
+                aria-hidden
+                className={cn('rec-next-icon', isRefreshing && 'animate-spin')}
+              >
+                ↻
+              </span>
+              {isRefreshing ? '새 편지를 봉하는 중' : '다른 향수 추천받기'}
+            </button>
+          </div>
+          {/*
+            새 편지를 못 받았을 때의 한 줄. 알림 자리(status)는 늘 두고 글만 바꿉니다 — 자리와 글이 함께
+            생기면 낭독기가 알리지 않습니다. 비어 있으면 높이가 없습니다.
+          */}
+          <p role="status" className="rec-note">
+            {nextNote && <span key={nextNote}>{nextNote}</span>}
+          </p>
+        </>
       )}
 
       <p aria-hidden className="rec-sign font-serif">
