@@ -1,5 +1,5 @@
 /**
- * 목데이터 API — 백엔드 없이 로그인 · 진열대 · 컬렉션 · 향해 일지 · 향수 검색을 돌립니다.
+ * 목데이터 API — 백엔드 없이 로그인 · 진열대 · 컬렉션 · 개인화 추천 · 향해 일지 · 향수 검색을 돌립니다.
  *
  * `npm run dev:mock` 이 켜는 개발 서버 미들웨어(`plugin.ts`)가 씁니다. **앱 코드는 목데이터를
  * 모릅니다** — 화면은 평소처럼 `/api/v1/...` 을 부르고, 여기 적힌 경로만 목데이터가 대신
@@ -702,6 +702,123 @@ export function createMockApi(options: MockApiOptions = {}) {
     return { status: 204 }
   }
 
+  /* ── 개인화 추천 (S15P21E203-419) ──────────────────────── */
+
+  /*
+   * 서버는 사용자마다 점수 높은 후보 열 병을 모아 두고, 부를 때마다 그중 하나를 뽑아 **새 손잡이**와
+   * 함께 줍니다. 화면이 "보였다" 고 알린 병(노출)은 사흘 동안 뽑기에서 빠집니다. 목데이터는 점수 대신
+   * 한국 선정 순위로 열 병을 세우고, 사흘 대신 개발 서버가 켜져 있는 동안 뺍니다.
+   * 보유 중인 향수만 후보에서 빠집니다(시향 · 희망은 추천될 수 있습니다) — 서버와 같습니다.
+   *
+   * 손잡이는 서버에서 UUID 인데 여기서는 숫자입니다. 경로표가 숫자만 받기 때문이고, 화면은 손잡이를
+   * 읽지 않고 돌려보내기만 해서 달라도 됩니다.
+   */
+  const PERSONAL_CANDIDATES = 10
+  let nextOfferToken = 1001
+  const offers = new Map<number, number>()
+  /** 노출을 남긴 향수와 그 순서(오래된 것부터 다시 나옵니다) */
+  const exposed = new Map<number, number>()
+  let exposures = 0
+
+  /** 계열의 한국어 이름 — 취향 테스트 틀에 넣습니다(서버는 향 계열 표의 한국어 이름을 씁니다) */
+  const FAMILY_KO: Record<MockPerfume['family'], string> = {
+    CITRUS: '시트러스',
+    FRUITY: '프루티',
+    FLORAL: '플로럴',
+    GREEN: '그린',
+    AQUATIC: '아쿠아틱',
+    WOODY: '우디',
+    AMBER: '앰버',
+    GOURMAND: '구르망',
+    MUSK: '머스크',
+  }
+  /** 계열에 맞는 향 특성(영어) — 적합도 · 최근 본 향수 틀은 서버도 영어로 넣습니다 */
+  const FAMILY_ACCORD: Record<MockPerfume['family'], string> = {
+    CITRUS: 'citrus',
+    FRUITY: 'fruity',
+    FLORAL: 'floral',
+    GREEN: 'green',
+    AQUATIC: 'aquatic',
+    WOODY: 'woody',
+    AMBER: 'amber',
+    GOURMAND: 'sweet',
+    MUSK: 'musky',
+  }
+
+  /** 서버의 근거 문장 세 틀(PersonalizedRecommendationService.reasonOf) — 뽑힌 차례대로 돌려 씁니다 */
+  const personalReason = (perfume: MockPerfume, turn: number) => {
+    const accord = FAMILY_ACCORD[perfume.family]
+    switch (turn % 3) {
+      case 0:
+        return `취향 테스트에서 선택한 ${FAMILY_KO[perfume.family]} 계열과 잘 맞아요.`
+      case 1:
+        return `높게 평가한 향수와 ${accord} 어코드가 비슷해요.`
+      default:
+        return `최근 살펴본 향수에서 자주 만난 ${accord} 어코드를 담고 있어요.`
+    }
+  }
+
+  const getPersonalRecommendation: Handler = () => {
+    const owned = new Set(
+      shelf
+        .filter((item) => item.category === 'OWNED')
+        .map((item) => item.perfume.perfumeId),
+    )
+    const candidates = MOCK_PERFUMES.filter(
+      (perfume) => !owned.has(perfume.perfumeId),
+    ).slice(0, PERSONAL_CANDIDATES)
+    if (candidates.length === 0) {
+      return fail(404, 'RECOMMENDATION_NOT_FOUND', '추천할 향수가 없습니다.')
+    }
+
+    const fresh = candidates.filter(
+      (perfume) => !exposed.has(perfume.perfumeId),
+    )
+    // 다 봤으면 가장 오래전에 본 것부터 다시 — 서버와 같습니다
+    const picked =
+      fresh[Math.floor(Math.random() * fresh.length)] ??
+      [...candidates].sort(
+        (a, b) =>
+          (exposed.get(a.perfumeId) ?? 0) - (exposed.get(b.perfumeId) ?? 0),
+      )[0]
+    if (picked === undefined) {
+      return fail(404, 'RECOMMENDATION_NOT_FOUND', '추천할 향수가 없습니다.')
+    }
+
+    const token = nextOfferToken
+    nextOfferToken += 1
+    offers.set(token, picked.perfumeId)
+    return {
+      status: 200,
+      body: {
+        recommendationToken: String(token),
+        recommendation: {
+          perfumeId: picked.perfumeId,
+          name: picked.nameKo ?? picked.name,
+          imageUrl: originalImageUrl(picked.perfumeId),
+          reason: personalReason(picked, token),
+        },
+      },
+    }
+  }
+
+  /** 노출 기록 — 같은 손잡이로 또 와도 204 이고 두 번 세지 않습니다. 모르는 손잡이는 404 */
+  const recordPersonalExposure: Handler = (_request, [token]) => {
+    const perfumeId = token === undefined ? undefined : offers.get(token)
+    if (perfumeId === undefined) {
+      return fail(
+        404,
+        'RECOMMENDATION_EXPOSURE_NOT_FOUND',
+        '추천 노출 정보를 찾을 수 없습니다.',
+      )
+    }
+    if (!exposed.has(perfumeId)) {
+      exposures += 1
+      exposed.set(perfumeId, exposures)
+    }
+    return { status: 204 }
+  }
+
   /* ── 향해 일지 · 향수 검색 ─────────────────────────────── */
 
   const getVoyageLog: Handler = ({ query }) => {
@@ -838,6 +955,17 @@ export function createMockApi(options: MockApiOptions = {}) {
       'DELETE',
       new RegExp(`^${COLLECTIONS}/(\\d+)/perfumes/(\\d+)$`),
       signedIn(removeCollectionPerfume),
+    ],
+
+    [
+      'GET',
+      /^\/recommendations\/personalized$/,
+      signedIn(getPersonalRecommendation),
+    ],
+    [
+      'POST',
+      /^\/recommendations\/personalized\/(\d+)\/exposure$/,
+      signedIn(recordPersonalExposure),
     ],
 
     ['GET', /^\/map\/exploration-logs$/, signedIn(getVoyageLog)],
