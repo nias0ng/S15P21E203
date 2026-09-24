@@ -1654,6 +1654,17 @@ describe('doorMetrics — 옆벽의 문', () => {
     expect(door.back).toBeLessThan(NICHE_FACES.wall)
   })
 
+  // 아치 밑 그늘(shelf-display.css 의 .shelf-door-hole)이 이 높이에서 시작합니다
+  it.each([
+    [605, 360],
+    [355, 210],
+    [300, 180],
+  ])('벽감 %i · 병 %i 에서 top 이 아치 꼭대기다', (caseHeight, bottle) => {
+    const door = doorMetrics(caseHeight, bottle)
+    const ys = points(door.shape).map(([, y = 0]) => y)
+    expect(door.top).toBe(Math.min(...ys))
+  })
+
   /*
    * 문 윤곽은 이 값으로 셈하고 면은 CSS 가 그립니다. 한쪽만 고치면 문이 옆벽에서 어긋나는데, 둘 다
    * 화면으로는 "조금 이상하다" 로만 보이는 자리라 여기서 잡습니다. CSS 에는 내보내는 것이 없어

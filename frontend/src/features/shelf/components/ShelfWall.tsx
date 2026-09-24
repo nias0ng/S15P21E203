@@ -150,7 +150,7 @@ const prefersReducedMotion = () =>
  *
  * ── 옆벽의 문 (S15P21E203-431) ────────────────────────────────
  * 벽감 좌우 옆벽에 아치 문이 있어, 흐르는 병은 뒷벽 모서리에서 끊기지 않고 옆벽 앞을 지나 문 안
- * 어둠으로 들어갑니다(lib.ts 의 doorMetrics · shelf-display.css 의 "옆벽의 문"). 병이 서는 자리는
+ * 그늘로 들어갑니다(lib.ts 의 doorMetrics · shelf-display.css 의 "옆벽의 문"). 병이 서는 자리는
  * 앞기둥에서 앞기둥까지 자르고(.shelf-track-clip), 문 안 그늘은 병 위에 얹습니다(.shelf-niche-front).
  *
  * ── 분류를 바꿀 때 (S15P21E203-431) ─────────────────────────────
@@ -719,6 +719,7 @@ export function ShelfWall({
           '--door-front': `${door.front}px`,
           '--door-plane': `${door.plane}px`,
           '--door-back': `${door.back}px`,
+          '--door-top': `${door.top}px`,
         } as React.CSSProperties
       }
     >
@@ -792,7 +793,7 @@ export function ShelfWall({
                 <div className="shelf-face shelf-niche-wall-left" />
                 <div className="shelf-face shelf-niche-wall-right" />
                 <div className="shelf-face shelf-niche-floor" />
-                {/* 옆벽의 문 안 — 병 밑에 깔리는 어둠(shelf-display.css 의 "옆벽의 문") */}
+                {/* 옆벽의 문 안 — 병 밑에 깔리는 굴(shelf-display.css 의 "옆벽의 문") */}
                 <div className="shelf-door shelf-door-left">
                   <i className="shelf-door-hole" />
                 </div>
@@ -854,7 +855,7 @@ export function ShelfWall({
                   })}
                 </div>
               </div>
-              {/* 문 안 그늘 — 병 위에 얹혀 문으로 들어가는 병을 삼킵니다 */}
+              {/* 문 안 그늘 — 병 위에 얹혀 문으로 들어가는 병을 가라앉힙니다 */}
               <div
                 aria-hidden
                 className="shelf-niche-front absolute top-[var(--fade)] right-[var(--fade-end)] left-[var(--fade-start)] h-[var(--case-h)]"

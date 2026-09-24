@@ -1608,6 +1608,11 @@ export type DoorMetrics = {
   /** 옆벽 앞끝에서 문 뒤 가장자리까지(px). 문설주의 두께가 빛을 받는 자리입니다 */
   back: number
   /**
+   * 옆벽 면 상자 위끝에서 아치 꼭대기까지(px). 문 안은 벽감과 같은 모래라 깊이를 그늘로만 내는데,
+   * 아치 밑 그늘이 여기서 시작합니다(shelf-display.css 의 .shelf-door-hole)
+   */
+  top: number
+  /**
    * 문 윤곽 — 왼쪽 옆벽 면 상자(벽감에서 입구 테두리를 뺀 상자의 왼쪽 옆벽 폭) 기준 clip-path.
    * 오른쪽 옆벽은 같은 윤곽을 좌우로 뒤집어 씁니다(shelf-display.css 의 .shelf-door-right).
    */
@@ -1635,21 +1640,22 @@ export function doorMetrics(caseHeight: number, bottle: number): DoorMetrics {
    * 바닥에서 height 만큼 올라간 벽 위의 점. 아치 꼭대기가 천장 모서리에 닿으면(병이 벽감을 거의
    * 채우는 좁고 낮은 창) 모서리 조금 아래에서 멈춥니다 — 문이 천장까지 뚫리면 옆벽이 두 조각이 됩니다.
    */
-  const point = (depth: number, height: number) => {
-    const top = ceilingAt(depth) + 4
-    const y = Math.max(top, floorAt(depth) - height * scale(depth))
-    return `${f(wall * depth)} ${f(y)}`
+  const point = (depth: number, height: number): [x: number, y: number] => {
+    const highest = ceilingAt(depth) + 4
+    const y = Math.max(highest, floorAt(depth) - height * scale(depth))
+    return [wall * depth, y]
   }
+  const at = ([x, y]: [number, number]) => `${f(x)} ${f(y)}`
 
   const arch = Array.from({ length: DOOR_ARCH_STEPS + 1 }, (_, step) => {
     const t = step / DOOR_ARCH_STEPS
     const depth = DOOR_BACK + (DOOR_FRONT - DOOR_BACK) * t
-    return `L${point(depth, spring + rise * Math.sin(Math.PI * t))}`
+    return point(depth, spring + rise * Math.sin(Math.PI * t))
   })
   const path = [
-    `M${point(DOOR_FRONT, 0)}`,
-    `L${point(DOOR_BACK, 0)}`,
-    ...arch,
+    `M${at(point(DOOR_FRONT, 0))}`,
+    `L${at(point(DOOR_BACK, 0))}`,
+    ...arch.map((p) => `L${at(p)}`),
     'Z',
   ].join('')
 
@@ -1657,6 +1663,7 @@ export function doorMetrics(caseHeight: number, bottle: number): DoorMetrics {
     front: f(wall * DOOR_FRONT),
     plane: f(wall * (floorFront / floor)),
     back: f(wall * DOOR_BACK),
+    top: f(Math.min(...arch.map(([, y]) => y))),
     shape: `path("${path}")`,
   }
 }
