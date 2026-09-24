@@ -3,18 +3,15 @@ import { queryOptions } from '@tanstack/react-query'
 import {
   getPerfumeDetail,
   getPerfumeNotes,
-  getPerfumeReviewKeywords,
-  getPerfumeReviewStatistics,
-  getPerfumeReviewSummary,
+  getPerfumeReviewAggregates,
   getPerfumeReviews,
-  getPerfumeSeasonStatistics,
   getRelatedPerfumes,
   getReviewDetail,
   searchPerfumes,
 } from './api'
 import type { PerfumeSearchParams } from './types'
 
-/** 상세의 다섯 구역을 전부 `detail(perfumeId)` 아래에 두어 한 줄로 무효화합니다 */
+/** 상세의 구역을 전부 `detail(perfumeId)` 아래에 두어 한 줄로 무효화합니다 */
 export const perfumeKeys = {
   all: ['perfumes'] as const,
   lists: () => [...perfumeKeys.all, 'list'] as const,
@@ -24,18 +21,12 @@ export const perfumeKeys = {
   detail: (perfumeId: number) => [...perfumeKeys.details(), perfumeId] as const,
   notes: (perfumeId: number) =>
     [...perfumeKeys.detail(perfumeId), 'notes'] as const,
-  seasonStatistics: (perfumeId: number) =>
-    [...perfumeKeys.detail(perfumeId), 'season-statistics'] as const,
-  reviewSummary: (perfumeId: number) =>
-    [...perfumeKeys.detail(perfumeId), 'review-summary'] as const,
-  reviewStatistics: (perfumeId: number) =>
-    [...perfumeKeys.detail(perfumeId), 'review-statistics'] as const,
+  reviewAggregates: (perfumeId: number) =>
+    [...perfumeKeys.detail(perfumeId), 'review-aggregates'] as const,
   reviews: (perfumeId: number, params: { page?: number; size?: number }) =>
     [...perfumeKeys.detail(perfumeId), 'reviews', params] as const,
   related: (perfumeId: number) =>
     [...perfumeKeys.detail(perfumeId), 'related'] as const,
-  reviewKeywords: (perfumeId: number) =>
-    [...perfumeKeys.detail(perfumeId), 'review-keywords'] as const,
 }
 
 /** 후기는 향수에 매달려 있지 않고 번호로 바로 열립니다(A12) */
@@ -62,22 +53,11 @@ export const perfumeNotesQuery = (perfumeId: number) =>
     queryFn: () => getPerfumeNotes(perfumeId),
   })
 
-export const perfumeSeasonStatisticsQuery = (perfumeId: number) =>
+/** 요약 · 키워드 · 후기 수 · 계절을 한 요청으로 받습니다 */
+export const perfumeReviewAggregatesQuery = (perfumeId: number) =>
   queryOptions({
-    queryKey: perfumeKeys.seasonStatistics(perfumeId),
-    queryFn: () => getPerfumeSeasonStatistics(perfumeId),
-  })
-
-export const perfumeReviewSummaryQuery = (perfumeId: number) =>
-  queryOptions({
-    queryKey: perfumeKeys.reviewSummary(perfumeId),
-    queryFn: () => getPerfumeReviewSummary(perfumeId),
-  })
-
-export const perfumeReviewStatisticsQuery = (perfumeId: number) =>
-  queryOptions({
-    queryKey: perfumeKeys.reviewStatistics(perfumeId),
-    queryFn: () => getPerfumeReviewStatistics(perfumeId),
+    queryKey: perfumeKeys.reviewAggregates(perfumeId),
+    queryFn: () => getPerfumeReviewAggregates(perfumeId),
   })
 
 export const perfumeReviewsQuery = (
@@ -103,10 +83,4 @@ export const relatedPerfumesQuery = (perfumeId: number) =>
   queryOptions({
     queryKey: perfumeKeys.related(perfumeId),
     queryFn: () => getRelatedPerfumes(perfumeId),
-  })
-
-export const perfumeReviewKeywordsQuery = (perfumeId: number) =>
-  queryOptions({
-    queryKey: perfumeKeys.reviewKeywords(perfumeId),
-    queryFn: () => getPerfumeReviewKeywords(perfumeId),
   })

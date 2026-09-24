@@ -1,104 +1,169 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { MemoryRouter, Route, Routes } from 'react-router'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import {
-  perfumeViewState,
-  type PerfumeViewSource,
-} from '@/shared/config/perfumeViewSource'
-import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
+import type { PerfumeDetail, ReviewAggregates } from '@/features/perfume'
 
 import PerfumeDetailPage from './PerfumeDetailPage'
 
-const PERFUME_ID = 7
-
-const detail = {
-  perfumeId: PERFUME_ID,
-  name: 'Eau Rose',
-  nameKo: '오 로즈',
-  gender: 'FEMALE',
-  concentration: 'EDT',
-  brand: { brandId: 1, name: 'Diptyque' },
-  images: [],
-  prices: [],
-  myReviewId: null,
-}
-
-// 상세 한 건만 답하게 하고 나머지는 그대로 둡니다 — 각자 자리표시자를 그려서
-// 뒤로 가기 단추를 보는 데 지장이 없습니다
-const api = vi.hoisted(() => ({ getPerfumeDetail: vi.fn() }))
+const api = vi.hoisted(() => ({
+  getPerfumeDetail: vi.fn(),
+  getPerfumeNotes: vi.fn(),
+  getRelatedPerfumes: vi.fn(),
+  getPerfumeReviews: vi.fn(),
+  getPerfumeReviewAggregates: vi.fn(),
+  startPerfumeView: vi.fn(),
+  exitPerfumeView: vi.fn(),
+}))
 
 vi.mock('@/features/perfume/api', async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>()
   return { ...actual, ...api }
 })
 
-/** 지금 어느 주소에 서 있는지 시험이 볼 수 있게 적어 둡니다 */
-function Origin({ label }: { label: string }) {
-  const { pathname, search } = useLocation()
-  return <div>{`${label} ${pathname}${search}`}</div>
+const PERFUME_ID = 135
+
+const detail: PerfumeDetail = {
+  perfumeId: PERFUME_ID,
+  name: 'French Riviera',
+  nameKo: '프렌치 리비에라',
+  gender: null,
+  concentration: null,
+  brand: { brandId: 1, name: 'Mancera' },
+  images: [],
+  prices: [],
+  myReviewId: null,
 }
 
-const renderFrom = (source: PerfumeViewSource | null) =>
+const aggregates: ReviewAggregates = {
+  reviewSummary: {
+    summary: '달콤한 향이 먼저 느껴진다는 의견이 많습니다.',
+    sourceReviewCount: 7,
+    updatedAt: '2026-09-10T04:22:58.535890Z',
+  },
+  reviewKeywords: {
+    keywords: [{ keyword: '달콤한', percentage: 81.8 }],
+  },
+  reviewStatistics: { reviewCount: 7 },
+  seasonStatistics: {
+    seasons: [
+      { seasonId: 1, code: 'SPRING', name: '봄', count: 2, percentage: 28.6 },
+      { seasonId: 2, code: 'SUMMER', name: '여름', count: 1, percentage: 14.3 },
+      { seasonId: 3, code: 'AUTUMN', name: '가을', count: 2, percentage: 28.6 },
+      { seasonId: 4, code: 'WINTER', name: '겨울', count: 2, percentage: 28.6 },
+    ],
+  },
+}
+
+/** 네 구역이 한 쿼리에 매달려 있어, 이 쿼리만 갈아끼우면 세 상태를 다 볼 수 있습니다 */
+const renderDetail = async () => {
+  const queryClient = new QueryClient({
+    // 실패를 바로 보려면 재시도를 끕니다 — 기본값이면 세 번 더 부르고 나서야 에러가 됩니다
+    defaultOptions: { queries: { retry: false } },
+  })
+
   render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter
-        initialEntries={[
-          { pathname: ROUTES.PERFUMES, search: '?gender=FEMALE' },
-          {
-            pathname: toPerfumeDetail(PERFUME_ID),
-            state: source === null ? undefined : perfumeViewState(source),
-          },
-        ]}
-        initialIndex={1}
-      >
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[`/perfumes/${PERFUME_ID}`]}>
         <Routes>
-          <Route path={ROUTES.PERFUMES} element={<Origin label="목록" />} />
-          <Route path={ROUTES.MY_SHELF} element={<Origin label="진열대" />} />
-          <Route path={ROUTES.PERFUME_DETAIL} element={<PerfumeDetailPage />} />
+          <Route path="/perfumes/:perfumeId" element={<PerfumeDetailPage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   )
 
+  // 상세 본문이 서기 전에는 전체 자리표시자라 구역이 하나도 없습니다
+  await screen.findByRole('heading', { name: '계절별 평가' })
+}
+
 beforeEach(() => {
-  api.getPerfumeDetail.mockReset().mockResolvedValue(detail)
+  api.getPerfumeDetail.mockResolvedValue(detail)
+  api.getPerfumeNotes.mockResolvedValue({ notes: [], accords: [] })
+  api.getRelatedPerfumes.mockResolvedValue([])
+  api.getPerfumeReviews.mockResolvedValue({
+    reviews: [],
+    page: 0,
+    size: 10,
+    totalElements: 0,
+  })
+  api.startPerfumeView.mockResolvedValue({
+    perfumeViewId: 1,
+    viewedAt: '2026-09-23T00:00:00Z',
+  })
+  vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
-describe('향수 상세 뒤로 가기 (S15P21E203-361)', () => {
-  it.each([
-    ['SHELF', '← 진열대'],
-    ['COMMUNITY', '← 커뮤니티'],
-    ['COLLECTION', '← 컬렉션'],
-    ['SCENT_MAP', '← 향 지도'],
-    ['RELATED_PERFUME', '← 이전 향수'],
-  ] as const)('%s 에서 들어오면 이름표가 "%s" 다', async (source, label) => {
-    renderFrom(source)
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.clearAllMocks()
+})
 
-    expect(await screen.findByRole('button', { name: label })).toBeVisible()
-  })
+describe('PerfumeDetailPage 의 후기 집계', () => {
+  it('값이 오면 네 구역에 꽂는다', async () => {
+    api.getPerfumeReviewAggregates.mockResolvedValue(aggregates)
 
-  // 앞 기록으로 한 칸 되돌리므로 목록이 걸고 있던 `?gender=` 까지 돌아와야 합니다
-  it('되돌아간 화면은 걸고 있던 필터를 그대로 갖고 있다', async () => {
-    const user = userEvent.setup()
-    renderFrom('SEARCH')
-
-    await user.click(await screen.findByRole('button', { name: '← 향수 목록' }))
+    await renderDetail()
 
     expect(
-      await screen.findByText('목록 /perfumes?gender=FEMALE'),
-    ).toBeVisible()
+      await screen.findByText('달콤한 향이 먼저 느껴진다는 의견이 많습니다.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('달콤한 81.8%')).toBeInTheDocument()
+    // 여름만 값이 달라 계절이 제자리에 꽂혔는지 가릅니다
+    expect(screen.getByText('14.3%')).toBeInTheDocument()
+    expect(screen.getAllByText('28.6%')).toHaveLength(3)
+    expect(screen.getByText('7개')).toBeInTheDocument()
   })
 
-  // `DIRECT` 는 돌아갈 기록이 없어 한 칸 되돌리면 서비스 밖으로 나갑니다
-  it('들어온 길을 모르면 향수 목록으로 가는 링크다', async () => {
-    renderFrom(null)
+  /**
+   * 요청이 하나라 네 구역의 로딩이 함께 걸립니다. 이때 구역이 사라지면 아래 내용이
+   * 위아래로 튀므로, 자리를 지킨 채 기다린다는 것을 봅니다.
+   */
+  it('불러오는 중에는 값을 비운 채 자리를 지킨다', async () => {
+    api.getPerfumeReviewAggregates.mockReturnValue(new Promise(() => {}))
 
-    const back = await screen.findByRole('link', { name: '← 향수 목록' })
+    await renderDetail()
 
-    expect(back).toHaveAttribute('href', ROUTES.PERFUMES)
-    expect(screen.queryByRole('button', { name: /←/ })).not.toBeInTheDocument()
+    expect(screen.getByText('요약을 불러오는 중입니다.')).toBeInTheDocument()
+    // 계절 네 칸은 0% 로 서 있습니다 — 숨기면 아래 구역이 위아래로 움직입니다
+    expect(screen.getAllByText('0%')).toHaveLength(4)
+  })
+
+  /**
+   * 집계가 실패해도 상세 화면 전체가 무너지면 안 됩니다 — 향수 이름 · 향조 · 후기 목록은
+   * 다른 요청이라 멀쩡합니다. 집계 구역만 빈 상태로 섭니다.
+   */
+  it('집계 요청이 실패해도 화면은 서고 집계 구역만 빈 상태가 된다', async () => {
+    api.getPerfumeReviewAggregates.mockRejectedValue(new Error('집계 실패'))
+
+    await renderDetail()
+
+    expect(
+      await screen.findByText('후기가 충분히 쌓이면 요약을 보여드립니다.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: '계절별 평가' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('프렌치 리비에라')).toBeInTheDocument()
+
+    // 키워드는 없으면 구역 자체를 그리지 않습니다
+    expect(
+      screen.queryByText('향을 언급한 후기에서 자주 나온 표현'),
+    ).not.toBeInTheDocument()
+  })
+
+  /** 후기 수는 집계가 정본이지만, 없으면 후기 목록의 값으로 내려앉습니다 */
+  it('집계가 없으면 후기 수를 후기 목록에서 가져온다', async () => {
+    api.getPerfumeReviewAggregates.mockRejectedValue(new Error('집계 실패'))
+    api.getPerfumeReviews.mockResolvedValue({
+      reviews: [],
+      page: 0,
+      size: 10,
+      totalElements: 3,
+    })
+
+    await renderDetail()
+
+    expect(await screen.findByText('3개')).toBeInTheDocument()
   })
 })

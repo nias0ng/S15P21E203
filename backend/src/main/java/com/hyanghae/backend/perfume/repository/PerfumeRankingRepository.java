@@ -53,13 +53,20 @@ public class PerfumeRankingRepository {
      * 검색 조건입니다. {@link PerfumeRepository#SEARCH_CONDITION} 의 SQL 판이라 두 곳이 같아야
      * 합니다. {@code CAST} 가 필요한 이유도 같습니다. 파라미터를 맨몸으로 쓰면 PostgreSQL 이
      * 타입을 추론하지 못해 {@code bytea} 로 바인딩하고 {@code lower()} 에서 실패합니다.
+     *
+     * <p><b>이름에서 공백을 지우고 견줍니다.</b> 이름을 어디서 띄는지는 사람마다 다른데 저장된
+     * 이름은 한 가지입니다('빅토리아 시크릿'). 검색어 쪽도 {@code PerfumeService.normalize} 가
+     * 같이 지웁니다 — 한쪽만 지우면 반대 방향, 즉 띄어 친 검색어가 도로 안 걸립니다.
+     *
+     * <p>네 컬럼 모두에 겁니다. 브랜드 이름만 지우면 '블랙 오키드' 같은 향수 이름이 같은 증상으로
+     * 남습니다.
      */
     private static final String CONDITION = """
               AND (CAST(:keyword AS varchar) IS NULL
-                OR LOWER(p.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS varchar), '%')) ESCAPE '!'
-                OR LOWER(p.name_ko) LIKE LOWER(CONCAT('%', CAST(:keyword AS varchar), '%')) ESCAPE '!'
-                OR LOWER(b.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS varchar), '%')) ESCAPE '!'
-                OR LOWER(b.name_ko) LIKE LOWER(CONCAT('%', CAST(:keyword AS varchar), '%')) ESCAPE '!')
+                OR LOWER(REPLACE(p.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:keyword AS varchar), '%')) ESCAPE '!'
+                OR LOWER(REPLACE(p.name_ko, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:keyword AS varchar), '%')) ESCAPE '!'
+                OR LOWER(REPLACE(b.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:keyword AS varchar), '%')) ESCAPE '!'
+                OR LOWER(REPLACE(b.name_ko, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:keyword AS varchar), '%')) ESCAPE '!')
               AND (CAST(:brand AS varchar) IS NULL OR b.name = CAST(:brand AS varchar))
               AND (CAST(:brandId AS bigint) IS NULL OR b.brand_id = CAST(:brandId AS bigint))
               AND (CAST(:gender AS varchar) IS NULL OR p.gender = CAST(:gender AS varchar))

@@ -11,22 +11,21 @@ import type {
   PerfumeSearchResponse,
   RelatedPerfume,
   RelatedPerfumesResponse,
+  ReviewAggregates,
   ReviewCreateInput,
   ReviewCreateResponse,
   ReviewDetail,
-  ReviewKeyword,
-  ReviewKeywordsResponse,
   ReviewLikeResponse,
   ReviewSeasonsResponse,
-  ReviewStatistics,
-  ReviewSummary,
   ReviewUpdateInput,
   ReviewsResponse,
   Season,
-  SeasonStatisticsResponse,
 } from './types'
 
 // 경로에 '/api/v1' 을 붙이지 않습니다 — http 의 baseURL 에 이미 있습니다
+
+/** 상세가 키워드 칩을 여덟 개까지만 그립니다 */
+const REVIEW_KEYWORD_LIMIT = 8
 
 /** 조건은 함께 오면 AND 입니다. gender · ranking 에 없는 값을 보내면 400 입니다 */
 export async function searchPerfumes(params: PerfumeSearchParams) {
@@ -73,42 +72,40 @@ export async function getPerfumeNotes(perfumeId: number) {
   )
 }
 
-export async function getPerfumeSeasonStatistics(perfumeId: number) {
+/**
+ * DTL 상세의 후기 집계 네 조각(요약 · 키워드 · 후기 수 · 계절)을 한 번에 받습니다.
+ *
+ * 나누어 부르면 화면 한 장이 요청 네 건 · 트랜잭션 네 건이 되어, 50명 동시 접속에서
+ * 화면 p95 가 324ms 였습니다. 합친 뒤 123ms 입니다.
+ *
+ * NOTE: 키워드를 적재하는 코드가 아직 없어 `reviewKeywords.keywords` 는 모든 향수가
+ * 빈 배열입니다.
+ *
+ * @param keywordSize 키워드를 받을 최대 개수. 나머지 세 조각에는 영향이 없습니다
+ */
+export async function getPerfumeReviewAggregates(
+  perfumeId: number,
+  keywordSize = REVIEW_KEYWORD_LIMIT,
+) {
   return withDevFallback(
     'perfume',
     async () => {
-      const { data } = await http.get<SeasonStatisticsResponse>(
-        `/perfumes/${perfumeId}/season-statistics`,
+      const { data } = await http.get<ReviewAggregates>(
+        `/perfumes/${perfumeId}/review-aggregates`,
+        { params: { size: keywordSize } },
       )
       return data
     },
-    () => ({ seasons: [] }),
-  )
-}
-
-export async function getPerfumeReviewSummary(perfumeId: number) {
-  return withDevFallback(
-    'perfume',
-    async () => {
-      const { data } = await http.get<ReviewSummary>(
-        `/perfumes/${perfumeId}/review-summary`,
-      )
-      return data
-    },
-    () => ({ summary: null, sourceReviewCount: null, updatedAt: null }),
-  )
-}
-
-export async function getPerfumeReviewStatistics(perfumeId: number) {
-  return withDevFallback(
-    'perfume',
-    async () => {
-      const { data } = await http.get<ReviewStatistics>(
-        `/perfumes/${perfumeId}/review-statistics`,
-      )
-      return data
-    },
-    () => ({ reviewCount: 0 }),
+    () => ({
+      reviewSummary: {
+        summary: null,
+        sourceReviewCount: null,
+        updatedAt: null,
+      },
+      reviewKeywords: { keywords: [] },
+      reviewStatistics: { reviewCount: 0 },
+      seasonStatistics: { seasons: [] },
+    }),
   )
 }
 
@@ -256,16 +253,4 @@ export async function getRelatedPerfumes(
     { params: { size } },
   )
   return data.perfumes
-}
-
-/** NOTE: 키워드를 적재하는 코드가 아직 없어 **지금은 모든 향수가 빈 배열**입니다 */
-export async function getPerfumeReviewKeywords(
-  perfumeId: number,
-  size = 8,
-): Promise<ReviewKeyword[]> {
-  const { data } = await http.get<ReviewKeywordsResponse>(
-    `/perfumes/${perfumeId}/review-keywords`,
-    { params: { size } },
-  )
-  return data.keywords
 }
