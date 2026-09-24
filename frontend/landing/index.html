@@ -441,8 +441,11 @@
        인라인은 선택자를 이기므로 이것 말고는 덮을 길이 없다 (불변식 23 의 변수 규약도 opacity 에는 없다).
      ⚠ `#mount`(캔버스)만 뺀다 — 3D 는 계속 그려야 카메라가 내려가는 것이 보인다. #fog 는 평소 0 이라 걸려도 무해하다.
      ⚠ 되돌릴 때는 전환 없이 제자리로 돌아온다 (규칙이 통째로 빠지므로) — 잠수는 곧 화면이 바뀌는 길이라 괜찮다.
-       취소가 흔해지면 전환을 기본 규칙 쪽으로 옮기는데, 그러면 ui.js 의 등장 · 퇴장과 두 번 겹친다 */
-  html[data-dive] #stage > *:not(#mount) {
+       취소가 흔해지면 전환을 기본 규칙 쪽으로 옮기는데, 그러면 ui.js 의 등장 · 퇴장과 두 번 겹친다
+     ⭐ 선실로 들어가기(2026-09-24, src/cabin-in.js · params.cabinInUi)도 같은 규칙이다 — `<html data-cabin-in>`.
+       까닭이 같아서 한 규칙에 둔다. 속성은 따로다 — 두 모듈이 한 속성을 달고 떼면 한쪽이 다른 쪽 것을 걷는다 */
+  html[data-dive] #stage > *:not(#mount),
+  html[data-cabin-in] #stage > *:not(#mount) {
     opacity: 0 !important;
     transition: opacity var(--pb-dive-ui, 260ms) ease-out !important;
     pointer-events: none !important;

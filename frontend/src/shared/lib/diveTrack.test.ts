@@ -13,10 +13,16 @@ import { PARAMS } from '@landing/params'
 */
 import appTokens from '../../styles/index.css?raw'
 import roomStyle from '../../styles/scent-display.css?raw'
-import { ROUTES } from '../config/routes'
+import { ROUTES, toMyShelfCollection } from '../config/routes'
+import cabinStyle from '../ui/cabin-curtain.css?raw'
 import curtainStyle from '../ui/dive-curtain.css?raw'
 
 import {
+  CABIN_COVER_FROM,
+  CABIN_LIFT_MS,
+  CABIN_MS,
+  cabinBleedAt,
+  cabinDuration,
   COVER_FROM,
   DIVE_DEPTH,
   DIVE_MS,
@@ -25,6 +31,7 @@ import {
   diveDuration,
   diveFrameAt,
   diveMsAt,
+  entersCabin,
   LIFT_MS,
   READY_GRACE_MS,
   READY_CAP_MS,
@@ -96,6 +103,49 @@ describe('diveFrameAt', () => {
     expect(diveFrameAt(deep * (COVER_FROM - 0.05), deep).cover).toBe(0)
     expect(diveFrameAt(deep, deep).cover).toBe(1)
     expect(diveFrameAt(deep, deep).covered).toBe(true)
+  })
+})
+
+/**
+ * ───────── 선실로 들어가기 — 진열대 (2026-09-24) ─────────
+ *
+ * 진열대는 바다 밑이 아니라 배 안이라 잠수와 **다른 문**으로 들어갑니다. 두 문이 한 주소를
+ * 같이 집으면 어느 전환이 걸릴지 부르는 쪽의 순서에 달리게 됩니다 — 그래서 겹치지 않는지 봅니다.
+ */
+describe('선실로 들어가기', () => {
+  it('진열대와 그 아래 컬렉션 무대로 가는 길이다', () => {
+    expect(entersCabin(ROUTES.MY_SHELF)).toBe(true)
+    expect(entersCabin(toMyShelfCollection())).toBe(true)
+  })
+
+  it('앞머리가 닮은 남과 다른 화면은 안 집는다', () => {
+    expect(entersCabin('/shelfie')).toBe(false)
+    expect(entersCabin(ROUTES.HOME)).toBe(false)
+    expect(entersCabin(ROUTES.PERFUMES)).toBe(false)
+  })
+
+  it('잠수의 문과 한 주소도 겹치지 않는다', () => {
+    for (const path of Object.values(ROUTES)) {
+      expect(entersCabin(path) && diveDepthOf(path) !== null).toBe(false)
+    }
+  })
+
+  it('구름은 카메라가 먼저 다가간 뒤에 번지고, 끝에서 다 덮는다', () => {
+    expect(cabinBleedAt(CABIN_COVER_FROM - 0.05)).toBe(0)
+    expect(cabinBleedAt(CABIN_COVER_FROM + 0.05)).toBeGreaterThan(0)
+    expect(cabinBleedAt(1)).toBe(1)
+    // 다 번진 그 순간이 화면을 옮기는 순간이다 — 시계가 둘로 갈라지지 않는다
+    expect(diveFrameAt(CABIN_MS, CABIN_MS, CABIN_COVER_FROM).covered).toBe(true)
+  })
+
+  it('번짐은 곧게 간다 — 잠수 커튼처럼 앞 절반을 비워 두지 않는다', () => {
+    const half = CABIN_COVER_FROM + (1 - CABIN_COVER_FROM) / 2
+    expect(cabinBleedAt(half)).toBeCloseTo(0.5)
+  })
+
+  it('움직임 줄이기는 잠수와 같이 짧게 덮는다', () => {
+    expect(cabinDuration(false)).toBe(CABIN_MS)
+    expect(cabinDuration(true)).toBe(REDUCED_MS)
   })
 })
 
@@ -314,6 +364,12 @@ describe('판을 건너뛰는 값이 갈라지지 않는다', () => {
     */
     const css = pick(curtainStyle, /^\s*--dive-lift:\s*(\d+)ms\s*;/m)
     expect(css).toBe(String(LIFT_MS))
+  })
+
+  it('CABIN_LIFT_MS 와 CSS 의 --cabin-lift 가 같은 길이다', () => {
+    // 위와 같은 약속이 선실 커튼에도 있습니다 — 판이 따로라 값도 따로입니다
+    const css = pick(cabinStyle, /^\s*--cabin-lift:\s*(\d+)ms\s*;/m)
+    expect(css).toBe(String(CABIN_LIFT_MS))
   })
 
   it('깊이 0 의 바닥이 인계 색이다 — 위 검사가 헛돌지 않는다', () => {

@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setBoatAnchorSource } from '../lib/boatAnchor'
@@ -93,6 +93,54 @@ describe('CabinBubble', () => {
 
     expect(screen.getByRole('dialog', { hidden: true })).toHaveStyle({
       visibility: 'hidden',
+    })
+  })
+
+  /*
+    줄을 고르면 곧바로 옮겨 가지 않고 **선실로 들어가는 전환**을 부르는 쪽에 넘깁니다
+    (`HomePage` → `DiveCurtain` 의 cabin). 전환이 덮은 **뒤에** 옮겨 가야 3D 가 사라진 자리가
+    한 장도 안 비칩니다 — 그래서 누른 직후에는 아직 메인에 서 있어야 합니다.
+  */
+  describe('선실로 들어가기', () => {
+    /** 지금 어느 주소에 서 있는지 시험이 볼 수 있게 적어 둡니다 */
+    function Here() {
+      const { pathname, search } = useLocation()
+      return <div>{`지금: ${pathname}${search}`}</div>
+    }
+
+    const renderAtHome = (onEnter: (to: string) => void) =>
+      render(
+        <MemoryRouter initialEntries={['/']}>
+          <CabinBubble open onClose={vi.fn()} isLoggedIn onEnter={onEnter} />
+          <Routes>
+            <Route path="*" element={<Here />} />
+          </Routes>
+        </MemoryRouter>,
+      )
+
+    it.each([
+      ['진열대', '/shelf'],
+      ['컬렉션', '/shelf?stage=collection'],
+    ])('%s 를 고르면 옮겨 가지 않고 갈 곳을 넘긴다', async (name, to) => {
+      const onEnter = vi.fn()
+      renderAtHome(onEnter)
+
+      await userEvent.click(screen.getByRole('link', { name }))
+
+      expect(onEnter).toHaveBeenCalledWith(to)
+      expect(screen.getByText('지금: /')).toBeInTheDocument()
+    })
+
+    it('Ctrl 을 쥐고 누르면 가로채지 않는다 — 새 탭으로 여는 누름이다', async () => {
+      const user = userEvent.setup()
+      const onEnter = vi.fn()
+      renderAtHome(onEnter)
+
+      await user.keyboard('{Control>}')
+      await user.click(screen.getByRole('link', { name: '진열대' }))
+      await user.keyboard('{/Control}')
+
+      expect(onEnter).not.toHaveBeenCalled()
     })
   })
 

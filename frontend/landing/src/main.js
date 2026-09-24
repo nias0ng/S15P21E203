@@ -23,6 +23,7 @@ import { createStage } from './stage.js';
 import { createPhase, EASE } from './phase.js';
 import { createTravel } from './travel.js';
 import { diveNow, setDive, disposeDive, diveReport } from './dive.js';   // 잠수 — 진열대로 넘어가는 전환 (2026-09-18). 진행도는 앱 커튼이 넘긴다 (PB.dive)
+import { cabinInNow, setCabinIn, disposeCabinIn, cabinInReport } from './cabin-in.js';   // 선실로 들어가기 — 진열대로 넘어가는 전환 (2026-09-24). 진행도는 앱 커튼이 넘긴다 (PB.cabinIn)
 import { createMinimap } from './minimap.js';
 import { createChart } from './chart.js';
 import { areaOf, findArea } from './areas.js';
@@ -1540,6 +1541,40 @@ function hostDive(k) {
   else { hostHold = Math.max(0, hostHold - 1); if (!hostHold) input.setHold(false); }
 }
 
+// ───────── 선실로 들어가기 (2026-09-24, cabin-in.js) — 앱 커튼이 진행도를 넘기는 문 ─────────
+// 앱 : 말풍선의 진열대 · 컬렉션(또는 메인 헤더의 SHELF)을 고르면 커튼이 시계를 쥐고 매 프레임 `PB.cabinIn(k)` 로 0 → 1 을 민다.
+//   잠수(hostDive)와 같은 문이고 다른 것은 둘이다 — 카메라가 **수면이 아니라 배를 향해** 줌인하고,
+//   **배 가운데의 화면 자리를 돌려준다** (`cabinScreen`). 앱이 그 점에서 구름을 스며 번지게 한다.
+// ⚠ 돌려주는 것은 **한 프레임 전** 자리다 — 앱의 rAF 가 이 tick 보다 먼저 돌 수 있다. 카메라가 그 점을 향해
+//   곧게 다가가므로 배 가운데는 화면에서 거의 제자리다 (2026-09-24 실측 : 줌인 내내 3px 안쪽).
+// ⚠ 잠금은 잠수와 같은 `hostHold` 세는 자물쇠다 (직접 풀면 모달이 걸어 둔 잠금까지 풀린다).
+// ⚠ 혼자 볼 때 : `PB.cabinIn(0.6)` 으로 중간 장면을 세워 두고 `PB.cabinIn(0)` 으로 되돌린다. `PB.cabinInReport()` 가 값 한 줄.
+const cabinScreen = { x: 0, y: 0, on: false };
+/**
+ * 배 가운데 — 선실로 들어가기의 카메라가 향하고 앱의 구름이 번지는 점 (월드).
+ * 선실 말풍선이 꼬리를 대는 점과 **같은 식**이다 (tick 의 `boat.screen` 블록) — 배를 누른 자리에서 들어간다.
+ * ⚠ 선실 문(선미 쪽)을 쓰지 않는다 — 문은 배 가운데보다 뒤라, 거기로 시선을 옮기면 화면이 오른쪽으로 쓸리고
+ *   (2026-09-24 사용자 : *"그냥 배쪽으로 줌인"*) 거기서 구름을 번지게 하면 배 옆에서 새어 나온다.
+ */
+const cabinFocus = (out) => {
+  const bp = boat.pivot.position;
+  return out.set(bp.x, bp.y + CONFIG.boat.lengthW * 0.11, bp.z);
+};
+const _cabinFocus = new THREE.Vector3();
+const _cabinRay = new THREE.Vector3();
+const _cabinStep = new THREE.Vector3();
+let _cabinHeld = false;
+function hostCabinIn(k) {
+  setCabinIn(k);
+  const on = !!cabinInNow();
+  if (on !== _cabinHeld) {
+    _cabinHeld = on;
+    if (on) { hostHold++; input.setHold(true); }
+    else { hostHold = Math.max(0, hostHold - 1); if (!hostHold) input.setHold(false); cabinScreen.on = false; }
+  }
+  return cabinScreen;
+}
+
 // ⛔ `footprint(cam)` 은 2026-09-20 에 지웠다 — 미니맵 · 해도의 '지금 보는 바다' 가 부채꼴에서
 //   **반지름 하나짜리 원**이 되면서 부르는 곳이 없어졌다 (아래 tick 의 `mmArg` 머리말).
 //   화면 테두리 16점을 매 장 unproject 하던 일도 같이 없어졌다. 되살릴 일이 생기면 v0.78 이전을 본다.
@@ -1775,6 +1810,33 @@ function tick() {
       _pose.fov += (P.diveFov === undefined ? 0 : P.diveFov) * d;
     }
   }
+  // ⭐⭐ **선실로 들어가기** (2026-09-24, cabin-in.js) — 카메라가 배를 향해 **곧게** 줌인한다.
+  //   ⚠⚠ 잠수와 같은 까닭으로 **여기 한 곳에서만 건다** (cameraPose 안에 넣으면 존 구도 · 향수 고르기 슬롯까지 끌려간다).
+  //   ⚠⚠ **고개를 돌리지 않는다** — 카메라를 배 가운데로 향하는 직선 위로만 옮기고, 시선 목표도 같은 만큼 옮겨
+  //     보는 방향을 그대로 둔다. 그 직선 위의 점은 어디서 봐도 같은 화면 자리라, **배가 제자리에 머문 채 커진다.**
+  //     처음엔 시선을 선실 문으로 옮겼는데, 문이 배 가운데보다 선미 쪽이라 화면이 오른쪽으로 쓸렸다
+  //     (2026-09-24 사용자 : *"문쪽으로 향하기 위해 오른쪽으로 카메라 무빙이 있는데 그렇게 안해도댐 그냥 배쪽으로 줌인"*).
+  //   ⚠⚠ **거리는 기하급수로 줄인다** — d = d0 × (끝/d0)^push. 화면에서 배가 **일정한 비율로** 커진다.
+  //     선형으로 줄이면 37월드 중 앞의 35월드 동안은 거의 안 커지다가 끝에서 한꺼번에 부푼다.
+  //   ⚠ `cabinInEnd`(14)에서 선다 — 배가 2.6배쯤 커지는 데라, 배로 **향해 간다** 는 것만 보이고 갑판에 붙지 않는다
+  //     (2026-09-24 사용자 : *"빠르게 카메라가 배 가까이 갈 필요는 없음"*).
+  //     ⚠ 3 아래로 당기면 기본 각(약 17도) 그대로 수면 1월드 남짓까지 내려와 **배 옆의 너울 마루가 화면 아래 절반을
+  //       가린다** (2026-09-24 실측 · 끝 거리 2.6). 더 가까이 가려면 각을 세우는 길부터 다시 낸다.
+  {
+    const C = cabinInNow();
+    if (C) {
+      cabinFocus(_cabinFocus);
+      _cabinRay.subVectors(_pose.pos, _cabinFocus);
+      const d0 = Math.max(1e-3, _cabinRay.length());
+      const dEnd = Math.min(d0, P.cabinInEnd === undefined ? 14 : P.cabinInEnd);
+      // 배에서 카메라까지의 선을 같은 방향 그대로 줄인다 → 카메라가 옮겨 갈 양
+      _cabinRay.multiplyScalar(Math.pow(dEnd / d0, C.push));
+      _cabinStep.copy(_cabinFocus).add(_cabinRay).sub(_pose.pos);
+      _pose.pos.add(_cabinStep);
+      _pose.tgt.add(_cabinStep);
+      _pose.fov += (P.cabinInFov === undefined ? 0 : P.cabinInFov) * C.push;
+    }
+  }
   // ⭐⭐ **배 등장 · 정박** (2026-09-16, `zoneBoatEnter`) — 존 연출에서 배가 화면 밖 왼쪽으로 빠졌다가 왼쪽에 정박한다.
   //   ⚠⚠ **카메라는 안 건드린다.** 처음에는 시선 목표(zoneLookX)를 밀어서 했는데 바다 · 부표 · 게이트가 통째로 흔들렸다
   //     (사용자 : *"지금 카메라가 너무 출렁이는데"*). 그래서 **배만** 카메라의 오른쪽 축(−rgt)으로 민다.
@@ -1887,8 +1949,12 @@ function tick() {
     const sh = (v) => (v < 0 ? -1 : 1) * Math.pow(Math.abs(v) > 1 ? 1 : Math.abs(v), cv);
     paSx = sh(paX) * paGate;
     paSy = sh(paY) * paGate;
-    const ax = PARAMS.parallaxAmount === undefined ? 0 : PARAMS.parallaxAmount;
-    const ay = PARAMS.parallaxAmountY === undefined ? 0 : PARAMS.parallaxAmountY;
+    // ⚠ 선실로 들어가는 동안은 거둔다 (2026-09-24) — 다가갈수록 같은 평행이동이 문을 화면 가운데서 더 크게 밀어낸다.
+    //   패럴랙스는 존에서 머무는 동안만 살아 있으므로(paGate), 존 안에서 배를 눌렀을 때의 이야기다
+    const Cin = cabinInNow();
+    const pk = Cin ? 1 - Cin.push : 1;
+    const ax = (PARAMS.parallaxAmount === undefined ? 0 : PARAMS.parallaxAmount) * pk;
+    const ay = (PARAMS.parallaxAmountY === undefined ? 0 : PARAMS.parallaxAmountY) * pk;
     cam.position.addScaledVector(_rgt, paSx * ax).addScaledVector(_upv, paSy * ay);
     // ⚠⚠⚠ **여기서 `lookAt` 을 다시 부르지 않는다** (2026-09-10, 두 번째 정정).
     //   옮긴 뒤 같은 목표를 다시 보면 **카메라가 회전한다.** 그건 시차(parallax)가 아니라
@@ -2177,6 +2243,16 @@ function tick() {
     boat.screen.on = false;
     ui.setCabin(false, 0, 0, 1, false);
   }
+  // ⭐ **배 가운데가 화면 어디에 있는가** (2026-09-24 — 선실로 들어가기). 앱 커튼이 이 점에서 구름을 번지게 한다
+  //   (`PB.cabinIn` 이 돌려준다). 배 자리(`boat.screen`)와 같은 점 · 같은 카메라다 — **이번 프레임** 카메라로 투영한다.
+  //   ⚠ 들어가는 중이 아니면 안 잰다 (값은 hostCabinIn 이 낡았다고 표시한다)
+  if (cabinInNow()) {
+    view.updateMatrixWorld();
+    _v3.copy(cabinFocus(_cabinFocus)).project(view);
+    cabinScreen.x = (_v3.x * 0.5 + 0.5) * W();
+    cabinScreen.y = (-_v3.y * 0.5 + 0.5) * H();
+    cabinScreen.on = true;
+  }
   // 누를 수 있다는 것을 **커서로도** 말한다 — 방울을 못 보는 사람에게도 남는 신호다.
   //   ⚠ 켜고 끄는 자리가 여기 하나라야 한다 (updateHover 는 일찍 돌아가는 갈래가 여럿이다 — 말풍선이
   //     떠 있는 동안 손가락 커서가 남는다). ⚠ 값이 바뀔 때만 쓴다
@@ -2386,7 +2462,7 @@ const onKeyExit = (e) => {
 };
 window.addEventListener('keydown', onKeyExit);
 
-window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, dive: hostDive, diveReport, goRegion, startTravel, startFocus, startAt, boatAt, zoneReport, setHost, boot: bootNow, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, pod, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
+window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, dive: hostDive, diveReport, cabinIn: hostCabinIn, cabinInReport, goRegion, startTravel, startFocus, startAt, boatAt, zoneReport, setHost, boot: bootNow, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, pod, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
   // ⭐ 반응형 검산 (2026-09-11 오후) — 제품 UI 상자들의 자리 · 서로 겹침 · 화면 밖 · 스크롤 · 수면 타이포 꼭대기와 정보 블록의 간격.
   //   ⚠ 창 크기를 바꾼 뒤에는 **스크린샷 한 장으로 먼저 칠하고** 부른다 (숨긴 패널에서는 ResizeObserver 가 안 불린다 — 교훈 ⑧)
   layout: () => layoutReport(),
@@ -2465,6 +2541,8 @@ function disposeAll() {
   travel.dispose();    // ⚠ 안개를 걷어 둔다 — HMR 뒤에 흰 화면이 남으면 "바다가 날아갔다" 로 오진한다
   hostDive(0);         // ⚠ 잠수를 풀어 둔다 — `<html data-dive>` 가 남으면 엔진 UI 가 영영 안 보인다 (불변식 10)
   disposeDive();
+  hostCabinIn(0);      // ⚠ 선실로 들어가기도 같다 — `<html data-cabin-in>` 과 입력 잠금을 풀어 둔다
+  disposeCabinIn();
   chart.dispose();     // ⚠ 미니맵보다 먼저 — 안개 격자를 그쪽에서 읽는다
   minimap.dispose();   // (향수 고르기 라벨은 ui.dispose() 가 거둔다)
   window.removeEventListener('keydown', onKeyExit);

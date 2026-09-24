@@ -7,19 +7,34 @@ import { create } from 'zustand'
  *   diving   3D 카메라가 수면으로 내려가고 커튼이 차오른다. 시계는 `DiveCurtain` 이 쥔다
  *   covered  화면이 짙은 바다색으로 다 덮였다 — 이 사이에 간 화면으로 옮겨 간다
  *   lifting  간 화면이 준비돼 커튼이 걷히는 중
+ *
+ * 선실로 들어가기(진열대)도 같은 넷입니다 — 내려가는 대신 배를 향해 줌인하고, 물 대신 메인에
+ * 들어올 때의 구름이 덮을 뿐입니다 (아래 `DiveWay`).
  */
 export type DiveStage = 'idle' | 'diving' | 'covered' | 'lifting'
 
 /**
- * 어느 쪽으로 가는가 (2026-09-19).
+ * 어느 쪽으로 가는가 (2026-09-19 · 2026-09-24 선실).
  *
- *   dive  메인 → 콘텐츠. 가라앉는다 — 커튼이 아래에서 차오르고 아래에서부터 트인다
- *   rise  콘텐츠 → 메인. 떠오른다 — 위에서 덮이고 위에서부터 트인다
+ *   dive   메인 → 콘텐츠. 가라앉는다 — 커튼이 아래에서 차오르고 아래에서부터 트인다
+ *   rise   콘텐츠 → 메인. 떠오른다 — 위에서 덮이고 위에서부터 트인다
+ *   cabin  메인 → 진열대. **배 안으로 들어간다** — 카메라가 배를 향해 줌인하고, 그 배에서
+ *          구름이 스며 번져 덮은 뒤 가운데서 열리며 걷힌다 (`diveTrack` 의 '선실로 들어가기')
  *
- * 단계(stage)는 둘이 같습니다. 다른 것은 **방향과 색**뿐이라 커튼이 판을 통째로 뒤집어
- * 씁니다 (`dive-curtain.css` 의 `[data-way='rise']`).
+ * 단계(stage)는 셋이 같습니다. dive 와 rise 는 **방향과 색**만 달라 커튼이 판을 통째로 뒤집어
+ * 씁니다 (`dive-curtain.css` 의 `[data-way='rise']`). cabin 은 **모양이 달라** 판을 따로 둡니다
+ * (`cabin-curtain.css`) — 같은 판을 비틀면 둘이 서로를 흉내 냅니다.
  */
-export type DiveWay = 'dive' | 'rise'
+export type DiveWay = 'dive' | 'rise' | 'cabin'
+
+/**
+ * 배가 **화면 어디에 있는가** (뷰포트 CSS px) — 엔진(`cabinEngine`)이 돌려줍니다.
+ * 커튼이 이 점에서 구름을 번지게 합니다.
+ */
+export interface CabinPoint {
+  x: number
+  y: number
+}
 
 interface DiveState {
   stage: DiveStage
@@ -43,8 +58,16 @@ interface DiveState {
    * null 이면 **커튼만** 올라옵니다 (엔진이 아직 안 떴거나 메인이 아닌 화면).
    */
   engine: ((k: number) => void) | null
+  /**
+   * 선실로 들어갈 때(`way` cabin) 3D 엔진에 진행도를 넘기는 문 — `ScentScene` 이 엔진
+   * (`window.PB.cabinIn`)을 찾아 꽂습니다. 카메라가 배를 향해 줌인하고, 배 가운데의 **화면 자리**가
+   * 돌아옵니다 (엔진이 아직 그 자리를 못 쟀으면 null).
+   * null 이면 커튼이 **화면 가운데서** 혼자 번집니다 (엔진이 아직 안 떴거나 그 기능 전 엔진).
+   */
+  cabinEngine: ((k: number) => CabinPoint | null) | null
 
   setEngine: (dive: ((k: number) => void) | null) => void
+  setCabinEngine: (cabin: ((k: number) => CabinPoint | null) | null) => void
   /** 전환을 겁니다. 이미 걸려 있으면 아무 일도 없습니다 */
   start: (to: string, way?: DiveWay, depth?: number) => void
   /** 다 덮었습니다 — 커튼이 부릅니다 */
@@ -78,8 +101,10 @@ export const useDiveStore = create<DiveState>()((set, get) => ({
   depth: 0,
   ready: false,
   engine: null,
+  cabinEngine: null,
 
   setEngine: (dive) => set({ engine: dive }),
+  setCabinEngine: (cabin) => set({ cabinEngine: cabin }),
 
   start: (to, way = 'dive', depth = 0) => {
     if (get().stage !== 'idle') return

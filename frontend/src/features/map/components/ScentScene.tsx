@@ -77,6 +77,15 @@ interface EngineHandle {
    */
   dive?: (k: number) => void
   /**
+   * 선실로 들어가기 진행도 0~1 (엔진 `landing/src/cabin-in.js` · `PB.cabinIn`) — 카메라가 배를
+   * 향해 곧게 줌인합니다. **시계는 앱 커튼이 쥡니다**(`shared/ui/DiveCurtain` 의 cabin).
+   *
+   * 돌려주는 것은 **배 가운데의 화면 자리**(iframe 기준 CSS px)입니다 — 커튼이 거기서 구름을 번지게
+   * 합니다. `on` 이 false 면 엔진이 아직 그 자리를 못 쟀습니다.
+   * ⚠️ 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다. 그때는 커튼이 화면 가운데서 혼자 번집니다.
+   */
+  cabinIn?: (k: number) => { x: number; y: number; on: boolean }
+  /**
    * 배 — 여기서 읽는 것은 `screen`(배의 화면 자리) 하나입니다. 선실 말풍선이 매 프레임 꺼내
    * 제 자리를 잡습니다 (`lib/boatAnchor`). 엔진이 매 프레임 채웁니다.
    */
@@ -485,6 +494,23 @@ export function ScentScene({
             ? (k: number) => engine.dive?.(k)
             : null,
         )
+      /*
+        선실로 들어가기 — 진열대로 넘어가는 전환의 엔진 문입니다 (잠수와 같은 자리 · 같은 까닭).
+        엔진은 배의 화면 자리를 **iframe 기준**으로 주므로, 커튼(화면 전체에 고정)이 쓰도록 iframe 의
+        자리를 더해 뷰포트 기준으로 바꿉니다. 메인은 iframe 이 화면을 꽉 채워 대개 0 이지만, 그것을
+        믿고 빼 두면 틀이 바뀌는 날 구름이 배 옆에서 번집니다.
+        ⚠️ 엔진에 `cabinIn` 이 없으면 꽂지 않습니다 (커튼만 화면 가운데서 번집니다).
+      */
+      useDiveStore.getState().setCabinEngine(
+        typeof engine.cabinIn === 'function'
+          ? (k: number) => {
+              const at = engine.cabinIn?.(k)
+              if (!at?.on) return null
+              const box = el.getBoundingClientRect()
+              return { x: box.left + at.x, y: box.top + at.y }
+            }
+          : null,
+      )
       setReady(true)
       // 들어오자마자 방향키로 배를 몰 수 있게 포커스를 엔진으로 넘깁니다
       el.contentWindow?.focus()
@@ -523,6 +549,7 @@ export function ScentScene({
       handle.current = null
       // 엔진이 사라집니다 — 커튼은 이제 혼자 차오릅니다 (잠수로 떠나는 길이 바로 이 경로입니다)
       useDiveStore.getState().setEngine(null)
+      useDiveStore.getState().setCabinEngine(null)
       setBoatAnchorSource(null)
     }
   }, [])
