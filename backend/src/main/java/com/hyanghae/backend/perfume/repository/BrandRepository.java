@@ -65,12 +65,21 @@ public interface BrandRepository extends JpaRepository<Brand, Long> {
      *
      * <p>{@code ESCAPE '\\'} 를 붙입니다. 사용자가 {@code %} 나 {@code _} 를 치면 그것이 와일드
      * 카드로 해석되어 엉뚱하게 전체가 걸립니다. 서비스가 미리 막아 보내고 여기서 받습니다.
+     *
+     * <p><b>이름에서 공백을 지우고 견줍니다.</b> 브랜드 7,873곳 중 5,042곳의 한국어 이름에 공백이
+     * 있어('빅토리아 시크릿'), 붙여 친 검색어가 0건이 되고 있었습니다. 검색어 쪽도 서비스가 같이
+     * 지웁니다({@code BrandService.likePattern}) — 한쪽만 지우면 반대 방향, 즉 띄어 친 검색어가
+     * 도로 안 걸립니다.
+     *
+     * <p>{@code REPLACE} 는 지금 규모에서 값이 쌉니다. 브랜드가 7,873행이고 어차피 앞에 와일드
+     * 카드가 붙는 {@code ILIKE} 라 인덱스를 타지 못해, 전에도 전부 훑고 있었습니다. 브랜드가
+     * 크게 늘면 공백 없는 이름에 식 인덱스를 거는 편이 낫습니다.
      */
     String BRAND_WHERE = """
             WHERE b.is_active = TRUE
               AND (CAST(:keyword AS VARCHAR) IS NULL
-                   OR b.name ILIKE :keyword ESCAPE '\\'
-                   OR b.name_ko ILIKE :keyword ESCAPE '\\')
+                   OR REPLACE(b.name, ' ', '') ILIKE :keyword ESCAPE '\\'
+                   OR REPLACE(b.name_ko, ' ', '') ILIKE :keyword ESCAPE '\\')
             """;
 
     /** 향수 많은 순만 묶습니다. 조인이 브랜드마다 향수 수만큼 줄을 만들기 때문입니다. */

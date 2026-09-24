@@ -245,6 +245,63 @@ class PerfumeBrandKoreanNameIntegrationTest {
     }
 
     /**
+     * 띄어쓰기를 가리지 않습니다. 브랜드 이름과 향수 이름 <b>모두</b>입니다.
+     *
+     * <p>어디서 띄는지는 사람마다 다른데 저장된 이름은 한 가지입니다. "르라보" 로 붙여 친 사람이
+     * 0건을 받고 있었습니다.
+     *
+     * <p>브랜드 3번이 {@code Le Labo} / "르 라보" 라 영문과 한국어를 한 자리에서 봅니다. 향수
+     * 이름은 1번 "블루 드 샤넬" 로 봅니다 — 브랜드('샤넬')에는 공백이 없어, 이 검색이 걸리는
+     * 이유가 향수 이름 쪽임이 분명합니다.
+     */
+    @Test
+    void ignoresSpacesInNames() throws Exception {
+        // 브랜드 이름 — 한국어와 영문 모두
+        for (String keyword : new String[]{"르라보", "르 라보", "lelabo", "Le Labo"}) {
+            mockMvc.perform(get(SEARCH_URL).param("keyword", keyword))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalElements").value(1))
+                    .andExpect(jsonPath("$.perfumes[0].perfumeId").value(5));
+        }
+
+        // 향수 이름
+        for (String keyword : new String[]{"블루드샤넬", "블루 드 샤넬", "bleudechanel"}) {
+            mockMvc.perform(get(SEARCH_URL).param("keyword", keyword))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalElements").value(1))
+                    .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1));
+        }
+
+        // 이름에 공백이 없고 검색어에만 있는 방향. 검색어에서만 지우면 이쪽이 도로 0건입니다.
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "챤 스"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(2));
+    }
+
+    /**
+     * 집계 정렬에서도 띄어쓰기를 가리지 않습니다.
+     *
+     * <p>검색 조건이 두 벌이라 한쪽만 고치면 정렬 칩을 누르는 순간 같은 검색어가 0건이 됩니다.
+     * {@link #findsByBrandKoreanNameInRankingQueryToo} 와 같은 사정입니다.
+     */
+    @Test
+    void ignoresSpacesInRankingQueryToo() throws Exception {
+        insertShelfItem(1, 5);
+        insertShelfItem(2, 5);
+        insertShelfItem(3, 5);
+
+        for (String keyword : new String[]{"르라보", "lelabo"}) {
+            mockMvc.perform(get(SEARCH_URL)
+                            .param("ranking", "OWNED")
+                            .param("keyword", keyword))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalElements").value(1))
+                    .andExpect(jsonPath("$.perfumes[0].perfumeId").value(5));
+        }
+    }
+
+    /**
      * 한국어 이름이 없는 브랜드가 섞여 있어도 검색이 깨지지 않습니다.
      *
      * <p>{@code LEFT JOIN} 이라 브랜드가 없는 향수도, 한국어 이름이 비어 있는 브랜드도 있습니다.
