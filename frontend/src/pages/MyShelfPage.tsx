@@ -1,15 +1,9 @@
-import {
-  useMutation,
-  useQueries,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router'
 
 import {
   collectionKeys,
-  collectionPreviewsQuery,
   CollectionFormModal,
   CollectionStrip,
   createCollection,
@@ -302,28 +296,6 @@ export default function MyShelfPage() {
         }
       : undefined
 
-  /*
-   * 컬렉션 카드에 얹을 향수 사진.
-   *
-   * ⚠️ 목록 응답에 썸네일이 없어 **컬렉션마다 상세를 한 번씩** 부릅니다. 캐시는
-   * 상세 화면과 같은 키라, 카드를 눌러 들어가면 요청이 다시 나가지 않습니다.
-   * BE 가 목록에 `previewThumbnails` 를 실어 주면 이 블록을 통째로 지웁니다.
-   */
-  const collectionIds = (collections.data ?? []).map(
-    (item) => item.collectionId,
-  )
-  const collectionDetails = useQueries({
-    queries: collectionPreviewsQuery(collectionIds),
-  })
-
-  /** 카드에 넘길 목록 — 미리보기만 상세에서 가져와 채웁니다 */
-  const collectionCards = (collections.data ?? []).map((item, index) => {
-    const detail = collectionDetails[index]?.data
-    return detail === undefined
-      ? item
-      : { ...item, previewThumbnails: detail.previewThumbnails }
-  })
-
   /**
    * 컬렉션 만들기 (COL-01).
    *
@@ -550,7 +522,7 @@ export default function MyShelfPage() {
     </div>
   ) : (
     <CollectionStrip
-      items={collectionCards}
+      items={collections.data ?? []}
       isPending={collections.isPending}
       onCreate={() => setCreateCollectionOpen(true)}
     />

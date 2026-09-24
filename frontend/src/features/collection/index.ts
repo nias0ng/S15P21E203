@@ -12,7 +12,6 @@ export { CollectionStrip } from './components/CollectionStrip'
 export {
   collectionDetailQuery,
   collectionKeys,
-  collectionPreviewsQuery,
   myCollectionsQuery,
 } from './queries'
 export type { CollectionInput } from './types'

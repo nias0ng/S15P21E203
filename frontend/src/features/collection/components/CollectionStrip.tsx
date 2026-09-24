@@ -37,7 +37,8 @@ export function CollectionStrip({ items, isPending = false, onCreate }: Props) {
           to={toCollectionDetail(collection.collectionId)}
           media={
             <span className="flex gap-2.5">
-              {collection.previewThumbnails
+              {/* 목록은 사진이 셋보다 적을 수 있어 빈 자리로 채웁니다 — 모자라면 카드가 납작해집니다 */}
+              {[...collection.previewThumbnails, null, null, null]
                 .slice(0, 3)
                 .map((thumbnail, index) => (
                   <Thumbnail
