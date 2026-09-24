@@ -518,6 +518,8 @@ export default function MyShelfPage() {
       isError={collections.isError}
       onRetry={() => void collections.refetch()}
       onCreate={() => setCreateCollectionOpen(true)}
+      // 한 장 배치의 무대는 높이가 화면에 묶여, 두 줄이 다 들도록 칸 수를 높이로 고릅니다(노트북 창)
+      fitRows={arrangement !== 'stacked'}
     />
   )
 
@@ -744,9 +746,13 @@ export default function MyShelfPage() {
       `--header-h` 는 헤더 높이(1920 에서 90)이고 화면을 따라 같이 줄어듭니다 — 90 을
       손으로 적으면 헤더만 줄어들어 1536 에서 페이지에 세로 스크롤이 생깁니다.
 
-      최소 높이 650 — 진열장 자리가 460 아래로 줄지 않는 높이입니다(위 한 장 배치 설명).
+      최소 높이는 **상세 카드의 가장 작은 모습이 벽 자리에 드는 높이**입니다 — 카드 위 · 아래 자리
+      (제목 줄 · 하단 띠 · 사이, 1920 에서 216)는 --spacing 을 따라 줄고, 카드(0.85 배 · 병 자리 하한 100 →
+      443)는 줄지 않아 둘을 따로 더합니다. 1920 에서 661, 1536 · 1280 에서 618 이고, 그보다 낮은 창(노트북
+      150% 배율에 창 모드 1280 x 600 등)은 카드가 하단 띠에 겹치는 대신 페이지가 조금 스크롤됩니다.
+      NOTE: 상세 카드에 줄을 더하면 445 도 같이 올립니다 — 모자라면 낮은 창에서 MEMO 가 하단 띠에 걸립니다.
     */
-    <div className="shelf-scope -mt-15 -mb-15 flex h-[calc(100dvh_-_var(--header-h))] min-h-162.5 flex-col">
+    <div className="shelf-scope -mt-15 -mb-15 flex h-[calc(100dvh_-_var(--header-h))] min-h-[calc(var(--spacing)*54+445px)] flex-col">
       {paper}
 
       {/*
@@ -796,6 +802,8 @@ export default function MyShelfPage() {
             스크롤 칸은 사방으로 5 넓혀 두고 안쪽을 같은 만큼 띄웁니다 — 진열함의 포커스 링이
             진열함 밖 5 에 돌아서, 칸 끝에 붙으면 스크롤 칸에 잘립니다. 스크롤 막대는 가늘게
             종이 선 색으로 둡니다(기본 회색 막대가 종이 위에 떠 보입니다).
+            아래 여백은 10 입니다 — 넓히면 노트북 창(1536 x 730)에서 두 줄이 다 보이는데도 여백만큼
+            넘쳐 스크롤 막대가 뜹니다. 마지막 줄 아래는 명판이라 포커스 링 자리가 따로 필요 없습니다.
           */
           <div
             key="collection"
@@ -803,7 +811,7 @@ export default function MyShelfPage() {
           >
             {collectionHeader}
 
-            <div className="-mx-1.25 mt-6.25 min-h-0 flex-1 [scrollbar-width:thin] [scrollbar-color:var(--hairline)_transparent] overflow-y-auto px-1.25 pt-1.25 pb-7.5">
+            <div className="-mx-1.25 mt-6.25 min-h-0 flex-1 [scrollbar-width:thin] [scrollbar-color:var(--hairline)_transparent] overflow-y-auto px-1.25 pt-1.25 pb-2.5">
               {collectionStrip}
             </div>
           </div>,

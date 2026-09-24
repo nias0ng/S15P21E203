@@ -21,6 +21,11 @@ type Props = {
   isError?: boolean
   onRetry?: () => void
   onCreate: () => void
+  /**
+   * 무대 높이에 두 줄이 다 들도록 칸 수를 고릅니다 — 높이가 정해진 한 장 배치의 무대에서만 켭니다.
+   * 부모(스크롤 칸)가 높이를 정해 줘야 합니다. 쌓는 배치는 페이지가 스크롤되어 끕니다.
+   */
+  fitRows?: boolean
   className?: string
 }
 
@@ -43,17 +48,22 @@ export function CollectionStrip({
   isError = false,
   onRetry,
   onCreate,
+  fitRows = false,
   className,
 }: Props) {
   /*
-    칸의 최소 폭은 1920 에서 380 입니다 — 1920 · 1440 에서 네 칸, 1280 셋, 1024 둘, 휴대폰 하나.
+    칸의 최소 폭은 1920 에서 380 입니다 — 1920 · 1440 에서 네 칸, 1024 둘, 휴대폰 하나.
     400 이면 1440 이 세 칸이 되어 둘째 줄 명판이 하단 띠에 걸립니다. 칸이 적어도 늘이지 않고
     (auto-fill) 왼쪽부터 채웁니다 — 한두 개일 때 진열함이 화면 폭만큼 부풀지 않게.
+    무대 높이에 맞출 때(fitRows)는 최소 폭을 CSS 가 무대 높이로 셉니다(--cabinet-col —
+    collection-cabinet.css 의 "무대 높이에 두 줄").
   */
   const grid = cn(
-    'grid grid-cols-[repeat(auto-fill,minmax(calc(var(--spacing)*95),1fr))] gap-x-10 gap-y-10',
+    'collection-grid grid grid-cols-[repeat(auto-fill,minmax(var(--cabinet-col,calc(var(--spacing)*95)),1fr))] gap-x-10 gap-y-10',
     className,
   )
+  const fit = (node: React.ReactNode) =>
+    fitRows ? <div className="collection-fit">{node}</div> : node
 
   /*
     못 받았으면 빈 격자로 그리지 않습니다 — 아무 말이 없으면 "컬렉션이 하나도 없다" 로 읽히는데,
@@ -71,7 +81,7 @@ export function CollectionStrip({
 
   // 오는 동안은 빈 진열함과 명판 자리만 — 병 윤곽을 세우면 없는 병이 선 것처럼 읽힙니다
   if (isPending) {
-    return (
+    return fit(
       <div aria-hidden className={grid}>
         {Array.from({ length: PENDING_CASES }, (_, index) => (
           <div key={index}>
@@ -83,11 +93,11 @@ export function CollectionStrip({
             />
           </div>
         ))}
-      </div>
+      </div>,
     )
   }
 
-  return (
+  return fit(
     <ul className={grid}>
       {items.map((collection) => (
         <li key={collection.collectionId} className="min-w-0">
@@ -112,7 +122,7 @@ export function CollectionStrip({
           />
         </button>
       </li>
-    </ul>
+    </ul>,
   )
 }
 

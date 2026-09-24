@@ -95,7 +95,8 @@ export function CollectionFormModal({
         </>
       }
     >
-      <div className="space-y-5 py-1.25">
+      {/* 남는 높이를 고르는 칸까지 이어 줍니다(COLLECTION_SHEET 의 본문 흐름) — 낮은 창에서 칸만 줄어듭니다 */}
+      <div className="flex min-h-0 flex-1 flex-col gap-5 py-1.25">
         <Input
           label="이름"
           placeholder="예: 출근할 때"
@@ -118,7 +119,7 @@ export function CollectionFormModal({
             이름 · 설명만 고칩니다. 향수는 진열함 칸에서 담고 뺍니다.
           </p>
         ) : (
-          <section className="space-y-3.75">
+          <section className="flex min-h-0 flex-1 flex-col gap-3.75">
             <h3 className="collection-sheet-heading">담을 향수</h3>
             <ShelfItemPickList
               candidates={candidates}
@@ -127,8 +128,8 @@ export function CollectionFormModal({
               keyword={keyword}
               onKeywordChange={setKeyword}
               emptyTitle="진열대에 담은 향수가 없습니다"
-              // 위에 이름 · 설명 칸이 있어 고르는 칸을 낮춥니다 — 1536 x 864 에서도 모달이 창 안에 듭니다
-              listClassName="max-h-[min(calc(var(--spacing)*95),40vh)]"
+              // 위에 이름 · 설명 칸이 있어 고르는 칸의 윗한도를 낮춥니다(1920 에서 380). 창이 낮으면 더 줄어듭니다
+              listClassName="max-h-[calc(var(--spacing)*95)]"
             />
             <p className="shelf-muted text-caption leading-relaxed">
               컬렉션이 남에게 보이는 길은 자유 게시판의 컬렉션 공유 글뿐입니다.

@@ -25,8 +25,8 @@ type Props = {
   /** 후보가 하나도 없을 때 할 말. 만들 때와 담을 때가 다릅니다 */
   emptyTitle: string
   /**
-   * 고르는 칸(스크롤 상자)의 높이 등 — 기본은 1920 에서 440 · 화면의 48% 까지입니다. 위에 칸이 더
-   * 있는 모달(만들기)은 낮춰서 모달이 창보다 길어지지 않게 합니다.
+   * 고르는 칸(스크롤 상자)의 윗한도 등 — 기본은 1920 에서 440 입니다. 위에 칸이 더 있는 모달(만들기)은
+   * 낮춥니다. 창이 낮으면 모달 본문의 남는 높이만큼 더 줄어듭니다(아래 · COLLECTION_SHEET).
    */
   listClassName?: string
 }
@@ -60,7 +60,11 @@ export function ShelfItemPickList({
   }, [candidates, keyword])
 
   return (
-    <div className="space-y-3.75">
+    /*
+      모달 본문의 남는 높이를 받아 고르는 칸에 넘깁니다 — 창이 낮으면 검색 · 개수 줄은 그대로 두고
+      고르는 칸만 줄어들어(아래 150 까지), 모달이 창보다 길어져 단추가 숨지 않습니다.
+    */
+    <div className="flex min-h-0 flex-1 flex-col gap-3.75">
       <SearchField
         label="향수명 또는 브랜드명으로 검색"
         placeholder="향수명 · 브랜드 검색"
@@ -89,7 +93,7 @@ export function ShelfItemPickList({
         */
         <ul
           className={cn(
-            'collection-pick-list -mx-2.5 -mt-2.5 grid max-h-[min(calc(var(--spacing)*110),48vh)] grid-cols-[repeat(auto-fill,minmax(calc(var(--spacing)*32.5),1fr))] gap-x-3.75 gap-y-5 overflow-y-auto px-2.5 pt-2.5',
+            'collection-pick-list -mx-2.5 -mt-2.5 grid max-h-[calc(var(--spacing)*110)] min-h-[calc(var(--spacing)*37.5)] grid-cols-[repeat(auto-fill,minmax(calc(var(--spacing)*32.5),1fr))] gap-x-3.75 gap-y-5 overflow-y-auto px-2.5 pt-2.5',
             listClassName,
           )}
         >
