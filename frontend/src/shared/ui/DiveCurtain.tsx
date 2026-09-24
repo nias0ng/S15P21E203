@@ -1,4 +1,4 @@
-import { useEffect, useRef, type CSSProperties } from 'react'
+import { useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router'
 
 import {
@@ -51,6 +51,12 @@ import './dive-curtain.css'
 const reducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
+/**
+ * 떠오를 때 커튼이 **떠나는 방에서** 옮겨 받는 물빛 — 방(`styles/scent-display.css` 의
+ * `.scent-night`)이 내주고 `dive-curtain.css` 의 떠오르기가 씁니다. 여기는 이름만 압니다.
+ */
+const ROOM_WATER = ['--room-water', '--room-water-deep'] as const
+
 export function DiveCurtain() {
   const navigate = useNavigate()
   const stage = useDiveStore((state) => state.stage)
@@ -68,7 +74,29 @@ export function DiveCurtain() {
       화면을 보며 색을 고치려면 TS 를 고쳐야 하게 됩니다.
   */
   const depth = useDiveStore((state) => state.depth)
+  const curtain = useRef<HTMLDivElement>(null)
   const water = useRef<HTMLElement>(null)
+
+  // ── 떠오르기 : 떠나는 방의 물빛을 커튼에 적어 둔다
+  useLayoutEffect(() => {
+    if (stage !== 'diving' || way !== 'rise') return
+    const el = curtain.current
+    if (!el) return
+    /*
+      커튼은 껍데기(`RootLayout`) 안이라 방에 서 있는 동안은 방의 물빛을 **물려받습니다.**
+      그런데 다 덮으면 메인으로 옮겨 가고, 그 순간 방(`.scent-night`)이 내려가 물려받던 값도
+      같이 사라집니다 — 덮인 채 엔진을 기다리는 동안 커튼이 바다색으로 한 번 튑니다.
+      그래서 **떠나기 전에 지금 값을 커튼에 직접 적어 둡니다.** 다 걷히면 커튼이 요소째
+      내려가므로 치울 것이 없습니다.
+      ⚠ 색을 여기서 고르거나 섞지 않습니다 — 방이 적은 값을 옮길 뿐입니다 (위 `depth` 주석과
+        같은 까닭). 방이 안 내주면 빈 값이라 아무것도 안 적고, CSS 가 바다색으로 물러섭니다.
+    */
+    const inherited = getComputedStyle(el)
+    for (const name of ROOM_WATER) {
+      const value = inherited.getPropertyValue(name).trim()
+      if (value) el.style.setProperty(name, value)
+    }
+  }, [stage, way])
 
   // ── 잠수 : 카메라를 내리고 커튼을 올린다. 다 덮으면 간 화면으로 옮겨 간다
   useEffect(() => {
@@ -216,6 +244,7 @@ export function DiveCurtain() {
 
   return (
     <div
+      ref={curtain}
       aria-hidden="true"
       data-stage={stage}
       // 방향 — CSS 가 이 한 글자로 판을 뒤집습니다 (dive-curtain.css 의 '떠오르기')

@@ -17,6 +17,13 @@
     --night: #1a2b4d;
     --night-abyss: #0e1224;
     --night-soft: #24385c;
+    /*
+     * 이 방의 물빛 — 로고를 눌러 메인으로 떠오를 때 커튼(`shared/ui/DiveCurtain`)이 이 두
+     * 색으로 덮습니다. 전환을 거는 순간 한 번 읽어 가므로 방 색을 바꾸면 커튼이 따라옵니다.
+     * ⚠️ 지우면 커튼이 바다 팔레트의 청록으로 돌아가 남색 방 위에 초록 기운이 도는 띠가 집니다.
+     */
+    --room-water: var(--night);
+    --room-water-deep: var(--night-abyss);
     --glass-edge: rgb(255 255 255 / 0.55);
 
     --color-surface: var(--night);
@@ -90,11 +97,18 @@
    *
    * 헤더를 투명하게 두는 방법은 못 씁니다 — `sticky` 라 스크롤한 글이 헤더를 뚫고
    * 비칩니다. 그래서 같은 그림을 한 장 더 깝니다.
+   *
+   * 맨 위 겹은 수면 아래(향수 목록)에서 가라앉은 만큼 덮는 어둠입니다. 값(`--night-sink`)은
+   * 물 판(`WaterCaustics`)이 매 장 방에 적고, 다른 방에서는 없어 투명합니다.
    */
   .scent-night,
   .scent-night-header {
     background-color: var(--night-abyss);
     background-image:
+      linear-gradient(
+        rgb(6 9 20 / var(--night-sink, 0)),
+        rgb(6 9 20 / var(--night-sink, 0))
+      ),
       radial-gradient(
         ellipse 55% 93% at 25% -5%,
         rgb(62 95 138 / 0.6) 0%,

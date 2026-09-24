@@ -12,6 +12,7 @@ import { PARAMS } from '@landing/params'
     엔진 쪽은 `@landing` 별칭으로 **값을** 읽습니다 (engine-dive-params.d.ts).
 */
 import appTokens from '../../styles/index.css?raw'
+import roomStyle from '../../styles/scent-display.css?raw'
 import { ROUTES } from '../config/routes'
 import curtainStyle from '../ui/dive-curtain.css?raw'
 
@@ -338,6 +339,21 @@ describe('판을 건너뛰는 값이 갈라지지 않는다', () => {
     */
     const stops = curtainStyle.match(/var\(--dive-floor\) (?:0|38)%/g) ?? []
     expect(stops).toHaveLength(4)
+  })
+
+  it('떠오르는 커튼이 떠나는 방의 물빛을 쓴다 — 방이 내주는 이름을 커튼이 읽는다', () => {
+    /*
+      떠오르기의 색은 방(`.scent-night`)이 내주고 커튼 CSS 가 씁니다. 한쪽만 이름이 어긋나도
+      **아무 오류 없이** 바다색으로 물러서서, 남색 방 위로 청록 띠가 다시 내려옵니다
+      (2026-09-24 사용자 : *"녹색이 섞여있는 블루"*).
+      ⚠ 이름을 바꾸면 `DiveCurtain` 의 `ROOM_WATER` 도 같이 바꿉니다 — 방을 떠나기 전에 값을
+        커튼에 옮겨 적는 목록입니다. 거기만 어긋나면 메인으로 넘어간 뒤에 색이 한 번 튑니다.
+      ⚠ 색 값은 안 봅니다 — 무엇으로 덮을지는 방이 정할 일이고, 여기는 **이어져 있는가**만 봅니다.
+    */
+    for (const name of ['--room-water', '--room-water-deep']) {
+      expect(roomStyle).toMatch(new RegExp(`^\\s*${name}:`, 'm'))
+      expect(curtainStyle).toContain(`var(${name},`)
+    }
   })
 
   it('가장 깊은 물이 navy 보다 어둡다', () => {

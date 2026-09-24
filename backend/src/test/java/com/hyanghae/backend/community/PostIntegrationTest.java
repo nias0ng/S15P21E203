@@ -493,13 +493,18 @@ class PostIntegrationTest {
                 .andExpect(jsonPath("$.imageUrls").isEmpty());
     }
 
-    /** 고칠 항목이 없거나 분류·제목·내용을 비우라고 보내면 400 입니다. */
+    /**
+     * 고칠 항목이 없거나 분류·제목·내용을 비우라고 보내면 400 입니다.
+     *
+     * <p>향수와 이미지 목록은 빈 배열로 연결을 지울 수 있지만 {@code null} 은 받지 않습니다.
+     * 지우려는 것인지 실수인지 구분되지 않기 때문입니다.
+     */
     @Test
     void rejectsEmptyPatch() throws Exception {
         long postId = write("CHAT", "제목", "본문", null, null);
 
         for (String body : new String[]{"{}", "{\"title\": \"\"}", "{\"content\": null}",
-                "{\"category\": \"\"}"}) {
+                "{\"category\": \"\"}", "{\"perfumeIds\": null}", "{\"imageUrls\": null}"}) {
             mockMvc.perform(patch(POST_URL, postId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
