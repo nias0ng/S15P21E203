@@ -35,5 +35,7 @@ export {
   REVIEW_CONTENT_MIN_LENGTH,
   REVIEW_TITLE_MAX_LENGTH,
   SEASONS,
+  type PerfumeDetail,
+  type ReviewAggregates,
   type Season,
 } from './types'
