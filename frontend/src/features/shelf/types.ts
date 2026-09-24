@@ -22,6 +22,16 @@ export const SHELF_CATEGORIES = [
 ] as const satisfies readonly { value: ShelfCategory; label: string }[]
 
 /**
+ * 분류의 영문 설명 — 메뉴판의 분류 이름 아래(ShelfPlaque)와 상세 카드 머리(ShelfDetailPanel)에 작게
+ * 적습니다. 한글 분류 이름을 되풀이하는 장식이라 낭독기에서는 뺍니다. 대문자 · 자간은 CSS 가 입힙니다.
+ */
+export const SHELF_CATEGORY_CAPTION: Record<ShelfCategory, string> = {
+  OWNED: 'My collection',
+  TRIED: 'Tried scents',
+  WISH: 'Wish list',
+}
+
+/**
  * 분류 칩에 붙는 개수. **검색어를 적용한 뒤**의 수입니다 —
  * 검색 중에는 칩 숫자가 "이 칸에 몇 개가 걸렸나" 를 알려주는 쪽이 쓸모 있습니다.
  *

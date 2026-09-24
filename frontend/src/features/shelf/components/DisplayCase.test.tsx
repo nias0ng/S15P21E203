@@ -48,7 +48,6 @@ const renderCase = (
       priorityFrom={0}
       priorityTo={items.length}
       priorityId={null}
-      emptyMessage="비어 있음"
       {...bounds}
     />,
   )

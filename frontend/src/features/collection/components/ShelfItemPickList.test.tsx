@@ -64,6 +64,19 @@ describe('ShelfItemPickList', () => {
     expect(screen.queryByText('오르페옹')).not.toBeInTheDocument()
   })
 
+  it('고른 칸은 눌린 채로 알린다 — 다시 누르면 풀린다', async () => {
+    render(<Harness />)
+
+    const card = screen.getByRole('button', { name: /상탈 33/ })
+    expect(card).toHaveAttribute('aria-pressed', 'false')
+
+    await userEvent.click(card)
+    expect(card).toHaveAttribute('aria-pressed', 'true')
+
+    await userEvent.click(card)
+    expect(card).toHaveAttribute('aria-pressed', 'false')
+  })
+
   it('검색으로 가려져도 고른 것은 그대로 센다', async () => {
     render(<Harness />)
 

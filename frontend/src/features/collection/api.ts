@@ -8,13 +8,18 @@ import type {
 } from './types'
 
 /** 서버는 `name`, 화면은 `title` 입니다 — 옮기는 일은 `toCollectionSummary` 한 곳입니다 */
-interface CollectionSummaryResponse {
+interface CollectionBaseResponse {
   collectionId: number
   name: string
   description: string | null
-  perfumeCount: number
   createdAt: string
   updatedAt: string
+}
+
+interface CollectionSummaryResponse extends CollectionBaseResponse {
+  perfumeCount: number
+  /** 담긴 순서대로 최대 3장. 사진이 없는 향수는 null, 빈 컬렉션은 빈 배열입니다 */
+  previewThumbnails: (string | null)[]
 }
 
 interface CollectionsResponse {
@@ -36,12 +41,13 @@ interface CollectionPerfumeResponse {
   thumbnailUrl: string | null
 }
 
-interface CollectionDetailResponse extends CollectionSummaryResponse {
+/** 상세에는 개수 · 미리보기가 없습니다 — 담긴 향수에서 셉니다(`getCollectionDetail`) */
+interface CollectionDetailResponse extends CollectionBaseResponse {
   perfumes: CollectionPerfumeResponse[]
 }
 
-/** NOTE: 목록 응답에 썸네일이 없어 빈 자리로 채웁니다 — `[]` 로 두면 카드가 납작해집니다 */
-const EMPTY_PREVIEW: (string | null)[] = [null, null, null]
+/** 목록이 싣는 미리보기와 같은 장수입니다(백엔드 `PREVIEW_THUMBNAIL_COUNT`) */
+const PREVIEW_COUNT = 3
 
 function toCollectionSummary(
   collection: CollectionSummaryResponse,
@@ -51,7 +57,7 @@ function toCollectionSummary(
     title: collection.name,
     description: collection.description,
     perfumeCount: collection.perfumeCount,
-    previewThumbnails: EMPTY_PREVIEW,
+    previewThumbnails: collection.previewThumbnails,
   }
 }
 
@@ -104,13 +110,13 @@ export async function getCollectionDetail(
   const perfumes = data.perfumes.map(toCollectionPerfume)
 
   return {
-    ...toCollectionSummary(data),
-    /* NOTE: 상세 응답에는 `perfumeCount` 가 없습니다 — 그대로 옮기면 "향수 개" 로 찍힙니다 */
+    collectionId: data.collectionId,
+    title: data.name,
+    description: data.description,
     perfumeCount: perfumes.length,
-    previewThumbnails: [
-      ...perfumes.slice(0, 3).map((item) => item.thumbnailUrl),
-      ...EMPTY_PREVIEW,
-    ].slice(0, 3),
+    previewThumbnails: perfumes
+      .slice(0, PREVIEW_COUNT)
+      .map((item) => item.thumbnailUrl),
     perfumes,
   }
 }

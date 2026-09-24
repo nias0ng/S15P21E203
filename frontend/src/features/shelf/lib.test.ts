@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  doorMetrics,
   formatShelfDate,
   layoutWall,
   LIFT_ENVELOPE,
@@ -9,8 +10,11 @@ import {
   liftTarget,
   meterWheel,
   nameWithoutBrand,
+  NICHE_FACES,
   nearStop,
   nextStop,
+  nicheSlots,
+  noteRows,
   plaqueMetrics,
   plaquePath,
   revealItem,
@@ -34,6 +38,7 @@ import {
   type WallLayout,
   type WheelMeter,
 } from './lib'
+import shelfStyle from './shelf-display.css?raw'
 import type { ShelfItem, ShelfSection } from './types'
 
 describe('nameWithoutBrand', () => {
@@ -1296,15 +1301,13 @@ describe('plaqueMetrics', () => {
     expect(plaque.width).toBe(175)
     expect(plaque.height).toBe(455)
     expect(plaque.detail).toBe('full')
-    const { notch, arch, corner, inset, pin, crown, pinTop } = plaque
-    expect({ notch, arch, corner, inset, pin, crown, pinTop }).toEqual({
+    const { notch, arch, corner, inset, crown } = plaque
+    expect({ notch, arch, corner, inset, crown }).toEqual({
       notch: 12,
       arch: 25,
       corner: 25,
       inset: 6,
-      pin: 12,
       crown: 37,
-      pinTop: 19,
     })
   })
 
@@ -1385,7 +1388,7 @@ describe('plaqueMetrics', () => {
     })
   })
 
-  it('맨 벽이 좁은 휴대폰에서도 현판은 옆벽에 겹치지 않고, 세로 이름이 핀 · 테두리선에 걸리지 않는 높이로 선다', () => {
+  it('맨 벽이 좁은 휴대폰에서도 현판은 옆벽에 겹치지 않고, 세로 이름이 어깨 · 테두리선에 걸리지 않는 높이로 선다', () => {
     // 320 · 360 · 412 · 480 휴대폰의 벽 자리(쌓는 배치)
     const phones = [
       [280, 380],
@@ -1399,15 +1402,26 @@ describe('plaqueMetrics', () => {
       expect(plaque.detail).toBe('vertical')
       expect(plaque.height).toBeGreaterThanOrEqual(110)
       expect(plaque.height).toBeLessThanOrEqual(plaque.caseHeight * 0.75 + 2.5)
-      expect(plaque.pinTop + plaque.pin).toBeLessThanOrEqual(plaque.crown)
+      // 글자는 어깨 아래 · 안쪽 테두리선 안에서 시작합니다
+      expect(plaque.crown).toBeGreaterThan(plaque.inset)
     }
   })
 
-  it('핀은 안쪽 테두리선 아래 · 어깨 위에 꽂힌다', () => {
-    for (const [width, height, panel] of WALLS) {
-      const { inset, pin, pinTop, crown } = plaqueOf(width, height, panel)
-      expect(pinTop).toBeGreaterThan(inset + 1)
-      expect(pinTop + pin).toBeLessThanOrEqual(crown)
+  /*
+   * 메뉴판 꼭대기에 꽂던 황동 핀을 걷었습니다(S15P21E203-431). 핀 자리를 비워 두면 글자가 판 아래로 쏠려
+   * 보여서, 네모 판의 글자는 안쪽 테두리선 바로 아래에서 시작합니다.
+   */
+  it('네모 판(메뉴판)의 글자는 안쪽 테두리선 바로 아래에서 시작한다 — 핀 자리를 비우지 않는다', () => {
+    for (const [pitch, caseHeight] of [
+      [1460 / 7, 605],
+      [891 / 7, 345],
+    ] as const) {
+      const plate = plaqueMetrics(pitch, caseHeight, 2, {
+        maxHeight: caseHeight * 0.22,
+        plate: true,
+        widthPerCase: Infinity,
+      })
+      expect(plate.crown).toBe(plate.inset + 5)
     }
   })
 
@@ -1593,5 +1607,179 @@ describe('ticketPath', () => {
         expect(Math.min(x, width - x, y, height - y)).toBeCloseTo(d, 1)
       })
     }
+  })
+})
+
+describe('noteRows — 상세 카드의 향조', () => {
+  const note = (noteId: number, name: string, noteType: string | null) => ({
+    noteId,
+    name,
+    noteType,
+  })
+
+  it('소문자 단계도 받은 순서와 상관없이 탑 · 미들 · 베이스 순으로 묶는다', () => {
+    // 운 자르뎅 쉬르 르 닐 실측 — base 가 먼저 옵니다
+    expect(
+      noteRows([
+        note(26, 'Cinnamon', 'base'),
+        note(19, 'Grapefruit', 'top'),
+        note(102, 'Lotus', 'middle'),
+        note(1, 'Musk', 'base'),
+      ]),
+    ).toEqual([
+      { stage: 'TOP', label: 'TOP', names: ['Grapefruit'] },
+      { stage: 'MIDDLE', label: 'MIDDLE', names: ['Lotus'] },
+      { stage: 'BASE', label: 'BASE', names: ['Cinnamon', 'Musk'] },
+    ])
+  })
+
+  it('두 단계에 걸친 노트는 양쪽에 넣고, 피라미드가 없으면 이름표 없이 한 줄, 모르는 단계 · 빈 값은 뒤에 둔다', () => {
+    const rows = noteRows([
+      note(1, 'Bergamot', 'top+middle'),
+      note(2, 'Amber', 'flat'),
+      note(3, 'Smoke', 'heart'),
+      note(4, 'Salt', null),
+    ])
+    expect(
+      rows.map(({ stage, label, names }) => [stage, label, names]),
+    ).toEqual([
+      ['TOP', 'TOP', ['Bergamot']],
+      ['MIDDLE', 'MIDDLE', ['Bergamot']],
+      ['FLAT', null, ['Amber']],
+      ['HEART', 'HEART', ['Smoke']],
+      ['기타', '기타', ['Salt']],
+    ])
+  })
+})
+
+describe('nicheSlots — 뒷벽에 온전히 드는 칸', () => {
+  const sides = 2 * (NICHE_FACES.bevel + NICHE_FACES.wall)
+
+  it('벽감 폭에서 옆벽 · 입구 테두리 두 쌍을 뺀 뒷벽에 다 드는 칸만 센다', () => {
+    // 1784 x 957 창(벽감 960 · 칸 163.875) — 뒷벽 864 에 5.27 칸이라 여섯째 칸은 오른쪽 문에 걸립니다
+    expect(nicheSlots(960, 163.875)).toBe(5)
+    // 딱 맞아떨어지면 그 칸까지 셉니다(부동소수 오차로 하나 덜 세지 않습니다)
+    expect(nicheSlots(sides + (1460 / 8) * 7, 1460 / 8)).toBe(7)
+  })
+
+  it('벽감이 칸 하나보다 좁아도 한 칸은 둔다 · 폭을 모르면 null', () => {
+    expect(nicheSlots(sides + 50, 120)).toBe(1)
+    expect(nicheSlots(0, 120)).toBeNull()
+    expect(nicheSlots(960, 0)).toBeNull()
+  })
+})
+
+describe('doorMetrics — 옆벽의 문', () => {
+  /** 문 윤곽(path)의 점들 — 왼쪽 옆벽 면 상자 기준 [x, y] */
+  const points = (shape: string) =>
+    [...shape.matchAll(/[ML](-?[\d.]+) (-?[\d.]+)/g)].map(([, x, y]) => [
+      Number(x),
+      Number(y),
+    ])
+
+  /*
+   * 1920 x 1080 · 앱 창(1294 x 697) · 벽감이 가장 낮아지는 창(한 장 배치 최소 높이)에서 잰 벽감과 병.
+   * 문이 옆벽 밖으로 삐져나가거나 천장 모서리를 뚫으면 옆벽이 두 조각으로 보입니다.
+   */
+  it.each([
+    [605, 360],
+    [355, 210],
+    [300, 180],
+  ])(
+    '벽감 %i · 병 %i 에서 문이 옆벽 사다리꼴 안에 선다',
+    (caseHeight, bottle) => {
+      const { bevel, ceil, wall, floor } = NICHE_FACES
+      const face = caseHeight - bevel * 2
+      for (const [x = 0, y = 0] of points(
+        doorMetrics(caseHeight, bottle).shape,
+      )) {
+        const depth = x / wall
+        expect(x).toBeGreaterThanOrEqual(0)
+        expect(x).toBeLessThanOrEqual(wall)
+        // 천장 모서리 아래 · 바닥 모서리 위(부동소수 여유 0.05)
+        expect(y).toBeGreaterThanOrEqual(ceil * depth)
+        expect(y).toBeLessThanOrEqual(face - floor * depth + 0.05)
+      }
+    },
+  )
+
+  it('문은 병이 설 만큼 높다 — 아치가 시작하는 높이가 병보다 높다(1920)', () => {
+    const { bevel, floor, wall } = NICHE_FACES
+    const face = 605 - bevel * 2
+    const door = doorMetrics(605, 360)
+    // 문 앞 가장자리(가장 얕은 곳)에서 바닥과 아치 사이의 세로 거리
+    const front = points(door.shape).filter(
+      ([x = 0]) => Math.abs(x - door.front) < 0.01,
+    )
+    const heights = front.map(([, y = 0]) => y)
+    const floorAt = face - floor * (door.front / wall)
+    expect(floorAt - Math.min(...heights)).toBeGreaterThan(360 * 0.95)
+  })
+
+  it('앞기둥 → 병이 벽 면을 지나는 자리 → 문 뒤 가장자리 순서로 선다', () => {
+    const door = doorMetrics(605, 360)
+    expect(door.front).toBeGreaterThan(0)
+    expect(door.plane).toBeGreaterThan(door.front)
+    expect(door.back).toBeGreaterThan(door.plane)
+    expect(door.back).toBeLessThan(NICHE_FACES.wall)
+  })
+
+  // 아치 밑 그늘(shelf-display.css 의 .shelf-door-hole)이 이 높이에서 시작합니다
+  it.each([
+    [605, 360],
+    [355, 210],
+    [300, 180],
+  ])('벽감 %i · 병 %i 에서 top 이 아치 꼭대기다', (caseHeight, bottle) => {
+    const door = doorMetrics(caseHeight, bottle)
+    const ys = points(door.shape).map(([, y = 0]) => y)
+    expect(door.top).toBe(Math.min(...ys))
+  })
+
+  /*
+   * 병 높이를 따라 솟던 사인 곡선 아치는 폭 34 에 높이 66 인 뾰족한 머리가 문설주와 꺾여 만나, 윗부분이
+   * 찌그러져 보였습니다. 문 폭에 맞춘 반타원이라야 둥근 머리로 읽힙니다.
+   */
+  it.each([
+    [605, 360],
+    [355, 210],
+    [300, 180],
+  ])(
+    '벽감 %i · 병 %i 에서 아치는 문설주에서 곧게 일어서는 둥근 머리다',
+    (caseHeight, bottle) => {
+      const door = doorMetrics(caseHeight, bottle)
+      // 윤곽은 앞 · 뒤 바닥 두 점 다음이 아치입니다(뒤 가장자리 → 앞 가장자리)
+      const [spring = [0, 0], next = [0, 0]] = points(door.shape).slice(2)
+      const [springX = 0, springY = 0] = spring
+      const [nextX = 0, nextY = 0] = next
+      // 뾰족하지 않다 — 솟는 높이가 반원(문 폭의 절반)보다 조금 높고 문 폭보다 낮다
+      const rise = (springY - door.top) / (door.back - door.front)
+      expect(rise).toBeGreaterThan(0.5)
+      expect(rise).toBeLessThan(1)
+      // 문설주와 꺾이지 않는다 — 첫 마디가 옆으로보다 위로 훨씬 크게 간다
+      expect(springY - nextY).toBeGreaterThan((springX - nextX) * 5)
+    },
+  )
+
+  /*
+   * 문 윤곽은 이 값으로 셈하고 면은 CSS 가 그립니다. 한쪽만 고치면 문이 옆벽에서 어긋나는데, 둘 다
+   * 화면으로는 "조금 이상하다" 로만 보이는 자리라 여기서 잡습니다. CSS 에는 내보내는 것이 없어
+   * 원문에서 줄머리에 선언된 것만 집습니다(주석에도 같은 이름이 있습니다).
+   */
+  it('CSS 의 벽감 면 치수와 NICHE_FACES 가 한 벌이다', () => {
+    const pick = (name: string) => {
+      // 줄머리의 들여쓰기(공백) 뒤 선언만 — `var(--wall)` 처럼 쓰인 자리는 안 뭅니다
+      const found = new RegExp(`^ *${name}: *([0-9.]+)px;`, 'm').exec(
+        shelfStyle,
+      )
+      if (!found?.[1]) throw new Error(`${name} 를 못 찾았다`)
+      return Number(found[1])
+    }
+    expect({
+      bevel: pick('--bevel'),
+      ceil: pick('--ceil'),
+      wall: pick('--wall'),
+      floor: pick('--floor'),
+      floorFront: pick('--floor-front'),
+    }).toEqual(NICHE_FACES)
   })
 })

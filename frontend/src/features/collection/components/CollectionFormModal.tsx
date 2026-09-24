@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
 import { Modal } from '@/shared/ui/Modal'
@@ -7,6 +8,7 @@ import { Textarea } from '@/shared/ui/Textarea'
 
 import type { CollectionInput } from '../types'
 
+import { COLLECTION_SHEET, PICK_SHEET_WIDTH } from './collectionSheet'
 import { ShelfItemPickList, type ShelfItemCandidate } from './ShelfItemPickList'
 
 type Props = {
@@ -22,6 +24,10 @@ type Props = {
 /**
  * 컬렉션 만들기 · 수정 모달 (A19). NOTE: 서버가 `shelfItemIds` 를 `@NotEmpty` 로 요구해
  * "향수 없이도 생성 가능" 은 지킬 수 없습니다 — 고르지 않으면 400 입니다.
+ *
+ * 이름 · 설명은 칸 위에 이름표를 보이게 답니다 — 자리표시 글만 두면 적기 시작하는 순간 무엇을 적는
+ * 칸인지 사라집니다. 두 칸은 명판 이름 · 상세 설명과 같은 명조 16 으로 받아, 적는 동안에도 설 모양이
+ * 보입니다(collection-cabinet.css 의 활자 단).
  */
 export function CollectionFormModal({
   open,
@@ -62,6 +68,7 @@ export function CollectionFormModal({
       open={open}
       onClose={onClose}
       title={editing ? '컬렉션 수정' : '컬렉션 만들기'}
+      className={cn(COLLECTION_SHEET, !editing && PICK_SHEET_WIDTH)}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
@@ -88,30 +95,32 @@ export function CollectionFormModal({
         </>
       }
     >
-      <div className="space-y-2.5">
+      {/* 남는 높이를 고르는 칸까지 이어 줍니다(COLLECTION_SHEET 의 본문 흐름) — 낮은 창에서 칸만 줄어듭니다 */}
+      <div className="flex min-h-0 flex-1 flex-col gap-5 py-1.25">
         <Input
-          label="제목"
-          hideLabel
-          placeholder="제목 *"
+          label="이름"
+          placeholder="예: 출근할 때"
           required
           value={title}
           onChange={(event) => setTitle(event.target.value)}
+          className="text-heading border-[var(--hairline)] bg-[var(--tag-paper-active)] px-3.75 font-serif font-semibold"
         />
         <Textarea
-          label="설명"
-          hideLabel
-          placeholder="설명 (선택)"
-          rows={4}
+          label="설명 (선택)"
+          placeholder="어떤 때 꺼내는 향들인지 적어 두세요"
+          rows={3}
           value={description}
           onChange={(event) => setDescription(event.target.value)}
+          className="text-heading border-[var(--hairline)] bg-[var(--tag-paper-active)] px-3.75 font-serif"
         />
 
         {editing ? (
-          <p className="text-ink-muted text-caption leading-relaxed">
-            제목 · 설명만 수정합니다. 구성 향수는 컬렉션 상세에서 고칩니다.
+          <p className="shelf-muted text-body leading-relaxed">
+            이름 · 설명만 고칩니다. 향수는 진열함 칸에서 담고 뺍니다.
           </p>
         ) : (
-          <>
+          <section className="flex min-h-0 flex-1 flex-col gap-3.75">
+            <h3 className="collection-sheet-heading">담을 향수</h3>
             <ShelfItemPickList
               candidates={candidates}
               picked={picked}
@@ -119,12 +128,14 @@ export function CollectionFormModal({
               keyword={keyword}
               onKeywordChange={setKeyword}
               emptyTitle="진열대에 담은 향수가 없습니다"
+              // 위에 이름 · 설명 칸이 있어 고르는 칸의 윗한도를 낮춥니다(1920 에서 380). 창이 낮으면 더 줄어듭니다
+              listClassName="max-h-[calc(var(--spacing)*95)]"
             />
-            <p className="text-ink-muted text-caption leading-relaxed">
+            <p className="shelf-muted text-caption leading-relaxed">
               컬렉션이 남에게 보이는 길은 자유 게시판의 컬렉션 공유 글뿐입니다.
               향수는 나중에 더 담을 수 있습니다.
             </p>
-          </>
+          </section>
         )}
       </div>
     </Modal>
