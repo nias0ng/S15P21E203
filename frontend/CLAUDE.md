@@ -250,7 +250,7 @@ import { perfumeDetailQuery } from '@/features/perfume/queries'   // X
 | `shared/ui/PageFallback` | 라우트 lazy 로딩용 전체 스피너 |
 | `shared/ui/LinkButton` | 버튼처럼 보이는 링크. **화면 이동은 `onClick` + navigate 대신 이걸 쓰세요** |
 | `shared/ui/AuthLinkButton` | 로그인해야 갈 수 있는 곳으로 보내는 단추 (C01). 비로그인이면 가지 않고 모달을 띄웁니다 |
-| `shared/ui/TileCard` | 격자에 반복되는 타일 (브랜드 · 노트 · 컬렉션). 이미지 슬롯 · 제목 · 한 줄 캡션 |
+| `shared/ui/TileCard` | 격자에 반복되는 타일 (브랜드 · 노트). 이미지 슬롯 · 제목 · 한 줄 캡션 |
 | `shared/ui/PillFilter` | 어둠 위에 놓이는 알약 필터. `required` 면 해제가 없습니다 — 밝은 화면은 `ChipToggle` |
 | `shared/ui/Pagination` | 쪽 넘김. `page` 는 **0부터**(백엔드와 같습니다) · 번호 다섯 개 · 한 쪽뿐이면 안 그립니다 |
 | `shared/ui/BottleSilhouette` | 사진이 없는 향수병 자리에 세우는 실루엣. 색은 `currentColor` 로 부르는 쪽이 정합니다 |
