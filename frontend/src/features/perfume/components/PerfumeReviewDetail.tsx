@@ -166,7 +166,8 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
           to={toPerfumeDetail(review.perfume.perfumeId)}
           state={perfumeViewState('COMMUNITY')}
           className={cn(
-            'border-line hover:border-accent-blush rounded-card',
+            // 흰 판 위라 테두리를 먹색으로 짙게 둡니다 — 유리판용 분홍(`accent-blush`)은 여기서 사라집니다
+            'border-ink/30 hover:border-accent-sunset rounded-card',
             'flex items-center gap-3.75 border p-2.5',
             'transition-colors duration-120 ease-out',
             'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
