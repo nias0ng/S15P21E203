@@ -1666,6 +1666,31 @@ describe('doorMetrics — 옆벽의 문', () => {
   })
 
   /*
+   * 병 높이를 따라 솟던 사인 곡선 아치는 폭 34 에 높이 66 인 뾰족한 머리가 문설주와 꺾여 만나, 윗부분이
+   * 찌그러져 보였습니다. 문 폭에 맞춘 반타원이라야 둥근 머리로 읽힙니다.
+   */
+  it.each([
+    [605, 360],
+    [355, 210],
+    [300, 180],
+  ])(
+    '벽감 %i · 병 %i 에서 아치는 문설주에서 곧게 일어서는 둥근 머리다',
+    (caseHeight, bottle) => {
+      const door = doorMetrics(caseHeight, bottle)
+      // 윤곽은 앞 · 뒤 바닥 두 점 다음이 아치입니다(뒤 가장자리 → 앞 가장자리)
+      const [spring = [0, 0], next = [0, 0]] = points(door.shape).slice(2)
+      const [springX = 0, springY = 0] = spring
+      const [nextX = 0, nextY = 0] = next
+      // 뾰족하지 않다 — 솟는 높이가 반원(문 폭의 절반)보다 조금 높고 문 폭보다 낮다
+      const rise = (springY - door.top) / (door.back - door.front)
+      expect(rise).toBeGreaterThan(0.5)
+      expect(rise).toBeLessThan(1)
+      // 문설주와 꺾이지 않는다 — 첫 마디가 옆으로보다 위로 훨씬 크게 간다
+      expect(springY - nextY).toBeGreaterThan((springX - nextX) * 5)
+    },
+  )
+
+  /*
    * 문 윤곽은 이 값으로 셈하고 면은 CSS 가 그립니다. 한쪽만 고치면 문이 옆벽에서 어긋나는데, 둘 다
    * 화면으로는 "조금 이상하다" 로만 보이는 자리라 여기서 잡습니다. CSS 에는 내보내는 것이 없어
    * 원문에서 줄머리에 선언된 것만 집습니다(주석에도 같은 이름이 있습니다).

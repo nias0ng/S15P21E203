@@ -1567,8 +1567,10 @@ export function tagMetrics(width: number, height: number): TagMetrics {
  * 옆벽에 선 문도 깊이마다 같은 비율로 줄여 그립니다(`scale`). 그래서 문은 사다리꼴 위에 아치를 얹은
  * 모양이고, 아치의 꼭대기도 깊이를 따라 기웁니다.
  *
- * 문 높이는 병 사진 칸 높이에서 셉니다 — 아치가 시작하는 높이가 병의 1.06 배, 아치가 그 위로 병의
- * 0.2 배 솟습니다. 병이 문설주에 걸리지 않고 들어가 보여야 "병이 들어갈 구멍" 으로 읽힙니다.
+ * 문 높이는 병 사진 칸 높이에서 셉니다 — 아치가 시작하는 높이가 병의 1.06 배입니다. 병이 문설주에
+ * 걸리지 않고 들어가 보여야 "병이 들어갈 구멍" 으로 읽힙니다. 아치는 **문 폭에 맞춘 반타원**입니다 —
+ * 문설주에서 곧게 일어서 둥글게 넘어갑니다. 예전에는 병 높이의 0.2 배를 사인 곡선으로 솟게 해서, 폭
+ * 34 에 높이 66 인 뾰족한 머리가 문설주와 꺾여 만나 윗부분이 찌그러져 보였습니다.
  *
  * 모양 · 깊이를 바꿀 때는 아래 상수만 고칩니다. 문이 천장 모서리를 넘지 않는지는 테스트가 봅니다.
  */
@@ -1594,11 +1596,15 @@ export const NICHE_FACES = {
 /** 문 앞 · 뒤 가장자리의 깊이(옆벽 폭 대비, 0 이 입구). 앞기둥은 입구에서 12% 입니다 */
 const DOOR_FRONT = 0.12
 const DOOR_BACK = 0.88
-/** 아치가 시작하는 높이 · 그 위로 솟는 높이 — 병 사진 칸 높이 대비 */
+/** 아치가 시작하는 높이 — 병 사진 칸 높이 대비 */
 const DOOR_SPRING = 1.06
-const DOOR_RISE = 0.2
-/** 아치를 꺾은선으로 나누는 수. 문 폭이 30px 남짓이라 이 정도면 꺾인 자리가 안 보입니다 */
-const DOOR_ARCH_STEPS = 12
+/**
+ * 아치가 솟는 높이 — 화면에서의 문 폭(앞 · 뒤 가장자리 사이) 대비. 반원(0.5)보다 조금 높여, 옆벽이 누운
+ * 만큼 좁아 보이는 둥근 머리로 둡니다
+ */
+const DOOR_RISE = 0.7
+/** 아치를 꺾은선으로 나누는 수 — 각도로 고르게 나눠, 문설주에서 일어서는 양 끝이 촘촘합니다 */
+const DOOR_ARCH_STEPS = 16
 
 export type DoorMetrics = {
   /** 옆벽 앞끝에서 문 앞 가장자리까지(px). 병은 여기서 앞기둥에 가려 사라집니다 */
@@ -1635,7 +1641,7 @@ export function doorMetrics(caseHeight: number, bottle: number): DoorMetrics {
   // 깊이 d 에서 입구의 1px 이 몇 px 로 줄어드는가 — 그 깊이의 옆벽 높이 / 입구 높이
   const scale = (depth: number) => (floorAt(depth) - ceilingAt(depth)) / face
   const spring = bottle * DOOR_SPRING
-  const rise = bottle * DOOR_RISE
+  const rise = wall * (DOOR_BACK - DOOR_FRONT) * DOOR_RISE
   /*
    * 바닥에서 height 만큼 올라간 벽 위의 점. 아치 꼭대기가 천장 모서리에 닿으면(병이 벽감을 거의
    * 채우는 좁고 낮은 창) 모서리 조금 아래에서 멈춥니다 — 문이 천장까지 뚫리면 옆벽이 두 조각이 됩니다.
@@ -1647,10 +1653,12 @@ export function doorMetrics(caseHeight: number, bottle: number): DoorMetrics {
   }
   const at = ([x, y]: [number, number]) => `${f(x)} ${f(y)}`
 
+  // 반타원 — 뒤 가장자리(0)에서 앞 가장자리(π)까지 각도로 나눕니다
   const arch = Array.from({ length: DOOR_ARCH_STEPS + 1 }, (_, step) => {
-    const t = step / DOOR_ARCH_STEPS
+    const angle = (Math.PI * step) / DOOR_ARCH_STEPS
+    const t = (1 - Math.cos(angle)) / 2
     const depth = DOOR_BACK + (DOOR_FRONT - DOOR_BACK) * t
-    return point(depth, spring + rise * Math.sin(Math.PI * t))
+    return point(depth, spring + rise * Math.sin(angle))
   })
   const path = [
     `M${at(point(DOOR_FRONT, 0))}`,
