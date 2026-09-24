@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -176,6 +176,75 @@ describe('RecommendLetter', () => {
         name: '마음에 든 향과 닮은 향수를 찾았어요',
       }),
     ).toBeInTheDocument()
+  })
+
+  it('움직일 수 있으면 윗칸 띠로 와서 아래 두 칸이 하나씩 내려오고, 다 펴지면 사본을 걷는다', async () => {
+    // jsdom 에는 Web Animations 가 없어서, 건 움직임을 받아 두기만 하는 가짜를 답니다
+    const started: {
+      target: Element
+      options?: KeyframeAnimationOptions
+      animation: Animation
+    }[] = []
+    Object.defineProperty(Element.prototype, 'animate', {
+      configurable: true,
+      value: function (
+        this: Element,
+        _keyframes: Keyframe[],
+        options?: KeyframeAnimationOptions,
+      ) {
+        const animation = {
+          cancel: vi.fn(),
+          onfinish: null,
+        } as unknown as Animation
+        started.push({ target: this, options, animation })
+        return animation
+      },
+    })
+    try {
+      const user = userEvent.setup()
+      const { container } = renderLetter()
+      await user.click(
+        screen.getByRole('button', { name: '새로 온 향수 편지 열기' }),
+      )
+
+      // 진짜 편지는 윗칸만 남기고, 아래 두 칸은 낭독기에서 빠진 사본이 맡습니다
+      const letter = screen.getByRole('region', {
+        name: '당신을 위한 향수 편지',
+      })
+      expect(letter).toHaveAttribute('data-folded')
+      expect(container.querySelector('.rec-fold')).toHaveAttribute(
+        'aria-hidden',
+        'true',
+      )
+      expect(
+        screen.getAllByRole('heading', {
+          name: '마음에 든 향과 닮은 향수를 찾았어요',
+        }),
+      ).toHaveLength(1)
+      expect(screen.getByRole('button', { name: '편지 접기' })).toHaveFocus()
+
+      // 가운데 칸이 먼저, 아랫칸이 뒤에 내려옵니다
+      const delay = (panel: string) =>
+        started.find(({ target }) =>
+          target.matches(`.rec-fold-panel[data-panel='${panel}']`),
+        )?.options?.delay ?? Number.NaN
+      expect(delay('middle')).toBeLessThan(delay('bottom'))
+
+      // 편지 상자의 움직임이 끝나면 사본을 걷고 진짜 편지를 다 드러냅니다
+      const move = started.find(({ target }) =>
+        target.classList.contains('rec-letter'),
+      )?.animation
+      act(() => {
+        move?.onfinish?.call(
+          move,
+          new Event('finish') as AnimationPlaybackEvent,
+        )
+      })
+      expect(container.querySelector('.rec-fold')).not.toBeInTheDocument()
+      expect(letter).not.toHaveAttribute('data-folded')
+    } finally {
+      Reflect.deleteProperty(Element.prototype, 'animate')
+    }
   })
 
   it('Esc 로 접으면 봉투로 포커스가 돌아온다', async () => {

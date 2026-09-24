@@ -77,6 +77,37 @@ const HEADLINE: Record<PersonalReasonSource | 'unknown', string> = {
 const prefersReducedMotion = () =>
   window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 
+/**
+ * 한 칸씩 펼치기의 시간(ms, 아래 RecommendLetter 의 "펼치기"). 봉투에서 나온 편지가 윗칸만 보이는
+ * 띠로 패널 윗자리까지 오고(strip), 가운데 칸 · 아랫칸이 접힌 자국을 축으로 하나씩 내려옵니다(swing
+ * — 아랫칸은 stagger 뒤에 따라붙습니다). 덮개가 먼저 젖혀지도록 delay 만큼 늦게 출발합니다.
+ */
+const UNFOLD = { delay: 110, strip: 440, swing: 400, stagger: 300 } as const
+
+/**
+ * 칸 하나가 내려오는 모양. 뒤로 접혀 있던 칸이 접힌 자국을 축으로 떨어지듯 내려와 한 번 지나쳤다가
+ * 앉습니다. 옆으로 선(-90°) 칸은 보이지 않아, 뒤에 숨어 있던 반바퀴는 건너뜁니다.
+ */
+const SWING: Keyframe[] = [
+  {
+    transform: 'perspective(900px) rotateX(-90deg)',
+    easing: 'cubic-bezier(0.55, 0, 0.8, 0.45)',
+  },
+  {
+    transform: 'perspective(900px) rotateX(5deg)',
+    offset: 0.72,
+    easing: 'cubic-bezier(0.3, 0.7, 0.4, 1)',
+  },
+  { transform: 'perspective(900px) rotateX(0deg)' },
+]
+
+/** 내려오는 칸의 그늘 — 기운 동안 접힌 자국 쪽이 그늘지고, 다 내려오면 걷힙니다 */
+const SHADE: Keyframe[] = [
+  { opacity: 1 },
+  { opacity: 0, offset: 0.72 },
+  { opacity: 0 },
+]
+
 /** 요소의 상자 — 위치 기준 상자(부모) 안에서 잰 값입니다. 흐르는 중이면 흐르는 그 자리입니다 */
 function boxIn(element: HTMLElement) {
   const own = element.getBoundingClientRect()
@@ -95,6 +126,14 @@ type Box = ReturnType<typeof boxIn>
 
 const px = (value: number) => `${Math.round(value * 100) / 100}px`
 
+/** 상자를 Web Animations 의 한 장면으로 — 위치 기준 상자 안의 위치 · 크기 */
+const edges = (box: Box) => ({
+  top: px(box.top),
+  left: px(box.left),
+  width: px(box.width),
+  height: px(box.height),
+})
+
 /**
  * 개인화 맞춤 향수 편지 (REC-12 · REC-13, S15P21E203-431).
  *
@@ -109,12 +148,17 @@ const px = (value: number) => `${Math.round(value * 100) / 100}px`
  * 취향 테스트를 안 한 사람(400)에게는 **봉하지 않은 봉투**가 꽂혀, 펼치면 테스트로 이끄는 짧은 편지가
  * 나옵니다. 추천할 것이 없으면(404 · 503) 봉투를 꽂지 않습니다 — 빈 편지는 아무 말도 안 합니다.
  *
- * ── 펼치기 (모핑) ─────────────────────────────────────────
- * 봉투와 편지는 **한 상자**입니다. 누르면 덮개가 젖혀지고, 상자가 봉투 자리에서 패널 자리까지 자라며
- * (위치 · 크기를 재어 Web Animations 로 잇습니다 — 처음 잰 자리에서 끝 자리로), 봉투 겉면이 걷히고
- * 편지 글이 떠오릅니다. 편지에는 봉투에 넣느라 세 번 접었던 **접힌 자국** 두 줄이 남아 있습니다.
- * 접을 때는 거꾸로 봉투 자리로 줄어듭니다. 편지 글은 처음부터 패널 크기로 짜 두고 상자가 그만큼
- * 드러내기만 해서, 자라는 동안 글줄이 다시 흐르지 않습니다.
+ * ── 펼치기 — 한 칸씩 ─────────────────────────────────────
+ * 봉투와 편지는 **한 상자**입니다. 누르면 덮개가 젖혀지고, 편지는 봉투에 넣느라 세 번 접은 그대로
+ * (윗칸만 보이는 띠) 패널 윗자리로 옮겨 간 뒤, 가운데 칸 · 아랫칸이 **접힌 자국을 축으로 하나씩
+ * 내려와** 펼쳐집니다. 예전에는 봉투가 한 번에 패널 크기로 자라서, 상세가 편지로 바뀐 것이 안
+ * 읽혔습니다 — 칸이 하나씩 상세를 덮어 가야 "편지가 펼쳐졌다" 가 보입니다.
+ *
+ * 상자는 위치 · 크기를 재어 Web Animations 로 잇습니다(봉투 자리 → 띠 → 다 펴지면 패널 자리). 편지
+ * 글은 처음부터 패널 크기로 짜 두어 옮겨 가는 동안 글줄이 다시 흐르지 않습니다. 내려오는 두 칸은 같은
+ * 편지를 그린 **사본**이고(.rec-fold — 낭독기 · 탭 순서에서 빠집니다), 그동안 진짜 편지는 윗칸만 남기고
+ * 잘라 둡니다. 다 펴진 사본은 진짜 편지와 같은 자리 · 같은 그림이라, 사본을 걷는 순간이 안 보입니다.
+ * 접을 때는 칸을 접지 않고 봉투 자리로 곧장 줄어듭니다 — 닫는 것은 빨라야 합니다.
  *
  * ── 편지 ─────────────────────────────────────────────
  * 받는 사람 · 머리말(근거의 갈래) · 병 · 브랜드와 이름 · 근거 문장(근거가 된 향 특성에 형광펜) ·
@@ -142,9 +186,15 @@ export function RecommendLetter({
   const rootRef = useRef<HTMLDivElement>(null)
   const envelopeRef = useRef<HTMLButtonElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
+  const middleRef = useRef<HTMLDivElement>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
   const sheetId = useId()
   const [open, setOpen] = useState(false)
   const openRef = useRef(false)
+  /** 한 칸씩 펼치는 중 — 아래 두 칸의 사본이 서 있고 진짜 편지는 윗칸만 보입니다 */
+  const [folding, setFolding] = useState(false)
+  /** 펼치기에 건 움직임들. 펼치는 도중에 접으면 여기서 멈춥니다 */
+  const unfolding = useRef<Animation[]>([])
   /** 펼치거나 접기 직전의 상자. 레이아웃 효과가 여기서 새 자리까지 잇습니다 */
   const from = useRef<Box | null>(null)
   /** 편지 글을 짜 두는 크기 — 펼친 상자(= 패널 자리)의 크기입니다 */
@@ -177,8 +227,12 @@ export function RecommendLetter({
       from.current = boxIn(root)
       for (const animation of root.getAnimations?.() ?? []) animation.cancel()
     }
+    for (const animation of unfolding.current) animation.cancel()
+    unfolding.current = []
     openRef.current = next
     setOpen(next)
+    // Web Animations 가 없으면(오래된 브라우저 · 테스트 환경) 칸을 나누지 않고 곧바로 펼칩니다
+    setFolding(next && !!root?.animate && !prefersReducedMotion())
   }, [])
 
   /*
@@ -192,21 +246,46 @@ export function RecommendLetter({
     // Web Animations 가 없으면(오래된 브라우저 · 테스트 환경) 자라지 않고 곧바로 바뀝니다
     if (!root?.animate || !start || prefersReducedMotion()) return
     const end = boxIn(root)
+    const middle = middleRef.current
+    const bottom = bottomRef.current
+
+    /*
+     * 한 칸씩 펼치기 — 상자는 봉투 자리에서 **윗칸만 한 띠**로 옮겨 가 칸이 다 내려올 때까지 그 띠로
+     * 머뭅니다. 움직임이 끝나면 상자가 제 자리(패널 자리)로 돌아오고, 같은 순간에 사본을 걷습니다.
+     */
+    if (open && middle && bottom) {
+      root.style.setProperty('--fold-h', px(end.height))
+      const strip = { ...end, height: end.height / 3 }
+      const landed = UNFOLD.strip + UNFOLD.stagger + UNFOLD.swing
+      const move = root.animate(
+        [
+          { ...edges(start), easing: 'cubic-bezier(0.22, 0.9, 0.24, 1)' },
+          { ...edges(strip), offset: UNFOLD.strip / landed },
+          edges(strip),
+        ],
+        { duration: landed, delay: UNFOLD.delay, fill: 'backwards' },
+      )
+      move.onfinish = () => setFolding(false)
+      unfolding.current = [
+        move,
+        ...[middle, bottom].flatMap((panel, index) => {
+          const timing: KeyframeAnimationOptions = {
+            duration: UNFOLD.swing,
+            delay: UNFOLD.delay + UNFOLD.strip + UNFOLD.stagger * index,
+            fill: 'both',
+          }
+          const shade = panel.querySelector('.rec-fold-shade')
+          return [
+            panel.animate(SWING, timing),
+            ...(shade ? [shade.animate(SHADE, timing)] : []),
+          ]
+        }),
+      ]
+      return
+    }
+
     root.animate(
-      [
-        {
-          top: px(start.top),
-          left: px(start.left),
-          width: px(start.width),
-          height: px(start.height),
-        },
-        {
-          top: px(end.top),
-          left: px(end.left),
-          width: px(end.width),
-          height: px(end.height),
-        },
-      ],
+      [edges(start), edges(end)],
       open
         ? {
             duration: 560,
@@ -313,6 +392,162 @@ export function RecommendLetter({
       : null
   const detailHref = letter ? toPerfumeDetail(letter.perfumeId) : null
 
+  /**
+   * 편지 글 한 벌. 진짜 편지와, 한 칸씩 펼치는 동안 내려오는 두 칸의 사본이 같은 글을 그립니다
+   * — 사본(copy)에는 포커스 손잡이를 달지 않습니다.
+   */
+  const page = (copy: boolean) => (
+    <div className="rec-sheet-page">
+      <div className="rec-sheet-head">
+        <p className="rec-kicker" lang="en">
+          For you
+        </p>
+        <button
+          ref={copy ? undefined : closeRef}
+          type="button"
+          aria-label="편지 접기"
+          className="rec-close"
+          onClick={() => toggle(false)}
+        >
+          <svg
+            aria-hidden
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+            className="size-4"
+          >
+            <path d="m4 4 8 8M12 4l-8 8" />
+          </svg>
+        </button>
+      </div>
+
+      {recipient && (
+        <p className="rec-salutation font-serif">{recipient}님께</p>
+      )}
+
+      {invitation ? (
+        <TasteTestInvitation />
+      ) : (
+        letter &&
+        reason &&
+        detailHref && (
+          /*
+            편지마다 key 를 달아 새로 그립니다 — 다른 향수를 받으면 글이 한 번 떠오르며 바뀝니다.
+          */
+          <div key={letter.recommendationToken} className="rec-body">
+            <h3 className="rec-headline font-serif">
+              {HEADLINE[reason.source ?? 'unknown']}
+            </h3>
+
+            <Link
+              to={detailHref}
+              state={perfumeViewState('PERSONALIZED_RECOMMENDATION')}
+              className="rec-perfume"
+            >
+              {/* 향수병은 배경이 투명한 사진이라 상자를 그리지 않습니다 — 테두리 · 바탕 둘 다 */}
+              <span className="rec-bottle">
+                {letter.imageUrl ? (
+                  <img src={letter.imageUrl} alt="" />
+                ) : (
+                  <span className="rec-bottle-empty">사진 준비 중</span>
+                )}
+              </span>
+              <span className="rec-perfume-name">
+                {shownFacts?.brand && (
+                  <span className="rec-brand">{shownFacts.brand}</span>
+                )}
+                {shownFacts?.nameEn && (
+                  <span aria-hidden className="rec-name-en" lang="en">
+                    {shownFacts.nameEn}
+                  </span>
+                )}
+                <span className="rec-name font-serif">{letter.name}</span>
+              </span>
+            </Link>
+
+            <ReasonLine reason={reason} />
+
+            {shownFacts && shownFacts.accords.length > 0 && (
+              <ul className="rec-accords" aria-label="이 향수의 향 특성">
+                {shownFacts.accords.slice(0, ACCORD_CHIPS).map((accord) => (
+                  <li
+                    key={accord}
+                    data-match={accord === reason.keyword ? '' : undefined}
+                  >
+                    {accord}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="rec-actions">
+              <LinkButton
+                to={detailHref}
+                state={perfumeViewState('PERSONALIZED_RECOMMENDATION')}
+                variant="outline"
+                size="sm"
+                className="rec-action"
+              >
+                자세히 보기
+              </LinkButton>
+              {renderSave?.(letter.perfumeId)}
+            </div>
+          </div>
+        )
+      )}
+
+      {!invitation && (
+        <div className="rec-foot">
+          {letters.length > 1 ? (
+            <div className="rec-pager">
+              <button
+                type="button"
+                aria-label="앞 편지"
+                disabled={at <= 0}
+                onClick={() => setAt(at - 1)}
+              >
+                ‹
+              </button>
+              <span className="tabular-nums">
+                {at + 1} / {letters.length}
+              </span>
+              <button
+                type="button"
+                aria-label="다음 편지"
+                disabled={at >= letters.length - 1}
+                onClick={() => setAt(at + 1)}
+              >
+                ›
+              </button>
+            </div>
+          ) : (
+            <span />
+          )}
+          <button
+            type="button"
+            className="rec-next"
+            disabled={isRefreshing}
+            onClick={onNext}
+          >
+            <span
+              aria-hidden
+              className={cn('rec-next-icon', isRefreshing && 'animate-spin')}
+            >
+              ↻
+            </span>
+            {isRefreshing ? '새 편지를 봉하는 중' : '다른 향수 추천받기'}
+          </button>
+        </div>
+      )}
+
+      <p aria-hidden className="rec-sign font-serif">
+        향해 드림
+      </p>
+    </div>
+  )
+
   return (
     <div
       ref={rootRef}
@@ -373,167 +608,33 @@ export function RecommendLetter({
         id={sheetId}
         aria-label="당신을 위한 향수 편지"
         className="rec-sheet"
+        data-folded={folding ? '' : undefined}
         inert={!open}
       >
-        {open && (
-          <div className="rec-sheet-page">
-            <div className="rec-sheet-head">
-              <p className="rec-kicker" lang="en">
-                For you
-              </p>
-              <button
-                ref={closeRef}
-                type="button"
-                aria-label="편지 접기"
-                className="rec-close"
-                onClick={() => toggle(false)}
-              >
-                <svg
-                  aria-hidden
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  className="size-4"
-                >
-                  <path d="m4 4 8 8M12 4l-8 8" />
-                </svg>
-              </button>
-            </div>
-
-            {recipient && (
-              <p className="rec-salutation font-serif">{recipient}님께</p>
-            )}
-
-            {invitation ? (
-              <TasteTestInvitation />
-            ) : (
-              letter &&
-              reason &&
-              detailHref && (
-                /*
-                편지마다 key 를 달아 새로 그립니다 — 다른 향수를 받으면 글이 한 번 떠오르며 바뀝니다.
-              */
-                <div key={letter.recommendationToken} className="rec-body">
-                  <h3 className="rec-headline font-serif">
-                    {HEADLINE[reason.source ?? 'unknown']}
-                  </h3>
-
-                  <Link
-                    to={detailHref}
-                    state={perfumeViewState('PERSONALIZED_RECOMMENDATION')}
-                    className="rec-perfume"
-                  >
-                    {/* 향수병은 배경이 투명한 사진이라 상자를 그리지 않습니다 — 테두리 · 바탕 둘 다 */}
-                    <span className="rec-bottle">
-                      {letter.imageUrl ? (
-                        <img src={letter.imageUrl} alt="" />
-                      ) : (
-                        <span className="rec-bottle-empty">사진 준비 중</span>
-                      )}
-                    </span>
-                    <span className="rec-perfume-name">
-                      {shownFacts?.brand && (
-                        <span className="rec-brand">{shownFacts.brand}</span>
-                      )}
-                      {shownFacts?.nameEn && (
-                        <span aria-hidden className="rec-name-en" lang="en">
-                          {shownFacts.nameEn}
-                        </span>
-                      )}
-                      <span className="rec-name font-serif">{letter.name}</span>
-                    </span>
-                  </Link>
-
-                  <ReasonLine reason={reason} />
-
-                  {shownFacts && shownFacts.accords.length > 0 && (
-                    <ul className="rec-accords" aria-label="이 향수의 향 특성">
-                      {shownFacts.accords
-                        .slice(0, ACCORD_CHIPS)
-                        .map((accord) => (
-                          <li
-                            key={accord}
-                            data-match={
-                              accord === reason.keyword ? '' : undefined
-                            }
-                          >
-                            {accord}
-                          </li>
-                        ))}
-                    </ul>
-                  )}
-
-                  <div className="rec-actions">
-                    <LinkButton
-                      to={detailHref}
-                      state={perfumeViewState('PERSONALIZED_RECOMMENDATION')}
-                      variant="outline"
-                      size="sm"
-                      className="rec-action"
-                    >
-                      자세히 보기
-                    </LinkButton>
-                    {renderSave?.(letter.perfumeId)}
-                  </div>
-                </div>
-              )
-            )}
-
-            {!invitation && (
-              <div className="rec-foot">
-                {letters.length > 1 ? (
-                  <div className="rec-pager">
-                    <button
-                      type="button"
-                      aria-label="앞 편지"
-                      disabled={at <= 0}
-                      onClick={() => setAt(at - 1)}
-                    >
-                      ‹
-                    </button>
-                    <span className="tabular-nums">
-                      {at + 1} / {letters.length}
-                    </span>
-                    <button
-                      type="button"
-                      aria-label="다음 편지"
-                      disabled={at >= letters.length - 1}
-                      onClick={() => setAt(at + 1)}
-                    >
-                      ›
-                    </button>
-                  </div>
-                ) : (
-                  <span />
-                )}
-                <button
-                  type="button"
-                  className="rec-next"
-                  disabled={isRefreshing}
-                  onClick={onNext}
-                >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      'rec-next-icon',
-                      isRefreshing && 'animate-spin',
-                    )}
-                  >
-                    ↻
-                  </span>
-                  {isRefreshing ? '새 편지를 봉하는 중' : '다른 향수 추천받기'}
-                </button>
-              </div>
-            )}
-
-            <p aria-hidden className="rec-sign font-serif">
-              향해 드림
-            </p>
-          </div>
-        )}
+        {open && page(false)}
       </section>
+
+      {/*
+        한 칸씩 펼치는 동안만 서는 가운데 칸 · 아랫칸 — 같은 편지를 그린 사본이 접힌 자국을 축으로
+        내려옵니다(위 "펼치기"). 낭독기에서 빠지고 사본은 누를 수 없습니다. 칸 상자는 inert 가 아니라
+        아직 안 내려온 자리를 누른 것이 편지 밑 상세로 새지 않습니다.
+      */}
+      {folding && (
+        <div aria-hidden className="rec-fold">
+          <div ref={middleRef} className="rec-fold-panel" data-panel="middle">
+            <div inert className="rec-sheet">
+              {page(true)}
+            </div>
+            <span className="rec-fold-shade" />
+          </div>
+          <div ref={bottomRef} className="rec-fold-panel" data-panel="bottom">
+            <div inert className="rec-sheet">
+              {page(true)}
+            </div>
+            <span className="rec-fold-shade" />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

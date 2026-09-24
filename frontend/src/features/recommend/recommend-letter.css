@@ -38,6 +38,8 @@
     --crease-shade: oklch(0.4 0.02 60 / 0.07);
     --crease-dark: oklch(0.4 0.02 60 / 0.16);
     --crease-light: oklch(1 0 0 / 0.75);
+    /* 한 칸씩 펼칠 때 내려오는 칸이 기운 동안 접힌 자국 쪽에 드는 그늘 */
+    --fold-shade: oklch(0.32 0.025 58 / 0.3);
 
     /* 봉투 크기와 자리 — 패널 윗변에 15 만큼 꽂힙니다 */
     --env-w: calc(var(--spacing) * 42.5);
@@ -346,12 +348,12 @@
   /* ───────── 편지 ───────── */
 
   /*
-   * 편지 한 장. **패널 자리 크기로 처음부터 짜 둡니다**(--letter-w · --letter-h) — 봉투에서 자라는 상자가
-   * 이 종이를 드러내기만 해서, 자라는 동안 글줄이 다시 흐르지 않습니다. 접힌 자국 두 줄은 봉투에 넣느라
-   * 세 번 접었던 자리입니다(1/3 · 2/3).
+   * 편지 한 장. **패널 자리 크기로 처음부터 짜 둡니다**(--letter-w · --letter-h) — 봉투에서 옮겨 가는 상자가
+   * 이 종이를 드러내기만 해서, 옮겨 가는 동안 글줄이 다시 흐르지 않습니다. 접힌 자국 두 줄은 봉투에 넣느라
+   * 세 번 접었던 자리이고(1/3 · 2/3), 펼칠 때 칸이 이 자국을 축으로 하나씩 내려옵니다(아래 "한 칸씩 펼치기").
    *
-   * 글은 봉투 겉면이 걷히고(0.28초) 상자가 거의 다 자란 뒤(0.33초 뒤부터) 떠오릅니다. 접을 때는 글부터
-   * 빠르게 사라집니다.
+   * 글은 봉투 겉면이 걷히고(0.28초) 윗칸 띠가 패널 윗자리에 거의 닿을 때(0.33초 뒤부터) 떠오릅니다. 접을
+   * 때는 글부터 빠르게 사라집니다.
    */
   .rec-sheet {
     /*
@@ -411,6 +413,69 @@
     transition:
       opacity 280ms ease-out 330ms,
       visibility 0s;
+  }
+
+  /*
+   * ───────── 한 칸씩 펼치기 ─────────
+   *
+   * 봉투에서 나온 편지는 세 번 접힌 그대로 **윗칸만 보이는 띠**로 패널 윗자리에 오고, 가운데 칸 · 아랫칸이
+   * 접힌 자국을 축으로 하나씩 내려옵니다. 움직임은 RecommendLetter 가 Web Animations 로 겁니다 — 여기는
+   * 칸의 자리와 모양입니다.
+   *
+   * 펼치는 동안 진짜 편지는 윗칸만 남기고(data-folded) 아래 두 칸은 같은 편지를 그린 사본(.rec-fold)이
+   * 맡습니다. 사본은 진짜 편지와 같은 크기로 짜서 칸 높이만큼 올려 두어, 칸 안에는 진짜 편지의 그 칸이
+   * 그대로 비칩니다 — 다 내려온 칸은 진짜 편지와 한 그림이라 사본을 걷는 순간이 안 보입니다.
+   *
+   * 칸 자리는 편지 글의 높이(--fold-h, 펼칠 때 잽니다)로 셉니다. 편지 상자는 펼치는 동안 띠 높이로
+   * 움직이고 있어서 상자의 %로는 못 셉니다.
+   */
+  .rec-sheet[data-folded] {
+    clip-path: inset(0 0 66.6667% 0);
+  }
+  .rec-fold {
+    position: absolute;
+    top: calc(var(--fold-h) / 3);
+    left: 0;
+    width: var(--letter-w);
+    height: calc(var(--fold-h) * 2 / 3);
+  }
+  /*
+   * 칸 하나 — 윗변(접힌 자국)이 축입니다. 뒤로 접혀 있다 내려오므로 뒷면은 보일 일이 없습니다. 칸 그림자는
+   * 편지 상자의 그림자와 같습니다 — 아랫칸이 아직 접혀 있는 동안 가운데 칸이 편지의 아랫단입니다.
+   */
+  .rec-fold-panel {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    overflow: hidden;
+    transform-origin: 50% 0;
+    backface-visibility: hidden;
+    box-shadow: 0 18px 32px -20px var(--letter-cast);
+  }
+  .rec-fold-panel[data-panel='middle'] {
+    top: 0;
+  }
+  .rec-fold-panel[data-panel='bottom'] {
+    top: 50%;
+    border-radius: 0 0 14px 14px;
+  }
+  /* 사본 편지 — 칸 높이(= 편지의 1/3)만큼 올려, 칸 안에 제 칸 자리가 오게 합니다. 떠오르지 않고 늘 보입니다 */
+  .rec-letter[data-open] .rec-fold-panel > .rec-sheet {
+    position: absolute;
+    top: -100%;
+    left: 0;
+    opacity: 1;
+    visibility: visible;
+    transition: none;
+  }
+  .rec-letter[data-open] .rec-fold-panel[data-panel='bottom'] > .rec-sheet {
+    top: -200%;
+  }
+  .rec-fold-shade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, var(--fold-shade), transparent 75%);
   }
 
   .rec-sheet-page {
