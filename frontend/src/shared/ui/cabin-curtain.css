@@ -1,0 +1,213 @@
+/*
+ * 선실로 들어가기 — 메인 3D 에서 진열대로 (2026-09-24)
+ *
+ * 카메라가 배를 향해 줌인하는 동안(엔진 `landing/src/cabin-in.js`) 그 배에서 **구름이
+ * 스며 번져** 화면을 덮고, 덮인 채 구름 결이 숨을 쉬다가 진열대가 준비되면 **메인에 들어올 때처럼
+ * 가운데서 열리며** 걷힙니다. 시계와 단계는 잠수와 같은 것을 씁니다 (`DiveCurtain` ·
+ * `shared/lib/diveTrack.ts` 의 '선실로 들어가기').
+ *
+ * 잠수(`dive-curtain.css`)와 판을 나눈 까닭은 **모양**입니다. 잠수는 화면 아래끝에서 차오르는 물이고,
+ * 이쪽은 배 한 점에서 결을 따라 스며 나가는 구름입니다. 진열대를 잠수에서 뺀 것도 두 연출이 서로를
+ * 흉내 내지 않게 하려는 것이었습니다 (S15P21E203-340).
+ *
+ * 색도 걷힘도 **메인에 들어올 때의 구름**입니다 (2026-09-24 사용자 : *"어두운색으로 변하는게아니라 메인
+ * 진입시 구름색으로"* · *"걷히는 것도 메인 진입처럼 가운데서 열리게 … 배로 이동한다는 느낌만"*) —
+ * 로딩 커튼(`features/map/scene-boot.css` · 첫 진입은 `index.html` 의 `#boot`)의 거의 흰 바탕 · 따뜻한
+ * 회색 구름 결 · 가운데서 열리는 걷힘을 그대로 씁니다. 메인에 들어올 때 걷히던 그 구름을 진열대로 갈 때
+ * 다시 지나가는 셈이라 두 도착이 한 말투가 됩니다. 진열대의 색은 모릅니다 — 그 화면의 색은 재개편
+ * 중이라, 걷히는 쪽은 색을 맞추지 않습니다.
+ *
+ * 움직이는 것 :
+ *   번질 때    구름 — `DiveCurtain` 이 rAF 안에서 성긴 캔버스에 칠하고(`shared/lib/inkBleed`), 이 파일이
+ *              그 캔버스를 화면 크기로 늘립니다
+ *   기다릴 때  구름 결의 숨 — `transform` 애니메이션 (합성 단계 · 로딩 커튼과 같은 숨)
+ *   걷힐 때    구름 한 겹의 `transform` · `opacity` 뿐 (합성 단계) — 진열대가 병 사진을 푸는 동안에도 흐릅니다
+ */
+
+.cabin-curtain {
+  /*
+   * 걷히는 시간 — 메인 진입(1초)보다 **느립니다.** 구멍이 천천히 커지며 구름 속으로 들어가는 동안이
+   * '배로 들어간다' 입니다 (사용자 : *"좀 천천히 줌인 되어도 괜찮음"*). 화면으로 정할 값입니다.
+   * NOTE: `shared/lib/diveTrack.ts` 의 CABIN_LIFT_MS 와 같은 값이어야 합니다
+   */
+  --cabin-lift: 1600ms;
+  /*
+   * 구름의 바탕 · 구름 결 — 메인 로딩 커튼의 `--boot-bg` · `--boot-cloud` 와 **같은 값**입니다.
+   * NOTE: 세 곳(`index.html` 의 `#boot` · `features/map/scene-boot.css` · 여기)이 한 벌입니다. 로딩 커튼은
+   *   앱 CSS 가 오기 전에 칠해져서 토큰을 못 쓰고, 이 커튼은 그 파일의 변수 범위(`.scene-boot`) 밖이라
+   *   옮겨 적었습니다 — 갈라지면 `features/map/scene-boot.test.ts` 가 잡습니다.
+   */
+  --cabin-veil: #fcfbf8;
+  /* rgb 채널만 — 알파는 쓰는 자리에서 붙입니다 (로딩 커튼과 같은 꼴) */
+  --cabin-cloud: 236 230 220;
+  /*
+   * 캔버스가 구름의 색을 여기서 읽어 갑니다 (`DiveCurtain` 의 `bleedPainter` — 커튼을 거는 순간 한 번).
+   * NOTE: 색을 바꿀 때는 위 `--cabin-veil` 을 고칩니다. 이 줄은 그 값을 캔버스에 넘기는 통로입니다.
+   */
+  color: var(--cabin-veil);
+  /*
+   * 걷힘의 구멍 — 로딩 커튼과 같은 틀입니다 (`--boot-hole` · `--boot-hole-soft` · `--boot-open` · `--boot-ease`).
+   * 트이기 시작하는 구멍과 그 가장자리가 흐려지는 끝 — 이 둘이 커지는 게 아니라 **겹이 커집니다.**
+   * 구멍 4vmin × 24 = 96vmin 이라 걷힘의 끝에 화면 대각선을 막 넘습니다.
+   * NOTE: 시간만 로딩 커튼과 다릅니다 (위 `--cabin-lift`) — 구멍 · 배율 · 곡선은 같은 값에서 출발했습니다.
+   */
+  --cabin-hole: 4vmin;
+  --cabin-hole-soft: 17vmin;
+  --cabin-open: 24;
+  --cabin-ease: cubic-bezier(0.45, 0, 0.55, 1);
+}
+
+.cabin-curtain[data-stage='lifting'] {
+  pointer-events: none;
+}
+
+/*
+ * 구름 한 겹 — 스며든 구름(캔버스 · `-veil`)과 구름 결(`-drift`)을 한데 묶습니다. 걷힐 때 **이 겹이 통째로**
+ * 가운데가 뚫린 채 커집니다 (아래 걷힘).
+ * NOTE: `overflow: hidden` — 구름 결은 숨 쉴 자리로 화면보다 15% 넓어서, 안 자르면 마스크 밖으로 샙니다
+ *   (로딩 커튼의 `-veil` 과 같은 까닭).
+ */
+.cabin-curtain-cloud {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  will-change: transform, opacity;
+}
+
+/*
+ * 구름 — 배에서 **스며들듯** 번집니다.
+ *
+ * 둥근 그라데이션을 키우면 원판으로 읽혀서(2026-09-24 사용자 : *"원판 말고 좀 더 스며들듯"*), 모양은
+ * 캔버스가 그립니다 (`shared/lib/inkBleed`). 화면에 고정된 결을 따라 앞선이 들쭉날쭉 나아가고, 막 스민
+ * 자리는 3D 가 비치다가 뒤로 갈수록 짙어집니다. 여기서 하는 일은 그 캔버스를 **화면 크기로 늘리는 것**
+ * 뿐입니다 — 캔버스는 가로 240칸 남짓이라, 늘리면 칸 사이가 부드럽게 이어져 테가 저절로 흐려집니다.
+ *
+ * NOTE: 캔버스는 `inset` 만으로는 안 늘어납니다 (대체 요소라 제 크기를 지킵니다). 폭 · 높이를 적습니다.
+ */
+.cabin-curtain-veil {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * 번짐을 못 그리는 때 — 움직임 줄이기 · 캔버스 없음 (`DiveCurtain` 이 `data-flat` 을 답니다).
+ * 구름 한 장이 짧게 옅게 덮였다가 짙어집니다.
+ */
+.cabin-curtain[data-flat] .cabin-curtain-veil {
+  background: var(--cabin-veil);
+  opacity: var(--cabin-cover, 0);
+}
+
+/*
+ * 다 덮은 뒤에는 겹 전체를 한 색으로 받칩니다. 캔버스도 이미 화면을 다 덮고 있어 눈에는 차이가
+ * 없고, 덮인 채 창 크기가 바뀌어도 모서리가 비치지 않게 하는 받침입니다.
+ */
+.cabin-curtain[data-stage='covered'] .cabin-curtain-veil,
+.cabin-curtain[data-stage='lifting'] .cabin-curtain-veil {
+  background-color: var(--cabin-veil);
+}
+
+/*
+ * 덮였으면 다 덮습니다 — 번짐을 쓰던 rAF 가 한 장도 못 돌고(창이 가려짐) 시계로 넘어온 때에도
+ * 그렇습니다. 그때는 캔버스가 비어 있고, 한 장으로 덮는 때라면 `--cabin-cover` 가 0 에 남아 겹을
+ * 통째로 지웁니다.
+ */
+.cabin-curtain[data-stage='covered'] .cabin-curtain-veil,
+.cabin-curtain[data-stage='lifting'] .cabin-curtain-veil {
+  opacity: 1;
+}
+
+/*
+ * 구름 결 — 덮인 채 진열대를 기다리는 동안 **숨을 쉽니다.** 메인 로딩 커튼의 `-drift` 와 같은 결
+ * (덩어리 셋 · 흐림 26px · 7초 숨)입니다 — 납작한 흰 한 장이면 기다림이 '멈춤' 으로 읽힙니다.
+ * 덮이자마자 스며 나오듯 들어옵니다 (0.7초).
+ *
+ * NOTE: 흐림은 정적입니다 — 애니메이션으로 흔들면 합성 스레드로 안 넘어갑니다 (로딩 커튼과 같은 까닭).
+ * NOTE: 투명 끝은 알파 0 이 아니라 0.004(= 1/255)입니다 — 크롬은 알파 0 픽셀의 색을 버립니다.
+ * NOTE: 걷히는 동안에도 이 겹은 **제 투명도를 안 바꿉니다** — 옅어지는 것은 묶은 겹(`-cloud`) 하나라,
+ *   둘이 따로 옅어지며 한 번 더 겹쳐 보이는 일이 없습니다. 걷힘이 덮이자마자 오면 들어오던 전환을
+ *   그대로 이어 갑니다.
+ */
+.cabin-curtain-drift {
+  position: absolute;
+  inset: -15%;
+  background:
+    radial-gradient(
+      38% 46% at 26% 32%,
+      rgb(var(--cabin-cloud) / 0.9),
+      rgb(var(--cabin-cloud) / 0.004) 72%
+    ),
+    radial-gradient(
+      44% 40% at 72% 62%,
+      rgb(var(--cabin-cloud) / 0.85),
+      rgb(var(--cabin-cloud) / 0.004) 70%
+    ),
+    radial-gradient(
+      54% 62% at 52% 44%,
+      rgb(var(--cabin-cloud) / 0.7),
+      rgb(var(--cabin-cloud) / 0.004) 78%
+    ),
+    var(--cabin-veil);
+  filter: blur(26px);
+  opacity: 0;
+  transition: opacity 700ms ease-out;
+}
+
+.cabin-curtain[data-stage='covered'] .cabin-curtain-drift,
+.cabin-curtain[data-stage='lifting'] .cabin-curtain-drift {
+  opacity: 1;
+  animation: cabin-cloud-breathe 7s ease-in-out infinite alternate;
+}
+
+@keyframes cabin-cloud-breathe {
+  from {
+    transform: translate3d(-1.2%, 0.6%, 0) scale(1.02);
+  }
+  to {
+    transform: translate3d(1.2%, -0.6%, 0) scale(1.05);
+  }
+}
+
+/*
+ * 걷힘 — **메인에 들어올 때처럼 가운데서 열립니다** (`scene-boot.css` 의 `.is-leaving` 과 같은 장치).
+ * 구름 한 겹이 가운데가 뚫린 마스크를 쓴 채 **통째로 커집니다** — 마스크는 요소의 좌표계라 구멍도 같이
+ * 커지고, 구름은 그 바깥으로 밀려납니다. 구름 속을 지나 앞으로 나아가는 줌인이라 '배로 들어간다' 로
+ * 읽힙니다 (사용자 : *"배로 이동한다는 느낌만 주게"*).
+ *
+ * NOTE: 마스크의 반지름을 애니메이션하지 않습니다 — 칠하기 단계라 매 장 전 화면을 다시 칠합니다.
+ *   구멍을 키우는 것이 아니라 **구멍을 가진 겹을 키웁니다** (로딩 커튼과 같은 까닭 · 합성 단계).
+ * NOTE: 옅어지기는 **뒤늦게** 합니다 — 처음부터 옅어지면 구멍이 트이는 게 아니라 그냥 사라져 보입니다.
+ * NOTE: 가운데는 화면 가운데입니다 — 메인의 배는 늘 화면 가운데 가까이 떠 있고, 카메라가 고개를
+ *   돌리지 않고 배를 향해 곧게 줌인하므로 덮일 때도 그 자리에 있습니다 (엔진 main.js 카메라 블록).
+ */
+.cabin-curtain[data-stage='lifting'] .cabin-curtain-cloud {
+  mask-image: radial-gradient(
+    circle at 50% 50%,
+    transparent 0 var(--cabin-hole),
+    #000 var(--cabin-hole-soft)
+  );
+  transform: scale(var(--cabin-open));
+  opacity: 0;
+  transition:
+    transform var(--cabin-lift) var(--cabin-ease),
+    opacity calc(var(--cabin-lift) * 0.28) linear calc(var(--cabin-lift) * 0.72);
+}
+
+/*
+ * 움직임 줄이기 — 번짐 · 숨 · 열림을 빼고 **구름 한 장이 짧게 덮였다 옅어집니다.**
+ * 카메라도 안 다가갑니다 — 그쪽은 `DiveCurtain` 이 엔진을 아예 안 부릅니다. 구름은 캔버스 대신
+ * 한 장입니다 (`DiveCurtain` 이 `data-flat` 을 답니다 · 위 규칙).
+ */
+@media (prefers-reduced-motion: reduce) {
+  .cabin-curtain[data-stage='covered'] .cabin-curtain-drift,
+  .cabin-curtain[data-stage='lifting'] .cabin-curtain-drift {
+    animation: none;
+  }
+  .cabin-curtain[data-stage='lifting'] .cabin-curtain-cloud {
+    mask-image: none;
+    transform: none;
+    transition: opacity var(--cabin-lift) linear;
+  }
+}

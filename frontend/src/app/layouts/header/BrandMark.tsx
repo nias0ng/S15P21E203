@@ -3,10 +3,10 @@ import { Link, useLocation } from 'react-router'
 import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { riseDepthOf } from '@/shared/lib/diveTrack'
+import { opensElsewhere } from '@/shared/lib/opensElsewhere'
 import { useDiveStore } from '@/shared/store/diveStore'
 
 import { FOCUS, type Ink } from './tone'
-import { opensElsewhere } from './useDiveOut'
 
 /**
  * 로고 — 어두운 방 어디서 누르든 메인으로 떠오릅니다. 나가는 길보다 넓어서

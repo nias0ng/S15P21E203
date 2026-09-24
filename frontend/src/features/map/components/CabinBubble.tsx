@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 
 import { ROUTES, toMyShelfCollection } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
+import { opensElsewhere } from '@/shared/lib/opensElsewhere'
 import { withReturnPath } from '@/shared/lib/returnPath'
 
 import { boatAnchor } from '../lib/boatAnchor'
@@ -18,6 +19,14 @@ type Props = {
    * 안 일어나면 배가 눌린다는 것 자체를 못 배웁니다.
    */
   isLoggedIn: boolean
+  /**
+   * 진열대 · 컬렉션을 골랐습니다 — 곧바로 옮겨 가지 않고 **선실로 들어가는 전환**을 걸 자리입니다
+   * (2026-09-24 · `shared/ui/DiveCurtain` 의 cabin). 받은 주소로 부르는 쪽이 전환을 겁니다.
+   *
+   * ⚠️ 안 주면 줄이 평소의 링크로 곧바로 옮겨 갑니다. 새 탭 · 새 창으로 여는 누름(보조키)도
+   *   가로채지 않고 링크에 맡깁니다.
+   */
+  onEnter?: (to: string) => void
 }
 
 /** 진열대 — 받침대 둘 위에 선 병 둘 */
@@ -105,8 +114,19 @@ function RowFace({ icon, label }: { icon: React.ReactNode; label: string }) {
  * ⚠️ 열리면 말풍선으로 포커스를 옮깁니다 — 3D 는 iframe 이라 키가 그 안에서 끝나서, 안 옮기면
  * Esc 가 이 문서까지 오지 않고 키보드로는 두 줄에 닿을 길이 없습니다.
  */
-export function CabinBubble({ open, onClose, isLoggedIn }: Props) {
+export function CabinBubble({ open, onClose, isLoggedIn, onEnter }: Props) {
   const box = useRef<HTMLDivElement>(null)
+
+  /*
+   * 줄을 누르면 말풍선은 늘 닫힙니다. 그다음 — 부르는 쪽이 전환을 쥐고 있으면 링크를 멈추고 넘깁니다.
+   * 전환이 덮은 **뒤에** 옮겨 가야 3D 가 사라진 자리가 한 장도 안 비칩니다 (헤더의 잠수와 같은 규율).
+   */
+  const enter = (to: string) => (event: React.MouseEvent) => {
+    onClose()
+    if (!onEnter || opensElsewhere(event)) return
+    event.preventDefault()
+    onEnter(to)
+  }
 
   useEffect(() => {
     if (open) box.current?.focus()
@@ -249,7 +269,7 @@ export function CabinBubble({ open, onClose, isLoggedIn }: Props) {
             <>
               <Link
                 to={ROUTES.MY_SHELF}
-                onClick={onClose}
+                onClick={enter(ROUTES.MY_SHELF)}
                 className={cn(
                   ROW,
                   'cabin-row-open focus-visible:ring-dusk-gold outline-none focus-visible:ring-2',
@@ -261,7 +281,7 @@ export function CabinBubble({ open, onClose, isLoggedIn }: Props) {
               {/* 아래 줄이 한 단 가라앉습니다 — "컬렉션은 진열대 아래 칸" 을 말 대신 깊이로 */}
               <Link
                 to={toMyShelfCollection()}
-                onClick={onClose}
+                onClick={enter(toMyShelfCollection())}
                 className={cn(
                   ROW,
                   'cabin-row-open cabin-row-lower focus-visible:ring-dusk-gold outline-none focus-visible:ring-2',
