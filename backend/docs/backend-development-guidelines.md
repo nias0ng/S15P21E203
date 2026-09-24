@@ -251,4 +251,5 @@ CI는 `develop`과 `master`에서 Gradle 빌드와 테스트를 실행합니다.
 - [테스트 커버리지 점검 가이드](test-coverage.md)
 - [후기 요약 배치 가이드](review-analysis-batch.md)
 - [향수 상세 후기 집계 통합 안내](review-aggregates-migration.md)
+- [향수 상세 후기 집계 통합 부하 테스트 결과](review-aggregates-load-test.md)
 - [이미지 업로드 가이드](image-upload.md)
