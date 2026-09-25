@@ -41,13 +41,10 @@ interface CollectionPerfumeResponse {
   thumbnailUrl: string | null
 }
 
-/** 상세에는 개수 · 미리보기가 없습니다 — 담긴 향수에서 셉니다(`getCollectionDetail`) */
+/** 상세에는 개수가 없습니다 — 담긴 향수에서 셉니다(`getCollectionDetail`) */
 interface CollectionDetailResponse extends CollectionBaseResponse {
   perfumes: CollectionPerfumeResponse[]
 }
-
-/** 목록이 싣는 미리보기와 같은 장수입니다(백엔드 `PREVIEW_THUMBNAIL_COUNT`) */
-const PREVIEW_COUNT = 3
 
 function toCollectionSummary(
   collection: CollectionSummaryResponse,
@@ -114,9 +111,6 @@ export async function getCollectionDetail(
     title: data.name,
     description: data.description,
     perfumeCount: perfumes.length,
-    previewThumbnails: perfumes
-      .slice(0, PREVIEW_COUNT)
-      .map((item) => item.thumbnailUrl),
     perfumes,
   }
 }

@@ -21,7 +21,11 @@ export interface CollectionPerfume {
   thumbnailUrl: string | null
 }
 
-export interface CollectionDetail extends CollectionSummary {
+/** 미리보기 사진은 목록의 진열함만 씁니다 — 상세는 담긴 향수를 다 세웁니다 */
+export interface CollectionDetail extends Omit<
+  CollectionSummary,
+  'previewThumbnails'
+> {
   perfumes: CollectionPerfume[]
 }
 

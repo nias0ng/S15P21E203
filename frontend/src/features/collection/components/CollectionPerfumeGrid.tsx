@@ -2,7 +2,6 @@ import { Link } from 'react-router'
 
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { toPerfumeDetail } from '@/shared/config/routes'
-import { cn } from '@/shared/lib/cn'
 
 import type { CollectionPerfume } from '../types'
 
@@ -20,7 +19,6 @@ type Props = {
   onRemove: (perfume: CollectionPerfume) => void
   /** 마지막 빈 칸 — 진열대의 향수를 더 담습니다 */
   onAdd: () => void
-  className?: string
 }
 
 /**
@@ -31,19 +29,9 @@ type Props = {
  * 칸 최소 폭은 1920 에서 200 입니다 — 넓은 화면 오른쪽 기둥에 다섯 칸, 1024 · 768 셋. 휴대폰(~639)은
  * 두 칸으로 못 박습니다 — 최소 폭으로 세면 한 칸이 되어 병 하나가 화면 한 장을 차지합니다.
  */
-export function CollectionPerfumeGrid({
-  perfumes,
-  onRemove,
-  onAdd,
-  className,
-}: Props) {
+export function CollectionPerfumeGrid({ perfumes, onRemove, onAdd }: Props) {
   return (
-    <ul
-      className={cn(
-        'grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-[repeat(auto-fill,minmax(calc(var(--spacing)*50),1fr))] sm:gap-x-7.5',
-        className,
-      )}
-    >
+    <ul className="grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-[repeat(auto-fill,minmax(calc(var(--spacing)*50),1fr))] sm:gap-x-7.5">
       {perfumes.map((perfume) => (
         <li key={perfume.shelfItemId} className="relative min-w-0">
           <Link

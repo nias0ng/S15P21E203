@@ -13,9 +13,23 @@ let now = 0
 let frames = new Map<number, FrameRequestCallback>()
 let lastId = 0
 
+/*
+ * 프레임마다 벽이 선 자리(칸). 훅은 위치를 트랙의 transform 에만 적어서, 한 프레임이 돌 때마다
+ * 거기서 읽어 모읍니다.
+ */
+let track: HTMLElement | null = null
+let positions: number[] = []
+
+const positionOf = (element: HTMLElement) => {
+  const x = /translate3d\((-?[\d.]+)px/.exec(element.style.transform)?.[1]
+  return -Number(x ?? 0) / PITCH
+}
+
 beforeEach(() => {
   now = 0
   frames = new Map()
+  track = null
+  positions = []
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
     lastId += 1
     frames.set(lastId, callback)
@@ -39,6 +53,7 @@ const frame = () => {
   const due = [...frames.values()]
   frames.clear()
   due.forEach((callback) => callback(now))
+  if (due.length > 0 && track) positions.push(positionOf(track))
 }
 
 /** 벽이 설 때까지 프레임을 돌리고 걸린 시간(ms)을 돌려줍니다 */
@@ -50,11 +65,11 @@ const settle = () => {
 
 const setup = ({ pageScrollAtEnds = false } = {}) => {
   const viewport = document.createElement('section')
+  track = document.createElement('div')
   const refs = {
     viewport: { current: viewport },
-    track: { current: document.createElement('div') },
+    track: { current: track },
   }
-  const positions: number[] = []
   const onMoveStart = vi.fn()
   const onSettle = vi.fn<(start: number) => void>()
   const { result } = renderHook(() =>
@@ -65,9 +80,6 @@ const setup = ({ pageScrollAtEnds = false } = {}) => {
       clear: 7,
       pageScrollAtEnds,
       onMoveStart,
-      onMove: (position) => {
-        positions.push(position)
-      },
       onSettle,
     }),
   )
@@ -80,7 +92,6 @@ const setup = ({ pageScrollAtEnds = false } = {}) => {
     viewport,
     flow: result.current,
     wheel,
-    positions,
     onMoveStart,
     onSettle,
   }
@@ -133,7 +144,7 @@ describe('useShelfFlow 휠 — 한 번 = 한 칸', () => {
   })
 
   it('반대로 굴리면 흐르던 벽이 몇 프레임 안에 돌아선다', () => {
-    const { wheel, flow, positions, onSettle } = setup()
+    const { wheel, flow, onSettle } = setup()
     flow.go(3, true)
     for (let at = 0; at < 3; at += 1) {
       wheel(100)
@@ -157,9 +168,8 @@ describe('useShelfFlow 휠 — 한 번 = 한 칸', () => {
   })
 
   it('한 칸은 넘지 않고 끝을 천천히 들어가 1초 안에 서고, 한 프레임에 90px 넘게 건너뛰지 않는다', () => {
-    const { wheel, flow, positions } = setup()
+    const { wheel, flow } = setup()
     flow.go(3, true)
-    positions.length = 0
     wheel(100)
     expect(settle()).toBeLessThanOrEqual(1000)
     expect((Math.max(...positions) - 4) * PITCH).toBeLessThanOrEqual(0.5)
@@ -204,7 +214,7 @@ describe('useShelfFlow 휠 — 한 번 = 한 칸', () => {
   })
 
   it('칩으로 옮기던 중에 같은 쪽으로 굴리면 흐르던 속도를 이어받는다', () => {
-    const { wheel, flow, positions, onSettle } = setup()
+    const { wheel, flow, onSettle } = setup()
     flow.go(5)
     for (let at = 0; at < 10; at += 1) frame()
     const stride = () => (positions.at(-1) ?? 0) - (positions.at(-2) ?? 0)

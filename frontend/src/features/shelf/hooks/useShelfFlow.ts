@@ -80,9 +80,6 @@ type Options = {
   pageScrollAtEnds?: boolean
   /** 서 있다가 움직이기 시작할 때 */
   onMoveStart: () => void
-  /** 움직이는 동안 매 프레임. 위치는 칸 단위 소수입니다 */
-  /** 흐르는 동안 매 프레임. 벽에 한 분류만 서는 배치에서는 들을 것이 없어 선택입니다 */
-  onMove?: (position: number) => void
   /** 멈춘 칸 */
   onSettle: (start: number) => void
 }
@@ -210,7 +207,6 @@ const IDLE_OPTIONS: Options = {
   max: 0,
   clear: 1,
   onMoveStart: () => {},
-  onMove: () => {},
   onSettle: () => {},
 }
 
@@ -267,7 +263,6 @@ function createFlow() {
     velocity = 0
     position = dest
     apply()
-    read().onMove?.(position)
     read().onSettle(dest)
   }
 
@@ -322,7 +317,6 @@ function createFlow() {
 
     if (frameMs > 0) speed = (position - before) / frameMs
     apply()
-    read().onMove?.(position)
     frame = requestAnimationFrame(tick)
   }
 
@@ -500,7 +494,6 @@ function createFlow() {
       drag.lastX = event.clientX
       drag.lastTime = event.timeStamp
       apply()
-      read().onMove?.(position)
     },
 
     pointerUp(event: PointerEvent) {

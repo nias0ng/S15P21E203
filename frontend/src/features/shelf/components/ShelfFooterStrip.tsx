@@ -13,7 +13,6 @@ type Props = {
   total: number
   onPrev: () => void
   onNext: () => void
-  className?: string
 }
 
 /**
@@ -42,17 +41,11 @@ export function ShelfFooterStrip({
   total,
   onPrev,
   onNext,
-  className,
 }: Props) {
   const onShelf = view === 'shelf'
 
   return (
-    <div
-      className={cn(
-        'grid h-17.5 grid-cols-[1fr_auto_1fr] items-center gap-7.5 border-t border-[var(--hairline)]',
-        className,
-      )}
-    >
+    <div className="grid h-17.5 grid-cols-[1fr_auto_1fr] items-center gap-7.5 border-t border-[var(--hairline)]">
       <span aria-hidden />
 
       {/*

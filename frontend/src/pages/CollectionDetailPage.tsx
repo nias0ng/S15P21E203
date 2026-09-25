@@ -19,7 +19,6 @@ import { ShelfPaper, shelfItemsQuery } from '@/features/shelf'
 import { isApiError } from '@/shared/api/http'
 import { toMyShelfCollection } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
-import { useIsRising } from '@/shared/store/diveStore'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { LinkButton } from '@/shared/ui/LinkButton'
@@ -49,8 +48,6 @@ export default function CollectionDetailPage() {
     enabled: validId,
   })
   const shelf = useQuery(shelfItemsQuery())
-  // 메인으로 떠오르는 중인가 (헤더 로고) — 진열대와 같은 종이라 같이 가라앉습니다
-  const rising = useIsRising()
 
   const [editOpen, setEditOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
@@ -148,7 +145,7 @@ export default function CollectionDetailPage() {
 
     return (
       <div className="shelf-scope">
-        <ShelfPaper rising={rising} />
+        <ShelfPaper />
         {backToCollections}
         <CollectionNotice
           title={
@@ -189,7 +186,7 @@ export default function CollectionDetailPage() {
 
   return (
     <div className="shelf-scope">
-      <ShelfPaper rising={rising} />
+      <ShelfPaper />
 
       <div className="grid gap-y-12.5 lg:grid-cols-[calc(var(--spacing)*100)_minmax(0,1fr)] lg:gap-x-20">
         {/*
