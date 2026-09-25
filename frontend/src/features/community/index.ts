@@ -12,20 +12,17 @@ export {
   updateComment,
   updatePost,
 } from './api'
-export { BoardHeader } from './components/BoardHeader'
+export { BoardShell } from './components/BoardShell'
 export { ImageAttachField } from './components/ImageAttachField'
 export { WriteForm } from './components/WriteForm'
 export { CommentSection } from './components/CommentSection'
 export { LinkedPerfumeModal } from './components/LinkedPerfumeModal'
-export { PostList } from './components/PostList'
-export { TrendingPerfumes } from './components/TrendingPerfumes'
 export {
   commentsQuery,
   communityKeys,
   postDetailQuery,
   postListQuery,
   reviewBoardQuery,
-  trendingPerfumesQuery,
 } from './queries'
 export {
   boardTitle,
