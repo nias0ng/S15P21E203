@@ -14,6 +14,7 @@ import { Link } from 'react-router'
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
+import { prefersReducedMotion } from '@/shared/lib/prefersReducedMotion'
 import { LinkButton } from '@/shared/ui/LinkButton'
 
 import { recordPersonalExposure } from '../api'
@@ -76,9 +77,6 @@ const HEADLINE: Record<PersonalReasonSource | 'unknown', string> = {
   TASTE: '취향 테스트가 고른 향수가 도착했어요',
   unknown: '당신을 위한 향수가 도착했어요',
 }
-
-const prefersReducedMotion = () =>
-  window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 
 /**
  * "다른 향수 추천받기" 가 새 편지를 못 받았을 때 편지 아래에 적는 한 줄. 누르고도 아무 일이 없으면 버튼이

@@ -1,6 +1,7 @@
 import { useId, useLayoutEffect, useRef, useState } from 'react'
 
 import { cn } from '@/shared/lib/cn'
+import { prefersReducedMotion } from '@/shared/lib/prefersReducedMotion'
 import { SearchField } from '@/shared/ui/SearchField'
 
 /**
@@ -366,7 +367,7 @@ function ModeSwitch({
     const settled = { ...at, vl: 0, vr: 0, live: true }
 
     // 첫 장 · 움직임을 줄여 달라는 설정이면 그냥 가져다 놓습니다
-    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const still = prefersReducedMotion()
     if (!edge.current.live || still) {
       edge.current = { ...settled }
       paint()

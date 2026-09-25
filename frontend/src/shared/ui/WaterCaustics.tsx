@@ -11,6 +11,7 @@ import {
 } from 'three'
 
 import { cn } from '@/shared/lib/cn'
+import { prefersReducedMotion } from '@/shared/lib/prefersReducedMotion'
 import { sinkDepth } from '@/shared/lib/sinkDepth'
 import {
   CAUSTICS,
@@ -207,9 +208,7 @@ export function WaterCaustics({
       host.dataset.ready = ''
     }
 
-    const reduced = window.matchMedia(
-      '(prefers-reduced-motion: reduce)',
-    ).matches
+    const reduced = prefersReducedMotion()
     let lastDrawn = started
 
     if (reduced) {
