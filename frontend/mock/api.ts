@@ -25,7 +25,7 @@ import {
 const CDN = 'https://djpgc0m2v54q1.cloudfront.net/perfumes'
 
 /** 서버의 일반 이미지(`ORIGINAL`). 향수 검색처럼 진열대 밖 화면이 씁니다 */
-export const originalImageUrl = (perfumeId: number) =>
+const originalImageUrl = (perfumeId: number) =>
   `${CDN}/${perfumeId}/original.png`
 
 /**
@@ -37,7 +37,7 @@ export const originalImageUrl = (perfumeId: number) =>
 export const paperTextureImageUrl = (perfumeId: number) =>
   `${CDN}/${perfumeId}/paper-texture.png`
 
-export interface MockApiOptions {
+interface MockApiOptions {
   /**
    * 진열대 · 컬렉션에 세울 병 사진 주소.
    * 서버가 이 두 화면에 종이 질감 이미지를 준다고 치고 고릅니다 — 지금 서버는 일반 이미지를 줍니다.

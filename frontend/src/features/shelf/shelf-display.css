@@ -2186,10 +2186,6 @@
     background: var(--chip);
     box-shadow: inset 0 1px var(--highlight);
   }
-  .shelf-scope .shelf-field-active {
-    color: var(--paper-soft);
-    background: var(--chip-active);
-  }
 
   /*
    * ───────── 상세 카드 — 결과지 (S15P21E203-431) ─────────
@@ -2349,10 +2345,7 @@
     background: oklch(0.97 0.008 80 / 0.85);
   }
 
-  /* 얇은 구분선 · 보조 글자색을 Tailwind 쪽에서 부르기 위한 통로 */
-  .shelf-scope .shelf-hairline {
-    background: var(--hairline);
-  }
+  /* 보조 글자색을 Tailwind 쪽에서 부르기 위한 통로 */
   .shelf-scope .shelf-muted {
     color: var(--shelf-ink-soft);
   }

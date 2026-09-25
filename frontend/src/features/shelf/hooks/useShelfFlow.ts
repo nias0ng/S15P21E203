@@ -87,7 +87,7 @@ type Options = {
   onSettle: (start: number) => void
 }
 
-export type ShelfFlow = {
+type ShelfFlow = {
   /** 서 있거나 향하고 있는 칸 */
   destination: () => number
   /** 칸으로 흘려 보냅니다. instant 면 움직이지 않고 바로 옮깁니다 */

@@ -1,19 +1,4 @@
-import type { PerfumeOption, ShelfItem, ShelfSection } from './types'
-
-/**
- * 진열대 향수를 "고를 수 있는 향수" 모양으로 바꿉니다.
- *
- * 등록 모달(A15)과 컬렉션 추가 모달(A19)이 같은 네 필드를 받습니다. 화면마다 map 을
- * 손으로 적으면 한쪽만 고쳤을 때 모달이 조용히 빈 값을 받습니다.
- */
-export function toPerfumeOption(item: ShelfItem): PerfumeOption {
-  return {
-    perfumeId: item.perfumeId,
-    name: item.name,
-    brand: item.brand,
-    thumbnailUrl: item.thumbnailUrl,
-  }
-}
+import type { ShelfSection } from './types'
 
 /**
  * 메모를 마지막으로 쓴 날을 `YYYY.MM.DD` 로.

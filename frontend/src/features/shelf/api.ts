@@ -102,14 +102,14 @@ export async function getShelfItemDetail(
  */
 
 /** PATCH /users/me/shelf-items/{id}/ownership 응답 */
-export interface OwnershipChangeResponse {
+interface OwnershipChangeResponse {
   shelfItemId: number
   ownershipStatus: ShelfCategory
   updatedAt: string
 }
 
 /** PUT /users/me/shelf-items/{id}/fit-rating 응답 */
-export interface FitRatingResponse {
+interface FitRatingResponse {
   userPerfumeId: number
   fitRating: number
   updatedAt: string
@@ -153,7 +153,7 @@ export async function removeShelfFitRating(shelfItemId: number): Promise<void> {
  */
 
 /** POST /users/me/shelf-items 응답 */
-export interface ShelfItemCreateResponse {
+interface ShelfItemCreateResponse {
   shelfItemId: number
   perfumeId: number
   ownershipStatus: ShelfCategory

@@ -237,14 +237,11 @@ export const DisplayCase = memo(function DisplayCase({
                   "이름표 태그의 모양"), 칠은 shelf-display.css 가 합니다.
 
                   글자는 브랜드와 한글 이름 두 가지만 적습니다. 예전에는 영문 이름 · 부향률까지
-                  네 줄이었는데 이름표가 병보다 눈에 띄어 간소화했습니다. 영문 브랜드는 백엔드가
-                  아직 주지 않아 없을 수 있어서, 없으면 그 자리에 한글 브랜드를 적습니다.
+                  네 줄이었는데 이름표가 병보다 눈에 띄어 간소화했습니다.
                   아주 낮은 태그에서는 이름을 한 줄로 줄입니다(ShelfWall 이 트랙에 거는
                   data-tag-detail).
 
-                  버튼의 이름(낭독기)은 "한글 브랜드 + 한글 이름" 입니다. 영문 브랜드는 한글을
-                  되풀이하는 장식이라 낭독기에서 빼고, 그 자리에 한글 브랜드를 보이지 않게
-                  적어 둡니다.
+                  버튼의 이름(낭독기)은 "한글 브랜드 + 한글 이름" 입니다.
                 */}
                 <span aria-hidden className="shelf-tag-hook" />
                 <span className="shelf-tag-hanger">
@@ -255,16 +252,7 @@ export const DisplayCase = memo(function DisplayCase({
                     <span aria-hidden className="shelf-tag-line" />
                     <span aria-hidden className="shelf-tag-eyelet" />
                     <span className="shelf-tag-brand font-serif font-semibold">
-                      {item.brandEn ? (
-                        <>
-                          <span aria-hidden lang="en">
-                            {item.brandEn}
-                          </span>
-                          <span className="sr-only">{item.brand}</span>
-                        </>
-                      ) : (
-                        item.brand
-                      )}
+                      {item.brand}
                     </span>
                     {/*
                       낭독기 이름에서 브랜드와 이름 사이를 띄웁니다. 태그가 grid 라 공백만

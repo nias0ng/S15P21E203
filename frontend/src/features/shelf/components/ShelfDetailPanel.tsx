@@ -191,23 +191,7 @@ export function ShelfDetailPanel({
           </div>
 
           <div className="flex flex-col items-center gap-1.25">
-            {/*
-              브랜드는 자간 넓은 대문자입니다. 영문 브랜드가 있으면 그걸 적고(한글 브랜드는 uppercase 가
-              무시됩니다), 없으면 한글 브랜드를 적습니다. 영문은 한글을 되풀이하는 장식이라 낭독기에서
-              빼고 그 자리에 한글을 보이지 않게 적어 둡니다 — 이름표(DisplayCase)와 같은 규칙입니다.
-            */}
-            <p className="shelf-sheet-label">
-              {item.brandEn ? (
-                <>
-                  <span aria-hidden lang="en">
-                    {item.brandEn}
-                  </span>
-                  <span className="sr-only">{item.brand}</span>
-                </>
-              ) : (
-                item.brand
-              )}
-            </p>
+            <p className="shelf-sheet-label">{item.brand}</p>
 
             {/*
               **국문 이름을 크게 적고 그 위에 영문 이름을 한 줄 답니다.** 백엔드가 주는 `name` 이 영문이고

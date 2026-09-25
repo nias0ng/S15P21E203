@@ -3,7 +3,6 @@ import { useMemo, useState } from 'react'
 import {
   SHELF_CATEGORIES,
   type ShelfCategory,
-  type ShelfCounts,
   type ShelfItem,
   type ShelfSection,
 } from '../types'
@@ -13,8 +12,6 @@ type ShelfBrowser = {
   sections: ShelfSection[]
   keyword: string
   changeKeyword: (next: string) => void
-  /** 검색어를 적용한 뒤의 칸별 개수 */
-  counts: ShelfCounts
   /** 진열대 창 가운데에 걸린 칸. 칩의 켜짐입니다 */
   viewCategory: ShelfCategory
   changeViewCategory: (next: ShelfCategory) => void
@@ -66,14 +63,6 @@ export function useShelfBrowser(items: ShelfItem[]): ShelfBrowser {
     }))
   }, [items, keyword])
 
-  const counts = useMemo(
-    () =>
-      Object.fromEntries(
-        sections.map((section) => [section.category, section.items.length]),
-      ) as ShelfCounts,
-    [sections],
-  )
-
   /** 벽에 선 순서 그대로 이은 목록. 하단 페이저가 이 순서로 넘깁니다 */
   const lined = useMemo(
     () => sections.flatMap((section) => section.items),
@@ -97,7 +86,6 @@ export function useShelfBrowser(items: ShelfItem[]): ShelfBrowser {
       setKeyword(next)
       setSelectedId(null)
     },
-    counts,
     viewCategory,
     changeViewCategory: setViewCategory,
     selected: lined[current] ?? null,

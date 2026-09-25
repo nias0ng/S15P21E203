@@ -14,8 +14,6 @@ const WOOD_SAGE: ShelfItemDetail = {
   name: 'Wood Sage & Sea Salt',
   nameKo: '우드 세이지 앤 씨 솔트',
   brand: '조말론',
-  brandEn: 'Jo Malone',
-  concentration: 'Eau de Cologne',
   thumbnailUrl: null,
   category: 'OWNED',
   scentNotes: [],
@@ -103,8 +101,8 @@ describe('ShelfDetailPanel 이름', () => {
     expect(screen.getAllByText('Wood Sage & Sea Salt')).toHaveLength(1)
   })
 
-  it('영문 브랜드가 없으면 국문 브랜드를 한 번만 적는다', () => {
-    renderPanel({ ...WOOD_SAGE, brandEn: undefined })
+  it('브랜드를 한 번만 적는다', () => {
+    renderPanel(WOOD_SAGE)
 
     expect(screen.getAllByText('조말론')).toHaveLength(1)
   })
