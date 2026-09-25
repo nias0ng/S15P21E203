@@ -11,6 +11,7 @@ import { Toast } from '@/shared/ui/Toast'
 import { changeNickname, checkNicknameAvailability, toAuthUser } from '../api'
 import { AUTH_SUBMIT } from '../frame'
 import { useAvailabilityCheck } from '../hooks/useAvailabilityCheck'
+import { nicknameLengthError } from '../lib/nickname'
 import { authKeys, meQuery } from '../queries'
 import { NICKNAME_MIN_LENGTH } from '../types'
 
@@ -34,6 +35,9 @@ export function AccountForm() {
 
   const nickname = nicknameDraft ?? me?.nickname ?? ''
   const trimmedNickname = nickname.trim()
+  const nicknameError = nicknameLengthError(trimmedNickname)
+  const nicknameInvalid =
+    trimmedNickname.length < NICKNAME_MIN_LENGTH || nicknameError !== undefined
 
   const nicknameCheck = useAvailabilityCheck(
     checkNicknameAvailability,
@@ -116,19 +120,17 @@ export function AccountForm() {
                 : undefined
             }
             error={
-              nicknameAvailable === false
+              nicknameError ??
+              (nicknameAvailable === false
                 ? '이미 사용 중인 닉네임입니다'
-                : undefined
+                : undefined)
             }
           />
           <Button
             variant="outline"
             size="sm"
             type="button"
-            disabled={
-              trimmedNickname.length < NICKNAME_MIN_LENGTH ||
-              nicknameCheck.isPending
-            }
+            disabled={nicknameInvalid || nicknameCheck.isPending}
             onClick={nicknameCheck.check}
           >
             중복 확인
@@ -140,11 +142,7 @@ export function AccountForm() {
             type="submit"
             form="account-nickname-form"
             className={AUTH_SUBMIT}
-            disabled={
-              !nicknameChanged ||
-              trimmedNickname.length < NICKNAME_MIN_LENGTH ||
-              save.isPending
-            }
+            disabled={!nicknameChanged || nicknameInvalid || save.isPending}
           >
             저장
           </Button>

@@ -20,7 +20,8 @@ import {
 import { AUTH_SUBMIT } from '../frame'
 import { useAvailabilityCheck } from '../hooks/useAvailabilityCheck'
 import { useNewPassword } from '../hooks/useNewPassword'
-import { NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH } from '../types'
+import { nicknameLengthError } from '../lib/nickname'
+import { NICKNAME_MIN_LENGTH } from '../types'
 
 import { AuthCard } from './AuthCard'
 import { BackToLogin } from './BackToLogin'
@@ -56,11 +57,7 @@ export function SignupForm() {
   const emailAvailable = emailCheck.available
   const nicknameAvailable = nicknameCheck.available
 
-  const nicknameError =
-    trimmedNickname.length > 0 &&
-    (nicknameTooShort || trimmedNickname.length > NICKNAME_MAX_LENGTH)
-      ? `닉네임은 공백을 제외하고 ${NICKNAME_MIN_LENGTH}~${NICKNAME_MAX_LENGTH}자입니다`
-      : undefined
+  const nicknameError = nicknameLengthError(trimmedNickname)
 
   const signupMutation = useMutation({
     mutationFn: () =>

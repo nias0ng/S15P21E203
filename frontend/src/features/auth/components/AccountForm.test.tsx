@@ -53,6 +53,35 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
+// 서버가 `@Size(min = 2, max = 20)` 으로 막습니다 — 눌러 보고 토스트로 알면 늦습니다
+describe('AccountForm 닉네임 길이', () => {
+  it('스물한 자 이상이면 칸에 규칙을 띄우고 확인 · 저장을 막는다', async () => {
+    await renderForm()
+
+    await userEvent.clear(nicknameInput())
+    await userEvent.type(nicknameInput(), '가'.repeat(21))
+
+    expect(
+      screen.getByText('닉네임은 공백을 제외하고 2~20자입니다'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '중복 확인' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '저장' })).toBeDisabled()
+  })
+
+  it('스무 자까지는 확인 · 저장할 수 있다', async () => {
+    await renderForm()
+
+    await userEvent.clear(nicknameInput())
+    await userEvent.type(nicknameInput(), '가'.repeat(20))
+
+    expect(
+      screen.queryByText('닉네임은 공백을 제외하고 2~20자입니다'),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '중복 확인' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '저장' })).toBeEnabled()
+  })
+})
+
 describe('AccountForm 닉네임 중복 확인', () => {
   it('확인한 닉네임이면 쓸 수 있다고 알린다', async () => {
     api.checkNicknameAvailability.mockResolvedValue(true)
