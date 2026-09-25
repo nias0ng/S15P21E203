@@ -78,7 +78,7 @@ export interface VoyageLogEntry {
  * (`lib/mapPerfumeLookup` 의 `withMapPerfumes`). 지도에서 못 찾은 향수는 API 값 그대로라
  * 채우는 칸은 모두 비어 있을 수 있습니다.
  */
-export interface VoyageLogPerfume {
+interface VoyageLogPerfume {
   perfumeId: number
   /** 일지에 적는 이름. 지도에서 찾았으면 3D 부표 위의 짧은 한글 이름입니다 */
   name: string

@@ -57,7 +57,7 @@ import { Toast } from '@/shared/ui/Toast'
  *   [자세히 보기]  → A10 향수 상세로 이동
  *   [진열대에 저장] → 등록 모달 2단계(A15). 카드 · 고른 향수는 그대로 남습니다
  *
- * **검색창만 앱이 그립니다** (`SceneSearchBar` · 엔진 알약은 `hideEngineSearch` 로 숨깁니다).
+ * **검색창만 앱이 그립니다** (`SceneSearchBar` · 엔진 알약은 `ScentScene` 이 숨깁니다).
  * 방식이 둘이고 둘 다 답을 **모달**로 내놓기 때문입니다 — 엔진은 iframe 안이라 라우터도
  * 모달도 모릅니다.
  *
@@ -383,8 +383,6 @@ export default function HomePage() {
         }
         // 3D 를 눌렀습니다 — 말풍선은 팝오버라 배경을 누르면 닫힙니다 (엔진 host.js `closeCabin`)
         onCloseCabin={closeCabin}
-        // 검색창은 앱이 그립니다 (아래 SceneSearchBar) — 엔진 알약은 자리를 비웁니다
-        hideEngineSearch
       />
 
       <SceneSearchBar
@@ -487,15 +485,13 @@ export default function HomePage() {
       <ShelfRegisterModal
         open={saving !== null}
         onClose={closeShelfSave}
-        options={[]}
-        onSearch={() => {}}
         preselected={
           saving === null
             ? undefined
             : {
                 perfumeId: saving.perfumeId,
-                name: saving.nameKo || saving.name,
-                brand: saving.brandKo || saving.brand,
+                name: saving.nameKo,
+                brand: saving.brandKo,
               }
         }
         onSubmit={(input) => {

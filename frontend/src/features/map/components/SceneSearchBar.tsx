@@ -51,7 +51,7 @@ const MODE_HINT: Record<SceneSearchMode, string> = {
  * (`landing/index.html` 의 `#search-input`) 안에 있었습니다. 검색 방식을 둘로
  * 나누면서 앱으로 올렸습니다 — 방식 전환은 결과 화면(추천 모달 · 향수 상세)을
  * 아는 쪽이 쥐고 있어야 하는데, 엔진은 iframe 안이라 라우터도 모달도 모릅니다.
- * 엔진 쪽 알약은 `ScentScene` 의 `hideEngineSearch` 가 숨깁니다.
+ * 엔진 쪽 알약은 `ScentScene` 이 숨깁니다.
  *
  * 그래서 **자리와 크기를 엔진 값에 맞춰 두었습니다**(아래 POSITION · SIZE).
  * 엔진의 설명문구(`#zone-info`)가 검색창 아래 36px 에 서는데, 그 계산은 엔진
@@ -167,7 +167,7 @@ export function SceneSearchBar({
  *   `--spacing × 22.5` 라 "헤더 + 30" 이 곧 `top-30` 입니다. 좁은 화면에서는 헤더와 그 아래
  *   간격이 **같은 비율로** 줄어듭니다 (1536 에서 72+24=96).
  * ⚠️ 엔진의 `--pb-search-top` 은 고정 px 이라 1536 에서 엔진 알약은 102, 이 알약은 96 으로
- *   6px 갈라집니다. 엔진 알약은 `hideEngineSearch` 로 숨겨져 **상자만 남으므로**(카드가 피할
+ *   6px 갈라집니다. 엔진 알약은 `ScentScene` 이 숨겨 **상자만 남으므로**(카드가 피할
  *   자리) 눈에 보이는 어긋남은 없고, 피할 띠가 이 알약보다 아래·넓어 카드는 그대로 비켜섭니다.
  *
  * ⚠️ `pointer-events-none` 은 이 껍데기에만 겁니다. 3D 는 이 띠 뒤로도 이어지고

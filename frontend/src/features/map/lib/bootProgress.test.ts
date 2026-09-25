@@ -15,13 +15,11 @@ import {
 } from './bootProgress'
 
 const ready = (state: SceneBootState, at: number): SceneBootState =>
-  applyBootEvent(state, { stage: 'boat', ok: true }, at)
+  applyBootEvent(state, { stage: 'boat' }, at)
 
 describe('createBootState', () => {
   it('첫 진입은 항해 시작(0)부터 세고, 최소 표시 시간과 마운트 뒤 여유 중 늦은 쪽까지 보여 줍니다', () => {
     expect(createBootState(500, true)).toMatchObject({
-      firstVisit: true,
-      startedAt: 0,
       // 커튼 시계는 항해 시작(0)이지만 엔진을 기다리기 시작한 것은 지금입니다
       watchedAt: 500,
       minUntil: BOOT_FIRST_MIN_MS,
@@ -35,8 +33,6 @@ describe('createBootState', () => {
 
   it('다시 들어왔을 때는 마운트부터 짧게 셉니다', () => {
     expect(createBootState(9000, false)).toMatchObject({
-      firstVisit: false,
-      startedAt: 9000,
       watchedAt: 9000,
       minUntil: 9000 + BOOT_REVISIT_MIN_MS,
     })
@@ -56,21 +52,6 @@ describe('applyBootEvent', () => {
     const state = applyBootEvent(base, { stage: 'frame' }, 700)
     expect(state.doneAt).toEqual({ html: 700, script: 700, frame: 700 })
     expect(state.doneAt.boat).toBeUndefined()
-  })
-
-  it('받은 바이트는 뒤로 가지 않고, 전체가 0 이면 크기를 모르는 것으로 둡니다', () => {
-    const a = applyBootEvent(
-      base,
-      { stage: 'boat-bytes', loaded: 4000, total: 0 },
-      100,
-    )
-    expect(a).toMatchObject({ boatLoaded: 4000, boatTotal: null })
-    const b = applyBootEvent(
-      a,
-      { stage: 'boat-bytes', loaded: 1000, total: 8000 },
-      200,
-    )
-    expect(b).toMatchObject({ boatLoaded: 4000, boatTotal: 8000 })
   })
 
   it('오류는 문구를 남깁니다', () => {
@@ -97,13 +78,12 @@ describe('isBootReady', () => {
 
   /*
    * 2026-09-23 회귀 — 첫 접속에서 구름이 엔진을 안 기다리고 걷히던 버그.
-   * 첫 진입의 `startedAt` 은 0(항해 시작)인데 그 시계로 첫 장 상한을 세면, 번들 받는 시간이
+   * 첫 진입의 커튼 시계는 0(항해 시작)인데 그 시계로 첫 장 상한을 세면, 번들 받는 시간이
    * 엔진 예산에서 그대로 까입니다. 12초에 마운트되면 엔진에게 남는 것은 8초뿐이었습니다.
    */
   it('첫 장 상한은 항해 시작이 아니라 엔진을 기다리기 시작한 때부터 셉니다', () => {
     // 번들이 늦게 와 12초에 마운트됐습니다 — 엔진은 그때부터 뜨기 시작합니다
     const late = createBootState(12000, true)
-    expect(late.startedAt).toBe(0)
     // 항해 시작(0)부터 셌다면 여기서 이미 걷혔습니다
     expect(isBootReady(late, BOOT_FRAME_TIMEOUT_MS)).toBe(false)
     expect(isBootReady(late, 12000 + BOOT_FRAME_TIMEOUT_MS - 1)).toBe(false)
@@ -120,7 +100,7 @@ describe('parseBootMessage', () => {
         loaded: 10,
         total: 20,
       }),
-    ).toMatchObject({ stage: 'boat-bytes', loaded: 10, total: 20 })
+    ).toMatchObject({ stage: 'boat-bytes' })
     expect(parseBootMessage({ type: 'pb:boot', stage: 'nope' })).toBeNull()
     expect(parseBootMessage({ type: 'vite:ping' })).toBeNull()
     expect(parseBootMessage('pb:boot')).toBeNull()
@@ -132,14 +112,9 @@ describe('snapshotEvents', () => {
   it('PB.boot() 스냅샷을 단계 순서의 신호 목록으로 바꿉니다', () => {
     const events = snapshotEvents({
       stages: { frame: 3, script: 2 },
-      bytes: { loaded: 1, total: 2 },
       error: null,
     })
-    expect(events.map((event) => event.stage)).toEqual([
-      'script',
-      'frame',
-      'boat-bytes',
-    ])
-    expect(snapshotEvents({ stages: {}, bytes: null, error: null })).toEqual([])
+    expect(events.map((event) => event.stage)).toEqual(['script', 'frame'])
+    expect(snapshotEvents({ stages: {}, error: null })).toEqual([])
   })
 })

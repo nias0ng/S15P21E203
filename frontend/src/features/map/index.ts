@@ -14,11 +14,7 @@ import './cabin.css'
 export { CabinBubble } from './components/CabinBubble'
 export { MapSearchModal } from './components/MapSearchModal'
 export { SceneBootCurtain } from './components/SceneBootCurtain'
-export {
-  ScentScene,
-  type SceneMove,
-  type ScenePerfumeRef,
-} from './components/ScentScene'
+export { ScentScene, type ScenePerfumeRef } from './components/ScentScene'
 export {
   SceneSearchBar,
   type SceneSearchMode,
@@ -27,8 +23,7 @@ export { VoyageLog, type VoyageLogStatus } from './components/VoyageLog'
 export { useExplorationMove } from './hooks/useExplorationMove'
 export { useSaveBoatPosition } from './hooks/useSaveBoatPosition'
 export { useSceneBoot } from './hooks/useSceneBoot'
-export { type SceneBootEvent } from './lib/bootProgress'
-export { buildPerfumeIdIndex, type PerfumeIdIndex } from './lib/perfumeIdAt'
+export { buildPerfumeIdIndex } from './lib/perfumeIdAt'
 export { buildMapPerfumeLookup, withMapPerfumes } from './lib/mapPerfumeLookup'
 export {
   explorationStateQuery,
@@ -37,8 +32,4 @@ export {
   mapPerfumesQuery,
   voyageLogQuery,
 } from './queries'
-export {
-  type MapPerfume,
-  type ScentRegionId,
-  type VoyageLogEntry,
-} from './types'
+export { type ScentRegionId } from './types'

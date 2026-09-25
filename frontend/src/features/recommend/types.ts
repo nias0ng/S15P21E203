@@ -28,7 +28,7 @@ type RecommendStatus = 'OK' | 'OK_RELAXED' | 'NO_CONDITION' | 'NO_RESULT'
  * 향이 아닌 추천 근거 하나 (NLR-07). 성별 · 계절 · 낮밤 · 노트로 후보를 좁혔을 때만 옵니다.
  * 추천 다섯 개에 똑같이 걸린 조건이라 향수마다가 아니라 목록 위 한 줄로 씁니다.
  */
-export interface RecommendMatchedData {
+interface RecommendMatchedData {
   field: 'gender' | 'season' | 'daypart' | 'note'
   /** 화면에 그대로 쓸 한국어입니다 — AI 가 한국어로 주므로 우리가 번역하지 않습니다 */
   label: string
