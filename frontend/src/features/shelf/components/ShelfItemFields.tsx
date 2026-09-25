@@ -24,6 +24,12 @@ type Props = {
   categoryMissing?: boolean
   /** 아래 안내 문구. 할 말이 없는 자리에서는 넘기지 않습니다 */
   hint?: string
+  /**
+   * 좁은 판(3D 향 지도 위 — `ShelfRegisterModal` 의 `scene`)의 짜임. 분류 칩 셋이 한 줄을
+   * 나눠 채우고 메모 칸이 세 줄로 줄어듭니다 — 칩이 왼쪽에 몰리면 오른쪽이 비고, 빈 메모
+   * 칸이 판의 절반을 차지해 여백만 크게 읽힙니다.
+   */
+  compact?: boolean
 }
 
 /**
@@ -50,6 +56,7 @@ export function ShelfItemFields({
   onMemoChange,
   categoryMissing = false,
   hint,
+  compact = false,
 }: Props) {
   return (
     <>
@@ -60,6 +67,7 @@ export function ShelfItemFields({
           options={SHELF_CATEGORIES}
           value={category}
           onChange={onCategoryChange}
+          className={compact ? 'grid flex-1 grid-cols-3' : undefined}
         />
         {categoryMissing && <RequiredMark what="진열대 분류를 골라 주세요" />}
       </div>
@@ -96,7 +104,7 @@ export function ShelfItemFields({
         label="메모"
         hideLabel
         placeholder="메모"
-        rows={5}
+        rows={compact ? 3 : 5}
         value={memo}
         onChange={(event) => onMemoChange(event.target.value)}
       />

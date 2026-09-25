@@ -29,6 +29,15 @@ type Props = {
   preselected?: PerfumeOption
   /** 검색 결과를 기다리는 중. 1단계에만 씁니다 */
   isPending?: boolean
+  /**
+   * 3D 향 지도 위에 뜨는가 (메인의 부표 카드 [진열대에 저장]). 엔진 카드와 같은 저녁 유리
+   * (`scent-map-panel`)를 입고, 폭 · 칸을 줄여 바다를 덜 덮게 섭니다. 단추는 메모 바로
+   * 아래로 올라와 구분선 없이 한 장으로 읽힙니다.
+   *
+   * NOTE: 1단계(향수 고르기)가 없는 자리 — `preselected` 를 넘기는 곳에 씁니다. 좁힌 폭에서는
+   * 고르기 격자가 눌립니다.
+   */
+  scene?: boolean
 }
 
 /**
@@ -49,6 +58,7 @@ export function ShelfRegisterModal({
   onSubmit,
   preselected,
   isPending = false,
+  scene = false,
 }: Props) {
   const [picked, setPicked] = useState<PerfumeOption | null>(null)
   const [category, setCategory] = useState<ShelfCategory | null>(null)
@@ -84,54 +94,63 @@ export function ShelfRegisterModal({
   const step: 1 | 2 = picked ? 2 : 1
   const canChangePerfume = !preselected
 
+  const cancelVariant = scene ? 'ghost' : 'outline'
+  const submitVariant = scene ? 'navy' : 'primary'
+  const actions =
+    step === 1 ? (
+      <>
+        <Button variant={cancelVariant} onClick={onClose}>
+          취소
+        </Button>
+        <Button variant={submitVariant} disabled>
+          다음
+        </Button>
+      </>
+    ) : (
+      <>
+        <Button variant={cancelVariant} onClick={onClose}>
+          취소
+        </Button>
+        <Button
+          variant={submitVariant}
+          /*
+           * **꺼 두지 않고 눌리게 둡니다.** 분류가 필수인데 단추를 꺼 버리면
+           * 왜 안 눌리는지 알려 줄 자리가 없습니다 — 눌러 보게 하고 모자란
+           * 칸 옆에 [필수] 를 띄웁니다.
+           *
+           * 적합도와 메모는 선택입니다. 아직 맡아 보지 않은 향수를 [보유 희망]
+           * 으로 담는 것이 이 모달의 정상적인 쓰임인데, 그때 적합도는 답할 수
+           * 없는 질문입니다. 서버도 `POST /users/me/shelf-items` 로는 분류만
+           * 받고, 적합도는 따로 보내거나 아예 안 보낼 수 있습니다.
+           */
+          onClick={() => {
+            if (!picked) return
+            if (category === null) {
+              setShowMissing(true)
+              return
+            }
+            onSubmit({
+              perfumeId: picked.perfumeId,
+              category,
+              rating,
+              memo: memo.trim() || null,
+            })
+          }}
+        >
+          진열대에 담기
+        </Button>
+      </>
+    )
+
   return (
     <Modal
       open={open}
       onClose={onClose}
       title="향수 등록"
-      footer={
-        step === 1 ? (
-          <>
-            <Button variant="outline" onClick={onClose}>
-              취소
-            </Button>
-            <Button disabled>다음</Button>
-          </>
-        ) : (
-          <>
-            <Button variant="outline" onClick={onClose}>
-              취소
-            </Button>
-            <Button
-              /*
-               * **꺼 두지 않고 눌리게 둡니다.** 분류가 필수인데 단추를 꺼 버리면
-               * 왜 안 눌리는지 알려 줄 자리가 없습니다 — 눌러 보게 하고 모자란
-               * 칸 옆에 [필수] 를 띄웁니다.
-               *
-               * 적합도와 메모는 선택입니다. 아직 맡아 보지 않은 향수를 [보유 희망]
-               * 으로 담는 것이 이 모달의 정상적인 쓰임인데, 그때 적합도는 답할 수
-               * 없는 질문입니다. 서버도 `POST /users/me/shelf-items` 로는 분류만
-               * 받고, 적합도는 따로 보내거나 아예 안 보낼 수 있습니다.
-               */
-              onClick={() => {
-                if (!picked) return
-                if (category === null) {
-                  setShowMissing(true)
-                  return
-                }
-                onSubmit({
-                  perfumeId: picked.perfumeId,
-                  category,
-                  rating,
-                  memo: memo.trim() || null,
-                })
-              }}
-            >
-              진열대에 담기
-            </Button>
-          </>
-        )
-      }
+      className={scene ? 'scent-map-panel rounded-glass w-100' : undefined}
+      initialFocus={scene ? 'panel' : 'first'}
+      titleSize={scene ? 'heading' : 'title'}
+      footer={scene ? undefined : actions}
     >
       {step === 1 ? (
         <PerfumePicker
@@ -177,8 +196,12 @@ export function ShelfRegisterModal({
             memo={memo}
             onMemoChange={setMemo}
             categoryMissing={showMissing && category === null}
+            compact={scene}
           />
         </div>
+      )}
+      {scene && (
+        <div className="mt-3.75 flex justify-end gap-2.5">{actions}</div>
       )}
     </Modal>
   )
