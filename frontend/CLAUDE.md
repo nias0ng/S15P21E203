@@ -501,8 +501,8 @@ IDE 와 `grep` 이 찾을 수 있어야 합니다.
 
 **작성자 사진도 붙었습니다** — 후기 · 게시글 · 댓글 응답(`ReviewDetailResponse` · `ReviewResponse` ·
 `ReviewBoardItemResponse` · `PostDetailResponse` · `PostSummaryResponse` · `CommentResponse`)에
-`profileImageUrl` 이 실려 옵니다. 커뮤니티는 게시판 목록(`BoardItem.avatarUrl`) · 글 상세 · 댓글의
-작성자 아바타에 그 값을 넘깁니다. 사진을 설정하지 않았거나 탈퇴한 회원이면 `null` 이라
+`profileImageUrl` 이 실려 옵니다. 커뮤니티는 게시판 목록(`BoardItem.avatarUrl`) · 글 상세 · 댓글의,
+향수 도메인은 후기 상세(`PerfumeReviewDetail`)의 작성자 아바타에 그 값을 넘깁니다. 사진을 설정하지 않았거나 탈퇴한 회원이면 `null` 이라
 `Thumbnail` 이 빈 상자를 그립니다.
 
 붙어 있는 API 도 **값이 비는 필드가 많습니다** — `nameKo`·`imageUrl`·`scentFamily`·`logoUrl` 은

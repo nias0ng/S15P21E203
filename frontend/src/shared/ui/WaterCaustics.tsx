@@ -33,7 +33,7 @@ const SINK_EASE_MS = 160
  * 물 모습. `caustics` 는 바닥에 비친 빛 그물, `underwater` 는 수면을 올려다보는 물속이고
  * 내릴수록 가라앉습니다(`underwaterShader.ts`).
  */
-export type WaterLook = 'caustics' | 'underwater'
+type WaterLook = 'caustics' | 'underwater'
 
 const FRAGMENT: Record<WaterLook, string> = {
   caustics: causticsFragment,

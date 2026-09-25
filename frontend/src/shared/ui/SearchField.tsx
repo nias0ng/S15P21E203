@@ -1,5 +1,7 @@
 import { cn } from '@/shared/lib/cn'
 
+import { FOCUS_RING } from './focusRing'
+
 type SearchFieldProps = Omit<
   React.ComponentPropsWithRef<'input'>,
   'type' | 'id'
@@ -181,7 +183,7 @@ export function SearchField({
             'hover:brightness-[var(--search-submit-hover,1.15)]',
           /* 밝아지는 것도 눌리는 것과 같은 속도로 — `filter` 를 빼면 호버가 딱딱 끊깁니다 */
           'transition-[transform,filter] duration-120 ease-out active:scale-95',
-          'focus-visible:ring-accent-deep outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+          FOCUS_RING,
         )}
       >
         <svg

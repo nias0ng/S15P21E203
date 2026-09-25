@@ -8,8 +8,7 @@ import { CAN_MEASURE, useMeasuredHeight } from './useMeasuredHeight'
  * NOTE: **높이를 px 로 재서 늘립니다.** `grid-template-rows: 0fr → 1fr` 은 자동 높이
  *   격자에서 1 보다 작은 fr 이 두 번 곱해져, 판 아래가 빈 채로 글자보다 먼저
  *   내려옵니다 (09-17 실측 : 280ms 에 판 219px · 글자 116px).
- * NOTE: 같은 값이 `features/map` 의 `VoyageLog` 에도 있습니다 — 움직임을 고칠 때
- *   **두 곳을 같이** 봅니다.
+ * NOTE: `features/map` 의 `VoyageLog` 가 아래 곡선을 가져다 씁니다. 말아 올리는 속도만 따로 둡니다.
  */
 
 /** 풀리는 곡선 — 끝에서 천천히 멈춥니다 */

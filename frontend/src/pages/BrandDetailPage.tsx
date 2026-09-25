@@ -152,7 +152,6 @@ function BrandMark({
     return (
       <Thumbnail
         src={logoUrl}
-        fallback="로고"
         fit="contain"
         className={cn(plate, 'h-36 w-56 p-5')}
       />
