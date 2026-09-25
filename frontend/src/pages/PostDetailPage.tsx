@@ -229,15 +229,18 @@ export default function PostDetailPage() {
                   likeToggle.toggle({ id: numericId, liked: data.liked })
                 }
                 className={cn(
-                  'rounded-card text-caption flex items-center gap-1.25',
-                  'transition-colors duration-120 ease-out',
+                  'group rounded-card text-caption text-ink-muted flex items-center gap-1.25',
                   'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
-                  data.liked
-                    ? 'text-danger'
-                    : 'text-ink-muted hover:text-danger',
                 )}
               >
-                <span aria-hidden className="text-heading leading-none">
+                {/* 색은 하트에만 — 옆 숫자까지 칠하면 읽기가 나빠집니다(목록 · 후기 상세와 같은 `--color-like`) */}
+                <span
+                  aria-hidden
+                  className={cn(
+                    'text-heading leading-none transition-colors duration-120 ease-out',
+                    data.liked ? 'text-like' : 'group-hover:text-like',
+                  )}
+                >
                   {data.liked ? '♥' : '♡'}
                 </span>
                 <span aria-hidden>{data.likeCount}</span>
