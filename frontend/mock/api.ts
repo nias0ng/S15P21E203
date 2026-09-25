@@ -399,38 +399,6 @@ export function createMockApi(options: MockApiOptions = {}) {
     }
   }
 
-  const changeRepresentative: Handler = ({ body }, [shelfItemId]) => {
-    const item = findShelfItem(shelfItemId)
-    if (item === undefined) return SHELF_ITEM_NOT_FOUND
-
-    const representative = field(body, 'representative')
-    if (typeof representative !== 'boolean') {
-      return fail(400, 'INVALID_REQUEST', 'representative 를 보내주세요.')
-    }
-    if (representative && item.category !== 'OWNED') {
-      return fail(
-        400,
-        'INVALID_REQUEST',
-        '보유 중인 향수만 대표로 지정할 수 있습니다.',
-      )
-    }
-
-    // 대표는 한 번에 하나 — 먼저 있던 대표를 풉니다
-    if (representative) {
-      for (const other of shelf) other.representative = false
-    }
-    item.representative = representative
-
-    return {
-      status: 200,
-      body: {
-        userPerfumeId: item.shelfItemId,
-        representative,
-        updatedAt: timestamp(),
-      },
-    }
-  }
-
   const putFitRating: Handler = ({ body }, [shelfItemId]) => {
     const item = findShelfItem(shelfItemId)
     if (item === undefined) return SHELF_ITEM_NOT_FOUND
@@ -917,11 +885,6 @@ export function createMockApi(options: MockApiOptions = {}) {
       'PATCH',
       new RegExp(`^${SHELF}/(\\d+)/ownership$`),
       signedIn(changeOwnership),
-    ],
-    [
-      'PATCH',
-      new RegExp(`^${SHELF}/(\\d+)/representative$`),
-      signedIn(changeRepresentative),
     ],
     ['PUT', new RegExp(`^${SHELF}/(\\d+)/fit-rating$`), signedIn(putFitRating)],
     [
