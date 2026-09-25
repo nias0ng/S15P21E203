@@ -42,9 +42,6 @@ interface PerfumePrice {
 export interface PerfumeSearchParams {
   keyword?: string
 
-  // NOTE: 응답 필드로만 있습니다. 검색 파라미터로는 아직 안 먹어 보내도 무시됩니다
-  scentFamily?: ScentFamilyKey
-
   /** 전체 사용자 집계라 로그인이 필요 없고, OWNED · WISH 는 세 명 이상 · sort 는 무시됩니다 */
   ranking?: RankingFilter
 
@@ -156,12 +153,12 @@ export interface SeasonStatistic {
 }
 
 /** 계절 네 개가 항상 옵니다. 후기가 없는 향수도 0 으로 채워 내려줍니다 */
-export interface SeasonStatisticsResponse {
+interface SeasonStatisticsResponse {
   seasons: SeasonStatistic[]
 }
 
 /** DTL-23 AI 후기 요약. 아직 요약이 없는 향수는 **세 값이 모두 null 인 200** 입니다 */
-export interface ReviewSummary {
+interface ReviewSummary {
   summary: string | null
   /** `ReviewStatistics.reviewCount` 와 비교하면 요약이 최신인지 압니다 */
   sourceReviewCount: number | null
@@ -169,7 +166,7 @@ export interface ReviewSummary {
 }
 
 /** DTL-10 후기 통계. 평균 평점은 없습니다 */
-export interface ReviewStatistics {
+interface ReviewStatistics {
   reviewCount: number
 }
 
@@ -270,7 +267,7 @@ export interface ReviewKeyword {
   percentage: number
 }
 
-export interface ReviewKeywordsResponse {
+interface ReviewKeywordsResponse {
   keywords: ReviewKeyword[]
 }
 

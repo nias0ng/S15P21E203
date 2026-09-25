@@ -69,7 +69,6 @@ export function PerfumeGrid({
             rank={rankable ? index + 1 : undefined}
             name={perfume.name}
             subName={perfume.nameKo}
-            /* 브랜드는 일부러 안 넘깁니다 — 컬렉션 상세는 같은 카드에 넘겨 씁니다 */
             thumbnailUrl={perfume.imageUrl}
             to={toPerfumeDetail(perfume.perfumeId)}
             state={perfumeViewState(source)}

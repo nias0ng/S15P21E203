@@ -4,7 +4,12 @@ import { Link } from 'react-router'
 
 import { isApiError } from '@/shared/api/http'
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
-import { ROUTES, toPerfumeDetail, toReviewDetail } from '@/shared/config/routes'
+import {
+  ROUTES,
+  toPerfumeDetail,
+  toReviewDetail,
+  toReviewEdit,
+} from '@/shared/config/routes'
 import { useLikeToggle } from '@/shared/hooks/useLikeToggle'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
@@ -23,16 +28,15 @@ import type { ReviewDetail } from '../types'
 
 type Props = {
   review: ReviewDetail
-  editTo: string
   /** 삭제 뒤 화면 이동은 부르는 쪽 몫입니다 — `features/perfume` 은 `features/community` 를 import 할 수 없습니다 */
-  onDeleted?: () => void
+  onDeleted: () => void
 }
 
 /**
  * 후기 상세 (A12). 어두운 방 · 유리판 구성은 docs/어두운-방-유리판.md 이고, 화면이
  * 수정 · 삭제를 숨기는 것과 별개로 백엔드도 작성자를 다시 확인합니다.
  */
-export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
+export function PerfumeReviewDetail({ review, onDeleted }: Props) {
   const queryClient = useQueryClient()
   const [deleteOpen, setDeleteOpen] = useState(false)
 
@@ -59,7 +63,7 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
         queryKey: perfumeKeys.detail(review.perfume.perfumeId),
       })
 
-      onDeleted?.()
+      onDeleted()
     },
   })
 
@@ -107,7 +111,11 @@ export function PerfumeReviewDetail({ review, editTo, onDeleted }: Props) {
           <span className="ml-auto flex shrink-0 items-center gap-2.5">
             {review.mine && (
               <>
-                <LinkButton to={editTo} variant="outline" size="sm">
+                <LinkButton
+                  to={toReviewEdit(review.reviewId)}
+                  variant="outline"
+                  size="sm"
+                >
                   수정
                 </LinkButton>
                 <Button

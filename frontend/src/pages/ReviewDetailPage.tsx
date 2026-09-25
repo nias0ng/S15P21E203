@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router'
 import { communityKeys } from '@/features/community'
 import { PerfumeReviewDetail, reviewDetailQuery } from '@/features/perfume'
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
-import { ROUTES, toPerfumeDetail, toReviewEdit } from '@/shared/config/routes'
+import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { LinkButton } from '@/shared/ui/LinkButton'
@@ -57,7 +57,6 @@ export default function ReviewDetailPage() {
   return (
     <PerfumeReviewDetail
       review={data}
-      editTo={toReviewEdit(data.reviewId)}
       // 삭제 뒤 정리는 여기서 합니다 — 게시판 목록(community)과 후기(perfume)는 서로
       // import 할 수 없는 두 도메인이라 둘 다 아는 화면이 맡습니다
       onDeleted={() => {

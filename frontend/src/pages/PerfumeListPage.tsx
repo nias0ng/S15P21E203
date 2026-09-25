@@ -9,11 +9,9 @@ import {
   readRankingFilter,
 } from '@/features/perfume'
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
-import { cn } from '@/shared/lib/cn'
 import { readPage, withQueryParams, writePage } from '@/shared/lib/queryParams'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
-import { FOCUS_RING } from '@/shared/ui/focusRing'
 import { Pagination } from '@/shared/ui/Pagination'
 import { GLASS_PANEL } from '@/shared/ui/panel'
 import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
@@ -23,7 +21,7 @@ const PAGE_SIZE = 30
 
 /**
  * 향수 (A33 — 상단 메뉴 [향수] 목적지) + 검색 결과 (A09 — COM-05). 검색어 `?keyword=`
- * 는 필터 · 브랜드와 AND 로 묶입니다.
+ * 는 필터와 AND 로 묶입니다.
  *
  * NOTE: 쪽 넘김은 검색할 때만이고, 검색어가 없으면 첫 30개가 전부입니다 — 목록은 무한
  * 스크롤로 갈 자리입니다(docs/UI-명세.md §6). 검색 중에는 순서가 인기가 아니라 검색
@@ -39,9 +37,6 @@ export default function PerfumeListPage() {
   */
   const ranking = readRankingFilter(searchParams.get('ranking'))
   const gender = readGenderFilter(searchParams.get('gender'))
-
-  // A34 브랜드 페이지에서 카드를 누르면 ?brand= 를 달고 옵니다
-  const brand = searchParams.get('brand')
   const keyword = (searchParams.get('keyword') ?? '').trim()
   const searching = keyword.length > 0
   const page = readPage(searchParams)
@@ -51,7 +46,6 @@ export default function PerfumeListPage() {
       keyword: searching ? keyword : undefined,
       ranking: ranking ?? undefined,
       gender: gender ?? undefined,
-      brand: brand ?? undefined,
       page: searching ? page : undefined,
       size: PAGE_SIZE,
     }),
@@ -62,7 +56,7 @@ export default function PerfumeListPage() {
   // 잠수로 들어왔으면 커튼이 이 신호를 기다립니다 — 목록이 칠해지면 다 선 것입니다
   useDiveReady(!isPending)
 
-  const filtered = ranking !== null || gender !== null || brand !== null
+  const filtered = ranking !== null || gender !== null
 
   // 쪽도 함께 처음으로 돌립니다 — 3쪽을 보다 조건을 켜면 결과가 줄어 그 쪽이 빕니다
   const setFilter = (key: 'ranking' | 'gender', value: string | null) => {
@@ -78,7 +72,6 @@ export default function PerfumeListPage() {
           withQueryParams(searchParams, {
             ranking: null,
             gender: null,
-            brand: null,
             keyword: null,
             page: null,
           }),
@@ -140,26 +133,6 @@ export default function PerfumeListPage() {
           )
         }}
       />
-
-      {brand && (
-        <div className="flex items-center gap-2.5">
-          <span className="border-line text-ink text-caption flex items-center gap-2.5 border px-2.5 py-1.25">
-            브랜드: {brand}
-            <button
-              type="button"
-              aria-label={`브랜드 필터 ${brand} 해제`}
-              onClick={() =>
-                setSearchParams(
-                  withQueryParams(searchParams, { brand: null, page: null }),
-                )
-              }
-              className={cn('text-ink-muted hover:text-ink', FOCUS_RING)}
-            >
-              <span aria-hidden>×</span>
-            </button>
-          </span>
-        </div>
-      )}
 
       <PerfumeFilters
         ranking={ranking}

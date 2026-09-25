@@ -202,8 +202,6 @@ export default function PerfumeDetailPage() {
       <ShelfRegisterModal
         open={shelfOpen}
         onClose={() => setShelfOpen(false)}
-        options={[]}
-        onSearch={() => {}}
         preselected={{
           perfumeId: data.perfumeId,
           name: data.nameKo ?? data.name,
