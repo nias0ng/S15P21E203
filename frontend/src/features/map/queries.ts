@@ -2,23 +2,15 @@ import { queryOptions } from '@tanstack/react-query'
 
 import { isApiError } from '@/shared/api/http'
 
-import {
-  getExplorationState,
-  getMapPerfumePoints,
-  getMapPoints,
-  getTasteArea,
-  getVoyageLog,
-} from './api'
+import { getExplorationState, getMapPerfumePoints, getVoyageLog } from './api'
 import { loadMapPerfumes } from './mapPerfumes'
 
 export const mapKeys = {
   all: ['map'] as const,
-  points: () => [...mapKeys.all, 'points'] as const,
   perfumes: () => [...mapKeys.all, 'perfumes'] as const,
   perfumePoints: () => [...mapKeys.all, 'perfume-points'] as const,
   exploration: () => [...mapKeys.all, 'exploration'] as const,
   voyageLog: () => [...mapKeys.all, 'voyage-log'] as const,
-  tasteArea: () => [...mapKeys.all, 'taste-area'] as const,
 }
 
 /**
@@ -50,9 +42,6 @@ export const mapPerfumePointsQuery = () =>
     staleTime: 1000 * 60 * 60,
   })
 
-export const mapPointsQuery = () =>
-  queryOptions({ queryKey: mapKeys.points(), queryFn: getMapPoints })
-
 /**
  * 지도에 떠 있는 향수 200개 (메인의 일반 검색 대상).
  *
@@ -75,6 +64,3 @@ export const voyageLogQuery = () =>
     retry: (failureCount, error) =>
       !(isApiError(error) && error.status === 401) && failureCount < 3,
   })
-
-export const tasteAreaQuery = () =>
-  queryOptions({ queryKey: mapKeys.tasteArea(), queryFn: getTasteArea })
