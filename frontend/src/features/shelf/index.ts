@@ -51,6 +51,7 @@ export {
 } from './hooks/useShelfActions'
 export { useShelfBrowser } from './hooks/useShelfBrowser'
 export { toPerfumeOption } from './lib'
+export { shelfRegisterErrorMessage } from './registerErrorMessage'
 export { shelfItemDetailQuery, shelfItemsQuery, shelfKeys } from './queries'
 export {
   SHELF_CATEGORIES,
