@@ -111,11 +111,7 @@ export default function PerfumeDetailPage() {
       <EmptyState
         title="향수 상세 정보를 불러오지 못했습니다"
         description="다시 시도해주세요."
-        action={
-          <Button variant="outline" onClick={() => refetch()}>
-            다시 시도
-          </Button>
-        }
+        onRetry={() => refetch()}
       />
     )
   }

@@ -125,11 +125,7 @@ export default function NoteDetailPage() {
           <EmptyState
             title="향수 목록을 불러오지 못했습니다"
             description="잠시 후 다시 시도해 주세요."
-            action={
-              <Button variant="outline" onClick={() => perfumes.refetch()}>
-                다시 시도
-              </Button>
-            }
+            onRetry={() => perfumes.refetch()}
           />
         ) : (
           <>

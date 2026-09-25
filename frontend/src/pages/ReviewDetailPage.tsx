@@ -5,7 +5,6 @@ import { communityKeys } from '@/features/community'
 import { PerfumeReviewDetail, reviewDetailQuery } from '@/features/perfume'
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
-import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { PageFallback } from '@/shared/ui/PageFallback'
@@ -35,21 +34,12 @@ export default function ReviewDetailPage() {
         title="후기를 찾을 수 없습니다"
         description="주소가 잘못되었거나 삭제된 후기입니다."
         action={
-          <div className="flex gap-2.5">
-            <LinkButton
-              to={ROUTES.COMMUNITY_REVIEWS}
-              variant="outline"
-              size="sm"
-            >
-              후기 게시판으로
-            </LinkButton>
-            {valid && (
-              <Button variant="outline" size="sm" onClick={() => refetch()}>
-                다시 시도
-              </Button>
-            )}
-          </div>
+          <LinkButton to={ROUTES.COMMUNITY_REVIEWS} variant="outline" size="sm">
+            후기 게시판으로
+          </LinkButton>
         }
+        onRetry={valid ? () => refetch() : undefined}
+        retrySize="sm"
       />
     )
   }

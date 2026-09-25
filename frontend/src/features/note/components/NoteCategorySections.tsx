@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 
 import { toNoteDetail } from '@/shared/config/routes'
+import { CARD_GRID } from '@/shared/ui/cardGrid'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { GLASS_PANEL } from '@/shared/ui/panel'
 import { Skeleton } from '@/shared/ui/Skeleton'
@@ -33,7 +34,7 @@ export function NoteCategorySections({
         {Array.from({ length: 2 }, (_, section) => (
           <div key={section} className={GLASS_PANEL}>
             <Skeleton className="mb-6.25 h-6 w-23.75" />
-            <div className="grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-5">
+            <div className={CARD_GRID}>
               {/* 카드와 같은 비율이어야 도착할 때 격자가 안 튑니다(7:5) */}
               {Array.from({ length: 5 }, (_, index) => (
                 <div
@@ -73,7 +74,7 @@ export function NoteCategorySections({
             </span>
           </div>
 
-          <ul className="grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-5">
+          <ul className={CARD_GRID}>
             {section.notes.map((note) => (
               <li key={note.noteId}>
                 <TileCard

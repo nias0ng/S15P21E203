@@ -7,7 +7,6 @@ import { BRAND_PLATE, brandDetailQuery } from '@/features/brand'
 import { PerfumeGrid, perfumeListQuery } from '@/features/perfume'
 import { ROUTES, toPerfumeSearch } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
-import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { PageFallback } from '@/shared/ui/PageFallback'
@@ -47,21 +46,12 @@ export default function BrandDetailPage() {
         title="브랜드를 찾을 수 없습니다"
         description="주소가 잘못되었거나 삭제된 브랜드입니다."
         action={
-          <div className="flex justify-center gap-2.5">
-            <LinkButton to={ROUTES.BRANDS} variant="outline" size="sm">
-              브랜드 목록으로
-            </LinkButton>
-            {valid && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => brand.refetch()}
-              >
-                다시 시도
-              </Button>
-            )}
-          </div>
+          <LinkButton to={ROUTES.BRANDS} variant="outline" size="sm">
+            브랜드 목록으로
+          </LinkButton>
         }
+        onRetry={valid ? () => brand.refetch() : undefined}
+        retrySize="sm"
       />
     )
   }
@@ -105,11 +95,7 @@ export default function BrandDetailPage() {
           <EmptyState
             title="향수 목록을 불러오지 못했습니다"
             description="잠시 후 다시 시도해 주세요."
-            action={
-              <Button variant="outline" onClick={() => perfumes.refetch()}>
-                다시 시도
-              </Button>
-            }
+            onRetry={() => perfumes.refetch()}
           />
         ) : (
           <>

@@ -5,8 +5,8 @@ import { authorName } from '@/shared/lib/authorName'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { AuthLinkButton } from '@/shared/ui/AuthLinkButton'
-import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
+import { Pagination } from '@/shared/ui/Pagination'
 import { GLASS_PANEL } from '@/shared/ui/panel'
 import { Skeleton } from '@/shared/ui/Skeleton'
 
@@ -36,8 +36,6 @@ export function PerfumeReviewList({
   myReviewId,
   perfumeId,
 }: Props) {
-  const lastPage = Math.max(0, Math.ceil(totalElements / size) - 1)
-
   return (
     <section className={cn(GLASS_PANEL, 'space-y-3.75')}>
       <div className="flex items-center gap-2.5">
@@ -81,28 +79,14 @@ export function PerfumeReviewList({
         </ul>
       )}
 
-      {!isPending && lastPage > 0 && (
-        <div className="flex items-center justify-center gap-2.5">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page <= 0}
-            onClick={() => onPageChange(page - 1)}
-          >
-            이전
-          </Button>
-          <span className="text-ink-muted text-caption">
-            {page + 1} / {lastPage + 1}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= lastPage}
-            onClick={() => onPageChange(page + 1)}
-          >
-            다음
-          </Button>
-        </div>
+      {!isPending && (
+        <Pagination
+          label="후기 페이지"
+          page={page}
+          size={size}
+          totalElements={totalElements}
+          onPageChange={onPageChange}
+        />
       )}
     </section>
   )

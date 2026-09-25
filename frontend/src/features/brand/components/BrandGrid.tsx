@@ -1,5 +1,6 @@
 import { toBrandDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
+import { CARD_GRID } from '@/shared/ui/cardGrid'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Skeleton } from '@/shared/ui/Skeleton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
@@ -23,12 +24,9 @@ export function BrandGrid({
   skeletonCount = 10,
   emptyAction,
 }: Props) {
-  /* NOTE: 열 수는 향수 · 노트 격자와 같은 값입니다 — 여기만 바꾸면 카드 폭이 화면마다 달라집니다 */
-  const gridClass = 'grid grid-cols-2 gap-3.75 sm:grid-cols-3 lg:grid-cols-5'
-
   if (isPending) {
     return (
-      <div className={gridClass}>
+      <div className={CARD_GRID}>
         {Array.from({ length: skeletonCount }, (_, index) => (
           // 카드 한 장과 비슷한 높이 — 로고(h-40) + 제목 · 캡션 + 안쪽 여백입니다
           <Skeleton key={index} className="h-60" />
@@ -48,7 +46,7 @@ export function BrandGrid({
   }
 
   return (
-    <ul className={gridClass}>
+    <ul className={CARD_GRID}>
       {items.map((brand) => (
         <li key={brand.brandId}>
           <TileCard
