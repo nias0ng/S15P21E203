@@ -27,7 +27,6 @@ import {
   shelfLayout,
   TAG_WIDTH,
   tagMetrics,
-  wallStops,
   type GustDirection,
   type WallSection,
 } from '../lib'
@@ -350,7 +349,6 @@ export function ShelfWall({
    * 벽에 세울 분류. 벽감이 창에 고정이라 평소에는 한 분류만 서고, 흐르는 것은 그 안의 병뿐입니다.
    * 분류를 바꾸는 동안만 옛 분류와 새 분류가 흐르는 방향 순서로 나란히 섭니다(`Passage` — 옛 분류는
    * 보이던 병만, 거꾸로 갈 때의 새 분류는 첫머리 한 창만).
-   * 현판이 트랙 밖(왼쪽 메뉴)에 서므로 기둥 칸 수는 0 입니다(lib.ts 의 layoutWall).
    */
   const shown = useMemo(() => {
     const pick = (value: ShelfCategory) =>
@@ -367,13 +365,13 @@ export function ShelfWall({
       ? [kept, coming]
       : [{ ...coming, items: coming.items.slice(0, clear + 1) }, kept]
   }, [sections, category, passage, clear])
-  const layout = useMemo(() => layoutWall(shown, clear, 0), [shown, clear])
+  const layout = useMemo(() => layoutWall(shown, clear), [shown, clear])
   // 옆벽의 문 — 벽감 높이 · 병 높이에서 셉니다(lib.ts 의 doorMetrics)
   const door = useMemo(
     () => doorMetrics(metrics.caseHeight, metrics.bottle),
     [metrics.caseHeight, metrics.bottle],
   )
-  // 이름표 벽의 현판. 세 분류와 "처음으로" 가 같은 치수 · 모양이라 한 번만 셉니다
+  // 메뉴판. 세 분류가 같은 치수 · 모양이라 한 번만 셉니다
   const plaque = useMemo(
     () =>
       plaqueMetrics(metrics.pitch, metrics.caseHeight, metrics.plaqueSpan, {
@@ -387,14 +385,6 @@ export function ShelfWall({
           metrics.caseHeight * MENU_HEIGHT_SHARE,
         ),
         maxWidth: metrics.pitch * metrics.plaqueSpan * MENU_WIDTH_SHARE,
-        // 어깨를 올리지 않고 모서리만 둥근 네모로 그립니다
-        plate: true,
-        /*
-         * 폭을 벽감 높이에 묶던 굴레를 풉니다. 세로로 길던 현판은 그 비율(29%)이 기둥 안에서
-         * 알맞았지만, 낮게 누운 메뉴판이 같은 굴레를 쓰면 기둥 301 에 판 135 로 절반도 못 쓰고
-         * 정사각형이 됩니다. 풀어 두면 남은 굴레인 맨 벽 폭(PLAQUE_WALL_SHARE)이 폭을 정합니다.
-         */
-        widthPerCase: Infinity,
       }),
     [metrics.pitch, metrics.caseHeight, metrics.plaqueSpan],
   )
@@ -405,15 +395,9 @@ export function ShelfWall({
   )
   /*
    * 창 왼쪽 끝이 설 수 있는 마지막 칸. 마지막 병까지 패널에 가리지 않는 자리로 끌어올 수
-   * 있어야 하고, 마지막 분류도 칩으로 고르면 그 이름표가 창 왼쪽 끝에 서야 합니다. 여기에
-   * 서면 "처음으로" 기둥이 패널 바로 왼쪽에 붙습니다(lib.ts 의 layoutWall).
+   * 있어야 합니다(lib.ts 의 layoutWall).
    */
   const max = Math.max(0, layout.total - clear)
-  /** 멈출 수 있는 칸 — 이름표 벽 기둥이 창 경계에 잘리는 칸을 뺍니다(lib.ts 의 wallStops) */
-  const stops = useMemo(
-    () => wallStops(layout, clear, max),
-    [layout, clear, max],
-  )
 
   /** 움직이기 시작한 횟수. 멈춤을 한 박자 늦춰 그리는 사이 다시 움직이기 시작했는지 봅니다 */
   const motions = useRef(0)
@@ -491,7 +475,6 @@ export function ShelfWall({
     track: trackRef,
     pitch: metrics.pitch,
     max,
-    stops,
     clear,
     // 쌓는 배치는 페이지가 스크롤됩니다. 벽 끝에서 더 굴린 휠은 페이지로 넘깁니다
     pageScrollAtEnds: !withPanel,
@@ -598,10 +581,9 @@ export function ShelfWall({
 
   /*
    * 고른 병이 패널에 가리지 않는 자리 밖이면 벽을 흘려 들입니다(하단 페이저로 넘길 때).
-   * 보던 분류 안에서 왼쪽으로는 최소한만 옮기고(첫 병이면 이름표 기둥까지), 오른쪽으로 가거나
-   * 다른 분류로 넘어가면 창 왼쪽 끝이 그 분류의 이름표보다 앞으로 나가지 않게 섭니다 — 짧은
-   * 분류를 넘나들 때 두 분류의 병이 한 화면에 섞여 서고 칩이 고른 병과 다른 분류에 켜지던
-   * 것을 막습니다. 구한 칸이 막힌 자리면 옮기던 쪽으로 비켜섭니다(lib.ts 의 revealItem).
+   * 보던 분류 안에서 왼쪽으로는 최소한만 옮기고, 오른쪽으로 가거나 다른 분류로 넘어가면 창
+   * 왼쪽 끝이 그 분류의 첫 칸보다 앞으로 나가지 않게 섭니다 — 짧은 분류를 넘나들 때 두 분류의
+   * 병이 한 화면에 섞여 서고 칩이 고른 병과 다른 분류에 켜지던 것을 막습니다(lib.ts 의 revealItem).
    *
    * **고른 병이 바뀔 때만** 따라갑니다. 휠로 다른 분류를 훑어보는 중에 창 크기가
    * 바뀌었다고 고른 병 쪽으로 벽이 되돌아가면, 보던 자리를 잃습니다.
@@ -640,7 +622,6 @@ export function ShelfWall({
         clear,
         section.start + at,
         max,
-        stops,
       )
       if (next !== from) flow.go(next)
       return
@@ -657,7 +638,6 @@ export function ShelfWall({
     onViewCategoryChange,
     sections,
     selectedId,
-    stops,
   ])
 
   useImperativeHandle(ref, () => ({ gust: swing.gust }), [swing])

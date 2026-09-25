@@ -11,12 +11,10 @@ import {
   meterWheel,
   nameWithoutBrand,
   NICHE_FACES,
-  nearStop,
-  nextStop,
   nicheSlots,
   noteRows,
   plaqueMetrics,
-  plaquePath,
+  platePath,
   revealItem,
   revealStart,
   sectionAt,
@@ -29,7 +27,6 @@ import {
   TAG_WIDTH,
   tagMetrics,
   ticketPath,
-  wallStops,
   WHEEL_IDLE,
   wheelStop,
   type GustDirection,
@@ -660,20 +657,17 @@ const sized = ([owned, tried, wish]: readonly number[]): ShelfSection[] => [
 
 /** ShelfWall 과 같은 셈 — 창 왼쪽 끝이 설 수 있는 마지막 칸 */
 const maxOf = (layout: WallLayout, clear: number) =>
-  Math.max(0, layout.total - clear, layout.sections.at(-1)?.plaque ?? 0)
+  Math.max(0, layout.total - clear)
 
 describe('layoutWall', () => {
-  it('분류마다 이름표 벽 한 칸 뒤에 벽감을 붙이고, 맨 끝에 처음으로 기둥을 둔다', () => {
-    const { sections, back, total } = layoutWall(SECTIONS)
-    expect(
-      sections.map(({ plaque, start, span }) => [plaque, start, span]),
-    ).toEqual([
-      [0, 1, 5],
-      [6, 7, 17],
-      [24, 25, 3],
+  it('분류마다 벽감을 차례로 붙인다 — 가리지 않는 칸을 주지 않으면 빈 벽이 없다', () => {
+    const { sections, total } = layoutWall(SECTIONS)
+    expect(sections.map(({ start, span, gap }) => [start, span, gap])).toEqual([
+      [0, 5, 0],
+      [5, 17, 0],
+      [22, 3, 0],
     ])
-    expect(back).toBe(28)
-    expect(total).toBe(29)
+    expect(total).toBe(25)
   })
 
   it('빈 분류도 "비어 있음" 을 적을 한 칸을 차지한다', () => {
@@ -682,45 +676,12 @@ describe('layoutWall', () => {
       WISH,
     ])
     expect(sections[0]?.span).toBe(1)
-    expect(sections[1]?.plaque).toBe(2)
+    expect(sections[1]?.start).toBe(1)
   })
 
-  it('두 칸 기둥 — 가리지 않는 칸 일곱(1280 x 720 에 스크롤 막대)에서 병 [5, 17, 3] 은 빈 벽 없이 이어지고 처음으로 기둥이 31 에 선다', () => {
-    const layout = layoutWall(SECTIONS, 7, 2)
-    expect(
-      layout.sections.map(({ plaque, start, gap }) => [plaque, start, gap]),
-    ).toEqual([
-      [0, 2, 0],
-      [7, 9, 0],
-      [26, 28, 0],
-    ])
-    expect(layout).toMatchObject({ back: 31, total: 33, plaqueSpan: 2 })
-    // 벽 끝(26)에서 처음으로 기둥이 패널 바로 왼쪽 두 칸(5 · 6번째 칸)에 섭니다
-    expect(maxOf(layout, 7)).toBe(26)
-    expect(layout.back - maxOf(layout, 7)).toBe(7 - 2)
-  })
-
-  it('가리지 않는 칸 여덟(1920 x 937)이면 기둥이 패널 경계에 반쯤 걸리지 않게 한 칸을 비운다', () => {
-    const layout = layoutWall(SECTIONS, 8, 2)
-    expect(layout.sections.map(({ plaque, gap }) => [plaque, gap])).toEqual([
-      [0, 1],
-      [8, 0],
-      [27, 1],
-    ])
-    expect(layout).toMatchObject({ back: 33, total: 35 })
-  })
-
-  it('병이 적은 분류의 첫머리에 서면 다음 기둥이 패널 바로 왼쪽에 붙는다', () => {
-    // 가리지 않는 칸 일곱 · 병 [2, 17, 1] — 이름표 두 칸 · 병 둘 · 빈 벽 · 다음 이름표 두 칸
-    const layout = layoutWall(sized([2, 17, 1]), 7, 2)
-    expect(layout.sections.map(({ gap }) => gap)).toEqual([1, 0, 2])
-    expect(layout.sections[1]?.plaque).toBe(0 + 7 - 2)
-    expect(layout.back).toBe((layout.sections[2]?.plaque ?? 0) + 7 - 2)
-  })
-
-  it('한 칸 기둥 — 병이 적은 분류의 첫머리에 서면 다음 분류의 이름표가 가리지 않는 자리의 마지막 칸에 걸린다', () => {
-    // 가리지 않는 칸 여섯. 병 둘 → 빈 벽 둘, 병 하나 → 빈 벽 셋, 마지막 병 셋 → 빈 벽 하나(처음으로 기둥)
-    const { sections, back, total } = layoutWall(
+  it('병이 가리지 않는 칸보다 적은 분류는 빈 벽으로 한 창을 채운다 — 다음 분류는 한 창 뒤에서 시작한다', () => {
+    // 가리지 않는 칸 여섯. 병 둘 → 빈 벽 넷, 병 하나 → 빈 벽 다섯, 마지막 병 셋 → 빈 벽 셋
+    const { sections, total } = layoutWall(
       [
         { category: 'OWNED', label: '보유 중', items: bottles(2, 'OWNED') },
         { category: 'TRIED', label: '시향해 봄', items: bottles(1, 'TRIED') },
@@ -728,26 +689,20 @@ describe('layoutWall', () => {
       ],
       6,
     )
-    expect(sections.map(({ plaque, gap }) => [plaque, gap])).toEqual([
-      [0, 2],
-      [5, 3],
-      [10, 1],
+    expect(sections.map(({ start, gap }) => [start, gap])).toEqual([
+      [0, 4],
+      [6, 5],
+      [12, 3],
     ])
-    expect(back).toBe(15)
-    expect(total).toBe(16)
-    const columns = [...sections.map(({ plaque }) => plaque), back]
-    for (let at = 1; at < columns.length; at += 1) {
-      expect(columns[at]).toBe((columns[at - 1] ?? 0) + 6 - 1)
-    }
+    expect(total).toBe(18)
   })
 
   it('가리지 않는 자리를 딱 채우는 분류와 넘치는 분류 뒤에는 빈 벽을 두지 않는다', () => {
-    // 병 넷이면 이름표 1 + 병 4 = 5칸이라 다음 이름표가 바로 여섯째 칸에 걸립니다
-    const { sections } = layoutWall(sized([4, 17, 3]), 6)
-    expect(sections.map(({ plaque, gap }) => [plaque, gap])).toEqual([
+    const { sections } = layoutWall(sized([6, 17, 3]), 6)
+    expect(sections.map(({ start, gap }) => [start, gap])).toEqual([
       [0, 0],
-      [5, 0],
-      [23, 1],
+      [6, 0],
+      [23, 3],
     ])
   })
 
@@ -756,131 +711,17 @@ describe('layoutWall', () => {
       [{ category: 'OWNED', label: '보유 중', items: [] }, WISH],
       6,
     )
-    expect(sections[0]?.gap).toBe(3)
-    expect(sections[1]?.plaque).toBe(5)
+    expect(sections[0]?.gap).toBe(5)
+    expect(sections[1]?.start).toBe(6)
   })
 
-  it('마지막 분류 뒤도 같은 셈이라, 병이 적으면 처음으로 기둥이 가리지 않는 자리 끝에 선다', () => {
-    const { sections, back, total } = layoutWall(
+  it('마지막 분류 뒤도 같은 셈이라, 병이 적으면 벽이 한 창 길이다', () => {
+    const { sections, total } = layoutWall(
       [{ category: 'WISH', label: '보유 희망', items: bottles(1, 'WISH') }],
       6,
     )
-    expect(sections[0]?.gap).toBe(3)
-    expect(back).toBe(5)
+    expect(sections[0]?.gap).toBe(5)
     expect(total).toBe(6)
-  })
-
-  it('한 칸 기둥 — 가리지 않는 칸 셋(390)에서 병 [5, 17, 3] 은 이름표 0 · 6 · 24, 처음으로 28 이다', () => {
-    const layout = layoutWall(SECTIONS, 3, 1)
-    expect(layout.sections.map(({ plaque }) => plaque)).toEqual([0, 6, 24])
-    expect(layout).toMatchObject({ back: 28, total: 29, plaqueSpan: 1 })
-    expect(maxOf(layout, 3)).toBe(26)
-  })
-
-  it('가리지 않는 칸이 셋뿐인 휴대폰 폭에서는 빈 벽이 생기지 않는다', () => {
-    const { sections } = layoutWall(
-      [
-        { category: 'OWNED', label: '보유 중', items: bottles(1, 'OWNED') },
-        { category: 'TRIED', label: '시향해 봄', items: [] },
-        WISH,
-      ],
-      3,
-    )
-    expect(sections.map(({ gap }) => gap)).toEqual([0, 0, 0])
-  })
-})
-
-describe('wallStops', () => {
-  it('가리지 않는 칸 일곱 · 병 [5, 17, 3] — 기둥 가운데를 창 왼쪽 끝이나 패널 경계가 가르는 1 · 8 · 20 · 25 에는 멈추지 않는다', () => {
-    const layout = layoutWall(SECTIONS, 7, 2)
-    const max = maxOf(layout, 7)
-    const stops = wallStops(layout, 7, max)
-    const blocked = Array.from({ length: max + 1 }, (_, at) => at).filter(
-      (at) => !stops.includes(at),
-    )
-    expect(blocked).toEqual([1, 8, 20, 25])
-  })
-
-  it('가리지 않는 칸 다섯(1024 · 768) — 1 · 3 · 8 · 22 · 27 이 막히고 벽 끝은 28 이다', () => {
-    const layout = layoutWall(SECTIONS, 5, 2)
-    const max = maxOf(layout, 5)
-    expect(max).toBe(28)
-    const stops = wallStops(layout, 5, max)
-    expect(
-      Array.from({ length: max + 1 }, (_, at) => at).filter(
-        (at) => !stops.includes(at),
-      ),
-    ).toEqual([1, 3, 8, 22, 27])
-  })
-
-  it('한 칸 기둥이면 막힌 자리가 없다', () => {
-    const layout = layoutWall(SECTIONS, 3, 1)
-    const max = maxOf(layout, 3)
-    expect(wallStops(layout, 3, max)).toEqual(
-      Array.from({ length: max + 1 }, (_, at) => at),
-    )
-  })
-
-  it('어떤 병 수에서도 벽 끝 · 분류 현판에는 멈추고, 멈춘 자리에서 기둥이 창 경계에 잘리지 않는다', () => {
-    const K = 2
-    for (let clear = 5; clear <= 9; clear += 1) {
-      for (let owned = 0; owned <= 8; owned += 1) {
-        for (let tried = 0; tried <= 8; tried += 1) {
-          for (let wish = 0; wish <= 8; wish += 1) {
-            const layout = layoutWall(sized([owned, tried, wish]), clear, K)
-            const max = maxOf(layout, clear)
-            const stops = wallStops(layout, clear, max)
-            const columns = [
-              ...layout.sections.map(({ plaque }) => plaque),
-              layout.back,
-            ]
-            expect(stops).toContain(0)
-            expect(stops).toContain(max)
-            for (const { plaque } of layout.sections) {
-              expect(stops).toContain(plaque)
-            }
-            for (const stop of stops) {
-              for (const column of columns) {
-                const cutsLeft = column < stop && stop < column + K
-                const edge = stop + clear
-                const cutsEdge = column < edge && edge < column + K
-                expect(cutsLeft || cutsEdge).toBe(false)
-              }
-            }
-            // 짧은 분류의 다음 기둥은 패널 바로 왼쪽, 벽 끝의 처음으로 기둥도 패널 바로 왼쪽
-            layout.sections.forEach(({ plaque, span }, at) => {
-              if (K + span + K > clear) return
-              const next = layout.sections[at + 1]?.plaque ?? layout.back
-              expect(next).toBe(plaque + clear - K)
-            })
-            expect(layout.back - max).toBe(clear - K)
-          }
-        }
-      }
-    }
-  })
-})
-
-describe('nextStop · nearStop', () => {
-  const layout = layoutWall(SECTIONS, 7, 2)
-  const stops = wallStops(layout, 7, maxOf(layout, 7))
-
-  it('가던 쪽으로 처음 만나는 멈출 자리 — 자기 자신도 포함한다', () => {
-    expect(nextStop(stops, 1, 1)).toBe(2)
-    expect(nextStop(stops, 8, 1)).toBe(9)
-    expect(nextStop(stops, 8, -1)).toBe(7)
-    expect(nextStop(stops, 7, 1)).toBe(7)
-  })
-
-  it('벽 끝을 넘어가지 않는다', () => {
-    expect(nextStop(stops, -3, -1)).toBe(0)
-    expect(nextStop(stops, 40, 1)).toBe(26)
-  })
-
-  it('멈출 수 있는 자리면 그대로, 막힌 자리면 가던 쪽으로 비켜선다', () => {
-    expect(nearStop(stops, 19, 1)).toBe(19)
-    expect(nearStop(stops, 20, -1)).toBe(19)
-    expect(nearStop(stops, 20, 1)).toBe(21)
   })
 })
 
@@ -929,15 +770,18 @@ describe('slotView', () => {
 })
 
 describe('sectionAt', () => {
-  const { sections } = layoutWall(SECTIONS)
+  // 가리지 않는 칸 여섯 · 병 [5, 17, 3] → 벽감 0 · 6 · 23, 보유 중 뒤 빈 벽 한 칸(5)
+  const { sections } = layoutWall(SECTIONS, 6)
 
-  it('이름표 벽은 뒤따르는 벽감의 분류로 친다', () => {
-    expect(sectionAt(sections, 6.2)?.category).toBe('TRIED')
+  it('벽감 뒤 빈 벽은 그 벽감의 분류로 친다', () => {
+    expect(sectionAt(sections, 5.5)?.category).toBe('OWNED')
+    expect(sectionAt(sections, 27)?.category).toBe('WISH')
   })
 
   it('벽감 한가운데는 그 분류다', () => {
     expect(sectionAt(sections, 3.5)?.category).toBe('OWNED')
-    expect(sectionAt(sections, 26)?.category).toBe('WISH')
+    expect(sectionAt(sections, 6.2)?.category).toBe('TRIED')
+    expect(sectionAt(sections, 24)?.category).toBe('WISH')
   })
 })
 
@@ -1070,57 +914,46 @@ describe('meterWheel', () => {
 })
 
 describe('wheelStop', () => {
-  // 가리지 않는 칸 일곱 · 병 [5, 17, 3] — 1 · 8 · 20 · 25 가 막히고 벽 끝은 26
-  const layout = layoutWall(SECTIONS, 7, 2)
-  const stops = wallStops(layout, 7, maxOf(layout, 7))
+  // 벽 끝은 26
+  const MAX = 26
   const still = (at: number) => ({ position: at, dest: at, moving: false })
 
-  it('서 있으면 한 번에 한 칸 — 기둥이 창 경계에 잘리는 막힌 자리는 건너뛴다', () => {
-    expect(wheelStop(stops, still(0), 1)).toBe(2)
-    expect(wheelStop(stops, still(3), 1)).toBe(4)
-    expect(wheelStop(stops, still(7), 1)).toBe(9)
-    expect(wheelStop(stops, still(7), -1)).toBe(6)
-    expect(wheelStop(stops, still(21), -1)).toBe(19)
+  it('서 있으면 한 번에 한 칸이다', () => {
+    expect(wheelStop(still(0), 1, MAX)).toBe(1)
+    expect(wheelStop(still(3), 1, MAX)).toBe(4)
+    expect(wheelStop(still(7), 1, MAX)).toBe(8)
+    expect(wheelStop(still(7), -1, MAX)).toBe(6)
+    expect(wheelStop(still(21), -1, MAX)).toBe(20)
   })
 
   it('벽 끝에서 더 굴리면 목적지가 그대로다', () => {
-    expect(wheelStop(stops, still(0), -1)).toBe(0)
-    expect(wheelStop(stops, still(26), 1)).toBe(26)
+    expect(wheelStop(still(0), -1, MAX)).toBe(0)
+    expect(wheelStop(still(26), 1, MAX)).toBe(26)
   })
 
   it('같은 쪽으로 흐르는 중이면 목적지에서 한 칸씩 쌓인다', () => {
-    expect(wheelStop(stops, { position: 0.4, dest: 2, moving: true }, 1)).toBe(
-      3,
-    )
-    expect(wheelStop(stops, { position: 4.2, dest: 7, moving: true }, 1)).toBe(
-      9,
-    )
+    expect(wheelStop({ position: 0.4, dest: 2, moving: true }, 1, MAX)).toBe(3)
+    expect(wheelStop({ position: 4.2, dest: 7, moving: true }, 1, MAX)).toBe(8)
   })
 
   it('반대로 굴리면 지금 자리에서 그쪽 다음 칸 경계로 돌아선다', () => {
-    expect(wheelStop(stops, { position: 3.8, dest: 6, moving: true }, -1)).toBe(
-      3,
-    )
-    expect(wheelStop(stops, { position: 5.3, dest: 3, moving: true }, 1)).toBe(
-      6,
-    )
+    expect(wheelStop({ position: 3.8, dest: 6, moving: true }, -1, MAX)).toBe(3)
+    expect(wheelStop({ position: 5.3, dest: 3, moving: true }, 1, MAX)).toBe(6)
   })
 
   it('목적지에 거의 닿았으면(0.02 칸 안) 서 있는 것처럼 센다', () => {
     const near = { position: 2.99, dest: 3, moving: true }
-    expect(wheelStop(stops, near, 1)).toBe(4)
-    expect(wheelStop(stops, near, -1)).toBe(2)
-    expect(wheelStop(stops, { position: 3.01, dest: 3, moving: true }, 1)).toBe(
-      4,
-    )
+    expect(wheelStop(near, 1, MAX)).toBe(4)
+    expect(wheelStop(near, -1, MAX)).toBe(2)
+    expect(wheelStop({ position: 3.01, dest: 3, moving: true }, 1, MAX)).toBe(4)
   })
 
-  it('0 에서 다섯 번 연달아 굴리면 막힌 자리를 뺀 다섯 칸(2 ~ 6)을 간다', () => {
+  it('0 에서 다섯 번 연달아 굴리면 다섯 칸(1 ~ 5)을 간다', () => {
     let dest = 0
     for (let at = 0; at < 5; at += 1) {
-      dest = wheelStop(stops, { position: 0, dest, moving: at > 0 }, 1)
+      dest = wheelStop({ position: 0, dest, moving: at > 0 }, 1, MAX)
     }
-    expect(dest).toBe(6)
+    expect(dest).toBe(5)
   })
 })
 
@@ -1133,27 +966,22 @@ describe('revealStart', () => {
     expect(revealStart(3, 5, 9, 24)).toBe(5)
   })
 
-  it('왼쪽 밖이면 앞의 이름표 벽까지 보이도록 당긴다', () => {
-    expect(revealStart(10, 5, 7, 24, 1)).toBe(6)
+  it('왼쪽 밖이면 그 칸이 창 왼쪽 끝에 오도록 당긴다', () => {
+    expect(revealStart(10, 5, 7, 24)).toBe(7)
   })
 
   it('벽 끝을 넘어가지 않는다', () => {
     expect(revealStart(0, 5, 28, 24)).toBe(24)
-    expect(revealStart(3, 5, 0, 24, 1)).toBe(0)
   })
 })
 
 describe('revealItem', () => {
-  /** 한 칸 기둥이라 막힌 자리가 없는 벽의 멈출 자리 */
-  const everyStop = (max: number) =>
-    Array.from({ length: max + 1 }, (_, at) => at)
-
-  // 가리지 않는 칸 여섯 · 한 칸 기둥. 병 둘 · 하나 · 셋 → 이름표 0 · 5 · 10, 처음으로 15, 창 끝 10
+  // 가리지 않는 칸 여섯. 병 둘 · 하나 · 셋 → 벽감 0 · 6 · 12, 벽 18 칸, 창 끝 12
   const SHORT = layoutWall(sized([2, 1, 3]), 6).sections
-  const SHORT_STOPS = everyStop(10)
-  // 병 다섯 · 열일곱 · 셋 → 이름표 0 · 6 · 24, 처음으로 29, 창 끝 24
+  const SHORT_MAX = 12
+  // 병 다섯 · 열일곱 · 셋 → 벽감 0 · 6 · 23, 벽 29 칸, 창 끝 23
   const LONG = layoutWall(SECTIONS, 6).sections
-  const LONG_STOPS = everyStop(24)
+  const LONG_MAX = 23
 
   /** 창 왼쪽 끝(start)에서 가리지 않는 자리에 병이 서는 분류들 */
   const bottlesIn = (sections: typeof SHORT, start: number) =>
@@ -1166,104 +994,75 @@ describe('revealItem', () => {
     )
 
   it('이미 가리지 않는 자리에 있으면 움직이지 않는다', () => {
-    expect(revealItem(SHORT, 0, 6, 2, 10, SHORT_STOPS)).toBe(0)
-    expect(revealItem(LONG, 3, 6, 7, 24, LONG_STOPS)).toBe(3)
+    expect(revealItem(SHORT, 0, 6, 1, SHORT_MAX)).toBe(0)
+    expect(revealItem(LONG, 3, 6, 7, LONG_MAX)).toBe(3)
   })
 
   it('짧은 분류에서 다음 분류의 첫 병으로 넘어가면 그 분류의 첫머리에 선다 — 두 분류의 병이 섞이지 않는다', () => {
-    // 최소한만 옮기면 1 — 보유 중 병 둘과 시향해 봄 첫 병이 함께 섭니다
-    expect(bottlesIn(SHORT, revealStart(0, 6, 6, 10, 1)).size).toBe(2)
+    // 최소한만 옮기면 1 — 보유 중 병과 시향해 봄 첫 병이 함께 섭니다
+    expect(bottlesIn(SHORT, revealStart(0, 6, 6, SHORT_MAX)).size).toBe(2)
 
-    const next = revealItem(SHORT, 0, 6, 6, 10, SHORT_STOPS)
-    expect(next).toBe(5)
+    const next = revealItem(SHORT, 0, 6, 6, SHORT_MAX)
+    expect(next).toBe(6)
     expect([...bottlesIn(SHORT, next)]).toEqual(['TRIED'])
     // 칩도 고른 병의 분류에 켜집니다
     expect(sectionAt(SHORT, next + 3)?.category).toBe('TRIED')
   })
 
   it('앞 분류로 돌아가면 그 분류의 병만 서는 자리로 간다', () => {
-    // 시향해 봄 첫머리(5)에서 보유 중 끝 병(2)으로
-    const back = revealItem(SHORT, 5, 6, 2, 10, SHORT_STOPS)
+    // 시향해 봄 첫머리(6)에서 보유 중 끝 병(1)으로
+    const back = revealItem(SHORT, 6, 6, 1, SHORT_MAX)
     expect(back).toBe(0)
     expect([...bottlesIn(SHORT, back)]).toEqual(['OWNED'])
     expect(sectionAt(SHORT, back + 3)?.category).toBe('OWNED')
   })
 
-  it('긴 분류로 넘어가면 병을 오른쪽 끝에 두되, 창 왼쪽 끝이 그 분류의 이름표보다 앞으로 나가지 않는다', () => {
-    // 보유 희망 첫머리(24)에서 시향해 봄 끝 병(23)으로 · 시향해 봄 첫머리(6)에서 보유 중 끝 병(5)으로
-    expect(revealItem(LONG, 24, 6, 23, 24, LONG_STOPS)).toBe(18)
-    expect(revealItem(LONG, 6, 6, 5, 24, LONG_STOPS)).toBe(0)
-    // 보유 중 첫머리(0)에서 시향해 봄 첫 병(7)으로
-    expect(revealItem(LONG, 0, 6, 7, 24, LONG_STOPS)).toBe(6)
-    for (const start of [18, 0, 6]) {
+  it('긴 분류로 넘어가면 병을 오른쪽 끝에 두되, 창 왼쪽 끝이 그 분류의 첫 칸보다 앞으로 나가지 않는다', () => {
+    // 보유 희망 첫머리(23)에서 시향해 봄 끝 병(22)으로 · 시향해 봄 첫머리(6)에서 보유 중 끝 병(4)으로
+    expect(revealItem(LONG, 23, 6, 22, LONG_MAX)).toBe(17)
+    expect(revealItem(LONG, 6, 6, 4, LONG_MAX)).toBe(0)
+    // 보유 중 첫머리(0)에서 시향해 봄 첫 병(6)으로
+    expect(revealItem(LONG, 0, 6, 6, LONG_MAX)).toBe(6)
+    for (const start of [17, 0, 6]) {
       expect(bottlesIn(LONG, start).size).toBe(1)
     }
   })
 
-  it('보던 분류 안에서 왼쪽으로는 최소한만 옮기고, 첫 병이면 이름표 벽까지 보인다', () => {
-    expect(revealItem(LONG, 10, 6, 9, 24, LONG_STOPS)).toBe(9)
-    expect(revealItem(LONG, 10, 6, 7, 24, LONG_STOPS)).toBe(6)
+  it('보던 분류 안에서 왼쪽으로는 최소한만 옮긴다', () => {
+    expect(revealItem(LONG, 10, 6, 9, LONG_MAX)).toBe(9)
+    expect(revealItem(LONG, 10, 6, 6, LONG_MAX)).toBe(6)
     // 오른쪽으로는 그 병이 가리지 않는 자리의 오른쪽 끝에 옵니다
-    expect(revealItem(LONG, 6, 6, 12, 24, LONG_STOPS)).toBe(7)
+    expect(revealItem(LONG, 6, 6, 12, LONG_MAX)).toBe(7)
   })
 
-  describe('두 칸 기둥(가리지 않는 칸 일곱 · 병 [5, 17, 3])', () => {
-    const layout = layoutWall(SECTIONS, 7, 2)
-    const max = maxOf(layout, 7)
-    const stops = wallStops(layout, 7, max)
-    const reveal = (from: number, index: number) =>
-      revealItem(layout.sections, from, 7, index, max, stops)
-
-    it('다른 분류로 넘어가면 그 분류의 현판 기둥이 창 왼쪽 끝에 선다', () => {
-      // 보유 중 첫머리에서 시향해 봄 첫 병(9)으로 · 시향해 봄 첫머리에서 보유 중 첫 병(2)으로
-      expect(reveal(0, 9)).toBe(7)
-      expect(reveal(7, 2)).toBe(0)
-      // 보유 희망 첫머리(26)에서 시향해 봄 끝 병(25)으로
-      expect(reveal(26, 25)).toBe(19)
-    })
-
-    it('구한 자리가 막혀 있으면 가던 쪽으로 비켜서고, 고른 병은 가리지 않는 자리에 남는다', () => {
-      // 시향해 봄 여섯째 병(14) — 최소한만 옮기면 8(기둥이 창 왼쪽 끝에 잘림)이라 9 에 섭니다
-      expect(reveal(0, 14)).toBe(9)
-      // 보던 분류 안에서 첫 병(9)으로 돌아가면 기둥 두 칸까지 보입니다
-      expect(reveal(12, 9)).toBe(7)
-    })
-
-    it('어느 멈출 자리에서 어느 병을 골라도, 멈출 자리에 서고 그 병이 가리지 않는 자리에 든다', () => {
-      for (let clear = 5; clear <= 9; clear += 1) {
-        for (const sizes of [
-          [5, 17, 3],
-          [0, 1, 0],
-          [1, 1, 1],
-          [2, 17, 1],
-          [3, 0, 6],
-          [6, 6, 6],
-          [7, 2, 8],
-        ]) {
-          const wall = layoutWall(sized(sizes), clear, 2)
-          const end = maxOf(wall, clear)
-          const allowed = wallStops(wall, clear, end)
-          for (const from of allowed) {
-            for (const { start, items } of wall.sections) {
-              items.forEach((_, at) => {
-                const index = start + at
-                const next = revealItem(
-                  wall.sections,
-                  from,
-                  clear,
-                  index,
-                  end,
-                  allowed,
-                )
-                expect(allowed).toContain(next)
-                expect(index).toBeGreaterThanOrEqual(next)
-                expect(index).toBeLessThan(next + clear)
-              })
-            }
+  it('어느 자리에서 어느 병을 골라도, 벽 끝을 넘지 않고 그 병이 가리지 않는 자리에 든다', () => {
+    for (let clear = 3; clear <= 9; clear += 1) {
+      for (const sizes of [
+        [5, 17, 3],
+        [0, 1, 0],
+        [1, 1, 1],
+        [2, 17, 1],
+        [3, 0, 6],
+        [6, 6, 6],
+        [7, 2, 8],
+      ]) {
+        const wall = layoutWall(sized(sizes), clear)
+        const end = maxOf(wall, clear)
+        for (let from = 0; from <= end; from += 1) {
+          for (const { start, items } of wall.sections) {
+            items.forEach((_, at) => {
+              const index = start + at
+              const next = revealItem(wall.sections, from, clear, index, end)
+              expect(Number.isInteger(next)).toBe(true)
+              expect(next).toBeGreaterThanOrEqual(0)
+              expect(next).toBeLessThanOrEqual(end)
+              expect(index).toBeGreaterThanOrEqual(next)
+              expect(index).toBeLessThan(next + clear)
+            })
           }
         }
       }
-    })
+    }
   })
 })
 
@@ -1281,85 +1080,28 @@ describe('plaqueMetrics', () => {
     [350, 380, false],
   ] as const
 
-  /** 이름표 벽 기둥 좌우를 이웃 벽감의 옆벽이 차지하는 폭(--track-inset 33 x 2) */
-  const SIDES = 66
-
-  /** 그 화면의 벽에 서는 현판과 기둥 폭 */
+  /** 그 화면의 메뉴 기둥에 서는 현판 */
   const plaqueOf = (width: number, height: number, panel = true) => {
     const { pitch, caseHeight, plaqueSpan } = shelfLayout(width, height, {
       panel,
     })
-    return {
-      caseHeight,
-      column: pitch * plaqueSpan,
-      ...plaqueMetrics(pitch, caseHeight, plaqueSpan),
-    }
+    return { caseHeight, ...plaqueMetrics(pitch, caseHeight, plaqueSpan) }
   }
 
-  it('1920 x 1080(칸 1460/7 · 벽감 605 · 두 칸 기둥)에서 현판은 175 x 455 이고 영문 설명까지 다 적는다', () => {
-    const plaque = plaqueMetrics(1460 / 7, 605, 2)
-    expect(plaque.width).toBe(175)
-    expect(plaque.height).toBe(455)
-    expect(plaque.detail).toBe('full')
-    const { notch, arch, corner, inset, crown } = plaque
-    expect({ notch, arch, corner, inset, crown }).toEqual({
-      notch: 12,
-      arch: 25,
-      corner: 25,
-      inset: 6,
-      crown: 37,
+  it('1920 x 1080 의 메뉴판(칸 1438/8 · 벽감 600 · 두 칸 기둥)은 305 x 130 이고 영문 설명까지 다 적는다', () => {
+    // ShelfWall 과 같은 상한 — 높이는 벽감의 22%, 폭은 기둥 폭의 85%
+    const plate = plaqueMetrics(1438 / 8, 600, 2, {
+      maxHeight: 132,
+      maxWidth: (1438 / 8) * 2 * 0.85,
     })
-  })
-
-  it('두 칸 기둥의 현판은 시안 비율(벽감의 29% x 75%)로 선다', () => {
-    const cases = [
-      [1460 / 7, 605, 2, 175, 455, 'full'], // 1920 x 1080
-      [1236 / 7, 480, 2, 135, 360, 'full'], // 1645 x 914
-      [1051 / 7, 445, 2, 125, 335, 'full'], // 1440 x 900
-      [891 / 7, 345, 2, 100, 260, 'full'], // 1280 x 720
-      [131, 355, 2, 100, 265, 'full'], // 1024 x 768
-      [350 / 3, 275, 1, 40, 125, 'vertical'], // 390 — 한 칸 기둥
-    ] as const
-    for (const [pitch, caseHeight, span, width, height, detail] of cases) {
-      expect(plaqueMetrics(pitch, caseHeight, span)).toMatchObject({
-        width,
-        height,
-        detail,
-      })
-    }
-  })
-
-  it('한 장 배치의 모든 화면에서 현판은 다 적고, 옆벽과 25px 이상 떨어지며, 폭은 벽감의 29% 이하다', () => {
-    // 병을 벽감의 60% 로 줄여 칸이 촘촘해진 뒤로 1440 x 900 은 36, 1280 x 720 은 28 입니다
-    const areas = [
-      [1800, 800],
-      [1442, 634],
-      [1525, 634],
-      [1800, 657],
-      [1340, 620],
-      [1180, 460],
-      [1165, 460],
-      [944, 488],
-    ] as const
-    for (const [width, height] of areas) {
-      const plaque = plaqueOf(width, height)
-      expect(plaque.detail).toBe('full')
-      expect((plaque.column - SIDES - plaque.width) / 2).toBeGreaterThanOrEqual(
-        25,
-      )
-      expect(plaque.width).toBeLessThanOrEqual(plaque.caseHeight * 0.29)
-      expect(plaque.width % 5).toBe(0)
-      expect(plaque.height % 5).toBe(0)
-    }
-  })
-
-  it('현판은 이웃 벽감의 옆벽에 닿지 않는다 — 좌우로 5px 이상 띄운다', () => {
-    for (const [width, height, panel] of WALLS) {
-      const plaque = plaqueOf(width, height, panel)
-      expect((plaque.column - SIDES - plaque.width) / 2).toBeGreaterThanOrEqual(
-        5,
-      )
-    }
+    expect(plate).toMatchObject({
+      width: 305,
+      height: 130,
+      detail: 'full',
+      corner: 7,
+      inset: 5,
+      crown: 10,
+    })
   })
 
   it('높이는 벽감의 75% 와 폭의 3.2 배를 넘지 않고, 폭 · 높이는 끝자리가 0 또는 5 다', () => {
@@ -1372,39 +1114,20 @@ describe('plaqueMetrics', () => {
     }
   })
 
-  it('한 칸 기둥에서 폭이 좁아지면 영문 설명을 빼고, 더 좁으면 분류 이름을 세로로 세운다', () => {
-    // 칸 169.44 · 벽감 470 — 맨 벽 103 이라 현판 90
-    expect(plaqueMetrics(169.44, 470)).toMatchObject({
-      width: 90,
+  it('폭이 좁아지면 영문 설명을 빼고, 더 좁으면 분류 이름을 세로로 세운다 — 세운 판은 110 아래로 낮아지지 않는다', () => {
+    // 기둥 90 → 판 80
+    expect(plaqueMetrics(90, 470)).toMatchObject({
+      width: 80,
       detail: 'compact',
     })
-    // 칸 131 · 벽감 355 — 맨 벽 65 라 현판 55
-    expect(plaqueMetrics(131, 355).detail).toBe('vertical')
-    // 390
-    expect(plaqueOf(350, 380, false)).toMatchObject({
-      width: 40,
-      height: 125,
+    // 기둥 60 → 판 50
+    expect(plaqueMetrics(60, 355).detail).toBe('vertical')
+    // 기둥 35 → 판 30. 폭의 3.2 배(95)보다 높은 110 으로 섭니다
+    expect(plaqueMetrics(35, 355)).toMatchObject({
+      width: 30,
+      height: 110,
       detail: 'vertical',
     })
-  })
-
-  it('맨 벽이 좁은 휴대폰에서도 현판은 옆벽에 겹치지 않고, 세로 이름이 어깨 · 테두리선에 걸리지 않는 높이로 선다', () => {
-    // 320 · 360 · 412 · 480 휴대폰의 벽 자리(쌓는 배치)
-    const phones = [
-      [280, 380],
-      [320, 380],
-      [372, 380],
-      [440, 380],
-    ] as const
-    for (const [width, height] of phones) {
-      const plaque = plaqueOf(width, height, false)
-      expect(plaque.width).toBeLessThanOrEqual(plaque.column - SIDES)
-      expect(plaque.detail).toBe('vertical')
-      expect(plaque.height).toBeGreaterThanOrEqual(110)
-      expect(plaque.height).toBeLessThanOrEqual(plaque.caseHeight * 0.75 + 2.5)
-      // 글자는 어깨 아래 · 안쪽 테두리선 안에서 시작합니다
-      expect(plaque.crown).toBeGreaterThan(plaque.inset)
-    }
   })
 
   /*
@@ -1418,8 +1141,6 @@ describe('plaqueMetrics', () => {
     ] as const) {
       const plate = plaqueMetrics(pitch, caseHeight, 2, {
         maxHeight: caseHeight * 0.22,
-        plate: true,
-        widthPerCase: Infinity,
       })
       expect(plate.crown).toBe(plate.inset + 5)
     }
@@ -1427,70 +1148,11 @@ describe('plaqueMetrics', () => {
 
   it('clip-path 값 — 종이는 윤곽 하나, 띠는 바깥 윤곽과 들인 윤곽을 evenodd 로 겹친다', () => {
     const plaque = plaqueMetrics(1460 / 7, 605, 2)
-    expect(plaque.shape).toBe(`path("${plaquePath(plaque)}")`)
+    expect(plaque.shape).toBe(`path("${platePath(plaque)}")`)
     expect(plaque.edgeRing).toBe(
-      `path(evenodd, "${plaquePath(plaque)} ${plaquePath(plaque, 1)}")`,
+      `path(evenodd, "${platePath(plaque)} ${platePath(plaque, 1)}")`,
     )
-    expect(plaque.lineRing).toContain(plaquePath(plaque, plaque.inset))
-  })
-})
-
-describe('plaquePath', () => {
-  const plaque = plaqueMetrics(1460 / 7, 605, 2)
-
-  /** 경로의 끝점들. M · V · H · A 마다 펜이 멈추는 자리입니다 */
-  const endpoints = (path: string) => {
-    const points: { x: number; y: number }[] = []
-    let x = 0
-    let y = 0
-    for (const [, command, args = ''] of path.matchAll(
-      /([MVHAZ])([^MVHAZ]*)/g,
-    )) {
-      const values = args.trim().split(/\s+/).map(Number)
-      if (command === 'M') [x = 0, y = 0] = values
-      if (command === 'V') [y = 0] = values
-      if (command === 'H') [x = 0] = values
-      if (command === 'A') [, , , , , x = 0, y = 0] = values
-      if (command !== 'Z') points.push({ x, y })
-    }
-    return points
-  }
-
-  it('윤곽은 왼쪽 옆변 아래에서 시작해 어깨(모서리 파임 + 아치 높이)까지 올라간다', () => {
-    expect(plaquePath(plaque).startsWith('M0 430V37A12 12 ')).toBe(true)
-  })
-
-  it('안쪽으로 들인 윤곽은 좌우 대칭이고, 현판 안에 d 만큼 들어와 있다', () => {
-    for (const d of [0, 1, 6, 7]) {
-      const points = endpoints(plaquePath(plaque, d))
-      for (const { x, y } of points) {
-        expect(x).toBeGreaterThanOrEqual(d - 0.01)
-        expect(x).toBeLessThanOrEqual(plaque.width - d + 0.01)
-        expect(y).toBeGreaterThanOrEqual(d - 0.01)
-        expect(y).toBeLessThanOrEqual(plaque.height - d + 0.01)
-        expect(
-          points.some(
-            (other) =>
-              Math.abs(other.x - (plaque.width - x)) < 0.02 &&
-              Math.abs(other.y - y) < 0.02,
-          ),
-        ).toBe(true)
-      }
-    }
-  })
-
-  it('들인 윤곽의 어깨 점은 바깥 모서리 파임 · 아치와 같은 중심의 원 위에 있다 — 간격이 어디서나 d 다', () => {
-    const { width, notch, arch } = plaque
-    const reach = width / 2 - notch
-    const radius = (reach * reach + arch * arch) / (2 * arch)
-    for (const d of [1, 6]) {
-      // M · V 다음, 모서리 파임 원호가 끝나는 점이 왼쪽 어깨입니다
-      const shoulder = endpoints(plaquePath(plaque, d))[2]
-      expect(shoulder).toBeDefined()
-      const { x = 0, y = 0 } = shoulder ?? {}
-      expect(Math.hypot(x, y - arch)).toBeCloseTo(notch + d, 1)
-      expect(Math.hypot(x - width / 2, y - radius)).toBeCloseTo(radius - d, 1)
-    }
+    expect(plaque.lineRing).toContain(platePath(plaque, plaque.inset))
   })
 })
 

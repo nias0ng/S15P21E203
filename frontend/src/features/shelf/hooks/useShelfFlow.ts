@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useState, type RefObject } from 'react'
 
 import {
   meterWheel,
-  nearStop,
   snapStart,
   springStep,
   WHEEL_IDLE,
@@ -72,11 +71,6 @@ type Options = {
   pitch: number
   /** 창 왼쪽 끝이 설 수 있는 마지막 칸 */
   max: number
-  /**
-   * 창 왼쪽 끝이 멈출 수 있는 칸들(lib.ts 의 wallStops). 이름표 벽 기둥이 창 경계에 잘리는 칸은
-   * 빠져 있어서, 휠은 그 칸을 건너뛰고 칩 · 화살표는 가던 쪽의 다음 멈출 자리로 비켜섭니다(nearStop).
-   */
-  stops: readonly number[]
   /** 패널에 가리지 않는 칸 수. 휠을 연달아 굴려 지금 자리보다 앞서 쌓을 수 있는 칸 수의 한도입니다 */
   clear: number
   /**
@@ -142,8 +136,7 @@ const prefersReducedMotion = () =>
  *        그 칸에 끌려가 **자석처럼 딸깍 붙습니다**(springStep).
  *        흐르는 중에 같은 쪽으로 또 굴리면 목적지에 한 칸씩 쌓이고(가리지 않는 칸 수까지), 반대로
  *        굴리면 지금 자리에서 그쪽 다음 칸으로 곧바로 돌아섭니다(wheelStop). 목적지가 바뀌어도
- *        속도를 이어서 튀거나 끊기지 않습니다. 이름표 벽 기둥이 창 경계에 잘리는 막힌 자리는
- *        건너뛰어서, 기둥은 휠 한 번에 통째로 지나갑니다(`stops`).
+ *        속도를 이어서 튀거나 끊기지 않습니다.
  *        벽 끝에서 더 굴리면 아무 일도 없습니다 — 움직이기 시작했다고 알리지 않아서 패널 흐림 ·
  *        창 끝 병 · 태그가 깜빡이거나 흔들리지 않습니다.
  *   이동 칩 · 이름표 벽 · 페이저 · 화살표는 정해진 칸으로 곧장 갑니다(glide). 거리가 멀수록
@@ -185,11 +178,6 @@ export function useShelfFlow(options: Options): ShelfFlow {
     if (flow.destination() > options.max) flow.go(options.max, true)
   }, [flow, options.max])
 
-  // 창 크기가 바뀌어 서 있던(향하던) 칸이 막힌 자리가 되면(기둥이 창 경계에 잘림) 옆 멈출 자리로 옮깁니다
-  useEffect(() => {
-    flow.realign()
-  }, [flow, options.stops])
-
   useEffect(() => {
     const element = options.viewport.current
     if (!element) return
@@ -220,7 +208,6 @@ const IDLE_OPTIONS: Options = {
   track: { current: null },
   pitch: 1,
   max: 0,
-  stops: [0],
   clear: 1,
   onMoveStart: () => {},
   onMove: () => {},
@@ -347,13 +334,8 @@ function createFlow() {
   }
 
   const go = (start: number, instant = false) => {
-    const { max, stops } = read()
-    // 막힌 자리(이름표 벽 기둥이 창 경계에 잘리는 칸)면 가던 쪽의 다음 멈출 자리로 갑니다
-    const to = nearStop(
-      stops,
-      clamp(Math.round(start), 0, max),
-      Math.sign(start - position) || 1,
-    )
+    const { max } = read()
+    const to = clamp(Math.round(start), 0, max)
     if (instant || prefersReducedMotion()) {
       dest = to
       return finish()
@@ -406,19 +388,10 @@ function createFlow() {
 
     destination: () => (mode === 'drag' ? Math.round(position) : dest),
 
-    /** 멈출 자리가 바뀌어(창 크기) 향하던 칸이 막힌 자리가 되면 가던 쪽의 옆 멈출 자리로 옮깁니다 */
-    realign() {
-      const { stops } = read()
-      if (mode === 'drag' || stops.includes(dest)) return
-      const to = nearStop(stops, dest, Math.sign(dest - position) || 1)
-      if (mode === 'spring') dest = to
-      else go(to, mode === 'rest')
-    },
-
     wheel(event: WheelEvent) {
       // 두 손가락 확대(ctrl + 휠)는 브라우저에 맡깁니다
       if (event.ctrlKey) return
-      const { pitch, stops, clear, pageScrollAtEnds } = read()
+      const { pitch, max, clear, pageScrollAtEnds } = read()
       // 트랙패드로 좌우로 밀어도 같은 방향으로 흐릅니다. 값을 deltaMode 보다 먼저 읽어야
       // 파이어폭스가 줄 단위가 아니라 px 로 줍니다
       const delta =
@@ -436,9 +409,9 @@ function createFlow() {
         pageScrollAtEnds &&
         mode === 'rest' &&
         wheelStop(
-          stops,
           { position, dest, moving: false },
           delta > 0 ? 1 : -1,
+          max,
         ) === dest
       ) {
         return
@@ -456,9 +429,9 @@ function createFlow() {
       if (counted.step === 0 || mode === 'drag') return
 
       const next = wheelStop(
-        stops,
         { position, dest, moving: mode !== 'rest' },
         counted.step,
+        max,
       )
       // 벽 끝에서 더 굴리면 아무 일도 없습니다 — 움직이기 시작했다고 알리지도 않습니다
       if (next === dest) return
@@ -537,15 +510,11 @@ function createFlow() {
       if (!moved) return
 
       swallowClick = true
-      const { pitch, max, stops } = read()
+      const { pitch, max } = read()
       // 손가락이 왼쪽으로 튕기면(속도 < 0) 벽은 오른쪽 병으로 더 흘러갑니다
       const projected = position - (fingerSpeed * FLING_MS) / pitch
       const direction = Math.sign(-fingerSpeed) || Math.sign(position - grabbed)
-      dest = nearStop(
-        stops,
-        snapStart(clamp(projected, 0, max), direction, max),
-        direction || 1,
-      )
+      dest = snapStart(clamp(projected, 0, max), direction, max)
       // 뗀 속도 그대로 용수철이 이어받아 그 칸에 붙입니다
       velocity = (-fingerSpeed * 1000) / pitch
       mode = 'spring'

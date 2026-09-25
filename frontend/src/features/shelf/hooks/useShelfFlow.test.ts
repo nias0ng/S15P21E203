@@ -3,12 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useShelfFlow } from './useShelfFlow'
 
-/** 가리지 않는 칸 일곱 · 병 [5, 17, 3] 의 멈출 자리 — 1 · 8 · 20 · 25 가 막히고 벽 끝은 26 */
-const BLOCKED = [1, 8, 20, 25]
-const STOPS: readonly number[] = Array.from(
-  { length: 27 },
-  (_, at) => at,
-).filter((at) => !BLOCKED.includes(at))
 /** 1920 x 1080 의 칸 폭 */
 const PITCH = 1460 / 7
 
@@ -63,22 +57,19 @@ const setup = ({ pageScrollAtEnds = false } = {}) => {
   const positions: number[] = []
   const onMoveStart = vi.fn()
   const onSettle = vi.fn<(start: number) => void>()
-  const { result, rerender } = renderHook(
-    ({ stops }: { stops: readonly number[] }) =>
-      useShelfFlow({
-        ...refs,
-        pitch: PITCH,
-        max: 26,
-        stops,
-        clear: 7,
-        pageScrollAtEnds,
-        onMoveStart,
-        onMove: (position) => {
-          positions.push(position)
-        },
-        onSettle,
-      }),
-    { initialProps: { stops: STOPS } },
+  const { result } = renderHook(() =>
+    useShelfFlow({
+      ...refs,
+      pitch: PITCH,
+      max: 26,
+      clear: 7,
+      pageScrollAtEnds,
+      onMoveStart,
+      onMove: (position) => {
+        positions.push(position)
+      },
+      onSettle,
+    }),
   )
   const wheel = (deltaY: number, init: WheelEventInit = {}) => {
     const event = new WheelEvent('wheel', { deltaY, cancelable: true, ...init })
@@ -92,19 +83,18 @@ const setup = ({ pageScrollAtEnds = false } = {}) => {
     positions,
     onMoveStart,
     onSettle,
-    restop: (stops: readonly number[]) => rerender({ stops }),
   }
 }
 
 describe('useShelfFlow 휠 — 한 번 = 한 칸', () => {
-  it('휠 한 번(100)이면 막힌 자리 1 을 건너뛰어 2 에 붙는다', () => {
+  it('휠 한 번(100)이면 다음 칸 1 에 붙는다', () => {
     const { wheel, flow, onMoveStart, onSettle } = setup()
     expect(wheel(100).defaultPrevented).toBe(true)
     expect(onMoveStart).toHaveBeenCalledTimes(1)
-    expect(flow.destination()).toBe(2)
+    expect(flow.destination()).toBe(1)
     settle()
     expect(onSettle).toHaveBeenCalledTimes(1)
-    expect(onSettle).toHaveBeenLastCalledWith(2)
+    expect(onSettle).toHaveBeenLastCalledWith(1)
   })
 
   it('120 · 66.67 · 150 · −100 도 한 번에 한 칸씩 간다', () => {
@@ -123,19 +113,7 @@ describe('useShelfFlow 휠 — 한 번 = 한 칸', () => {
     }
   })
 
-  it('기둥은 휠 한 번에 통째로 지나간다 — 7 에서 앞으로 9, 뒤로 6', () => {
-    const { wheel, flow, onSettle } = setup()
-    flow.go(7, true)
-    wheel(100)
-    settle()
-    expect(onSettle).toHaveBeenLastCalledWith(9)
-    flow.go(7, true)
-    wheel(-100)
-    settle()
-    expect(onSettle).toHaveBeenLastCalledWith(6)
-  })
-
-  it('흐르는 중에 같은 쪽으로 다섯 번 굴리면 목적지에 쌓여 한 번에 6 에 선다', () => {
+  it('흐르는 중에 같은 쪽으로 다섯 번 굴리면 목적지에 쌓여 한 번에 5 에 선다', () => {
     const { wheel, onSettle } = setup()
     for (let at = 0; at < 5; at += 1) {
       wheel(100)
@@ -144,7 +122,7 @@ describe('useShelfFlow 휠 — 한 번 = 한 칸', () => {
     }
     settle()
     expect(onSettle).toHaveBeenCalledTimes(1)
-    expect(onSettle).toHaveBeenLastCalledWith(6)
+    expect(onSettle).toHaveBeenLastCalledWith(5)
   })
 
   it('한꺼번에 스무 번 굴려도 가리지 않는 칸 수(일곱)보다 앞서 쌓지 않는다', () => {
@@ -175,7 +153,7 @@ describe('useShelfFlow 휠 — 한 번 = 한 칸', () => {
     settle()
     const rest = onSettle.mock.lastCall?.[0] ?? Infinity
     expect(rest).toBeLessThan(6)
-    expect(STOPS).toContain(rest)
+    expect(Number.isInteger(rest)).toBe(true)
   })
 
   it('한 칸은 넘지 않고 끝을 천천히 들어가 1초 안에 서고, 한 프레임에 90px 넘게 건너뛰지 않는다', () => {
@@ -247,9 +225,9 @@ describe('useShelfFlow 휠 — 한 번 = 한 칸', () => {
     }))
     const { wheel, onMoveStart, onSettle } = setup()
     wheel(100)
-    expect(onSettle).toHaveBeenLastCalledWith(2)
+    expect(onSettle).toHaveBeenLastCalledWith(1)
     wheel(100)
-    expect(onSettle).toHaveBeenLastCalledWith(3)
+    expect(onSettle).toHaveBeenLastCalledWith(2)
     expect(onMoveStart).not.toHaveBeenCalled()
     expect(frames.size).toBe(0)
   })
@@ -273,21 +251,16 @@ describe('useShelfFlow 마우스 올리기', () => {
 })
 
 describe('useShelfFlow 옮기기', () => {
-  it('막힌 자리로 보내면 가던 쪽의 다음 멈출 자리에 선다', () => {
+  it('소수 칸으로 보내면 가까운 칸에, 벽 끝 너머로 보내면 벽 끝에 선다', () => {
     const { flow, onSettle } = setup()
-    flow.go(8)
-    settle()
-    expect(onSettle).toHaveBeenLastCalledWith(9)
-    flow.go(8)
+    flow.go(7.4)
     settle()
     expect(onSettle).toHaveBeenLastCalledWith(7)
-  })
-
-  it('창 크기가 바뀌어 서 있던 칸이 막힌 자리가 되면 옆 멈출 자리로 옮긴다', () => {
-    const { flow, onSettle, restop } = setup()
-    flow.go(7, true)
-    restop(STOPS.filter((at) => at !== 7))
-    expect(onSettle).toHaveBeenLastCalledWith(9)
-    expect(flow.destination()).toBe(9)
+    flow.go(40)
+    settle()
+    expect(onSettle).toHaveBeenLastCalledWith(26)
+    flow.go(-3)
+    settle()
+    expect(onSettle).toHaveBeenLastCalledWith(0)
   })
 })
