@@ -1,32 +1,32 @@
-import {
-  useMutation,
-  useQueries,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router'
 
 import {
   collectionKeys,
-  collectionPreviewsQuery,
   CollectionFormModal,
   CollectionStrip,
   createCollection,
   myCollectionsQuery,
   type CollectionInput,
 } from '@/features/collection'
-import { perfumeListQuery } from '@/features/perfume'
 import {
+  perfumeDetailQuery,
+  perfumeListQuery,
+  perfumeNotesQuery,
+} from '@/features/perfume'
+import {
+  accordLabel,
   personalRecommendationQuery,
-  RECOMMEND_MIN_SHELF_ITEMS,
-  RecommendPeekCard,
+  RecommendLetter,
+  type LetterFacts,
 } from '@/features/recommend'
 import {
   ShelfDeck,
   ShelfDetailPanel,
   ShelfFooterStrip,
   ShelfPager,
+  ShelfPaper,
   ShelfRegisterModal,
   ShelfToolbar,
   ShelfWall,
@@ -47,7 +47,7 @@ import { ROUTES } from '@/shared/config/routes'
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { useToast } from '@/shared/hooks/useToast'
 import { READY_GRACE_MS } from '@/shared/lib/diveTrack'
-import { useIsLoggedIn } from '@/shared/store/authStore'
+import { useAuthStore, useIsLoggedIn } from '@/shared/store/authStore'
 import { useIsRising } from '@/shared/store/diveStore'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
@@ -105,6 +105,30 @@ const SHELF_STAGE_COLLECTION = 'collection'
 /** 두 무대의 제목. 휴대폰 폭에서는 스케일 최대치(28px), 태블릿 폭부터 시안의 36px(위 2) */
 const STAGE_TITLE =
   'font-serif text-display font-semibold md:text-[36px] md:leading-[1.2]'
+
+/**
+ * 빈 분류의 안내 (S15P21E203-431). 벽감 한가운데에 섭니다(ShelfWall).
+ *
+ * 분류마다 **비어 있는 까닭과 채우는 길**이 달라서 말도 다릅니다 — "아직 담은 향수가 없습니다" 한 줄을
+ * 셋이 같이 쓰던 때는 어느 칸이 왜 비었는지 말하지 않았습니다.
+ */
+const EMPTY_COPY: Record<
+  ShelfCategory,
+  { title: string; description: string }
+> = {
+  OWNED: {
+    title: '아직 보유 중인 향수가 없어요',
+    description: '가지고 있는 향수를 올려 두면 이 벽감에 섭니다.',
+  },
+  TRIED: {
+    title: '아직 시향해 본 향수가 없어요',
+    description: '매장에서 맡아 본 향수를 적어 두면 이 벽감에 모입니다.',
+  },
+  WISH: {
+    title: '아직 갖고 싶은 향수가 없어요',
+    description: '마음에 둔 향수를 담아 두면 이 벽감에서 기다립니다.',
+  },
+}
 
 /**
  * 나의 진열대 (A13 재디자인 시안)
@@ -197,8 +221,16 @@ export default function MyShelfPage() {
   const detailReady =
     selectedDetail.data !== undefined &&
     selectedDetail.data.shelfItemId === selectedId
+  /*
+   * 벽에 선 분류의 병일 때만 패널에 올립니다 (S15P21E203-431). 빈 분류를 고르면 선택은 그대로
+   * 남아 있어서(useShelfBrowser 의 selectFirstOf), 그대로 두면 빈 벽감 옆에 다른 분류의 병이
+   * 떠 있습니다.
+   */
+  const selectedOnWall =
+    browser.selected !== null &&
+    browser.selected.category === browser.viewCategory
   const panelItem: ShelfItemDetail | null =
-    browser.selected === null
+    browser.selected === null || !selectedOnWall
       ? null
       : detailReady
         ? selectedDetail.data
@@ -226,34 +258,44 @@ export default function MyShelfPage() {
     enabled: registerOpen && registerKeyword.trim().length > 0,
   })
 
-  // 담은 향수가 적으면 아예 묻지 않습니다 — 개인화를 말할 근거가 없습니다
-  const shelfCount = shelf.data?.length ?? 0
+  /*
+   * 개인화 추천 편지 (S15P21E203-431). 진열대에 몇 병이 있는지로 가리지 않습니다 — 서버는 진열대가
+   * 비어 있어도 취향 테스트만으로 고르고, 거꾸로 테스트를 안 했으면 진열대가 가득해도 고르지
+   * 않습니다(그때는 테스트로 이끄는 봉투가 꽂힙니다). 로그인해야 부를 수 있습니다.
+   */
   const recommendation = useQuery({
     ...personalRecommendationQuery(),
-    enabled: shelfCount >= RECOMMEND_MIN_SHELF_ITEMS,
+    enabled: isLoggedIn,
   })
+  const recipient = useAuthStore((state) => state.user?.nickname ?? null)
 
   /*
-   * 컬렉션 카드에 얹을 향수 사진.
-   *
-   * ⚠️ 목록 응답에 썸네일이 없어 **컬렉션마다 상세를 한 번씩** 부릅니다. 캐시는
-   * 상세 화면과 같은 키라, 카드를 눌러 들어가면 요청이 다시 나가지 않습니다.
-   * BE 가 목록에 `previewThumbnails` 를 실어 주면 이 블록을 통째로 지웁니다.
+   * 편지 속 향수의 브랜드 · 영문 이름 · 향 특성. 추천 응답에는 이름 · 사진 · 근거 한 문장뿐이라 향수
+   * 상세 · 향조로 채웁니다. 편지가 알려 주는 번호(onShow)로 부르고, 캐시가 향수 상세 화면과 같은 키라
+   * 편지에서 "자세히 보기" 로 넘어가면 다시 부르지 않습니다.
    */
-  const collectionIds = (collections.data ?? []).map(
-    (item) => item.collectionId,
-  )
-  const collectionDetails = useQueries({
-    queries: collectionPreviewsQuery(collectionIds),
+  const [letterPerfumeId, setLetterPerfumeId] = useState<number | null>(null)
+  const letterDetail = useQuery({
+    ...perfumeDetailQuery(letterPerfumeId ?? 0),
+    enabled: letterPerfumeId !== null,
   })
-
-  /** 카드에 넘길 목록 — 미리보기만 상세에서 가져와 채웁니다 */
-  const collectionCards = (collections.data ?? []).map((item, index) => {
-    const detail = collectionDetails[index]?.data
-    return detail === undefined
-      ? item
-      : { ...item, previewThumbnails: detail.previewThumbnails }
+  const letterNotes = useQuery({
+    ...perfumeNotesQuery(letterPerfumeId ?? 0),
+    enabled: letterPerfumeId !== null,
   })
+  const letterFacts: LetterFacts | undefined =
+    letterPerfumeId !== null && letterDetail.data?.perfumeId === letterPerfumeId
+      ? {
+          perfumeId: letterPerfumeId,
+          brand: letterDetail.data.brand?.name ?? null,
+          // 한국어 이름이 있을 때만 영문을 작게 답니다 — 편지의 큰 이름이 이미 영어면 되풀이입니다
+          nameEn: letterDetail.data.nameKo ? letterDetail.data.name : null,
+          // 두드러진 순서(rank 가 작을수록)로, 3D 향 지도 카드와 같은 표로 한국어로 옮겨 적습니다
+          accords: [...(letterNotes.data?.accords ?? [])]
+            .sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity))
+            .map((accord) => accordLabel(accord.name)),
+        }
+      : undefined
 
   /**
    * 컬렉션 만들기 (COL-01).
@@ -334,16 +376,6 @@ export default function MyShelfPage() {
   const collectionCount = collections.data?.length ?? 0
 
   /*
-   * 분류로 가기 — 칩과 벽의 이름표가 같은 곳으로 보냅니다. 그 분류의 첫 향수를 고르고,
-   * 벽을 그 분류의 첫머리(이름표가 창 왼쪽 끝)로 흘립니다. 둘이 따로 적히면 한쪽만
-   * 첫 향수를 골라서, 같은 분류로 갔는데 상세 패널이 다르게 남습니다.
-   */
-  const showCategory = (category: ShelfCategory) => {
-    browser.selectFirstOf(category)
-    wall.current?.showCategory(category)
-  }
-
-  /*
    * 두 배치가 같은 조각을 다른 자리에 놓습니다. 조각은 여기서 한 번만 적습니다 —
    * 배치마다 따로 적으면 한쪽만 고쳐져 두 배치가 조용히 달라집니다.
    */
@@ -396,12 +428,27 @@ export default function MyShelfPage() {
       selectedId={browser.selected?.shelfItemId ?? null}
       onSelect={browser.select}
       onViewCategoryChange={browser.changeViewCategory}
-      onPlaqueSelect={showCategory}
+      // 메뉴판을 누르면 그 분류의 첫 향수를 고릅니다. 벽은 분류가 바뀌면 스스로 흐릅니다
+      onPlaqueSelect={browser.selectFirstOf}
       resetKey={browser.keyword}
-      emptyMessage={
+      empty={(category) =>
         browser.keyword
-          ? '조건에 맞는 향수가 없습니다'
-          : '아직 담은 향수가 없습니다'
+          ? {
+              title: `'${browser.keyword.trim()}' 에 맞는 향수가 이 칸에는 없어요`,
+              description:
+                '메뉴판의 숫자로 다른 칸을 보거나 검색어를 바꿔 보세요.',
+              action: (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="focus-visible:ring-[var(--shelf-ink)] focus-visible:ring-offset-[var(--paper)]"
+                  onClick={() => browser.changeKeyword('')}
+                >
+                  검색어 지우기
+                </Button>
+              ),
+            }
+          : { ...EMPTY_COPY[category], action: registerButton }
       }
       className={className}
       aside={aside}
@@ -423,6 +470,8 @@ export default function MyShelfPage() {
       */
       key={`${browser.selected?.shelfItemId ?? 'empty'}:${detailReady ? 'full' : 'lite'}`}
       item={panelItem}
+      // 목록이 아는 값으로 먼저 채운 동안 — 향조 · 메모 자리를 "없어요" 대신 비워 둡니다
+      pending={!detailReady}
       onChangeRating={(rating) => {
         if (selectedId === undefined) return
         /*
@@ -437,41 +486,40 @@ export default function MyShelfPage() {
       }}
       onEdit={() => setEditOpen(true)}
       onRemove={() => setRemoveOpen(true)}
+      placeholder={
+        browser.selected !== null && !selectedOnWall
+          ? '이 칸에 향수를 담으면 여기에서 자세히 볼 수 있어요'
+          : undefined
+      }
       className={className}
     />
   )
 
+  /*
+    제목 줄은 진열대 무대와 같은 높이 · 같은 가운데에 서고(무대가 바뀔 때 제목이 같은 줄에서 갈립니다),
+    개수는 제목 글줄의 기준선에 앉습니다 — 가운데로 맞추면 작은 글자가 제목 위쪽에 떠 보입니다.
+  */
   const collectionHeader = (
-    <div className="flex min-h-12.5 items-center gap-5">
-      <h2 className={STAGE_TITLE}>내 컬렉션</h2>
-      <span className="shelf-muted text-body tabular-nums">
-        {collectionCount}개
-      </span>
+    <div className="flex min-h-12.5 items-center">
+      <div className="flex items-baseline gap-5">
+        <h2 className={STAGE_TITLE}>내 컬렉션</h2>
+        <span className="shelf-muted text-body tabular-nums">
+          {collectionCount}개
+        </span>
+      </div>
     </div>
   )
 
-  /*
-    컬렉션을 못 받았으면 빈 띠로 그리지 않습니다. 진열대 목록과 같은 이유 —
-    아무 말이 없으면 "컬렉션이 하나도 없다" 로 읽히는데, 실제로는 못 읽어 온
-    것입니다. 여기는 화면의 한 구역이라 진열대처럼 화면 전체를 대신하지 않고
-    띠 자리에만 안내를 둡니다.
-  */
-  const collectionStrip = collections.isError ? (
-    <div className="border-line rounded-card flex min-h-40 flex-col items-center justify-center gap-2.5 border border-dashed">
-      <p className="shelf-muted text-caption">컬렉션을 불러오지 못했습니다</p>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => void collections.refetch()}
-      >
-        다시 시도
-      </Button>
-    </div>
-  ) : (
+  // 못 받았을 때도 이 자리에서 까닭과 다시 부르는 단추를 세웁니다(CollectionStrip)
+  const collectionStrip = (
     <CollectionStrip
-      items={collectionCards}
+      items={collections.data ?? []}
       isPending={collections.isPending}
+      isError={collections.isError}
+      onRetry={() => void collections.refetch()}
       onCreate={() => setCreateCollectionOpen(true)}
+      // 한 장 배치의 무대는 높이가 화면에 묶여, 두 줄이 다 들도록 칸 수를 높이로 고릅니다(노트북 창)
+      fitRows={arrangement !== 'stacked'}
     />
   )
 
@@ -583,50 +631,69 @@ export default function MyShelfPage() {
     </>
   )
 
-  /*
-    시안의 종이 바탕과 질감. fixed 로 뷰포트를 통째로 덮습니다 — 이 div 에만
-    배경을 깔면 좌우 여백과 화면 아래쪽이 body 의 ivory 로 남아 종이 한 장
-    느낌이 끊깁니다. -z-10 이라 본문 뒤, 헤더(bg-surface · z-20) 아래에 깔립니다.
-
-    질감(shelf-grain)을 본문이 아니라 이 레이어에 얹는 이유: 노이즈는
-    mix-blend-mode 로 밑을 곱하는데, 본문 위에 두면 새 쌓임 맥락이 생겨
-    Toast(fixed)와 모달이 그 아래로 밀립니다.
-  */
-  const paper = (
-    <div
-      aria-hidden
-      className="shelf-paper shelf-grain fixed inset-0 -z-10"
-      data-rising={rising ? '' : undefined}
-    >
-      {/*
-        떠오르기 시작하면 **모래에서 멀어집니다** — 사이의 물이 두꺼워져 바닥이 한 단 가라앉습니다.
-        커튼이 위에서 덮기 전 0.3초 동안 화면에서 움직이는 것이 이것 하나입니다 (나가는 길에서
-        카메라가 먼저 고개를 숙이는 것과 같은 자리).
-      */}
-      <i className="shelf-deepen" />
-      {/*
-        수면 물결이 모래에 드리우는 빛 — 잠수해서 들어온 이 화면이 "얕은 물에 비치는 모래" 로
-        읽히게 하는 겹입니다. 종이 위 · 결 아래 · 내용 뒤(-z-10)이고, 움직이는 것은 transform
-        하나뿐입니다. 값과 까닭은 shelf-display.css 의 .shelf-caustic 에 있습니다.
-      */}
-      <i className="shelf-caustic" />
-    </div>
-  )
+  // 시안의 종이 바탕과 질감 — 뷰포트를 통째로 덮습니다(ShelfPaper). 컬렉션 상세도 같은 종이를 깝니다
+  const paper = <ShelfPaper rising={rising} />
 
   /*
-    추천할 것이 없으면 카드를 그리지 않습니다. 빈 카드를 띄워 "추천이 없습니다"
-    라고 적으면, 사용자가 부르지도 않은 것이 나타나 아무 말도 안 하는 셈입니다.
-    fixed 로 화면 왼쪽 가장자리에 붙으므로 두 배치 모두 무대 밖, 최상위 div 바로 안에 둡니다.
+    편지 속 향수를 진열대에 담는 단추. 추천은 "아직 없는 향수" 라 **보유 희망**에 담습니다 — 가졌다면
+    보유 중에서 고르는 편지가 오지 않습니다(서버가 보유 중만 뺍니다). 이미 담긴 향수(시향 · 희망)면
+    담았다고만 적습니다. 진열대 도메인의 일이라 편지(추천 도메인)가 아니라 화면이 만듭니다.
   */
-  const recommendCard = recommendation.data && (
-    <RecommendPeekCard recommendation={recommendation.data} />
+  const saveFromLetter = (perfumeId: number) =>
+    inShelf.has(perfumeId) ? (
+      <Button variant="outline" size="sm" disabled className="rec-action">
+        진열대에 있어요
+      </Button>
+    ) : (
+      <Button
+        size="sm"
+        className="rec-action focus-visible:ring-[var(--shelf-ink)] focus-visible:ring-offset-[var(--paper)]"
+        isLoading={
+          actions.register.isPending &&
+          actions.register.variables?.perfumeId === perfumeId
+        }
+        onClick={() =>
+          actions.register.mutate(
+            { perfumeId, category: 'WISH', rating: null, memo: null },
+            {
+              onSuccess: () => showToast('보유 희망에 담았습니다'),
+              onError: () => showToast('진열대에 담지 못했습니다'),
+            },
+          )
+        }
+      >
+        보유 희망에 담기
+      </Button>
+    )
+
+  /*
+    개인화 추천 편지 — 상세 패널 윗변에 봉투로 꽂혀 있다가 누르면 그 패널 크기로 펼쳐집니다
+    (RecommendLetter). 패널과 **같은 자리(위치 기준 상자)** 안에 둬야 펼친 편지가 패널에 꼭 맞습니다.
+    추천할 것이 없으면(404 · 503 · 아직 모름) 아무것도 그리지 않습니다 — 빈 봉투는 아무 말도 안 합니다.
+    벽에서 다른 병을 고르면(closeKey) 편지를 접어 그 병의 상세를 보입니다.
+  */
+  const letter = (placement: 'right' | 'left') => (
+    <RecommendLetter
+      result={recommendation.data}
+      isRefreshing={recommendation.isFetching}
+      // 새로 받은 결과를 돌려줍니다 — 묻다 실패하면 옛 결과가 남아 있어 undefined 로 알립니다
+      onNext={async () => {
+        const next = await recommendation.refetch()
+        return next.isError ? undefined : next.data
+      }}
+      onShow={setLetterPerfumeId}
+      facts={letterFacts}
+      renderSave={saveFromLetter}
+      recipient={recipient}
+      closeKey={selectedId}
+      placement={placement}
+    />
   )
 
   if (arrangement === 'stacked') {
     return (
       <div className="shelf-scope flex flex-col">
         {paper}
-        {recommendCard}
 
         <div className="flex flex-col gap-5">
           <h1 className={STAGE_TITLE}>나의 진열대</h1>
@@ -657,7 +724,11 @@ export default function MyShelfPage() {
           className="mt-2.5 self-end"
         />
 
-        <div className="mt-5">{detail()}</div>
+        {/* 편지 봉투는 카드 윗변 왼쪽에 꽂힙니다 — 오른쪽 위에는 페이저가 섭니다 */}
+        <div className="relative mt-5">
+          {detail()}
+          {letter('left')}
+        </div>
 
         <section aria-label="내 컬렉션" className="mt-15 flex flex-col gap-7.5">
           {collectionHeader}
@@ -674,11 +745,15 @@ export default function MyShelfPage() {
       부모 <main> 의 세로 여백(pt-15 pb-15)을 걷어내고 뷰포트 높이에 맞춥니다.
       `--header-h` 는 헤더 높이(1920 에서 90)이고 화면을 따라 같이 줄어듭니다 — 90 을
       손으로 적으면 헤더만 줄어들어 1536 에서 페이지에 세로 스크롤이 생깁니다.
-      최소 높이 650 — 진열장 자리가 460 아래로 줄지 않는 높이입니다(위 한 장 배치 설명).
+
+      최소 높이는 **상세 카드의 가장 작은 모습이 벽 자리에 드는 높이**입니다 — 카드 위 · 아래 자리
+      (제목 줄 · 하단 띠 · 사이, 1920 에서 216)는 --spacing 을 따라 줄고, 카드(0.85 배 · 병 자리 하한 100 →
+      443)는 줄지 않아 둘을 따로 더합니다. 1920 에서 661, 1536 · 1280 에서 618 이고, 그보다 낮은 창(노트북
+      150% 배율에 창 모드 1280 x 600 등)은 카드가 하단 띠에 겹치는 대신 페이지가 조금 스크롤됩니다.
+      NOTE: 상세 카드에 줄을 더하면 445 도 같이 올립니다 — 모자라면 낮은 창에서 MEMO 가 하단 띠에 걸립니다.
     */
-    <div className="shelf-scope -mt-15 -mb-15 flex h-[calc(100dvh_-_var(--header-h))] min-h-162.5 flex-col">
+    <div className="shelf-scope -mt-15 -mb-15 flex h-[calc(100dvh_-_var(--header-h))] min-h-[calc(var(--spacing)*54+445px)] flex-col">
       {paper}
-      {recommendCard}
 
       {/*
         무대는 좌우 여백까지 넓혀 둡니다(-mx-[var(--gutter)]). 무대가 위아래로 바뀔 때
@@ -706,8 +781,14 @@ export default function MyShelfPage() {
 
             {shelfWall(
               'mt-7.5 flex-1',
-              // 높이는 벽감 + 이름표 자리까지. 작은 화면에서는 벽감을 따라 통째로 줄어듭니다(ShelfWall)
-              detail('flex-1'),
+              /*
+                높이는 벽감 + 이름표 자리까지. 작은 화면에서는 벽감을 따라 통째로 줄어듭니다(ShelfWall).
+                편지는 패널과 같은 자리 안에 둡니다 — 봉투는 패널 윗변 오른쪽에 꽂히고, 펼치면 패널에 꼭 맞습니다.
+              */
+              <>
+                {detail('flex-1')}
+                {letter('right')}
+              </>,
               // 좁은 기둥 안이라 검색창과 단추를 세로로 세웁니다
               toolbar(undefined, true),
             )}
@@ -717,6 +798,12 @@ export default function MyShelfPage() {
             내 컬렉션 — 시안에는 없지만 A13 의 아래 절반이라 지우지 않고 둡니다.
             진열대 무대와 같은 자리에 같은 크기의 제목을 둬서, 바뀔 때 제목이 같은
             줄에서 갈려 올라옵니다. 컬렉션이 많아 넘치면 이 무대 안에서만 스크롤합니다.
+
+            스크롤 칸은 사방으로 5 넓혀 두고 안쪽을 같은 만큼 띄웁니다 — 진열함의 포커스 링이
+            진열함 밖 5 에 돌아서, 칸 끝에 붙으면 스크롤 칸에 잘립니다. 스크롤 막대는 가늘게
+            종이 선 색으로 둡니다(기본 회색 막대가 종이 위에 떠 보입니다).
+            아래 여백은 10 입니다 — 넓히면 노트북 창(1536 x 730)에서 두 줄이 다 보이는데도 여백만큼
+            넘쳐 스크롤 막대가 뜹니다. 마지막 줄 아래는 명판이라 포커스 링 자리가 따로 필요 없습니다.
           */
           <div
             key="collection"
@@ -724,7 +811,7 @@ export default function MyShelfPage() {
           >
             {collectionHeader}
 
-            <div className="mt-7.5 min-h-0 flex-1 overflow-y-auto pb-7.5">
+            <div className="-mx-1.25 mt-6.25 min-h-0 flex-1 [scrollbar-width:thin] [scrollbar-color:var(--hairline)_transparent] overflow-y-auto px-1.25 pt-1.25 pb-2.5">
               {collectionStrip}
             </div>
           </div>,

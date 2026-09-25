@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 
@@ -28,6 +28,7 @@ import { NlrFeedbackModal, RecommendModal } from '@/features/recommend'
 import {
   ShelfRegisterModal,
   ShelfRegisterPartialError,
+  shelfItemsQuery,
   useShelfActions,
 } from '@/features/shelf'
 import { isApiError } from '@/shared/api/http'
@@ -38,7 +39,11 @@ import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { useToast } from '@/shared/hooks/useToast'
 import { cn } from '@/shared/lib/cn'
 import { useIsLoggedIn } from '@/shared/store/authStore'
-import { useIsDiving, useIsRising } from '@/shared/store/diveStore'
+import {
+  useDiveStore,
+  useIsDiving,
+  useIsRising,
+} from '@/shared/store/diveStore'
 import { useSceneSkyStore } from '@/shared/store/sceneSkyStore'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { Toast } from '@/shared/ui/Toast'
@@ -68,8 +73,9 @@ import { Toast } from '@/shared/ui/Toast'
  * ⚠️ 취향 **영역**(MAP-08 — 지도 위의 검은 원)은 아직 엔진에 없습니다. 출발점과 다른 것입니다.
  */
 /*
- * 잠수(진열대로 넘어가기)가 걸리면 3D 위에 얹은 **앱 UI 도 같이 비킵니다** — 검색창 · 향해 일지.
- * 엔진 안의 UI(미니맵 · 카드 · 부표 이름표)는 같은 때에 엔진이 비킵니다 (`landing/src/dive.js`).
+ * 잠수(콘텐츠 화면으로)나 선실로 들어가기(진열대로)가 걸리면 3D 위에 얹은 **앱 UI 도 같이 비킵니다** —
+ * 검색창 · 향해 일지. 엔진 안의 UI(미니맵 · 카드 · 부표 이름표)는 같은 때에 엔진이 비킵니다
+ * (`landing/src/dive.js` · `cabin-in.js`).
  * 한쪽만 남으면 바다는 내려가는데 글자만 떠 있습니다.
  *
  * 커튼이 아래에서 차오르는데 이 둘은 위쪽이라 마지막까지 남습니다 — 그래서 따로 비켜야 합니다.
@@ -136,6 +142,21 @@ export default function HomePage() {
   const { showToast, toastProps } = useToast()
   const isLoggedIn = useIsLoggedIn()
   const actions = useShelfActions()
+  const startDive = useDiveStore((state) => state.start)
+
+  /*
+   * 말풍선이 열리면 진열대를 **미리 받아 둡니다** — 화면 청크와 목록. 줄을 고르면 선실로 들어가는
+   * 동안 커튼 뒤에서 기다릴 것이 그만큼 줄어듭니다. 헤더 SHELF 에 손을 올릴 때 받는 것
+   * (`app/layouts/header/useWarm`)과 같은 일입니다 — 진열대는 병 수백 개로 벽을 세우는 곳이라
+   * 청크만 와 있어도 스피너로 섭니다.
+   * ⚠️ 비로그인이면 안 받습니다 — 두 줄이 잠겨 있고, 목록은 401 입니다.
+   */
+  const queryClient = useQueryClient()
+  useEffect(() => {
+    if (!cabinOpen || !isLoggedIn) return
+    void import('@/pages/MyShelfPage')
+    void queryClient.prefetchQuery(shelfItemsQuery())
+  }, [cabinOpen, isLoggedIn, queryClient])
 
   // 유리판 헤더의 글자색은 3D 하늘을 따릅니다 (밝은 하늘 먹색 · 밤하늘 상아색).
   // 화면을 떠나면 기본(dark — 3D 가 뜨기 전 남색 바탕에 맞는 상아색)으로 돌려놓습니다
@@ -410,18 +431,21 @@ export default function HomePage() {
 
       {/*
         선실 — 배를 누르면 **배 옆에 뜨는 작은 말풍선** (진열대 · 컬렉션 두 줄).
-        진열대 화면의 "배 선실이 확대되며 안으로 들어가는" 연출은 별개 작업이고, 이 말풍선은 그 **입구**입니다.
+        이 말풍선은 **선실로 들어가기**의 입구입니다 (2026-09-24) — 줄을 고르면 곧바로 옮겨 가지 않고,
+        카메라가 배를 향해 줌인하는 동안 그 배에서 메인에 들어올 때의 구름이 스며 번져 덮고 진열대로 넘어갑니다
+        (`shared/ui/DiveCurtain` 의 cabin · 엔진 `landing/src/cabin-in.js`). 헤더 SHELF 도 같은 전환입니다.
 
         ⚠️ **자리를 여기서 안 잡습니다.** 배를 따라다녀야 해서 말풍선이 제 rAF 안에서 엔진의
           배 화면 자리(`features/map` 의 `boatAnchor`)를 읽어 직접 씁니다 — 향해 일지 · 검색창처럼
           화면이 자리를 잡아 주는 UI 가 아닙니다.
-        ⚠️ 그래서 **잠수 페이드(DIVE_FADE)도 안 겁니다.** 잠수가 걸리면 엔진이 배를 내리고 커튼이
-          위에서 덮는데(z-100), 말풍선은 그 밑입니다. 3D 를 떠나는 순간 화면째 사라집니다.
+        ⚠️ 그래서 **잠수 페이드(DIVE_FADE)도 안 겁니다.** 줄을 고르는 순간 말풍선이 먼저 닫히고, 커튼은
+          그 위에서 덮습니다(z-100). 3D 를 떠나는 순간 화면째 사라집니다.
       */}
       <CabinBubble
         open={cabinOpen}
         onClose={closeCabin}
         isLoggedIn={isLoggedIn}
+        onEnter={(to) => startDive(to, 'cabin')}
       />
 
       {/* 검색창의 두 방식이 내놓는 답. 뒤의 3D 는 그대로 돌아갑니다 */}

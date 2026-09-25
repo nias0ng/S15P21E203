@@ -30,6 +30,59 @@ export function formatShelfDate(iso: string | null): string | null {
   return `${at.getFullYear()}.${pad(at.getMonth() + 1)}.${pad(at.getDate())}`
 }
 
+/*
+ * ── 상세 카드의 향조 ─────────────────────────────────────────
+ *
+ * 상세 응답의 향조는 단계로 나누지 않고 그대로 옵니다. `noteType` 에 값 제약이 없어 소문자 `top` ·
+ * `middle` · `base`, 두 단계에 걸친 `top+middle`, 피라미드가 없는 `flat`, 빈 값이 섞여 옵니다(실측 —
+ * 운 자르뎅 쉬르 르 닐: top 1 · middle 3 · base 5). 묶는 일은 화면 몫이라 향수 상세(features/perfume 의
+ * PerfumeNotes)와 **같은 규칙**으로 묶습니다 — 기능끼리는 서로 가져다 쓰지 않아 규칙만 같이 둡니다.
+ *
+ *   Top · Middle · Base → 피라미드 없음(flat, 이름표 없이 한 줄) → 모르는 단계(제 이름) → 빈 값(기타)
+ *   `top+middle` 은 두 단계 모두에 넣습니다 — 한 덩어리로 두면 없는 단계가 생깁니다
+ */
+export type NoteRow = {
+  /** 단계 — TOP · MIDDLE · BASE · FLAT · 모르는 값(대문자) · 기타 */
+  stage: string
+  /** 줄 머리에 적는 이름. 피라미드가 없는 향수(flat)는 null — 이름표 없이 노트만 적습니다 */
+  label: string | null
+  names: string[]
+}
+
+/** 단계 줄의 순서 — 적는 순서가 곧 화면에 그리는 순서입니다 */
+export const NOTE_STAGES = ['TOP', 'MIDDLE', 'BASE'] as const
+const NOTE_FLAT = 'FLAT'
+/** `noteType` 이 비어 온 노트가 모이는 줄 */
+const NOTE_OTHER = '기타'
+
+export function noteRows(
+  notes: readonly { name: string; noteType: string | null }[],
+): NoteRow[] {
+  const groups = new Map<string, string[]>()
+  for (const note of notes) {
+    const stages =
+      note.noteType
+        ?.trim()
+        .toUpperCase()
+        .split('+')
+        .map((stage) => stage.trim())
+        .filter(Boolean) ?? []
+    for (const stage of stages.length > 0 ? stages : [NOTE_OTHER]) {
+      const group = groups.get(stage)
+      if (group) group.push(note.name)
+      else groups.set(stage, [note.name])
+    }
+  }
+  const order: string[] = [...NOTE_STAGES, NOTE_FLAT]
+  const known = order.filter((stage) => groups.has(stage))
+  const rest = [...groups.keys()].filter((stage) => !order.includes(stage))
+  return [...known, ...rest].map((stage) => ({
+    stage,
+    label: stage === NOTE_FLAT ? null : stage,
+    names: groups.get(stage) ?? [],
+  }))
+}
+
 /**
  * 향수 이름 앞에 붙은 브랜드를 뗍니다. 이름표는 첫 줄에 브랜드를 따로 적어서, 이름에도
  * 브랜드가 붙어 있으면 "조말론 / 조 말론 우드 세이지 앤 씨 솔트" 처럼 같은 말이 두 번 보입니다.
@@ -1150,7 +1203,7 @@ export function revealItem(
 /*
  * ── 이름표 벽의 현판 ─────────────────────────────────────────
  *
- * 벽감 앞 이름표 벽 기둥(두 칸, 휴대폰은 한 칸 — layoutWall)에 핀 하나로 꽂아 둔 종이 판입니다.
+ * 벽감 앞 이름표 벽 기둥(두 칸, 휴대폰은 한 칸 — layoutWall)에 붙여 둔 종이 판입니다.
  * 옆변은 곧고, 윗변은 양 모서리를 안으로 둥글게 파낸 어깨에서 가운데로 부드럽게 솟는 아치이며,
  * 아래 모서리는 둥급니다. 벽감 높이의 가운데에 섭니다.
  *
@@ -1168,8 +1221,8 @@ export function revealItem(
  *   1562 x 914   칸 144.13 · 벽감 485 → 현판 140 x 365 · 옆벽과 41 · 패널까지 74
  *   1280 x 720   칸 111.38 · 벽감 345 → 현판 100 x 260 · 옆벽과 28 · 패널까지 61
  *
- * 윗변 · 모서리 · 안쪽 테두리선 · 핀은 폭에 비례합니다. 1920 x 1080 에서 모서리 파임 12 · 아치 25 ·
- * 아래 모서리 25 · 안쪽 테두리선 6 · 핀 12 입니다.
+ * 윗변 · 모서리 · 안쪽 테두리선은 폭에 비례합니다. 1920 x 1080 에서 모서리 파임 12 · 아치 25 ·
+ * 아래 모서리 25 · 안쪽 테두리선 6 입니다. 꼭대기에 꽂던 황동 핀은 걷었습니다(S15P21E203-431).
  *
  * 폭이 좁아지면 적는 것을 줄입니다(PlaqueDetail).
  *
@@ -1194,7 +1247,7 @@ const PLAQUE_MAX_ASPECT = 3.2
 /**
  * 분류 이름을 세로로 세운 현판(vertical)의 높이 하한. 다섯 자("시향해 봄" 12px) · 짧은 선 · 개수
  * 14px 이 90 남짓이라, 어깨 아래 · 안쪽 테두리선 안에 넣으려면 110 입니다. 폭의 3.2 배로만 자르면
- * 폭 30 현판(360 휴대폰)이 95 가 되어 글자가 핀과 아래 테두리선에 걸립니다.
+ * 폭 30 현판(360 휴대폰)이 95 가 되어 글자가 어깨와 아래 테두리선에 걸립니다.
  */
 const PLAQUE_VERTICAL_MIN_HEIGHT = 110
 /** 모양 — 전부 현판 폭에 곱합니다 */
@@ -1204,7 +1257,11 @@ const PLAQUE_CORNER = 0.14
 /** 네모 판(메뉴판)의 모서리 반지름 — 짧은 변 대비. 네모로 읽히도록 현판보다 훨씬 작습니다 */
 const PLATE_CORNER = 0.05
 const PLAQUE_INSET = 0.035
-const PLAQUE_PIN = 0.07
+/**
+ * 네모 판(메뉴판)의 글자 자리 윗여백 — 안쪽 테두리선에서. 좁은 판의 좌우 · 아래 여백(shelf-display.css 의
+ * .shelf-plaque-text, 테두리선 + 5)과 같아 글자가 판 가운데에 섭니다
+ */
+const PLATE_TEXT_TOP = 5
 /** 적는 것을 줄이는 폭(위 PlaqueDetail) */
 const PLAQUE_CAPTION_MIN_WIDTH = 100
 const PLAQUE_ACROSS_MIN_WIDTH = 70
@@ -1224,14 +1281,13 @@ export type PlaqueOutline = {
 }
 
 export type PlaqueMetrics = PlaqueOutline & {
-  /** 옆변이 끝나는 높이(어깨) — 모서리 파임 + 아치. 글자는 이 아래에 섭니다 */
+  /**
+   * 글자가 시작하는 높이 — 어깨를 올린 현판은 옆변이 끝나는 어깨(모서리 파임 + 아치), 네모 판은 안쪽
+   * 테두리선 바로 아래입니다
+   */
   crown: number
   /** 바깥선에서 안쪽 테두리선까지 */
   inset: number
-  /** 핀 지름 */
-  pin: number
-  /** 핀 윗변의 높이 */
-  pinTop: number
   detail: PlaqueDetail
   /** 종이를 오리는 clip-path */
   shape: string
@@ -1385,7 +1441,7 @@ export function plaqueMetrics(
     floor5(fit.maxHeight ?? Infinity),
   )
   /*
-   * 모서리 파임 · 아치 · 아래 모서리 · 핀의 비율을 재는 기준 — **짧은 변**입니다.
+   * 모서리 파임 · 아치 · 아래 모서리의 비율을 재는 기준 — **짧은 변**입니다.
    *
    * 세로로 긴 판(지금까지의 분류 현판)은 짧은 변이 곧 폭이라 예전과 값이 같습니다. 가로로 누운
    * 메뉴판에서만 달라집니다 — 폭을 기준으로 두면 아치(폭의 14%)가 낮은 판의 3분의 1을 먹어
@@ -1393,26 +1449,19 @@ export function plaqueMetrics(
    */
   const base = Math.min(width, height)
   const inset = Math.max(3, Math.round(base * PLAQUE_INSET))
-  // 네모 판은 모서리를 파지도 어깨를 올리지도 않습니다 — 글자 자리는 핀 아래에서 시작합니다
+  // 네모 판은 모서리를 파지도 어깨를 올리지도 않습니다
   const notch = fit.plate ? 0 : Math.max(3, Math.round(base * PLAQUE_NOTCH))
-  // 좁은 현판에서도 어깨(파임 3 + 아치 6)가 핀 아래끝(테두리선 3 + 2 + 핀 4)보다 아래에 옵니다 —
-  // 글자는 어깨 아래에 서서 핀에 걸리지 않습니다
   const arch = fit.plate ? 0 : Math.max(6, Math.round(base * PLAQUE_ARCH))
   // 안쪽 빛 띠(inset + 2)까지 들여도 아래 모서리 원호가 남아야 합니다
   const corner = fit.plate
     ? Math.max(inset + 2, Math.round(base * PLATE_CORNER))
     : Math.max(inset + 3, Math.round(base * PLAQUE_CORNER))
-  const pin = Math.max(4, Math.round(base * PLAQUE_PIN))
-  const shoulder = fit.plate ? 0 : notch + arch
-  // 핀은 어깨 조금 위에 꽂습니다. 좁은 현판에서도 안쪽 테두리선에 닿지 않게 합니다
-  const pinTop = Math.max(inset + 2, shoulder - pin - Math.round(notch / 2))
   /*
-   * 글자가 시작하는 높이. 어깨를 올린 현판은 어깨 아래, 어깨가 없는 네모 판은 **핀 아래**입니다 —
-   * 0 으로 두면 글자가 판 꼭대기에 붙어 핀과 겹칩니다.
+   * 글자가 시작하는 높이. 어깨를 올린 현판은 어깨 아래, 어깨가 없는 네모 판은 안쪽 테두리선 바로
+   * 아래입니다 — 0 으로 두면 글자가 판 꼭대기의 테두리선에 붙습니다. 네모 판 위를 비워 두던 핀 자리는
+   * 핀을 걷으며 없앴습니다(판 가운데에 글자가 섭니다).
    */
-  const crown = fit.plate
-    ? pinTop + pin + Math.max(4, Math.round(base * 0.06))
-    : shoulder
+  const crown = fit.plate ? inset + PLATE_TEXT_TOP : notch + arch
 
   const outline = { width, height, notch, arch, corner }
   const draw = fit.plate ? platePath : plaquePath
@@ -1423,8 +1472,6 @@ export function plaqueMetrics(
     ...outline,
     crown,
     inset,
-    pin,
-    pinTop,
     detail,
     shape: `path("${draw(outline)}")`,
     edgeRing: ring(0, 1),
@@ -1547,5 +1594,152 @@ export function tagMetrics(width: number, height: number): TagMetrics {
     edgeRing: ring(0, 1),
     lineRing: ring(inset, inset + 1),
     focusRing: ring(0, 2),
+  }
+}
+
+/*
+ * ── 옆벽의 문 (S15P21E203-431) ─────────────────────────────────
+ *
+ * 벽감 좌우 옆벽에 병이 드나드는 아치 문을 냅니다. 문이 없을 때는 병이 뒷벽과 옆벽이 만나는
+ * 접힘선에서 칼로 자른 듯 끊겼습니다 — 옆벽은 병이 가는 방향과 수직이라 그 **뒤로** 갈 수가 없는데,
+ * 멀쩡한 벽 틈으로 미끄러져 들어가는 것처럼 보였습니다.
+ *
+ * 이제 병은 접힘선을 지나 옆벽 앞을 지나가다가, 병이 선 깊이에서 옆벽 면을 뚫고 문 안 그늘로 들어가
+ * 문 앞기둥(옆벽 중 입구 쪽 조각)에 가려 사라집니다.
+ *
+ *   깊이   0 입구 ── 앞기둥 ── 문 앞 가장자리 ── 병이 벽 면을 지남 ── 문 뒤 가장자리 ── 1 접힘선
+ *               (가림)       DOOR_FRONT        floorFront / floor      DOOR_BACK
+ *
+ * 벽감은 한 점 투시입니다. 옆벽의 위 · 아래 가장자리가 천장 · 바닥 모서리를 따라 소실점으로 모이므로
+ * 옆벽에 선 문도 깊이마다 같은 비율로 줄여 그립니다(`scale`). 그래서 문은 사다리꼴 위에 아치를 얹은
+ * 모양이고, 아치의 꼭대기도 깊이를 따라 기웁니다.
+ *
+ * 문 높이는 병 사진 칸 높이에서 셉니다 — 아치가 시작하는 높이가 병의 1.06 배입니다. 병이 문설주에
+ * 걸리지 않고 들어가 보여야 "병이 들어갈 구멍" 으로 읽힙니다. 아치는 **문 폭에 맞춘 반타원**입니다 —
+ * 문설주에서 곧게 일어서 둥글게 넘어갑니다. 예전에는 병 높이의 0.2 배를 사인 곡선으로 솟게 해서, 폭
+ * 34 에 높이 66 인 뾰족한 머리가 문설주와 꺾여 만나 윗부분이 찌그러져 보였습니다.
+ *
+ * 모양 · 깊이를 바꿀 때는 아래 상수만 고칩니다. 문이 천장 모서리를 넘지 않는지는 테스트가 봅니다.
+ */
+
+/**
+ * 벽감 면의 치수(px). ⚠️ shelf-display.css 의 `.shelf-window` 에 적힌 --bevel · --ceil · --wall ·
+ * --floor · --floor-front 와 **한 벌**입니다 — 문 윤곽은 이 값으로 셈하고 면은 CSS 가 그려서, 한쪽만
+ * 고치면 문이 옆벽에서 어긋납니다(lib.test.ts 가 둘을 맞대 봅니다).
+ *
+ * 옆벽 45 는 소실점이 벽감 가운데에 오는 폭입니다 — 소실점은 천장 · 바닥 모서리가 만나는 높이(벽감의
+ * 40%)에 있고, 거기서 옆벽 폭 = 벽감 폭의 절반 x (천장 + 바닥) / 벽감 높이 입니다. 1920 x 1080
+ * (1100 x 605) · 1294 x 697(645 x 355) 둘 다 45 언저리입니다. 30 이던 때는 옆벽이 얇게 누워 문이 설
+ * 자리가 없었습니다.
+ */
+export const NICHE_FACES = {
+  bevel: 3,
+  ceil: 20,
+  wall: 45,
+  floor: 30,
+  floorFront: 12,
+} as const
+
+/**
+ * 벽감 뒷벽(양 옆벽 사이)에 **온전히** 드는 칸 수 — 멈춘 벽에서 병이 옆벽의 문에 걸리지 않고 다 보이는
+ * 칸입니다(S15P21E203-431). 벽 끝 · 멈출 자리 · 고른 병 들이기 · 한 번에 넘기는 칸을 이 수로 셉니다.
+ *
+ * 치수(shelfMetrics)의 "가리지 않는 칸" 은 창 폭(패널 왼쪽 끝까지)을 칸 폭으로 나눈 수라 옆벽 두 장 ·
+ * 입구 테두리 · 창 여백을 모릅니다. 그 수로 벽 끝을 세면 마지막 병이 오른쪽 옆벽의 문에 반쯤 걸린 채
+ * 섰습니다(1784 x 957 · 보유 중 8 병 — 여덟째 병이 절반만 보임). 벽감 폭을 아직 모르면 null 입니다.
+ *
+ * @param nicheWidth 벽감 폭(px) — 창(ShelfWall 의 section) 폭입니다
+ * @param pitch 칸 폭(px)
+ */
+export function nicheSlots(nicheWidth: number, pitch: number): number | null {
+  if (nicheWidth <= 0 || pitch <= 0) return null
+  const { bevel, wall } = NICHE_FACES
+  // 딱 맞아떨어지는 칸이 부동소수 오차로 하나 덜 세어지지 않게 조금 여유를 둡니다
+  return Math.max(
+    1,
+    Math.floor((nicheWidth - 2 * (bevel + wall)) / pitch + 1e-6),
+  )
+}
+
+/** 문 앞 · 뒤 가장자리의 깊이(옆벽 폭 대비, 0 이 입구). 앞기둥은 입구에서 12% 입니다 */
+const DOOR_FRONT = 0.12
+const DOOR_BACK = 0.88
+/** 아치가 시작하는 높이 — 병 사진 칸 높이 대비 */
+const DOOR_SPRING = 1.06
+/**
+ * 아치가 솟는 높이 — 화면에서의 문 폭(앞 · 뒤 가장자리 사이) 대비. 반원(0.5)보다 조금 높여, 옆벽이 누운
+ * 만큼 좁아 보이는 둥근 머리로 둡니다
+ */
+const DOOR_RISE = 0.7
+/** 아치를 꺾은선으로 나누는 수 — 각도로 고르게 나눠, 문설주에서 일어서는 양 끝이 촘촘합니다 */
+const DOOR_ARCH_STEPS = 16
+
+export type DoorMetrics = {
+  /** 옆벽 앞끝에서 문 앞 가장자리까지(px). 병은 여기서 앞기둥에 가려 사라집니다 */
+  front: number
+  /** 옆벽 앞끝에서 병이 옆벽 면을 지나는 자리까지(px). 여기부터 병이 문 안 그늘에 듭니다 */
+  plane: number
+  /** 옆벽 앞끝에서 문 뒤 가장자리까지(px). 문설주의 두께가 빛을 받는 자리입니다 */
+  back: number
+  /**
+   * 옆벽 면 상자 위끝에서 아치 꼭대기까지(px). 문 안은 벽감과 같은 모래라 깊이를 그늘로만 내는데,
+   * 아치 밑 그늘이 여기서 시작합니다(shelf-display.css 의 .shelf-door-hole)
+   */
+  top: number
+  /**
+   * 문 윤곽 — 왼쪽 옆벽 면 상자(벽감에서 입구 테두리를 뺀 상자의 왼쪽 옆벽 폭) 기준 clip-path.
+   * 오른쪽 옆벽은 같은 윤곽을 좌우로 뒤집어 씁니다(shelf-display.css 의 .shelf-door-right).
+   */
+  shape: string
+}
+
+/**
+ * 벽감 높이 · 병 사진 칸 높이에 맞는 옆벽 문(위 "옆벽의 문").
+ *
+ * @param caseHeight 벽감 높이(px, --case-h)
+ * @param bottle 병 사진 칸 높이(px, --bottle-h)
+ */
+export function doorMetrics(caseHeight: number, bottle: number): DoorMetrics {
+  const { bevel, ceil, wall, floor, floorFront } = NICHE_FACES
+  const f = (value: number) => +value.toFixed(2)
+  // 면 상자 높이 — 옆벽 앞끝(입구)의 높이입니다
+  const face = Math.max(1, caseHeight - bevel * 2)
+  const floorAt = (depth: number) => face - floor * depth
+  const ceilingAt = (depth: number) => ceil * depth
+  // 깊이 d 에서 입구의 1px 이 몇 px 로 줄어드는가 — 그 깊이의 옆벽 높이 / 입구 높이
+  const scale = (depth: number) => (floorAt(depth) - ceilingAt(depth)) / face
+  const spring = bottle * DOOR_SPRING
+  const rise = wall * (DOOR_BACK - DOOR_FRONT) * DOOR_RISE
+  /*
+   * 바닥에서 height 만큼 올라간 벽 위의 점. 아치 꼭대기가 천장 모서리에 닿으면(병이 벽감을 거의
+   * 채우는 좁고 낮은 창) 모서리 조금 아래에서 멈춥니다 — 문이 천장까지 뚫리면 옆벽이 두 조각이 됩니다.
+   */
+  const point = (depth: number, height: number): [x: number, y: number] => {
+    const highest = ceilingAt(depth) + 4
+    const y = Math.max(highest, floorAt(depth) - height * scale(depth))
+    return [wall * depth, y]
+  }
+  const at = ([x, y]: [number, number]) => `${f(x)} ${f(y)}`
+
+  // 반타원 — 뒤 가장자리(0)에서 앞 가장자리(π)까지 각도로 나눕니다
+  const arch = Array.from({ length: DOOR_ARCH_STEPS + 1 }, (_, step) => {
+    const angle = (Math.PI * step) / DOOR_ARCH_STEPS
+    const t = (1 - Math.cos(angle)) / 2
+    const depth = DOOR_BACK + (DOOR_FRONT - DOOR_BACK) * t
+    return point(depth, spring + rise * Math.sin(angle))
+  })
+  const path = [
+    `M${at(point(DOOR_FRONT, 0))}`,
+    `L${at(point(DOOR_BACK, 0))}`,
+    ...arch.map((p) => `L${at(p)}`),
+    'Z',
+  ].join('')
+
+  return {
+    front: f(wall * DOOR_FRONT),
+    plane: f(wall * (floorFront / floor)),
+    back: f(wall * DOOR_BACK),
+    top: f(Math.min(...arch.map(([, y]) => y))),
+    shape: `path("${path}")`,
   }
 }

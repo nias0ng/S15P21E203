@@ -33,8 +33,6 @@ type Props = {
   priorityTo: number
   /** 첫 화면을 그릴 때 고른 병 */
   priorityId: number | null
-  /** 향수가 없을 때 벽감 안에 적는 말 */
-  emptyMessage: string
   /**
    * 벽감 면을 여기서 그릴지. 기본은 그립니다.
    *
@@ -95,7 +93,6 @@ export const DisplayCase = memo(function DisplayCase({
   priorityFrom,
   priorityTo,
   priorityId,
-  emptyMessage,
   frame = true,
 }: Props) {
   return (
@@ -125,11 +122,11 @@ export const DisplayCase = memo(function DisplayCase({
         </div>
       )}
 
-      {items.length === 0 ? (
-        <p className="shelf-muted text-caption absolute inset-0 flex items-center justify-center px-2.5 text-center">
-          {emptyMessage}
-        </p>
-      ) : (
+      {/*
+        향수가 없으면 이 칸은 비워 둡니다. "비어 있다" 는 한 칸 폭에 적으면 벽감 첫머리에 붙은 작은
+        글씨가 되어, 벽이 벽감 한가운데에 따로 세웁니다(ShelfWall 의 빈 분류 안내).
+      */}
+      {items.length > 0 && (
         /*
           병 줄. 아래끝이 병 발치(--base-inset)라 병이 바닥 가운데쯤 섭니다. 이름표는
           선반 아랫면(벽감 아래끝) 아래로 매달려 이 줄 밖으로 내려가는데, ShelfWall 창의

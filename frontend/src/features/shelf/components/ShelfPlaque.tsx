@@ -1,18 +1,14 @@
 import { cn } from '@/shared/lib/cn'
 
 import type { PlaqueMetrics } from '../lib'
-import type { ShelfCategory } from '../types'
+import { SHELF_CATEGORY_CAPTION, type ShelfCategory } from '../types'
 
-/**
- * 분류 이름 아래 작게 적는 영문 설명. 넓은 현판에서만 보이고(PlaqueDetail 'full'), 대문자와
- * 자간은 CSS 가 입힙니다(.shelf-plaque-caption). 한글 분류 이름을 되풀이하는 장식이라
- * 낭독기에서는 뺍니다.
+/*
+ * 분류 이름 아래 작게 적는 영문 설명은 types.ts 의 SHELF_CATEGORY_CAPTION 입니다 — 상세 카드 머리도
+ * 같은 말을 적습니다. 넓은 현판에서만 보이고(PlaqueDetail 'full'), 대문자와 자간은 CSS 가
+ * 입힙니다(.shelf-plaque-caption).
  */
-const PLAQUE_CAPTION: Record<ShelfCategory, string> = {
-  OWNED: 'My collection',
-  TRIED: 'Tried scents',
-  WISH: 'Wish list',
-}
+const PLAQUE_CAPTION = SHELF_CATEGORY_CAPTION
 
 /** "처음으로" 현판의 영문 설명. 낭독기에는 단추 앞의 "처음으로, " 가 대신 읽힙니다 */
 const RETURN_CAPTION = 'Back to start'
@@ -42,8 +38,6 @@ function plaqueStyle(plaque: PlaqueMetrics) {
     '--plaque-h': `${plaque.height}px`,
     '--plaque-crown': `${plaque.crown}px`,
     '--plaque-inset': `${plaque.inset}px`,
-    '--plaque-pin': `${plaque.pin}px`,
-    '--plaque-pin-top': `${plaque.pinTop}px`,
     '--plaque-shape': plaque.shape,
     '--plaque-edge-ring': plaque.edgeRing,
     '--plaque-rim-ring': plaque.rimRing,
@@ -54,7 +48,8 @@ function plaqueStyle(plaque: PlaqueMetrics) {
 }
 
 /**
- * 현판 한 장 — 오린 종이 겹 · 핀 · 글자(분류 이름 · 짧은 선 · 개수 · 영문 설명).
+ * 현판 한 장 — 오린 종이 겹 · 글자(분류 이름 · 짧은 선 · 개수 · 영문 설명). 꼭대기에 꽂던 황동 핀은
+ * 걷었습니다(S15P21E203-431).
  *
  * 분류 현판(ShelfPlaque)과 "처음으로" 현판(ShelfReturnPlaque)이 같이 씁니다. 둘은 단추 바깥
  * (제목인가 아닌가)과 낭독기 이름 · 영문 설명만 다르고 판은 같습니다 — 판을 한쪽만 고치면 벽
@@ -73,13 +68,14 @@ function PlaqueBoard({
     <>
       <span aria-hidden className="shelf-plaque-board">
         <span className="shelf-plaque-paper" />
+        {/* 눌러 들어간 판에 드는 먹빛과 윗턱 그늘. 고른 판에서만 떠오릅니다(shelf-display.css) */}
+        <span className="shelf-plaque-well" />
         <span className="shelf-plaque-edge" />
         <span className="shelf-plaque-rim" />
         <span className="shelf-plaque-line" />
         <span className="shelf-plaque-glint" />
         <span className="shelf-plaque-focus" />
       </span>
-      <span aria-hidden className="shelf-plaque-pin" />
       <span className="shelf-plaque-text">
         <span className="shelf-plaque-label font-serif font-semibold">
           {label}
@@ -113,7 +109,6 @@ function PlaqueBoard({
  *   빛 받는 띠    그 안쪽 1px. 광원 쪽(왼쪽 위)에만 앉습니다
  *   안쪽 테두리선 윤곽을 따라 도는 가는 선과, 그 안쪽의 옅은 빛(눌러 새긴 선처럼)
  *   포커스 링     키보드로 닿았을 때만
- *   핀            꼭대기 가운데의 황동 못머리
  *
  * 그림자는 오린 겹들을 감싼 상자에 drop-shadow 로 겁니다. 오린 요소에 직접 걸면 그림자가
  * 자기 윤곽에 같이 잘립니다. 벽에 붙은 얇은 판이라 작고 짧게 오른쪽 아래로만 떨어집니다.
@@ -221,6 +216,14 @@ export function ShelfReturnPlaque({
  *
  * 고른 분류는 `aria-current` 로 알리고, 보이는 표시는 `data-active` 로 CSS 가 입힙니다.
  * 낭독기에는 분류 이름과 개수가 그대로 읽힙니다(PlaqueBoard).
+ *
+ * ── 누르는 맛 (S15P21E203-431) ──────────────────────────────
+ * 판은 **눌러 두는 단추**입니다 — 옛 라디오의 프리셋 단추처럼, 고른 판은 벽 쪽으로 눌려 들어가 **먹빛으로
+ * 채워진 채**(글자는 종이색) 머물고 나머지는 벽에서 떠 그림자를 드리웁니다. 누르는 순간 판이 한 번 더
+ * 깊이 눌렸다 제자리에 앉고, 먼저 눌려 있던 판은 튕기듯 떠오릅니다. 판 오른쪽의 황동 촉이 고른 판으로
+ * 미끄러져 벽감을 가리킵니다 — "이 판이 저 벽을 정한다" 가 이어집니다. 모양은 전부 shelf-display.css 의
+ * "누르는 맛".
+ * 벽도 같이 대답합니다 — 옛 병이 문으로 빠지고 새 병이 들어옵니다(ShelfWall 의 "분류를 바꿀 때").
  */
 export function ShelfPlaqueMenu({
   items,
@@ -237,11 +240,31 @@ export function ShelfPlaqueMenu({
   onSelect: (category: ShelfCategory) => void
   className?: string
 }) {
+  const at = Math.max(
+    0,
+    items.findIndex((item) => item.category === value),
+  )
   return (
     <nav
       aria-label="진열대 분류"
-      className={cn('flex flex-col items-center justify-between', className)}
+      className={cn(
+        'relative flex flex-col items-center justify-between',
+        className,
+      )}
+      style={
+        {
+          '--plaque-w': `${plaque.width}px`,
+          '--plaque-h': `${plaque.height}px`,
+          '--menu-at': at,
+          '--menu-gaps': Math.max(1, items.length - 1),
+        } as React.CSSProperties
+      }
     >
+      {/*
+        황동 촉 — 고른 판 오른쪽에서 벽감을 가리킵니다. 판들은 세로로 고르게 벌어져 있어(justify-between)
+        n 번째 판의 가운데가 판 높이 절반 + n x (메뉴 높이 − 판 높이) / 칸 사이 수 에 옵니다.
+      */}
+      <span aria-hidden className="shelf-menu-pointer" />
       {items.map((item) => {
         const active = item.category === value
         return (

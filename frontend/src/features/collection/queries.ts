@@ -21,7 +21,3 @@ export const collectionDetailQuery = (collectionId: number) =>
     queryKey: collectionKeys.detail(collectionId),
     queryFn: () => getCollectionDetail(collectionId),
   })
-
-/** NOTE: 목록 응답에 썸네일이 없어 컬렉션마다 상세를 한 번씩 부릅니다 */
-export const collectionPreviewsQuery = (collectionIds: number[]) =>
-  collectionIds.map((collectionId) => collectionDetailQuery(collectionId))

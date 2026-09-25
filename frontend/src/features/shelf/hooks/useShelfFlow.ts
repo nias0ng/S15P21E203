@@ -98,6 +98,12 @@ export type ShelfFlow = {
   destination: () => number
   /** 칸으로 흘려 보냅니다. instant 면 움직이지 않고 바로 옮깁니다 */
   go: (start: number, instant?: boolean) => void
+  /**
+   * 벽 앞쪽에 칸이 늘거나 줄었을 때 부릅니다 — 지금 자리 · 향하던 칸 · 흐름을 **같은 칸 수만큼**
+   * 옮겨, 화면의 병은 그대로 두고 좌표만 새 벽에 맞춥니다. 흐르던 중이면 그대로 이어 흐릅니다.
+   * 알리지(onSettle) 않습니다. 분류를 바꾸며 벽 앞에 새 분류를 끼우거나 옛 분류를 뺄 때 씁니다(ShelfWall).
+   */
+  rebase: (offset: number) => void
 }
 
 const clamp = (value: number, min: number, max: number) =>
@@ -384,6 +390,15 @@ function createFlow() {
   return {
     apply,
     go,
+
+    rebase(offset: number) {
+      if (!offset) return
+      position += offset
+      dest += offset
+      from += offset
+      if (drag) drag.from += offset
+      apply()
+    },
 
     configure(next: Options) {
       options = next

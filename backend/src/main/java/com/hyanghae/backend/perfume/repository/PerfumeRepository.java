@@ -42,16 +42,24 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
      * <p>{@code IS NULL} 자리에만 {@code CAST} 를 걸면 부족합니다. 같은 이름의 파라미터라도 쿼리에
      * 나타나는 위치마다 따로 바인딩되고, {@code CONCAT} 은 인자 타입을 가리지 않아 추론에 도움이
      * 되지 않습니다. 그래서 모든 사용 위치에 {@code CAST} 를 겁니다.
+     *
+     * <p><b>이름에서 공백을 지우고 견줍니다.</b> 이름을 어디서 띄는지는 사람마다 다른데 저장된
+     * 이름은 한 가지입니다('빅토리아 시크릿'). 검색어 쪽도 {@code PerfumeService.normalize} 가
+     * 같이 지웁니다 — 한쪽만 지우면 반대 방향, 즉 띄어 친 검색어가 도로 안 걸립니다.
+     *
+     * <p>{@code REPLACE} 는 HQL 함수라 JPQL 에서 그대로 쓸 수 있고, PostgreSQL 에도 같은 이름의
+     * 함수가 있어 {@code PerfumeRankingRepository.CONDITION} 의 SQL 판과 글자까지 같습니다. 두
+     * 경로가 같은 답을 내는지는 통합 테스트가 봅니다.
      */
     String SEARCH_CONDITION = """
             FROM Perfume p
             LEFT JOIN p.brand b
             WHERE p.active = true
               AND (CAST(:keyword AS String) IS NULL
-                OR LOWER(p.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!'
-                OR LOWER(p.nameKo) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!'
-                OR LOWER(b.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!'
-                OR LOWER(b.nameKo) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!')
+                OR LOWER(REPLACE(p.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!'
+                OR LOWER(REPLACE(p.nameKo, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!'
+                OR LOWER(REPLACE(b.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!'
+                OR LOWER(REPLACE(b.nameKo, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!')
               AND (CAST(:brand AS String) IS NULL OR b.name = CAST(:brand AS String))
               AND (:brandId IS NULL OR b.id = :brandId)
               AND (CAST(:gender AS String) IS NULL OR p.gender = CAST(:gender AS String))

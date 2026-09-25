@@ -75,6 +75,12 @@ export function Modal({
       className={cn(
         'rounded-card m-auto w-127.5 max-w-[calc(100vw-var(--spacing)*10)] p-0',
         'backdrop:bg-ink/40 open:flex open:flex-col',
+        /*
+          가로로는 흐르지 않습니다. 모달은 브라우저 기본값이 overflow: auto 라, 안의 장식이 옆으로
+          번지면(검색창 `SearchField` 의 빛무리가 좌우 24 밖으로 나갑니다) 2px 짜리 가로 스크롤 막대가
+          생깁니다. 모달 안 내용은 폭에 맞춰 짜므로 가로 스크롤로 볼 것이 없습니다.
+        */
+        'overflow-x-hidden',
         className,
       )}
     >

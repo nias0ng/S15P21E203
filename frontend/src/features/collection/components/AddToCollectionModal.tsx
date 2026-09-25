@@ -1,8 +1,10 @@
 import { useState } from 'react'
 
+import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { Modal } from '@/shared/ui/Modal'
 
+import { COLLECTION_SHEET, PICK_SHEET_WIDTH } from './collectionSheet'
 import { ShelfItemPickList, type ShelfItemCandidate } from './ShelfItemPickList'
 
 type Props = {
@@ -14,7 +16,7 @@ type Props = {
   onSubmit: (shelfItemIds: number[]) => void
 }
 
-/** 컬렉션에 향수 추가 모달 (A19 우 — COL-03) */
+/** 컬렉션에 향수 담기 모달 (A19 우 — COL-03) */
 export function AddToCollectionModal({
   open,
   onClose,
@@ -42,7 +44,8 @@ export function AddToCollectionModal({
     <Modal
       open={open}
       onClose={close}
-      title="향수 추가"
+      title="향수 담기"
+      className={cn(COLLECTION_SHEET, PICK_SHEET_WIDTH)}
       footer={
         <>
           <Button variant="outline" onClick={close}>
@@ -56,21 +59,19 @@ export function AddToCollectionModal({
               setKeyword('')
             }}
           >
-            추가
+            담기
           </Button>
         </>
       }
     >
-      <div className="space-y-2.5">
-        <ShelfItemPickList
-          candidates={candidates}
-          picked={picked}
-          onToggle={toggle}
-          keyword={keyword}
-          onKeywordChange={setKeyword}
-          emptyTitle="추가할 향수가 없습니다"
-        />
-      </div>
+      <ShelfItemPickList
+        candidates={candidates}
+        picked={picked}
+        onToggle={toggle}
+        keyword={keyword}
+        onKeywordChange={setKeyword}
+        emptyTitle="더 담을 향수가 없습니다"
+      />
     </Modal>
   )
 }

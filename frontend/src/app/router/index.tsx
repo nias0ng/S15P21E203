@@ -39,7 +39,14 @@ const withSuspense = (element: React.ReactNode) => (
   <Suspense fallback={<PageFallback />}>{element}</Suspense>
 )
 
-const FULL = { width: 'full' } satisfies { width: PageWidth }
+/**
+ * 진열대 종이 + 화면 틀 전체 — 진열대와 그 안에서 들어가는 컬렉션 상세. 헤더까지 같은 종이로 칠합니다
+ * (RootLayout 의 `paper`).
+ */
+const PAPER = { width: 'full', paper: true } satisfies {
+  width: PageWidth
+  paper: boolean
+}
 /** 어두운 방 + 유리판 + 글 읽고 쓰는 폭 — docs/어두운-방-유리판.md. — 게시판에서 한 번에 넘어가는 사이라 같은 어둠입니다 */
 const TEXT_NIGHT = { width: 'text', night: true } satisfies {
   width: PageWidth
@@ -123,11 +130,13 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.MY_SHELF,
         element: withSuspense(<MyShelfPage />),
-        handle: FULL,
+        handle: PAPER,
       },
       {
         path: ROUTES.COLLECTION_DETAIL,
         element: withSuspense(<CollectionDetailPage />),
+        // 진열대와 같은 종이 · 같은 폭 — 진열함을 눌러 넘어와도 틀이 그대로입니다
+        handle: PAPER,
       },
 
       {
