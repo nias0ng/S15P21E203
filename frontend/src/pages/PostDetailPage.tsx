@@ -186,6 +186,11 @@ export default function PostDetailPage() {
           </h1>
 
           <div className="text-caption flex items-center gap-2.5">
+            {/* 크기는 아래 댓글 아바타와 맞춥니다 — 한 화면에서 작성자 아바타가 두 크기로 서지 않게 합니다 */}
+            <Thumbnail
+              src={data.profileImageUrl}
+              className="size-6.25 shrink-0 rounded-full"
+            />
             <span className="text-ink">{authorName(data.nickname)}</span>
             <span className="text-ink-muted">
               · {formatRelativeTime(data.createdAt)} · 조회 {data.viewCount}

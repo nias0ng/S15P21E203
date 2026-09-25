@@ -499,10 +499,11 @@ IDE 와 `grep` 이 찾을 수 있어야 합니다.
 헤더 아바타가 `meQuery` 캐시 하나를 같이 봅니다. 제한은 **JPG · PNG · GIF · WEBP · 1MB** 이고
 형식을 파일 내용으로 판별합니다 — 화면에서 미리 거르지 않고 서버 문구(413 · 415)를 그대로 보여줍니다.
 
-⚠️ **작성자 사진은 아직 못 붙입니다.** `profileImageUrl` 이 `UserResponse` 에만 있어서 내 사진만
-알 수 있습니다. 후기 · 게시글 · 댓글 응답(`ReviewDetailResponse` · `ReviewResponse` ·
+**작성자 사진도 붙었습니다** — 후기 · 게시글 · 댓글 응답(`ReviewDetailResponse` · `ReviewResponse` ·
 `ReviewBoardItemResponse` · `PostDetailResponse` · `PostSummaryResponse` · `CommentResponse`)에
-필드를 추가해 달라고 요청해 두었고, 오면 그 자리의 `NOTE:` 를 걷으면 됩니다.
+`profileImageUrl` 이 실려 옵니다. 커뮤니티는 게시판 목록(`BoardItem.avatarUrl`) · 글 상세 · 댓글의
+작성자 아바타에 그 값을 넘깁니다. 사진을 설정하지 않았거나 탈퇴한 회원이면 `null` 이라
+`Thumbnail` 이 빈 상자를 그립니다.
 
 붙어 있는 API 도 **값이 비는 필드가 많습니다** — `nameKo`·`imageUrl`·`scentFamily`·`logoUrl` 은
 null 로 옵니다. **타입이 필수라고 믿고 바로 접근하면 화면이 죽습니다.** 값 없는 경우를 먼저

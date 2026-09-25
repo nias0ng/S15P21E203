@@ -82,6 +82,8 @@ interface PostSummary {
   title: string
   /** 탈퇴한 회원의 글은 글만 남고 작성자가 지워집니다 */
   nickname: string | null
+  /** 작성자 사진. 설정하지 않았거나 탈퇴한 회원이면 null 입니다 */
+  profileImageUrl: string | null
   /** 자유 글은 향수를 안 걸어도 됩니다 */
   perfume: LinkedPerfume | null
   commentCount: number
@@ -109,6 +111,8 @@ export interface PostDetail {
   postId: number
   category: PostCategory
   nickname: string | null
+  /** 작성자 사진. 설정하지 않았거나 탈퇴한 회원이면 null 입니다 */
+  profileImageUrl: string | null
   title: string
   content: string
   imageUrls: string[]
@@ -129,6 +133,8 @@ export interface PostDetail {
 export interface Comment {
   commentId: number
   nickname: string | null
+  /** 작성자 사진. 설정하지 않았거나 탈퇴한 회원이면 null 입니다 */
+  profileImageUrl: string | null
   content: string
   createdAt: string
   updatedAt: string
@@ -154,6 +160,8 @@ interface ReviewBoardItem {
   title: string
   content: string
   nickname: string | null
+  /** 작성자 사진. 설정하지 않았거나 탈퇴한 회원이면 null 입니다 */
+  profileImageUrl: string | null
   perfume: LinkedPerfume
   likeCount: number
   viewCount: number
@@ -180,6 +188,8 @@ export interface BoardItem {
   to: string
   title: string
   nickname: string | null
+  /** 작성자 사진. 없으면 아바타 자리에 빈 상자가 섭니다 */
+  avatarUrl: string | null
   createdAt: string
   perfume: LinkedPerfume | null
   /** 자유 글에만 있습니다 */
@@ -202,6 +212,7 @@ export function postToBoardItem(post: PostSummary): BoardItem {
     to: toPostDetail(post.postId),
     title: post.title,
     nickname: post.nickname,
+    avatarUrl: post.profileImageUrl,
     createdAt: post.createdAt,
     perfume: post.perfume,
     category: post.category,
@@ -224,6 +235,7 @@ export function reviewToBoardItem(review: ReviewBoardItem): BoardItem {
     to: toReviewDetail(review.reviewId),
     title: review.title,
     nickname: review.nickname,
+    avatarUrl: review.profileImageUrl,
     createdAt: review.createdAt,
     perfume: review.perfume,
     category: null,

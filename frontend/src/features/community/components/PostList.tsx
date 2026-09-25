@@ -88,7 +88,10 @@ export function PostList({
             </Link>
 
             <div className="text-caption flex flex-wrap items-center gap-2.5">
-              <Thumbnail className="size-5 shrink-0 rounded-full" />
+              <Thumbnail
+                src={item.avatarUrl}
+                className="size-5 shrink-0 rounded-full"
+              />
               <span className="text-ink">{authorName(item.nickname)}</span>
               <span className="text-ink-muted">
                 · {formatRelativeTime(item.createdAt)}

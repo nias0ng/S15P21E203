@@ -86,7 +86,10 @@ export function CommentSection({
         {comments.map((comment) => (
           <li key={comment.commentId} className="space-y-2.5 py-3.75">
             <div className="text-caption flex items-center gap-2.5">
-              <Thumbnail className="size-6.25 shrink-0 rounded-full" />
+              <Thumbnail
+                src={comment.profileImageUrl}
+                className="size-6.25 shrink-0 rounded-full"
+              />
               <span className="text-ink">{authorName(comment.nickname)}</span>
               <span className="text-ink-muted">
                 · {formatRelativeTime(comment.createdAt)}
