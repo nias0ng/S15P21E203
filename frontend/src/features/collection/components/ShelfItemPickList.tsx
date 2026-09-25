@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 
 import { cn } from '@/shared/lib/cn'
+import { keywordMatcher } from '@/shared/lib/keywordMatch'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { SearchField } from '@/shared/ui/SearchField'
 
@@ -49,13 +50,9 @@ export function ShelfItemPickList({
   listClassName,
 }: Props) {
   const visible = useMemo(() => {
-    const needle = keyword.trim().toLowerCase()
-    if (!needle) return candidates
-
-    return candidates.filter(
-      (candidate) =>
-        candidate.name.toLowerCase().includes(needle) ||
-        (candidate.brand?.toLowerCase().includes(needle) ?? false),
+    const matches = keywordMatcher(keyword)
+    return candidates.filter((candidate) =>
+      matches(candidate.name, candidate.brand),
     )
   }, [candidates, keyword])
 

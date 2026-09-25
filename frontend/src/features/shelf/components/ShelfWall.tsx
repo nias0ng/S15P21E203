@@ -14,6 +14,7 @@ import { flushSync } from 'react-dom'
 
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { cn } from '@/shared/lib/cn'
+import { prefersReducedMotion } from '@/shared/lib/prefersReducedMotion'
 
 import { useBottlePreload } from '../hooks/useBottlePreload'
 import { useShelfFlow } from '../hooks/useShelfFlow'
@@ -132,10 +133,6 @@ type Passage = {
 /** 메뉴 순서(보유 중 → 시향해 봄 → 보유 희망). 벽이 흐르는 방향을 이 순서로 정합니다 */
 const categoryRank = (category: ShelfCategory) =>
   SHELF_CATEGORIES.findIndex((entry) => entry.value === category)
-
-const prefersReducedMotion = () =>
-  typeof window !== 'undefined' &&
-  (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)
 
 /**
  * 진열대 벽 (A13 재디자인) — 창에 고정된 벽감 하나에 한 분류의 병이 서고, 왼쪽 메뉴판이 분류를

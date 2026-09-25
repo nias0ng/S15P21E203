@@ -15,59 +15,6 @@ export function formatShelfDate(iso: string | null): string | null {
   return `${at.getFullYear()}.${pad(at.getMonth() + 1)}.${pad(at.getDate())}`
 }
 
-/*
- * ── 상세 카드의 향조 ─────────────────────────────────────────
- *
- * 상세 응답의 향조는 단계로 나누지 않고 그대로 옵니다. `noteType` 에 값 제약이 없어 소문자 `top` ·
- * `middle` · `base`, 두 단계에 걸친 `top+middle`, 피라미드가 없는 `flat`, 빈 값이 섞여 옵니다(실측 —
- * 운 자르뎅 쉬르 르 닐: top 1 · middle 3 · base 5). 묶는 일은 화면 몫이라 향수 상세(features/perfume 의
- * PerfumeNotes)와 **같은 규칙**으로 묶습니다 — 기능끼리는 서로 가져다 쓰지 않아 규칙만 같이 둡니다.
- *
- *   Top · Middle · Base → 피라미드 없음(flat, 이름표 없이 한 줄) → 모르는 단계(제 이름) → 빈 값(기타)
- *   `top+middle` 은 두 단계 모두에 넣습니다 — 한 덩어리로 두면 없는 단계가 생깁니다
- */
-export type NoteRow = {
-  /** 단계 — TOP · MIDDLE · BASE · FLAT · 모르는 값(대문자) · 기타 */
-  stage: string
-  /** 줄 머리에 적는 이름. 피라미드가 없는 향수(flat)는 null — 이름표 없이 노트만 적습니다 */
-  label: string | null
-  names: string[]
-}
-
-/** 단계 줄의 순서 — 적는 순서가 곧 화면에 그리는 순서입니다 */
-export const NOTE_STAGES = ['TOP', 'MIDDLE', 'BASE'] as const
-const NOTE_FLAT = 'FLAT'
-/** `noteType` 이 비어 온 노트가 모이는 줄 */
-const NOTE_OTHER = '기타'
-
-export function noteRows(
-  notes: readonly { name: string; noteType: string | null }[],
-): NoteRow[] {
-  const groups = new Map<string, string[]>()
-  for (const note of notes) {
-    const stages =
-      note.noteType
-        ?.trim()
-        .toUpperCase()
-        .split('+')
-        .map((stage) => stage.trim())
-        .filter(Boolean) ?? []
-    for (const stage of stages.length > 0 ? stages : [NOTE_OTHER]) {
-      const group = groups.get(stage)
-      if (group) group.push(note.name)
-      else groups.set(stage, [note.name])
-    }
-  }
-  const order: string[] = [...NOTE_STAGES, NOTE_FLAT]
-  const known = order.filter((stage) => groups.has(stage))
-  const rest = [...groups.keys()].filter((stage) => !order.includes(stage))
-  return [...known, ...rest].map((stage) => ({
-    stage,
-    label: stage === NOTE_FLAT ? null : stage,
-    names: groups.get(stage) ?? [],
-  }))
-}
-
 /**
  * 향수 이름 앞에 붙은 브랜드를 뗍니다. 이름표는 첫 줄에 브랜드를 따로 적어서, 이름에도
  * 브랜드가 붙어 있으면 "조말론 / 조 말론 우드 세이지 앤 씨 솔트" 처럼 같은 말이 두 번 보입니다.

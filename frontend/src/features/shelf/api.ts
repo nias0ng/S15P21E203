@@ -1,3 +1,4 @@
+import { fetchAllPages } from '@/shared/api/fetchAllPages'
 import { http } from '@/shared/api/http'
 
 import {
@@ -29,9 +30,6 @@ interface ShelfItemsResponse {
   totalElements: number
 }
 
-/** 백엔드 `MAX_PAGE_SIZE`. 더 큰 값을 보내도 서버가 여기로 깎습니다 */
-const MAX_PAGE_SIZE = 100
-
 /**
  * 내 진열대 전부 (SHF-02).
  *
@@ -52,27 +50,16 @@ export async function getShelfItems(): Promise<ShelfItem[]> {
   return perCategory.flat()
 }
 
-async function fetchCategory(category: ShelfCategory): Promise<ShelfItem[]> {
-  const first = await fetchPage(category, 0)
-  const items = [...first.perfumes]
-
-  // 서버가 size 를 깎을 수 있으므로 **응답이 알려준 size** 로 남은 장수를 셉니다
-  const pageSize = first.size > 0 ? first.size : MAX_PAGE_SIZE
-  const pages = Math.ceil(first.totalElements / pageSize)
-
-  for (let page = 1; page < pages; page += 1) {
-    const next = await fetchPage(category, page)
-    items.push(...next.perfumes)
-  }
-
-  return items
-}
-
-async function fetchPage(category: ShelfCategory, page: number) {
-  const { data } = await http.get<ShelfItemsResponse>('/users/me/shelf-items', {
-    params: { category, page, size: MAX_PAGE_SIZE },
-  })
-  return data
+function fetchCategory(category: ShelfCategory): Promise<ShelfItem[]> {
+  return fetchAllPages(
+    (page, size) =>
+      http
+        .get<ShelfItemsResponse>('/users/me/shelf-items', {
+          params: { category, page, size },
+        })
+        .then(({ data }) => data),
+    (data) => data.perfumes,
+  )
 }
 
 /**

@@ -142,6 +142,19 @@ describe('ShelfDetailPanel 향조', () => {
     )
   })
 
+  it('피라미드가 없는 향수는 단계 이름 없이 노트만 한 줄로 적는다', () => {
+    renderPanel({
+      ...WOOD_SAGE,
+      scentNotes: [
+        { noteId: 1, name: 'Amber', noteType: 'flat' },
+        { noteId: 2, name: 'Musk', noteType: 'flat' },
+      ],
+    })
+
+    expect(screen.getByText('Amber · Musk')).toBeInTheDocument()
+    expect(screen.queryByText('FLAT')).not.toBeInTheDocument()
+  })
+
   it('향조가 없는 향수는 없다고 적는다', () => {
     renderPanel(WOOD_SAGE)
 

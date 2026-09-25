@@ -42,7 +42,7 @@ import {
   type ShelfItemDetail,
   type ShelfWallHandle,
 } from '@/features/shelf'
-import { isApiError } from '@/shared/api/http'
+import { apiErrorMessage } from '@/shared/api/http'
 import { ROUTES } from '@/shared/config/routes'
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { useToast } from '@/shared/hooks/useToast'
@@ -314,7 +314,7 @@ export default function MyShelfPage() {
     onError: (error) =>
       showToast(
         // 이름이 겹치면 409 입니다
-        isApiError(error) ? error.message : '컬렉션을 만들지 못했습니다',
+        apiErrorMessage(error, '컬렉션을 만들지 못했습니다'),
       ),
   })
 
@@ -351,11 +351,7 @@ export default function MyShelfPage() {
     return (
       <EmptyState
         title="진열대를 불러오지 못했습니다"
-        description={
-          isApiError(shelf.error)
-            ? shelf.error.message
-            : '잠시 후 다시 시도해주세요.'
-        }
+        description={apiErrorMessage(shelf.error, '잠시 후 다시 시도해주세요.')}
         action={
           <Button
             variant="outline"

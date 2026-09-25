@@ -1,3 +1,4 @@
+import { fetchAllPages } from '@/shared/api/fetchAllPages'
 import { http } from '@/shared/api/http'
 
 import type {
@@ -28,9 +29,6 @@ interface CollectionsResponse {
   size: number
   totalElements: number
 }
-
-/** 백엔드 `MAX_PAGE_SIZE`. 더 큰 값을 보내도 서버가 여기로 깎습니다 */
-const MAX_PAGE_SIZE = 100
 
 /** 지우는 데 쓰는 번호는 `shelfItemId` 입니다 */
 interface CollectionPerfumeResponse {
@@ -72,29 +70,16 @@ function toCollectionPerfume(
 
 /** 페이지로 나뉘고 기본 10개라, 그냥 부르면 열한 번째부터 조용히 사라집니다 */
 export async function getMyCollections(): Promise<CollectionSummary[]> {
-  const first = await fetchCollectionPage(0)
-  const collections = [...first.collections]
-
-  // 서버가 size 를 깎을 수 있으므로 응답이 알려준 size 로 남은 장수를 셉니다
-  const pageSize = first.size > 0 ? first.size : MAX_PAGE_SIZE
-  const pages = Math.ceil(first.totalElements / pageSize)
-
-  for (let page = 1; page < pages; page += 1) {
-    const next = await fetchCollectionPage(page)
-    collections.push(...next.collections)
-  }
-
-  return collections.map(toCollectionSummary)
-}
-
-async function fetchCollectionPage(page: number) {
-  const { data } = await http.get<CollectionsResponse>(
-    '/users/me/collections',
-    {
-      params: { page, size: MAX_PAGE_SIZE },
-    },
+  const collections = await fetchAllPages(
+    (page, size) =>
+      http
+        .get<CollectionsResponse>('/users/me/collections', {
+          params: { page, size },
+        })
+        .then(({ data }) => data),
+    (data) => data.collections,
   )
-  return data
+  return collections.map(toCollectionSummary)
 }
 
 export async function getCollectionDetail(

@@ -12,7 +12,6 @@ import {
   nameWithoutBrand,
   NICHE_FACES,
   nicheSlots,
-  noteRows,
   plaqueMetrics,
   platePath,
   revealItem,
@@ -1270,48 +1269,6 @@ describe('ticketPath', () => {
         expect(Math.min(x, width - x, y, height - y)).toBeCloseTo(d, 1)
       })
     }
-  })
-})
-
-describe('noteRows — 상세 카드의 향조', () => {
-  const note = (noteId: number, name: string, noteType: string | null) => ({
-    noteId,
-    name,
-    noteType,
-  })
-
-  it('소문자 단계도 받은 순서와 상관없이 탑 · 미들 · 베이스 순으로 묶는다', () => {
-    // 운 자르뎅 쉬르 르 닐 실측 — base 가 먼저 옵니다
-    expect(
-      noteRows([
-        note(26, 'Cinnamon', 'base'),
-        note(19, 'Grapefruit', 'top'),
-        note(102, 'Lotus', 'middle'),
-        note(1, 'Musk', 'base'),
-      ]),
-    ).toEqual([
-      { stage: 'TOP', label: 'TOP', names: ['Grapefruit'] },
-      { stage: 'MIDDLE', label: 'MIDDLE', names: ['Lotus'] },
-      { stage: 'BASE', label: 'BASE', names: ['Cinnamon', 'Musk'] },
-    ])
-  })
-
-  it('두 단계에 걸친 노트는 양쪽에 넣고, 피라미드가 없으면 이름표 없이 한 줄, 모르는 단계 · 빈 값은 뒤에 둔다', () => {
-    const rows = noteRows([
-      note(1, 'Bergamot', 'top+middle'),
-      note(2, 'Amber', 'flat'),
-      note(3, 'Smoke', 'heart'),
-      note(4, 'Salt', null),
-    ])
-    expect(
-      rows.map(({ stage, label, names }) => [stage, label, names]),
-    ).toEqual([
-      ['TOP', 'TOP', ['Bergamot']],
-      ['MIDDLE', 'MIDDLE', ['Bergamot']],
-      ['FLAT', null, ['Amber']],
-      ['HEART', 'HEART', ['Smoke']],
-      ['기타', '기타', ['Salt']],
-    ])
   })
 })
 

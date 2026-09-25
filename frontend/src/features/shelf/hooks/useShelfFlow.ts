@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, useState, type RefObject } from 'react'
 
+import { prefersReducedMotion } from '@/shared/lib/prefersReducedMotion'
+
 import {
   meterWheel,
   snapStart,
@@ -117,9 +119,6 @@ const glideEase = (t: number) => (1 - Math.cos(Math.PI * t)) / 2
  * 뚝 섰다가 다시 출발하지 않습니다.
  */
 const glideCarry = (t: number) => t * (1 - t) ** 2
-
-const prefersReducedMotion = () =>
-  window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 
 /**
  * 진열대 벽을 휠로 좌우로 흘려 보냅니다.

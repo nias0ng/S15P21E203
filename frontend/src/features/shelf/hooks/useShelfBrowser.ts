@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
 
+import { keywordMatcher } from '@/shared/lib/keywordMatch'
+
 import {
   SHELF_CATEGORIES,
   type ShelfCategory,
@@ -49,17 +51,14 @@ export function useShelfBrowser(items: ShelfItem[]): ShelfBrowser {
   // 검색은 향수명과 브랜드명을 함께 봅니다. 세 칸 모두에 같은 검색어가 걸립니다 —
   // 한 칸에만 걸면 다른 칸에 있는 결과가 조용히 가려집니다.
   const sections = useMemo<ShelfSection[]>(() => {
-    const needle = keyword.trim().toLowerCase()
-    const matches = (item: ShelfItem) =>
-      !needle ||
-      item.name.toLowerCase().includes(needle) ||
-      // 브랜드가 비어 있는 향수가 있습니다 — 이름만으로 걸립니다
-      (item.brand?.toLowerCase().includes(needle) ?? false)
+    const matches = keywordMatcher(keyword)
 
     return SHELF_CATEGORIES.map(({ value, label }) => ({
       category: value,
       label,
-      items: items.filter((item) => item.category === value && matches(item)),
+      items: items.filter(
+        (item) => item.category === value && matches(item.name, item.brand),
+      ),
     }))
   }, [items, keyword])
 

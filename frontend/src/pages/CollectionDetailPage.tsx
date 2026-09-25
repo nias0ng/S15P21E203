@@ -16,9 +16,10 @@ import {
   type CollectionInput,
 } from '@/features/collection'
 import { ShelfPaper, shelfItemsQuery } from '@/features/shelf'
-import { isApiError } from '@/shared/api/http'
+import { apiErrorMessage, isApiError } from '@/shared/api/http'
 import { toMyShelfCollection } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
+import { parseId } from '@/shared/lib/parseId'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { LinkButton } from '@/shared/ui/LinkButton'
@@ -39,9 +40,11 @@ const PAPER_RING =
  */
 export default function CollectionDetailPage() {
   const { collectionId } = useParams<{ collectionId: string }>()
-  const numericId = Number(collectionId)
-  // 주소를 손으로 고쳐 숫자가 아니면 부르지 않습니다 — 부르지 않은 쿼리는 끝없이 "받는 중" 입니다
-  const validId = Number.isInteger(numericId) && numericId > 0
+  const parsedId = parseId(collectionId)
+  // 주소를 손으로 고쳐 번호가 아니면 부르지 않습니다 — 부르지 않은 쿼리는 끝없이 "받는 중" 입니다
+  const validId = parsedId !== null
+  // 번호가 아니면 아래 요청은 하나도 나가지 않아 0 은 자리만 채웁니다
+  const numericId = parsedId ?? 0
 
   const collection = useQuery({
     ...collectionDetailQuery(numericId),
@@ -71,7 +74,7 @@ export default function CollectionDetailPage() {
     onError: (error) =>
       showToast(
         // 이름이 겹치면 409 이고, 서버 문구가 그 사정을 그대로 설명합니다
-        isApiError(error) ? error.message : '컬렉션을 수정하지 못했습니다',
+        apiErrorMessage(error, '컬렉션을 수정하지 못했습니다'),
       ),
   })
 
