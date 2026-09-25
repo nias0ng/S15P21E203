@@ -13,7 +13,6 @@ export function usableLogoUrl(logoUrl: string | null): string | null {
   try {
     return new URL(logoUrl).hostname === UNUSABLE_HOST ? null : logoUrl
   } catch {
-    // 주소로 읽히지 않는 값(빈 문자열 · 상대 경로)은 어차피 못 씁니다
     return null
   }
 }

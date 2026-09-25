@@ -10,10 +10,6 @@ import { EmptyState } from '@/shared/ui/EmptyState'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { PageFallback } from '@/shared/ui/PageFallback'
 
-/**
- * 후기 상세 (A12 — DTL-03 · 05 · 06). 비로그인도 볼 수 있고, 여는 것이 곧 조회라
- * 조회수가 하나 오릅니다 — 창 포커스 · 재연결 재요청을 꺼 두었습니다.
- */
 export default function ReviewDetailPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -22,14 +18,12 @@ export default function ReviewDetailPage() {
   const valid = numericId !== null
 
   const { data, isPending, isError, refetch } = useQuery({
-    // 0 은 쿼리 키 자리만 채웁니다 — 번호가 아니면 `enabled` 가 꺼 두어 부르지 않습니다
     ...reviewDetailQuery(numericId ?? 0),
     enabled: valid,
   })
 
   if (valid && isPending) return <PageFallback />
 
-  // 없는 reviewId 와 불러오기 실패를 같은 안내로 묶습니다 — 할 일이 같습니다
   if (!valid || isError || !data) {
     return (
       <EmptyState
@@ -49,8 +43,6 @@ export default function ReviewDetailPage() {
   return (
     <PerfumeReviewDetail
       review={data}
-      // 삭제 뒤 정리는 여기서 합니다 — 게시판 목록(community)과 후기(perfume)는 서로
-      // import 할 수 없는 두 도메인이라 둘 다 아는 화면이 맡습니다
       onDeleted={() => {
         void queryClient.invalidateQueries({ queryKey: communityKeys.all })
         navigate(toPerfumeDetail(data.perfume.perfumeId), {

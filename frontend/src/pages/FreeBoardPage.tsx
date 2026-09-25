@@ -28,26 +28,16 @@ import { PillFilter } from '@/shared/ui/PillFilter'
 
 type CategoryFilter = PostCategory | 'ALL'
 
-/** 백엔드 기본값과 같습니다 */
 const PAGE_SIZE = 20
 
-/**
- * 자유 게시판 (A22b — CMT-01). 컬렉션 공유 글은 컬렉션을 남에게 보이는 유일한 길입니다.
- *
- * **분류 · 정렬 · 쪽을 전부 서버가 처리합니다.** 화면에서 걸렀을 때는 그 페이지
- * 안에서만 걸러져 2쪽에 있던 글이 사라졌습니다.
- *
- * 어두운 방 · 유리판 구성 — docs/어두운-방-유리판.md */
 export default function FreeBoardPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  // 손으로 고친 주소(`?sort=foo`)는 서버가 400 으로 막아 빈 목록이 되므로 기본값으로 읽습니다
   const sort = readOption(searchParams.get('sort'), FREE_SORTS) ?? 'RECENT'
   const category: CategoryFilter =
     readOption(searchParams.get('category'), POST_CATEGORIES) ?? 'ALL'
   const page = readPage(searchParams)
 
   const listParams = {
-    // 'ALL' 은 백엔드 값이 아닙니다. 조건을 아예 빼면 전체입니다.
     category: category === 'ALL' ? undefined : category,
     sort,
     page,
@@ -56,23 +46,8 @@ export default function FreeBoardPage() {
 
   const posts = useQuery(postListQuery(listParams))
 
-  /*
-   * 메인에서 잠수로 들어왔으면 커튼이 짙은 바다색으로 덮은 채 이 신호를 기다립니다
-   * (안 알려도 상한에 걷힙니다 — `shared/ui/DiveCurtain`). 잠수로 들어온 것이 아니면
-   * 아무 일도 안 일어납니다.
-   *
-   * 기준은 **목록**입니다 — 아래에서 스피너가 갈리는 바로 그 조건입니다. 목록이 칠해지면
-   * 이 화면은 다 선 것이고, 여기는 진열대처럼 뒤늦게 떠오르는 사진 벽이 없습니다.
-   *
-   * 곁판(`BoardShell` 의 많이 언급되는 향수)은 안 기다립니다 — 후기 게시판과 같은 까닭입니다.
-   */
   useDiveReady(!posts.isPending)
 
-  /*
-    판 제목에 지금 보고 있는 분류를 적습니다. 알약에서 '전체' 를 없앤 대신
-    (아래 주석) 무엇으로 걸러진 목록인지는 제목이 말해 줍니다 — 정렬이 앞에
-    붙어도 이 역할은 그대로입니다(`boardTitle`).
-  */
   const categoryLabel =
     category === 'ALL'
       ? undefined
@@ -80,12 +55,6 @@ export default function FreeBoardPage() {
 
   const queryClient = useQueryClient()
 
-  /**
-   * 좋아요 토글 (CMT-05). 비로그인 안내 · 누르기/취소 고르기는 `useLikeToggle` 이
-   * 맡고, 여기서는 캐시만 고칩니다 — 응답의 `liked` · `likeCount` 를 **그 줄에만
-   * 덮어씁니다.** 전체를 다시 부르면 보고 있던 자리가 흔들리고, '좋아요순' 이면
-   * 방금 누른 줄이 눈앞에서 이동합니다.
-   */
   const likeToggle = useLikeToggle({
     like: likePost,
     unlike: unlikePost,
@@ -108,7 +77,6 @@ export default function FreeBoardPage() {
                 ),
               },
       )
-      // 글 상세도 같은 숫자를 읽으므로 다음에 열 때 맞는 값이 보이게 비웁니다
       void queryClient.invalidateQueries({ queryKey: communityKeys.all })
     },
   })
@@ -120,12 +88,10 @@ export default function FreeBoardPage() {
   }) => {
     let params = withQueryParams(searchParams, {
       ...(next.sort !== undefined && { sort: next.sort }),
-      // 'ALL' 은 백엔드 값이 아닙니다 — 조건을 아예 빼면 전체입니다
       ...(next.category !== undefined && {
         category: next.category === 'ALL' ? null : next.category,
       }),
     })
-    // 거르는 조건이 바뀌면 첫 쪽부터 다시 봅니다 — 3쪽에 있던 자리는 의미가 없습니다
     if (next.sort !== undefined || next.category !== undefined) {
       params = writePage(params, 0)
     }
@@ -141,10 +107,6 @@ export default function FreeBoardPage() {
         description: '글은 로그인한 뒤에 쓸 수 있습니다.',
       }}
       filters={
-        /*
-          분류에는 '전체' 알약이 없습니다 — 켜진 것을 다시 누르면 꺼집니다.
-          정렬은 `required` 라 안 꺼집니다(꺼지면 줄 세울 기준이 없어집니다).
-        */
         <div
           role="group"
           aria-label="글 거르기"

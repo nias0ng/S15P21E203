@@ -9,21 +9,13 @@ import type { LinkedPerfume } from '../types'
 type Props = {
   open: boolean
   onClose: () => void
-  /** 검색 결과. 화면(pages)에서 향수 도메인 데이터를 넘겨주세요. */
   candidates: LinkedPerfume[]
   onSearch: (keyword: string) => void
   onSubmit: (perfumes: LinkedPerfume[]) => void
-  /** 하나만 고르게 합니다(후기는 향수 한 개에 씁니다) */
   single?: boolean
-  /** 검색 결과를 기다리는 중 */
   isPending?: boolean
 }
 
-/**
- * 글에 연결할 향수 선택 모달 (C02 — A24b 의 관련 향수 선택)
- *
- * 후보 목록은 화면에서 넘겨받습니다 — features 끼리는 import 할 수 없습니다.
- */
 export function LinkedPerfumeModal({
   open,
   onClose,
@@ -48,10 +40,6 @@ export function LinkedPerfumeModal({
     )
   }
 
-  /*
-    `Modal` 이 `<dialog>` 라 닫아도 언마운트되지 않습니다. 비우지 않으면 다음에
-    열었을 때 지난번에 고른 향수가 그대로 남습니다.
-  */
   const close = () => {
     setPicked([])
     onClose()

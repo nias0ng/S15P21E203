@@ -9,10 +9,6 @@ import type {
   TasteTestRecord,
 } from './types'
 
-/**
- * 취향 테스트가 쓰는 향수 200개의 계열 벡터 (TST-03). 지도 조회(`GET /map`)는 대표 계열
- * 하나만 담지만 여기는 아홉 계열의 비중이 전부 필요합니다.
- */
 export async function getScentVectors(): Promise<ScentVector[]> {
   const { data } = await http.get<ScentVectorsResponse>('/map/scent-vectors')
 
@@ -23,7 +19,6 @@ export async function getScentVectors(): Promise<ScentVector[]> {
   }))
 }
 
-/** 키가 열려 있어 그대로 두면 코사인 유사도가 사용자가 고를 수 없는 축까지 셉니다. */
 function toScentWeights(families: Record<string, number>): ScentWeights {
   const weights: ScentWeights = {}
 
@@ -34,7 +29,6 @@ function toScentWeights(families: Record<string, number>): ScentWeights {
   return weights
 }
 
-/** 내 취향 테스트 기록 (TST-03). 아직 안 치렀으면 `completed: false` 인 200 입니다. */
 export async function getMyTasteTest(): Promise<TasteTestRecord> {
   const { data } = await http.get<TasteTestRecord>('/users/me/taste-test')
   return data

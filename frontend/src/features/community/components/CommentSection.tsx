@@ -14,9 +14,7 @@ import type { Comment } from '../types'
 
 type Props = {
   comments: Comment[]
-  /** 이 글의 전체 댓글 수. 보고 있는 쪽의 개수가 아닙니다 */
   totalElements: number
-  /** 0부터 시작합니다 */
   page: number
   size: number
   onPageChange: (page: number) => void
@@ -26,10 +24,6 @@ type Props = {
   onDelete: (commentId: number) => void
 }
 
-/**
- * 댓글 (A23 — CMT-08 ~ 11). 본인 댓글에만 수정 · 삭제가 보이지만, 화면에서 숨기는
- * 것만으로는 권한이 안 지켜져 백엔드도 작성자를 확인합니다.
- */
 export function CommentSection({
   comments,
   totalElements,
@@ -62,7 +56,6 @@ export function CommentSection({
           setDraft('')
         }}
       >
-        {/* Textarea 는 래퍼에 className 을 받지 않으므로 flex 배치는 여기서 합니다 */}
         <div className="flex-1">
           <Textarea
             label="댓글 내용"
@@ -102,7 +95,6 @@ export function CommentSection({
                     size="sm"
                     onClick={() => {
                       setEditingId(comment.commentId)
-                      // 작성한 댓글 내용이 그대로 들어옵니다
                       setEditDraft(comment.content)
                     }}
                   >

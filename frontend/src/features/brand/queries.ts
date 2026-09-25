@@ -25,7 +25,6 @@ const brandKeys = {
   detail: (brandId: number) => [...brandKeys.all, 'detail', brandId] as const,
 }
 
-/** 카탈로그는 자주 바뀌지 않고 전체가 한 번에 오는 응답이라 기본값(1분)보다 길게 둡니다 */
 const CATALOG_STALE_TIME = 1000 * 60 * 10
 
 export const brandListQuery = (params: BrandSearchParams) =>

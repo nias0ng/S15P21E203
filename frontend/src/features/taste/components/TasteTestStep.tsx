@@ -19,21 +19,9 @@ import { FamilyPicker } from './FamilyPicker'
 import { TasteResultModal } from './TasteResultModal'
 
 type TasteTestStepProps = {
-  /**
-   * 뽑힌 향수 id 를 넘기지 않습니다 — 확인할 때 이 컴포넌트가 남겨 서버가 이미 압니다.
-   *
-   * @param landed **이번 요청이 배를 그 향수 자리에 놓았는가.** 처음 치르는 사람만 true 입니다.
-   * 이미 마친 사람(409)은 서버가 `placeStartingPoint` 까지 **같은 트랜잭션으로 되돌리므로**
-   * 배는 마지막 항해 자리에 그대로 있습니다 (`TasteTestService.complete` 주석). 그 차이를
-   * 부르는 쪽이 알아야 배를 엉뚱한 자리에 착륙시키지 않습니다.
-   */
   onComplete: (landed: boolean) => void
 }
 
-/**
- * 취향 테스트 온보딩 스텝 (TST-03). 계열 1~2개를 고르면 결과 모달이 뜨고 건너뛰기는 없습니다.
- * 로그인 화면이 아직 치르지 않은 사람을 가려 보내고, 그다음 이동은 부르는 쪽이 정합니다.
- */
 export function TasteTestStep({ onComplete }: TasteTestStepProps) {
   const vectors = useQuery(scentVectorsQuery())
   const queryClient = useQueryClient()
@@ -41,12 +29,10 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
   const [picks, setPicks] = useState<ScentFamilyKey[]>([])
   const [match, setMatch] = useState<TasteMatch | null>(null)
 
-  // 고른 향 수만큼 물결이 한 겹씩 깔립니다 — 하나도 안 고르면 물결이 없습니다
   const setCausticsLayers = useCausticsStore((state) => state.setLayers)
   useEffect(() => {
     setCausticsLayers(picks.length)
   }, [picks.length, setCausticsLayers])
-  // 떠날 때 되돌려야 다른 화면이 두 겹을 그대로 받습니다
   useEffect(() => () => setCausticsLayers(null), [setCausticsLayers])
 
   const handleSubmit = () => {
@@ -85,13 +71,11 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
 
   return (
     <div className="space-y-8">
-      {/* break-keep — 없으면 한글이 음절 사이에서 접혀 "향 지 / 도를" 이 됩니다 */}
       <header className="space-y-3 break-keep">
         <p className="text-ink-muted text-caption">취향 테스트</p>
         <h1 className="text-display font-serif font-semibold">
           어떤 향에 마음이 가세요?
         </h1>
-        {/* 폭을 묶지 않아 한 줄로 섭니다. 한 문장이라 길어질 일이 없고, 좁은 화면에서만 접힙니다 */}
         <p className="text-ink-muted text-body">
           끌리는 향을 최대 두 개까지 골라주세요. 고른 향에 가장 가까운 향수에서
           향&nbsp;지도를 시작해요.
@@ -100,7 +84,6 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
 
       {vectors.isPending && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          {/* 타일과 같은 크기여야 로딩이 끝나는 순간 레이아웃이 튀지 않습니다 */}
           {Array.from({ length: 9 }, (_, index) => (
             <Skeleton key={index} className="h-18" />
           ))}
@@ -116,19 +99,10 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
       )}
 
       {vectors.isSuccess && (
-        /*
-          계열 고르기와 아래 줄은 유리판 한 장입니다 — 향수 · 브랜드 · 노트와 같은 층
-          구조입니다(docs/어두운-방-유리판.md). 머리 구역은 판 없이 어둠에 바로 둡니다.
-          모서리만 안의 계열 타일과 같은 `rounded-card` 로 맞춥니다.
-        */
         <section className={cn(GLASS_PANEL, 'rounded-card space-y-8')}>
           <FamilyPicker value={picks} onChange={setPicks} />
 
           <div className="border-line-soft flex items-center justify-between gap-6 border-t pt-6">
-            {/*
-              몇 개 골랐는지는 숫자가 제일 짧게 말합니다. 낭독기에는 숫자만 읽히면
-              무엇의 개수인지 알 수 없어 앞에 이름을 숨겨 둡니다.
-            */}
             <p
               className="text-caption text-ink font-medium tabular-nums"
               aria-live="polite"
@@ -149,7 +123,6 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
 
       <TasteResultModal
         match={match}
-        /* 저장하는 중에는 계열 선택 화면으로 돌아가지 못하게 둡니다 */
         onRetry={() => {
           if (save.isPending) return
           save.reset()

@@ -8,24 +8,10 @@ import { Thumbnail } from '@/shared/ui/Thumbnail'
 import { uploadPostImage } from '../api'
 
 type Props = {
-  /** 올려 둔 이미지 주소. 글을 저장할 때 그대로 `imageUrls` 로 보냅니다 */
   value: string[]
   onChange: (next: string[]) => void
 }
 
-/**
- * 이미지 첨부 (A24b — CMT-03 · 06).
- *
- * **글보다 사진이 먼저 올라갑니다.** 고르는 순간 서버로 보내 주소를 받고, 글을 저장할
- * 때 그 주소들을 `imageUrls` 로 넘깁니다. 글이 만들어지기 전에 미리보기를 보여줘야 해서
- * 두 단계로 나뉩니다.
- *
- * 한 번에 한 장씩 부릅니다(서버가 그렇게 받습니다). 한 장이 실패해도 나머지는 남습니다.
- *
- * **형식 · 용량을 화면에서 미리 걸러내지 않습니다.** 서버가 파일 이름이 아니라 내용으로
- * 형식을 보고, 용량 제한도 설정으로 바뀝니다 — 같은 규칙을 화면에 한 벌 더 두면 서버가
- * 값을 바꾼 날 둘이 갈라집니다. `accept` 는 파일 고르기 창을 좁혀 주는 **거들기**일 뿐입니다.
- */
 export function ImageAttachField({ value, onChange }: Props) {
   const upload = useMutation({
     mutationFn: uploadPostImage,

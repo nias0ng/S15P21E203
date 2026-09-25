@@ -14,11 +14,6 @@ import { withdraw } from '../api'
 
 type Props = { open: boolean; onClose: () => void }
 
-/**
- * 회원 탈퇴 모달 (A30 우측 — COM-06). 백엔드와 확정된 정책입니다 — 회원과 개인
- * 데이터는 물리 삭제(보관 기간 없음), 게시글 · 댓글 · 후기는 작성자만 지우고 글은
- * 남깁니다(익명화). 안내 문구가 이 정책과 어긋나면 안 됩니다.
- */
 export function WithdrawModal({ open, onClose }: Props) {
   const navigate = useNavigate()
   const endSession = useEndSession()

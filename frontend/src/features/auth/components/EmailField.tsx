@@ -2,7 +2,6 @@ import { useId, useState } from 'react'
 
 import { cn } from '@/shared/lib/cn'
 
-/** 국내에서 쓰는 여섯 개만 둡니다 — 길어지면 고르는 게 직접 적는 것보다 느립니다 */
 const EMAIL_DOMAINS = [
   'naver.com',
   'gmail.com',
@@ -14,7 +13,6 @@ const EMAIL_DOMAINS = [
 
 const DIRECT = 'direct'
 
-/** `Input` 을 그대로 쓰면 한 줄에 붙은 칸 셋마다 라벨 · 에러가 따로 생깁니다 */
 const CONTROL = cn(
   'rounded-card text-body bg-surface-card h-10 w-full border px-2.5',
   'placeholder:text-ink-muted/70',
@@ -28,10 +26,6 @@ type Props = {
   hint?: string
 }
 
-/**
- * 회원가입 이메일 칸. 아이디와 도메인을 따로 받고, 다 갖춰졌을 때만 주소를
- * 알립니다 — 반쪽짜리(`hyanghae@`)를 넘기면 가입 화면이 [가입하기] 를 켭니다.
- */
 export function EmailField({ onChange, error, hint }: Props) {
   const [local, setLocal] = useState('')
   const [choice, setChoice] = useState('')
@@ -66,7 +60,6 @@ export function EmailField({ onChange, error, hint }: Props) {
           id={localId}
           className={cn(CONTROL, borderClass, 'min-w-0 flex-1')}
           placeholder="이메일"
-          // `username` 을 걸면 비밀번호 관리자가 아이디만 계정명으로 저장해, 전체 주소를 적는 로그인과 어긋납니다
           autoComplete="off"
           required
           value={local}
@@ -87,12 +80,6 @@ export function EmailField({ onChange, error, hint }: Props) {
         </label>
         <select
           id={choiceId}
-          /*
-           * 바닥(`min-w`)이 있는 이유 — 칸은 `--spacing` 을 타 1536 에서 80% 로 줄지만
-           * 도메인 글자는 13px 그대로입니다. 바닥이 없으면 가장 긴 `hanmail.net` 을 비롯해
-           * 여섯 중 넷이 네이티브 화살표에 잘립니다. 11 글자 + 화살표 + 좌우 여백이라
-           * `16ch` 이고, 1920 에서는 칸이 더 넓어 바닥이 무시됩니다.
-           */
           className={cn(CONTROL, borderClass, 'min-w-[16ch] flex-1')}
           value={choice}
           aria-invalid={error ? true : undefined}

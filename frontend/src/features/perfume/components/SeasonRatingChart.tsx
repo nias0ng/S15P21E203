@@ -2,10 +2,6 @@ import { SEASONS, type SeasonStatistic } from '../types'
 
 type Props = { seasons: SeasonStatistic[] }
 
-/**
- * 파이가 아니라 도넛 네 개인 것은 계절을 여러 개 골라 **합이 100이 아니기** 때문입니다.
- * 응답 순서에 기대면 정렬이 바뀌는 날 자리가 뒤섞여 SEASONS 순서로 그립니다.
- */
 export function SeasonRatingChart({ seasons }: Props) {
   const bySeason = new Map(seasons.map((item) => [item.code, item.percentage]))
 
@@ -34,7 +30,6 @@ const RADIUS = (SIZE - STROKE) / 2
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 
 function SeasonDonut({ percentage }: { percentage: number }) {
-  // 소수점 한 자리까지 옵니다. 40.0 은 "40%" 로, 33.3 은 그대로 보여줍니다
   const clamped = Number(Math.min(100, Math.max(0, percentage)).toFixed(1))
   const filled = (clamped / 100) * CIRCUMFERENCE
 
@@ -43,7 +38,6 @@ function SeasonDonut({ percentage }: { percentage: number }) {
       <svg
         aria-hidden
         viewBox={`0 0 ${SIZE} ${SIZE}`}
-        // 12시 방향에서 시계방향으로 채우도록 90도 돌립니다
         className="size-full -rotate-90"
       >
         <circle
@@ -62,7 +56,6 @@ function SeasonDonut({ percentage }: { percentage: number }) {
             fill="none"
             strokeWidth={STROKE}
             strokeDasharray={`${filled} ${CIRCUMFERENCE - filled}`}
-            // 데이터가 끝나는 지점을 둥글게 — 채운 값이 아주 작을 때도 보입니다
             strokeLinecap="round"
             className="stroke-ink"
           />

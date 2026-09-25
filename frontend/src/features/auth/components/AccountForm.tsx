@@ -20,7 +20,6 @@ import { PasswordChangeModal } from './PasswordChangeModal'
 import { ProfileImageField } from './ProfileImageField'
 import { WithdrawModal } from './WithdrawModal'
 
-/** 정보 변경 (A29 — COM-04). 마이페이지 화면이 없어 계정 동작이 여기 모입니다 */
 export function AccountForm() {
   const isLoggedIn = useIsLoggedIn()
   const { data: me } = useQuery({ ...meQuery(), enabled: isLoggedIn })
@@ -30,7 +29,6 @@ export function AccountForm() {
   const [passwordOpen, setPasswordOpen] = useState(false)
   const [withdrawOpen, setWithdrawOpen] = useState(false)
 
-  /** `null` 이면 서버 값이 그대로 보입니다 — 입력칸을 되돌리는 동기화가 필요 없습니다 */
   const [nicknameDraft, setNicknameDraft] = useState<string | null>(null)
 
   const nickname = nicknameDraft ?? me?.nickname ?? ''
@@ -45,10 +43,6 @@ export function AccountForm() {
   )
   const nicknameAvailable = nicknameCheck.available
 
-  /**
-   * 캐시와 스토어 둘 다 맞춥니다 — 화면은 쿼리를, 헤더는 로그인 스토어를 봐서
-   * 하나만 고치면 헤더에 옛 이름이 남습니다.
-   */
   const save = useMutation({
     mutationFn: () => changeNickname(trimmedNickname),
     onSuccess: (user) => {
@@ -74,7 +68,6 @@ export function AccountForm() {
       <Toast {...toastProps} />
 
       <AuthCard title="정보 변경">
-        {/* 사진 주소는 쿼리 캐시가 쥡니다 — 헤더의 아바타가 같은 캐시를 봐서 함께 바뀝니다 */}
         <ProfileImageField
           value={me?.profileImageUrl ?? null}
           onChange={(next) => {
@@ -89,7 +82,6 @@ export function AccountForm() {
           }}
         />
 
-        {/* 못 고치는 값이라 칸 없이 글자로 둡니다 — 입력칸이 있으면 눌러 보게 됩니다 */}
         <div className="space-y-2.5">
           <p className="text-caption font-medium">이메일</p>
           <p className="text-ink text-body">{me?.email ?? '—'}</p>
@@ -106,7 +98,6 @@ export function AccountForm() {
             if (nicknameChanged) save.mutate()
           }}
         >
-          {/* 확인 결과를 `Input` 의 hint · error 로 넘깁니다 — 옆에 따로 놓으면 읽어주기가 입력칸과 잇지 못합니다 */}
           <Input
             label="닉네임"
             value={nickname}

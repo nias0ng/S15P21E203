@@ -17,10 +17,6 @@ import { NewPasswordFields } from './NewPasswordFields'
 
 type Props = { open: boolean; onClose: () => void }
 
-/**
- * 비밀번호 변경 모달 (A30 좌측). 성공하면 로그아웃됩니다 — 서버가 그 사람의 모든
- * 세션을 끊어(`revokeAll`) 들고 있는 토큰도 죽습니다.
- */
 export function PasswordChangeModal({ open, onClose }: Props) {
   const navigate = useNavigate()
   const endSession = useEndSession()

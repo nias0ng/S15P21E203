@@ -17,10 +17,6 @@ type Props = {
   emptyAction?: React.ReactNode
 }
 
-/**
- * 대분류별 노트 섹션 (A35). 고정 목록을 두지 않고 받은 순서를 끊습니다 — 대분류는 열린
- * 문자열이라, 목록을 들고 있으면 새 값이 생긴 날 그 노트들이 조용히 사라집니다.
- */
 export function NoteCategorySections({
   notes,
   isPending = false,
@@ -35,7 +31,6 @@ export function NoteCategorySections({
           <div key={section} className={GLASS_PANEL}>
             <Skeleton className="mb-6.25 h-6 w-23.75" />
             <div className={CARD_GRID}>
-              {/* 카드와 같은 비율이어야 도착할 때 격자가 안 튑니다(7:5) */}
               {Array.from({ length: 5 }, (_, index) => (
                 <div
                   key={index}
@@ -83,11 +78,9 @@ export function NoteCategorySections({
                     <Thumbnail
                       src={note.imageUrl}
                       fallback="이미지"
-                      /* 7:5 로 올라옵니다. 높이를 고정하면 좌우가 잘립니다 */
                       className="rounded-image aspect-7/5 w-full"
                     />
                   }
-                  /* 두 값이 같으면 같은 글자가 두 줄로 겹치지 않게 뺍니다 */
                   title={note.name}
                   caption={note.nameKo !== note.name ? note.nameKo : undefined}
                 />

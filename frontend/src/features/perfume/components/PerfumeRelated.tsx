@@ -7,13 +7,11 @@ import type { RelatedPerfume } from '../types'
 import { PerfumeGrid } from './PerfumeGrid'
 
 type Props = {
-  /** 지금 보고 있는 향수. 건너가는 기록에 "어디서 왔는지" 로 실립니다 */
   fromPerfumeId: number
   perfumes: RelatedPerfume[]
   isPending?: boolean
 }
 
-/** **향수가 없으면 구역을 그리지 않습니다** — 향 지도에 실린 200개 밖은 늘 빈 배열입니다 */
 export function PerfumeRelated({
   fromPerfumeId,
   perfumes,

@@ -10,13 +10,6 @@ import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import { POST_CATEGORIES, type BoardItem } from '../types'
 
-/**
- * 두 게시판이 같이 쓰는 격자. **불러오는 중과 다 온 뒤가 같은 값이어야** 자리표시자
- * 자리에 카드가 그대로 앉습니다 — 다르면 목록이 뜨는 순간 화면이 한 번 튑니다.
- *
- * 좁은 화면에서는 한 줄입니다. 자유 게시판은 곁판(255px)까지 있어 `sm` 아래에서
- * 2열로 쪼개면 카드 하나가 제목 두 줄도 못 담습니다.
- */
 const GRID = 'grid gap-3.75 sm:grid-cols-2'
 
 type Props = {
@@ -26,11 +19,6 @@ type Props = {
   onToggleLike: (item: BoardItem) => void
 }
 
-/**
- * 게시글 목록 (A22a · A22b 공용). 백엔드 응답은 서로 다르지만 줄 모양이 같아
- * 도메인에서 `BoardItem` 으로 맞춰 넘깁니다. 향수 블록 · 분류 배지 · 댓글 수는
- * 값이 있을 때만 그립니다.
- */
 export function PostList({
   items,
   isPending,
@@ -62,7 +50,6 @@ export function PostList({
       {items.map((item) => (
         <li
           key={item.id}
-          /* 화면 테마가 붙잡을 자리 이름 — 유리판 위에서 흰 카드가 됩니다(`scent-paper`) */
           data-slot="card"
           className={cn(
             'scent-paper border-line bg-surface-card rounded-card relative border',
@@ -72,10 +59,6 @@ export function PostList({
           )}
         >
           <div className="space-y-2.5">
-            {/*
-              제목 링크를 `after:inset-0` 으로 줄 전체만큼 늘립니다 — `<li>` 를
-              통째로 감싸면 안의 좋아요 버튼이 링크 안의 버튼이 됩니다.
-            */}
             <Link
               to={item.to}
               className={cn(
@@ -96,7 +79,6 @@ export function PostList({
               <span className="text-ink-muted">
                 · {formatRelativeTime(item.createdAt)}
               </span>
-              {/* 자유 글에만 분류가 있습니다 */}
               {item.category && (
                 <Badge tone="neutral">
                   {
@@ -109,26 +91,17 @@ export function PostList({
             </div>
           </div>
 
-          {/*
-            본문 몇 줄. 다섯 줄을 넘기면 잘라 `…` 으로 끝내고, 나머지는 상세에서
-            읽습니다. 후기에만 있습니다 — 자유 게시판 목록에는 본문이 없습니다.
-          */}
           {item.content && (
             <p className="text-ink/85 text-body line-clamp-5 px-1.25 whitespace-pre-wrap">
               {item.content}
             </p>
           )}
 
-          {/*
-            어느 향수 이야기인지. **누르는 곳이 아니라 표시입니다** — 링크였을 때
-            글을 누르려다 밟으면 향수로 샜습니다. 건너가는 길은 글 상세뿐입니다.
-          */}
           {item.perfume && (
             <p className="border-line rounded-card inline-flex w-fit max-w-full items-baseline gap-2.5 border px-2.5 py-1.25">
               <span className="text-ink text-body font-medium">
                 {item.perfume.name}
               </span>
-              {/* 브랜드가 없는 향수가 있습니다 */}
               {item.perfume.brand && (
                 <span className="text-ink-muted text-caption">
                   {item.perfume.brand}
@@ -137,12 +110,7 @@ export function PostList({
             </p>
           )}
 
-          {/* 점수나 별점은 없습니다. 좋아요만 있습니다. */}
           <div className="text-ink-muted text-caption mt-auto flex items-center gap-3.75">
-            {/*
-              위 제목 링크가 줄 전체를 덮고 있으므로 `relative` 로 그 위에
-              올립니다. 안 그러면 좋아요를 눌러도 글로 넘어갑니다.
-            */}
             <button
               type="button"
               aria-pressed={item.liked}
@@ -154,7 +122,6 @@ export function PostList({
                 'hover:[&>[aria-hidden]]:text-like',
               )}
             >
-              {/* 색은 하트에만 — 옆 글자까지 칠하면 읽기가 나빠집니다(`styles/index.css` 의 `--color-like`) */}
               <span
                 aria-hidden
                 className={item.liked ? 'text-like' : undefined}

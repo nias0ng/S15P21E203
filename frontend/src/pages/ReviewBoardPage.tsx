@@ -10,8 +10,6 @@ import {
   reviewToBoardItem,
   type ReviewSort,
 } from '@/features/community'
-// 좋아요는 후기 자원(`/reviews/{id}/like`)이라 향수 도메인에 있습니다.
-// 두 도메인은 서로 import 할 수 없으므로 화면에서 조합합니다.
 import { likeReview, reviewKeys, unlikeReview } from '@/features/perfume'
 import { ROUTES } from '@/shared/config/routes'
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
@@ -25,46 +23,20 @@ import {
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { PillFilter } from '@/shared/ui/PillFilter'
 
-/** 백엔드 기본값과 같습니다 */
 const PAGE_SIZE = 10
 
-/**
- * 후기 게시판 (A22a — CMT-01)
- *
- * **URL 의 page 는 1부터**이고 백엔드는 0부터라 여기서 한 번 바꿉니다.
- * 줄을 누르면 후기 상세(A12)로 갑니다 — 향수 상세에서 눌렀을 때와 같은 화면입니다
- * (게시판용을 따로 두면 같은 후기가 두 주소를 갖습니다).
- *
- * 어두운 방 · 유리판 구성 — docs/어두운-방-유리판.md */
 export default function ReviewBoardPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  // 손으로 고친 주소(`?sort=foo`)는 서버가 400 으로 막아 빈 목록이 되므로 기본값으로 읽습니다
   const sort = readOption(searchParams.get('sort'), REVIEW_SORTS) ?? 'RECENT'
   const page = readPage(searchParams)
 
   const reviews = useQuery(reviewBoardQuery({ sort, page, size: PAGE_SIZE }))
 
-  /*
-   * 메인에서 잠수로 들어왔으면 커튼이 짙은 바다색으로 덮은 채 이 신호를 기다립니다
-   * (안 알려도 상한에 걷힙니다 — `shared/ui/DiveCurtain`). 잠수로 들어온 것이 아니면
-   * 아무 일도 안 일어납니다.
-   *
-   * 기준은 **목록**입니다 — 아래에서 스피너가 갈리는 바로 그 조건입니다. 목록이 칠해지면
-   * 이 화면은 다 선 것이고, 여기는 진열대처럼 뒤늦게 떠오르는 사진 벽이 없습니다.
-   *
-   * 곁판(`BoardShell` 의 많이 언급되는 향수)은 안 기다립니다 — 본문이 아니라 옆에 붙는
-   * 칸이고, 늦게 와도 목록이 밀리지 않습니다. 기다리면 곁판 하나에 커튼이 상한까지 서 있게 됩니다.
-   */
   useDiveReady(!reviews.isPending)
 
   const queryClient = useQueryClient()
   const boardKey = communityKeys.reviewBoard({ sort, page, size: PAGE_SIZE })
 
-  /**
-   * 좋아요 토글 (CMT-05). 비로그인 안내 · 누르기/취소 고르기는 `useLikeToggle` 이
-   * 맡고, 여기서는 캐시만 고칩니다 — 응답 값을 **그 줄에만 덮어씁니다.** 목록 전체를
-   * 다시 부르면 정렬이 '좋아요순'일 때 방금 누른 줄이 눈앞에서 이동합니다.
-   */
   const likeToggle = useLikeToggle({
     like: likeReview,
     unlike: unlikeReview,
@@ -85,7 +57,6 @@ export default function ReviewBoardPage() {
               ),
             },
       )
-      // 후기 상세는 숫자를 읽기만 하므로, 다음에 열 때 맞는 값이 보이게 비웁니다
       void queryClient.invalidateQueries({ queryKey: reviewKeys.all })
     },
   })
@@ -93,7 +64,6 @@ export default function ReviewBoardPage() {
   const updateParams = (next: { sort?: ReviewSort; page?: number }) => {
     let params = searchParams
     if (next.sort !== undefined) {
-      // 정렬을 바꾸면 첫 쪽부터 다시 봅니다 — 3쪽에 있던 자리는 의미가 없습니다
       params = writePage(withQueryParams(params, { sort: next.sort }), 0)
     }
     if (next.page !== undefined) params = writePage(params, next.page)
@@ -108,7 +78,6 @@ export default function ReviewBoardPage() {
         description: '후기는 로그인한 뒤에 쓸 수 있습니다.',
       }}
       filters={
-        /* 분류 필터는 없습니다(전부 후기). 정렬은 꺼지면 기준이 없어 `required` */
         <PillFilter
           label="정렬"
           options={REVIEW_SORTS}

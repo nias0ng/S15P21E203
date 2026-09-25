@@ -29,22 +29,15 @@ import type { ReviewDetail } from '../types'
 
 type Props = {
   review: ReviewDetail
-  /** 삭제 뒤 화면 이동은 부르는 쪽 몫입니다 — `features/perfume` 은 `features/community` 를 import 할 수 없습니다 */
   onDeleted: () => void
 }
 
-/**
- * 후기 상세 (A12). 어두운 방 · 유리판 구성은 docs/어두운-방-유리판.md 이고, 화면이
- * 수정 · 삭제를 숨기는 것과 별개로 백엔드도 작성자를 다시 확인합니다.
- */
 export function PerfumeReviewDetail({ review, onDeleted }: Props) {
   const queryClient = useQueryClient()
   const [deleteOpen, setDeleteOpen] = useState(false)
 
-  /* 사진 · 한국어 이름 · 성별은 **후기 응답에 없어** 향수 상세를 따로 부릅니다 */
   const perfume = useQuery(perfumeDetailQuery(review.perfume.perfumeId))
   const brandName = perfume.data?.brand?.name ?? review.perfume.brand
-  /* 둘 다 없을 수 있어 배열로 모아 잇습니다 — 직접 붙이면 가운뎃점만 남습니다 */
   const sub = [
     perfume.data?.nameKo,
     perfume.data?.gender ? GENDER_TEXT[perfume.data.gender] : null,
@@ -56,7 +49,6 @@ export function PerfumeReviewDetail({ review, onDeleted }: Props) {
     mutationFn: () => deleteReview(review.reviewId),
     onSuccess: () => {
       setDeleteOpen(false)
-      /* 지운 후기의 캐시를 남겨두면 뒤로가기로 그 화면이 다시 뜹니다 */
       queryClient.removeQueries({
         queryKey: reviewKeys.detail(review.reviewId),
       })
@@ -68,7 +60,6 @@ export function PerfumeReviewDetail({ review, onDeleted }: Props) {
     },
   })
 
-  /** 다시 부르지 않고 캐시에 덮어씁니다 — 여는 것이 곧 조회라 조회수가 한 번 더 오릅니다 */
   const likeToggle = useLikeToggle({
     like: likeReview,
     unlike: unlikeReview,
@@ -130,7 +121,6 @@ export function PerfumeReviewDetail({ review, onDeleted }: Props) {
               </>
             )}
 
-            {/* 비로그인은 보내 보지 않고 먼저 안내합니다 — 401 이 나면 인터셉터가 재발급을 시도하다 세션을 정리해 버립니다 */}
             <button
               type="button"
               aria-pressed={review.liked}
@@ -170,12 +160,10 @@ export function PerfumeReviewDetail({ review, onDeleted }: Props) {
           </div>
         )}
 
-        {/* 들어온 길을 실어 보내 조회 기록에 "커뮤니티에서 왔다" 가 남습니다 */}
         <Link
           to={toPerfumeDetail(review.perfume.perfumeId)}
           state={perfumeViewState('COMMUNITY')}
           className={cn(
-            // 흰 판 위라 테두리를 먹색으로 짙게 둡니다 — 유리판용 분홍(`accent-blush`)은 여기서 사라집니다
             'border-ink/30 hover:border-accent-sunset rounded-card',
             'flex items-center gap-3.75 border p-2.5',
             'transition-colors duration-120 ease-out',

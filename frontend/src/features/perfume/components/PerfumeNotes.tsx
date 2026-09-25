@@ -19,15 +19,10 @@ const STAGE_LABELS: Record<string, string> = {
 
 type NoteRow = {
   stage: string
-  /** `null` 이면 라벨 칸 없이 노트만 그립니다 (flat) */
   label: string | null
   notes: PerfumeNote[]
 }
 
-/**
- * 향수 상세 ② 향조. **쪼개고 묶는 일을 화면이 합니다** — 백엔드가 `noteType` 을
- * 해석하지 않아, 모르는 값도 버리지 않고 제 이름으로 한 줄 만듭니다.
- */
 export function PerfumeNotes({ notes, isPending = false, className }: Props) {
   const rows = toRows(notes)
 
@@ -63,7 +58,6 @@ export function PerfumeNotes({ notes, isPending = false, className }: Props) {
   )
 }
 
-/** Top · Middle · Base → flat → 모르는 단계 순으로 묶습니다 */
 function toRows(notes: PerfumeNote[]): NoteRow[] {
   return groupNoteStages(notes).map((group) => ({
     ...group,

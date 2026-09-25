@@ -26,11 +26,9 @@ export default function NoteDetailPage() {
   const numericId = parseId(noteId)
   const valid = numericId !== null
 
-  // 쪽 번호는 주소에 둡니다 — 다른 노트로 가는 링크에는 쿼리가 없어 첫 쪽부터 엽니다
   const [searchParams, setSearchParams] = useSearchParams()
   const page = readPage(searchParams)
 
-  // 0 은 쿼리 키 자리만 채웁니다 — 번호가 아니면 `enabled` 가 꺼 두어 부르지 않습니다
   const note = useQuery({
     ...noteDetailQuery(numericId ?? 0),
     enabled: valid,
@@ -42,7 +40,6 @@ export default function NoteDetailPage() {
 
   if (valid && note.isPending) return <PageFallback />
 
-  // 없는 noteId 와 불러오기 실패를 같은 안내로 묶습니다 — 할 일이 같습니다
   if (!valid || note.isError || !note.data) {
     return (
       <EmptyState
@@ -80,25 +77,16 @@ export default function NoteDetailPage() {
           className="aspect-7/5 h-60 shrink-0 bg-white/5"
         />
 
-        {/*
-          대분류(`accordFamily`)는 여기 적지 않습니다 — 목록이 이미 대분류로 묶어 보여
-          주므로 방금 지나온 제목을 한 번 더 읽히는 줄이 됩니다.
-        */}
         <div className="space-y-0.5">
           <h1 className="text-ink font-serif text-4xl font-semibold">
             {data.name}
           </h1>
-          {/* 영문과 철자가 같은 노트는 빼서 같은 글자가 두 줄로 겹치지 않게 합니다 */}
           {data.nameKo && data.nameKo !== data.name && (
             <p className="text-ink-muted text-heading">{data.nameKo}</p>
           )}
         </div>
       </header>
 
-      {/*
-        설명은 채워지는 대로 들어와 없는 노트가 있습니다. 없으면 판째로 그리지
-        않습니다 — 빈 판을 두면 "아직 안 불러온 것" 처럼 보입니다.
-      */}
       {data.description && (
         <section className={GLASS_PANEL}>
           <p className="text-ink text-heading leading-relaxed">
@@ -139,7 +127,6 @@ export default function NoteDetailPage() {
               }
             />
 
-            {/* 응답 전에 `size` 가 0 이면 쪽 수 계산이 NaN 이 되어 한 프레임 깨집니다 */}
             {perfumes.data && (
               <Pagination
                 className="mt-6.25"

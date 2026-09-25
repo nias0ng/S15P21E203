@@ -28,23 +28,15 @@ import { BackToLogin } from './BackToLogin'
 import { EmailField } from './EmailField'
 import { NewPasswordFields } from './NewPasswordFields'
 
-/**
- * 회원가입 (A28 우측 카드 — COM-01). [중복 확인] 을 통과해야 [가입하기] 가 켜지고,
- * 통과해도 가입 시점에 409 로 한 번 더 걸립니다 — 확인과 가입 사이에 남이 같은
- * 이메일 · 닉네임을 가져갈 수 있습니다. 가입해도 로그인은 되지 않습니다 — 응답에
- * 토큰이 없습니다.
- */
 export function SignupForm() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  /** 로그인 유도 모달이 달아 준, 가입 · 로그인을 마치고 돌아갈 자리 */
   const returnTo = safeReturnPath(searchParams.get(RETURN_PATH_PARAM))
 
   const [email, setEmail] = useState('')
   const password = useNewPassword()
   const [nickname, setNickname] = useState('')
 
-  // 서버가 앞뒤 공백을 지우고 검사하므로 화면도 같은 값으로 셉니다
   const trimmedEmail = email.trim()
   const trimmedNickname = nickname.trim()
   const nicknameTooShort = trimmedNickname.length < NICKNAME_MIN_LENGTH
@@ -66,14 +58,11 @@ export function SignupForm() {
         password: password.password,
         nickname: trimmedNickname,
       }),
-    // 돌아갈 경로를 로그인까지 들려 보냅니다 — 흘리면 로그인을 마치고 홈에 떨어집니다
     onSuccess: () =>
       navigate(withReturnPath(ROUTES.LOGIN, returnTo), {
         replace: true,
         state: { signedUp: true },
       }),
-    // 확인을 통과했어도 서버가 중복이라 하면 들고 있던 답이 거짓이 된 것입니다.
-    // 그 자리에서 뒤집어, 다시 확인하기 전에는 [가입하기] 가 켜지지 않게 합니다.
     onError: (error) => {
       if (!isApiError(error)) {
         return
@@ -84,7 +73,6 @@ export function SignupForm() {
       if (error.code === 'AUTH_NICKNAME_ALREADY_EXISTS') {
         nicknameCheck.markTaken()
       }
-      // 서버도 어느 쪽인지 가리지 않은 경우입니다 — 둘 다 다시 확인해야 합니다
       if (error.code === 'AUTH_SIGNUP_CONFLICT') {
         emailCheck.reset()
         nicknameCheck.reset()
@@ -97,8 +85,6 @@ export function SignupForm() {
     password.valid &&
     !nicknameTooShort &&
     nicknameError === undefined &&
-    // 중복 확인을 마쳐야 켭니다. 서버는 어차피 409 로 막지만, 그때는 이미 누른
-    // 뒤라 비밀번호 두 칸을 다시 적게 됩니다.
     emailAvailable === true &&
     nicknameAvailable === true &&
     !signupMutation.isPending
@@ -204,7 +190,6 @@ export function SignupForm() {
         </Button>
       </form>
 
-      {/* 돌아갈 경로를 들고 갑니다 — 가입하려다 말고 로그인으로 가는 사람이 있습니다 */}
       <BackToLogin returnTo={returnTo} />
     </AuthCard>
   )
