@@ -3,7 +3,7 @@ import { NavLink } from 'react-router'
 import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 
-import { FOCUS, type Ink } from './tone'
+import { inkLink, type Ink } from './tone'
 import { useDismissable } from './useDismissable'
 import { useDiveOut } from './useDiveOut'
 import { useWarm } from './useWarm'
@@ -26,14 +26,7 @@ export function CommunityMenu({ ink }: { ink: Ink }) {
         aria-haspopup="menu"
         lang="en"
         onClick={() => setOpen(!open)}
-        className={cn(
-          'text-body transition-colors duration-120 ease-out',
-          ink.text,
-          ink.hover,
-          FOCUS,
-          ink.ring,
-          open && ink.open,
-        )}
+        className={cn('text-body', inkLink(ink), open && ink.open)}
       >
         COMMUNITY <span aria-hidden>▾</span>
       </button>

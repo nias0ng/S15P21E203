@@ -1,5 +1,5 @@
 import { cn } from '@/shared/lib/cn'
-import { useAuthStore } from '@/shared/store/authStore'
+import { useIsLoggedIn } from '@/shared/store/authStore'
 
 import { AccountMenu } from './header/AccountMenu'
 import { BrandMark } from './header/BrandMark'
@@ -17,8 +17,7 @@ export type { HeaderTone }
  * 가운데 메뉴가 함께 움직입니다.
  */
 export function GlobalHeader({ tone = 'surface' }: { tone?: HeaderTone }) {
-  const accessToken = useAuthStore((state) => state.accessToken)
-  const isLoggedIn = Boolean(accessToken)
+  const isLoggedIn = useIsLoggedIn()
   const onGlass = isGlass(tone)
   const ink = inkOf(tone)
 

@@ -8,7 +8,7 @@ import { cn } from '@/shared/lib/cn'
 import { useIsLoggedIn } from '@/shared/store/authStore'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
-import { FOCUS, type Ink } from './tone'
+import { inkLink, type Ink } from './tone'
 import { useDismissable } from './useDismissable'
 
 function AccountIcon() {
@@ -55,14 +55,7 @@ export function AccountMenu({ ink }: { ink: Ink }) {
         aria-haspopup="menu"
         aria-label="내 계정"
         onClick={() => setOpen(!open)}
-        className={cn(
-          'block transition-colors duration-120 ease-out',
-          ink.text,
-          ink.hover,
-          FOCUS,
-          ink.ring,
-          open && ink.open,
-        )}
+        className={cn('block', inkLink(ink), open && ink.open)}
       >
         {/* 사진이 없을 때 `Thumbnail` 을 쓰면 빈 상자가 서서, 그때는 원래 아이콘을 둡니다 */}
         {me?.profileImageUrl != null ? (

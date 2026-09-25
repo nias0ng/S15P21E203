@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { createBrowserRouter } from 'react-router'
 
-import { RootLayout, type PageWidth } from '@/app/layouts/RootLayout'
+import { RootLayout, type RouteHandle } from '@/app/layouts/RootLayout'
 import { ErrorPage } from '@/pages/ErrorPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { ROUTES } from '@/shared/config/routes'
@@ -43,37 +43,21 @@ const withSuspense = (element: React.ReactNode) => (
  * 진열대 종이 + 화면 틀 전체 — 진열대와 그 안에서 들어가는 컬렉션 상세. 헤더까지 같은 종이로 칠합니다
  * (RootLayout 의 `paper`).
  */
-const PAPER = { width: 'full', paper: true } satisfies {
-  width: PageWidth
-  paper: boolean
-}
+const PAPER = { width: 'full', paper: true } satisfies RouteHandle
 /** 어두운 방 + 유리판 + 글 읽고 쓰는 폭 — docs/어두운-방-유리판.md. — 게시판에서 한 번에 넘어가는 사이라 같은 어둠입니다 */
-const TEXT_NIGHT = { width: 'text', night: true } satisfies {
-  width: PageWidth
-  night: boolean
-}
+const TEXT_NIGHT = { width: 'text', night: true } satisfies RouteHandle
 /**
  * 어두운 방 + 물 — 향수 · 브랜드 · 노트 · 커뮤니티 · 취향 테스트. 물결(빛 그물) 대신 수면 아래가
  * 깔리고 내릴수록 가라앉습니다. `underwater` 를 빼면 물결로 돌아갑니다.
  */
-const WATER = { night: true, caustics: true, underwater: true } satisfies {
-  night: boolean
-  caustics: boolean
-  underwater: boolean
-}
-const TEXT_WATER = {
-  width: 'text',
+const WATER = {
   night: true,
   caustics: true,
   underwater: true,
-} satisfies {
-  width: PageWidth
-  night: boolean
-  caustics: boolean
-  underwater: boolean
-}
+} satisfies RouteHandle
+const TEXT_WATER = { ...WATER, width: 'text' } satisfies RouteHandle
 /** 헤더 아래 화면 끝까지 — 3D 향 지도(A01)가 씁니다 */
-const BLEED = { width: 'bleed' } satisfies { width: PageWidth }
+const BLEED = { width: 'bleed' } satisfies RouteHandle
 
 export const router = createBrowserRouter([
   {

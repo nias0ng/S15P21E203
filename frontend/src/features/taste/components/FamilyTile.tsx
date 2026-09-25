@@ -1,4 +1,5 @@
 import { cn } from '@/shared/lib/cn'
+import { FOCUS_RING } from '@/shared/ui/focusRing'
 
 import { familyAriaLabel, scentFamilyLabel } from '../families'
 import type { ScentFamilyKey } from '../types'
@@ -35,7 +36,7 @@ export function FamilyTile({
         // 좁으면 이름이 두 줄로 접혀 배지 자리가 없습니다 — 그때는 예전처럼 양 끝으로
         'justify-between gap-2 md:justify-center md:gap-0',
         'transition-colors duration-120 ease-out',
-        'focus-visible:ring-accent-deep outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+        FOCUS_RING,
         // 비활성은 테두리만 남깁니다 — 채움을 없애면 "누를 수 없다"가 형태로 드러납니다
         'disabled:border-line disabled:pointer-events-none disabled:bg-transparent disabled:opacity-30',
         selected

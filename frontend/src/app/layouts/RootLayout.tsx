@@ -13,6 +13,15 @@ import { DiveCurtain } from '@/shared/ui/DiveCurtain'
  */
 export type PageWidth = 'full' | 'wide' | 'text' | 'bleed'
 
+/** 라우트의 `handle` 에 적는 화면 설정 — 본문 폭과 화면 장치(`useRouteFlag`) */
+export type RouteHandle = {
+  width?: PageWidth
+  night?: boolean
+  caustics?: boolean
+  underwater?: boolean
+  paper?: boolean
+}
+
 const WIDTH: Record<PageWidth, string> = {
   full: '',
   wide: 'max-w-wide',
@@ -45,9 +54,7 @@ function usePageWidth(): PageWidth {
  * 물결 대신 수면 아래(`underwater` — `caustics` 와 같이 켭니다) · 진열대 종이(`paper`).
  * 경로 배열과 `pathname` 을 맞추면 `/collections/:collectionId` 같은 동적 경로가 안 걸립니다.
  */
-function useRouteFlag(
-  flag: 'night' | 'caustics' | 'underwater' | 'paper',
-): boolean {
+function useRouteFlag(flag: Exclude<keyof RouteHandle, 'width'>): boolean {
   const matches = useMatches()
   for (let at = matches.length - 1; at >= 0; at -= 1) {
     const handle: unknown = matches[at]?.handle
