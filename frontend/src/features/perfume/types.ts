@@ -1,4 +1,5 @@
 import type { ScentFamilyKey } from '@/shared/config/scentFamilies'
+import { readOption } from '@/shared/lib/queryParams'
 
 export interface PerfumeSummary {
   perfumeId: number
@@ -42,17 +43,14 @@ interface PerfumePrice {
 export interface PerfumeSearchParams {
   keyword?: string
 
-  // NOTE: 응답 필드로만 있습니다. 검색 파라미터로는 아직 안 먹어 보내도 무시됩니다
-  scentFamily?: ScentFamilyKey
-
   /** 전체 사용자 집계라 로그인이 필요 없고, OWNED · WISH 는 세 명 이상 · sort 는 무시됩니다 */
   ranking?: RankingFilter
 
   /** A33 아래 줄 필터. 정의되지 않은 값을 보내면 400 입니다 */
   gender?: GenderFilter
 
-  /** 브랜드명 **완전 일치**. 부분 일치는 keyword 가 담당합니다 */
-  brand?: string
+  /** 이름으로 거르면 표기만 다른 중복 브랜드에서 저장된 이름과 어긋나 번호로 거릅니다 */
+  brandId?: number
 
   /** 0부터 시작합니다 (Spring Pageable 기준) */
   page?: number
@@ -88,23 +86,11 @@ export const GENDER_FILTERS = [
   { value: 'UNISEX', label: '중성' },
 ] as const satisfies readonly { value: GenderFilter; label: string }[]
 
-/**
- * 주소(`?ranking=` · `?gender=`)에서 읽은 필터 값을 걸러냅니다. 주소는 사람이 고쳐
- * 쓸 수 있어 **모르는 값은 "안 걸림"(`null`)** 으로 봅니다 — 그대로 API 에 실으면
- * 400 이라 화면이 통째로 빕니다.
- */
-function readFilter<T extends string>(
-  value: string | null,
-  options: readonly { value: T }[],
-): T | null {
-  return options.some((option) => option.value === value) ? (value as T) : null
-}
-
 export const readRankingFilter = (value: string | null): RankingFilter | null =>
-  readFilter(value, RANKING_FILTERS)
+  readOption(value, RANKING_FILTERS)
 
 export const readGenderFilter = (value: string | null): GenderFilter | null =>
-  readFilter(value, GENDER_FILTERS)
+  readOption(value, GENDER_FILTERS)
 
 /** NOTE: 백엔드 컬럼이 제약 없는 `VARCHAR(30)` 이라 표에 없는 값이 오면 아무것도 안 적습니다 */
 export const GENDER_TEXT: Record<GenderFilter, string> = {
@@ -156,12 +142,12 @@ export interface SeasonStatistic {
 }
 
 /** 계절 네 개가 항상 옵니다. 후기가 없는 향수도 0 으로 채워 내려줍니다 */
-export interface SeasonStatisticsResponse {
+interface SeasonStatisticsResponse {
   seasons: SeasonStatistic[]
 }
 
 /** DTL-23 AI 후기 요약. 아직 요약이 없는 향수는 **세 값이 모두 null 인 200** 입니다 */
-export interface ReviewSummary {
+interface ReviewSummary {
   summary: string | null
   /** `ReviewStatistics.reviewCount` 와 비교하면 요약이 최신인지 압니다 */
   sourceReviewCount: number | null
@@ -169,7 +155,7 @@ export interface ReviewSummary {
 }
 
 /** DTL-10 후기 통계. 평균 평점은 없습니다 */
-export interface ReviewStatistics {
+interface ReviewStatistics {
   reviewCount: number
 }
 
@@ -201,6 +187,8 @@ export interface ReviewsResponse {
 export interface ReviewDetail {
   reviewId: number
   nickname: string | null
+  /** 작성자 사진. 설정하지 않았거나 탈퇴한 작성자면 null 입니다 */
+  profileImageUrl: string | null
   title: string
   content: string
   perfume: { perfumeId: number; name: string; brand: string | null }
@@ -270,7 +258,7 @@ export interface ReviewKeyword {
   percentage: number
 }
 
-export interface ReviewKeywordsResponse {
+interface ReviewKeywordsResponse {
   keywords: ReviewKeyword[]
 }
 

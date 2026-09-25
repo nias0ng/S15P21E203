@@ -19,7 +19,7 @@ export const MOCK_ACCOUNT = {
 
 export type MockShelfCategory = 'OWNED' | 'TRIED' | 'WISH'
 
-export interface ShelfSeed {
+interface ShelfSeed {
   shelfItemId: number
   perfumeId: number
   category: MockShelfCategory
@@ -303,7 +303,7 @@ export const SHELF_SEED: readonly ShelfSeed[] = [
   },
 ]
 
-export interface CollectionSeed {
+interface CollectionSeed {
   collectionId: number
   name: string
   description: string | null
@@ -357,7 +357,7 @@ export const COLLECTION_SEED: readonly CollectionSeed[] = [
   },
 ]
 
-export interface VoyageLogSeed {
+interface VoyageLogSeed {
   entryId: number
   enteredAt: string
   region: MockFamily

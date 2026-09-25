@@ -1,7 +1,4 @@
-type Props = {
-  /** 메인으로 떠오르는 중인가(헤더 로고) — 모래에서 멀어지며 바닥이 한 단 가라앉습니다 */
-  rising?: boolean
-}
+import { useIsRising } from '@/shared/store/diveStore'
 
 /**
  * 진열대 종이 — 시안의 종이 바탕과 질감. 진열대(MyShelfPage)와 컬렉션 상세가 같이 깔아서, 진열함을
@@ -14,7 +11,10 @@ type Props = {
  * 질감(shelf-grain)을 본문이 아니라 이 레이어에 얹는 이유: 노이즈는 mix-blend-mode 로 밑을
  * 곱하는데, 본문 위에 두면 새 쌓임 맥락이 생겨 Toast(fixed)와 모달이 그 아래로 밀립니다.
  */
-export function ShelfPaper({ rising = false }: Props) {
+export function ShelfPaper() {
+  // 메인으로 떠오르는 중인가(헤더 로고). useIsDiving 은 들어올 때도 참이라 쓰지 않습니다
+  const rising = useIsRising()
+
   return (
     <div
       aria-hidden

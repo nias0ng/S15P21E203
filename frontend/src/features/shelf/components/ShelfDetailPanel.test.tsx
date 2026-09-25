@@ -14,8 +14,6 @@ const WOOD_SAGE: ShelfItemDetail = {
   name: 'Wood Sage & Sea Salt',
   nameKo: '우드 세이지 앤 씨 솔트',
   brand: '조말론',
-  brandEn: 'Jo Malone',
-  concentration: 'Eau de Cologne',
   thumbnailUrl: null,
   category: 'OWNED',
   scentNotes: [],
@@ -103,8 +101,8 @@ describe('ShelfDetailPanel 이름', () => {
     expect(screen.getAllByText('Wood Sage & Sea Salt')).toHaveLength(1)
   })
 
-  it('영문 브랜드가 없으면 국문 브랜드를 한 번만 적는다', () => {
-    renderPanel({ ...WOOD_SAGE, brandEn: undefined })
+  it('브랜드를 한 번만 적는다', () => {
+    renderPanel(WOOD_SAGE)
 
     expect(screen.getAllByText('조말론')).toHaveLength(1)
   })
@@ -142,6 +140,19 @@ describe('ShelfDetailPanel 향조', () => {
     expect(screen.getByTitle('Driftwood, Musk, Amber, Moss')).toHaveTextContent(
       'Driftwood · Musk · Amber 외 1',
     )
+  })
+
+  it('피라미드가 없는 향수는 단계 이름 없이 노트만 한 줄로 적는다', () => {
+    renderPanel({
+      ...WOOD_SAGE,
+      scentNotes: [
+        { noteId: 1, name: 'Amber', noteType: 'flat' },
+        { noteId: 2, name: 'Musk', noteType: 'flat' },
+      ],
+    })
+
+    expect(screen.getByText('Amber · Musk')).toBeInTheDocument()
+    expect(screen.queryByText('FLAT')).not.toBeInTheDocument()
   })
 
   it('향조가 없는 향수는 없다고 적는다', () => {

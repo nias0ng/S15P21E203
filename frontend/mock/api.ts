@@ -25,7 +25,7 @@ import {
 const CDN = 'https://djpgc0m2v54q1.cloudfront.net/perfumes'
 
 /** 서버의 일반 이미지(`ORIGINAL`). 향수 검색처럼 진열대 밖 화면이 씁니다 */
-export const originalImageUrl = (perfumeId: number) =>
+const originalImageUrl = (perfumeId: number) =>
   `${CDN}/${perfumeId}/original.png`
 
 /**
@@ -37,7 +37,7 @@ export const originalImageUrl = (perfumeId: number) =>
 export const paperTextureImageUrl = (perfumeId: number) =>
   `${CDN}/${perfumeId}/paper-texture.png`
 
-export interface MockApiOptions {
+interface MockApiOptions {
   /**
    * 진열대 · 컬렉션에 세울 병 사진 주소.
    * 서버가 이 두 화면에 종이 질감 이미지를 준다고 치고 고릅니다 — 지금 서버는 일반 이미지를 줍니다.
@@ -197,6 +197,7 @@ export function createMockApi(options: MockApiOptions = {}) {
     shelfItemId: item.shelfItemId,
     perfumeId: item.perfume.perfumeId,
     name: item.perfume.name,
+    nameKo: item.perfume.nameKo,
     brand: item.perfume.brand,
     thumbnailUrl: shelfImageUrl(item.perfume),
     category: item.category,
@@ -205,7 +206,6 @@ export function createMockApi(options: MockApiOptions = {}) {
 
   const toShelfDetail = (item: ShelfRecord) => ({
     ...toShelfSummary(item),
-    nameKo: item.perfume.nameKo,
     rating: item.rating,
     // 향조는 서버 seed 에 향수별 노트가 없어 비웁니다. 화면도 아직 그리지 않습니다
     scentNotes: [],
@@ -394,38 +394,6 @@ export function createMockApi(options: MockApiOptions = {}) {
       body: {
         shelfItemId: item.shelfItemId,
         ownershipStatus: category,
-        updatedAt: timestamp(),
-      },
-    }
-  }
-
-  const changeRepresentative: Handler = ({ body }, [shelfItemId]) => {
-    const item = findShelfItem(shelfItemId)
-    if (item === undefined) return SHELF_ITEM_NOT_FOUND
-
-    const representative = field(body, 'representative')
-    if (typeof representative !== 'boolean') {
-      return fail(400, 'INVALID_REQUEST', 'representative 를 보내주세요.')
-    }
-    if (representative && item.category !== 'OWNED') {
-      return fail(
-        400,
-        'INVALID_REQUEST',
-        '보유 중인 향수만 대표로 지정할 수 있습니다.',
-      )
-    }
-
-    // 대표는 한 번에 하나 — 먼저 있던 대표를 풉니다
-    if (representative) {
-      for (const other of shelf) other.representative = false
-    }
-    item.representative = representative
-
-    return {
-      status: 200,
-      body: {
-        userPerfumeId: item.shelfItemId,
-        representative,
         updatedAt: timestamp(),
       },
     }
@@ -867,17 +835,15 @@ export function createMockApi(options: MockApiOptions = {}) {
 
   const searchPerfumes: Handler = ({ query }) => {
     const keyword = squash(query.get('keyword') ?? '')
-    const brand = query.get('brand')
     const gender = query.get('gender')?.toLowerCase()
 
-    // 검색어 · 브랜드(완전 일치) · 성별만 봅니다. 순위 · 정렬 조건은 받지 않고 한국 선정 순위대로 줍니다
+    // 검색어 · 성별만 봅니다. 순위 · 정렬 조건은 받지 않고 한국 선정 순위대로 줍니다
     const found = MOCK_PERFUMES.filter(
       (perfume) =>
         (keyword === '' ||
           [perfume.name, perfume.brand, perfume.nameKo, perfume.brandKo].some(
             (value) => value !== null && squash(value).includes(keyword),
           )) &&
-        (brand === null || perfume.brand === brand) &&
         (gender === undefined || perfume.gender === gender),
     )
     const { content, ...page } = paginate(found, query, 20)
@@ -917,11 +883,6 @@ export function createMockApi(options: MockApiOptions = {}) {
       'PATCH',
       new RegExp(`^${SHELF}/(\\d+)/ownership$`),
       signedIn(changeOwnership),
-    ],
-    [
-      'PATCH',
-      new RegExp(`^${SHELF}/(\\d+)/representative$`),
-      signedIn(changeRepresentative),
     ],
     ['PUT', new RegExp(`^${SHELF}/(\\d+)/fit-rating$`), signedIn(putFitRating)],
     [
@@ -978,11 +939,16 @@ export function createMockApi(options: MockApiOptions = {}) {
     /**
      * 이 요청을 목데이터가 받는지. 받으면 처리 함수를, 아니면 null 을 돌려줍니다.
      * `path` 는 `/api/v1` 을 뗀 경로입니다 (`/users/me/shelf-items`).
+     *
+     * 브랜드 번호로 거르는 향수 검색은 백엔드로 넘깁니다 — 목데이터 향수는 DB 브랜드 번호를
+     * 모르고, 브랜드 상세가 넘기는 번호는 백엔드의 것입니다.
      */
     find(
       method: string,
       path: string,
+      query: URLSearchParams = new URLSearchParams(),
     ): ((request: MockRequest) => MockResponse) | null {
+      if (path === '/perfumes' && query.has('brandId')) return null
       for (const [routeMethod, pattern, handler] of routes) {
         if (routeMethod !== method.toUpperCase()) continue
 

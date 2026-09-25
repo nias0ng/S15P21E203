@@ -4,11 +4,9 @@ import { cn } from '@/shared/lib/cn'
 
 type ModalProps = {
   open: boolean
-  /** 닫기 요청(Esc, 배경 클릭, 닫기 버튼). 부모가 open 을 false 로 바꿔야 실제로 닫힙니다. */
   onClose: () => void
   title: string
   children: React.ReactNode
-  /** 하단 버튼 영역 */
   footer?: React.ReactNode
   /**
    * **읽고 답만 하는 짧은 안내 모달** 모양 (확인 · 경고 C01). 제목이 가운데로
@@ -32,10 +30,6 @@ type ModalProps = {
   className?: string
 }
 
-/**
- * 브라우저 기본 `<dialog>` 를 씁니다. div 로 만들면 포커스 가두기 · Esc · 배경 스크롤
- * 잠금을 전부 손으로 구현해야 하는데 `showModal()` 이 그걸 해줍니다.
- */
 export function Modal({
   open,
   onClose,
@@ -48,7 +42,6 @@ export function Modal({
 }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
 
-  // `<dialog open>` 속성만 주면 모달이 아니라 그냥 보이는 요소라 showModal() 을 씁니다
   useEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return
@@ -61,13 +54,10 @@ export function Modal({
     <dialog
       ref={dialogRef}
       aria-label={title}
-      // Esc 의 기본 동작(즉시 close)을 막고 부모의 onClose 를 거칩니다 — 안 그러면
-      // dialog 는 닫혔는데 open prop 은 true 로 남습니다
       onCancel={(event) => {
         event.preventDefault()
         onClose()
       }}
-      // 배경(dialog 자체)을 클릭했을 때만 닫습니다. 내용 클릭은 통과시킵니다.
       onClick={(event) => {
         if (!closeOnBackdrop) return
         if (event.target === dialogRef.current) onClose()
@@ -75,11 +65,6 @@ export function Modal({
       className={cn(
         'rounded-card m-auto w-127.5 max-w-[calc(100vw-var(--spacing)*10)] p-0',
         'backdrop:bg-ink/40 open:flex open:flex-col',
-        /*
-          가로로는 흐르지 않습니다. 모달은 브라우저 기본값이 overflow: auto 라, 안의 장식이 옆으로
-          번지면(검색창 `SearchField` 의 빛무리가 좌우 24 밖으로 나갑니다) 2px 짜리 가로 스크롤 막대가
-          생깁니다. 모달 안 내용은 폭에 맞춰 짜므로 가로 스크롤로 볼 것이 없습니다.
-        */
         'overflow-x-hidden',
         className,
       )}
@@ -99,10 +84,6 @@ export function Modal({
           {title}
         </h2>
 
-        {/*
-          안내 모달에는 [×] 가 없습니다 — 나가는 길이 아래 [취소] 에 이미 있습니다.
-          Esc 와 배경 클릭은 그대로입니다(`onCancel` · 배경 onClick).
-        */}
         {!notice && (
           <button
             type="button"
@@ -125,7 +106,6 @@ export function Modal({
         <footer
           className={cn(
             'border-line flex justify-end gap-2.5 px-5 py-3.75',
-            // 안내 모달에는 긋지 않습니다 — 나눌 층이 문장 한 덩이뿐입니다
             !notice && 'border-t',
           )}
         >

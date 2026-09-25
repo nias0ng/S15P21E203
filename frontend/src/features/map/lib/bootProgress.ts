@@ -10,27 +10,23 @@
  * 되살릴 일이 생기면 커밋 `05b7de7` 에 그대로 있습니다.
  */
 
-export type SceneBootStage =
+type SceneBootStage =
   'html' | 'script' | 'frame' | 'boat-bytes' | 'boat' | 'error'
 
-/** 엔진이 보내는 신호 한 개 (`{ type: 'pb:boot', stage, … }` 에서 type 을 뺀 것) */
+/**
+ * 엔진이 보내는 신호 한 개 (`{ type: 'pb:boot', stage, … }` 에서 type 을 뺀 것).
+ * 받은 바이트 · 배를 붙였는지 같은 나머지 칸은 걷는 때를 정하지 않아 받지 않습니다.
+ */
 export interface SceneBootEvent {
   stage: SceneBootStage
-  /** boat-bytes — 받은 바이트 · 전체 (0 이면 크기를 모릅니다) */
-  loaded?: number
-  total?: number
-  /** boat — GLB 를 붙였는지(false 면 종이배로 갑니다) · 종이배 설정이라 건너뛰었는지 */
-  ok?: boolean
-  skipped?: boolean
   /** error */
   where?: string
   message?: string
 }
 
-/** 늦게 붙은 앱이 놓친 단계를 따라잡는 스냅샷 (`window.PB.boot()` · host.js `bootNow`) */
+/** 늦게 붙은 앱이 놓친 단계를 따라잡는 스냅샷 (`window.PB.boot()` · host.js `bootNow`) — 여기서 읽는 것만 */
 export interface SceneBootSnapshot {
   stages: Record<string, number>
-  bytes: { loaded: number; total: number } | null
   error: { where: string; message: string } | null
 }
 
@@ -39,25 +35,19 @@ const DONE_STAGES = ['html', 'script', 'frame', 'boat'] as const
 type DoneStage = (typeof DONE_STAGES)[number]
 
 export interface SceneBootState {
-  /** 첫 진입인가 — index.html 의 정적 커튼(#boot)이 서 있었습니다. 다시 들어오면 원이 두 배 빠르게 번집니다 */
-  firstVisit: boolean
-  /**
-   * 커튼 시계의 0 (performance.now 기준). 첫 진입은 항해 시작(0) — index.html 의 정적
-   * 커튼이 그때부터 보였으므로 그 시간도 로딩 시간에 셉니다
-   */
-  startedAt: number
   /**
    * **엔진을 기다리기 시작한 때** (performance.now 기준) — 첫 장 상한(`BOOT_FRAME_TIMEOUT_MS`)을
    * 여기서 셉니다.
    *
-   * ⚠⚠ `startedAt` 과 나눠 두는 까닭 : 첫 진입의 `startedAt` 은 0(항해 시작)인데, 엔진은 그때
+   * ⚠⚠ 커튼 시계와 나눠 두는 까닭 : 첫 진입의 커튼 시계는 0(항해 시작 — index.html 의 정적
+   * 커튼이 그때부터 보였습니다)인데, 엔진은 그때
    * 뜨기 시작하는 것이 아니라 **앱 번들이 다 와서 `ScentScene` 이 마운트된 뒤에야** iframe 에
    * 주소가 붙습니다. 상한을 0 부터 세면 번들 받는 시간이 엔진 예산에서 그대로 까이고, 회선이
    * 나쁜 첫 접속에서는 **엔진이 아직 오는 중인데 커튼이 걷혀** 남색 바탕에 앱 UI 만 선 화면이
    * 드러납니다 (2026-09-23 사용자 : *"이미 UI가 다 보이는 상태로 파란색 화면에서 로딩을 시작함"* ·
    * 첫 장을 막고 재어 보면 정확히 20.2초에 걷힙니다).
    *
-   * ⚠ 최소 표시 시간(`minUntil`)은 그대로 `startedAt` 에서 나옵니다 — 그쪽은 "커튼이 언제부터
+   * ⚠ 최소 표시 시간(`minUntil`)은 그대로 커튼 시계에서 나옵니다 — 그쪽은 "커튼이 언제부터
    *   보였나" 라서 항해 시작(0)이 맞습니다. 두 시계는 뜻이 다릅니다.
    */
   watchedAt: number
@@ -65,9 +55,6 @@ export interface SceneBootState {
   minUntil: number
   /** 단계가 끝난 시각 */
   doneAt: Partial<Record<DoneStage, number>>
-  boatLoaded: number
-  /** null 이면 크기를 모릅니다 (서버가 Content-Length 를 안 줬거나 아직 진행 신호가 없음) */
-  boatTotal: number | null
   error: string | null
 }
 
@@ -101,16 +88,12 @@ export function createBootState(
   firstVisit: boolean,
 ): SceneBootState {
   return {
-    firstVisit,
-    startedAt: firstVisit ? 0 : now,
     // 엔진은 첫 진입이든 아니든 **지금부터** 뜹니다 (위 watchedAt 머리말)
     watchedAt: now,
     minUntil: firstVisit
       ? Math.max(BOOT_FIRST_MIN_MS, now + BOOT_MOUNT_FLOOR_MS)
       : now + BOOT_REVISIT_MIN_MS,
     doneAt: {},
-    boatLoaded: 0,
-    boatTotal: null,
     error: null,
   }
 }
@@ -124,16 +107,6 @@ export function applyBootEvent(
   event: SceneBootEvent,
   now: number,
 ): SceneBootState {
-  if (event.stage === 'boat-bytes') {
-    const total =
-      event.total !== undefined && event.total > 0 ? event.total : null
-    return {
-      ...state,
-      // 받은 양은 줄지 않습니다 — 순서가 어긋난 신호로 숫자가 뒤로 가지 않게
-      boatLoaded: Math.max(state.boatLoaded, event.loaded ?? 0),
-      boatTotal: total ?? state.boatTotal,
-    }
-  }
   if (event.stage === 'error') {
     return { ...state, error: event.message || event.where || 'error' }
   }
@@ -173,12 +146,8 @@ const STAGES: readonly SceneBootStage[] = [
 ]
 const isStage = (value: unknown): value is SceneBootStage =>
   typeof value === 'string' && (STAGES as readonly string[]).includes(value)
-const numberOr = (value: unknown): number | undefined =>
-  typeof value === 'number' && Number.isFinite(value) ? value : undefined
 const stringOr = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined
-const booleanOr = (value: unknown): boolean | undefined =>
-  typeof value === 'boolean' ? value : undefined
 
 /** 엔진의 postMessage 데이터 → 신호. 모양이 다르면(다른 메시지) null */
 export function parseBootMessage(data: unknown): SceneBootEvent | null {
@@ -187,10 +156,6 @@ export function parseBootMessage(data: unknown): SceneBootEvent | null {
   if (record.type !== 'pb:boot' || !isStage(record.stage)) return null
   return {
     stage: record.stage,
-    loaded: numberOr(record.loaded),
-    total: numberOr(record.total),
-    ok: booleanOr(record.ok),
-    skipped: booleanOr(record.skipped),
     where: stringOr(record.where),
     message: stringOr(record.message),
   }
@@ -201,13 +166,6 @@ export function snapshotEvents(snapshot: SceneBootSnapshot): SceneBootEvent[] {
   const events: SceneBootEvent[] = []
   for (const stage of DONE_STAGES) {
     if (snapshot.stages[stage] !== undefined) events.push({ stage })
-  }
-  if (snapshot.bytes) {
-    events.push({
-      stage: 'boat-bytes',
-      loaded: snapshot.bytes.loaded,
-      total: snapshot.bytes.total,
-    })
   }
   if (snapshot.error) {
     events.push({

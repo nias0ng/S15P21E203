@@ -18,7 +18,6 @@ const PERFUME: PerfumeDetail = {
   myReviewId: null,
 }
 
-/* 단추 하나가 담기와 빼기를 겸해, 라벨이 상태를 잘못 말하면 담으려다 빼게 됩니다 */
 describe('PerfumeOverview', () => {
   it('진열대에 없으면 [진열대 저장] 이다', async () => {
     const onShelfAction = vi.fn()
@@ -47,7 +46,6 @@ describe('PerfumeOverview', () => {
     ).not.toBeInTheDocument()
   })
 
-  /* 한쪽이 빠졌을 때 가운뎃점이 혼자 남는 것이 이 줄에서 가장 나기 쉬운 오류입니다 */
   it('영문 이름 옆에 향의 성별을 적는다', () => {
     render(
       <PerfumeOverview
@@ -82,7 +80,6 @@ describe('PerfumeOverview', () => {
     )
 
     expect(screen.getByText('unisex')).toBeInTheDocument()
-    // 영문 이름은 제목(h1)에만 있습니다
     expect(
       screen.getByRole('heading', { name: 'Allure Homme Sport' }),
     ).toBeInTheDocument()

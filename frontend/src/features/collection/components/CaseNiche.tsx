@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 
-import { cn } from '@/shared/lib/cn'
 import { BottleSilhouette } from '@/shared/ui/BottleSilhouette'
 
 /*
@@ -122,7 +121,6 @@ type PlateProps = {
    * 이름은 둘 다 명조 16 입니다 — 크기가 아니라 짜임만 다릅니다(collection-cabinet.css 의 활자 단).
    */
   size?: 'md' | 'sm'
-  className?: string
 }
 
 /**
@@ -133,15 +131,9 @@ type PlateProps = {
  * 서든 같은 대비로 읽힙니다. 진열함보다 조금 좁게 가운데에 달아 진열대의 메뉴판 · 이름표와 같은
  * 말투로 섭니다.
  */
-export function CasePlate({
-  kicker,
-  title,
-  meta,
-  size = 'md',
-  className,
-}: PlateProps) {
+export function CasePlate({ kicker, title, meta, size = 'md' }: PlateProps) {
   return (
-    <span className={cn('collection-plate', className)} data-size={size}>
+    <span className="collection-plate" data-size={size}>
       {kicker && <span className="collection-plate-kicker">{kicker}</span>}
       {/* 안쪽 한 겹은 `sm` 에서 두 줄 자르기를 맡고, 바깥이 두 줄 자리 가운데에 세웁니다 */}
       <span className="collection-plate-title">

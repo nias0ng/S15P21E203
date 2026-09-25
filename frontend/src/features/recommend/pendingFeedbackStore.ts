@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
 /** 아직 답하지 않은 설문 하나 */
-export interface PendingFeedback {
+interface PendingFeedback {
   /** 만족도를 보낼 때 쓰는 추천의 손잡이 */
   token: string
   /**

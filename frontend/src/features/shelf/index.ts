@@ -20,19 +20,8 @@
  * 조용히 떨어뜨립니다.
  */
 import './shelf-display.css'
-export {
-  createShelfItem,
-  createShelfMemo,
-  deleteShelfItem,
-  deleteShelfMemo,
-  updateShelfMemo,
-} from './api'
 export { ShelfDetailPanel } from './components/ShelfDetailPanel'
-export {
-  ShelfEditModal,
-  type ShelfEditInput,
-} from './components/ShelfEditModal'
-export { ShelfItemFields } from './components/ShelfItemFields'
+export { ShelfEditModal } from './components/ShelfEditModal'
 export { ShelfToolbar } from './components/ShelfToolbar'
 export { ShelfFooterStrip } from './components/ShelfFooterStrip'
 export { ShelfPager } from './components/ShelfPager'
@@ -40,26 +29,13 @@ export { ShelfPaper } from './components/ShelfPaper'
 export { ShelfWall, type ShelfWallHandle } from './components/ShelfWall'
 export { ShelfDeck } from './components/ShelfDeck'
 export { ShelfRegisterModal } from './components/ShelfRegisterModal'
-export {
-  useShelfArrangement,
-  type ShelfArrangement,
-} from './hooks/useShelfArrangement'
+export { useShelfArrangement } from './hooks/useShelfArrangement'
 export {
   ShelfEditPartialError,
   ShelfRegisterPartialError,
   useShelfActions,
 } from './hooks/useShelfActions'
 export { useShelfBrowser } from './hooks/useShelfBrowser'
-export { toPerfumeOption } from './lib'
-export { shelfItemDetailQuery, shelfItemsQuery, shelfKeys } from './queries'
-export {
-  SHELF_CATEGORIES,
-  type PerfumeOption,
-  type ShelfCategory,
-  type ShelfCounts,
-  type ShelfItem,
-  type ShelfItemDetail,
-  type ShelfScentNote,
-  type ShelfRegisterInput,
-  type ShelfSection,
-} from './types'
+export { shelfRegisterErrorMessage } from './registerErrorMessage'
+export { shelfItemDetailQuery, shelfItemsQuery } from './queries'
+export type { ShelfCategory, ShelfItemDetail } from './types'

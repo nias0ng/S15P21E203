@@ -42,13 +42,12 @@ import {
   type ShelfItemDetail,
   type ShelfWallHandle,
 } from '@/features/shelf'
-import { isApiError } from '@/shared/api/http'
+import { apiErrorMessage } from '@/shared/api/http'
 import { ROUTES } from '@/shared/config/routes'
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { useToast } from '@/shared/hooks/useToast'
 import { READY_GRACE_MS } from '@/shared/lib/diveTrack'
 import { useAuthStore, useIsLoggedIn } from '@/shared/store/authStore'
-import { useIsRising } from '@/shared/store/diveStore'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { EmptyState } from '@/shared/ui/EmptyState'
@@ -162,8 +161,6 @@ const EMPTY_COPY: Record<
  */
 export default function MyShelfPage() {
   const shelf = useQuery(shelfItemsQuery())
-  // 메인으로 떠오르는 중인가 (헤더 로고). ⚠ useIsDiving 이 아닙니다 — 그것은 들어올 때도 참입니다
-  const rising = useIsRising()
   const collections = useQuery(myCollectionsQuery())
   /*
    * 메인에서 잠수로 들어왔으면 커튼이 짙은 남색으로 덮은 채 이 신호를 기다립니다
@@ -236,7 +233,6 @@ export default function MyShelfPage() {
         ? selectedDetail.data
         : {
             ...browser.selected,
-            nameKo: null,
             rating: null,
             memo: null,
             memoUpdatedAt: null,
@@ -318,7 +314,7 @@ export default function MyShelfPage() {
     onError: (error) =>
       showToast(
         // 이름이 겹치면 409 입니다
-        isApiError(error) ? error.message : '컬렉션을 만들지 못했습니다',
+        apiErrorMessage(error, '컬렉션을 만들지 못했습니다'),
       ),
   })
 
@@ -355,20 +351,9 @@ export default function MyShelfPage() {
     return (
       <EmptyState
         title="진열대를 불러오지 못했습니다"
-        description={
-          isApiError(shelf.error)
-            ? shelf.error.message
-            : '잠시 후 다시 시도해주세요.'
-        }
-        action={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void shelf.refetch()}
-          >
-            다시 시도
-          </Button>
-        }
+        description={apiErrorMessage(shelf.error, '잠시 후 다시 시도해주세요.')}
+        onRetry={() => void shelf.refetch()}
+        retrySize="sm"
       />
     )
   }
@@ -406,13 +391,12 @@ export default function MyShelfPage() {
     </Button>
   )
 
-  const toolbar = (className?: string, stacked?: boolean) => (
+  const toolbar = (stacked?: boolean) => (
     <ShelfToolbar
       keyword={browser.keyword}
       onKeywordChange={browser.changeKeyword}
       action={registerButton}
       stacked={stacked}
-      className={className}
     />
   )
 
@@ -632,7 +616,7 @@ export default function MyShelfPage() {
   )
 
   // 시안의 종이 바탕과 질감 — 뷰포트를 통째로 덮습니다(ShelfPaper). 컬렉션 상세도 같은 종이를 깝니다
-  const paper = <ShelfPaper rising={rising} />
+  const paper = <ShelfPaper />
 
   /*
     편지 속 향수를 진열대에 담는 단추. 추천은 "아직 없는 향수" 라 **보유 희망**에 담습니다 — 가졌다면
@@ -790,7 +774,7 @@ export default function MyShelfPage() {
                 {letter('right')}
               </>,
               // 좁은 기둥 안이라 검색창과 단추를 세로로 세웁니다
-              toolbar(undefined, true),
+              toolbar(true),
             )}
           </div>,
 

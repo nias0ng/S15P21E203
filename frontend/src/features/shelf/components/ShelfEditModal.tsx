@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { useResetOnOpen } from '@/shared/hooks/useResetOnOpen'
 import { Button } from '@/shared/ui/Button'
 import { Modal } from '@/shared/ui/Modal'
 
@@ -45,22 +46,18 @@ export function ShelfEditModal({ open, onClose, item, ready, onSave }: Props) {
   /*
    * 열릴 때의 값으로 칸을 되돌립니다. Modal 이 <dialog> 라 닫아도 언마운트되지
    * 않아서, 이렇게 하지 않으면 다른 향수를 열었을 때 앞 향수의 메모가 남습니다.
-   * useEffect 가 아니라 렌더 중에 맞추는 이유: 한 박자 늦게 맞추면 첫 프레임에
-   * 옛 값이 보입니다.
    */
-  const [openedFor, setOpenedFor] = useState<string | null>(null)
   const [category, setCategory] = useState<ShelfCategory | null>(null)
   const [rating, setRating] = useState<number | null>(null)
   const [memo, setMemo] = useState('')
 
   // 상세가 도착하면(ready) key 가 바뀌어 칸을 진짜 값으로 다시 잡습니다
   const key = open ? `${item?.shelfItemId ?? 'none'}:${ready}` : null
-  if (key !== openedFor) {
-    setOpenedFor(key)
+  useResetOnOpen(key, () => {
     setCategory(item?.category ?? null)
     setRating(item?.rating ?? null)
     setMemo(item?.memo ?? '')
-  }
+  })
 
   return (
     <Modal

@@ -6,7 +6,6 @@ import { describe, expect, it } from 'vitest'
 
 import { WithdrawModal } from './WithdrawModal'
 
-/** 클라이언트는 테스트마다 새로 만듭니다 — 돌려 쓰면 앞 테스트의 캐시가 넘어옵니다 */
 const renderModal = () =>
   render(
     <QueryClientProvider client={new QueryClient()}>
@@ -41,7 +40,6 @@ describe('WithdrawModal', () => {
   })
 
   it('후기는 삭제되지 않고 남는다고 안내한다', () => {
-    // 확정된 정책은 후기를 익명화해 유지하는 것이라, 안내가 어긋나면 잘못 판단합니다
     renderModal()
 
     expect(

@@ -1,11 +1,13 @@
 import { useState } from 'react'
 
+import { useResetOnOpen } from '@/shared/hooks/useResetOnOpen'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
 import { Modal } from '@/shared/ui/Modal'
 import { Textarea } from '@/shared/ui/Textarea'
 
+import { useShelfItemPick } from '../hooks/useShelfItemPick'
 import type { CollectionInput } from '../types'
 
 import { COLLECTION_SHEET, PICK_SHEET_WIDTH } from './collectionSheet'
@@ -39,29 +41,16 @@ export function CollectionFormModal({
   const editing = initial !== undefined
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [picked, setPicked] = useState<number[]>([])
-  const [keyword, setKeyword] = useState('')
+  const { picked, toggle, keyword, setKeyword } = useShelfItemPick(open)
 
   /*
    * `Modal` 이 `<dialog>` 라 닫아도 언마운트되지 않아 앞서 적던 값이 남습니다.
-   * `useEffect` 가 아니라 렌더 중에 되돌리는 이유: 한 박자 늦으면 첫 프레임에 옛 값이 보입니다.
    */
   const openedKey = open ? JSON.stringify(initial ?? null) : null
-  const [openedFor, setOpenedFor] = useState<string | null>(null)
-  if (openedKey !== openedFor) {
-    setOpenedFor(openedKey)
+  useResetOnOpen(openedKey, () => {
     setTitle(initial?.title ?? '')
     setDescription(initial?.description ?? '')
-    setPicked([])
-    setKeyword('')
-  }
-
-  const toggle = (shelfItemId: number) =>
-    setPicked((prev) =>
-      prev.includes(shelfItemId)
-        ? prev.filter((id) => id !== shelfItemId)
-        : [...prev, shelfItemId],
-    )
+  })
 
   return (
     <Modal
@@ -78,7 +67,7 @@ export function CollectionFormModal({
             disabled={
               title.trim().length === 0 || (!editing && picked.length === 0)
             }
-            onClick={() => {
+            onClick={() =>
               onSubmit(
                 {
                   title: title.trim(),
@@ -86,9 +75,7 @@ export function CollectionFormModal({
                 },
                 picked,
               )
-              setPicked([])
-              setKeyword('')
-            }}
+            }
           >
             {editing ? '저장' : '만들기'}
           </Button>

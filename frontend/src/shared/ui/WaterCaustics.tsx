@@ -11,6 +11,7 @@ import {
 } from 'three'
 
 import { cn } from '@/shared/lib/cn'
+import { prefersReducedMotion } from '@/shared/lib/prefersReducedMotion'
 import { sinkDepth } from '@/shared/lib/sinkDepth'
 import {
   CAUSTICS,
@@ -32,7 +33,7 @@ const SINK_EASE_MS = 160
  * 물 모습. `caustics` 는 바닥에 비친 빛 그물, `underwater` 는 수면을 올려다보는 물속이고
  * 내릴수록 가라앉습니다(`underwaterShader.ts`).
  */
-export type WaterLook = 'caustics' | 'underwater'
+type WaterLook = 'caustics' | 'underwater'
 
 const FRAGMENT: Record<WaterLook, string> = {
   caustics: causticsFragment,
@@ -207,9 +208,7 @@ export function WaterCaustics({
       host.dataset.ready = ''
     }
 
-    const reduced = window.matchMedia(
-      '(prefers-reduced-motion: reduce)',
-    ).matches
+    const reduced = prefersReducedMotion()
     let lastDrawn = started
 
     if (reduced) {

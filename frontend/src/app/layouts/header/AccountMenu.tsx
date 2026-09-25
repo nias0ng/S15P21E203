@@ -1,13 +1,14 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router'
 
 import { logout, meQuery } from '@/features/auth'
 import { ROUTES } from '@/shared/config/routes'
+import { useEndSession } from '@/shared/hooks/useEndSession'
 import { cn } from '@/shared/lib/cn'
-import { useAuthStore, useIsLoggedIn } from '@/shared/store/authStore'
+import { useIsLoggedIn } from '@/shared/store/authStore'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
-import { FOCUS, type Ink } from './tone'
+import { inkLink, type Ink } from './tone'
 import { useDismissable } from './useDismissable'
 
 function AccountIcon() {
@@ -29,8 +30,7 @@ function AccountIcon() {
 
 export function AccountMenu({ ink }: { ink: Ink }) {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const clear = useAuthStore((state) => state.clear)
+  const endSession = useEndSession()
   const { open, setOpen, containerRef } = useDismissable()
 
   /* 사진 주소는 서버가 쥔 값이라 쿼리에서 읽습니다 — 정보 변경 화면과 같은 캐시라 요청이 늘지 않습니다 */
@@ -44,10 +44,7 @@ export function AccountMenu({ ink }: { ink: Ink }) {
    */
   const logoutMutation = useMutation({
     mutationFn: logout,
-    onSettled: () => {
-      clear()
-      queryClient.clear()
-    },
+    onSettled: endSession,
   })
 
   return (
@@ -58,14 +55,7 @@ export function AccountMenu({ ink }: { ink: Ink }) {
         aria-haspopup="menu"
         aria-label="내 계정"
         onClick={() => setOpen(!open)}
-        className={cn(
-          'block transition-colors duration-120 ease-out',
-          ink.text,
-          ink.hover,
-          FOCUS,
-          ink.ring,
-          open && ink.open,
-        )}
+        className={cn('block', inkLink(ink), open && ink.open)}
       >
         {/* 사진이 없을 때 `Thumbnail` 을 쓰면 빈 상자가 서서, 그때는 원래 아이콘을 둡니다 */}
         {me?.profileImageUrl != null ? (

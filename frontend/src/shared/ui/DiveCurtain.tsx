@@ -17,6 +17,7 @@ import {
   RISE_ENGINE_FROM,
 } from '@/shared/lib/diveTrack'
 import { bleedReach, makeBleedGrain, paintBleed } from '@/shared/lib/inkBleed'
+import { prefersReducedMotion } from '@/shared/lib/prefersReducedMotion'
 import { useDiveStore, type CabinPoint } from '@/shared/store/diveStore'
 
 import './cabin-curtain.css'
@@ -59,10 +60,6 @@ import './dive-curtain.css'
  * ⚠ 기다리는 때를 `setTimeout` 이 아니라 rAF 로 봅니다 — 메인 스레드가 막힌 동안 타이머는
  * 늦게 오고, 그만큼 남색 화면이 더 오래 섭니다.
  */
-/** 움직임 줄이기인가 — 세 효과가 같은 판단을 씁니다 */
-const reducedMotion = () =>
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
 /**
  * 떠오를 때 커튼이 **떠나는 방에서** 옮겨 받는 물빛 — 방(`styles/scent-display.css` 의
  * `.scent-night`)이 내주고 `dive-curtain.css` 의 떠오르기가 씁니다. 여기는 이름만 압니다.
@@ -173,7 +170,7 @@ export function DiveCurtain() {
     if (stage !== 'diving') return
 
     // 움직임 줄이기면 3D 는 그대로 두고 커튼만 짧게 덮습니다 (dive-curtain.css 의 미디어 쿼리와 한 벌)
-    const reduced = reducedMotion()
+    const reduced = prefersReducedMotion()
     /*
       선실로 들어가기(진열대)는 같은 시계에 **다른 길이 · 다른 문**입니다 — 엔진은 수면이 아니라
       배를 향해 카메라를 밀고, 커튼은 차오르는 대신 그 배에서 번집니다 (`diveTrack` 의 '선실').
@@ -288,7 +285,7 @@ export function DiveCurtain() {
         걷히기 시작하는 첫 장에 이미 짙은 바다가 있습니다 — 안 그러면 다 밝은 바다가
         한 장 비쳤다가 다시 어두워집니다. 매 장 넣는 것은 유니폼 한 번이라 쌉니다.
       */
-      if (rising && !reducedMotion()) store.engine?.(RISE_ENGINE_FROM)
+      if (rising && !prefersReducedMotion()) store.engine?.(RISE_ENGINE_FROM)
       const ready = store.ready && now >= started + HOLD_MIN_MS
       if (ready || now >= until) {
         lift()
@@ -331,7 +328,7 @@ export function DiveCurtain() {
       ⚠ 쓸기와 같은 길이 · 같은 결의 곡선을 씁니다. 갈라지면 바다가 먼저 다 밝아졌는데
         커튼이 아직 남아 있거나 그 반대가 됩니다.
     */
-    const rising = way === 'rise' && !reducedMotion()
+    const rising = way === 'rise' && !prefersReducedMotion()
     const started = performance.now()
     let raf = 0
     const tick = () => {

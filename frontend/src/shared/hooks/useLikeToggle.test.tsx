@@ -35,9 +35,6 @@ afterEach(() => {
 })
 
 describe('useLikeToggle', () => {
-  /*
-    이 갈래가 훅을 만든 이유입니다 — 세 화면이 각자 쓰다가 한 곳에서 빠져 있었습니다.
-  */
   it('비로그인이면 서버에 보내지 않고 로그인 안내를 켠다', () => {
     const { result: hook, like, unlike } = setup()
 

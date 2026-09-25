@@ -16,10 +16,10 @@ import {
   type CollectionInput,
 } from '@/features/collection'
 import { ShelfPaper, shelfItemsQuery } from '@/features/shelf'
-import { isApiError } from '@/shared/api/http'
+import { apiErrorMessage, isApiError } from '@/shared/api/http'
 import { toMyShelfCollection } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
-import { useIsRising } from '@/shared/store/diveStore'
+import { parseId } from '@/shared/lib/parseId'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { LinkButton } from '@/shared/ui/LinkButton'
@@ -40,17 +40,17 @@ const PAPER_RING =
  */
 export default function CollectionDetailPage() {
   const { collectionId } = useParams<{ collectionId: string }>()
-  const numericId = Number(collectionId)
-  // 주소를 손으로 고쳐 숫자가 아니면 부르지 않습니다 — 부르지 않은 쿼리는 끝없이 "받는 중" 입니다
-  const validId = Number.isInteger(numericId) && numericId > 0
+  const parsedId = parseId(collectionId)
+  // 주소를 손으로 고쳐 번호가 아니면 부르지 않습니다 — 부르지 않은 쿼리는 끝없이 "받는 중" 입니다
+  const validId = parsedId !== null
+  // 번호가 아니면 아래 요청은 하나도 나가지 않아 0 은 자리만 채웁니다
+  const numericId = parsedId ?? 0
 
   const collection = useQuery({
     ...collectionDetailQuery(numericId),
     enabled: validId,
   })
   const shelf = useQuery(shelfItemsQuery())
-  // 메인으로 떠오르는 중인가 (헤더 로고) — 진열대와 같은 종이라 같이 가라앉습니다
-  const rising = useIsRising()
 
   const [editOpen, setEditOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
@@ -74,7 +74,7 @@ export default function CollectionDetailPage() {
     onError: (error) =>
       showToast(
         // 이름이 겹치면 409 이고, 서버 문구가 그 사정을 그대로 설명합니다
-        isApiError(error) ? error.message : '컬렉션을 수정하지 못했습니다',
+        apiErrorMessage(error, '컬렉션을 수정하지 못했습니다'),
       ),
   })
 
@@ -148,7 +148,7 @@ export default function CollectionDetailPage() {
 
     return (
       <div className="shelf-scope">
-        <ShelfPaper rising={rising} />
+        <ShelfPaper />
         {backToCollections}
         <CollectionNotice
           title={
@@ -189,7 +189,7 @@ export default function CollectionDetailPage() {
 
   return (
     <div className="shelf-scope">
-      <ShelfPaper rising={rising} />
+      <ShelfPaper />
 
       <div className="grid gap-y-12.5 lg:grid-cols-[calc(var(--spacing)*100)_minmax(0,1fr)] lg:gap-x-20">
         {/*
@@ -247,9 +247,9 @@ export default function CollectionDetailPage() {
               수정
             </Button>
             <Button
-              variant="outline"
+              variant="dangerOutline"
               size="sm"
-              className={`border-danger/40 text-danger hover:bg-danger/5 h-10 rounded-md px-5 ${PAPER_RING}`}
+              className={`h-10 rounded-md px-5 ${PAPER_RING}`}
               onClick={() => setDeleteOpen(true)}
             >
               삭제

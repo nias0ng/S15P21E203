@@ -116,30 +116,6 @@ export function useShelfActions() {
   })
 
   /**
-   * 분류 변경 (SHF-03).
-   *
-   * 여기만 낙관적으로 그리지 않고 **목록을 다시 받습니다.** 분류를 옮기면 향수가
-   * 다른 칸으로 걸어가서, 화면이 미리 계산하면 어긋날 자리가 생깁니다. 모달을 닫고
-   * 벽이 다시 그려지는 동작이라 한 박자 늦어도 어색하지 않습니다.
-   */
-  const category = useMutation({
-    mutationFn: ({
-      shelfItemId,
-      category,
-    }: {
-      shelfItemId: number
-      category: ShelfCategory
-    }) => changeShelfCategory(shelfItemId, category),
-
-    onSuccess: (_result, { shelfItemId }) => {
-      void queryClient.invalidateQueries({ queryKey: shelfKeys.items() })
-      void queryClient.invalidateQueries({
-        queryKey: shelfKeys.detail(shelfItemId),
-      })
-    },
-  })
-
-  /**
    * 진열대에 담기 (SHF-01).
    *
    * **요청이 최대 세 개입니다.** 서버가 담기 · 적합도 · 메모를 따로 받습니다.
@@ -280,5 +256,5 @@ export function useShelfActions() {
     },
   })
 
-  return { rating, category, register, remove, edit }
+  return { rating, register, remove, edit }
 }

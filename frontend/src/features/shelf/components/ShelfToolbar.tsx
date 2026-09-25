@@ -6,7 +6,7 @@ type Props = {
   keyword: string
   onKeywordChange: (next: string) => void
   /**
-   * 줄 오른쪽 끝에 붙는 조작. 지금은 [+ 향수 등록] 입니다.
+   * 검색창 아래에 붙는 조작. 지금은 [+ 향수 등록] 입니다.
    *
    * 진열대에 담는 단추라 진열대를 다루는 이 줄에 섭니다. 예전에는 "내 컬렉션"
    * 머리말에 있었는데, 그쪽은 무대를 바꿔야 나오는 자리라 진열대를 보는 동안에는
@@ -18,10 +18,9 @@ type Props = {
   action?: React.ReactNode
   /**
    * 좁은 기둥 안에 세로로 세우는 배치. 검색창과 조작이 위아래로 서고 둘 다 받은 폭을
-   * 꽉 채웁니다. 주지 않으면 넓은 화면에서 한 줄로 섭니다.
+   * 꽉 채웁니다. 주지 않으면 조작은 제 폭대로 섭니다.
    */
   stacked?: boolean
-  className?: string
 }
 
 /**
@@ -48,26 +47,17 @@ const FIELD =
  * 향 계열 · 정렬 드롭다운이 여기 있었는데 걷어냈습니다. 진열대 API 에 두 파라미터가
  * 없어 열어도 고를 게 없는 disabled 단추였고, 자리만 차지했습니다. 거르기와 정렬이
  * 실제로 붙어 있는 곳은 향수 목록(`features/perfume`)이라 거기 것을 참고하면 됩니다.
- * 검색창만 flex-1 이라 창 폭이 변해도 칩은 안 밀리고 검색창이 늘고 줄어듭니다.
- * 칩이 밀리면 "지금 벽의 어느 칸을 보고 있는지"가 화면 밖으로 나가버립니다.
  */
 export function ShelfToolbar({
   keyword,
   onKeywordChange,
   action,
   stacked = false,
-  className,
 }: Props) {
   const searchInputId = useId()
 
   return (
-    <div
-      className={cn(
-        'flex flex-col gap-2.5',
-        stacked ? 'lg:items-stretch' : 'lg:flex-row lg:items-center',
-        className,
-      )}
-    >
+    <div className="flex flex-col gap-2.5">
       {/*
         분류 칩 셋(보유 중 · 시향해 봄 · 보유 희망)은 **진열대 벽의 왼쪽 현판 메뉴로 내려갔습니다**
         (S15P21E203-417). 벽감이 창에 고정이라 한 번에 한 분류만 서고, 분류를 갈아끼우는 손잡이가
@@ -87,7 +77,7 @@ export function ShelfToolbar({
         className={cn(
           FIELD,
           'flex items-center gap-2.5 rounded-full px-3.75',
-          stacked ? 'w-full' : 'lg:flex-1',
+          stacked && 'w-full',
           'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--shelf-ink)]',
           'has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-[var(--paper)]',
         )}
@@ -108,10 +98,6 @@ export function ShelfToolbar({
         />
       </label>
 
-      {/*
-        검색창(flex-1) 다음에 두어 줄 오른쪽 끝에 섭니다. shrink-0 이라 창이 좁아져도
-        글자가 접히지 않고, 좁은 화면에서는 줄이 세로로 쌓이며 맨 아래로 갑니다.
-      */}
       {action && (
         <div className={cn('shrink-0', stacked && '[&>*]:h-10 [&>*]:w-full')}>
           {action}

@@ -23,4 +23,4 @@ export {
   collectionKeys,
   myCollectionsQuery,
 } from './queries'
-export type { CollectionInput, CollectionPerfume } from './types'
+export type { CollectionInput } from './types'

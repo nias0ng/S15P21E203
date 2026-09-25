@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { layoutWall } from '../lib'
+import type { WallSection } from '../lib'
 import type { ShelfItem } from '../types'
 
 import { useBottlePreload } from './useBottlePreload'
@@ -10,31 +10,36 @@ const item = (id: number): ShelfItem => ({
   shelfItemId: id,
   perfumeId: id,
   name: `향수 ${id}`,
+  nameKo: null,
   brand: '브랜드',
   thumbnailUrl: `/bottles/${id}.png`,
   category: 'OWNED',
 })
 
 /*
- * 가리지 않는 칸 일곱 · 두 칸 기둥에 병 [5, 17] — 벽감 칸이 2~6 · 9~25 입니다.
- * 첫 화면은 칸 0 ~ 9(창에 걸친 아홉 칸과 오른쪽 끝 이웃)입니다.
+ * 병 [5, 17] 을 벽감 칸 2~6 · 9~25 에 세운 벽입니다. 벽감 앞과 사이에 빈 칸을 두어, 병이 없는
+ * 칸을 건너 칸 순서대로 푸는지 봅니다. 첫 화면은 칸 0 ~ 9(창에 걸친 아홉 칸과 오른쪽 끝 이웃)입니다.
  */
-const LAYOUT = layoutWall(
-  [
+const LAYOUT: { sections: WallSection[] } = {
+  sections: [
     {
       category: 'OWNED',
       label: '보유 중',
       items: Array.from({ length: 5 }, (_, at) => item(at + 1)),
+      start: 2,
+      span: 5,
+      gap: 0,
     },
     {
       category: 'TRIED',
       label: '시향해 봄',
       items: Array.from({ length: 17 }, (_, at) => item(at + 6)),
+      start: 9,
+      span: 17,
+      gap: 0,
     },
   ],
-  7,
-  2,
-)
+}
 const FIRST_SCREEN_TO = 9
 
 /** DisplayCase 와 같은 모양의 병 칸들. 사진의 alt 에 칸 순서를 적어 둡니다 */

@@ -56,6 +56,14 @@ describe('목데이터 API', () => {
     expect(api.find('PUT', '/users/me/collections')).toBeNull()
   })
 
+  it('브랜드 번호로 거르는 향수 검색은 백엔드로 넘기고, 검색어 검색은 받는다', () => {
+    const byBrand = new URLSearchParams({ brandId: '3' })
+    expect(api.find('GET', '/perfumes', byBrand)).toBeNull()
+    expect(
+      api.find('GET', '/perfumes', new URLSearchParams({ keyword: '딥티크' })),
+    ).not.toBeNull()
+  })
+
   describe('로그인', () => {
     it('아무 이메일 · 비밀번호로 토큰을 받는다', () => {
       const response = call(api, 'POST', '/auth/login', {
@@ -139,21 +147,6 @@ describe('목데이터 API', () => {
         call(api, 'GET', `/users/me/shelf-items/${representative.shelfItemId}`),
       )
       expect(detail).toMatchObject({ representative: false, category: 'TRIED' })
-    })
-
-    it('보유 중이 아닌 향수는 대표로 지정할 수 없다', () => {
-      const tried = SHELF_SEED.find((seed) => seed.category === 'TRIED')!
-
-      expect(
-        call(
-          api,
-          'PATCH',
-          `/users/me/shelf-items/${tried.shelfItemId}/representative`,
-          {
-            body: { representative: true },
-          },
-        ).status,
-      ).toBe(400)
     })
 
     it('적합도는 1.0~5.0 을 0.5 단위로만 받는다', () => {

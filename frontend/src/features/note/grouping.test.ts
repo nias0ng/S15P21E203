@@ -18,7 +18,6 @@ const note = (
   ...partial,
 })
 
-/** 서버가 주는 순서 그대로입니다 — 대분류 순, 그 안에서 인기 순 */
 const NOTES: Note[] = [
   note({ noteId: 1, name: 'Bergamot' }),
   note({ noteId: 2, name: 'Lemon' }),

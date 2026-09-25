@@ -2,13 +2,6 @@ import { describe, expect, it } from 'vitest'
 
 import { cn } from './cn'
 
-/**
- * `@theme` 에 추가한 토큰은 tailwind-merge 가 어느 속성인지 모릅니다.
- * 등록해 두지 않으면 충돌을 못 걸러서 두 클래스가 다 남고, 어느 쪽이 이길지는
- * CSS 출력 순서가 정합니다 — 호출하는 쪽에서 예측할 수 없습니다.
- *
- * `styles/index.css` 에 토큰을 추가할 때 `cn.ts` 등록을 빠뜨리면 여기서 걸립니다.
- */
 describe('cn', () => {
   it('기본 스케일끼리 충돌하면 뒤에 온 것만 남긴다', () => {
     expect(cn('px-4 py-2', 'px-8')).toBe('py-2 px-8')

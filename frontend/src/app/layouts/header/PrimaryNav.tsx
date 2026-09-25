@@ -4,7 +4,7 @@ import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 
 import { CommunityMenu } from './CommunityMenu'
-import { FOCUS, type Ink } from './tone'
+import { inkLink, type Ink } from './tone'
 import { useDiveOut } from './useDiveOut'
 import { useWarm } from './useWarm'
 
@@ -20,14 +20,7 @@ const NAV_ITEMS = [
 const navLinkClass =
   (ink: Ink) =>
   ({ isActive }: { isActive: boolean }) =>
-    cn(
-      'block transition-colors duration-120 ease-out',
-      ink.text,
-      ink.hover,
-      FOCUS,
-      ink.ring,
-      isActive && 'underline underline-offset-[6px]',
-    )
+    cn('block', inkLink(ink), isActive && 'underline underline-offset-[6px]')
 
 export function PrimaryNav({
   isLoggedIn,

@@ -1,8 +1,8 @@
-import { useState } from 'react'
-
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { Modal } from '@/shared/ui/Modal'
+
+import { useShelfItemPick } from '../hooks/useShelfItemPick'
 
 import { COLLECTION_SHEET, PICK_SHEET_WIDTH } from './collectionSheet'
 import { ShelfItemPickList, type ShelfItemCandidate } from './ShelfItemPickList'
@@ -23,41 +23,22 @@ export function AddToCollectionModal({
   candidates,
   onSubmit,
 }: Props) {
-  const [picked, setPicked] = useState<number[]>([])
-  const [keyword, setKeyword] = useState('')
-
-  const toggle = (shelfItemId: number) =>
-    setPicked((prev) =>
-      prev.includes(shelfItemId)
-        ? prev.filter((id) => id !== shelfItemId)
-        : [...prev, shelfItemId],
-    )
-
-  /* NOTE: `Modal` 이 `<dialog>` 라 닫아도 언마운트되지 않습니다 — 칸을 직접 비웁니다 */
-  const close = () => {
-    setPicked([])
-    setKeyword('')
-    onClose()
-  }
+  const { picked, toggle, keyword, setKeyword } = useShelfItemPick(open)
 
   return (
     <Modal
       open={open}
-      onClose={close}
+      onClose={onClose}
       title="향수 담기"
       className={cn(COLLECTION_SHEET, PICK_SHEET_WIDTH)}
       footer={
         <>
-          <Button variant="outline" onClick={close}>
+          <Button variant="outline" onClick={onClose}>
             취소
           </Button>
           <Button
             disabled={picked.length === 0}
-            onClick={() => {
-              onSubmit(picked)
-              setPicked([])
-              setKeyword('')
-            }}
+            onClick={() => onSubmit(picked)}
           >
             담기
           </Button>

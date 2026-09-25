@@ -1,11 +1,12 @@
 import { Link } from 'react-router'
 
 import { ROUTES, toReviewEdit, toReviewDetail } from '@/shared/config/routes'
+import { authorName } from '@/shared/lib/authorName'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { AuthLinkButton } from '@/shared/ui/AuthLinkButton'
-import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
+import { Pagination } from '@/shared/ui/Pagination'
 import { GLASS_PANEL } from '@/shared/ui/panel'
 import { Skeleton } from '@/shared/ui/Skeleton'
 
@@ -14,17 +15,14 @@ import type { Review } from '../types'
 type Props = {
   reviews: Review[]
   totalElements: number
-  /** 0부터 시작합니다 */
   page: number
   size: number
   onPageChange: (page: number) => void
   isPending?: boolean
-  /** 있으면 [후기 쓰기] 대신 [후기 수정] 입니다 — 한 향수에 후기는 하나라 또 쓰면 409 입니다 */
   myReviewId: number | null
   perfumeId: number
 }
 
-/** 향수 상세 ⑤ 후기 (A10). [후기 쓰기]는 모달이 아니라 작성 화면(A24a)입니다 */
 export function PerfumeReviewList({
   reviews,
   totalElements,
@@ -35,8 +33,6 @@ export function PerfumeReviewList({
   myReviewId,
   perfumeId,
 }: Props) {
-  const lastPage = Math.max(0, Math.ceil(totalElements / size) - 1)
-
   return (
     <section className={cn(GLASS_PANEL, 'space-y-3.75')}>
       <div className="flex items-center gap-2.5">
@@ -44,7 +40,6 @@ export function PerfumeReviewList({
         {!isPending && (
           <span className="text-ink-muted text-caption">{totalElements}개</span>
         )}
-        {/* 작성 화면이 미리 골라 둘 수 있게 이 향수를 주소에 실어 보냅니다 */}
         <AuthLinkButton
           to={
             myReviewId === null
@@ -80,28 +75,14 @@ export function PerfumeReviewList({
         </ul>
       )}
 
-      {!isPending && lastPage > 0 && (
-        <div className="flex items-center justify-center gap-2.5">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page <= 0}
-            onClick={() => onPageChange(page - 1)}
-          >
-            이전
-          </Button>
-          <span className="text-ink-muted text-caption">
-            {page + 1} / {lastPage + 1}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= lastPage}
-            onClick={() => onPageChange(page + 1)}
-          >
-            다음
-          </Button>
-        </div>
+      {!isPending && (
+        <Pagination
+          label="후기 페이지"
+          page={page}
+          size={size}
+          totalElements={totalElements}
+          onPageChange={onPageChange}
+        />
       )}
     </section>
   )
@@ -125,8 +106,7 @@ function ReviewRow({ review }: { review: Review }) {
       </span>
 
       <span className="text-ink-muted text-caption block">
-        {review.nickname ?? '탈퇴한 회원'} ·{' '}
-        {formatRelativeTime(review.createdAt)}
+        {authorName(review.nickname)} · {formatRelativeTime(review.createdAt)}
       </span>
     </Link>
   )

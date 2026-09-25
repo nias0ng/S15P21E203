@@ -1,19 +1,4 @@
-import type { PerfumeOption, ShelfItem, ShelfSection } from './types'
-
-/**
- * 진열대 향수를 "고를 수 있는 향수" 모양으로 바꿉니다.
- *
- * 등록 모달(A15)과 컬렉션 추가 모달(A19)이 같은 네 필드를 받습니다. 화면마다 map 을
- * 손으로 적으면 한쪽만 고쳤을 때 모달이 조용히 빈 값을 받습니다.
- */
-export function toPerfumeOption(item: ShelfItem): PerfumeOption {
-  return {
-    perfumeId: item.perfumeId,
-    name: item.name,
-    brand: item.brand,
-    thumbnailUrl: item.thumbnailUrl,
-  }
-}
+import type { ShelfSection } from './types'
 
 /**
  * 메모를 마지막으로 쓴 날을 `YYYY.MM.DD` 로.
@@ -28,59 +13,6 @@ export function formatShelfDate(iso: string | null): string | null {
 
   const pad = (value: number) => String(value).padStart(2, '0')
   return `${at.getFullYear()}.${pad(at.getMonth() + 1)}.${pad(at.getDate())}`
-}
-
-/*
- * ── 상세 카드의 향조 ─────────────────────────────────────────
- *
- * 상세 응답의 향조는 단계로 나누지 않고 그대로 옵니다. `noteType` 에 값 제약이 없어 소문자 `top` ·
- * `middle` · `base`, 두 단계에 걸친 `top+middle`, 피라미드가 없는 `flat`, 빈 값이 섞여 옵니다(실측 —
- * 운 자르뎅 쉬르 르 닐: top 1 · middle 3 · base 5). 묶는 일은 화면 몫이라 향수 상세(features/perfume 의
- * PerfumeNotes)와 **같은 규칙**으로 묶습니다 — 기능끼리는 서로 가져다 쓰지 않아 규칙만 같이 둡니다.
- *
- *   Top · Middle · Base → 피라미드 없음(flat, 이름표 없이 한 줄) → 모르는 단계(제 이름) → 빈 값(기타)
- *   `top+middle` 은 두 단계 모두에 넣습니다 — 한 덩어리로 두면 없는 단계가 생깁니다
- */
-export type NoteRow = {
-  /** 단계 — TOP · MIDDLE · BASE · FLAT · 모르는 값(대문자) · 기타 */
-  stage: string
-  /** 줄 머리에 적는 이름. 피라미드가 없는 향수(flat)는 null — 이름표 없이 노트만 적습니다 */
-  label: string | null
-  names: string[]
-}
-
-/** 단계 줄의 순서 — 적는 순서가 곧 화면에 그리는 순서입니다 */
-export const NOTE_STAGES = ['TOP', 'MIDDLE', 'BASE'] as const
-const NOTE_FLAT = 'FLAT'
-/** `noteType` 이 비어 온 노트가 모이는 줄 */
-const NOTE_OTHER = '기타'
-
-export function noteRows(
-  notes: readonly { name: string; noteType: string | null }[],
-): NoteRow[] {
-  const groups = new Map<string, string[]>()
-  for (const note of notes) {
-    const stages =
-      note.noteType
-        ?.trim()
-        .toUpperCase()
-        .split('+')
-        .map((stage) => stage.trim())
-        .filter(Boolean) ?? []
-    for (const stage of stages.length > 0 ? stages : [NOTE_OTHER]) {
-      const group = groups.get(stage)
-      if (group) group.push(note.name)
-      else groups.set(stage, [note.name])
-    }
-  }
-  const order: string[] = [...NOTE_STAGES, NOTE_FLAT]
-  const known = order.filter((stage) => groups.has(stage))
-  const rest = [...groups.keys()].filter((stage) => !order.includes(stage))
-  return [...known, ...rest].map((stage) => ({
-    stage,
-    label: stage === NOTE_FLAT ? null : stage,
-    names: groups.get(stage) ?? [],
-  }))
 }
 
 /**
@@ -367,8 +299,8 @@ const SLOT_PER_BOTTLE = 0.55
 const MAX_SLOTS = 12
 
 /**
- * 칸 폭의 하한. 칸은 병 사진을 따라 촘촘해지는데, 110 보다 좁으면 이름표 벽의 현판(맨 벽 =
- * 칸 폭 − 옆벽 66)과 매달린 태그(칸 폭의 75%)가 칸에 들지 않습니다. 그때는 칸을 늘리지 않고
+ * 칸 폭의 하한. 칸은 병 사진을 따라 촘촘해지는데, 110 보다 좁으면 매달린 태그(칸 폭의 75%)가
+ * 칸에 들지 않습니다. 그때는 칸을 늘리지 않고
  * 칸 폭을 지킵니다 — 이름표 자리가 커져 병이 조금 작아진 휴대폰(412 · 430 · 540 · 560)에서
  * 칸이 하나 늘어 칸 폭이 93 · 100 까지 좁아지던 것을 막습니다.
  * 창이 칸 셋(MIN_VISIBLE)에도 모자라는 아주 좁은 휴대폰(320)에서는 칸 셋이 먼저입니다.
@@ -387,8 +319,8 @@ const MIN_SLOT_PITCH = 110
  * 예전에는 창 전체를 칸으로 나눠서 패널 왼쪽 끝이 칸 하나를 46~116px 파고들었고, 멈출 때마다
  * 병 하나가 패널에 반쯤 가렸습니다.
  *
- * 올림(ceil)으로 셉니다. 칸이 바라는 폭보다 조금(1920 에서 10%) 좁아지는 대신, 이름표 벽을 두 칸
- * 기둥으로 넓혀도(layoutWall) 분류 첫머리에 병 다섯이 그대로 섭니다. 내림으로 세면 칸이 넓어져
+ * 올림(ceil)으로 셉니다. 칸이 바라는 폭보다 조금(1920 에서 10%) 좁아지는 대신, 왼쪽 메뉴 기둥이 두
+ * 칸을 차지해도(ShelfWall) 분류 첫머리에 병 다섯이 그대로 섭니다. 내림으로 세면 칸이 넓어져
  * 1440 · 1280 에서 병이 넷으로 줍니다.
  *
  * 창 오른쪽 끝(패널 밑)은 칸 경계에 오지 않습니다. 그래서 창에 걸치는 칸(visible)과 창 안에
@@ -402,7 +334,7 @@ const MIN_SLOT_PITCH = 110
 const MIN_CLEAR_WITH_PANEL = 5
 
 /**
- * 이름표 벽을 두 칸 기둥으로 세우는 가리지 않는 칸 수(layoutWall). 패널을 얹는 배치는 늘 다섯
+ * 왼쪽 분류 메뉴 기둥을 두 칸으로 세우는 가리지 않는 칸 수(ShelfWall). 패널을 얹는 배치는 늘 다섯
  * 이상이라 두 칸이고, 쌓는 배치는 768(칸 다섯)에서 두 칸 · 휴대폰(칸 셋)에서 한 칸입니다 —
  * 칸 셋에 두 칸 기둥을 세우면 분류 첫머리에 병이 하나만 섭니다.
  */
@@ -712,7 +644,10 @@ export type ShelfLayout = ShelfMetrics & {
    * 패널을 얹지 않으면 창 폭
    */
   clearWidth: number
-  /** 이름표 벽 기둥 하나의 칸 수 — 가리지 않는 칸이 다섯 이상이면 2, 아니면 1(PLAQUE_SPAN_MIN_CLEAR) */
+  /**
+   * 왼쪽 분류 메뉴 기둥의 칸 수 — 가리지 않는 칸이 다섯 이상이면 2, 아니면 1(PLAQUE_SPAN_MIN_CLEAR).
+   * 메뉴 폭과 --plaque-span 이 씁니다
+   */
   plaqueSpan: number
 }
 
@@ -782,168 +717,45 @@ export function shelfLayout(
 /*
  * ── 벽 한 줄의 칸 배치 ──────────────────────────────────────
  *
- * 분류마다 [이름표 벽][벽감][빈 벽] 을 붙이고, 맨 끝에 "처음으로" 현판을 둡니다.
- *
- *   이름표 벽 · 보유 중 벽감(5) · 이름표 벽 · 시향해 봄 벽감(17) · 이름표 벽 · 보유 희망 벽감(3) · 처음으로
+ * 분류마다 [벽감][빈 벽] 을 붙입니다. 현판은 트랙 밖(왼쪽 메뉴)에 서서 벽에 칸을 차지하지 않습니다.
  *
  * **벽 한 줄의 칸 폭이 전부 같습니다.** 벽감 사이 벽 폭이 칸 폭의 배수가 아니면, 두 벽감에
  * 걸쳐 멈췄을 때 한쪽 끝 병이 창 경계에 걸립니다. 전부 칸 단위면 칸 수만큼 끊어 멈추는
  * 것만으로 창 양 끝에 병이 걸리지 않습니다.
- *
- * **이름표 벽은 두 칸 기둥입니다**(가리지 않는 칸이 다섯 이상일 때 — PLAQUE_SPAN_MIN_CLEAR).
- * 기둥 좌우 가장자리 33px 씩은 이웃 벽감의 옆벽이 차지해서, 한 칸짜리 벽에서는 현판이 90px
- * 남짓으로 좁고 옆벽과 7px 남짓밖에 떨어지지 않았습니다. 두 칸이면 현판이 시안 비율(벽감의
- * 29% x 75%)로 서고 옆벽과 55~90px 떨어집니다(plaqueMetrics).
- * 기둥은 두 칸이지만 한 덩어리입니다. 창 왼쪽 끝이나 패널 경계가 기둥 한가운데를 가르는 자리에는
- * 멈추지 않습니다(wallStops).
- *
- * 맨 끝 기둥은 **"처음으로" 현판**입니다. 첫 분류(보유 중)의 이름 · 개수를 적고, 누르면 벽이 맨
- * 앞으로 흐릅니다. 예전 끝 벽 자리를 대신해, 기둥의 첫 33px 은 마지막 벽감의 오른쪽 옆벽이 씁니다.
- * 분류가 아니라서 칩 · 페이저 · 창 가운데 분류(sectionAt)에는 끼지 않습니다.
  */
 export type WallSection = ShelfSection & {
-  /** 이름표 벽 기둥의 첫 칸 순서 */
-  plaque: number
   /** 벽감 첫 칸의 순서 */
   start: number
   /** 벽감이 차지하는 칸 수. 비어 있어도 "비어 있음" 을 적을 한 칸은 둡니다 */
   span: number
   /**
-   * 벽감 뒤에 비워 두는 벽 칸 수(아래 layoutWall). 병이 적은 분류의 첫머리에 섰을 때 다음
-   * 기둥이 패널 바로 왼쪽에 서도록 벽을 비우고, 두 칸 기둥이 패널 경계에 걸리지 않게 한 칸을
-   * 비우기도 합니다. 마지막 분류 뒤(다음 기둥이 "처음으로" 현판)도 같은 셈입니다.
+   * 벽감 뒤에 비워 두는 벽 칸 수(아래 layoutWall). 병이 가리지 않는 자리를 못 채우는 분류 뒤를
+   * 한 창까지 채웁니다.
    */
   gap: number
 }
 
 export type WallLayout = {
   sections: WallSection[]
-  /** "처음으로" 현판 기둥의 첫 칸 순서 */
-  back: number
-  /** "처음으로" 기둥까지 합친 칸 수 */
+  /** 마지막 빈 벽까지 합친 칸 수 */
   total: number
-  /** 이름표 벽 기둥 하나의 칸 수(1 또는 2) */
-  plaqueSpan: number
 }
 
 /**
- * `clear` 는 패널에 가리지 않는 칸 수(쌓는 배치에서는 창 전체 칸 수), `plaqueSpan` 은 이름표 벽
- * 기둥의 칸 수(K)입니다. 분류마다 벽감 뒤에 빈 벽(`gap`)을 이렇게 둡니다. 마지막 분류도 같습니다.
- *
- *   짧은 분류     이름표 + 병 + 다음 기둥이 가리지 않는 자리에 드는 분류
- *                 빈 벽 = 가리지 않는 칸 − K − (K + 병 칸 수)
- *                 그 분류의 첫머리에 서면 다음 기둥이 가리지 않는 자리의 마지막 K 칸 — 패널 바로 왼쪽에 붙습니다
- *   한 칸 모자람  두 칸 기둥에서 이름표 + 병이 가리지 않는 칸보다 하나 적거나 많은 분류 → 빈 벽 한 칸
- *   · 넘침        다음 기둥이 패널 경계에 반쯤 걸리지 않고, 막힌 멈출 자리가 둘 붙어 생기지 않습니다
- *   그 밖         빈 벽 없음 — 병을 훑어 끝에 닿을 때 다음 기둥이 따라 들어옵니다
- *
- * 짧은 분류의 첫머리에서는 빈 벽이 한 화면씩 크게 벌어지지 않고, 두 분류의 병이 한 화면에 섞여
- * 서지도 않으면서, 다음 분류가 거기 있다는 게 보이고 누르면 그리로 흐릅니다. 가리지 않는 칸
- * 일곱에서 병 둘인 분류는 빈 벽 하나 — 이름표 두 칸 · 병 둘 · 빈 벽 · 다음 이름표 두 칸이
- * 서고, 다음 현판이 패널 바로 왼쪽에 섭니다. 병이 넷 이상이면 가리지 않는 자리를 병으로 채우고
- * 다음 기둥은 패널 밑에서 비칩니다.
- *
- * 마지막 분류 뒤의 "처음으로" 기둥은 벽 끝(max)에서 늘 패널 바로 왼쪽에 붙습니다.
- * K 가 1 이면 짧은 분류의 식이 예전 그대로(가리지 않는 칸 − 2 − 병 칸 수)입니다.
+ * `clear` 는 패널에 가리지 않는 칸 수(쌓는 배치에서는 창 전체 칸 수)입니다. 병 칸 수가 그 이하인
+ * 분류는 벽감 뒤에 빈 벽(`gap`)을 두어 한 창을 채우고, 그보다 긴 분류는 빈 벽 없이 잇습니다.
+ * 마지막 분류도 같습니다.
  */
-export function layoutWall(
-  sections: ShelfSection[],
-  clear = 0,
-  plaqueSpan = 1,
-): WallLayout {
-  // NOTE: 0 을 받습니다 — 현판이 트랙 밖(왼쪽 메뉴)에 선 배치에는 벽에 기둥 칸이 없습니다
-  const column = Math.max(0, plaqueSpan)
+export function layoutWall(sections: ShelfSection[], clear = 0): WallLayout {
   let at = 0
   const placed = sections.map((section) => {
-    const plaque = at
-    const start = plaque + column
+    const start = at
     const span = Math.max(1, section.items.length)
-    const used = column + span
-    const gap =
-      used + column <= clear
-        ? clear - column - used
-        : column > 1 && Math.abs(used - clear) === 1
-          ? 1
-          : 0
+    const gap = span <= clear ? clear - span : 0
     at = start + span + gap
-    return { ...section, plaque, start, span, gap }
+    return { ...section, start, span, gap }
   })
-  return {
-    sections: placed,
-    back: at,
-    total: at + column,
-    plaqueSpan: column,
-  }
-}
-
-/**
- * 창 왼쪽 끝이 멈출 수 있는 칸들(작은 순서부터, 0 ~ max).
- *
- * 이름표 벽 기둥(분류 현판 · "처음으로" 현판)은 두 칸이 한 덩어리입니다. 기둥 가운데를 창 경계가
- * 가르면 현판이 반으로 잘려 보여서, 그렇게 되는 자리를 뺍니다. 기둥 C 의 k 번째 칸(0 < k < K)마다
- *
- *   C + k          창 왼쪽 끝이 기둥을 가름
- *   C + k − clear  패널 왼쪽 끝(쌓는 배치에서는 창 오른쪽 끝)이 기둥을 가름
- *
- * 0 · max · 분류 현판 자리는 언제나 멈출 수 있습니다(칩 · 이름표 벽이 가는 곳). 막힌 자리는 거의
- * 늘 떨어져 있어 휠 한 번이 막힌 자리를 건너 두 칸을 가도 어색하지 않습니다. 가리지 않는 칸 다섯에
- * 병 하나 이하인 분류가 둘 이어질 때만 막힌 자리가 붙어 세 칸을 건너뜁니다.
- * 한 칸 기둥(K 1)이면 막힌 자리가 없습니다.
- *
- *   병 [5, 17, 3] · 가리지 않는 칸 일곱 → 1 · 8 · 20 · 25 가 막힘 (max 26)
- */
-export function wallStops(
-  layout: WallLayout,
-  clear: number,
-  max: number,
-): number[] {
-  const blocked = new Set<number>()
-  const columns = [...layout.sections.map(({ plaque }) => plaque), layout.back]
-  for (const column of columns) {
-    for (let k = 1; k < layout.plaqueSpan; k += 1) {
-      blocked.add(column + k)
-      blocked.add(column + k - clear)
-    }
-  }
-  const stops: number[] = []
-  for (let at = 0; at <= max; at += 1) {
-    if (!blocked.has(at)) stops.push(at)
-  }
-  return stops
-}
-
-/**
- * `from` 에서 `direction` 쪽으로 처음 만나는 멈출 자리(`from` 자신 포함). 그쪽으로 더 없으면
- * 벽 끝의 멈출 자리입니다. 방향이 0 이면 오른쪽으로 찾습니다.
- */
-export function nextStop(
-  stops: readonly number[],
-  from: number,
-  direction: number,
-): number {
-  const first = stops[0]
-  const last = stops.at(-1)
-  if (first === undefined || last === undefined) return Math.max(0, from)
-  if (direction < 0) {
-    for (let at = stops.length - 1; at >= 0; at -= 1) {
-      const stop = stops[at] ?? first
-      if (stop <= from) return stop
-    }
-    return first
-  }
-  for (const stop of stops) {
-    if (stop >= from) return stop
-  }
-  return last
-}
-
-/** `at` 이 멈출 수 있는 자리면 그대로, 막힌 자리면 `direction` 쪽의 다음 멈출 자리 */
-export function nearStop(
-  stops: readonly number[],
-  at: number,
-  direction: number,
-): number {
-  return stops.includes(at) ? at : nextStop(stops, at, direction)
+  return { sections: placed, total: at }
 }
 
 export type SlotView = {
@@ -977,7 +789,7 @@ export function slotView(
 }
 
 /**
- * 칸 위치(소수)에 걸친 분류. 이름표 벽은 뒤따르는 벽감의 분류로 칩니다("처음으로" 기둥은 마지막 분류).
+ * 칸 위치(소수)에 걸친 분류. 벽감 뒤 빈 벽은 그 벽감의 분류로 칩니다.
  * 창 가운데가 어느 분류에 있는지로 칩의 켜짐을 정할 때 씁니다.
  */
 export function sectionAt(
@@ -986,7 +798,7 @@ export function sectionAt(
 ): WallSection | undefined {
   let found = sections[0]
   for (const section of sections) {
-    if (section.plaque <= position) found = section
+    if (section.start <= position) found = section
   }
   return found
 }
@@ -1103,48 +915,42 @@ export function meterWheel(
 const STEP_EPS = 0.02
 
 /**
- * 휠 한 칸(`step` ±1)을 받았을 때 벽이 향할 멈출 자리.
+ * 휠 한 칸(`step` ±1)을 받았을 때 벽이 향할 칸(0 ~ `max`).
  *
  *   같은 쪽으로 흐르는 중   목적지에서 한 칸 더 — 연달아 굴린 만큼 쌓입니다
  *   서 있거나 반대로 굴림   지금 자리에서 그쪽 다음 칸 경계 — 흐르던 벽이 곧바로 돌아섭니다
  *
- * 막힌 자리(wallStops)는 건너뜁니다 — 이름표 벽 기둥은 휠 한 번에 통째로 지나갑니다. 벽 끝이면
- * 목적지가 그대로입니다(부르는 쪽이 아무것도 하지 않습니다).
- *
- *   병 [5, 17, 3] · 가리지 않는 칸 일곱: 0 에서 한 번 → 2 (1 막힘) · 7 에서 앞으로 → 9 · 뒤로 → 6
+ * 벽 끝이면 목적지가 그대로입니다(부르는 쪽이 아무것도 하지 않습니다).
  */
 export function wheelStop(
-  stops: readonly number[],
   {
     position,
     dest,
     moving,
   }: { position: number; dest: number; moving: boolean },
   step: -1 | 1,
+  max: number,
 ): number {
   const heading =
     Math.abs(dest - position) <= STEP_EPS ? 0 : Math.sign(dest - position)
-  if (moving && heading === step) return nextStop(stops, dest + step, step)
+  if (moving && heading === step) return clamp(dest + step, 0, max)
   const from =
     step > 0
       ? Math.floor(position + STEP_EPS) + 1
       : Math.ceil(position - STEP_EPS) - 1
-  return nextStop(stops, from, step)
+  return clamp(from, 0, max)
 }
 
 /**
  * 칸 하나(index)가 창 밖이면 창을 최소한만 옮겨 들입니다. 이미 보이면 그대로입니다.
- * 왼쪽으로 들일 때는 앞의 칸을 `lead` 만큼 더 보여 줍니다 — 벽감 첫 병이면 그 앞의
- * 이름표 벽까지 보여서 어느 분류로 넘어왔는지 알 수 있습니다.
  */
 export function revealStart(
   start: number,
   visible: number,
   index: number,
   max: number,
-  lead = 0,
 ): number {
-  if (index < start) return clamp(index - lead, 0, max)
+  if (index < start) return clamp(index, 0, max)
   if (index >= start + visible) return clamp(index - visible + 1, 0, max)
   return start
 }
@@ -1154,22 +960,17 @@ export function revealStart(
  * 하단 페이저로 한 병씩 넘길 때 ShelfWall 이 씁니다.
  *
  *   이미 가리지 않는 자리에 있다          움직이지 않습니다
- *   보던 분류 안에서 왼쪽으로 옮긴다      최소한만 옮깁니다(revealStart) — 첫 병이면 이름표 벽 기둥까지
- *                                         (`lead`, 기본은 기둥 칸 수)
+ *   보던 분류 안에서 왼쪽으로 옮긴다      최소한만 옮깁니다(revealStart)
  *   오른쪽으로 · 다른 분류로 넘어간다     병을 가리지 않는 자리의 오른쪽 끝에 두되, 창 왼쪽 끝이
- *                                         그 분류의 이름표 벽보다 앞으로 나가지 않습니다
- *
- * 구한 자리가 막힌 자리(wallStops)면 옮기던 쪽의 다음 멈출 자리로 갑니다 — 왼쪽으로 들일 때는
- * 왼쪽으로, 오른쪽 · 다른 분류로 넘어갈 때는 오른쪽으로. 막힌 자리는 떨어져 있고 기둥 한 칸만큼만
- * 비켜서서, 고른 병은 늘 가리지 않는 자리 안에 남습니다.
+ *                                         그 분류의 첫 칸보다 앞으로 나가지 않습니다
  *
  * "보던 분류" 는 칩과 같이 가리지 않는 자리 가운데에 걸린 분류입니다(sectionAt).
  *
  * 분류를 넘어갈 때도 최소한만 옮기면 두 분류의 병이 한 화면에 섞여 섭니다. 병이 둘인 분류의
  * 끝 병에서 다음 분류의 첫 병으로 넘기면 창이 한 칸만 밀려 앞 분류의 병 둘 · 빈 벽 · 다음
  * 이름표 · 첫 병이 함께 섰고, 칩은 앞 분류에 켜진 채 패널은 다음 분류의 향수를 보였습니다.
- * 이름표 벽보다 앞으로 나가지 않으면 앞 분류의 병이 창에 남지 않고, 병을 오른쪽 끝에 두면 뒤
- * 분류의 병도 들어오지 않습니다 — 짧은 분류 뒤에는 다음 이름표까지 빈 벽이 있고, 긴 분류는
+ * 그 분류의 첫 칸보다 앞으로 나가지 않으면 앞 분류의 병이 창에 남지 않고, 병을 오른쪽 끝에 두면
+ * 뒤 분류의 병도 들어오지 않습니다 — 짧은 분류 뒤에는 한 창까지 빈 벽이 있고, 긴 분류는
  * 병으로 가리지 않는 자리를 채웁니다(layoutWall).
  */
 export function revealItem(
@@ -1178,83 +979,50 @@ export function revealItem(
   clear: number,
   index: number,
   max: number,
-  stops: readonly number[],
-  lead?: number,
 ): number {
   if (index >= from && index < from + clear) return from
   const target = sectionAt(sections, index)
   if (!target) return from
   const viewing = sectionAt(sections, from + clear / 2)
   if (index < from && viewing?.category === target.category) {
-    const column = lead ?? target.start - target.plaque
-    const left = revealStart(
-      from,
-      clear,
-      index,
-      max,
-      index === target.start ? column : 0,
-    )
-    return nearStop(stops, left, -1)
+    return revealStart(from, clear, index, max)
   }
-  const right = clamp(Math.max(target.plaque, index - clear + 1), 0, max)
-  return nearStop(stops, right, 1)
+  return clamp(Math.max(target.start, index - clear + 1), 0, max)
 }
 
 /*
- * ── 이름표 벽의 현판 ─────────────────────────────────────────
+ * ── 분류 메뉴의 현판 ─────────────────────────────────────────
  *
- * 벽감 앞 이름표 벽 기둥(두 칸, 휴대폰은 한 칸 — layoutWall)에 붙여 둔 종이 판입니다.
- * 옆변은 곧고, 윗변은 양 모서리를 안으로 둥글게 파낸 어깨에서 가운데로 부드럽게 솟는 아치이며,
- * 아래 모서리는 둥급니다. 벽감 높이의 가운데에 섭니다.
+ * 왼쪽 분류 메뉴 기둥(ShelfWall)에 세우는 종이 판입니다. 모서리만 둥근 네모이고, 안쪽에 윤곽을
+ * 따라 도는 테두리선이 있습니다.
  *
- *   폭   = 맨 벽 폭(기둥 폭 − 좌우 옆벽 33 x 2) x 0.9 — 옆벽과 5px 이상 띄우고, 벽감 높이의 29% 이하.
- *          30 아래로는 줄이지 않되, 맨 벽이 그보다 좁은 휴대폰(320)에서도 옆벽에 겹치지는 않습니다
- *   높이 = 벽감 높이 x 0.75 — 폭의 3.2 배 이하(분류 이름을 세로로 세우면 110 이상)
+ *   폭   = 기둥 폭(칸 폭 x 기둥 칸 수) x 0.9 — 기둥 끝과 5px 이상 띄우고 `maxWidth` 이하.
+ *          30 아래로는 줄이지 않되 기둥 폭보다 넓어지지는 않습니다
+ *   높이 = 벽감 높이 x 0.75 — 폭의 3.2 배 이하(분류 이름을 세로로 세우면 110 이상)이고 `maxHeight` 이하
  *
- * 시안(벽감 440)의 현판은 128 x 330, 벽감 높이의 29% x 75% 입니다. 두 칸 기둥이면 1024 이상 모든
- * 화면(과 768)에서 폭이 벽감의 29% 에 걸려 시안 비율로 섭니다. 한 칸 기둥(휴대폰)은 폭이 맨 벽에 먼저
- * 걸려서, 높이를 폭의 3.2 배로 묶어 가늘고 긴 막대가 되지 않게 합니다.
- *
- * 옆벽과의 여백은 (맨 벽 − 폭) / 2 이고, 기둥이 패널 바로 왼쪽에 서면 패널까지는 거기에 33 을 더합니다.
- *
- *   1920 x 1080  칸 182.5 · 벽감 605 → 현판 175 x 455 · 옆벽과 62 · 패널까지 95
- *   1562 x 914   칸 144.13 · 벽감 485 → 현판 140 x 365 · 옆벽과 41 · 패널까지 74
- *   1280 x 720   칸 111.38 · 벽감 345 → 현판 100 x 260 · 옆벽과 28 · 패널까지 61
- *
- * 윗변 · 모서리 · 안쪽 테두리선은 폭에 비례합니다. 1920 x 1080 에서 모서리 파임 12 · 아치 25 ·
- * 아래 모서리 25 · 안쪽 테두리선 6 입니다. 꼭대기에 꽂던 황동 핀은 걷었습니다(S15P21E203-431).
+ * 모서리 · 안쪽 테두리선은 짧은 변에 비례합니다. 꼭대기에 꽂던 황동 핀은 걷었습니다(S15P21E203-431).
  *
  * 폭이 좁아지면 적는 것을 줄입니다(PlaqueDetail).
  *
- *   full      100 이상   분류 이름 · 짧은 선 · 개수 · 영문 설명 — 두 칸 기둥은 늘 여기입니다
- *   compact   70 이상    영문 설명을 뺍니다 — 한 칸 기둥인 좁은 태블릿
- *   vertical  그 아래    분류 이름을 세로로 세웁니다 — 휴대폰. 가로로는 12px 글자가 한 줄에 안 듭니다
+ *   full      100 이상   분류 이름 · 짧은 선 · 개수 · 영문 설명
+ *   compact   70 이상    영문 설명을 뺍니다
+ *   vertical  그 아래    분류 이름을 세로로 세웁니다. 가로로는 12px 글자가 한 줄에 안 듭니다
  *
- * 폭 · 높이 · 모양을 바꿀 때는 아래 상수만 고칩니다. 옆벽에 닿지 않는지 · 끝자리 규칙을
- * 지키는지는 테스트가 화면 크기마다 봅니다.
+ * 폭 · 높이 · 모양을 바꿀 때는 아래 상수만 고칩니다. 끝자리 규칙을 지키는지는 테스트가 화면
+ * 크기마다 봅니다.
  */
-/**
- * 이름표 벽 기둥 좌우를 이웃 벽감의 옆벽 · 입구 테두리가 차지하는 폭.
- * ⚠️ shelf-display.css 의 --track-inset(--bevel 3 + --wall 30)과 같은 값이어야 합니다.
- */
-const PLAQUE_SIDE = 33
 const PLAQUE_MARGIN = 5
 const PLAQUE_WALL_SHARE = 0.9
-const PLAQUE_WIDTH_PER_CASE = 0.29
 const PLAQUE_MIN_WIDTH = 30
 const PLAQUE_HEIGHT_PER_CASE = 0.75
 const PLAQUE_MAX_ASPECT = 3.2
 /**
  * 분류 이름을 세로로 세운 현판(vertical)의 높이 하한. 다섯 자("시향해 봄" 12px) · 짧은 선 · 개수
- * 14px 이 90 남짓이라, 어깨 아래 · 안쪽 테두리선 안에 넣으려면 110 입니다. 폭의 3.2 배로만 자르면
- * 폭 30 현판(360 휴대폰)이 95 가 되어 글자가 어깨와 아래 테두리선에 걸립니다.
+ * 14px 이 90 남짓이라, 안쪽 테두리선 안에 넣으려면 110 입니다. 폭의 3.2 배로만 자르면
+ * 폭 30 현판(360 휴대폰)이 95 가 되어 글자가 테두리선에 걸립니다.
  */
 const PLAQUE_VERTICAL_MIN_HEIGHT = 110
-/** 모양 — 전부 현판 폭에 곱합니다 */
-const PLAQUE_NOTCH = 0.07
-const PLAQUE_ARCH = 0.14
-const PLAQUE_CORNER = 0.14
-/** 네모 판(메뉴판)의 모서리 반지름 — 짧은 변 대비. 네모로 읽히도록 현판보다 훨씬 작습니다 */
+/** 네모 판(메뉴판)의 모서리 반지름 — 짧은 변 대비 */
 const PLATE_CORNER = 0.05
 const PLAQUE_INSET = 0.035
 /**
@@ -1272,19 +1040,12 @@ export type PlaqueDetail = 'full' | 'compact' | 'vertical'
 export type PlaqueOutline = {
   width: number
   height: number
-  /** 윗모서리를 안으로 파낸 원호의 반지름 */
-  notch: number
-  /** 어깨에서 가운데 꼭대기까지 솟는 높이 */
-  arch: number
-  /** 아래 모서리 반지름 */
+  /** 모서리 반지름 */
   corner: number
 }
 
 export type PlaqueMetrics = PlaqueOutline & {
-  /**
-   * 글자가 시작하는 높이 — 어깨를 올린 현판은 옆변이 끝나는 어깨(모서리 파임 + 아치), 네모 판은 안쪽
-   * 테두리선 바로 아래입니다
-   */
+  /** 글자가 시작하는 높이 — 안쪽 테두리선 바로 아래입니다 */
   crown: number
   /** 바깥선에서 안쪽 테두리선까지 */
   inset: number
@@ -1302,56 +1063,7 @@ export type PlaqueMetrics = PlaqueOutline & {
 }
 
 /**
- * 현판 윤곽을 안쪽으로 `d` 만큼 들인 경로(SVG path 문법, 현판 왼쪽 위가 원점).
- *
- * 윤곽은 원호와 직선으로만 그립니다. 원호를 안쪽으로 들인 선은 **같은 중심의 원호**라,
- * 반지름만 d 만큼 바꾸면 바깥선과 어디서나 똑같은 간격으로 따라 도는 선이 됩니다
- * (베지어 곡선이면 들인 선을 어림할 수밖에 없어 간격이 곳곳에서 벌어집니다).
- *
- *   모서리 파임  중심이 옆변 위 끝 바깥(0, arch)인 오목한 원호 → 반지름 notch + d
- *   아치        두 어깨와 꼭대기(가운데, 0)를 지나는 볼록한 원호 → 반지름 R − d
- *   아래 모서리  볼록한 원호 → 반지름 corner − d
- *
- * 들인 선에서 파임과 아치가 만나는 어깨 점은 두 원의 교점으로 다시 구합니다.
- */
-export function plaquePath(
-  { width: w, height: h, notch, arch, corner }: PlaqueOutline,
-  d = 0,
-): string {
-  const f = (value: number) => +value.toFixed(2)
-  const half = w / 2
-  // 아치 원 — 두 어깨(notch, arch)와 꼭대기(half, 0)를 지납니다
-  const reach = half - notch
-  const radius = (reach * reach + arch * arch) / (2 * arch)
-  const notchR = notch + d
-  const archR = radius - d
-  const cornerR = corner - d
-
-  // 들인 옆변(x = d)이 파임 원과 만나는 높이
-  const side = arch + Math.sqrt(notchR * notchR - d * d)
-
-  // 파임 원(중심 0, arch)과 아치 원(중심 half, radius)의 두 교점 중 오른쪽 것 — 왼쪽 어깨
-  const dx = half
-  const dy = radius - arch
-  const between = Math.hypot(dx, dy)
-  const along =
-    (notchR * notchR - archR * archR + between * between) / (2 * between)
-  const across = Math.sqrt(Math.max(0, notchR * notchR - along * along))
-  const shoulderX = (along * dx + across * dy) / between
-  const shoulderY = arch + (along * dy - across * dx) / between
-
-  return (
-    `M${f(d)} ${f(h - corner)}V${f(side)}` +
-    `A${f(notchR)} ${f(notchR)} 0 0 0 ${f(shoulderX)} ${f(shoulderY)}` +
-    `A${f(archR)} ${f(archR)} 0 0 1 ${f(w - shoulderX)} ${f(shoulderY)}` +
-    `A${f(notchR)} ${f(notchR)} 0 0 0 ${f(w - d)} ${f(side)}` +
-    `V${f(h - corner)}A${f(cornerR)} ${f(cornerR)} 0 0 1 ${f(w - corner)} ${f(h - d)}` +
-    `H${f(corner)}A${f(cornerR)} ${f(cornerR)} 0 0 1 ${f(d)} ${f(h - corner)}Z`
-  )
-}
-
-/**
- * 칸 폭 · 벽감 높이 · 기둥 칸 수(`span`)에 맞는 현판 치수와 모양(위 "이름표 벽의 현판").
+ * 칸 폭 · 벽감 높이 · 기둥 칸 수(`span`)에 맞는 현판 치수와 모양(위 "분류 메뉴의 현판").
  *
  * 모양은 CSS clip-path 값으로 줍니다. 띠(ring)는 바깥 윤곽과 안쪽으로 들인 윤곽을
  * evenodd 로 겹친 것이라, 둘 사이만 칠해져 윤곽을 따라 도는 선이 됩니다. border 로 두르면
@@ -1360,9 +1072,9 @@ export function plaquePath(
 /**
  * 네모 판의 윤곽을 안쪽으로 `d` 만큼 들인 경로 (S15P21E203-417).
  *
- * 왼쪽 분류 메뉴판이 쓰는 모양입니다. 원호로 어깨를 올리는 `plaquePath` 와 달리 모서리만
- * 둥근 네모라, 들인 선은 반지름을 그만큼 줄인 같은 네모입니다 — 바깥선과 어디서나 똑같은
- * 간격으로 따라 돕니다(테두리 네 겹이 이 성질에 기댑니다).
+ * 왼쪽 분류 메뉴판이 쓰는 모양입니다. 모서리만 둥근 네모라, 들인 선은 반지름을 그만큼 줄인
+ * 같은 네모입니다 — 바깥선과 어디서나 똑같은 간격으로 따라 돕니다(테두리 네 겹이 이 성질에
+ * 기댑니다).
  *
  * 반지름이 0 이 되면 원호는 직선으로 그려집니다(SVG 규약) — 따로 가르지 않습니다.
  */
@@ -1394,34 +1106,22 @@ export function plaqueMetrics(
   caseHeight: number,
   span = 1,
   /**
-   * 판을 자리에 맞추는 값들 (S15P21E203-417). 아무것도 주지 않으면 예전 그대로입니다.
+   * 판을 자리에 맞추는 값들 (S15P21E203-417).
    *
    *   maxHeight     높이 상한(px). 왼쪽에 셋을 쌓는 메뉴판처럼 낮게 만들 때 줍니다
    *   maxWidth      폭 상한(px)
-   *   widthPerCase  폭을 벽감 높이에 묶는 비율. 메뉴판은 기둥 폭을 다 쓰므로 Infinity 를 주어
-   *                 이 굴레를 풀고, 남은 굴레(맨 벽 폭)가 폭을 정하게 합니다
-   *   plate         어깨를 올리지 않고 **모서리만 둥근 네모**로 그립니다 (메뉴판)
    */
-  fit: {
-    maxHeight?: number
-    maxWidth?: number
-    widthPerCase?: number
-    plate?: boolean
-  } = {},
+  fit: { maxHeight?: number; maxWidth?: number } = {},
 ): PlaqueMetrics {
-  /*
-   * 판이 설 수 있는 맨 벽 폭. 벽 안에 기둥으로 선 현판은 좌우로 벽감의 옆벽이 들어올
-   * 자리(PLAQUE_SIDE)를 비워 둬야 하지만, 네모 판은 벽 밖 메뉴라 그 자리가 필요 없습니다.
-   */
-  const wall = pitch * span - (fit.plate ? 0 : PLAQUE_SIDE * 2)
+  // 판이 설 수 있는 폭 — 메뉴 기둥 폭입니다
+  const wall = pitch * span
   const width = Math.max(
-    // 하한 30 도 맨 벽보다 넓게 두지는 않습니다 — 옆벽에 겹칩니다(320 휴대폰)
+    // 하한 30 도 기둥 폭보다 넓게 두지는 않습니다
     Math.min(PLAQUE_MIN_WIDTH, floor5(wall)),
     floor5(
       Math.min(
         wall - PLAQUE_MARGIN * 2,
         wall * PLAQUE_WALL_SHARE,
-        caseHeight * (fit.widthPerCase ?? PLAQUE_WIDTH_PER_CASE),
         fit.maxWidth ?? Infinity,
       ),
     ),
@@ -1440,40 +1140,27 @@ export function plaqueMetrics(
     ),
     floor5(fit.maxHeight ?? Infinity),
   )
-  /*
-   * 모서리 파임 · 아치 · 아래 모서리의 비율을 재는 기준 — **짧은 변**입니다.
-   *
-   * 세로로 긴 판(지금까지의 분류 현판)은 짧은 변이 곧 폭이라 예전과 값이 같습니다. 가로로 누운
-   * 메뉴판에서만 달라집니다 — 폭을 기준으로 두면 아치(폭의 14%)가 낮은 판의 3분의 1을 먹어
-   * 현판이 아니라 반원 딱지가 됩니다. 짧은 변으로 재면 눕혀도 같은 형태로 읽힙니다.
-   */
+  // 모서리 · 안쪽 테두리선을 재는 기준 — **짧은 변**입니다
   const base = Math.min(width, height)
   const inset = Math.max(3, Math.round(base * PLAQUE_INSET))
-  // 네모 판은 모서리를 파지도 어깨를 올리지도 않습니다
-  const notch = fit.plate ? 0 : Math.max(3, Math.round(base * PLAQUE_NOTCH))
-  const arch = fit.plate ? 0 : Math.max(6, Math.round(base * PLAQUE_ARCH))
-  // 안쪽 빛 띠(inset + 2)까지 들여도 아래 모서리 원호가 남아야 합니다
-  const corner = fit.plate
-    ? Math.max(inset + 2, Math.round(base * PLATE_CORNER))
-    : Math.max(inset + 3, Math.round(base * PLAQUE_CORNER))
+  // 안쪽 빛 띠(inset + 2)까지 들여도 모서리 원호가 남아야 합니다
+  const corner = Math.max(inset + 2, Math.round(base * PLATE_CORNER))
   /*
-   * 글자가 시작하는 높이. 어깨를 올린 현판은 어깨 아래, 어깨가 없는 네모 판은 안쪽 테두리선 바로
-   * 아래입니다 — 0 으로 두면 글자가 판 꼭대기의 테두리선에 붙습니다. 네모 판 위를 비워 두던 핀 자리는
-   * 핀을 걷으며 없앴습니다(판 가운데에 글자가 섭니다).
+   * 글자가 시작하는 높이 — 안쪽 테두리선 바로 아래입니다. 0 으로 두면 글자가 판 꼭대기의 테두리선에
+   * 붙습니다. 네모 판 위를 비워 두던 핀 자리는 핀을 걷으며 없앴습니다(판 가운데에 글자가 섭니다).
    */
-  const crown = fit.plate ? inset + PLATE_TEXT_TOP : notch + arch
+  const crown = inset + PLATE_TEXT_TOP
 
-  const outline = { width, height, notch, arch, corner }
-  const draw = fit.plate ? platePath : plaquePath
+  const outline = { width, height, corner }
   const ring = (from: number, to: number) =>
-    `path(evenodd, "${draw(outline, from)} ${draw(outline, to)}")`
+    `path(evenodd, "${platePath(outline, from)} ${platePath(outline, to)}")`
 
   return {
     ...outline,
     crown,
     inset,
     detail,
-    shape: `path("${draw(outline)}")`,
+    shape: `path("${platePath(outline)}")`,
     edgeRing: ring(0, 1),
     rimRing: ring(1, 2),
     lineRing: ring(inset, inset + 1),

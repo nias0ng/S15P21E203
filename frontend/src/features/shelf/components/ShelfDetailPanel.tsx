@@ -4,10 +4,15 @@ import { Link } from 'react-router'
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { toPerfumeDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
+import {
+  groupNoteStages,
+  NOTE_FLAT,
+  NOTE_STAGES,
+} from '@/shared/lib/noteStages'
 import { Button } from '@/shared/ui/Button'
 import { StarRating } from '@/shared/ui/StarRating'
 
-import { formatShelfDate, NOTE_STAGES, noteRows } from '../lib'
+import { formatShelfDate } from '../lib'
 import {
   SHELF_CATEGORIES,
   SHELF_CATEGORY_CAPTION,
@@ -107,7 +112,7 @@ const NOTES_PER_ROW = 3
  *
  * 예전에는 글이 전부 왼쪽 끝에 붙고 향조가 색 구슬 셋(모든 향수에 오렌지 · 로즈 · 패츌리 고정값)이라,
  * 편지가 펼쳐졌다 접힐 때 같은 자리의 두 카드가 다른 물건처럼 보였습니다. 향조는 이제 상세 응답의
- * 실제 노트입니다(lib.ts 의 noteRows).
+ * 실제 노트입니다(shared/lib 의 groupNoteStages).
  *
  * 카드 폭은 정하지 않습니다 — 진열장과 나란히 놓이는 자리라 화면(pages)이 정합니다.
  */
@@ -191,23 +196,7 @@ export function ShelfDetailPanel({
           </div>
 
           <div className="flex flex-col items-center gap-1.25">
-            {/*
-              브랜드는 자간 넓은 대문자입니다. 영문 브랜드가 있으면 그걸 적고(한글 브랜드는 uppercase 가
-              무시됩니다), 없으면 한글 브랜드를 적습니다. 영문은 한글을 되풀이하는 장식이라 낭독기에서
-              빼고 그 자리에 한글을 보이지 않게 적어 둡니다 — 이름표(DisplayCase)와 같은 규칙입니다.
-            */}
-            <p className="shelf-sheet-label">
-              {item.brandEn ? (
-                <>
-                  <span aria-hidden lang="en">
-                    {item.brandEn}
-                  </span>
-                  <span className="sr-only">{item.brand}</span>
-                </>
-              ) : (
-                item.brand
-              )}
-            </p>
+            <p className="shelf-sheet-label">{item.brand}</p>
 
             {/*
               **국문 이름을 크게 적고 그 위에 영문 이름을 한 줄 답니다.** 백엔드가 주는 `name` 이 영문이고
@@ -277,20 +266,17 @@ export function ShelfDetailPanel({
             맡는 것은 그대로입니다. 확인창은 화면(pages)이 띄웁니다.
 
             공용 Button 을 씁니다. 직접 만들면 모서리·굵기·포커스 링·전환·비활성 규칙을 그대로 베껴
-            적게 되는데, 나중에 공용 쪽이 바뀔 때 이 버튼만 뒤처집니다. 높이 · 모서리 · 색만 덮습니다
+            적게 되는데, 나중에 공용 쪽이 바뀔 때 이 버튼만 뒤처집니다. 높이 · 모서리만 덮습니다
             — cn(twMerge)이 variant·size 의 겹치는 값을 걷어냅니다.
           */}
           <div className="flex flex-col gap-3.75 @xl:mt-auto">
             <div className="grid grid-cols-2 gap-2.5">
               <Button
-                variant="outline"
+                variant="dangerOutline"
                 size="sm"
                 fullWidth
                 onClick={onRemove}
-                className={cn(
-                  'border-danger/40 text-danger hover:bg-danger/5 h-10 rounded-md',
-                  FOCUS_RING,
-                )}
+                className={cn('h-10 rounded-md', FOCUS_RING)}
               >
                 저장 해제
               </Button>
@@ -313,7 +299,7 @@ export function ShelfDetailPanel({
 }
 
 /**
- * 향조 — 상세 응답의 실제 노트를 탑 · 미들 · 베이스 줄로 묶어 적습니다(lib.ts 의 noteRows).
+ * 향조 — 상세 응답의 실제 노트를 탑 · 미들 · 베이스 줄로 묶어 적습니다(shared/lib 의 groupNoteStages).
  *
  * 줄마다 노트 셋까지 적고 넘치면 "외 N" 입니다. 줄 머리의 단계 이름은 자간 넓힌 대문자이고, 피라미드가
  * 없는 향수(flat)는 이름표 없이 노트만 한 줄입니다. 노트 이름은 받은 그대로(영문)입니다 — 향수
@@ -329,7 +315,7 @@ function ScentNotes({
   item: ShelfItemDetail
   pending: boolean
 }) {
-  const rows = noteRows(item.scentNotes)
+  const rows = groupNoteStages(item.scentNotes)
 
   return (
     <div className="flex flex-col gap-2">
@@ -353,16 +339,15 @@ function ScentNotes({
         </p>
       ) : (
         <dl className="shelf-sheet-notes">
-          {rows.map((row) => {
-            const shown = row.names.slice(0, NOTES_PER_ROW)
-            const more = row.names.length - shown.length
+          {rows.map(({ stage, notes }) => {
+            const names = notes.map((note) => note.name)
+            const shown = names.slice(0, NOTES_PER_ROW)
+            const more = names.length - shown.length
+            const flat = stage === NOTE_FLAT
             return (
-              <Fragment key={row.stage}>
-                {row.label !== null && <dt>{row.label}</dt>}
-                <dd
-                  data-wide={row.label === null ? '' : undefined}
-                  title={row.names.join(', ')}
-                >
+              <Fragment key={stage}>
+                {!flat && <dt>{stage}</dt>}
+                <dd data-wide={flat ? '' : undefined} title={names.join(', ')}>
                   {shown.join(' · ')}
                   {more > 0 && <span className="shelf-muted"> 외 {more}</span>}
                 </dd>

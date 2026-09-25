@@ -15,6 +15,7 @@ export {
   perfumeKeys,
   perfumeListQuery,
   perfumeNotesQuery,
+  perfumePickQuery,
   perfumeReviewAggregatesQuery,
   perfumeReviewsQuery,
   relatedPerfumesQuery,

@@ -20,18 +20,16 @@ describe('useToast', () => {
     expect(result.current.toastProps.message).toBe('진열대에 저장했습니다')
   })
 
-  it('closeToast 로 닫는다', () => {
+  it('toastProps.onClose 로 닫는다', () => {
     const { result } = renderHook(() => useToast())
 
     act(() => result.current.showToast('저장했습니다'))
-    act(() => result.current.closeToast())
+    act(() => result.current.toastProps.onClose())
 
     expect(result.current.toastProps.open).toBe(false)
   })
 
   it('onClose 의 함수 identity 가 렌더 사이에 유지된다', () => {
-    // Toast 의 자동 닫힘 useEffect 가 onClose 를 의존성으로 갖기 때문에
-    // 이게 깨지면 렌더마다 타이머가 초기화되어 토스트가 안 사라집니다.
     const { result, rerender } = renderHook(() => useToast())
     const first = result.current.toastProps.onClose
 

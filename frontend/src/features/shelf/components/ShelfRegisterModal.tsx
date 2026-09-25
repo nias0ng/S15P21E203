@@ -1,12 +1,9 @@
 import { useState } from 'react'
 
-import { cn } from '@/shared/lib/cn'
+import { useResetOnOpen } from '@/shared/hooks/useResetOnOpen'
 import { Button } from '@/shared/ui/Button'
-import { EmptyState } from '@/shared/ui/EmptyState'
 import { Modal } from '@/shared/ui/Modal'
-import { SearchField } from '@/shared/ui/SearchField'
-import { Skeleton } from '@/shared/ui/Skeleton'
-import { Thumbnail } from '@/shared/ui/Thumbnail'
+import { PerfumePicker } from '@/shared/ui/PerfumePicker'
 
 import type { PerfumeOption, ShelfCategory, ShelfRegisterInput } from '../types'
 
@@ -20,10 +17,10 @@ type Props = {
    *
    * **검색하기 전에는 빈 배열입니다.** 조건 없이 불러오면 카탈로그의 번호 빠른 앞쪽
    * 스물이 후보로 서는데, 그건 고를 향수가 아니라 그냥 목록입니다. 글에 향수를 거는
-   * 모달(`LinkedPerfumeModal`)도 같은 규칙입니다.
+   * 모달(`LinkedPerfumeModal`)도 같은 규칙입니다. `preselected` 로 1단계를 건너뛰면 쓰지 않습니다.
    */
-  options: PerfumeOption[]
-  onSearch: (keyword: string) => void
+  options?: PerfumeOption[]
+  onSearch?: (keyword: string) => void
   onSubmit: (input: ShelfRegisterInput) => void
   /**
    * 향수 상세(A10)에서 들어오면 1단계를 건너뛰고 2단계로 바로 갑니다.
@@ -47,7 +44,7 @@ type Props = {
 export function ShelfRegisterModal({
   open,
   onClose,
-  options,
+  options = [],
   onSearch,
   onSubmit,
   preselected,
@@ -66,41 +63,22 @@ export function ShelfRegisterModal({
   const [showMissing, setShowMissing] = useState(false)
 
   /*
-   * 한 번이라도 검색했는지. 후보가 0개인 경우가 둘(아직 안 찾음 · 찾았는데 없음)인데,
-   * 둘 다 "찾지 못했습니다" 라고 하면 열자마자 검색에 실패한 것처럼 읽힙니다.
-   * 검색어는 화면(`MyShelfPage`)이 들고 있어 여기로 내려오지 않으므로 따로 기억합니다.
-   *
-   * 아래 "열릴 때마다 되돌리기" 에 넣지 않습니다 — `SearchField` 는 제가 값을 들고
-   * 있어 다시 열어도 지난 검색어가 칸에 그대로 남습니다. 거기서 "검색해 주세요" 로
-   * 돌아가면 칸의 글자와 안내가 어긋납니다.
-   */
-  const [searched, setSearched] = useState(false)
-
-  const search = (keyword: string) => {
-    setSearched(keyword.trim().length > 0)
-    onSearch(keyword)
-  }
-
-  /*
    * 열릴 때마다 칸을 처음 값으로 되돌립니다.
    *
    * `Modal` 이 `<dialog>` 라 **닫아도 언마운트되지 않습니다.** 그냥 두면 담기를
    * 취소하고 다시 열었을 때 앞서 고른 향수 · 분류 · 적합도 · 메모가 그대로 남습니다.
    * 향수 상세와 향 지도에서 다른 향수로 들어와도 앞 향수가 골라진 채로 뜹니다.
    *
-   * `useEffect` 가 아니라 렌더 중에 맞추는 이유: 한 박자 늦게 맞추면 첫 프레임에
-   * 옛 값이 보입니다. `preselected` 는 매 렌더 새 객체일 수 있어 값으로 비교합니다.
+   * `preselected` 는 매 렌더 새 객체일 수 있어 값으로 비교합니다.
    */
   const openedKey = open ? JSON.stringify(preselected ?? null) : null
-  const [openedFor, setOpenedFor] = useState<string | null>(null)
-  if (openedKey !== openedFor) {
-    setOpenedFor(openedKey)
+  useResetOnOpen(openedKey, () => {
     setPicked(preselected ?? null)
     setCategory(null)
     setRating(null)
     setMemo('')
     setShowMissing(false)
-  }
+  })
 
   // 상세에서 들어오면 1단계가 없습니다
   const step: 1 | 2 = picked ? 2 : 1
@@ -156,90 +134,22 @@ export function ShelfRegisterModal({
       }
     >
       {step === 1 ? (
-        <div className="space-y-2.5">
-          <SearchField
-            label="향수명 또는 브랜드명으로 검색"
-            placeholder="향수명 · 브랜드 검색"
-            onSearch={search}
-          />
-
-          {isPending ? (
-            /*
-              기다리는 동안 빈 화면을 그리면 "찾지 못했습니다" 가 한 번 스쳤다가
-              결과로 바뀝니다 — 찾아보기도 전에 실패했다고 말하는 셈입니다.
-              글에 향수를 거는 모달(`LinkedPerfumeModal`)과 같은 자리표시 격자입니다.
-            */
-            <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-              {Array.from({ length: 8 }, (_, index) => (
-                <li key={index}>
-                  <Skeleton className="aspect-[1/1.35] w-full" />
-                </li>
-              ))}
-            </ul>
-          ) : options.length === 0 ? (
-            <EmptyState
-              title={
-                searched ? '향수를 찾지 못했습니다' : '향수를 검색해 주세요'
-              }
-              description={
-                searched
-                  ? '검색어를 바꿔 보세요.'
-                  : '향수명이나 브랜드명을 입력하면 고를 수 있는 향수가 나옵니다.'
-              }
-            />
-          ) : (
-            /*
-              한 줄에 넷 · 높이는 360 까지. 글에 향수를 거는 모달
-              (`LinkedPerfumeModal`)과 같은 값입니다.
-
-              높이를 막지 않았을 때는 검색 결과 20개가 다섯 줄(990)로 그대로 서서, 모달이
-              화면 높이를 넘겨 통째로 스크롤됐습니다 — `<dialog>` 의 브라우저 기본값이
-              `max-height: calc(100% - 38px)` · `overflow: auto` 라 헤더와 [담기] 단추까지
-              같이 밀려 올라갑니다. 목록만 스크롤하게 두면 그 둘은 제자리에 남습니다.
-            */
-            <ul className="grid max-h-90 grid-cols-2 gap-2.5 overflow-y-auto sm:grid-cols-4">
-              {options.map((option) => (
-                <li key={option.perfumeId}>
-                  <button
-                    type="button"
-                    // 이미 진열대에 있으면 선택할 수 없습니다
-                    disabled={option.alreadyInShelf}
-                    /*
-                      꺼진 이유는 **낭독기에만** 남깁니다. 눈으로는 흐려진 카드로
-                      충분하지만, 낭독기에는 그 흐림이 전해지지 않아 "왜 안 눌리는
-                      단추인지" 를 알 길이 없습니다.
-                    */
-                    aria-label={
-                      option.alreadyInShelf
-                        ? `${option.name} · 이미 진열대에 담은 향수입니다`
-                        : undefined
-                    }
-                    onClick={() => setPicked(option)}
-                    className={cn(
-                      'border-line w-full border p-2.5 text-left transition-colors duration-120 ease-out',
-                      option.alreadyInShelf
-                        ? 'bg-line-soft cursor-not-allowed opacity-60'
-                        : 'hover:border-accent',
-                    )}
-                  >
-                    {/* 사진이 없는 향수가 많습니다 — 그때는 빈 상자를 그립니다 */}
-                    <Thumbnail
-                      src={option.thumbnailUrl}
-                      fallback="이미지"
-                      className="text-caption mb-2.5 aspect-3/4 w-full"
-                    />
-                    <span className="text-ink text-body block truncate font-medium">
-                      {option.name}
-                    </span>
-                    <span className="text-ink-muted text-caption block truncate">
-                      {option.brand}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <PerfumePicker
+          // 이미 진열대에 있으면 고를 수 없습니다
+          options={options.map((option) => ({
+            id: option.perfumeId,
+            name: option.name,
+            brand: option.brand,
+            thumbnailUrl: option.thumbnailUrl,
+            disabled: option.alreadyInShelf,
+            disabledLabel: '이미 진열대에 담은 향수입니다',
+          }))}
+          isPending={isPending}
+          onPick={({ id }) =>
+            setPicked(options.find((option) => option.perfumeId === id) ?? null)
+          }
+          onSearch={(keyword) => onSearch?.(keyword)}
+        />
       ) : (
         <div className="space-y-2.5">
           <div className="flex items-center gap-2.5">

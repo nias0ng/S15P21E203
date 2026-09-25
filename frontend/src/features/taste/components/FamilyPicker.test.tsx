@@ -7,7 +7,6 @@ import type { ScentFamilyKey } from '../types'
 
 import { FamilyPicker } from './FamilyPicker'
 
-/** 실제 화면처럼 부모가 상태를 쥐고 있어야 선택이 반영됩니다. */
 function Harness() {
   const [picks, setPicks] = useState<ScentFamilyKey[]>([])
   return <FamilyPicker value={picks} onChange={setPicks} />

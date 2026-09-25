@@ -9,10 +9,8 @@ const WOOD_SAGE: ShelfItem = {
   shelfItemId: 1,
   perfumeId: 1,
   name: '조 말론 우드 세이지 앤 씨 솔트',
+  nameKo: null,
   brand: '조말론',
-  brandEn: 'Jo Malone',
-  nameEn: 'Wood Sage & Sea Salt',
-  concentration: 'Eau de Cologne',
   thumbnailUrl: null,
   category: 'OWNED',
 }
@@ -56,30 +54,12 @@ const bottle = (name: string) =>
   screen.getByRole('button', { name: `조말론 ${name}`, hidden: true })
 
 describe('DisplayCase 이름표', () => {
-  it('이름표는 브랜드와 한글 이름만 적는다 — 영문 브랜드는 화면에만, 병 단추는 한글 브랜드 + 한글 이름으로 읽힌다', () => {
+  it('이름표는 브랜드를 한 번만 적고, 병 단추는 브랜드 + 이름으로 읽힌다', () => {
     renderCase([WOOD_SAGE])
     expect(
       screen.getByRole('button', { name: '조말론 우드 세이지 앤 씨 솔트' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('Jo Malone')).toBeInTheDocument()
-    expect(screen.queryByText('Wood Sage & Sea Salt')).not.toBeInTheDocument()
-    expect(screen.queryByText('Eau de Cologne')).not.toBeInTheDocument()
-  })
-
-  it('영문 줄이 없으면(백엔드가 아직 주지 않음) 한글 브랜드를 한 번만 적고 빈 줄을 두지 않는다', () => {
-    renderCase([
-      {
-        ...WOOD_SAGE,
-        brandEn: undefined,
-        nameEn: undefined,
-        concentration: undefined,
-      },
-    ])
-    expect(
-      screen.getByRole('button', { name: '조말론 우드 세이지 앤 씨 솔트' }),
-    ).toBeInTheDocument()
     expect(screen.getAllByText('조말론')).toHaveLength(1)
-    expect(screen.queryByText('Jo Malone')).not.toBeInTheDocument()
   })
 })
 
@@ -123,10 +103,6 @@ describe('DisplayCase 사진 받기', () => {
 })
 
 describe('DisplayCase 이름표의 향수 이름', () => {
-  /*
-   * 목록 응답에 nameKo 가 추가되면(BE 요청 중) 손대지 않아도 한글로 바뀌어야 합니다.
-   * 그때까지는 영문 이름을 그대로 적습니다.
-   */
   it('한국어 이름이 오면 그것을 적는다', () => {
     renderCase([
       {

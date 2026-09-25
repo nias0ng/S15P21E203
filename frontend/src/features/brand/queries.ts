@@ -3,10 +3,7 @@ import { queryOptions } from '@tanstack/react-query'
 import { getBrand, getBrands } from './api'
 import { SERVER_DEFAULT_BRAND_SORT, type BrandSearchParams } from './types'
 
-/**
- * NOTE: 요청에서 뺄 수 있는 것은 **서버 기본 정렬**일 때뿐입니다. 화면 기본은 '향수 많은
- * 순' 인데 서버 기본은 abc 순이라, 화면 기본으로 빼면 abc 순이 돌아옵니다.
- */
+// NOTE: 요청에서 뺄 수 있는 것은 **서버 기본 정렬**일 때뿐입니다
 function normalize(params: BrandSearchParams): BrandSearchParams {
   const keyword = params.keyword?.trim()
   return {
@@ -25,7 +22,6 @@ const brandKeys = {
   detail: (brandId: number) => [...brandKeys.all, 'detail', brandId] as const,
 }
 
-/** 카탈로그는 자주 바뀌지 않고 전체가 한 번에 오는 응답이라 기본값(1분)보다 길게 둡니다 */
 const CATALOG_STALE_TIME = 1000 * 60 * 10
 
 export const brandListQuery = (params: BrandSearchParams) =>

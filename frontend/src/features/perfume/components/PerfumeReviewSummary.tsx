@@ -2,13 +2,11 @@ import { cn } from '@/shared/lib/cn'
 import { GLASS_PANEL } from '@/shared/ui/panel'
 
 type Props = {
-  /** 후기가 적어 아직 만들지 않은 향수는 null 입니다 */
   summary: string | null
   sourceReviewCount: number | null
   isPending?: boolean
 }
 
-/** 향수 상세 ④ AI 후기 요약 (A10 — DTL-23). 배치가 만들어 둔 **한 덩어리 글**입니다 */
 export function PerfumeReviewSummary({
   summary,
   sourceReviewCount,
