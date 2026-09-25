@@ -39,4 +39,27 @@ describe('LoginRequiredDialog', () => {
 
     expect(onClose).toHaveBeenCalledOnce()
   })
+
+  /* 단추가 아니라 링크라야 새 탭으로 열기 · 링크 복사가 삽니다 */
+  it('회원가입 · 로그인은 돌아올 경로를 단 링크다', () => {
+    renderDialog({ redirectTo: '/community/free/write' })
+
+    expect(screen.getByRole('link', { name: '회원가입' })).toHaveAttribute(
+      'href',
+      '/signup?redirectTo=%2Fcommunity%2Ffree%2Fwrite',
+    )
+    expect(screen.getByRole('link', { name: '로그인' })).toHaveAttribute(
+      'href',
+      '/login?redirectTo=%2Fcommunity%2Ffree%2Fwrite',
+    )
+  })
+
+  it('돌아올 경로가 없으면 로그인 화면으로만 보낸다', () => {
+    renderDialog()
+
+    expect(screen.getByRole('link', { name: '로그인' })).toHaveAttribute(
+      'href',
+      '/login',
+    )
+  })
 })

@@ -1,8 +1,7 @@
-import { useNavigate } from 'react-router'
-
 import { ROUTES } from '@/shared/config/routes'
 import { withReturnPath } from '@/shared/lib/returnPath'
 import { Button } from '@/shared/ui/Button'
+import { LinkButton } from '@/shared/ui/LinkButton'
 import { Modal } from '@/shared/ui/Modal'
 
 type Props = {
@@ -27,8 +26,6 @@ export function LoginRequiredDialog({
   redirectTo,
   description = '추천 결과는 로그인 없이도 볼 수 있습니다.',
 }: Props) {
-  const navigate = useNavigate()
-
   /*
     주소를 직접 짜지 않고 `withReturnPath` 에 맡깁니다 — 쿼리 이름을 이 파일이 따로
     적고 로그인 화면은 `location.state.from` 을 읽어, 경로가 늘 버려졌습니다.
@@ -45,15 +42,10 @@ export function LoginRequiredDialog({
           <Button variant="ghost" onClick={onClose}>
             취소
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => navigate(withRedirect(ROUTES.SIGNUP))}
-          >
+          <LinkButton variant="outline" to={withRedirect(ROUTES.SIGNUP)}>
             회원가입
-          </Button>
-          <Button onClick={() => navigate(withRedirect(ROUTES.LOGIN))}>
-            로그인
-          </Button>
+          </LinkButton>
+          <LinkButton to={withRedirect(ROUTES.LOGIN)}>로그인</LinkButton>
         </>
       }
     >
