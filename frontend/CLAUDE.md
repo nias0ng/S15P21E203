@@ -272,6 +272,15 @@ variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 
 | `shared/hooks/useLikeToggle` | 좋아요 토글 (CMT-05). 비로그인이면 보내지 않고 안내부터 — 캐시를 고치는 일은 화면이 맡습니다 |
 | `shared/hooks/useUnroll` | 족자처럼 풀리는 열림. **쓰는 쪽을 조건부로 렌더해야** 다음에 열 때 다시 풀립니다 |
 | `shared/hooks/useDiveReady` | 잠수 커튼에 "화면이 다 섰다" 를 알립니다 (진열대 · 메인 담당) |
+| `shared/hooks/useMediaQuery` | 미디어 쿼리가 맞는지. 첫 렌더부터 값이 맞고, `matchMedia` 가 없으면 `fallback` 입니다 |
+| `shared/hooks/useMeasuredHeight` | 요소의 높이를 잽니다(ResizeObserver · 올림). 돌려받은 `ref` · `height` 는 그 자리에서 풀어 씁니다 |
+| `shared/hooks/useEndSession` | 로그아웃 · 탈퇴 뒤 로그인 흔적(인증 상태 · 쿼리 캐시)을 지웁니다 |
+
+순수 함수는 `shared/lib/` 에 있습니다. 새로 쓰기 전에 봅니다 — `parseId`(주소의 번호) ·
+`readOption`(주소의 허용값, `queryParams`) · `keywordMatcher`(대소문자 무시 검색) ·
+`authorName`(탈퇴한 회원) · `groupNoteStages`(탑 · 미들 · 베이스) · `prefersReducedMotion`.
+API 쪽은 `shared/api/http` 의 `apiErrorMessage`(서버 문구 또는 대체 문구)와
+`shared/api/fetchAllPages`(모든 쪽을 차례로 받기)입니다.
 
 `onClose` 를 인라인 화살표로 넘기면 `Toast` 의 타이머가 렌더마다 초기화되어 토스트가
 사라지지 않습니다. 이 훅이 `useCallback` 으로 그 문제를 막아주니 직접 `useState` 로
