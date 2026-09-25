@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
-import { useParams } from 'react-router'
+import { useParams, useSearchParams } from 'react-router'
 
 import { noteDetailQuery, notePerfumesQuery } from '@/features/note'
 import { PerfumeGrid } from '@/features/perfume'
 import { ROUTES } from '@/shared/config/routes'
 import { parseId } from '@/shared/lib/parseId'
+import { readPage, writePage } from '@/shared/lib/queryParams'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { LinkButton } from '@/shared/ui/LinkButton'
@@ -26,18 +26,9 @@ export default function NoteDetailPage() {
   const numericId = parseId(noteId)
   const valid = numericId !== null
 
-  const [page, setPage] = useState(0)
-
-  /*
-    노트를 옮겨 다니면 쪽 번호가 남아, 3쪽을 보다가 향수가 20개뿐인 노트로 들어가면 빈
-    격자가 나옵니다. 렌더 중에 맞추는 것은 `useEffect` 로 한 박자 늦게 되돌리면 첫
-    프레임에 그 빈 격자가 보여서입니다.
-  */
-  const [pagedNoteId, setPagedNoteId] = useState(numericId)
-  if (pagedNoteId !== numericId) {
-    setPagedNoteId(numericId)
-    setPage(0)
-  }
+  // 쪽 번호는 주소에 둡니다 — 다른 노트로 가는 링크에는 쿼리가 없어 첫 쪽부터 엽니다
+  const [searchParams, setSearchParams] = useSearchParams()
+  const page = readPage(searchParams)
 
   // 0 은 쿼리 키 자리만 채웁니다 — 번호가 아니면 `enabled` 가 꺼 두어 부르지 않습니다
   const note = useQuery({
@@ -156,7 +147,9 @@ export default function NoteDetailPage() {
                 page={page}
                 size={perfumes.data.size}
                 totalElements={perfumes.data.totalElements}
-                onPageChange={setPage}
+                onPageChange={(next) =>
+                  setSearchParams(writePage(searchParams, next))
+                }
               />
             )}
           </>
