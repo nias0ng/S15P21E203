@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 
 import { isApiError } from '@/shared/api/http'
 import { UNROLL, useUnroll } from '@/shared/hooks/useUnroll'
@@ -61,8 +61,6 @@ export function RecommendModal({ query, onClose }: Props) {
 
 /** 열릴 때마다 새로 마운트됩니다 — 그래야 족자가 매번 처음부터 풀립니다 */
 function RecommendBody({ query }: { query: string }) {
-  /** 지금은 테두리 강조뿐이지만 미니맵이 붙으면 그쪽이 씁니다 */
-  const [selectedId, setSelectedId] = useState<number | null>(null)
   const { bodyRef, style, inert } = useUnroll()
 
   const result = useQuery({
@@ -148,11 +146,7 @@ function RecommendBody({ query }: { query: string }) {
             )}
 
             {perfumes.length > 0 ? (
-              <RecommendResultList
-                perfumes={perfumes}
-                selectedId={selectedId}
-                onSelect={setSelectedId}
-              />
+              <RecommendResultList perfumes={perfumes} />
             ) : (
               /*
                 NOTE: 0개인 두 경우를 한 문장으로 묶지 않습니다 — 조건을 못 뽑은 사람에게

@@ -12,9 +12,6 @@ import type { RecommendedPerfume } from '../types'
 
 type Props = {
   perfumes: RecommendedPerfume[]
-  selectedId: number | null
-  /** 카드를 누르면 그 향수가 미니맵에서 강조됩니다 */
-  onSelect: (perfumeId: number) => void
 }
 
 /**
@@ -79,7 +76,7 @@ function useCollapsedListHeight(itemCount: number) {
 }
 
 /** 자연어 추천 결과 카드 목록 (NLR-06 · NLR-07). 추천 이유를 입력한 표현과 짝지어 보여줍니다. */
-export function RecommendResultList({ perfumes, selectedId, onSelect }: Props) {
+export function RecommendResultList({ perfumes }: Props) {
   /* 처음에는 다 접혀 있습니다 — 그 높이가 목록을 잠그는 기준이고, 한 장만 열어 두면 그 카드가
      기준이 되어 목록이 처음부터 굴러갈 자리를 안고 섭니다 */
   const [expandedId, setExpandedId] = useState<number | null>(null)
@@ -105,23 +102,21 @@ export function RecommendResultList({ perfumes, selectedId, onSelect }: Props) {
     >
       {perfumes.map((perfume, index) => {
         const expanded = expandedId === perfume.perfumeId
-        const selected = selectedId === perfume.perfumeId
 
         return (
           <li key={perfume.perfumeId} data-expanded={expanded}>
             <article
               className={cn(
                 'border-line bg-surface-card rounded-glass border p-2.5',
-                selected && 'border-ink',
+                expanded && 'border-ink',
               )}
             >
               <button
                 type="button"
                 aria-expanded={expanded}
-                onClick={() => {
-                  onSelect(perfume.perfumeId)
+                onClick={() =>
                   setExpandedId(expanded ? null : perfume.perfumeId)
-                }}
+                }
                 className={cn(
                   'flex w-full items-center gap-2.5 text-left',
                   FOCUS_RING,
