@@ -7,6 +7,7 @@ import { BRAND_PLATE, brandDetailQuery } from '@/features/brand'
 import { PerfumeGrid, perfumeListQuery } from '@/features/perfume'
 import { ROUTES, toPerfumeSearch } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
+import { parseId } from '@/shared/lib/parseId'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { PageFallback } from '@/shared/ui/PageFallback'
@@ -23,10 +24,14 @@ const PERFUME_PAGE_SIZE = 30
  */
 export default function BrandDetailPage() {
   const { brandId } = useParams<{ brandId: string }>()
-  const numericId = Number(brandId)
-  const valid = Number.isFinite(numericId)
+  const numericId = parseId(brandId)
+  const valid = numericId !== null
 
-  const brand = useQuery({ ...brandDetailQuery(numericId), enabled: valid })
+  // 0 은 쿼리 키 자리만 채웁니다 — 번호가 아니면 `enabled` 가 꺼 두어 부르지 않습니다
+  const brand = useQuery({
+    ...brandDetailQuery(numericId ?? 0),
+    enabled: valid,
+  })
 
   const perfumes = useQuery({
     ...perfumeListQuery({

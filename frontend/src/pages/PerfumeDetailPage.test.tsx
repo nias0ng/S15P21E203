@@ -56,8 +56,7 @@ const aggregates: ReviewAggregates = {
   },
 }
 
-/** 네 구역이 한 쿼리에 매달려 있어, 이 쿼리만 갈아끼우면 세 상태를 다 볼 수 있습니다 */
-const renderDetail = async () => {
+const renderAt = (path: string) => {
   const queryClient = new QueryClient({
     // 실패를 바로 보려면 재시도를 끕니다 — 기본값이면 세 번 더 부르고 나서야 에러가 됩니다
     defaultOptions: { queries: { retry: false } },
@@ -65,13 +64,18 @@ const renderDetail = async () => {
 
   render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[`/perfumes/${PERFUME_ID}`]}>
+      <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route path="/perfumes/:perfumeId" element={<PerfumeDetailPage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   )
+}
+
+/** 네 구역이 한 쿼리에 매달려 있어, 이 쿼리만 갈아끼우면 세 상태를 다 볼 수 있습니다 */
+const renderDetail = async () => {
+  renderAt(`/perfumes/${PERFUME_ID}`)
 
   // 상세 본문이 서기 전에는 전체 자리표시자라 구역이 하나도 없습니다
   await screen.findByRole('heading', { name: '계절별 평가' })
@@ -165,5 +169,21 @@ describe('PerfumeDetailPage 의 후기 집계', () => {
     await renderDetail()
 
     expect(await screen.findByText('3개')).toBeInTheDocument()
+  })
+})
+
+/** 꺼 둔 쿼리는 계속 대기 상태라, 대기만 보고 자리표시자를 띄우면 끝나지 않습니다 */
+describe('PerfumeDetailPage 의 주소', () => {
+  it('번호가 아닌 주소는 부르지 않고 안내를 띄운다', async () => {
+    renderAt('/perfumes/abc')
+
+    expect(
+      await screen.findByText('향수 상세 정보를 불러오지 못했습니다'),
+    ).toBeInTheDocument()
+    // 다시 불러도 같은 주소라 [다시 시도] 를 세우지 않습니다
+    expect(
+      screen.queryByRole('button', { name: '다시 시도' }),
+    ).not.toBeInTheDocument()
+    expect(api.getPerfumeDetail).not.toHaveBeenCalled()
   })
 })

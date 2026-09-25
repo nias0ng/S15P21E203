@@ -5,6 +5,7 @@ import { useParams } from 'react-router'
 import { noteDetailQuery, notePerfumesQuery } from '@/features/note'
 import { PerfumeGrid } from '@/features/perfume'
 import { ROUTES } from '@/shared/config/routes'
+import { parseId } from '@/shared/lib/parseId'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { LinkButton } from '@/shared/ui/LinkButton'
@@ -22,8 +23,8 @@ import { Thumbnail } from '@/shared/ui/Thumbnail'
  */
 export default function NoteDetailPage() {
   const { noteId } = useParams<{ noteId: string }>()
-  const numericId = Number(noteId)
-  const valid = Number.isFinite(numericId)
+  const numericId = parseId(noteId)
+  const valid = numericId !== null
 
   const [page, setPage] = useState(0)
 
@@ -38,9 +39,13 @@ export default function NoteDetailPage() {
     setPage(0)
   }
 
-  const note = useQuery({ ...noteDetailQuery(numericId), enabled: valid })
+  // 0 은 쿼리 키 자리만 채웁니다 — 번호가 아니면 `enabled` 가 꺼 두어 부르지 않습니다
+  const note = useQuery({
+    ...noteDetailQuery(numericId ?? 0),
+    enabled: valid,
+  })
   const perfumes = useQuery({
-    ...notePerfumesQuery(numericId, page),
+    ...notePerfumesQuery(numericId ?? 0, page),
     enabled: valid,
   })
 
@@ -54,9 +59,11 @@ export default function NoteDetailPage() {
         description="주소를 다시 확인하거나 노트 목록에서 골라 주세요."
         action={
           <div className="flex justify-center gap-2.5">
-            <Button variant="outline" onClick={() => note.refetch()}>
-              다시 시도
-            </Button>
+            {valid && (
+              <Button variant="outline" onClick={() => note.refetch()}>
+                다시 시도
+              </Button>
+            )}
             <LinkButton to={ROUTES.NOTES} size="sm">
               노트 목록
             </LinkButton>

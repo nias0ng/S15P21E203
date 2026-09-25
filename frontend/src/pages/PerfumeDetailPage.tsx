@@ -30,6 +30,7 @@ import {
 } from '@/shared/config/perfumeViewSource'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
+import { parseId } from '@/shared/lib/parseId'
 import { useIsLoggedIn } from '@/shared/store/authStore'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
@@ -51,14 +52,16 @@ const REVIEW_PAGE_SIZE = 10
  */
 export default function PerfumeDetailPage() {
   const { perfumeId } = useParams<{ perfumeId: string }>()
-  const numericId = Number(perfumeId)
-  const enabled = Number.isFinite(numericId)
+  const parsedId = parseId(perfumeId)
+  const enabled = parsedId !== null
+  // 0 은 쿼리 키 자리만 채웁니다 — 번호가 아니면 `enabled` 가 꺼 두어 부르지 않습니다
+  const numericId = parsedId ?? 0
 
   // 들어온 길은 보낸 쪽이 state 로 실어 줍니다 — 주소를 복사해 열거나 새로 고치면
   // 비어서 `DIRECT` 가 됩니다
   const { state } = useLocation()
   const { source, fromPerfumeId } = readPerfumeViewState(state)
-  usePerfumeViewLog(numericId, source, fromPerfumeId)
+  usePerfumeViewLog(parsedId, source, fromPerfumeId)
 
   /*
     뒤로 가기: 들어온 길을 알면 주소를 새로 짜지 않고 기록을 한 칸 되돌립니다 — 그래야
@@ -105,13 +108,13 @@ export default function PerfumeDetailPage() {
     enabled,
   })
 
-  if (isPending) return <PageFallback />
-  if (isError) {
+  if (enabled && isPending) return <PageFallback />
+  if (isError || !data) {
     return (
       <EmptyState
         title="향수 상세 정보를 불러오지 못했습니다"
         description="다시 시도해주세요."
-        onRetry={() => refetch()}
+        onRetry={enabled ? () => refetch() : undefined}
       />
     )
   }

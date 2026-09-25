@@ -5,6 +5,7 @@ import { communityKeys } from '@/features/community'
 import { PerfumeReviewDetail, reviewDetailQuery } from '@/features/perfume'
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
+import { parseId } from '@/shared/lib/parseId'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { PageFallback } from '@/shared/ui/PageFallback'
@@ -17,11 +18,12 @@ export default function ReviewDetailPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { reviewId } = useParams<{ reviewId: string }>()
-  const numericId = Number(reviewId)
-  const valid = Number.isFinite(numericId)
+  const numericId = parseId(reviewId)
+  const valid = numericId !== null
 
   const { data, isPending, isError, refetch } = useQuery({
-    ...reviewDetailQuery(numericId),
+    // 0 은 쿼리 키 자리만 채웁니다 — 번호가 아니면 `enabled` 가 꺼 두어 부르지 않습니다
+    ...reviewDetailQuery(numericId ?? 0),
     enabled: valid,
   })
 

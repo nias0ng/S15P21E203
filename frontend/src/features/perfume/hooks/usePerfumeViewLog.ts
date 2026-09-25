@@ -16,14 +16,14 @@ const START_DELAY_MS = 250
  * `sendBeacon` 은 Authorization 을 못 실어, 체류 시간이 일부 빕니다.
  */
 export function usePerfumeViewLog(
-  perfumeId: number,
+  perfumeId: number | null,
   source: PerfumeViewSource,
   fromPerfumeId?: number,
 ): void {
   const isLoggedIn = useIsLoggedIn()
 
   useEffect(() => {
-    if (!isLoggedIn || !Number.isFinite(perfumeId)) return
+    if (!isLoggedIn || perfumeId === null) return
 
     let startedId: number | null = null
     let left = false
