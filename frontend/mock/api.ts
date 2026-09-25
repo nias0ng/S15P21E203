@@ -835,17 +835,15 @@ export function createMockApi(options: MockApiOptions = {}) {
 
   const searchPerfumes: Handler = ({ query }) => {
     const keyword = squash(query.get('keyword') ?? '')
-    const brand = query.get('brand')
     const gender = query.get('gender')?.toLowerCase()
 
-    // 검색어 · 브랜드(완전 일치) · 성별만 봅니다. 순위 · 정렬 조건은 받지 않고 한국 선정 순위대로 줍니다
+    // 검색어 · 성별만 봅니다. 순위 · 정렬 조건은 받지 않고 한국 선정 순위대로 줍니다
     const found = MOCK_PERFUMES.filter(
       (perfume) =>
         (keyword === '' ||
           [perfume.name, perfume.brand, perfume.nameKo, perfume.brandKo].some(
             (value) => value !== null && squash(value).includes(keyword),
           )) &&
-        (brand === null || perfume.brand === brand) &&
         (gender === undefined || perfume.gender === gender),
     )
     const { content, ...page } = paginate(found, query, 20)
@@ -941,11 +939,16 @@ export function createMockApi(options: MockApiOptions = {}) {
     /**
      * 이 요청을 목데이터가 받는지. 받으면 처리 함수를, 아니면 null 을 돌려줍니다.
      * `path` 는 `/api/v1` 을 뗀 경로입니다 (`/users/me/shelf-items`).
+     *
+     * 브랜드 번호로 거르는 향수 검색은 백엔드로 넘깁니다 — 목데이터 향수는 DB 브랜드 번호를
+     * 모르고, 브랜드 상세가 넘기는 번호는 백엔드의 것입니다.
      */
     find(
       method: string,
       path: string,
+      query: URLSearchParams = new URLSearchParams(),
     ): ((request: MockRequest) => MockResponse) | null {
+      if (path === '/perfumes' && query.has('brandId')) return null
       for (const [routeMethod, pattern, handler] of routes) {
         if (routeMethod !== method.toUpperCase()) continue
 

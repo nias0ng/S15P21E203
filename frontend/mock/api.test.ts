@@ -56,6 +56,14 @@ describe('목데이터 API', () => {
     expect(api.find('PUT', '/users/me/collections')).toBeNull()
   })
 
+  it('브랜드 번호로 거르는 향수 검색은 백엔드로 넘기고, 검색어 검색은 받는다', () => {
+    const byBrand = new URLSearchParams({ brandId: '3' })
+    expect(api.find('GET', '/perfumes', byBrand)).toBeNull()
+    expect(
+      api.find('GET', '/perfumes', new URLSearchParams({ keyword: '딥티크' })),
+    ).not.toBeNull()
+  })
+
   describe('로그인', () => {
     it('아무 이메일 · 비밀번호로 토큰을 받는다', () => {
       const response = call(api, 'POST', '/auth/login', {

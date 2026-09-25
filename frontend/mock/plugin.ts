@@ -85,6 +85,7 @@ export function mockApiPlugin(basePath = '/api/v1'): Plugin {
         const route = api.find(
           request.method ?? 'GET',
           url.pathname.slice(basePath.length),
+          url.searchParams,
         )
         // 목데이터에 없는 경로 — 본문을 읽기 전에 넘겨야 프록시가 본문을 그대로 보냅니다
         if (route === null) return next()
