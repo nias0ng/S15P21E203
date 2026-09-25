@@ -20,7 +20,7 @@ const PERFUME_PAGE_SIZE = 30
 
 /**
  * 브랜드 상세 — A34 에서 카드를 누른, 와이어프레임에 없는 신규 화면입니다.
- * 향수는 검색 API 에 `brand` 를 걸어 받습니다 — 영문 이름 완전 일치입니다.
+ * 향수는 검색 API 에 `brandId` 를 걸어 받습니다.
  */
 export default function BrandDetailPage() {
   const { brandId } = useParams<{ brandId: string }>()
@@ -35,11 +35,11 @@ export default function BrandDetailPage() {
 
   const perfumes = useQuery({
     ...perfumeListQuery({
-      brand: brand.data?.name,
+      brandId: numericId ?? undefined,
       size: PERFUME_PAGE_SIZE,
     }),
-    // 브랜드 이름을 알기 전에는 부를 수 없습니다 — 필터 없이 부르면 전체 카탈로그입니다
-    enabled: brand.data != null,
+    // 번호가 없으면 부르지 않습니다 — 필터 없이 부르면 전체 카탈로그입니다
+    enabled: valid,
   })
 
   if (valid && brand.isPending) return <PageFallback />

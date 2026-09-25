@@ -49,8 +49,8 @@ export interface PerfumeSearchParams {
   /** A33 아래 줄 필터. 정의되지 않은 값을 보내면 400 입니다 */
   gender?: GenderFilter
 
-  /** 브랜드명 **완전 일치**. 부분 일치는 keyword 가 담당합니다 */
-  brand?: string
+  /** 이름으로 거르면 표기만 다른 중복 브랜드에서 저장된 이름과 어긋나 번호로 거릅니다 */
+  brandId?: number
 
   /** 0부터 시작합니다 (Spring Pageable 기준) */
   page?: number
