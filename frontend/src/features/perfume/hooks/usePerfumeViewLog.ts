@@ -7,10 +7,8 @@ import { exitPerfumeView, startPerfumeView } from '../api'
 
 const START_DELAY_MS = 250
 
-/**
- * NOTE: **탭을 닫으면 나가는 기록이 남지 않습니다** — 정리 함수에 기대는데
- * `sendBeacon` 은 Authorization 을 못 실어, 체류 시간이 일부 빕니다.
- */
+// NOTE: **탭을 닫으면 나가는 기록이 남지 않습니다**
+// 정리 함수에 기대는데 `sendBeacon` 은 Authorization 을 못 실어, 체류 시간이 일부 빕니다.
 export function usePerfumeViewLog(
   perfumeId: number | null,
   source: PerfumeViewSource,

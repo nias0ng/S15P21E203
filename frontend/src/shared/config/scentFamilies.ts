@@ -1,9 +1,8 @@
 /**
- * 향 계열 아홉 개. 배열 순서는 **가벼운 향에서 무거운 향으로** — 취향 테스트의
- * 3×3 타일이 이 순서로 섭니다.
- *
- * NOTE: 키는 백엔드 `scent_regions.code` 이고 3D 엔진의 `scent_map.json` 도 같은
- * 값을 씁니다. 셋이 함께 바뀌어야 합니다.
+ * 향 계열 아홉 개. 배열 순서는 '가벼운 향에서 무거운 향'
+
+ * NOTE: 키는 백엔드 `scent_regions.code` 이고 3D 엔진의 `scent_map.json` 도 같은 값을 씁니다.
+ * 셋이 함께 바뀌어야 합니다.
  */
 export const SCENT_FAMILY_KEYS = [
   'FLORAL',

@@ -41,10 +41,11 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
   }
 
   /**
-   * NOTE: 이미 마친 사람은 409 인데 **넘어가는 것은** 성공으로 다룹니다 — 막으면 주소로 다시
-   * 들어온 사람이 아무 데도 못 갑니다. 저장한 기록은 로그인 화면이 보도록 캐시에 넣습니다.
+   * NOTE: 이미 마친 사람은 409 인데 **넘어가는 것은** 성공으로 다룹니다
+   * 막으면 주소로 다시 들어온 사람이 아무 데도 못 갑니다.
+   * 저장한 기록은 로그인 화면이 보도록 캐시에 넣습니다.
    *
-   * NOTE: 다만 `landed` 는 다릅니다. 409 는 배를 놓은 것까지 되돌아가므로 false 입니다.
+   * NOTE: 다만 `landed` 는 409 는 배를 놓은 것까지 되돌아가므로 false 입니다.
    */
   const save = useMutation({
     mutationFn: (result: TasteMatch) =>

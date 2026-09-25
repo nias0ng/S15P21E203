@@ -14,13 +14,8 @@ import { Pagination } from '@/shared/ui/Pagination'
 import { GLASS_PANEL } from '@/shared/ui/panel'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
-/**
- * 노트 상세 (A36 — A35 에서 노트를 누른 화면). 향수는 쪽 넘김입니다 — 인기 노트 하나에
- * 향수가 수만 개 달립니다(머스크 49,571개).
- *
- * NOTE: 브랜드 상세와 달리 [향수 전체 보기] 로 넘기지 못합니다 — 향수 검색 파라미터에
- * `note` 가 없어 노트의 향수는 `/notes/{noteId}/perfumes` 에만 있습니다.
- */
+// NOTE: 브랜드 상세와 달리 [향수 전체 보기] 로 넘기지 못합니다
+// 향수 검색 파라미터에 `note` 가 없어 노트의 향수는 `/notes/{noteId}/perfumes` 에만 있습니다.
 export default function NoteDetailPage() {
   const { noteId } = useParams<{ noteId: string }>()
   const numericId = parseId(noteId)

@@ -33,7 +33,6 @@ export function PerfumeOverview({
         src={perfume.images[0] ?? null}
         fallback="대표 이미지"
         fit="contain"
-        /* NOTE: 향수병이 투명 PNG 라 상자 색이 비치는데 토큰은 어두운 방에서 뒤집혀, 색 토큰이 아니라 `bg-white` 입니다 */
         className="h-100 w-75 shrink-0 bg-white"
       />
 

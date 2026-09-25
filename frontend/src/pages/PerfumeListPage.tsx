@@ -18,22 +18,13 @@ import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
 
 const PAGE_SIZE = 30
 
-/**
- * 향수 (A33 — 상단 메뉴 [향수] 목적지) + 검색 결과 (A09 — COM-05). 검색어 `?keyword=`
- * 는 필터와 AND 로 묶입니다.
- *
- * NOTE: 쪽 넘김은 검색할 때만이고, 검색어가 없으면 첫 30개가 전부입니다 — 목록은 무한
- * 스크롤로 갈 자리입니다(docs/UI-명세.md §6). 검색 중에는 순서가 인기가 아니라 검색
- * 적합도라 순위 숫자를 끕니다.
- */
+// NOTE: 쪽 넘김은 검색할 때만이고, 검색어가 없으면 첫 30개가 전부입니다
 export default function PerfumeListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
-  /*
-    NOTE: 필터는 `useState` 가 아니라 주소에 둡니다 — 상세로 갔다 오면 이 화면이
-    새로 만들어져 `useState` 는 처음 값으로 돌아갑니다. 값은 사람이 고쳐 쓸 수
-    있으므로 읽을 때 거릅니다.
-  */
+  // NOTE: 필터는 `useState` 가 아니라 주소에 둡니다
+  // 상세로 갔다 오면 이 화면이 새로 만들어져 `useState` 는 처음 값으로 돌아갑니다.
+  // 값은 사람이 고쳐 쓸 수 있으므로 읽을 때 거릅니다.
   const ranking = readRankingFilter(searchParams.get('ranking'))
   const gender = readGenderFilter(searchParams.get('gender'))
   const keyword = (searchParams.get('keyword') ?? '').trim()

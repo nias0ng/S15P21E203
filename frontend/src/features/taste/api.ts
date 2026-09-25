@@ -34,7 +34,7 @@ export async function getMyTasteTest(): Promise<TasteTestRecord> {
   return data
 }
 
-/**
+/*
  * 취향 테스트를 마쳤다고 남깁니다 (TST-03). `picks` 는 순서가 순위입니다(1순위 0.58 · 2순위 0.42).
  * NOTE: 이미 마친 사람은 409 라, 부르는 쪽이 "이미 됨" 으로 받아 넘겨야 합니다.
  */

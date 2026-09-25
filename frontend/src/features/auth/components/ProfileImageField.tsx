@@ -62,7 +62,6 @@ export function ProfileImageField({ value, onChange }: Props) {
 
         <p className="text-ink-muted text-caption leading-relaxed">
           JPG · PNG · GIF · WEBP
-          {/* NOTE: 1MB 는 백엔드 UserProfileImageProperties.maxSize 의 기본값입니다 — 설정으로 바뀝니다 */}
           <br />한 장당 최대 1MB
         </p>
 

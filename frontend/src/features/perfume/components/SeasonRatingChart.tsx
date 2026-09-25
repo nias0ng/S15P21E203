@@ -17,13 +17,8 @@ export function SeasonRatingChart({ seasons }: Props) {
   )
 }
 
-/*
- * 와이어프레임은 지름 88 인데 치수 끝자리 0/5 규칙에 맞춰 90 으로 올렸습니다.
- *
- * NOTE: 화면 픽셀이 아니라 viewBox 안의 좌표입니다. 실제 지름은 바깥 상자의
- *   `size-22.5`(=90/4)가 정하고, 그래서 `--spacing` 을 타 화면 폭을 따라 줄어듭니다.
- *   여기서 px 로 박으면 도넛만 안 줄어 1536 에서 혼자 커 보입니다.
- */
+// NOTE: 화면 픽셀이 아니라 viewBox 안의 좌표입니다.
+// 실제 지름은 바깥 상자의 `size-22.5`(=90/4)가 정하고 `--spacing` 을 타 화면 폭을 따라 줄어듭니다.
 const SIZE = 90
 const STROKE = 12
 const RADIUS = (SIZE - STROKE) / 2

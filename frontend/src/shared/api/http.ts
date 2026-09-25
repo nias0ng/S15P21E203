@@ -33,11 +33,9 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
 }
 
 /**
- * 세션이 끊겼을 때 이어서 할 정리. 캐시에 앞 사람 응답이 남으면 다음 사람이 그 화면을
- * 잠깐 봅니다.
- *
- * NOTE: 여기서 `queryClient` 를 import 하면 순환이 되어, **캐시 쪽이 자기를 등록하는**
- * 방향입니다.
+ * 세션이 끊겼을 때 이어서 할 정리.
+ * 캐시에 앞 사람 응답이 남으면 다음 사람이 그 화면을 잠깐 봅니다.
+ * NOTE: 여기서 `queryClient` 를 import 하면 순환이 되어, **캐시 쪽이 자기를 등록하는** 방향입니다.
  */
 let onSessionExpired: (() => void) | null = null
 

@@ -17,10 +17,7 @@ export type BrandSort = 'NAME_KO' | 'NAME_EN' | 'PERFUME_COUNT'
 
 export const DEFAULT_BRAND_SORT: BrandSort = 'PERFUME_COUNT'
 
-/**
- * 서버가 `sort` 를 못 받았을 때 쓰는 값. NOTE: 화면 기본값과 다릅니다 — 둘을 한 상수로
- * 묶으면 알약은 '향수 많은 순' 인데 서버에는 아무것도 안 실려 abc 순이 돌아옵니다.
- */
+//서버가 `sort` 를 못 받았을 때 쓰는 값.
 export const SERVER_DEFAULT_BRAND_SORT: BrandSort = 'NAME_EN'
 
 export const BRAND_SORTS = [

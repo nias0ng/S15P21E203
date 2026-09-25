@@ -10,11 +10,8 @@ export const ROUTES = {
   NOTES: '/notes',
   NOTE_DETAIL: '/notes/:noteId',
 
-  /*
-   * NOTE: 추천(에픽 109)은 주소가 없습니다 — 메인의 모달입니다(`RecommendModal`).
-   * 그래서 추천 결과는 링크로 공유할 수 없습니다. 공유가 필요해지면 메인에 `/?q=` 를
-   * 내는 쪽이지, 화면을 되살리는 쪽이 아닙니다.
-   */
+  // NOTE: 추천(에픽 109)은 주소가 없습니다 — 메인의 모달입니다(`RecommendModal`).
+  // 그래서 추천 결과는 링크로 공유할 수 없습니다. 공유가 필요해지면 메인에 `/?q=` 를 내는 쪽이지, 화면을 되살리는 쪽이 아닙니다.
 
   TASTE_TEST: '/test',
 
@@ -47,15 +44,16 @@ export const toNoteDetail = (noteId: number | string) => `/notes/${noteId}`
 export const toCollectionDetail = (collectionId: number | string) =>
   `/collections/${collectionId}`
 
-/**
+/*
  * 진열대의 **컬렉션 무대**로 바로 보냅니다. 컬렉션 목록은 제 주소가 없고
  * `MyShelfPage` 안의 상태라, 밖에서 초깃값을 넣는 구멍이 이 쿼리 하나입니다.
- *
+
  * NOTE: `COLLECTION_DETAIL`(`/collections/:id`)은 컬렉션 **한 개**의 상세라 다른
  * 화면입니다. 목록으로 보내려고 그 경로를 쓰면 안 됩니다.
+
  * NOTE: 값은 `MyShelfPage` 의 `SHELF_STAGE_PARAM` · `SHELF_STAGE_COLLECTION` 과 한
  * 벌입니다 — 한쪽만 고치면 진열대가 열립니다.
- *
+
  * @returns `/shelf?stage=collection`
  */
 export const toMyShelfCollection = () => `/shelf?stage=collection`
