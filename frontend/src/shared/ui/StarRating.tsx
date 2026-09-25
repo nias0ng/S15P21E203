@@ -23,10 +23,8 @@ const CIRCLES = 5
 const VALUES = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 /**
- * 취향 적합도 (A15 — SHF-12 · DTL-18 · DTL-19). 0.5 단위이고 **별이 아니라 원**입니다.
- *
- * NOTE: 라디오 그룹이라 화살표 키 이동을 직접 처리합니다 — `role="radio"` 만으로는
- * 안 움직입니다.
+ * 취향 적합도 (A15 — SHF-12 · DTL-18 · DTL-19). 0.5 단위이고 별이 아니라 원
+ * NOTE: 라디오 그룹이라 화살표 키 이동을 직접 처리합니다 — `role="radio"` 만으로는 안 움직입니다.
  */
 export function StarRating({
   label,
@@ -174,11 +172,6 @@ function fillOf(
   return 'empty'
 }
 
-/**
- * 원 하나. 글자(`●`)가 아니라 SVG 인 것은 반만 채우려면 도형을 잘라야 해서입니다.
- *
- * NOTE: 색은 `currentColor` 입니다. 못 박으면 색을 따로 쓰는 화면에서 원만 떠 보입니다.
- */
 function RatingCircle({
   fill,
   size,
