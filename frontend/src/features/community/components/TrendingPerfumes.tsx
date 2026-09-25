@@ -5,12 +5,11 @@ import { toPerfumeDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { GLASS_PANEL_ASIDE } from '@/shared/ui/panel'
 
-import type { TrendingPerfume } from '../types'
+import type { TrendingPerfumesResponse } from '../types'
 
 type Props = {
-  items: TrendingPerfume[]
-  /** 집계한 기간(일). 서버가 알려준 값을 그대로 적습니다 */
-  days?: number
+  /** 서버 응답. 오기 전이거나 언급된 향수가 없으면 아무것도 그리지 않습니다 */
+  data: TrendingPerfumesResponse | undefined
   /** 게시판이 그리드에서 어느 칸 · 어느 줄에 놓을지 정합니다 */
   className?: string
 }
@@ -21,8 +20,8 @@ type Props = {
  *
  * 곁판도 유리입니다(`GLASS_PANEL_ASIDE`) — docs/어두운-방-유리판.md
  */
-export function TrendingPerfumes({ items, days, className }: Props) {
-  if (items.length === 0) return null
+export function TrendingPerfumes({ data, className }: Props) {
+  if (!data || data.perfumes.length === 0) return null
 
   return (
     <aside className={cn(GLASS_PANEL_ASIDE, 'self-start', className)}>
@@ -37,7 +36,7 @@ export function TrendingPerfumes({ items, days, className }: Props) {
       </h2>
 
       <ol className="mt-2.5 space-y-1.25">
-        {items.map((item, rank) => (
+        {data.perfumes.map((item, rank) => (
           <li key={item.perfumeId}>
             <Link
               to={toPerfumeDetail(item.perfumeId)}
@@ -76,9 +75,7 @@ export function TrendingPerfumes({ items, days, className }: Props) {
         보험입니다.
       */}
       <p className="text-ink-muted text-caption border-line-soft mt-2.5 border-t pt-2.5 break-keep">
-        {days === undefined
-          ? '언급된 글 수'
-          : `최근 ${days}일 동안 언급된 글 수`}
+        최근 {data.days}일 동안 언급된 글 수
       </p>
     </aside>
   )

@@ -20,13 +20,9 @@ const GRID = 'grid gap-3.75 sm:grid-cols-2'
 
 type Props = {
   items: BoardItem[]
-  isPending?: boolean
-  emptyAction?: React.ReactNode
-  /**
-   * 넘기면 좋아요가 **누를 수 있는 버튼**이 됩니다. 안 넘기면 숫자만 — 눌러도 아무
-   * 일이 없으면 고장난 것으로 보입니다.
-   */
-  onToggleLike?: (item: BoardItem) => void
+  isPending: boolean
+  emptyAction: React.ReactNode
+  onToggleLike: (item: BoardItem) => void
 }
 
 /**
@@ -36,7 +32,7 @@ type Props = {
  */
 export function PostList({
   items,
-  isPending = false,
+  isPending,
   emptyAction,
   onToggleLike,
 }: Props) {
@@ -140,42 +136,30 @@ export function PostList({
 
           {/* 점수나 별점은 없습니다. 좋아요만 있습니다. */}
           <div className="text-ink-muted text-caption mt-auto flex items-center gap-3.75">
-            {onToggleLike ? (
-              /*
-                위 제목 링크가 줄 전체를 덮고 있으므로 `relative` 로 그 위에
-                올립니다. 안 그러면 좋아요를 눌러도 글로 넘어갑니다.
-              */
-              <button
-                type="button"
-                aria-pressed={item.liked}
-                aria-label={`좋아요 ${item.likeCount}`}
-                onClick={() => onToggleLike(item)}
-                className={cn(
-                  'rounded-card relative transition-colors duration-120 ease-out',
-                  'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
-                  'hover:[&>[aria-hidden]]:text-like',
-                )}
+            {/*
+              위 제목 링크가 줄 전체를 덮고 있으므로 `relative` 로 그 위에
+              올립니다. 안 그러면 좋아요를 눌러도 글로 넘어갑니다.
+            */}
+            <button
+              type="button"
+              aria-pressed={item.liked}
+              aria-label={`좋아요 ${item.likeCount}`}
+              onClick={() => onToggleLike(item)}
+              className={cn(
+                'rounded-card relative transition-colors duration-120 ease-out',
+                'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
+                'hover:[&>[aria-hidden]]:text-like',
+              )}
+            >
+              {/* 색은 하트에만 — 옆 글자까지 칠하면 읽기가 나빠집니다(`styles/index.css` 의 `--color-like`) */}
+              <span
+                aria-hidden
+                className={item.liked ? 'text-like' : undefined}
               >
-                {/* 색은 하트에만 — 옆 글자까지 칠하면 읽기가 나빠집니다(`styles/index.css` 의 `--color-like`) */}
-                <span
-                  aria-hidden
-                  className={item.liked ? 'text-like' : undefined}
-                >
-                  {item.liked ? '♥' : '♡'}
-                </span>{' '}
-                좋아요 {item.likeCount}
-              </button>
-            ) : (
-              <span>
-                <span
-                  aria-hidden
-                  className={item.liked ? 'text-like' : undefined}
-                >
-                  {item.liked ? '♥' : '♡'}
-                </span>{' '}
-                좋아요 {item.likeCount}
-              </span>
-            )}
+                {item.liked ? '♥' : '♡'}
+              </span>{' '}
+              좋아요 {item.likeCount}
+            </button>
             {item.commentCount !== null && (
               <span>댓글 {item.commentCount}</span>
             )}

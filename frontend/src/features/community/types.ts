@@ -243,7 +243,7 @@ export function reviewToBoardItem(review: ReviewBoardItem): BoardItem {
  * ⚠️ 엔드포인트가 없습니다. 향수 검색의 `ranking` 은 담거나 열어 본 횟수라 대신 쓸
  * 수 없어, api.ts 가 자리표시자를 돌려줍니다.
  */
-export interface TrendingPerfume {
+interface TrendingPerfume {
   perfumeId: number
   name: string
   /** 브랜드가 비어 있는 향수가 있습니다 */

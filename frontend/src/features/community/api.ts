@@ -73,12 +73,10 @@ export async function getReviewBoard(params: {
  * 적어 두면 서버가 기간을 바꾼 날 거짓이 됩니다. 향수 검색의 `ranking` 과 다른
  * 값입니다(저쪽은 담거나 열어 본 횟수, 이쪽은 글에 걸린 횟수).
  */
-export async function getTrendingPerfumes(
-  limit = TRENDING_LIMIT,
-): Promise<TrendingPerfumesResponse> {
+export async function getTrendingPerfumes(): Promise<TrendingPerfumesResponse> {
   const { data } = await http.get<TrendingPerfumesResponse>(
     '/posts/trending-perfumes',
-    { params: { limit } },
+    { params: { limit: TRENDING_LIMIT } },
   )
   return data
 }

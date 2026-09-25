@@ -237,8 +237,7 @@ export default function FreeBoardPage() {
 
         <TrendingPerfumes
           className="lg:col-start-2 lg:row-start-2"
-          items={trending.data?.perfumes ?? []}
-          days={trending.data?.days}
+          data={trending.data}
         />
       </div>
 
