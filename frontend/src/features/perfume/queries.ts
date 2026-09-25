@@ -9,7 +9,7 @@ import {
   getReviewDetail,
   searchPerfumes,
 } from './api'
-import type { PerfumeSearchParams } from './types'
+import type { PerfumeSearchParams, PerfumeSearchResponse } from './types'
 
 /** 상세의 구역을 전부 `detail(perfumeId)` 아래에 두어 한 줄로 무효화합니다 */
 export const perfumeKeys = {
@@ -39,6 +39,43 @@ export const perfumeListQuery = (params: PerfumeSearchParams) =>
   queryOptions({
     queryKey: perfumeKeys.list(params),
     queryFn: () => searchPerfumes(params),
+  })
+
+/** 향수를 고르는 모달(글에 향수 걸기 · 진열대 등록)에 세우는 후보 수 */
+const PICK_SIZE = 20
+
+function toPerfumePicks(result: PerfumeSearchResponse): {
+  perfumeId: number
+  name: string
+  brand: string | null
+  thumbnailUrl: string | null
+}[] {
+  return result.perfumes.map((perfume) => ({
+    perfumeId: perfume.perfumeId,
+    // 한국어 이름이 없는 향수가 있습니다 — 그때는 영문으로 부릅니다
+    name: perfume.nameKo ?? perfume.name,
+    brand: perfume.brandName ?? perfume.brandNameKo,
+    thumbnailUrl: perfume.imageUrl,
+  }))
+}
+
+/**
+ * 향수를 고르는 모달의 후보. 모달은 향수 도메인을 몰라(ESLint) 화면이 이 쿼리로 후보를
+ * 만들어 넘깁니다.
+ *
+ * **검색어를 치기 전에는 부르지 않습니다.** 백엔드 기본 정렬이 번호순이라, 조건 없이 부르면
+ * 카탈로그의 번호 빠른 스물이 후보로 섭니다 — 고를 향수가 아니라 그냥 목록입니다.
+ *
+ * @param keyword 모달의 검색어
+ * @returns `useQuery` 에 넘길 옵션. 결과는 `{ perfumeId, name, brand, thumbnailUrl }[]` 이고
+ *   캐시는 같은 검색어의 `perfumeListQuery` 와 함께 씁니다
+ */
+export const perfumePickQuery = (keyword: string) =>
+  queryOptions({
+    queryKey: perfumeKeys.list({ keyword, size: PICK_SIZE }),
+    queryFn: () => searchPerfumes({ keyword, size: PICK_SIZE }),
+    enabled: keyword.trim().length > 0,
+    select: toPerfumePicks,
   })
 
 export const perfumeDetailQuery = (perfumeId: number) =>
