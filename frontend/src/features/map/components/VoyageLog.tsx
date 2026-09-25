@@ -1,17 +1,25 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
+import {
+  scentFamilyName,
+  type ScentFamilyKey,
+} from '@/shared/config/scentFamilies'
+import {
+  CAN_MEASURE,
+  useMeasuredHeight,
+} from '@/shared/hooks/useMeasuredHeight'
+import { useMediaQuery } from '@/shared/hooks/useMediaQuery'
+import { UNROLL, UNROLL_CURVE } from '@/shared/hooks/useUnroll'
 import { cn } from '@/shared/lib/cn'
 import { BottleSilhouette } from '@/shared/ui/BottleSilhouette'
 
 import { groupVoyageLogByDay, type VoyageLogDay } from '../lib/voyageLogDays'
 import {
-  SCENT_FAMILIES,
   VOYAGE_DAY_SHOWN,
   VOYAGE_LOG_DAYS,
-  type ScentFamilyCode,
   type VoyageLogEntry,
 } from '../types'
 
@@ -42,7 +50,7 @@ const CHIP =
  * 계열 색 — 3D 부표 · 미니맵과 같은 색입니다 (`@theme` 의 `--color-family-*`). 점 · 아이콘에만 씁니다.
  * Tailwind 가 소스에서 이름을 읽어 가도록 클래스를 통째로 적습니다.
  */
-const FAMILY_DOT: Record<ScentFamilyCode, string> = {
+const FAMILY_DOT: Record<ScentFamilyKey, string> = {
   CITRUS: 'bg-family-citrus',
   FRUITY: 'bg-family-fruity',
   FLORAL: 'bg-family-floral',
@@ -53,7 +61,7 @@ const FAMILY_DOT: Record<ScentFamilyCode, string> = {
   GOURMAND: 'bg-family-gourmand',
   MUSK: 'bg-family-musk',
 }
-const FAMILY_ICON: Record<ScentFamilyCode, string> = {
+const FAMILY_ICON: Record<ScentFamilyKey, string> = {
   CITRUS: 'text-family-citrus',
   FRUITY: 'text-family-fruity',
   FLORAL: 'text-family-floral',
@@ -78,17 +86,9 @@ const FAMILY_ICON: Record<ScentFamilyCode, string> = {
  * - 판 아래끝의 말린 축 · 그늘 그림은 넣었다가 뺐습니다 (09-17 사용자 : "하단 두루마리 디자인 빼고") — 움직임만 족자입니다
  * - 움직임 줄이기 설정이면 움직이지 않습니다
  */
-const SCROLL_CURVE = 'ease-[cubic-bezier(0.45,0,0.2,1)]'
-const UNROLL = `duration-700 ${SCROLL_CURVE}`
-const ROLL_UP = `duration-450 ${SCROLL_CURVE}`
+const ROLL_UP = `duration-450 ${UNROLL_CURVE}`
 /** 날 하나를 접거나 편 움직임이 끝나는 때 — 위 두 시간 가운데 긴 것(700ms)에 조금 더 */
 const FOLD_SETTLE_MS = 750
-
-/** 내용 높이를 잴 수 있는 환경인지 — 못 재면(테스트의 jsdom 등) 움직임 없이 내용 높이로 엽니다 */
-const CAN_MEASURE = typeof ResizeObserver !== 'undefined'
-
-const familyLabel = (code: string) =>
-  SCENT_FAMILIES.find((family) => family.code === code)?.label ?? code
 
 /**
  * 향해 일지 (와이어프레임 A01 · A02 · A03 — MAP-24)
@@ -135,21 +135,8 @@ const familyLabel = (code: string) =>
  */
 const NARROW_QUERY = '(max-width: 1024px)'
 
-function useNarrow() {
-  const [narrow, setNarrow] = useState(
-    () => window.matchMedia(NARROW_QUERY).matches,
-  )
-  useEffect(() => {
-    const mq = window.matchMedia(NARROW_QUERY)
-    const onChange = (e: MediaQueryListEvent) => setNarrow(e.matches)
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
-  }, [])
-  return narrow
-}
-
 export function VoyageLog({ entries, status }: Props) {
-  const narrow = useNarrow()
+  const narrow = useMediaQuery(NARROW_QUERY)
   // 기본값은 폭이 정하고(좁으면 접힘), 사용자가 누르면 **누른 단계와 함께** 기억합니다.
   // 문턱을 넘으면 기억해 둔 단계가 안 맞으므로 저절로 기본값으로 돌아갑니다 —
   // 한 단계 안에서 접거나 편 것은 리사이즈 중에도 그대로 남습니다.
@@ -174,17 +161,7 @@ export function VoyageLog({ entries, status }: Props) {
   const expanded = open && painted
 
   // 풀릴 종이의 높이. 일지가 늦게 오거나 줄이 늘면 다시 재서, 펼친 판도 그 길이만큼 이어서 풀립니다
-  const bodyRef = useRef<HTMLDivElement>(null)
-  const [bodyHeight, setBodyHeight] = useState(0)
-  useEffect(() => {
-    const body = bodyRef.current
-    if (!body || !CAN_MEASURE) return
-    const observer = new ResizeObserver(() =>
-      setBodyHeight(Math.ceil(body.getBoundingClientRect().height)),
-    )
-    observer.observe(body)
-    return () => observer.disconnect()
-  }, [])
+  const { ref: bodyRef, height: bodyHeight } = useMeasuredHeight()
 
   /*
    * 날 하나를 접고 펴는 동안에는 판이 잰 높이 대신 **내용을 그대로 따라갑니다**(`auto`).
@@ -361,18 +338,8 @@ function VoyageDay({
   onFold: () => void
 }) {
   const [open, setOpen] = useState(defaultOpen)
-  const bodyRef = useRef<HTMLDivElement>(null)
   // 재기 전(null)에는 내용 높이 그대로 둡니다 — 처음 뜰 때 날마다 따로 풀리지 않게
-  const [bodyHeight, setBodyHeight] = useState<number | null>(null)
-  useEffect(() => {
-    const body = bodyRef.current
-    if (!body || !CAN_MEASURE) return
-    const observer = new ResizeObserver(() =>
-      setBodyHeight(Math.ceil(body.getBoundingClientRect().height)),
-    )
-    observer.observe(body)
-    return () => observer.disconnect()
-  }, [])
+  const { ref: bodyRef, height: bodyHeight } = useMeasuredHeight(null)
 
   const regions = day.regions.slice(0, VOYAGE_DAY_SHOWN)
   const moreRegions = day.regions.slice(VOYAGE_DAY_SHOWN)
@@ -498,7 +465,7 @@ function RegionChips({
             aria-hidden
             className={cn('size-1.25 shrink-0 rounded-full', FAMILY_DOT[code])}
           />
-          {familyLabel(code)}
+          {scentFamilyName(code) ?? code}
         </li>
       ))}
       {tail && <li className="flex">{tail}</li>}

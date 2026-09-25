@@ -1,5 +1,5 @@
-import { http, isApiError } from '@/shared/api/http'
-import { env } from '@/shared/config/env'
+import { http } from '@/shared/api/http'
+import { withDevFallback } from '@/shared/api/withDevFallback'
 
 import {
   VOYAGE_LOG_SIZE,
@@ -11,34 +11,6 @@ import {
 } from './types'
 
 /**
- * ⚠️ 개발 중 백엔드가 안 떠 있을 때만 대체값으로 넘어갑니다 — `features/perfume/api.ts` 와 같은 규칙입니다.
- * **요청이 백엔드에 닿지도 못했을 때만**(status 0 · 502~504) 끼어들고, 401 처럼 백엔드가 대답한 오류는
- * 그대로 올려보냅니다. 운영에서는 끼어들지 않습니다.
- *
- * ⚠️ 두 번째 사용처라 `shared/api` 로 올릴 후보입니다 (frontend/CLAUDE.md 의 공용화 시점).
- * perfume 도메인을 같이 고쳐야 해서 D 갈래에서는 복사해 두고, 통합할 때 올립니다.
- */
-async function withDevFallback<T>(
-  request: () => Promise<T>,
-  fallback: () => T,
-): Promise<T> {
-  try {
-    return await request()
-  } catch (error) {
-    const unreachable =
-      isApiError(error) &&
-      (error.status === 0 || (error.status >= 502 && error.status <= 504))
-
-    if (!env.isDev || !unreachable) throw error
-
-    console.warn(
-      '[map] 백엔드에 닿지 못해 개발용 대체 향해 일지를 씁니다. 실제 값이 아닙니다.',
-    )
-    return fallback()
-  }
-}
-
-/**
  * MAP-24 향해 일지 — 최근 해역 진입부터 `VOYAGE_LOG_SIZE` 줄. 판은 이것을 날마다 묶어 싣습니다.
  * 로그인해야 읽을 수 있습니다 (비로그인 401 — 화면은 로그인 안내를 띄웁니다).
  *
@@ -46,6 +18,7 @@ async function withDevFallback<T>(
  */
 export async function getVoyageLog(): Promise<VoyageLogEntry[]> {
   return withDevFallback(
+    'map',
     async () => {
       const { data } = await http.get<VoyageLogResponse>(
         '/map/exploration-logs',

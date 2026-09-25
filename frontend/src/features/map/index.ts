@@ -32,4 +32,3 @@ export {
   mapPerfumesQuery,
   voyageLogQuery,
 } from './queries'
-export { type ScentRegionId } from './types'
