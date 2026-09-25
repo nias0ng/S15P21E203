@@ -24,6 +24,7 @@ import {
 } from '@/shared/config/routes'
 import { useLikeToggle } from '@/shared/hooks/useLikeToggle'
 import { useToast } from '@/shared/hooks/useToast'
+import { authorName } from '@/shared/lib/authorName'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { useIsLoggedIn } from '@/shared/store/authStore'
@@ -181,8 +182,7 @@ export default function PostDetailPage() {
           </h1>
 
           <div className="text-caption flex items-center gap-2.5">
-            {/* 탈퇴한 회원의 글은 글만 남고 작성자가 지워집니다 */}
-            <span className="text-ink">{data.nickname ?? '탈퇴한 회원'}</span>
+            <span className="text-ink">{authorName(data.nickname)}</span>
             <span className="text-ink-muted">
               · {formatRelativeTime(data.createdAt)} · 조회 {data.viewCount}
             </span>

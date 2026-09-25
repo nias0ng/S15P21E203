@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { authorName } from '@/shared/lib/authorName'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { Button } from '@/shared/ui/Button'
@@ -86,10 +87,7 @@ export function CommentSection({
           <li key={comment.commentId} className="space-y-2.5 py-3.75">
             <div className="text-caption flex items-center gap-2.5">
               <Thumbnail className="size-6.25 shrink-0 rounded-full" />
-              {/* 탈퇴한 회원의 댓글은 글만 남고 작성자가 지워집니다 */}
-              <span className="text-ink">
-                {comment.nickname ?? '탈퇴한 회원'}
-              </span>
+              <span className="text-ink">{authorName(comment.nickname)}</span>
               <span className="text-ink-muted">
                 · {formatRelativeTime(comment.createdAt)}
               </span>

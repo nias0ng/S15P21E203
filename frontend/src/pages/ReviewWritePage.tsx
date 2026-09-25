@@ -18,14 +18,14 @@ import {
   REVIEW_CONTENT_MIN_LENGTH,
   REVIEW_TITLE_MAX_LENGTH,
   perfumeDetailQuery,
-  perfumeListQuery,
+  perfumePickQuery,
   reviewDetailQuery,
   reviewKeys,
   SEASONS,
   updateReview,
   type Season,
 } from '@/features/perfume'
-import { isApiError } from '@/shared/api/http'
+import { apiErrorMessage, isApiError } from '@/shared/api/http'
 import { ROUTES, toReviewDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { useIsLoggedIn } from '@/shared/store/authStore'
@@ -63,9 +63,10 @@ function saveErrorMessage(error: unknown): string {
       ? `제목과 본문은 저장됐지만 계절을 저장하지 못했습니다${detail}. [수정] 을 다시 눌러주세요.`
       : `계절을 저장하지 못했습니다${detail}. 잠시 후 다시 시도해주세요.`
   }
-  return isApiError(error)
-    ? error.message
-    : '저장하지 못했습니다. 잠시 후 다시 시도해주세요.'
+  return apiErrorMessage(
+    error,
+    '저장하지 못했습니다. 잠시 후 다시 시도해주세요.',
+  )
 }
 
 /**
@@ -155,19 +156,7 @@ export default function ReviewWritePage() {
         : null
 
   /* 후보는 이 화면이 만듭니다 — 모달(`features/community`)은 향수를 모릅니다 */
-  const perfumeSearch = useQuery({
-    ...perfumeListQuery({ keyword, size: 20 }),
-    enabled: keyword.trim().length > 0,
-  })
-
-  const candidates: LinkedPerfume[] = (perfumeSearch.data?.perfumes ?? []).map(
-    (perfume) => ({
-      perfumeId: perfume.perfumeId,
-      name: perfume.nameKo ?? perfume.name,
-      brand: perfume.brandName ?? perfume.brandNameKo,
-      thumbnailUrl: perfume.imageUrl,
-    }),
-  )
+  const perfumeSearch = useQuery(perfumePickQuery(keyword))
 
   const trimmedTitle = title.trim()
   const trimmedContent = content.trim()
@@ -437,7 +426,7 @@ export default function ReviewWritePage() {
       <LinkedPerfumeModal
         open={pickOpen}
         onClose={() => setPickOpen(false)}
-        candidates={candidates}
+        candidates={perfumeSearch.data ?? []}
         isPending={perfumeSearch.isFetching}
         onSearch={setKeyword}
         /* 후기는 향수 한 개에 씁니다 */

@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 
-import { isApiError } from '@/shared/api/http'
+import { apiErrorMessage } from '@/shared/api/http'
 import { cn } from '@/shared/lib/cn'
 import { FileButton } from '@/shared/ui/FileButton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
@@ -71,9 +71,10 @@ export function ImageAttachField({ value, onChange }: Props) {
 
       {upload.error !== null && (
         <p role="alert" className="text-danger text-caption">
-          {isApiError(upload.error)
-            ? upload.error.message
-            : '사진을 올리지 못했습니다. 잠시 후 다시 시도해주세요.'}
+          {apiErrorMessage(
+            upload.error,
+            '사진을 올리지 못했습니다. 잠시 후 다시 시도해주세요.',
+          )}
         </p>
       )}
     </fieldset>

@@ -18,7 +18,7 @@ import {
   type LinkedPerfume,
   type PostCategory,
 } from '@/features/community'
-import { perfumeListQuery } from '@/features/perfume'
+import { perfumePickQuery } from '@/features/perfume'
 import { ROUTES, toPostDetail, toPostEdit } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { useIsLoggedIn } from '@/shared/store/authStore'
@@ -63,22 +63,9 @@ export default function PostWritePage() {
 
   /*
     향수 후보는 이 화면이 만듭니다 — 모달은 `features/perfume` 을 import 할 수
-    없습니다(ESLint). 검색어를 치기 전에는 부르지 않습니다.
+    없습니다(ESLint).
   */
-  const perfumeSearch = useQuery({
-    ...perfumeListQuery({ keyword, size: 20 }),
-    enabled: keyword.trim().length > 0,
-  })
-
-  const candidates: LinkedPerfume[] = (perfumeSearch.data?.perfumes ?? []).map(
-    (perfume) => ({
-      perfumeId: perfume.perfumeId,
-      // 한국어 이름이 없는 향수가 있습니다 — 그때는 영문으로 부릅니다
-      name: perfume.nameKo ?? perfume.name,
-      brand: perfume.brandName ?? perfume.brandNameKo,
-      thumbnailUrl: perfume.imageUrl,
-    }),
-  )
+  const perfumeSearch = useQuery(perfumePickQuery(keyword))
 
   /** 컬렉션 공유 글에 붙일 내 컬렉션. 로그인해야 옵니다 */
   const collections = useQuery({
@@ -416,7 +403,7 @@ export default function PostWritePage() {
       <LinkedPerfumeModal
         open={pickOpen}
         onClose={() => setPickOpen(false)}
-        candidates={candidates}
+        candidates={perfumeSearch.data ?? []}
         isPending={perfumeSearch.isFetching}
         onSearch={setKeyword}
         onSubmit={(picked) => {

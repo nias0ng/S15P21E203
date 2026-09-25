@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 
+import { authorName } from '@/shared/lib/authorName'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { Badge } from '@/shared/ui/Badge'
@@ -88,8 +89,7 @@ export function PostList({
 
             <div className="text-caption flex flex-wrap items-center gap-2.5">
               <Thumbnail className="size-5 shrink-0 rounded-full" />
-              {/* 탈퇴한 회원의 글은 글만 남고 작성자가 지워집니다 */}
-              <span className="text-ink">{item.nickname ?? '탈퇴한 회원'}</span>
+              <span className="text-ink">{authorName(item.nickname)}</span>
               <span className="text-ink-muted">
                 · {formatRelativeTime(item.createdAt)}
               </span>
