@@ -95,9 +95,10 @@ export function PerfumeReviewDetail({ review, onDeleted }: Props) {
         </h1>
 
         <div className="flex items-center gap-2.5">
-          {/* NOTE: 작성자 사진은 응답에 없습니다 — `ReviewDetailResponse` 가 닉네임만 줍니다.
-              내 사진은 `GET /users/me` 로 알지만 남의 사진은 알 길이 없어, 필드를 요청해 뒀습니다 */}
-          <Thumbnail className="size-7.5 shrink-0 rounded-full" />
+          <Thumbnail
+            src={review.profileImageUrl}
+            className="size-7.5 shrink-0 rounded-full"
+          />
           {/* 줄어드는 자리를 닉네임(최대 20자) 하나로 못 박습니다 — 상대시각과 오른쪽 단추 ·
               하트가 밀려 나가지 않게 합니다.
               NOTE: 1920 · 1536 에서는 이 줄에 여유가 있어(글 폭 800 · 640 에 최악값 약 485 · 473)

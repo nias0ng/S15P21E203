@@ -187,6 +187,8 @@ export interface ReviewsResponse {
 export interface ReviewDetail {
   reviewId: number
   nickname: string | null
+  /** 작성자 사진. 설정하지 않았거나 탈퇴한 작성자면 null 입니다 */
+  profileImageUrl: string | null
   title: string
   content: string
   perfume: { perfumeId: number; name: string; brand: string | null }
