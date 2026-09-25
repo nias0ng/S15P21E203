@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
 import { describe, expect, it } from 'vitest'
+
+import { useShelfItemPick } from '../hooks/useShelfItemPick'
 
 import { ShelfItemPickList, type ShelfItemCandidate } from './ShelfItemPickList'
 
@@ -22,20 +23,13 @@ function Harness({
 }: {
   candidates?: ShelfItemCandidate[]
 }) {
-  const [keyword, setKeyword] = useState('')
-  const [picked, setPicked] = useState<number[]>([])
+  const { picked, toggle, keyword, setKeyword } = useShelfItemPick(true)
 
   return (
     <ShelfItemPickList
       candidates={candidates}
       picked={picked}
-      onToggle={(shelfItemId) =>
-        setPicked((prev) =>
-          prev.includes(shelfItemId)
-            ? prev.filter((id) => id !== shelfItemId)
-            : [...prev, shelfItemId],
-        )
-      }
+      onToggle={toggle}
       keyword={keyword}
       onKeywordChange={setKeyword}
       emptyTitle="진열대에 담은 향수가 없습니다"

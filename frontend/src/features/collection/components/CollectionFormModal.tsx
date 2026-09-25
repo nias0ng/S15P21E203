@@ -6,6 +6,7 @@ import { Input } from '@/shared/ui/Input'
 import { Modal } from '@/shared/ui/Modal'
 import { Textarea } from '@/shared/ui/Textarea'
 
+import { useShelfItemPick } from '../hooks/useShelfItemPick'
 import type { CollectionInput } from '../types'
 
 import { COLLECTION_SHEET, PICK_SHEET_WIDTH } from './collectionSheet'
@@ -39,8 +40,7 @@ export function CollectionFormModal({
   const editing = initial !== undefined
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [picked, setPicked] = useState<number[]>([])
-  const [keyword, setKeyword] = useState('')
+  const { picked, toggle, keyword, setKeyword } = useShelfItemPick(open)
 
   /*
    * `Modal` 이 `<dialog>` 라 닫아도 언마운트되지 않아 앞서 적던 값이 남습니다.
@@ -52,16 +52,7 @@ export function CollectionFormModal({
     setOpenedFor(openedKey)
     setTitle(initial?.title ?? '')
     setDescription(initial?.description ?? '')
-    setPicked([])
-    setKeyword('')
   }
-
-  const toggle = (shelfItemId: number) =>
-    setPicked((prev) =>
-      prev.includes(shelfItemId)
-        ? prev.filter((id) => id !== shelfItemId)
-        : [...prev, shelfItemId],
-    )
 
   return (
     <Modal
@@ -78,7 +69,7 @@ export function CollectionFormModal({
             disabled={
               title.trim().length === 0 || (!editing && picked.length === 0)
             }
-            onClick={() => {
+            onClick={() =>
               onSubmit(
                 {
                   title: title.trim(),
@@ -86,9 +77,7 @@ export function CollectionFormModal({
                 },
                 picked,
               )
-              setPicked([])
-              setKeyword('')
-            }}
+            }
           >
             {editing ? '저장' : '만들기'}
           </Button>
