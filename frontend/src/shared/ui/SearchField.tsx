@@ -57,13 +57,13 @@ const SUBMIT_SIZE: Record<SearchFieldTone, string> = {
 }
 
 /**
- * 목록 화면(향수 · 브랜드 · 노트)의 검색창 폭. 세 화면이 같이 써야 화면을 오갈 때
- * 검색창이 안 움직입니다.
+ * 목록 화면(향수 · 브랜드 · 노트)의 검색창 폭과 가운데 놓기. 세 화면이 같이 써야
+ * 화면을 오갈 때 검색창이 안 움직입니다.
  *
  * NOTE: 모달에는 쓰지 마세요 — 모달 폭이 510 이라 아무 일도 하지 않고, 모달이
  * 넓어지면 검색창만 안 따라와 어긋납니다.
  */
-export const SEARCH_FIELD_LIST_WIDTH = 'max-w-135'
+export const SEARCH_FIELD_LIST_WIDTH = 'mx-auto w-full max-w-135'
 
 /**
  * 검색 입력 + 둥근 보내기 단추 (A33 · A34 · A35 · C02 공용).

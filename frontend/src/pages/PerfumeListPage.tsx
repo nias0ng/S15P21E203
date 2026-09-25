@@ -125,7 +125,7 @@ export default function PerfumeListPage() {
 
       {/* 헤더에 검색창이 없고 검색은 각 페이지 안에 있다는 와이어프레임 규칙 */}
       <SearchField
-        className={cn(SEARCH_FIELD_LIST_WIDTH, 'mx-auto w-full')}
+        className={SEARCH_FIELD_LIST_WIDTH}
         label="향수명 또는 브랜드명으로 검색"
         placeholder="향수명 · 브랜드로 검색해주세요."
         defaultValue={keyword}

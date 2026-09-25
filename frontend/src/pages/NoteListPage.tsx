@@ -8,7 +8,6 @@ import {
   noteListQuery,
 } from '@/features/note'
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
-import { cn } from '@/shared/lib/cn'
 import { withQueryParams } from '@/shared/lib/queryParams'
 import { Button } from '@/shared/ui/Button'
 import { PillFilter } from '@/shared/ui/PillFilter'
@@ -45,7 +44,7 @@ export default function NoteListPage() {
 
       {/* 향수 목록 · 브랜드와 같은 폭 · 같은 자리입니다 (와이어프레임 규칙) */}
       <SearchField
-        className={cn(SEARCH_FIELD_LIST_WIDTH, 'mx-auto w-full')}
+        className={SEARCH_FIELD_LIST_WIDTH}
         label="노트명으로 검색"
         placeholder="노트명으로 검색해주세요."
         defaultValue={keyword}
