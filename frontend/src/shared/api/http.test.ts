@@ -4,7 +4,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { useAuthStore } from '@/shared/store/authStore'
 
-import { http, isApiError } from './http'
+import {
+  ApiError,
+  apiErrorMessage,
+  http,
+  isApiError,
+  isUnreachable,
+} from './http'
 
 const originalAdapter = http.defaults.adapter
 
@@ -166,5 +172,38 @@ describe('토큰이 만료됐을 때의 재발급', () => {
     )
 
     expect(useAuthStore.getState().accessToken).toBe('expired.access.token')
+  })
+})
+
+describe('isUnreachable', () => {
+  it.each([0, 502, 503, 504])(
+    'status %i 은 백엔드에 닿지 못한 것이다',
+    (status) => {
+      expect(isUnreachable(status)).toBe(true)
+    },
+  )
+
+  it.each([400, 401, 404, 500, 501, 505])(
+    'status %i 은 백엔드가 대답한 것이다',
+    (status) => {
+      expect(isUnreachable(status)).toBe(false)
+    },
+  )
+})
+
+describe('apiErrorMessage', () => {
+  it('서버가 답한 오류면 서버 문구를 쓴다', () => {
+    const error = new ApiError(409, 'DUPLICATE', '이미 같은 이름이 있습니다')
+
+    expect(apiErrorMessage(error, '만들지 못했습니다')).toBe(
+      '이미 같은 이름이 있습니다',
+    )
+  })
+
+  it('그 밖의 예외면 대신할 문구를 쓴다', () => {
+    expect(
+      apiErrorMessage(new TypeError('엉뚱한 오류'), '만들지 못했습니다'),
+    ).toBe('만들지 못했습니다')
+    expect(apiErrorMessage(null, '만들지 못했습니다')).toBe('만들지 못했습니다')
   })
 })

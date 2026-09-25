@@ -1,6 +1,6 @@
 import { env } from '@/shared/config/env'
 
-import { isApiError } from './http'
+import { isApiError, isUnreachable } from './http'
 
 /**
  * 개발 중 백엔드가 안 떠 있을 때만 대체값으로 넘어갑니다.
@@ -22,9 +22,7 @@ export async function withDevFallback<T>(
   try {
     return await request()
   } catch (error) {
-    const unreachable =
-      isApiError(error) &&
-      (error.status === 0 || (error.status >= 502 && error.status <= 504))
+    const unreachable = isApiError(error) && isUnreachable(error.status)
 
     if (!env.isDev || !unreachable) throw error
 

@@ -31,6 +31,18 @@ export function isApiError(error: unknown): error is ApiError {
 }
 
 /**
+ * 실패를 화면에 적을 문장으로 옮깁니다. 서버가 답한 오류는 서버 문구가 사정을 가장 잘
+ * 설명해 그대로 쓰고, 그 밖의 예외는 화면이 정한 문구로 대신합니다.
+ *
+ * @param error 쿼리 · 뮤테이션이 넘겨 준 오류
+ * @param fallback `ApiError` 가 아닐 때 보일 문구
+ * @returns 화면에 적을 한 문장
+ */
+export function apiErrorMessage(error: unknown, fallback: string): string {
+  return isApiError(error) ? error.message : fallback
+}
+
+/**
  * 세션이 끊겼을 때 이어서 할 정리. 캐시에 앞 사람 응답이 남으면 다음 사람이 그 화면을
  * 잠깐 봅니다.
  *
@@ -108,7 +120,7 @@ const NO_REFRESH_PATHS = [
  * ("Request failed with status code 502")이 그대로 화면에 나갑니다. 여기서만 우리
  * 문구로 바꾸고, 400 · 404 처럼 **백엔드가 대답한 오류는 건드리지 않습니다.**
  */
-function isUnreachable(status: number): boolean {
+export function isUnreachable(status: number): boolean {
   return status === 0 || status === 502 || status === 503 || status === 504
 }
 
