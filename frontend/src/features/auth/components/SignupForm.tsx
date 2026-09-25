@@ -18,6 +18,7 @@ import {
   signup,
 } from '../api'
 import { AUTH_SUBMIT } from '../frame'
+import { useAvailabilityCheck } from '../hooks/useAvailabilityCheck'
 import { useNewPassword } from '../hooks/useNewPassword'
 import { NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH } from '../types'
 
@@ -25,19 +26,6 @@ import { AuthCard } from './AuthCard'
 import { BackToLogin } from './BackToLogin'
 import { EmailField } from './EmailField'
 import { NewPasswordFields } from './NewPasswordFields'
-
-/** 중복 확인을 마친 값과 그 답 */
-type Checked = { value: string; available: boolean }
-
-/**
- * 확인한 값과 지금 칸에 든 값이 같을 때만 답을 인정합니다.
- *
- * 값을 고칠 때 답을 지우는 방식으로는 부족합니다 — 확인 요청이 날아가 있는 사이에
- * 값을 고치면, 늦게 도착한 옛 답이 새 값에 붙습니다.
- */
-function answerFor(checked: Checked | null, value: string): boolean | null {
-  return checked !== null && checked.value === value ? checked.available : null
-}
 
 /**
  * 회원가입 (A28 우측 카드 — COM-01). [중복 확인] 을 통과해야 [가입하기] 가 켜지고,
@@ -55,32 +43,24 @@ export function SignupForm() {
   const password = useNewPassword()
   const [nickname, setNickname] = useState('')
 
-  const [emailChecked, setEmailChecked] = useState<Checked | null>(null)
-  const [nicknameChecked, setNicknameChecked] = useState<Checked | null>(null)
-
   // 서버가 앞뒤 공백을 지우고 검사하므로 화면도 같은 값으로 셉니다
   const trimmedEmail = email.trim()
   const trimmedNickname = nickname.trim()
   const nicknameTooShort = trimmedNickname.length < NICKNAME_MIN_LENGTH
 
-  const emailAvailable = answerFor(emailChecked, trimmedEmail)
-  const nicknameAvailable = answerFor(nicknameChecked, trimmedNickname)
+  const emailCheck = useAvailabilityCheck(checkEmailAvailability, trimmedEmail)
+  const nicknameCheck = useAvailabilityCheck(
+    checkNicknameAvailability,
+    trimmedNickname,
+  )
+  const emailAvailable = emailCheck.available
+  const nicknameAvailable = nicknameCheck.available
 
   const nicknameError =
     trimmedNickname.length > 0 &&
     (nicknameTooShort || trimmedNickname.length > NICKNAME_MAX_LENGTH)
       ? `닉네임은 공백을 제외하고 ${NICKNAME_MIN_LENGTH}~${NICKNAME_MAX_LENGTH}자입니다`
       : undefined
-
-  const nicknameCheck = useMutation({
-    mutationFn: (value: string) => checkNicknameAvailability(value),
-    onSuccess: (available, value) => setNicknameChecked({ value, available }),
-  })
-
-  const emailCheck = useMutation({
-    mutationFn: (value: string) => checkEmailAvailability(value),
-    onSuccess: (available, value) => setEmailChecked({ value, available }),
-  })
 
   const signupMutation = useMutation({
     mutationFn: () =>
@@ -102,15 +82,15 @@ export function SignupForm() {
         return
       }
       if (error.code === 'AUTH_EMAIL_ALREADY_EXISTS') {
-        setEmailChecked({ value: trimmedEmail, available: false })
+        emailCheck.markTaken()
       }
       if (error.code === 'AUTH_NICKNAME_ALREADY_EXISTS') {
-        setNicknameChecked({ value: trimmedNickname, available: false })
+        nicknameCheck.markTaken()
       }
       // 서버도 어느 쪽인지 가리지 않은 경우입니다 — 둘 다 다시 확인해야 합니다
       if (error.code === 'AUTH_SIGNUP_CONFLICT') {
-        setEmailChecked(null)
-        setNicknameChecked(null)
+        emailCheck.reset()
+        nicknameCheck.reset()
       }
     },
   })
@@ -161,7 +141,7 @@ export function SignupForm() {
             type="button"
             className="shrink-0"
             disabled={trimmedEmail.length === 0 || emailCheck.isPending}
-            onClick={() => emailCheck.mutate(trimmedEmail)}
+            onClick={emailCheck.check}
           >
             중복 확인
           </Button>
@@ -202,7 +182,7 @@ export function SignupForm() {
               nicknameError !== undefined ||
               nicknameCheck.isPending
             }
-            onClick={() => nicknameCheck.mutate(trimmedNickname)}
+            onClick={nicknameCheck.check}
           >
             중복 확인
           </Button>

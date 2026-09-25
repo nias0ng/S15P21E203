@@ -10,6 +10,7 @@ import { Toast } from '@/shared/ui/Toast'
 
 import { changeNickname, checkNicknameAvailability, toAuthUser } from '../api'
 import { AUTH_SUBMIT } from '../frame'
+import { useAvailabilityCheck } from '../hooks/useAvailabilityCheck'
 import { authKeys, meQuery } from '../queries'
 import { NICKNAME_MIN_LENGTH } from '../types'
 
@@ -30,17 +31,15 @@ export function AccountForm() {
 
   /** `null` 이면 서버 값이 그대로 보입니다 — 입력칸을 되돌리는 동기화가 필요 없습니다 */
   const [nicknameDraft, setNicknameDraft] = useState<string | null>(null)
-  const [nicknameAvailable, setNicknameAvailable] = useState<boolean | null>(
-    null,
-  )
 
   const nickname = nicknameDraft ?? me?.nickname ?? ''
   const trimmedNickname = nickname.trim()
 
-  const nicknameCheck = useMutation({
-    mutationFn: () => checkNicknameAvailability(trimmedNickname),
-    onSuccess: (available) => setNicknameAvailable(available),
-  })
+  const nicknameCheck = useAvailabilityCheck(
+    checkNicknameAvailability,
+    trimmedNickname,
+  )
+  const nicknameAvailable = nicknameCheck.available
 
   /**
    * 캐시와 스토어 둘 다 맞춥니다 — 화면은 쿼리를, 헤더는 로그인 스토어를 봐서
@@ -53,7 +52,7 @@ export function AccountForm() {
       useAuthStore.getState().setUser(toAuthUser(user))
 
       setNicknameDraft(null)
-      setNicknameAvailable(null)
+      nicknameCheck.reset()
       showToast('닉네임을 바꿨습니다')
     },
     onError: (error) =>
@@ -109,7 +108,7 @@ export function AccountForm() {
             value={nickname}
             onChange={(event) => {
               setNicknameDraft(event.target.value)
-              setNicknameAvailable(null)
+              nicknameCheck.reset()
             }}
             hint={
               nicknameAvailable === true
@@ -130,7 +129,7 @@ export function AccountForm() {
               trimmedNickname.length < NICKNAME_MIN_LENGTH ||
               nicknameCheck.isPending
             }
-            onClick={() => nicknameCheck.mutate()}
+            onClick={nicknameCheck.check}
           >
             중복 확인
           </Button>
@@ -154,7 +153,7 @@ export function AccountForm() {
             type="button"
             onClick={() => {
               setNicknameDraft(null)
-              setNicknameAvailable(null)
+              nicknameCheck.reset()
             }}
           >
             취소
