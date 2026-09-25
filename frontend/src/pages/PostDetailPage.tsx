@@ -287,7 +287,8 @@ export default function PostDetailPage() {
                       to={toPerfumeDetail(perfume.perfumeId)}
                       state={perfumeViewState('COMMUNITY')}
                       className={cn(
-                        'border-line-soft bg-surface-sunken hover:border-accent rounded-card',
+                        // 올렸을 때 흰 테두리 — 청동은 흰 판 위에서 황갈색으로 탁합니다
+                        'border-line-soft bg-surface-sunken rounded-card hover:border-white',
                         'inline-flex w-fit max-w-full items-baseline gap-2.5 border px-2.5 py-2.5',
                         'transition-colors duration-120 ease-out',
                         // NOTE: 포커스 링을 일부러 안 답니다. 글쇠로 왔을 때 이 태그가 잡혔는지 보이지 않습니다
