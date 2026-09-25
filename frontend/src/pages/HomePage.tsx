@@ -126,7 +126,9 @@ export default function HomePage() {
   const [mapKeyword, setMapKeyword] = useState<string | null>(null)
 
   /** 지도 카드에서 담으려는 향수. 모달이 이름 · 브랜드를 보여주는 데 씁니다 */
-  const [saving, setSaving] = useState<ScenePerfumeRef | null>(null)
+  const [saving, setSaving] = useState<
+    (ScenePerfumeRef & { perfumeId: number }) | null
+  >(null)
   const [loginOpen, setLoginOpen] = useState(false)
   // 엔진이 기다리는 저장 모달의 끝. 모달이 닫히면(취소 · 저장) 불러 3D 입력 잠금을 풉니다
   const releaseSave = useRef<(() => void) | null>(null)
@@ -210,9 +212,11 @@ export default function HomePage() {
   const saveBoatAt = useSaveBoatPosition()
 
   /*
-   * **엔진 좌표 → DB 향수 번호** (§B). [자세히 보기] 를 눌렀을 때 일지에 남기고 상세로 보내는 데 씁니다.
+   * **엔진 좌표 → DB 향수 번호** (§B). 카드의 [자세히 보기] 와 [진열대에 저장] 이 씁니다 —
+   * 엔진 데이터에는 DB 번호가 없어 둘 다 좌표로 찾습니다.
    *
-   * ⚠️ 아직 안 왔으면 null 을 돌려줍니다 — 그러면 예전처럼 이름 검색으로 갑니다.
+   * ⚠️ 아직 안 왔으면 null 을 돌려줍니다 — [자세히 보기] 는 예전처럼 이름 검색으로 가고,
+   *   [진열대에 저장] 은 담을 수 없다고 알립니다.
    *   지도를 여는 동안 조용히 받아 두므로 실제로 눌릴 때는 거의 늘 와 있습니다.
    */
   const perfumePoints = useQuery(mapPerfumePointsQuery())
@@ -220,7 +224,8 @@ export default function HomePage() {
     () => (perfumePoints.data ? buildPerfumeIdIndex(perfumePoints.data) : null),
     [perfumePoints.data],
   )
-  const perfumeIdAt = (x: number, y: number) => perfumeIndex?.at(x, y) ?? null
+  const resolvePerfumeId = (perfume: ScenePerfumeRef) =>
+    perfume.perfumeId ?? perfumeIndex?.at(perfume.mx, perfume.my) ?? null
 
   /*
    * 향해 일지. 향수는 **3D 와 같은 한글 이름 · 계열**로 채워 싣습니다 — API 는 번호와 DB 원명(대개
@@ -316,8 +321,7 @@ export default function HomePage() {
            * 검색 결과(A09)에 보내고 있었습니다. 엔진의 `mx`·`my` 와 `GET /map` 의 `x`·`y` 가
            * **같은 0~1 공간**이라(엔진 불변식 21) 좌표로 이을 수 있습니다.
            */
-          const perfumeId =
-            perfume.perfumeId ?? perfumeIdAt(perfume.mx, perfume.my)
+          const perfumeId = resolvePerfumeId(perfume)
 
           /*
            * ⭐ **향해 일지에 남깁니다** (MAP-24 · `docs/배-자리와-향해일지-0921.md` §B).
@@ -340,14 +344,15 @@ export default function HomePage() {
         onSaveToShelf={(perfume) =>
           new Promise<void>((resolve) => {
             releaseSave.current = resolve
+            const perfumeId = resolvePerfumeId(perfume)
 
             /*
-              ⚠️ 엔진 데이터에는 아직 DB perfumeId 가 없을 수 있습니다
-              (fragrantica_id 뿐). 없으면 담을 수가 없어 — 서버가 받는 것은 DB
+              ⚠️ 엔진 데이터에는 DB perfumeId 가 없어(fragrantica_id 뿐) 좌표로
+              찾습니다(위 onOpenDetail). 못 찾으면 담을 수가 없어 — 서버가 받는 것은 DB
               번호입니다 — 모달을 열지 않고 사정을 알려주고 끝냅니다. 모달을 열어
               분류까지 고르게 한 뒤 실패시키면 한 일이 버려집니다.
             */
-            if (perfume.perfumeId === null) {
+            if (perfumeId === null) {
               showToast('이 향수는 아직 진열대에 담을 수 없습니다')
               resolve()
               releaseSave.current = null
@@ -360,7 +365,7 @@ export default function HomePage() {
               return
             }
 
-            setSaving(perfume)
+            setSaving({ ...perfume, perfumeId })
           })
         }
         /*
@@ -485,7 +490,7 @@ export default function HomePage() {
         options={[]}
         onSearch={() => {}}
         preselected={
-          saving === null || saving.perfumeId === null
+          saving === null
             ? undefined
             : {
                 perfumeId: saving.perfumeId,
