@@ -229,9 +229,13 @@
      */
     --color-ink-muted: #52504c;
     --color-line: var(--color-stonegray);
-    --color-line-soft: var(--color-bone);
+    /*
+     * 연한 채움 · 선은 **찬 남색을 옅게** 깝니다 — 밝은 화면 값(`bone` · #e8e1d6)은 종이색이라
+     * 라벤더빛 흰 유리 위에서 베이지 조각으로 떠 보였습니다(글 상세의 컬렉션 · 향수 칩).
+     */
+    --color-line-soft: rgb(30 41 71 / 0.12);
     --color-surface-card: #ffffff;
-    --color-surface-sunken: var(--color-bone);
+    --color-surface-sunken: rgb(30 41 71 / 0.06);
     --color-selected: var(--color-charcoal);
     --color-danger: var(--color-rust);
     --color-like: #e8283f;
