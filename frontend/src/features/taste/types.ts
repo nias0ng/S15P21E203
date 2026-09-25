@@ -19,9 +19,6 @@ export type ScentWeights = Partial<Record<ScentFamilyKey, number>>
 
 export interface ScentVector {
   perfumeId: number
-  /** 지도 좌표 (x 0~100, y 0~83.056). 응답은 0~1 이고 `api.ts` 가 100배 합니다 */
-  x: number
-  y: number
   /** 국내 선정 순위 1~200. 유사도가 같을 때 이 값이 작은 향수를 씁니다 */
   rank: number
   families: ScentWeights
@@ -31,10 +28,6 @@ export interface ScentVector {
 export interface ScentVectorsResponse {
   perfumes: {
     perfumeId: number
-    /** 0~1 */
-    x: number
-    /** 0~0.83056 */
-    y: number
     rank: number
     families: Record<string, number>
   }[]
@@ -66,10 +59,5 @@ export interface TasteMatch {
   /** 고른 계열. `[0]` 이 1순위입니다 */
   picks: readonly ScentFamilyKey[]
   perfumeId: number
-  x: number
-  y: number
-  similarity: number
   mode: TasteMatchMode
-  /** 고른 계열을 모두 가진 향수의 수 */
-  candidateCount: number
 }

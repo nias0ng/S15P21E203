@@ -181,13 +181,11 @@ describe('countCandidates', () => {
     const sample: ScentVector[] = [
       {
         perfumeId: 1,
-        x: 0,
-        y: 0,
         rank: 1,
         families: { FLORAL: 0.5, MUSK: 0.3 },
       },
-      { perfumeId: 2, x: 0, y: 0, rank: 2, families: { FLORAL: 0.4 } },
-      { perfumeId: 3, x: 0, y: 0, rank: 3, families: { MUSK: 0.4 } },
+      { perfumeId: 2, rank: 2, families: { FLORAL: 0.4 } },
+      { perfumeId: 3, rank: 3, families: { MUSK: 0.4 } },
     ]
 
     expect(countCandidates(sample, ['FLORAL', 'MUSK'])).toBe(1)

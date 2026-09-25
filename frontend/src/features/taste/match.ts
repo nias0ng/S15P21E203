@@ -99,17 +99,11 @@ export function matchStartingPoint(
   })
 
   if (!top) return null
-  const { vector: best, similarity: bestSimilarity } = top
-
-  const candidateCount = countCandidates(vectors, picks)
+  const best = top.vector
 
   return {
     picks: [...picks],
     perfumeId: best.perfumeId,
-    x: best.x,
-    y: best.y,
-    similarity: bestSimilarity,
-    mode: resolveMode(picks, candidateCount),
-    candidateCount,
+    mode: resolveMode(picks, countCandidates(vectors, picks)),
   }
 }

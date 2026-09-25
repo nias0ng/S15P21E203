@@ -9,9 +9,6 @@ import type {
   TasteTestRecord,
 } from './types'
 
-/** 백엔드는 0~1 좌표를 그대로 주고, 화면은 `viewBox="0 0 100 100"` 이라 100배 합니다. */
-const MAP_SCALE = 100
-
 /**
  * 취향 테스트가 쓰는 향수 200개의 계열 벡터 (TST-03). 지도 조회(`GET /map`)는 대표 계열
  * 하나만 담지만 여기는 아홉 계열의 비중이 전부 필요합니다.
@@ -21,8 +18,6 @@ export async function getScentVectors(): Promise<ScentVector[]> {
 
   return data.perfumes.map((row) => ({
     perfumeId: row.perfumeId,
-    x: row.x * MAP_SCALE,
-    y: row.y * MAP_SCALE,
     rank: row.rank,
     families: toScentWeights(row.families),
   }))
