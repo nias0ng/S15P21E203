@@ -14,16 +14,6 @@ type PerfumeCardProps = {
 }
 
 const SLOT = 'aspect-square w-full px-7.5 pt-3.75 pb-5'
-
-/**
- * 병이 앉는 판 (노트 · 브랜드 카드의 이미지 판과 같은 자리).
- *
- * NOTE: **흰색으로 못 박습니다.** 카탈로그 사진은 배경을 지운 PNG 인데 지우개가
- * 병의 흰 부분(라벨 · 유리 반사 · 뚜껑 하이라이트)까지 같이 먹은 장이 많습니다 —
- * 어두운 방의 카드 위에 그대로 두면 그 자리가 구멍처럼 뚫려 보입니다.
- * 브랜드 로고 판(`features/brand/plate.ts`)과 같은 까닭이라, 판 위 실루엣 색도
- * 역할 토큰을 못 씁니다(어두운 방에서 밝은 색으로 뒤집혀 흰 판에서 사라집니다).
- */
 const PLATE = 'rounded-image border border-black/5 bg-white'
 
 export function PerfumeCard({
