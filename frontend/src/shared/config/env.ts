@@ -17,5 +17,4 @@ function required(key: string, value: string | undefined): string {
 export const env = {
   apiBaseUrl: required('VITE_API_BASE_URL', import.meta.env.VITE_API_BASE_URL),
   isDev: import.meta.env.DEV,
-  isProd: import.meta.env.PROD,
 } as const

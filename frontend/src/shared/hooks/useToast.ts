@@ -15,7 +15,6 @@ export function useToast() {
 
   return {
     showToast,
-    closeToast,
     /** `<Toast {...toastProps} />` 로 그대로 펼쳐 넣습니다. */
     toastProps: {
       open: message !== null,

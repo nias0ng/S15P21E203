@@ -9,14 +9,13 @@ const renderCard = (ui: React.ReactNode) =>
   render(<MemoryRouter>{ui}</MemoryRouter>)
 
 describe('PerfumeCard', () => {
-  it('큰 이름 · 작은 이름 · 브랜드를 세 줄로 보여준다', () => {
+  it('큰 이름과 작은 이름을 두 줄로 보여준다', () => {
     renderCard(
-      <PerfumeCard name="상탈 33" subName="Santal 33" brand="르 라보" />,
+      <PerfumeCard name="상탈 33" subName="Santal 33" to="/perfumes/16" />,
     )
 
     expect(screen.getByText('상탈 33')).toBeInTheDocument()
     expect(screen.getByText('Santal 33')).toBeInTheDocument()
-    expect(screen.getByText('르 라보')).toBeInTheDocument()
   })
 
   /*
@@ -24,20 +23,15 @@ describe('PerfumeCard', () => {
     같아집니다. 그대로 그리면 같은 글자가 두 줄로 겹칩니다.
   */
   it('작은 이름이 큰 이름과 같으면 아랫줄을 적지 않는다', () => {
-    renderCard(<PerfumeCard name="Oud Wood" subName="Oud Wood" />)
+    renderCard(
+      <PerfumeCard name="Oud Wood" subName="Oud Wood" to="/perfumes/7" />,
+    )
 
     expect(screen.getByText('Oud Wood')).toBeInTheDocument()
     expect(screen.getAllByText('Oud Wood')).toHaveLength(1)
   })
 
-  it('작은 이름이 없으면 이름과 브랜드 두 줄로 선다', () => {
-    renderCard(<PerfumeCard name="상탈 33" brand="르 라보" />)
-
-    expect(screen.getByText('상탈 33')).toBeInTheDocument()
-    expect(screen.getByText('르 라보')).toBeInTheDocument()
-  })
-
-  it('to 를 넘기면 카드 전체가 상세로 가는 링크가 된다', () => {
+  it('카드 전체가 상세로 가는 링크다', () => {
     renderCard(<PerfumeCard name="산탈 33 EDP" to="/perfumes/16" />)
 
     expect(screen.getByRole('link', { name: /산탈 33 EDP/ })).toHaveAttribute(

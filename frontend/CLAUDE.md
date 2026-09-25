@@ -231,18 +231,18 @@ import { perfumeDetailQuery } from '@/features/perfume/queries'   // X
 
 | 컴포넌트 | 용도 |
 | --- | --- |
-| `shared/ui/Button` | `variant` primary·secondary·outline·ghost·danger / `size` sm·md·lg·icon / `isLoading` |
+| `shared/ui/Button` | `variant` primary·outline·ghost·danger / `size` sm·md·lg / `isLoading` |
 | `shared/ui/Input` | 라벨·에러·hint·접근성 속성 포함. 라벨은 필수 prop |
-| `shared/ui/Textarea` | 여러 줄 입력. `Input` 과 같은 API(라벨 필수 · 에러 · hint · 접근성 속성) |
+| `shared/ui/Textarea` | 여러 줄 입력. `Input` 과 같은 API(라벨 필수 · 에러 · 접근성 속성)이고 hint 는 없습니다 |
 | `shared/ui/Thumbnail` | 이미지 슬롯. 이미지가 없으면 자리표시자 상자. 크기는 `className` 으로. 아바타(`rounded-full`)도 이걸 씁니다 |
 | `shared/ui/Checkbox` | 사각 체크박스(14px). 라벨은 호출하는 쪽에서 `<label>` 로 감싸세요 |
 | `shared/ui/SearchField` | 검색 입력 + 버튼. 헤더에 검색창이 없어 목록 화면마다 반복됩니다 |
-| `shared/ui/Badge` | 향 계열·상태 같은 짧은 라벨. `tone` neutral·accent·success·danger·outline |
-| `shared/ui/PerfumeCard` | 향수 카드. 도메인 타입을 받지 않고 `name`·`brand`·`thumbnailUrl` 낱개로 받습니다 |
+| `shared/ui/Badge` | 향 계열·상태 같은 짧은 라벨. `tone` neutral·outline |
+| `shared/ui/PerfumeCard` | 향수 카드. 도메인 타입을 받지 않고 `name`·`subName`·`thumbnailUrl` 낱개로 받습니다. 늘 상세로 가는 링크라 `to` 는 필수입니다 |
 | `shared/ui/ChipToggle` | 칩 여러 개 중 고르기 (A11 진열대 분류 · 계절 등록, A15) |
 | `shared/ui/StarRating` | 별점. 라디오 그룹이라 키보드 화살표로 움직입니다 |
 | `shared/ui/Modal` | 네이티브 `<dialog>` 기반. 포커스 가두기·Esc·배경 스크롤 잠금 자동 |
-| `shared/ui/ConfirmDialog` | 삭제 확인 모달 (C01). 7곳 공용. `destructive` 로 위험 표현 |
+| `shared/ui/ConfirmDialog` | 삭제 확인 모달 (C01). 7곳 공용. 확인 단추는 늘 `danger` 입니다 |
 | `shared/ui/LoginRequiredDialog` | 로그인 유도 모달 (C01). 비로그인 저장·작성 시도 시 |
 | `shared/ui/Toast` | 저장·삭제 피드백 (C03). 상태는 `shared/hooks/useToast` 를 쓰세요 |
 | `shared/ui/Skeleton` | 로딩 중 자리 잡기. 목록에는 스피너보다 이걸 씁니다 |

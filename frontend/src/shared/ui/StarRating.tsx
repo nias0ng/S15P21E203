@@ -7,8 +7,7 @@ type StarRatingProps = {
   label: string
   /** 1.0 ~ 5.0 을 0.5 단위로. 아직 안 매겼으면 null */
   value: number | null
-  /** 읽기 전용이면 넘기지 마세요 */
-  onChange?: (next: number) => void
+  onChange: (next: number) => void
   /** 숫자를 옆에 적을지. 카드처럼 원만 보여주는 자리에서는 끕니다 */
   showValue?: boolean
   /** 원 지름. 기본 md(15px) / lg(20px) — 카드 한 장을 크게 보여주는 자리 */
@@ -44,49 +43,6 @@ export function StarRating({
   size = 'md',
   className,
 }: StarRatingProps) {
-  if (!onChange) {
-    return (
-      <span className={cn('inline-flex items-center gap-1.25', className)}>
-        <span aria-hidden className="flex items-center gap-1.25">
-          {Array.from({ length: CIRCLES }, (_, index) => (
-            <RatingCircle key={index} fill={fillOf(value, index)} size={size} />
-          ))}
-        </span>
-        {/* 그림이 aria-hidden 이라 값은 글자로 한 번 읽힙니다 */}
-        <span
-          className={cn('text-ink-muted text-caption', !showValue && 'sr-only')}
-        >
-          {value === null ? '아직 매기지 않음' : `${value} / ${CIRCLES}`}
-        </span>
-      </span>
-    )
-  }
-
-  return (
-    <EditableRating
-      label={label}
-      value={value}
-      onChange={onChange}
-      showValue={showValue}
-      size={size}
-      className={className}
-    />
-  )
-}
-
-function EditableRating({
-  label,
-  value,
-  onChange,
-  showValue,
-  size,
-  className,
-}: Required<
-  Pick<StarRatingProps, 'label' | 'onChange' | 'showValue' | 'size'>
-> & {
-  value: number | null
-  className?: string
-}) {
   const refs = useRef<(HTMLButtonElement | null)[]>([])
 
   const checkedIndex = VALUES.indexOf(value ?? NaN)

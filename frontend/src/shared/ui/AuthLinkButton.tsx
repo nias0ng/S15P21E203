@@ -8,13 +8,9 @@ import { type buttonVariants } from '@/shared/ui/buttonVariants'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 
-type Props = VariantProps<typeof buttonVariants> & {
-  /** 로그인했을 때 갈 곳 */
+type Props = Pick<VariantProps<typeof buttonVariants>, 'size'> & {
+  /** 로그인했을 때 갈 곳. 로그인한 뒤에도 이리로 돌아옵니다 */
   to: LinkProps['to']
-  /** 이동할 때 함께 실어 보낼 값 */
-  state?: LinkProps['state']
-  /** 로그인 뒤 돌아올 경로. 없으면 `to` 를 씁니다 */
-  redirectTo?: string
   /** 로그인이 왜 필요한지 한 줄. `LoginRequiredDialog` 로 그대로 갑니다 */
   description?: React.ReactNode
   className?: string
@@ -28,12 +24,8 @@ type Props = VariantProps<typeof buttonVariants> & {
  */
 export function AuthLinkButton({
   to,
-  state,
-  redirectTo,
   description,
-  variant,
   size,
-  fullWidth,
   className,
   children,
 }: Props) {
@@ -42,14 +34,7 @@ export function AuthLinkButton({
 
   if (isLoggedIn) {
     return (
-      <LinkButton
-        to={to}
-        state={state}
-        variant={variant}
-        size={size}
-        fullWidth={fullWidth}
-        className={className}
-      >
+      <LinkButton to={to} size={size} className={className}>
         {children}
       </LinkButton>
     )
@@ -59,9 +44,7 @@ export function AuthLinkButton({
     <>
       <Button
         type="button"
-        variant={variant}
         size={size}
-        fullWidth={fullWidth}
         className={className}
         onClick={() => setLoginOpen(true)}
       >
@@ -71,7 +54,7 @@ export function AuthLinkButton({
       <LoginRequiredDialog
         open={loginOpen}
         onClose={() => setLoginOpen(false)}
-        redirectTo={redirectTo ?? (typeof to === 'string' ? to : undefined)}
+        redirectTo={typeof to === 'string' ? to : undefined}
         description={description}
       />
     </>

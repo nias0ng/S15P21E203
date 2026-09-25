@@ -9,8 +9,6 @@ type ConfirmDialogProps = {
   title?: string
   description?: string
   confirmLabel?: string
-  /** 되돌릴 수 없는 동작이면 true (기본). false 면 확인 버튼이 primary 로 바뀝니다. */
-  destructive?: boolean
   isLoading?: boolean
   /**
    * 판의 겉모습. 3D 향 지도 위에서 뜨는 확인은 `scent-map-panel` 을 넘겨 어두운 유리로
@@ -30,7 +28,6 @@ export function ConfirmDialog({
   title = '삭제할까요?',
   description = '삭제하면 되돌릴 수 없습니다.',
   confirmLabel = '삭제',
-  destructive = true,
   isLoading = false,
   className,
 }: ConfirmDialogProps) {
@@ -47,11 +44,7 @@ export function ConfirmDialog({
           <Button variant="outline" onClick={onClose}>
             취소
           </Button>
-          <Button
-            variant={destructive ? 'danger' : 'primary'}
-            isLoading={isLoading}
-            onClick={onConfirm}
-          >
+          <Button variant="danger" isLoading={isLoading} onClick={onConfirm}>
             {confirmLabel}
           </Button>
         </>

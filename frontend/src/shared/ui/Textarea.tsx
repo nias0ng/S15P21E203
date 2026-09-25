@@ -9,8 +9,6 @@ type TextareaProps = Omit<React.ComponentPropsWithRef<'textarea'>, 'id'> & {
   hideLabel?: boolean
   /** 에러 메시지. 값이 있으면 테두리가 빨개지고 메시지가 아래에 붙습니다. */
   error?: string
-  /** 입력 형식 안내 같은 보조 설명 */
-  hint?: string
 }
 
 /**
@@ -22,13 +20,11 @@ export function Textarea({
   label,
   hideLabel = false,
   error,
-  hint,
   className,
   ...props
 }: TextareaProps) {
   const id = useId()
   const errorId = `${id}-error`
-  const hintId = `${id}-hint`
 
   return (
     <div className="space-y-2.5">
@@ -45,7 +41,7 @@ export function Textarea({
       <textarea
         id={id}
         aria-invalid={error ? true : undefined}
-        aria-describedby={cn(hint && hintId, error && errorId) || undefined}
+        aria-describedby={error ? errorId : undefined}
         className={cn(
           'rounded-card text-body w-full border px-2.5 py-2.5',
           'placeholder:text-ink-muted/70',
@@ -66,11 +62,6 @@ export function Textarea({
         {...props}
       />
 
-      {hint && !error && (
-        <p id={hintId} className="text-ink-muted text-caption">
-          {hint}
-        </p>
-      )}
       {error && (
         <p id={errorId} className="text-danger text-caption">
           {error}

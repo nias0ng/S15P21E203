@@ -12,17 +12,14 @@ type PerfumeCardProps = {
    * `name={a ?? b} subName={b}` 로 넘기면 두 값이 같아져 두 줄로 겹칩니다.
    */
   subName?: string | null
-  /** 브랜드명. 브랜드가 없는 향수는 null 이라 줄을 그리지 않습니다 */
-  brand?: string | null
   /** 사진 왼쪽 위에 얹는 순위(1부터). 줄 세운 목록에서만 넘기세요 */
   rank?: number
   /** 대표 이미지. 없으면 병 실루엣을 대신 세웁니다 */
   thumbnailUrl?: string | null
-  /** 카드를 누르면 갈 곳. 없으면 링크가 아닌 그냥 카드가 됩니다. */
-  to?: string
+  /** 카드를 누르면 갈 곳 */
+  to: string
   /** 이동할 때 함께 실어 보낼 값. 향수 상세가 들어온 길을 여기서 받습니다 */
   state?: LinkProps['state']
-  className?: string
 }
 
 /** 사진이 놓이는 칸. **사진과 실루엣이 같은 값을 써야** 격자가 안 어긋납니다 */
@@ -46,12 +43,10 @@ const PLATE = 'rounded-image border border-black/5 bg-white'
 export function PerfumeCard({
   name,
   subName,
-  brand,
   rank,
   thumbnailUrl,
   to,
   state,
-  className,
 }: PerfumeCardProps) {
   const body = (
     <>
@@ -118,39 +113,28 @@ export function PerfumeCard({
         {subName && subName !== name && (
           <p className="text-ink-muted text-caption truncate">{subName}</p>
         )}
-
-        {brand && <p className="text-ink text-caption truncate">{brand}</p>}
       </div>
     </>
-  )
-
-  /* `h-full` 이 없으면 이름이 두 줄인 카드만 테두리가 길어집니다 */
-  const shell = cn(
-    'border-line bg-surface-card rounded-card flex h-full flex-col gap-1.25 border p-2.5',
-    className,
   )
 
   /* `data-slot` 은 화면 테마가 붙잡을 자리 이름 — docs/어두운-방-유리판.md */
 
   return (
-    <article className={cn('flex h-full flex-col', !to && shell)}>
-      {to ? (
-        <Link
-          to={to}
-          state={state}
-          data-slot="card"
-          className={cn(
-            shell,
-            'flex-1',
-            'transition-[transform,box-shadow] duration-200 ease-out',
-            'hover:shadow-raised hover:-translate-y-1.25',
-          )}
-        >
-          {body}
-        </Link>
-      ) : (
-        body
-      )}
+    <article className="flex h-full flex-col">
+      <Link
+        to={to}
+        state={state}
+        data-slot="card"
+        className={cn(
+          /* `h-full` 이 없으면 이름이 두 줄인 카드만 테두리가 길어집니다 */
+          'border-line bg-surface-card rounded-card flex h-full flex-col gap-1.25 border p-2.5',
+          'flex-1',
+          'transition-[transform,box-shadow] duration-200 ease-out',
+          'hover:shadow-raised hover:-translate-y-1.25',
+        )}
+      >
+        {body}
+      </Link>
     </article>
   )
 }

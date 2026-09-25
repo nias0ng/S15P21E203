@@ -20,11 +20,11 @@ describe('useToast', () => {
     expect(result.current.toastProps.message).toBe('진열대에 저장했습니다')
   })
 
-  it('closeToast 로 닫는다', () => {
+  it('toastProps.onClose 로 닫는다', () => {
     const { result } = renderHook(() => useToast())
 
     act(() => result.current.showToast('저장했습니다'))
-    act(() => result.current.closeToast())
+    act(() => result.current.toastProps.onClose())
 
     expect(result.current.toastProps.open).toBe(false)
   })

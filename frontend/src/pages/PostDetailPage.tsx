@@ -352,7 +352,6 @@ export default function PostDetailPage() {
         onClose={() => setDeleteOpen(false)}
         title={`'${data.title}' 게시글을 삭제할까요?`}
         onConfirm={() => removePost.mutate()}
-        destructive
       />
 
       <LoginRequiredDialog

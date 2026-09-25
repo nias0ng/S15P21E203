@@ -6,28 +6,21 @@ type ToastProps = {
   open: boolean
   onClose: () => void
   message: string
-  /** 자동으로 사라지는 시간(ms). 0 이면 자동으로 닫지 않습니다. */
-  duration?: number
-  className?: string
 }
+
+const DURATION_MS = 3000
 
 /**
  * 저장 · 삭제 피드백 (C03). **상태는 `shared/hooks/useToast` 를 쓰세요** — 직접
  * 들고 인라인 화살표를 onClose 로 넘기면 아래 타이머가 렌더마다 초기화됩니다.
  */
-export function Toast({
-  open,
-  onClose,
-  message,
-  duration = 3000,
-  className,
-}: ToastProps) {
+export function Toast({ open, onClose, message }: ToastProps) {
   useEffect(() => {
-    if (!open || duration <= 0) return
+    if (!open) return
 
-    const timer = window.setTimeout(onClose, duration)
+    const timer = window.setTimeout(onClose, DURATION_MS)
     return () => window.clearTimeout(timer)
-  }, [open, duration, onClose])
+  }, [open, onClose])
 
   if (!open) return null
 
@@ -45,7 +38,6 @@ export function Toast({
       className={cn(
         'bg-ink fixed bottom-6.25 left-1/2 z-40 -translate-x-1/2',
         'text-surface text-body shadow-overlay px-3.75 py-2.5',
-        className,
       )}
     >
       {message}

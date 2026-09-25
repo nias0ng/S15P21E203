@@ -66,15 +66,8 @@ describe('StarRating', () => {
     expect(onChange).toHaveBeenLastCalledWith(5)
   })
 
-  it('읽기 전용이면 고를 수 없고 값만 읽힌다', () => {
-    render(<StarRating label="적합도" value={4.5} />)
-
-    expect(screen.queryAllByRole('radio')).toHaveLength(0)
-    expect(screen.getByText('4.5 / 5')).toBeInTheDocument()
-  })
-
   it('아직 안 매긴 값은 숫자 대신 말로 알린다', () => {
-    render(<StarRating label="적합도" value={null} />)
+    render(<StarRating label="적합도" value={null} onChange={vi.fn()} />)
 
     expect(screen.getByText('아직 매기지 않음')).toBeInTheDocument()
   })

@@ -19,7 +19,6 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         primary: 'bg-ink text-surface hover:bg-ink-muted',
-        secondary: 'bg-line-soft text-ink hover:bg-line',
         outline:
           'border border-line bg-transparent text-ink hover:bg-line-soft',
         ghost:
@@ -36,7 +35,6 @@ export const buttonVariants = cva(
         sm: 'text-body h-7.5 min-h-[calc(var(--text-body)*var(--text-body--line-height)+5px)] px-2.5',
         md: 'text-body h-10 px-3.75',
         lg: 'text-body h-12.5 px-6.25',
-        icon: 'size-10',
       },
       fullWidth: {
         true: 'w-full',
