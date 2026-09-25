@@ -313,7 +313,11 @@ export default function PostWritePage() {
                   type="button"
                   aria-label={`${collection.title} 첨부 해제`}
                   onClick={releaseCollection}
-                  className="text-ink-muted hover:text-ink"
+                  className={cn(
+                    'text-ink-muted hover:text-ink rounded-card',
+                    'transition-colors duration-120 ease-out',
+                    'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
+                  )}
                 >
                   <span aria-hidden>×</span>
                 </button>
