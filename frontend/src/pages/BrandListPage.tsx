@@ -6,10 +6,14 @@ import {
   BrandGrid,
   brandListQuery,
   DEFAULT_BRAND_SORT,
-  type BrandSort,
 } from '@/features/brand'
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
-import { readPage, withQueryParams, writePage } from '@/shared/lib/queryParams'
+import {
+  readOption,
+  readPage,
+  withQueryParams,
+  writePage,
+} from '@/shared/lib/queryParams'
 import { Button } from '@/shared/ui/Button'
 import { Pagination } from '@/shared/ui/Pagination'
 import { GLASS_PANEL } from '@/shared/ui/panel'
@@ -28,7 +32,7 @@ export default function BrandListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const keyword = searchParams.get('keyword') ?? ''
   const sort =
-    (searchParams.get('sort') as BrandSort | null) ?? DEFAULT_BRAND_SORT
+    readOption(searchParams.get('sort'), BRAND_SORTS) ?? DEFAULT_BRAND_SORT
   const page = readPage(searchParams)
 
   const { data, isPending } = useQuery(brandListQuery({ keyword, sort }))

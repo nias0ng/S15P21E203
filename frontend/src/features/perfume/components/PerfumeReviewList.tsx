@@ -1,6 +1,7 @@
 import { Link } from 'react-router'
 
 import { ROUTES, toReviewEdit, toReviewDetail } from '@/shared/config/routes'
+import { authorName } from '@/shared/lib/authorName'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { AuthLinkButton } from '@/shared/ui/AuthLinkButton'
@@ -125,8 +126,7 @@ function ReviewRow({ review }: { review: Review }) {
       </span>
 
       <span className="text-ink-muted text-caption block">
-        {review.nickname ?? '탈퇴한 회원'} ·{' '}
-        {formatRelativeTime(review.createdAt)}
+        {authorName(review.nickname)} · {formatRelativeTime(review.createdAt)}
       </span>
     </Link>
   )

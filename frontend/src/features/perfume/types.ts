@@ -1,4 +1,5 @@
 import type { ScentFamilyKey } from '@/shared/config/scentFamilies'
+import { readOption } from '@/shared/lib/queryParams'
 
 export interface PerfumeSummary {
   perfumeId: number
@@ -85,23 +86,11 @@ export const GENDER_FILTERS = [
   { value: 'UNISEX', label: '중성' },
 ] as const satisfies readonly { value: GenderFilter; label: string }[]
 
-/**
- * 주소(`?ranking=` · `?gender=`)에서 읽은 필터 값을 걸러냅니다. 주소는 사람이 고쳐
- * 쓸 수 있어 **모르는 값은 "안 걸림"(`null`)** 으로 봅니다 — 그대로 API 에 실으면
- * 400 이라 화면이 통째로 빕니다.
- */
-function readFilter<T extends string>(
-  value: string | null,
-  options: readonly { value: T }[],
-): T | null {
-  return options.some((option) => option.value === value) ? (value as T) : null
-}
-
 export const readRankingFilter = (value: string | null): RankingFilter | null =>
-  readFilter(value, RANKING_FILTERS)
+  readOption(value, RANKING_FILTERS)
 
 export const readGenderFilter = (value: string | null): GenderFilter | null =>
-  readFilter(value, GENDER_FILTERS)
+  readOption(value, GENDER_FILTERS)
 
 /** NOTE: 백엔드 컬럼이 제약 없는 `VARCHAR(30)` 이라 표에 없는 값이 오면 아무것도 안 적습니다 */
 export const GENDER_TEXT: Record<GenderFilter, string> = {

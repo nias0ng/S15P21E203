@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router'
 
-import { isApiError } from '@/shared/api/http'
+import { apiErrorMessage } from '@/shared/api/http'
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import {
   ROUTES,
@@ -11,6 +11,7 @@ import {
   toReviewEdit,
 } from '@/shared/config/routes'
 import { useLikeToggle } from '@/shared/hooks/useLikeToggle'
+import { authorName } from '@/shared/lib/authorName'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { Badge } from '@/shared/ui/Badge'
@@ -102,7 +103,7 @@ export function PerfumeReviewDetail({ review, onDeleted }: Props) {
               NOTE: 1920 · 1536 에서는 이 줄에 여유가 있어(글 폭 800 · 640 에 최악값 약 485 · 473)
                 아무 일도 하지 않습니다. 실제로 무는 것은 뷰포트가 700 아래로 내려간 좁은 화면입니다 */}
           <span className="text-ink min-w-0 truncate text-xs">
-            {review.nickname ?? '탈퇴한 회원'}
+            {authorName(review.nickname)}
           </span>
           <span className="text-ink-muted text-caption shrink-0">
             · {formatRelativeTime(review.createdAt)}
@@ -211,9 +212,10 @@ export function PerfumeReviewDetail({ review, onDeleted }: Props) {
 
         {removal.error !== null && (
           <p className="text-danger text-caption" role="alert">
-            {isApiError(removal.error)
-              ? removal.error.message
-              : '삭제하지 못했습니다. 잠시 후 다시 시도해주세요.'}
+            {apiErrorMessage(
+              removal.error,
+              '삭제하지 못했습니다. 잠시 후 다시 시도해주세요.',
+            )}
           </p>
         )}
 

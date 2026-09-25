@@ -1,5 +1,7 @@
 import { queryOptions } from '@tanstack/react-query'
 
+import { keywordMatcher } from '@/shared/lib/keywordMatch'
+
 import { getNote, getNotePerfumes, getNotes } from './api'
 import { noteFamilies } from './grouping'
 import type { Note } from './types'
@@ -27,14 +29,10 @@ export const noteListQuery = (keyword: string) =>
 
 /** 한국어 이름이 없는 노트가 있습니다 */
 function filterNotes(notes: Note[], keyword: string): Note[] {
-  const needle = keyword.trim().toLowerCase()
-  if (!needle) return notes
+  if (!keyword.trim()) return notes
 
-  return notes.filter(
-    (note) =>
-      note.name.toLowerCase().includes(needle) ||
-      (note.nameKo?.toLowerCase().includes(needle) ?? false),
-  )
+  const matches = keywordMatcher(keyword)
+  return notes.filter((note) => matches(note.name, note.nameKo))
 }
 
 /** 검색 결과가 아니라 전체 노트에서 뽑습니다 — 걸린 것만으로 만들면 알약 줄 수가 오르내립니다 */

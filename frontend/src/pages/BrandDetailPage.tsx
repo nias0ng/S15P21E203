@@ -5,7 +5,7 @@ import { BRAND_PLATE, brandDetailQuery } from '@/features/brand'
 // 브랜드의 향수는 향수 검색 API 가 돌려줍니다 — features 끼리는 서로 import 할 수
 // 없어 화면에서 두 도메인을 조합합니다
 import { PerfumeGrid, perfumeListQuery } from '@/features/perfume'
-import { ROUTES } from '@/shared/config/routes'
+import { ROUTES, toPerfumeSearch } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
@@ -132,7 +132,7 @@ export default function BrandDetailPage() {
             {perfumeCount > PERFUME_PAGE_SIZE && (
               <div className="mt-6.25 flex justify-center">
                 <LinkButton
-                  to={`${ROUTES.PERFUMES}?keyword=${encodeURIComponent(name)}`}
+                  to={toPerfumeSearch(name)}
                   variant="outline"
                   size="sm"
                 >

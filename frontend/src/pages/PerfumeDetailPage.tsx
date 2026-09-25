@@ -20,11 +20,10 @@ import {
 // 진열대 저장은 진열대 도메인의 어휘라, features 끼리 import 하지 않고 화면에서 조합합니다
 import {
   ShelfRegisterModal,
-  ShelfRegisterPartialError,
   shelfItemsQuery,
+  shelfRegisterErrorMessage,
   useShelfActions,
 } from '@/features/shelf'
-import { isApiError } from '@/shared/api/http'
 import {
   PERFUME_VIEW_BACK_LABEL,
   readPerfumeViewState,
@@ -212,14 +211,7 @@ export default function PerfumeDetailPage() {
           setShelfOpen(false)
           actions.register.mutate(input, {
             onSuccess: () => showToast('진열대에 저장했습니다'),
-            onError: (error) =>
-              showToast(
-                error instanceof ShelfRegisterPartialError
-                  ? `진열대에 담았지만 ${error.missing.join(' · ')}은(는) 저장하지 못했습니다`
-                  : isApiError(error)
-                    ? error.message
-                    : '진열대에 저장하지 못했습니다.',
-              ),
+            onError: (error) => showToast(shelfRegisterErrorMessage(error)),
           })
         }}
       />
