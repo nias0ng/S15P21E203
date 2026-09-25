@@ -173,7 +173,79 @@ class NaturalLanguageRecommendationServiceTest {
         NaturalLanguageRecommendationResponse response = service.recommend(QUERY);
 
         assertThat(response.perfumes().getFirst().reasons())
-                .containsExactly(new RecommendationReasonResponse(null, "soapy"));
+                .extracting(RecommendationReasonResponse::phrase,
+                        RecommendationReasonResponse::evidence)
+                .containsExactly(tuple(null, "soapy"));
+    }
+
+    /**
+     * 향 강도가 이름과 <b>짝이 맞게</b> 나갑니다 (AI 요청 2026-09-25).
+     *
+     * <p>이유가 향 이름만 보여 주고 있었는데, AI 가 함께 보내는 강도를 백엔드가 버리고
+     * 있었습니다. 강도는 AI 가 순위를 정할 때 실제로 쓴 값이라 <i>"왜 이 향수인가"</i> 에
+     * 가장 가까운 답입니다.
+     *
+     * <p>화면은 {@code evidence} 를 {@code ' · '} 로 자른 뒤 {@code strengths} 와 순서로
+     * 짝짓습니다. 그래서 <b>개수와 순서</b>를 함께 봅니다.
+     */
+    @Test
+    void servesStrengthAlongsideEachEvidence() {
+        given(nlrClient.recommend(QUERY)).willReturn(aiResponse("OK",
+                result(73368L, matched("soapy", "빨래", 100), matched("fresh", "빨래", 93))));
+        given(perfumeRepository.findIdentitiesByFragranticaIds(anyCollection()))
+                .willReturn(List.of(identity(73368L, 1L, "Laundry", "브랜드")));
+
+        NaturalLanguageRecommendationResponse response = service.recommend(QUERY);
+
+        RecommendationReasonResponse reason =
+                response.perfumes().getFirst().reasons().getFirst();
+        assertThat(reason.evidence()).isEqualTo("soapy · fresh");
+        assertThat(reason.strengths()).containsExactly(100, 93);
+        assertThat(reason.strengths()).hasSameSizeAs(reason.evidence().split(" · "));
+    }
+
+    /**
+     * 같은 향이 두 번 와도 이름과 강도가 <b>함께</b> 한 번만 들어갑니다.
+     *
+     * <p>⚠ <b>이 검사가 이 변경의 핵심입니다.</b> 이름 목록과 강도 목록을 따로 모으면, 이미
+     * 있는 이름이라 걸러내는 자리에서 이름만 건너뛰고 강도는 들어가 <b>두 목록의 개수가
+     * 어긋납니다.</b> 그러면 화면이 강도를 엉뚱한 이름에 붙이거나 숫자를 통째로 안 그립니다.
+     * 둘을 한 record 로 묶어 나르면 그 실수를 할 수 없고, 이 검사가 그것을 지킵니다.
+     */
+    @Test
+    void keepsNameAndStrengthTogetherWhenAccordRepeats() {
+        given(nlrClient.recommend(QUERY)).willReturn(aiResponse("OK",
+                result(73368L, matched("soapy", "빨래", 100), matched("soapy", "빨래", 42))));
+        given(perfumeRepository.findIdentitiesByFragranticaIds(anyCollection()))
+                .willReturn(List.of(identity(73368L, 1L, "Laundry", "브랜드")));
+
+        NaturalLanguageRecommendationResponse response = service.recommend(QUERY);
+
+        RecommendationReasonResponse reason =
+                response.perfumes().getFirst().reasons().getFirst();
+        assertThat(reason.evidence()).isEqualTo("soapy");
+        assertThat(reason.strengths()).containsExactly(100);
+    }
+
+    /**
+     * AI 가 강도를 안 보내면 그 자리는 {@code null} 입니다. <b>배열을 짧게 만들지 않습니다.</b>
+     *
+     * <p>짧게 만들면 뒤 조각들의 짝이 한 칸씩 밀립니다. {@code null} 로 자리를 지켜야 화면이
+     * 순서로 짝지을 수 있습니다.
+     */
+    @Test
+    void keepsNullPlaceWhenStrengthIsMissing() {
+        given(nlrClient.recommend(QUERY)).willReturn(aiResponse("OK",
+                result(73368L, matched("soapy", "빨래", null), matched("fresh", "빨래", 93))));
+        given(perfumeRepository.findIdentitiesByFragranticaIds(anyCollection()))
+                .willReturn(List.of(identity(73368L, 1L, "Laundry", "브랜드")));
+
+        NaturalLanguageRecommendationResponse response = service.recommend(QUERY);
+
+        RecommendationReasonResponse reason =
+                response.perfumes().getFirst().reasons().getFirst();
+        assertThat(reason.evidence()).isEqualTo("soapy · fresh");
+        assertThat(reason.strengths()).containsExactly(null, 93);
     }
 
     /**
@@ -278,6 +350,11 @@ class NaturalLanguageRecommendationServiceTest {
                 .extracting(RecommendationReasonResponse::phrase,
                         RecommendationReasonResponse::evidence)
                 .containsExactly(tuple(null, "중성적인 · 여름에 어울리는"));
+
+        // 성별·계절에는 강도라는 것이 없습니다. 자리는 지키되 값이 없으므로 전부 null 입니다 —
+        // 0 으로 채우면 "그 향이 전혀 없다" 로 읽혀 화면이 0 을 그립니다.
+        assertThat(response.perfumes().getFirst().reasons().getFirst().strengths())
+                .containsExactly(null, null);
     }
 
     /**
@@ -428,8 +505,14 @@ class NaturalLanguageRecommendationServiceTest {
         return new NlrRecommendResponse.Result(fragranticaId, List.of(matched));
     }
 
+    /** 강도를 따지지 않는 검사용입니다. AI 가 그 칸을 안 보낸 경우와 같습니다. */
     private static NlrRecommendResponse.Matched matched(String accord, String from) {
-        return new NlrRecommendResponse.Matched(accord, from);
+        return matched(accord, from, null);
+    }
+
+    private static NlrRecommendResponse.Matched matched(
+            String accord, String from, Integer strength) {
+        return new NlrRecommendResponse.Matched(accord, from, strength);
     }
 
     private static NlrRecommendResponse.MatchedData data(

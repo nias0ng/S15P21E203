@@ -314,7 +314,7 @@ public class NaturalLanguageRecommendationService {
             NlrRecommendResponse.Result result,
             List<NlrRecommendResponse.MatchedData> matchedData
     ) {
-        Map<String, List<String>> labelsByPhrase = new LinkedHashMap<>();
+        Map<String, List<Evidence>> evidenceByPhrase = new LinkedHashMap<>();
 
         List<NlrRecommendResponse.Matched> matched =
                 result.matched() == null ? List.of() : result.matched();
@@ -323,32 +323,57 @@ public class NaturalLanguageRecommendationService {
             if (label == null) {
                 continue;
             }
-            addLabel(labelsByPhrase, one.from(), label);
+            addEvidence(evidenceByPhrase, one.from(), label, one.strength());
         }
 
-        if (labelsByPhrase.isEmpty()) {
+        if (evidenceByPhrase.isEmpty()) {
             for (NlrRecommendResponse.MatchedData data : matchedData) {
                 if (data.label() == null) {
                     continue;
                 }
-                addLabel(labelsByPhrase, data.from(), data.label());
+                // 성별·계절·낮밤·노트에는 강도라는 것이 없습니다. 0 이 아니라 null 입니다 —
+                // 0 은 "그 향이 전혀 없다" 는 뜻이고 여기는 "강도를 따질 값이 아니다" 입니다.
+                addEvidence(evidenceByPhrase, data.from(), data.label(), null);
             }
         }
 
-        return labelsByPhrase.entrySet().stream()
+        return evidenceByPhrase.entrySet().stream()
                 .limit(MAX_REASONS)
                 .map(entry -> new RecommendationReasonResponse(
-                        entry.getKey(), String.join(EVIDENCE_DELIMITER, entry.getValue())))
+                        entry.getKey(),
+                        entry.getValue().stream()
+                                .map(Evidence::label)
+                                .collect(Collectors.joining(EVIDENCE_DELIMITER)),
+                        entry.getValue().stream()
+                                .map(Evidence::strength)
+                                .toList()))
                 .toList();
     }
 
-    /** 표현 하나에 근거 한 줄을 더합니다. 이미 있는 말은 두 번 넣지 않습니다. */
-    private static void addLabel(
-            Map<String, List<String>> labelsByPhrase, String phrase, String label
+    /**
+     * 근거 한 조각입니다 — 화면에 쓸 이름과 그 강도를 <b>붙여서</b> 나릅니다.
+     *
+     * <p>이름 목록과 강도 목록을 따로 모으면, 이미 있는 이름이라 걸러내는 자리에서 한쪽만
+     * 건너뛰어 <b>두 목록의 개수가 어긋납니다.</b> 그러면 화면이 강도를 엉뚱한 이름에 붙이거나
+     * (계약대로라면) 숫자를 아예 안 그립니다. 붙여서 나르면 그 실수를 할 수 없습니다.
+     *
+     * @param strength 모르면 {@code null} 입니다. 자리를 비우지 않고 {@code null} 을 채워야
+     *                 {@code evidence} 조각과 개수가 맞습니다.
+     */
+    private record Evidence(String label, Integer strength) {
+    }
+
+    /** 표현 하나에 근거 한 조각을 더합니다. 이미 있는 이름은 두 번 넣지 않습니다. */
+    private static void addEvidence(
+            Map<String, List<Evidence>> evidenceByPhrase,
+            String phrase, String label, Integer strength
     ) {
-        List<String> labels = labelsByPhrase.computeIfAbsent(phrase, key -> new ArrayList<>());
-        if (!labels.contains(label)) {
-            labels.add(label);
+        List<Evidence> evidences =
+                evidenceByPhrase.computeIfAbsent(phrase, key -> new ArrayList<>());
+        boolean alreadyThere = evidences.stream()
+                .anyMatch(evidence -> evidence.label().equals(label));
+        if (!alreadyThere) {
+            evidences.add(new Evidence(label, strength));
         }
     }
 

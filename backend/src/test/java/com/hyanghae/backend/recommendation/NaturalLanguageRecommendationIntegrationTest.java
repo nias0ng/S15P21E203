@@ -103,10 +103,35 @@ class NaturalLanguageRecommendationIntegrationTest {
     }
 
     /**
+     * 향 강도가 응답에 실려 나갑니다 (AI 요청 2026-09-25).
+     *
+     * <p>화면이 {@code evidence} 를 {@code ' · '} 로 자른 뒤 {@code strengths} 와 순서로
+     * 짝짓습니다. <b>JSON 으로 나가는 모양</b>을 여기서 봅니다 — 값이 맞는지는 서비스 단위
+     * 테스트가 보고, 여기서는 칸이 실제로 직렬화되어 나가는지가 관심사입니다.
+     */
+    @Test
+    void servesStrengthWithEachReason() throws Exception {
+        given(nlrClient.recommend(anyString())).willReturn(aiResponse("OK",
+                result(73368L, matched("soapy", "빨래", 100), matched("fresh", "빨래", 93))));
+
+        mockMvc.perform(request(QUERY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes[0].reasons[0].evidence").value("soapy · fresh"))
+                .andExpect(jsonPath("$.perfumes[0].reasons[0].strengths.length()").value(2))
+                .andExpect(jsonPath("$.perfumes[0].reasons[0].strengths[0]").value(100))
+                .andExpect(jsonPath("$.perfumes[0].reasons[0].strengths[1]").value(93));
+    }
+
+    /**
      * 내부 기록은 응답에 없습니다.
      *
-     * <p>{@code accord}·{@code tier}·{@code strength}·{@code diagnostics} 는 사용자에게
-     * 내보내지 않기로 계약이 정했습니다.
+     * <p>{@code accord}·{@code tier}·{@code diagnostics} 는 사용자에게 내보내지 않기로 계약이
+     * 정했습니다.
+     *
+     * <p><b>{@code strength} 는 이 목록에서 빠졌습니다.</b> 원래는 함께 감췄는데, 추천 이유가
+     * 향 이름만 보여 주고 있어 <i>"왜 이 향수인가"</i> 에 답이 되지 않았습니다. 지금은
+     * {@code reasons[].strengths} 로 나갑니다. 다만 <b>이름 그대로는 아닙니다</b> — 원본은
+     * 향 하나의 값이고 내보내는 것은 {@code evidence} 조각과 짝이 맞는 목록입니다.
      */
     @Test
     void doesNotExposeInternalFields() throws Exception {
@@ -341,8 +366,8 @@ class NaturalLanguageRecommendationIntegrationTest {
                         new NlrRecommendResponse.MatchedData(
                                 "daypart", "night", "밤에 어울리는", null, "DATA")),
                 List.of(new NlrRecommendResponse.Result(73368L, List.of(
-                        new NlrRecommendResponse.Matched("floral", null),
-                        new NlrRecommendResponse.Matched("rose", null)))),
+                        new NlrRecommendResponse.Matched("floral", null, null),
+                        new NlrRecommendResponse.Matched("rose", null, null)))),
                 List.of(),
                 new NlrRecommendResponse.Diagnostics("AND", 618, 1, List.of(), null));
     }
@@ -364,8 +389,14 @@ class NaturalLanguageRecommendationIntegrationTest {
         return new NlrRecommendResponse.Result(fragranticaId, List.of(matched));
     }
 
+    /** 강도를 따지지 않는 검사용입니다. AI 가 그 칸을 안 보낸 경우와 같습니다. */
     private static NlrRecommendResponse.Matched matched(String accord, String from) {
-        return new NlrRecommendResponse.Matched(accord, from);
+        return matched(accord, from, null);
+    }
+
+    private static NlrRecommendResponse.Matched matched(
+            String accord, String from, Integer strength) {
+        return new NlrRecommendResponse.Matched(accord, from, strength);
     }
 
     private void insertBrand(long id, String name) {
