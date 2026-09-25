@@ -28,6 +28,7 @@ import {
 import { apiErrorMessage, isApiError } from '@/shared/api/http'
 import { ROUTES, toReviewDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
+import { parseId } from '@/shared/lib/parseId'
 import { useIsLoggedIn } from '@/shared/store/authStore'
 import { Button } from '@/shared/ui/Button'
 import { ChipToggle } from '@/shared/ui/ChipToggle'
@@ -86,8 +87,8 @@ export default function ReviewWritePage() {
   const [searchParams] = useSearchParams()
   const { reviewId: reviewIdParam } = useParams<{ reviewId: string }>()
 
-  const reviewId = Number(reviewIdParam)
-  const isEdit = reviewIdParam !== undefined && Number.isFinite(reviewId)
+  const reviewId = parseId(reviewIdParam)
+  const isEdit = reviewId !== null
 
   /**
    * 수정할 후기. **`GET /reviews/{id}` 는 부를 때마다 조회수가 오릅니다** — 그래서
@@ -95,7 +96,7 @@ export default function ReviewWritePage() {
    * 경우 캐시가 그대로 쓰이고, 주소로 바로 들어와도 한 번만 부릅니다.
    */
   const existing = useQuery({
-    ...reviewDetailQuery(reviewId),
+    ...reviewDetailQuery(reviewId ?? Number.NaN),
     enabled: isEdit,
     staleTime: Infinity,
   })
@@ -120,12 +121,7 @@ export default function ReviewWritePage() {
    * 작성 모드의 대상 향수 번호. `?perfumeId=abc` 는 `null` 입니다 — 여기서 걸러야
    * [포스팅] 이 켜졌다가 저장할 때에야 실패하지 않습니다.
    */
-  const preselectedId = (() => {
-    const raw = searchParams.get('perfumeId')
-    if (raw === null) return null
-    const parsed = Number(raw)
-    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null
-  })()
+  const preselectedId = parseId(searchParams.get('perfumeId'))
 
   /* 주소로 실려 온 향수(`?perfumeId=`)가 첫 값이고, [향수 선택] 이 이깁니다 */
   const [pickedPerfume, setPickedPerfume] = useState<LinkedPerfume | null>(null)
@@ -284,8 +280,12 @@ export default function ReviewWritePage() {
   /*
    * 빈 칸으로 두면 그 상태로 저장할 때 바뀐 게 없어 요청이 하나도 안 나간 채
    * 상세로 넘어갑니다 — 저장된 것처럼 보이는 가장 나쁜 실패입니다.
+   * 번호가 될 수 없는 수정 주소(`/abc/edit`)도 여기로 옵니다. 쓰기 화면을 보이면 새 후기가 됩니다.
    */
-  if (isEdit && (existing.isError || loaded === undefined)) {
+  if (
+    reviewIdParam !== undefined &&
+    (existing.isError || loaded === undefined)
+  ) {
     return (
       <EmptyState
         title="후기를 불러오지 못했습니다"
@@ -295,7 +295,7 @@ export default function ReviewWritePage() {
             후기 게시판으로
           </LinkButton>
         }
-        onRetry={() => void existing.refetch()}
+        onRetry={isEdit ? () => void existing.refetch() : undefined}
         retrySize="sm"
       />
     )

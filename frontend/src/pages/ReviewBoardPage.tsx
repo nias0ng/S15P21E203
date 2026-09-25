@@ -16,7 +16,12 @@ import { likeReview, reviewKeys, unlikeReview } from '@/features/perfume'
 import { ROUTES } from '@/shared/config/routes'
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { useLikeToggle } from '@/shared/hooks/useLikeToggle'
-import { readPage, withQueryParams, writePage } from '@/shared/lib/queryParams'
+import {
+  readOption,
+  readPage,
+  withQueryParams,
+  writePage,
+} from '@/shared/lib/queryParams'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { PillFilter } from '@/shared/ui/PillFilter'
 
@@ -33,7 +38,8 @@ const PAGE_SIZE = 10
  * 어두운 방 · 유리판 구성 — docs/어두운-방-유리판.md */
 export default function ReviewBoardPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const sort = (searchParams.get('sort') as ReviewSort | null) ?? 'RECENT'
+  // 손으로 고친 주소(`?sort=foo`)는 서버가 400 으로 막아 빈 목록이 되므로 기본값으로 읽습니다
+  const sort = readOption(searchParams.get('sort'), REVIEW_SORTS) ?? 'RECENT'
   const page = readPage(searchParams)
 
   const reviews = useQuery(reviewBoardQuery({ sort, page, size: PAGE_SIZE }))

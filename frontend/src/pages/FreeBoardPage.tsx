@@ -17,7 +17,12 @@ import {
 import { ROUTES } from '@/shared/config/routes'
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { useLikeToggle } from '@/shared/hooks/useLikeToggle'
-import { readPage, withQueryParams, writePage } from '@/shared/lib/queryParams'
+import {
+  readOption,
+  readPage,
+  withQueryParams,
+  writePage,
+} from '@/shared/lib/queryParams'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { PillFilter } from '@/shared/ui/PillFilter'
 
@@ -35,9 +40,10 @@ const PAGE_SIZE = 20
  * 어두운 방 · 유리판 구성 — docs/어두운-방-유리판.md */
 export default function FreeBoardPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const sort = (searchParams.get('sort') as PostSort | null) ?? 'RECENT'
-  const category =
-    (searchParams.get('category') as CategoryFilter | null) ?? 'ALL'
+  // 손으로 고친 주소(`?sort=foo`)는 서버가 400 으로 막아 빈 목록이 되므로 기본값으로 읽습니다
+  const sort = readOption(searchParams.get('sort'), FREE_SORTS) ?? 'RECENT'
+  const category: CategoryFilter =
+    readOption(searchParams.get('category'), POST_CATEGORIES) ?? 'ALL'
   const page = readPage(searchParams)
 
   const listParams = {

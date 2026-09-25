@@ -27,6 +27,7 @@ import { useToast } from '@/shared/hooks/useToast'
 import { authorName } from '@/shared/lib/authorName'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
+import { parseId } from '@/shared/lib/parseId'
 import { useIsLoggedIn } from '@/shared/store/authStore'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
@@ -54,8 +55,10 @@ const COMMENT_PAGE_SIZE = 20
  * 어두운 방 · 유리판 구성 — docs/어두운-방-유리판.md */
 export default function PostDetailPage() {
   const { postId } = useParams<{ postId: string }>()
-  const numericId = Number(postId)
-  const enabled = Number.isFinite(numericId)
+  const parsedId = parseId(postId)
+  const enabled = parsedId !== null
+  /* 번호가 될 수 없는 주소면 부르지 않고, 글이 없으니 아래 쓰기 요청도 나가지 않습니다 */
+  const numericId = parsedId ?? Number.NaN
 
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -143,13 +146,14 @@ export default function PostDetailPage() {
     },
   })
 
-  if (post.isPending) return <PageFallback />
+  // 꺼 둔 쿼리는 늘 pending 이라 `enabled` 로 가르지 않으면 번호가 틀린 주소에서 스피너가 끝나지 않습니다
+  if (enabled && post.isPending) return <PageFallback />
   if (post.isError || !post.data) {
     return (
       <EmptyState
         title="게시글 상세 정보를 불러오지 못했습니다"
         description="다시 시도해주세요."
-        onRetry={() => post.refetch()}
+        onRetry={enabled ? () => post.refetch() : undefined}
       />
     )
   }

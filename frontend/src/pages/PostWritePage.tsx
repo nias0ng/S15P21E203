@@ -21,6 +21,7 @@ import {
 import { perfumePickQuery } from '@/features/perfume'
 import { ROUTES, toPostDetail, toPostEdit } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
+import { parseId } from '@/shared/lib/parseId'
 import { useIsLoggedIn } from '@/shared/store/authStore'
 import { Button } from '@/shared/ui/Button'
 import { ChipToggle } from '@/shared/ui/ChipToggle'
@@ -44,8 +45,8 @@ export default function PostWritePage() {
   const isLoggedIn = useIsLoggedIn()
 
   const { postId } = useParams<{ postId: string }>()
-  const editingId = postId === undefined ? null : Number(postId)
-  const editing = editingId !== null && Number.isFinite(editingId)
+  const editingId = parseId(postId)
+  const editing = editingId !== null
 
   const [category, setCategory] = useState<PostCategory | null>(null)
   const [title, setTitle] = useState('')
