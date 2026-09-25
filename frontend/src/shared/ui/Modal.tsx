@@ -16,6 +16,12 @@ type ModalProps = {
    */
   notice?: boolean
   closeOnBackdrop?: boolean
+  /**
+   * NOTE: 3D 카드(iframe)에서 여는 모달은 `panel` — 이 문서가 누름을 못 봐서, 첫 단추([×])로
+   * 초점이 가면 브라우저가 키보드로 온 것으로 여겨 초점 테를 그린 채로 띄웁니다.
+   */
+  initialFocus?: 'first' | 'panel'
+  titleSize?: 'title' | 'heading'
   className?: string
 }
 
@@ -27,6 +33,8 @@ export function Modal({
   footer,
   notice = false,
   closeOnBackdrop = true,
+  initialFocus = 'first',
+  titleSize = 'title',
   className,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
@@ -35,14 +43,18 @@ export function Modal({
     const dialog = dialogRef.current
     if (!dialog) return
 
-    if (open && !dialog.open) dialog.showModal()
+    if (open && !dialog.open) {
+      dialog.showModal()
+      if (initialFocus === 'panel') dialog.focus()
+    }
     if (!open && dialog.open) dialog.close()
-  }, [open])
+  }, [open, initialFocus])
 
   return (
     <dialog
       ref={dialogRef}
       aria-label={title}
+      tabIndex={initialFocus === 'panel' ? -1 : undefined}
       onCancel={(event) => {
         event.preventDefault()
         onClose()
@@ -55,6 +67,7 @@ export function Modal({
         'rounded-card m-auto w-127.5 max-w-[calc(100vw-var(--spacing)*10)] p-0',
         'backdrop:bg-ink/40 open:flex open:flex-col',
         'overflow-x-hidden',
+        initialFocus === 'panel' && 'outline-none',
         className,
       )}
     >
@@ -66,7 +79,8 @@ export function Modal({
       >
         <h2
           className={cn(
-            'text-title font-serif font-semibold',
+            'font-serif font-semibold',
+            titleSize === 'heading' ? 'text-heading' : 'text-title',
             notice && 'text-center',
           )}
         >
