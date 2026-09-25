@@ -231,7 +231,7 @@ import { perfumeDetailQuery } from '@/features/perfume/queries'   // X
 
 | 컴포넌트 | 용도 |
 | --- | --- |
-| `shared/ui/Button` | `variant` primary·outline·ghost·danger / `size` sm·md·lg / `isLoading` |
+| `shared/ui/Button` | `variant` primary·outline·ghost·danger·navy(3D 판 위 주 단추)·dangerOutline(테두리만 있는 위험 동작) / `size` sm·md·lg / `isLoading` |
 | `shared/ui/Input` | 라벨·에러·hint·접근성 속성 포함. 라벨은 필수 prop |
 | `shared/ui/Textarea` | 여러 줄 입력. `Input` 과 같은 API(라벨 필수 · 에러 · 접근성 속성)이고 hint 는 없습니다 |
 | `shared/ui/Thumbnail` | 이미지 슬롯. 이미지가 없으면 자리표시자 상자. 크기는 `className` 으로. 아바타(`rounded-full`)도 이걸 씁니다 |

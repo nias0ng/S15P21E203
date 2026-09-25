@@ -24,6 +24,11 @@ export const buttonVariants = cva(
         ghost:
           'bg-transparent text-ink-muted hover:bg-line-soft hover:text-ink',
         danger: 'bg-danger text-surface hover:bg-danger/90',
+        /** 3D 향 지도 위 판의 주 단추. 엔진 카드 단추(`--pb-card-btn`)와 같은 남색입니다 */
+        navy: 'border border-line bg-navy text-ink hover:bg-navy/85',
+        /** 옆 테두리 단추와 같은 무게로 서는 위험 동작 (진열대 [저장 해제] · 컬렉션 [삭제]) */
+        dangerOutline:
+          'border border-danger/40 bg-transparent text-danger hover:bg-danger/5',
       },
       size: {
         /*
