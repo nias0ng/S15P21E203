@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { useResetOnOpen } from '@/shared/hooks/useResetOnOpen'
 import { Button } from '@/shared/ui/Button'
 import { Modal } from '@/shared/ui/Modal'
 import { PerfumePicker } from '@/shared/ui/PerfumePicker'
@@ -68,19 +69,16 @@ export function ShelfRegisterModal({
    * 취소하고 다시 열었을 때 앞서 고른 향수 · 분류 · 적합도 · 메모가 그대로 남습니다.
    * 향수 상세와 향 지도에서 다른 향수로 들어와도 앞 향수가 골라진 채로 뜹니다.
    *
-   * `useEffect` 가 아니라 렌더 중에 맞추는 이유: 한 박자 늦게 맞추면 첫 프레임에
-   * 옛 값이 보입니다. `preselected` 는 매 렌더 새 객체일 수 있어 값으로 비교합니다.
+   * `preselected` 는 매 렌더 새 객체일 수 있어 값으로 비교합니다.
    */
   const openedKey = open ? JSON.stringify(preselected ?? null) : null
-  const [openedFor, setOpenedFor] = useState<string | null>(null)
-  if (openedKey !== openedFor) {
-    setOpenedFor(openedKey)
+  useResetOnOpen(openedKey, () => {
     setPicked(preselected ?? null)
     setCategory(null)
     setRating(null)
     setMemo('')
     setShowMissing(false)
-  }
+  })
 
   // 상세에서 들어오면 1단계가 없습니다
   const step: 1 | 2 = picked ? 2 : 1

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { useResetOnOpen } from '@/shared/hooks/useResetOnOpen'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
@@ -44,15 +45,12 @@ export function CollectionFormModal({
 
   /*
    * `Modal` 이 `<dialog>` 라 닫아도 언마운트되지 않아 앞서 적던 값이 남습니다.
-   * `useEffect` 가 아니라 렌더 중에 되돌리는 이유: 한 박자 늦으면 첫 프레임에 옛 값이 보입니다.
    */
   const openedKey = open ? JSON.stringify(initial ?? null) : null
-  const [openedFor, setOpenedFor] = useState<string | null>(null)
-  if (openedKey !== openedFor) {
-    setOpenedFor(openedKey)
+  useResetOnOpen(openedKey, () => {
     setTitle(initial?.title ?? '')
     setDescription(initial?.description ?? '')
-  }
+  })
 
   return (
     <Modal

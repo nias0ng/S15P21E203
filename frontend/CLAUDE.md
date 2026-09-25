@@ -275,6 +275,7 @@ variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 
 | `shared/hooks/useMediaQuery` | 미디어 쿼리가 맞는지. 첫 렌더부터 값이 맞고, `matchMedia` 가 없으면 `fallback` 입니다 |
 | `shared/hooks/useMeasuredHeight` | 요소의 높이를 잽니다(ResizeObserver · 올림). 돌려받은 `ref` · `height` 는 그 자리에서 풀어 씁니다 |
 | `shared/hooks/useEndSession` | 로그아웃 · 탈퇴 뒤 로그인 흔적(인증 상태 · 쿼리 캐시)을 지웁니다 |
+| `shared/hooks/useResetOnOpen` | 모달이 열릴 때(열쇠가 바뀔 때) 입력칸을 처음 값으로 되돌립니다. 렌더 중에 되돌려 첫 장부터 맞습니다 |
 
 순수 함수는 `shared/lib/` 에 있습니다. 새로 쓰기 전에 봅니다 — `parseId`(주소의 번호) ·
 `readOption`(주소의 허용값, `queryParams`) · `keywordMatcher`(대소문자 무시 검색) ·
