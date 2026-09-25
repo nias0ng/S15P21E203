@@ -44,7 +44,10 @@ export function Input({
       <input
         id={id}
         aria-invalid={error ? true : undefined}
-        aria-describedby={cn(hint && hintId, error && errorId) || undefined}
+        /* 에러가 뜨면 hint 문단이 그려지지 않으니 그 id 도 걸지 않습니다 */
+        aria-describedby={
+          cn(hint && !error && hintId, error && errorId) || undefined
+        }
         className={cn(
           'rounded-card text-body h-10 w-full border px-2.5',
           'placeholder:text-ink-muted/70',
