@@ -1,8 +1,8 @@
 import { useMutation } from '@tanstack/react-query'
-import { useRef } from 'react'
 
 import { isApiError } from '@/shared/api/http'
 import { cn } from '@/shared/lib/cn'
+import { FileButton } from '@/shared/ui/FileButton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import { uploadPostImage } from '../api'
@@ -27,9 +27,6 @@ type Props = {
  * 값을 바꾼 날 둘이 갈라집니다. `accept` 는 파일 고르기 창을 좁혀 주는 **거들기**일 뿐입니다.
  */
 export function ImageAttachField({ value, onChange }: Props) {
-  /* 같은 파일을 다시 고를 수 있게 비워 둘 자리 — 값이 같으면 change 가 안 옵니다 */
-  const inputRef = useRef<HTMLInputElement>(null)
-
   const upload = useMutation({
     mutationFn: uploadPostImage,
     onSuccess: (url) => onChange([...value, url]),
@@ -64,44 +61,13 @@ export function ImageAttachField({ value, onChange }: Props) {
         </ul>
       )}
 
-      {/*
-        단추처럼 보이는 라벨입니다. `<input type="file">` 은 브라우저마다 생김새가
-        다르고 색을 못 입힙니다 — 숨기고 라벨이 대신 받습니다.
-
-        NOTE: 높이 · 바닥은 `Button` 의 `sm` 과 같은 값입니다(`shared/ui/buttonVariants`).
-        옆에 나란히 서는 단추라 한쪽만 바뀌면 줄의 아랫선이 어긋납니다.
-      */}
-      <label
-        className={cn(
-          'border-line text-ink rounded-card inline-flex h-7.5 min-h-[calc(var(--text-body)*var(--text-body--line-height)+5px)] items-center border px-2.5',
-          'text-body cursor-pointer font-medium',
-          'hover:bg-line-soft transition-colors duration-120 ease-out',
-          /*
-            `focus-within` 이 아니라 `has-[:focus-visible]` 입니다. 숨은 파일 칸은 눌러도
-            포커스를 받아, `focus-within` 이면 **마우스로 누를 때마다** 링이 떴습니다.
-            `focus-visible` 은 글쇠로 왔을 때만 잡히고, 이 라벨은 커서가 없어 글쇠 쪽
-            표시까지 걷으면 자리를 알릴 길이 사라집니다.
-          */
-          'has-[:focus-visible]:ring-accent-deep has-[:focus-visible]:ring-2',
-          upload.isPending && 'pointer-events-none opacity-50',
-        )}
+      <FileButton
+        inputLabel="이미지 추가"
+        busy={upload.isPending}
+        onPick={(file) => upload.mutate(file)}
       >
         {upload.isPending ? '올리는 중' : '+ 이미지 첨부'}
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp"
-          className="sr-only"
-          aria-label="이미지 추가"
-          disabled={upload.isPending}
-          onChange={(event) => {
-            const picked = event.target.files?.[0]
-            /* 같은 파일을 다시 골라도 change 가 오게 칸을 비웁니다 */
-            if (inputRef.current) inputRef.current.value = ''
-            if (picked) upload.mutate(picked)
-          }}
-        />
-      </label>
+      </FileButton>
 
       {upload.error !== null && (
         <p role="alert" className="text-danger text-caption">

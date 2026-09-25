@@ -1,12 +1,8 @@
 import { useState } from 'react'
 
-import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
-import { EmptyState } from '@/shared/ui/EmptyState'
 import { Modal } from '@/shared/ui/Modal'
-import { SearchField } from '@/shared/ui/SearchField'
-import { Skeleton } from '@/shared/ui/Skeleton'
-import { Thumbnail } from '@/shared/ui/Thumbnail'
+import { PerfumePicker } from '@/shared/ui/PerfumePicker'
 
 import type { LinkedPerfume } from '../types'
 
@@ -39,18 +35,6 @@ export function LinkedPerfumeModal({
 }: Props) {
   const [picked, setPicked] = useState<LinkedPerfume[]>([])
 
-  /*
-    한 번이라도 검색했는지. 후보 0개가 두 경우(아직 안 찾음 · 찾았는데 없음)라
-    구분합니다. 닫아도 되돌리지 않습니다 — `<dialog>` 라 언마운트되지 않아 다시
-    열면 지난 검색어가 칸에 남고, 안내만 되돌리면 칸의 글자와 어긋납니다.
-  */
-  const [searched, setSearched] = useState(false)
-
-  const search = (keyword: string) => {
-    setSearched(keyword.trim().length > 0)
-    onSearch(keyword)
-  }
-
   const toggle = (perfume: LinkedPerfume) => {
     if (single) {
       setPicked([perfume])
@@ -73,8 +57,8 @@ export function LinkedPerfumeModal({
     onClose()
   }
 
-  const isPicked = (perfume: LinkedPerfume) =>
-    picked.some((item) => item.perfumeId === perfume.perfumeId)
+  const isPicked = (perfumeId: number) =>
+    picked.some((item) => item.perfumeId === perfumeId)
 
   return (
     <Modal
@@ -99,67 +83,23 @@ export function LinkedPerfumeModal({
       }
     >
       <div className="space-y-2.5">
-        <SearchField
-          label="향수명 또는 브랜드명으로 검색"
-          placeholder="향수명 · 브랜드 검색"
-          onSearch={search}
+        <PerfumePicker
+          options={candidates.map((candidate) => ({
+            id: candidate.perfumeId,
+            name: candidate.name,
+            brand: candidate.brand,
+            thumbnailUrl: candidate.thumbnailUrl,
+          }))}
+          isPending={isPending}
+          isSelected={isPicked}
+          onPick={(option) => {
+            const candidate = candidates.find(
+              (item) => item.perfumeId === option.id,
+            )
+            if (candidate) toggle(candidate)
+          }}
+          onSearch={onSearch}
         />
-
-        {isPending ? (
-          <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-            {Array.from({ length: 8 }, (_, index) => (
-              <li key={index}>
-                <Skeleton className="aspect-[1/1.35] w-full" />
-              </li>
-            ))}
-          </ul>
-        ) : candidates.length === 0 ? (
-          <EmptyState
-            title={searched ? '향수를 찾지 못했습니다' : '향수를 검색해 주세요'}
-            description={
-              searched
-                ? '검색어를 바꿔 보세요.'
-                : '향수명이나 브랜드명을 입력하면 고를 수 있는 향수가 나옵니다.'
-            }
-          />
-        ) : (
-          /*
-            한 줄에 넷입니다(진열대 등록 모달 A15 는 아직 셋). 여럿 고를 때도
-            체크박스를 두지 않습니다 — 카드 자체가 누르는 자리이고 고른 것은
-            `aria-pressed` 로 알립니다.
-          */
-          <ul className="grid max-h-90 grid-cols-2 gap-2.5 overflow-y-auto sm:grid-cols-4">
-            {candidates.map((candidate) => (
-              <li key={candidate.perfumeId}>
-                <button
-                  type="button"
-                  aria-pressed={isPicked(candidate)}
-                  onClick={() => toggle(candidate)}
-                  className={cn(
-                    'w-full border p-2.5 text-left',
-                    'transition-colors duration-120 ease-out',
-                    'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
-                    isPicked(candidate)
-                      ? 'border-accent bg-line-soft'
-                      : 'border-line hover:border-accent',
-                  )}
-                >
-                  <Thumbnail
-                    src={candidate.thumbnailUrl}
-                    fallback="이미지"
-                    className="text-caption mb-2.5 aspect-3/4 w-full"
-                  />
-                  <span className="text-ink text-body block truncate font-medium">
-                    {candidate.name}
-                  </span>
-                  <span className="text-ink-muted text-caption block truncate">
-                    {candidate.brand}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
 
         <p className="text-ink-muted text-caption">
           {single

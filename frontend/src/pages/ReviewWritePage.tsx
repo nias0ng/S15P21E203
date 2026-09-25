@@ -302,23 +302,12 @@ export default function ReviewWritePage() {
         title="후기를 불러오지 못했습니다"
         description="주소가 잘못되었거나 삭제된 후기입니다."
         action={
-          <div className="flex gap-2.5">
-            <LinkButton
-              to={ROUTES.COMMUNITY_REVIEWS}
-              variant="outline"
-              size="sm"
-            >
-              후기 게시판으로
-            </LinkButton>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void existing.refetch()}
-            >
-              다시 시도
-            </Button>
-          </div>
+          <LinkButton to={ROUTES.COMMUNITY_REVIEWS} variant="outline" size="sm">
+            후기 게시판으로
+          </LinkButton>
         }
+        onRetry={() => void existing.refetch()}
+        retrySize="sm"
       />
     )
   }
