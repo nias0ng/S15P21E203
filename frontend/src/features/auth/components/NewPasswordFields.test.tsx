@@ -6,7 +6,6 @@ import { useNewPassword } from '../hooks/useNewPassword'
 
 import { NewPasswordFields } from './NewPasswordFields'
 
-/** 보내도 되는지는 부르는 쪽이 단추로 드러냅니다 — 그 모양을 그대로 흉내 냅니다 */
 function Harness() {
   const password = useNewPassword()
   return (

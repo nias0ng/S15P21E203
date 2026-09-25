@@ -9,7 +9,6 @@ vi.mock('./api', () => ({
   getBrand: vi.fn(async () => ({})),
 }))
 
-/** `queryFn` 은 react-query 가 넘기는 맥락을 쓰지 않아 빈 값으로 부릅니다. */
 const run = (params: Parameters<typeof brandListQuery>[0]) => {
   const { queryFn } = brandListQuery(params)
   return (queryFn as () => Promise<unknown>)()

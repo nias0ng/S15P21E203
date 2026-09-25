@@ -8,7 +8,6 @@ const note = (noteId: number, name: string, noteType: string | null) => ({
   noteType,
 })
 
-/** 줄마다 단계와 노트 이름만 뽑아 봅니다 */
 const rowsOf = (notes: ReturnType<typeof note>[]) =>
   groupNoteStages(notes).map(({ stage, notes: inStage }) => [
     stage,
@@ -17,7 +16,6 @@ const rowsOf = (notes: ReturnType<typeof note>[]) =>
 
 describe('groupNoteStages', () => {
   it('소문자 단계도 받은 순서와 상관없이 탑 · 미들 · 베이스 순으로 묶는다', () => {
-    // 운 자르뎅 쉬르 르 닐 실측 — base 가 먼저 옵니다
     expect(
       rowsOf([
         note(26, 'Cinnamon', 'base'),

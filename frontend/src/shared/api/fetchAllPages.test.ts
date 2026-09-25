@@ -4,7 +4,6 @@ import { fetchAllPages, MAX_PAGE_SIZE } from './fetchAllPages'
 
 type Page = { rows: number[]; size: number; totalElements: number }
 
-/** `total` 개를 `served` 개씩 나눠 주는 가짜 서버 */
 function serverOf(total: number, served: number) {
   return vi.fn(async (page: number): Promise<Page> => {
     const start = page * served
@@ -42,10 +41,6 @@ describe('fetchAllPages', () => {
     expect(fetchPage.mock.calls.map(([page]) => page)).toEqual([0, 1, 2])
   })
 
-  /*
-    서버가 쪽 크기를 깎아 주면 우리가 보낸 100 이 아니라 응답의 size 로 장수를 셉니다.
-    보낸 값으로 세면 뒷장을 덜 받아 뒤쪽 항목이 조용히 사라집니다.
-  */
   it('서버가 깎은 쪽 크기로 남은 장수를 센다', async () => {
     const fetchPage = serverOf(25, 10)
 

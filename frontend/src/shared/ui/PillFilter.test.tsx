@@ -46,7 +46,6 @@ describe('PillFilter', () => {
     expect(onChange).toHaveBeenCalledWith('NAME_KO')
   })
 
-  /* 향수의 성별 · 인기 필터는 "고르지 않음" 으로 돌아갈 수 있어야 합니다 */
   it('켜진 것을 다시 누르면 해제된다', async () => {
     const onChange = vi.fn()
     render(
@@ -63,7 +62,6 @@ describe('PillFilter', () => {
     expect(onChange).toHaveBeenCalledWith(null)
   })
 
-  /* 정렬처럼 늘 하나가 켜져 있어야 하는 묶음입니다 — 꺼지면 기준이 없어집니다 */
   it('required 면 켜진 것을 다시 눌러도 해제되지 않는다', async () => {
     const onChange = vi.fn()
     render(

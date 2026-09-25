@@ -48,7 +48,6 @@ const collection = vi.hoisted(() => ({
   getCollectionDetail: vi.fn(),
 }))
 
-/** 컬렉션 하나와 그 안의 향수 둘 */
 const MY_COLLECTION = {
   collectionId: COLLECTION_ID,
   title: '저녁 약속',
@@ -107,7 +106,6 @@ const renderEdit = () =>
     </QueryClientProvider>,
   )
 
-/** 저장을 누르고, 서버로 나간 수정 요청의 본문을 돌려줍니다 */
 const submitAndReadPayload = async () => {
   await userEvent.click(screen.getByRole('button', { name: '수정' }))
   await waitFor(() => expect(community.updatePost).toHaveBeenCalled())
@@ -143,11 +141,6 @@ describe('PostWritePage 컬렉션 글 수정', () => {
     expect(await screen.findByText('저녁 약속')).toBeInTheDocument()
   })
 
-  /*
-    이것이 "수정이 저장되지 않는" 문제의 정체입니다. 컬렉션이 붙은 글에
-    `perfumeIds` 를 보내면 서버가 400 으로 막습니다(향수 출처가 컬렉션이라서).
-    화면이 늘 보내고 있어서 컬렉션 글은 수정이 100% 실패했습니다.
-  */
   it('컬렉션이 그대로면 향수 목록도 컬렉션도 보내지 않는다', async () => {
     renderEdit()
     await screen.findByDisplayValue('저녁 약속 컬렉션을 소개합니다')
@@ -155,7 +148,6 @@ describe('PostWritePage 컬렉션 글 수정', () => {
     const payload = await submitAndReadPayload()
 
     expect(payload).not.toHaveProperty('perfumeIds')
-    // 다시 보내면 서버가 컬렉션을 다시 읽어, 제목만 고쳤는데 향수가 바뀝니다
     expect(payload).not.toHaveProperty('collectionId')
     expect(payload).toMatchObject({ title: '저녁 약속 컬렉션을 소개합니다' })
   })
@@ -168,7 +160,6 @@ describe('PostWritePage 컬렉션 글 수정', () => {
     )
     const payload = await submitAndReadPayload()
 
-    // 컬렉션을 먼저 떼야 같은 요청의 향수 목록이 받아들여집니다
     expect(payload).toMatchObject({
       collectionId: null,
       perfumeIds: [11, 12],
@@ -222,10 +213,6 @@ describe('PostWritePage 컬렉션 공유 글의 향수', () => {
     ).toBeInTheDocument()
   })
 
-  /*
-    컬렉션이 붙으면 향수 출처가 컬렉션입니다. 고른 컬렉션의 향수를 그대로 보여줘야
-    무엇이 글에 걸리는지 보고 정할 수 있습니다.
-  */
   it('컬렉션을 고르면 그 컬렉션의 향수가 관련 향수에 나타난다', async () => {
     renderWrite()
 
@@ -236,10 +223,6 @@ describe('PostWritePage 컬렉션 공유 글의 향수', () => {
     expect(screen.getByText('향수 둘')).toBeInTheDocument()
   })
 
-  /*
-    분류를 옮기면 컬렉션 첨부 칸이 화면에서 사라집니다. 첨부를 남겨 두면 보이지
-    않는 채로 글에 붙고, 거기에 향수까지 고르면 서버가 400 으로 막습니다.
-  */
   it('다른 분류로 옮기면 붙여 둔 컬렉션이 풀린다', async () => {
     renderWrite()
 
@@ -255,11 +238,6 @@ describe('PostWritePage 컬렉션 공유 글의 향수', () => {
     ).toBeInTheDocument()
   })
 
-  /*
-    분류를 옮겼다 돌아와 **같은 컬렉션을 다시 고르는** 경우입니다. "이미 채웠다" 는
-    표시가 컬렉션 번호로만 남아 있으면, 그 사이 향수를 손댔어도 같은 번호라 다시
-    채우지 않습니다 — 컬렉션을 골랐는데 아무 일도 안 일어납니다.
-  */
   it('분류를 옮겼다 돌아와 같은 컬렉션을 다시 골라도 향수가 채워진다', async () => {
     renderWrite()
 
@@ -267,7 +245,6 @@ describe('PostWritePage 컬렉션 공유 글의 향수', () => {
     await attachCollection()
     await screen.findByText('향수 하나')
 
-    // 잡담에서는 직접 뺄 수 있습니다
     await pickCategory('잡담')
     await userEvent.click(
       screen.getByRole('button', { name: '향수 하나 제거' }),

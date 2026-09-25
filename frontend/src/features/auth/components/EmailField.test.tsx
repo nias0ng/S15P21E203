@@ -5,7 +5,6 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { EmailField } from './EmailField'
 
-/** 이 칸이 바깥에 알려 준 주소를 글자로 드러냅니다 */
 function Harness() {
   const [email, setEmail] = useState('')
   return (
@@ -42,7 +41,6 @@ describe('EmailField', () => {
     expect(screen.getByText('알린 주소: "hyanghae@ssafy.com"')).toBeVisible()
   })
 
-  // 나머지 두 칸을 지난 렌더의 값에서 가져와도 한 박자 늦지 않는다는 전제를 붙잡습니다
   it('빨리 이어 쳐도 알리는 주소가 한 박자 늦지 않는다', async () => {
     const onChange = vi.fn()
     render(<EmailField onChange={onChange} />)
@@ -52,7 +50,6 @@ describe('EmailField', () => {
       screen.getByLabelText('이메일 도메인'),
       'naver.com',
     )
-    // 도메인을 고른 뒤에 아이디를 더 칩니다 — 먼저 고른 값을 흘리면 여기서 드러납니다
     await userEvent.type(screen.getByLabelText('이메일 아이디'), '99')
 
     expect(onChange).toHaveBeenLastCalledWith('hyanghae99@naver.com')

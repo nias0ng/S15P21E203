@@ -40,7 +40,6 @@ describe('LoginRequiredDialog', () => {
     expect(onClose).toHaveBeenCalledOnce()
   })
 
-  /* 단추가 아니라 링크라야 새 탭으로 열기 · 링크 복사가 삽니다 */
   it('회원가입 · 로그인은 돌아올 경로를 단 링크다', () => {
     renderDialog({ redirectTo: '/community/free/write' })
 

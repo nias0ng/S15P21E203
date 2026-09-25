@@ -22,7 +22,6 @@ describe('Input', () => {
     ).toHaveAccessibleDescription('두 글자 이상')
   })
 
-  /* 에러가 hint 를 가리는데 설명이 hint 의 id 를 가리키면, 없는 요소를 가리키게 됩니다 */
   it('error 와 hint 가 함께 있으면 error 만 보이고 error 만 설명으로 읽힌다', () => {
     render(
       <Input

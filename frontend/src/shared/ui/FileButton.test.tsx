@@ -22,7 +22,6 @@ describe('FileButton', () => {
     expect(screen.getByText('+ 이미지 첨부')).toBeInTheDocument()
   })
 
-  /* 값이 남아 있으면 같은 파일을 다시 골랐을 때 change 가 오지 않습니다 */
   it('고른 뒤 칸을 비워 같은 파일을 다시 고를 수 있다', async () => {
     const onPick = vi.fn()
     render(

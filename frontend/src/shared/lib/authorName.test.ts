@@ -12,10 +12,6 @@ describe('authorName', () => {
     expect(authorName(undefined)).toBe('탈퇴한 회원')
   })
 
-  /*
-    지금 다섯 곳이 `??` 로 적어 빈 문자열은 그대로 둡니다. 서버가 빈 닉네임을 주지 않아
-    생기지 않는 일이지만, 규칙을 옮기면서 바꾸지 않았다는 것을 적어 둡니다.
-  */
   it('빈 문자열은 닉네임으로 본다', () => {
     expect(authorName('')).toBe('')
   })

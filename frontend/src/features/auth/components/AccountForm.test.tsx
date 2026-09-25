@@ -34,7 +34,6 @@ const renderForm = async () => {
       </MemoryRouter>
     </QueryClientProvider>,
   )
-  // 서버 값이 칸에 들어온 뒤부터가 사람이 보는 화면입니다
   await screen.findByDisplayValue(ME.nickname)
 }
 
@@ -53,7 +52,6 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-// 서버가 `@Size(min = 2, max = 20)` 으로 막습니다 — 눌러 보고 토스트로 알면 늦습니다
 describe('AccountForm 닉네임 길이', () => {
   it('스물한 자 이상이면 칸에 규칙을 띄우고 확인 · 저장을 막는다', async () => {
     await renderForm()
@@ -96,7 +94,6 @@ describe('AccountForm 닉네임 중복 확인', () => {
     ).toBeInTheDocument()
   })
 
-  // 확인이 날아가 있는 사이에 고치면, 늦게 온 답은 고치기 전 값의 답입니다
   it('확인 중에 닉네임을 고치면 늦게 온 답을 새 닉네임에 붙이지 않는다', async () => {
     let answer: (available: boolean) => void = () => {}
     api.checkNicknameAvailability.mockReturnValue(

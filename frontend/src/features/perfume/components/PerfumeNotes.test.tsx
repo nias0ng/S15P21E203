@@ -14,7 +14,6 @@ const note = (
 const stages = () =>
   screen.queryAllByText(/^(Top|Middle|Base)$/).map((el) => el.textContent)
 
-/* `noteType` 에 값 제약이 없어, 모르는 값이 와도 노트가 사라지지 않는지를 지킵니다 */
 describe('PerfumeNotes', () => {
   it('향조가 없으면 안내 문구를 보여준다', () => {
     render(<PerfumeNotes notes={[]} />)

@@ -4,10 +4,6 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { StarRating } from './StarRating'
 
-/**
- * 백엔드가 1.0~5.0 을 0.5 단위로 받습니다(`@DecimalMin("1.0") @DecimalMax("5.0")`).
- * 예전에는 정수만 받았고 소수가 오면 조용히 잘려 원이 모자라게 그려졌습니다.
- */
 describe('StarRating', () => {
   it('고를 수 있는 값이 아홉 개다 — 0.5 는 백엔드가 안 받아 빠진다', () => {
     render(<StarRating label="적합도" value={null} onChange={vi.fn()} />)

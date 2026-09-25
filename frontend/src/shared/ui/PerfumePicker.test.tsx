@@ -25,7 +25,6 @@ const renderPicker = (
   )
 
 describe('PerfumePicker', () => {
-  /* 아직 안 찾은 것을 "찾지 못했습니다" 라고 하면 열자마자 실패한 것처럼 읽힙니다 */
   it('검색하기 전에는 검색을 권하고, 찾았는데 없으면 없다고 한다', async () => {
     const onSearch = vi.fn()
     renderPicker({ onSearch })

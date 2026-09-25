@@ -69,10 +69,6 @@ describe('readPage', () => {
     expect(readPage(params(''))).toBe(0)
   })
 
-  /*
-    흩어져 있던 원래 식은 여기서 NaN 을 내놓았고, 그 값이 쿼리 키에 들어가 화면이
-    빈 채로 멈췄습니다. 묶으면서 같이 막습니다.
-  */
   it('숫자가 아니면 첫 쪽으로 본다', () => {
     expect(readPage(params('page=abc'))).toBe(0)
     expect(readPage(params('page='))).toBe(0)
@@ -89,10 +85,6 @@ describe('writePage', () => {
     expect(writePage(params(''), 2).get('page')).toBe('3')
   })
 
-  /*
-    `?page=1` 이 붙은 주소와 안 붙은 주소가 갈리면 같은 화면이 주소 두 개를
-    갖게 됩니다.
-  */
   it('첫 쪽은 주소에 적지 않는다', () => {
     expect(writePage(params('page=4'), 0).has('page')).toBe(false)
   })

@@ -33,7 +33,6 @@ describe('EmptyState', () => {
     expect(onRetry).toHaveBeenCalledOnce()
   })
 
-  /* 돌아가는 길이 먼저, 다시 시도가 뒤입니다 — 지금 화면들이 그 순서로 세웁니다 */
   it('action 과 함께 넘기면 action 뒤에 [다시 시도] 가 선다', () => {
     render(
       <EmptyState
