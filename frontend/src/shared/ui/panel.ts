@@ -7,8 +7,6 @@
  */
 export const GLASS_PANEL = 'scent-glass rounded-[36px] p-7.5 pt-6.25'
 
-/** 흰 판. 유리판과 같은 모양이고, 글을 읽는 자리에 씁니다(`styles/scent-display.css` 의 `.scent-paper`) */
 export const PAPER_PANEL = 'scent-paper rounded-[36px] p-7.5 pt-6.25'
 
-/** 좁은 곁판(255px). 같은 유리인데 모서리와 여백만 작습니다 */
 export const GLASS_PANEL_ASIDE = 'scent-glass rounded-[20px] p-5'

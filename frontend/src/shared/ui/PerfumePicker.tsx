@@ -6,28 +6,18 @@ import { SearchField } from '@/shared/ui/SearchField'
 import { Skeleton } from '@/shared/ui/Skeleton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
-/** 고를 후보 한 병. 도메인 타입을 받지 않아 부르는 쪽이 이 모양으로 맞춰 넘깁니다 */
 export type PerfumePickerOption = {
   id: number
   name: string
-  /** 브랜드가 없는 향수는 null 이라 빈 줄로 둡니다 */
   brand?: string | null
-  /** 사진이 없는 향수가 많습니다. 그때는 빈 상자를 그립니다 */
   thumbnailUrl?: string | null
-  /** 참이면 흐리게 두고 누를 수 없게 합니다 */
   disabled?: boolean
-  /**
-   * 꺼진 까닭. 낭독기에만 `이름 · 까닭` 으로 읽힙니다 — 눈으로는 흐려진 카드로 충분하지만
-   * 낭독기에는 그 흐림이 전해지지 않습니다.
-   */
   disabledLabel?: string
 }
 
 type PerfumePickerProps = {
   options: PerfumePickerOption[]
-  /** 검색 결과를 기다리는 중 */
   isPending: boolean
-  /** 넘기면 카드가 누름 단추(`aria-pressed`)가 되고 고른 카드가 강조됩니다 */
   isSelected?: (id: number) => boolean
   onPick: (option: PerfumePickerOption) => void
   onSearch: (keyword: string) => void
@@ -72,7 +62,6 @@ export function PerfumePicker({
       />
 
       {isPending ? (
-        /* 기다리는 동안 빈 화면을 그리면 "찾지 못했습니다" 가 한 번 스쳤다가 결과로 바뀝니다 */
         <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           {Array.from({ length: 8 }, (_, index) => (
             <li key={index}>
@@ -90,10 +79,6 @@ export function PerfumePicker({
           }
         />
       ) : (
-        /*
-          높이를 360 까지로 막습니다. 안 막으면 검색 결과 20개가 다섯 줄로 서서 모달이 화면
-          높이를 넘기고, `<dialog>` 가 통째로 스크롤되며 헤더와 단추까지 밀려 올라갑니다.
-        */
         <ul className="grid max-h-90 grid-cols-2 gap-2.5 overflow-y-auto sm:grid-cols-4">
           {options.map((option) => {
             const selected = isSelected?.(option.id) ?? false

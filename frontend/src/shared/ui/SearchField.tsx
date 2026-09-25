@@ -6,9 +6,7 @@ type SearchFieldProps = Omit<
   React.ComponentPropsWithRef<'input'>,
   'type' | 'id'
 > & {
-  /** 화면에 보이지 않는 라벨. 무엇을 검색하는지 밝혀야 합니다 */
   label: string
-  /** 검색 단추를 눌렀을 때. form 안이라 엔터로도 옵니다 */
   onSearch?: (keyword: string) => void
   /**
    * 입력칸 **왼쪽**에 놓을 것. 기본은 돋보기입니다.
@@ -17,7 +15,6 @@ type SearchFieldProps = Omit<
    * (`submit`)이면 누를 때마다 검색이 실행됩니다.
    */
   leading?: React.ReactNode
-  /** 실행 단추의 색. 메인(3D)만 `scene` 이고 나머지는 기본값입니다 */
   tone?: SearchFieldTone
   className?: string
 }
@@ -93,7 +90,6 @@ export function SearchField({
     <form
       role="search"
       className={cn(
-        /* `isolate` 는 아래 빛무리(`-z-10`)를 이 알약 안에 가둡니다 — 없으면 조상 쌓임 맥락에 따라 뒤로 빠져 안 보일 수 있습니다 */
         'relative isolate flex h-14 items-center gap-2.5 rounded-full pr-1.75 pl-5',
         /*
           NOTE: 색을 의미 토큰이 아니라 팔레트에서 직접 가져옵니다 — 토큰을 쓰면
@@ -105,10 +101,6 @@ export function SearchField({
         'border-[var(--search-pill-edge,var(--color-stonegray))]',
         'border bg-[var(--search-pill,rgb(249_246_239/0.9))] backdrop-blur-[7px]',
         'shadow-[0_10px_30px_rgb(24_18_34/0.2)]',
-        /*
-          빛무리. `-z-10` 이라 알약 뒤에 깔려, 단추를 포함한 모든 자식이 그 위에
-          섭니다 — 알약 밖으로 번지도록 상자를 키우고 흐립니다.
-        */
         'before:pointer-events-none before:absolute before:-inset-x-6 before:-inset-y-4',
         'before:-z-10 before:rounded-full before:blur-xl',
         'before:bg-[radial-gradient(ellipse_at_center,var(--search-glow,transparent),transparent_70%)]',
@@ -147,41 +139,18 @@ export function SearchField({
         type="submit"
         aria-label="검색"
         className={cn(
-          /* `relative` 는 빛무리(`-z-10`) 위에 확실히 세우려는 것입니다 */
           'relative grid shrink-0 place-items-center rounded-full',
           SUBMIT_SIZE[tone],
           'text-[var(--search-submit-ink,var(--color-ivory))]',
           tone === 'archive'
             ? cn(
                 'bg-[var(--search-submit,var(--color-accent-deep))]',
-                /* 그림 겹은 바탕색 위에 얹힙니다 — 방 밖에서는 비어 있어 바탕색만 섭니다 */
                 'bg-[image:var(--search-submit-image,none)]',
               )
             : SUBMIT_TONE[tone],
           'shadow-[0_2px_8px_rgb(24_18_34/0.18)]',
-          /*
-           * 손을 올리면 단추만 한 단 밝아집니다. **메인(`scene`)은 빼 둡니다** —
-           * 거기 단추는 이미 모래빛이라 더 밝히면 알약에 녹고, 3D 안의 엔진이 같은
-           * 검색창을 따로 그리고 있어 둘이 어긋납니다(위 컴포넌트 머리말).
-           *
-           * 색이 아니라 `brightness` 인 까닭: 이 단추의 바탕을 정하는 것은 **방**입니다
-           * (어두운 방은 남색 그라데이션 · 아이보리 모달은 짙은 청동). 호버 색을 박으면
-           * 방마다 짝을 하나씩 더 들고 있어야 하는데, 밝기는 어느 바탕에서든 한 뜻입니다.
-           *
-           * ⚠️ **한 값으로는 안 됩니다** — 올릴 수 있는 천장이 방마다 다릅니다. 화살표는
-           * 어디서나 아이보리라, 바탕을 밝힐수록 그림 요소 기준(3:1)에 가까워집니다.
-           *
-           *   아이보리 모달 · 진열대 종이 : 짙은 청동(#7f6f4d) 4.54:1 → 1.15 에서 3.57:1.
-           *     1.25 면 3.07:1 이라 기준에 닿습니다. 그래서 **기본값이 1.15** 입니다.
-           *   어두운 방 : 남색이 깊어 여유가 큽니다 — 방이 `--search-submit-hover` 로
-           *     따로 올립니다(`styles/scent-display.css`). 1.15 로는 눈에 안 띕니다.
-           *
-           * 기본값을 여기 뒤에 두는 것은 나머지 `--search-*` 와 같습니다 — 방이 안
-           * 채우면 이 값이 섭니다.
-           */
           tone === 'archive' &&
             'hover:brightness-[var(--search-submit-hover,1.15)]',
-          /* 밝아지는 것도 눌리는 것과 같은 속도로 — `filter` 를 빼면 호버가 딱딱 끊깁니다 */
           'transition-[transform,filter] duration-120 ease-out active:scale-95',
           FOCUS_RING,
         )}
@@ -203,7 +172,6 @@ export function SearchField({
   )
 }
 
-/** 돋보기 */
 function SearchIcon() {
   return (
     <svg
