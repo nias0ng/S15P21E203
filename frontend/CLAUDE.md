@@ -241,9 +241,9 @@ import { perfumeDetailQuery } from '@/features/perfume/queries'   // X
 | `shared/ui/PerfumeCard` | 향수 카드. 도메인 타입을 받지 않고 `name`·`subName`·`thumbnailUrl` 낱개로 받습니다. 늘 상세로 가는 링크라 `to` 는 필수입니다 |
 | `shared/ui/ChipToggle` | 칩 여러 개 중 고르기 (A11 진열대 분류 · 계절 등록, A15) |
 | `shared/ui/StarRating` | 별점. 라디오 그룹이라 키보드 화살표로 움직입니다 |
-| `shared/ui/Modal` | 네이티브 `<dialog>` 기반. 포커스 가두기·Esc·배경 스크롤 잠금 자동 |
+| `shared/ui/Modal` | 네이티브 `<dialog>` 기반. 포커스 가두기·Esc·배경 스크롤 잠금 자동. 3D 카드(iframe)에서 여는 모달은 `initialFocus="panel"` — 안 주면 [×] 에 초점 테가 선 채로 뜹니다. 폭을 줄인 좁은 판은 `titleSize="heading"` |
 | `shared/ui/ConfirmDialog` | 삭제 확인 모달 (C01). 7곳 공용. 확인 단추는 늘 `danger` 입니다 |
-| `shared/ui/LoginRequiredDialog` | 로그인 유도 모달 (C01). 비로그인 저장·작성 시도 시 |
+| `shared/ui/LoginRequiredDialog` | 로그인 유도 모달 (C01). 비로그인 저장·작성 시도 시. 3D 향 지도 위에서는 `scene` (저녁 유리판 · 좁은 폭 · 한 단 작은 제목) |
 | `shared/ui/Toast` | 저장·삭제 피드백 (C03). 상태는 `shared/hooks/useToast` 를 쓰세요 |
 | `shared/ui/Skeleton` | 로딩 중 자리 잡기. 목록에는 스피너보다 이걸 씁니다 |
 | `shared/ui/EmptyState` | 결과 0건 화면. 불러오기에 실패한 자리는 `onRetry` 를 넘기면 `action` 뒤에 [다시 시도] 가 섭니다(`retrySize` sm·md) |
