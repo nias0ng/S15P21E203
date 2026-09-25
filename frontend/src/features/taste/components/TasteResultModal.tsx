@@ -5,14 +5,14 @@ import { familyAdjective } from '../families'
 import type { TasteMatch } from '../types'
 
 type TasteResultModalProps = {
-  open: boolean
+  /** `null` 이면 닫혀 있습니다 */
   match: TasteMatch | null
   /** 다시 하기 · Esc · 배경 클릭 — 모달만 닫고 계열 선택 화면에 머무릅니다 */
   onRetry: () => void
   onConfirm: () => void
-  saving?: boolean
+  saving: boolean
   /** 확인을 다시 누르면 저장을 다시 보냅니다 */
-  saveError?: string | null
+  saveError: string | null
 }
 
 const CLOSING = '향 지도에서 내 출발점을 확인해 보세요.'
@@ -53,18 +53,17 @@ function leadOf(match: TasteMatch): string {
  * 취향 테스트 결과 모달 (TST-03). 향수 이름 · 지도 미리보기는 넣지 않습니다 — 그건 지도에서 봅니다.
  */
 export function TasteResultModal({
-  open,
   match,
   onRetry,
   onConfirm,
-  saving = false,
-  saveError = null,
+  saving,
+  saveError,
 }: TasteResultModalProps) {
   if (!match) return null
 
   return (
     <Modal
-      open={open}
+      open
       onClose={onRetry}
       title={headlineOf(match)}
       footer={

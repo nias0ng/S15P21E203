@@ -1,10 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useSearchParams } from 'react-router'
+import { useNavigate } from 'react-router'
 
 import { AUTH_PAGE, LoginForm } from '@/features/auth'
 import { myTasteTestQuery } from '@/features/taste'
 import { ROUTES } from '@/shared/config/routes'
-import { RETURN_PATH_PARAM, safeReturnPath } from '@/shared/lib/returnPath'
 
 /**
  * 로그인 (A28 — COM-02). 첫 로그인이면 취향 테스트(TST-03)로 보냅니다. 이 판단이
@@ -13,18 +12,12 @@ import { RETURN_PATH_PARAM, safeReturnPath } from '@/shared/lib/returnPath'
  */
 export default function LoginPage() {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const queryClient = useQueryClient()
-
-  // 돌아갈 곳을 주소에 싣는 이유: 라우터 state 는 새로고침하면 사라져, 비밀번호를
-  // 찾다 돌아오면 돌아갈 곳을 잃습니다
-  const from =
-    safeReturnPath(searchParams.get(RETURN_PATH_PARAM)) ?? ROUTES.HOME
 
   return (
     <div className={AUTH_PAGE}>
       <LoginForm
-        onLoggedIn={() => {
+        onLoggedIn={(from) => {
           // 취향 테스트 기록을 못 읽어도 원래 가려던 곳으로 보냅니다 — 로그인이
           // 안 된 것은 아닌데 여기서 막으면 로그인 화면에 갇힙니다
 

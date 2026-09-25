@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
+import { Link, useLocation, useSearchParams } from 'react-router'
 
 import { isApiError } from '@/shared/api/http'
 import { ROUTES } from '@/shared/config/routes'
@@ -31,14 +31,15 @@ type LoginLocationState = {
  */
 type LoginFormProps = {
   /**
-   * 로그인 뒤 갈 곳을 화면이 정할 때. 첫 로그인 판단에 `features/taste` 가 필요한데
+   * 로그인 뒤 갈 곳은 화면이 정합니다. 첫 로그인 판단에 `features/taste` 가 필요한데
    * `features/a` 는 `features/b` 를 import 할 수 없어 `pages/LoginPage` 가 정합니다.
+   *
+   * @param from 주소에 달려 온 돌아갈 자리. 없거나 앱 밖이면 홈
    */
-  onLoggedIn?: () => void
+  onLoggedIn: (from: string) => void
 }
 
-export function LoginForm({ onLoggedIn }: LoginFormProps = {}) {
-  const navigate = useNavigate()
+export function LoginForm({ onLoggedIn }: LoginFormProps) {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const setAuth = useAuthStore((state) => state.setAuth)
@@ -48,6 +49,8 @@ export function LoginForm({ onLoggedIn }: LoginFormProps = {}) {
 
   const state = location.state as LoginLocationState
 
+  // 돌아갈 곳을 주소에 싣는 이유: 라우터 state 는 새로고침하면 사라져, 비밀번호를
+  // 찾다 돌아오면 돌아갈 곳을 잃습니다
   const returnTo = safeReturnPath(searchParams.get(RETURN_PATH_PARAM))
   const from = returnTo ?? ROUTES.HOME
 
@@ -67,9 +70,7 @@ export function LoginForm({ onLoggedIn }: LoginFormProps = {}) {
     },
     onSuccess: ({ accessToken, user }) => {
       setAuth({ accessToken, user })
-
-      if (onLoggedIn) onLoggedIn()
-      else navigate(from, { replace: true })
+      onLoggedIn(from)
     },
     // 토큰만 든 반쪽 상태로 두지 않습니다 — 로그인한 것처럼 보이는데 내가 누군지 모릅니다
     onError: () => useAuthStore.getState().clear(),

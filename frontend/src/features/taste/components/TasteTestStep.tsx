@@ -152,7 +152,6 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
       )}
 
       <TasteResultModal
-        open={match !== null}
         match={match}
         /* 저장하는 중에는 계열 선택 화면으로 돌아가지 못하게 둡니다 */
         onRetry={() => {
