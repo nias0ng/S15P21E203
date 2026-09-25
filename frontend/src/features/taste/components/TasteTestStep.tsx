@@ -111,11 +111,7 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
         <EmptyState
           title="향 지도 데이터를 불러오지 못했습니다"
           description="다시 시도해주세요."
-          action={
-            <Button variant="outline" onClick={() => vectors.refetch()}>
-              다시 시도
-            </Button>
-          }
+          onRetry={() => vectors.refetch()}
         />
       )}
 

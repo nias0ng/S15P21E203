@@ -1,9 +1,9 @@
 import { useMutation } from '@tanstack/react-query'
-import { useRef } from 'react'
 
-import { isApiError } from '@/shared/api/http'
+import { apiErrorMessage } from '@/shared/api/http'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
+import { FileButton } from '@/shared/ui/FileButton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import { removeProfileImage, uploadProfileImage } from '../api'
@@ -26,9 +26,6 @@ type Props = {
  * 값을 바꾼 날 둘이 갈라집니다. `accept` 는 파일 고르기 창을 좁혀 주는 **거들기**일 뿐입니다.
  */
 export function ProfileImageField({ value, onChange }: Props) {
-  /* 같은 파일을 다시 고를 수 있게 비워 둘 자리 — 값이 같으면 change 가 안 옵니다 */
-  const inputRef = useRef<HTMLInputElement>(null)
-
   const upload = useMutation({
     mutationFn: uploadProfileImage,
     onSuccess: (url) => onChange(url),
@@ -45,54 +42,25 @@ export function ProfileImageField({ value, onChange }: Props) {
   return (
     <div className="flex items-start gap-5">
       {/* 어두운 방이 `bg-line-soft` 를 흰 12% 로 뒤집어, 사진이 없을 때 어둠 위에 아이보리 사각형이 남지 않습니다 */}
-      {value === null ? (
-        <div className="border-line bg-line-soft text-ink-muted rounded-card text-caption flex size-25 shrink-0 items-center justify-center border">
-          프로필
-        </div>
-      ) : (
-        <Thumbnail
-          src={value}
-          alt="내 프로필 사진"
-          className="rounded-card size-25 shrink-0"
-        />
-      )}
+      <Thumbnail
+        src={value}
+        fallback="프로필"
+        alt="내 프로필 사진"
+        className={cn(
+          'rounded-card size-25 shrink-0',
+          value === null && 'bg-line-soft',
+        )}
+      />
 
       <div className="flex flex-col gap-1.25">
-        {/*
-          단추처럼 보이는 라벨입니다. `<input type="file">` 은 브라우저마다 생김새가
-          다르고 색을 못 입힙니다 — 숨기고 라벨이 대신 받습니다. `Button` 은 `<button>`
-          이라 안에 넣으면 라벨의 클릭이 막혀, 여기서만 생김새를 손으로 맞춥니다.
-
-          NOTE: 높이 · 바닥은 `Button` 의 `sm` 과 같은 값입니다(`shared/ui/buttonVariants`).
-          바로 아래 [이미지 삭제] 가 그 `sm` 이라, 바닥이 한쪽에만 있으면 1536 에서
-          둘의 높이가 24 · 27.1 로 갈립니다.
-        */}
-        <label
-          className={cn(
-            'border-line text-ink rounded-card inline-flex h-7.5 min-h-[calc(var(--text-body)*var(--text-body--line-height)+5px)] w-fit items-center border px-2.5',
-            'text-body cursor-pointer font-medium',
-            'hover:bg-line-soft transition-colors duration-120 ease-out',
-            /* 마우스로 눌러도 링이 뜨던 것을 글쇠로 올 때만으로 좁힙니다 (`ImageAttachField` 와 같습니다) */
-            'has-[:focus-visible]:ring-accent-deep has-[:focus-visible]:ring-2',
-            busy && 'pointer-events-none opacity-50',
-          )}
+        <FileButton
+          className="w-fit"
+          busy={busy}
+          inputLabel="프로필 사진 고르기"
+          onPick={(file) => upload.mutate(file)}
         >
           {upload.isPending ? '올리는 중' : '이미지 변경'}
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp"
-            className="sr-only"
-            aria-label="프로필 사진 고르기"
-            disabled={busy}
-            onChange={(event) => {
-              const picked = event.target.files?.[0]
-              /* 같은 파일을 다시 골라도 change 가 오게 칸을 비웁니다 */
-              if (inputRef.current) inputRef.current.value = ''
-              if (picked) upload.mutate(picked)
-            }}
-          />
-        </label>
+        </FileButton>
 
         {/* 지울 것이 없는데 부르면 서버가 무엇을 답하는지 모릅니다 */}
         <Button
@@ -114,9 +82,10 @@ export function ProfileImageField({ value, onChange }: Props) {
 
         {error != null && (
           <p role="alert" className="text-danger text-caption">
-            {isApiError(error)
-              ? error.message
-              : '프로필 사진을 바꾸지 못했습니다. 잠시 후 다시 시도해주세요.'}
+            {apiErrorMessage(
+              error,
+              '프로필 사진을 바꾸지 못했습니다. 잠시 후 다시 시도해주세요.',
+            )}
           </p>
         )}
       </div>

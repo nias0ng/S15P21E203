@@ -1,10 +1,10 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 
-import { isApiError } from '@/shared/api/http'
+import { apiErrorMessage } from '@/shared/api/http'
 import { ROUTES } from '@/shared/config/routes'
-import { useAuthStore } from '@/shared/store/authStore'
+import { useEndSession } from '@/shared/hooks/useEndSession'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
 import { Modal } from '@/shared/ui/Modal'
@@ -20,7 +20,7 @@ type Props = { open: boolean; onClose: () => void }
  */
 export function PasswordChangeModal({ open, onClose }: Props) {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
+  const endSession = useEndSession()
 
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -37,10 +37,7 @@ export function PasswordChangeModal({ open, onClose }: Props) {
     onSuccess: () => {
       reset()
       onClose()
-
-      // 토큰을 먼저 버려야 남아 있는 쿼리가 죽은 토큰으로 다시 나가지 않습니다
-      useAuthStore.getState().clear()
-      queryClient.clear()
+      endSession()
       navigate(ROUTES.LOGIN, {
         replace: true,
         state: { passwordChanged: true },
@@ -133,9 +130,10 @@ export function PasswordChangeModal({ open, onClose }: Props) {
 
         {mutation.error !== null && (
           <p className="text-danger text-caption" role="alert">
-            {isApiError(mutation.error)
-              ? mutation.error.message
-              : '비밀번호를 바꾸지 못했습니다. 잠시 후 다시 시도해주세요.'}
+            {apiErrorMessage(
+              mutation.error,
+              '비밀번호를 바꾸지 못했습니다. 잠시 후 다시 시도해주세요.',
+            )}
           </p>
         )}
 

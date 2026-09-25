@@ -1,10 +1,10 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 
-import { isApiError } from '@/shared/api/http'
+import { apiErrorMessage } from '@/shared/api/http'
 import { ROUTES } from '@/shared/config/routes'
-import { useAuthStore } from '@/shared/store/authStore'
+import { useEndSession } from '@/shared/hooks/useEndSession'
 import { Button } from '@/shared/ui/Button'
 import { Checkbox } from '@/shared/ui/Checkbox'
 import { Input } from '@/shared/ui/Input'
@@ -21,7 +21,7 @@ type Props = { open: boolean; onClose: () => void }
  */
 export function WithdrawModal({ open, onClose }: Props) {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
+  const endSession = useEndSession()
 
   const [confirmed, setConfirmed] = useState(false)
   const [password, setPassword] = useState('')
@@ -29,9 +29,7 @@ export function WithdrawModal({ open, onClose }: Props) {
   const mutation = useMutation({
     mutationFn: () => withdraw(password),
     onSuccess: () => {
-      useAuthStore.getState().clear()
-      // 스토어만 지우면 같은 브라우저에서 다음에 로그인한 사람이 지워진 계정의 화면을 잠깐 봅니다
-      queryClient.clear()
+      endSession()
       navigate(ROUTES.HOME, { replace: true })
     },
   })
@@ -95,9 +93,10 @@ export function WithdrawModal({ open, onClose }: Props) {
 
         {mutation.error !== null && (
           <p className="text-danger text-caption" role="alert">
-            {isApiError(mutation.error)
-              ? mutation.error.message
-              : '탈퇴하지 못했습니다. 잠시 후 다시 시도해주세요.'}
+            {apiErrorMessage(
+              mutation.error,
+              '탈퇴하지 못했습니다. 잠시 후 다시 시도해주세요.',
+            )}
           </p>
         )}
       </div>

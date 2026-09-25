@@ -2,7 +2,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router'
 
-import { isApiError } from '@/shared/api/http'
+import { apiErrorMessage } from '@/shared/api/http'
 import { ROUTES } from '@/shared/config/routes'
 import {
   RETURN_PATH_PARAM,
@@ -115,9 +115,10 @@ export function LoginForm({ onLoggedIn }: LoginFormProps) {
         {/* 서버 문구를 그대로 보여줍니다 — 없는 이메일과 틀린 비밀번호를 백엔드가 일부러 한 문장으로 합쳤습니다(가입 여부를 알아내는 수단이 됩니다) */}
         {error !== null && (
           <p className="text-danger text-caption" role="alert">
-            {isApiError(error)
-              ? error.message
-              : '로그인하지 못했습니다. 잠시 후 다시 시도해주세요.'}
+            {apiErrorMessage(
+              error,
+              '로그인하지 못했습니다. 잠시 후 다시 시도해주세요.',
+            )}
           </p>
         )}
 

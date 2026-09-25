@@ -2,7 +2,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 
-import { isApiError } from '@/shared/api/http'
+import { apiErrorMessage, isApiError } from '@/shared/api/http'
 import { ROUTES } from '@/shared/config/routes'
 import {
   RETURN_PATH_PARAM,
@@ -240,9 +240,10 @@ export function SignupForm() {
 
         {signupMutation.error !== null && (
           <p className="text-danger text-caption" role="alert">
-            {isApiError(signupMutation.error)
-              ? signupMutation.error.message
-              : '가입하지 못했습니다. 잠시 후 다시 시도해주세요.'}
+            {apiErrorMessage(
+              signupMutation.error,
+              '가입하지 못했습니다. 잠시 후 다시 시도해주세요.',
+            )}
           </p>
         )}
 
