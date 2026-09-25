@@ -27,14 +27,18 @@ import { NlrFeedbackModal, RecommendModal } from '@/features/recommend'
 // 진열대 저장은 진열대 도메인의 어휘입니다. 화면에서 두 도메인을 조합합니다.
 import {
   ShelfRegisterModal,
-  ShelfRegisterPartialError,
   shelfItemsQuery,
+  shelfRegisterErrorMessage,
   useShelfActions,
 } from '@/features/shelf'
 import { isApiError } from '@/shared/api/http'
 import { isTasteLanding } from '@/shared/config/mapEntryState'
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
-import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
+import {
+  ROUTES,
+  toPerfumeDetail,
+  toPerfumeSearch,
+} from '@/shared/config/routes'
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { useToast } from '@/shared/hooks/useToast'
 import { cn } from '@/shared/lib/cn'
@@ -333,7 +337,7 @@ export default function HomePage() {
 
           navigate(
             perfumeId === null
-              ? `${ROUTES.PERFUMES}?keyword=${encodeURIComponent(perfume.nameKo)}`
+              ? toPerfumeSearch(perfume.nameKo)
               : toPerfumeDetail(perfumeId),
             // 검색으로 돌려보내는 쪽은 향수 상세가 아니라 기록할 것이 없습니다
             perfumeId === null
@@ -471,9 +475,7 @@ export default function HomePage() {
             이름으로 향수 검색(A09)에 보냅니다. 엔진 카드의 [자세히 보기]가 번호 없는
             향수를 보내는 길과 **같은 곳**입니다(위 onOpenDetail).
           */
-          navigate(
-            `${ROUTES.PERFUMES}?keyword=${encodeURIComponent(perfume.name)}`,
-          )
+          navigate(toPerfumeSearch(perfume.name))
         }}
       />
 
@@ -498,14 +500,7 @@ export default function HomePage() {
           closeShelfSave()
           actions.register.mutate(input, {
             onSuccess: () => showToast('진열대에 저장했습니다'),
-            onError: (error) =>
-              showToast(
-                error instanceof ShelfRegisterPartialError
-                  ? `진열대에 담았지만 ${error.missing.join(' · ')}은(는) 저장하지 못했습니다`
-                  : isApiError(error)
-                    ? error.message
-                    : '진열대에 저장하지 못했습니다.',
-              ),
+            onError: (error) => showToast(shelfRegisterErrorMessage(error)),
           })
         }}
       />
