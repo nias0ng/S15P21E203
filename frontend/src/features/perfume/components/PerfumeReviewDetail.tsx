@@ -122,10 +122,9 @@ export function PerfumeReviewDetail({ review, onDeleted }: Props) {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={removal.isPending}
                   onClick={() => setDeleteOpen(true)}
                 >
-                  {removal.isPending ? '삭제 중' : '삭제'}
+                  삭제
                 </Button>
               </>
             )}
@@ -230,6 +229,7 @@ export function PerfumeReviewDetail({ review, onDeleted }: Props) {
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
         onConfirm={() => removal.mutate()}
+        isLoading={removal.isPending}
       />
 
       <LoginRequiredDialog
