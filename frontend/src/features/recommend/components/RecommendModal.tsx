@@ -2,11 +2,10 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
 
 import { isApiError } from '@/shared/api/http'
-import { UNROLL, useUnroll } from '@/shared/hooks/useUnroll'
-import { cn } from '@/shared/lib/cn'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Modal } from '@/shared/ui/Modal'
 import { Skeleton } from '@/shared/ui/Skeleton'
+import { Unroll } from '@/shared/ui/Unroll'
 
 import { usePendingFeedbackStore } from '../pendingFeedbackStore'
 import { recommendationQuery } from '../queries'
@@ -61,8 +60,6 @@ export function RecommendModal({ query, onClose }: Props) {
 
 /** 열릴 때마다 새로 마운트됩니다 — 그래야 족자가 매번 처음부터 풀립니다 */
 function RecommendBody({ query }: { query: string }) {
-  const { bodyRef, style, inert } = useUnroll()
-
   const result = useQuery({
     ...recommendationQuery(query),
     enabled: query.trim().length > 0,
@@ -94,81 +91,70 @@ function RecommendBody({ query }: { query: string }) {
   }, [token, query, hasPerfumes, hold])
 
   return (
-    <div
-      className={cn(
-        'overflow-hidden transition-[height] motion-reduce:transition-none',
-        UNROLL,
-      )}
-      style={style}
-      inert={inert}
-    >
-      <div ref={bodyRef}>
-        {/* 무엇을 물었는지 결과 위에 남깁니다 — 모달이라 검색창이 뒤에 가려 안 보입니다 */}
-        <p className="text-ink-muted text-caption mb-3.75">
-          입력한 말 ·{' '}
-          <strong className="text-ink font-medium">
-            &lsquo;{query}&rsquo;
-          </strong>
-        </p>
+    <Unroll>
+      {/* 무엇을 물었는지 결과 위에 남깁니다 — 모달이라 검색창이 뒤에 가려 안 보입니다 */}
+      <p className="text-ink-muted text-caption mb-3.75">
+        입력한 말 ·{' '}
+        <strong className="text-ink font-medium">&lsquo;{query}&rsquo;</strong>
+      </p>
 
-        {result.isPending && <RecommendSkeleton />}
+      {result.isPending && <RecommendSkeleton />}
 
-        {result.isError && <RecommendError error={result.error} />}
+      {result.isError && <RecommendError error={result.error} />}
 
-        {result.isSuccess && (
-          <>
-            {/*
+      {result.isSuccess && (
+        <>
+          {/*
               NOTE: 향이 아닌 근거는 **반드시 그립니다.** 노트를 말한 문장은 AI 가 그 말을
               accord 로 풀어 보내면서 어느 글자에서 왔는지를 안 채워, 카드의 추천 이유에는
               사용자가 쓴 말이 안 남습니다. 이 줄을 빼면 "미모사랑 장미 들어간 향수" 를 찾은
               사람의 화면에서 미모사도 장미도 사라집니다.
             */}
-            {matchedData.length > 0 && perfumes.length > 0 && (
-              <p className="border-line text-ink-muted text-caption mb-3.75 border-l-2 pl-2.5 leading-relaxed">
-                <strong className="text-ink font-medium">
-                  {matchedData.map((data) => data.label).join(' · ')}
-                </strong>{' '}
-                조건으로 좁혔습니다.
-              </p>
-            )}
+          {matchedData.length > 0 && perfumes.length > 0 && (
+            <p className="border-line text-ink-muted text-caption mb-3.75 border-l-2 pl-2.5 leading-relaxed">
+              <strong className="text-ink font-medium">
+                {matchedData.map((data) => data.label).join(' · ')}
+              </strong>{' '}
+              조건으로 좁혔습니다.
+            </p>
+          )}
 
-            {/* 왜 헐거운지 안 밝히면 조건 하나로 나온 다섯 개를 정확한 추천으로 읽습니다 */}
-            {result.data.status === 'OK_RELAXED' && perfumes.length > 0 && (
-              <p className="border-line text-ink-muted text-caption mb-3.75 border-l-2 pl-2.5 leading-relaxed">
-                {result.data.pickedWithoutScentCondition
-                  ? /*
+          {/* 왜 헐거운지 안 밝히면 조건 하나로 나온 다섯 개를 정확한 추천으로 읽습니다 */}
+          {result.data.status === 'OK_RELAXED' && perfumes.length > 0 && (
+            <p className="border-line text-ink-muted text-caption mb-3.75 border-l-2 pl-2.5 leading-relaxed">
+              {result.data.pickedWithoutScentCondition
+                ? /*
                       NOTE: 향으로 고른 것이 아닌 경우를 "조건이 넓다" 로 묶으면 거짓말이 됩니다.
                       향 조건을 하나도 못 뽑았고 순서를 정한 것은 평가자 수입니다.
                     */
-                    '향을 말씀하신 것으로 읽지 못해, 위 조건에 맞는 향수를 평가가 많은 순으로 골랐습니다. 냄새로 풀어서 한 줄 덧붙이면 향으로 골라 드릴 수 있습니다.'
-                  : '조건이 넓어 비슷한 향까지 함께 골랐습니다. 상황이나 계절을 덧붙이면 더 좁혀 드릴 수 있습니다.'}
-              </p>
-            )}
+                  '향을 말씀하신 것으로 읽지 못해, 위 조건에 맞는 향수를 평가가 많은 순으로 골랐습니다. 냄새로 풀어서 한 줄 덧붙이면 향으로 골라 드릴 수 있습니다.'
+                : '조건이 넓어 비슷한 향까지 함께 골랐습니다. 상황이나 계절을 덧붙이면 더 좁혀 드릴 수 있습니다.'}
+            </p>
+          )}
 
-            {perfumes.length > 0 ? (
-              <RecommendResultList perfumes={perfumes} />
-            ) : (
-              /*
+          {perfumes.length > 0 ? (
+            <RecommendResultList perfumes={perfumes} />
+          ) : (
+            /*
                 NOTE: 0개인 두 경우를 한 문장으로 묶지 않습니다 — 조건을 못 뽑은 사람에게
                 없는 것은 향수가 아니라 알아들은 조건입니다. 인기 향수로 대신하지도 않습니다.
               */
-              <EmptyState
-                title={
-                  result.data.status === 'NO_CONDITION'
-                    ? '어떤 향인지 아직 못 알아들었습니다'
-                    : '말씀하신 향에 맞는 향수를 찾지 못했습니다'
-                }
-                description={
-                  result.data.status === 'NO_CONDITION'
-                    ? '냄새로 풀어서 적어 보세요 — ‘비누 냄새 나는 향’, ‘비 온 뒤 흙냄새’ 처럼요.'
-                    : '조건을 조금 줄이면 찾을 수 있습니다. 계절이나 상황 하나를 빼고 다시 적어 보세요.'
-                }
-              />
-            )}
-          </>
-        )}
-      </div>
-    </div>
+            <EmptyState
+              title={
+                result.data.status === 'NO_CONDITION'
+                  ? '어떤 향인지 아직 못 알아들었습니다'
+                  : '말씀하신 향에 맞는 향수를 찾지 못했습니다'
+              }
+              description={
+                result.data.status === 'NO_CONDITION'
+                  ? '냄새로 풀어서 적어 보세요 — ‘비누 냄새 나는 향’, ‘비 온 뒤 흙냄새’ 처럼요.'
+                  : '조건을 조금 줄이면 찾을 수 있습니다. 계절이나 상황 하나를 빼고 다시 적어 보세요.'
+              }
+            />
+          )}
+        </>
+      )}
+    </Unroll>
   )
 }
 

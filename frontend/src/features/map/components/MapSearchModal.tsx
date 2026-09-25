@@ -2,12 +2,11 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 
 import { scentFamilyName } from '@/shared/config/scentFamilies'
-import { UNROLL, useUnroll } from '@/shared/hooks/useUnroll'
-import { cn } from '@/shared/lib/cn'
 import { Badge } from '@/shared/ui/Badge'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Modal } from '@/shared/ui/Modal'
 import { Skeleton } from '@/shared/ui/Skeleton'
+import { Unroll } from '@/shared/ui/Unroll'
 
 import { filterMapPerfumes, MAP_SEARCH_LIMIT } from '../mapPerfumes'
 import { mapPerfumesQuery } from '../queries'
@@ -82,8 +81,6 @@ function MapSearchBody({
   keyword: string
   onSelect: (perfume: MapPerfume) => void
 }) {
-  const { bodyRef, style, inert } = useUnroll()
-
   /*
    * ⚠️ 모달이 열려 있을 때만 받습니다. 닫힌 채로도 받으면 메인에 들어오기만 해도 엔진
    * 데이터 88KB 를 가져갑니다 — 3D 가 배 모델 8MB 를 받는 그 시간에 끼어들어서,
@@ -103,69 +100,60 @@ function MapSearchBody({
 
   return (
     // 향해 일지와 같은 족자 — 모달 머리줄이 위 축이고 그 아래가 풀려 내려옵니다
-    <div
-      className={cn(
-        'overflow-hidden transition-[height] motion-reduce:transition-none',
-        UNROLL,
+    <Unroll>
+      <p className="text-ink-muted text-caption mb-3.75">
+        찾는 말 ·{' '}
+        <strong className="text-ink font-medium">
+          &lsquo;{keyword}&rsquo;
+        </strong>
+        {results.length > 0 && (
+          <>
+            {' '}
+            · {results.length}개{results.length === MAP_SEARCH_LIMIT && ' 까지'}
+          </>
+        )}
+      </p>
+
+      {perfumes.isPending && (
+        <ul className="space-y-3.75">
+          {[0, 1, 2].map((row) => (
+            <li key={row}>
+              <Skeleton className="h-15 w-full" />
+            </li>
+          ))}
+        </ul>
       )}
-      style={style}
-      inert={inert}
-    >
-      <div ref={bodyRef}>
-        <p className="text-ink-muted text-caption mb-3.75">
-          찾는 말 ·{' '}
-          <strong className="text-ink font-medium">
-            &lsquo;{keyword}&rsquo;
-          </strong>
-          {results.length > 0 && (
-            <>
-              {' '}
-              · {results.length}개
-              {results.length === MAP_SEARCH_LIMIT && ' 까지'}
-            </>
-          )}
-        </p>
 
-        {perfumes.isPending && (
-          <ul className="space-y-3.75">
-            {[0, 1, 2].map((row) => (
-              <li key={row}>
-                <Skeleton className="h-15 w-full" />
-              </li>
-            ))}
-          </ul>
-        )}
+      {perfumes.isError && (
+        <EmptyState
+          title="지도 향수 목록을 불러오지 못했습니다"
+          description="잠시 후 다시 시도해 주세요."
+        />
+      )}
 
-        {perfumes.isError && (
+      {perfumes.isSuccess &&
+        (results.length === 0 ? (
           <EmptyState
-            title="지도 향수 목록을 불러오지 못했습니다"
-            description="잠시 후 다시 시도해 주세요."
+            title="지도에 그런 향수가 없습니다"
+            description="지도에는 향수 200개만 떠 있습니다. 브랜드 이름으로 다시 찾아보거나, 검색 방식을 자연어로 바꿔 보세요."
           />
-        )}
-
-        {perfumes.isSuccess &&
-          (results.length === 0 ? (
-            <EmptyState
-              title="지도에 그런 향수가 없습니다"
-              description="지도에는 향수 200개만 떠 있습니다. 브랜드 이름으로 다시 찾아보거나, 검색 방식을 자연어로 바꿔 보세요."
-            />
-          ) : (
-            /*
+        ) : (
+          /*
               줄 사이 15 · 줄 안쪽 15 — 화면의 여백 격자(바깥 240 : 판 안쪽 30 : 항목 사이 15)를 따릅니다.
 
               NOTE: `scent-thin-scroll` 은 막대를 판 안쪽에 얇게 답니다(`styles/scent-display.css`).
               어두운 유리 위에 브라우저 기본 막대가 서면 회색 트랙과 화살표 단추가 판의 오른쪽
               테두리처럼 읽혀 모서리가 두 겹으로 보입니다.
             */
-            <ul className="scent-thin-scroll max-h-127.5 space-y-3.75 overflow-y-auto pr-1.25">
-              {results.map((perfume) => (
-                <li key={perfume.fragranticaId}>
-                  <button
-                    type="button"
-                    onClick={() => onSelect(perfume)}
-                    className="border-line bg-surface-card hover:border-ink flex w-full items-center gap-3.75 border p-3.75 text-left transition-colors duration-120"
-                  >
-                    {/*
+          <ul className="scent-thin-scroll max-h-127.5 space-y-3.75 overflow-y-auto pr-1.25">
+            {results.map((perfume) => (
+              <li key={perfume.fragranticaId}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(perfume)}
+                  className="border-line bg-surface-card hover:border-ink flex w-full items-center gap-3.75 border p-3.75 text-left transition-colors duration-120"
+                >
+                  {/*
                       지도 순위 — 이 목록의 차례가 곧 화해 기준 순위입니다.
 
                       ⚠️ 정사각형(size-6.25)이 아니라 **최소 너비 + 좌우 여백**입니다. 순위는
@@ -174,40 +162,39 @@ function MapSearchBody({
                       ⚠️ 무슨 수인지 글자로도 말합니다 — 칠한 숫자만으로는 화면 낭독기에서
                       이름과 구분되지 않습니다
                     */}
-                    <span className="bg-ink text-surface text-caption flex h-6.25 min-w-6.25 shrink-0 items-center justify-center rounded-full px-1.5">
-                      <span className="sr-only">지도 순위 </span>
-                      {perfume.rank}
-                    </span>
+                  <span className="bg-ink text-surface text-caption flex h-6.25 min-w-6.25 shrink-0 items-center justify-center rounded-full px-1.5">
+                    <span className="sr-only">지도 순위 </span>
+                    {perfume.rank}
+                  </span>
 
-                    <span className="min-w-0 flex-1">
-                      <span className="text-ink text-body block truncate font-bold">
-                        {perfume.name}
-                      </span>
-                      <span className="text-ink-muted text-caption block truncate">
-                        {perfume.brand}
-                        {/*
+                  <span className="min-w-0 flex-1">
+                    <span className="text-ink text-body block truncate font-bold">
+                      {perfume.name}
+                    </span>
+                    <span className="text-ink-muted text-caption block truncate">
+                      {perfume.brand}
+                      {/*
                           한글 이름으로 찾았어도 영문 원명을 함께 둡니다 — 같은 향수를
                           브랜드마다 다르게 옮겨 적어서, 원명이 있어야 내가 아는 그
                           향수가 맞는지 확인이 됩니다
                         */}
-                        {perfume.nameEn !== perfume.name && (
-                          <> · {perfume.nameEn}</>
-                        )}
-                      </span>
+                      {perfume.nameEn !== perfume.name && (
+                        <> · {perfume.nameEn}</>
+                      )}
                     </span>
+                  </span>
 
-                    {/* 지도 카드(A02)의 향 계열 배지와 **같은 것**입니다 — 같은 값을 두 곳에서 다르게 그리지 않습니다 */}
-                    {perfume.family && (
-                      <Badge tone="outline" className="shrink-0">
-                        {scentFamilyName(perfume.family)}
-                      </Badge>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ))}
-      </div>
-    </div>
+                  {/* 지도 카드(A02)의 향 계열 배지와 **같은 것**입니다 — 같은 값을 두 곳에서 다르게 그리지 않습니다 */}
+                  {perfume.family && (
+                    <Badge tone="outline" className="shrink-0">
+                      {scentFamilyName(perfume.family)}
+                    </Badge>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        ))}
+    </Unroll>
   )
 }

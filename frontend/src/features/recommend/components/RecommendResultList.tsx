@@ -181,10 +181,8 @@ export function RecommendResultList({ perfumes }: Props) {
                   <LinkButton
                     to={toPerfumeDetail(perfume.perfumeId)}
                     state={perfumeViewState('NATURAL_LANGUAGE_RECOMMENDATION')}
-                    variant="outline"
+                    variant="navy"
                     size="sm"
-                    // 판 위의 단추는 엔진 카드 단추와 같은 남색입니다 (--pb-card-btn)
-                    className="bg-navy hover:bg-navy/85"
                   >
                     자세히 보기
                   </LinkButton>
