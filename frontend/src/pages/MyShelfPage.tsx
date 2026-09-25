@@ -352,15 +352,8 @@ export default function MyShelfPage() {
       <EmptyState
         title="진열대를 불러오지 못했습니다"
         description={apiErrorMessage(shelf.error, '잠시 후 다시 시도해주세요.')}
-        action={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void shelf.refetch()}
-          >
-            다시 시도
-          </Button>
-        }
+        onRetry={() => void shelf.refetch()}
+        retrySize="sm"
       />
     )
   }

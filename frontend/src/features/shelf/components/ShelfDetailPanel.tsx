@@ -266,20 +266,17 @@ export function ShelfDetailPanel({
             맡는 것은 그대로입니다. 확인창은 화면(pages)이 띄웁니다.
 
             공용 Button 을 씁니다. 직접 만들면 모서리·굵기·포커스 링·전환·비활성 규칙을 그대로 베껴
-            적게 되는데, 나중에 공용 쪽이 바뀔 때 이 버튼만 뒤처집니다. 높이 · 모서리 · 색만 덮습니다
+            적게 되는데, 나중에 공용 쪽이 바뀔 때 이 버튼만 뒤처집니다. 높이 · 모서리만 덮습니다
             — cn(twMerge)이 variant·size 의 겹치는 값을 걷어냅니다.
           */}
           <div className="flex flex-col gap-3.75 @xl:mt-auto">
             <div className="grid grid-cols-2 gap-2.5">
               <Button
-                variant="outline"
+                variant="dangerOutline"
                 size="sm"
                 fullWidth
                 onClick={onRemove}
-                className={cn(
-                  'border-danger/40 text-danger hover:bg-danger/5 h-10 rounded-md',
-                  FOCUS_RING,
-                )}
+                className={cn('h-10 rounded-md', FOCUS_RING)}
               >
                 저장 해제
               </Button>

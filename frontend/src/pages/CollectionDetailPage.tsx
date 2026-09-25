@@ -247,9 +247,9 @@ export default function CollectionDetailPage() {
               수정
             </Button>
             <Button
-              variant="outline"
+              variant="dangerOutline"
               size="sm"
-              className={`border-danger/40 text-danger hover:bg-danger/5 h-10 rounded-md px-5 ${PAPER_RING}`}
+              className={`h-10 rounded-md px-5 ${PAPER_RING}`}
               onClick={() => setDeleteOpen(true)}
             >
               삭제
