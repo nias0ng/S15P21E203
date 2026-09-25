@@ -478,14 +478,11 @@
     --color-surface: #2c263e;
     /* 고른 칩은 판 위에서 상아색입니다 — 남색으로 두면 판에 잠겨 "골랐다" 가 안 읽힙니다 */
     --color-selected: #fbf3ea;
+    /* 판 위 경고(8.3:1) — 어두운 방과 같은 값입니다. 밝은 화면 값(러스트)은 여기서 2.1:1 입니다 */
+    --color-danger: #f2b7a2;
 
     /* 브라우저 기본 스타일이 dialog 에 color: CanvasText(검정)를 박습니다 */
     color: var(--color-ink);
-  }
-
-  /* 판 위의 배경(`::backdrop`)은 바다를 가리지 않게 얕게만 덮습니다 */
-  .scent-map-panel::backdrop {
-    background: rgb(16 10 28 / 0.38);
   }
 
   /*
@@ -534,4 +531,14 @@
       scrollbar-color: rgb(251 243 234 / 0.3) transparent;
     }
   }
+}
+
+/*
+ * 판 위의 배경(`::backdrop`)은 바다를 가리지 않게 얕게만 덮습니다.
+ *
+ * NOTE: 레이어 밖에 둡니다 — 안에 두면 `Modal` 의 `backdrop:bg-ink/40`(유틸리티)에 밀리고,
+ *   `::backdrop` 이 판의 `--color-ink`(상아색)를 물려받아 저녁 바다 위에 **상아색 40% 막**이 덮입니다.
+ */
+.scent-map-panel::backdrop {
+  background: rgb(16 10 28 / 0.38);
 }
