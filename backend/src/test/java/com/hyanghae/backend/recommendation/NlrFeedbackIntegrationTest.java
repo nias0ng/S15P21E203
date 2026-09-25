@@ -408,9 +408,9 @@ class NlrFeedbackIntegrationTest {
                 List.of(),
                 List.of(
                         new NlrRecommendResponse.Result(73368L,
-                                List.of(new NlrRecommendResponse.Matched("soapy", "빨래"))),
+                                List.of(new NlrRecommendResponse.Matched("soapy", "빨래", null))),
                         new NlrRecommendResponse.Result(1234L,
-                                List.of(new NlrRecommendResponse.Matched("fresh", "빨래")))),
+                                List.of(new NlrRecommendResponse.Matched("fresh", "빨래", null)))),
                 List.of(new NlrRecommendResponse.Unmatched(
                         "무겁지 않게", "무겁지않게", "NOT_IN_LEXICON", null,
                         true, List.of("white floral", "warm spicy"), "LLM", 2)),

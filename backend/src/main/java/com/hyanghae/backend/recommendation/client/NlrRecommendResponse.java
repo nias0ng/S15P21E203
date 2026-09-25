@@ -60,7 +60,22 @@ public record NlrRecommendResponse(
     public record Result(Long fragranticaId, List<Matched> matched) {
     }
 
-    public record Matched(String accord, String from) {
+    /**
+     * 향 근거 하나입니다 — 사용자의 어느 말이 어떤 향 특성을 가리켰는지입니다.
+     *
+     * <p><b>{@code tier} 와 {@code rationale} 은 일부러 받지 않습니다.</b> {@code rationale} 은
+     * 개발자용 기록이라(<i>"측정 기록 40번. … 평가셋 743문장 중 193…"</i>) 사용자에게 나가면 안
+     * 되고, {@code tier} 는 계약이 내부 기록으로 정해 두었습니다. 여기서 받지 않으면 화면으로
+     * 새어 나갈 길 자체가 생기지 않습니다.
+     *
+     * @param strength 그 향이 이 향수에 얼마나 있는지입니다(0~100). AI 가 순위를 정할 때 실제로
+     *                 쓴 값이라 <i>"왜 이 향수인가"</i> 에 가장 가까운 답입니다.
+     *                 <p><b>{@code int} 가 아니라 {@code Integer} 입니다.</b> AI 가 이 칸을 안
+     *                 보내면 {@code int} 는 0 이 되는데, 0 은 "그 향이 전혀 없다" 는 뜻이라
+     *                 <b>"모른다"</b> 와 구분되지 않습니다. 화면은 모르는 값을 아예 안 그리고
+     *                 0 은 0 으로 그려야 하므로 둘이 갈려야 합니다.
+     */
+    public record Matched(String accord, String from, Integer strength) {
     }
 
     /**
