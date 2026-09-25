@@ -10,7 +10,10 @@ import { Input } from '@/shared/ui/Input'
 import { Modal } from '@/shared/ui/Modal'
 
 import { changePassword } from '../api'
+import { useNewPassword } from '../hooks/useNewPassword'
 import { PASSWORD_MIN_LENGTH } from '../types'
+
+import { NewPasswordFields } from './NewPasswordFields'
 
 type Props = { open: boolean; onClose: () => void }
 
@@ -23,17 +26,16 @@ export function PasswordChangeModal({ open, onClose }: Props) {
   const endSession = useEndSession()
 
   const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [newPasswordConfirm, setNewPasswordConfirm] = useState('')
+  const newPassword = useNewPassword()
 
   const reset = () => {
     setCurrentPassword('')
-    setNewPassword('')
-    setNewPasswordConfirm('')
+    newPassword.reset()
   }
 
   const mutation = useMutation({
-    mutationFn: () => changePassword({ currentPassword, newPassword }),
+    mutationFn: () =>
+      changePassword({ currentPassword, newPassword: newPassword.password }),
     onSuccess: () => {
       reset()
       onClose()
@@ -51,21 +53,8 @@ export function PasswordChangeModal({ open, onClose }: Props) {
     onClose()
   }
 
-  const newPasswordError =
-    newPassword.length > 0 && newPassword.length < PASSWORD_MIN_LENGTH
-      ? `비밀번호는 ${PASSWORD_MIN_LENGTH}자 이상이어야 합니다`
-      : undefined
-
-  const confirmError =
-    newPasswordConfirm.length > 0 && newPasswordConfirm !== newPassword
-      ? '비밀번호가 서로 다릅니다'
-      : undefined
-
   const canSubmit =
-    currentPassword.length > 0 &&
-    newPassword.length >= PASSWORD_MIN_LENGTH &&
-    newPasswordConfirm === newPassword &&
-    !mutation.isPending
+    currentPassword.length > 0 && newPassword.valid && !mutation.isPending
 
   return (
     <Modal
@@ -105,28 +94,7 @@ export function PasswordChangeModal({ open, onClose }: Props) {
           value={currentPassword}
           onChange={(event) => setCurrentPassword(event.target.value)}
         />
-        <Input
-          label="새 비밀번호"
-          hideLabel
-          type="password"
-          autoComplete="new-password"
-          placeholder="새 비밀번호"
-          required
-          value={newPassword}
-          onChange={(event) => setNewPassword(event.target.value)}
-          error={newPasswordError}
-        />
-        <Input
-          label="새 비밀번호 확인"
-          hideLabel
-          type="password"
-          autoComplete="new-password"
-          placeholder="새 비밀번호 확인"
-          required
-          value={newPasswordConfirm}
-          onChange={(event) => setNewPasswordConfirm(event.target.value)}
-          error={confirmError}
-        />
+        <NewPasswordFields label="새 비밀번호" password={newPassword} />
 
         {mutation.error !== null && (
           <p className="text-danger text-caption" role="alert">

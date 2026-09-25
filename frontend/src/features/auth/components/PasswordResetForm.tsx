@@ -1,28 +1,15 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
 
-import { ROUTES } from '@/shared/config/routes'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
 
 import { AUTH_SUBMIT } from '../frame'
+import { useNewPassword } from '../hooks/useNewPassword'
 import { PASSWORD_MIN_LENGTH } from '../types'
 
 import { AuthCard } from './AuthCard'
-
-/**
- * 로그인으로 돌아가는 줄. 두 카드가 같이 쓰고, 모양 · 자리는 `SignupForm` 의
- * [로그인하기 →] 와 같게 둡니다 — 판의 모서리가 둥글어 5px 을 들여씁니다.
- */
-function BackToLogin() {
-  return (
-    <div className="text-caption flex items-center pl-1.25">
-      <Link to={ROUTES.LOGIN} className="text-ink-muted hover:text-ink">
-        로그인하기 →
-      </Link>
-    </div>
-  )
-}
+import { BackToLogin } from './BackToLogin'
+import { NewPasswordFields } from './NewPasswordFields'
 
 /** 비밀번호 찾기 (A31 좌측). 보낸 뒤 폼을 안내로 바꿉니다 — 폼이 남으면 보냈는지가 흐려져 같은 메일을 몇 번씩 부릅니다 */
 export function PasswordFindForm() {
@@ -92,21 +79,7 @@ export function PasswordFindForm() {
  * `PasswordChangeModal` 과 같은 것을 씁니다.
  */
 export function PasswordResetForm() {
-  const [password, setPassword] = useState('')
-  const [passwordConfirm, setPasswordConfirm] = useState('')
-
-  const passwordError =
-    password.length > 0 && password.length < PASSWORD_MIN_LENGTH
-      ? `비밀번호는 ${PASSWORD_MIN_LENGTH}자 이상이어야 합니다`
-      : undefined
-
-  const confirmError =
-    passwordConfirm.length > 0 && passwordConfirm !== password
-      ? '비밀번호가 서로 다릅니다'
-      : undefined
-
-  const canSubmit =
-    password.length >= PASSWORD_MIN_LENGTH && passwordConfirm === password
+  const password = useNewPassword()
 
   return (
     <AuthCard
@@ -121,28 +94,7 @@ export function PasswordResetForm() {
           // 눌러도 아무 일도 일어나지 않습니다
         }}
       >
-        <Input
-          label="새 비밀번호"
-          hideLabel
-          type="password"
-          autoComplete="new-password"
-          placeholder="새 비밀번호"
-          required
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          error={passwordError}
-        />
-        <Input
-          label="새 비밀번호 확인"
-          hideLabel
-          type="password"
-          autoComplete="new-password"
-          placeholder="새 비밀번호 확인"
-          required
-          value={passwordConfirm}
-          onChange={(event) => setPasswordConfirm(event.target.value)}
-          error={confirmError}
-        />
+        <NewPasswordFields label="새 비밀번호" password={password} />
 
         <p className="text-ink-muted text-caption">
           비밀번호는 {PASSWORD_MIN_LENGTH}자 이상이어야 합니다.
@@ -152,7 +104,7 @@ export function PasswordResetForm() {
           type="submit"
           fullWidth
           className={AUTH_SUBMIT}
-          disabled={!canSubmit}
+          disabled={!password.valid}
         >
           변경하고 로그인
         </Button>

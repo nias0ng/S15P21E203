@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 
 import { apiErrorMessage, isApiError } from '@/shared/api/http'
 import { ROUTES } from '@/shared/config/routes'
@@ -18,14 +18,13 @@ import {
   signup,
 } from '../api'
 import { AUTH_SUBMIT } from '../frame'
-import {
-  NICKNAME_MAX_LENGTH,
-  NICKNAME_MIN_LENGTH,
-  PASSWORD_MIN_LENGTH,
-} from '../types'
+import { useNewPassword } from '../hooks/useNewPassword'
+import { NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH } from '../types'
 
 import { AuthCard } from './AuthCard'
+import { BackToLogin } from './BackToLogin'
 import { EmailField } from './EmailField'
+import { NewPasswordFields } from './NewPasswordFields'
 
 /** 중복 확인을 마친 값과 그 답 */
 type Checked = { value: string; available: boolean }
@@ -53,8 +52,7 @@ export function SignupForm() {
   const returnTo = safeReturnPath(searchParams.get(RETURN_PATH_PARAM))
 
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [passwordConfirm, setPasswordConfirm] = useState('')
+  const password = useNewPassword()
   const [nickname, setNickname] = useState('')
 
   const [emailChecked, setEmailChecked] = useState<Checked | null>(null)
@@ -67,16 +65,6 @@ export function SignupForm() {
 
   const emailAvailable = answerFor(emailChecked, trimmedEmail)
   const nicknameAvailable = answerFor(nicknameChecked, trimmedNickname)
-
-  const passwordError =
-    password.length > 0 && password.length < PASSWORD_MIN_LENGTH
-      ? `비밀번호는 ${PASSWORD_MIN_LENGTH}자 이상이어야 합니다`
-      : undefined
-
-  const passwordConfirmError =
-    passwordConfirm.length > 0 && passwordConfirm !== password
-      ? '비밀번호가 서로 다릅니다'
-      : undefined
 
   const nicknameError =
     trimmedNickname.length > 0 &&
@@ -96,7 +84,11 @@ export function SignupForm() {
 
   const signupMutation = useMutation({
     mutationFn: () =>
-      signup({ email: trimmedEmail, password, nickname: trimmedNickname }),
+      signup({
+        email: trimmedEmail,
+        password: password.password,
+        nickname: trimmedNickname,
+      }),
     // 돌아갈 경로를 로그인까지 들려 보냅니다 — 흘리면 로그인을 마치고 홈에 떨어집니다
     onSuccess: () =>
       navigate(withReturnPath(ROUTES.LOGIN, returnTo), {
@@ -125,8 +117,7 @@ export function SignupForm() {
 
   const canSubmit =
     email.length > 0 &&
-    password.length >= PASSWORD_MIN_LENGTH &&
-    passwordConfirm === password &&
+    password.valid &&
     !nicknameTooShort &&
     nicknameError === undefined &&
     // 중복 확인을 마쳐야 켭니다. 서버는 어차피 409 로 막지만, 그때는 이미 누른
@@ -176,28 +167,7 @@ export function SignupForm() {
           </Button>
         </div>
 
-        <Input
-          label="비밀번호"
-          hideLabel
-          type="password"
-          autoComplete="new-password"
-          placeholder="비밀번호"
-          required
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          error={passwordError}
-        />
-        <Input
-          label="비밀번호 확인"
-          hideLabel
-          type="password"
-          autoComplete="new-password"
-          placeholder="비밀번호 확인"
-          required
-          value={passwordConfirm}
-          onChange={(event) => setPasswordConfirm(event.target.value)}
-          error={passwordConfirmError}
-        />
+        <NewPasswordFields label="비밀번호" password={password} />
 
         <div className="flex items-start gap-1.25">
           <div className="min-w-0 flex-1">
@@ -258,14 +228,7 @@ export function SignupForm() {
       </form>
 
       {/* 돌아갈 경로를 들고 갑니다 — 가입하려다 말고 로그인으로 가는 사람이 있습니다 */}
-      <div className="text-caption flex items-center pl-1.25">
-        <Link
-          to={withReturnPath(ROUTES.LOGIN, returnTo)}
-          className="text-ink-muted hover:text-ink"
-        >
-          로그인하기 →
-        </Link>
-      </div>
+      <BackToLogin returnTo={returnTo} />
     </AuthCard>
   )
 }
