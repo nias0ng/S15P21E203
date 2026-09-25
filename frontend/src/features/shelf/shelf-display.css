@@ -478,11 +478,6 @@
      */
     --floor-front: 12px;
 
-    /*
-     * 뒷벽의 좌우 끝(옆벽과 만나는 접힘선). 병은 이 사이에 멈춰 서고, 흐를 때는 접힘선을 지나 옆벽의
-     * 문까지 넘어갑니다(.shelf-track-clip).
-     */
-    --track-inset: calc(var(--bevel) + var(--wall));
     /* 병 발치 높이 (상자 아래끝 기준) */
     --base-inset: calc(var(--bevel) + var(--floor-front));
     /* 병 발치에서 뒷벽 밑선까지. 병 그림자가 바닥에서 벽으로 꺾이는 자리입니다 */

@@ -33,14 +33,6 @@ type Props = {
   priorityTo: number
   /** 첫 화면을 그릴 때 고른 병 */
   priorityId: number | null
-  /**
-   * 벽감 면을 여기서 그릴지. 기본은 그립니다.
-   *
-   * NOTE: `false` 는 벽감이 창에 고정으로 선 배치를 뜻합니다. 그때 벽감은 흐르는 트랙 밖에
-   * 한 벌만 있고, 이 상자는 병만 싣고 그 안에서 미끄러집니다. 두 벌을 그리면 벽감이 병을
-   * 따라 같이 흘러 뒷벽이 두 겹으로 겹칩니다.
-   */
-  frame?: boolean
 }
 
 /*
@@ -93,35 +85,12 @@ export const DisplayCase = memo(function DisplayCase({
   priorityFrom,
   priorityTo,
   priorityId,
-  frame = true,
 }: Props) {
   return (
     <div
       className="relative h-full shrink-0"
       style={{ width: `calc(var(--pitch) * ${span})` }}
     >
-      {/*
-        벽감 면들. 순서가 곧 겹치는 순서입니다 — 뒷벽과 그 조명이 먼저 깔리고,
-        천장·좌우 벽·바닥이 그 가장자리를 덮고, 입구 테두리를 두른 뒤 질감이 맨 위에서
-        테두리까지 덮습니다(shelf-display.css 의 .shelf-niche-grain).
-        전부 장식이라 낭독기에서 뺍니다.
-      */}
-      {frame && (
-        <div
-          aria-hidden
-          className="shelf-niche absolute -inset-x-[var(--track-inset)] top-0 h-[var(--case-h)]"
-        >
-          <div className="shelf-face shelf-niche-back" />
-          <div className="shelf-face shelf-niche-light" />
-          <div className="shelf-face shelf-niche-ceiling" />
-          <div className="shelf-face shelf-niche-wall-left" />
-          <div className="shelf-face shelf-niche-wall-right" />
-          <div className="shelf-face shelf-niche-floor" />
-          <div className="shelf-face shelf-niche-bevel" />
-          <div className="shelf-face shelf-niche-grain" />
-        </div>
-      )}
-
       {/*
         향수가 없으면 이 칸은 비워 둡니다. "비어 있다" 는 한 칸 폭에 적으면 벽감 첫머리에 붙은 작은
         글씨가 되어, 벽이 벽감 한가운데에 따로 세웁니다(ShelfWall 의 빈 분류 안내).

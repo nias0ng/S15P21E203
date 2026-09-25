@@ -805,8 +805,7 @@ export function ShelfWall({
             <div className="shelf-window">
               {/*
                 벽감 — 창에 고정입니다. 여기 한 벌만 서고 병만 그 안에서 미끄러집니다.
-                그래서 DisplayCase 는 `frame={false}` 로 면을 그리지 않습니다 — 두 벌이면
-                뒷벽이 겹칩니다. 자리는 창의 안쪽 상자(페이드 여백을 뺀 자리)에 맞춥니다.
+                자리는 창의 안쪽 상자(페이드 여백을 뺀 자리)에 맞춥니다.
               */}
               <div
                 aria-hidden
@@ -854,7 +853,6 @@ export function ShelfWall({
                           {section.label}
                         </h2>
                         <DisplayCase
-                          frame={false}
                           items={section.items}
                           span={section.span}
                           selectedId={selectedId}
