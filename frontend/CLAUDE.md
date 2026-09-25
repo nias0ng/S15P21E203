@@ -246,13 +246,17 @@ import { perfumeDetailQuery } from '@/features/perfume/queries'   // X
 | `shared/ui/LoginRequiredDialog` | 로그인 유도 모달 (C01). 비로그인 저장·작성 시도 시 |
 | `shared/ui/Toast` | 저장·삭제 피드백 (C03). 상태는 `shared/hooks/useToast` 를 쓰세요 |
 | `shared/ui/Skeleton` | 로딩 중 자리 잡기. 목록에는 스피너보다 이걸 씁니다 |
-| `shared/ui/EmptyState` | 결과 0건 화면 |
+| `shared/ui/EmptyState` | 결과 0건 화면. 불러오기에 실패한 자리는 `onRetry` 를 넘기면 `action` 뒤에 [다시 시도] 가 섭니다(`retrySize` sm·md) |
 | `shared/ui/PageFallback` | 라우트 lazy 로딩용 전체 스피너 |
 | `shared/ui/LinkButton` | 버튼처럼 보이는 링크. **화면 이동은 `onClick` + navigate 대신 이걸 쓰세요** |
 | `shared/ui/AuthLinkButton` | 로그인해야 갈 수 있는 곳으로 보내는 단추 (C01). 비로그인이면 가지 않고 모달을 띄웁니다 |
 | `shared/ui/TileCard` | 격자에 반복되는 타일 (브랜드 · 노트). 이미지 슬롯 · 제목 · 한 줄 캡션 |
 | `shared/ui/PillFilter` | 어둠 위에 놓이는 알약 필터. `required` 면 해제가 없습니다 — 밝은 화면은 `ChipToggle` |
 | `shared/ui/Pagination` | 쪽 넘김. `page` 는 **0부터**(백엔드와 같습니다) · 번호 다섯 개 · 한 쪽뿐이면 안 그립니다 |
+| `shared/ui/Unroll` | 족자처럼 풀리는 칸(`useUnroll` 을 감싼 두 겹). **조건부로 렌더해야** 다음에 열 때 다시 풀립니다 |
+| `shared/ui/FileButton` | 파일 고르기 단추. `Button` outline · sm 모양의 라벨이 숨은 파일 칸을 감쌉니다. 같은 파일을 다시 골라도 `onPick` 이 옵니다 |
+| `shared/ui/PerfumePicker` | 향수 검색 + 고르기 격자 (C02 · A15). 후보는 `{ id, name, brand, thumbnailUrl, disabled, disabledLabel }` 낱개로 받습니다 |
+| `shared/ui/cardGrid` | `CARD_GRID` — 향수 · 브랜드 · 노트 카드 격자의 열과 사이. 여섯 열은 `cn(CARD_GRID, 'lg:grid-cols-6')` |
 | `shared/ui/BottleSilhouette` | 사진이 없는 향수병 자리에 세우는 실루엣. 색은 `currentColor` 로 부르는 쪽이 정합니다 |
 | `shared/ui/DiveCurtain` | 메인과 다른 화면 사이의 전환 커튼 — 콘텐츠 다섯은 잠수 · 떠오르기, 진열대는 선실로 들어가기 (진열대 · 메인 담당) |
 | `shared/ui/WaterCaustics` | 물결 — 어두운 방 위에 깔리는 수면 빛 그물(three.js 셰이더). 라우트 `handle.caustics` 로 켭니다. `handle.underwater` 를 더하면 `look="underwater"` — 수면을 올려다보는 물속이 내릴수록 가라앉습니다 (docs/어두운-방-유리판.md) |
