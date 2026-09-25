@@ -620,6 +620,7 @@ const bottles = (n: number, category: ShelfItem['category']): ShelfItem[] =>
     shelfItemId: at,
     perfumeId: at,
     name: `향수 ${at}`,
+    nameKo: null,
     brand: '브랜드',
     thumbnailUrl: null,
     category,

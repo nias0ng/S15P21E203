@@ -197,6 +197,7 @@ export function createMockApi(options: MockApiOptions = {}) {
     shelfItemId: item.shelfItemId,
     perfumeId: item.perfume.perfumeId,
     name: item.perfume.name,
+    nameKo: item.perfume.nameKo,
     brand: item.perfume.brand,
     thumbnailUrl: shelfImageUrl(item.perfume),
     category: item.category,
@@ -205,7 +206,6 @@ export function createMockApi(options: MockApiOptions = {}) {
 
   const toShelfDetail = (item: ShelfRecord) => ({
     ...toShelfSummary(item),
-    nameKo: item.perfume.nameKo,
     rating: item.rating,
     // 향조는 서버 seed 에 향수별 노트가 없어 비웁니다. 화면도 아직 그리지 않습니다
     scentNotes: [],

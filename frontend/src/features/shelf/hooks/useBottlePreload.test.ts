@@ -10,6 +10,7 @@ const item = (id: number): ShelfItem => ({
   shelfItemId: id,
   perfumeId: id,
   name: `향수 ${id}`,
+  nameKo: null,
   brand: '브랜드',
   thumbnailUrl: `/bottles/${id}.png`,
   category: 'OWNED',

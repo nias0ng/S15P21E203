@@ -52,14 +52,8 @@ export interface ShelfItem {
   name: string
   /** 브랜드가 비어 있는 향수가 있습니다. 이름표는 그 자리를 비웁니다 */
   brand: string | null
-  /**
-   * 한국어 이름 (우드 세이지 앤 씨 솔트).
-   *
-   * ⚠️ **목록 응답에 아직 없습니다 — BE 에 추가를 요청해 둔 값입니다**(상세에는 이미
-   * 있습니다). 그날까지는 undefined 로 오고 이름표가 영문 이름을 그대로 적습니다.
-   * 내려주기 시작하면 이 화면은 손대지 않아도 한글로 바뀝니다. `?` 는 그때 떼세요.
-   */
-  nameKo?: string | null
+  /** 한국어 이름 (우드 세이지 앤 씨 솔트). 없는 향수가 많아 그때는 이름표가 영문 이름을 적습니다 */
+  nameKo: string | null
   thumbnailUrl: string | null
   category: ShelfCategory
 }
@@ -71,8 +65,6 @@ export interface ShelfItem {
  * 등록 모달로 흡수됐고, 향수 상세의 후기와는 별개입니다).
  */
 export interface ShelfItemDetail extends ShelfItem {
-  /** 한국어 이름. 없는 향수가 많습니다 */
-  nameKo: string | null
   /**
    * 내 취향 적합도 (SHF-12 · DTL-18 · DTL-19). 선택 항목입니다.
    *

@@ -9,6 +9,7 @@ const WOOD_SAGE: ShelfItem = {
   shelfItemId: 1,
   perfumeId: 1,
   name: '조 말론 우드 세이지 앤 씨 솔트',
+  nameKo: null,
   brand: '조말론',
   thumbnailUrl: null,
   category: 'OWNED',
@@ -102,10 +103,6 @@ describe('DisplayCase 사진 받기', () => {
 })
 
 describe('DisplayCase 이름표의 향수 이름', () => {
-  /*
-   * 목록 응답에 nameKo 가 추가되면(BE 요청 중) 손대지 않아도 한글로 바뀌어야 합니다.
-   * 그때까지는 영문 이름을 그대로 적습니다.
-   */
   it('한국어 이름이 오면 그것을 적는다', () => {
     renderCase([
       {

@@ -233,7 +233,6 @@ export default function MyShelfPage() {
         ? selectedDetail.data
         : {
             ...browser.selected,
-            nameKo: null,
             rating: null,
             memo: null,
             memoUpdatedAt: null,
