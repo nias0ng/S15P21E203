@@ -45,6 +45,15 @@ export const ROUTES = {
 /* 동적 경로(`/perfumes/:perfumeId`)에 값을 채워 실제 링크를 만듭니다 */
 export const toPerfumeDetail = (perfumeId: number | string) =>
   `/perfumes/${perfumeId}`
+
+/**
+ * 향수 목록을 검색어로 엽니다(A09 검색 결과).
+ *
+ * @param keyword 검색어. `&` · `#` 같은 글자가 쿼리를 끊지 않게 옮겨 적습니다
+ * @returns `/perfumes?keyword=...`
+ */
+export const toPerfumeSearch = (keyword: string) =>
+  `${ROUTES.PERFUMES}?keyword=${encodeURIComponent(keyword)}`
 export const toReviewDetail = (reviewId: number | string) =>
   `/reviews/${reviewId}`
 export const toBrandDetail = (brandId: number | string) => `/brands/${brandId}`

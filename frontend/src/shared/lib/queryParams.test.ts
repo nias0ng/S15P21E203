@@ -1,8 +1,32 @@
 import { describe, expect, it } from 'vitest'
 
-import { readPage, withQueryParams, writePage } from './queryParams'
+import { readOption, readPage, withQueryParams, writePage } from './queryParams'
 
 const params = (init: string) => new URLSearchParams(init)
+
+describe('readOption', () => {
+  const SORTS = [
+    { value: 'RECENT', label: '최신순' },
+    { value: 'LIKES', label: '좋아요순' },
+  ] as const
+
+  it('선택지에 있는 값은 그대로 돌려준다', () => {
+    expect(readOption('LIKES', SORTS)).toBe('LIKES')
+  })
+
+  it('모르는 값은 null — 사람이 고쳐 쓴 주소입니다', () => {
+    expect(readOption('foo', SORTS)).toBeNull()
+  })
+
+  it('대소문자가 다르면 다른 값으로 본다', () => {
+    expect(readOption('likes', SORTS)).toBeNull()
+  })
+
+  it('값이 없으면 null', () => {
+    expect(readOption(null, SORTS)).toBeNull()
+    expect(readOption('', SORTS)).toBeNull()
+  })
+})
 
 describe('withQueryParams', () => {
   it('값을 넣고, null 이면 뺀다', () => {
