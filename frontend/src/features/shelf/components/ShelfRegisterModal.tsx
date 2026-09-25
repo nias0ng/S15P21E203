@@ -20,10 +20,10 @@ type Props = {
    *
    * **검색하기 전에는 빈 배열입니다.** 조건 없이 불러오면 카탈로그의 번호 빠른 앞쪽
    * 스물이 후보로 서는데, 그건 고를 향수가 아니라 그냥 목록입니다. 글에 향수를 거는
-   * 모달(`LinkedPerfumeModal`)도 같은 규칙입니다.
+   * 모달(`LinkedPerfumeModal`)도 같은 규칙입니다. `preselected` 로 1단계를 건너뛰면 쓰지 않습니다.
    */
-  options: PerfumeOption[]
-  onSearch: (keyword: string) => void
+  options?: PerfumeOption[]
+  onSearch?: (keyword: string) => void
   onSubmit: (input: ShelfRegisterInput) => void
   /**
    * 향수 상세(A10)에서 들어오면 1단계를 건너뛰고 2단계로 바로 갑니다.
@@ -47,7 +47,7 @@ type Props = {
 export function ShelfRegisterModal({
   open,
   onClose,
-  options,
+  options = [],
   onSearch,
   onSubmit,
   preselected,
@@ -78,7 +78,7 @@ export function ShelfRegisterModal({
 
   const search = (keyword: string) => {
     setSearched(keyword.trim().length > 0)
-    onSearch(keyword)
+    onSearch?.(keyword)
   }
 
   /*
