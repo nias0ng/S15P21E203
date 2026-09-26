@@ -1,10 +1,26 @@
 /** 자연어 추천 도메인 타입 (A06 — NLR-01 · NLR-06 · NLR-07) */
 
-/** 추천 이유 한 줄 (NLR-07). 예: "'차분한' → 시더 · 베티버", "가을 어울림 평가 71%". */
-interface RecommendReason {
+/**
+ * 추천 이유 한 묶음 (NLR-07). 사용자가 쓴 표현 하나와 그 표현이 가리키는 향 특성들입니다.
+ * 예: `{ phrase: '빨래', evidence: 'soapy · fresh', strengths: [100, 93] }`
+ */
+export interface RecommendReason {
   /** 사용자가 입력한 표현. 근거가 입력어와 무관하면 비워둡니다 */
   phrase: string | null
+  /**
+   * 향 특성 이름(`soapy` 같은 영어 — `accordLabel` 로 바꿉니다). 향 근거가 하나도 없는 향수는
+   * 향이 아닌 조건의 한국어(`남성적인`)로 채워 옵니다. 여럿이면 ` · ` 로 이어져 있습니다.
+   */
   evidence: string
+  /**
+   * `evidence` 를 ` · ` 로 자른 조각마다의 향 강도(0~100) — 같은 순서 · 같은 개수입니다.
+   * 향이 아닌 조건으로 채운 이유는 자리마다 `null` 입니다.
+   *
+   * NOTE: 백분율이 아닙니다. 100 은 "이 향수에서 그 향이 가장 세게 잡혔다" 는 뜻이라 `%` 를
+   * 붙이면 없는 뜻이 생깁니다.
+   * NOTE: 빠질 수 있습니다 — 이 칸을 모르는 서버와 만나면 없고, 그때는 숫자 없이 문장만 그립니다.
+   */
+  strengths?: (number | null)[]
 }
 
 export interface RecommendedPerfume {

@@ -133,7 +133,13 @@ function RecommendBody({ query }: { query: string }) {
           )}
 
           {perfumes.length > 0 ? (
-            <RecommendResultList perfumes={perfumes} />
+            <RecommendResultList
+              perfumes={perfumes}
+              query={result.data.query}
+              pickedWithoutScentCondition={
+                result.data.pickedWithoutScentCondition
+              }
+            />
           ) : (
             /*
                 NOTE: 0개인 두 경우를 한 문장으로 묶지 않습니다 — 조건을 못 뽑은 사람에게
