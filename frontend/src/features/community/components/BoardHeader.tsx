@@ -4,7 +4,6 @@ import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 
 type Props = {
-  /** 오른쪽 끝에 붙는 글쓰기 단추 */
   action?: React.ReactNode
 }
 
@@ -13,7 +12,6 @@ const TABS = [
   { to: ROUTES.COMMUNITY_FREE, label: '자유 게시판' },
 ]
 
-/** 커뮤니티 게시판 머리말 (A22a · A22b 상단). 두 게시판이 같이 씁니다. */
 export function BoardHeader({ action }: Props) {
   return (
     <header className="space-y-6.25">
@@ -21,10 +19,6 @@ export function BoardHeader({ action }: Props) {
         커뮤니티
       </h1>
 
-      {/*
-        **1fr | auto | 1fr** 입니다. `justify-between` 으로 두면 단추가 한쪽에만
-        있어 탭이 왼쪽 끝으로 밀립니다 — 왼쪽 빈 칸은 자리를 지켜야 해서 둡니다.
-      */}
       <div className="border-line grid grid-cols-[1fr_auto_1fr] items-end gap-3.75 border-b">
         <div aria-hidden />
 

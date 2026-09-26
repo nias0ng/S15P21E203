@@ -143,8 +143,10 @@ npm run verify       # format:check + lint + typecheck + test + build — MR 전
 ### 목데이터 모드 (`npm run dev:mock`)
 
 백엔드(Docker) 없이 화면을 만들 때 씁니다. 개발 서버가 `/api/v1` 요청 가운데 **로그인 · 진열대 ·
-컬렉션 · 향해 일지 · 향수 검색**만 대신 답하고(`mock/api.ts`), 나머지는 평소처럼 백엔드 프록시로
+컬렉션 · 개인화 추천 · 향해 일지 · 향수 검색**만 대신 답하고(`mock/api.ts`), 나머지는 평소처럼 백엔드 프록시로
 넘깁니다. 앱 코드는 목데이터를 모릅니다 — 화면에서 목데이터인지 가르지 않습니다.
+개인화 추천은 한국 선정 순위 열 병 가운데 보유 중이 아닌 것을 뽑고, 노출을 남긴 병은 서버를 켜 둔 동안 빠집니다
+(서버의 사흘 규칙 대신). 향수 상세는 목데이터에 없어 편지에 브랜드 · 향 특성이 비어 나옵니다.
 
 - 로그인: 이메일 · 비밀번호는 아무 값이나 됩니다(폼 검사만 통과하면) → 향해테스터
 - 처음 상태: 진열대 30병(보유 중 · 시향해 봄 · 보유 희망 10병씩) · 컬렉션 6개 · 향해 일지 11줄
@@ -229,31 +231,35 @@ import { perfumeDetailQuery } from '@/features/perfume/queries'   // X
 
 | 컴포넌트 | 용도 |
 | --- | --- |
-| `shared/ui/Button` | `variant` primary·secondary·outline·ghost·danger / `size` sm·md·lg·icon / `isLoading` |
+| `shared/ui/Button` | `variant` primary·outline·ghost·danger·navy(3D 판 위 주 단추)·dangerOutline(테두리만 있는 위험 동작) / `size` sm·md·lg / `isLoading` |
 | `shared/ui/Input` | 라벨·에러·hint·접근성 속성 포함. 라벨은 필수 prop |
-| `shared/ui/Textarea` | 여러 줄 입력. `Input` 과 같은 API(라벨 필수 · 에러 · hint · 접근성 속성) |
+| `shared/ui/Textarea` | 여러 줄 입력. `Input` 과 같은 API(라벨 필수 · 에러 · 접근성 속성)이고 hint 는 없습니다 |
 | `shared/ui/Thumbnail` | 이미지 슬롯. 이미지가 없으면 자리표시자 상자. 크기는 `className` 으로. 아바타(`rounded-full`)도 이걸 씁니다 |
 | `shared/ui/Checkbox` | 사각 체크박스(14px). 라벨은 호출하는 쪽에서 `<label>` 로 감싸세요 |
 | `shared/ui/SearchField` | 검색 입력 + 버튼. 헤더에 검색창이 없어 목록 화면마다 반복됩니다 |
-| `shared/ui/Badge` | 향 계열·상태 같은 짧은 라벨. `tone` neutral·accent·success·danger·outline |
-| `shared/ui/PerfumeCard` | 향수 카드. 도메인 타입을 받지 않고 `name`·`brand`·`thumbnailUrl` 낱개로 받습니다 |
+| `shared/ui/Badge` | 향 계열·상태 같은 짧은 라벨. `tone` neutral·outline |
+| `shared/ui/PerfumeCard` | 향수 카드. 도메인 타입을 받지 않고 `name`·`subName`·`thumbnailUrl` 낱개로 받습니다. 늘 상세로 가는 링크라 `to` 는 필수입니다 |
 | `shared/ui/ChipToggle` | 칩 여러 개 중 고르기 (A11 진열대 분류 · 계절 등록, A15) |
 | `shared/ui/StarRating` | 별점. 라디오 그룹이라 키보드 화살표로 움직입니다 |
-| `shared/ui/Modal` | 네이티브 `<dialog>` 기반. 포커스 가두기·Esc·배경 스크롤 잠금 자동 |
-| `shared/ui/ConfirmDialog` | 삭제 확인 모달 (C01). 7곳 공용. `destructive` 로 위험 표현 |
-| `shared/ui/LoginRequiredDialog` | 로그인 유도 모달 (C01). 비로그인 저장·작성 시도 시 |
+| `shared/ui/Modal` | 네이티브 `<dialog>` 기반. 포커스 가두기·Esc·배경 스크롤 잠금 자동. 3D 카드(iframe)에서 여는 모달은 `initialFocus="panel"` — 안 주면 [×] 에 초점 테가 선 채로 뜹니다. 폭을 줄인 좁은 판은 `titleSize="heading"` |
+| `shared/ui/ConfirmDialog` | 삭제 확인 모달 (C01). 7곳 공용. 확인 단추는 늘 `danger` 입니다 |
+| `shared/ui/LoginRequiredDialog` | 로그인 유도 모달 (C01). 비로그인 저장·작성 시도 시. 3D 향 지도 위에서는 `scene` (저녁 유리판 · 좁은 폭 · 한 단 작은 제목) |
 | `shared/ui/Toast` | 저장·삭제 피드백 (C03). 상태는 `shared/hooks/useToast` 를 쓰세요 |
 | `shared/ui/Skeleton` | 로딩 중 자리 잡기. 목록에는 스피너보다 이걸 씁니다 |
-| `shared/ui/EmptyState` | 결과 0건 화면 |
+| `shared/ui/EmptyState` | 결과 0건 화면. 불러오기에 실패한 자리는 `onRetry` 를 넘기면 `action` 뒤에 [다시 시도] 가 섭니다(`retrySize` sm·md) |
 | `shared/ui/PageFallback` | 라우트 lazy 로딩용 전체 스피너 |
 | `shared/ui/LinkButton` | 버튼처럼 보이는 링크. **화면 이동은 `onClick` + navigate 대신 이걸 쓰세요** |
 | `shared/ui/AuthLinkButton` | 로그인해야 갈 수 있는 곳으로 보내는 단추 (C01). 비로그인이면 가지 않고 모달을 띄웁니다 |
-| `shared/ui/TileCard` | 격자에 반복되는 타일 (브랜드 · 노트 · 컬렉션). 이미지 슬롯 · 제목 · 한 줄 캡션 |
+| `shared/ui/TileCard` | 격자에 반복되는 타일 (브랜드 · 노트). 이미지 슬롯 · 제목 · 한 줄 캡션 |
 | `shared/ui/PillFilter` | 어둠 위에 놓이는 알약 필터. `required` 면 해제가 없습니다 — 밝은 화면은 `ChipToggle` |
 | `shared/ui/Pagination` | 쪽 넘김. `page` 는 **0부터**(백엔드와 같습니다) · 번호 다섯 개 · 한 쪽뿐이면 안 그립니다 |
+| `shared/ui/Unroll` | 족자처럼 풀리는 칸(`useUnroll` 을 감싼 두 겹). **조건부로 렌더해야** 다음에 열 때 다시 풀립니다 |
+| `shared/ui/FileButton` | 파일 고르기 단추. `Button` outline · sm 모양의 라벨이 숨은 파일 칸을 감쌉니다. 같은 파일을 다시 골라도 `onPick` 이 옵니다 |
+| `shared/ui/PerfumePicker` | 향수 검색 + 고르기 격자 (C02 · A15). 후보는 `{ id, name, brand, thumbnailUrl, disabled, disabledLabel }` 낱개로 받습니다 |
+| `shared/ui/cardGrid` | `CARD_GRID` — 향수 · 브랜드 · 노트 카드 격자의 열과 사이. 여섯 열은 `cn(CARD_GRID, 'lg:grid-cols-6')` |
 | `shared/ui/BottleSilhouette` | 사진이 없는 향수병 자리에 세우는 실루엣. 색은 `currentColor` 로 부르는 쪽이 정합니다 |
-| `shared/ui/DiveCurtain` | 메인에서 진열대로 넘어가는 잠수 커튼 (진열대 · 메인 담당) |
-| `shared/ui/WaterCaustics` | 물결 — 어두운 방 위에 깔리는 수면 빛 그물(three.js 셰이더). 라우트 `handle.caustics` 로 켭니다 (docs/어두운-방-유리판.md) |
+| `shared/ui/DiveCurtain` | 메인과 다른 화면 사이의 전환 커튼 — 콘텐츠 다섯은 잠수 · 떠오르기, 진열대는 선실로 들어가기 (진열대 · 메인 담당) |
+| `shared/ui/WaterCaustics` | 물결 — 어두운 방 위에 깔리는 수면 빛 그물(three.js 셰이더). 라우트 `handle.caustics` 로 켭니다. `handle.underwater` 를 더하면 `look="underwater"` — 수면을 올려다보는 물속이 내릴수록 가라앉습니다 (docs/어두운-방-유리판.md) |
 
 variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 **variant 를 추가**합니다
 (`class-variance-authority` 사용). `PrimaryButton`, `SmallButton` 같은 파생 컴포넌트를 만들지 않습니다.
@@ -266,6 +272,16 @@ variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 
 | `shared/hooks/useLikeToggle` | 좋아요 토글 (CMT-05). 비로그인이면 보내지 않고 안내부터 — 캐시를 고치는 일은 화면이 맡습니다 |
 | `shared/hooks/useUnroll` | 족자처럼 풀리는 열림. **쓰는 쪽을 조건부로 렌더해야** 다음에 열 때 다시 풀립니다 |
 | `shared/hooks/useDiveReady` | 잠수 커튼에 "화면이 다 섰다" 를 알립니다 (진열대 · 메인 담당) |
+| `shared/hooks/useMediaQuery` | 미디어 쿼리가 맞는지. 첫 렌더부터 값이 맞고, `matchMedia` 가 없으면 `fallback` 입니다 |
+| `shared/hooks/useMeasuredHeight` | 요소의 높이를 잽니다(ResizeObserver · 올림). 돌려받은 `ref` · `height` 는 그 자리에서 풀어 씁니다 |
+| `shared/hooks/useEndSession` | 로그아웃 · 탈퇴 뒤 로그인 흔적(인증 상태 · 쿼리 캐시)을 지웁니다 |
+| `shared/hooks/useResetOnOpen` | 모달이 열릴 때(열쇠가 바뀔 때) 입력칸을 처음 값으로 되돌립니다. 렌더 중에 되돌려 첫 장부터 맞습니다 |
+
+순수 함수는 `shared/lib/` 에 있습니다. 새로 쓰기 전에 봅니다 — `parseId`(주소의 번호) ·
+`readOption`(주소의 허용값, `queryParams`) · `keywordMatcher`(대소문자 무시 검색) ·
+`authorName`(탈퇴한 회원) · `groupNoteStages`(탑 · 미들 · 베이스) · `prefersReducedMotion`.
+API 쪽은 `shared/api/http` 의 `apiErrorMessage`(서버 문구 또는 대체 문구)와
+`shared/api/fetchAllPages`(모든 쪽을 차례로 받기)입니다.
 
 `onClose` 를 인라인 화살표로 넘기면 `Toast` 의 타이머가 렌더마다 초기화되어 토스트가
 사라지지 않습니다. 이 훅이 `useCallback` 으로 그 문제를 막아주니 직접 `useState` 로
@@ -341,17 +357,23 @@ variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 
   마스크를 자라게 하는 `stroke-dashoffset` 은 합성 스레드가 못 다뤄 **엔진이 막는 동안 획이 섭니다**. 그래서 시각을 흐른 시간이 아니라 **그려진 장**으로 재고(`wordmarkDashoffsets`), 막힘이 풀리면 멈춘 자리에서 이어 그립니다 — Web Animations 로 넘기면 막힌 1~2초 사이에 글자가 다 그려져 버려 그리는 모습이 사라집니다. 커튼은 다 그릴 때까지 1.2초까지 기다렸다 걷습니다.
   엔진이 `postMessage({type:'pb:boot', stage})` 로 부팅 단계(html → script → frame → boat-bytes → boat)를 알리고(`landing/src/host.js` `bootReport`), `ScentScene` 의 `onBoot` 가 받습니다. `ScentScene` 은 엔진 주소를 두 장 뒤에 넣습니다 — 커튼이 먼저 합성 스레드로 넘어가게.
   퍼센트는 **페이스 곡선과 "실제 진행 + 조금" 중 작은 값을 느슨하게 따라갑니다** — 목표 아래면 최소 속도로 오르고, 목표에 닿아도 조금 더 기어가며, 100 은 다 떴을 때만입니다. ⚠ 숫자 칸 하나에는 transform 애니메이션을 하나만 둡니다(둘이 겹치면 크롬이 합성 스레드로 못 넘겨 막힌 동안 섭니다).
-- **진열대로 넘어가는 잠수 전환** (2026-09-18) — 메인에서 헤더 '진열대' 를 누르면 곧바로 옮겨 가지 않고, 3D 카메라가 수면으로 고개를 숙이며 다가가는 1초 동안 화면 아래에서 **짙은 바다색이 차올라** 덮은 뒤 진열대로 넘어가 걷힙니다.
+- **콘텐츠 화면으로 넘어가는 잠수 전환** (2026-09-18 · 2026-09-20 콘텐츠 다섯으로) — 메인에서 헤더의 향수 · 브랜드 · 노트 · 커뮤니티를 누르면 곧바로 옮겨 가지 않고, 3D 카메라가 수면으로 고개를 숙이며 다가가는 1초 남짓 동안 화면 아래에서 **짙은 바다색이 차올라** 덮은 뒤 그 화면으로 넘어가 걷힙니다. 그 방들에서 로고를 누르면 거꾸로 떠오릅니다. **진열대는 이 잠수가 아니라 아래 '선실로 들어가기' 입니다.**
   시계는 **앱이 쥡니다** — `shared/ui/DiveCurtain` 이 rAF 안에서 진행도 `k`(0~1)를 커튼(CSS 변수)과 엔진(`PB.dive(k)` · `landing/src/dive.js`)에 **직접** 씁니다. React 상태로 올리면 초당 60번 앱 전체가 다시 그립니다.
-  갈래 : `shared/lib/diveTrack.ts`(시계 · 곡선) · `shared/store/diveStore.ts`(단계 — 헤더가 걸고, `ScentScene` 이 엔진 문을 꽂고, 진열대가 `useDiveReady` 로 준비를 알립니다) · `shared/ui/dive-curtain.css`(그라데이션 · **아래끝에 못 박고 `scaleY` 로 자랍니다** — 높이 180% 와 굳은 구간 58% 가 한 묶음이고, 그 높이가 곧 '3D 가 얼마나 오래 보이는가' 입니다).
+  갈래 : `shared/lib/diveTrack.ts`(시계 · 곡선) · `shared/store/diveStore.ts`(단계 — 헤더가 걸고, `ScentScene` 이 엔진 문을 꽂고, 간 화면이 `useDiveReady` 로 준비를 알립니다) · `shared/ui/dive-curtain.css`(그라데이션 · **아래끝에 못 박고 `scaleY` 로 자랍니다** — 높이 180% 와 굳은 구간 58% 가 한 묶음이고, 그 높이가 곧 '3D 가 얼마나 오래 보이는가' 입니다).
   **걷힐 때는 안개가 걷히듯 아래에서부터 트입니다** — 쓸기 겹(`-sweep`)과 상쇄 겹(`-hold`)이 서로를 지우며 움직여(±300vh) **마스크의 경계만** 지나가고, 상쇄 겹의 `backdrop-filter` 가 트이는 자리 뒤를 흐려 진열대가 흐린 채로 드러났다 또렷해집니다. `mask-position` 을 미는 것은 칠하기 단계라 안 씁니다.
   ⚠⚠ **`mask-clip` 의 기본값은 `border-box` 라 마스크를 단 겹의 상자 밖이 통째로 잘립니다** — 그래서 쓸기 겹의 **높이가 마스크 길이(400vh)와 같아야** 합니다. 창 높이짜리 겹에 `mask-size` 로 늘렸더니 그라데이션이 아니라 **상자의 하드 컷**이 화면을 쓸어 '무대 커튼' 이 됐습니다 (2026-09-18 실측).
   **덮인 채로 머무는 동안 물결이 숨을 쉽니다**(`-drift`) — 메인 로딩 커튼이 배 GLB 를 기다리며 구름을 숨 쉬게 하는 것과 같은 장치입니다. 진열대가 무거워 잔류가 길어서(최소 0.42초 · 상한 2.60초) 납작한 남색 한 장이면 '멈춤' 으로 읽힙니다. 준비 신호는 데이터가 온 **다음 장이 칠해진 뒤**에 갑니다 (`useDiveReady` 의 rAF 두 번).
   커튼은 **`RootLayout`** 에 섭니다 — 화면 안에 두면 경로가 바뀌는 순간 같이 사라져 아이보리 바탕이 드러납니다.
   **왜 커튼인가** : 3D 의 바다는 위에서만 그려지는 판 한 장이라 카메라를 수면 아래로 내리면 물이 종이처럼 사라집니다. 그래서 카메라는 수면 위에 남고 물속은 이 판이 맡습니다 (`landing/docs/고도화-0917/03-로딩-전환-수중.md` §4).
   ⚠ 엔진의 `params.diveDeep` 과 앱의 `--color-navy` 는 **같은 값**이어야 합니다 — 갈라지면 커튼이 덮는 순간 색이 한 번 튑니다. 값을 만지는 손잡이는 엔진 `params.js` 의 `dive*` 묶음입니다 (`diveDim` · `diveSkyOff` · `diveFade` · `diveEndY` … · `diveAmount 0` 이 전체 롤백).
-  ⚠ **이어서 할 일과 이미 밟은 함정은 `landing/docs/다음-세션.md` 맨 위**에 있습니다 (남은 것은 진열대와의 색 연결 하나입니다).
-  ⚠ 진열대에서 메인으로 **돌아오는** 연출은 없습니다 — 돌아가면 엔진이 처음부터 다시 뜨고 로딩 커튼이 그 자리를 덮습니다. 넣으려면 '엔진을 살려 두기' (그 문서 §3-1 의 6) 결정이 먼저입니다.
+  ⚠ **이미 밟은 함정은 `landing/docs/다음-세션.md` 맨 위**에 있습니다 (진열대가 잠수의 도착지이던 때의 기록이라, 진열대와의 색 연결 이야기는 지금은 해당하지 않습니다).
+  ⚠ 진열대에서 메인으로 **돌아오는** 연출은 없습니다 (로고가 떠오르는 것은 콘텐츠 다섯의 방에서만입니다) — 돌아가면 엔진이 처음부터 다시 뜨고 로딩 커튼이 그 자리를 덮습니다.
+- **진열대로 넘어가는 선실로 들어가기** (2026-09-24) — 메인에서 배를 눌러 연 선실 말풍선의 진열대 · 컬렉션, 또는 헤더 SHELF 를 누르면 3D 카메라가 **배를 향해 곧게** 가볍게 줌인하고(고개를 돌리지 않아 배가 화면 제자리에서 커지고, 2.6배쯤에서 섭니다 — 갑판에 붙거나 위에서 내려오지 않습니다), 그 배에서 **메인에 들어올 때의 구름이 잉크처럼 스며 번져** 덮고, 덮인 채 구름 결이 숨 쉬다가 진열대가 준비되면 **메인 진입처럼 가운데서 열리며** 천천히(1.6초) 줌인하듯 걷힙니다 — 구름 속을 지나 배로 들어가는 느낌입니다.
+  잠수와 **단계 · 시계 · 준비 신호가 같고**(`diveStore` 의 `way: 'cabin'` · 진열대의 `useDiveReady`) **모양이 다릅니다** — 아래에서 차오르는 물이 아니라 한 점에서 결을 따라 스며 나가는 구름입니다. 진열대를 잠수에서 뺀 까닭(S15P21E203-340)이 두 연출이 서로를 흉내 내지 않게 하려는 것이었습니다.
+  번짐은 둥근 그라데이션이 아니라 **캔버스**입니다(`shared/lib/inkBleed`) — 원을 키우면 원판으로 읽혀서, 화면에 고정된 결(노이즈)을 따라 앞선이 들쭉날쭉 나아가게 그립니다. 가로 240칸 남짓한 성긴 격자에 칠하고 화면 크기로 늘려 테가 저절로 흐려집니다. 움직임 줄이기면 캔버스 없이 한 장으로 덮습니다(`data-flat`).
+  갈래 : `shared/lib/diveTrack.ts` 의 '선실로 들어가기'(`entersCabin` · `cabinBleedAt` · `CABIN_MS` · `CABIN_COVER_FROM` · `CABIN_LIFT_MS`) · `shared/lib/inkBleed.ts`(결 · 번짐의 모양 — `RAGGED` · `FEATHER` · `SOAK`) · `shared/ui/cabin-curtain.css`(구름 · 구름 결의 숨 · 가운데서 열리는 걷힘 — `scene-boot.css` 의 `.is-leaving` 과 같은 장치) · 엔진 `landing/src/cabin-in.js`(`PB.cabinIn(k)` — 카메라를 배 가운데로 향하는 직선 위로 밀고 **배 가운데의 화면 자리를 돌려줍니다**. 커튼이 그 점에서 번집니다 · 그 점은 `main.js` 의 `cabinFocus` — 선실 말풍선이 꼬리를 대는 점과 같습니다).
+  색은 **메인 로딩 커튼의 구름**(`--boot-bg` · `--boot-cloud`)이고 **진열대의 색은 모릅니다** — 그 화면은 재개편 중이라 걷히는 쪽은 옅어지기만 합니다. 구름 값은 `index.html` 의 `#boot` · `features/map/scene-boot.css` · `cabin-curtain.css` 세 곳이 한 벌이고, 갈라지면 `features/map/scene-boot.test.ts` 가 잡습니다. 손잡이는 CSS 의 `--cabin-veil` · `--cabin-cloud` · `--cabin-lift` · `--cabin-open` 과 엔진 `params.js` 의 `cabinIn*` 묶음입니다 (`cabinInEnd` 14 · `cabinInFov` −6 · `cabinInAmount 0` 이 카메라 롤백). ⚠ `cabinInEnd` 를 3 아래로 당기면 기본 각 그대로 수면 가까이 내려와 너울 마루가 화면을 가립니다 — 더 가까이 가려면 내려다보는 각을 세우는 길부터 냅니다.
+  말풍선이 열리면 진열대 청크와 목록을 미리 받습니다 (`HomePage` — 헤더 SHELF 에 손을 올릴 때의 `useWarm` 과 같은 일).
 - **원본은 이 폴더(`landing/`)입니다** (2026-09-15 결정). paperboat 저장소는 v0.63.0 에서 멈췄고 v0.64 부터는 여기에만 있으므로, paperboat 에서 가져와 덮어쓰지 않습니다.
 - 메인 3D 를 여러 워크트리로 나눠 작업할 때의 갈래 · 맡는 파일 · 통합 순서는 `landing/docs/워크트리-분할.md` 를 따릅니다.
 
@@ -461,6 +483,18 @@ IDE 와 `grep` 이 찾을 수 있어야 합니다.
 향수·브랜드·후기는 대부분 붙어 있고, **인증·회원도 붙었습니다**(로그인 · 회원가입 · 내 정보 ·
 닉네임 중복 확인 · 닉네임 변경 · 비밀번호 변경 · 탈퇴 · 로그아웃 · 토큰 재발급).
 
+**개인화 맞춤 추천도 붙었습니다**(S15P21E203-431) — 진열대의 추천 편지(`features/recommend` 의 `RecommendLetter`)가
+`GET /recommendations/personalized` 로 한 병을 받고, 편지를 **펼쳤을 때** `POST …/{token}/exposure` 로 노출을 남깁니다
+(남긴 병은 서버 뽑기에서 사흘 빠집니다). 취향 테스트를 안 했으면 400 이라 테스트로 이끄는 봉투가 꽂힙니다.
+⚠️ 응답이 이름 · 사진 · 근거 **한 문장**뿐입니다 — 브랜드 · 향 특성은 화면이 향수 상세 · 향조로 채우고, 근거의
+갈래(적합도 · 최근 본 향수 · 취향 테스트)는 문장의 틀을 거꾸로 읽습니다(`personalReason.ts`). 서버 안에 있는
+`evidenceSource` · `evidenceName` 을 응답에 실어 달라고 요청할 자리이고, 오면 그 파일의 틀 표를 걷으면 됩니다.
+
+**자연어 추천 이유의 향 강도도 붙었습니다**(S15P21E203-434) — 응답의 `reasons[].strengths` 가 `evidence` 를
+` · ` 로 자른 조각과 같은 순서 · 같은 개수로 오고(0~100, 향이 아닌 조건은 `null`), `features/recommend/nlrReason.ts` 가
+표현 · 향 · 강도를 한 문장으로 짓습니다(`이 향수는 ‘빨래’가 가리키는 비누(100) · 프레시(93) 향을 가지고 있습니다.`).
+⚠️ 강도는 백분율이 아닙니다 — 100 은 "이 향수에서 그 향이 가장 세게 잡혔다" 라 `%` 를 붙이지 않습니다.
+
 아직 **백엔드에 없는** 것은 하나입니다.
 
 - 비밀번호 재설정 (A31) — 화면만 있고 `PasswordResetForm` 에 NOTE 두 곳. 붙일 계획이
@@ -471,10 +505,11 @@ IDE 와 `grep` 이 찾을 수 있어야 합니다.
 헤더 아바타가 `meQuery` 캐시 하나를 같이 봅니다. 제한은 **JPG · PNG · GIF · WEBP · 1MB** 이고
 형식을 파일 내용으로 판별합니다 — 화면에서 미리 거르지 않고 서버 문구(413 · 415)를 그대로 보여줍니다.
 
-⚠️ **작성자 사진은 아직 못 붙입니다.** `profileImageUrl` 이 `UserResponse` 에만 있어서 내 사진만
-알 수 있습니다. 후기 · 게시글 · 댓글 응답(`ReviewDetailResponse` · `ReviewResponse` ·
+**작성자 사진도 붙었습니다** — 후기 · 게시글 · 댓글 응답(`ReviewDetailResponse` · `ReviewResponse` ·
 `ReviewBoardItemResponse` · `PostDetailResponse` · `PostSummaryResponse` · `CommentResponse`)에
-필드를 추가해 달라고 요청해 두었고, 오면 그 자리의 `NOTE:` 를 걷으면 됩니다.
+`profileImageUrl` 이 실려 옵니다. 커뮤니티는 게시판 목록(`BoardItem.avatarUrl`) · 글 상세 · 댓글의,
+향수 도메인은 후기 상세(`PerfumeReviewDetail`)의 작성자 아바타에 그 값을 넘깁니다. 사진을 설정하지 않았거나 탈퇴한 회원이면 `null` 이라
+`Thumbnail` 이 빈 상자를 그립니다.
 
 붙어 있는 API 도 **값이 비는 필드가 많습니다** — `nameKo`·`imageUrl`·`scentFamily`·`logoUrl` 은
 null 로 옵니다. **타입이 필수라고 믿고 바로 접근하면 화면이 죽습니다.** 값 없는 경우를 먼저

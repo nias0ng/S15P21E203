@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, type RefObject } from 'react'
 
+import { prefersReducedMotion } from '@/shared/lib/prefersReducedMotion'
+
 import { DECK_MS } from '../components/ShelfDeck'
 import {
   LIFT_ENVELOPE,
@@ -528,18 +530,15 @@ export function useTagSwing(
       frame.current = requestAnimationFrame(tick)
     }
 
-    const reduced = () =>
-      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-
     return {
       /** 트랙이 움직이기 시작할 때 부릅니다 */
       kick: () => {
-        if (reduced()) return
+        if (prefersReducedMotion()) return
         run()
       },
       /** 무대를 바꾸기 직전에 부릅니다(ShelfWallHandle 의 gust) */
       gust: (direction: GustDirection) => {
-        if (reduced()) return
+        if (prefersReducedMotion()) return
         wind.current = { t0: performance.now(), direction }
         run()
         // 벽을 그리기 전(크기를 재기 전)이라 루프가 시작되지 않았으면 들 태그가 없습니다

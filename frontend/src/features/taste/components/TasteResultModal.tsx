@@ -5,14 +5,11 @@ import { familyAdjective } from '../families'
 import type { TasteMatch } from '../types'
 
 type TasteResultModalProps = {
-  open: boolean
   match: TasteMatch | null
-  /** 다시 하기 · Esc · 배경 클릭 — 모달만 닫고 계열 선택 화면에 머무릅니다 */
   onRetry: () => void
   onConfirm: () => void
-  saving?: boolean
-  /** 확인을 다시 누르면 저장을 다시 보냅니다 */
-  saveError?: string | null
+  saving: boolean
+  saveError: string | null
 }
 
 const CLOSING = '향 지도에서 내 출발점을 확인해 보세요.'
@@ -49,22 +46,18 @@ function leadOf(match: TasteMatch): string {
     : `고르신 ${familyAdjective(first)} 향이 가장 진하게 살아 있는 향수를 찾았어요.`
 }
 
-/**
- * 취향 테스트 결과 모달 (TST-03). 향수 이름 · 지도 미리보기는 넣지 않습니다 — 그건 지도에서 봅니다.
- */
 export function TasteResultModal({
-  open,
   match,
   onRetry,
   onConfirm,
-  saving = false,
-  saveError = null,
+  saving,
+  saveError,
 }: TasteResultModalProps) {
   if (!match) return null
 
   return (
     <Modal
-      open={open}
+      open
       onClose={onRetry}
       title={headlineOf(match)}
       footer={
@@ -80,7 +73,6 @@ export function TasteResultModal({
     >
       <p className="text-ink">{leadOf(match)}</p>
       <p className="text-ink-muted mt-4">{CLOSING}</p>
-      {/* 저장이 실패해도 결과 문구는 그대로 둡니다 — 뽑힌 향수는 화면에서 이미 정해졌습니다 */}
       {saveError !== null && (
         <p role="alert" className="text-danger mt-4">
           {saveError}

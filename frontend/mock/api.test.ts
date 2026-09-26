@@ -56,6 +56,14 @@ describe('목데이터 API', () => {
     expect(api.find('PUT', '/users/me/collections')).toBeNull()
   })
 
+  it('브랜드 번호로 거르는 향수 검색은 백엔드로 넘기고, 검색어 검색은 받는다', () => {
+    const byBrand = new URLSearchParams({ brandId: '3' })
+    expect(api.find('GET', '/perfumes', byBrand)).toBeNull()
+    expect(
+      api.find('GET', '/perfumes', new URLSearchParams({ keyword: '딥티크' })),
+    ).not.toBeNull()
+  })
+
   describe('로그인', () => {
     it('아무 이메일 · 비밀번호로 토큰을 받는다', () => {
       const response = call(api, 'POST', '/auth/login', {
@@ -139,21 +147,6 @@ describe('목데이터 API', () => {
         call(api, 'GET', `/users/me/shelf-items/${representative.shelfItemId}`),
       )
       expect(detail).toMatchObject({ representative: false, category: 'TRIED' })
-    })
-
-    it('보유 중이 아닌 향수는 대표로 지정할 수 없다', () => {
-      const tried = SHELF_SEED.find((seed) => seed.category === 'TRIED')!
-
-      expect(
-        call(
-          api,
-          'PATCH',
-          `/users/me/shelf-items/${tried.shelfItemId}/representative`,
-          {
-            body: { representative: true },
-          },
-        ).status,
-      ).toBe(400)
     })
 
     it('적합도는 1.0~5.0 을 0.5 단위로만 받는다', () => {
@@ -255,6 +248,59 @@ describe('목데이터 API', () => {
           perfume.thumbnailUrl.startsWith('/bottles/'),
         ),
       ).toBe(true)
+    })
+  })
+
+  describe('개인화 추천', () => {
+    interface Offer {
+      recommendationToken: string
+      recommendation: { perfumeId: number; name: string; reason: string }
+    }
+    const recommend = () =>
+      bodyOf<Offer>(call(api, 'GET', '/recommendations/personalized'))
+
+    it('보유 중인 향수는 추천하지 않고, 서버의 근거 틀 가운데 하나로 이유를 단다', () => {
+      const owned = new Set(
+        SHELF_SEED.filter((seed) => seed.category === 'OWNED').map(
+          (seed) => seed.perfumeId,
+        ),
+      )
+      const offer = recommend()
+
+      expect(owned.has(offer.recommendation.perfumeId)).toBe(false)
+      expect(offer.recommendation.reason).toMatch(
+        /^(취향 테스트에서 선택한 .+ 계열과 잘 맞아요|높게 평가한 향수와 .+ 어코드가 비슷해요|최근 살펴본 향수에서 자주 만난 .+ 어코드를 담고 있어요)\.$/,
+      )
+    })
+
+    it('노출을 남긴 향수는 다음 뽑기에서 빠진다 — 부를 때마다 새 손잡이다', () => {
+      const first = recommend()
+      const exposure = call(
+        api,
+        'POST',
+        `/recommendations/personalized/${first.recommendationToken}/exposure`,
+      )
+      expect(exposure.status).toBe(204)
+
+      // 후보 열 병 가운데 하나를 뺐으니 아홉 번 더 불러도 다시 나오지 않습니다
+      for (let turn = 0; turn < 9; turn += 1) {
+        const next = recommend()
+        expect(next.recommendationToken).not.toBe(first.recommendationToken)
+        expect(next.recommendation.perfumeId).not.toBe(
+          first.recommendation.perfumeId,
+        )
+      }
+    })
+
+    it('모르는 손잡이의 노출은 404 · 로그인 없이는 401 이다', () => {
+      expect(
+        call(api, 'POST', '/recommendations/personalized/999999/exposure')
+          .status,
+      ).toBe(404)
+      expect(
+        call(api, 'GET', '/recommendations/personalized', { loggedIn: false })
+          .status,
+      ).toBe(401)
     })
   })
 

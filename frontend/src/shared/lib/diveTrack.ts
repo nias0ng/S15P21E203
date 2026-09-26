@@ -199,10 +199,10 @@ export const READY_GRACE_MS = 700
  * 커튼이 걷히기 시작할 때 엔진을 이 값에 세워 두고 걷히는 동안 0 으로 되밉니다. 그래서 바다가
  * 커튼과 **같이** 떠오릅니다 — 밝아지는 일을 CSS 가 아니라 3D 가 맡는 자리입니다.
  *
- * ⚠ 커튼이 다 덮었을 때 화면에 보이는 것은 판의 **굳은 끝**, 즉 `sea-deep`(L 0.338)입니다
- *   (창은 판의 아래 44.4%만 봅니다 — dive-curtain.css 의 '180% 와 58%'). 엔진의 `diveDeep` 은
- *   navy(L 0.287)라 1 로 둬도 크게 어긋나지는 않지만, 한 칸 얕게 시작해야 '심해에서 올라온다'
- *   가 아니라 '얕은 물에서 수면으로' 가 됩니다.
+ * ⚠ 커튼이 다 덮었을 때 화면에 보이는 것은 판의 **굳은 끝**, 즉 떠나는 방의 물빛입니다
+ *   (`--room-water` · 어두운 방이면 L 0.293 — 창은 판의 아래 44.4%만 봅니다, dive-curtain.css 의
+ *   '180% 와 58%'). 엔진의 `diveDeep` 은 navy(L 0.287)라 1 로 둬도 크게 어긋나지는 않지만, 한 칸
+ *   얕게 시작해야 '심해에서 올라온다' 가 아니라 '얕은 물에서 수면으로' 가 됩니다.
  *   ⚠ 너무 낮추면 커튼이 트인 자리에 **이미 다 밝은** 바다가 있어 떠오를 일이 안 남습니다.
  * ⚠ 화면으로 정할 값입니다 — 여기 숫자는 출발점입니다.
  */
@@ -265,12 +265,18 @@ export interface DiveFrame {
 /**
  * 잠수 시작에서 `elapsed` ms 지난 지금의 값.
  *
- * ⚠ `cover` 는 `k` 를 그대로 쓰지 않습니다 — `COVER_FROM` 부터 시작해 **같은 1.0 에서 끝납니다.**
+ * ⚠ `cover` 는 `k` 를 그대로 쓰지 않습니다 — `coverFrom` 부터 시작해 **같은 1.0 에서 끝납니다.**
  *   두 값을 하나로 합치면 커튼이 3D 보다 먼저 올라오거나 늦게 닿습니다.
+ *
+ * @param coverFrom 커튼이 움직이기 시작하는 진행도 — 잠수는 `COVER_FROM`, 선실은 `CABIN_COVER_FROM`
  */
-export function diveFrameAt(elapsed: number, duration = DIVE_MS): DiveFrame {
+export function diveFrameAt(
+  elapsed: number,
+  duration = DIVE_MS,
+  coverFrom = COVER_FROM,
+): DiveFrame {
   const k = clamp01(elapsed / Math.max(1, duration))
-  const cover = coverEase(clamp01((k - COVER_FROM) / (1 - COVER_FROM)))
+  const cover = coverEase(clamp01((k - coverFrom) / (1 - coverFrom)))
   return { k, cover, covered: k >= 1 }
 }
 
@@ -282,4 +288,66 @@ export function diveFrameAt(elapsed: number, duration = DIVE_MS): DiveFrame {
  */
 export function diveDuration(reducedMotion: boolean, depth = 0): number {
   return reducedMotion ? REDUCED_MS : diveMsAt(depth)
+}
+
+/**
+ * ───────── 선실로 들어가기 — 진열대 (2026-09-24) ─────────
+ *
+ * 진열대(와 그 아래 무대인 컬렉션)는 바다 밑이 아니라 **배 안**입니다. 메인에서 그리로 갈 때는
+ * 수면으로 내려가지 않고, 카메라가 배를 향해 줌인하는 동안 **그 배에서 메인에 들어올 때의 구름이 잉크처럼
+ * 스며 번져** 덮습니다 (`shared/lib/inkBleed` · `shared/ui/cabin-curtain.css` · 엔진 `landing/src/cabin-in.js`).
+ *
+ * ⚠⚠ 2026-09-20 에 진열대를 잠수에서 뺀 까닭이 이 연출입니다 — 바다로 내려가는 축에 같이 세우면
+ *   둘이 서로를 흉내 냅니다 (S15P21E203-340). 그래서 **모양이 다릅니다** : 잠수는 화면 아래끝에서
+ *   차오르는 물이고, 이쪽은 문 한 점에서 결을 따라 스며 나가는 구름입니다.
+ * ⚠ 단계(diving → covered → lifting)와 준비 신호(`useDiveReady`)는 잠수와 **같은 것**을 씁니다 —
+ *   다른 것은 모양 · 색 · 엔진의 문뿐이라 가게(`diveStore`)의 `way` 하나로 가릅니다.
+ */
+
+/**
+ * 이 주소로 가는 길이 **선실로 들어가기**인가 — 진열대와 컬렉션 무대(`?stage=collection`).
+ *
+ * ⚠ 주소의 **경로만** 봅니다. 컬렉션 무대는 쿼리만 다른 같은 화면이라 같은 문으로 들어갑니다.
+ * ⚠ 메인에서 떠날 때만 씁니다 — 어디서 떠나는지 가리는 것은 부르는 쪽입니다 (`useDiveOut` · `HomePage`).
+ */
+export const entersCabin = (to: string): boolean =>
+  to.split(/[?#]/, 1)[0] === ROUTES.MY_SHELF
+
+/** 배를 향해 줌인하며 구름이 덮기까지의 시간(ms). ⚠ 화면으로 정할 값입니다 — 여기 숫자는 출발점입니다 */
+export const CABIN_MS = 1300
+
+/**
+ * 구름이 번지기 시작하는 진행도. 앞의 이만큼은 **3D 만** 움직입니다 — 카메라가 문으로 다가가는 것이
+ * 먼저 보여야 '들어간다' 로 읽힙니다 (잠수의 `COVER_FROM` 과 같은 자리).
+ *
+ * ⚠ 잠수(0.3)보다 늦습니다. 잠수의 물은 화면 **아래끝**에서 차올라 한동안 3D 의 가운데를 남기지만,
+ *   이쪽은 배 — 화면 **가운데** 가까이 — 에서 번져 3D 의 한복판을 먼저 가립니다.
+ */
+export const CABIN_COVER_FROM = 0.45
+
+/**
+ * 배에서 구름이 번진 정도 0~1 — 진행도 `k` 에서 곧바로 냅니다 (`shared/lib/inkBleed` 가 받습니다).
+ *
+ * ⚠ 잠수의 커튼(`diveFrameAt` 의 cover · t²)과 달리 **곧게** 갑니다. 스며드는 앞선이 고른 걸음으로
+ *   나아가도 덮이는 넓이는 반지름의 제곱이라 끝으로 갈수록 저절로 빨라집니다 — 여기에 t² 를 한 번
+ *   더 걸면 번지는 시간의 앞 절반 동안 문 앞에 점 하나만 남습니다.
+ */
+export const cabinBleedAt = (k: number): number =>
+  clamp01((k - CABIN_COVER_FROM) / (1 - CABIN_COVER_FROM))
+
+/**
+ * 걷히는 시간(ms) — 메인에 들어올 때처럼 구름이 가운데서 열리며 진열대가 드러납니다.
+ * ⭐ 메인 진입(1초)보다 느립니다 — 구멍이 천천히 커지며 구름 속으로 들어가는 동안이 '배로 들어간다'
+ *   입니다 (2026-09-24 사용자 : *"좀 천천히 줌인 되어도 괜찮음 배로 이동한다는 느낌만"*).
+ * ⚠ `cabin-curtain.css` 의 `--cabin-lift` 와 **같은 값**이어야 합니다 — 여기가 짧으면 다 걷히기 전에
+ *   판이 사라지고, 길면 다 걷힌 뒤에도 빈 판이 클릭을 먹습니다 (잠수의 `LIFT_MS` 와 같은 약속).
+ */
+export const CABIN_LIFT_MS = 1600
+
+/**
+ * 선실로 들어가는 데 쓰는 시간(ms). 움직임 줄이기면 카메라를 빼고 **짧게 덮기만** 합니다 —
+ * 잠수의 `diveDuration` 과 같은 판단입니다.
+ */
+export function cabinDuration(reducedMotion: boolean): number {
+  return reducedMotion ? REDUCED_MS : CABIN_MS
 }

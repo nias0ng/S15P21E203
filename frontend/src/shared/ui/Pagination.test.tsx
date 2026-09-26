@@ -81,7 +81,6 @@ describe('Pagination', () => {
       />,
     )
 
-    // 이전 · 다음을 뺀 나머지가 번호입니다
     expect(screen.getAllByRole('button')).toHaveLength(WINDOW_WITH_ARROWS)
     expect(screen.getByRole('button', { name: '9쪽' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '13쪽' })).toBeInTheDocument()

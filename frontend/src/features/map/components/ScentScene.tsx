@@ -22,6 +22,7 @@ export interface ScenePerfumeRef {
   fragranticaId: number
   perfumeId: number | null
   name: string
+  /** 한글이 없으면 엔진이 영문 원명으로 채워 보냅니다 (host.js `perfumeRef`) — 브랜드도 같습니다 */
   nameKo: string
   brand: string
   brandKo: string
@@ -54,7 +55,8 @@ export interface SceneMove {
 interface EngineHost {
   openDetail: (perfume: ScenePerfumeRef) => void
   saveToShelf: (perfume: ScenePerfumeRef) => Promise<void>
-  exploreSimilar: (perfume: ScenePerfumeRef) => void
+  /** 안 주면 엔진의 기본(아무 일 없음)으로 갑니다 — 12개는 엔진이 이미 다시 띄웁니다 */
+  exploreSimilar?: (perfume: ScenePerfumeRef) => void
   search: (query: string) => void
   moveBoat: (move: SceneMove) => void
   openCabin: () => Promise<void>
@@ -76,6 +78,15 @@ interface EngineHandle {
    * ⚠️ 없을 수 있습니다 — 잠수가 없던 엔진 빌드입니다. 그때는 커튼만 차오릅니다.
    */
   dive?: (k: number) => void
+  /**
+   * 선실로 들어가기 진행도 0~1 (엔진 `landing/src/cabin-in.js` · `PB.cabinIn`) — 카메라가 배를
+   * 향해 곧게 줌인합니다. **시계는 앱 커튼이 쥡니다**(`shared/ui/DiveCurtain` 의 cabin).
+   *
+   * 돌려주는 것은 **배 가운데의 화면 자리**(iframe 기준 CSS px)입니다 — 커튼이 거기서 구름을 번지게
+   * 합니다. `on` 이 false 면 엔진이 아직 그 자리를 못 쟀습니다.
+   * ⚠️ 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다. 그때는 커튼이 화면 가운데서 혼자 번집니다.
+   */
+  cabinIn?: (k: number) => { x: number; y: number; on: boolean }
   /**
    * 배 — 여기서 읽는 것은 `screen`(배의 화면 자리) 하나입니다. 선실 말풍선이 매 프레임 꺼내
    * 제 자리를 잡습니다 (`lib/boatAnchor`). 엔진이 매 프레임 채웁니다.
@@ -122,36 +133,12 @@ type Props = {
    * ⚠️ [진열대에 저장]과 달리 **엔진 입력을 안 잠급니다** — 판이 아니라 말풍선이라 뒤의 바다가
    * 살아 있어야 합니다. 3D 누름은 잠기는 대신 `onCloseCabin` 으로 옵니다.
    */
-  onOpenCabin?: () => Promise<void>
+  onOpenCabin: () => Promise<void>
   /**
    * 엔진이 말풍선을 닫아 달라고 합니다 — 3D 아무 데나 누르면(배를 다시 눌러도) 옵니다.
    * 팝오버라 배경 클릭으로 닫히는데, 그 클릭을 받는 것이 iframe 안의 엔진이라 이 길이 필요합니다.
    */
-  onCloseCabin?: () => void
-  /**
-   * 엔진 화면 위의 검색창.
-   *
-   * ⚠️ `hideEngineSearch` 로 엔진 알약을 숨기면 **여기로 아무것도 오지 않습니다** —
-   * 검색을 앱이 직접 받고 있다는 뜻입니다 (메인은 그쪽입니다 · `SceneSearchBar`).
-   */
-  onSearch?: (query: string) => void
-  /**
-   * 엔진이 그리는 검색창을 숨깁니다. 앱이 그 자리에 자기 검색창을 얹을 때 씁니다.
-   *
-   * 왜 필요한가: 메인 검색은 방식이 둘(자연어 추천 · 지도 향수 찾기)이고 결과가
-   * 모달인데, 엔진은 iframe 안이라 라우터도 모달도 모릅니다. 그래서 알약만 앱으로
-   * 올리고 엔진 쪽은 숨깁니다. 3D · 설명문구 · 해도는 그대로 엔진이 그립니다.
-   *
-   * ⚠️ 엔진 DOM 을 직접 건드리는 **유일한 자리**입니다. 엔진에 끄는 입구
-   * (`params.searchBar` 같은 것)가 생기면 그걸로 바꾸세요 — 그때까지는 알약을 감싼
-   * 칸을 찾아 `visibility:hidden` 합니다. 엔진 `index.html` 의 마크업 모양에 기대고
-   * 있어서, 못 찾으면 **조용히 아무 일도 하지 않습니다**(알약 둘이 겹쳐 보입니다).
-   *
-   * ⚠️ `display:none` 이 아닌 까닭은 향수 카드가 이 알약의 상자를 재어 그 아래로
-   * 서기 때문입니다 — 아래 effect 의 긴 머리말을 보세요. 끄는 입구로 바꿀 때도
-   * **자리는 남겨야** 합니다.
-   */
-  hideEngineSearch?: boolean
+  onCloseCabin: () => void
   /**
    * 앱이 3D 위에 겹쳐 올린 것(유리판 헤더)이 가리는 위쪽 높이 — **CSS 길이**입니다
    * (`'var(--header-h)'`). 엔진은 3D 를 그 뒤까지 그대로 그리고, 검색창 · 정보 블록 ·
@@ -240,8 +227,6 @@ export function ScentScene({
   onSaveToShelf,
   onOpenCabin,
   onCloseCabin,
-  onSearch,
-  hideEngineSearch = false,
   coveredTop = '0px',
   onNightChange,
   onChartChange,
@@ -283,7 +268,6 @@ export function ScentScene({
     onSaveToShelf,
     onOpenCabin,
     onCloseCabin,
-    onSearch,
     covered,
     onNightChange,
     onChartChange,
@@ -297,7 +281,6 @@ export function ScentScene({
       onSaveToShelf,
       onOpenCabin,
       onCloseCabin,
-      onSearch,
       covered,
       onNightChange,
       onChartChange,
@@ -331,7 +314,16 @@ export function ScentScene({
   const started = useRef(false)
 
   /*
-   * 엔진 알약 숨기기. 엔진이 붙은 뒤(`ready`)에 겁니다 — 그 전에는 iframe 문서에
+   * 엔진 알약 숨기기. 메인 검색은 방식이 둘(자연어 추천 · 지도 향수 찾기)이고 답이 모달인데,
+   * 엔진은 iframe 안이라 라우터도 모달도 몰라 검색창은 앱이 그립니다(`SceneSearchBar`).
+   * 3D · 설명문구 · 해도는 그대로 엔진이 그립니다.
+   *
+   * ⚠️ 엔진 DOM 을 직접 건드리는 **유일한 자리**입니다. 엔진에 끄는 입구
+   * (`params.searchBar` 같은 것)가 생기면 그걸로 바꾸세요 — 엔진 `index.html` 의 마크업 모양에
+   * 기대고 있어서, 못 찾으면 **조용히 아무 일도 하지 않습니다**(알약 둘이 겹쳐 보입니다).
+   * 끄는 입구로 바꿀 때도 **자리는 남겨야** 합니다 (아래 `visibility` 머리말).
+   *
+   * 엔진이 붙은 뒤(`ready`)에 겁니다 — 그 전에는 iframe 문서에
    * 알약이 아직 없습니다. `ready` 는 엔진이 새로 뜰 때마다 false → true 로 도니
    * iframe 이 다시 불러와도 따라옵니다.
    */
@@ -368,7 +360,7 @@ export function ScentScene({
        * ⚠️ 칸은 `position:absolute` 라 되살아나도 다른 엔진 UI 를 안 밀고,
        * `pointer-events:none` 이라 3D 도 안 가립니다 — 둘 다 화면에서 확인했습니다.
        */
-      if (band) band.style.visibility = hideEngineSearch ? 'hidden' : ''
+      if (band) band.style.visibility = 'hidden'
     }
 
     apply()
@@ -376,7 +368,7 @@ export function ScentScene({
     // `ready` 는 처음 한 번만 true 가 되므로 그것만 봐서는 놓칩니다
     el.addEventListener('load', apply)
     return () => el.removeEventListener('load', apply)
-  }, [ready, hideEngineSearch])
+  }, [ready])
 
   useEffect(() => {
     const el = frame.current
@@ -430,21 +422,15 @@ export function ScentScene({
       engine.setHost({
         openDetail: (perfume) => latest.current.onOpenDetail(perfume),
         saveToShelf: (perfume) => latest.current.onSaveToShelf(perfume),
-        exploreSimilar: () => {
-          // 엔진이 카드의 향을 새 중심으로 12개를 다시 띄웁니다 — 앱이 더 할 일은 없습니다
-        },
-        // 앱이 검색을 직접 받고 있으면(`hideEngineSearch`) 엔진 알약이 없어 오지 않습니다
-        search: (query) => latest.current.onSearch?.(query),
+        // 검색창은 앱이 그립니다(위 알약 숨기기). 빈 처리기라도 있어야 엔진이 제 검색으로
+        // 해역을 떠나지 않습니다 (host.js `hostSearch`)
+        search: () => {},
         // 배가 든 해역이 바뀌었거나 향수를 골랐습니다 — 향해 일지가 받습니다 (host.js `hostMove`)
         moveBoat: (move) => latest.current.onMove?.(move),
-        /*
-          배를 눌렀습니다 — 선실 알림 판 (2026-09-21 · host.js `hostCabin`).
-          ⚠️ 화면이 처리기를 안 주면 **곧바로 resolve 합니다.** 엔진은 돌려받은 Promise 가
-            끝날 때까지 입력을 잠그므로, 여기서 안 풀면 배를 한 번 누른 뒤로 방향키가 죽습니다
-        */
-        openCabin: () => latest.current.onOpenCabin?.() ?? Promise.resolve(),
+        // 배를 눌렀습니다 — 선실 알림 판 (2026-09-21 · host.js `hostCabin`)
+        openCabin: () => latest.current.onOpenCabin(),
         // 3D 아무 데나 누르면 말풍선을 닫습니다 (팝오버 — 엔진 host.js `hostCabin(false)`)
-        closeCabin: () => latest.current.onCloseCabin?.(),
+        closeCabin: () => latest.current.onCloseCabin(),
       })
       /*
         선실 말풍선이 배를 따라다니려면 배의 화면 자리를 **매 프레임** 읽어야 합니다.
@@ -485,6 +471,23 @@ export function ScentScene({
             ? (k: number) => engine.dive?.(k)
             : null,
         )
+      /*
+        선실로 들어가기 — 진열대로 넘어가는 전환의 엔진 문입니다 (잠수와 같은 자리 · 같은 까닭).
+        엔진은 배의 화면 자리를 **iframe 기준**으로 주므로, 커튼(화면 전체에 고정)이 쓰도록 iframe 의
+        자리를 더해 뷰포트 기준으로 바꿉니다. 메인은 iframe 이 화면을 꽉 채워 대개 0 이지만, 그것을
+        믿고 빼 두면 틀이 바뀌는 날 구름이 배 옆에서 번집니다.
+        ⚠️ 엔진에 `cabinIn` 이 없으면 꽂지 않습니다 (커튼만 화면 가운데서 번집니다).
+      */
+      useDiveStore.getState().setCabinEngine(
+        typeof engine.cabinIn === 'function'
+          ? (k: number) => {
+              const at = engine.cabinIn?.(k)
+              if (!at?.on) return null
+              const box = el.getBoundingClientRect()
+              return { x: box.left + at.x, y: box.top + at.y }
+            }
+          : null,
+      )
       setReady(true)
       // 들어오자마자 방향키로 배를 몰 수 있게 포커스를 엔진으로 넘깁니다
       el.contentWindow?.focus()
@@ -523,6 +526,7 @@ export function ScentScene({
       handle.current = null
       // 엔진이 사라집니다 — 커튼은 이제 혼자 차오릅니다 (잠수로 떠나는 길이 바로 이 경로입니다)
       useDiveStore.getState().setEngine(null)
+      useDiveStore.getState().setCabinEngine(null)
       setBoatAnchorSource(null)
     }
   }, [])

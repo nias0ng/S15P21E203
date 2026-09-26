@@ -188,7 +188,7 @@ class NlrFeedbackConcurrencyIntegrationTest {
                         List.of("soapy"), List.of(), List.of("빨래"), "lexicon_only"),
                 List.of(),
                 List.of(new NlrRecommendResponse.Result(73368L,
-                        List.of(new NlrRecommendResponse.Matched("soapy", "빨래")))),
+                        List.of(new NlrRecommendResponse.Matched("soapy", "빨래", null)))),
                 List.of(),
                 new NlrRecommendResponse.Diagnostics("AND", 1, 1, List.of(), null));
     }

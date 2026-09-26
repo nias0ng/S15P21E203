@@ -1,4 +1,6 @@
-import type { ScentFamilyCode, VoyageLogEntry } from '../types'
+import type { ScentFamilyKey } from '@/shared/config/scentFamilies'
+
+import type { VoyageLogEntry } from '../types'
 
 /** 향해 일지의 하루 — 그날 들어간 해역과 들른 향수를 **따로** 모읍니다 */
 export interface VoyageLogDay {
@@ -7,7 +9,7 @@ export interface VoyageLogDay {
   /** 머리말. 오늘이면 '오늘', 아니면 `MM.DD` */
   label: string
   /** 그날 들어간 해역 — 최근 순 · 같은 해역은 한 번 */
-  regions: ScentFamilyCode[]
+  regions: ScentFamilyKey[]
   /** 그날 들른 향수 — 최근 순 · 같은 향수는 한 번 */
   perfumes: VoyageLogEntry['visited']
 }

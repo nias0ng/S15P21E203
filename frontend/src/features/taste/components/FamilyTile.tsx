@@ -1,4 +1,5 @@
 import { cn } from '@/shared/lib/cn'
+import { FOCUS_RING } from '@/shared/ui/focusRing'
 
 import { familyAriaLabel, scentFamilyLabel } from '../families'
 import type { ScentFamilyKey } from '../types'
@@ -6,14 +7,11 @@ import type { ScentFamilyKey } from '../types'
 type FamilyTileProps = {
   family: ScentFamilyKey
   selected: boolean
-  /** 두 개를 이미 골랐고 이 타일은 그중 하나가 아닐 때 — 불이 꺼집니다 */
   dimmed: boolean
-  /** 고른 순서. 1이 1순위이고 가중치를 더 받습니다 */
   order?: number
   onToggle: (family: ScentFamilyKey) => void
 }
 
-/** 향 계열 타일 (TST-03). 낱말이 바뀌는 것은 눈으로만 알 수 있어 `aria-label` 에 둘을 함께 읽힙니다. */
 export function FamilyTile({
   family,
   selected,
@@ -32,27 +30,24 @@ export function FamilyTile({
       onClick={() => onToggle(family)}
       className={cn(
         'group rounded-card relative flex h-18 items-center border px-4',
-        // 좁으면 이름이 두 줄로 접혀 배지 자리가 없습니다 — 그때는 예전처럼 양 끝으로
         'justify-between gap-2 md:justify-center md:gap-0',
         'transition-colors duration-120 ease-out',
-        'focus-visible:ring-accent-deep outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-        // 비활성은 테두리만 남깁니다 — 채움을 없애면 "누를 수 없다"가 형태로 드러납니다
+        FOCUS_RING,
         'disabled:border-line disabled:pointer-events-none disabled:bg-transparent disabled:opacity-30',
         selected
           ? 'border-ink bg-ink text-surface'
-          : 'border-line bg-surface-card text-ink hover:border-accent-deep hover:bg-line-soft',
+          : 'border-line bg-surface-card text-ink hover:border-sunset',
       )}
     >
       <span className="text-heading md:text-title font-serif font-semibold">
         {selected ? (
-          // 고른 뒤에는 계열명으로 고정 — 마우스가 지나갈 때마다 글자가 바뀌지 않습니다
           name
         ) : (
           <>
             <span className="group-hover:hidden group-focus-visible:hidden">
               {adjective}
             </span>
-            <span className="text-accent-deep hidden group-hover:inline group-focus-visible:inline">
+            <span className="text-sunset hidden group-hover:inline group-focus-visible:inline">
               {name}
             </span>
           </>
@@ -60,7 +55,6 @@ export function FamilyTile({
       </span>
 
       {order && (
-        // 넓을 때만 흐름에서 뺍니다 — 그래야 고르기 전후로 계열명이 제자리에 섭니다
         <span className="text-caption border-surface/50 text-surface shrink-0 rounded-full border px-2 md:absolute md:top-1/2 md:right-4 md:-translate-y-1/2">
           {order}순위
         </span>

@@ -4,12 +4,10 @@ import type { ScentFamilyKey } from '../types'
 import { FamilyTile } from './FamilyTile'
 
 type FamilyPickerProps = {
-  /** 고른 계열. `[0]` 이 1순위입니다 */
   value: readonly ScentFamilyKey[]
   onChange: (next: ScentFamilyKey[]) => void
 }
 
-/** 향 계열 고르기 (TST-03). 최대 2개이고, 고른 순서가 그대로 1순위 · 2순위입니다. */
 export function FamilyPicker({ value, onChange }: FamilyPickerProps) {
   const full = value.length >= MAX_PICKS
 

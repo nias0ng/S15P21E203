@@ -17,12 +17,10 @@ describe('Thumbnail', () => {
     render(<Thumbnail fallback="이미지" />)
 
     expect(screen.getByText('이미지')).toBeInTheDocument()
-    // 이미지가 없으니 img 역할이 있으면 안 됩니다
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
   })
 
   it('src 가 null 이어도 자리표시자를 그린다', () => {
-    // 백엔드가 이미지 없는 향수에 null 을 내려주는 경우입니다
     render(<Thumbnail src={null} fallback="이미지" />)
 
     expect(screen.getByText('이미지')).toBeInTheDocument()
@@ -35,8 +33,6 @@ describe('Thumbnail', () => {
   })
 
   it('alt 를 주지 않으면 낭독기가 건너뛰는 장식 이미지가 된다', () => {
-    // alt="" 인 img 는 role 이 presentation 이라 getByRole('img') 로 잡히지 않습니다.
-    // 호출부 대부분이 이미지 옆에 이름을 글자로 두고 있어 이게 의도된 기본값입니다.
     render(<Thumbnail src="https://example.test/a.png" />)
 
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
@@ -60,10 +56,6 @@ describe('Thumbnail', () => {
     expect(container.querySelector('img')?.className).toContain('size-14')
   })
 
-  /*
-    배경이 투명한 PNG(향수병)를 넣는 자리용입니다. 상자를 그대로 두면 투명한 영역이
-    네모로 드러나 병이 상자에 담긴 것처럼 보입니다.
-  */
   it('bare 면 이미지 뒤 상자를 그리지 않는다', () => {
     const { container } = render(
       <Thumbnail src="https://example.test/bottle.png" bare />,
@@ -74,7 +66,6 @@ describe('Thumbnail', () => {
     expect(image?.className).not.toContain('border-line')
   })
 
-  /* 자리표시자까지 상자를 지우면 "이미지" 라는 글자만 허공에 뜹니다 */
   it('bare 여도 이미지가 없으면 자리표시자 상자는 그대로 그린다', () => {
     const { container } = render(<Thumbnail bare fallback="이미지" />)
 

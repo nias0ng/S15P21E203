@@ -1,30 +1,20 @@
 import { queryOptions } from '@tanstack/react-query'
 
-import { isApiError } from '@/shared/api/http'
-
-import {
-  getExplorationState,
-  getMapPerfumePoints,
-  getMapPoints,
-  getTasteArea,
-  getVoyageLog,
-} from './api'
+import { getExplorationState, getMapPerfumePoints, getVoyageLog } from './api'
 import { loadMapPerfumes } from './mapPerfumes'
 
 export const mapKeys = {
   all: ['map'] as const,
-  points: () => [...mapKeys.all, 'points'] as const,
   perfumes: () => [...mapKeys.all, 'perfumes'] as const,
   perfumePoints: () => [...mapKeys.all, 'perfume-points'] as const,
   exploration: () => [...mapKeys.all, 'exploration'] as const,
   voyageLog: () => [...mapKeys.all, 'voyage-log'] as const,
-  tasteArea: () => [...mapKeys.all, 'taste-area'] as const,
 }
 
 /**
  * 배가 지금 떠 있는 자리 — 메인에 들어올 때 배를 돌려놓는 데 씁니다 (MAP-24).
  *
- * ⚠️ 비로그인(401)은 다시 불러도 같은 답이라 재시도하지 않습니다 — 향해 일지와 같은 규칙입니다.
+ * ⚠️ 비로그인(401)은 다시 부르지 않습니다 — 4xx 를 다시 부르지 않는 전역 기본값이 맡습니다.
  * ⚠️ `staleTime` 을 두지 않습니다. 다른 화면에 갔다 오는 사이에 **우리가 자리를 저장했기 때문에**,
  *   캐시된 옛 자리를 쓰면 배가 뒤로 돌아갑니다.
  */
@@ -32,8 +22,6 @@ export const explorationStateQuery = () =>
   queryOptions({
     queryKey: mapKeys.exploration(),
     queryFn: getExplorationState,
-    retry: (failureCount, error) =>
-      !(isApiError(error) && error.status === 401) && failureCount < 3,
   })
 
 /**
@@ -50,9 +38,6 @@ export const mapPerfumePointsQuery = () =>
     staleTime: 1000 * 60 * 60,
   })
 
-export const mapPointsQuery = () =>
-  queryOptions({ queryKey: mapKeys.points(), queryFn: getMapPoints })
-
 /**
  * 지도에 떠 있는 향수 200개 (메인의 일반 검색 대상).
  *
@@ -67,14 +52,9 @@ export const mapPerfumesQuery = () =>
     staleTime: Infinity,
   })
 
-/** 향해 일지 — 비로그인(401)은 다시 불러도 같은 답이라 재시도하지 않습니다 */
+/** 향해 일지 — 비로그인(401)을 다시 부르지 않는 것은 배 자리와 같이 전역 기본값이 맡습니다 */
 export const voyageLogQuery = () =>
   queryOptions({
     queryKey: mapKeys.voyageLog(),
     queryFn: getVoyageLog,
-    retry: (failureCount, error) =>
-      !(isApiError(error) && error.status === 401) && failureCount < 3,
   })
-
-export const tasteAreaQuery = () =>
-  queryOptions({ queryKey: mapKeys.tasteArea(), queryFn: getTasteArea })

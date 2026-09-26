@@ -45,7 +45,6 @@ describe('AuthLinkButton', () => {
     ).not.toBeInTheDocument()
   })
 
-  /* 가서 막지 않고 여기서 막습니다 — 다 쓰고 [등록] 에서 막히면 쓴 것을 잃습니다 */
   it('로그인하지 않고 누르면 그 자리에서 로그인 모달이 뜬다', async () => {
     renderButton()
 

@@ -6,7 +6,6 @@ type Props = {
   keywords: ReviewKeyword[]
 }
 
-/** **표현이 없으면 안 그립니다** — 적재 코드가 없어 지금은 전부 빈 배열입니다 */
 export function PerfumeReviewKeywords({ keywords }: Props) {
   if (keywords.length === 0) return null
 

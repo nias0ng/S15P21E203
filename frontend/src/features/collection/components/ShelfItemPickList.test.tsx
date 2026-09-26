@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
 import { describe, expect, it } from 'vitest'
+
+import { useShelfItemPick } from '../hooks/useShelfItemPick'
 
 import { ShelfItemPickList, type ShelfItemCandidate } from './ShelfItemPickList'
 
@@ -22,20 +23,13 @@ function Harness({
 }: {
   candidates?: ShelfItemCandidate[]
 }) {
-  const [keyword, setKeyword] = useState('')
-  const [picked, setPicked] = useState<number[]>([])
+  const { picked, toggle, keyword, setKeyword } = useShelfItemPick(true)
 
   return (
     <ShelfItemPickList
       candidates={candidates}
       picked={picked}
-      onToggle={(shelfItemId) =>
-        setPicked((prev) =>
-          prev.includes(shelfItemId)
-            ? prev.filter((id) => id !== shelfItemId)
-            : [...prev, shelfItemId],
-        )
-      }
+      onToggle={toggle}
       keyword={keyword}
       onKeywordChange={setKeyword}
       emptyTitle="진열대에 담은 향수가 없습니다"
@@ -62,6 +56,19 @@ describe('ShelfItemPickList', () => {
 
     expect(screen.getByText('우드 세이지 앤 씨 솔트')).toBeInTheDocument()
     expect(screen.queryByText('오르페옹')).not.toBeInTheDocument()
+  })
+
+  it('고른 칸은 눌린 채로 알린다 — 다시 누르면 풀린다', async () => {
+    render(<Harness />)
+
+    const card = screen.getByRole('button', { name: /상탈 33/ })
+    expect(card).toHaveAttribute('aria-pressed', 'false')
+
+    await userEvent.click(card)
+    expect(card).toHaveAttribute('aria-pressed', 'true')
+
+    await userEvent.click(card)
+    expect(card).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('검색으로 가려져도 고른 것은 그대로 센다', async () => {

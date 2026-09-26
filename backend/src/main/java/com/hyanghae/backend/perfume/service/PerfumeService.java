@@ -478,12 +478,6 @@ public class PerfumeService {
     }
 
     /**
-     * 검색어를 쿼리에 넣을 수 있는 형태로 다듬습니다.
-     *
-     * <p>빈 문자열과 공백만 있는 검색어는 {@code null} 로 만들어 "검색어 없음"과 같게 다룹니다.
-     * 정규화하지 않으면 {@code ?keyword=} 같은 요청이 공백을 포함한 이름만 찾게 됩니다.
-     */
-    /**
      * {@code ranking} 이 있으면 사람들이 담거나 열어 본 향수만 남겨 <b>기록이 많은 순</b>으로
      * 조회합니다. OWNED·WISH 는 세 명 이상이 담은 향수만, VIEWED 는 한 번이라도 열어 본 향수가
      * 모두 나옵니다.
@@ -521,11 +515,26 @@ public class PerfumeService {
         return value.trim();
     }
 
+    /**
+     * 검색어를 쿼리에 넣을 수 있는 형태로 다듬습니다.
+     *
+     * <p>빈 문자열과 공백만 있는 검색어는 {@code null} 로 만들어 "검색어 없음"과 같게 다룹니다.
+     * 정규화하지 않으면 {@code ?keyword=} 같은 요청이 공백을 포함한 이름만 찾게 됩니다.
+     *
+     * <p><b>가운데 공백까지 지웁니다.</b> 이름을 어디서 띄는지는 사람마다 다른데 저장된 이름은 한
+     * 가지입니다. 브랜드 7,873곳 중 5,042곳의 한국어 이름에 공백이 있어('빅토리아 시크릿'), 붙여
+     * 친 검색어가 0건이 되고 있었습니다. 견주는 쪽도 같이 지웁니다 —
+     * {@link PerfumeRepository#SEARCH_CONDITION} 과 {@code PerfumeRankingRepository.CONDITION}
+     * 두 곳 모두입니다.
+     *
+     * <p>이 정규화는 걸리는 범위를 넓히기만 합니다. 양쪽에서 같은 문자를 지우면 부분 일치 관계가
+     * 깨지지 않아, 전에 걸리던 검색어는 그대로 걸립니다.
+     */
     private String normalize(String keyword) {
         if (keyword == null || keyword.isBlank()) {
             return null;
         }
-        return escapeLikeWildcards(keyword.trim());
+        return escapeLikeWildcards(keyword.replaceAll("\\s+", ""));
     }
 
     /**

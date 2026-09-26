@@ -1,26 +1,16 @@
 import { cn } from '@/shared/lib/cn'
 
 type Props = {
-  /** 현재 페이지. **0부터 시작합니다** (백엔드와 같습니다) */
   page: number
   size: number
   totalElements: number
   onPageChange: (page: number) => void
-  /** 낭독기가 읽을 이름. 한 화면에 목록이 둘이면 구분이 필요합니다 */
   label?: string
   className?: string
 }
 
-/** 한 번에 보여줄 페이지 번호 수. 홀수여야 현재 페이지가 가운데에 옵니다. */
 const WINDOW = 5
 
-/**
- * 페이지 넘김 (게시판 · 댓글 공용). 백엔드 목록 응답이 전부 `page`(0부터) · `size` ·
- * `totalElements` 라 그대로 받고, `totalPages` 는 어느 응답에도 없어 여기서 셉니다.
- *
- * **페이지가 하나뿐이면 아무것도 그리지 않습니다.** 번호는 다섯 개만 — 현재를
- * 가운데 두고 앞뒤로 둘씩, 양 끝에서는 그만큼 반대쪽으로 채웁니다.
- */
 export function Pagination({
   page,
   size,
@@ -59,7 +49,6 @@ export function Pagination({
           key={value}
           onClick={() => onPageChange(value)}
           current={value === page}
-          // 사용자에게는 1부터 세는 번호를 보여줍니다
           label={`${value + 1}쪽`}
         >
           {value + 1}
@@ -96,7 +85,6 @@ function PageButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      // 지금 보고 있는 쪽은 색만으로 알리지 않습니다 — 낭독기도 알아야 합니다
       aria-current={current ? 'page' : undefined}
       className={cn(
         'rounded-card text-caption min-w-7.5 px-2.5 py-1.25',

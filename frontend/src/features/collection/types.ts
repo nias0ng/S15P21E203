@@ -4,7 +4,10 @@ export interface CollectionSummary {
   title: string
   description: string | null
   perfumeCount: number
-  /** NOTE: 백엔드 목록 응답에 없어 빈 자리 세 개로 채웁니다 — 지우면 카드가 납작해집니다 */
+  /**
+   * 진열함에 세울 병 사진. 담긴 순서대로 **최대 3장**이고, 사진이 없는 향수는 자리를 지키려고
+   * null 입니다. 빈 컬렉션은 빈 배열입니다.
+   */
   previewThumbnails: (string | null)[]
 }
 
@@ -18,7 +21,11 @@ export interface CollectionPerfume {
   thumbnailUrl: string | null
 }
 
-export interface CollectionDetail extends CollectionSummary {
+/** 미리보기 사진은 목록의 진열함만 씁니다 — 상세는 담긴 향수를 다 세웁니다 */
+export interface CollectionDetail extends Omit<
+  CollectionSummary,
+  'previewThumbnails'
+> {
   perfumes: CollectionPerfume[]
 }
 

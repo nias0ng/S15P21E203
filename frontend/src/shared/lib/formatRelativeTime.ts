@@ -12,13 +12,6 @@ const UNITS = [
   ms: number
 }[]
 
-/**
- * "3시간 전" 처럼 상대 시간을 적습니다.
- *
- * @param iso ISO 8601 시각 문자열
- * @param now 기준 시각. 시험에서 현재 시각을 고정할 때 넘깁니다
- * @returns "3시간 전" 꼴의 문자열. 1분 미만은 "방금", 못 읽는 값은 빈 문자열
- */
 export function formatRelativeTime(iso: string, now: Date = new Date()) {
   const target = new Date(iso)
   if (Number.isNaN(target.getTime())) return ''

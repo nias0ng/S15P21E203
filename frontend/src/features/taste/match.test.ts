@@ -14,10 +14,8 @@ import {
   type ScentVector,
 } from './types'
 
-/** 희소 조합과 동점 · 순서 의존은 데이터가 갱신되면 조용히 깨져 실제 200개로 전수 확인합니다. */
 const vectors: ScentVector[] = SCENT_VECTORS_FIXTURE
 
-/** 두 계열을 고르는 모든 순서쌍 (9 × 8 = 72가지) */
 function orderedPairs(): [ScentFamilyKey, ScentFamilyKey][] {
   const pairs: [ScentFamilyKey, ScentFamilyKey][] = []
   for (const first of SCENT_FAMILY_KEYS) {
@@ -90,7 +88,6 @@ describe('matchStartingPoint', () => {
   })
 
   it('후보가 있는 조합에서는 두 계열을 모두 가진 향수가 뽑힌다', () => {
-    // 1순위 가중치를 올리면 여기서부터 깨집니다. PRIMARY_WEIGHT 0.58 이 상한입니다.
     for (const picks of orderedPairs()) {
       const candidates = countCandidates(vectors, picks)
       if (candidates === 0) continue
@@ -126,7 +123,6 @@ describe('matchStartingPoint', () => {
     for (const picks of orderedPairs()) {
       const candidates = countCandidates(vectors, picks)
       const match = matchStartingPoint(vectors, picks)
-      // expect 를 if/else 안에 두면 분기가 안 타도 통과해버려 기대값을 먼저 정합니다.
       const expected =
         candidates === 0 ? 'NO_OVERLAP' : candidates === 1 ? 'RARE' : 'NORMAL'
 
@@ -137,7 +133,6 @@ describe('matchStartingPoint', () => {
   })
 
   it('유사도가 같으면 국내 선정 순위가 앞선 향수를 쓴다', () => {
-    // 플로럴 단독 향수들은 유사도가 전부 정확히 1.0 이라 동점이 대량으로 생깁니다.
     const match = matchStartingPoint(vectors, ['FLORAL'])
     const tied = vectors.filter(
       (vector) =>
@@ -171,7 +166,6 @@ describe('matchStartingPoint', () => {
       return forward?.perfumeId !== backward?.perfumeId
     })
 
-    // 순서가 아무 데서도 결과를 바꾸지 않으면 1·2순위 배지가 거짓말이 됩니다.
     expect(flipped.length).toBeGreaterThan(0)
   })
 })
@@ -181,13 +175,11 @@ describe('countCandidates', () => {
     const sample: ScentVector[] = [
       {
         perfumeId: 1,
-        x: 0,
-        y: 0,
         rank: 1,
         families: { FLORAL: 0.5, MUSK: 0.3 },
       },
-      { perfumeId: 2, x: 0, y: 0, rank: 2, families: { FLORAL: 0.4 } },
-      { perfumeId: 3, x: 0, y: 0, rank: 3, families: { MUSK: 0.4 } },
+      { perfumeId: 2, rank: 2, families: { FLORAL: 0.4 } },
+      { perfumeId: 3, rank: 3, families: { MUSK: 0.4 } },
     ]
 
     expect(countCandidates(sample, ['FLORAL', 'MUSK'])).toBe(1)

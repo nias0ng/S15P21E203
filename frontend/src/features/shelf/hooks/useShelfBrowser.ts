@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 
+import { keywordMatcher } from '@/shared/lib/keywordMatch'
+
 import {
   SHELF_CATEGORIES,
   type ShelfCategory,
-  type ShelfCounts,
   type ShelfItem,
   type ShelfSection,
 } from '../types'
@@ -13,8 +14,6 @@ type ShelfBrowser = {
   sections: ShelfSection[]
   keyword: string
   changeKeyword: (next: string) => void
-  /** 검색어를 적용한 뒤의 칸별 개수 */
-  counts: ShelfCounts
   /** 진열대 창 가운데에 걸린 칸. 칩의 켜짐입니다 */
   viewCategory: ShelfCategory
   changeViewCategory: (next: ShelfCategory) => void
@@ -52,27 +51,16 @@ export function useShelfBrowser(items: ShelfItem[]): ShelfBrowser {
   // 검색은 향수명과 브랜드명을 함께 봅니다. 세 칸 모두에 같은 검색어가 걸립니다 —
   // 한 칸에만 걸면 다른 칸에 있는 결과가 조용히 가려집니다.
   const sections = useMemo<ShelfSection[]>(() => {
-    const needle = keyword.trim().toLowerCase()
-    const matches = (item: ShelfItem) =>
-      !needle ||
-      item.name.toLowerCase().includes(needle) ||
-      // 브랜드가 비어 있는 향수가 있습니다 — 이름만으로 걸립니다
-      (item.brand?.toLowerCase().includes(needle) ?? false)
+    const matches = keywordMatcher(keyword)
 
     return SHELF_CATEGORIES.map(({ value, label }) => ({
       category: value,
       label,
-      items: items.filter((item) => item.category === value && matches(item)),
+      items: items.filter(
+        (item) => item.category === value && matches(item.name, item.brand),
+      ),
     }))
   }, [items, keyword])
-
-  const counts = useMemo(
-    () =>
-      Object.fromEntries(
-        sections.map((section) => [section.category, section.items.length]),
-      ) as ShelfCounts,
-    [sections],
-  )
 
   /** 벽에 선 순서 그대로 이은 목록. 하단 페이저가 이 순서로 넘깁니다 */
   const lined = useMemo(
@@ -97,7 +85,6 @@ export function useShelfBrowser(items: ShelfItem[]): ShelfBrowser {
       setKeyword(next)
       setSelectedId(null)
     },
-    counts,
     viewCategory,
     changeViewCategory: setViewCategory,
     selected: lined[current] ?? null,

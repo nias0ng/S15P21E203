@@ -73,6 +73,16 @@ const PAPER_INK: Ink = {
 export const FOCUS =
   'rounded-card outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
 
+/** 헤더에 글자로 선 링크 · 단추 (메뉴 · 커뮤니티 · 계정). 열림 · 지금 화면 표시는 부르는 쪽이 더합니다 */
+export const inkLink = (ink: Ink) =>
+  cn(
+    'transition-colors duration-120 ease-out',
+    ink.text,
+    ink.hover,
+    FOCUS,
+    ink.ring,
+  )
+
 export const inkOf = (tone: HeaderTone): Ink =>
   tone === 'glass'
     ? GLASS_INK

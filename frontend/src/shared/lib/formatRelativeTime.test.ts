@@ -12,7 +12,6 @@ describe('formatRelativeTime', () => {
   it('와이어프레임 표기대로 "N일 전" 형태를 쓴다', () => {
     expect(formatRelativeTime('2026-09-08T11:48:00Z', NOW)).toBe('12분 전')
     expect(formatRelativeTime('2026-09-08T09:00:00Z', NOW)).toBe('3시간 전')
-    // numeric: 'auto' 였다면 "어제" · "그저께" 가 나옵니다
     expect(formatRelativeTime('2026-09-07T12:00:00Z', NOW)).toBe('1일 전')
     expect(formatRelativeTime('2026-09-06T12:00:00Z', NOW)).toBe('2일 전')
   })

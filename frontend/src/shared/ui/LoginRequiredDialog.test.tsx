@@ -39,4 +39,44 @@ describe('LoginRequiredDialog', () => {
 
     expect(onClose).toHaveBeenCalledOnce()
   })
+
+  it('회원가입 · 로그인은 돌아올 경로를 단 링크다', () => {
+    renderDialog({ redirectTo: '/community/free/write' })
+
+    expect(screen.getByRole('link', { name: '회원가입' })).toHaveAttribute(
+      'href',
+      '/signup?redirectTo=%2Fcommunity%2Ffree%2Fwrite',
+    )
+    expect(screen.getByRole('link', { name: '로그인' })).toHaveAttribute(
+      'href',
+      '/login?redirectTo=%2Fcommunity%2Ffree%2Fwrite',
+    )
+  })
+
+  it('돌아올 경로가 없으면 로그인 화면으로만 보낸다', () => {
+    renderDialog()
+
+    expect(screen.getByRole('link', { name: '로그인' })).toHaveAttribute(
+      'href',
+      '/login',
+    )
+  })
+
+  it('3D 향 지도 위(scene)에서도 취소 · 회원가입 · 로그인이 그대로 있다', async () => {
+    const onClose = vi.fn()
+    renderDialog({ scene: true, onClose, redirectTo: '/' })
+
+    expect(screen.getByRole('link', { name: '회원가입' })).toHaveAttribute(
+      'href',
+      '/signup?redirectTo=%2F',
+    )
+    expect(screen.getByRole('link', { name: '로그인' })).toHaveAttribute(
+      'href',
+      '/login?redirectTo=%2F',
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: '취소' }))
+
+    expect(onClose).toHaveBeenCalledOnce()
+  })
 })

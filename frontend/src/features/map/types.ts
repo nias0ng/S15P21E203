@@ -2,68 +2,12 @@
  * 향 지도 도메인 타입 (와이어프레임 A01 · A02 · A03 — MAP-01 ~ MAP-24)
  */
 
-import {
-  SCENT_FAMILY_KEYS,
-  SCENT_FAMILY_NAMES,
-  type ScentFamilyKey,
-} from '@/shared/config/scentFamilies'
-
-/**
- * 향 계열 구역 **아홉 개**. 지도를 나누는 기준이 곧 향 계열이라 공용 어휘를 그대로
- * 씁니다.
- *
- * 전에는 여기 여섯 개가 따로 적혀 있었고 그중 `FRESH` · `SPICY` 는 **어디에도 없는
- * 값**이었습니다. 실제 지도 데이터가 들어오기 전에 손으로 적어 둔 것이 남아 있던
- * 것입니다 — 3D 엔진도 백엔드도 아래 아홉을 씁니다.
- */
-export const SCENT_REGIONS = SCENT_FAMILY_KEYS.map((id) => ({
-  id,
-  label: SCENT_FAMILY_NAMES[id],
-}))
-
-/** 구역 = 향 계열입니다. 이름만 도메인 어휘로 바꿔 둡니다. */
-export type ScentRegionId = ScentFamilyKey
-
-/**
- * 향 계열 아홉 — 백엔드 `scent_regions.code` 의 `display_order` 순서 · 3D 엔진 CONFIG.families 와 같은 코드.
- * 향해 일지처럼 백엔드 지도 API 를 읽는 곳은 이것을 씁니다.
- * ⚠ develop 병합(2026-09-16)으로 위의 SCENT_REGIONS 도 공용 어휘(`shared/config/scentFamilies`)의 아홉이 됐습니다 —
- *   코드 · 이름이 이 목록과 같아 두 벌입니다. 이 목록을 공용 어휘로 합치는 것은 따로 합니다.
- */
-export const SCENT_FAMILIES = [
-  { code: 'CITRUS', label: '시트러스' },
-  { code: 'FRUITY', label: '프루티' },
-  { code: 'FLORAL', label: '플로럴' },
-  { code: 'GREEN', label: '그린' },
-  { code: 'AQUATIC', label: '아쿠아틱' },
-  { code: 'WOODY', label: '우디' },
-  { code: 'AMBER', label: '앰버' },
-  { code: 'GOURMAND', label: '구르망' },
-  { code: 'MUSK', label: '머스크' },
-] as const
-
-export type ScentFamilyCode = (typeof SCENT_FAMILIES)[number]['code']
-
-/**
- * 지도 위의 향수 한 점.
- *
- * x · y 는 지도 좌표계(0~100) 기준 비율입니다. 실제 좌표 체계는 백엔드의
- * perfume_map_points 가 정해지면 그 값으로 바꿔야 합니다.
- */
-export interface MapPoint {
-  perfumeId: number
-  name: string
-  brand: string
-  region: ScentRegionId
-  x: number
-  y: number
-}
+import { type ScentFamilyKey } from '@/shared/config/scentFamilies'
 
 /**
  * 3D 지도에 실제로 떠 있는 향수 한 개 (MAP-01 의 200개).
  *
- * `MapPoint` 와 다릅니다. `MapPoint` 는 **백엔드 지도 API** 가 줄 점이고(아직
- * 자리표시자), 이쪽은 **엔진이 지금 화면에 띄우고 있는 목록** 그대로입니다
+ * **엔진이 지금 화면에 띄우고 있는 목록** 그대로입니다
  * (`landing/src/perfumes-data.js` · `data/perfume_map_points.csv` 생성물).
  * 메인의 일반 검색이 찾는 대상이라 엔진과 같은 목록이어야 합니다.
  *
@@ -82,20 +26,12 @@ export interface MapPerfume {
   /** 영문 원명 — 한글로 못 찾을 때 같이 보여 줍니다 */
   nameEn: string
   brandEn: string
-  family: ScentRegionId | null
+  family: ScentFamilyKey | null
   /** 화해 지도 기준 순위 1~200. 검색 결과를 이 순서로 냅니다 */
   rank: number
   /** 지도 좌표 (정규화 0~1). DB 향수 번호를 찾는 다리입니다 (`lib/perfumeIdAt`) */
   mx: number
   my: number
-}
-
-/** 지도에서 지금 보고 있는 범위. 미니맵이 이 값을 사각형으로 그립니다. */
-export interface Viewport {
-  x: number
-  y: number
-  width: number
-  height: number
 }
 
 /**
@@ -109,7 +45,7 @@ export interface VoyageLogEntry {
   enteredAt: string
   scentRegionId: number
   /** 계열 코드 — 화면은 코드로 이름을 고릅니다 */
-  region: ScentFamilyCode
+  region: ScentFamilyKey
   /** 그 구역에 있는 동안 들른 향수 (같은 향수는 한 번) · 지나가기만 했으면 빈 목록 */
   visited: VoyageLogPerfume[]
 }
@@ -121,7 +57,7 @@ export interface VoyageLogEntry {
  * (`lib/mapPerfumeLookup` 의 `withMapPerfumes`). 지도에서 못 찾은 향수는 API 값 그대로라
  * 채우는 칸은 모두 비어 있을 수 있습니다.
  */
-export interface VoyageLogPerfume {
+interface VoyageLogPerfume {
   perfumeId: number
   /** 일지에 적는 이름. 지도에서 찾았으면 3D 부표 위의 짧은 한글 이름입니다 */
   name: string
@@ -129,7 +65,7 @@ export interface VoyageLogPerfume {
   fullName?: string
   brand?: string
   /** 대표 향 계열 — 아이콘 색을 정합니다 */
-  family?: ScentFamilyCode | null
+  family?: ScentFamilyKey | null
 }
 
 /**

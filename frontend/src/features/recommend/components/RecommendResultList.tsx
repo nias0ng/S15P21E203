@@ -7,14 +7,15 @@ import { FOCUS_RING } from '@/shared/ui/focusRing'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
-import { accordLabel } from '../accordNames'
+import {
+  nlrReasonSentence,
+  type ReasonContext,
+  type ReasonPart,
+} from '../nlrReason'
 import type { RecommendedPerfume } from '../types'
 
-type Props = {
+type Props = ReasonContext & {
   perfumes: RecommendedPerfume[]
-  selectedId: number | null
-  /** 카드를 누르면 그 향수가 미니맵에서 강조됩니다 */
-  onSelect: (perfumeId: number) => void
 }
 
 /**
@@ -78,8 +79,11 @@ function useCollapsedListHeight(itemCount: number) {
   return { listRef, height }
 }
 
-/** 자연어 추천 결과 카드 목록 (NLR-06 · NLR-07). 추천 이유를 입력한 표현과 짝지어 보여줍니다. */
-export function RecommendResultList({ perfumes, selectedId, onSelect }: Props) {
+/**
+ * 자연어 추천 결과 카드 목록 (NLR-06 · NLR-07). 추천 이유는 입력한 표현과 향을 짝지은 한
+ * 문장입니다(`nlrReasonSentence`).
+ */
+export function RecommendResultList({ perfumes, ...context }: Props) {
   /* 처음에는 다 접혀 있습니다 — 그 높이가 목록을 잠그는 기준이고, 한 장만 열어 두면 그 카드가
      기준이 되어 목록이 처음부터 굴러갈 자리를 안고 섭니다 */
   const [expandedId, setExpandedId] = useState<number | null>(null)
@@ -105,23 +109,21 @@ export function RecommendResultList({ perfumes, selectedId, onSelect }: Props) {
     >
       {perfumes.map((perfume, index) => {
         const expanded = expandedId === perfume.perfumeId
-        const selected = selectedId === perfume.perfumeId
 
         return (
           <li key={perfume.perfumeId} data-expanded={expanded}>
             <article
               className={cn(
                 'border-line bg-surface-card rounded-glass border p-2.5',
-                selected && 'border-ink',
+                expanded && 'border-ink',
               )}
             >
               <button
                 type="button"
                 aria-expanded={expanded}
-                onClick={() => {
-                  onSelect(perfume.perfumeId)
+                onClick={() =>
                   setExpandedId(expanded ? null : perfume.perfumeId)
-                }}
+                }
                 className={cn(
                   'flex w-full items-center gap-2.5 text-left',
                   FOCUS_RING,
@@ -159,37 +161,12 @@ export function RecommendResultList({ perfumes, selectedId, onSelect }: Props) {
 
               {expanded && (
                 <div className="border-line mt-2.5 space-y-2.5 border-t pt-2.5">
-                  <p className="text-ink-muted text-caption">추천 이유</p>
-                  <ul className="space-y-1.25">
-                    {perfume.reasons.map((reason) => (
-                      <li
-                        key={reason.evidence}
-                        className="text-ink text-caption leading-relaxed"
-                      >
-                        {/*
-                          NOTE: 근거는 `citrus` 같은 **영어**로 옵니다. 번역은 백엔드
-                          `AccordLabeler` 의 몫이지만 이름표가 아직 안 와서 영어가 그대로
-                          나오고, 3D 향 지도의 향수 카드는 같은 향 특성을 이미 한국어로
-                          보여줍니다. 한 서비스 안에서 두 말이 되지 않게 여기서 덮습니다.
-                        */}
-                        {reason.phrase ? (
-                          <>
-                            · &lsquo;{reason.phrase}&rsquo; →{' '}
-                            {accordLabel(reason.evidence)}
-                          </>
-                        ) : (
-                          <>· {accordLabel(reason.evidence)}</>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
+                  <RecommendReasonText perfume={perfume} context={context} />
                   <LinkButton
                     to={toPerfumeDetail(perfume.perfumeId)}
                     state={perfumeViewState('NATURAL_LANGUAGE_RECOMMENDATION')}
-                    variant="outline"
+                    variant="navy"
                     size="sm"
-                    // 판 위의 단추는 엔진 카드 단추와 같은 남색입니다 (--pb-card-btn)
-                    className="bg-navy hover:bg-navy/85"
                   >
                     자세히 보기
                   </LinkButton>
@@ -200,5 +177,45 @@ export function RecommendResultList({ perfumes, selectedId, onSelect }: Props) {
         )
       })}
     </ul>
+  )
+}
+
+/** 향 이름은 조금 굵게, 괄호 안 강도는 옅게 — 두세 줄로 길어져도 향 이름이 먼저 읽힙니다 */
+const TONE_CLASS: Record<NonNullable<ReasonPart['tone']>, string> = {
+  term: 'font-medium',
+  strength: 'text-ink-muted',
+}
+
+/**
+ * 추천 이유 머리글과 한 문장.
+ *
+ * NOTE: 괄호 안 숫자의 뜻은 **숫자를 하나라도 적었을 때만** 머리글에 씁니다. 강도가 오지 않는
+ * 서버와 만나거나 향이 아닌 조건으로 고른 카드에는 숫자가 없어, 그때 뜻을 적으면 없는 괄호를
+ * 설명하게 됩니다.
+ */
+function RecommendReasonText({
+  perfume,
+  context,
+}: {
+  perfume: RecommendedPerfume
+  context: ReasonContext
+}) {
+  const sentence = nlrReasonSentence(perfume.reasons, context)
+  if (!sentence) return null
+
+  return (
+    <>
+      <p className="text-ink-muted text-caption">
+        추천 이유
+        {sentence.showsStrength && ' · 괄호 안은 향 강도 0~100'}
+      </p>
+      <p className="text-ink text-caption leading-relaxed break-keep">
+        {sentence.parts.map((part, index) => (
+          <span key={index} className={part.tone && TONE_CLASS[part.tone]}>
+            {part.text}
+          </span>
+        ))}
+      </p>
+    </>
   )
 }

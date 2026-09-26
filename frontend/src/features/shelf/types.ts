@@ -22,14 +22,14 @@ export const SHELF_CATEGORIES = [
 ] as const satisfies readonly { value: ShelfCategory; label: string }[]
 
 /**
- * 분류 칩에 붙는 개수. **검색어를 적용한 뒤**의 수입니다 —
- * 검색 중에는 칩 숫자가 "이 칸에 몇 개가 걸렸나" 를 알려주는 쪽이 쓸모 있습니다.
- *
- * Record 로 두면 분류가 늘 때 컴파일러가 빠진 칸을 잡아줍니다. 예전에는
- * `{ all, owned, tried, wish }` 라 분류와 칸 이름을 잇는 표를 따로 들고 있었고,
- * 그 표가 곧 어긋날 자리였습니다.
+ * 분류의 영문 설명 — 메뉴판의 분류 이름 아래(ShelfPlaque)와 상세 카드 머리(ShelfDetailPanel)에 작게
+ * 적습니다. 한글 분류 이름을 되풀이하는 장식이라 낭독기에서는 뺍니다. 대문자 · 자간은 CSS 가 입힙니다.
  */
-export type ShelfCounts = Record<ShelfCategory, number>
+export const SHELF_CATEGORY_CAPTION: Record<ShelfCategory, string> = {
+  OWNED: 'My collection',
+  TRIED: 'Tried scents',
+  WISH: 'Wish list',
+}
 
 /** 진열장 한 칸 — 분류 하나와 거기 선 향수들 */
 export type ShelfSection = {
@@ -52,28 +52,8 @@ export interface ShelfItem {
   name: string
   /** 브랜드가 비어 있는 향수가 있습니다. 이름표는 그 자리를 비웁니다 */
   brand: string | null
-  /*
-   * 영문 표기 셋. 사람이 읽는 대소문자 그대로 두고, 대문자는 CSS 가 입힙니다.
-   *
-   * ⚠️ 백엔드가 주지 않습니다 — 목록에도 상세에도 없습니다. 필수로 선언하면 타입은
-   * 통과하는데 런타임에 undefined 라 빈 줄이 생깁니다. 영문 브랜드가 없으면
-   * 이름표가 그 자리에 한글 브랜드를 적습니다(DisplayCase).
-   * 백엔드가 내려주기 시작하면 `?` 를 떼세요.
-   */
-  /** 영문 브랜드 (Jo Malone). 이름표 첫 줄에 자간을 넓힌 대문자로 적습니다 */
-  brandEn?: string
-  /** 영문 향수 이름 (Wood Sage & Sea Salt). 이름표를 간소화하면서 지금은 화면에 적지 않습니다 */
-  nameEn?: string
-  /**
-   * 한국어 이름 (우드 세이지 앤 씨 솔트).
-   *
-   * ⚠️ **목록 응답에 아직 없습니다 — BE 에 추가를 요청해 둔 값입니다**(상세에는 이미
-   * 있습니다). 그날까지는 undefined 로 오고 이름표가 영문 이름을 그대로 적습니다.
-   * 내려주기 시작하면 이 화면은 손대지 않아도 한글로 바뀝니다. `?` 는 그때 떼세요.
-   */
-  nameKo?: string | null
-  /** 부향률 (Eau de Cologne). 이름표를 간소화하면서 지금은 화면에 적지 않습니다 */
-  concentration?: string
+  /** 한국어 이름 (우드 세이지 앤 씨 솔트). 없는 향수가 많아 그때는 이름표가 영문 이름을 적습니다 */
+  nameKo: string | null
   thumbnailUrl: string | null
   category: ShelfCategory
 }
@@ -85,8 +65,6 @@ export interface ShelfItem {
  * 등록 모달로 흡수됐고, 향수 상세의 후기와는 별개입니다).
  */
 export interface ShelfItemDetail extends ShelfItem {
-  /** 한국어 이름. 없는 향수가 많습니다 */
-  nameKo: string | null
   /**
    * 내 취향 적합도 (SHF-12 · DTL-18 · DTL-19). 선택 항목입니다.
    *

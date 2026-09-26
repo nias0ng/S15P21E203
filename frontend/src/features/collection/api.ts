@@ -1,3 +1,4 @@
+import { fetchAllPages } from '@/shared/api/fetchAllPages'
 import { http } from '@/shared/api/http'
 
 import type {
@@ -8,13 +9,18 @@ import type {
 } from './types'
 
 /** 서버는 `name`, 화면은 `title` 입니다 — 옮기는 일은 `toCollectionSummary` 한 곳입니다 */
-interface CollectionSummaryResponse {
+interface CollectionBaseResponse {
   collectionId: number
   name: string
   description: string | null
-  perfumeCount: number
   createdAt: string
   updatedAt: string
+}
+
+interface CollectionSummaryResponse extends CollectionBaseResponse {
+  perfumeCount: number
+  /** 담긴 순서대로 최대 3장. 사진이 없는 향수는 null, 빈 컬렉션은 빈 배열입니다 */
+  previewThumbnails: (string | null)[]
 }
 
 interface CollectionsResponse {
@@ -23,9 +29,6 @@ interface CollectionsResponse {
   size: number
   totalElements: number
 }
-
-/** 백엔드 `MAX_PAGE_SIZE`. 더 큰 값을 보내도 서버가 여기로 깎습니다 */
-const MAX_PAGE_SIZE = 100
 
 /** 지우는 데 쓰는 번호는 `shelfItemId` 입니다 */
 interface CollectionPerfumeResponse {
@@ -36,12 +39,10 @@ interface CollectionPerfumeResponse {
   thumbnailUrl: string | null
 }
 
-interface CollectionDetailResponse extends CollectionSummaryResponse {
+/** 상세에는 개수가 없습니다 — 담긴 향수에서 셉니다(`getCollectionDetail`) */
+interface CollectionDetailResponse extends CollectionBaseResponse {
   perfumes: CollectionPerfumeResponse[]
 }
-
-/** NOTE: 목록 응답에 썸네일이 없어 빈 자리로 채웁니다 — `[]` 로 두면 카드가 납작해집니다 */
-const EMPTY_PREVIEW: (string | null)[] = [null, null, null]
 
 function toCollectionSummary(
   collection: CollectionSummaryResponse,
@@ -51,7 +52,7 @@ function toCollectionSummary(
     title: collection.name,
     description: collection.description,
     perfumeCount: collection.perfumeCount,
-    previewThumbnails: EMPTY_PREVIEW,
+    previewThumbnails: collection.previewThumbnails,
   }
 }
 
@@ -69,29 +70,16 @@ function toCollectionPerfume(
 
 /** 페이지로 나뉘고 기본 10개라, 그냥 부르면 열한 번째부터 조용히 사라집니다 */
 export async function getMyCollections(): Promise<CollectionSummary[]> {
-  const first = await fetchCollectionPage(0)
-  const collections = [...first.collections]
-
-  // 서버가 size 를 깎을 수 있으므로 응답이 알려준 size 로 남은 장수를 셉니다
-  const pageSize = first.size > 0 ? first.size : MAX_PAGE_SIZE
-  const pages = Math.ceil(first.totalElements / pageSize)
-
-  for (let page = 1; page < pages; page += 1) {
-    const next = await fetchCollectionPage(page)
-    collections.push(...next.collections)
-  }
-
-  return collections.map(toCollectionSummary)
-}
-
-async function fetchCollectionPage(page: number) {
-  const { data } = await http.get<CollectionsResponse>(
-    '/users/me/collections',
-    {
-      params: { page, size: MAX_PAGE_SIZE },
-    },
+  const collections = await fetchAllPages(
+    (page, size) =>
+      http
+        .get<CollectionsResponse>('/users/me/collections', {
+          params: { page, size },
+        })
+        .then(({ data }) => data),
+    (data) => data.collections,
   )
-  return data
+  return collections.map(toCollectionSummary)
 }
 
 export async function getCollectionDetail(
@@ -104,13 +92,10 @@ export async function getCollectionDetail(
   const perfumes = data.perfumes.map(toCollectionPerfume)
 
   return {
-    ...toCollectionSummary(data),
-    /* NOTE: 상세 응답에는 `perfumeCount` 가 없습니다 — 그대로 옮기면 "향수 개" 로 찍힙니다 */
+    collectionId: data.collectionId,
+    title: data.name,
+    description: data.description,
     perfumeCount: perfumes.length,
-    previewThumbnails: [
-      ...perfumes.slice(0, 3).map((item) => item.thumbnailUrl),
-      ...EMPTY_PREVIEW,
-    ].slice(0, 3),
     perfumes,
   }
 }

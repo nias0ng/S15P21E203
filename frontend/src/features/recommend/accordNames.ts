@@ -15,8 +15,11 @@ import { SCENT_FAMILY_NAMES } from '@/shared/config/scentFamilies'
  *
  * NOTE: 백엔드가 나중에 `AccordLabeler` 를 채워 한국어를 보내기 시작해도 안전합니다 —
  * 모르는 값은 그대로 흘려보내므로, 이미 한국어인 값은 건드리지 않습니다.
+ *
+ * NOTE: 손으로 옮긴 표라 CSV 와 갈라지면 `accordNames.test.ts` 가 잡습니다. 그 테스트가
+ * 읽으려고 내보냅니다 — 도메인 밖에서는 `accordLabel` 을 씁니다.
  */
-const ACCORD_NAMES_KO: Record<string, string> = {
+export const ACCORD_NAMES_KO: Record<string, string> = {
   citrus: '시트러스', // 향 계열 이름 (shared/config/scentFamilies.ts)
   woody: '우디', // 향 계열 이름
   powdery: '파우더리',
@@ -80,7 +83,7 @@ const ACCORD_NAMES_KO: Record<string, string> = {
 }
 
 /** `evidence` 는 여럿이면 이 구분자로 이어져 옵니다 (응답 DTO 계약) */
-const EVIDENCE_SEPARATOR = ' · '
+export const EVIDENCE_SEPARATOR = ' · '
 
 /**
  * 추천 이유 한 칸을 화면에 쓸 말로 바꿉니다.

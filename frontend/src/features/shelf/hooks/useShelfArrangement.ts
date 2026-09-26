@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react'
+import { useMediaQuery } from '@/shared/hooks/useMediaQuery'
 
 /**
  * 진열대 화면의 배치.
@@ -19,15 +19,6 @@ export type ShelfArrangement = 'overlay' | 'stacked'
  */
 const OVERLAY_QUERY = '(width >= 64rem)'
 
-const subscribe = (onChange: () => void) => {
-  const query = window.matchMedia?.(OVERLAY_QUERY)
-  query?.addEventListener('change', onChange)
-  return () => query?.removeEventListener('change', onChange)
-}
-
-const read = (): ShelfArrangement =>
-  (window.matchMedia?.(OVERLAY_QUERY).matches ?? true) ? 'overlay' : 'stacked'
-
 /**
  * 지금 화면 폭에 맞는 진열대 배치.
  *
@@ -36,5 +27,6 @@ const read = (): ShelfArrangement =>
  * 숨기면 병 사진 스물다섯 장이 든 벽이 두 벌 그려집니다.
  */
 export function useShelfArrangement(): ShelfArrangement {
-  return useSyncExternalStore(subscribe, read, () => 'overlay')
+  // 폭을 모르면(matchMedia 가 없는 곳 · 서버 렌더) 한 장 배치로 둡니다
+  return useMediaQuery(OVERLAY_QUERY, true) ? 'overlay' : 'stacked'
 }

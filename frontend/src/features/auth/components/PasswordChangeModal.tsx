@@ -1,46 +1,41 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 
-import { isApiError } from '@/shared/api/http'
+import { apiErrorMessage } from '@/shared/api/http'
 import { ROUTES } from '@/shared/config/routes'
-import { useAuthStore } from '@/shared/store/authStore'
+import { useEndSession } from '@/shared/hooks/useEndSession'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
 import { Modal } from '@/shared/ui/Modal'
 
 import { changePassword } from '../api'
+import { useNewPassword } from '../hooks/useNewPassword'
 import { PASSWORD_MIN_LENGTH } from '../types'
+
+import { NewPasswordFields } from './NewPasswordFields'
 
 type Props = { open: boolean; onClose: () => void }
 
-/**
- * 비밀번호 변경 모달 (A30 좌측). 성공하면 로그아웃됩니다 — 서버가 그 사람의 모든
- * 세션을 끊어(`revokeAll`) 들고 있는 토큰도 죽습니다.
- */
 export function PasswordChangeModal({ open, onClose }: Props) {
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
+  const endSession = useEndSession()
 
   const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [newPasswordConfirm, setNewPasswordConfirm] = useState('')
+  const newPassword = useNewPassword()
 
   const reset = () => {
     setCurrentPassword('')
-    setNewPassword('')
-    setNewPasswordConfirm('')
+    newPassword.reset()
   }
 
   const mutation = useMutation({
-    mutationFn: () => changePassword({ currentPassword, newPassword }),
+    mutationFn: () =>
+      changePassword({ currentPassword, newPassword: newPassword.password }),
     onSuccess: () => {
       reset()
       onClose()
-
-      // 토큰을 먼저 버려야 남아 있는 쿼리가 죽은 토큰으로 다시 나가지 않습니다
-      useAuthStore.getState().clear()
-      queryClient.clear()
+      endSession()
       navigate(ROUTES.LOGIN, {
         replace: true,
         state: { passwordChanged: true },
@@ -54,21 +49,8 @@ export function PasswordChangeModal({ open, onClose }: Props) {
     onClose()
   }
 
-  const newPasswordError =
-    newPassword.length > 0 && newPassword.length < PASSWORD_MIN_LENGTH
-      ? `비밀번호는 ${PASSWORD_MIN_LENGTH}자 이상이어야 합니다`
-      : undefined
-
-  const confirmError =
-    newPasswordConfirm.length > 0 && newPasswordConfirm !== newPassword
-      ? '비밀번호가 서로 다릅니다'
-      : undefined
-
   const canSubmit =
-    currentPassword.length > 0 &&
-    newPassword.length >= PASSWORD_MIN_LENGTH &&
-    newPasswordConfirm === newPassword &&
-    !mutation.isPending
+    currentPassword.length > 0 && newPassword.valid && !mutation.isPending
 
   return (
     <Modal
@@ -108,34 +90,14 @@ export function PasswordChangeModal({ open, onClose }: Props) {
           value={currentPassword}
           onChange={(event) => setCurrentPassword(event.target.value)}
         />
-        <Input
-          label="새 비밀번호"
-          hideLabel
-          type="password"
-          autoComplete="new-password"
-          placeholder="새 비밀번호"
-          required
-          value={newPassword}
-          onChange={(event) => setNewPassword(event.target.value)}
-          error={newPasswordError}
-        />
-        <Input
-          label="새 비밀번호 확인"
-          hideLabel
-          type="password"
-          autoComplete="new-password"
-          placeholder="새 비밀번호 확인"
-          required
-          value={newPasswordConfirm}
-          onChange={(event) => setNewPasswordConfirm(event.target.value)}
-          error={confirmError}
-        />
+        <NewPasswordFields label="새 비밀번호" password={newPassword} />
 
         {mutation.error !== null && (
           <p className="text-danger text-caption" role="alert">
-            {isApiError(mutation.error)
-              ? mutation.error.message
-              : '비밀번호를 바꾸지 못했습니다. 잠시 후 다시 시도해주세요.'}
+            {apiErrorMessage(
+              mutation.error,
+              '비밀번호를 바꾸지 못했습니다. 잠시 후 다시 시도해주세요.',
+            )}
           </p>
         )}
 

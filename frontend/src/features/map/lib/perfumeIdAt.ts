@@ -49,7 +49,7 @@ export interface PerfumeIdIndex {
  * 좌표 → DB 향수 번호 색인을 만듭니다.
  *
  * 먼저 반올림한 키로 찾고, 없으면 `NEAR_LIMIT` 안의 가장 가까운 점을 받습니다. 200개짜리
- * 목록이라 훑어도 싸고, 부르는 때가 [자세히 보기] 를 누른 순간뿐입니다.
+ * 목록이라 훑어도 싸고, 부르는 때가 카드의 단추를 누른 순간뿐입니다.
  */
 export function buildPerfumeIdIndex(
   points: readonly MapPerfumePoint[],

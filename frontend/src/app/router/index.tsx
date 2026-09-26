@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { createBrowserRouter } from 'react-router'
 
-import { RootLayout, type PageWidth } from '@/app/layouts/RootLayout'
+import { RootLayout, type RouteHandle } from '@/app/layouts/RootLayout'
 import { ErrorPage } from '@/pages/ErrorPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { ROUTES } from '@/shared/config/routes'
@@ -39,26 +39,25 @@ const withSuspense = (element: React.ReactNode) => (
   <Suspense fallback={<PageFallback />}>{element}</Suspense>
 )
 
-const FULL = { width: 'full' } satisfies { width: PageWidth }
-/** 어두운 방 + 유리판 — docs/어두운-방-유리판.md */
-const NIGHT = { night: true } satisfies { night: boolean }
-/** 어두운 방 + 글 읽고 쓰는 폭 — 게시판에서 한 번에 넘어가는 사이라 같은 어둠입니다 */
-const TEXT_NIGHT = { width: 'text', night: true } satisfies {
-  width: PageWidth
-  night: boolean
-}
-/** 어두운 방 + 물결 — 향수 · 브랜드 · 노트 · 커뮤니티 (S15P21E203-427) */
-const WATER = { night: true, caustics: true } satisfies {
-  night: boolean
-  caustics: boolean
-}
-const TEXT_WATER = { width: 'text', night: true, caustics: true } satisfies {
-  width: PageWidth
-  night: boolean
-  caustics: boolean
-}
+/**
+ * 진열대 종이 + 화면 틀 전체 — 진열대와 그 안에서 들어가는 컬렉션 상세. 헤더까지 같은 종이로 칠합니다
+ * (RootLayout 의 `paper`).
+ */
+const PAPER = { width: 'full', paper: true } satisfies RouteHandle
+/** 어두운 방 + 유리판 + 글 읽고 쓰는 폭 — docs/어두운-방-유리판.md. — 게시판에서 한 번에 넘어가는 사이라 같은 어둠입니다 */
+const TEXT_NIGHT = { width: 'text', night: true } satisfies RouteHandle
+/**
+ * 어두운 방 + 물 — 향수 · 브랜드 · 노트 · 커뮤니티 · 취향 테스트. 물결(빛 그물) 대신 수면 아래가
+ * 깔리고 내릴수록 가라앉습니다. `underwater` 를 빼면 물결로 돌아갑니다.
+ */
+const WATER = {
+  night: true,
+  caustics: true,
+  underwater: true,
+} satisfies RouteHandle
+const TEXT_WATER = { ...WATER, width: 'text' } satisfies RouteHandle
 /** 헤더 아래 화면 끝까지 — 3D 향 지도(A01)가 씁니다 */
-const BLEED = { width: 'bleed' } satisfies { width: PageWidth }
+const BLEED = { width: 'bleed' } satisfies RouteHandle
 
 export const router = createBrowserRouter([
   {
@@ -108,17 +107,20 @@ export const router = createBrowserRouter([
       {
         path: ROUTES.TASTE_TEST,
         element: withSuspense(<TasteTestPage />),
-        handle: NIGHT,
+        // 물은 고른 향 수만큼 한 겹씩 깔립니다(`TasteTestStep`)
+        handle: WATER,
       },
 
       {
         path: ROUTES.MY_SHELF,
         element: withSuspense(<MyShelfPage />),
-        handle: FULL,
+        handle: PAPER,
       },
       {
         path: ROUTES.COLLECTION_DETAIL,
         element: withSuspense(<CollectionDetailPage />),
+        // 진열대와 같은 종이 · 같은 폭 — 진열함을 눌러 넘어와도 틀이 그대로입니다
+        handle: PAPER,
       },
 
       {

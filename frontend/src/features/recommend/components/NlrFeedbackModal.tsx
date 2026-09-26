@@ -2,13 +2,12 @@ import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 
 import { isApiError } from '@/shared/api/http'
-import { UNROLL, useUnroll } from '@/shared/hooks/useUnroll'
-import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { ChipToggle } from '@/shared/ui/ChipToggle'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { Modal } from '@/shared/ui/Modal'
 import { Textarea } from '@/shared/ui/Textarea'
+import { Unroll } from '@/shared/ui/Unroll'
 
 import { sendRecommendFeedback } from '../api'
 import { usePendingFeedbackStore } from '../pendingFeedbackStore'
@@ -128,15 +127,17 @@ export function NlrFeedbackModal({ ready }: Props) {
         족자가 다음에 다시 풀리고, 로딩 중에 검색어가 화면 밖 DOM 에 먼저 앉지도 않습니다.
       */}
         {open && pending !== null && (
-          <FeedbackBody
-            key={pending.token}
-            token={pending.token}
-            query={pending.query}
-            answered={answered}
-            onAnswered={() => setAnsweredToken(pending.token)}
-            onSettle={close}
-            onDraftChange={rememberDraft}
-          />
+          // 손잡이마다 새로 세웁니다 — 앞 추천에 쓴 한마디가 다음 설문에 남으면 안 됩니다
+          <Unroll key={pending.token}>
+            <FeedbackForm
+              token={pending.token}
+              query={pending.query}
+              answered={answered}
+              onAnswered={() => setAnsweredToken(pending.token)}
+              onSettle={close}
+              onDraftChange={rememberDraft}
+            />
+          </Unroll>
         )}
       </Modal>
 
@@ -157,33 +158,6 @@ export function NlrFeedbackModal({ ready }: Props) {
         className="scent-map-panel rounded-glass"
       />
     </>
-  )
-}
-
-/** 손잡이마다 새로 마운트됩니다 — 앞 추천에 쓴 한마디가 다음 설문에 남으면 안 됩니다 */
-function FeedbackBody(props: {
-  token: string
-  query: string
-  answered: boolean
-  onAnswered: () => void
-  onSettle: () => void
-  onDraftChange: (text: string) => void
-}) {
-  const { bodyRef, style, inert } = useUnroll()
-
-  return (
-    <div
-      className={cn(
-        'overflow-hidden transition-[height] motion-reduce:transition-none',
-        UNROLL,
-      )}
-      style={style}
-      inert={inert}
-    >
-      <div ref={bodyRef}>
-        <FeedbackForm {...props} />
-      </div>
-    </div>
   )
 }
 
@@ -228,10 +202,7 @@ function FeedbackForm({
           고맙습니다. 남겨 주신 답은 추천을 넓히는 데만 씁니다.
         </p>
         <div className="mt-5 flex justify-end">
-          <Button
-            className="bg-navy border-line text-ink hover:bg-navy/85 border"
-            onClick={onSettle}
-          >
+          <Button variant="navy" onClick={onSettle}>
             닫기
           </Button>
         </div>
@@ -291,8 +262,7 @@ function FeedbackForm({
           건너뛰기
         </Button>
         <Button
-          // 판 위의 주 단추는 엔진 카드 단추와 같은 남색입니다 (--pb-card-btn)
-          className="bg-navy border-line text-ink hover:bg-navy/85 border"
+          variant="navy"
           onClick={() => mutation.mutate()}
           disabled={satisfaction === null || tooLong}
           isLoading={mutation.isPending}

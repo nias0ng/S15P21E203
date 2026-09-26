@@ -17,6 +17,13 @@
     --night: #1a2b4d;
     --night-abyss: #0e1224;
     --night-soft: #24385c;
+    /*
+     * 이 방의 물빛 — 로고를 눌러 메인으로 떠오를 때 커튼(`shared/ui/DiveCurtain`)이 이 두
+     * 색으로 덮습니다. 전환을 거는 순간 한 번 읽어 가므로 방 색을 바꾸면 커튼이 따라옵니다.
+     * ⚠️ 지우면 커튼이 바다 팔레트의 청록으로 돌아가 남색 방 위에 초록 기운이 도는 띠가 집니다.
+     */
+    --room-water: var(--night);
+    --room-water-deep: var(--night-abyss);
     --glass-edge: rgb(255 255 255 / 0.55);
 
     --color-surface: var(--night);
@@ -90,11 +97,18 @@
    *
    * 헤더를 투명하게 두는 방법은 못 씁니다 — `sticky` 라 스크롤한 글이 헤더를 뚫고
    * 비칩니다. 그래서 같은 그림을 한 장 더 깝니다.
+   *
+   * 맨 위 겹은 수면 아래(향수 목록)에서 가라앉은 만큼 덮는 어둠입니다. 값(`--night-sink`)은
+   * 물 판(`WaterCaustics`)이 매 장 방에 적고, 다른 방에서는 없어 투명합니다.
    */
   .scent-night,
   .scent-night-header {
     background-color: var(--night-abyss);
     background-image:
+      linear-gradient(
+        rgb(6 9 20 / var(--night-sink, 0)),
+        rgb(6 9 20 / var(--night-sink, 0))
+      ),
       radial-gradient(
         ellipse 55% 93% at 25% -5%,
         rgb(62 95 138 / 0.6) 0%,
@@ -193,6 +207,54 @@
       rgb(255 255 255 / 0.58) 100%
     );
     border-color: rgb(255 255 255 / 0.8);
+  }
+
+  /*
+   * 흰 판 — 어두운 방 안에서 **글을 읽는 자리**만 밝은 화면으로 되돌립니다
+   * (커뮤니티 글 카드 · 글 상세 · 댓글). 유리 위 글자는 흰색이라 긴 본문을 읽기
+   * 버겁습니다. 역할 토큰을 밝은 화면 값(팔레트)으로 되짚어, 안의 단추 · 입력칸 ·
+   * 배지가 따로 손대지 않아도 흰 바탕에 맞는 색이 됩니다.
+   *
+   * 판은 `PAPER_PANEL`(`shared/ui/panel.ts`), 카드는 `data-slot='card'` 에 이 클래스를
+   * 같이 겁니다 — 카드의 바탕은 레이어 밖에서 덮습니다(아래). 카드 쪽 선택자를 따로
+   * 적는 이유: 위 유리 카드 규칙이 더 구체적이라 토큰을 도로 유리 값으로 덮습니다.
+   */
+  .scent-paper,
+  .scent-glass [data-slot='card'].scent-paper {
+    --color-ink: var(--color-charcoal);
+    /*
+     * 보조 글자는 밝은 화면 값(#727170)보다 두 단 짙습니다 — 판이 조금 비쳐 바탕이
+     * 순백보다 어두워지면 그 값은 4.5:1 아래로 떨어지고, 유리 카드 값(#5f5c58)도
+     * 흰 판 위에서는 흐리게 읽혔습니다. 판의 가장 어두운 자리에서도 약 5.8:1 입니다.
+     */
+    --color-ink-muted: #52504c;
+    --color-line: var(--color-stonegray);
+    /*
+     * 연한 채움 · 선은 **찬 남색을 옅게** 깝니다 — 밝은 화면 값(`bone` · #e8e1d6)은 종이색이라
+     * 라벤더빛 흰 유리 위에서 베이지 조각으로 떠 보였습니다(글 상세의 컬렉션 · 향수 칩).
+     */
+    --color-line-soft: rgb(30 41 71 / 0.12);
+    --color-surface-card: #ffffff;
+    --color-surface-sunken: rgb(30 41 71 / 0.06);
+    --color-selected: var(--color-charcoal);
+    --color-danger: var(--color-rust);
+    --color-like: #e8283f;
+    color: var(--color-ink);
+
+    /* 흰색이되 유리입니다 — 조금 비치고, 뒤를 흐리고, 윗변에 빛이 맺힙니다 */
+    background: linear-gradient(
+      135deg,
+      rgb(255 255 255 / 0.93) 0%,
+      rgb(248 249 252 / 0.86) 50%,
+      rgb(255 255 255 / 0.9) 100%
+    );
+    backdrop-filter: blur(40px) saturate(160%);
+    -webkit-backdrop-filter: blur(40px) saturate(160%);
+    border: 1px solid rgb(255 255 255 / 0.75);
+    box-shadow:
+      0 25px 60px -15px rgb(0 0 0 / 0.45),
+      inset 0 1px 1px 0 rgb(255 255 255 / 1),
+      inset 0 0 0 1px rgb(255 255 255 / 0.35);
   }
 
   /*
@@ -312,6 +374,28 @@
   background-color: transparent;
 }
 
+/* 흰 유리 카드 — 위 유리 카드의 옅은 그러데이션 · 투명 바탕을 덮습니다 */
+.scent-glass [data-slot='card'].scent-paper {
+  background: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.92) 0%,
+    rgb(255 255 255 / 0.84) 100%
+  );
+  border-color: rgb(255 255 255 / 0.8);
+  box-shadow:
+    0 6px 16px rgb(0 0 0 / 0.18),
+    inset 0 1px 1px rgb(255 255 255 / 1),
+    inset 0 0 0 1px rgb(255 255 255 / 0.3);
+}
+
+.scent-glass [data-slot='card'].scent-paper:hover {
+  background: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.97) 0%,
+    rgb(255 255 255 / 0.9) 100%
+  );
+}
+
 /* 고른 알약의 글자색. 유틸리티에 밀려 흰 알약에 흰 글자가 됐던 자리입니다 */
 .scent-pill[aria-pressed='true'] {
   color: var(--pill-selected-ink, #2f2f32); /* 물빛 위 13.8:1 */
@@ -394,14 +478,11 @@
     --color-surface: #2c263e;
     /* 고른 칩은 판 위에서 상아색입니다 — 남색으로 두면 판에 잠겨 "골랐다" 가 안 읽힙니다 */
     --color-selected: #fbf3ea;
+    /* 판 위 경고(8.3:1) — 어두운 방과 같은 값입니다. 밝은 화면 값(러스트)은 여기서 2.1:1 입니다 */
+    --color-danger: #f2b7a2;
 
     /* 브라우저 기본 스타일이 dialog 에 color: CanvasText(검정)를 박습니다 */
     color: var(--color-ink);
-  }
-
-  /* 판 위의 배경(`::backdrop`)은 바다를 가리지 않게 얕게만 덮습니다 */
-  .scent-map-panel::backdrop {
-    background: rgb(16 10 28 / 0.38);
   }
 
   /*
@@ -450,4 +531,14 @@
       scrollbar-color: rgb(251 243 234 / 0.3) transparent;
     }
   }
+}
+
+/*
+ * 판 위의 배경(`::backdrop`)은 바다를 가리지 않게 얕게만 덮습니다.
+ *
+ * NOTE: 레이어 밖에 둡니다 — 안에 두면 `Modal` 의 `backdrop:bg-ink/40`(유틸리티)에 밀리고,
+ *   `::backdrop` 이 판의 `--color-ink`(상아색)를 물려받아 저녁 바다 위에 **상아색 40% 막**이 덮입니다.
+ */
+.scent-map-panel::backdrop {
+  background: rgb(16 10 28 / 0.38);
 }
