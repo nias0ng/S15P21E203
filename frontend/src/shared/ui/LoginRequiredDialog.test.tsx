@@ -61,4 +61,22 @@ describe('LoginRequiredDialog', () => {
       '/login',
     )
   })
+
+  it('3D 향 지도 위(scene)에서도 취소 · 회원가입 · 로그인이 그대로 있다', async () => {
+    const onClose = vi.fn()
+    renderDialog({ scene: true, onClose, redirectTo: '/' })
+
+    expect(screen.getByRole('link', { name: '회원가입' })).toHaveAttribute(
+      'href',
+      '/signup?redirectTo=%2F',
+    )
+    expect(screen.getByRole('link', { name: '로그인' })).toHaveAttribute(
+      'href',
+      '/login?redirectTo=%2F',
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: '취소' }))
+
+    expect(onClose).toHaveBeenCalledOnce()
+  })
 })
