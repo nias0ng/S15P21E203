@@ -29,7 +29,10 @@ export async function getRecommendation(
   )
 }
 
-/** 와이어프레임의 예시 결과. 백엔드 없이 화면을 볼 때만 씁니다 */
+/**
+ * 백엔드 없이 화면을 볼 때만 쓰는 예시 결과. 향수는 예시이고, 추천 이유는 엔진이 실제로 내는
+ * 세 모양(표현 하나 · 표현 없음 · 표현 셋)을 옮겼습니다.
+ */
 function placeholderRecommendation(query: string): RecommendResult {
   return {
     // 손잡이가 없으니 설문도 안 뜹니다 — 보낼 곳이 없는데 묻는 것은 거짓 화면입니다
@@ -45,9 +48,7 @@ function placeholderRecommendation(query: string): RecommendResult {
         brand: '조 말론 런던',
         thumbnailUrl: null,
         reasons: [
-          { phrase: '차분한', evidence: '시더 · 베티버' },
-          { phrase: '촉촉한', evidence: '씨 솔트' },
-          { phrase: null, evidence: '가을 어울림 평가 71%' },
+          { phrase: '빨래', evidence: 'soapy · fresh', strengths: [100, 93] },
         ],
       },
       {
@@ -55,10 +56,7 @@ function placeholderRecommendation(query: string): RecommendResult {
         name: '딥디크 오르페옹',
         brand: '딥디크',
         thumbnailUrl: null,
-        reasons: [
-          { phrase: '차분한', evidence: '아이리스' },
-          { phrase: '숲속', evidence: '주니퍼' },
-        ],
+        reasons: [{ phrase: null, evidence: 'woody', strengths: [100] }],
       },
       {
         perfumeId: 3,
@@ -66,8 +64,17 @@ function placeholderRecommendation(query: string): RecommendResult {
         brand: '르 라보',
         thumbnailUrl: null,
         reasons: [
-          { phrase: '묵직한', evidence: '샌달우드' },
-          { phrase: '비 온 뒤', evidence: '파피루스' },
+          {
+            phrase: '베이비파우더',
+            evidence: 'powdery · musky',
+            strengths: [100, 79],
+          },
+          { phrase: '나무', evidence: 'woody', strengths: [81] },
+          {
+            phrase: '촉촉하고',
+            evidence: 'green · aquatic',
+            strengths: [76, 45],
+          },
         ],
       },
     ],

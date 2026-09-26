@@ -83,7 +83,7 @@ export const ACCORD_NAMES_KO: Record<string, string> = {
 }
 
 /** `evidence` 는 여럿이면 이 구분자로 이어져 옵니다 (응답 DTO 계약) */
-const EVIDENCE_SEPARATOR = ' · '
+export const EVIDENCE_SEPARATOR = ' · '
 
 /**
  * 추천 이유 한 칸을 화면에 쓸 말로 바꿉니다.
