@@ -22,7 +22,7 @@ export function TileCard({
       to={to}
       data-slot="card"
       className={cn(
-        'border-line bg-surface-card rounded-card flex flex-col gap-2.5 border p-2.5',
+        'type-reading border-line bg-surface-card rounded-card flex flex-col gap-2.5 border p-2.5',
         'transition-[transform,box-shadow] duration-200 ease-out',
         'hover:shadow-raised hover:-translate-y-1.25',
         className,

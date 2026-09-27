@@ -95,7 +95,9 @@ function ReviewRow({ review }: { review: Review }) {
       className="hover:bg-surface-sunken block space-y-1.25 px-2.5 py-3.75"
     >
       <span className="flex items-center gap-2.5">
-        <span className="text-ink text-body font-medium">{review.title}</span>
+        <span className="text-ink text-heading font-serif font-semibold">
+          {review.title}
+        </span>
         {review.mine && (
           <span className="text-ink-muted text-caption">내 후기</span>
         )}
