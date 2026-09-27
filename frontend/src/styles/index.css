@@ -331,10 +331,12 @@
 
 /*
  * 읽는 칸 — 향수 상세의 내용과 향수 · 브랜드 · 노트 카드는 한 단계 큰 활자로 읽힙니다.
- * 토큰만 덮어써서 이 안의 `text-heading` · `text-body` · `text-caption` 이 같이 커지고,
- * 칸 제목(`text-title`)과 향수명(`text-display`)은 그대로입니다.
+ * 토큰만 덮어써서 이 안의 `text-title` · `text-heading` · `text-body` · `text-caption` 이
+ * 같이 커집니다. 칸 제목도 올리는 것은 본문만 키우면 둘의 차이가 줄어 제목이 묻히기
+ * 때문입니다. 향수명(`text-display`)은 그대로입니다.
  */
 @utility type-reading {
+  --text-title: 1.5rem; /* 24px */
   --text-heading: 1.125rem; /* 18px */
   --text-body: 0.9375rem; /* 15px */
   --text-caption: 0.8125rem; /* 13px */
