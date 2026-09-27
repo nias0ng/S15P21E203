@@ -29,7 +29,7 @@ export function PerfumeReviewSummary({
             ))}
           </div>
           {sourceReviewCount !== null && (
-            <p className="text-ink-muted text-caption">
+            <p className="text-ink-muted text-caption mt-5">
               후기 {sourceReviewCount}개를 바탕으로 요약했습니다.
             </p>
           )}
