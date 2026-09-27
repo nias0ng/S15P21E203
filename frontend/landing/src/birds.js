@@ -37,8 +37,12 @@ import { SKY_UNIFORMS, skyColorCPU } from './sky.js';
 // ⚠⚠ **몸이 보는 방향과 가는 방향은 같아야 한다.** 씬 좌표 규약이 `(x − scroll.x, z + scroll.z)` 라
 //   (불변식 0-2) 아래 `wx`·`wz` 는 **둘 다 −** 다. 하나만 뒤집으면 새가 옆걸음질한다.
 //
-// ⚠ **시계는 물의 것(`sim.qT`)이다** (불변식 1 · pod.js 와 같은 선택). dt 를 적분하지 않는
-//   **무상태**라 탭이 쉬었다 돌아와도 무리가 순간이동하지 않는다. 이 모듈에는 상태가 **없다**.
+// ⚠⚠ **시계는 틱의 실시간 `t` 다** (2026-09-26, S15P21E203-435 — 불변식 1 이 층마다 고르라고 한 그 선택을 바꿨다).
+//   처음에는 pod.js 를 따라 물의 시계(`sim.qT`)를 탔는데, qT 는 그 `t` 를 **시뮬 게이트(30Hz)마다 떠 온 계단**이다.
+//   사용자 : *"바다위에 새를 좀 더 부드럽게 움직여야"*. 실측 (120Hz 로 밀어) : 새가 세 프레임 멈췄다가 **한 번에 12px** 뛰었다.
+//   새는 물에 안 비치고(레이어 0 만 · 아래) 물과 닿지도 않아 물의 계단을 따를 까닭이 없다 (돌고래도 같은 날 몸의 움직임을 `t` 로 옮겼다 — pod.js).
+//   ⚠ 무상태는 그대로다 — dt 를 적분하지 않고 `t` 에서 바로 낸다. `t` 는 틱이 dt(최대 0.05)를 쌓은 값이라 탭이 쉬었다 와도 안 뛴다.
+//   ⚠ `t` 가 안 넘어오면 예전처럼 qT 로 떨어진다. 이 모듈에는 상태가 **없다**.
 //
 // ⚠ **날갯짓은 정점 셰이더가 한다** (pod.js 의 휨 · boat.js 의 돛과 같은 규율). 날개를 몸의
 //   진행축(로컬 z)에 대해 돌리고, 각을 날개 길이 위치 u 의 연속 함수로 둔다 — 깃 끝이 가장 크게 친다.
@@ -107,7 +111,7 @@ function buildBird() {
 // ⚠ 각을 `pow(u, uFlap.z)` 로 깃 끝에 쏠리게 한다 — 뿌리가 안 움직이고 끝이 친다 (pod.js 의 꼬리 쏠림).
 const VERT = `
 attribute float aPhase;   // 마리마다의 날갯짓 위상
-attribute float aBeat;    // 지금 치고 있나 (0 = 활공, 1 = 날갯짓)
+attribute float aBeat;    // 날갯짓의 세기 (0 = 활공 · 1 = 한창 칠 때) — 묶음의 앞뒤에서 부드럽게 오르내린다
 attribute vec3 aCol;      // 실루엣 색 — CPU 가 제 뒤 하늘에서 낸다
 uniform vec3 uFlap;       // x 진폭(라디안) · y 안 씀 · z 깃 끝 쏠림 지수
 varying vec3 vCol;
@@ -170,8 +174,9 @@ export function createBirds(scene) {
     ox: (R() - 0.5) * 2,      // 무리 안의 자리 (birdSpread 를 곱한다)
     oz: (R() - 0.5) * 2,
     oy: (R() - 0.5) * 2,      // 높이 흔들기 (birdHighVary 를 곱한다)
-    ph: R(),                  // 날갯짓 위상 — 무리가 한 몸처럼 치면 기계로 읽힌다
-    rest: R(),                // 활공 묶음의 위상
+    // ⚠ 뽑는 순서를 바꾸지 않는다 — 여기 뒤의 무리 원점까지 난수 하나로 이어져 배치가 통째로 바뀐다 (params 의 birdCount 주석 : 180장을 훑어 고른 배치)
+    ph: R(),                  // 날갯짓 빠르기의 마리별 편차 (± 8%). ⚠ 예전에는 날갯짓 위상이었다 — 위상은 이제 묶음의 시작에 묶인다
+    rest: R(),                // 날갯짓 묶음의 위상 — 무리가 한 몸처럼 치면 기계로 읽힌다
     sz: 0.8 + R() * 0.4       // 크기 편차
   }));
   const flocks = Array.from({ length: MAX_FLOCKS }, (_, g) => ({
@@ -191,7 +196,7 @@ export function createBirds(scene) {
     group,
     mesh,
 
-    update(sim, { scroll, cam, hide, sunDir }) {
+    update(sim, { scroll, cam, hide, sunDir, t }) {
       const amt = P.birdAmount === undefined ? 1 : P.birdAmount;
       // ⚠ 0 = **비트 단위 롤백** (stageAmount · podAmount · cloudAmount 와 같은 패턴)
       if (amt <= 0) { group.visible = false; return; }
@@ -207,6 +212,8 @@ export function createBirds(scene) {
       const flapAmp = Math.max(0, P.birdFlap === undefined ? 0.9 : P.birdFlap);
       const flapHz = Math.max(0.05, P.birdFlapHz === undefined ? 2.4 : P.birdFlapHz);
       const glide = clamp(P.birdGlide === undefined ? 0.45 : P.birdGlide, 0, 0.95);
+      // ⚠ 정수로 둔다 — 날개가 가운데(sin 0)에서 치기 시작해 가운데서 멎는다 (pod.js 의 podBeats 와 같은 이유)
+      const beats = Math.max(1, Math.round(P.birdBeats === undefined ? 3 : P.birdBeats));
       const dark = clamp(P.birdDark === undefined ? 0.45 : P.birdDark, 0.02, 1);
       const cool = clamp(P.birdCool === undefined ? 0.3 : P.birdCool, 0, 1);
       const near = Math.max(0, P.birdNear === undefined ? 22 : P.birdNear);
@@ -225,7 +232,7 @@ export function createBirds(scene) {
       const bear = (P.birdBearing === undefined ? 40 : P.birdBearing) * D2R;
       const bvary = (P.birdBearingVary === undefined ? 22 : P.birdBearingVary) * D2R;
 
-      const qT = sim.qT;
+      const T = t === undefined ? sim.qT : t;   // 시계 (머리 주석)
       const S = sunDir ? [sunDir.x, sunDir.y, sunDir.z] : (sunV.set(...CONFIG.sun).normalize(), [sunV.x, sunV.y, sunV.z]);
       const ZEN = SKY_UNIFORMS.uSkyZen.value;
 
@@ -235,7 +242,7 @@ export function createBirds(scene) {
         // 무리의 방위 — 카메라에서 똑바로 멀어지는 방향에서 튼다 (머리 주석)
         const H = yaw0 + F.side * bear + F.vary * bvary;
         const sinH = Math.sin(H), cosH = Math.cos(H);
-        const run = qT * speed;
+        const run = T * speed;
         // ⚠ 둘 다 **−** 다 — 보는 방향 그대로 나아간다 (머리 주석의 부호 규약)
         const wx = wrapP(F.x - sinH * run + s.ox * spread);
         const wz = wrapP(F.z - cosH * run + s.oz * spread);
@@ -275,10 +282,24 @@ export function createBirds(scene) {
           aCol.array[o + c] = (back[c] + (zc - back[c]) * kc) * kd;
         }
 
-        // 날갯짓 — 묶음으로 친다. 활공 구간에서는 `aBeat` 가 0 이라 날개가 멎는다
-        const cyc = (qT * flapHz * (1 - glide) + s.rest) % 1;
-        aBeat.array[drawn] = cyc < (1 - glide) ? 1 : 0;
-        aPhase.array[drawn] = (qT * flapHz + s.ph) * Math.PI * 2;
+        // 날갯짓 — **몇 번 치고 길게 활공한다** (갈매기). 한 묶음 = `beats` 번 + 그 뒤 활공 (몫 `glide`).
+        // ⚠⚠ 예전에는 세기(`aBeat`)가 0/1 로 끊기고 위상이 묶음과 따로 돌아, 치다가 멎는 순간 날개 끝이 **한 프레임에 0.742 라디안(42°)** 튀었다.
+        //   그리고 묶음이 날갯짓 한 번 + 활공 0.34초라 0.76초마다 그렇게 튀었다 (실측 2026-09-26).
+        //   ① 위상을 묶음의 시작에서 0 부터 센다 — 정수 번 치고 끝나므로 날개가 가운데서 멎는다
+        //   ② 세기를 앞 ¼ 번 동안 올리고 뒤 ½ 번 동안 내린다 — 날개가 움직이기 시작하는 속도도 0 에서 출발한다
+        //   ⚠ 위상이 묶음 안에서만 커서 float32 속성이 오래 켜 둬도 무뎌지지 않는다 (예전 값은 시계와 같이 끝없이 컸다)
+        const hz = flapHz * (0.92 + 0.16 * s.ph);           // 마리마다 조금씩 달리 친다 — 같이 시작한 새도 곧 어긋난다
+        const beat1 = 1 / hz, flapDur = beats * beat1;
+        const boutDur = flapDur / (1 - glide);
+        const tau = ((T + s.rest * boutDur) % boutDur + boutDur) % boutDur;   // 묶음 안의 시각
+        let beat = 0, phase = 0;
+        if (tau < flapDur) {
+          phase = tau * hz * Math.PI * 2;
+          const up = clamp(tau / (0.25 * beat1), 0, 1), dn = clamp((flapDur - tau) / (0.5 * beat1), 0, 1);
+          beat = up * up * (3 - 2 * up) * dn * dn * (3 - 2 * dn);
+        }
+        aBeat.array[drawn] = beat;
+        aPhase.array[drawn] = phase;
 
         E.set(0, H, 0);
         Q.setFromEuler(E);

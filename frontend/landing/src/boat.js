@@ -5,6 +5,9 @@ import { paperVariant, paperRescale } from './paper.js';
 import { swellCPU } from './swell.js';
 import { clamp, D2R } from './util.js';
 import { bootReport } from './host.js';   // 부팅 신호 — GLB 받는 진행 · 붙임을 앱의 로딩 커튼에 알린다 (v0.75.0)
+import { timeNow } from './times.js';
+import { ensureSunFx, sunFxOf, chainShader } from './sunfx.js';   // 역광 — 해 쪽 주광의 윤곽 빛 · 돛의 투과     // 시간대 표 — 배의 중성 채움(light.boatWhite)을 받는다 (2026-09-25)
+import { bakeVertexAO, ensureVertexAO, VAO } from './vertexao.js';   // 주변 차폐 — GLB 를 불러온 자리에서 정점에 굽는다 (2026-09-26)
 
 // ───────── 종이배 ─────────
 // 메시 생성은 createBoatMesh() 안에만 있다. GLB 로 교체하려면 이 함수만 바꾼다
@@ -43,6 +46,38 @@ const keelF  = (u) => -0.012 - 0.150 * Math.pow(Math.sin(Math.PI * Math.min(1, M
 
 // 삼각형 인덱스를 격자에서 뽑는다
 function grid(idx, a, b, c, d) { idx.push(a, b, d, a, d, c); }
+
+// ───────── 선체의 니스 (2026-09-26, 역광 '중간안' 3단계 · hullCoat*) ─────────
+// three 의 클리어코트를 그대로 쓰면 두 가지가 틀린다 (1600×900 · 선실 줌인 · 선체 픽셀만 · HDR 선형 실측) :
+//   ① 해의 정반사가 선미 윗모서리에 **한 점으로 타오른다** — 니스 0.3 이면 최대 5.2 · 블룸 문턱(1.40)을 넘는 선체 0.89% · 1 이면 최대 15.9.
+//      해가 낮고(14°) 카메라가 해를 보고 있어 해를 향해 누운 면이 거울각에 들기 때문이다. 불변식 34 : 문턱을 넘는 것은 물의 반짝임뿐이어야 한다.
+//      → 해의 몫만 **부드럽게 눌러 둔다** (x / (1 + x / 상한)) — 작은 반짝임은 그대로 · 큰 것은 상한 언저리에서 멈춘다.
+//   ② 하늘 반사가 **안 보인다** — 환경맵 세기(envIntensity 0.35)가 니스의 반사까지 누른다. 0.35 는 하늘빛이 확산면을 통째로 밝혀서 내린 값이지
+//      (params.envIntensity 주석) 거울 반사를 위한 값이 아니다. 니스는 프레넬이 이미 몫을 정하므로(정면 4%) → 니스만 **하늘을 제 세기로** 본다.
+//   ③ 그런데 이 환경맵은 **하늘뿐이다** — 지평선 아래도 지평선색이라(sky.js skyColorCPU) 아래를 보는 선체 배가 밝은 하늘을 비춘다(밑에서 비춘 배가 된다).
+//      실제로 거기 비치는 것은 바다다 → 반사 광선이 아래로 가면 바다의 몫(hullCoatSea)으로 줄인다.
+// ⚠ 이 셋은 **클리어코트 층만** 만진다 (USE_CLEARCOAT 안) — 니스 0 이면 이 코드가 컴파일되지 않는다
+const COAT = { uCoatFx: { value: new THREE.Vector4(1, 0.35, 0.4, 0) } };   // x 하늘 반사 배율 · y 해 상한 · z 바다의 몫
+const COAT_GLSL = `
+#ifdef USE_CLEARCOAT
+{
+  vec3 ccR = inverseTransformDirection(reflect(-geometryViewDir, geometryClearcoatNormal), viewMatrix);
+  clearcoatSpecularIndirect *= uCoatFx.x * mix(uCoatFx.z, 1.0, smoothstep(-0.12, 0.08, ccR.y));
+  clearcoatSpecularDirect = clearcoatSpecularDirect / (1.0 + clearcoatSpecularDirect / max(uCoatFx.y, 1e-3));
+}
+#endif
+`;
+function ensureHullCoat(m) {
+  if (!m || !m.isMeshPhysicalMaterial) return;
+  chainShader(m, 'coat', (sh) => {
+    sh.uniforms.uCoatFx = COAT.uCoatFx;
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `#include <common>
+uniform vec4 uCoatFx;`)
+      .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+` + COAT_GLSL);
+  });
+}
 
 function hullGeometry() {
   const pos = [], idx = [];
@@ -198,7 +233,8 @@ export function createBoatMesh() {
   return g;
 }
 
-export function createBoat(scene) {
+// ⚠ renderer 는 GLB 의 주변 차폐를 굽는 데만 쓴다 (vertexao.js). 없으면 굽지 않는다 — 예전 그림
+export function createBoat(scene, renderer = null) {
   const boat = createBoatMesh();
   const pivot = new THREE.Group();
   pivot.rotation.order = 'YXZ';
@@ -253,13 +289,41 @@ export function createBoat(scene) {
   //   ② 스케일 = lengthW / 22.514. 종이배의 '모델 길이 2' 규약과 무관하게 **실측 길이**로 맞춘다.
   //   ③ y : 원본 min −2.947 을 0 으로 올린다 — 불변식 0-3 의 '로컬 y = 0 은 용골 바닥'.
   //      ⚠ 돛대 끝이 19.033 이라 스케일 후 약 4.9 다. reflectSlice 6.0 이 여전히 안 자른다.
-  const GLB_URL = 'boat_v2.glb';   // vite public/ — base './' 라 상대 경로로 둔다
+  // ⭐⭐ **줄인 GLB 를 받는다** (2026-09-27, S15P21E203-435 · 최적화 2 — `scripts/pack-boat.mjs`).
+  //   원본(`data/boat_v2.glb` 8.30MB · 텍스처 0장 — 전부 정점)을 같은 정점 합치기 · 캐시 순서 · 양자화(위치 14비트 · 법선 8비트 팔면체) ·
+  //   meshopt 압축으로 **2.04MB** (gzip 4.51 → 1.14MB) 로 줄이고, 정점 차폐(AO — vertexao.js 가 구운 값)를 `_AOFB` 속성으로 실었다.
+  //   ⚠ 읽으려면 MeshoptDecoder 가 있어야 한다 (three 가 들고 있다 · 아래 loadGLB). 양자화 보정은 노드 변환에 들어 있어 배의 크기 · 자리는 그대로다.
+  //   ⚠ `?boat=src` 면 원본을 받는다 (개발 전용 — 모델을 갈 때 AO 를 다시 굽는 길 · pack-boat.mjs 머리말). 빌드에는 원본이 없다
+  const GLB_URL = (() => {
+    try { if (new URLSearchParams(location.search).get('boat') === 'src') return 'data/boat_v2.glb'; } catch (e) { /* 주소를 못 읽으면 줄인 것 */ }
+    return 'boat_v2.meshopt.glb';   // vite public/ — base './' 라 상대 경로로 둔다
+  })();
   const GLB_YAW = Math.PI / 2;        // 길이축 x → z. 부호는 위의 선체 폭 실측이 정한다
   const glbRoot = new THREE.Group();
   glbRoot.visible = false;
   pivot.add(glbRoot);
   let glbLoaded = false;
   const glbMats = [];
+  // ⭐ 패스마다 그릴 부품 (2026-09-27, S15P21E203-435 · 최적화 1 — 배를 여러 번 그리는 것 줄이기).
+  //   배(GLB 27.9만 삼각형)가 본 화면 말고도 두 패스에 통째로 들어가고 있었다 (120Hz · 저녁 실측) :
+  //     · 부표 번짐의 가림(bloom.js GlowPass · 매 프레임) — 배 뒤의 부표가 배를 뚫고 번지지 않게 **깊이만** 찍는 패스
+  //     · 잠긴 선체(submerged.js · 30Hz) — 수면 아래만 남기는 클리핑 패스
+  //   둘 다 부품 대부분이 아무 일도 안 한다 → GLB 를 불러온 자리에서 부품마다 피벗 로컬 바운딩을 재 두고 고른다 :
+  //   · 잠긴 선체 : 흘수선(피벗 로컬 −boatLift) + SUB_MARGIN 보다 **아래로 내려오는** 부품만 (실측 : 선체 Boat · 용골과 키 Helix 둘 · 선실 바닥 등 작은 것 — 8.8만).
+  //     나머지(난간 · 선실 외벽 · 돛 · 돛대 · 조타석 …)는 흘수선보다 19cm 넘게 위라 클리핑 평면에 통째로 잘린다 — 정점만 헛돌았다
+  //   · 번짐 가림 : **윤곽을 만드는 큰 부품만** (OCCLUDE_KEEP — 선체 · 선실 외벽 · 돛 · 돛대 13.2만). 가림은 반 해상도 깊이 한 장이고 그 위를 블룸이 번지게 한다 —
+  //     난간(8.4만) · 손잡이 · 쿠션 같은 가는 것 · 선체 안쪽 것이 가리는 몫은 몇 픽셀뿐이다
+  //   ⚠ 본 화면 · 반사 · 그림자 맵은 **전부 그대로** 그린다 (난간의 그림자는 사용자가 원한 것이다 — params.boatShadow 주석)
+  //   ⚠ GLB 를 갈아 끼우면 OCCLUDE_KEEP 의 이름을 같이 본다 (PAPER_SKIP 과 같은 규율). 표에 없는 부품은 가림에서 빠진다 — 윤곽이 비면 여기에 더한다
+  const OCCLUDE_KEEP = /^(boat|closed[ _]?off|veil|mast)$/i;
+  const SUB_MARGIN = 0.35;   // 흘수선 위 여유 (월드) — 파도 마루에 뱃머리가 잠기고 · 배가 기울고 · 출렁이는 몫
+  const glbMeshes = [];
+  const subHide = [];        // 잠긴 선체 패스에서 잠깐 숨길 부품 (submerged.js 가 읽는다)
+  const syncPassParts = () => {
+    subHide.length = 0;
+    const line = -P.boatLift + SUB_MARGIN;
+    for (const n of glbMeshes) if (n.userData.pivotBox && n.userData.pivotBox.min.y > line) subHide.push(n);
+  };
   let glbObj = null, glbBaseY = 0;   // 로드 때 계산한 기준 높이. boatGlbLift 가 여기에 더해진다
 
   // ───────── 돛의 바람 모션 ─────────
@@ -379,6 +443,8 @@ export function createBoat(scene) {
           'transformed.' + OUT + ' += w * uWindAmp * sMask;');
     };
     sailMat.needsUpdate = true;
+    // ⚠ 바람 셰이더를 **새로 걸었으므로** 역광을 다시 잇는다 (syncGlbMat 이 먼저 감쌌던 것은 방금 덮였다 — sunfx.js 가 이 함수를 감싼다)
+    ensureSunFx(sailMat);
     console.log('[GLB] 돛 폭축=' + AX + ' 밀기=' + OUT + ' 물결=' + PU +
       ' · 폭 ' + sailSpan.toFixed(1) + ' · 고정단 ' + (flip ? 'hi' : 'lo') +
       (mastNode ? ' (마스트 실측)' : ' (마스트 못 찾음)'));
@@ -441,6 +507,17 @@ export function createBoat(scene) {
     const on = P.paperAmount > 0;
     const scale = Math.max(1, P.paperScale);
     const varyKey = String(P.paperVary);
+    // ⭐ 흰 배의 중성 채움 (2026-09-25, S15P21E203-435) — 시간대 표 `light.boatWhite` × `boatWhiteK`.
+    //   사용자 : *"지금 있는 배도 약간 흰색이 돌아야할 것같은데"*. 조명은 배만 따로 비출 수 없어서(부표 · 돌고래도 받는다)
+    //   배 재질에 **제 알베도만큼의 발광**을 조금 준다 — 색이 없는 빛이라 저녁 주광의 살구색 · 반구광의 보랏빛 끼를 걷는다.
+    //   ⚠ 알베도에 곱하므로 흰 돛 · 선체는 희게 뜨고 어두운 창 · 금속은 거의 안 뜬다.
+    //   ⚠ 저녁 주광(#FFBE8C → #FFD8BE)과 같이 바꿔 배 방향 6개 평균 (1440 창 · high) : 밝은 면 #D7AB9C → #E0BFB7 (채도 0.275 → 0.178 · 밝기 177 → 197) ·
+    //     그늘 #8A7271 → #978586 (채도 0.218 → 0.143) · 순백으로 잘린 픽셀 최대 0.4% → 0.6%.
+    //     0.2 부터 한 방향이 9% 잘리고 0.3 이면 47% — 여기서 밝기를 더 올리지 않는다 (hullTone 0.75 의 무릎과 같은 벽)
+    //   ⚠ 낮 · 밤은 표에 값이 없어 0 이다 (낮은 빛이 이미 흰색이고, 밤은 달빛을 배에 맞춰 올려 두었다). 시간대가 바뀌면 apply() → syncModel() 이 다시 부른다
+    const T = timeNow();
+    const boatWhite = ((T && T.light && T.light.boatWhite) || 0) * (P.boatWhiteK === undefined ? 1 : P.boatWhiteK);
+    VAO.uVaoK.value = clamp(P.boatAO === undefined ? 1 : P.boatAO, 0, 1);   // 주변 차폐의 세기 (구운 값은 그대로 · 여기서 섞기만)
     for (const m of glbMats) {
       // 원본 색 ↔ 종이 톤 사이를 섞는다. 0 이면 모델이 들고 온 색 그대로다
       // ⚠ 두 단계다 : ① 전체를 종이 톤으로 덮는 boatPaperTone(예전 동작) ②  선실 요소를
@@ -499,7 +576,31 @@ export function createBoat(scene) {
           m.specularIntensity = m.userData.origSpec * sp;
         }
         if (m.userData.origColor) m.color.multiplyScalar(P.hullTone === undefined ? 1 : P.hullTone);
+        // ⭐ 선체의 약한 광택 — 종이 위에 바른 **니스 한 겹** (2026-09-26, 역광 '중간안' 3단계 · hullCoat).
+        //   위의 무광(hullSpec 0)은 종이 결 자체의 반사를 끈 것이고, 이건 그 위에 매끈한 막을 한 겹 더 얹는다 —
+        //   막의 법선은 종이 결(노멀맵)을 안 따르고 선체의 곡면을 따르므로, 반짝임이 점으로 흩지 않고 **곡면을 따라 한 줄**로 흐른다.
+        //   ⚠ 0 ↔ 0 초과가 셰이더 define 이다 (USE_CLEARCOAT) — 품질 단계로 끄고 켜지 않는다 (불변식 34 · 한 장 멈춘다)
+        //   ⚠ three 의 클리어코트를 그대로 두지 않는다 — 해의 반짝임 · 하늘의 몫 · 아래의 바다 셋을 고친다 (위 COAT 머리말)
+        if (m.isMeshPhysicalMaterial) {
+          m.clearcoat = Math.max(0, P.hullCoat === undefined ? 0 : P.hullCoat);
+          m.clearcoatRoughness = clamp(P.hullCoatRough === undefined ? 0.3 : P.hullCoatRough, 0, 1);
+          ensureHullCoat(m);
+          COAT.uCoatFx.value.set(
+            1 / Math.max(P.envIntensity, 0.05),                          // 니스는 하늘을 제 세기로 본다 (envIntensity 를 되돌린다)
+            Math.max(0.01, P.hullCoatSun === undefined ? 0.35 : P.hullCoatSun),
+            clamp(P.hullCoatSea === undefined ? 0.4 : P.hullCoatSea, 0, 1), 0);
+        }
       }
+      // 중성 채움 — 위 톤까지 곱한 **최종 알베도**에 건다 (이 GLB 는 원래 발광이 전부 검정이다 · 2026-09-25 확인)
+      if (m.emissive) m.emissive.copy(m.color).multiplyScalar(boatWhite);
+      // ⭐ 역광 (2026-09-26, S15P21E203-435 · sunfx.js) — 해 쪽 주광(main.js sunLight)이 등 뒤에서 만드는 빛.
+      //   모든 재질 : 해를 향한 가장자리의 **윤곽 빛**(boatRim) · 돛(Veil)만 : 천을 지나 나오는 **투과**(sailTrans · 해 쪽으로 모이는 정도 sailTransFwd).
+      //   ⚠ 돛은 Veil 이다 (2026-09-26 확인 — Veil 만 빨갛게 칠하면 돛 두 장이 통째로 빨개진다)
+      //   ⚠ 주광이 0 인 시간대(낮)에는 셋 다 아무것도 안 더한다
+      ensureSunFx(m);
+      sunFxOf(m).set(Math.max(0, P.boatRim === undefined ? 0.6 : P.boatRim),
+        /veil|sail|cloth/i.test(m.name || '') ? Math.max(0, P.sailTrans === undefined ? 1.2 : P.sailTrans) : 0,
+        Math.max(0.5, P.sailTransFwd === undefined ? 6 : P.sailTransFwd));
       // ── 종이 질감. ⚠⚠ **재질마다 결이 다르다** (2026-09-09, 사용자 : *"너무 많은 곳에
       //   일정한 비율로 되고 있는데"*). 텍스처는 clone 이라 GPU 이미지를 공유한다 — 26개가
       //   각자 들어도 VRAM 은 두 장이다. 방향·배율·이음매만 이름 해시로 흩는다.
@@ -522,6 +623,7 @@ export function createBoat(scene) {
       if (m.normalScale) m.normalScale.set(P.boatNormal, P.boatNormal);
       m.needsUpdate = true;
     }
+    syncPassParts();   // 흘수(boatLift)가 바뀌면 잠긴 선체 패스의 부품도 다시 고른다 (바운딩은 불러올 때 재 둔 것)
     // ⚠⚠ **GLB 전용 흘수.** 종이배는 바닥이 평평해 최저점이 곧 흘수선이지만, 이 모델은
     //   최저점이 **킬(용골) 끝**이라 같은 높이에 두면 선체까지 잠긴다 (사용자 : *"배의 부력값을
     //   위로 더 올려서 맞춰야 함"*). 그래서 종이배와 같은 자리에 놓은 뒤 이 값만큼 띄운다.
@@ -532,8 +634,15 @@ export function createBoat(scene) {
   const loadGLB = () => {
     if (glbLoaded) return;
     glbLoaded = true;
-    import('three/examples/jsm/loaders/GLTFLoader.js').then(({ GLTFLoader }) => {
-      new GLTFLoader().load(GLB_URL, (gltf) => {
+    // ⚠ 줄인 GLB(EXT_meshopt_compression)는 디코더가 없으면 못 읽는다 — three 가 들고 있는 것을 같이 받는다 (WASM 을 JS 안에 품어 파일이 하나다).
+    //   ⚠ 인코더는 glTF 용 버퍼를 **옛 형식(v0)** 으로 쓴다 (meshoptimizer 의 encodeGltfBuffer 기본) — 그래서 three 0.160 의 디코더로 읽힌다
+    Promise.all([
+      import('three/examples/jsm/loaders/GLTFLoader.js'),
+      import('three/examples/jsm/libs/meshopt_decoder.module.js')
+    ]).then(([{ GLTFLoader }, { MeshoptDecoder }]) => {
+      const loader = new GLTFLoader();
+      loader.setMeshoptDecoder(MeshoptDecoder);
+      loader.load(GLB_URL, (gltf) => {
         const o = gltf.scene;
         // ⚠⚠ **크기를 손으로 적지 않는다 — 실측해서 맞춘다.**
         //   accessor 의 min/max 로 읽은 22.514 는 **로컬 정점 좌표**이고, GLB 안의 중간 노드에
@@ -572,9 +681,10 @@ export function createBoat(scene) {
         //   이 바다는 '흰 종이 위 흰 물' 이 축이라(불변식 14) 사진 텍스처가 붙은 배는
         //   혼자 다른 그림이 된다. 그렇다고 재질을 통째로 갈면 형태의 디테일까지 잃는다.
         //   그래서 baseColor(map) **한 장만** 버리고 normal · roughness · metalness 는 남긴다.
-        //   ⚠ 이 GLB 는 roughness/metalness/ao 가 **한 장을 공유한다** (표준 glTF 의 ORM 패킹).
-        //     그래서 버릴 수 있는 것이 map 하나뿐이다 — 3장 → 2장.
-        //   ⚠ aoMap 은 uv2(three 0.160 의 uv1)가 없어 **어차피 안 먹는다.** 떼어 둔다.
+        //   ⚠ 첫 GLB 는 roughness/metalness/ao 가 **한 장을 공유했다** (표준 glTF 의 ORM 패킹) — 그래서 버릴 수 있는 것이 map 하나뿐이었다.
+        //   ⚠⚠ **지금 GLB(boat_v2)는 텍스처가 0장이다** (2026-09-26 확인) — 여기서 떼는 map · aoMap 은 처음부터 없다.
+        //     예전 주석의 'aoMap 은 uv2 가 없어 안 먹는다' 도 틀렸다 (three 0.160 은 aoMap 을 uv 로도 읽는다) — 되살릴 맵이 없을 뿐이다.
+        //     그래서 차폐는 불러온 자리에서 **정점에 굽는다** (아래 setupSail 뒤 · vertexao.js).
         //   ⚠ 원본은 metalness 1 · roughness 1 이다. 맵과 **곱해지는** 스칼라라 그대로 두면
         //     종이가 아니라 금속으로 읽힌다 — params 로 열어 둔다.
         o.traverse(n => {
@@ -620,6 +730,39 @@ export function createBoat(scene) {
         glbRoot.add(o);
         o.updateWorldMatrix(true, true);
         setupSail();   // ⚠ 월드행렬이 확정된 **뒤**라야 축의 수평도를 잰다
+        // ⭐ 부품마다 피벗 로컬 바운딩 — 잠긴 선체 · 부표 번짐 가림이 쓸 부품을 고른다 (위 OCCLUDE_KEEP 머리말 · 최적화 1)
+        //   ⚠ 피벗의 역행렬을 곱해 피벗 로컬로 잰다 — 불러오는 순간 배가 기울어 있어도 같은 값이다
+        {
+          pivot.updateMatrixWorld(true);
+          const invP = pivot.matrixWorld.clone().invert();
+          o.traverse(n => {
+            if (!n.isMesh) return;
+            if (!n.geometry.boundingBox) n.geometry.computeBoundingBox();
+            n.userData.pivotBox = n.geometry.boundingBox.clone().applyMatrix4(n.matrixWorld.clone().premultiply(invP));
+            if (!OCCLUDE_KEEP.test((n.material && n.material.name) || '')) n.userData.noOcclude = true;
+            glbMeshes.push(n);
+          });
+          syncPassParts();
+        }
+        // ⭐ 주변 차폐를 정점에 굽는다 (vertexao.js · 2026-09-26). ⚠ setupSail **뒤**다 — 돛의 바람 셰이더가 onBeforeCompile 을
+        //   통째로 새로 걸기 때문에, 그 전에 감싸면 차폐가 돛에서만 떨어진다. ⚠ 로딩 커튼이 걷히기(bootReport) **전**에 굽는다 — 한 번 멈추는 자리가 커튼 뒤다.
+        //   ⚠ 돛(Veil)은 가리는 쪽에서 뺀다 — 반투명한 흰 천이라 그 밑이 실제로 어둡지 않다 (vertexao.js 머리말)
+        // ⭐ (2026-09-27, 최적화 2) **파일에 구워 둔 차폐가 있으면 그것을 쓴다** — pack-boat.mjs 가 같은 굽기로 낸 값을 `_AOFB` 로 실었다
+        //   (three 는 사용자 속성 이름을 소문자로 받는다 → `_aofb`). 불러올 때의 굽기(88~280ms)가 통째로 빠진다.
+        //   ⚠ **모든** 메시에 있을 때만 쓴다 — 하나라도 없으면 그 메시의 하늘빛이 0 으로 꺼진다 (ensureVertexAO 의 경고). 그때는 예전처럼 굽는다
+        const meshes = [];
+        o.traverse(n => { if (n.isMesh) meshes.push(n); });
+        if (meshes.length && meshes.every(n => n.geometry.getAttribute('_aofb'))) {
+          meshes.forEach(n => { n.geometry.setAttribute('aoFB', n.geometry.getAttribute('_aofb')); n.geometry.deleteAttribute('_aofb'); });
+          glbMats.forEach(ensureVertexAO);
+          console.log('[GLB] 주변 차폐 : 파일에 구워 둔 것 (메시 ' + meshes.length + ')');
+        } else if (renderer) {
+          const r = bakeVertexAO(renderer, o, { occluder: (n) => !/veil/i.test((n.material && n.material.name) || '') });
+          if (r.ok) {
+            glbMats.forEach(ensureVertexAO);
+            console.log('[GLB] 주변 차폐 : 정점 ' + r.verts + ' · 방향 ' + r.dirs + ' · ' + r.ms.toFixed(0) + 'ms');
+          } else console.warn('[GLB] 주변 차폐를 굽지 못했다 (부동소수 렌더 타깃 없음) — 차폐 없이 간다');
+        }
         const b3 = new THREE.Box3().setFromObject(o);
         console.log('[GLB] 맞춘 크기 x/y/z =',
           b3.getSize(new THREE.Vector3()).toArray().map(v => +v.toFixed(2)).join(' / '),
@@ -679,6 +822,7 @@ export function createBoat(scene) {
     // probes.js(개발 전용)가 이걸 그린다 — CPU 부력과 GPU 수면이 갈라졌는지 눈으로 보는 유일한 수단
     probes: [[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],
     stepped: false,   // 이번 프레임에 배가 갱신됐는가 (sim.stepped 와 짝. perf.js 가 본다)
+    subHide,          // 잠긴 선체 패스에서 숨길 부품 — 흘수선보다 한참 위 (submerged.js · 위 OCCLUDE_KEEP 머리말)
 
     // ⭐⭐ **배가 지금 화면 어디에 있는가** (2026-09-21, v0.79.0 — 선실). 전부 #mount 기준 CSS px.
     //   main.js 의 tick 이 매 프레임 투영해서 채우고, **둘이 읽는다** :

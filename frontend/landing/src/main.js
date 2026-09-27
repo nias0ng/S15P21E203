@@ -5,7 +5,8 @@ import { createBloom } from './bloom.js';
 import { createSubmerged } from './submerged.js';
 import { lerp, clamp, wrapPi } from './util.js';
 import { createUI } from './ui.js';
-import { bootNow, bootReport, callHost, hostCabin, hostMove, hostSearch, perfumeRef, setHost, setHostNotice } from './host.js';   // 카드의 서비스 동작 · 검색창이 앱(호스트)으로 나가는 문 (v0.68.0) · 부팅 신호 (v0.75.0) · 선실 (v0.79.0)
+import { bootNow, bootReport, callHost, hostCabin, hostMove, hostQuality, hostSearch, perfumeRef, setHost, setHostNotice } from './host.js';   // 카드의 서비스 동작 · 검색창이 앱(호스트)으로 나가는 문 (v0.68.0) · 부팅 신호 (v0.75.0) · 선실 (v0.79.0) · 품질 단계 (S15P21E203-435)
+import { createQuality } from './quality.js';   // 품질 단계 — GPU 이름 · 프레임 시간으로 high · mid · low 를 고른다 (2026-09-25)
 import { createInput } from './input.js';
 import { createSim } from './sim.js';
 import { createWater } from './water.js';
@@ -14,6 +15,7 @@ import { createSpray } from './spray.js';
 import { createBoat } from './boat.js';
 import { createPod } from './pod.js';
 import { createBirds } from './birds.js';
+import { SUN_FX } from './sunfx.js';   // 역광 — 해 쪽 주광의 윤곽 빛 · 투과 (배 · 돌고래가 같은 유니폼을 본다)
 import { createReflect } from './reflect.js';
 import { createZones } from './zones.js';
 import { createMarks } from './marks.js';
@@ -84,12 +86,20 @@ const el = ui.mount;
 const W = () => el.clientWidth || 1;
 const H = () => el.clientHeight || 1;
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+// ⚠⚠ **화면 버퍼에는 MSAA 를 안 건다** (2026-09-25, S15P21E203-435). 계단 줄이기는 bloom.js 의 장면 타깃이 한다 —
+//   화면에는 합성 한 장(전체 화면 사각형)만 그려 표본 4개가 할 일이 없었고, 화면 × 4표본 색 · 깊이 버퍼만 쥐고 있었다.
+//   ⚠ 품질 단계 low 는 MSAA 0 이라 계단이 보인다 (의도 — quality.js)
+const renderer = new THREE.WebGLRenderer({ antialias: false });
+// ⭐ 품질 단계 (quality.js). ⚠ 렌더러 바로 뒤에서 만든다 — GPU 이름을 읽고, 모듈들이 params 를 읽기 **전에** 단계의 값 묶음을 써 둔다
+const quality = createQuality({ gl: renderer.getContext(), busy: () => hostHold > 0 || !!diveNow() || !!cabinInNow() });
+quality.writeParams();
 // ⚠⚠ **배가 드리우는 그림자** (2026-09-09). 물에는 안 드리운다 — 수면은 커스텀 셰이더라
 //   three 의 그림자를 안 받고, 그쪽은 이미 shadowAmount/contactAmount 세 겹이 따로 있다.
 //   여기서 얻는 것은 **돛이 갑판에, 난간이 선체에** 지는 그림자다.
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+// ⭐ 그림자 맵은 **틱이 바뀐 것을 볼 때만** 다시 그린다 (2026-09-27, 최적화 1 — 아래 shadowDirty). three 기본(autoUpdate)은 render() 마다 새로 그린다
+renderer.shadowMap.autoUpdate = false;
+renderer.setPixelRatio(quality.pixelRatio());
 renderer.setSize(W(), H());
 el.appendChild(renderer.domElement);
 
@@ -141,6 +151,65 @@ dirLight.shadow.mapSize.set(1024, 1024);
   dirLight.shadow.normalBias = 0.02;
 }
 scene.add(hemiLight, dirLight);
+// ⭐⭐ **해 쪽 주광** (2026-09-26, S15P21E203-435 · 사용자 결정 : 역광 '중간안').
+//   하늘의 해와 물의 빛길은 카메라 정면(해 고도 14.4°)에 있는데, 물체를 비추는 빛은 위의 dirLight(카메라 쪽 앞 위) 하나였다 —
+//   그래서 **하늘은 역광인데 배 · 돌고래는 정면광**을 받았다. 이 빛을 **보이는 해의 방향**(물의 uLightDir3)에 둔다 :
+//   카메라를 보는 면이 실제로 그늘이 되고, 해를 향한 윤곽에만 빛이 걸리고, 그림자가 카메라 쪽으로 드리운다.
+//   dirLight 는 **약한 앞 채움**으로 남아 흰 배가 계속 읽힌다 (세기는 시간대 표의 dirI) — '앞에서 비춰 흰 배' 가 아니라 '해를 등진 흰 배' 다.
+//   ⚠ 세기 · 색은 시간대 표(`light.sun` · `light.sunI`)가 정한다. **낮은 표가 비어 있어 0 = 예전과 같다.**
+//   ⚠ 그림자는 둘 중 **주광 하나**가 드리운다 (applyTime) — 그림자 맵은 하나다. three 가 그림자 광원을 배열 앞에 세우므로
+//     드리우는 쪽을 바꿔도 개수가 같아 셰이더를 다시 안 만든다.
+//   ⚠ 자리는 틱이 매 프레임 민다 (water.update 뒤 — bakeSun 이 sunRot · sunTilt 로 해를 돌린 뒤) · 겨누는 곳은 배다
+const sunLight = new THREE.DirectionalLight(0xffffff, 0);
+const SUN_DIST = 20;       // 겨누는 점에서 광원까지 — 그림자 카메라의 near/far 가 이 값을 기준으로 선다
+const SUN_AIM_Y = 3.5;     // 겨누는 높이 — 배 바운딩 y −1.08 ~ 8.18 (돛대 꼭대기)의 가운데 (2026-09-26 실측)
+sunLight.shadow.mapSize.set(1024, 1024);
+{
+  // ⚠ 해가 낮아(14.4°) 광원 쪽에서 본 배가 **세로로 길다** — 높이 9.3 × cos 14° + 길이 × sin 14° ≈ 10.5.
+  //   그래서 세로를 ±5.5 · 가로를 ±4.5 로 둔다. 넓히면 1024² 를 허공에 흩어 써서 돛대 그림자가 계단이 된다 (dirLight 와 같은 규율)
+  const sc = sunLight.shadow.camera;
+  sc.left = -4.5; sc.right = 4.5; sc.top = 5.5; sc.bottom = -5.5;
+  // ⭐ 깊이는 **물까지** 잡는다 (2026-09-27 · 물이 이 맵을 읽는다 — water.js '배 그림자 ②').
+  //   해가 14.4° 로 낮아 돛대 끝(y 8.4)의 그림자는 겨누는 점에서 빛 방향으로 약 32 더 간 물 위에 떨어진다 (8.4 / sin 14.4° − 겨누는 점까지).
+  //   예전 far(+9)면 그 물점이 맵 밖이라 **선체 그림자만** 받는다. +50 이면 sunTilt 로 해를 10° 까지 내려도 돛대 끝이 들어온다.
+  //   ⚠ 가로 · 세로(±4.5 · ±5.5)는 그대로다 — 텍셀 밀도가 안 변하므로 배 위의 그림자도 그대로다. 깊이만 3.3배 넓어진다.
+  sc.near = SUN_DIST - 9; sc.far = SUN_DIST + 50;
+  sc.updateProjectionMatrix();
+  // ⚠ bias 는 깊이 범위의 **비율**이다 — 범위가 넓어진 만큼 나눠 월드로 같은 여유(1.4cm)를 둔다. 안 나누면 배 위 그림자가 떠오른다(peter-panning)
+  sunLight.shadow.bias = -0.0008 * 18 / (sc.far - sc.near);
+  sunLight.shadow.normalBias = 0.02;
+}
+scene.add(sunLight, sunLight.target);   // ⚠ 겨누는 점도 씬에 넣는다 — 안 넣으면 matrixWorld 가 안 따라와 원점을 겨눈다
+
+// ⭐⭐ **그림자 맵은 바뀔 때만 다시 그린다** (2026-09-27, S15P21E203-435 · 최적화 1 — 배를 여러 번 그리는 것 줄이기).
+//   실측 (120Hz · 저녁 · 24장 평균, 렌더 패스마다 renderer.info 를 모아 셈) : 그림자 맵이 프레임당 **1.5번** 그려졌다 —
+//   본 화면 1 + 잠긴 선체 · 반사가 30Hz 마다 한 번씩 더 (빛이 레이어 2 에도 켜져 있어 그 render() 도 그림자를 새로 굽는다). 매번 배 전체 27.9만 삼각형이다.
+//   그림자를 드리우는 것은 **배 하나뿐**이다 (그림자 패스의 삼각형 = 배 전체와 정확히 같다). 그래서 배의 자세와 드리우는 빛이 그대로면 맵도 그대로다.
+//   → autoUpdate 를 끄고(렌더러 만든 자리) 틱이 이 값을 needsUpdate 에 싣는다. 그 프레임에서 **불이 켜진 첫 render()** 가 한 번 그린다
+//     (잠긴 선체 패스는 불이 필요 없어 안 그린다 — submerged.js). 안의 것은 어느 패스가 그려도 같다 (그림자 패스는 전역 클리핑을 안 쓴다).
+//   ⚠ 돛의 바람은 여기 안 넣는다 — 그림자 깊이 재질(three 기본)에 바람 셰이더가 없어 그림자는 원래 돛의 쉬는 자세다.
+//   ⚠ 배의 방향(rotation.y)은 매 프레임 0.05 씩 따라가므로 끝없이 아주 조금 변한다 — 1e-4 아래는 같은 것으로 본다 (0.006° · 0.1mm · 그림자 텍셀 9mm).
+//   ⚠ 놓친 원인이 있어도 오래 안 남게 60장마다 한 번은 그린다 (120Hz 에서 초당 2번).
+const _shPrev = new Float64Array(22);
+let _shSig = '', _shAge = 1e9;
+function shadowDirty() {
+  if (!renderer.shadowMap.enabled) { _shSig = ''; return false; }
+  const caster = sunLight.castShadow ? sunLight : (dirLight.castShadow ? dirLight : null);
+  if (!caster) { _shSig = ''; return false; }
+  // 무엇이 드리우는가 — 드리우는 빛이 바뀌거나(시간대) 배 모델이 바뀌면(GLB 도착 · 종이배 전환) 맵을 새로 그린다
+  let casters = 0;
+  boat.pivot.traverseVisible(o => { if (o.isMesh && o.castShadow) casters++; });
+  const sig = caster.id + '/' + casters;
+  boat.pivot.updateMatrixWorld(true);
+  const m = boat.pivot.matrixWorld.elements, p = caster.position, q = caster.target.position;
+  const now = [...m, p.x, p.y, p.z, q.x, q.y, q.z];
+  let moved = sig !== _shSig || ++_shAge >= 60;
+  for (let i = 0; i < 22 && !moved; i++) if (!(Math.abs(now[i] - _shPrev[i]) <= 1e-4)) moved = true;
+  if (!moved) return false;
+  for (let i = 0; i < 22; i++) _shPrev[i] = now[i];
+  _shSig = sig; _shAge = 0;
+  return true;
+}
 
 // ⭐ 시간대 (2026-09-11 밤 — 시안, `params.sceneTime`). 조명 · 배경 · `<html data-time>` · 하늘을 한 번에 바꾼다.
 //   표는 **CONFIG.times 하나**이고 times.js 의 timeNow() 로 받는다 (낮 = null → 아래 원래 값 그대로 = 비트 단위 롤백).
@@ -159,10 +228,16 @@ function applyTime() {
   if (L) {
     hemiLight.color.set(L.hemiSky); hemiLight.groundColor.set(L.hemiGround); hemiLight.intensity = L.hemi;
     dirLight.color.set(L.dir); dirLight.intensity = L.dirI;
+    sunLight.color.set(L.sun || '#ffffff'); sunLight.intensity = L.sunI || 0;
   } else {
     hemiLight.color.copy(LIGHT0.hemiSky); hemiLight.groundColor.copy(LIGHT0.hemiGround); hemiLight.intensity = LIGHT0.hemi;
     dirLight.color.copy(LIGHT0.dir); dirLight.intensity = LIGHT0.dirI;
+    sunLight.intensity = 0;
   }
+  // 그림자는 주광이 드리운다 — 해 쪽 빛이 켜진 시간대면 그쪽, 아니면 예전처럼 앞 빛 (낮 = 비트 단위로 예전)
+  const sunKey = sunLight.intensity > 0;
+  sunLight.castShadow = sunKey;
+  dirLight.castShadow = !sunKey;
   scene.background.set(T ? T.bg : CONFIG.color.bg);
   _bgBase.copy(scene.background);   // 잠수가 여기서부터 짙은 바다색으로 간다 (아래 applyDiveBg)
   // 글자색 변수 (index.html <style>). 낮이면 속성을 지운다 — 인라인의 예전 값이 그대로 산다
@@ -189,14 +264,21 @@ function applyDiveBg() {
 }
 
 const sim = createSim(renderer);
-const water = createWater(scene, sim.texture);
+const water = createWater(scene, sim.texture, { mesh: quality.bundle().mesh });   // ⚠ 메시 분할은 품질 단계를 탄다 (512 · 384 · 256)
+// ⚠ 역광의 해 방향 = 물의 해 (uLightDir3) — **참조로** 물린다. bakeSun 이 sunRot · sunTilt 로 돌리면 역광도 같이 돈다 (sunfx.js)
+SUN_FX.uSunDirW.value = water.uni.uLightDir3.value;
+// ⭐ 물이 해 쪽 주광의 그림자 맵을 읽는다 (water.js '배 그림자 ②' · 2026-09-27). ⚠ 드리우는 중일 때만 읽는다 — 낮은 앞 빛이 드리우므로 예전 그대로다
+water.setSunShadow(sunLight);
 const grids = createGrids(scene, sim.texture);
 const spray = createSpray(scene);
-const boat = createBoat(scene);
+// ⚠ renderer 는 GLB 의 주변 차폐를 굽는 데 쓴다 (vertexao.js) — ⭐ 2026-09-27 부터 차폐는 GLB 에 실려 오므로 **파일에 없을 때만** 굽는다 (원본 `?boat=src`).
+//   소프트웨어 렌더러(SwiftShader 등)에는 안 넘긴다 — 깊이 96장을 CPU 가 그리면 몇 초씩 커튼이 안 걷힌다. 파일에 차폐가 있으면 거기서도 쓴다.
+//   ⚠ 품질 단계(TIERS)의 손잡이로 두지 않는다 — 단계는 달리는 동안 바뀌는데, 굽기는 불러올 때 한 번뿐이다 (불변식 34)
+const boat = createBoat(scene, quality.gpu.cls === 'software' ? null : renderer);
 // 수면에 비치는 배. 예전의 타원 그림자를 대신한다.
 // reflect.js 가 거울 카메라로 배만 찍고, water.js 가 그 그림을 되읽는다 —
 // ⚠ 되읽는 좌표는 화면이 아니라 '파도 법선으로 튕긴 광선이 배에 닿은 지점'이다
-const reflect = createReflect(renderer, scene, boat, [hemiLight, dirLight]);
+const reflect = createReflect(renderer, scene, boat, [hemiLight, dirLight, sunLight]);
 water.setBoat(boat.pivot);
 water.setReflect(reflect);
 // 돌고래 무리 — 원경을 채운다 (2026-09-18). ⚠ 반사·물속·발광 패스에 **안 넣는다** (pod.js 머리 주석) —
@@ -255,10 +337,15 @@ reflect.add(marks.group);
 //   ⚠ 타이포는 카메라에서 자리를 **파생**시킬 뿐 월드에 실재하므로 거울 카메라에서도 제자리다.
 // 물과 배가 같은 곳에서 빛을 받게 한다. 지금까지 물의 분광·반짝임에는 광원 개념이 없었고
 // 배만 dirLight 를 받고 있었다 — 이 한 줄이 둘을 같은 빛 아래로 묶는다
+// ⚠ 2026-09-26 : 배의 주광은 이제 해 쪽(sunLight)이지만 물의 명암은 앞 빛에 남겨 두었다 — 해로 돌리면 파도의 카메라 쪽 면이 그늘로 뒤집혀 바다 전체의 인상이 바뀐다.
+// ⭐ 2026-09-27 : 사용자가 시안을 보고 **역광 100%** 로 정했다 (`seaBacklight`). 여기서 넘기는 것은 여전히 앞 빛이고,
+//   water.update 가 해 쪽 주광이 켜진 시간대(저녁 · 밤)에 그만큼 해 쪽으로 돌려 쓰며, 틱이 그 값을 격자에 다시 넘긴다 (아래 _gridAz). 낮은 앞 빛 그대로다
 const lightDir = dirLight.position.clone().normalize();
 grids.setLight(lightDir);
 spray.setLight(lightDir);
 water.setLight(lightDir);
+const _gridLight = new THREE.Vector3();
+let _gridAz = water.lightAz;
 // 입력은 캔버스 영역(#mount)에만 붙인다. 검색바·DRIFT 미터는 형제 요소 —
 // 여기에 stage 를 넘기면 검색창 드래그가 조타로 새고 자동 조타가 취소된다
 // ⚠ onPick 은 **클릭(드래그가 아닌 누름)에서만** 불린다. input.js 가 그 둘을 가른다.
@@ -518,11 +605,12 @@ function onResize(fn) {
 syncRes();
 // ⚠ onResize 는 resizeCbs 가 선언된 뒤에만 부를 수 있다 (TDZ)
 onResize(() => reflect.resize());
-const submerged = createSubmerged(renderer, scene, boat, [hemiLight, dirLight]);
+const submerged = createSubmerged(renderer, scene, boat, [hemiLight, dirLight, sunLight]);
 water.uni.uSub.value = submerged.texture;
 onResize(() => submerged.resize());
 // ⭐ occluder — 부표 번짐(GlowPass)을 가리는 것. 배 뒤의 부표가 돛을 뚫고 번지면 안 된다 (2026-09-11 오후)
 const bloom = createBloom(renderer, W(), H(), { occluder: boat.pivot });
+bloom.setSamples(quality.bundle().msaa);   // 장면 패스의 MSAA 표본 수 — 품질 단계 (4 · 2 · 0)
 onResize(() => bloom.resize(W(), H()));
 // ⚠ 연결선의 굵기는 **화면 px** 라 창 크기를 알아야 한다 (LineMaterial.resolution — links.js)
 links.resize(W(), H());
@@ -1588,6 +1676,7 @@ let t = 0;
 
 function tick() {
   raf = requestAnimationFrame(tick);
+  quality.frameBegin();   // GPU 시간 재기 시작 (auto 일 때만 · 틱 끝의 frameEnd 와 짝)
   const dt = Math.min(0.05, clock.getDelta());
   t += dt;
   const M = CONFIG.move;
@@ -2032,6 +2121,15 @@ function tick() {
   // ⚠⚠ **보간된 kD 를 넘긴다.** 물의 거리 페이드가 camDist 를 곱해 따라오는데, 그 상쇄는
   //   카메라와 **같은 값**을 볼 때만 성립한다 (§23-1). 한쪽만 보간하면 전환 중 원경이 부푼다
   water.update(sim, view, t, kD);
+  // ⭐ 역광 바다 (2026-09-27) — 물이 방금 해 쪽으로 돌린 명암 방향을 격자도 **같은 값**으로 받는다 (불변식 15 · 바뀔 때만)
+  if (water.lightAz !== _gridAz) { _gridAz = water.lightAz; _gridLight.set(Math.cos(_gridAz), 0, Math.sin(_gridAz)); grids.setLight(_gridLight); }
+  // ⭐ 해 쪽 주광을 **보이는 해**에 둔다 — 물의 uLightDir3 (bakeSun 이 방금 sunRot · sunTilt 로 돌렸다). 겨누는 곳은 배다 (존에서 옆으로 비켜도 따라간다)
+  if (sunLight.intensity > 0) {
+    sunLight.target.position.set(boat.pivot.position.x, SUN_AIM_Y, boat.pivot.position.z);
+    sunLight.position.copy(water.uni.uLightDir3.value).multiplyScalar(SUN_DIST).add(sunLight.target.position);
+  }
+  // 역광(윤곽 빛 · 투과)의 세기 = 주광 그 자체 — 색 × 세기. 낮(주광 0)이면 0 이라 아무것도 안 더한다 (sunfx.js)
+  SUN_FX.uSunRad.value.copy(sunLight.color).multiplyScalar(sunLight.intensity);
   grids.update(sim, t, view, nav.scroll);
   spray.update(sim, t, boat);
   // ⭐⭐ 존 연출에서 **뱃머리가 글자를 바라본다** (2026-09-16, `zoneShipYaw`). 사용자 : *"뱃머리가 글자를 바라보며 들어와야함 근데 대각선으로"*.
@@ -2086,14 +2184,18 @@ function tick() {
   links.update(marks.linkItems(), dt);   // ⚠ dt 로 '하나씩 뻗는' 시계를 돌린다 (links.js)
   // 바다 누르기 화살표 — 누른 월드 자리를 이번 프레임 scroll 로 씬에 옮기고 수면 높이에 앉힌다 (seamark.js). 떠 있지 않으면 곧장 돌아온다
   seamark.update({ dt, scroll: nav.scroll, sim, cam: view });
-  // 돌고래 무리. ⚠ 시계는 물의 것(sim.qT)이라 dt 를 안 넘긴다 (pod.js)
+  // 돌고래 무리. ⚠ dt 를 안 넘긴다 — 무상태다 (pod.js).
+  //   ⚠⚠ 시계가 둘이다 (2026-09-26) : 몸의 움직임은 이 틱의 `t` (qT 의 30Hz 계단이면 120Hz 화면에서 네 프레임마다 뛴다) ·
+  //     수면 높이는 물의 `sim.qT` 그대로 (그려진 물이 그 시각이다). 역광의 해는 sunfx.js 의 공용 유니폼이 쥔다
   // ⚠⚠ `hide` 는 **연출이 비키라고 넘기는 값 하나**다 — 돌고래는 연출을 모른다 (dive.js 와 같은 규율).
   //   `cl` 은 존 구도와 향수 고르기를 이미 합친 클로즈업 블렌드(위 1530줄)이고, 거기에 이동 안개를 얹는다.
   //   배 근처는 부표 · 항적 · 이름표로 붐비는 데다 클로즈업에서 돌고래가 화면을 가린다 (사용자 지적).
-  pod.update(sim, { scroll: nav.scroll, cam, hide: Math.max(cl, travel.fog) });
-  // 새 무리. ⚠ pod 와 같은 시계 · 같은 `hide` 다. ⚠ 태양은 물의 유니폼을 **참조로** 넘긴다 —
+  pod.update(sim, { scroll: nav.scroll, cam, hide: Math.max(cl, travel.fog), time: t });
+  // 새 무리. ⚠ pod 와 같은 `hide` 다. ⚠ 태양은 물의 유니폼을 **참조로** 넘긴다 —
   //   실루엣 색을 제 뒤 하늘에서 내므로 하늘이 보는 태양과 같아야 한다 (stage.js 와 같은 규율)
-  birds.update(sim, { scroll: nav.scroll, cam, hide: Math.max(cl, travel.fog), sunDir: water.uni.uLightDir3.value });
+  // ⚠⚠ 시계는 물의 계단(sim.qT · 30Hz)이 아니라 이 틱의 `t` 다 (birds.js 머리 주석, 2026-09-26 · 돌고래의 몸도 같다).
+  //   qT 로 두면 120Hz 화면에서 새가 네 프레임마다 한 번씩 뛰었다. 새는 물에 안 비치고 물과 닿지 않는다
+  birds.update(sim, { scroll: nav.scroll, cam, hide: Math.max(cl, travel.fog), sunDir: water.uni.uLightDir3.value, t });
   // ⚠ 아래 둘은 이번 프레임 카메라로 투영한다 — 행렬을 먼저 갱신한다 (안 하면 한 프레임 늦어 라벨이 떤다.
   //   카메라는 씬에 안 들어 있어 render 전까지 matrixWorld 가 지난 프레임 값이다)
   cam.updateMatrixWorld();
@@ -2261,10 +2363,13 @@ function tick() {
     if (ui.mount.style.cursor !== want) ui.mount.style.cursor = want;
   }
   ui.setDrift(s);
+  // ⭐ 그림자 맵 — 바뀌었을 때만, 이 프레임의 **처음 불이 켜진 렌더 한 번**이 그린다 (shadowDirty 머리말)
+  renderer.shadowMap.needsUpdate = shadowDirty();
   // 반사를 먼저 찍는다 (배와 같은 게이트라 8fps). 본 렌더가 그 그림을 되읽는다
   submerged.update(view, boat.stepped);
   reflect.update(view, water.uni.uBoatPos.value, boat.stepped);
   bloom.render(scene, view);
+  quality.frameEnd(performance.now());   // 프레임 간격 · GPU 시간 → 2초 창마다 단계 판정 (quality.js)
 }
 tick();
 // ⭐ 부팅 신호 ③ (v0.75.0) — 첫 장이 그려졌다 (셰이더 컴파일 포함). 배 GLB 는 아직 오는 중일 수 있다 (boat.js 가 따로 알린다)
@@ -2276,16 +2381,35 @@ let resizeRaf = 0;
 function applyResize() {
   resizeRaf = 0;
   const w = W(), h = H();
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  // ⚠ 픽셀비는 품질 단계가 정한다 (quality.js — 화면 배율 × 단계 배율, 상한 2 · 1.5 · 1)
+  renderer.setPixelRatio(quality.pixelRatio());
   renderer.setSize(w, h);
   cam.aspect = w / h;
   cam.updateProjectionMatrix();
   resizeCbs.forEach(fn => fn(w, h));
+  quality.hold(1500);   // 백버퍼 재할당 · 새 크기의 첫 장은 판정 표본이 아니다
 }
 const ro = new ResizeObserver(() => {
   if (!resizeRaf) resizeRaf = requestAnimationFrame(applyResize);
 });
 ro.observe(el);
+
+// ⭐ 품질 단계가 바뀌었다 (자동 내림 · 올림 · 앱의 그래픽 설정). 값 묶음을 쓰고 나머지 손잡이를 건다.
+//   ⚠ 픽셀비는 창 크기 변화와 같은 길로 간다 — 반사 · 잠긴 선체 · 블룸 · 선 굵기가 전부 새 버퍼 크기로 다시 잰다
+//   ⚠ 셰이더는 다시 안 만든다 (MSAA 는 타깃만 · 메시는 지오메트리만 · 나머지는 유니폼) — 전환에 한 장 이상 멈추지 않는다
+let _qTier = quality.tier;
+quality.onChange((info) => {
+  if (info.tier !== _qTier) {
+    _qTier = info.tier;
+    const T = quality.bundle();
+    quality.writeParams();
+    bloom.setSamples(T.msaa);
+    water.setMeshDetail(T.mesh);
+    apply();
+    applyResize();
+  }
+  hostQuality(info);
+});
 
 // 탭이 숨으면 루프를 멈춘다. 복귀할 때 getDelta() 로 그동안 쌓인 시간을 버려야
 // 첫 프레임에 dt 가 통째로 들어오지 않는다
@@ -2294,6 +2418,7 @@ function onVisibility() {
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
   } else if (!raf) {
     clock.getDelta();
+    quality.hold(2000);   // 돌아온 직후 몇 장은 합성기 · 드라이버가 몰아서 그린다 — 판정 표본이 아니다
     raf = requestAnimationFrame(tick);
   }
 }
@@ -2463,6 +2588,8 @@ const onKeyExit = (e) => {
 window.addEventListener('keydown', onKeyExit);
 
 window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, dive: hostDive, diveReport, cabinIn: hostCabinIn, cabinInReport, goRegion, startTravel, startFocus, startAt, boatAt, zoneReport, setHost, boot: bootNow, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, pod, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
+  // ⭐ 품질 단계 (S15P21E203-435) — PB.quality.get() · PB.quality.set('auto' | 'high' | 'mid' | 'low'). 앱의 그래픽 설정이 set 을 부른다
+  quality: { get: () => quality.info(), set: (m) => quality.setMode(m) },
   // ⭐ 반응형 검산 (2026-09-11 오후) — 제품 UI 상자들의 자리 · 서로 겹침 · 화면 밖 · 스크롤 · 수면 타이포 꼭대기와 정보 블록의 간격.
   //   ⚠ 창 크기를 바꾼 뒤에는 **스크린샷 한 장으로 먼저 칠하고** 부른다 (숨긴 패널에서는 ResizeObserver 가 안 불린다 — 교훈 ⑧)
   layout: () => layoutReport(),
@@ -2519,6 +2646,7 @@ function disposeAll() {
   if (resizeRaf) { cancelAnimationFrame(resizeRaf); resizeRaf = 0; }
   ro.disconnect();
   document.removeEventListener('visibilitychange', onVisibility);
+  quality.dispose();   // GPU 타이머 쿼리를 지운다
   submerged.dispose();
   bloom.dispose();   // ⚠ 새 모듈은 여기 등록한다 (불변식 10)
   input.dispose();
@@ -2535,7 +2663,7 @@ function disposeAll() {
   reflect.dispose();
   water.dispose();
   sim.dispose();
-  scene.remove(hemiLight, dirLight);   // 씬을 완전히 비워 둔다 — 남으면 재마운트 때 중복된다
+  scene.remove(hemiLight, dirLight, sunLight, sunLight.target);   // 씬을 완전히 비워 둔다 — 남으면 재마운트 때 중복된다
   title.dispose();
   gate.dispose();
   travel.dispose();    // ⚠ 안개를 걷어 둔다 — HMR 뒤에 흰 화면이 남으면 "바다가 날아갔다" 로 오진한다

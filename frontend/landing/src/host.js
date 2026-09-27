@@ -19,7 +19,7 @@
 let handlers = null;
 let notice = null;   // 단독일 때 알릴 곳 — main.js 가 ui.warn 을 넘긴다
 
-/** 호스트가 붙을 때 부른다. h = { openDetail, saveToShelf, exploreSimilar, search, moveBoat, openCabin, closeCabin } — 없는 것은 기본 동작. null 이면 단독으로 돌아간다 */
+/** 호스트가 붙을 때 부른다. h = { openDetail, saveToShelf, exploreSimilar, search, moveBoat, openCabin, closeCabin, quality } — 없는 것은 기본 동작. null 이면 단독으로 돌아간다 */
 export function setHost(h) { handlers = h || null; }
 export function setHostNotice(fn) { notice = typeof fn === 'function' ? fn : null; }
 
@@ -93,6 +93,16 @@ export function hostCabin(open) {
   console.info('[paperboat] 선실 → 앱에서는 진열대 · 컬렉션으로 가는 작은 말풍선 (A13)');
   if (notice) notice('선실', '앱에 붙으면 배 옆에 진열대 · 컬렉션 말풍선이 뜹니다');
   return undefined;
+}
+
+// ───────── 품질 단계 (2026-09-25, S15P21E203-435) — 앱의 그래픽 설정이 듣는다 ─────────
+// info = { mode, tier, auto, reason, gpu: { name, cls }, label, timer } (quality.js 의 info()).
+//   reason : 'start' · 'down'(자동으로 내렸다) · 'up'(자동으로 올렸다) · 'user'(설정을 바꿨다) · 'slow'(가장 낮은 단계에서도 느리다)
+// ⚠ **알림만이다** — 무엇을 띄울지(토스트 · 안내)는 앱이 정한다. 호스트는 `window.PB` 가 열린 뒤에 붙으므로
+//   시작 단계는 `PB.quality.get()` 으로 따라잡는다 (부팅 신호의 bootNow 와 같은 사정).
+export function hostQuality(info) {
+  const fn = handlers && handlers.quality;
+  if (typeof fn === 'function') fn(info);
 }
 
 /** 검색창 (main.js onSearch). 호스트가 search 를 주면 검색어를 넘기고 true — 엔진은 해역으로 떠나지 않는다. 없으면 false — 예전 그대로 엔진이 찾는다 (goSearch) */
