@@ -165,10 +165,20 @@
 
   /*
    * ⚠️ 브라우저 기본 스타일이 `dialog` 에 `color: CanvasText`(검정)를 박습니다.
-   * 이 한 줄이 없으면 모달이 반쯤 지워진 채로 뜹니다.
+   * `color` 한 줄이 없으면 모달이 반쯤 지워진 채로 뜹니다.
+   *
+   * 모달은 유리 결 밑을 **불투명하게** 깝니다. 뒤에 글자가 있는 판이라, 흐림(40px) 너머로도
+   * 뒤 화면의 밝은 칸이 얼룩으로 번져 창마다 색이 달랐고(취향 테스트 결과 · 향수 상세의 진열대
+   * 담기), 흐림이 빠지면(움직임 줄이기) 뒤 글자가 모달 글과 겹쳤습니다(S15P21E203-444).
+   * 색은 흐림이 켜진 취향 테스트 결과 모달에서 그러데이션을 걷고 잰 뒤 화면의 가운데값이라,
+   * 유리 결을 얹으면 흐린 판과 같은 색입니다. 판 뒤가 가려지니 판의 흐림은 빼고, 판 밖은
+   * 뒷막(레이어 밖)이 흐립니다.
    */
   .scent-night dialog {
     color: var(--color-ink);
+    background-color: rgb(52 57 82);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   /* 판 위의 카드 — 판보다 한 단 밝은 유리이고, 안쪽만 글자가 먹색으로 돌아옵니다 */
@@ -347,25 +357,16 @@
     );
   }
 
-  /* blur 는 스크롤에서 무겁습니다 */
+  /*
+   * blur 는 스크롤에서 무겁습니다.
+   * NOTE: 판(`.scent-glass`)은 뒤가 방 그림뿐이라 흐림이 빠져도 겹칠 글자가 없습니다. 모달은
+   * 판 밑이 불투명해 여기서 뺄 흐림이 없습니다.
+   */
   @media (prefers-reduced-motion: reduce) {
     .scent-glass,
-    .scent-night dialog,
     .scent-pill {
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
-    }
-
-    /*
-     * 모달은 흐림이 빠지면 **뒤 화면이 글자째 비칩니다** — 판이 흰색 0.22~0.3 뿐이라 취향 테스트
-     * 결과 모달 너머로 향 타일 이름이 모달 글과 겹쳐 읽혔습니다(S15P21E203-444). 흐린 뒤가 내던
-     * 색을 판 밑에 불투명하게 깔아 유리 결(그러데이션 · 테 · 빛)은 두고 뒤만 막습니다.
-     * 값은 흐림이 켜진 그 모달에서 그러데이션을 걷고 잰 뒤 화면의 가운데값입니다.
-     *
-     * NOTE: 판(`.scent-glass`)은 뒤가 방 그림뿐이라 흐림이 빠져도 겹칠 글자가 없습니다.
-     */
-    .scent-night dialog {
-      background-color: rgb(52 57 82);
     }
   }
 }
@@ -427,19 +428,16 @@
   padding-block: calc(var(--spacing) * 7.5);
 }
 
-/* 뒷막. `backdrop:bg-ink/40` 은 어두운 방에서 뒤집혀 흰 천을 덮은 꼴이 됩니다 */
+/*
+ * 뒷막. `backdrop:bg-ink/40` 은 어두운 방에서 뒤집혀 흰 천을 덮은 꼴이 됩니다.
+ * 판 밖의 뒤 화면은 글자가 읽히지 않게 흐립니다 — 12px 부터 글자가 안 읽히고, 20px 에서
+ * 타일 모양까지 뭉개집니다. 움직임 줄이기에서도 흐립니다. 흐림이 빠지면 판 옆으로 뒤 글자가
+ * 또렷이 남아 창마다 뒤가 달라 보입니다.
+ */
 .scent-night dialog::backdrop {
   background-color: rgb(18 11 18 / 0.62);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
-}
-
-/* 레이어 밖이라 위 블록이 닿지 않아 따로 적습니다 */
-@media (prefers-reduced-motion: reduce) {
-  .scent-night dialog::backdrop {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 /*
