@@ -75,7 +75,12 @@ export default defineConfig(({ mode }) => {
       // 'vitest' 에서 명시적으로 import 하면 어디서 온 함수인지 보이고 타입도 정확합니다.
       globals: false,
       css: true,
-      include: ['src/**/*.test.{ts,tsx}', 'mock/**/*.test.ts'],
+      // landing: 3D 엔진의 생성물 검사 — 커밋된 배 GLB 가 원본과 짝이 맞는지 (landing/scripts/pack-boat.test.js)
+      include: [
+        'src/**/*.test.{ts,tsx}',
+        'mock/**/*.test.ts',
+        'landing/**/*.test.js',
+      ],
     },
   }
 })

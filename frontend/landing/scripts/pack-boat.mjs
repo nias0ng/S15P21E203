@@ -7,6 +7,8 @@
 // 하는 일 : ① 차폐를 `_AOFB`(VEC2 · 8비트 정규화)로 프리미티브마다 싣는다 ② 같은 정점 합치기(weld) ③ meshopt —
 //   캐시 순서(reorder) · 양자화(위치 14비트 · 법선 8비트 팔면체 필터 · [0,1] 안의 UV 12비트) · EXT_meshopt_compression
 //   ⚠ 생성 파일은 손으로 고치지 않는다. 모델을 갈면 원본을 data/ 에 넣고 아래 순서로 다시 만든다.
+//   ⚠ 만든 결과는 `npm run verify` 가 검사한다 (pack-boat.test.js — 도구 없이 돈다) : 지금의 원본 · 차폐와 짝이 맞는지 · three 해독기로 풀리는지.
+//     원본만 갈고 이 스크립트를 안 돌리면 거기서 멈춘다.
 //
 // ⚠ 도구(glTF-Transform · meshoptimizer)는 **프로젝트 의존성에 없다** — 가끔 도는 일이라 저장소 밖 임시 폴더에 설치해 쓴다 :
 //     mkdir <도구 폴더> && cd <도구 폴더> && npm init -y && npm i @gltf-transform/core@4 @gltf-transform/extensions@4 @gltf-transform/functions@4 meshoptimizer@1

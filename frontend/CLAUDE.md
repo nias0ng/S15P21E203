@@ -464,6 +464,8 @@ IDE 와 `grep` 이 찾을 수 있어야 합니다.
 - 작성 예시는 `src/shared/ui/Button.test.tsx`입니다.
 - 최소 기준: 공용 컴포넌트(`shared/ui/`)와 순수 함수(`shared/lib/`)는 테스트를 함께 만듭니다.
   화면 전체 테스트는 필수가 아닙니다.
+- 3D 엔진(`landing/`)은 생성물 검사 하나만 돕니다 — `landing/scripts/pack-boat.test.js` 가 커밋된 배 GLB 가 원본 · 차폐 · three 해독기와 맞는지 봅니다
+  (`vite.config.ts` 의 `test.include` 에 `landing/**/*.test.js`). 엔진은 ESLint · Prettier 대상이 아닙니다.
 
 ## 하지 말 것
 
