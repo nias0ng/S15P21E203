@@ -3,6 +3,7 @@ import { useIsLoggedIn } from '@/shared/store/authStore'
 
 import { AccountMenu } from './header/AccountMenu'
 import { BrandMark } from './header/BrandMark'
+import { GraphicsMenu } from './header/GraphicsMenu'
 import { LoginButton } from './header/LoginButton'
 import { PrimaryNav } from './header/PrimaryNav'
 import { GLASS, inkOf, isGlass, type HeaderTone } from './header/tone'
@@ -38,10 +39,16 @@ export function GlobalHeader({ tone = 'surface' }: { tone?: HeaderTone }) {
       )}
     >
       <div className="max-w-frame mx-auto grid h-[var(--header-h)] grid-cols-[auto_1fr_auto] items-center gap-5 px-[var(--gutter)]">
-        <BrandMark ink={ink} />
+        {/*
+          NOTE: 톱니바퀴(아이콘 5 + 사이 5)가 서면 로고 쪽에도 같은 폭(10)을 비웁니다. 가운데 메뉴는
+          양옆 칸 사이의 가운데라, 오른쪽만 넓어지면 메인에서만 메뉴가 20px 왼쪽으로 섭니다 (1920 실측).
+        */}
+        <BrandMark ink={ink} className={cn(onGlass && 'mr-10')} />
         <PrimaryNav isLoggedIn={isLoggedIn} ink={ink} />
 
-        <div className="flex shrink-0 items-center">
+        <div className="flex shrink-0 items-center gap-5">
+          {/* 그래픽 설정은 3D 향 지도(유리판 헤더)에서만 섭니다 — 다른 화면에는 바꿀 3D 가 없습니다 */}
+          {onGlass && <GraphicsMenu ink={ink} />}
           {isLoggedIn ? <AccountMenu ink={ink} /> : <LoginButton ink={ink} />}
         </div>
       </div>

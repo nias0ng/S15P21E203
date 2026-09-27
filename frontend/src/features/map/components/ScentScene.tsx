@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { cn } from '@/shared/lib/cn'
 import { useDiveStore } from '@/shared/store/diveStore'
+import type { GraphicsMode, SceneQuality } from '@/shared/store/graphicsStore'
 
 import { setBoatAnchorSource, type BoatAnchor } from '../lib/boatAnchor'
 import {
@@ -10,6 +11,7 @@ import {
   type SceneBootEvent,
   type SceneBootSnapshot,
 } from '../lib/bootProgress'
+import { engineSrc, parseSceneQuality } from '../lib/sceneQuality'
 
 /**
  * 3D 향 지도가 카드 · 검색창에서 앱으로 넘기는 향수 한 개
@@ -62,6 +64,8 @@ interface EngineHost {
   openCabin: () => Promise<void>
   /** 엔진이 말풍선을 닫아 달라고 합니다 — 3D 아무 데나 누르면 옵니다 (팝오버의 규약) */
   closeCabin: () => void
+  /** 품질 단계가 바뀌었습니다 (엔진 `host.js` 의 `hostQuality`) — 모양은 `parseSceneQuality` 가 좁힙니다 */
+  quality: (info: unknown) => void
 }
 
 /** iframe 안 엔진이 여는 손잡이 — paperboat main.js 의 window.PB 중 여기서 쓰는 것만 */
@@ -113,6 +117,13 @@ interface EngineHandle {
    * (엔진 `main.js` 의 `boatAt`). 지도가 아직 없으면 null 입니다.
    */
   boatAt?: () => { x: number; y: number } | null
+  /**
+   * 그래픽 품질 단계 (엔진 `landing/src/quality.js` · `PB.quality`). `get` 은 지금 단계,
+   * `set` 은 그래픽 설정을 겁니다 — 고정 단계면 엔진이 더 움직이지 않습니다.
+   *
+   * NOTE: 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다. 그때는 설정 단추만 남고 엔진은 늘 같은 화면입니다.
+   */
+  quality?: { get: () => unknown; set: (mode: GraphicsMode) => boolean }
 }
 
 type Props = {
@@ -202,6 +213,13 @@ type Props = {
    * ⚠️ 엔진이 아직 안 떴거나 지도가 없으면 안 부릅니다.
    */
   onLeave?: (pos: { x: number; y: number }) => void
+  /**
+   * 그래픽 설정 (`auto` · `high` · `mid` · `low` — 그래픽 설정 단추). 처음 값은 엔진 주소에
+   * `?quality=` 로 실려 렌더러를 만들 때 읽히고, 그 뒤에 바뀌면 엔진에 바로 겁니다.
+   */
+  quality?: GraphicsMode
+  /** 엔진의 지금 품질 단계 — 붙을 때 한 번, 단계가 바뀔 때마다 옵니다 (자동으로 내렸을 때도) */
+  onQuality?: (quality: SceneQuality) => void
   className?: string
 }
 
@@ -235,9 +253,13 @@ export function ScentScene({
   start,
   landing,
   onLeave,
+  quality = 'auto',
+  onQuality,
   className,
 }: Props) {
   const frame = useRef<HTMLIFrameElement>(null)
+  /** 엔진 주소에 싣는 처음 설정 — 주소는 한 번만 넣으므로 그때의 값만 씁니다 (그 뒤는 아래 effect 가 겁니다) */
+  const initialQuality = useRef(quality)
   const probe = useRef<HTMLDivElement>(null)
   /** 붙어 있는 엔진 (`window.PB`). 아래 두 효과가 나눠 쓰므로 ref 에 둡니다 */
   const handle = useRef<EngineHandle | null>(null)
@@ -274,6 +296,7 @@ export function ScentScene({
     onBoot,
     onMove,
     onLeave,
+    onQuality,
   })
   useEffect(() => {
     latest.current = {
@@ -287,6 +310,7 @@ export function ScentScene({
       onBoot,
       onMove,
       onLeave,
+      onQuality,
     }
   })
 
@@ -431,7 +455,15 @@ export function ScentScene({
         openCabin: () => latest.current.onOpenCabin(),
         // 3D 아무 데나 누르면 말풍선을 닫습니다 (팝오버 — 엔진 host.js `hostCabin(false)`)
         closeCabin: () => latest.current.onCloseCabin(),
+        // 품질 단계가 바뀌었습니다 — 자동 내림 · 올림 · 설정 변경 (host.js `hostQuality`)
+        quality: (info) => {
+          const next = parseSceneQuality(info)
+          if (next) latest.current.onQuality?.(next)
+        },
       })
+      // 시작 단계는 처리기를 꽂기 **전에** 정해졌으므로 따라잡습니다 (부팅 신호의 `boot()` 와 같은 사정)
+      const startQuality = parseSceneQuality(engine.quality?.get())
+      if (startQuality) latest.current.onQuality?.(startQuality)
       /*
         선실 말풍선이 배를 따라다니려면 배의 화면 자리를 **매 프레임** 읽어야 합니다.
         값을 나르는 것이 아니라 **읽는 길**을 꽂습니다 — 60fps 값을 React 상태로 올리면
@@ -504,7 +536,7 @@ export function ScentScene({
     // 메인 스레드를 1~3초 막는 동안에도 커튼이 움직입니다. 늦어지는 건 30ms 남짓입니다 (2026-09-17 실측)
     let raf = requestAnimationFrame(() => {
       raf = requestAnimationFrame(() => {
-        el.src = ENGINE_SRC
+        el.src = engineSrc(ENGINE_SRC, initialQuality.current)
       })
     })
     return () => {
@@ -553,6 +585,18 @@ export function ScentScene({
     started.current = true
     engine.startAt(start, { land: landing })
   }, [ready, start, landing])
+
+  /*
+   * 그래픽 설정이 바뀌면 엔진에 겁니다. 엔진이 붙는 순간에도 한 번 맞춥니다 — 주소에 실은 처음
+   * 값과 지금 값이 다를 수 있습니다(엔진이 뜨는 동안 설정을 바꾼 경우).
+   * 엔진의 모드가 이미 같으면 부르지 않습니다 — 자동에서 `set('auto')` 를 또 부르면 판정 창이 비워집니다.
+   */
+  useEffect(() => {
+    const engine = handle.current?.quality
+    if (!ready || !engine) return
+    if (parseSceneQuality(engine.get())?.mode === quality) return
+    engine.set(quality)
+  }, [ready, quality])
 
   return (
     <>

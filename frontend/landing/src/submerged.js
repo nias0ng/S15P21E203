@@ -100,7 +100,19 @@ void main(){
       scene.overrideMaterial = mat;
       const prevLayers = cam.layers.mask;
       cam.layers.set(LAYER);
+      // ⭐ (2026-09-27, 최적화 1) 두 가지를 안 그린다 — 둘 다 이 패스의 그림을 안 바꾼다 :
+      //   ① **그림자 맵.** 덮어쓰기 재질이라 불이 필요 없는데, 빛이 레이어 2 에도 켜져 있어 이 render() 가 그림자 맵(배 전체 27.9만)을 새로 굽고 있었다.
+      //      그리는 것은 main.js 의 shadowDirty 가 정한 한 번뿐이다 — 여기서는 잠깐 막았다가 되돌린다.
+      //   ② **물에 안 닿는 부품.** 배 부품의 대부분(난간 · 선실 · 돛 · 돛대 · 조타석 … 20만 삼각형)은 흘수선보다 한참 위라 위의 클리핑 평면에 통째로 잘린다 —
+      //      정점만 헛돈다. 어느 부품이 닿을 수 있는지는 boat.js 가 GLB 를 불러온 자리에서 잰다 (boat.subHide).
+      const sm = renderer.shadowMap, prevAuto = sm.autoUpdate, prevNeeds = sm.needsUpdate;
+      sm.autoUpdate = false; sm.needsUpdate = false;
+      const hide = boat.subHide || [];
+      const was = hide.map(o => o.visible);
+      hide.forEach(o => { o.visible = false; });
       renderer.render(scene, cam);
+      hide.forEach((o, i) => { o.visible = was[i]; });
+      sm.autoUpdate = prevAuto; sm.needsUpdate = prevNeeds;
       cam.layers.mask = prevLayers;
       scene.overrideMaterial = null;
 

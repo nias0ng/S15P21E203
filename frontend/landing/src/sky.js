@@ -83,7 +83,10 @@ export const SKY = {
   // ⚠⚠ **에일리어싱 문턱** (2026-09-20). w = 픽셀 하나가 덮는 p 의 크기이고 결 하나가 p 1단위다.
   //   나이퀴스트는 w = 0.5 (결 하나에 표본 둘) — 그 앞에서 미리 녹이기 시작한다.
   //   ⚠ 취향 값이 아니라 **표본화 한계**다. params 로 빼지 않는다
-  cloudAA0: 0.25, cloudAA1: 0.60
+  cloudAA0: 0.25, cloudAA1: 0.60,
+  // ── 지평선 빛띠 (2026-09-26, S15P21E203-435) — 세기 · 색은 시간대 표(`CONFIG.times[].sky.glow · glowWhite`), 자리는 물이 민다 (`syncHorizonGlow`)
+  glowRise: 0.75,     // 바다가 녹는 거리의 이 몫부터 빛띠가 차오른다 (1 = 다 녹은 자리) — 먼 바다가 빛띠로 녹아든다
+  glowAz: 0.45        // 해 반대쪽의 세기 (해 쪽 1) — 해가 진 쪽 수평선이 더 밝다
 };
 
 const f = (n) => Number(n).toFixed(5);
@@ -112,7 +115,10 @@ export const SKY_UNIFORMS = {
   uCloudA: { value: new THREE.Vector4(0, 0.52, 0.30, 0.55) },     // 세기 · 덮임 문턱 · 가장자리 부드러움 · 그늘
   uCloudB: { value: new THREE.Vector4(0.5, 0.012, 0.12, 0.20) },  // 결 크기 · 아래 페이드 끝 · 위 페이드 시작 · 위 페이드 끝
   // ⚠ xy = **바람이 민 거리(월드 xz)** · z = 해 쪽 가장자리 · w = 위로 갈수록 짙어지는 배수. tickSky 가 xy 를 민다
-  uCloudC: { value: new THREE.Vector4(0, 0, 0.10, 1.8) }
+  uCloudC: { value: new THREE.Vector4(0, 0, 0.10, 1.8) },
+  // ⭐ 지평선 빛띠 (2026-09-26). 색 × 세기는 syncSky 가(시간대 · 낮은 0 이라 이 층이 없다), 자리는 syncHorizonGlow 가 매 프레임 채운다
+  uHorGlowCol: { value: new THREE.Color(0, 0, 0) },
+  uHorGlowGeo: { value: new THREE.Vector3(-0.108, 0.035, 0.044) }   // x = 바다 끝의 고도(sin) · y = 그 아래로 차오르는 폭 · z = 위로 옅어지는 폭(1/e)
 };
 
 // params 의 override 를 유니폼과 CPU 양쪽에 밀어 넣는다.
@@ -145,11 +151,27 @@ export function syncSky(P) {
   SKY_UNIFORMS.uCloudC.value.z = pv('cloudRim', 0.10);
   SKY_UNIFORMS.uCloudC.value.w = pv('cloudBase', 1.8);
   CPU.drift = pv('cloudDrift', 0.02);
+  // ⭐ 지평선 빛띠의 색 — 태양색을 흰빛 쪽으로 옅게 한다 (glowWhite). 저녁 수평선은 R 이 이미 255 라
+  //   태양색(주황)을 그대로 더하면 밝아지지 않고 **채도만 오른다** (2026-09-26 실측 — 세기 0.25 에서 +8 레벨뿐이었다)
+  const gA = (S && S.glow ? S.glow : 0) * pv('skyGlowK', 1), gW = S && S.glowWhite !== undefined ? S.glowWhite : 0.5;
+  SKY_UNIFORMS.uHorGlowCol.value.setRGB((s[0] + (1 - s[0]) * gW) * gA, (s[1] + (1 - s[1]) * gW) * gA, (s[2] + (1 - s[2]) * gW) * gA);
   // 환경맵을 다시 구울지 판정할 열쇠.
   // ⚠ 구름 값도 넣는다 — 안 넣으면 **배·부표만 구름 없는 하늘을 반사한다** (이 파일이 경고한 그것).
   // ⚠⚠ 흐른 거리(uCloudC.x)는 **안 넣는다.** 넣으면 PMREM 이 매 프레임 돈다 (수십 ms) — tickSky 주석 참고
   return (S ? S.horizon + '/' + S.sun + '/' : '') + zen + '/' + band + '/' + broadA
-       + '/' + cA.toArray().join(',') + '/' + cB.toArray().join(',') + '/' + SKY_UNIFORMS.uCloudC.value.z + '/' + SKY_UNIFORMS.uCloudC.value.w;
+       + '/' + cA.toArray().join(',') + '/' + cB.toArray().join(',') + '/' + SKY_UNIFORMS.uCloudC.value.z + '/' + SKY_UNIFORMS.uCloudC.value.w
+       + '/' + SKY_UNIFORMS.uHorGlowCol.value.getHexString();
+}
+
+// ⭐ 지평선 빛띠의 자리 (2026-09-26, S15P21E203-435) — 물이 매 프레임 부른다 (water.js `update` · 녹는 거리를 정한 바로 뒤).
+//   바다가 다 녹는 수평 거리(`uFade1`)를 카메라 높이에서 본 고도가 곧 **화면 속 바다 끝**이다 — 항해 −6.2° · 존 · 선실 줌인 −3.9°.
+//   ⚠⚠ 참 수평선(고도 0)에 걸지 않는다 — 바다는 그보다 아래서 끝나 사이에 빈 띠가 생긴다 (landing/CLAUDE.md "하지 않는 것")
+//   ⚠ 환경맵 열쇠(syncSky 의 반환값)에는 안 넣는다 — 넣으면 카메라가 움직일 때마다 PMREM 이 돈다 (수십 ms)
+export function syncHorizonGlow(camY, fadeEnd, P) {
+  const y = Math.max(0.05, camY), D = Math.max(1, fadeEnd);
+  const yE = -y / Math.hypot(y, D), y0 = -y / Math.hypot(y, D * SKY.glowRise);
+  const h = ((P && P.skyGlowH !== undefined) ? P.skyGlowH : 2.5) * Math.PI / 180;
+  SKY_UNIFORMS.uHorGlowGeo.value.set(yE, Math.max(1e-4, yE - y0), Math.max(1e-4, Math.sin(h)));
 }
 
 // ⭐ 구름이 흐른다 (2026-09-20). main.js 의 틱이 **물의 시각(`sim.qT`)** 으로 부른다.
@@ -189,6 +211,8 @@ uniform vec3 uSkySun;    // 태양(밤에는 달) 로브의 색
 uniform vec4 uCloudA;    // 구름 : 세기 · 덮임 문턱 · 가장자리 부드러움 · 그늘
 uniform vec4 uCloudB;    // 구름 : 결 크기 · 아래 페이드 끝 · 위 페이드 시작 · 위 페이드 끝
 uniform vec4 uCloudC;    // 구름 : xy = 바람이 민 거리(월드 xz) · z = 해 쪽 가장자리 · w = 위쪽 그늘 배수
+uniform vec3 uHorGlowCol; // 지평선 빛띠 : 색 × 세기 (0 이면 이 층이 없다 — 낮)
+uniform vec3 uHorGlowGeo; // 지평선 빛띠 : x = 바다 끝의 고도(sin) · y = 그 아래로 차오르는 폭 · z = 위로 옅어지는 폭
 
 // ⚠⚠ **water.js 의 hash2 와 다른 함수다** — 범위가 [0,1] 이다 (그쪽은 [−0.5,+0.5],
 //   CLAUDE.md 가 한 층을 죽였다고 적어 둔 바로 그 함정). 이름을 나눈 이유는 둘이다 :
@@ -256,6 +280,17 @@ vec3 skyColor(vec3 d, vec3 sunDir){
   float s = max(dot(d, sunDir), 0.0);
   col += uSkySun * (uSkyTune.y * pow(s, ${f(SKY.broadK)})
                      + ${f(SKY.tightA)} * pow(s, ${f(SKY.tightK)}));
+  // ⭐ 지평선 빛띠 (2026-09-26, S15P21E203-435) — **바다가 다 녹는 자리 바로 위가 가장 밝고** 위로 옅어진다.
+  //   해가 화면 위 바깥(고도 14.4°)이라 넓은 무리가 위쪽 하늘만 밝혀, 하늘이 바다 쪽으로 갈수록 오히려 어두웠다 (210 → 199).
+  //   ⚠ 먼 바다가 녹아드는 색도 이 함수다 — 녹는 거리의 뒤쪽(glowRise)부터 차올라 바다가 빛띠로 녹는다 (선이 안 생긴다)
+  //   ⚠ 구름 앞에 둔다 — 구름이 빛띠까지 같이 누른다 (태양 로브와 같은 까닭)
+  if (uHorGlowCol.r + uHorGlowCol.g + uHorGlowCol.b > 0.0) {
+    float gRise = smoothstep(uHorGlowGeo.x - uHorGlowGeo.y, uHorGlowGeo.x, d.y);
+    float gFall = exp(-max(d.y - uHorGlowGeo.x, 0.0) / uHorGlowGeo.z);
+    vec2 gD = normalize(d.xz + vec2(1e-5, 0.0)), gS = normalize(sunDir.xz + vec2(1e-5, 0.0));
+    float gAz = mix(${f(SKY.glowAz)}, 1.0, pow(max(dot(gD, gS), 0.0), 2.0));
+    col += uHorGlowCol * (gRise * gFall * gAz);
+  }
   // ⭐ 구름 — **태양 로브 뒤에 얹는다.** 구름은 해를 가리는 물건이라 로브까지 같이 눌러야 한다.
   // ⚠⚠ **어둡게 그린다.** 저녁 수평선의 R 은 이미 255 라 밝힐 여지가 없고(실측 : 고도 0.05° 에서
   //   255,202,164 · 3.06° 에서 249,189,163), 태양이 카메라 정면 12° 라 이 구름은 **역광**이다.
@@ -328,6 +363,16 @@ export function skyColorCPU(dx, dy, dz, sun, w = 0) {
     HOR[1] + (ZEN[1] - HOR[1]) * t + SUN[1] * lobe,
     HOR[2] + (ZEN[2] - HOR[2]) * t + SUN[2] * lobe
   ];
+  // ⭐ 지평선 빛띠 — GLSL 과 같은 식 · 같은 자리 (로브 뒤 · 구름 앞)
+  const gc = SKY_UNIFORMS.uHorGlowCol.value;
+  if (gc.r + gc.g + gc.b > 0) {
+    const G = SKY_UNIFORMS.uHorGlowGeo.value;
+    const rise = sstep(G.x - G.y, G.x, dy), fall = Math.exp(-Math.max(dy - G.x, 0) / G.z);
+    const hx = dx + 1e-5, sx = sun[0] + 1e-5;
+    const cd = Math.max(0, (hx * sx + dz * sun[2]) / (Math.hypot(hx, dz) * Math.hypot(sx, sun[2])));
+    const k = rise * fall * (SKY.glowAz + (1 - SKY.glowAz) * cd * cd);
+    out[0] += gc.r * k; out[1] += gc.g * k; out[2] += gc.b * k;
+  }
   // ⭐ 구름 — GLSL 과 같은 순서(로브 뒤)여야 한다. 구름이 로브를 누르는 것이 이 층의 뜻이다
   const A = SKY_UNIFORMS.uCloudA.value;
   if (A.x > 0) {

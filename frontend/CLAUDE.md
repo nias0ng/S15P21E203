@@ -346,6 +346,11 @@ API 쪽은 `shared/api/http` 의 `apiErrorMessage`(서버 문구 또는 대체 �
 - 배 모델 · 게이트 그림은 `public/landing/` 에 있습니다. 엔진이 페이지 기준 상대 경로로 부릅니다.
 - 앱과 주고받는 문은 엔진의 `landing/src/host.js` 하나입니다(자세히 보기 · 진열대에 저장 · 주변 향 탐색 · 검색창). 앱 쪽 연결은 `ScentScene` 에 모았습니다.
 - 엔진의 개발 패널(계측 HUD · 파라미터 슬라이더 · 조작 바 · 시점 · 원본 비교 · 자유 시점 · 부력 프로브 · 프레임 잡기)은 **develop 에 넣지 않습니다** — 개발 서버에서도 노출되지 않게 모듈째 뺐고, 엔진 작업자의 작업 브랜치에만 있습니다. 엔진만 따로 보려면 `/landing/index.html` 을 엽니다.
+- **그래픽 품질** (2026-09-25 · S15P21E203-435) — 엔진이 기기마다 다르게 그립니다(높음 · 보통 · 낮음 — `landing/src/quality.js` · 엔진 불변식 34). 자동이면 GPU 이름으로 시작하고(**내장 · 소프트웨어 GPU 는 낮음**), 끊기면 한 단계씩 내리며, GPU 에 여유가 보이면 한 칸 올립니다.
+  사람이 고르는 자리는 메인 헤더의 **톱니바퀴**입니다 — 로그인(로그인하면 계정 아이콘) 왼쪽, 유리판 헤더(3D 향 지도)에서만 섭니다(`app/layouts/header/GraphicsMenu`). 설정과 엔진의 지금 단계는 `shared/store/graphicsStore` 가 쥡니다 — 헤더가 읽어야 해서 `sceneSkyStore` 처럼 shared 에 둡니다(사람이 고른 것만 `localStorage` 에 남김). 처음 값은 엔진 주소 `?quality=` 로 실려 렌더러를 만들 때 읽히고, 그 뒤는 `PB.quality.set` 으로 겁니다(`ScentScene` 의 `quality` · `onQuality`).
+  NOTE: 헤더가 `@/features/map` 을 부르면 지도 청크(스크립트 · CSS)가 모든 화면의 첫 청크로 딸려 옵니다(main +17kB 실측). 톱니바퀴가 서면 로고 쪽에도 같은 폭을 비워 가운데 메뉴가 다른 화면과 같은 자리에 섭니다(`GlobalHeader`).
+  내장 그래픽이라 낮게 시작했거나 · 자동으로 내렸거나 · 가장 낮은 단계에서도 느리면 커튼이 걷힌 뒤 토스트로 한 번씩 알립니다(`useSceneQuality` · `lib/sceneQuality` 의 `qualityNotice`).
+  NOTE: 사이트는 외장 GPU 로 못 바꿉니다 — `powerPreference` 를 줘도 Windows 크롬은 내장 GPU 그대로였습니다(옵티머스 노트북 실측). 그래서 안내가 Windows 그래픽 설정을 가리킵니다. 엔진만 볼 때 단계를 고정하려면 `/landing/index.html?quality=high` 입니다.
 - 메인의 헤더는 **거의 투명한 유리**입니다 — `bleed` 화면이면 `RootLayout` 이 3D 하늘에 따라 `GlobalHeader` 에 `tone="glassLight"`(밝은 하늘 · 상아색 판 · 먹색 글자) 또는 `tone="glass"`(밤 · 남색 판 · 상아색 글자)를 줍니다. 하늘은 `HomePage` 가 엔진의 `<html data-time>` 을 받아(`ScentScene` 의 `onNightChange`) `shared/store/sceneSkyStore` 에 적습니다.
   3D 가 헤더 뒤까지 깔리고, 헤더가 가리는 90px 은 `ScentScene` 의 `coveredTop` → 엔진 `hostTop` 으로 알립니다. 엔진은 검색창 · 정보 블록 · 해도를 그 아래로 내리고 향수 고르기의 12개를 그 띠에 세우지 않습니다.
   엔진의 자리표시 헤더(`siteHeader`)는 끕니다 — 무대를 헤더만큼 줄이는 방식이라 유리판 뒤가 비어 버립니다. 헤더 높이를 바꾸면 `coveredTop` 도 같이 바꿉니다.
@@ -459,6 +464,8 @@ IDE 와 `grep` 이 찾을 수 있어야 합니다.
 - 작성 예시는 `src/shared/ui/Button.test.tsx`입니다.
 - 최소 기준: 공용 컴포넌트(`shared/ui/`)와 순수 함수(`shared/lib/`)는 테스트를 함께 만듭니다.
   화면 전체 테스트는 필수가 아닙니다.
+- 3D 엔진(`landing/`)은 생성물 검사 하나만 돕니다 — `landing/scripts/pack-boat.test.js` 가 커밋된 배 GLB 가 원본 · 차폐 · three 해독기와 맞는지 봅니다
+  (`vite.config.ts` 의 `test.include` 에 `landing/**/*.test.js`). 엔진은 ESLint · Prettier 대상이 아닙니다.
 
 ## 하지 말 것
 

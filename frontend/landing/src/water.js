@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { PARAMS as P } from './params.js';
 import { SWELL, FOAM_CLUMP, swellAmplitude, swellMeanDir, swellPhaseC, swellSlopeRms } from './swell.js';
-import { SKY_GLSL, SKY_UNIFORMS } from './sky.js';
+import { SKY_GLSL, SKY_UNIFORMS, syncHorizonGlow } from './sky.js';
 import { timeNow, timeKey } from './times.js';
 import { diveNow } from './dive.js';   // 잠수 — 팔레트 · 원경색이 짙은 바다색으로 눕는다 (2026-09-18)
 // ⚠ 모듈 상수로 한 번만 뽑는다. 매 프레임 BANDS 를 다시 도는 것을 막는다
@@ -67,6 +67,7 @@ const MICRO_MID = MICRO_BANDS.reduce((s, b) => s + b.deg, 0) / MICRO_BANDS.lengt
 //   그림자 방향** · 하늘 반사. 돌리면 그림자도 같이 눕는다 (불변식 0-3-2).
 // ⚠ 물의 **명암**(uLightXZ)은 여기가 아니라 setLight() 가 dirLight 로 채운다. 원래 갈라져
 //   있던 것이고, 많이 돌리면 반짝임과 명암의 방향이 더 벌어진다.
+//   ⭐ 2026-09-27 : 저녁 · 밤에는 update() 가 그 방향을 **이 해 쪽으로** 돌린다 (역광 바다 · params.seaBacklight 1) — 명암과 반짝임이 같은 해를 본다
 const SUN_N = new THREE.Vector3(...CONFIG.sun).normalize();
 const SUN_AZ0 = Math.atan2(CONFIG.sun[0], CONFIG.sun[2]);                                   // −159.44°
 const SUN_EL0 = Math.atan2(CONFIG.sun[1], Math.hypot(CONFIG.sun[0], CONFIG.sun[2]));        // +14.44°
@@ -156,6 +157,9 @@ function syncPalette(uni) {
   });
   uni.uApex.value.set(TM ? TM.apex : CONFIG.color.crestApex);
   uni.uBg.value.set(TM ? TM.bg : CONFIG.color.bg);
+  // ⭐ 배 밑 물의 그늘색도 시간대를 탄다 (2026-09-27) — 낮의 색(color.boatShadow)은 저녁 물과 같고 밤 물보다 밝아 그늘이 안 됐다 (config.js 저녁 water.shadow 주석).
+  //   ⚠ 표에 없으면(낮) 예전 색 그대로다. 잠수는 이 색을 안 눕힌다 (예전과 같다)
+  uni.uShadowCol.value.set(TM && TM.water.shadow ? TM.water.shadow : CONFIG.color.boatShadow);
   // ⚠⚠ **마루선(오로라)의 두 색은 만들 때 한 번 칠하고 안 바뀌던 값이다** — 시간대도 안 탄다.
   //   잠수가 이 둘을 안 눕히면 **물만 어두워지고 밝은 선만 남는다** (2026-09-18 실측 : 짙어진 물 위에
   //   #9FE6F3 아이스블루 마루선이 그대로 떠 있었다 — 화면이 안 어두워 보이던 가장 큰 몫).
@@ -243,6 +247,10 @@ uniform vec4 uMicroD0, uMicroD1, uMicroD2, uMicroD3, uMicroD4;
 uniform float uEnvMicro;
 uniform vec3 uLightDir3;
 uniform float uSpecAmt, uGlitter, uGlitOct2;
+// 태양 반짝임 (HDR, S15P21E203-435) : 세기 · HDR 배율 / 로브 (가까이, 멀리) / 알갱이 → 빛길 거리 / 심의 색으로 가는 세기 구간
+uniform float uGlintAmt, uGlintHot, uGlintFarK;
+uniform vec2 uGlintShine, uGlintDist, uGlintWhite;
+uniform vec3 uGlintCore;
 uniform float uSkyAmt;
 uniform float uShadowAmt, uShadowIn, uShadowKnee, uShadowOcc;
 uniform float uContactAmt, uSmearK;
@@ -253,6 +261,14 @@ uniform vec2 uToneDist;
 uniform vec3 uToneCol;
 uniform vec2 uShadowSize, uBoatDir;
 uniform vec3 uShadowCol;
+// ⭐ 해 쪽 주광의 **실제 그림자** (2026-09-27 · main.js sunLight 의 그림자 맵을 그대로 읽는다 — 아래 '배 그림자 ②')
+//   uSunShK : x 세기 · y 깊이 여유 · z 가린 것에서 1 월드 멀어질 때 늘어나는 번짐 폭 · w 바닥 번짐 폭 (월드)
+//   uSunShSpan : 그림자 카메라의 가로 · 세로 · 깊이 (월드) · 배(겨누는 점)의 깊이 (0~1)
+#include <packing>
+uniform sampler2D uSunSh;
+uniform mat4 uSunShMat;
+uniform vec4 uSunShK, uSunShSpan;
+uniform vec2 uSunShReach;   // 배에서 이 거리(월드) 사이에서 그림자가 녹는다 — 앞은 그대로 · 뒤는 0
 uniform float uShine, uGlitCell;
 uniform vec3 uBoatPos;
 // 공중의 향수 부표. xyz = 씬 좌표, w = 반지름. 배열 크기는 JS 의 MARK_REFL_MAX 와 같아야 한다
@@ -722,7 +738,69 @@ void main(){
     //   바다 그래픽이 깔끔해 보이는 이유도 '경계가 없어서' 가 아니라 **경계가 좁아서**다.
     float sh = 1.0 - smoothstep(uShadowIn, uShadowIn + max(uShadowKnee, 0.02), length(loc));
     shK = clamp(sh * uShadowAmt, 0.0, 1.0);
-    c = mix(c, uShadowCol, shK * vDetail);
+    // ⚠ min — 그늘이 물을 **밝히는 일은 없다** (불변식 14 · 2026-09-27). 그늘색보다 이미 어두운 물(배의 짙은 반사 · 밤 물)에
+    //   그늘색을 섞으면 그 자리가 밝아졌다 (밤 : 접촉 자리 픽셀의 92.5%). 그늘색이 물보다 어두운 낮에는 예전과 같다
+    c = mix(c, min(c, uShadowCol), shK * vDetail);
+  }
+
+  // ── 배 그림자 ② — 해 쪽 주광의 실제 그림자 (2026-09-27, S15P21E203-435 · 역광 '중간안' 4단계) ─────────
+  // 위 ①은 선체 발자국 하나(타원)라 돛대 · 돛이 드리우는 그림자가 없다. 해가 14° 로 낮아 그 그림자가 길다 —
+  //   돛대 끝(9 월드)의 그림자는 배에서 34 월드 떨어져 떨어진다. 배는 이미 그 빛의 그림자 맵(main.js sunLight · 1024²)을
+  //   매 프레임 그리므로, 물은 **그 맵을 읽기만** 한다 — 렌더 패스도 텍스처도 늘지 않는다.
+  // ⚠ 물점은 **파도에 밀린 실제 자리(vW)** 로 읽는다 — 그림자가 파면을 따라 휜다 (화면 좌표가 아니라 도장이 될 수 없다).
+  // ⚠ 해는 점이 아니다 — **가린 것에서 멀어질수록 번진다.** 번짐 폭은 배(겨누는 점)에서 잰 깊이로 정한다 :
+  //   가린 것의 깊이를 픽셀마다 찾으면(PCSS) 탭이 두 배라, 가린 것이 배 하나뿐인 것을 쓴다. 배 곁은 또렷하고 멀리 갈수록 옅게 번져,
+  //   가는 돛대의 그림자는 멀리서 저절로 사라진다 (실제 해의 반그림자 · ①의 '멀어지면 한 번에 옅어진다' 와 같은 성질).
+  // ⚠ 무엇을 가리는가 : 물색을 어둡게 곱하고(①처럼 그늘색으로 섞지 않는다 — 아래 ⚠⚠) · 해에서 오는 빛(정반사 · 반짝임 · 마루 백색 — 아래 shLit)을 끈다.
+  //   하늘 반사는 안 가린다 (해만 막힌 자리 — ① 과 같은 규율) · 배의 반사도 그대로다 (해가 아니라 배에서 오는 빛).
+  // ⚠ uSunShK.x = 0 이면 이 블록이 통째로 안 돈다 — 낮(주광 0) · 그림자 끔 · 맵이 아직 없을 때. 예전과 비트 단위로 같다
+  if (uSunShK.x > 0.0) {
+    vec4 s4 = uSunShMat * vec4(vW, 1.0);
+    vec3 sc = s4.xyz / s4.w;
+    // 배(겨누는 점)에서 빛 방향으로 잰 거리 (월드) — 번짐 폭과 **멀어지면 옅어짐**이 같이 쓴다
+    float shDist = max(sc.z - uSunShSpan.w, 0.0) * uSunShSpan.z;
+    // ⭐ (2026-09-27) 배 곁은 그대로 두고 **uSunShReach 사이에서 녹인다** — 사용자 : *"그림자 조금만 더 연하게 … 화면 비례로 너무 규모가 커보이긴함"*.
+    //   해가 14° 로 낮아 돛 그림자가 34 월드까지 누웠고, 항해 구도에서는 화면 아래 끝까지 띠로 이어졌다.
+    //   발자국(①)에 준 성질과 같다 — *"바로 밑은 조금 진하게, 멀어지면 한 번에 크게 옅어지게"* (params.shadowSoft 주석).
+    //   ⚠ 끝보다 먼 물은 그림자 맵을 **아예 안 짚는다** — 이 블록이 돌던 넓은 먼 자리가 통째로 빠진다
+    float shFade = 1.0 - smoothstep(uSunShReach.x, uSunShReach.y, shDist);
+    if (shFade > 0.0 && sc.x > 0.0 && sc.x < 1.0 && sc.y > 0.0 && sc.y < 1.0 && sc.z < 1.0) {
+      float z = sc.z - uSunShK.y;
+      float w = uSunShK.w + uSunShK.z * shDist;   // 번짐 폭 (월드)
+      vec2 rad = w / uSunShSpan.xy;                                                    // → 그림자 맵 좌표
+      // 황금각 나선 12탭 — 원판을 고르게 덮는다. ⚠ 상수 배열을 안 쓴다 (이 셰이더에서 배열 유니폼이 조용히 깨진 적이 있다 · 위 uMicroD 주석)
+      // ⚠ 나선의 시작 각을 **픽셀마다 돌린다** (interleaved gradient noise) — 안 돌리면 번짐 폭이 탭 간격보다 커지는 먼 그림자가
+      //   빗살처럼 여러 줄로 갈라진다 (같은 탭이 모든 픽셀에서 같은 자리를 짚어 가는 그림자의 겹상이 선다 · 2026-09-27 확인)
+      float ra = 6.2831853 * fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+      vec2 d = vec2(cos(ra), sin(ra));
+      // ① 가장자리 4탭 — 넷이 같으면(다 밝음 · 다 가려짐) 나머지를 안 짚는다.
+      //   이 블록이 도는 자리는 화면의 14%(항해) ~ 36%(선실 줌인)인데 대부분이 **그림자 밖의 밝은 물**이다 — 거기서 12탭을 다 짚으면 헛일이다.
+      //   ⚠ 탭 사이에 끼는 가는 그림자(먼 돛대)는 놓친다 — 거기는 어차피 번짐이 돛대보다 넓어 옅게 사라질 자리다
+      float lit = 0.0;
+      for (int i = 0; i < 4; i++) {
+        lit += step(z, unpackRGBAToDepth(texture2D(uSunSh, sc.xy + d * rad)));
+        d = vec2(-d.y, d.x);
+      }
+      float sh2 = 1.0 - lit / 4.0;   // 해가 가려진 몫 (0~1)
+      if (lit > 0.5 && lit < 3.5) {
+        // ② 경계 — 황금각 나선 12탭을 더 짚는다. ⚠ 상수 배열을 안 쓴다 (이 셰이더에서 배열 유니폼이 조용히 깨진 적이 있다 · 위 uMicroD 주석)
+        const float GA = 2.39996323;
+        mat2 rot = mat2(cos(GA), sin(GA), -sin(GA), cos(GA));
+        for (int i = 0; i < 12; i++) {
+          float r = sqrt((float(i) + 0.5) / 12.0);
+          lit += step(z, unpackRGBAToDepth(texture2D(uSunSh, sc.xy + d * r * rad)));
+          d = rot * d;
+        }
+        sh2 = 1.0 - lit / 16.0;
+      }
+      sh2 *= shFade;   // 멀어지면 옅어진다 — 물색을 누르는 몫도 · 해의 반짝임을 끄는 몫도 같이 (칼로 자른 선이 안 남게)
+      // ⚠⚠ **그늘색으로 섞지 않고 어둡게 곱한다.** ①의 그늘색(color.boatShadow #6B7A92)은 낮의 종이 물(≈205)에 맞춘 색이라
+      //   저녁 물(선형 0.21 · 0.21 · 0.31)과 거의 같다 — 세기 0.5 로 섞어도 그림자 자리의 밝기가 0.211 → 0.213 이었다 (2026-09-27 실측 · 오히려 밝아졌다).
+      //   곱하면 물의 색조를 그대로 둔 채 어두워진다 — 시간대 팔레트가 바뀌어도 그늘로 읽힌다 (불변식 14 : 잉크를 얹는다).
+      c *= 1.0 - clamp(sh2 * uSunShK.x, 0.0, 1.0) * vDetail;
+      // ⚠ 해에서 오는 빛(정반사 · 반짝임 · 마루 백색 — 아래 shLit)은 세기가 아니라 **가려진 몫 그대로** 끈다 — 해가 막힌 자리에 해의 반짝임이 남을 수 없다
+      shK = max(shK, sh2);
+    }
   }
 
   // ── 접촉 그림자 (선체가 물에 닿은 자리) ─────────────────────────────────────
@@ -762,7 +840,7 @@ void main(){
     //   거기서 하늘 반사를 죽이면 그림자가 '물이 아닌 다른 재질' 로 보인다.
     //   반면 선체 **바로 밑**은 하늘 돔이 실제로 막혀 있다 — 그게 이 층의 정의다.
     skK = ck;
-    c = mix(c, uShadowCol, ck * vDetail);
+    c = mix(c, min(c, uShadowCol), ck * vDetail);   // ⚠ min — 위 발자국과 같은 이유 (그늘은 밝히지 않는다)
   }
 
   // 그늘에서 살아남는 빛의 비율. ⚠ uShadowOcc = 0 이면 비트 단위 롤백이다
@@ -1962,6 +2040,25 @@ void main(){
     c = mix(c, uToneCol, g * g * uToneAmt);
   }
 
+  // ── 태양 반짝임 (HDR, 2026-09-25 · S15P21E203-435) — params.js 의 glint 묶음 주석
+  // ⚠ 섞지 않고 **더한다** — 위 정반사(mix → uApex)는 금빛에서 멈추는 칠이라 빛이 못 된다 (화면 최댓값 1.16 · 블룸 문턱 1.40)
+  // ⚠ 톤 그라데이션 **뒤**다 — 그 층은 물의 몸을 누르는 붓질이고, 빛까지 누르면 근경의 윤슬이 죽는다
+  // ⚠ 가까이는 반짝임 법선(Ns — glitter 노이즈 포함), 멀리는 너울 법선만 — 원경에서 노이즈 알갱이가 화소 밑으로 내려가면
+  //   윤슬이 아니라 끓는 점이 된다. 흔들림을 걷은 만큼 로브를 넓히고 봉우리를 낮춘다 ((n+2)/(n0+2) — 에너지 보존)
+  if (uGlintAmt > 0.0) {
+    float dG = length(vW.xz - uCam);
+    float farG = smoothstep(uGlintDist.x, uGlintDist.y, dG);
+    vec3 Ng = normalize(mix(Ns, normalize(vec3(-vGradW.x, 1.0, -vGradW.y)), farG));
+    float nE = mix(uGlintShine.x, uGlintShine.y, farG);
+    float lobe = pow(max(dot(Ng, Hv), 0.0), nE) * (nE + 2.0) / (uGlintShine.x + 2.0);
+    // 프레넬 (Schlick, 물 F0 0.02) — 스치는 각일수록 더 비친다. 수평선 쪽 빛길이 여기서 선다
+    float fr = 0.02 + 0.98 * pow(1.0 - clamp(dot(Ng, V), 0.0, 1.0), 5.0);
+    // ⚠ 먼 빛길은 uGlintFarK 로 한 번 더 누른다 — 넓어진 로브가 통째로 블룸 문턱을 넘으면 배 뒤가 한 덩어리로 뿌옇게 번진다
+    float kG = lobe * fr * mix(1.0, uGlintFarK, farG) * uGlintAmt * uGlintHot * shLit;   // ⚠ 배 그늘에서는 죽는다 (정반사 sp 와 같다)
+    // 심은 주광색 흰빛, 약한 쪽은 해의 색 (시간대 — 저녁 복숭아 · 밤 달빛)
+    c += mix(uSkySun, uGlintCore, smoothstep(uGlintWhite.x, uGlintWhite.y, kG)) * kG;
+  }
+
   vec2 d = abs(vUv - 0.5) * 2.0;
   float vis = (1.0 - smoothstep(0.76, 0.98, max(d.x, d.y)))
             * (1.0 - smoothstep(uFade0, uFade1, length(vW.xz - uCam)));
@@ -1980,10 +2077,80 @@ void main(){
   #include <colorspace_fragment>
 }`;
 
-export function createWater(scene, tex) {
+// ───────── 수면 메시 — 배 곁만 촘촘한 격자 (2026-09-27, S15P21E203-435 · 최적화) ─────────
+// 이유와 실측은 config.js 의 sim.meshNear 주석. 모양은 THREE.PlaneGeometry 와 **정점 배치 규약이 같다** (XY 평면 · 위 행부터 · 같은 감김 ·
+//   uv = 위치 / domain + 0.5) — 셰이더 · 시뮬 · 거품 조회가 uv 로 시뮬 텍스처를 읽으므로, uv 가 위치의 1차 함수인 한 격자 간격이 달라도 그대로 맞는다.
+// 축 하나의 좌표 : 가운데(배)에서 meshNear 까지는 domain / seg 간격 그대로, 그 밖은 칸마다 meshGrow 배 — 끝(domain / 2)에 **정확히** 닿도록 배율을 풀어 맞춘다.
+//   ⚠ 가로 · 세로를 따로 굽힌다 — 격자 모양(행 · 열)이 그대로라 인덱스도 그대로다. 대각선 먼 쪽은 두 축이 다 성기고 축을 따라 먼 쪽은 한 축만 성기다
+//     (카메라가 그 축을 따라 볼 때 옆 간격은 촘촘하고 깊이 간격만 성기다 — 원경에서 깊이 쪽이 화면에 훨씬 빨리 눌리므로 맞는 쪽이다)
+// ⚠ meshNear 가 반 변(domain / 2) 이상이면 예전 균일 격자 그대로 (PlaneGeometry — 비트 단위 롤백)
+function meshAxis(D, seg, near, grow) {
+  const R = D / 2, h = D / seg;
+  const nIn = Math.max(1, Math.min(Math.round(near / h), Math.floor(R / h + 1e-9)));   // ⚠ 반올림으로 끝(R)을 넘지 않게
+  const r0 = nIn * h;
+  const rest = R - r0;
+  const half = [];
+  for (let i = 0; i <= nIn; i++) half.push(i * h);
+  if (rest > 1e-6) {
+    // 바깥 칸 간격 h·q¹ … h·qⁿ 의 합이 rest 가 되게 : n 은 grow 로 어림하고 q 를 이분법으로 맞춘다
+    const g = Math.max(1.0001, grow);
+    const n = Math.max(1, Math.ceil(Math.log(1 + rest * (g - 1) / h) / Math.log(g)));
+    const sum = (q) => h * q * (Math.pow(q, n) - 1) / (q - 1);
+    let lo = 1.0000001, hi = 2.0;
+    for (let k = 0; k < 60; k++) { const m = (lo + hi) / 2; if (sum(m) > rest) hi = m; else lo = m; }
+    const q = (lo + hi) / 2;
+    let x = r0, s = h;
+    for (let k = 1; k <= n; k++) { s *= q; x += s; half.push(k === n ? R : x); }
+  }
+  // 음수 쪽을 거울로 붙인다 — 가운데(0) 한 번
+  const out = [];
+  for (let i = half.length - 1; i > 0; i--) out.push(-half[i]);
+  for (let i = 0; i < half.length; i++) out.push(half[i]);
+  return out;
+}
+function waterGeometry(seg) {
+  const S = CONFIG.sim, D = S.domain;
+  const near = S.meshNear === undefined ? D : S.meshNear;
+  if (near >= D / 2) return new THREE.PlaneGeometry(D, D, seg, seg);
+  const xs = meshAxis(D, seg, near, S.meshGrow === undefined ? 1.04 : S.meshGrow);
+  const n = xs.length, cells = n - 1;
+  const pos = new Float32Array(n * n * 3), nrm = new Float32Array(n * n * 3), uv = new Float32Array(n * n * 2);
+  // 위 행(y = +D/2)부터 — PlaneGeometry 와 같은 순서
+  for (let iy = 0; iy < n; iy++) {
+    const y = xs[n - 1 - iy];
+    for (let ix = 0; ix < n; ix++) {
+      const x = xs[ix], k = iy * n + ix;
+      pos[k * 3] = x; pos[k * 3 + 1] = y; pos[k * 3 + 2] = 0;
+      nrm[k * 3 + 2] = 1;
+      uv[k * 2] = x / D + 0.5; uv[k * 2 + 1] = y / D + 0.5;
+    }
+  }
+  const idx = new Uint32Array(cells * cells * 6);
+  let t = 0;
+  for (let iy = 0; iy < cells; iy++) for (let ix = 0; ix < cells; ix++) {
+    const a = ix + n * iy, b = ix + n * (iy + 1), c = (ix + 1) + n * (iy + 1), d = (ix + 1) + n * iy;
+    idx[t++] = a; idx[t++] = b; idx[t++] = d;
+    idx[t++] = b; idx[t++] = c; idx[t++] = d;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  g.setIndex(new THREE.BufferAttribute(idx, 1));
+  // ⚠⚠ PlaneGeometry 의 parameters 를 그대로 단다 — seamark.js 가 water().mesh.geometry.parameters.width 로 물의 반 변을 읽는다
+  //   (바다 클릭 화살의 가장자리 페이드). 없으면 화살이 떠 있는 내내 tick 이 seamark.update 에서 던져 그리기가 멈췄다 (클릭마다 ~0.9초 정지).
+  //   ⚠ 칸 수는 맞지만 간격은 고르지 않다 — width / widthSegments 로 칸 너비를 셈하지 말 것
+  g.parameters = { width: D, height: D, widthSegments: cells, heightSegments: cells };
+  return g;
+}
+
+// opts.mesh — 수면 메시 분할 (품질 단계 · quality.js). 없으면 CONFIG.sim.mesh
+export function createWater(scene, tex, opts = {}) {
   const S = CONFIG.sim;
   // ⚠ 팔레트 캐시는 syncPalette 안의 _palKey 가 들고 있다 (테마 + tone). 여기 tone 변수는 없앴다
   let boatObj = null;         // setBoat() 로 받는다 — 반사가 향할 대상
+  let sunShadow = null;       // setSunShadow() 로 받는다 — 그림자를 드리우는 해 쪽 주광 (배 그림자 ② · 역광 바다가 '지금 해 쪽 주광이 켜졌나' 로도 본다)
+  let frontAz = 0, lightAz = 0;   // 앞 빛(setLight)의 방위 · 지금 쓰는 명암 방위 (update 의 역광 바다)
   const uni = {
     uH: { value: tex },
     uHScale: { value: S.height },
@@ -2016,6 +2183,10 @@ export function createWater(scene, tex) {
     // 정반사 전용 태양. 씬 광원과 다른 자리다 (config.js sun 주석 참고)
     uLightDir3: { value: new THREE.Vector3(...CONFIG.sun).normalize() },
     uSpecAmt: { value: P.specAmount },
+    // 태양 반짝임 (HDR) — update() 가 매 프레임 params 에서 다시 민다
+    uGlintAmt: { value: 0 }, uGlintHot: { value: 0 }, uGlintFarK: { value: 1 },
+    uGlintShine: { value: new THREE.Vector2(700, 40) }, uGlintDist: { value: new THREE.Vector2(28, 71) },
+    uGlintWhite: { value: new THREE.Vector2(0.6, 2.4) }, uGlintCore: { value: new THREE.Color('#F4F8FF') },
     uSkyAmt: { value: P.skyAmount },
     uShadowAmt: { value: P.shadowAmount }, uShadowIn: { value: P.shadowSoft },
     uShadowKnee: { value: P.shadowKnee },
@@ -2037,6 +2208,12 @@ export function createWater(scene, tex) {
     uShadowSize: { value: new THREE.Vector2(1, 1) },
     uBoatDir: { value: new THREE.Vector2(0, 1) },
     uShadowCol: { value: new THREE.Color(CONFIG.color.boatShadow) },
+    // 배 그림자 ② — 해 쪽 주광의 그림자 맵 (setSunShadow 로 받은 빛을 update() 가 매 프레임 싣는다 · x = 0 이면 안 돈다)
+    uSunSh: { value: null },
+    uSunShMat: { value: new THREE.Matrix4() },
+    uSunShK: { value: new THREE.Vector4(0, 0, 0, 0) },
+    uSunShSpan: { value: new THREE.Vector4(1, 1, 1, 0) },
+    uSunShReach: { value: new THREE.Vector2(4, 14) },
     uContactAmt: { value: P.contactAmount },
     uContactSize: { value: new THREE.Vector2(1, 1) },
     uSmearK: { value: P.reflectSmear },
@@ -2193,8 +2370,9 @@ export function createWater(scene, tex) {
 
   bakeMicro(MICRO_SLOTS(uni));   // 첫 프레임 전에 한 번 굽는다
 
+  let seg = Math.max(64, Math.round(opts.mesh || S.mesh));
   const mesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(S.domain, S.domain, S.mesh, S.mesh),
+    waterGeometry(seg),
     new THREE.ShaderMaterial({ uniforms: uni, vertexShader: WATER_VERT, fragmentShader: WATER_FRAG })
   );
   mesh.rotation.x = -Math.PI / 2;
@@ -2204,8 +2382,22 @@ export function createWater(scene, tex) {
 
   return {
     mesh, uni,
+    // ⭐ 수면 메시 분할을 바꾼다 (품질 단계 — 512 · 384 · 256). 지오메트리만 갈아 끼운다 — 재질 · 셰이더는 그대로다.
+    //   ⚠ 배의 부력은 이 메시를 안 본다 (swellCPU + sim.sampler) — 분할을 바꿔도 배는 같은 물에 뜬다.
+    //   ⚠ 256 이면 주파장을 정점 ~19개로 그려 마루가 조금 각진다 (config.js sim.mesh 실측 주석) — low 의 대가다
+    setMeshDetail(n) {
+      const next = Math.max(64, Math.round(n || S.mesh));
+      if (next === seg) return;
+      seg = next;
+      const old = mesh.geometry;
+      mesh.geometry = waterGeometry(seg);
+      old.dispose();
+    },
+    get meshDetail() { return seg; },
     // grid.js · spray.js 와 반드시 같은 벡터를 받는다
     setBoat(obj) { boatObj = obj; },
+    // 배 그림자 ② — 그림자 맵을 읽을 빛 (main.js 의 sunLight). ⚠ 빛의 aim · 그림자 카메라는 main.js 가 쥔다 — 여기는 읽기만 한다
+    setSunShadow(light) { sunShadow = light; },
     // reflect.js 가 찍은 그림과, 그 그림을 되읽을 행렬·평판 법선을 받는다
     setReflect(r) { uni.uRefl.value = r.texture; },
 
@@ -2236,10 +2428,14 @@ export function createWater(scene, tex) {
       uni.uMarkN.value = near.length;
     },
     boatPos: null,   // main.js 가 reflect 에 넘길 위치 (update 가 채운다)
+    // ⚠ 받는 것은 **앞 빛**(dirLight)의 방향이다. 실제로 쓰는 명암 방향은 update() 가 역광(seaBacklight)만큼 해 쪽으로 돌린 것이다 (아래 lightAz)
     setLight(dir) {
-      const az = Math.atan2(dir.z, dir.x);
-      uni.uLightXZ.value.set(Math.cos(az), Math.sin(az));
+      frontAz = Math.atan2(dir.z, dir.x);
+      lightAz = frontAz;
+      uni.uLightXZ.value.set(Math.cos(frontAz), Math.sin(frontAz));
     },
+    // 지금 쓰는 명암 방향의 각 (월드 xz) — grid.js 가 **같은 값**을 받아야 한다 (불변식 15 · main.js 틱이 넘긴다)
+    get lightAz() { return lightAz; },
     update(sim, cam, t, camK) {
       // ── 바다의 밝기 한 손잡이 (waterTone).
       // ⚠ 이 프로젝트에서 **가장 크게 그림을 바꾸는 값**이다. 반짝임·발광이 보이느냐가
@@ -2447,8 +2643,34 @@ export function createWater(scene, tex) {
       uni.uMicroB.value = P.microB;
       bakeMicro(MICRO_SLOTS(uni));   // 방향·파수를 다시 굽는다
       bakeSun(uni.uLightDir3.value); // 수면 태양 (sunRot / sunTilt)
+      // ⭐⭐ **역광 바다** (2026-09-27, S15P21E203-435 · 사용자 결정 : *"역광 100%로 적용해줘"*) — 명암 방향(uLightXZ)을 **보이는 해 쪽**으로 돌린다.
+      //   예전에는 앞 빛(dirLight · 카메라 쪽)이었다 — 하늘 · 배 · 그림자는 해를 등지는데(불변식 35) 파도만 앞에서 빛을 받았다.
+      //   해 쪽으로 돌리면 카메라를 보는 파도 면이 그늘지고(명암 식 hc = h + uShade·lit·0.16 에서 lit < 0) 해를 향한 마루선이 또렷해진다.
+      //   시안 (같은 장면 · 화면 아래 62% 의 밝기 평균 / 표준편차) : 앞 빛 142 / 29.2 · 60% 138.6 / 31.3 · **100% 136.1 / 32.9** · 100% + 명암 2.6 135 / 33.6
+      //   ⚠ 해 쪽 주광이 켜진 시간대(저녁 · 밤)만 — 낮은 앞 빛 그대로다 (불변식 35 의 '낮은 예전 그대로' · sunShadow 의 세기로 가른다)
+      //   ⚠ 가운데 값은 방위를 **짧은 쪽으로** 돌린 것이다 (0.5 면 옆에서 비친다) · 0 = 앞 빛 그대로 (비트 단위 롤백)
+      //   ⚠ 해는 bakeSun 이 매 프레임 굽는다(sunRot · sunTilt) — 그래서 여기서 매 프레임 따라간다
+      {
+        const key = sunShadow && sunShadow.intensity > 0 ? 1 : 0;
+        const tb = Math.min(1, Math.max(0, P.seaBacklight === undefined ? 0 : P.seaBacklight)) * key;
+        let d = Math.atan2(uni.uLightDir3.value.z, uni.uLightDir3.value.x) - frontAz;
+        while (d > Math.PI) d -= 2 * Math.PI;
+        while (d < -Math.PI) d += 2 * Math.PI;
+        lightAz = frontAz + d * tb;
+        uni.uLightXZ.value.set(Math.cos(lightAz), Math.sin(lightAz));
+      }
       uni.uEnvMicro.value = P.envMicro;
       uni.uSpecAmt.value = P.specAmount;
+      // 태양 반짝임 (HDR) — ⚠ 거리는 camDist 를 탄다 (아래 kD — 페이드 · LOD 와 같은 이유) · 그래서 거리 두 값은 kD 를 구한 뒤에 민다
+      // ⚠ 잠수 동안 같이 눕는다 — 더하는 빛이라 팔레트가 짙어져도 제 밝기로 남아 **짙은 물 위에 흰 빛길만** 뜬다 (uApex 와 같은 함정 · syncPalette)
+      uni.uGlintAmt.value = (P.glintAmount === undefined ? 0 : P.glintAmount) * (Dv ? 1 - Dv.dim : 1);
+      uni.uGlintHot.value = P.glintHot === undefined ? 0 : P.glintHot;
+      uni.uGlintFarK.value = P.glintFarK === undefined ? 1 : P.glintFarK;
+      uni.uGlintShine.value.set(Math.max(1, P.glintShine === undefined ? 700 : P.glintShine),
+                                Math.max(1, P.glintShineFar === undefined ? 40 : P.glintShineFar));
+      uni.uGlintWhite.value.set(P.glintWhite0 === undefined ? 0.6 : P.glintWhite0,
+                                Math.max((P.glintWhite0 === undefined ? 0.6 : P.glintWhite0) + 1e-3, P.glintWhite1 === undefined ? 2.4 : P.glintWhite1));
+      if (P.glintCore !== undefined) uni.uGlintCore.value.set(P.glintCore);
       uni.uSkyAmt.value = P.skyAmount * diveSky;   // ⭐ 잠수 — 물에 비친 하늘 (위 diveSky 주석)
       uni.uShadowAmt.value = P.shadowAmount;
       uni.uShadowIn.value = P.shadowSoft;
@@ -2509,6 +2731,29 @@ export function createWater(scene, tex) {
       //   보이는 것은 **선체 밖으로 삐져나온 부분뿐**이라 발자국을 배 길이의 2배로 잡는다
       uni.uShadowSize.value.set(CONFIG.boat.lengthW * 1.00 * P.shadowSize,
                                 CONFIG.boat.lengthW * 0.42 * P.shadowSize);
+      // 배 그림자 ② — 해 쪽 주광이 **지금 그림자를 드리우고 있을 때만** 읽는다 (낮은 앞 빛이 드리운다 · applyTime).
+      //   ⚠ 맵은 첫 그림자 렌더에서 생기고 크기를 바꾸면 새로 만들어진다 — 매 프레임 다시 잡는다.
+      //   ⚠ 행렬은 **참조로** 문다 — three 가 그림자 패스(같은 render 안, 물보다 먼저)에서 갱신한 값이 그대로 올라간다
+      {
+        const L = sunShadow, amt = P.waterSunShadow === undefined ? 0 : P.waterSunShadow;
+        const on = amt > 0 && P.boatShadow > 0 && L && L.castShadow && L.intensity > 0 && L.shadow.map;
+        uni.uSunShK.value.x = on ? amt * (Dv ? 1 - Dv.dim : 1) : 0;
+        // ⚠ ②가 돌면 선체 **발자국(①)은 쉰다** — 발자국은 드리운 그림자를 타원 하나로 흉내 낸 것이라, 진짜 그림자와 같이 두면
+        //   배 곁이 두 겹으로 어두워진다. 광원이 없는 접촉 그림자(주변 차폐)는 그대로 둔다. 낮 · low 단계는 발자국 그대로다
+        if (on) uni.uShadowAmt.value = 0;
+        if (on) {
+          const sc = L.shadow.camera, range = Math.max(1e-3, sc.far - sc.near);
+          uni.uSunSh.value = L.shadow.map.texture;
+          uni.uSunShMat.value = L.shadow.matrix;
+          uni.uSunShK.value.set(uni.uSunShK.value.x, (P.waterSunShadowBias === undefined ? 0.03 : P.waterSunShadowBias) / range,
+            P.waterSunShadowSoft === undefined ? 0.03 : P.waterSunShadowSoft, P.waterSunShadowSoft0 === undefined ? 0.05 : P.waterSunShadowSoft0);
+          // 배(겨누는 점)의 깊이 — 그림자 카메라는 겨누는 점에서 빛 쪽으로 L.position − target 만큼 떨어져 있다
+          const aim = L.position.distanceTo(L.target.position);
+          uni.uSunShSpan.value.set(sc.right - sc.left, sc.top - sc.bottom, range, (aim - sc.near) / range);
+          const r0 = P.waterSunShadowReach0 === undefined ? 6 : P.waterSunShadowReach0;
+          uni.uSunShReach.value.set(r0, Math.max(r0 + 0.5, P.waterSunShadowReach1 === undefined ? 22 : P.waterSunShadowReach1));
+        }
+      }
       uni.uGlitter.value = P.glitter;
       uni.uGlitOct2.value = P.glitterOct2;
       uni.uShine.value = P.shine;
@@ -2526,8 +2771,12 @@ export function createWater(scene, tex) {
       // ⚠ main.js 가 존 전환으로 **보간한 값**을 넘긴다 ([5단계]). 안 넘어오면 예전대로
       //   P.camDist 를 쓴다 — 카메라와 페이드가 같은 값을 봐야 화면상 물끝이 상쇄된다 (§23-1)
       const kD = Math.max(0.2, camK === undefined ? P.camDist : camK);
-      uni.uDetail0.value = P.topView ? 1e5 : CONFIG.surface.detail0 * kD;
-      uni.uDetail1.value = P.topView ? 2e5 : CONFIG.surface.detail1 * kD;
+      // ⚠ detailK — 품질 단계 low 가 0.6 으로 당긴다 (먼 물이 일찍 잔잔해진다 · 거리로 걸러지는 층이 그만큼 일찍 안 돈다)
+      const dK = Math.max(0.1, P.detailK === undefined ? 1 : P.detailK);
+      uni.uDetail0.value = P.topView ? 1e5 : CONFIG.surface.detail0 * kD * dK;
+      uni.uDetail1.value = P.topView ? 2e5 : CONFIG.surface.detail1 * kD * dK;
+      uni.uGlintDist.value.set((P.glintNear === undefined ? 7 : P.glintNear) * kD,
+                               Math.max((P.glintNear === undefined ? 7 : P.glintNear) + 0.5, P.glintFar === undefined ? 18 : P.glintFar) * kD);
       // ⚠ 바닥 격자의 근경 창도 같이 민다 — 안 밀면 카메라를 물릴 때 조용히 사라진다
       uni.uFloorNear.value.set(7.0 * kD, 14.0 * kD);
       // ⚠ params 가 CONFIG 의 사본이다 — 없으면 CONFIG 로 떨어진다 (하늘 값 셋과 같은 패턴).
@@ -2538,6 +2787,8 @@ export function createWater(scene, tex) {
       // ⚠ smoothstep 은 edge0 >= edge1 이면 무너진다 (경계가 하드 컷이 된다).
       //   슬라이더 둘이 독립이라 뒤집힐 수 있으므로 최소 폭 0.5 를 남긴다
       uni.uFade1.value = Math.max(wf1, wf0 + 0.5) * kD;
+      // ⭐ 지평선 빛띠의 자리 — 바다가 다 녹는 거리가 곧 화면 속 바다 끝이다 (sky.js `syncHorizonGlow`). 녹는 거리 · 카메라 높이가 바뀌는 곳이 여기라 여기서 민다
+      syncHorizonGlow(cam.position.y, uni.uFade1.value, P);
       // ⚠ 하늘이 없으면 하늘색으로 녹을 수도 없다 — stageAmount 를 곱해 둘을 묶는다.
       //   그래서 `stageAmount = 0` 한 값이 여전히 예전 화면으로 정확히 되돌린다
       const fs = P.waterFadeSky !== undefined ? P.waterFadeSky : 1;
