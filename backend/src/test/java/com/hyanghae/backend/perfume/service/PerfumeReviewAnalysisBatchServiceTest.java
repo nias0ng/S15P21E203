@@ -73,6 +73,23 @@ class PerfumeReviewAnalysisBatchServiceTest {
     }
 
     /**
+     * 줄 사이의 줄바꿈은 지우지 않습니다.
+     *
+     * <p>요약은 총평 한 줄과 주제별 줄로 나뉘어 옵니다. 앞뒤 공백을 지우면서 줄바꿈까지 건드리면
+     * 화면이 다시 한 덩어리 글을 보여줍니다.
+     */
+    @Test
+    void keepsLineBreaksInsideSummary() {
+        given(reviewAnalyzer.summarize(anyList()))
+                .willReturn("  달콤한 향이라는 평이 많습니다.\n· 지속력: 짧다는 의견이 많습니다.  ");
+
+        service.summarizePerfumesNeedingSummary();
+
+        assertThat(writtenSummary())
+                .isEqualTo("달콤한 향이라는 평이 많습니다.\n· 지속력: 짧다는 의견이 많습니다.");
+    }
+
+    /**
      * 빈 요약은 적재하지 않습니다.
      *
      * <p>빈 요약을 저장하면 {@code source_review_count} 가 올라가 다음 실행에서 재시도되지 않는데,
