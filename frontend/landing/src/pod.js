@@ -4,6 +4,7 @@ import { CONFIG } from './config.js';
 import { swellCPU } from './swell.js';
 import { clamp, D2R } from './util.js';
 import { timeNow } from './times.js';   // 시간대 표 — 몸 색이 낮/저녁/밤을 따라간다
+import { SUN_FX, ensureSunFx, sunFxOf } from './sunfx.js';   // 역광 — 해 쪽 주광의 윤곽 빛 · 투과 (배와 같은 식)
 
 // ───────── 돌고래 무리 — 원경을 채운다 (2026-09-18) ─────────
 // 사용자 : *"바다 위로 뛰어오르는 돌고래를 작은 로우 폴리 glb (로) 외부 바다 밀도를 조금 손 보려고함.
@@ -128,8 +129,13 @@ import { timeNow } from './times.js';   // 시간대 표 — 몸 색이 낮/저�
 //     드로우콜 139.9 → **140.8 (+0.9)** · 삼각형 1,695,048 → **1,710,396 (+15,348 · +0.9%)**.
 //     프레임당 CPU 는 `swellCPU` 를 **보이는 마리 수만큼**만 부른다 (배의 부력이 5번 부르는 것보다 적다).
 //
-// ⚠⚠ **시계는 물의 시계다** (`sim.qT`). dt 를 적분하지 않는다 — 점프 진행도도 무리의 자리도
-//   `qT` 에서 바로 계산하는 **무상태**라, 탭이 쉬었다 돌아와도 물과 어긋나지 않는다 (불변식 1).
+// ⚠⚠ **시계가 둘이다** (2026-09-26, S15P21E203-435 — birds.js 와 같은 까닭).
+//   · **몸의 움직임**(헤엄 · 도약 · 꼬리질 · 오르내림)은 틱의 실시간 `t` 다. 예전에는 물의 `sim.qT` 였는데 qT 는 그 `t` 를
+//     시뮬 게이트(30Hz)마다 떠 온 계단이라, 120Hz 화면에서 세 프레임 멈췄다가 한 번에 3.8px 씩 뛰었다 (실측).
+//   · **수면 높이**(`swellCPU`)는 무리마다 다르다 — 유영 무리는 물의 `sim.qT` · `sim.qScroll` (지느러미가 그려진 수면에 앉는다) ·
+//     뛰는 무리는 틱의 시각 · 지금 항해 자리 (공중의 몸이 밑을 지나는 파도의 30Hz 계단을 따라 떨지 않는다 · update 의 wy 주석).
+//   ⚠ 둘 다 무상태다 — dt 를 적분하지 않고 시각에서 바로 낸다. 탭이 쉬었다 와도 안 뛴다 (`t` 는 틱이 dt 최대 0.05 로 쌓은 값이다).
+//   ⚠ `time` 이 안 넘어오면 예전처럼 qT 하나로 돈다.
 //   ⚠ 그래서 `camYaw` 를 **개발 중에 돌리면 무리의 자리가 한 번 튄다** (방위가 자리 적분에 들어 있다).
 //     항해 중에 바뀌는 값이 아니라 그냥 둔다 — 존 구도의 `zoneYaw` 는 카메라만 돌리고 이 값을 안 건드린다.
 //
@@ -324,7 +330,11 @@ export function createPod(scene, waterUni) {
     uBellyC: { value: new THREE.Color(0xB8BCC0) },
     uBodyY: { value: 3.03 },
     // ⚠ 물의 원경색을 **그 객체 그대로** 쓴다 (water.js 가 매 프레임 제자리에서 고친다)
-    uFar: { value: waterUni ? waterUni.uBg.value : new THREE.Color(0xBFA898) }
+    uFar: { value: waterUni ? waterUni.uBg.value : new THREE.Color(0xBFA898) },
+    // ⭐ 그늘 쪽 채움 줄이기 (2026-09-26) — x · y 해 쪽 시선의 cos 문턱 (여기서 시작 · 여기서 다 걸린다) · z 몸을 어둡게 하는 몫
+    //   ⚠ 해 방향은 sunfx.js 의 공용 유니폼이다 (주광 · 배와 같은 값) · 윤곽 빛 · 투과는 sunfx.js 가 낸다
+    uBack: { value: new THREE.Vector4(0.34, 0.9, 0, 0) },
+    uSunDir: SUN_FX.uSunDirW
   };
 
   const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(0, 0, 0, 'YXZ');
@@ -375,6 +385,8 @@ export function createPod(scene, waterUni) {
       sh.uniforms.uFar = uni.uFar;
       sh.uniforms.uBellyC = uni.uBellyC;
       sh.uniforms.uBodyY = uni.uBodyY;
+      sh.uniforms.uBack = uni.uBack;
+      sh.uniforms.uSunDir = uni.uSunDir;
       sh.vertexShader = sh.vertexShader
         .replace('#include <common>', `#include <common>
           attribute vec4 aK;      // x 공중에 뜬 정도 0~1 · y 꼬리질 위상 · z 원경에 녹은 정도 · w **꼬리질 축** (0 세로 · 1 좌우)
@@ -383,6 +395,7 @@ export function createPod(scene, waterUni) {
           uniform float uAirK, uBodyY;
           attribute vec2 aQ;      // x 눕히는 정도(거리별) · y 알파 — 둘 다 마리마다 다르다
           varying float vHaze, vFlat, vAlpha, vBelly;
+          varying vec3 vPodW;     // 월드 자리 — 역광이 시선과 해 사이의 각을 잰다
           float bW, bLat;         // 변위, 그리고 그 변위를 어느 축에 줄 것인가
           float bcX, bsX, bcY, bsY;   // 단면을 돌릴 cos · sin (가로축 · 세로축)`)
         // ⚠⚠ **법선이 위치보다 먼저다** (three 의 정점 셰이더 순서 : beginnormal → … → begin_vertex).
@@ -421,13 +434,21 @@ export function createPod(scene, waterUni) {
         .replace('#include <begin_vertex>', `
           vec3 transformed = vec3(position.x * bcX + bW * bLat,
                                   position.y * bcY + bW * (1.0 - bLat),
-                                  position.z - position.y * bsY - position.x * bsX);`);
+                                  position.z - position.y * bsY - position.x * bsX);
+          #ifdef USE_INSTANCING
+            vPodW = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;
+          #else
+            vPodW = (modelMatrix * vec4(transformed, 1.0)).xyz;
+          #endif`);
       // ⚠ 원경으로 녹이는 것은 **알파가 아니라 색 섞기**다 — 불투명한 채로 물의 원경색에 다가간다.
       //   투명을 쓰면 정렬이 필요해지고, 파도 · 부표와 그리는 차례를 다투게 된다
       sh.fragmentShader = sh.fragmentShader
         .replace('#include <common>', `#include <common>
           uniform vec3 uFar, uBellyC;
-          varying float vHaze, vFlat, vAlpha, vBelly;`)
+          uniform vec4 uBack;
+          uniform vec3 uSunDir;
+          varying float vHaze, vFlat, vAlpha, vBelly;
+          varying vec3 vPodW;`)
         // ⚠ 등·배 배색은 **눕히기보다 먼저**다 — 눕히기가 이 알베도로 섞으므로 두 길이 같은 색을 본다
         .replace('#include <color_fragment>', `#include <color_fragment>
           diffuseColor.rgb = mix(uBellyC, diffuseColor.rgb, vBelly);`)
@@ -435,10 +456,17 @@ export function createPod(scene, waterUni) {
         //   물빛에 녹은 뒤 다시 제 색으로 눕혀져 원경 페이드가 듣지 않는다
         .replace('#include <opaque_fragment>', `#include <opaque_fragment>
           gl_FragColor.rgb = mix(gl_FragColor.rgb, diffuseColor.rgb, vFlat);
+          // ⭐ 그늘 쪽 채움 줄이기 — 시선이 해(달) 쪽일수록 카메라를 보는 면은 그늘이다. 눕힌 실루엣까지 같이 어두워진다 (그래서 눕히기 뒤).
+          //   ⚠ 해를 받은 윤곽 · 투과는 여기가 아니라 sunfx.js 가 **조명 결과에** 더한다 (opaque_fragment 앞 — 그래서 이 줄보다 먼저다)
+          float podB = smoothstep(uBack.x, uBack.y, dot(normalize(vPodW - cameraPosition), uSunDir));
+          gl_FragColor.rgb *= 1.0 - uBack.z * podB;
           gl_FragColor.rgb = mix(gl_FragColor.rgb, uFar, vHaze);
           gl_FragColor.a = vAlpha;`);
     };
 
+    // ⭐ 역광 (sunfx.js) — 위 onBeforeCompile(휨 · 배색 · 눕히기 · 안개)을 **감싸서** 잇는다. 윤곽 빛 · 투과는 조명 결과에 더해지고
+    //   그 뒤에 위의 눕히기 · 그늘 채움 줄이기 · 안개가 그대로 걸린다 (멀면 같이 녹는다)
+    ensureSunFx(mat);
     mesh = new THREE.InstancedMesh(geo, mat, MAX);
     mesh.frustumCulled = false;     // ⚠ 인스턴스가 제각기 흩어져 있다 — 원본 바운딩으로 자르면 무리가 통째로 사라진다
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -475,7 +503,7 @@ export function createPod(scene, waterUni) {
      * @param cam     본 카메라 — '배보다 뒤인가' 를 이 시선으로 잰다 (없으면 `camYaw` 로 대신한다)
      * @param hide    연출이 비키라고 넘기는 값 0~1 (`max(cl, travel.fog)`). 1 이면 전부 물 밑이다
      */
-    update(sim, { scroll, cam, hide }) {
+    update(sim, { scroll, cam, hide, time }) {
       const amt = P.podAmount === undefined ? 1 : P.podAmount;
       const sAmt = P.podSwim === undefined ? 1 : P.podSwim;
       // ⚠⚠ **`podAmount` 는 뛰는 무리만 끈다.** 유영 무리는 `podSwim` 이 따로 쥔다 —
@@ -551,15 +579,31 @@ export function createPod(scene, waterUni) {
       const vary = clamp(P.podSizeVary === undefined ? 0.18 : P.podSizeVary, 0, 0.6);
       const varyFar = clamp(P.podSizeVaryFar === undefined ? 1 : P.podSizeVaryFar, 0, 1);
       const szAt = (u, fade) => 1 - vary + 2 * vary * u * (1 - varyFar * (1 - fade));
+      // ⭐ 배 곁의 뛰는 돌고래는 더 크다 (2026-09-26, S15P21E203-435) — 사용자 : *"배 근처에 나타나는 돌고래는 좀 사이즈가 커져도 댐"*.
+      //   배에서 fade0 안쪽은 1 + sizeNear 배, 그 밖으로 nearSpan 에 걸쳐 1 로 내려온다 (smoothstep).
+      //   ⚠ 이 몫은 **그 도약을 시작한 자리**에서 잰다 — 뛰는 동안 크기가 바뀌면 호의 높이 · 길이가 공중에서 같이 바뀐다
+      //     (호가 크기를 따라가므로 · 아래 rt · hgt). 무상태다 — 시작 시각에서 자리를 다시 낸다.
+      //   ⚠ 유영 무리는 안 키운다 — *"크기를 더 작게해서 조금 빠르게 바다를 지나가는 느낌"* 으로 정한 무리다
+      const sizeNear = Math.max(0, P.podSizeNear === undefined ? 0.35 : P.podSizeNear);
+      const nearSpan = Math.max(1, P.podSizeNearSpan === undefined ? 14 : P.podSizeNearSpan);
+      const boostAt = (d) => { const e = clamp((d - fade0) / nearSpan, 0, 1); return 1 + sizeNear * (1 - e * e * (3 - 2 * e)); };
       mat.color.copy(bodyColor());
       // 배 색 — 몸 색을 흰 쪽으로 당긴다. ⚠ 시간대가 바뀌면 몸 색이 바뀌므로 **매 프레임 다시 섞는다**
       uni.uBellyC.value.copy(mat.color).lerp(_white, clamp(P.podBelly === undefined ? 0.45 : P.podBelly, 0, 1));
       mat.envMapIntensity = P.envIntensity;
+      // ⭐ 그늘 쪽 채움 줄이기 (2026-09-26) — 0 이면 예전과 같다
+      const back = clamp(P.podBack === undefined ? 1 : P.podBack, 0, 1);
+      uni.uBack.value.z = back * clamp(P.podBackDark === undefined ? 0.3 : P.podBackDark, 0, 0.95);
+      // ⭐ 역광 (sunfx.js) — 해를 향한 가장자리의 윤곽 빛 · 얇은 지느러미 · 꼬리의 투과. 주광이 0 인 낮에는 아무것도 안 더한다
+      sunFxOf(mat).set(Math.max(0, P.podRim === undefined ? 0.8 : P.podRim), Math.max(0, P.podTrans === undefined ? 0.2 : P.podTrans),
+        Math.max(0.5, P.podTransFwd === undefined ? 6 : P.podTransFwd));
 
+      // ⚠ 시계 (머리 주석) — 몸은 틱의 t · 수면 높이는 물의 qT
+      const T = time === undefined ? sim.qT : time;
       // ⚠ 화면을 다 덮었다가 걷히는 순간 **처음부터 다시 재생**한다 (위 머리 주석)
-      if (_hidePrev > 0.99 && hideK <= 0.99) _tOff = sim.qT;
+      if (_hidePrev > 0.99 && hideK <= 0.99) _tOff = T;
       _hidePrev = hideK;
-      const t = sim.qT - _tOff;
+      const t = T - _tOff;
 
       // 카메라 전방(수평). 배가 씬 원점이므로 자리의 이 성분이 양수면 **배보다 뒤**다 (불변식 0-2)
       let fwdX, fwdZ;
@@ -603,6 +647,10 @@ export function createPod(scene, waterUni) {
       //   포물선의 깊이 4m(1+m)·podHeight 가 몸 반지름(BODY_R × 크기)을 넘게 푼다.
       //   ⚠ 크기 편차(szAt)는 깊이와 몸에 똑같이 곱해져 약분된다 — 그래서 한 번만 푼다
       const MARGIN_BODY = 0.5 * (Math.sqrt(1 + BODY_R * size / high) - 1);
+      // ⚠ 배 곁에서 키운 크기의 **상한** — 호가 크기를 따라 길어지므로(공중 시간 √크기 배), 잠기는 여유까지 합쳐 주기를 넘으면
+      //   꼬리가 다 잠기기 전에 다음 도약이 시작된다 (params 의 podPeriod 주석 : 공중 × 1.746 < 주기).
+      //   그 식을 크기로 푼 값이다 : √크기 × tAir × (1 + 2·여유) ≤ 주기. 지금 값으로 1.44 — 보통 몸집은 다 키우고 가장 큰 쪽만 여기서 멈춘다
+      const szMax = Math.pow(period / Math.max(1e-6, tAir * (1 + 2 * MARGIN_BODY)), 2);
 
       for (let i = 0; i < n; i++) {
         const S = slots[i], G = groups[S.grp % gN];
@@ -633,7 +681,12 @@ export function createPod(scene, waterUni) {
         if (c >= N || gate <= 0.002) { _m.makeScale(0, 0, 0); mesh.setMatrixAt(i, _m); continue; }
 
         // 이 마리의 크기 — **거리에서 푼다** (위 szAt). 멀수록 작은 쪽으로 쏠린다
-        const szI = szAt(S.u, fade);
+        //   × 배 곁에서 키우는 몫 — 이번 도약을 시작한 순간의 자리에서 잰다 (위 boostAt)
+        const tS = t - (c - Math.floor(c)) * period;
+        const sxS = wrapP(G.x - sinH * speed * tS + (S.ox * cosH - S.oz * sinH) * spread - scroll.x);
+        const szS = wrapP(G.z - cosH * speed * tS + (S.ox * sinH + S.oz * cosH) * spread + scroll.z);
+        const sz0 = szAt(S.u, fade);
+        const szI = Math.min(sz0 * boostAt(Math.hypot(sxS, szS)), Math.max(sz0, szMax));
         // 이 마리의 호 — 몸이 크면 통째로 커지므로 공중 시간은 √szI 배다 (중력은 같다).
         // ⚠ 그래서 **먼 마리는 낮게 뛴다** — 몸만 작아지고 호는 그대로면 몸 길이 대비 너무 높이 솟는다
         const rt = Math.sqrt(szI);
@@ -650,8 +703,11 @@ export function createPod(scene, waterUni) {
         if (ka > 1 + MARGIN) { _m.makeScale(0, 0, 0); mesh.setMatrixAt(i, _m); continue; }
 
         const hop = 4 * ka * (1 - ka);              // 포물선 (꼭대기 1 · 양 끝 밖은 음수 = 물속)
-        const wy = swellCPU(sx + sim.qScroll.x, sz - sim.qScroll.z,
-          sim.qT * P.waveSpeed, P.oceanSwell, P.ripple, P.gerstner, detailAt(sx, sz));
+        // ⚠⚠ 호의 바닥(수면 높이)도 **틱의 시각 · 지금 항해 자리**로 읽는다 (유영 무리와 다르다 — 아래).
+        //   물의 qT · qScroll 로 읽으면 공중에 뜬 몸이 밑을 지나는 파도의 30Hz 계단을 따라 네 프레임마다 한 번씩 더 움직였다 (실측 0.66 대 0.53px).
+        //   그려진 물과의 차이는 한 게이트(33ms) 동안의 파도 · 항해 몫 — 0.05월드 안쪽이고, 들어가는 순간은 물이 가려 준다
+        const wy = swellCPU(sx + scroll.x, sz - scroll.z,
+          T * P.waveSpeed, P.oceanSwell, P.ripple, P.gerstner, detailAt(sx, sz));
 
         // 자세 : 코(−z)가 궤적의 접선을 본다. tan(pitch) = (세로 속도)/(가로 속도) = 4h(1−2ka)/D
         const pitch = Math.atan2(4 * hgt * (1 - 2 * ka), leap);
@@ -713,6 +769,7 @@ export function createPod(scene, waterUni) {
           const sNear = Math.max(0, P.podSwimNear === undefined ? 8 : P.podSwimNear);
           const gate = clamp((dist - sNear) / Math.max(1, fade0 - sNear), 0, 1) * (1 - hideK);
           if (fade <= 0.001 || gate <= 0.002) { _m.makeScale(0, 0, 0); mesh.setMatrixAt(i, _m); continue; }
+          // ⚠ 유영 무리는 물의 qT · qScroll 그대로다 — 지느러미가 **그려진 수면**에 정확히 앉아야 한다 (30Hz 로 오르내리는 수면과 같이 간다)
           const sea = swellCPU(sx + sim.qScroll.x, sz - sim.qScroll.z,
             sim.qT * P.waveSpeed, P.oceanSwell, P.ripple, P.gerstner, detailAt(sx, sz));
           const eF = clamp(fade / fadeOut, 0, 1);

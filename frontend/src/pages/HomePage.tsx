@@ -16,6 +16,7 @@ import {
   useExplorationMove,
   useSaveBoatPosition,
   useSceneBoot,
+  useSceneQuality,
   VoyageLog,
   voyageLogQuery,
   withMapPerfumes,
@@ -173,6 +174,10 @@ export default function HomePage() {
   // 커튼이 걷히면(finish) 내립니다. 화면을 떠났다 돌아오면 엔진이 처음부터 다시 뜨므로 커튼도 다시 섭니다
   const boot = useSceneBoot()
 
+  // 그래픽 설정 (S15P21E203-435) — 고르는 자리는 헤더의 톱니바퀴입니다(`GraphicsMenu`). 여기서는 엔진과 잇고,
+  // 엔진이 내장 그래픽이라 낮게 시작했거나 스스로 내리면 커튼이 걷힌 뒤 한 번 알립니다
+  const graphics = useSceneQuality(showToast, boot.done)
+
   // 향해 일지(MAP-24) — 배가 든 해역이 바뀌거나 향수를 고르면 서버에 남기고 일지를 다시 읽습니다.
   // 기록할지는 서버가 정합니다 (향수는 늘 · 빈 바다는 향 영역이 바뀐 경우만)
   const reportMove = useExplorationMove()
@@ -314,6 +319,8 @@ export default function HomePage() {
         onChartChange={setChartOpen}
         onBoot={boot.report}
         onMove={reportMove}
+        quality={graphics.mode}
+        onQuality={graphics.onQuality}
         start={lastBoatAt}
         landing={landing}
         onLeave={saveBoatAt}

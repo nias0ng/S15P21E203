@@ -8,7 +8,7 @@ import { ROUTES } from '@/shared/config/routes'
 import { useAuthStore } from '@/shared/store/authStore'
 import { useDiveStore } from '@/shared/store/diveStore'
 
-import { GlobalHeader } from '../GlobalHeader'
+import { GlobalHeader, type HeaderTone } from '../GlobalHeader'
 
 const api = vi.hoisted(() => ({ logout: vi.fn(), getMe: vi.fn() }))
 
@@ -51,12 +51,12 @@ function Here() {
   return <div>{`지금: ${useLocation().pathname}`}</div>
 }
 
-const renderHeader = (at: string) => {
+const renderHeader = (at: string, tone?: HeaderTone) => {
   const queryClient = new QueryClient()
   const view = render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[at]}>
-        <GlobalHeader />
+        <GlobalHeader tone={tone} />
         <Routes>
           <Route path="*" element={<Here />} />
         </Routes>
@@ -236,6 +236,41 @@ describe('로그인 여부', () => {
 
     expect(screen.getByRole('link', { name: 'SHELF' })).toBeVisible()
     expect(screen.getByRole('button', { name: '내 계정' })).toBeVisible()
+  })
+})
+
+/** a 가 문서에서 b 보다 앞(= 헤더에서 왼쪽)에 서는가 */
+const isBefore = (a: Element, b: Element) =>
+  (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+
+// 그래픽 설정은 메인 3D 의 것이라 유리판 헤더(3D 향 지도)에서만 섭니다 (S15P21E203-435)
+describe('그래픽 설정 톱니바퀴', () => {
+  it('메인의 유리판 헤더에서는 로그인 왼쪽에 선다', () => {
+    renderHeader(ROUTES.HOME, 'glass')
+
+    const gear = screen.getByRole('button', { name: '그래픽 설정' })
+    expect(gear).toBeVisible()
+    expect(isBefore(gear, screen.getByRole('link', { name: '로그인' }))).toBe(
+      true,
+    )
+  })
+
+  it('로그인하면 계정 아이콘 왼쪽에 선다 (밝은 하늘의 유리판도 같다)', () => {
+    logIn()
+    renderHeader(ROUTES.HOME, 'glassLight')
+
+    const gear = screen.getByRole('button', { name: '그래픽 설정' })
+    expect(
+      isBefore(gear, screen.getByRole('button', { name: '내 계정' })),
+    ).toBe(true)
+  })
+
+  it('3D 가 없는 다른 화면의 헤더에는 없다', () => {
+    renderHeader(ROUTES.PERFUMES)
+
+    expect(
+      screen.queryByRole('button', { name: '그래픽 설정' }),
+    ).not.toBeInTheDocument()
   })
 })
 
