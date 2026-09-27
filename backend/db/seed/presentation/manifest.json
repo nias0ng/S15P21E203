@@ -1,0 +1,29 @@
+{
+  "version": "S15P21E203-440-v1",
+  "perfumes": [
+    {"key":"coco","externalId":611,"brand":"Chanel","name":"Coco Mademoiselle","reviewCount":20},
+    {"key":"cloud","externalId":50384,"brand":"Ariana Grande","name":"Cloud","reviewCount":20},
+    {"key":"cypress","externalId":61928,"brand":"Jo Malone London","name":"Cypress & Grapevine Cologne Intense","reviewCount":15},
+    {"key":"laundry","externalId":73368,"brand":"Ostrikov Beauty Publishing","name":"Laundry","reviewCount":8},
+    {"key":"flowerbomb","externalId":1460,"brand":"Viktor&Rolf","name":"Flowerbomb","reviewCount":8},
+    {"key":"francois","externalId":3172,"brand":"Rance 1795","name":"Francois Charles","reviewCount":8},
+    {"key":"ari","externalId":31661,"brand":"Ariana Grande","name":"Ari","reviewCount":3},
+    {"key":"candy","externalId":39970,"brand":"Ariana Grande","name":"Sweet Like Candy","reviewCount":3}
+  ],
+  "nicknames": ["귤빛오후","꽃잎수첩","잔향산책","봄날셔츠","오렌지노트","작은시향지","느린향기","햇살한스푼","바닐라구름","설탕서랍","달빛머스크","분홍찻잔","포근한니트","복숭아메모","솜사탕산책","크림라떼","숲길기록","나무책상","초록코트","가을서가","비온뒤숲","우디노트","나무그늘","저녁산책","세탁한린넨","하얀손수건","비누책갈피","맑은창가","시향일요일","취향수집가","향기연습장","작은분사"],
+  "collections": [
+    {"key":"soft-sweet","owner":9,"name":"포근한 단향 비교","description":"클라우드의 부드러운 단향과 아리의 과일 단향을 번갈아 쓰며 비교합니다.","perfumes":["cloud","ari","candy"]},
+    {"key":"autumn-wood","owner":17,"name":"선선한 날의 우디 후보","description":"사이프러스의 묵직한 나무향과 프랑수아 샤를의 산뜻한 시작을 비교하는 시향 목록입니다.","perfumes":["cypress","francois"]},
+    {"key":"floral-evening","owner":2,"name":"꽃향기가 남는 저녁","description":"코코 마드모아젤과 플라워밤의 꽃향기, 단맛과 잔향의 차이를 기록합니다.","perfumes":["coco","flowerbomb"]}
+  ],
+  "posts": [
+    {"owner":9,"category":"COLLECTION","collection":"soft-sweet","title":"포근한 단향 세 가지를 번갈아 써봤어요","content":"클라우드는 부드럽게 퍼지는 단향, 아리는 조금 더 과일 같은 단향으로 느꼈어요. 스위트 라이크 캔디까지 모아 그날 원하는 분위기에 따라 고릅니다. 저는 실내에서는 한 번만 뿌리는 편이에요.","perfumes":["cloud","ari","candy"],"comments":[{"author":10,"content":"클라우드와 아리 중 과일 느낌이 덜한 건 어느 쪽이었나요?"},{"author":9,"content":"제 피부에서는 클라우드였어요. 아리는 처음의 과일 단향이 더 또렷하게 느껴졌습니다."},{"author":12,"content":"단향 세기를 비교하고 싶었는데 같은 분사량으로 시향해봐야겠어요."}]},
+    {"owner":17,"category":"COLLECTION","collection":"autumn-wood","title":"가을 우디 후보를 두 개로 좁혔습니다","content":"사이프러스 앤 그레이프바인은 차분하고 묵직하게, 프랑수아 샤를은 시작이 더 산뜻하게 느껴졌습니다. 둘 다 샘플로 며칠 더 비교하려고 보유 희망 목록에 모았어요. 가벼운 재킷을 입는 출근길에 써볼 생각입니다.","perfumes":["cypress","francois"],"comments":[{"author":19,"content":"출근길에는 사이프러스 분사량을 줄여보세요. 제 작은 사무실에서는 처음 향이 꽤 느껴졌어요."},{"author":17,"content":"알려주셔서 감사해요. 우선 한 번만 뿌리고 이동한 뒤 실내에서 확인해볼게요."}]},
+    {"owner":2,"category":"COLLECTION","collection":"floral-evening","title":"저녁 약속에 번갈아 쓰는 꽃향기","content":"코코 마드모아젤은 처음의 상큼함 뒤에 차분한 잔향이 남고, 플라워밤은 달달한 꽃향기가 더 오래 이어지는 느낌입니다. 둘을 같은 꽃향으로 묶어도 분위기는 꽤 달라서 비교하는 재미가 있어요.","perfumes":["coco","flowerbomb"],"comments":[{"author":4,"content":"단향에 쉽게 질리는 편이면 둘 중 코코부터 시향하는 게 나을까요?"},{"author":2,"content":"제게는 코코의 단맛이 덜 도드라졌어요. 그래도 잔향 취향이 갈릴 수 있으니 두 개를 다른 날 착향해보시는 걸 추천해요."}]},
+    {"owner":5,"category":"RECOMMEND","collection":null,"title":"코코 마드모아젤, 시향지와 피부가 달랐어요","content":"시향지에서는 처음의 상큼함이 마음에 들었는데 손목에서는 시간이 지나자 묵직한 향이 더 느껴졌어요. 상큼한 향을 기대하고 샀다가 당황하지 않으려면 잔향까지 보는 게 좋겠더라고요. 다른 분들도 피부에서 느낌이 달라졌나요?","perfumes":["coco"],"comments":[{"author":1,"content":"저도 처음보다 잔향이 더 차분했어요. 출근 전에 뿌린 뒤 점심 무렵 다시 맡아보고 구매했습니다."},{"author":5,"content":"저도 이번에는 샘플로 반나절 정도 지켜보려고요. 첫 향만 보고 고르지는 말아야겠네요."},{"author":7,"content":"저는 옷과 피부에서도 느낌이 달랐습니다. 피부에서는 단맛이 조금 더 올라왔어요."}]},
+    {"owner":13,"category":"CHAT","collection":null,"title":"클라우드, 실내에서는 한 번으로 충분했어요","content":"클라우드를 두 번 뿌리고 카페에 갔더니 제게는 달콤한 향이 계속 느껴졌습니다. 다음에는 한 번만 뿌렸는데 더 편했어요. 날씨가 서늘할 때 다시 써보려고 합니다. 단향 좋아하시는 분들은 분사량을 어떻게 조절하시나요?","perfumes":["cloud"],"comments":[{"author":9,"content":"저도 실내에서는 한 번만 뿌려요. 니트에 남은 향까지 느껴져서 덧뿌리지는 않습니다."},{"author":13,"content":"옷에 남는 향도 함께 봐야겠네요. 다음엔 중간에 덧뿌리지 않고 기다려볼게요."}]},
+    {"owner":21,"category":"RECOMMEND","collection":null,"title":"사이프러스는 더운 낮보다 저녁이 좋았어요","content":"샘플을 더운 낮에 썼을 때는 나무향이 무겁게 느껴졌는데, 선선한 저녁 산책에서는 차분해서 좋았습니다. 보유 희망에는 넣어두고 날씨가 더 서늘해지면 다시 착향해보려고요.","perfumes":["cypress"],"comments":[{"author":18,"content":"제 경험도 비슷했어요. 따뜻한 실내에서는 한 번만 뿌리는 쪽이 편했습니다."},{"author":21,"content":"계절만 생각했는데 실내 온도도 봐야겠네요. 다음에는 분사량도 줄여볼게요."}]},
+    {"owner":25,"category":"CHAT","collection":null,"title":"론드리 샘플로 깨끗한 향을 비교 중입니다","content":"론드리에서 느낀 깨끗한 향이 마음에 들어 샘플을 쓰고 있어요. 제 피부에서는 처음보다 잔향이 더 부드럽게 느껴집니다. 매일 쓰기 편한지는 며칠 더 확인한 뒤 본품을 결정하려고요.","perfumes":["laundry"],"comments":[{"author":26,"content":"저도 잔향 쪽이 더 편했어요. 저는 시향지보다 피부에 얹었을 때 향이 빨리 가까워졌습니다."},{"author":25,"content":"저도 멀리 퍼지기보다는 가까이서 느껴졌어요. 출근할 때도 샘플로 확인해보겠습니다."}]},
+    {"owner":29,"category":"CHAT","collection":null,"title":"프랑수아 샤를은 첫 향과 잔향을 따로 적었어요","content":"처음에는 산뜻하게 느꼈는데 시간이 지나면서 나무 같은 차분함이 남았어요. 향 지도에서 발견하고 시향해본 향수라 변화를 기록하는 재미가 있습니다. 비슷한 향을 고를 때도 첫 향만 비교하면 놓치는 게 있겠더라고요.","perfumes":["francois"],"comments":[{"author":17,"content":"저도 우디 후보로 비교 중인데 처음의 산뜻함이 인상적이었어요. 어느 정도 기다리고 잔향을 확인하셨나요?"},{"author":29,"content":"샘플을 손목에 바르고 한 시간쯤 뒤 다시 적었어요. 저녁에도 한 번 더 맡아봤습니다."}]}
+  ]
+}

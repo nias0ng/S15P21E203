@@ -88,4 +88,14 @@ describe('Modal', () => {
 
     expect(onClose).toHaveBeenCalledOnce()
   })
+
+  it('initialFocus 가 panel 이면 열릴 때 [×] 가 아니라 판에 초점을 둡니다', () => {
+    render(
+      <Modal open onClose={vi.fn()} initialFocus="panel" title="향수 등록">
+        <p>본문</p>
+      </Modal>,
+    )
+
+    expect(dialogOf('향수 등록')).toHaveFocus()
+  })
 })

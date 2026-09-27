@@ -112,6 +112,13 @@ tasks.register('seedLocal', JavaExec) {
     mainClass = 'com.hyanghae.seed.LocalSeed'
 }
 
+tasks.register('seedPresentation', JavaExec) {
+    group = 'application'
+    description = '440번 시연 SEED: 기본 plan, replace/verify/reset-actors는 명시적으로 지정'
+    classpath = sourceSets.localSeed.runtimeClasspath
+    mainClass = 'com.hyanghae.seed.PresentationSeed'
+}
+
 tasks.register('localSeedDist', Sync) {
     dependsOn tasks.named('localSeedClasses')
     into layout.buildDirectory.dir('local-seed')

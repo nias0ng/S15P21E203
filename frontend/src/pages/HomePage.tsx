@@ -489,9 +489,11 @@ export default function HomePage() {
       {/*
         향수 상세 · 진열대 화면과 **같은 등록 모달**입니다. 지도 카드도 어떤 향수인지
         이미 알고 있어 `preselected` 로 1단계를 건너뜁니다. 들어온 입구마다 적을 수
-        있는 값이 다르면 사용자가 같은 기능을 다르게 배웁니다.
+        있는 값이 다르면 사용자가 같은 기능을 다르게 배웁니다. 값은 같고 판만 바다 위의
+        것(`scene`)으로 갈아입습니다 — 엔진 카드 옆에 상아색 종이가 뜨면 다른 화면이 끼어든 것으로 읽힙니다.
       */}
       <ShelfRegisterModal
+        scene
         open={saving !== null}
         onClose={closeShelfSave}
         preselected={
@@ -514,6 +516,7 @@ export default function HomePage() {
 
       {/* 로그인하러 떠나도 3D 입력 잠금은 풀어 둡니다 */}
       <LoginRequiredDialog
+        scene
         open={loginOpen}
         onClose={() => {
           setLoginOpen(false)

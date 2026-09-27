@@ -241,9 +241,9 @@ import { perfumeDetailQuery } from '@/features/perfume/queries'   // X
 | `shared/ui/PerfumeCard` | 향수 카드. 도메인 타입을 받지 않고 `name`·`subName`·`thumbnailUrl` 낱개로 받습니다. 늘 상세로 가는 링크라 `to` 는 필수입니다 |
 | `shared/ui/ChipToggle` | 칩 여러 개 중 고르기 (A11 진열대 분류 · 계절 등록, A15) |
 | `shared/ui/StarRating` | 별점. 라디오 그룹이라 키보드 화살표로 움직입니다 |
-| `shared/ui/Modal` | 네이티브 `<dialog>` 기반. 포커스 가두기·Esc·배경 스크롤 잠금 자동 |
+| `shared/ui/Modal` | 네이티브 `<dialog>` 기반. 포커스 가두기·Esc·배경 스크롤 잠금 자동. 3D 카드(iframe)에서 여는 모달은 `initialFocus="panel"` — 안 주면 [×] 에 초점 테가 선 채로 뜹니다. 폭을 줄인 좁은 판은 `titleSize="heading"` |
 | `shared/ui/ConfirmDialog` | 삭제 확인 모달 (C01). 7곳 공용. 확인 단추는 늘 `danger` 입니다 |
-| `shared/ui/LoginRequiredDialog` | 로그인 유도 모달 (C01). 비로그인 저장·작성 시도 시 |
+| `shared/ui/LoginRequiredDialog` | 로그인 유도 모달 (C01). 비로그인 저장·작성 시도 시. 3D 향 지도 위에서는 `scene` (저녁 유리판 · 좁은 폭 · 한 단 작은 제목) |
 | `shared/ui/Toast` | 저장·삭제 피드백 (C03). 상태는 `shared/hooks/useToast` 를 쓰세요 |
 | `shared/ui/Skeleton` | 로딩 중 자리 잡기. 목록에는 스피너보다 이걸 씁니다 |
 | `shared/ui/EmptyState` | 결과 0건 화면. 불러오기에 실패한 자리는 `onRetry` 를 넘기면 `action` 뒤에 [다시 시도] 가 섭니다(`retrySize` sm·md) |
@@ -494,6 +494,11 @@ IDE 와 `grep` 이 찾을 수 있어야 합니다.
 ⚠️ 응답이 이름 · 사진 · 근거 **한 문장**뿐입니다 — 브랜드 · 향 특성은 화면이 향수 상세 · 향조로 채우고, 근거의
 갈래(적합도 · 최근 본 향수 · 취향 테스트)는 문장의 틀을 거꾸로 읽습니다(`personalReason.ts`). 서버 안에 있는
 `evidenceSource` · `evidenceName` 을 응답에 실어 달라고 요청할 자리이고, 오면 그 파일의 틀 표를 걷으면 됩니다.
+
+**자연어 추천 이유의 향 강도도 붙었습니다**(S15P21E203-434) — 응답의 `reasons[].strengths` 가 `evidence` 를
+` · ` 로 자른 조각과 같은 순서 · 같은 개수로 오고(0~100, 향이 아닌 조건은 `null`), `features/recommend/nlrReason.ts` 가
+표현 · 향 · 강도를 한 문장으로 짓습니다(`이 향수는 ‘빨래’가 가리키는 비누(100) · 프레시(93) 향을 가지고 있습니다.`).
+⚠️ 강도는 백분율이 아닙니다 — 100 은 "이 향수에서 그 향이 가장 세게 잡혔다" 라 `%` 를 붙이지 않습니다.
 
 아직 **백엔드에 없는** 것은 하나입니다.
 

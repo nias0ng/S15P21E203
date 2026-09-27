@@ -71,3 +71,25 @@ describe('ShelfRegisterModal 향수 고르기', () => {
     expect(onSearch).toHaveBeenCalledWith('상탈')
   })
 })
+
+describe('ShelfRegisterModal 3D 향 지도 위(scene)', () => {
+  it('분류 없이 담으면 [필수] 를 띄우고, 고른 뒤에는 담는다', async () => {
+    const onSubmit = vi.fn()
+    renderModal({ scene: true, preselected: SANTAL, onSubmit })
+
+    await userEvent.click(screen.getByRole('button', { name: '진열대에 담기' }))
+
+    expect(screen.getByRole('alert')).toHaveTextContent('필수')
+    expect(onSubmit).not.toHaveBeenCalled()
+
+    await userEvent.click(screen.getByRole('button', { name: '보유 희망' }))
+    await userEvent.click(screen.getByRole('button', { name: '진열대에 담기' }))
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      perfumeId: 16,
+      category: 'WISH',
+      rating: null,
+      memo: null,
+    })
+  })
+})

@@ -238,7 +238,7 @@ class NlrRecordVersionFieldsIntegrationTest {
                         List.of("soapy"), List.of(), List.of("빨래"), "llm+lexicon"),
                 List.of(),
                 List.of(new NlrRecommendResponse.Result(73368L,
-                        List.of(new NlrRecommendResponse.Matched("soapy", "빨래")))),
+                        List.of(new NlrRecommendResponse.Matched("soapy", "빨래", null)))),
                 unmatched,
                 new NlrRecommendResponse.Diagnostics("AND", 172, 1, List.of(), null));
     }
