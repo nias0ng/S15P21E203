@@ -119,8 +119,7 @@ class GmsReviewAnalyzerTest {
     /**
      * 호평과 혹평을 함께 담게 합니다.
      *
-     * <p>와이어프레임 A10 이 "호평·혹평 섞어 4문장까지"로 정해 두었습니다. 좋은 말만 모으면
-     * 요약이 광고문이 되고, 화면이 후기를 대신 읽어 준다는 역할을 못 합니다.
+     * <p>좋은 말만 모으면 요약이 광고문이 되고, 화면이 후기를 대신 읽어 준다는 역할을 못 합니다.
      */
     @Test
     void asksForBothPraiseAndComplaint() throws Exception {
@@ -129,8 +128,56 @@ class GmsReviewAnalyzerTest {
         analyzer(1000).summarize(List.of(new ReviewContent(1L, null, REVIEW_TEXT)));
 
         assertThat(instructionOf(receivedBodies.getFirst()))
-                .contains("호평과 혹평을 함께 담습니다")
-                .contains("3~4문장");
+                .contains("호평과 혹평을 함께 담습니다");
+    }
+
+    /**
+     * 요약을 줄로 나눠 달라고 합니다.
+     *
+     * <p>화면의 가독성이 이 세 규칙에 달려 있습니다. 총평 한 줄과 주제별 줄로 나누는 것, 줄 수를
+     * 네 줄까지로 두는 것(와이어프레임 A10 의 "호평·혹평 섞어 4문장까지"), 한 줄의 길이를 본문
+     * 폭에 맞추는 것입니다. 길이를 두지 않으면 긴 문장이 화면에서 다시 접혀 줄 구분이 사라집니다.
+     */
+    @Test
+    void asksForLineSeparatedSummary() throws Exception {
+        responseBody = chatResponse(summaryJson(SUMMARY_TEXT));
+
+        analyzer(1000).summarize(List.of(new ReviewContent(1L, null, REVIEW_TEXT)));
+
+        assertThat(instructionOf(receivedBodies.getFirst()))
+                .contains("첫 줄은 전체 인상을 한 문장으로 씁니다")
+                .contains("최대 세 줄")
+                .contains("45자를 넘기지 않습니다");
+    }
+
+    /**
+     * 존댓말로 쓰라고 합니다.
+     *
+     * <p>화면의 다른 문구가 모두 존댓말입니다. 줄로 나눠 달라고만 했을 때 gpt-5-nano 가
+     * "~갈린다" 같은 평서형으로 답한 적이 있어 말끝을 지시문에 적어 둡니다.
+     */
+    @Test
+    void asksForPoliteSentenceEndings() throws Exception {
+        responseBody = chatResponse(summaryJson(SUMMARY_TEXT));
+
+        analyzer(1000).summarize(List.of(new ReviewContent(1L, null, REVIEW_TEXT)));
+
+        assertThat(instructionOf(receivedBodies.getFirst())).contains("\"습니다\" 로 끝맺습니다");
+    }
+
+    /**
+     * 마크다운을 쓰지 말라고 합니다.
+     *
+     * <p>화면은 요약을 글자 그대로 보여줍니다. 줄을 나누라고 하면 모델이 목록 표기를 꺼내 쓰기
+     * 쉬운데, 그러면 별표나 하이픈이 화면에 그대로 드러납니다.
+     */
+    @Test
+    void forbidsMarkdown() throws Exception {
+        responseBody = chatResponse(summaryJson(SUMMARY_TEXT));
+
+        analyzer(1000).summarize(List.of(new ReviewContent(1L, null, REVIEW_TEXT)));
+
+        assertThat(instructionOf(receivedBodies.getFirst())).contains("마크다운 표기");
     }
 
     /**
@@ -169,15 +216,49 @@ class GmsReviewAnalyzerTest {
         assertThat(reviews.get(0).get("content").asText()).isEqualTo("가".repeat(10));
     }
 
-    /** 모델 출력은 응답 본문 안에 문자열로 한 겹 더 들어 있습니다. */
+    /**
+     * 모델 출력은 응답 본문 안에 문자열로 한 겹 더 들어 있습니다.
+     *
+     * <p>요약은 줄 배열로 받아 줄바꿈으로 이어 돌려줍니다. 화면이 그 줄바꿈을 그대로 보여줍니다.
+     */
     @Test
-    void parsesSummaryFromModelOutput() throws Exception {
-        responseBody = chatResponse(summaryJson(SUMMARY_TEXT));
+    void joinsSummaryLinesWithLineBreaks() throws Exception {
+        responseBody = chatResponse(summaryJson(SUMMARY_TEXT, "· 지속력: 짧다는 의견이 많습니다."));
 
         String summary = analyzer(1000).summarize(List.of(
                 new ReviewContent(1L, null, REVIEW_TEXT),
                 new ReviewContent(2L, null, REVIEW_TEXT)
         ));
+
+        assertThat(summary).isEqualTo(SUMMARY_TEXT + "\n· 지속력: 짧다는 의견이 많습니다.");
+    }
+
+    /**
+     * 빈 줄은 버립니다.
+     *
+     * <p>모델이 줄 사이를 띄우려고 빈 문자열을 끼워 넣으면 화면에 빈 줄이 그대로 드러납니다.
+     */
+    @Test
+    void dropsBlankLines() throws Exception {
+        responseBody = chatResponse(summaryJson(SUMMARY_TEXT, "   ", "· 향: 달콤합니다."));
+
+        String summary = analyzer(1000).summarize(List.of(new ReviewContent(1L, null, REVIEW_TEXT)));
+
+        assertThat(summary).isEqualTo(SUMMARY_TEXT + "\n· 향: 달콤합니다.");
+    }
+
+    /**
+     * 배열 대신 문자열 하나를 받아도 실패시키지 않습니다.
+     *
+     * <p>형식을 어겼다고 예외를 던지면 그 향수는 다음 실행에서도 같은 응답을 받아 요약이 아예
+     * 없는 상태로 남습니다. 줄이 나뉘지 않은 예전 모양이 요약이 없는 것보다 낫습니다.
+     */
+    @Test
+    void acceptsSummaryGivenAsPlainString() throws Exception {
+        responseBody = chatResponse(
+                objectMapper.writeValueAsString(Map.of("summary", SUMMARY_TEXT)));
+
+        String summary = analyzer(1000).summarize(List.of(new ReviewContent(1L, null, REVIEW_TEXT)));
 
         assertThat(summary).isEqualTo(SUMMARY_TEXT);
     }
@@ -263,8 +344,8 @@ class GmsReviewAnalyzerTest {
                 .get("messages").get(0).get("content").asText();
     }
 
-    private String summaryJson(String summary) throws Exception {
-        return objectMapper.writeValueAsString(Map.of("summary", summary));
+    private String summaryJson(String... lines) throws Exception {
+        return objectMapper.writeValueAsString(Map.of("summary", List.of(lines)));
     }
 
     private GmsReviewAnalyzer analyzer(int maxReviewLength) {
