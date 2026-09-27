@@ -23,6 +23,7 @@ export { VoyageLog, type VoyageLogStatus } from './components/VoyageLog'
 export { useExplorationMove } from './hooks/useExplorationMove'
 export { useSaveBoatPosition } from './hooks/useSaveBoatPosition'
 export { useSceneBoot } from './hooks/useSceneBoot'
+export { useSceneQuality } from './hooks/useSceneQuality'
 export { buildPerfumeIdIndex } from './lib/perfumeIdAt'
 export { buildMapPerfumeLookup, withMapPerfumes } from './lib/mapPerfumeLookup'
 export {
