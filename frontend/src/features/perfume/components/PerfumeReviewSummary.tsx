@@ -1,4 +1,5 @@
 import { cn } from '@/shared/lib/cn'
+import { splitSentences } from '@/shared/lib/splitSentences'
 import { GLASS_PANEL } from '@/shared/ui/panel'
 
 type Props = {
@@ -22,7 +23,11 @@ export function PerfumeReviewSummary({
         <p className="text-ink-muted text-body">요약을 불러오는 중입니다.</p>
       ) : summary ? (
         <>
-          <p className="text-ink text-body whitespace-pre-wrap">{summary}</p>
+          <div className="text-ink text-body space-y-1.25">
+            {splitSentences(summary).map((sentence, index) => (
+              <p key={index}>{sentence}</p>
+            ))}
+          </div>
           {sourceReviewCount !== null && (
             <p className="text-ink-muted text-caption">
               후기 {sourceReviewCount}개를 바탕으로 요약했습니다.
