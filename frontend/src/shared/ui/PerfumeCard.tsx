@@ -56,7 +56,7 @@ export function PerfumeCard({
         )}
       </div>
 
-      <div className="min-h-13.5 w-full space-y-0.5 px-0.75">
+      <div className="min-h-15 w-full space-y-0.5 px-0.75">
         <p className="text-ink text-body line-clamp-2 font-serif leading-tight font-semibold">
           {name}
         </p>
@@ -69,7 +69,7 @@ export function PerfumeCard({
   )
 
   return (
-    <article className="flex h-full flex-col">
+    <article className="type-reading flex h-full flex-col">
       <Link
         to={to}
         state={state}

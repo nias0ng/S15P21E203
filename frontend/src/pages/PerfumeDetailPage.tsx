@@ -111,67 +111,69 @@ export default function PerfumeDetailPage() {
         </LinkButton>
       )}
 
-      <PerfumeOverview
-        perfume={data}
-        inShelf={shelfItem !== null}
-        shelfPending={isLoggedIn && myShelf.isPending}
-        onShelfAction={() => {
-          if (!isLoggedIn) {
-            setLoginOpen(true)
-            return
+      <div className="type-reading space-y-6.25">
+        <PerfumeOverview
+          perfume={data}
+          inShelf={shelfItem !== null}
+          shelfPending={isLoggedIn && myShelf.isPending}
+          onShelfAction={() => {
+            if (!isLoggedIn) {
+              setLoginOpen(true)
+              return
+            }
+            if (shelfItem) {
+              setRemoveOpen(true)
+              return
+            }
+            setShelfOpen(true)
+          }}
+          aside={
+            <PerfumeNotes
+              notes={notes.data?.notes ?? []}
+              isPending={notes.isPending}
+              className="flex-1"
+            />
           }
-          if (shelfItem) {
-            setRemoveOpen(true)
-            return
+        />
+
+        <PerfumeSeasonRatings
+          seasons={aggregates.data?.seasonStatistics.seasons ?? []}
+          isPending={aggregates.isPending}
+        />
+
+        <PerfumeReviewSummary
+          summary={aggregates.data?.reviewSummary.summary ?? null}
+          sourceReviewCount={
+            aggregates.data?.reviewSummary.sourceReviewCount ?? null
           }
-          setShelfOpen(true)
-        }}
-        aside={
-          <PerfumeNotes
-            notes={notes.data?.notes ?? []}
-            isPending={notes.isPending}
-            className="flex-1"
-          />
-        }
-      />
+          isPending={aggregates.isPending}
+        />
 
-      <PerfumeSeasonRatings
-        seasons={aggregates.data?.seasonStatistics.seasons ?? []}
-        isPending={aggregates.isPending}
-      />
+        <PerfumeReviewKeywords
+          keywords={aggregates.data?.reviewKeywords.keywords ?? []}
+        />
 
-      <PerfumeReviewSummary
-        summary={aggregates.data?.reviewSummary.summary ?? null}
-        sourceReviewCount={
-          aggregates.data?.reviewSummary.sourceReviewCount ?? null
-        }
-        isPending={aggregates.isPending}
-      />
+        <PerfumeReviewList
+          reviews={reviews.data?.reviews ?? []}
+          totalElements={
+            aggregates.data?.reviewStatistics.reviewCount ??
+            reviews.data?.totalElements ??
+            0
+          }
+          page={reviewPage}
+          size={REVIEW_PAGE_SIZE}
+          onPageChange={setReviewPage}
+          isPending={reviews.isPending}
+          myReviewId={data.myReviewId}
+          perfumeId={numericId}
+        />
 
-      <PerfumeReviewKeywords
-        keywords={aggregates.data?.reviewKeywords.keywords ?? []}
-      />
-
-      <PerfumeReviewList
-        reviews={reviews.data?.reviews ?? []}
-        totalElements={
-          aggregates.data?.reviewStatistics.reviewCount ??
-          reviews.data?.totalElements ??
-          0
-        }
-        page={reviewPage}
-        size={REVIEW_PAGE_SIZE}
-        onPageChange={setReviewPage}
-        isPending={reviews.isPending}
-        myReviewId={data.myReviewId}
-        perfumeId={numericId}
-      />
-
-      <PerfumeRelated
-        fromPerfumeId={numericId}
-        perfumes={related.data ?? []}
-        isPending={related.isPending}
-      />
+        <PerfumeRelated
+          fromPerfumeId={numericId}
+          perfumes={related.data ?? []}
+          isPending={related.isPending}
+        />
+      </div>
 
       <ShelfRegisterModal
         open={shelfOpen}
