@@ -27,7 +27,9 @@ export const ROUTES = {
   POST_EDIT: '/community/free/:postId/edit',
 
   LOGIN: '/login',
+  GOOGLE_LOGIN: '/login/google', // Google 에서 돌아와 로그인을 마무리하는 곳(백엔드 콜백이 보냄)
   SIGNUP: '/signup',
+  GOOGLE_SIGNUP: '/signup/google', // Google 확인 뒤 닉네임을 정해 가입을 끝내는 곳(백엔드 콜백이 보냄)
   PASSWORD_RESET: '/password/reset',
   ACCOUNT: '/account', // A29 정보 변경 (+ A30 비밀번호 변경 · 탈퇴 모달)
 } as const

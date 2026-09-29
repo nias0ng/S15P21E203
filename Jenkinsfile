@@ -80,6 +80,7 @@ pipeline {
                         --volume "$WORKSPACE/$FRONTEND_DIR:/workspace" \
                         --workdir /workspace \
                         --env VITE_API_BASE_URL="$VITE_API_BASE_URL" \
+                        --env VITE_GOOGLE_LOGIN_ENABLED="${VITE_GOOGLE_LOGIN_ENABLED:-false}" \
                         --env npm_config_cache=/tmp/npm-cache \
                         node:22-bookworm-slim \
                         sh -c 'npm ci && npm run build'
