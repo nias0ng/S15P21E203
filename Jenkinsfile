@@ -15,6 +15,7 @@ pipeline {
         FRONTEND_DIR = 'frontend'
         FRONTEND_DEPLOY_DIR = '/var/www/hyanghae'
         VITE_API_BASE_URL = '/api/v1'
+        VITE_GOOGLE_LOGIN_ENABLED = 'true'
         DEPLOY_DIR = '/home/ubuntu/hyanghae'
         HEALTH_CHECK_URL = 'http://127.0.0.1:8081/actuator/health'
     }
