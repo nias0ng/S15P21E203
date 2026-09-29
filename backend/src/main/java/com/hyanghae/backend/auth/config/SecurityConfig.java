@@ -24,7 +24,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(AuthProperties.class)
+@EnableConfigurationProperties({AuthProperties.class, EmailVerificationProperties.class})
 public class SecurityConfig {
 
     @Bean
@@ -50,6 +50,8 @@ public class SecurityConfig {
                                     "/api/v1/auth/signup",
                                     "/api/v1/auth/login",
                                     "/api/v1/auth/refresh",
+                                    "/api/v1/auth/email-verifications",
+                                    "/api/v1/auth/email-verifications/confirm",
                                     "/api/v1/auth/google/authorize",
                                     "/api/v1/auth/google/callback",
                                     "/api/v1/auth/google/signup"

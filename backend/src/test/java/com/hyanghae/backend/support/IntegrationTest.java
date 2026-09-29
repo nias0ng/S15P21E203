@@ -17,6 +17,6 @@ import java.lang.annotation.Target;
 @Inherited
 @SpringBootTest
 @ActiveProfiles("test")
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, FakeMailConfiguration.class})
 public @interface IntegrationTest {
 }

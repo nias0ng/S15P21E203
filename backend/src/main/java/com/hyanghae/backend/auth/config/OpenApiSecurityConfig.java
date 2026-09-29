@@ -61,7 +61,9 @@ public class OpenApiSecurityConfig {
     private boolean isPublicAuthEndpoint(String path) {
         return path.equals("/api/v1/auth/signup")
                 || path.equals("/api/v1/auth/login")
-                || path.equals("/api/v1/auth/refresh");
+                || path.equals("/api/v1/auth/refresh")
+                || path.equals("/api/v1/auth/email-verifications")
+                || path.equals("/api/v1/auth/email-verifications/confirm");
     }
 
     private boolean isAlwaysAuthenticatedEndpoint(String path) {

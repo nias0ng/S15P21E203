@@ -3,6 +3,35 @@ spring:
     activate:
       on-profile: prod
 
+  # 회원가입은 인증 메일이 실제로 나가야만 됩니다. 공통 설정의 기본값(localhost:1025, 인증 없음)은
+  # 로컬 Mailpit 용이라, 운영에서 그대로 쓰면 모든 인증 요청이 503 이 되어 아무도 가입하지 못합니다.
+  #
+  # 그래서 운영에서는 host 기본값을 비워 둡니다. 비어 있으면 JavaMailEmailVerificationMailSender 가
+  # 시작 시점에 실패시킵니다. ${MAIL_HOST} 처럼 기본값 없이 두면 값이 없을 때 "${MAIL_HOST}" 라는
+  # 글자가 그대로 host 가 되어 시작은 되고 전송만 실패하므로, 빈 기본값 + 시작 검사로 막습니다.
+  #
+  # 배포 디렉터리의 .env 와 compose.yaml 에 아래 값을 넣어야 합니다.
+  #
+  #   MAIL_HOST=smtp.example.com
+  #   MAIL_PORT=587
+  #   MAIL_USERNAME=...
+  #   MAIL_PASSWORD=...
+  #   MAIL_SMTP_AUTH=true
+  #   MAIL_SMTP_STARTTLS=true
+  #   MAIL_FROM=no-reply@example.com
+  #
+  # 인증과 STARTTLS 는 운영에서 켜는 쪽을 기본으로 둡니다. 꺼진 채로 바깥 SMTP 에 붙으면 거절되거나
+  # 비밀번호가 평문으로 나갑니다. 인증을 켰는데 MAIL_USERNAME 이 비어 있어도 시작 시점에 실패합니다.
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS:true}
+
 # ⚠ 자연어 추천의 호출량 제한이 이 값에 걸려 있습니다. 배포 구성을 아는 쪽이 정해야 합니다.
 #
 # 비회원은 IP 로 셉니다. 앞에 리버스 프록시(nginx 등)가 있으면 getRemoteAddr() 가 전부
@@ -102,6 +131,11 @@ hyanghae:
     jwt-secret: ${JWT_SECRET}
     cookie:
       secure: true
+    # 보내는 주소도 운영에서는 기본값을 두지 않습니다. 비어 있으면 EmailVerificationProperties 의
+    # @NotBlank 로 시작 시점에 실패합니다. hyanghae.local 같은 가짜 도메인으로 나가면 받는 쪽에서
+    # 스팸으로 버려져, 전송은 성공했는데 메일이 오지 않는 상태가 됩니다.
+    email-verification:
+      from: ${MAIL_FROM:}
   review-analysis:
     enabled: ${REVIEW_ANALYSIS_ENABLED:false}
     gms:

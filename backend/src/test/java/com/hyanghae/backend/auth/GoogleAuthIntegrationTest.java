@@ -12,12 +12,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyanghae.backend.auth.dto.request.GoogleSignupRequest;
 import com.hyanghae.backend.auth.dto.request.LoginRequest;
-import com.hyanghae.backend.auth.dto.request.SignupRequest;
 import com.hyanghae.backend.auth.exception.AuthErrorCode;
 import com.hyanghae.backend.auth.service.GoogleIdentity;
 import com.hyanghae.backend.auth.service.GoogleOAuthClient;
 import com.hyanghae.backend.global.exception.BusinessException;
+import com.hyanghae.backend.support.FakeEmailVerificationMailSender;
 import com.hyanghae.backend.support.IntegrationTest;
+import com.hyanghae.backend.support.SignupTestHelper;
 import com.hyanghae.backend.user.dto.request.PasswordChangeRequest;
 import com.hyanghae.backend.user.dto.request.UserDeleteRequest;
 import com.hyanghae.backend.user.entity.User;
@@ -88,8 +89,15 @@ class GoogleAuthIntegrationTest {
     @Autowired
     FakeGoogle fakeGoogle;
 
+    @Autowired
+    FakeEmailVerificationMailSender mailSender;
+
+    SignupTestHelper signupHelper;
+
     @BeforeEach
     void setUp() {
+        signupHelper = new SignupTestHelper(mockMvc, objectMapper, mailSender);
+        mailSender.clear();
         userRepository.deleteAll();
         redisTemplate.execute((RedisCallback<Void>) connection -> {
             connection.serverCommands().flushDb();
@@ -388,10 +396,7 @@ class GoogleAuthIntegrationTest {
     }
 
     private void passwordSignup(String email, String nickname) throws Exception {
-        mockMvc.perform(post("/api/v1/auth/signup")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new SignupRequest(email, "password123", nickname))))
-                .andExpect(status().isCreated());
+        signupHelper.signup(email, "password123", nickname);
     }
 
     private static String challengeOf(String verifier) throws Exception {

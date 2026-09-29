@@ -34,9 +34,16 @@ public class AuthController {
         this.refreshTokenCookie = refreshTokenCookie;
     }
 
-    @Operation(summary = "회원가입")
+    @Operation(
+            summary = "회원가입",
+            description = "이메일 인증 확인에서 받은 토큰이 있어야 합니다. 토큰은 가입에 성공하면 사라집니다."
+    )
     @ApiResponse(responseCode = "201", description = "가입 성공")
-    @ApiResponse(responseCode = "400", description = "올바르지 않은 회원 정보")
+    @ApiResponse(
+            responseCode = "400",
+            description = "올바르지 않은 회원 정보 또는 이메일 인증 토큰 없음·만료·다른 이메일 "
+                    + "(AUTH_EMAIL_NOT_VERIFIED)"
+    )
     @ApiResponse(responseCode = "409", description = "이메일 또는 닉네임 중복")
     @PostMapping("/signup")
     @ResponseStatus(HttpStatus.CREATED)

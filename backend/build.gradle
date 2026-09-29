@@ -29,6 +29,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-web'
@@ -62,6 +63,9 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    // 통합 테스트가 쓰는 스프링 컨텍스트가 30개를 넘어, 테스트 워커 기본 힙(512MB)으로는
+    // 마지막 패키지(com.hyanghae.seed)를 돌 때 OutOfMemoryError 로 워커가 죽습니다.
+    maxHeapSize = '1g'
     // 팀 표준 명령이 `./gradlew test` 라 리포트를 따로 부르지 않아도 나오게 합니다.
     // finalizedBy 이므로 테스트가 실패해도 그때까지의 리포트는 남습니다.
     finalizedBy tasks.named('jacocoTestReport')
