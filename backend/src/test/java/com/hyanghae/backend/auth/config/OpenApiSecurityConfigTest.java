@@ -32,12 +32,18 @@ class OpenApiSecurityConfigTest {
         Operation publicPerfumes = new Operation();
         Operation publicRecommendation = new Operation();
         Operation publicLogin = new Operation();
+        Operation publicEmailVerification = new Operation();
+        Operation publicEmailVerificationConfirm = new Operation();
         Operation protectedWrite = new Operation();
         OpenAPI openApi = new OpenAPI().paths(new Paths()
                 .addPathItem("/api/v1/users/me/collections", new PathItem().get(myCollections))
                 .addPathItem("/api/v1/perfumes", new PathItem().get(publicPerfumes))
                 .addPathItem("/api/v1/recommendations", new PathItem().post(publicRecommendation))
                 .addPathItem("/api/v1/auth/login", new PathItem().post(publicLogin))
+                .addPathItem("/api/v1/auth/email-verifications",
+                        new PathItem().post(publicEmailVerification))
+                .addPathItem("/api/v1/auth/email-verifications/confirm",
+                        new PathItem().post(publicEmailVerificationConfirm))
                 .addPathItem("/api/v1/posts", new PathItem().post(protectedWrite)));
 
         OpenApiCustomizer customizer = config.authenticationRequirements(properties(true));
@@ -52,6 +58,8 @@ class OpenApiSecurityConfigTest {
         assertThat(publicPerfumes.getSecurity()).isNull();
         assertThat(publicRecommendation.getSecurity()).isNull();
         assertThat(publicLogin.getSecurity()).isNull();
+        assertThat(publicEmailVerification.getSecurity()).isNull();
+        assertThat(publicEmailVerificationConfirm.getSecurity()).isNull();
     }
 
     @Test

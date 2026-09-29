@@ -15,7 +15,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyanghae.backend.auth.dto.request.LoginRequest;
 import com.hyanghae.backend.auth.dto.request.SignupRequest;
 import com.hyanghae.backend.auth.exception.AuthErrorCode;
+import com.hyanghae.backend.support.FakeEmailVerificationMailSender;
 import com.hyanghae.backend.support.IntegrationTest;
+import com.hyanghae.backend.support.SignupTestHelper;
 import com.hyanghae.backend.user.dto.request.PasswordChangeRequest;
 import com.hyanghae.backend.user.dto.request.UserDeleteRequest;
 import com.hyanghae.backend.user.entity.User;
@@ -62,8 +64,15 @@ class AuthIntegrationTest {
     @Autowired
     StringRedisTemplate redisTemplate;
 
+    @Autowired
+    FakeEmailVerificationMailSender mailSender;
+
+    SignupTestHelper signupHelper;
+
     @BeforeEach
     void setUp() {
+        signupHelper = new SignupTestHelper(mockMvc, objectMapper, mailSender);
+        mailSender.clear();
         userRepository.deleteAll();
         redisTemplate.execute((RedisCallback<Void>) connection -> {
             connection.serverCommands().flushDb();
@@ -73,10 +82,7 @@ class AuthIntegrationTest {
 
     @Test
     void signsUpLogsInAndReadsCurrentUser() throws Exception {
-        mockMvc.perform(post("/api/v1/auth/signup")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new SignupRequest("  Sailor@Example.com ", PASSWORD, " 향해자 "))))
-                .andExpect(status().isCreated())
+        signupHelper.signup("  Sailor@Example.com ", PASSWORD, " 향해자 ")
                 .andExpect(jsonPath("$.email").value(EMAIL))
                 .andExpect(jsonPath("$.nickname").value("향해자"));
 
@@ -213,9 +219,11 @@ class AuthIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.available").value(true));
 
+        // 이미 가입한 이메일은 인증번호를 받을 수도 없어, 토큰 검사보다 앞의 중복 검사를 봅니다.
         mockMvc.perform(post("/api/v1/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new SignupRequest(EMAIL, PASSWORD, "다른닉네임"))))
+                        .content(json(new SignupRequest(
+                                EMAIL, PASSWORD, "다른닉네임", "unverified-token"))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code")
                         .value(AuthErrorCode.AUTH_EMAIL_ALREADY_EXISTS.code()));
@@ -272,10 +280,7 @@ class AuthIntegrationTest {
     }
 
     private void signup() throws Exception {
-        mockMvc.perform(post("/api/v1/auth/signup")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new SignupRequest(EMAIL, PASSWORD, "향해자"))))
-                .andExpect(status().isCreated());
+        signupHelper.signup(EMAIL, PASSWORD, "향해자");
     }
 
     private LoginResult login(String password) throws Exception {

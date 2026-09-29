@@ -51,6 +51,16 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      # 회원가입 인증 메일은 기본으로 아래 mailpit 이 받습니다. 바깥으로 나가지 않고
+      # http://127.0.0.1:8025 에서 읽을 수 있습니다. 실제 SMTP 로 확인할 때만 셸에서 MAIL_* 를
+      # 덮어씁니다. 비밀번호를 여기에 값으로 적지 마십시오.
+      MAIL_HOST: ${MAIL_HOST:-mailpit}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-false}
+      MAIL_FROM: ${MAIL_FROM:-no-reply@hyanghae.local}
     ports:
       - "127.0.0.1:${MANUAL_TEST_BACKEND_PORT:-8080}:8080"
     # 올라온 이미지를 쌓는 곳입니다. 게시글 이미지와 프로필 사진이 이 아래의 서로 다른
@@ -66,6 +76,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     healthcheck:
       test:
         - CMD-SHELL
@@ -168,6 +180,15 @@ services:
       timeout: 5s
       retries: 10
       start_period: 5s
+
+  # 로컬 확인용 가짜 메일 서버입니다. 받은 메일은 바깥으로 전달하지 않습니다.
+  # SMTP 도 127.0.0.1 에 여는 것은 백엔드를 Compose 밖에서 bootRun 으로 띄울 때를 위해서입니다.
+  # 그때 application.yaml 의 기본값(localhost:1025)이 여기로 닿습니다.
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "127.0.0.1:${MANUAL_TEST_MAILPIT_SMTP_PORT:-1025}:1025"
+      - "127.0.0.1:${MANUAL_TEST_MAILPIT_UI_PORT:-8025}:8025"
 
 volumes:
   manual-test-postgres-data:
