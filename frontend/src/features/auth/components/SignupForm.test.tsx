@@ -209,6 +209,20 @@ describe('SignupForm 이메일 인증', () => {
     })
   })
 
+  it('보냈다는 안내는 이메일이 아니라 번호 칸 아래에 뜬다', async () => {
+    renderForm()
+
+    await fillAll()
+    await sendCode()
+
+    expect(codeInput()).toHaveAccessibleDescription(
+      '인증번호를 보냈습니다. 메일함을 확인해주세요',
+    )
+    expect(
+      screen.getByLabelText('이메일 아이디'),
+    ).not.toHaveAccessibleDescription()
+  })
+
   it('번호 칸은 숫자만 일곱 자리까지 받는다', async () => {
     renderForm()
 

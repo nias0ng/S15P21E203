@@ -93,7 +93,7 @@ export function SignupForm() {
     !signupMutation.isPending
 
   return (
-    <AuthCard title="회원가입">
+    <AuthCard title="회원가입" large>
       <form
         className="space-y-2.5"
         onSubmit={(event) => {
@@ -119,7 +119,7 @@ export function SignupForm() {
                 emailToken !== null
                   ? '인증되었습니다'
                   : verification.sent
-                    ? '인증번호를 보냈습니다. 메일함을 확인해주세요'
+                    ? undefined
                     : trimmedEmail.length > 0
                       ? '[인증하기] 를 눌러주세요'
                       : undefined
@@ -165,6 +165,7 @@ export function SignupForm() {
                   }
                 }}
                 error={verification.codeError}
+                hint="인증번호를 보냈습니다. 메일함을 확인해주세요"
               />
               {verification.codeRemaining !== null && (
                 // 번호 칸 오른쪽 끝에 얹습니다. 라벨이 sr-only 라 칸의 윗변이 이 상자의 윗변입니다
