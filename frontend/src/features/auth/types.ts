@@ -3,6 +3,8 @@ export const PASSWORD_MIN_LENGTH = 8
 export const NICKNAME_MIN_LENGTH = 2
 export const NICKNAME_MAX_LENGTH = 20
 
+export const EMAIL_VERIFICATION_CODE_LENGTH = 7
+
 export interface LoginInput {
   email: string
   password: string
@@ -12,6 +14,7 @@ export interface SignupInput {
   email: string
   password: string
   nickname: string
+  emailVerificationToken: string
 }
 
 export interface PasswordChangeInput {
@@ -32,4 +35,19 @@ export interface UserResponse {
 
 export interface NicknameAvailabilityResponse {
   available: boolean
+}
+
+export interface EmailVerificationSendResponse {
+  expiresInSeconds: number
+  resendAvailableInSeconds: number
+}
+
+export interface EmailVerificationConfirmInput {
+  email: string
+  code: string
+}
+
+export interface EmailVerificationConfirmResponse {
+  verificationToken: string
+  expiresInSeconds: number
 }

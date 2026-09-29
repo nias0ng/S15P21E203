@@ -3,6 +3,9 @@ import type { AuthUser } from '@/shared/store/authStore'
 
 import type {
   AccessTokenResponse,
+  EmailVerificationConfirmInput,
+  EmailVerificationConfirmResponse,
+  EmailVerificationSendResponse,
   LoginInput,
   NicknameAvailabilityResponse,
   PasswordChangeInput,
@@ -53,12 +56,24 @@ export async function logout(): Promise<void> {
   await http.post('/auth/logout')
 }
 
-export async function checkEmailAvailability(email: string): Promise<boolean> {
-  const { data } = await http.get<{ available: boolean }>(
-    '/users/email-availability',
-    { params: { email } },
+export async function requestEmailVerification(
+  email: string,
+): Promise<EmailVerificationSendResponse> {
+  const { data } = await http.post<EmailVerificationSendResponse>(
+    '/auth/email-verifications',
+    { email },
   )
-  return data.available
+  return data
+}
+
+export async function confirmEmailVerification(
+  input: EmailVerificationConfirmInput,
+): Promise<EmailVerificationConfirmResponse> {
+  const { data } = await http.post<EmailVerificationConfirmResponse>(
+    '/auth/email-verifications/confirm',
+    input,
+  )
+  return data
 }
 
 export async function changeNickname(nickname: string): Promise<UserResponse> {
