@@ -103,7 +103,8 @@ public class UserController {
             description = "변경 후 모든 로그인 세션을 종료합니다."
     )
     @ApiResponse(responseCode = "204", description = "변경 성공")
-    @ApiResponse(responseCode = "400", description = "현재 비밀번호 불일치 또는 새 비밀번호 형식 오류")
+    @ApiResponse(responseCode = "400",
+            description = "현재 비밀번호 불일치, 새 비밀번호 형식 오류, 또는 비밀번호가 없는 Google 계정")
     @ApiResponse(responseCode = "401", description = "로그인 필요")
     @PatchMapping("/me/password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -113,10 +114,12 @@ public class UserController {
 
     @Operation(
             summary = "회원 탈퇴",
-            description = "비밀번호 확인 후 계정을 삭제하고 모든 로그인 세션을 종료합니다."
+            description = "본인 확인 후 계정을 삭제하고 모든 로그인 세션을 종료합니다."
+                    + " 비밀번호가 있는 계정은 password 를 보냅니다. Google 로 가입한 계정(hasPassword=false)은"
+                    + " 비워 보내고, 5분 안에 POST /api/v1/auth/google/reauth 로 Google 재확인을 마쳐야 합니다."
     )
     @ApiResponse(responseCode = "204", description = "탈퇴 성공")
-    @ApiResponse(responseCode = "400", description = "비밀번호 불일치")
+    @ApiResponse(responseCode = "400", description = "비밀번호 불일치 또는 Google 재확인 필요")
     @ApiResponse(responseCode = "401", description = "로그인 필요")
     @DeleteMapping("/me")
     @ResponseStatus(HttpStatus.NO_CONTENT)

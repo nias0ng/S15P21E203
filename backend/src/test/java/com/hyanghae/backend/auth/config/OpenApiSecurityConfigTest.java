@@ -73,7 +73,8 @@ class OpenApiSecurityConfigTest {
                 "hyanghae",
                 "test-jwt-secret-must-be-at-least-thirty-two-bytes",
                 enforceHttpAuthorization,
-                new AuthProperties.Cookie("refresh_token", false, "Strict")
+                new AuthProperties.Cookie("refresh_token", false, "Strict"),
+                new AuthProperties.Google("", "", "", Duration.ofMinutes(10), Duration.ofMinutes(10))
         );
     }
 }

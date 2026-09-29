@@ -490,6 +490,18 @@ IDE 와 `grep` 이 찾을 수 있어야 합니다.
 향수·브랜드·후기는 대부분 붙어 있고, **인증·회원도 붙었습니다**(로그인 · 회원가입 · 내 정보 ·
 닉네임 중복 확인 · 닉네임 변경 · 비밀번호 변경 · 탈퇴 · 로그아웃 · 토큰 재발급).
 
+**Google 로 가입하기도 붙었습니다**(OAuth 2.0 리다이렉트) — `features/auth/GoogleLoginSection` 의 버튼은 fetch 가 아니라
+**페이지 이동**으로 `/api/v1/auth/google/authorize` 를 엽니다. Google 에서 돌아오면 백엔드 콜백이 결과에 따라 화면으로
+302 를 보냅니다 — 이미 가입한 사람은 `ROUTES.GOOGLE_LOGIN`(`/login/google`, Refresh Token 쿠키만 받아 온 상태라
+`GoogleLoginFinish` 가 `/auth/refresh` 로 Access Token 을 받음), 처음 온 사람은 `ROUTES.GOOGLE_SIGNUP`(`/signup/google`,
+가입표가 HttpOnly 쿠키라 `GET /auth/google/signup` 으로 이메일 · 추천 닉네임을 물음), 실패는 `/login?googleError=코드`.
+⚠ **이 경로들은 백엔드 `GoogleAuthController` 에 박혀 있습니다** — `routes.ts` 에서 바꾸면 백엔드도 같이 고쳐야 합니다.
+⚠ 오류는 코드만 주소로 오고 문구는 `lib/googleErrors` 가 정합니다(주소로 가짜 안내를 띄우지 못하게).
+⚠ 같은 이메일로 비밀번호 계정이 있으면 `AUTH_EMAIL_REGISTERED_WITH_PASSWORD` 로 막고 이어 붙이지 않습니다.
+⚠ Google 계정은 `hasPassword: false` 라 비밀번호 변경이 없고, 탈퇴는 `POST /auth/google/reauth` 로 받은 주소로 Google 을
+한 번 더 다녀와야 합니다(`/account?googleReauth=ok` 로 돌아오면 `AccountForm` 이 탈퇴 창을 다시 엶).
+⚠ `VITE_GOOGLE_LOGIN_ENABLED=true` 가 아니면(목 모드 · 테스트 기본) 버튼이 안 그려집니다.
+
 **개인화 맞춤 추천도 붙었습니다**(S15P21E203-431) — 진열대의 추천 편지(`features/recommend` 의 `RecommendLetter`)가
 `GET /recommendations/personalized` 로 한 병을 받고, 편지를 **펼쳤을 때** `POST …/{token}/exposure` 로 노출을 남깁니다
 (남긴 병은 서버 뽑기에서 사흘 빠집니다). 취향 테스트를 안 했으면 400 이라 테스트로 이끄는 봉투가 꽂힙니다.

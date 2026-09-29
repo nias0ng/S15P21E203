@@ -37,3 +37,12 @@ hyanghae:
       name: refresh_token
       secure: true
       same-site: Strict
+    google:
+      # Google 로그인(OAuth 2.0). 셋 중 하나라도 비어 있으면 Google 로그인을 쓰지 않습니다.
+      # redirect-uri 는 Google Cloud 콘솔의 "승인된 리디렉션 URI"와 똑같아야 합니다.
+      #   로컬: http://localhost:5173/api/v1/auth/google/callback (vite 프록시를 거칩니다)
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
+      redirect-uri: ${GOOGLE_REDIRECT_URI:}
+      authorization-ttl: 10m
+      signup-ticket-ttl: 10m

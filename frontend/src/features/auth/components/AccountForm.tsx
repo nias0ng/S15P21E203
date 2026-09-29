@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useSearchParams } from 'react-router'
 
 import { isApiError } from '@/shared/api/http'
 import { useToast } from '@/shared/hooks/useToast'
@@ -11,6 +12,7 @@ import { Toast } from '@/shared/ui/Toast'
 import { changeNickname, checkNicknameAvailability, toAuthUser } from '../api'
 import { AUTH_SUBMIT } from '../frame'
 import { useAvailabilityCheck } from '../hooks/useAvailabilityCheck'
+import { GOOGLE_REAUTH_PARAM } from '../lib/googleErrors'
 import { nicknameLengthError } from '../lib/nickname'
 import { authKeys, meQuery } from '../queries'
 import { NICKNAME_MIN_LENGTH } from '../types'
@@ -27,7 +29,10 @@ export function AccountForm() {
   const { showToast, toastProps } = useToast()
 
   const [passwordOpen, setPasswordOpen] = useState(false)
-  const [withdrawOpen, setWithdrawOpen] = useState(false)
+  // Google 재확인을 마치고 돌아오면 주소에 결과가 붙어 옵니다. 그때는 탈퇴 창을 다시 열어 둡니다.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const googleReauth = searchParams.get(GOOGLE_REAUTH_PARAM)
+  const [withdrawOpen, setWithdrawOpen] = useState(googleReauth !== null)
 
   const [nicknameDraft, setNicknameDraft] = useState<string | null>(null)
 
@@ -153,10 +158,18 @@ export function AccountForm() {
 
         <div className="space-y-2.5">
           <p className="text-ink-muted text-caption">계정</p>
+          {me?.googleConnected === true && (
+            <p className="text-ink text-caption">
+              Google 계정으로 로그인합니다
+            </p>
+          )}
           <div className="flex gap-1.25">
-            <Button variant="outline" onClick={() => setPasswordOpen(true)}>
-              비밀번호 변경
-            </Button>
+            {/* Google 로 가입한 계정은 바꿀 비밀번호가 없습니다. */}
+            {me?.hasPassword !== false && (
+              <Button variant="outline" onClick={() => setPasswordOpen(true)}>
+                비밀번호 변경
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setWithdrawOpen(true)}>
               회원 탈퇴
             </Button>
@@ -170,7 +183,20 @@ export function AccountForm() {
       />
       <WithdrawModal
         open={withdrawOpen}
-        onClose={() => setWithdrawOpen(false)}
+        googleReauth={googleReauth}
+        onClose={() => {
+          setWithdrawOpen(false)
+          // 닫은 뒤 다시 열 때 지난 확인 결과를 보여 주지 않습니다.
+          if (googleReauth !== null) {
+            setSearchParams(
+              (params) => {
+                params.delete(GOOGLE_REAUTH_PARAM)
+                return params
+              },
+              { replace: true },
+            )
+          }
+        }}
       />
     </>
   )

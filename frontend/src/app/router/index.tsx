@@ -31,7 +31,9 @@ const ReviewWritePage = lazy(() => import('@/pages/ReviewWritePage'))
 const PostWritePage = lazy(() => import('@/pages/PostWritePage'))
 
 const LoginPage = lazy(() => import('@/pages/LoginPage'))
+const GoogleLoginPage = lazy(() => import('@/pages/GoogleLoginPage'))
 const SignupPage = lazy(() => import('@/pages/SignupPage'))
+const GoogleSignupPage = lazy(() => import('@/pages/GoogleSignupPage'))
 const PasswordResetPage = lazy(() => import('@/pages/PasswordResetPage'))
 const AccountPage = lazy(() => import('@/pages/AccountPage'))
 
@@ -165,8 +167,18 @@ export const router = createBrowserRouter([
         handle: TEXT_NIGHT,
       },
       {
+        path: ROUTES.GOOGLE_LOGIN,
+        element: withSuspense(<GoogleLoginPage />),
+        handle: TEXT_NIGHT,
+      },
+      {
         path: ROUTES.SIGNUP,
         element: withSuspense(<SignupPage />),
+        handle: TEXT_NIGHT,
+      },
+      {
+        path: ROUTES.GOOGLE_SIGNUP,
+        element: withSuspense(<GoogleSignupPage />),
         handle: TEXT_NIGHT,
       },
       {

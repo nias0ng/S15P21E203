@@ -9,5 +9,7 @@ function required(key: string, value: string | undefined): string {
 
 export const env = {
   apiBaseUrl: required('VITE_API_BASE_URL', import.meta.env.VITE_API_BASE_URL),
+  // Google 로그인 버튼. `true` 일 때만 그립니다 — 목 모드 · 테스트 · 백엔드에 Google 설정이 없는 환경은 끕니다.
+  googleLoginEnabled: import.meta.env.VITE_GOOGLE_LOGIN_ENABLED === 'true',
   isDev: import.meta.env.DEV,
 } as const
