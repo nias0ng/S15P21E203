@@ -63,7 +63,7 @@ export function LoginForm({ onLoggedIn }: LoginFormProps) {
   })
 
   return (
-    <AuthCard title="로그인">
+    <AuthCard title="로그인" large>
       {notice !== null && (
         <p className="border-line bg-line-soft text-ink text-caption border p-2.5">
           {notice}
