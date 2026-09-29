@@ -273,6 +273,8 @@ describe('깊이', () => {
       POST_EDIT: ROUTES.COMMUNITY_FREE,
       LOGIN: null,
       SIGNUP: null,
+      GOOGLE_SIGNUP: null,
+      GOOGLE_LOGIN: null,
       PASSWORD_RESET: null,
       ACCOUNT: null,
     }

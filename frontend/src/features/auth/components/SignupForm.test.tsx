@@ -185,6 +185,8 @@ describe('SignupForm 이메일 인증', () => {
       email: EMAIL,
       nickname: '향해테스터',
       profileImageUrl: null,
+      hasPassword: true,
+      googleConnected: false,
     })
     renderForm()
 

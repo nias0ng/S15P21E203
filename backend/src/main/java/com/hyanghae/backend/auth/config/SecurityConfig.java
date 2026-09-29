@@ -51,7 +51,10 @@ public class SecurityConfig {
                                     "/api/v1/auth/login",
                                     "/api/v1/auth/refresh",
                                     "/api/v1/auth/email-verifications",
-                                    "/api/v1/auth/email-verifications/confirm"
+                                    "/api/v1/auth/email-verifications/confirm",
+                                    "/api/v1/auth/google/authorize",
+                                    "/api/v1/auth/google/callback",
+                                    "/api/v1/auth/google/signup"
                             ).permitAll()
                             // 가입 화면에서 쓰므로 로그인 전에 열려 있어야 합니다.
                             .requestMatchers(
@@ -65,6 +68,7 @@ public class SecurityConfig {
                                 .requestMatchers(
                                         "/api/v1/users/me/**",
                                         "/api/v1/auth/logout",
+                                        "/api/v1/auth/google/reauth",
                                         "/api/v1/perfume-views/**",
                                         "/api/v1/recommendations/personalized",
                                         "/api/v1/recommendations/personalized/**",

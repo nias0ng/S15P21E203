@@ -31,6 +31,14 @@ export interface UserResponse {
   email: string
   nickname: string
   profileImageUrl: string | null
+  // false 면 Google 로 가입한 계정입니다 — 비밀번호 변경이 없고, 탈퇴 확인을 Google 로 합니다.
+  hasPassword: boolean
+  googleConnected: boolean
+}
+
+export interface GoogleSignupInfo {
+  email: string
+  suggestedNickname: string | null
 }
 
 export interface NicknameAvailabilityResponse {

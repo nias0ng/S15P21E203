@@ -24,6 +24,7 @@ import { EMAIL_VERIFICATION_CODE_LENGTH, NICKNAME_MIN_LENGTH } from '../types'
 import { AuthCard } from './AuthCard'
 import { BackToLogin } from './BackToLogin'
 import { EmailField } from './EmailField'
+import { GoogleLoginSection } from './GoogleLoginSection'
 import { NewPasswordFields } from './NewPasswordFields'
 
 export function SignupForm() {
@@ -263,6 +264,11 @@ export function SignupForm() {
           {signupMutation.isPending ? '가입 중' : '가입하기'}
         </Button>
       </form>
+
+      <GoogleLoginSection
+        label="Google 계정으로 가입하기"
+        returnTo={returnTo}
+      />
 
       <BackToLogin returnTo={returnTo} />
     </AuthCard>

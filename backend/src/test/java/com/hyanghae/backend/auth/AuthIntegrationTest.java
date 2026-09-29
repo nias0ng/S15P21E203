@@ -260,6 +260,15 @@ class AuthIntegrationTest {
      * 형식이 아닌 값에 "쓸 수 있습니다"라고 답하지 않습니다. 가입은 {@code @Email} 이 걸러
      * 주는데 이 조회는 걸러 주는 것이 없어 직접 봅니다.
      */
+    /** 이 테스트 설정에는 Google 클라이언트가 없습니다. 시작하려 하면 로그인 화면으로 돌려보냅니다. */
+    @Test
+    void sendsBackToLoginWhenGoogleLoginIsNotConfigured() throws Exception {
+        mockMvc.perform(get("/api/v1/auth/google/authorize"))
+                .andExpect(status().isFound())
+                .andExpect(header().string(HttpHeaders.LOCATION,
+                        "/login?googleError=" + AuthErrorCode.AUTH_GOOGLE_LOGIN_UNAVAILABLE.code()));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"not-an-email", "  ", "@example.com", "a@b", "a b@example.com"})
     void rejectsInvalidEmailAvailabilityQueries(String email) throws Exception {
