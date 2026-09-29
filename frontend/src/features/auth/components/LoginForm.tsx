@@ -17,6 +17,7 @@ import { getMe, login, toAuthUser } from '../api'
 import { AUTH_SUBMIT } from '../frame'
 
 import { AuthCard } from './AuthCard'
+import { GoogleLoginSection } from './GoogleLoginSection'
 
 type LoginLocationState = {
   signedUp?: boolean
@@ -62,7 +63,7 @@ export function LoginForm({ onLoggedIn }: LoginFormProps) {
   })
 
   return (
-    <AuthCard title="로그인">
+    <AuthCard title="로그인" large>
       {notice !== null && (
         <p className="border-line bg-line-soft text-ink text-caption border p-2.5">
           {notice}
@@ -115,6 +116,8 @@ export function LoginForm({ onLoggedIn }: LoginFormProps) {
           {isPending ? '로그인 중' : '로그인'}
         </Button>
       </form>
+
+      <GoogleLoginSection label="Google 계정으로 로그인" returnTo={returnTo} />
 
       <div className="text-caption flex items-center justify-between px-1.25">
         <Link

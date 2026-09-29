@@ -1,28 +1,13 @@
-import { useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router'
-
 import { AUTH_PAGE, LoginForm } from '@/features/auth'
-import { myTasteTestQuery } from '@/features/taste'
-import { ROUTES } from '@/shared/config/routes'
+
+import { useEnterAfterLogin } from './useEnterAfterLogin'
 
 export default function LoginPage() {
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
+  const enterAfterLogin = useEnterAfterLogin()
 
   return (
     <div className={AUTH_PAGE}>
-      <LoginForm
-        onLoggedIn={(from) => {
-          queryClient
-            .fetchQuery(myTasteTestQuery())
-            .then((record) =>
-              navigate(record.completed ? from : ROUTES.TASTE_TEST, {
-                replace: true,
-              }),
-            )
-            .catch(() => navigate(from, { replace: true }))
-        }}
-      />
+      <LoginForm onLoggedIn={enterAfterLogin} />
     </div>
   )
 }

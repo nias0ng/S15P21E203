@@ -9,9 +9,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyanghae.backend.auth.dto.request.LoginRequest;
-import com.hyanghae.backend.auth.dto.request.SignupRequest;
 import com.hyanghae.backend.auth.exception.AuthErrorCode;
+import com.hyanghae.backend.support.FakeEmailVerificationMailSender;
 import com.hyanghae.backend.support.IntegrationTest;
+import com.hyanghae.backend.support.SignupTestHelper;
 import com.hyanghae.backend.user.dto.request.NicknameChangeRequest;
 import com.hyanghae.backend.user.repository.UserRepository;
 import static org.junit.jupiter.api.Named.named;
@@ -62,6 +63,9 @@ class UserNicknameIntegrationTest {
 
     @Autowired
     StringRedisTemplate redisTemplate;
+
+    @Autowired
+    FakeEmailVerificationMailSender mailSender;
 
     @BeforeEach
     void setUp() {
@@ -203,10 +207,7 @@ class UserNicknameIntegrationTest {
     }
 
     private String signupAndLogin(String email, String nickname) throws Exception {
-        mockMvc.perform(post("/api/v1/auth/signup")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(new SignupRequest(email, PASSWORD, nickname))))
-                .andExpect(status().isCreated());
+        new SignupTestHelper(mockMvc, objectMapper, mailSender).signup(email, PASSWORD, nickname);
 
         MvcResult result = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

@@ -21,7 +21,12 @@ public record SignupRequest(
         @Schema(description = "닉네임, 공백을 제외하고 2~20자", example = "향해자")
         @NotBlank
         @Size(min = 2, max = 20)
-        String nickname
+        String nickname,
+
+        @Schema(description = "이메일 인증 확인 응답의 verificationToken")
+        @NotBlank
+        @Size(max = 128)
+        String emailVerificationToken
 ) {
 
     public SignupRequest {

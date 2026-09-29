@@ -6,11 +6,15 @@ import { useNewPassword } from '../hooks/useNewPassword'
 
 import { NewPasswordFields } from './NewPasswordFields'
 
-function Harness() {
+function Harness({ joined = false }: { joined?: boolean }) {
   const password = useNewPassword()
   return (
     <>
-      <NewPasswordFields label="새 비밀번호" password={password} />
+      <NewPasswordFields
+        label={joined ? '비밀번호' : '새 비밀번호'}
+        password={password}
+        joined={joined}
+      />
       <button type="button" disabled={!password.valid}>
         변경
       </button>
@@ -40,6 +44,25 @@ describe('NewPasswordFields', () => {
 
     await userEvent.type(screen.getByLabelText('새 비밀번호 확인'), '1234')
     expect(screen.queryByText('비밀번호가 서로 다릅니다')).toBeNull()
+    expect(screen.getByRole('button', { name: '변경' })).toBeEnabled()
+  })
+})
+
+describe('NewPasswordFields 붙인 모양', () => {
+  it('두 칸이 [비밀번호] · [비밀번호 재입력] 으로 서고 같은 검사를 받는다', async () => {
+    render(<Harness joined />)
+
+    const confirm = screen.getByLabelText('비밀번호 재입력')
+    expect(confirm).toHaveAttribute('placeholder', '비밀번호 재입력')
+
+    await userEvent.type(screen.getByLabelText('비밀번호'), 'password1234')
+    await userEvent.type(confirm, 'password')
+
+    expect(screen.getByText('비밀번호가 서로 다릅니다')).toBeInTheDocument()
+    expect(confirm).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('button', { name: '변경' })).toBeDisabled()
+
+    await userEvent.type(confirm, '1234')
     expect(screen.getByRole('button', { name: '변경' })).toBeEnabled()
   })
 })

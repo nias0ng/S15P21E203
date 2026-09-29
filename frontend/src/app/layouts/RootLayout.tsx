@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Outlet, useMatches } from 'react-router'
 
+import { FeedbackButton } from '@/app/layouts/FeedbackButton'
 import { GlobalHeader, type HeaderTone } from '@/app/layouts/GlobalHeader'
 import { cn } from '@/shared/lib/cn'
 import { useCausticsStore } from '@/shared/store/causticsStore'
@@ -144,6 +145,8 @@ export function RootLayout() {
           <Outlet />
         </div>
       </main>
+
+      <FeedbackButton />
 
       {/*
         NOTE: 잠수 커튼은 껍데기에 있어야 합니다 — 화면 안에 두면 경로가 바뀌는 순간
