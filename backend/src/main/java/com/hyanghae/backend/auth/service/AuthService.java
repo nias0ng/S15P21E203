@@ -25,6 +25,9 @@ public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
+    static final int NICKNAME_MIN_LENGTH = 2;
+    static final int NICKNAME_MAX_LENGTH = 20;
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AccessTokenService accessTokenService;
@@ -83,14 +86,12 @@ public class AuthService {
         String email = normalizeEmail(request.email());
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_INVALID_CREDENTIALS));
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+        // Google 로 가입한 사람은 비밀번호가 없습니다. 없는 계정과 같은 답을 줍니다.
+        if (!user.hasPassword()
+                || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new BusinessException(AuthErrorCode.AUTH_INVALID_CREDENTIALS);
         }
-
-        refreshTokenService.revokeByToken(existingRefreshToken);
-        RefreshTokenService.IssuedSession session = refreshTokenService.create(user.getId());
-        String accessToken = accessTokenService.issue(user.getId(), session.sessionId());
-        return new AuthTokens(accessToken, session.refreshToken());
+        return issueTokens(user.getId(), existingRefreshToken);
     }
 
     public AuthTokens refresh(String refreshToken) {
@@ -105,6 +106,14 @@ public class AuthService {
         String sessionId = currentSession.id()
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.AUTH_LOGIN_REQUIRED));
         sessionStore.revoke(sessionId);
+    }
+
+    /** 로그인 세션을 새로 열고 토큰을 발급합니다. Google 로그인도 이것으로 끝냅니다. */
+    AuthTokens issueTokens(Long userId, String existingRefreshToken) {
+        refreshTokenService.revokeByToken(existingRefreshToken);
+        RefreshTokenService.IssuedSession session = refreshTokenService.create(userId);
+        String accessToken = accessTokenService.issue(userId, session.sessionId());
+        return new AuthTokens(accessToken, session.refreshToken());
     }
 
     /**
@@ -135,9 +144,10 @@ public class AuthService {
         return email.trim().toLowerCase(Locale.ROOT);
     }
 
-    private String normalizeNickname(String nickname) {
+    String normalizeNickname(String nickname) {
         String normalized = nickname.trim();
-        if (normalized.length() < 2 || normalized.length() > 20) {
+        if (normalized.length() < NICKNAME_MIN_LENGTH
+                || normalized.length() > NICKNAME_MAX_LENGTH) {
             throw new BusinessException(AuthErrorCode.AUTH_INVALID_NICKNAME);
         }
         return normalized;

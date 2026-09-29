@@ -2,6 +2,7 @@ package com.hyanghae.backend.user.service;
 
 import com.hyanghae.backend.auth.exception.AuthErrorCode;
 import com.hyanghae.backend.auth.service.AuthSessionStore;
+import com.hyanghae.backend.auth.service.GoogleAuthorizationStore;
 import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.user.dto.request.NicknameChangeRequest;
@@ -36,19 +37,22 @@ public class UserService {
     private final CurrentUser currentUser;
     private final AuthSessionStore sessionStore;
     private final UserProfileImageService profileImageService;
+    private final GoogleAuthorizationStore googleAuthorizationStore;
 
     public UserService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             CurrentUser currentUser,
             AuthSessionStore sessionStore,
-            UserProfileImageService profileImageService
+            UserProfileImageService profileImageService,
+            GoogleAuthorizationStore googleAuthorizationStore
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.currentUser = currentUser;
         this.sessionStore = sessionStore;
         this.profileImageService = profileImageService;
+        this.googleAuthorizationStore = googleAuthorizationStore;
     }
 
     @Transactional(readOnly = true)
@@ -78,8 +82,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public UserResponse findMe() {
         User user = findCurrentUser();
-        return new UserResponse(user.getId(), user.getEmail(), user.getNickname(),
-                user.getProfileImageUrl());
+        return UserResponse.from(user);
     }
 
     /**
@@ -100,8 +103,7 @@ public class UserService {
             user.changeNickname(nickname, OffsetDateTime.now(ZoneOffset.UTC));
             flushNickname();
         }
-        return new UserResponse(user.getId(), user.getEmail(), user.getNickname(),
-                user.getProfileImageUrl());
+        return UserResponse.from(user);
     }
 
     /**
@@ -119,6 +121,9 @@ public class UserService {
     @Transactional
     public void changePassword(PasswordChangeRequest request) {
         User user = findCurrentUser();
+        if (!user.hasPassword()) {
+            throw new BusinessException(AuthErrorCode.AUTH_PASSWORD_NOT_SET);
+        }
         if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
             throw new BusinessException(AuthErrorCode.AUTH_CURRENT_PASSWORD_MISMATCH);
         }
@@ -132,9 +137,7 @@ public class UserService {
     @Transactional
     public void deleteMe(UserDeleteRequest request) {
         User user = findCurrentUser();
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw new BusinessException(AuthErrorCode.AUTH_CURRENT_PASSWORD_MISMATCH);
-        }
+        confirmOwner(user, request);
         Long userId = user.getId();
         String profileImageUrl = user.getProfileImageUrl();
         sessionStore.revokeAll(userId);
@@ -143,6 +146,26 @@ public class UserService {
         // 회원이 사라지면 그 사진을 가리키는 곳이 없습니다. flush 뒤에 부르므로 행이 실제로
         // 지워진 것을 확인한 뒤에 파일을 지웁니다.
         profileImageService.removeAfterWithdrawal(profileImageUrl);
+    }
+
+    /**
+     * 탈퇴 전에 본인인지 확인합니다. 비밀번호가 있으면 비밀번호로, 없으면 Google 재확인으로 봅니다.
+     *
+     * <p>Google 확인은 로그인 중인 세션만으로 끝내지 않습니다. 켜 둔 기기를 남이 만져 탈퇴시키는
+     * 것을 비밀번호 확인이 막듯, 방금 Google 로그인 화면에서 같은 계정으로 확인했는지를 봅니다
+     * ({@code POST /api/v1/auth/google/reauth}). 그 확인은 한 번 쓰면 사라집니다.
+     */
+    private void confirmOwner(User user, UserDeleteRequest request) {
+        if (user.hasPassword()) {
+            if (request.password() == null
+                    || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+                throw new BusinessException(AuthErrorCode.AUTH_CURRENT_PASSWORD_MISMATCH);
+            }
+            return;
+        }
+        if (!googleAuthorizationStore.consumeReauth(user.getId())) {
+            throw new BusinessException(AuthErrorCode.AUTH_GOOGLE_REAUTH_REQUIRED);
+        }
     }
 
     private User findCurrentUser() {

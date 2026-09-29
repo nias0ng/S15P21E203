@@ -4,7 +4,7 @@ import { GLASS_PANEL } from '@/shared/ui/panel'
 type AuthCardProps = {
   title: string
   description?: string
-  children: React.ReactNode
+  children?: React.ReactNode
 }
 
 // NOTE: 라우트에 `night` 이 없으면 판 위 기준으로 맞춘 글자색이 상아색 바탕에 얹혀 안 읽힙니다(`app/router`).
