@@ -4,7 +4,7 @@ import { GLASS_PANEL } from '@/shared/ui/panel'
 type AuthCardProps = {
   title: string
   description?: string
-  /** 칸이 많은 화면(회원가입)의 큰 판. 치수와 글자가 함께 한 단계 커집니다 */
+  /** 큰 판(로그인 · 회원가입). 치수와 글자가 함께 한 단계 커집니다 */
   large?: boolean
   children: React.ReactNode
 }
