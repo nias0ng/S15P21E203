@@ -1,4 +1,5 @@
 import { PARAMS as P } from './params.js';
+import { t } from './i18n.js';
 
 // ───────── 품질 단계 (2026-09-25, S15P21E203-435) ─────────
 // 사용자 : *"이 프로젝트 서비스를 경험하는 사람들은 대부분 노트북 … 옵티머스로 인해 강제적으로 CPU 내장 그래픽 카드만 사용해서
@@ -25,12 +26,13 @@ const ORDER = ['low', 'mid', 'high'];
 //     정점 : 512 26.3만 → 12.5만 · 384 14.8만 → 7.7만 · 256 6.6만 → 3.9만. 위 ms 는 균일 격자 때의 실측이다 (보이는 창에서 다시 잴 것)
 // ⚠ sunShadow (2026-09-27) — 물이 해 쪽 주광의 그림자 맵을 읽는 '배 그림자 ②' (water.js). 화면의 14~36% 에서 4~16탭을 짚는다.
 //   유니폼으로만 끈다(세기 0 → 블록이 통째로 안 돈다) — define 이 아니라 전환에 셰이더를 다시 안 만든다. low 에서는 선체 발자국(①)만 남는다
+// 단계 이름(높음 · 보통 · 낮음)은 화면 글자라 사전에 있다 (i18n.js quality.*) — info().label 이 부를 때 지금 언어로 푼다
 export const TIERS = {
-  high: { label: '높음', prMax: 2,   prScale: 1,    msaa: 4, mesh: 512,
+  high: { prMax: 2,   prScale: 1,    msaa: 4, mesh: 512,
           bloom: 1, reflect: 1, sub: 1, glint: 1,   glitOct2: 1, detailK: 1,   sunShadow: 1 },
-  mid:  { label: '보통', prMax: 1.5, prScale: 1,    msaa: 2, mesh: 384,
+  mid:  { prMax: 1.5, prScale: 1,    msaa: 2, mesh: 384,
           bloom: 1, reflect: 1, sub: 1, glint: 1,   glitOct2: 1, detailK: 1,   sunShadow: 1 },
-  low:  { label: '낮음', prMax: 1,   prScale: 0.75, msaa: 0, mesh: 256,
+  low:  { prMax: 1,   prScale: 0.75, msaa: 0, mesh: 256,
           bloom: 0, reflect: 0, sub: 0, glint: 0.6, glitOct2: 0, detailK: 0.6, sunShadow: 0 }
 };
 
@@ -165,7 +167,7 @@ export function createQuality({ gl, busy }) {
   const hold = (ms) => { holdUntil = Math.max(holdUntil, performance.now() + ms); iv.length = 0; winStart = 0; if (timer) timer.take(); };
 
   function info() {
-    return { mode, tier, auto: mode === 'auto', reason, gpu: { name: gpu.name, cls: gpu.cls }, label: TIERS[tier].label, timer: !!timer };
+    return { mode, tier, auto: mode === 'auto', reason, gpu: { name: gpu.name, cls: gpu.cls }, label: t('quality.' + tier), timer: !!timer };
   }
   function emit() { const i = info(); listeners.forEach(fn => { try { fn(i); } catch (e) { console.warn('[quality]', e); } }); }
 

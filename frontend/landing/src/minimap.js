@@ -1,4 +1,5 @@
 import { PARAMS as P } from './params.js';
+import { onLang, t, waters } from './i18n.js';
 
 // ───────── 미니맵 (2026-09-11, v0.32.0) ─────────
 // 향수 지도(scentmap.js)를 위에서 본 **추상 지도**다. 사용자 : *"미니맵을 만드는데 사실상 미니맵과 화면의
@@ -486,7 +487,7 @@ export function createMinimap({ onPick, onBlocked } = {}) {
     if (!hint) return;
     if (fogOn() && fog.bits) {
       // 탐색률 — 갈 수 있는 바다(범위 안) 기준이 아니라 격자 전체 기준이라 대략이다
-      hint.textContent = '탐색 ' + Math.round(100 * fog.n / Math.max(1, fog.bits.length)) + '%';
+      hint.textContent = t('mini.explored', { pct: Math.round(100 * fog.n / Math.max(1, fog.bits.length)) });
     } else hint.textContent = '—';
   };
 
@@ -513,7 +514,7 @@ export function createMinimap({ onPick, onBlocked } = {}) {
     // ⚠ 글과 실제 동작이 같아야 한다 — 빈 바다는 눌러도 해역 연출이 없으므로 해역 이름을 안 적는다
     //   (판정은 scentmap `inZone` 한 곳이다 — 불변식 21)
     const inZone = !h.out && !!h.reg && map.inZone(h.x, h.z);
-    if (hint) hint.textContent = h.out ? '범위 없음' : h.label ? h.label.name : (inZone ? h.reg.name + ' 해역' : h.reg ? '빈 바다' : '—');
+    if (hint) hint.textContent = h.out ? t('sea.out') : h.label ? h.label.name : (inZone ? waters(h.reg.name) : h.reg ? t('sea.open') : '—');
     last = '';   // 다시 그린다
   };
   const onLeave = () => { hover = null; idleHint(); last = ''; };
@@ -533,6 +534,8 @@ export function createMinimap({ onPick, onBlocked } = {}) {
   // 탭을 닫을 때 마지막 기록을 남긴다
   const onHide = () => fogSave(true);
   window.addEventListener('pagehide', onHide);
+  // 언어가 바뀌면 (PB.setLang) 머리말의 탐색률을 다시 쓴다 — 호버 중이면 다음 움직임이 새 글자로 쓴다
+  const offLang = onLang(() => { if (!hover) idleHint(); });
 
   return {
     // map : marks.map (없으면 숨긴다) · boat : {x, z(월드), head} · target : 가는 곳(월드) · sight : 보이는 바다의 반지름(월드)
@@ -593,6 +596,7 @@ export function createMinimap({ onPick, onBlocked } = {}) {
       return `안개 ${fog.cols}×${fog.rows} 칸 (칸 ${FOG_CELL} 월드) · 밝힌 칸 ${fog.n} (${(100 * fog.n / fog.bits.length).toFixed(1)}%) · 키 ${fog.key}`;
     },
     dispose() {
+      offLang();
       fogSave(true);
       cv.removeEventListener('pointermove', onMove);
       cv.removeEventListener('pointerleave', onLeave);

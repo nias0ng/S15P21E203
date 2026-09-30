@@ -42,6 +42,8 @@ import * as oceanClock from './ocean-clock.js';
 //   환경맵을 scene.environment 로 읽는다. 둘이 **같은 하늘**을 봐야 한 장면이 된다
 import { bakeEnvironment, syncSky, tickSky } from './sky.js';
 import { timeNow, timeKey } from './times.js';
+// 화면 글자 사전 (2026-09-30) — ⚠ `t` 는 아래에서 시계 이름이라 `tr` 로 받는다
+import { applyStatic, koNames, lang as langNow, setLang, t as tr } from './i18n.js';
 const { groundSpeed, turnRate } = oceanClock;
 
 // ───────── 향을 찾는 종이배 ─────────
@@ -54,6 +56,9 @@ bootReport('script');
 // 앱(호스트)이 띄운 창이 열려 있는 수 (2026-09-15, v0.68.0 — holdWhile). 0 보다 크면 누르기 · 호버 · ESC · 스페이스를 안 받는다.
 //   ⚠ 입력을 만들기 전인 여기에 선언한다 — onPick · updateHover · onKeyExit 가 읽는다 (TDZ)
 let hostHold = 0;
+
+// ⭐ 주소의 ?lang= 이 en 이면 index.html 의 고정 글자를 영어로 다시 쓴다 (ko 면 같은 글자라 그대로다). UI 를 만들기 전에 한 번
+applyStatic();
 
 // zones · marks 는 아래에서 만들어진다. 화살표 함수라 호출 시점에 이름이 풀린다
 const ui = createUI({
@@ -707,14 +712,14 @@ function cameraPose(cl, s, aspect, out) {
 // ⚠⚠ tick() **보다 먼저** 만든다 — 루프가 첫 프레임부터 부른다 (위 campanel 의 TDZ 교훈)
 const travel = createTravel({ nav, zones, pivotOf: () => boat.pivot });
 // ⭐ onBlocked — 미니맵의 바깥(범위 밖 · 2026-09-13 부터 `--pb-void` 한 색)을 누르면 가지 않고 경고만 (2026-09-11 오후)
-const minimap = createMinimap({ onPick: (t) => startTravel(t), onBlocked: () => ui.warn('범위 없음', '이 너머는 갈 수 없는 해역입니다') });
+const minimap = createMinimap({ onPick: (t) => startTravel(t), onBlocked: () => ui.warn(tr('sea.out'), tr('sea.outSub')) });
 // ⭐⭐ 전체 화면 해도 (2026-09-12 저녁, v0.48.0 — chart.js). 미니맵 머리말의 [확대] 가 연다.
 //   ⚠ 미니맵 **뒤에** 만든다 — 안개 격자를 그쪽에서 읽는다 (기록의 주인은 미니맵이다).
 //   ⚠ 누르는 뜻은 미니맵과 **같다** (해역 이름 · 향수 · 빈 바다 → 그리로 떠난다 · 범위 밖 → 경고).
 //     해도는 거기에 '향수 점을 직접 누르기' 한 갈래를 더한 것뿐이다
 const chart = createChart({
   onPick: (t) => startTravel(t),
-  onBlocked: () => ui.warn('범위 없음', '이 너머는 갈 수 없는 해역입니다'),
+  onBlocked: () => ui.warn(tr('sea.out'), tr('sea.outSub')),
   minimap
 });
 // 도착했는데 연출이 아직 나가는 중(busy)이라 거절된 존. 틱에서 다시 건다 (zones 의 onArrive 주석)
@@ -951,7 +956,7 @@ function seaGo(nx, ny) {
   _seaRay.setFromCamera(_seaNdc, view);
   if (!_seaRay.ray.intersectPlane(_seaPlane, _seaHit)) return false;   // 하늘을 눌렀다
   const wx = _seaHit.x + nav.scroll.x, wz = _seaHit.z - nav.scroll.z;
-  if (!marks.map.inNav(wx, wz, 0)) { ui.warn('범위 없음', '이 너머는 갈 수 없는 해역입니다'); return true; }
+  if (!marks.map.inNav(wx, wz, 0)) { ui.warn(tr('sea.out'), tr('sea.outSub')); return true; }
   // ⚠ 선택은 고르기 밖에서도 놓는다 (v0.58.0) — 빈 바다 누르기의 원래 뜻이 '선택을 놓는다' 다. 존 연출 중에 부표를 눌러 연 카드
   //   (연출 중에는 12개가 안 솟는다)가 바다를 누른 뒤에도 남아 배를 따라 떠 있었다
   if (marks.focusing) marks.focusOff();
@@ -1355,7 +1360,7 @@ function focusDepthPlace(fc, set, clicked, seed, boatX, boatZ) {
   const spreadK = fit ? Math.max(0.5, num(P.focusDepthSpread, 1.25)) : 1;
   const mg = Math.max(6, num(P.focusDepthMargin, 12) * W0 / 1440);
   const topBand = hostTopPx();   // 화면 밖 검사의 위 끝 — 호스트 헤더가 가린 띠 (v0.69.0 · 0 이면 예전 그대로)
-  const koName = (P.markNameKo === undefined ? 1 : P.markNameKo) >= 0.5;
+  const koName = koNames();
   // 이름표 크기 — 이름표 겹침 판정(tick 의 labelItems → ui.labelWidth · labelHeight)과 **같은 식**이다. 가운데 정렬 · 몸통 꼭대기(r × 1.1) 위
   const lab = set.map(q => {
     const top = (q.rank || 999) <= 10, text = (q.src === 'map' && koName ? q.labelKo : q.name) || '';
@@ -1792,7 +1797,7 @@ function tick() {
       }
     }
     // 경고 — 바깥으로 거의 막혔을 때(원래 속도의 60% 아래) 한 번. ⚠ 벽에 계속 밀면 매 프레임 여기 온다 — 3초에 한 번만
-    if (blockK < 0.6 && t - boundWarnT > 3) { boundWarnT = t; ui.warn('범위 없음', '이 너머는 갈 수 없는 해역입니다'); }
+    if (blockK < 0.6 && t - boundWarnT > 3) { boundWarnT = t; ui.warn(tr('sea.out'), tr('sea.outSub')); }
   }
   // ⭐ Shift 바다 누르기가 경계에 막혀 1.5초 넘게 미끄러지기만 하면 놓는다 — 목표는 안쪽이어도 곧은 뱃길이 바깥을 스칠 수 있다
   //   (갈 수 있는 바다가 원들의 합집합이라 오목한 곳이 있다). 안 놓으면 벽에 대고 영영 밀며 3초마다 경고가 뜬다
@@ -2236,7 +2241,7 @@ function tick() {
     focusLabelsOn = true;
   } else if (!allLabels && marks.focusActive) {
     // 예전 (markLabels 0) — 향수 고르기의 12개 **밑**에만. 부표 반지름만큼 내려 투영한다
-    const ko = (P.markNameKo === undefined ? 1 : P.markNameKo) >= 0.5;
+    const ko = koNames();
     const items = marks.focusItems().map(it => {
       _v3.set(it.x, it.y - (it.m.rw || CONFIG.mark.ballR * Math.max(0.05, P.markScale)) * 1.25, it.z).project(cam);
       return { x: (_v3.x * 0.5 + 0.5) * W(), y: (-_v3.y * 0.5 + 0.5) * H() + 4, name: ko && it.m.labelKo ? it.m.labelKo : it.m.name, a: it.a };
@@ -2590,6 +2595,8 @@ window.addEventListener('keydown', onKeyExit);
 window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, dive: hostDive, diveReport, cabinIn: hostCabinIn, cabinInReport, goRegion, startTravel, startFocus, startAt, boatAt, zoneReport, setHost, boot: bootNow, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, pod, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
   // ⭐ 품질 단계 (S15P21E203-435) — PB.quality.get() · PB.quality.set('auto' | 'high' | 'mid' | 'low'). 앱의 그래픽 설정이 set 을 부른다
   quality: { get: () => quality.info(), set: (m) => quality.setMode(m) },
+  // ⭐ 화면 언어 (2026-09-30) — PB.setLang('ko' | 'en'). 앱의 KO · EN 전환이 부른다. 떠 있는 글자는 바로, 다음에 그리는 글자는 새 언어로 (i18n.js)
+  setLang, lang: langNow,
   // ⭐ 반응형 검산 (2026-09-11 오후) — 제품 UI 상자들의 자리 · 서로 겹침 · 화면 밖 · 스크롤 · 수면 타이포 꼭대기와 정보 블록의 간격.
   //   ⚠ 창 크기를 바꾼 뒤에는 **스크린샷 한 장으로 먼저 칠하고** 부른다 (숨긴 패널에서는 ResizeObserver 가 안 불린다 — 교훈 ⑧)
   layout: () => layoutReport(),
