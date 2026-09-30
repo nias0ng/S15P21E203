@@ -1,6 +1,7 @@
 package com.hyanghae.backend.support;
 
 import com.hyanghae.backend.auth.service.EmailVerificationMailSender;
+import com.hyanghae.backend.global.i18n.Language;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -19,11 +20,11 @@ public class FakeEmailVerificationMailSender implements EmailVerificationMailSen
     private final AtomicBoolean failNext = new AtomicBoolean();
 
     @Override
-    public void send(String email, String code) {
+    public void send(String email, String code, Language language) {
         if (failNext.getAndSet(false)) {
             throw new MailSendException("fake mail server is down");
         }
-        sent.add(new SentMail(email, code));
+        sent.add(new SentMail(email, code, language));
     }
 
     /** 다음 한 번의 전송을 메일 서버 오류로 실패시킵니다. */
@@ -49,6 +50,6 @@ public class FakeEmailVerificationMailSender implements EmailVerificationMailSen
         failNext.set(false);
     }
 
-    public record SentMail(String to, String code) {
+    public record SentMail(String to, String code, Language language) {
     }
 }

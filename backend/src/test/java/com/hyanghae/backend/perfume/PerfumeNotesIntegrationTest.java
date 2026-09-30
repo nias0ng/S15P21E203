@@ -10,6 +10,8 @@ import java.math.BigDecimal;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -79,6 +81,25 @@ class PerfumeNotesIntegrationTest {
                 .andExpect(jsonPath("$.notes[1].name").value("Bergamot"))
                 .andExpect(jsonPath("$.notes[1].noteType").value("TOP"))
                 .andExpect(jsonPath("$.notes[2].name").value("Cedar"));
+    }
+
+    /**
+     * 노트 이름은 영문과 한국어 둘 다 옵니다. 화면이 언어에 맞춰 고릅니다.
+     *
+     * <p>요청 언어와 관계없이 같은 짝이 옵니다. 한국어 이름이 없는 노트는 {@code nameKo} 가 비고,
+     * 영문 이름은 그대로입니다.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"ko", "en"})
+    void returnsBothNoteNamesRegardlessOfLanguage(String language) throws Exception {
+        jdbcTemplate.update("UPDATE notes SET name_ko = '앰버' WHERE note_id = 2");
+
+        mockMvc.perform(get(NOTES_URL, 1).header("Accept-Language", language))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.notes[0].name").value("Amber"))
+                .andExpect(jsonPath("$.notes[0].nameKo").value("앰버"))
+                .andExpect(jsonPath("$.notes[1].name").value("Bergamot"))
+                .andExpect(jsonPath("$.notes[1].nameKo").doesNotExist());
     }
 
     /** 명세에 없는 noteType 도 해석하지 않고 그대로 전달합니다. 세 단계로 나눠 담으면 버려집니다. */

@@ -16,6 +16,8 @@ import java.util.List;
  * @param brand        브랜드 이름입니다. 같은 규칙이고, 브랜드가 없는 향수면 {@code null} 입니다.
  * @param thumbnailUrl 대표 이미지 주소입니다. 이미지가 없는 향수가 많아 {@code null} 이 흔합니다.
  * @param reasons      추천 이유입니다. 1~3개입니다.
+ * @param originalName  향수의 원래 이름({@code perfumes.name})입니다. 영어 화면이 씁니다.
+ * @param originalBrand 브랜드의 원래 이름({@code brands.name})입니다. 브랜드가 없으면 {@code null} 입니다.
  */
 public record RecommendedPerfumeResponse(
 
@@ -34,6 +36,14 @@ public record RecommendedPerfumeResponse(
         String thumbnailUrl,
 
         @Schema(description = "추천 이유입니다. 1~3개입니다.")
-        List<RecommendationReasonResponse> reasons
+        List<RecommendationReasonResponse> reasons,
+
+        @Schema(description = "향수의 원래 이름(perfumes.name)입니다. 한국어 이름과 상관없이 늘 이 값입니다.",
+                example = "Lazy Sunday Morning")
+        String originalName,
+
+        @Schema(description = "브랜드의 원래 이름(brands.name)입니다. 브랜드가 없는 향수면 null 입니다.",
+                example = "Maison Martin Margiela", nullable = true)
+        String originalBrand
 ) {
 }

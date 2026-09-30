@@ -69,7 +69,9 @@ public class TrendingPerfumeService {
                         .map(row -> new TrendingPerfumeResponse(
                                 row.getPerfumeId(),
                                 row.getName(),
+                                row.getNameKo(),
                                 row.getBrand(),
+                                row.getBrandKo(),
                                 thumbnails.get(row.getPerfumeId()),
                                 row.getMentionCount()))
                         .toList()

@@ -78,6 +78,7 @@ class ShelfItemDetailIntegrationTest {
     @Test
     void returnsShelfItemDetail() throws Exception {
         fakeCurrentUser.login(LOGGED_IN_USER);
+        jdbcTemplate.update("UPDATE notes SET name_ko = '오렌지' WHERE note_id = 1");
 
         mockMvc.perform(get(URL, SHELF_ITEM_ID))
                 .andExpect(status().isOk())
@@ -93,6 +94,8 @@ class ShelfItemDetailIntegrationTest {
                 .andExpect(jsonPath("$.scentNotes", hasSize(3)))
                 .andExpect(jsonPath("$.scentNotes[0].noteId").value(1))
                 .andExpect(jsonPath("$.scentNotes[0].name").value("Orange"))
+                .andExpect(jsonPath("$.scentNotes[0].nameKo").value("오렌지"))
+                .andExpect(jsonPath("$.scentNotes[1].nameKo").doesNotExist())
                 .andExpect(jsonPath("$.scentNotes[0].noteType").value("TOP"))
                 .andExpect(jsonPath("$.scentNotes[1].noteType").value("BASE"))
                 .andExpect(jsonPath("$.scentNotes[2].noteType").value("MIDDLE"))
