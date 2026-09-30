@@ -1,10 +1,15 @@
-import { render, screen } from '@testing-library/react'
+import { render as rtlRender, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { PerfumeDetail } from '../types'
 
 import { PerfumeOverview } from './PerfumeOverview'
+
+// 브랜드 · 노트가 링크라 라우터 안에서 그립니다
+const render = (ui: React.ReactElement) =>
+  rtlRender(ui, { wrapper: MemoryRouter })
 
 const PERFUME: PerfumeDetail = {
   perfumeId: 1,
@@ -96,5 +101,19 @@ describe('PerfumeOverview', () => {
     )
 
     expect(screen.getByRole('button', { name: '진열대 저장' })).toBeDisabled()
+  })
+  it('브랜드 이름을 누르면 그 브랜드 화면으로 간다', () => {
+    render(
+      <PerfumeOverview
+        perfume={PERFUME}
+        inShelf={false}
+        onShelfAction={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('link', { name: 'Diptyque' })).toHaveAttribute(
+      'href',
+      '/brands/1',
+    )
   })
 })

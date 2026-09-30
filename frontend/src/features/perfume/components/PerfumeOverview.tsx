@@ -1,5 +1,10 @@
+import { Link } from 'react-router'
+
+import { toBrandDetail } from '@/shared/config/routes'
+import { cn } from '@/shared/lib/cn'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
+import { FOCUS_RING } from '@/shared/ui/focusRing'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import { GENDER_TEXT } from '../types'
@@ -39,7 +44,24 @@ export function PerfumeOverview({
       <div className="flex flex-1 flex-col gap-6.25">
         <div className="space-y-2.5">
           <div className="space-y-0.5">
-            <p className="text-ink-muted text-caption">{perfume.brand?.name}</p>
+            {/*
+              브랜드 이름은 브랜드 화면으로 가는 길입니다. 메뉴들이 서로 이어지지 않아 "각 메뉴가
+              왜 있는지 모르겠다" 는 말을 들었습니다(지인 피드백 F22) — 향수를 보다 그 브랜드의
+              다른 향수로 건너가는 것이 브랜드 메뉴가 쓰이는 가장 흔한 길입니다.
+            */}
+            {perfume.brand && (
+              <p className="text-caption">
+                <Link
+                  to={toBrandDetail(perfume.brand.brandId)}
+                  className={cn(
+                    'text-ink-muted hover:text-ink rounded-card underline-offset-4 hover:underline',
+                    FOCUS_RING,
+                  )}
+                >
+                  {perfume.brand.name}
+                </Link>
+              </p>
+            )}
 
             {meta.length > 0 && (
               <p className="text-ink-muted text-caption">{meta.join(' · ')}</p>
