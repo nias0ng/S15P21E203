@@ -22,6 +22,8 @@ import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -309,6 +311,50 @@ class ReviewBoardIntegrationTest {
 
         assertThat(seen).containsExactlyInAnyOrder(
                 "후기 1", "후기 2", "후기 3", "후기 4", "후기 5");
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // 이름 짝
+    // ────────────────────────────────────────────────────────────────
+
+    /**
+     * 향수와 브랜드 이름이 원래 이름과 한국어 이름 짝으로 옵니다. 화면이 언어에 맞춰 고릅니다.
+     *
+     * <p>요청 언어와 관계없이 같은 짝이 옵니다. 목록과 상세가 같은 값을 씁니다.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"ko", "en"})
+    void putsBothPerfumeAndBrandNames(String language) throws Exception {
+        jdbcTemplate.update("UPDATE perfumes SET name_ko = '베이스 향' WHERE perfume_id = 1");
+        jdbcTemplate.update("UPDATE brands SET name_ko = '샤넬' WHERE brand_id = 1");
+        insertReview(1, WRITER_ID, 1, "샤넬 후기", "향이 좋습니다.");
+
+        mockMvc.perform(get(BOARD_URL).header("Accept-Language", language))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reviews[0].perfume.name").value("Base Scent"))
+                .andExpect(jsonPath("$.reviews[0].perfume.nameKo").value("베이스 향"))
+                .andExpect(jsonPath("$.reviews[0].perfume.brand").value("Chanel"))
+                .andExpect(jsonPath("$.reviews[0].perfume.brandKo").value("샤넬"));
+
+        mockMvc.perform(get(REVIEW_URL, 1L).header("Accept-Language", language))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfume.name").value("Base Scent"))
+                .andExpect(jsonPath("$.perfume.nameKo").value("베이스 향"))
+                .andExpect(jsonPath("$.perfume.brand").value("Chanel"))
+                .andExpect(jsonPath("$.perfume.brandKo").value("샤넬"));
+    }
+
+    /** 한국어 이름이 아직 없는 향수는 한국어 칸이 비고, 원래 이름은 그대로입니다. */
+    @Test
+    void leavesKoreanNamesEmptyWhenMissing() throws Exception {
+        insertReview(1, WRITER_ID, 1, "샤넬 후기", "향이 좋습니다.");
+
+        mockMvc.perform(get(BOARD_URL).header("Accept-Language", "en"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reviews[0].perfume.name").value("Base Scent"))
+                .andExpect(jsonPath("$.reviews[0].perfume.nameKo").doesNotExist())
+                .andExpect(jsonPath("$.reviews[0].perfume.brand").value("Chanel"))
+                .andExpect(jsonPath("$.reviews[0].perfume.brandKo").doesNotExist());
     }
 
     // ────────────────────────────────────────────────────────────────

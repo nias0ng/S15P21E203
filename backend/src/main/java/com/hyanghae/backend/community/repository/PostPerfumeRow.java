@@ -9,5 +9,9 @@ public interface PostPerfumeRow {
 
     String getName();
 
+    String getNameKo();
+
     String getBrand();
+
+    String getBrandKo();
 }

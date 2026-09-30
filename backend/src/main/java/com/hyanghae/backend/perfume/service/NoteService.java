@@ -1,12 +1,14 @@
 package com.hyanghae.backend.perfume.service;
 
 import com.hyanghae.backend.global.exception.BusinessException;
+import com.hyanghae.backend.global.i18n.Language;
 import com.hyanghae.backend.perfume.dto.response.NoteDetailResponse;
 import com.hyanghae.backend.perfume.dto.response.NoteSummaryResponse;
 import com.hyanghae.backend.perfume.dto.response.NotesResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSearchResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSummaryResponse;
 import com.hyanghae.backend.perfume.exception.PerfumeErrorCode;
+import com.hyanghae.backend.perfume.repository.NoteDetailRow;
 import com.hyanghae.backend.perfume.repository.NoteRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeImageRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
@@ -57,11 +59,33 @@ public class NoteService {
         return new NotesResponse(noteRepository.findAllActive());
     }
 
-    /** 노트 하나입니다. 내려갔거나 없는 노트는 404 입니다. */
+    /**
+     * 노트 하나입니다. 내려갔거나 없는 노트는 404 입니다.
+     *
+     * <p>설명은 요청 언어를 따릅니다. 영어 요청이면 영어 설명이고, 영어 설명이 비어 있으면 한국어
+     * 설명으로 되돌아갑니다. 한국어 요청은 언제나 한국어 설명입니다.
+     */
     @Transactional(readOnly = true)
     public NoteDetailResponse findById(Long noteId) {
-        return noteRepository.findActiveById(noteId)
+        NoteDetailRow note = noteRepository.findActiveById(noteId)
                 .orElseThrow(() -> new BusinessException(PerfumeErrorCode.PERFUME_NOTE_NOT_FOUND));
+        return new NoteDetailResponse(
+                note.noteId(),
+                note.name(),
+                note.nameKo(),
+                note.accordFamily(),
+                note.imageUrl(),
+                note.popularityRank(),
+                describe(note, Language.current()));
+    }
+
+    /** 요청 언어의 설명입니다. 영어 설명이 없거나 공백뿐이면 한국어 설명을 씁니다. */
+    private static String describe(NoteDetailRow note, Language language) {
+        String english = note.descriptionEn();
+        if (language.isEnglish() && english != null && !english.isBlank()) {
+            return english;
+        }
+        return note.description();
     }
 
     /**

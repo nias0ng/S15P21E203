@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyanghae.backend.auth.dto.request.EmailVerificationConfirmRequest;
 import com.hyanghae.backend.auth.dto.request.EmailVerificationRequest;
 import com.hyanghae.backend.auth.exception.AuthErrorCode;
+import com.hyanghae.backend.global.i18n.Language;
 import com.hyanghae.backend.support.FakeEmailVerificationMailSender;
 import com.hyanghae.backend.support.IntegrationTest;
 import com.hyanghae.backend.support.SignupTestHelper;
@@ -91,6 +92,23 @@ class EmailVerificationIntegrationTest {
         assertThat(storedHash).isNotNull();
         assertThat(storedHash.toString()).isNotEqualTo(code).hasSize(64);
         assertThat(redisTemplate.getExpire("auth:email-verification:" + EMAIL)).isPositive();
+    }
+
+    /** 인증 메일은 요청 언어로 나갑니다. 헤더가 없으면 한국어입니다. */
+    @Test
+    void sendsMailInRequestLanguage() throws Exception {
+        send(EMAIL).andExpect(status().isOk());
+        mockMvc.perform(post(SEND_URL)
+                        .header("Accept-Language", "en")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new EmailVerificationRequest(OTHER_EMAIL))))
+                .andExpect(status().isOk());
+
+        assertThat(mailSender.sentTo(EMAIL)).singleElement()
+                .satisfies(mail -> assertThat(mail.language()).isEqualTo(Language.KO));
+        assertThat(mailSender.sentTo(OTHER_EMAIL)).singleElement()
+                .satisfies(mail -> assertThat(mail.language()).isEqualTo(Language.EN));
     }
 
     @Test

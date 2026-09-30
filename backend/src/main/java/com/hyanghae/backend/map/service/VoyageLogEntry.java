@@ -18,7 +18,7 @@ final class VoyageLogEntry {
 
     private final ExplorationLogRow opened;
     private final ScentRegionRef region;
-    private final Map<Long, String> visited = new LinkedHashMap<>();
+    private final Map<Long, VisitedPerfumeResponse> visited = new LinkedHashMap<>();
 
     VoyageLogEntry(ExplorationLogRow opened, ScentRegionRef region) {
         this.opened = opened;
@@ -26,7 +26,9 @@ final class VoyageLogEntry {
     }
 
     void visit(ExplorationLogRow row) {
-        visited.putIfAbsent(row.perfumeId(), row.perfumeName());
+        visited.putIfAbsent(
+                row.perfumeId(),
+                new VisitedPerfumeResponse(row.perfumeId(), row.perfumeName(), row.perfumeNameKo()));
     }
 
     /** 계열 영역 밖의 바다는 일지에 그릴 구역이 없습니다. */
@@ -35,9 +37,7 @@ final class VoyageLogEntry {
     }
 
     VoyageLogEntryResponse toResponse() {
-        List<VisitedPerfumeResponse> perfumes = visited.entrySet().stream()
-                .map(entry -> new VisitedPerfumeResponse(entry.getKey(), entry.getValue()))
-                .toList();
+        List<VisitedPerfumeResponse> perfumes = List.copyOf(visited.values());
 
         return new VoyageLogEntryResponse(
                 opened.logId(),

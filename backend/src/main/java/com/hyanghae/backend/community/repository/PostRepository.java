@@ -158,7 +158,8 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query(value = """
             SELECT DISTINCT ON (pp.post_id)
                    pp.post_id AS postId, pp.perfume_id AS perfumeId,
-                   p.name AS name, b.name AS brand
+                   p.name AS name, p.name_ko AS nameKo,
+                   b.name AS brand, b.name_ko AS brandKo
             FROM post_perfumes pp
             JOIN perfumes p ON p.perfume_id = pp.perfume_id
             LEFT JOIN brands b ON b.brand_id = p.brand_id
@@ -200,7 +201,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     /** 브랜드가 없는 향수가 있어 왼쪽 조인입니다. */
     @Query("""
             SELECT new com.hyanghae.backend.community.dto.response.PostPerfumeResponse(
-                       p.id, p.name, b.name)
+                       p.id, p.name, p.nameKo, b.name, b.nameKo)
             FROM PostPerfume pp
             JOIN pp.perfume p
             LEFT JOIN p.brand b

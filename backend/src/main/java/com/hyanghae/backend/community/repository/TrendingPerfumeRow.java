@@ -12,7 +12,11 @@ public interface TrendingPerfumeRow {
 
     String getName();
 
+    String getNameKo();
+
     String getBrand();
+
+    String getBrandKo();
 
     long getMentionCount();
 }

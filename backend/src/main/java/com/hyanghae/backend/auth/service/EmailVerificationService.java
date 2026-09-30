@@ -5,6 +5,7 @@ import com.hyanghae.backend.auth.dto.response.EmailVerificationConfirmResponse;
 import com.hyanghae.backend.auth.dto.response.EmailVerificationResponse;
 import com.hyanghae.backend.auth.exception.AuthErrorCode;
 import com.hyanghae.backend.global.exception.BusinessException;
+import com.hyanghae.backend.global.i18n.Language;
 import com.hyanghae.backend.user.repository.UserRepository;
 import java.time.Duration;
 import java.util.Locale;
@@ -66,7 +67,7 @@ public class EmailVerificationService {
         // 받지도 못한 번호가 남지 않습니다.
         String code = secrets.newCode();
         try {
-            mailSender.send(email, code);
+            mailSender.send(email, code, Language.current());
         } catch (MailException exception) {
             store.releaseSend(email);
             // 예외 메시지에 받는 사람 주소가 섞일 수 있어 종류만 남깁니다.
