@@ -1,6 +1,7 @@
 package com.hyanghae.backend.auth.service;
 
 import com.hyanghae.backend.auth.config.EmailVerificationProperties;
+import com.hyanghae.backend.global.i18n.Language;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
@@ -10,7 +11,8 @@ import org.springframework.util.StringUtils;
 @Component
 public class JavaMailEmailVerificationMailSender implements EmailVerificationMailSender {
 
-    private static final String SUBJECT = "[향해] 이메일 인증번호";
+    private static final String SUBJECT_KO = "[향해] 이메일 인증번호";
+    private static final String SUBJECT_EN = "[Hyanghae] Your verification code";
 
     private final JavaMailSender mailSender;
     private final EmailVerificationProperties properties;
@@ -47,16 +49,17 @@ public class JavaMailEmailVerificationMailSender implements EmailVerificationMai
     }
 
     @Override
-    public void send(String email, String code) {
+    public void send(String email, String code, Language language) {
+        boolean english = language != null && language.isEnglish();
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(properties.from());
         message.setTo(email);
-        message.setSubject(SUBJECT);
-        message.setText(body(code));
+        message.setSubject(english ? SUBJECT_EN : SUBJECT_KO);
+        message.setText(english ? englishBody(code) : koreanBody(code));
         mailSender.send(message);
     }
 
-    private String body(String code) {
+    private String koreanBody(String code) {
         return """
                 향해 회원가입 이메일 인증번호입니다.
 
@@ -64,6 +67,17 @@ public class JavaMailEmailVerificationMailSender implements EmailVerificationMai
 
                 이 번호는 %d분 동안 유효합니다. 회원가입 화면에 입력해 주세요.
                 직접 요청하지 않았다면 이 메일은 무시하셔도 됩니다.
+                """.formatted(code, properties.codeTtl().toMinutes());
+    }
+
+    private String englishBody(String code) {
+        return """
+                Here is your Hyanghae sign-up verification code.
+
+                Verification code: %s
+
+                This code is valid for %d minutes. Please enter it on the sign-up screen.
+                If you didn't request this, you can safely ignore this email.
                 """.formatted(code, properties.codeTtl().toMinutes());
     }
 }

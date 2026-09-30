@@ -296,6 +296,13 @@ class NaturalLanguageRecommendationServiceTest {
                 .containsExactly(
                         tuple("레이지 선데이 모닝", "메종 마르지엘라"),
                         tuple("Laundry", "Ostrikov Beauty Publishing"));
+        // 원래 이름은 한국어 이름이 있어도 늘 원래 값입니다. 영어 화면이 씁니다.
+        assertThat(response.perfumes())
+                .extracting(RecommendedPerfumeResponse::originalName,
+                        RecommendedPerfumeResponse::originalBrand)
+                .containsExactly(
+                        tuple("Lazy Sunday Morning", "Maison Martin Margiela"),
+                        tuple("Laundry", "Ostrikov Beauty Publishing"));
     }
 
     /** 대표 이미지가 있으면 채우고, 없는 향수는 {@code null} 입니다. */

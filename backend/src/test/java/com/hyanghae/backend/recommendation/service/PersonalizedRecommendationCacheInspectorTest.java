@@ -105,6 +105,6 @@ class PersonalizedRecommendationCacheInspectorTest {
 
     private PersonalizedRecommendationCandidate candidate() {
         return new PersonalizedRecommendationCandidate(
-                10L, "향수", null, 1.0, "TASTE", "우디", null);
+                10L, "향수", "Perfume", "향수", null, 1.0, "TASTE", "우디", "WOODY", null);
     }
 }

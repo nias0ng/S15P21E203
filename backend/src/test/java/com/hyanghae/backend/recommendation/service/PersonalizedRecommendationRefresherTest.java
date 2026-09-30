@@ -52,7 +52,7 @@ class PersonalizedRecommendationRefresherTest {
     @Test
     void rechecksAfterLockAndCalculatesOnlyWhenStillRequired() {
         PersonalizedRecommendationCandidate candidate = new PersonalizedRecommendationCandidate(
-                10L, "향수", null, 1.0, "TASTE", "우디", null);
+                10L, "향수", "Perfume", "향수", null, 1.0, "TASTE", "우디", "WOODY", null);
         when(repository.tryLockForUser(USER_ID)).thenReturn(true);
         when(inspector.inspect(USER_ID, NOW))
                 .thenReturn(new CacheSnapshot(true, false, List.of()));

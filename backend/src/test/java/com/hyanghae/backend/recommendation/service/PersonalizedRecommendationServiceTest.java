@@ -17,12 +17,15 @@ import com.hyanghae.backend.recommendation.repository.PersonalizedRecommendation
 import com.hyanghae.backend.recommendation.service.PersonalizedRecommendationCacheInspector.CacheSnapshot;
 import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.i18n.LocaleContextHolder;
 
 @ExtendWith(MockitoExtension.class)
 class PersonalizedRecommendationServiceTest {
@@ -58,6 +61,50 @@ class PersonalizedRecommendationServiceTest {
                         Duration.ofHours(24),
                         Duration.ofMinutes(10)),
                 currentUser);
+    }
+
+    @AfterEach
+    void resetLocale() {
+        LocaleContextHolder.resetLocaleContext();
+    }
+
+    /** 한국어 요청은 예전 응답 그대로에 원래 이름 · 근거 키만 더해 나갑니다. */
+    @Test
+    void returnsKoreanReasonWithLanguageNeutralEvidence() {
+        LocaleContextHolder.setLocale(Locale.KOREAN);
+        PersonalizedRecommendationCandidate candidate = candidate();
+        prepareAuthenticatedUser();
+        when(cacheInspector.inspect(eq(USER_ID), any()))
+                .thenReturn(new CacheSnapshot(false, false, List.of(candidate)));
+        when(candidateSelector.select(eq(List.of(candidate)), any())).thenReturn(candidate);
+
+        var perfume = service.recommend().recommendation();
+
+        assertThat(perfume.name()).isEqualTo("향수");
+        assertThat(perfume.reason()).isEqualTo("취향 테스트에서 선택한 우디 계열과 잘 맞아요.");
+        assertThat(perfume.originalName()).isEqualTo("Perfume");
+        assertThat(perfume.nameKo()).isEqualTo("향수");
+        assertThat(perfume.evidenceSource()).isEqualTo("TASTE_TEST");
+        assertThat(perfume.evidenceKey()).isEqualTo("WOODY");
+    }
+
+    @Test
+    void returnsEnglishReasonForEnglishRequest() {
+        LocaleContextHolder.setLocale(Locale.ENGLISH);
+        PersonalizedRecommendationCandidate candidate = candidate();
+        prepareAuthenticatedUser();
+        when(cacheInspector.inspect(eq(USER_ID), any()))
+                .thenReturn(new CacheSnapshot(false, false, List.of(candidate)));
+        when(candidateSelector.select(eq(List.of(candidate)), any())).thenReturn(candidate);
+
+        var perfume = service.recommend().recommendation();
+
+        assertThat(perfume.name()).isEqualTo("향수");
+        assertThat(perfume.reason())
+                .isEqualTo("It suits the Woody scent family you picked in the Taste Test.");
+        assertThat(perfume.originalName()).isEqualTo("Perfume");
+        assertThat(perfume.evidenceSource()).isEqualTo("TASTE_TEST");
+        assertThat(perfume.evidenceKey()).isEqualTo("WOODY");
     }
 
     @Test
@@ -161,10 +208,13 @@ class PersonalizedRecommendationServiceTest {
         return new PersonalizedRecommendationCandidate(
                 10L,
                 "향수",
+                "Perfume",
+                "향수",
                 null,
                 1.0,
                 "TASTE",
                 "우디",
+                "WOODY",
                 null);
     }
 }

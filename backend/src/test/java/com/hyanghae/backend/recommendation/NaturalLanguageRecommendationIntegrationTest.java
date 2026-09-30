@@ -96,6 +96,9 @@ class NaturalLanguageRecommendationIntegrationTest {
                 .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
                 .andExpect(jsonPath("$.perfumes[0].name").value("Laundry"))
                 .andExpect(jsonPath("$.perfumes[0].brand").value("Ostrikov Beauty Publishing"))
+                .andExpect(jsonPath("$.perfumes[0].originalName").value("Laundry"))
+                .andExpect(jsonPath("$.perfumes[0].originalBrand")
+                        .value("Ostrikov Beauty Publishing"))
                 .andExpect(jsonPath("$.perfumes[0].thumbnailUrl").value(THUMBNAIL))
                 .andExpect(jsonPath("$.perfumes[0].reasons.length()").value(1))
                 .andExpect(jsonPath("$.perfumes[0].reasons[0].phrase").value("빨래"))
@@ -216,6 +219,29 @@ class NaturalLanguageRecommendationIntegrationTest {
                 .andExpect(jsonPath("$.matchedData.length()").value(0));
     }
 
+    /**
+     * 한국어 이름이 있으면 {@code name} · {@code brand} 는 예전처럼 한국어이고, 원래 이름은
+     * {@code originalName} · {@code originalBrand} 로 따로 나갑니다. 영어 요청이어도 같습니다.
+     */
+    @Test
+    void servesOriginalNamesNextToKoreanNames() throws Exception {
+        jdbcTemplate.update("UPDATE perfumes SET name_ko = '런드리' WHERE perfume_id = 1");
+        jdbcTemplate.update("UPDATE brands SET name_ko = '오스트리코프' WHERE brand_id = 1");
+        given(nlrClient.recommend(anyString())).willReturn(aiResponse("OK",
+                result(73368L, matched("soapy", "빨래"))));
+
+        for (String language : new String[]{"ko", "en"}) {
+            clearRateLimit();
+            mockMvc.perform(request(QUERY).header("Accept-Language", language))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.perfumes[0].name").value("런드리"))
+                    .andExpect(jsonPath("$.perfumes[0].brand").value("오스트리코프"))
+                    .andExpect(jsonPath("$.perfumes[0].originalName").value("Laundry"))
+                    .andExpect(jsonPath("$.perfumes[0].originalBrand")
+                            .value("Ostrikov Beauty Publishing"));
+        }
+    }
+
     /** 브랜드가 없는 향수도 나갑니다. {@code brand} 만 {@code null} 입니다. */
     @Test
     void servesPerfumeWithoutBrand() throws Exception {
@@ -226,6 +252,7 @@ class NaturalLanguageRecommendationIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfumes[0].perfumeId").value(2))
                 .andExpect(jsonPath("$.perfumes[0].brand").doesNotExist())
+                .andExpect(jsonPath("$.perfumes[0].originalBrand").doesNotExist())
                 .andExpect(jsonPath("$.perfumes[0].thumbnailUrl").doesNotExist());
     }
 
