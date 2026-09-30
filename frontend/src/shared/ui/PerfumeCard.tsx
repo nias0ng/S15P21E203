@@ -9,26 +9,49 @@ type PerfumeCardProps = {
   name: string
   subName?: string | null
   rank?: number
+  /** 순위 딱지를 읽을 때 앞에 붙는 말 — `인기 1위` · `추천 1위`. 부르는 쪽이 지금 언어로 넘깁니다 */
+  rankLabel?: string
   thumbnailUrl?: string | null
-  to: string
-  state?: LinkProps['state']
-}
+} & (
+  | {
+      /** 누르면 가는 상세 주소 — 카드 전체가 링크입니다 */
+      to: string
+      state?: LinkProps['state']
+    }
+  | {
+      /**
+       * 링크 대신 누르면 카드 아래의 칸을 여닫는 단추입니다 (자연어 추천 결과 — 이유를 먼저 보고
+       * 상세로 갑니다). 여닫는 칸은 부르는 쪽이 그립니다.
+       */
+      onToggle: () => void
+      expanded: boolean
+      /** 여닫는 칸의 id */
+      controls?: string
+    }
+)
 
 const SLOT = 'aspect-square w-full px-7.5 pt-3.75 pb-5'
 const PLATE = 'rounded-image border border-black/5 bg-white'
+const CARD =
+  'border-line bg-surface-card rounded-card flex h-full flex-1 flex-col gap-1.25 border p-2.5 transition-[transform,box-shadow] duration-200 ease-out hover:shadow-raised hover:-translate-y-1.25'
 
-export function PerfumeCard({
-  name,
-  subName,
-  rank,
-  thumbnailUrl,
-  to,
-  state,
-}: PerfumeCardProps) {
+export function PerfumeCard(props: PerfumeCardProps) {
   const { t } = useTranslation('layout')
+  const {
+    name,
+    subName,
+    rank,
+    rankLabel = t('perfumeCard.popular'),
+    thumbnailUrl,
+  } = props
+
+  /*
+    NOTE: 안쪽은 전부 `span` 입니다 — 단추(`<button>`) 안에는 `div` · `p` 를 둘 수 없습니다.
+    모양은 `block` 으로 링크일 때와 같게 둡니다.
+  */
   const body = (
     <>
-      <div className={cn(PLATE, 'relative w-full')}>
+      <span className={cn(PLATE, 'relative block w-full')}>
         {thumbnailUrl ? (
           <Thumbnail
             src={thumbnailUrl}
@@ -53,38 +76,55 @@ export function PerfumeCard({
             )}
           >
             <span aria-hidden>{rank}</span>
-            <span className="sr-only">{t('perfumeCard.rank', { rank })}</span>
+            <span className="sr-only">
+              {t('perfumeCard.rank', { label: rankLabel, rank })}
+            </span>
           </span>
         )}
-      </div>
+      </span>
 
-      <div className="min-h-15 w-full space-y-0.5 px-0.75">
-        <p className="text-ink text-body line-clamp-2 font-serif leading-tight font-semibold">
+      <span className="block min-h-15 w-full space-y-0.5 px-0.75">
+        <span className="text-ink text-body line-clamp-2 font-serif leading-tight font-semibold">
           {name}
-        </p>
+        </span>
 
         {subName && subName !== name && (
-          <p className="text-ink-muted text-caption truncate">{subName}</p>
+          <span className="text-ink-muted text-caption block truncate">
+            {subName}
+          </span>
         )}
-      </div>
+      </span>
     </>
   )
 
   return (
     <article className="type-reading flex h-full flex-col">
-      <Link
-        to={to}
-        state={state}
-        data-slot="card"
-        className={cn(
-          'border-line bg-surface-card rounded-card flex h-full flex-col gap-1.25 border p-2.5',
-          'flex-1',
-          'transition-[transform,box-shadow] duration-200 ease-out',
-          'hover:shadow-raised hover:-translate-y-1.25',
-        )}
-      >
-        {body}
-      </Link>
+      {'to' in props ? (
+        <Link
+          to={props.to}
+          state={props.state}
+          data-slot="card"
+          className={CARD}
+        >
+          {body}
+        </Link>
+      ) : (
+        <button
+          type="button"
+          aria-expanded={props.expanded}
+          aria-controls={props.controls}
+          onClick={props.onToggle}
+          data-slot="card"
+          className={cn(
+            CARD,
+            'w-full text-left',
+            // 연 카드는 떠오른 채로 테를 짙게 둡니다 — 아래 칸이 어느 카드의 것인지 보입니다
+            props.expanded && 'border-ink -translate-y-1.25',
+          )}
+        >
+          {body}
+        </button>
+      )}
     </article>
   )
 }

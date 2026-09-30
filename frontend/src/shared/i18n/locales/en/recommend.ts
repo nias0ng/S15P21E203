@@ -72,7 +72,8 @@ export const recommend = {
       failedDescription: 'Please try again in a moment.',
     },
     card: {
-      imageFallback: 'Image',
+      rankLabel: 'Recommended',
+      reasonLabel: 'Why we recommend {{name}}',
       viewDetails: 'View details',
       reasonTitle: 'Why this perfume',
       strengthHint: ' · Numbers show scent strength (0–100)',

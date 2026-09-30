@@ -69,7 +69,8 @@ export const recommend = {
       failedDescription: '잠시 후 다시 시도해 주세요.',
     },
     card: {
-      imageFallback: '이미지',
+      rankLabel: '추천',
+      reasonLabel: '{{name}} 추천 이유',
       viewDetails: '자세히 보기',
       reasonTitle: '추천 이유',
       strengthHint: ' · 괄호 안은 향 강도 0~100',

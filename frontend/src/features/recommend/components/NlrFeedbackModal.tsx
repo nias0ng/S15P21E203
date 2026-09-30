@@ -42,9 +42,11 @@ const OPTIONS = [
  * 무엇을 물을지는 스토어(`usePendingFeedbackStore`)가 들고 있습니다. 결과에서 [자세히 보기]로
  * 상세에 다녀오면 이 화면이 통째로 다시 서는데, 답하지 않은 설문은 그때 이어서 떠야 합니다.
  *
- * 자리와 움직임은 **결과 모달과 같습니다** — 같은 검색의 뒷장이라, 위쪽에 붙는 것(`mt-25`)도
- * 폭도 족자가 풀리는 것도 맞췄습니다. 자리가 달라지면 사람이 보기에 답을 잇는 화면이 아니라
- * 다른 기능이 끼어든 것으로 읽힙니다 (`MapSearchModal` 이 같은 이유로 같은 자리를 씁니다).
+ * 자리와 재질과 움직임은 **결과 모달과 같습니다** — 같은 검색의 뒷장이라, 위쪽에 붙는 것(`mt-25`)도
+ * 반투명 유리(`scent-map-glass`)도 족자가 풀리는 것도 맞췄습니다. 자리가 달라지면 사람이 보기에
+ * 답을 잇는 화면이 아니라 다른 기능이 끼어든 것으로 읽힙니다 (`MapSearchModal` 이 같은 이유로
+ * 같은 자리를 씁니다). 폭만 다릅니다 — 결과는 카드 다섯 장이 한 줄에 서는 넓은 판이고, 설문은
+ * 칩 세 개와 한마디 칸이라 그 폭이면 칸이 휑하게 늘어납니다.
  *
  * NOTE: **건너뛰기와 [×] 는 끝이 같습니다.** 어느 쪽으로 닫아도 그 추천은 끝나고 다시 묻지
  * 않습니다. 한쪽만 접어 두면 답하지 않기로 한 사람에게 같은 설문이 새로고침마다 다시 뜹니다.
@@ -118,11 +120,11 @@ export function NlrFeedbackModal({ ready }: Props) {
       */
         closeOnBackdrop={false}
         /*
-        자리 · 크기는 `RecommendModal` 과 **한 벌입니다** — 설문이 추천 결과와 같은 자리에서
-        이어지게 하려는 것이라, 한쪽만 고치면 두 판이 어긋납니다.
+        위쪽 자리 · 높이 상한 · 재질 · 모서리는 `RecommendModal` 과 **한 벌입니다** — 설문이
+        추천 결과와 같은 자리에서 이어지게 하려는 것이라, 한쪽만 고치면 두 판이 어긋납니다.
         560(=140×4) 과 125(=31.25×4) 는 1920 기준이고 `--spacing` 을 타 함께 줄어듭니다.
       */
-        className="scent-map-panel rounded-glass mt-25 mb-auto max-h-[calc(100vh-var(--spacing)*31.25)] w-140 overflow-y-auto"
+        className="scent-map-glass scent-thin-scroll mt-25 mb-auto max-h-[calc(100vh-var(--spacing)*31.25)] w-140 overflow-y-auto rounded-[24px]"
       >
         {/*
         `<dialog>` 는 닫혀도 children 이 DOM 에 남습니다. 열림과 **같은 조건**으로 그려야
@@ -147,8 +149,8 @@ export function NlrFeedbackModal({ ready }: Props) {
       설문 판 위에 한 겹 더 뜹니다. `<dialog>` 는 top layer 에 쌓여 나중에 연 것이 위로
       올라오므로, 설문을 닫지 않은 채로 물을 수 있습니다.
 
-      어두운 유리(`scent-map-panel`)를 입힙니다 — 기본 상아색 종이면 남색 판 위에 흰 종이가
-      한 장 끼어들어, 같은 화면에서 온 물음으로 안 읽힙니다.
+      설문과 같은 반투명 유리(`scent-map-glass`)를 입힙니다 — 기본 상아색 종이면 유리판 위에
+      흰 종이가 한 장 끼어들어, 같은 화면에서 온 물음으로 안 읽힙니다.
     */}
       <ConfirmDialog
         open={confirmingExit}
@@ -157,7 +159,7 @@ export function NlrFeedbackModal({ ready }: Props) {
         title={t('feedback.exitTitle')}
         description={t('feedback.exitDescription')}
         confirmLabel={t('feedback.exit')}
-        className="scent-map-panel rounded-glass"
+        className="scent-map-glass rounded-[24px]"
       />
     </>
   )

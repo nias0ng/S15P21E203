@@ -57,7 +57,8 @@ export const layout = {
     page: '{{page}}쪽',
   },
   perfumeCard: {
-    rank: '인기 {{rank}}위',
+    popular: '인기',
+    rank: '{{label}} {{rank}}위',
   },
   perfumePicker: {
     searchLabel: '향수명 또는 브랜드명으로 검색',

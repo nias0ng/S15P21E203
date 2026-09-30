@@ -60,7 +60,8 @@ export const layout = {
     page: 'Page {{page}}',
   },
   perfumeCard: {
-    rank: 'No. {{rank}} most popular',
+    popular: 'Popular',
+    rank: '{{label}} #{{rank}}',
   },
   perfumePicker: {
     searchLabel: 'Search by perfume or brand',

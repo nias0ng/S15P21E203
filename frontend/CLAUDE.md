@@ -238,7 +238,7 @@ import { perfumeDetailQuery } from '@/features/perfume/queries'   // X
 | `shared/ui/Checkbox` | 사각 체크박스(14px). 라벨은 호출하는 쪽에서 `<label>` 로 감싸세요 |
 | `shared/ui/SearchField` | 검색 입력 + 버튼. 헤더에 검색창이 없어 목록 화면마다 반복됩니다 |
 | `shared/ui/Badge` | 향 계열·상태 같은 짧은 라벨. `tone` neutral·outline |
-| `shared/ui/PerfumeCard` | 향수 카드. 도메인 타입을 받지 않고 `name`·`subName`·`thumbnailUrl` 낱개로 받습니다. 늘 상세로 가는 링크라 `to` 는 필수입니다 |
+| `shared/ui/PerfumeCard` | 향수 카드. 도메인 타입을 받지 않고 `name`·`subName`·`thumbnailUrl` 낱개로 받습니다. 보통은 상세로 가는 링크(`to`)이고, `onToggle` · `expanded` 를 주면 아래 칸을 여닫는 단추가 됩니다(자연어 추천 결과). 순위 딱지는 `rankLabel`(기본 `인기`)을 붙여 읽습니다 |
 | `shared/ui/ChipToggle` | 칩 여러 개 중 고르기 (A11 진열대 분류 · 계절 등록, A15) |
 | `shared/ui/StarRating` | 별점. 라디오 그룹이라 키보드 화살표로 움직입니다 |
 | `shared/ui/Modal` | 네이티브 `<dialog>` 기반. 포커스 가두기·Esc·배경 스크롤 잠금 자동. 3D 카드(iframe)에서 여는 모달은 `initialFocus="panel"` — 안 주면 [×] 에 초점 테가 선 채로 뜹니다. 폭을 줄인 좁은 판은 `titleSize="heading"` |

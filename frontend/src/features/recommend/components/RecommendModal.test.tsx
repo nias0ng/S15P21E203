@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -122,6 +122,35 @@ describe('RecommendModal', () => {
     fireEvent.click(dialog)
 
     expect(onClose).not.toHaveBeenCalled()
+  })
+
+  /*
+    추천은 부를 때마다 서버가 새 설문 손잡이를 냅니다. 담아 둔 답을 꺼내면 이미 닫은 손잡이가
+    와서, 같은 말로 다시 찾은 사람에게는 만족도 설문이 뜨지 않습니다.
+  */
+  it('닫았다가 같은 말로 다시 찾으면 서버에 새로 묻는다', async () => {
+    api.getRecommendation.mockResolvedValue(result())
+    // 앱의 기본값처럼 1분 동안 새로 묻지 않는 캐시입니다 — 이 조건에서 옛 답이 꺼내졌습니다
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: 1000 * 60 } },
+    })
+    const ui = (query: string | null) => (
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <RecommendModal query={query} onClose={vi.fn()} />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    const { rerender } = render(ui(QUERY))
+    expect(await screen.findByText('오 로즈')).toBeInTheDocument()
+
+    rerender(ui(null))
+    // 닫힌 결과를 버리는 것은 다음 차례(타이머 0)입니다 — 사람이 다시 적는 사이에는 늘 지나갑니다
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+
+    rerender(ui(QUERY))
+    await waitFor(() => expect(api.getRecommendation).toHaveBeenCalledTimes(2))
   })
 
   // 배경을 막는 것은 잘못 누르는 것을 막으려는 것이지 가두려는 것이 아닙니다

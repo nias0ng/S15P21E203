@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 
 import { isApiError } from '@/shared/api/http'
 import { useLocale } from '@/shared/store/localeStore'
+import { CARD_GRID } from '@/shared/ui/cardGrid'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Modal } from '@/shared/ui/Modal'
 import { Skeleton } from '@/shared/ui/Skeleton'
@@ -40,21 +41,20 @@ export function RecommendModal({ query, onClose }: Props) {
       */
       closeOnBackdrop={false}
       /*
-        판은 내용에 맞춰 섭니다 — 높이를 못 박으면 접혔을 때 아래가 넓게 빕니다.
-        **카드를 펼쳐도 판이 안 자라는 일은 `RecommendResultList` 가 맡습니다** — 목록이
-        다 접힌 높이를 지키고 넘치는 만큼 제 안에서 굴러갑니다. 그래서 여기 상한은 판이
-        자라는 것을 막는 장치가 아니라, 아래의 낮은 화면 대비입니다.
+        가로로 넓은 판입니다 — 향수 목록과 같은 카드 다섯 장이 한 줄에 섭니다
+        (`RecommendResultList`). 높이는 내용에 맞춰 서고, 상한은 낮은 화면 대비입니다 —
+        1280×800 처럼 낮은 화면에서 상한이 없으면 아래의 추천 이유가 화면 밖으로 잘려
+        **닿을 길이 없습니다.**
 
-        NOTE: 낮은 화면에서만 판이 스스로 굴러갑니다. 1920 에서는 다섯 장이 다 들어가
-        휠이 안 생기고(실측 817px < 955px), 1280×800 처럼 낮은 화면에서는 이 상한이 없으면
-        다섯 번째 카드가 화면 밖으로 잘려 **닿을 길이 없습니다.**
+        NOTE: 1160(=290×4) 과 125(=31.25×4) 는 **1920 기준**입니다 — 둘 다 `--spacing` 을 타
+        좁은 화면에서 같은 비율로 줄어듭니다. 가로의 좁은 창 상한은 `Modal` 의 `max-w` 가
+        잡고, 그 폭에서는 카드 격자(`CARD_GRID`)가 세 장 · 두 장으로 접힙니다.
 
-        NOTE: 560(=140×4) 과 125(=31.25×4) 는 **1920 기준**입니다 — 둘 다 `--spacing` 을 타
-        좁은 화면에서 같은 비율로 줄어듭니다. 위 실측값도 1920 기준이고, 1536 에서는 판과
-        카드가 함께 80% 로 줄어 관계가 그대로 유지됩니다. 가로의 좁은 창 상한은 `Modal` 의
-        `max-w` 가 이미 같은 값으로 잡습니다.
+        판은 향수 · 노트 화면과 같은 반투명 유리이고(`scent-map-glass`), 결과 카드는 그
+        판 위의 한 단 밝은 유리 카드입니다(`PerfumeCard` 의 `data-slot="card"`).
+        위쪽 자리 · 높이 상한 · 재질 · 모서리는 뒤에 뜨는 설문(`NlrFeedbackModal`)과 한 벌입니다.
       */
-      className="scent-map-panel rounded-glass mt-25 mb-auto max-h-[calc(100vh-var(--spacing)*31.25)] w-140 overflow-y-auto"
+      className="scent-map-glass scent-thin-scroll mt-25 mb-auto max-h-[calc(100vh-var(--spacing)*31.25)] w-290 overflow-y-auto rounded-[24px]"
     >
       {/* NOTE: `<dialog>` 는 닫혀도 children 이 DOM 에 남아, 그리지 않아야 족자가 다시 풀립니다 */}
       {query !== null && <RecommendBody query={query} />}
@@ -216,13 +216,16 @@ function RecommendError({ error }: { error: unknown }) {
   )
 }
 
-/** 결과가 3~5개 가변이라 가장 적은 수로 자리를 잡습니다 */
+/**
+ * 결과가 3~5개 가변이라 가장 적은 수로 자리를 잡습니다. 비율은 향수 카드(사진 받침 정사각형
+ * + 이름 두 줄)와 같게 둡니다.
+ */
 function RecommendSkeleton() {
   return (
-    <ul className="space-y-2.5">
-      {[0, 1, 2].map((row) => (
-        <li key={row}>
-          <Skeleton className="h-21.25 w-full" />
+    <ul className={CARD_GRID}>
+      {[0, 1, 2].map((slot) => (
+        <li key={slot}>
+          <Skeleton className="aspect-[7/10] w-full rounded-[18px]" />
         </li>
       ))}
     </ul>
