@@ -13,6 +13,7 @@ const TIER_LABEL: Record<GraphicsTier, string> = {
   high: '높음',
   mid: '보통',
   low: '낮음',
+  min: '최저',
 }
 
 const GRAPHICS_OPTIONS: readonly {
@@ -23,7 +24,8 @@ const GRAPHICS_OPTIONS: readonly {
   { mode: 'auto', label: '자동', hint: '기기에 맞춰 알아서 맞춥니다' },
   { mode: 'high', label: '높음', hint: '가장 선명하게 · 빛 번짐 · 배 반사' },
   { mode: 'mid', label: '보통', hint: '조금 덜 선명하게, 더 부드럽게' },
-  { mode: 'low', label: '낮음', hint: '가장 가볍게 · 배터리를 아낍니다' },
+  { mode: 'low', label: '낮음', hint: '가볍게 · 배터리를 아낍니다' },
+  { mode: 'min', label: '최저', hint: '가장 가볍게 · 초당 30장으로 그립니다' },
 ]
 
 function GearIcon() {
@@ -45,7 +47,7 @@ function GearIcon() {
 }
 
 /**
- * 메인 3D 의 그래픽 설정 (S15P21E203-435) — 헤더의 톱니바퀴. 자동 · 높음 · 보통 · 낮음.
+ * 메인 3D 의 그래픽 설정 (S15P21E203-435) — 헤더의 톱니바퀴. 자동 · 높음 · 보통 · 낮음 · 최저.
  *
  * 처음은 자동입니다. 엔진이 GPU 를 보고 시작 단계를 고르고(내장 그래픽이면 낮음), 끊기면 한 단계씩
  * 내립니다. 여기서 고르면 그 단계에 **고정**되고 엔진은 더 움직이지 않습니다.

@@ -12,7 +12,7 @@ import {
   type SceneQuality,
 } from '@/shared/store/graphicsStore'
 
-const TIERS: readonly GraphicsTier[] = ['high', 'mid', 'low']
+const TIERS: readonly GraphicsTier[] = ['high', 'mid', 'low', 'min']
 const REASONS: readonly QualityReason[] = [
   'start',
   'down',
@@ -76,7 +76,7 @@ export const NOTICE_MESSAGE: Record<QualityNotice, string> = {
 /**
  * 이 품질 정보가 사람에게 알릴 일인가.
  *
- * 자동으로 **낮게** 시작했거나(내장 · 소프트웨어 GPU), 자동으로 내렸거나, 가장 낮은 단계에서도
+ * 자동으로 **낮게** 시작했거나(내장 GPU 는 낮음 · 소프트웨어 GPU 는 최저), 자동으로 내렸거나, 가장 낮은 단계에서도
  * 느릴 때만 알립니다. 올라간 것은 알리지 않습니다 — 화면이 좋아진 것은 보면 압니다.
  *
  * @returns 알릴 것, 없으면 null. 한 번 알린 것을 다시 알릴지는 부르는 쪽이 정합니다
@@ -87,7 +87,7 @@ export function qualityNotice(quality: SceneQuality): QualityNotice | null {
   if (
     quality.reason === 'start' &&
     quality.mode === 'auto' &&
-    quality.tier === 'low' &&
+    (quality.tier === 'low' || quality.tier === 'min') &&
     (quality.gpuClass === 'integrated' || quality.gpuClass === 'software')
   ) {
     return 'startLow'

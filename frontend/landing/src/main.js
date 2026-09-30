@@ -1696,8 +1696,18 @@ let boundWarnT = -1e9;
 // 복귀 프레임에 너울 위상이 텔레포트한다 — dt 를 클램프해도 t 가 막히지 않으면 소용없다
 let t = 0;
 
-function tick() {
+// ⭐ 그리기 상한 (품질 단계 min 30fps · quality.js TIERS 의 fps). 상한보다 이른 장은 **통째로** 건너뛴다 —
+//   시계(clock.getDelta)도 안 건드리므로 다음 장의 dt 가 건너뛴 시간을 그대로 담는다. 시뮬 게이트(30Hz)와 같은 박자라 물은 안 느려진다.
+//   박자는 상한 간격씩 앞으로 민다 (75Hz 같은 화면에서도 평균이 상한에 맞는다). 한 간격 넘게 밀렸으면(탭 복귀 · 긴 멈춤) 지금으로 다시 잡는다
+let _capAt = 0;
+function tick(ts) {
   raf = requestAnimationFrame(tick);
+  const cap = quality.bundle().fps;
+  if (cap) {
+    const now = ts === undefined ? performance.now() : ts, iv = 1000 / cap;
+    if (now - _capAt < iv - 2) return;   // 2ms 는 rAF 시각의 흔들림 몫
+    _capAt = now - _capAt > 2 * iv ? now : _capAt + iv;
+  }
   quality.frameBegin();   // GPU 시간 재기 시작 (auto 일 때만 · 틱 끝의 frameEnd 와 짝)
   const dt = Math.min(0.05, clock.getDelta());
   t += dt;
