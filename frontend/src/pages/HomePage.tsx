@@ -67,7 +67,7 @@ import { Toast } from '@/shared/ui/Toast'
  * 모달도 모릅니다.
  *
  *   자연어 → A06 추천 모달 (`RecommendModal`). 전에는 `/recommend?q=` 라는 별도 화면이었습니다
- *   이름   → 지도 향수 200개에서 찾기 (`MapSearchModal`) · 고르면 향수 검색(A09)으로
+ *   이름   → 지도 향수 200개에서 찾기 (`MapSearchModal`) · 고르면 향수 상세로, 없으면 13만 개 검색(A09)으로
  *
  * 향해 일지(MAP-24)는 다른 화면의 데이터와 맞추기 쉽도록 엔진이 아니라 앱이 3D 위에 얹습니다.
  *
@@ -478,11 +478,24 @@ export default function HomePage() {
         onSelect={(perfume) => {
           setMapKeyword(null)
           /*
-            지도 목록에는 DB 향수 번호가 없어(fragrantica_id 뿐) 상세로 바로 못 갑니다 —
-            이름으로 향수 검색(A09)에 보냅니다. 엔진 카드의 [자세히 보기]가 번호 없는
-            향수를 보내는 길과 **같은 곳**입니다(위 onOpenDetail).
+            지도 목록에는 DB 향수 번호가 없어(fragrantica_id 뿐) 엔진 카드의 [자세히 보기]처럼
+            좌표 색인으로 번호를 찾습니다(위 onOpenDetail). 색인이 아직 안 왔으면 예전처럼
+            이름으로 향수 검색(A09)에 보냅니다 — 같은 이름 목록을 한 번 더 고르게 하던 길입니다.
+            ⚠️ 향해 일지에는 안 남깁니다. 일지는 지도 카드의 [자세히 보기]만 적습니다.
           */
-          navigate(toPerfumeSearch(perfume.name))
+          const perfumeId = perfumeIndex?.at(perfume.mx, perfume.my) ?? null
+          navigate(
+            perfumeId === null
+              ? toPerfumeSearch(perfume.name)
+              : toPerfumeDetail(perfumeId),
+            perfumeId === null
+              ? undefined
+              : { state: perfumeViewState('SEARCH') },
+          )
+        }}
+        onSearchAll={(keyword) => {
+          setMapKeyword(null)
+          navigate(toPerfumeSearch(keyword))
         }}
       />
 
