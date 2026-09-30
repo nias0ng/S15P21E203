@@ -189,6 +189,9 @@ varying vec4 vProj;
 // ⚠ 삼각형 한 변이 0.215 인데 포락선의 최단 파장이 10.5 라, 선형 보간 오차가 0.1% 아래다 —
 //   프래그먼트에서 sin 을 다시 돌 이유가 없다
 varying float vEnv;
+// ⭐ 마루선 판정 전용 기울기 (2026-09-29, S15P21E203-448) — 너울(lo) 대역 + 시뮬. **잔물결이 없다.**
+//   vGradW 는 잔물결까지 담아 한 파장에 정점이 5.6~7.9개뿐이라, 그걸로 잰 fwidth(dirf) 가 삼각형마다 튀었다 (프래그먼트 dirf 주석)
+varying vec2 vGradS;
 void main(){
   vUv = uv;
   // 높이를 얹기 전의 평평한 월드 위치. 여기서 카메라 거리를 먼저 구해야
@@ -208,9 +211,9 @@ void main(){
   //   전부 어긋난 자리에 선다
   vec4 env = swellEnv(sp);
   vEnv = env.x;
-  // ⚠ 높이와 기울기는 swellHG 로 **한 번에** 받는다 (같은 위상을 두 번 안 돈다)
-  float swH; vec2 swG;
-  swellHG(sp, detail, env, swH, swG);
+  // ⚠ 높이와 기울기는 swellHGS 로 **한 번에** 받는다 (같은 위상을 두 번 안 돈다) — 너울만의 기울기 swGS 도 같은 호출에서 나온다
+  float swH; vec2 swG, swGS;
+  swellHGS(sp, detail, env, swH, swG, swGS);
   wp.y += texture2D(uH, uv).x * uHScale + swH;
   // 시뮬 기울기. gr.y 의 부호를 뒤집는 이유는 grid.js 와 같다 (uv.y 가 z 와 반대 방향)
   vec2 gr = vec2(
@@ -218,7 +221,9 @@ void main(){
     texture2D(uH, uv + vec2(0.0, uTexel.y)).x - texture2D(uH, uv - vec2(0.0, uTexel.y)).x
   ) / (2.0 * uCell);
   vGradW = vec2(gr.x, -gr.y) * uHScale + swG;
-  vMat = sp;                            // 횡변위 **전** 좌표를 그대로 넘긴다 (거품이 쓴다)
+  // ⚠ 시뮬 항은 남긴다 — 선체가 밀어낸 물결의 마루선도 이 판정을 탄다 (항적 가장자리)
+  vGradS = vec2(gr.x, -gr.y) * uHScale + swGS;
+  vMat = sp;                           // 횡변위 **전** 좌표를 그대로 넘긴다 (거품이 쓴다)
   wp.xz += swellD(sp, detail, env);     // 그리드와 같은 변위 — 안 맞추면 마스크가 어긋난다
   vW = wp.xyz;
   gl_Position = projectionMatrix * viewMatrix * wp;
@@ -316,6 +321,7 @@ uniform float uSparkFace, uSparkFaceW, uSparkFaceB, uSparkDrift;
 uniform float uSparkClump, uSparkLo, uSparkHi, uSparkCell, uSparkJit, uSparkShine, uSparkDens, uSparkCull;
 uniform float uFoamWarp, uFoamRough, uFoamStretch, uFoamFine, uFoamFineAmt, uFoamAA;
 uniform float uCrestFace, uCrestBias;
+uniform float uCrestEps;   // dirf 분모의 바닥 (params.crestEps) — 기울기 0 인 점의 꼭지점을 푼다
 uniform float uLineAmt, uLineW, uLineHalo, uLineH0, uLineH1;
 uniform float uLineFoam, uLineFoamHi;
 uniform float uSeamAmt, uSeamW, uSeamH0, uSeamH1;
@@ -333,6 +339,7 @@ varying vec2 vUv; varying vec3 vW; varying vec2 vGradW; varying float vDetail;
 varying vec2 vMat;
 varying vec4 vProj;
 varying float vEnv;          // 군 포락선의 너울 배율 (정점에서 보간)
+varying vec2 vGradS;         // 마루선 판정 전용 기울기 — 너울 + 시뮬, 잔물결 없음 (정점 셰이더 주석 · S15P21E203-448)
 
 // 격자점 하나당 고정 난수 2개 (-0.5 ~ 0.5). 반짝임 노이즈의 재료다
 vec2 hash2(vec2 c){
@@ -1005,8 +1012,21 @@ void main(){
   // 너울 진행 방향으로 투영한 기울기의 **방향**. −1 = 내려가는 면, +1 = 올라가는 면.
   // 0 을 지나는 자리가 능선(또는 골)이다.
   // ⚠ 정규화 **전** 값을 따로 남긴다 — 아래 거품의 앞뒤 창이 이걸 쓴다 (비용 0, 같은 dot).
-  float sdir = dot(vGradW, uSwellDir);
-  float dirf = slope > 1e-4 ? sdir / slope : 0.0;
+  // ⭐⭐ **너울만의 기울기(vGradS)로 잰다** (2026-09-29, S15P21E203-448). 예전에는 잔물결까지 든 vGradW 였다.
+  //   띠 폭은 pw 의 배수다 (무리 135배 · 이음매 21.6배 · 발광 162배). 그런데 기울기는 정점에서만 계산되고
+  //   삼각형 안에서 선형 보간되므로 fwidth(dirf) 가 **삼각형마다 거의 상수이고 모서리에서 뛴다.**
+  //   잔물결(λ 1.2~1.7 · 한 파장에 정점 5.6~7.9개)은 마루 근처에서 기울기 방향을 약 30도씩 흔들어
+  //   그 뜀이 커졌다 — 띠 끝이 삼각형 모서리에 붙어 피라미드 · 쐐기 · 빗살 · 고리가 섰다.
+  //   멈춘 프레임 실험 : dirf 값만 픽셀별 → 그대로 깨짐 · pw 만 픽셀별 → 깨끗 (원인은 폭) · 잔물결 0 → 깨끗 ·
+  //   이 판정만 너울 기울기 → 깨끗. 잔물결은 모양 · 음영(slope · lit) · 반짝임에 그대로 남는다
+  // ⚠ 거품 앞뒤 창(fsig) · 물 오르는 속도(hrise) · 반짝임 면(faceS) · 거품 띠(haloS)도 이 값을 따라간다 —
+  //   모두 '능선이 어디냐' 를 마루선과 **같은 식**으로 봐야 하는 층이다 (불변식 13-2)
+  float slopeS = length(vGradS);
+  float sdir = dot(vGradS, uSwellDir);
+  // ⭐ 분모에 바닥(uCrestEps)을 둔다 (S15P21E203-448) — 방향코사인은 기울기 0 인 점에서 정의되지 않아 두 마루가 만나는 자리에
+  //   선 · 앞뒤 색이 한 점으로 모여 뾰족한 **꼭지점**이 섰다 (params.crestEps 주석). 보통의 마루(기울기 ≫ ε)는 그대로다
+  // ⚠ uCrestEps 0 이면 예전 식 그대로 (0 기울기 가드 포함)
+  float dirf = (uCrestEps > 0.0 || slopeS > 1e-4) ? sdir / sqrt(slopeS * slopeS + uCrestEps * uCrestEps) : 0.0;
   float ad = abs(dirf);
   float pw = max(fwidth(dirf), 1e-5);   // ad / pw 가 곧 '능선에서 몇 픽셀인가' 다
   // 화면 한 픽셀이 재질 좌표에서 몇 인가. 거품 무늬의 안티에일리어싱이 이 값을 쓴다.
@@ -1873,7 +1893,8 @@ void main(){
   if (uDebug > 0) {
     vec3 dc = vec3(0.0);
     float fmD = smoothstep(uFoamLo, uFoamHi2, texture2D(uH, vUv).w);
-    float dirD = slope > 1e-4 ? dot(vGradW, uSwellDir) / slope : 0.0;
+    // ⚠ 본 경로의 dirf 그대로다 (너울 기울기 · 분모 바닥) — 보기가 실제 마루선을 재현해야 한다 (S15P21E203-448)
+    float dirD = dirf;
     if (uDebug == 1) {            // 노멀 : 면이 어디를 향하나
       vec3 Nn = normalize(vec3(-vGradW.x * 6.0, 1.0, -vGradW.y * 6.0));
       dc = Nn * 0.5 + 0.5;
@@ -2302,6 +2323,7 @@ export function createWater(scene, tex, opts = {}) {
     uFoamHi2: { value: P.foamHi },
     uCrestFace: { value: P.crestFace },
     uCrestBias: { value: P.crestBias },
+    uCrestEps: { value: P.crestEps === undefined ? 0 : P.crestEps },
     uApexAmt: { value: P.apexAmount },
     uApexH0: { value: P.apexH0 },
     uApexH1: { value: P.apexH1 },
@@ -2559,6 +2581,7 @@ export function createWater(scene, tex, opts = {}) {
       uni.uFoamHi2.value = P.foamHi;
       uni.uCrestFace.value = P.crestFace;
       uni.uCrestBias.value = P.crestBias;
+      uni.uCrestEps.value = P.crestEps === undefined ? 0 : P.crestEps;
       uni.uApexAmt.value = P.apexAmount;
       uni.uApexH0.value = P.apexH0;
       uni.uApexH1.value = P.apexH1;
