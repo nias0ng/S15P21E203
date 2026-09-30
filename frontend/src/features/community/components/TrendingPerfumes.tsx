@@ -3,7 +3,9 @@ import { Link } from 'react-router'
 
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { toPerfumeDetail } from '@/shared/config/routes'
+import { localizedName } from '@/shared/i18n/locale'
 import { cn } from '@/shared/lib/cn'
+import { useLocale } from '@/shared/store/localeStore'
 import { GLASS_PANEL_ASIDE } from '@/shared/ui/panel'
 
 import type { TrendingPerfumesResponse } from '../types'
@@ -15,6 +17,7 @@ type Props = {
 
 export function TrendingPerfumes({ data, className }: Props) {
   const { t } = useTranslation('community')
+  const locale = useLocale()
 
   if (!data || data.perfumes.length === 0) return null
 
@@ -40,7 +43,7 @@ export function TrendingPerfumes({ data, className }: Props) {
                 {rank + 1}
               </span>
               <span className="text-ink text-body min-w-0 flex-1 truncate">
-                {item.name}
+                {localizedName(locale, item.name, item.nameKo)}
               </span>
               <span className="text-ink-muted text-caption shrink-0">
                 {item.mentionCount}

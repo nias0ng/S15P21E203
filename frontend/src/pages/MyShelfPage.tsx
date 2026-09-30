@@ -248,8 +248,8 @@ export default function MyShelfPage() {
   const recipient = useAuthStore((state) => state.user?.nickname ?? null)
 
   /*
-   * 편지 속 향수의 브랜드 · 영문 이름 · 향 특성. 추천 응답에는 이름 · 사진 · 근거 한 문장뿐이라 향수
-   * 상세 · 향조로 채웁니다. 편지가 알려 주는 번호(onShow)로 부르고, 캐시가 향수 상세 화면과 같은 키라
+   * 편지 속 향수의 브랜드 · 향 특성. 추천 응답에는 이름 · 사진 · 근거뿐이라 향수 상세 · 향조로
+   * 채웁니다. 편지가 알려 주는 번호(onShow)로 부르고, 캐시가 향수 상세 화면과 같은 키라
    * 편지에서 "자세히 보기" 로 넘어가면 다시 부르지 않습니다.
    */
   const [letterPerfumeId, setLetterPerfumeId] = useState<number | null>(null)
@@ -266,8 +266,6 @@ export default function MyShelfPage() {
       ? {
           perfumeId: letterPerfumeId,
           brand: letterDetail.data.brand?.name ?? null,
-          // 한국어 이름이 있을 때만 영문을 작게 답니다 — 편지의 큰 이름이 이미 영어면 되풀이입니다
-          nameEn: letterDetail.data.nameKo ? letterDetail.data.name : null,
           // 두드러진 순서(rank 가 작을수록)로, 3D 향 지도 카드와 같은 표로 한국어로 옮겨 적습니다
           accords: [...(letterNotes.data?.accords ?? [])]
             .sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity))

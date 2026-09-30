@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { toPerfumeDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
+import { useLocale } from '@/shared/store/localeStore'
 import { FOCUS_RING } from '@/shared/ui/focusRing'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
@@ -86,6 +87,7 @@ function useCollapsedListHeight(itemCount: number) {
  */
 export function RecommendResultList({ perfumes, ...context }: Props) {
   const { t } = useTranslation('recommend')
+  const locale = useLocale()
   /* 처음에는 다 접혀 있습니다 — 그 높이가 목록을 잠그는 기준이고, 한 장만 열어 두면 그 카드가
      기준이 되어 목록이 처음부터 굴러갈 자리를 안고 섭니다 */
   const [expandedId, setExpandedId] = useState<number | null>(null)
@@ -111,6 +113,15 @@ export function RecommendResultList({ perfumes, ...context }: Props) {
     >
       {perfumes.map((perfume, index) => {
         const expanded = expandedId === perfume.perfumeId
+        // 영어 화면은 원래 이름 · 브랜드를 씁니다. 그 칸을 모르는 서버면 한국어 쪽으로 돌아갑니다
+        const name =
+          locale === 'en'
+            ? (perfume.originalName ?? perfume.name)
+            : perfume.name
+        const brand =
+          locale === 'en'
+            ? (perfume.originalBrand ?? perfume.brand)
+            : perfume.brand
 
         return (
           <li key={perfume.perfumeId} data-expanded={expanded}>
@@ -150,12 +161,12 @@ export function RecommendResultList({ perfumes, ...context }: Props) {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="text-ink text-body block truncate font-bold">
-                    {perfume.name}
+                    {name}
                   </span>
                   {/* 브랜드가 없는 향수가 있습니다 — 빈 줄을 남기지 않고 이름만 보입니다 */}
-                  {perfume.brand && (
+                  {brand && (
                     <span className="text-ink-muted text-caption mt-1.25 block truncate">
-                      {perfume.brand}
+                      {brand}
                     </span>
                   )}
                 </span>

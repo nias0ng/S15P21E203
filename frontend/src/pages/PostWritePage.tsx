@@ -21,9 +21,11 @@ import {
 } from '@/features/community'
 import { perfumePickQuery } from '@/features/perfume'
 import { ROUTES, toPostDetail, toPostEdit } from '@/shared/config/routes'
+import { localizedName } from '@/shared/i18n/locale'
 import { cn } from '@/shared/lib/cn'
 import { parseId } from '@/shared/lib/parseId'
 import { useIsLoggedIn } from '@/shared/store/authStore'
+import { useLocale } from '@/shared/store/localeStore'
 import { Button } from '@/shared/ui/Button'
 import { ChipToggle } from '@/shared/ui/ChipToggle'
 import { EmptyState } from '@/shared/ui/EmptyState'
@@ -36,6 +38,7 @@ import { Textarea } from '@/shared/ui/Textarea'
 
 export default function PostWritePage() {
   const { t } = useTranslation('community')
+  const locale = useLocale()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const isLoggedIn = useIsLoggedIn()
@@ -104,7 +107,9 @@ export default function PostWritePage() {
       post.data.relatedPerfumes.map((perfume) => ({
         perfumeId: perfume.perfumeId,
         name: perfume.name,
+        nameKo: perfume.nameKo,
         brand: perfume.brand,
+        brandKo: perfume.brandKo,
       })),
     )
     setImageUrls(post.data.imageUrls)
@@ -296,12 +301,12 @@ export default function PostWritePage() {
                 key={perfume.perfumeId}
                 className="border-line-soft bg-surface-sunken text-ink text-caption rounded-card flex items-center gap-2.5 border px-2.5 py-2.5"
               >
-                {perfume.name}
+                {localizedName(locale, perfume.name, perfume.nameKo)}
                 {!fromCollection && (
                   <button
                     type="button"
                     aria-label={t('postWrite.removePerfume', {
-                      name: perfume.name,
+                      name: localizedName(locale, perfume.name, perfume.nameKo),
                     })}
                     onClick={() =>
                       setPerfumes((prev) =>

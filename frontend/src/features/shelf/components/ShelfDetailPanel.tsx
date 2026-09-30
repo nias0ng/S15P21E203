@@ -305,8 +305,8 @@ export function ShelfDetailPanel({
  * 향조 — 상세 응답의 실제 노트를 탑 · 미들 · 베이스 줄로 묶어 적습니다(shared/lib 의 groupNoteStages).
  *
  * 줄마다 노트 셋까지 적고 넘치면 "외 N" 입니다. 줄 머리의 단계 이름은 자간 넓힌 대문자이고, 피라미드가
- * 없는 향수(flat)는 이름표 없이 노트만 한 줄입니다. 노트 이름은 받은 그대로(영문)입니다 — 향수
- * 상세의 향조 칸과 같은 말입니다.
+ * 없는 향수(flat)는 이름표 없이 노트만 한 줄입니다. 노트 이름은 화면 언어로 고릅니다(한국어 이름이
+ * 없으면 원래 이름) — 향수 상세의 향조 칸과 같은 말입니다.
  *
  * 상세가 오는 중이면(pending) 탑 · 미들 · 베이스 세 줄을 빈 줄로 세워 둡니다. 대개 세 줄로 오므로
  * 도착해도 아래 단추 · 메모가 움직이지 않습니다.
@@ -319,6 +319,7 @@ function ScentNotes({
   pending: boolean
 }) {
   const { t } = useTranslation('shelf')
+  const locale = useLocale()
   const rows = groupNoteStages(item.scentNotes)
 
   return (
@@ -342,7 +343,9 @@ function ScentNotes({
       ) : (
         <dl className="shelf-sheet-notes">
           {rows.map(({ stage, notes }) => {
-            const names = notes.map((note) => note.name)
+            const names = notes.map((note) =>
+              localizedName(locale, note.name, note.nameKo),
+            )
             const shown = names.slice(0, NOTES_PER_ROW)
             const more = names.length - shown.length
             const flat = stage === NOTE_FLAT

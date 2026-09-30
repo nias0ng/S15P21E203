@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { detectLocale, isLocale, localizedName } from './locale'
+import { detectLocale, isLocale, localizedBrand, localizedName } from './locale'
 
 describe('detectLocale', () => {
   it('가장 앞에 둔 언어가 한국어면 한국어로 시작한다', () => {
@@ -41,5 +41,19 @@ describe('localizedName', () => {
     )
     expect(localizedName('ko', 'Bleu de Chanel', null)).toBe('Bleu de Chanel')
     expect(localizedName('ko', 'Bleu de Chanel', '  ')).toBe('Bleu de Chanel')
+  })
+})
+
+describe('localizedBrand', () => {
+  it('원래 이름이 있으면 localizedName 과 같다', () => {
+    expect(localizedBrand('en', 'Chanel', '샤넬')).toBe('Chanel')
+    expect(localizedBrand('ko', 'Chanel', '샤넬')).toBe('샤넬')
+    expect(localizedBrand('ko', 'Chanel', undefined)).toBe('Chanel')
+  })
+
+  it('원래 이름이 비면 한국어 이름을, 둘 다 비면 null 이다', () => {
+    expect(localizedBrand('en', null, '샤넬')).toBe('샤넬')
+    expect(localizedBrand('ko', null, null)).toBeNull()
+    expect(localizedBrand('en', undefined, ' ')).toBeNull()
   })
 })

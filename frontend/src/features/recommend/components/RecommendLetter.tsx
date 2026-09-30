@@ -14,31 +14,27 @@ import { Link } from 'react-router'
 
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
+import { localizedName } from '@/shared/i18n/locale'
 import { cn } from '@/shared/lib/cn'
 import { prefersReducedMotion } from '@/shared/lib/prefersReducedMotion'
 import { useLocale } from '@/shared/store/localeStore'
 import { LinkButton } from '@/shared/ui/LinkButton'
 
 import { recordPersonalExposure } from '../api'
-import {
-  readPersonalReason,
-  type PersonalReason,
-  type PersonalReasonSource,
-} from '../personalReason'
+import { readPersonalReason, type PersonalReason } from '../personalReason'
 import type {
+  PersonalReasonSource,
   PersonalRecommendation,
   PersonalRecommendationResult,
 } from '../types'
 
 /**
- * 편지에 곁들이는 향수 정보. 추천 응답에는 이름 · 사진 · 근거 한 문장뿐이라, 화면이 향수 상세 ·
- * 향조로 채워 넘깁니다(추천 도메인은 향수 도메인을 모릅니다).
+ * 편지에 곁들이는 향수 정보. 추천 응답에는 이름 · 사진 · 근거뿐이라, 화면이 향수 상세 · 향조로 채워
+ * 넘깁니다(추천 도메인은 향수 도메인을 모릅니다).
  */
 export type LetterFacts = {
   perfumeId: number
   brand: string | null
-  /** 영문 이름. 한국어 이름 위에 작게 답니다 — 이름이 영어뿐이면 null 로 넘기세요 */
-  nameEn: string | null
   /** 두드러진 순서의 향 특성(한국어). 앞의 몇 개만 칩으로 적습니다 */
   accords: string[]
 }
@@ -76,7 +72,7 @@ const ACCORD_CHIPS = 4
 const HEADLINE = {
   FIT: 'fit',
   RECENT: 'recent',
-  TASTE: 'taste',
+  TASTE_TEST: 'taste',
   unknown: 'unknown',
 } as const satisfies Record<PersonalReasonSource | 'unknown', string>
 
@@ -420,7 +416,7 @@ export function RecommendLetter({
   if (!letter && !invitation) return null
 
   const reason: PersonalReason | null = letter
-    ? readPersonalReason(letter.reason)
+    ? readPersonalReason(letter)
     : null
   const shownFacts =
     facts !== undefined && letter && facts.perfumeId === letter.perfumeId
@@ -428,11 +424,16 @@ export function RecommendLetter({
       : null
   const detailHref = letter ? toPerfumeDetail(letter.perfumeId) : null
   /*
-    영어 화면은 원래(영어) 이름을 이름 자리에 씁니다 — 그때 위에 작게 다는 영문 이름은 같은 말이라
-    빼냅니다. 상세를 받기 전에는 추천 응답의 이름(한국어 이름이 있으면 한국어)뿐입니다.
+    영어 화면은 원래(영어) 이름을 이름 자리에 씁니다. 한국어 화면은 한국어 이름 위에 원래 이름을 작게
+    답니다 — 한국어 이름이 없어 큰 이름이 이미 원래 이름이면 되풀이라 뺍니다.
   */
-  const englishName = locale === 'en' ? (shownFacts?.nameEn ?? null) : null
-  const smallName = locale === 'en' ? null : (shownFacts?.nameEn ?? null)
+  const originalName = letter ? (letter.originalName ?? letter.name) : null
+  const shownName =
+    letter && originalName !== null
+      ? localizedName(locale, originalName, letter.nameKo)
+      : null
+  const smallName =
+    locale === 'ko' && shownName !== originalName ? originalName : null
 
   /**
    * 편지 글 한 벌. 진짜 편지와, 한 칸씩 펼치는 동안 내려오는 두 칸의 사본이 같은 글을 그립니다
@@ -509,9 +510,7 @@ export function RecommendLetter({
                     {smallName}
                   </span>
                 )}
-                <span className="rec-name font-serif">
-                  {englishName ?? letter.name}
-                </span>
+                <span className="rec-name font-serif">{shownName}</span>
               </span>
             </Link>
 

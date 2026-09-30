@@ -40,10 +40,17 @@ export function boardTitle(
     .join(' ')
 }
 
+/**
+ * 글 · 후기에 걸린 향수. 서버가 준 것은 `name` · `brand` 가 원래(영어) 이름이고 한국어 이름이 따로
+ * 옵니다(없으면 null) — 화면은 `localizedName` · `localizedBrand` 로 고릅니다. 글쓰기에서 고른 후보는
+ * 한국어 이름을 `name` 에 담아 오고 한국어 칸이 비어 있습니다.
+ */
 export interface LinkedPerfume {
   perfumeId: number
   name: string
+  nameKo?: string | null
   brand: string | null
+  brandKo?: string | null
   thumbnailUrl?: string | null
 }
 
@@ -179,8 +186,11 @@ export function reviewToBoardItem(review: ReviewBoardItem): BoardItem {
 
 interface TrendingPerfume {
   perfumeId: number
+  /** 원래(영어) 이름 · 브랜드. 한국어 이름은 따로 옵니다(없으면 null) */
   name: string
+  nameKo?: string | null
   brand: string | null
+  brandKo?: string | null
   thumbnailUrl: string | null
   mentionCount: number
 }

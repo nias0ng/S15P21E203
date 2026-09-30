@@ -27,7 +27,7 @@ import {
 import { apiErrorMessage, isApiError } from '@/shared/api/http'
 import { ROUTES, toReviewDetail } from '@/shared/config/routes'
 import { i18n } from '@/shared/i18n'
-import { localizedName } from '@/shared/i18n/locale'
+import { localizedBrand, localizedName } from '@/shared/i18n/locale'
 import { cn } from '@/shared/lib/cn'
 import { parseId } from '@/shared/lib/parseId'
 import { useIsLoggedIn } from '@/shared/store/authStore'
@@ -113,7 +113,18 @@ export default function ReviewWritePage() {
 
   const targetPerfume = isEdit
     ? loaded
-      ? { name: loaded.perfume.name, brand: loaded.perfume.brand }
+      ? {
+          name: localizedName(
+            locale,
+            loaded.perfume.name,
+            loaded.perfume.nameKo,
+          ),
+          brand: localizedBrand(
+            locale,
+            loaded.perfume.brand,
+            loaded.perfume.brandKo,
+          ),
+        }
       : null
     : pickedPerfume
       ? { name: pickedPerfume.name, brand: pickedPerfume.brand }

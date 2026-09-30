@@ -124,7 +124,10 @@ export const SEASONS = [
 /** `noteType` 은 값 제약이 없어 그대로 내려옵니다 — **묶는 일은 화면이 합니다** */
 export interface PerfumeNote {
   noteId: number
+  /** 원래(영어) 이름 */
   name: string
+  /** 한국어 이름. 없으면 null — 한국어 화면도 원래 이름을 씁니다 */
+  nameKo?: string | null
   noteType: string | null
 }
 
@@ -202,7 +205,14 @@ export interface ReviewDetail {
   profileImageUrl: string | null
   title: string
   content: string
-  perfume: { perfumeId: number; name: string; brand: string | null }
+  /** 이름 · 브랜드는 원래(영어) 이름이고, 한국어 이름은 따로 옵니다(없으면 null) */
+  perfume: {
+    perfumeId: number
+    name: string
+    nameKo?: string | null
+    brand: string | null
+    brandKo?: string | null
+  }
   seasons: ReviewSeason[]
   likeCount: number
   /** **이번 조회를 포함한** 수입니다 */

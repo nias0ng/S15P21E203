@@ -160,7 +160,7 @@ describe('VoyageLog', () => {
             family: 'FLORAL',
           },
           // 지도에서 못 찾은 향수 — API 의 DB 원명 그대로입니다
-          { perfumeId: 12, name: 'Unknown Perfume' },
+          { perfumeId: 12, name: 'Unknown Perfume', nameKo: '모르는 향수' },
         ],
       },
     ])
@@ -178,6 +178,26 @@ describe('VoyageLog', () => {
     expect(
       screen.getByRole('link', { name: 'Unknown Perfume' }),
     ).toBeInTheDocument()
+  })
+
+  it('지도에서 못 찾은 향수는 한국어 화면에서 API 의 한국어 이름을 쓴다', () => {
+    renderLog([
+      {
+        entryId: 9,
+        enteredAt: at(9, 23, 9),
+        scentRegionId: 1,
+        region: 'FLORAL',
+        visited: [
+          // 한국어 이름이 없으면 원명입니다
+          { perfumeId: 13, name: 'Nameless', nameKo: null },
+          { perfumeId: 12, name: 'Unknown Perfume', nameKo: '모르는 향수' },
+        ],
+      },
+    ])
+
+    expect(screen.getAllByRole('link').map((link) => link.textContent)).toEqual(
+      ['모르는 향수', 'Nameless'],
+    )
   })
 
   it('들른 향수가 없는 날은 향수 칸을 두지 않는다', () => {

@@ -1,9 +1,11 @@
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
+import { localizedBrand, localizedName } from '@/shared/i18n/locale'
 import { authorName } from '@/shared/lib/authorName'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
+import { useLocale } from '@/shared/store/localeStore'
 import { Badge } from '@/shared/ui/Badge'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Skeleton } from '@/shared/ui/Skeleton'
@@ -27,6 +29,7 @@ export function PostList({
   onToggleLike,
 }: Props) {
   const { t } = useTranslation('community')
+  const locale = useLocale()
 
   if (isPending) {
     return (
@@ -97,11 +100,15 @@ export function PostList({
           {item.perfume && (
             <p className="border-line rounded-card inline-flex w-fit max-w-full items-baseline gap-2.5 border px-2.5 py-1.25">
               <span className="text-ink text-body font-medium">
-                {item.perfume.name}
+                {localizedName(locale, item.perfume.name, item.perfume.nameKo)}
               </span>
               {item.perfume.brand && (
                 <span className="text-ink-muted text-caption">
-                  {item.perfume.brand}
+                  {localizedBrand(
+                    locale,
+                    item.perfume.brand,
+                    item.perfume.brandKo,
+                  )}
                 </span>
               )}
             </p>

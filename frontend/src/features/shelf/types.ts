@@ -87,7 +87,10 @@ export interface ShelfItemDetail extends ShelfItem {
 /** 향조 한 건. 향수 도메인의 `PerfumeNote` 와 같은 모양이지만 도메인끼리 타입을 빌리지 않습니다 */
 export interface ShelfScentNote {
   noteId: number
+  /** 원래(영어) 이름 */
   name: string
+  /** 한국어 이름. 없으면 null — 한국어 화면도 원래 이름을 씁니다 */
+  nameKo?: string | null
   noteType: string | null
 }
 

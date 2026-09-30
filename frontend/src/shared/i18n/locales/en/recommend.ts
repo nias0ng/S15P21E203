@@ -3,10 +3,11 @@ import type { recommend as ko } from '../ko/recommend'
 
 export const recommend = {
   personalReason: {
-    fit: 'Shares the {{keyword}} accord with perfumes you rated highly.',
+    fit: 'Its {{keyword}} accord is close to the perfumes you rated highly.',
     recent:
-      'Has the {{keyword}} accord you often met in perfumes you viewed lately.',
-    taste: 'Matches the {{keyword}} family you picked in the Taste Test.',
+      "It carries the {{keyword}} accord you've often met in perfumes you viewed recently.",
+    taste:
+      'It suits the {{keyword}} scent family you picked in the Taste Test.',
   },
   letter: {
     headline: {

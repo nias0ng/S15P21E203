@@ -495,11 +495,12 @@ function PerfumeItems({ perfumes }: { perfumes: VoyageLogDay['perfumes'] }) {
       {perfumes.map((perfume) => {
         /*
          * 영어 화면은 원명을 씁니다. 원명은 줄인 것이 없어 이름과 전체 이름이 같습니다.
-         * 지도에서 못 찾은 향수는 원명이 비어 있고, 그 이름이 API 의 DB 원명(대개 영문)이라 그대로 둡니다.
+         * 지도에서 못 찾은 향수는 원명이 비어 있고, 그 이름이 API 의 DB 원명(대개 영문)이라 API 의 한국어
+         * 이름과 짝지어 고릅니다.
          */
         const name = perfume.nameEn
           ? localizedName(locale, perfume.nameEn, perfume.name)
-          : perfume.name
+          : localizedName(locale, perfume.name, perfume.nameKo)
         const fullName = perfume.nameEn
           ? localizedName(locale, perfume.nameEn, perfume.fullName)
           : perfume.fullName

@@ -65,6 +65,46 @@ describe('PostList', () => {
     expect(screen.getByText('여름에 뿌릴 시트러스')).toBeInTheDocument()
   })
 
+  describe('걸린 향수 — 서버가 원래 이름과 한국어 이름을 짝으로 준다', () => {
+    const perfume = {
+      perfumeId: 7,
+      name: 'Bleu de Chanel',
+      nameKo: '블루 드 샤넬',
+      brand: 'Chanel',
+      brandKo: '샤넬',
+    }
+    const withPerfume: BoardItem = { ...item, perfume }
+
+    it('한국어 화면은 한국어 이름 · 브랜드를 쓴다', () => {
+      renderList([withPerfume])
+
+      expect(screen.getByText('블루 드 샤넬')).toBeInTheDocument()
+      expect(screen.getByText('샤넬')).toBeInTheDocument()
+      expect(screen.queryByText('Bleu de Chanel')).not.toBeInTheDocument()
+    })
+
+    it('한국어 이름이 없으면 한국어 화면도 원래 이름을 쓴다', () => {
+      renderList([
+        {
+          ...withPerfume,
+          perfume: { ...perfume, nameKo: null, brandKo: null },
+        },
+      ])
+
+      expect(screen.getByText('Bleu de Chanel')).toBeInTheDocument()
+      expect(screen.getByText('Chanel')).toBeInTheDocument()
+    })
+
+    it('영어 화면은 원래 이름 · 브랜드를 쓴다', async () => {
+      await toEnglish()
+      renderList([withPerfume])
+
+      expect(screen.getByText('Bleu de Chanel')).toBeInTheDocument()
+      expect(screen.getByText('Chanel')).toBeInTheDocument()
+      expect(screen.queryByText('블루 드 샤넬')).not.toBeInTheDocument()
+    })
+  })
+
   it('영어 화면의 빈 게시판 안내도 영어다', async () => {
     await toEnglish()
     renderList([])

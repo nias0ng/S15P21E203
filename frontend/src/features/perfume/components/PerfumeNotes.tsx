@@ -1,7 +1,9 @@
 import { useTranslation } from 'react-i18next'
 
+import { localizedName } from '@/shared/i18n/locale'
 import { cn } from '@/shared/lib/cn'
 import { groupNoteStages, NOTE_FLAT, NOTE_OTHER } from '@/shared/lib/noteStages'
+import { useLocale } from '@/shared/store/localeStore'
 import { Badge } from '@/shared/ui/Badge'
 import { GLASS_PANEL } from '@/shared/ui/panel'
 
@@ -27,6 +29,7 @@ type NoteRow = {
 
 export function PerfumeNotes({ notes, isPending = false, className }: Props) {
   const { t } = useTranslation('perfume')
+  const locale = useLocale()
   const rows = toRows(notes, t('notes.other'))
 
   return (
@@ -50,7 +53,7 @@ export function PerfumeNotes({ notes, isPending = false, className }: Props) {
             <div className="flex flex-wrap gap-1.25">
               {row.notes.map((note) => (
                 <Badge key={note.noteId} tone="outline">
-                  {note.name}
+                  {localizedName(locale, note.name, note.nameKo)}
                 </Badge>
               ))}
             </div>

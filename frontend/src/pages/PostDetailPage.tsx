@@ -24,11 +24,13 @@ import {
 } from '@/shared/config/routes'
 import { useLikeToggle } from '@/shared/hooks/useLikeToggle'
 import { useToast } from '@/shared/hooks/useToast'
+import { localizedBrand, localizedName } from '@/shared/i18n/locale'
 import { authorName } from '@/shared/lib/authorName'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
 import { parseId } from '@/shared/lib/parseId'
 import { useIsLoggedIn } from '@/shared/store/authStore'
+import { useLocale } from '@/shared/store/localeStore'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
@@ -44,6 +46,7 @@ const COMMENT_PAGE_SIZE = 20
 
 export default function PostDetailPage() {
   const { t } = useTranslation('community')
+  const locale = useLocale()
   const { postId } = useParams<{ postId: string }>()
   const parsedId = parseId(postId)
   const enabled = parsedId !== null
@@ -254,11 +257,15 @@ export default function PostDetailPage() {
                       )}
                     >
                       <span className="text-ink text-body font-medium">
-                        {perfume.name}
+                        {localizedName(locale, perfume.name, perfume.nameKo)}
                       </span>
                       {perfume.brand && (
                         <span className="text-ink-muted text-caption">
-                          {perfume.brand}
+                          {localizedBrand(
+                            locale,
+                            perfume.brand,
+                            perfume.brandKo,
+                          )}
                         </span>
                       )}
                       <span className="text-ink-muted text-caption ml-auto">

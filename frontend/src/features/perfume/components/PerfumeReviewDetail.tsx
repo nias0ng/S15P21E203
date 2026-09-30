@@ -12,6 +12,7 @@ import {
   toReviewEdit,
 } from '@/shared/config/routes'
 import { useLikeToggle } from '@/shared/hooks/useLikeToggle'
+import { localizedBrand, localizedName } from '@/shared/i18n/locale'
 import { authorName } from '@/shared/lib/authorName'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
@@ -41,10 +42,21 @@ export function PerfumeReviewDetail({ review, onDeleted }: Props) {
   const [deleteOpen, setDeleteOpen] = useState(false)
 
   const perfume = useQuery(perfumeDetailQuery(review.perfume.perfumeId))
-  const brandName = perfume.data?.brand?.name ?? review.perfume.brand
-  // 영어 화면은 원래 이름(제목 줄)만 둡니다
+  const brandName =
+    localizedBrand(locale, review.perfume.brand, review.perfume.brandKo) ??
+    perfume.data?.brand?.name ??
+    null
+  /*
+    이름 줄은 화면 언어의 이름이고, 한국어 화면에서 한국어 이름을 썼으면 원래 이름을 아래에 답니다.
+    한국어 이름을 모르는 서버면 향수 상세의 한국어 이름으로 채웁니다.
+  */
+  const title = localizedName(
+    locale,
+    review.perfume.name,
+    review.perfume.nameKo ?? perfume.data?.nameKo,
+  )
   const sub = [
-    locale === 'en' ? null : perfume.data?.nameKo,
+    title !== review.perfume.name ? review.perfume.name : null,
     perfume.data?.gender ? GENDER_TEXT[perfume.data.gender] : null,
   ]
     .filter((part): part is string => typeof part === 'string')
@@ -189,9 +201,7 @@ export function PerfumeReviewDetail({ review, onDeleted }: Props) {
             {brandName && (
               <p className="text-ink-muted text-caption">{brandName}</p>
             )}
-            <p className="text-ink text-body font-medium">
-              {review.perfume.name}
-            </p>
+            <p className="text-ink text-body font-medium">{title}</p>
             {sub && <p className="text-ink-muted text-caption">{sub}</p>}
           </div>
 

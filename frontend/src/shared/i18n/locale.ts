@@ -34,3 +34,20 @@ export function localizedName(
     ? nameKo
     : name
 }
+
+/**
+ * 브랜드처럼 원래 이름이 비어 있을 수 있는 칸의 `localizedName`. 원래 이름이 없으면 한국어 이름을,
+ * 둘 다 없으면 null 입니다.
+ */
+export function localizedBrand(
+  locale: Locale,
+  brand: string | null | undefined,
+  brandKo: string | null | undefined,
+): string | null {
+  if (brand === null || brand === undefined || brand.trim() === '') {
+    return brandKo !== null && brandKo !== undefined && brandKo.trim() !== ''
+      ? brandKo
+      : null
+  }
+  return localizedName(locale, brand, brandKo)
+}
