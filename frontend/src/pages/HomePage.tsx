@@ -463,7 +463,15 @@ export default function HomePage() {
       />
 
       {/* 검색창의 두 방식이 내놓는 답. 뒤의 3D 는 그대로 돌아갑니다 */}
-      <RecommendModal query={nlQuery} onClose={() => setNlQuery(null)} />
+      <RecommendModal
+        query={nlQuery}
+        onClose={() => setNlQuery(null)}
+        onRequery={setNlQuery}
+        onSearchByName={(keyword) => {
+          setNlQuery(null)
+          navigate(toPerfumeSearch(keyword))
+        }}
+      />
 
       {/*
         결과를 닫으면 뜹니다. 답을 안 하고 상세로 나갔다 돌아와도 여기서 이어받습니다.

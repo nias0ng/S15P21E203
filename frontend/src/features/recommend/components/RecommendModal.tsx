@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
 
 import { isApiError } from '@/shared/api/http'
+import { searchWords } from '@/shared/lib/searchWords'
+import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Modal } from '@/shared/ui/Modal'
 import { Skeleton } from '@/shared/ui/Skeleton'
@@ -16,14 +18,32 @@ type Props = {
   /** 검색한 말. `null` 이면 닫힌 상태입니다 */
   query: string | null
   onClose: () => void
+  /** 예시를 눌러 그 말로 다시 찾습니다. 없으면 예시를 글로만 보여 줍니다 */
+  onRequery?: (query: string) => void
+  /** 향수 이름으로 전체 향수(A09)에서 찾습니다. 없으면 그 단추를 안 둡니다 */
+  onSearchByName?: (keyword: string) => void
 }
+
+/**
+ * 못 알아들었을 때 권하는 말.
+ *
+ * ⚠️ **LLM 없이 사전만으로 결과가 나오는 말만 둡니다** — `ai/tests/test_feedback_guards.py`
+ * 가 같은 두 말을 봅니다. 예전 예시('비누 냄새 나는 향' · '비 온 뒤 흙냄새')는 사전 경로에서
+ * 다시 '못 알아들었다' 로 끝나, 권한 말을 따라 친 사람이 같은 화면을 또 봤습니다.
+ */
+const RETRY_EXAMPLES = ['상큼한 향', '풀향'] as const
 
 /**
  * 자연어 추천 결과 (NLR-01 · NLR-06 · NLR-07). 별도 화면으로 두면 한 줄 적을 때마다 메인의
  * 3D iframe 이 통째로 다시 떠(WebGL 컨텍스트 · 8MB 배 모델) 모달로 둡니다.
  * NOTE: 가운데 정렬이면 족자가 풀릴 때 머리줄이 밀려 올라가 위쪽에 붙입니다(`mt-25 mb-auto`).
  */
-export function RecommendModal({ query, onClose }: Props) {
+export function RecommendModal({
+  query,
+  onClose,
+  onRequery,
+  onSearchByName,
+}: Props) {
   return (
     <Modal
       open={query !== null}
@@ -53,13 +73,29 @@ export function RecommendModal({ query, onClose }: Props) {
       className="scent-map-panel rounded-glass mt-25 mb-auto max-h-[calc(100vh-var(--spacing)*31.25)] w-140 overflow-y-auto"
     >
       {/* NOTE: `<dialog>` 는 닫혀도 children 이 DOM 에 남아, 그리지 않아야 족자가 다시 풀립니다 */}
-      {query !== null && <RecommendBody query={query} />}
+      {query !== null && (
+        <RecommendBody
+          // 예시로 다시 찾으면 말이 바뀝니다 — 새로 마운트해야 족자가 다시 풀립니다
+          key={query}
+          query={query}
+          onRequery={onRequery}
+          onSearchByName={onSearchByName}
+        />
+      )}
     </Modal>
   )
 }
 
 /** 열릴 때마다 새로 마운트됩니다 — 그래야 족자가 매번 처음부터 풀립니다 */
-function RecommendBody({ query }: { query: string }) {
+function RecommendBody({
+  query,
+  onRequery,
+  onSearchByName,
+}: {
+  query: string
+  onRequery?: (query: string) => void
+  onSearchByName?: (keyword: string) => void
+}) {
   const result = useQuery({
     ...recommendationQuery(query),
     enabled: query.trim().length > 0,
@@ -140,27 +176,85 @@ function RecommendBody({ query }: { query: string }) {
                 result.data.pickedWithoutScentCondition
               }
             />
-          ) : (
+          ) : result.data.status === 'NO_CONDITION' ? (
             /*
                 NOTE: 0개인 두 경우를 한 문장으로 묶지 않습니다 — 조건을 못 뽑은 사람에게
                 없는 것은 향수가 아니라 알아들은 조건입니다. 인기 향수로 대신하지도 않습니다.
               */
+            <NoConditionState
+              query={query}
+              onRequery={onRequery}
+              onSearchByName={onSearchByName}
+            />
+          ) : (
             <EmptyState
-              title={
-                result.data.status === 'NO_CONDITION'
-                  ? '어떤 향인지 아직 못 알아들었습니다'
-                  : '말씀하신 향에 맞는 향수를 찾지 못했습니다'
-              }
-              description={
-                result.data.status === 'NO_CONDITION'
-                  ? '냄새로 풀어서 적어 보세요 — ‘비누 냄새 나는 향’, ‘비 온 뒤 흙냄새’ 처럼요.'
-                  : '조건을 조금 줄이면 찾을 수 있습니다. 계절이나 상황 하나를 빼고 다시 적어 보세요.'
-              }
+              title="말씀하신 향에 맞는 향수를 찾지 못했습니다"
+              description="조건을 조금 줄이면 찾을 수 있습니다. 계절이나 상황 하나를 빼고 다시 적어 보세요."
             />
           )}
         </>
       )}
     </Unroll>
+  )
+}
+
+/**
+ * 향 조건을 하나도 못 뽑은 경우.
+ *
+ * 이 화면에 오는 사람의 상당수는 **향수 이름을 친 사람**입니다 — "미르토 디 파나레아와
+ * 비슷한 향수" 처럼요 (지인 피드백 F1 · F2). '자연어' 가 무엇인지 몰라 아는 향수 이름을
+ * 넣은 것이라, 냄새로 풀어 쓰라는 말만 두면 다음 할 일이 없습니다. 그래서 두 길을 둡니다.
+ *
+ *   예시 칩        → 그 말로 다시 찾습니다
+ *   이름으로 찾기   → 찾는 말투를 걷어 낸 낱말로 전체 향수(A09)에서 찾습니다
+ */
+function NoConditionState({
+  query,
+  onRequery,
+  onSearchByName,
+}: {
+  query: string
+  onRequery?: (query: string) => void
+  onSearchByName?: (keyword: string) => void
+}) {
+  const nameKeyword = searchWords(query).join(' ')
+
+  return (
+    <EmptyState
+      title="어떤 향인지 아직 못 알아들었습니다"
+      description={
+        onRequery
+          ? '냄새나 느낌으로 적어 보세요. 아래 말로 바로 찾아볼 수도 있습니다.'
+          : `냄새나 느낌으로 적어 보세요 — ${RETRY_EXAMPLES.map((example) => `‘${example}’`).join(', ')} 처럼요.`
+      }
+      action={
+        <div className="flex flex-col items-center gap-2.5">
+          {onRequery && (
+            <div className="flex flex-wrap justify-center gap-2.5">
+              {RETRY_EXAMPLES.map((example) => (
+                <Button
+                  key={example}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onRequery(example)}
+                >
+                  {example}
+                </Button>
+              ))}
+            </div>
+          )}
+          {onSearchByName && nameKeyword && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onSearchByName(nameKeyword)}
+            >
+              향수 이름이었다면 · 전체 향수에서 &lsquo;{nameKeyword}&rsquo; 찾기
+            </Button>
+          )}
+        </div>
+      }
+    />
   )
 }
 

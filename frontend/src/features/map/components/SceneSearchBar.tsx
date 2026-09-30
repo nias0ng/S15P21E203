@@ -29,8 +29,14 @@ function otherMode(item: SceneSearchMode): SceneSearchMode {
 }
 
 const PLACEHOLDER: Record<SceneSearchMode, string> = {
-  // 엔진 검색창(`landing/index.html`)이 쓰던 문구 그대로입니다 — 화면에서 바뀐 것은 자리가 아니라 누가 그리는가입니다
-  nl: '어떤 향을 찾고 계신가요?',
+  /*
+    엔진 검색창(`landing/index.html`)이 쓰던 물음('어떤 향을 찾고 계신가요?') 대신 **예시를 둡니다.** 설명줄은 마우스를
+    올려야 나와서(2026-09-20), 입력 전에 늘 보이는 글은 이 칸뿐입니다. 물음만 두니 '자연어' 가
+    무엇인지 몰라 향수 이름을 넣었습니다(지인 피드백 F1 · F19). 칸 폭에 물음과 예시가 함께
+    들어가지 않아(1536 에서 21자 남짓) 예시를 남겼습니다.
+    ⚠️ 예시는 LLM 없이도 결과가 나오는 말입니다 — `RecommendModal` 의 `RETRY_EXAMPLES` 참고.
+  */
+  nl: '상큼한 향, 풀향처럼 적어 보세요',
   normal: '향수 · 브랜드 이름으로 찾기',
 }
 
