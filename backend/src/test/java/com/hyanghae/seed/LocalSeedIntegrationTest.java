@@ -112,22 +112,22 @@ class LocalSeedIntegrationTest {
         String hash = jdbc.queryForObject("SELECT password_hash FROM users WHERE email='demo41@demo.hyanghae.test'", String.class);
         assertThat(new BCryptPasswordEncoder().matches("test-only-password", hash)).isTrue();
         for (RankingType type : List.of(RankingType.OWNED, RankingType.WISH, RankingType.VIEWED)) {
-            assertThat(ranking.count(type, null, null, null, null)).isEqualTo(TARGET_PERFUME_COUNT);
+            assertThat(ranking.count(type, null, List.of(), null, null, null)).isEqualTo(TARGET_PERFUME_COUNT);
             var expected = jdbc.queryForList("SELECT DISTINCT perfume_id FROM perfume_images ORDER BY perfume_id", Long.class);
             var actual = new java.util.ArrayList<Long>();
             for (int page = 0; page < TARGET_PERFUME_COUNT / 20; page++) {
-                actual.addAll(ranking.findPage(type, null, null, null, null, page * 20, 20).stream()
+                actual.addAll(ranking.findPage(type, null, List.of(), null, null, null, page * 20, 20).stream()
                         .map(r -> r.perfumeId()).toList());
             }
             assertThat(actual).doesNotHaveDuplicates().containsExactlyInAnyOrderElementsOf(expected);
             mvc.perform(get("/api/v1/perfumes").param("ranking", type.name()).param("page", "9"))
                     .andExpect(status().isOk()).andExpect(jsonPath("$.perfumes.length()").value(20));
-            assertThat(ranking.count(type, null, "Seed Brand", null, "MALE"))
+            assertThat(ranking.count(type, null, List.of(), "Seed Brand", null, "MALE"))
                     .isEqualTo(count("SELECT count(DISTINCT p.perfume_id) FROM perfumes p JOIN perfume_images i USING(perfume_id) WHERE p.gender='MALE'"));
         }
-        assertThat(ranking.count(RankingType.POPULAR, null, null, null, null)).isEqualTo(TARGET_PERFUME_COUNT);
-        assertThat(ranking.findPage(RankingType.OWNED, null, null, null, null, 0, 20))
-                .isNotEqualTo(ranking.findPage(RankingType.WISH, null, null, null, null, 0, 20));
+        assertThat(ranking.count(RankingType.POPULAR, null, List.of(), null, null, null)).isEqualTo(TARGET_PERFUME_COUNT);
+        assertThat(ranking.findPage(RankingType.OWNED, null, List.of(), null, null, null, 0, 20))
+                .isNotEqualTo(ranking.findPage(RankingType.WISH, null, List.of(), null, null, null, 0, 20));
         assertThat(count("SELECT count(*) FROM perfume_reviews r JOIN users u ON u.user_id=r.user_id "
                 + "WHERE u.email LIKE '%@seed.hyanghae.test'")).isEqualTo(22);
     }

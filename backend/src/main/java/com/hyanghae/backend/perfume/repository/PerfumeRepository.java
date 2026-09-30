@@ -29,6 +29,14 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
     String LIKE_ESCAPE = "!";
 
     /**
+     * 검색어를 견주는 한 줄입니다 — 한국어 브랜드 · 이름, 공백 하나, 영문 브랜드 · 이름을 공백을
+     * 지워 잇습니다. 왜 잇는지는 {@link #SEARCH_CONDITION} 에 적었습니다.
+     */
+    String NAMES = "LOWER(CONCAT("
+            + "REPLACE(COALESCE(b.nameKo, ''), ' ', ''), REPLACE(COALESCE(p.nameKo, ''), ' ', ''), ' ', "
+            + "REPLACE(COALESCE(b.name, ''), ' ', ''), REPLACE(COALESCE(p.name, ''), ' ', '')))";
+
+    /**
      * 목록 쿼리와 카운트 쿼리가 같은 조건을 보도록 묶어 둡니다. 한쪽만 고치면 마지막 페이지가
      * 비거나 전체 개수가 맞지 않습니다.
      *
@@ -50,16 +58,39 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
      * <p>{@code REPLACE} 는 HQL 함수라 JPQL 에서 그대로 쓸 수 있고, PostgreSQL 에도 같은 이름의
      * 함수가 있어 {@code PerfumeRankingRepository.CONDITION} 의 SQL 판과 글자까지 같습니다. 두
      * 경로가 같은 답을 내는지는 통합 테스트가 봅니다.
+     *
+     * <p><b>네 칸을 한 줄로 이어 붙여 견줍니다</b>({@link #NAMES}). 한 칸씩 견주면
+     * '딥티크 오르페옹' 처럼 브랜드와 이름을 같이 친 검색어가 어느 칸에도 통째로 없어 0건이
+     * 됐습니다(지인 피드백 F2). 이은 줄은 {@code 한국어 브랜드 + 한국어 이름 + ' ' + 영문 브랜드 +
+     * 영문 이름} 입니다. 검색어는 공백을 지운 채 오므로 가운데 둔 공백을 넘어서 걸리는 일이
+     * 없고, 한 칸에 걸리던 검색어는 이은 줄에도 그대로 걸립니다.
+     *
+     * <p><b>통째로 안 걸리면 낱말마다 봅니다</b>({@code :t1} ~ {@code :t4}). 낱말이 모두 이은 줄
+     * 어딘가에 있으면 걸립니다. 낱말을 고르는 일(찾는 말투 · 끝 조사 떼기)은
+     * {@code PerfumeService.searchWords} 가 합니다. 낱말이 하나뿐이고 검색어와 같으면 넘기지
+     * 않습니다 — 통째 견주기와 같은 일을 두 번 하게 됩니다.
+     *
+     * <p>텍스트 블록을 끊어 이은 까닭은 {@link #NAMES} 를 다섯 번 넣어야 해서입니다.
+     * {@code @Query} 에 들어가는 값이라 {@code formatted()} 를 못 쓰고 상수끼리 {@code +} 로만
+     * 이을 수 있습니다.
      */
     String SEARCH_CONDITION = """
             FROM Perfume p
             LEFT JOIN p.brand b
             WHERE p.active = true
               AND (CAST(:keyword AS String) IS NULL
-                OR LOWER(REPLACE(p.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!'
-                OR LOWER(REPLACE(p.nameKo, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!'
-                OR LOWER(REPLACE(b.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!'
-                OR LOWER(REPLACE(b.nameKo, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!')
+            """
+            + " OR " + NAMES + " LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')) ESCAPE '!'"
+            + " OR (CAST(:t1 AS String) IS NOT NULL"
+            + " AND " + NAMES + " LIKE LOWER(CONCAT('%', CAST(:t1 AS String), '%')) ESCAPE '!'"
+            + " AND (CAST(:t2 AS String) IS NULL"
+            + " OR " + NAMES + " LIKE LOWER(CONCAT('%', CAST(:t2 AS String), '%')) ESCAPE '!')"
+            + " AND (CAST(:t3 AS String) IS NULL"
+            + " OR " + NAMES + " LIKE LOWER(CONCAT('%', CAST(:t3 AS String), '%')) ESCAPE '!')"
+            + " AND (CAST(:t4 AS String) IS NULL"
+            + " OR " + NAMES + " LIKE LOWER(CONCAT('%', CAST(:t4 AS String), '%')) ESCAPE '!')))"
+            + """
+
               AND (CAST(:brand AS String) IS NULL OR b.name = CAST(:brand AS String))
               AND (:brandId IS NULL OR b.id = :brandId)
               AND (CAST(:gender AS String) IS NULL OR p.gender = CAST(:gender AS String))
@@ -89,6 +120,10 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
             countQuery = "SELECT COUNT(p) " + SEARCH_CONDITION)
     Page<PerfumeSummaryResponse> search(
             @Param("keyword") String keyword,
+            @Param("t1") String t1,
+            @Param("t2") String t2,
+            @Param("t3") String t3,
+            @Param("t4") String t4,
             @Param("brand") String brand,
             @Param("brandId") Long brandId,
             @Param("gender") String gender,

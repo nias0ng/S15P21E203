@@ -36,11 +36,13 @@ import com.hyanghae.backend.perfume.repository.PerfumeReviewSummaryRepository;
 import com.hyanghae.backend.perfume.repository.PerfumePriceRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -61,6 +63,17 @@ public class PerfumeService {
 
     /** 목록 하나에 한 번에 내려주는 최대 개수입니다. 요청이 이보다 크면 여기까지만 줍니다. */
     private static final int MAX_PAGE_SIZE = 100;
+
+    /** 검색어를 낱말로 나눠 볼 때 보는 낱말 수입니다. 쿼리의 {@code :t1} ~ {@code :t4} 와 같습니다. */
+    private static final int MAX_SEARCH_WORDS = 4;
+
+    /** 이름이 아니라 찾는 말투인 낱말입니다. 이름 · 브랜드에 들어갈 일이 드문 것만 둡니다. */
+    private static final Set<String> SEARCH_STOP_WORDS = Set.of(
+            "향수", "향", "비슷한", "비슷한향수", "같은", "같은향수", "느낌",
+            "추천", "추천해줘", "찾아줘", "알려줘");
+
+    private static final Pattern TRAILING_PARTICLE =
+            Pattern.compile("(이랑|하고|처럼|와|과|랑|의|을|를|은|는)$");
 
     private final PerfumeRepository perfumeRepository;
     private final PerfumeImageRepository perfumeImageRepository;
@@ -126,11 +139,12 @@ public class PerfumeService {
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public PerfumeSearchResponse search(PerfumeSearchCondition condition, Pageable pageable) {
         String keyword = normalize(condition.keyword());
+        List<String> words = searchWords(condition.keyword(), keyword);
         String brand = trimToNull(condition.brand());
         String gender = condition.gender() == null ? null : condition.gender().name();
 
-        Page<PerfumeSummaryResponse> found =
-                findPage(condition.ranking(), keyword, brand, condition.brandId(), gender, pageable);
+        Page<PerfumeSummaryResponse> found = findPage(
+                condition.ranking(), keyword, words, brand, condition.brandId(), gender, pageable);
         if (found.isEmpty()) {
             return PerfumeSearchResponse.from(found);
         }
@@ -490,16 +504,19 @@ public class PerfumeService {
      * 지금은 한 페이지에 필요한 만큼만 오갑니다.
      */
     private Page<PerfumeSummaryResponse> findPage(
-            RankingType ranking, String keyword, String brand, Long brandId, String gender,
-            Pageable pageable) {
+            RankingType ranking, String keyword, List<String> words, String brand, Long brandId,
+            String gender, Pageable pageable) {
         if (ranking == null) {
-            return perfumeRepository.search(keyword, brand, brandId, gender, pageable);
+            return perfumeRepository.search(
+                    keyword, wordAt(words, 0), wordAt(words, 1), wordAt(words, 2), wordAt(words, 3),
+                    brand, brandId, gender, pageable);
         }
 
         List<PerfumeSummaryResponse> page = perfumeRankingRepository.findPage(
-                ranking, keyword, brand, brandId, gender,
+                ranking, keyword, words, brand, brandId, gender,
                 (int) pageable.getOffset(), pageable.getPageSize());
-        long total = perfumeRankingRepository.count(ranking, keyword, brand, brandId, gender);
+        long total =
+                perfumeRankingRepository.count(ranking, keyword, words, brand, brandId, gender);
 
         return new PageImpl<>(page, pageable, total);
     }
@@ -535,6 +552,45 @@ public class PerfumeService {
             return null;
         }
         return escapeLikeWildcards(keyword.replaceAll("\\s+", ""));
+    }
+
+    /**
+     * 검색어를 통째로 견줘 안 걸릴 때 하나씩 볼 낱말입니다. 넷까지만 보고, 볼 것이 없으면 빈 목록입니다.
+     *
+     * <pre>
+     * "아쿠아디파르마 미르토 디 파나레아와 비슷한 향수" -> [아쿠아디파르마, 미르토, 디, 파나레아]
+     * "딥티크의"                                     -> [딥티크]
+     * "샤넬"                                         -> []   통째 견주기와 같아 볼 필요가 없다
+     * </pre>
+     *
+     * <p>사람들은 이름 검색에도 "…와 비슷한 향수" 처럼 문장으로 칩니다(지인 피드백 F2). 그 말까지
+     * 이름에서 찾으면 아무것도 안 걸려서, 찾는 말투인 낱말을 빼고 낱말 끝의 조사를 뗍니다. 조사는
+     * 낱말이 두 글자보다 길 때만 떼어 '아리' 같은 이름이 잘리지 않게 합니다.
+     *
+     * <p>프론트 {@code shared/lib/searchWords.ts} 와 같은 규칙입니다. 지도 이름 검색이 먼저 걸러
+     * 넘기지만, 이 화면에서 직접 친 검색어도 같게 다뤄야 해서 여기에도 둡니다.
+     *
+     * @param raw        사용자가 친 그대로의 검색어. 낱말을 공백으로 가릅니다
+     * @param normalized {@link #normalize} 를 거친 통째 검색어
+     */
+    private List<String> searchWords(String raw, String normalized) {
+        if (normalized == null) {
+            return List.of();
+        }
+        List<String> words = Arrays.stream(raw.trim().split("\\s+"))
+                .map(word -> word.length() > 2 ? TRAILING_PARTICLE.matcher(word).replaceFirst("") : word)
+                .filter(word -> !word.isEmpty() && !SEARCH_STOP_WORDS.contains(word))
+                .limit(MAX_SEARCH_WORDS)
+                .map(this::escapeLikeWildcards)
+                .toList();
+        if (words.size() == 1 && words.get(0).equals(normalized)) {
+            return List.of();
+        }
+        return words;
+    }
+
+    private static String wordAt(List<String> words, int index) {
+        return index < words.size() ? words.get(index) : null;
     }
 
     /**
