@@ -60,7 +60,7 @@ describe('PerfumeOverview', () => {
       />,
     )
 
-    expect(screen.getByText('Allure Homme Sport · male')).toBeInTheDocument()
+    expect(screen.getByText('Allure Homme Sport · 남성용')).toBeInTheDocument()
   })
 
   it('성별을 모르면 영문 이름만 적는다', () => {
@@ -84,7 +84,7 @@ describe('PerfumeOverview', () => {
       />,
     )
 
-    expect(screen.getByText('unisex')).toBeInTheDocument()
+    expect(screen.getByText('공용')).toBeInTheDocument()
     expect(
       screen.getByRole('heading', { name: 'Allure Homme Sport' }),
     ).toBeInTheDocument()

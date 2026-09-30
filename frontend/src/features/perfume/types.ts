@@ -96,11 +96,14 @@ export const readRankingFilter = (value: string | null): RankingFilter | null =>
 export const readGenderFilter = (value: string | null): GenderFilter | null =>
   readOption(value, GENDER_FILTERS)
 
-/** NOTE: 백엔드 컬럼이 제약 없는 `VARCHAR(30)` 이라 표에 없는 값이 오면 아무것도 안 적습니다 */
+/**
+ * NOTE: 백엔드 컬럼이 제약 없는 `VARCHAR(30)` 이라 표에 없는 값이 오면 아무것도 안 적습니다.
+ * 우리말로 적습니다 — 영문 소문자('unisex')는 원명 옆에서 이름의 일부처럼 읽혔습니다.
+ */
 export const GENDER_TEXT: Record<GenderFilter, string> = {
-  FEMALE: 'female',
-  MALE: 'male',
-  UNISEX: 'unisex',
+  FEMALE: '여성용',
+  MALE: '남성용',
+  UNISEX: '공용',
 }
 
 export type Season = 'SPRING' | 'SUMMER' | 'AUTUMN' | 'WINTER'

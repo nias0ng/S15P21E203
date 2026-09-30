@@ -15,10 +15,14 @@ type Props = {
   className?: string
 }
 
+/*
+  단계 이름은 우리말로 적습니다. 'Top · Middle · Base' 는 향수를 아는 사람의 말이라, 처음 보는
+  사람에게는 무엇이 먼저 나고 무엇이 오래 남는지가 안 읽혔습니다(지인 피드백 F24).
+*/
 const STAGE_LABELS: Record<string, string> = {
-  TOP: 'Top',
-  MIDDLE: 'Middle',
-  BASE: 'Base',
+  TOP: '첫 향',
+  MIDDLE: '중심 향',
+  BASE: '잔향',
 }
 
 type NoteRow = {

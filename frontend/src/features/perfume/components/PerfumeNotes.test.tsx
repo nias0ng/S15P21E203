@@ -17,7 +17,7 @@ const note = (
 ): PerfumeNote => ({ noteId, name, noteType })
 
 const stages = () =>
-  screen.queryAllByText(/^(Top|Middle|Base)$/).map((el) => el.textContent)
+  screen.queryAllByText(/^(첫 향|중심 향|잔향)$/).map((el) => el.textContent)
 
 describe('PerfumeNotes', () => {
   it('향조가 없으면 안내 문구를 보여준다', () => {
@@ -28,7 +28,7 @@ describe('PerfumeNotes', () => {
     ).toBeInTheDocument()
   })
 
-  it('Top · Middle · Base 순으로 묶어 보여준다', () => {
+  it('첫 향 · 중심 향 · 잔향 순으로 묶어 보여준다', () => {
     render(
       <PerfumeNotes
         notes={[
@@ -39,7 +39,7 @@ describe('PerfumeNotes', () => {
       />,
     )
 
-    expect(stages()).toEqual(['Top', 'Middle', 'Base'])
+    expect(stages()).toEqual(['첫 향', '중심 향', '잔향'])
   })
 
   it('없는 단계는 줄을 만들지 않는다', () => {
@@ -49,20 +49,20 @@ describe('PerfumeNotes', () => {
       />,
     )
 
-    expect(stages()).toEqual(['Top', 'Base'])
+    expect(stages()).toEqual(['첫 향', '잔향'])
   })
 
   it('조합 값은 쪼개서 양쪽 줄에 같은 노트를 넣는다', () => {
     render(<PerfumeNotes notes={[note(1, '로즈', 'top+middle')]} />)
 
-    expect(stages()).toEqual(['Top', 'Middle'])
+    expect(stages()).toEqual(['첫 향', '중심 향'])
     expect(screen.getAllByText('로즈')).toHaveLength(2)
   })
 
   it('top+middle+base 는 세 줄 모두에 들어간다', () => {
     render(<PerfumeNotes notes={[note(1, '머스크', 'top+middle+base')]} />)
 
-    expect(stages()).toEqual(['Top', 'Middle', 'Base'])
+    expect(stages()).toEqual(['첫 향', '중심 향', '잔향'])
     expect(screen.getAllByText('머스크')).toHaveLength(3)
   })
 
@@ -94,7 +94,7 @@ describe('PerfumeNotes', () => {
       />,
     )
 
-    expect(container.textContent).toMatch(/Top.*레몬.*DRYDOWN.*머스크/s)
+    expect(container.textContent).toMatch(/첫 향.*레몬.*DRYDOWN.*머스크/s)
   })
 
   it('단계가 비어 있는 노트는 기타로 묶는다', () => {
