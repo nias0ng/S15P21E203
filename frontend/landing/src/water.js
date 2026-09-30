@@ -321,6 +321,7 @@ uniform float uSparkFace, uSparkFaceW, uSparkFaceB, uSparkDrift;
 uniform float uSparkClump, uSparkLo, uSparkHi, uSparkCell, uSparkJit, uSparkShine, uSparkDens, uSparkCull;
 uniform float uFoamWarp, uFoamRough, uFoamStretch, uFoamFine, uFoamFineAmt, uFoamAA;
 uniform float uCrestFace, uCrestBias;
+uniform float uCrestEps;   // dirf 분모의 바닥 (params.crestEps) — 기울기 0 인 점의 꼭지점을 푼다
 uniform float uLineAmt, uLineW, uLineHalo, uLineH0, uLineH1;
 uniform float uLineFoam, uLineFoamHi;
 uniform float uSeamAmt, uSeamW, uSeamH0, uSeamH1;
@@ -1022,7 +1023,10 @@ void main(){
   //   모두 '능선이 어디냐' 를 마루선과 **같은 식**으로 봐야 하는 층이다 (불변식 13-2)
   float slopeS = length(vGradS);
   float sdir = dot(vGradS, uSwellDir);
-  float dirf = slopeS > 1e-4 ? sdir / slopeS : 0.0;
+  // ⭐ 분모에 바닥(uCrestEps)을 둔다 (S15P21E203-448) — 방향코사인은 기울기 0 인 점에서 정의되지 않아 두 마루가 만나는 자리에
+  //   선 · 앞뒤 색이 한 점으로 모여 뾰족한 **꼭지점**이 섰다 (params.crestEps 주석). 보통의 마루(기울기 ≫ ε)는 그대로다
+  // ⚠ uCrestEps 0 이면 예전 식 그대로 (0 기울기 가드 포함)
+  float dirf = (uCrestEps > 0.0 || slopeS > 1e-4) ? sdir / sqrt(slopeS * slopeS + uCrestEps * uCrestEps) : 0.0;
   float ad = abs(dirf);
   float pw = max(fwidth(dirf), 1e-5);   // ad / pw 가 곧 '능선에서 몇 픽셀인가' 다
   // 화면 한 픽셀이 재질 좌표에서 몇 인가. 거품 무늬의 안티에일리어싱이 이 값을 쓴다.
@@ -1889,8 +1893,8 @@ void main(){
   if (uDebug > 0) {
     vec3 dc = vec3(0.0);
     float fmD = smoothstep(uFoamLo, uFoamHi2, texture2D(uH, vUv).w);
-    // ⚠ 본 경로의 dirf 와 같은 기울기(vGradS)다 — 보기가 실제 마루선을 재현해야 한다 (S15P21E203-448)
-    float dirD = slopeS > 1e-4 ? dot(vGradS, uSwellDir) / slopeS : 0.0;
+    // ⚠ 본 경로의 dirf 그대로다 (너울 기울기 · 분모 바닥) — 보기가 실제 마루선을 재현해야 한다 (S15P21E203-448)
+    float dirD = dirf;
     if (uDebug == 1) {            // 노멀 : 면이 어디를 향하나
       vec3 Nn = normalize(vec3(-vGradW.x * 6.0, 1.0, -vGradW.y * 6.0));
       dc = Nn * 0.5 + 0.5;
@@ -2319,6 +2323,7 @@ export function createWater(scene, tex, opts = {}) {
     uFoamHi2: { value: P.foamHi },
     uCrestFace: { value: P.crestFace },
     uCrestBias: { value: P.crestBias },
+    uCrestEps: { value: P.crestEps === undefined ? 0 : P.crestEps },
     uApexAmt: { value: P.apexAmount },
     uApexH0: { value: P.apexH0 },
     uApexH1: { value: P.apexH1 },
@@ -2576,6 +2581,7 @@ export function createWater(scene, tex, opts = {}) {
       uni.uFoamHi2.value = P.foamHi;
       uni.uCrestFace.value = P.crestFace;
       uni.uCrestBias.value = P.crestBias;
+      uni.uCrestEps.value = P.crestEps === undefined ? 0 : P.crestEps;
       uni.uApexAmt.value = P.apexAmount;
       uni.uApexH0.value = P.apexH0;
       uni.uApexH1.value = P.apexH1;
