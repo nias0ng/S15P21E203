@@ -14,6 +14,32 @@ spring:
       max-file-size: 8MB
       max-request-size: 8MB
 
+  # 회원가입 이메일 인증번호를 보내는 SMTP 입니다. 접속 정보는 환경변수로만 받습니다.
+  # 기본값은 로컬 Mailpit(compose.manual-test.yaml) 에 맞춰 두어, 설정 없이 띄워도 메일이
+  # 바깥으로 나가지 않습니다.
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS:false}
+          # 메일 서버가 응답하지 않으면 요청 스레드가 무한정 묶입니다. 동기 전송이라 끊어 줍니다.
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+# 메일 서버 상태를 /actuator/health 에 넣지 않습니다. 넣으면 SMTP 가 잠깐 멈춘 것만으로
+# 백엔드 전체가 DOWN 으로 보여, 인증 메일과 상관없는 요청까지 멈춘 서버로 취급됩니다.
+management:
+  health:
+    mail:
+      enabled: false
+
 springdoc:
   api-docs:
     enabled: false
@@ -37,3 +63,19 @@ hyanghae:
       name: refresh_token
       secure: true
       same-site: Strict
+    email-verification:
+      code-ttl: 5m
+      resend-cooldown: 60s
+      max-attempts: 5
+      max-sends-per-hour: 5
+      verified-ttl: 30m
+      from: ${MAIL_FROM:no-reply@hyanghae.local}
+    google:
+      # Google 로그인(OAuth 2.0). 셋 중 하나라도 비어 있으면 Google 로그인을 쓰지 않습니다.
+      # redirect-uri 는 Google Cloud 콘솔의 "승인된 리디렉션 URI"와 똑같아야 합니다.
+      #   로컬: http://localhost:5173/api/v1/auth/google/callback (vite 프록시를 거칩니다)
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
+      redirect-uri: ${GOOGLE_REDIRECT_URI:}
+      authorization-ttl: 10m
+      signup-ticket-ttl: 10m

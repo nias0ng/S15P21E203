@@ -15,6 +15,8 @@ export const MOCK_ACCOUNT = {
   userId: 1,
   email: 'tester@hyanghae.dev',
   nickname: '향해테스터',
+  hasPassword: true,
+  googleConnected: false,
 } as const
 
 export type MockShelfCategory = 'OWNED' | 'TRIED' | 'WISH'

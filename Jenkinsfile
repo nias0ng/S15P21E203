@@ -15,6 +15,7 @@ pipeline {
         FRONTEND_DIR = 'frontend'
         FRONTEND_DEPLOY_DIR = '/var/www/hyanghae'
         VITE_API_BASE_URL = '/api/v1'
+        VITE_GOOGLE_LOGIN_ENABLED = 'true'
         DEPLOY_DIR = '/home/ubuntu/hyanghae'
         HEALTH_CHECK_URL = 'http://127.0.0.1:8081/actuator/health'
     }
@@ -80,6 +81,7 @@ pipeline {
                         --volume "$WORKSPACE/$FRONTEND_DIR:/workspace" \
                         --workdir /workspace \
                         --env VITE_API_BASE_URL="$VITE_API_BASE_URL" \
+                        --env VITE_GOOGLE_LOGIN_ENABLED="${VITE_GOOGLE_LOGIN_ENABLED:-false}" \
                         --env npm_config_cache=/tmp/npm-cache \
                         node:22-bookworm-slim \
                         sh -c 'npm ci && npm run build'

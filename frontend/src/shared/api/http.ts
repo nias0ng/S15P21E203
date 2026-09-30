@@ -55,7 +55,13 @@ export const http: AxiosInstance = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-const NO_AUTH_HEADER_PATHS = ['/auth/login', '/auth/signup', '/auth/refresh']
+// NOTE: `/auth/google/reauth` 는 로그인한 사람이 부르므로 여기 넣지 않습니다 — 토큰이 실려야 합니다.
+const NO_AUTH_HEADER_PATHS = [
+  '/auth/login',
+  '/auth/signup',
+  '/auth/refresh',
+  '/auth/google/signup',
+]
 
 http.interceptors.request.use((config) => {
   const { accessToken } = useAuthStore.getState()
@@ -75,6 +81,7 @@ const NO_REFRESH_PATHS = [
   '/auth/signup',
   '/auth/refresh',
   '/auth/logout',
+  '/auth/google/signup',
 ]
 
 export function isUnreachable(status: number): boolean {

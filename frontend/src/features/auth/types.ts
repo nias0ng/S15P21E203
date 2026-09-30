@@ -3,6 +3,8 @@ export const PASSWORD_MIN_LENGTH = 8
 export const NICKNAME_MIN_LENGTH = 2
 export const NICKNAME_MAX_LENGTH = 20
 
+export const EMAIL_VERIFICATION_CODE_LENGTH = 7
+
 export interface LoginInput {
   email: string
   password: string
@@ -12,6 +14,7 @@ export interface SignupInput {
   email: string
   password: string
   nickname: string
+  emailVerificationToken: string
 }
 
 export interface PasswordChangeInput {
@@ -28,8 +31,31 @@ export interface UserResponse {
   email: string
   nickname: string
   profileImageUrl: string | null
+  // false 면 Google 로 가입한 계정입니다 — 비밀번호 변경이 없고, 탈퇴 확인을 Google 로 합니다.
+  hasPassword: boolean
+  googleConnected: boolean
+}
+
+export interface GoogleSignupInfo {
+  email: string
+  suggestedNickname: string | null
 }
 
 export interface NicknameAvailabilityResponse {
   available: boolean
+}
+
+export interface EmailVerificationSendResponse {
+  expiresInSeconds: number
+  resendAvailableInSeconds: number
+}
+
+export interface EmailVerificationConfirmInput {
+  email: string
+  code: string
+}
+
+export interface EmailVerificationConfirmResponse {
+  verificationToken: string
+  expiresInSeconds: number
 }

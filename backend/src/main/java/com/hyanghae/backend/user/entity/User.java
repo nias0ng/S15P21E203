@@ -20,8 +20,17 @@ public class User {
     @Column(name = "email", nullable = false, length = 255)
     private String email;
 
-    @Column(name = "password_hash", nullable = false, length = 255)
+    /**
+     * 비밀번호 해시입니다. Google 로 가입한 사람은 {@code null} 입니다.
+     */
+    @Column(name = "password_hash", length = 255)
     private String passwordHash;
+
+    /**
+     * Google ID 토큰의 {@code sub} 입니다. Google 로 가입하지 않았으면 {@code null} 입니다.
+     */
+    @Column(name = "google_subject", length = 255)
+    private String googleSubject;
 
     @Column(name = "nickname", nullable = false, length = 20)
     private String nickname;
@@ -48,11 +57,13 @@ public class User {
     private User(
             String email,
             String passwordHash,
+            String googleSubject,
             String nickname,
             OffsetDateTime createdAt
     ) {
         this.email = email;
         this.passwordHash = passwordHash;
+        this.googleSubject = googleSubject;
         this.nickname = nickname;
         this.createdAt = createdAt;
         this.updatedAt = createdAt;
@@ -64,7 +75,16 @@ public class User {
             String nickname,
             OffsetDateTime createdAt
     ) {
-        return new User(email, passwordHash, nickname, createdAt);
+        return new User(email, passwordHash, null, nickname, createdAt);
+    }
+
+    public static User signupWithGoogle(
+            String email,
+            String googleSubject,
+            String nickname,
+            OffsetDateTime createdAt
+    ) {
+        return new User(email, null, googleSubject, nickname, createdAt);
     }
 
     public void changePassword(String passwordHash, OffsetDateTime updatedAt) {
@@ -92,6 +112,14 @@ public class User {
         return this.nickname.equals(nickname);
     }
 
+    public boolean hasPassword() {
+        return passwordHash != null;
+    }
+
+    public boolean hasGoogleSubject(String googleSubject) {
+        return this.googleSubject != null && this.googleSubject.equals(googleSubject);
+    }
+
     public Long getId() {
         return id;
     }
@@ -102,6 +130,10 @@ public class User {
 
     public String getPasswordHash() {
         return passwordHash;
+    }
+
+    public String getGoogleSubject() {
+        return googleSubject;
     }
 
     public String getNickname() {
