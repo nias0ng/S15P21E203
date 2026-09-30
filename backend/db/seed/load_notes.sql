@@ -3,7 +3,7 @@
 -- 실행 (이 디렉터리에서):
 --     ./load_notes.sh
 --
--- 스키마는 V21 까지 적용돼 있어야 합니다 (description 은 V21 에서 생겼습니다). notes.name 은 V5 부터 유일하므로, 같은 영문 이름의
+-- 스키마는 V29 까지 적용돼 있어야 합니다 (description 은 V21, description_en 은 V29 에서 생겼습니다). notes.name 은 V5 부터 유일하므로, 같은 영문 이름의
 -- 기존 노트가 있으면 note_id 를 유지한 채 메타데이터만 갱신하고 없으면 새 ID 를 자동 생성합니다.
 -- CSV 의 popularity_rank 는 통계 순위이며 note_id 로 사용하지 않습니다.
 --
@@ -25,7 +25,8 @@ CREATE TEMP TABLE stg_notes (
     name_ko         TEXT,
     accord_family   TEXT,
     image_url       TEXT,
-    description     TEXT
+    description     TEXT,
+    description_en  TEXT
 ) ON COMMIT DROP;
 
 \copy stg_notes FROM 'notes.csv' WITH (FORMAT csv, HEADER true)
@@ -61,6 +62,10 @@ DECLARE
     truncated_descs     bigint := (SELECT count(*) FROM stg_notes
                                     WHERE NULLIF(btrim(description), '') IS NOT NULL
                                       AND char_length(btrim(description)) < 10);
+    -- 영어 설명도 같은 기준입니다. 비어 있으면 화면이 한국어 설명으로 되돌아갑니다.
+    truncated_en_descs  bigint := (SELECT count(*) FROM stg_notes
+                                    WHERE NULLIF(btrim(description_en), '') IS NOT NULL
+                                      AND char_length(btrim(description_en)) < 10);
 BEGIN
     IF note_count <> 246 THEN
         RAISE EXCEPTION '노트 수가 다릅니다: 기대 246, 실제 %', note_count;
@@ -83,6 +88,9 @@ BEGIN
     IF truncated_descs <> 0 THEN
         RAISE EXCEPTION '설명이 10자 미만인 행이 %개입니다 (열이 밀렸는지 확인하세요)', truncated_descs;
     END IF;
+    IF truncated_en_descs <> 0 THEN
+        RAISE EXCEPTION '영어 설명이 10자 미만인 행이 %개입니다 (열이 밀렸는지 확인하세요)', truncated_en_descs;
+    END IF;
 END $$;
 
 -- ---------------------------------------------------------------------------
@@ -90,13 +98,15 @@ END $$;
 --
 -- is_active 는 갱신하지 않습니다. 운영에서 비활성화한 노트를 시드 재실행이 되살리면 안 됩니다.
 -- ---------------------------------------------------------------------------
-INSERT INTO notes (name, name_ko, accord_family, image_url, popularity_rank, description)
+INSERT INTO notes (name, name_ko, accord_family, image_url, popularity_rank, description,
+                   description_en)
 SELECT name,
        name_ko,
        accord_family,
        image_url,
        popularity_rank::integer,
-       NULLIF(btrim(description), '')
+       NULLIF(btrim(description), ''),
+       NULLIF(btrim(description_en), '')
 FROM stg_notes
 ON CONFLICT (name) DO UPDATE SET
     name_ko         = EXCLUDED.name_ko,
@@ -105,7 +115,9 @@ ON CONFLICT (name) DO UPDATE SET
     popularity_rank = EXCLUDED.popularity_rank,
     -- 빈 설명이 기존 설명을 지우지 않습니다. 다른 열은 위에서 비어 있지 않음을 검증했지만
     -- 설명만은 비어도 통과하므로, 여기서 덮어쓰면 재실행 한 번에 조용히 사라집니다.
-    description     = COALESCE(EXCLUDED.description, notes.description);
+    description     = COALESCE(EXCLUDED.description, notes.description),
+    -- 영어 설명도 같습니다. V29 가 먼저 채운 값을 빈 CSV 칸이 지우지 않습니다.
+    description_en  = COALESCE(EXCLUDED.description_en, notes.description_en);
 
 -- ---------------------------------------------------------------------------
 -- 4. 조인 누락 없이 246개가 모두 반영됐는지 확인합니다.
@@ -125,6 +137,12 @@ DECLARE
                               FROM notes n
                               JOIN stg_notes s ON s.name = n.name
                               WHERE n.description = NULLIF(btrim(s.description), ''));
+    expected_en_descs bigint := (SELECT count(*) FROM stg_notes
+                                 WHERE NULLIF(btrim(description_en), '') IS NOT NULL);
+    loaded_en_descs   bigint := (SELECT count(*)
+                                 FROM notes n
+                                 JOIN stg_notes s ON s.name = n.name
+                                 WHERE n.description_en = NULLIF(btrim(s.description_en), ''));
 BEGIN
     IF loaded_count <> 246 THEN
         RAISE EXCEPTION '메타데이터가 일치하는 노트가 모자랍니다: 기대 246, 실제 %', loaded_count;
@@ -132,12 +150,17 @@ BEGIN
     IF loaded_descs <> expected_descs THEN
         RAISE EXCEPTION '설명이 일치하는 노트가 모자랍니다: 기대 %, 실제 %', expected_descs, loaded_descs;
     END IF;
+    IF loaded_en_descs <> expected_en_descs THEN
+        RAISE EXCEPTION '영어 설명이 일치하는 노트가 모자랍니다: 기대 %, 실제 %',
+            expected_en_descs, loaded_en_descs;
+    END IF;
 END $$;
 
 SELECT count(*) AS loaded_notes,
        count(image_url) AS notes_with_image,
        count(popularity_rank) AS ranked_notes,
-       count(description) AS notes_with_description
+       count(description) AS notes_with_description,
+       count(description_en) AS notes_with_english_description
 FROM notes
 WHERE name IN (SELECT name FROM stg_notes);
 
