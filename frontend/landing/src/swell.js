@@ -283,7 +283,10 @@ uniform float uGerstner;
 //   정점당 초월함수 : 오늘 52 → 60 (+15%). 안 합치면 80 (+54%) 이다.
 //   (문서 8-1 : 16대역까지는 측정 잡음 아래. 60회 ≈ 13.9대역이라 그 구간 안이다)
 // ⚠ 호출부는 **이 함수를 쓴다.** 아래 swellH / swellG 래퍼는 각각 전체를 다시 돈다
-void swellHG(vec2 p, float detail, vec4 e, out float oH, out vec2 oG){
+// ⭐ oGS = **너울(lo) 대역만의 기울기** (2026-09-29, S15P21E203-448). oG 를 만들며 어차피 거치는 중간값이라 삼각함수가 늘지 않는다.
+//   물의 마루선 판정(water.js dirf · pw)이 이걸 쓴다 — 잔물결이 섞인 oG 로 fwidth 를 재면 띠 끝이 삼각형마다 튀어
+//   마루 위에 격자 모양(쐐기 · 빗살 · 고리)이 선다 (불변식 13-1 의 ⭐ 주석)
+void swellHGS(vec2 p, float detail, vec4 e, out float oH, out vec2 oG, out vec2 oGS){
   float hs = ${join(lo(BANDS), H)};
   float hr = ${join(hi(BANDS), H)};
   vec2  gs = ${join(lo(BANDS), G)};
@@ -293,9 +296,11 @@ void swellHG(vec2 p, float detail, vec4 e, out float oH, out vec2 oG){
   // 상대 크기는 평균 9% 지만 |∇h| ≈ 0 인 **능선 위에서 발산**한다. 마루선(dirf 의 영점)과
   // 앞뒤 면이 전부 ∇h 의 영점에서 나오므로, 빼면 선이 실제 마루에서 벗어난다.
   // 거품이 마루와 90도 어긋난 채 세 커밋을 간 실패와 같은 종류다 (불변식 13-1)
-  oG = e.x * gs + hs * ((uEnvHi - uEnvLo) * e.zw)
-     + detail * (e.y * gr + hr * ((uEnvRLo - uEnvRHi) * e.zw));
+  oGS = e.x * gs + hs * ((uEnvHi - uEnvLo) * e.zw);
+  oG = oGS + detail * (e.y * gr + hr * ((uEnvRLo - uEnvRHi) * e.zw));
 }
+// ⚠ oGS 를 안 쓰는 호출부(grid.js · 발표 페이지)용 — 컴파일러가 안 쓰는 출력을 지운다
+void swellHG(vec2 p, float detail, vec4 e, out float oH, out vec2 oG){ vec2 gs; swellHGS(p, detail, e, oH, oG, gs); }
 float swellH(vec2 p, float detail, vec4 e){ float h; vec2 g; swellHG(p, detail, e, h, g); return h; }
 vec2  swellG(vec2 p, float detail, vec4 e){ float h; vec2 g; swellHG(p, detail, e, h, g); return g; }
 vec2 swellD(vec2 p, float detail, vec4 e){
