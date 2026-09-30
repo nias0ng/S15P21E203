@@ -292,9 +292,9 @@ class ShelfItemServiceTest {
                 true
         );
         List<PerfumeNoteResponse> scentNotes = List.of(
-                new PerfumeNoteResponse(1L, "Orange", "TOP"),
-                new PerfumeNoteResponse(2L, "Rose", "MIDDLE"),
-                new PerfumeNoteResponse(3L, "Patchouli", "BASE")
+                new PerfumeNoteResponse(1L, "Orange", "오렌지", "TOP"),
+                new PerfumeNoteResponse(2L, "Rose", "로즈", "MIDDLE"),
+                new PerfumeNoteResponse(3L, "Patchouli", "패츌리", "BASE")
         );
         OffsetDateTime memoCreatedAt = OffsetDateTime.parse("2026-09-10T00:00:00Z");
         Memo memo = BeanUtils.instantiateClass(Memo.class);

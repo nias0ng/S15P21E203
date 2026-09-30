@@ -36,7 +36,11 @@ public interface ReviewBoardRow {
 
     String getPerfumeName();
 
+    String getPerfumeNameKo();
+
     String getBrand();
+
+    String getBrandKo();
 
     long getLikeCount();
 
