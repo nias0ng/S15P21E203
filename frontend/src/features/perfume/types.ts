@@ -43,8 +43,12 @@ interface PerfumePrice {
 export interface PerfumeSearchParams {
   keyword?: string
 
-  /** 전체 사용자 집계라 로그인이 필요 없고, OWNED · WISH 는 세 명 이상 · sort 는 무시됩니다 */
-  ranking?: RankingFilter
+  /**
+   * 전체 사용자 집계라 로그인이 필요 없고, OWNED · WISH 는 세 명 이상 · sort 는 무시됩니다.
+   * `POPULAR` 는 사용자 집계가 아니라 국내 선정 순위(향 지도 200개)입니다 — 필터 칩이 아니라
+   * 목록의 기본 순서로만 씁니다 (`PerfumeListPage`)
+   */
+  ranking?: RankingFilter | 'POPULAR'
 
   /** A33 아래 줄 필터. 정의되지 않은 값을 보내면 400 입니다 */
   gender?: GenderFilter

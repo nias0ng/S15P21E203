@@ -31,10 +31,18 @@ export default function PerfumeListPage() {
   const searching = keyword.length > 0
   const page = readPage(searchParams)
 
+  /*
+    NOTE: 아무 조건도 없을 때 **국내 선정 순위(POPULAR)** 로 줄 세웁니다. 전에는 기준 없이
+    불러 백엔드 기본 정렬(향수 번호순)이 나왔는데, 제목은 '인기 향수' 라 번호가 빠른 외국
+    향수가 인기 1위처럼 보였습니다(지인 피드백 F7 · F23). 검색할 때는 이름으로 찾은 것이라
+    순위를 걸지 않습니다 — 걸면 순위 밖 13만 개가 결과에서 빠집니다.
+  */
+  const effectiveRanking = ranking ?? (searching ? undefined : 'POPULAR')
+
   const { data, isPending, isError, refetch } = useQuery(
     perfumeListQuery({
       keyword: searching ? keyword : undefined,
-      ranking: ranking ?? undefined,
+      ranking: effectiveRanking,
       gender: gender ?? undefined,
       page: searching ? page : undefined,
       size: PAGE_SIZE,
@@ -87,7 +95,7 @@ export default function PerfumeListPage() {
     ? '검색 결과'
     : filtered
       ? '조건에 맞는 향수'
-      : '최근 인기 향수'
+      : '향 지도의 대표 향수'
 
   const count = searching
     ? (data?.totalElements ?? null)
@@ -141,7 +149,11 @@ export default function PerfumeListPage() {
             items={items}
             isPending={isPending}
             columns={6}
-            rankable={!searching}
+            /*
+              순위 번호는 줄 세운 기준 그대로일 때만 붙입니다. 성별로 거르면 차례가 건너뛰어
+              3위가 '1위' 로 적힙니다.
+            */
+            rankable={!searching && gender === null}
             empty={searchEmpty}
             emptyAction={resetButton}
           />
