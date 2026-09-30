@@ -1,30 +1,16 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/shared/lib/cn'
 import {
   useGraphicsStore,
   type GraphicsMode,
-  type GraphicsTier,
 } from '@/shared/store/graphicsStore'
 
 import { inkLink, type Ink } from './tone'
 
-const TIER_LABEL: Record<GraphicsTier, string> = {
-  high: '높음',
-  mid: '보통',
-  low: '낮음',
-}
-
-const GRAPHICS_OPTIONS: readonly {
-  mode: GraphicsMode
-  label: string
-  hint: string
-}[] = [
-  { mode: 'auto', label: '자동', hint: '기기에 맞춰 알아서 맞춥니다' },
-  { mode: 'high', label: '높음', hint: '가장 선명하게 · 빛 번짐 · 배 반사' },
-  { mode: 'mid', label: '보통', hint: '조금 덜 선명하게, 더 부드럽게' },
-  { mode: 'low', label: '낮음', hint: '가장 가볍게 · 배터리를 아낍니다' },
-]
+// 이름 · 안내는 번역 묶음(layout 의 graphics.mode)에 두고 그릴 때 풉니다
+const GRAPHICS_MODES: readonly GraphicsMode[] = ['auto', 'high', 'mid', 'low']
 
 function GearIcon() {
   return (
@@ -56,6 +42,7 @@ function GearIcon() {
  * 다른 헤더 메뉴의 `useDismissable` 을 쓰지 않습니다.
  */
 export function GraphicsMenu({ ink }: { ink: Ink }) {
+  const { t } = useTranslation('layout')
   const mode = useGraphicsStore((state) => state.mode)
   const setMode = useGraphicsStore((state) => state.setMode)
   const quality = useGraphicsStore((state) => state.quality)
@@ -95,7 +82,7 @@ export function GraphicsMenu({ ink }: { ink: Ink }) {
       <button
         ref={trigger}
         type="button"
-        aria-label="그래픽 설정"
+        aria-label={t('graphics.trigger')}
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-controls={panelId}
@@ -109,7 +96,7 @@ export function GraphicsMenu({ ink }: { ink: Ink }) {
         <div
           id={panelId}
           role="dialog"
-          aria-label="그래픽 품질"
+          aria-label={t('graphics.title')}
           // 글자색을 판에 한 번 겁니다 — 제목 · 안내문은 줄(ink.item)이 아니라 헤더 바탕의 색을 따라야 합니다
           className={cn(
             'absolute top-full right-0 z-30 mt-2.5 w-65 border py-1.25',
@@ -119,16 +106,21 @@ export function GraphicsMenu({ ink }: { ink: Ink }) {
         >
           <fieldset>
             <legend className="text-caption px-2.5 pt-1.25 pb-1.25 opacity-70">
-              그래픽 품질
+              {t('graphics.title')}
             </legend>
-            {GRAPHICS_OPTIONS.map((option) => {
+            {GRAPHICS_MODES.map((optionMode) => {
               const live =
-                option.mode === 'auto' && mode === 'auto' && quality
-                  ? `지금 ${TIER_LABEL[quality.tier]}${integrated ? ' · 내장 그래픽' : ''}`
+                optionMode === 'auto' && mode === 'auto' && quality
+                  ? t(
+                      integrated ? 'graphics.liveIntegrated' : 'graphics.live',
+                      {
+                        tier: t(`graphics.tier.${quality.tier}`),
+                      },
+                    )
                   : null
               return (
                 <label
-                  key={option.mode}
+                  key={optionMode}
                   className={cn(
                     'flex cursor-pointer items-start gap-2.5 px-2.5 py-1.25',
                     ink.item,
@@ -139,9 +131,9 @@ export function GraphicsMenu({ ink }: { ink: Ink }) {
                   <input
                     type="radio"
                     name={panelId}
-                    value={option.mode}
-                    checked={mode === option.mode}
-                    onChange={() => setMode(option.mode)}
+                    value={optionMode}
+                    checked={mode === optionMode}
+                    onChange={() => setMode(optionMode)}
                     className="peer sr-only"
                   />
                   <span
@@ -150,13 +142,16 @@ export function GraphicsMenu({ ink }: { ink: Ink }) {
                   />
                   <span>
                     <span className="text-caption block">
-                      {option.label}
-                      {option.mode === 'auto' && (
-                        <span className="opacity-60"> (권장)</span>
+                      {t(`graphics.mode.${optionMode}.label`)}
+                      {optionMode === 'auto' && (
+                        <span className="opacity-60">
+                          {' '}
+                          {t('graphics.recommended')}
+                        </span>
                       )}
                     </span>
                     <span className="block text-[11px] leading-snug opacity-70">
-                      {live ?? option.hint}
+                      {live ?? t(`graphics.mode.${optionMode}.hint`)}
                     </span>
                   </span>
                 </label>
@@ -171,8 +166,7 @@ export function GraphicsMenu({ ink }: { ink: Ink }) {
                 ink.itemRule,
               )}
             >
-              외장 그래픽이 있는 노트북이라면 Windows 설정 › 시스템 › 디스플레이
-              › 그래픽에서 브라우저를 ‘고성능’으로 두면 더 부드럽습니다
+              {t('graphics.integratedTip')}
             </p>
           )}
         </div>

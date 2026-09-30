@@ -1,6 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { act } from 'react'
 import { describe, expect, it, vi } from 'vitest'
+
+import { useLocaleStore } from '@/shared/store/localeStore'
 
 import { Pagination } from './Pagination'
 
@@ -84,6 +87,32 @@ describe('Pagination', () => {
     expect(screen.getAllByRole('button')).toHaveLength(WINDOW_WITH_ARROWS)
     expect(screen.getByRole('button', { name: '9쪽' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '13쪽' })).toBeInTheDocument()
+  })
+
+  it('화면 언어를 바꾸면 영어로 다시 적는다', () => {
+    render(
+      <Pagination
+        page={0}
+        size={10}
+        totalElements={30}
+        onPageChange={vi.fn()}
+      />,
+    )
+    expect(
+      screen.getByRole('button', { name: '다음 페이지' }),
+    ).toHaveTextContent('다음')
+
+    act(() => {
+      useLocaleStore.getState().setLocale('en')
+    })
+
+    expect(
+      screen.getByRole('navigation', { name: 'Pages' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Next page' })).toHaveTextContent(
+      'Next',
+    )
+    expect(screen.getByRole('button', { name: 'Page 2' })).toBeInTheDocument()
   })
 })
 

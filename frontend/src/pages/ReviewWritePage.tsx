@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 
 import {
@@ -25,9 +26,12 @@ import {
 } from '@/features/perfume'
 import { apiErrorMessage, isApiError } from '@/shared/api/http'
 import { ROUTES, toReviewDetail } from '@/shared/config/routes'
+import { i18n } from '@/shared/i18n'
+import { localizedName } from '@/shared/i18n/locale'
 import { cn } from '@/shared/lib/cn'
 import { parseId } from '@/shared/lib/parseId'
 import { useIsLoggedIn } from '@/shared/store/authStore'
+import { useLocale } from '@/shared/store/localeStore'
 import { Button } from '@/shared/ui/Button'
 import { ChipToggle } from '@/shared/ui/ChipToggle'
 import { EmptyState } from '@/shared/ui/EmptyState'
@@ -51,18 +55,21 @@ class PartialSaveError extends Error {
 
 function saveErrorMessage(error: unknown): string {
   if (error instanceof PartialSaveError) {
-    const detail = isApiError(error.reason) ? ` (${error.reason.message})` : ''
+    // 영어 화면에서 코드에 맞는 영어 문구가 없으면 한국어 서버 문구를 끼우지 않고 괄호째 뺍니다
+    const reason = isApiError(error.reason)
+      ? apiErrorMessage(error.reason, '')
+      : ''
+    const detail = reason === '' ? '' : ` (${reason})`
     return error.textSaved
-      ? `제목과 본문은 저장됐지만 계절을 저장하지 못했습니다${detail}. [수정] 을 다시 눌러주세요.`
-      : `계절을 저장하지 못했습니다${detail}. 잠시 후 다시 시도해주세요.`
+      ? i18n.t('community:reviewWrite.partialSavedText', { detail })
+      : i18n.t('community:reviewWrite.seasonsFailed', { detail })
   }
-  return apiErrorMessage(
-    error,
-    '저장하지 못했습니다. 잠시 후 다시 시도해주세요.',
-  )
+  return apiErrorMessage(error, i18n.t('community:reviewWrite.saveFailed'))
 }
 
 export default function ReviewWritePage() {
+  const { t } = useTranslation('community')
+  const locale = useLocale()
   const navigate = useNavigate()
   const isLoggedIn = useIsLoggedIn()
   const queryClient = useQueryClient()
@@ -112,7 +119,11 @@ export default function ReviewWritePage() {
       ? { name: pickedPerfume.name, brand: pickedPerfume.brand }
       : preselected.data
         ? {
-            name: preselected.data.nameKo ?? preselected.data.name,
+            name: localizedName(
+              locale,
+              preselected.data.name,
+              preselected.data.nameKo,
+            ),
             brand: preselected.data.brand?.name ?? null,
           }
         : null
@@ -124,15 +135,15 @@ export default function ReviewWritePage() {
 
   const titleError =
     trimmedTitle.length > REVIEW_TITLE_MAX_LENGTH
-      ? `제목은 ${REVIEW_TITLE_MAX_LENGTH}자 이하여야 합니다`
+      ? t('reviewWrite.titleTooLong', { max: REVIEW_TITLE_MAX_LENGTH })
       : undefined
 
   const contentError =
     trimmedContent.length > 0 &&
     trimmedContent.length < REVIEW_CONTENT_MIN_LENGTH
-      ? `본문은 ${REVIEW_CONTENT_MIN_LENGTH}자 이상이어야 합니다`
+      ? t('reviewWrite.contentTooShort', { min: REVIEW_CONTENT_MIN_LENGTH })
       : trimmedContent.length > REVIEW_CONTENT_MAX_LENGTH
-        ? `본문은 ${REVIEW_CONTENT_MAX_LENGTH}자 이하여야 합니다`
+        ? t('reviewWrite.contentTooLong', { max: REVIEW_CONTENT_MAX_LENGTH })
         : undefined
 
   const mutation = useMutation({
@@ -222,11 +233,11 @@ export default function ReviewWritePage() {
   ) {
     return (
       <EmptyState
-        title="후기를 불러오지 못했습니다"
-        description="주소가 잘못되었거나 삭제된 후기입니다."
+        title={t('reviewWrite.loadFailedTitle')}
+        description={t('reviewWrite.loadFailedDescription')}
         action={
           <LinkButton to={ROUTES.COMMUNITY_REVIEWS} variant="outline" size="sm">
-            후기 게시판으로
+            {t('reviewWrite.backToReviews')}
           </LinkButton>
         }
         onRetry={isEdit ? () => void existing.refetch() : undefined}
@@ -240,7 +251,7 @@ export default function ReviewWritePage() {
       <LoginRequiredDialog
         open
         onClose={() => navigate(ROUTES.COMMUNITY_REVIEWS, { replace: true })}
-        description="후기는 로그인한 뒤에 쓸 수 있습니다."
+        description={t('reviewWrite.loginRequired')}
       />
     )
   }
@@ -248,15 +259,19 @@ export default function ReviewWritePage() {
   return (
     <>
       <WriteForm
-        title={isEdit ? '후기 수정' : '후기 쓰기'}
+        title={isEdit ? t('reviewWrite.editTitle') : t('reviewWrite.newTitle')}
         description={
           isEdit
-            ? '제목 · 본문 · 계절을 고칠 수 있습니다. 대상 향수는 바꿀 수 없습니다.'
-            : '대상 향수는 필수이고 한 개만 답니다. 후기에는 분류가 없습니다.'
+            ? t('reviewWrite.editDescription')
+            : t('reviewWrite.newDescription')
         }
         cancelTo={isEdit ? toReviewDetail(reviewId) : ROUTES.COMMUNITY_REVIEWS}
         submitLabel={
-          mutation.isPending ? '저장 중' : isEdit ? '수정' : '포스팅'
+          mutation.isPending
+            ? t('reviewWrite.saving')
+            : isEdit
+              ? t('reviewWrite.submitEdit')
+              : t('reviewWrite.submitNew')
         }
         submitDisabled={!canSubmit}
         onSubmit={() => mutation.mutate()}
@@ -270,7 +285,7 @@ export default function ReviewWritePage() {
           )}
         >
           <legend className="text-ink text-caption px-1.25 font-medium">
-            대상 향수 <span className="text-danger">*</span>
+            {t('reviewWrite.target')} <span className="text-danger">*</span>
           </legend>
 
           <div className="flex flex-wrap items-center gap-2.5">
@@ -285,7 +300,7 @@ export default function ReviewWritePage() {
               </>
             ) : (
               <span className="text-ink-muted text-body">
-                향수를 선택해야 후기를 쓸 수 있습니다
+                {t('reviewWrite.targetMissing')}
               </span>
             )}
             <Button
@@ -296,21 +311,24 @@ export default function ReviewWritePage() {
               disabled={isEdit}
               onClick={() => setPickOpen(true)}
             >
-              {isEdit ? '변경 불가' : targetPerfume ? '변경' : '향수 선택'}
+              {isEdit
+                ? t('reviewWrite.locked')
+                : targetPerfume
+                  ? t('reviewWrite.change')
+                  : t('reviewWrite.pick')}
             </Button>
           </div>
 
           {isEdit && (
             <p className="text-ink-muted text-caption mt-2">
-              대상 향수는 바꿀 수 없습니다. 다른 향수에 쓰시려면 이 후기를
-              지우고 새로 작성해주세요.
+              {t('reviewWrite.lockedHint')}
             </p>
           )}
         </fieldset>
 
         <Input
-          label="제목"
-          placeholder="제목을 입력하세요"
+          label={t('reviewWrite.title')}
+          placeholder={t('reviewWrite.titlePlaceholder')}
           required
           value={title}
           onChange={(event) => setTitleDraft(event.target.value)}
@@ -318,8 +336,8 @@ export default function ReviewWritePage() {
         />
 
         <Textarea
-          label="본문"
-          placeholder="이 향을 어떻게 맡았는지 적어주세요"
+          label={t('reviewWrite.content')}
+          placeholder={t('reviewWrite.contentPlaceholder')}
           rows={12}
           required
           value={content}
@@ -329,18 +347,21 @@ export default function ReviewWritePage() {
 
         <fieldset className="space-y-2">
           <legend className="text-ink text-caption font-medium">
-            계절별 평가 <span className="text-danger">*</span>
+            {t('reviewWrite.seasons')} <span className="text-danger">*</span>
           </legend>
           <ChipToggle
-            label="이 향이 잘 어울리는 계절"
+            label={t('reviewWrite.seasonsGroup')}
             multiple
-            options={SEASONS}
+            options={SEASONS.map((option) => ({
+              value: option.value,
+              label: t(`reviewWrite.seasonNames.${option.value}`),
+            }))}
             value={seasons}
             onChange={(next) => setSeasonsDraft(next)}
             className="grid grid-cols-4 gap-2"
           />
           <p className="text-ink-muted text-caption">
-            최소 한 개는 골라주세요. 여러 개 고를 수 있습니다.
+            {t('reviewWrite.seasonsHint')}
           </p>
         </fieldset>
 

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router'
 
 import {
@@ -39,6 +40,7 @@ const PAPER_RING =
  * 한 병이 서는 진열함(CollectionPerfumeGrid). 1024 아래에서는 위아래로 이어 세웁니다.
  */
 export default function CollectionDetailPage() {
+  const { t } = useTranslation('collection')
   const { collectionId } = useParams<{ collectionId: string }>()
   const parsedId = parseId(collectionId)
   // 주소를 손으로 고쳐 번호가 아니면 부르지 않습니다 — 부르지 않은 쿼리는 끝없이 "받는 중" 입니다
@@ -69,12 +71,12 @@ export default function CollectionDetailPage() {
         queryKey: collectionKeys.detail(numericId),
       })
       void queryClient.invalidateQueries({ queryKey: collectionKeys.mine() })
-      showToast('컬렉션을 수정했습니다')
+      showToast(t('toast.updated'))
     },
     onError: (error) =>
       showToast(
         // 이름이 겹치면 409 이고, 서버 문구가 그 사정을 그대로 설명합니다
-        apiErrorMessage(error, '컬렉션을 수정하지 못했습니다'),
+        apiErrorMessage(error, t('toast.updateFailed')),
       ),
   })
 
@@ -88,7 +90,7 @@ export default function CollectionDetailPage() {
       void queryClient.invalidateQueries({ queryKey: collectionKeys.mine() })
       navigate(toMyShelfCollection(), { replace: true })
     },
-    onError: () => showToast('컬렉션을 삭제하지 못했습니다'),
+    onError: () => showToast(t('toast.deleteFailed')),
   })
 
   // 서버가 한 번에 하나씩 받아 고른 만큼 요청이 나가고, 하나가 실패해도 나머지는
@@ -108,10 +110,12 @@ export default function CollectionDetailPage() {
       })
       void queryClient.invalidateQueries({ queryKey: collectionKeys.mine() })
       showToast(
-        failed === 0 ? '향수를 담았습니다' : `${failed}개는 담지 못했습니다`,
+        failed === 0
+          ? t('toast.added')
+          : t('toast.addPartial', { count: failed }),
       )
     },
-    onError: () => showToast('향수를 담지 못했습니다'),
+    onError: () => showToast(t('toast.addFailed')),
   })
 
   // 컬렉션에서 빼도 진열대 저장은 그대로 남습니다
@@ -123,9 +127,9 @@ export default function CollectionDetailPage() {
         queryKey: collectionKeys.detail(numericId),
       })
       void queryClient.invalidateQueries({ queryKey: collectionKeys.mine() })
-      showToast('컬렉션에서 제거했습니다')
+      showToast(t('toast.removed'))
     },
-    onError: () => showToast('컬렉션에서 제거하지 못했습니다'),
+    onError: () => showToast(t('toast.removeFailed')),
   })
 
   if (validId && collection.isPending) return <PageFallback />
@@ -135,7 +139,7 @@ export default function CollectionDetailPage() {
       to={toMyShelfCollection()}
       className="shelf-muted text-body rounded-card inline-flex items-center gap-1.25 transition-colors duration-120 ease-out outline-none hover:text-[var(--shelf-ink)] focus-visible:ring-2 focus-visible:ring-[var(--shelf-ink)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)]"
     >
-      <span aria-hidden>←</span> 내 컬렉션
+      <span aria-hidden>←</span> {t('detail.back')}
     </Link>
   )
 
@@ -151,15 +155,11 @@ export default function CollectionDetailPage() {
         <ShelfPaper />
         {backToCollections}
         <CollectionNotice
-          title={
-            missing
-              ? '컬렉션을 찾을 수 없습니다'
-              : '컬렉션을 불러오지 못했습니다'
-          }
+          title={missing ? t('detail.notFoundTitle') : t('loadError.title')}
           description={
             missing
-              ? '지워졌거나 주소가 바뀌었을 수 있어요.'
-              : '잠시 후 다시 시도해 주세요.'
+              ? t('detail.notFoundDescription')
+              : t('loadError.description')
           }
           onRetry={missing ? undefined : () => void collection.refetch()}
           action={
@@ -170,7 +170,7 @@ export default function CollectionDetailPage() {
                 size="sm"
                 className={PAPER_RING}
               >
-                내 컬렉션으로
+                {t('detail.backToList')}
               </LinkButton>
             ) : undefined
           }
@@ -224,13 +224,12 @@ export default function CollectionDetailPage() {
             </p>
           ) : (
             <p className="shelf-muted text-body mt-5 break-keep">
-              아직 설명이 없어요. [수정]에서 어떤 때 꺼내는 향들인지 적어 둘 수
-              있어요.
+              {t('detail.noDescription')}
             </p>
           )}
 
           <p className="text-body mt-5 font-medium tabular-nums">
-            향수 {data.perfumeCount}개
+            {t('perfumeCount', { count: data.perfumeCount })}
           </p>
 
           {/*
@@ -244,7 +243,7 @@ export default function CollectionDetailPage() {
               className={`h-10 rounded-md border-[var(--hairline)] px-5 ${PAPER_RING}`}
               onClick={() => setEditOpen(true)}
             >
-              수정
+              {t('detail.edit')}
             </Button>
             <Button
               variant="dangerOutline"
@@ -252,13 +251,13 @@ export default function CollectionDetailPage() {
               className={`h-10 rounded-md px-5 ${PAPER_RING}`}
               onClick={() => setDeleteOpen(true)}
             >
-              삭제
+              {t('detail.delete')}
             </Button>
           </div>
         </header>
 
         {/* 넓은 화면에서는 진열함 윗선을 왼쪽의 영문 머리(COLLECTION) 줄에 맞춥니다 */}
-        <section aria-label="담긴 향수" className="lg:mt-15">
+        <section aria-label={t('detail.perfumesRegion')} className="lg:mt-15">
           <CollectionPerfumeGrid
             perfumes={data.perfumes}
             onRemove={(perfume) => setRemoveTarget(perfume.shelfItemId)}
@@ -297,9 +296,11 @@ export default function CollectionDetailPage() {
       <ConfirmDialog
         open={removeTarget !== null}
         onClose={() => setRemoveTarget(null)}
-        title={`'${removeTargetName ?? '향수'}' 를 컬렉션에서 제거할까요?`}
-        description="진열대 저장은 그대로 유지됩니다."
-        confirmLabel="제거"
+        title={t('detail.removeConfirm.title', {
+          name: removeTargetName ?? t('detail.removeConfirm.fallbackName'),
+        })}
+        description={t('detail.removeConfirm.description')}
+        confirmLabel={t('detail.removeConfirm.confirm')}
         onConfirm={() => {
           if (removeTarget === null) return
           const shelfItemId = removeTarget
@@ -311,8 +312,9 @@ export default function CollectionDetailPage() {
       <ConfirmDialog
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
-        title={`'${data.title}' 컬렉션을 삭제할까요?`}
-        description="삭제하면 되돌릴 수 없습니다. 담긴 향수의 진열대 저장은 유지됩니다."
+        title={t('detail.deleteConfirm.title', { title: data.title })}
+        description={t('detail.deleteConfirm.description')}
+        confirmLabel={t('detail.deleteConfirm.confirm')}
         onConfirm={() => {
           setDeleteOpen(false)
           remove.mutate()

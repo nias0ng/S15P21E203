@@ -5,9 +5,10 @@
 /**
  * 진열대 분류. A11 · A15 에서 저장할 때 필수입니다.
  *
- * 여기 적힌 라벨이 이 분류의 **유일한 이름**입니다. 저장 모달도 진열대 도구 줄도
- * 이 값을 끌어다 씁니다 — 화면마다 다른 낱말로 부르면 사용자가 "시향해 봄" 으로
- * 담은 향수를 "시향 기록" 에서 찾아야 합니다.
+ * 분류의 이름은 번역 묶음 `shelf:category.<값>` 한 곳에만 있습니다. 저장 모달도 진열대 도구 줄도
+ * 그 이름을 끌어다 씁니다 — 화면마다 다른 낱말로 부르면 사용자가 "시향해 봄" 으로
+ * 담은 향수를 "시향 기록" 에서 찾아야 합니다. 이름을 여기 상수로 두지 않는 것은 모듈을 읽을 때
+ * 한 번 정해져 화면 언어를 바꿔도 따라오지 않아서입니다.
  *
  * 이 어휘가 진열대 도메인에 있는 이유: 향수 상세(A10)의 저장 모달도 이 값을 쓰는데
  * features 끼리는 import 할 수 없으므로, 분류를 소유한 진열대 도메인에 두고
@@ -16,14 +17,14 @@
 export type ShelfCategory = 'OWNED' | 'TRIED' | 'WISH'
 
 export const SHELF_CATEGORIES = [
-  { value: 'OWNED', label: '보유 중' },
-  { value: 'TRIED', label: '시향해 봄' },
-  { value: 'WISH', label: '보유 희망' },
-] as const satisfies readonly { value: ShelfCategory; label: string }[]
+  { value: 'OWNED' },
+  { value: 'TRIED' },
+  { value: 'WISH' },
+] as const satisfies readonly { value: ShelfCategory }[]
 
 /**
  * 분류의 영문 설명 — 메뉴판의 분류 이름 아래(ShelfPlaque)와 상세 카드 머리(ShelfDetailPanel)에 작게
- * 적습니다. 한글 분류 이름을 되풀이하는 장식이라 낭독기에서는 뺍니다. 대문자 · 자간은 CSS 가 입힙니다.
+ * 적습니다. 분류 이름을 되풀이하는 장식이라 화면 언어와 상관없이 영문이고, 낭독기에서는 뺍니다. 대문자 · 자간은 CSS 가 입힙니다.
  */
 export const SHELF_CATEGORY_CAPTION: Record<ShelfCategory, string> = {
   OWNED: 'My collection',

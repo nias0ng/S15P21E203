@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+import { useLocaleStore } from '@/shared/store/localeStore'
+
 import { readPersonalReason } from './personalReason'
 
 /*
@@ -52,6 +54,26 @@ describe('readPersonalReason', () => {
       source: null,
       keyword: null,
       sentence: '새로 생긴 근거 문장이에요.',
+    })
+  })
+
+  it('영어 화면은 읽어 낸 근거 말로 영어 문장을 짓는다', () => {
+    useLocaleStore.getState().setLocale('en')
+
+    expect(
+      readPersonalReason('높게 평가한 향수와 woody 어코드가 비슷해요.'),
+    ).toEqual({
+      source: 'FIT',
+      keyword: 'Woody',
+      sentence: 'Shares the Woody accord with perfumes you rated highly.',
+    })
+    // 향 계열은 한국어로 오지만 영어 화면에서는 영어 이름으로 되돌립니다
+    expect(
+      readPersonalReason('취향 테스트에서 선택한 머스크 계열과 잘 맞아요.'),
+    ).toEqual({
+      source: 'TASTE',
+      keyword: 'Musky',
+      sentence: 'Matches the Musky family you picked in the Taste Test.',
     })
   })
 })

@@ -1,4 +1,5 @@
 import { useId, useLayoutEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/shared/lib/cn'
 import { prefersReducedMotion } from '@/shared/lib/prefersReducedMotion'
@@ -28,22 +29,11 @@ function otherMode(item: SceneSearchMode): SceneSearchMode {
   return MODES[(MODES.indexOf(item) + 1) % MODES.length]!
 }
 
-const PLACEHOLDER: Record<SceneSearchMode, string> = {
-  // 엔진 검색창(`landing/index.html`)이 쓰던 문구 그대로입니다 — 화면에서 바뀐 것은 자리가 아니라 누가 그리는가입니다
-  nl: '어떤 향을 찾고 계신가요?',
-  normal: '향수 · 브랜드 이름으로 찾기',
-}
-
-const MODE_LABEL: Record<SceneSearchMode, string> = {
-  nl: '자연어',
-  normal: '이름',
-}
-
-/** 지금 방식이 **무엇을 해 주는가**. 알약에 마우스를 올렸을 때만 아래로 나옵니다 */
-const MODE_HINT: Record<SceneSearchMode, string> = {
-  nl: '느낌 · 상황을 말로 적으면 어울리는 향수를 추천 해드립니다',
-  normal: '지도에 있는 향수 200개를 이름 · 브랜드로 찾습니다',
-}
+/*
+ * 검색창 자리표시 · 방식 이름 · 설명줄은 `map` 묶음의 `search.placeholder` · `search.mode` · `search.hint` 에
+ * 방식 이름을 키로 둡니다. 자연어 자리표시는 엔진 검색창(`landing/index.html`)이 쓰던 문구 그대로입니다 —
+ * 화면에서 바뀐 것은 자리가 아니라 누가 그리는가입니다.
+ */
 
 /**
  * 3D 향 지도 위의 검색창 (A01 — MAP-01).
@@ -68,6 +58,7 @@ export function SceneSearchBar({
   // 방식을 바꿔도 치던 글은 남깁니다 — 같은 말을 두 방식으로 해보는 것이 이 칸의 쓸모입니다
   const [keyword, setKeyword] = useState('')
   const hintId = useId()
+  const { t } = useTranslation('map')
 
   return (
     // `group` 은 아래 설명줄이 **알약의 호버**를 보기 위한 것입니다 (`group-has-[form:hover]`).
@@ -75,8 +66,8 @@ export function SceneSearchBar({
     //   실제로 호버를 받는 것은 `pointer-events-auto` 인 알약(form) 자신입니다
     <div className={cn(POSITION, 'group', className)}>
       <SearchField
-        label={mode === 'nl' ? '자연어로 향수 추천받기' : '향수 이름으로 찾기'}
-        placeholder={PLACEHOLDER[mode]}
+        label={t(`search.fieldLabel.${mode}`)}
+        placeholder={t(`search.placeholder.${mode}`)}
         value={keyword}
         onChange={(event) => setKeyword(event.target.value)}
         aria-describedby={hintId}
@@ -147,7 +138,7 @@ export function SceneSearchBar({
               'text-charcoal-soft text-center text-[11.5px]',
             )}
           >
-            {MODE_HINT[mode]}
+            {t(`search.hint.${mode}`)}
           </p>
         </div>
       </div>
@@ -250,6 +241,7 @@ function ModeSwitch({
   mode,
   onModeChange,
 }: Pick<Props, 'mode' | 'onModeChange'>) {
+  const { t } = useTranslation('map')
   const trackRef = useRef<HTMLDivElement>(null)
   const pillRef = useRef<HTMLSpanElement>(null)
   const tabRefs = useRef<Partial<Record<SceneSearchMode, HTMLButtonElement>>>(
@@ -465,7 +457,7 @@ function ModeSwitch({
     <div
       ref={trackRef}
       role="group"
-      aria-label="검색 방식"
+      aria-label={t('search.group')}
       /*
         ⚠️ 모서리는 **감싼 검색창에서 따옵니다** — 알약은 높이의 반(50 ÷ 2 = 25)이 모서리인
         스타디움이고, 이 칸은 위아래로 9px 안쪽에 있으므로 같은 중심을 쓰면 25 − 9 = 16,
@@ -498,7 +490,9 @@ function ModeSwitch({
           // 든 칸에는 눌렀을 때 무엇이 되는지를 적어 둡니다 — 글자만 보면 '이미 이건데 왜 누르나' 가 됩니다
           title={
             item === mode
-              ? `${MODE_LABEL[otherMode(item)]} 검색으로 바꾸기`
+              ? t('search.switchTo', {
+                  mode: t(`search.mode.${otherMode(item)}`),
+                })
               : undefined
           }
           className={cn(
@@ -508,7 +502,7 @@ function ModeSwitch({
             'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
           )}
         >
-          {MODE_LABEL[item]}
+          {t(`search.mode.${item}`)}
         </button>
       ))}
     </div>

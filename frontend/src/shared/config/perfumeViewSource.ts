@@ -1,3 +1,5 @@
+import { i18n } from '@/shared/i18n'
+
 const PERFUME_VIEW_SOURCES = [
   'NATURAL_LANGUAGE_RECOMMENDATION',
   'PERSONALIZED_RECOMMENDATION',
@@ -26,17 +28,35 @@ export function perfumeViewState(
     : { perfumeViewSource: source, fromPerfumeId }
 }
 
-export const PERFUME_VIEW_BACK_LABEL: Record<PerfumeViewSource, string> = {
-  NATURAL_LANGUAGE_RECOMMENDATION: '추천 결과',
-  PERSONALIZED_RECOMMENDATION: '추천 결과',
-  SCENT_MAP: '향 지도',
-  COMMUNITY: '커뮤니티',
-  SEARCH: '향수 목록',
-  SHELF: '진열대',
-  COLLECTION: '컬렉션',
-  RELATED_PERFUME: '이전 향수',
-  DIRECT: '향수 목록',
-}
+const BACK_LABEL_KEY = {
+  NATURAL_LANGUAGE_RECOMMENDATION: 'recommendation',
+  PERSONALIZED_RECOMMENDATION: 'recommendation',
+  SCENT_MAP: 'scentMap',
+  COMMUNITY: 'community',
+  SEARCH: 'perfumeList',
+  SHELF: 'shelf',
+  COLLECTION: 'collection',
+  RELATED_PERFUME: 'previousPerfume',
+  DIRECT: 'perfumeList',
+} as const satisfies Record<PerfumeViewSource, string>
+
+/**
+ * 향수 상세의 '← 돌아가기' 이름. 값은 **읽을 때의** 화면 언어로 풉니다(번역 묶음 common 의 perfumeViewBack).
+ */
+export const PERFUME_VIEW_BACK_LABEL: Readonly<
+  Record<PerfumeViewSource, string>
+> = Object.defineProperties(
+  {} as Record<PerfumeViewSource, string>,
+  Object.fromEntries(
+    PERFUME_VIEW_SOURCES.map((source) => [
+      source,
+      {
+        get: () => i18n.t(`common:perfumeViewBack.${BACK_LABEL_KEY[source]}`),
+        enumerable: true,
+      },
+    ]),
+  ),
+)
 
 export function readPerfumeViewState(state: unknown): {
   source: PerfumeViewSource

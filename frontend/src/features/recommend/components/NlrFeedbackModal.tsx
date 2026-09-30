@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { isApiError } from '@/shared/api/http'
 import { Button } from '@/shared/ui/Button'
@@ -23,16 +24,16 @@ type Props = {
 
 /**
  * 고를 세 가지. **점수가 아닙니다** — 자세한 사정은 `types.ts` 의 `Satisfaction` 주석에
- * 있습니다. 저장 값(영문)과 화면 문구를 떼어 두어, 문구를 손봐도 쌓인 데이터는 그대로입니다.
+ * 있습니다. 저장 값(영문)과 화면 문구(번역 키)를 떼어 두어, 문구를 손봐도 쌓인 데이터는 그대로입니다.
  *
  * NOTE: 문구를 "만족 · 보통 · 불만족" 으로 두지 않았습니다. 그건 평가지의 말이라, 방금
  * 향수를 고른 사람에게는 채점당하는 쪽이 사용자처럼 읽힙니다.
  */
 const OPTIONS = [
-  { value: 'SATISFIED', label: '마음에 들어요' },
-  { value: 'NEUTRAL', label: '보통이에요' },
-  { value: 'DISSATISFIED', label: '아쉬워요' },
-] as const satisfies readonly { value: Satisfaction; label: string }[]
+  { value: 'SATISFIED', key: 'satisfied' },
+  { value: 'NEUTRAL', key: 'neutral' },
+  { value: 'DISSATISFIED', key: 'dissatisfied' },
+] as const satisfies readonly { value: Satisfaction; key: string }[]
 
 /**
  * 추천 만족도 설문 (NLR-08). 결과 모달을 닫은 **뒤에** 뜹니다 — 결과 안에 두면 향수를
@@ -51,6 +52,7 @@ const OPTIONS = [
  * 누른 것일 수 있어 적던 한마디가 있으면 한 번 묻습니다(아래 `requestClose`).
  */
 export function NlrFeedbackModal({ ready }: Props) {
+  const { t } = useTranslation('recommend')
   const pending = usePendingFeedbackStore((state) => state.pending)
   const settle = usePendingFeedbackStore((state) => state.settle)
 
@@ -108,7 +110,7 @@ export function NlrFeedbackModal({ ready }: Props) {
       <Modal
         open={open}
         onClose={requestClose}
-        title="추천은 어떠셨나요"
+        title={t('feedback.title')}
         /*
         배경을 눌러도 닫지 않습니다. `한마디` 에 글을 적다 판 옆을 잘못 누르면 적던 것이
         통째로 날아가는데, 설문은 한 번 닫으면 그 추천으로 다시 열리지 않아 되돌릴 길이
@@ -152,9 +154,9 @@ export function NlrFeedbackModal({ ready }: Props) {
         open={confirmingExit}
         onClose={() => setConfirmingExit(false)}
         onConfirm={close}
-        title="추천에 대한 후기를 남기지 않고 나가시겠습니까?"
-        description="적던 한마디는 저장되지 않고, 이 추천에 대한 설문은 다시 뜨지 않습니다."
-        confirmLabel="나가기"
+        title={t('feedback.exitTitle')}
+        description={t('feedback.exitDescription')}
+        confirmLabel={t('feedback.exit')}
         className="scent-map-panel rounded-glass"
       />
     </>
@@ -178,6 +180,7 @@ function FeedbackForm({
   /** 적다 만 한마디를 판에 알립니다 — 닫을 때 물어볼지를 그 값으로 가립니다 */
   onDraftChange: (text: string) => void
 }) {
+  const { t } = useTranslation('recommend')
   const [satisfaction, setSatisfaction] = useState<Satisfaction | null>(null)
   const [comment, setComment] = useState('')
 
@@ -198,12 +201,10 @@ function FeedbackForm({
   if (answered) {
     return (
       <>
-        <p className="text-body leading-relaxed">
-          고맙습니다. 남겨 주신 답은 추천을 넓히는 데만 씁니다.
-        </p>
+        <p className="text-body leading-relaxed">{t('feedback.thanks')}</p>
         <div className="mt-5 flex justify-end">
           <Button variant="navy" onClick={onSettle}>
-            닫기
+            {t('feedback.close')}
           </Button>
         </div>
       </>
@@ -220,29 +221,34 @@ function FeedbackForm({
         결과 모달의 같은 줄과 문구를 맞췄습니다.
       */}
       <p className="text-ink-muted text-caption mb-3.75">
-        입력한 말 ·{' '}
+        {t('feedback.asked')}
         <strong className="text-ink font-medium">&lsquo;{query}&rsquo;</strong>
       </p>
 
       <ChipToggle
-        label="추천 만족도"
-        options={OPTIONS}
+        label={t('feedback.satisfaction')}
+        options={OPTIONS.map((option) => ({
+          value: option.value,
+          label: t(`feedback.options.${option.key}`),
+        }))}
         value={satisfaction}
         onChange={setSatisfaction}
       />
 
       <div className="mt-3.75">
         <Textarea
-          label="한마디 (선택)"
+          label={t('feedback.comment')}
           rows={3}
           value={comment}
           onChange={(event) => {
             setComment(event.target.value)
             onDraftChange(event.target.value)
           }}
-          placeholder="어떤 점이 좋았는지, 무엇이 아쉬웠는지 적어 주세요"
+          placeholder={t('feedback.placeholder')}
           error={
-            tooLong ? `${FEEDBACK_COMMENT_MAX}자까지 쓸 수 있습니다` : undefined
+            tooLong
+              ? t('feedback.tooLong', { max: FEEDBACK_COMMENT_MAX })
+              : undefined
           }
         />
       </div>
@@ -259,7 +265,7 @@ function FeedbackForm({
           이름이 이미 "건너뛰기" 라 고른 답이고, 거기에 다시 물으면 단추가 거짓말이 됩니다.
         */}
         <Button variant="ghost" onClick={onSettle}>
-          건너뛰기
+          {t('feedback.skip')}
         </Button>
         <Button
           variant="navy"
@@ -267,7 +273,7 @@ function FeedbackForm({
           disabled={satisfaction === null || tooLong}
           isLoading={mutation.isPending}
         >
-          보내기
+          {t('feedback.send')}
         </Button>
       </div>
     </>
@@ -276,12 +282,11 @@ function FeedbackForm({
 
 /** 429 는 기다리면 풀리고 404 는 그 추천이 이미 지워진 것이라, 한 문장으로 묶지 않습니다 */
 function FeedbackErrorText({ error }: { error: unknown }) {
+  const { t } = useTranslation('recommend')
   const status = isApiError(error) ? error.status : null
 
-  if (status === 429)
-    return <>짧은 시간에 여러 번 보내셨습니다. 잠시 뒤에 다시 됩니다.</>
-  if (status === 404)
-    return <>이 추천의 기록이 남아 있지 않아 보내지 못했습니다.</>
+  if (status === 429) return <>{t('feedback.error.rateLimited')}</>
+  if (status === 404) return <>{t('feedback.error.gone')}</>
 
-  return <>답을 보내지 못했습니다. 잠시 후 다시 시도해 주세요.</>
+  return <>{t('feedback.error.failed')}</>
 }

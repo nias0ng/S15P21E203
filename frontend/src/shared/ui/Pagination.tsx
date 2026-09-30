@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 import { cn } from '@/shared/lib/cn'
 
 type Props = {
@@ -16,9 +18,10 @@ export function Pagination({
   size,
   totalElements,
   onPageChange,
-  label = '페이지',
+  label,
   className,
 }: Props) {
+  const { t } = useTranslation('layout')
   const lastPage = Math.max(0, Math.ceil(totalElements / size) - 1)
   if (lastPage === 0) return null
 
@@ -33,15 +36,15 @@ export function Pagination({
 
   return (
     <nav
-      aria-label={label}
+      aria-label={label ?? t('pagination.label')}
       className={cn('flex items-center justify-center gap-1.25', className)}
     >
       <PageButton
         onClick={() => onPageChange(page - 1)}
         disabled={page <= 0}
-        label="이전 페이지"
+        label={t('pagination.previousPage')}
       >
-        이전
+        {t('pagination.previous')}
       </PageButton>
 
       {pages.map((value) => (
@@ -49,7 +52,7 @@ export function Pagination({
           key={value}
           onClick={() => onPageChange(value)}
           current={value === page}
-          label={`${value + 1}쪽`}
+          label={t('pagination.page', { page: value + 1 })}
         >
           {value + 1}
         </PageButton>
@@ -58,9 +61,9 @@ export function Pagination({
       <PageButton
         onClick={() => onPageChange(page + 1)}
         disabled={page >= lastPage}
-        label="다음 페이지"
+        label={t('pagination.nextPage')}
       >
-        다음
+        {t('pagination.next')}
       </PageButton>
     </nav>
   )

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router'
 
 import { ROUTES } from '@/shared/config/routes'
@@ -29,12 +30,13 @@ export function PrimaryNav({
   isLoggedIn: boolean
   ink: Ink
 }) {
+  const { t } = useTranslation('layout')
   const items = NAV_ITEMS.filter((item) => isLoggedIn || !item.requiresAuth)
   const diveOut = useDiveOut()
   const warm = useWarm()
 
   return (
-    <nav aria-label="주요 메뉴" className="justify-self-center">
+    <nav aria-label={t('header.primaryNav')} className="justify-self-center">
       {/* NOTE: 좁은 폭은 사이를 줄입니다 — 로그인하면 SHELF 가 붙어 1024 아래에서 계정 단추를 덮습니다 */}
       <ul className="text-body flex items-center gap-7.5 tracking-widest md:gap-12.5 lg:gap-20">
         {items.map((item) => (

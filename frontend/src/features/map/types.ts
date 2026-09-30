@@ -64,6 +64,9 @@ interface VoyageLogPerfume {
   /** 줄이지 않은 한글 이름 — 마우스를 올리면 보입니다 */
   fullName?: string
   brand?: string
+  /** 영문 원명 · 브랜드 — 영어 화면은 짧은 한글 이름 대신 이것을 씁니다 */
+  nameEn?: string
+  brandEn?: string
   /** 대표 향 계열 — 아이콘 색을 정합니다 */
   family?: ScentFamilyKey | null
 }

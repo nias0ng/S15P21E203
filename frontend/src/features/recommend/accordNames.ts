@@ -1,4 +1,10 @@
-import { SCENT_FAMILY_NAMES } from '@/shared/config/scentFamilies'
+import {
+  SCENT_FAMILY_KEYS,
+  SCENT_FAMILY_NAMES,
+  toScentFamilyKey,
+  type ScentFamilyKey,
+} from '@/shared/config/scentFamilies'
+import { i18n } from '@/shared/i18n'
 
 /**
  * 향 특성(accord)의 영어 이름 → 화면에 쓸 한국어.
@@ -85,28 +91,66 @@ export const ACCORD_NAMES_KO: Record<string, string> = {
 /** `evidence` 는 여럿이면 이 구분자로 이어져 옵니다 (응답 DTO 계약) */
 export const EVIDENCE_SEPARATOR = ' · '
 
+/** 한국어 향 특성 이름 → 영어 이름. 이미 한국어로 온 값을 영어 화면에서 되돌립니다 */
+const ACCORD_BY_KO = new Map(
+  Object.entries(ACCORD_NAMES_KO).map(([accord, ko]) => [ko, accord]),
+)
+
 /**
- * 추천 이유 한 칸을 화면에 쓸 말로 바꿉니다.
+ * 한국어 향 계열 이름 → 계열 키. 취향 테스트 틀은 향 계열을 한국어로 넣어 옵니다.
+ *
+ * NOTE: `SCENT_FAMILY_NAMES` 는 읽을 때의 화면 언어로 풀려서, 한국어 이름은 언어를 못 박아 읽습니다.
+ */
+const familyOfKorean = (name: string): ScentFamilyKey | undefined =>
+  SCENT_FAMILY_KEYS.find(
+    (key) =>
+      i18n.t(
+        `common:scentFamily.${key.toLowerCase() as Lowercase<ScentFamilyKey>}`,
+        { lng: 'ko' },
+      ) === name,
+  )
+
+/** 영어 화면의 향 특성 이름 — 원래 영어 이름에 첫 글자만 대문자로(`fresh spicy` → `Fresh spicy`) */
+const englishAccord = (accord: string) =>
+  accord.charAt(0).toUpperCase() + accord.slice(1)
+
+function koreanLabel(key: string): string | undefined {
+  const lower = key.toLowerCase()
+  if (Object.hasOwn(ACCORD_NAMES_KO, key)) return ACCORD_NAMES_KO[key]
+  if (Object.hasOwn(ACCORD_NAMES_KO, lower)) return ACCORD_NAMES_KO[lower]
+  const family = toScentFamilyKey(key.toUpperCase())
+  return family ? SCENT_FAMILY_NAMES[family] : undefined
+}
+
+/*
+  영어 화면은 영어 이름을 그대로 씁니다. 백엔드가 한국어를 보내기 시작해도 같은 말이 나오도록
+  한국어 이름(향 특성 · 향 계열)도 거꾸로 찾아 영어로 되돌립니다.
+*/
+function englishLabel(key: string): string | undefined {
+  const lower = key.toLowerCase()
+  if (Object.hasOwn(ACCORD_NAMES_KO, lower)) return englishAccord(lower)
+  const family = toScentFamilyKey(key.toUpperCase()) ?? familyOfKorean(key)
+  if (family) return SCENT_FAMILY_NAMES[family]
+  const accord = ACCORD_BY_KO.get(key)
+  return accord === undefined ? undefined : englishAccord(accord)
+}
+
+/**
+ * 추천 이유 한 칸을 화면에 쓸 말로 바꿉니다. 한국어 화면은 한국어로, 영어 화면은 영어 이름으로.
  *
  * 향 특성이 아닌 근거도 이 칸으로 옵니다(`가을 어울림 평가 71%`). 모르는 값은 **그대로**
  * 돌려주므로 그런 줄은 손대지 않습니다 — 백엔드 `AccordLabeler.label` 과 같은 계약입니다.
+ *
+ * NOTE: 언어는 **부를 때** 읽습니다. 결과를 모듈 상수나 오래 가는 memo 에 담으면 언어를 바꿔도
+ * 그 자리는 앞 언어로 남습니다.
  *
  * @param evidence 추천 이유의 근거 칸. 여럿이면 `' · '` 로 이어져 있습니다
  * @returns 같은 자리에 같은 구분자로 다시 이은 말
  */
 export function accordLabel(evidence: string): string {
+  const label = i18n.language === 'en' ? englishLabel : koreanLabel
   return evidence
     .split(EVIDENCE_SEPARATOR)
-    .map((part) => {
-      const key = part.trim()
-      return (
-        ACCORD_NAMES_KO[key] ??
-        ACCORD_NAMES_KO[key.toLowerCase()] ??
-        SCENT_FAMILY_NAMES[
-          key.toUpperCase() as keyof typeof SCENT_FAMILY_NAMES
-        ] ??
-        part
-      )
-    })
+    .map((part) => label(part.trim()) ?? part)
     .join(EVIDENCE_SEPARATOR)
 }

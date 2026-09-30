@@ -6,7 +6,7 @@ import {
   type SceneQuality,
 } from '@/shared/store/graphicsStore'
 
-import { NOTICE_MESSAGE, qualityNotice } from '../lib/sceneQuality'
+import { noticeMessage, qualityNotice } from '../lib/sceneQuality'
 
 /**
  * 메인 3D 의 그래픽 설정을 엔진과 잇습니다 — 사람이 고른 설정을 넘기고, 엔진이 알려 온 지금 단계를
@@ -40,7 +40,7 @@ export function useSceneQuality(
   useEffect(() => {
     if (!ready || !pending || told.includes(pending)) return
     useGraphicsStore.getState().markTold(pending)
-    notify(NOTICE_MESSAGE[pending])
+    notify(noticeMessage(pending))
   }, [ready, pending, told, notify])
 
   return { mode, onQuality }

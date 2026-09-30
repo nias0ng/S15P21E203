@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 import { PillFilter } from '@/shared/ui/PillFilter'
 
 import {
@@ -20,11 +22,16 @@ export function PerfumeFilters({
   onRankingChange,
   onGenderChange,
 }: PerfumeFiltersProps) {
+  const { t } = useTranslation('perfume')
+
   return (
     <div className="flex flex-wrap items-center justify-center gap-2.5">
       <PillFilter
-        label="많은 사람이 담은 기준 필터"
-        options={RANKING_FILTERS}
+        label={t('filters.rankingLabel')}
+        options={RANKING_FILTERS.map(({ value }) => ({
+          value,
+          label: t(`filters.ranking.${value}`),
+        }))}
         value={ranking}
         onChange={onRankingChange}
       />
@@ -35,8 +42,11 @@ export function PerfumeFilters({
       />
 
       <PillFilter
-        label="향의 성별"
-        options={GENDER_FILTERS}
+        label={t('filters.genderLabel')}
+        options={GENDER_FILTERS.map(({ value }) => ({
+          value,
+          label: t(`filters.gender.${value}`),
+        }))}
         value={gender}
         onChange={onGenderChange}
       />

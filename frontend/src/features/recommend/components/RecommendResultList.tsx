@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { toPerfumeDetail } from '@/shared/config/routes'
@@ -84,6 +85,7 @@ function useCollapsedListHeight(itemCount: number) {
  * 문장입니다(`nlrReasonSentence`).
  */
 export function RecommendResultList({ perfumes, ...context }: Props) {
+  const { t } = useTranslation('recommend')
   /* 처음에는 다 접혀 있습니다 — 그 높이가 목록을 잠그는 기준이고, 한 장만 열어 두면 그 카드가
      기준이 되어 목록이 처음부터 굴러갈 자리를 안고 섭니다 */
   const [expandedId, setExpandedId] = useState<number | null>(null)
@@ -140,7 +142,7 @@ export function RecommendResultList({ perfumes, ...context }: Props) {
                 <span className="border-line bg-surface-sunken rounded-glass flex size-20 shrink-0 items-center justify-center border p-1.25">
                   <Thumbnail
                     src={perfume.thumbnailUrl}
-                    fallback="이미지"
+                    fallback={t('nlr.card.imageFallback')}
                     fit="contain"
                     bare
                     className="text-caption size-full"
@@ -168,7 +170,7 @@ export function RecommendResultList({ perfumes, ...context }: Props) {
                     variant="navy"
                     size="sm"
                   >
-                    자세히 보기
+                    {t('nlr.card.viewDetails')}
                   </LinkButton>
                 </div>
               )}
@@ -200,14 +202,16 @@ function RecommendReasonText({
   perfume: RecommendedPerfume
   context: ReasonContext
 }) {
+  // 언어를 바꾸면 다시 그려야 이유 문장도 그 언어로 다시 짓습니다
+  const { t } = useTranslation('recommend')
   const sentence = nlrReasonSentence(perfume.reasons, context)
   if (!sentence) return null
 
   return (
     <>
       <p className="text-ink-muted text-caption">
-        추천 이유
-        {sentence.showsStrength && ' · 괄호 안은 향 강도 0~100'}
+        {t('nlr.card.reasonTitle')}
+        {sentence.showsStrength && t('nlr.card.strengthHint')}
       </p>
       <p className="text-ink text-caption leading-relaxed break-keep">
         {sentence.parts.map((part, index) => (

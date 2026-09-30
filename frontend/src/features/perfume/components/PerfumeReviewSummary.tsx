@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 import { cn } from '@/shared/lib/cn'
 import { splitSentences } from '@/shared/lib/splitSentences'
 import { GLASS_PANEL } from '@/shared/ui/panel'
@@ -13,14 +15,16 @@ export function PerfumeReviewSummary({
   sourceReviewCount,
   isPending = false,
 }: Props) {
+  const { t } = useTranslation('perfume')
+
   return (
     <section className={cn(GLASS_PANEL, 'space-y-2.5')}>
       <h2 className="text-ink text-title font-serif font-semibold">
-        AI 후기 요약
+        {t('summary.title')}
       </h2>
 
       {isPending ? (
-        <p className="text-ink-muted text-body">요약을 불러오는 중입니다.</p>
+        <p className="text-ink-muted text-body">{t('summary.loading')}</p>
       ) : summary ? (
         <>
           <div className="text-ink text-body space-y-1.25">
@@ -30,14 +34,12 @@ export function PerfumeReviewSummary({
           </div>
           {sourceReviewCount !== null && (
             <p className="text-ink-muted text-caption mt-5">
-              후기 {sourceReviewCount}개를 바탕으로 요약했습니다.
+              {t('summary.source', { count: sourceReviewCount })}
             </p>
           )}
         </>
       ) : (
-        <p className="text-ink-muted text-body">
-          후기가 충분히 쌓이면 요약을 보여드립니다.
-        </p>
+        <p className="text-ink-muted text-body">{t('summary.empty')}</p>
       )}
     </section>
   )

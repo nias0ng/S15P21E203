@@ -1,12 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { isApiError } from '@/shared/api/http'
+import { useLocale } from '@/shared/store/localeStore'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Modal } from '@/shared/ui/Modal'
 import { Skeleton } from '@/shared/ui/Skeleton'
 import { Unroll } from '@/shared/ui/Unroll'
 
+import { conditionLabel } from '../nlrReason'
 import { usePendingFeedbackStore } from '../pendingFeedbackStore'
 import { recommendationQuery } from '../queries'
 
@@ -24,11 +27,12 @@ type Props = {
  * NOTE: 가운데 정렬이면 족자가 풀릴 때 머리줄이 밀려 올라가 위쪽에 붙입니다(`mt-25 mb-auto`).
  */
 export function RecommendModal({ query, onClose }: Props) {
+  const { t } = useTranslation('recommend')
   return (
     <Modal
       open={query !== null}
       onClose={onClose}
-      title="추천 결과"
+      title={t('nlr.title')}
       /*
         배경을 눌러도 닫지 않습니다. 판이 3D 바다 위에 떠 있어 배경이 화면의 대부분이고,
         결과를 읽다 옆을 잘못 누르면 다섯 장이 통째로 사라집니다 — 다시 보려면 검색어를
@@ -60,6 +64,8 @@ export function RecommendModal({ query, onClose }: Props) {
 
 /** 열릴 때마다 새로 마운트됩니다 — 그래야 족자가 매번 처음부터 풀립니다 */
 function RecommendBody({ query }: { query: string }) {
+  const { t } = useTranslation('recommend')
+  const locale = useLocale()
   const result = useQuery({
     ...recommendationQuery(query),
     enabled: query.trim().length > 0,
@@ -94,9 +100,18 @@ function RecommendBody({ query }: { query: string }) {
     <Unroll>
       {/* 무엇을 물었는지 결과 위에 남깁니다 — 모달이라 검색창이 뒤에 가려 안 보입니다 */}
       <p className="text-ink-muted text-caption mb-3.75">
-        입력한 말 ·{' '}
+        {t('nlr.asked')}
         <strong className="text-ink font-medium">&lsquo;{query}&rsquo;</strong>
       </p>
+      {/*
+        추천 AI 는 한국어 문장을 기준으로 읽습니다. 영어 화면에서 영어로 적은 사람이 결과가 헐거운
+        까닭을 알 수 있게 한 줄 남깁니다.
+      */}
+      {locale === 'en' && (
+        <p className="text-ink-muted text-caption -mt-2.5 mb-3.75">
+          {t('nlr.koreanHint')}
+        </p>
+      )}
 
       {result.isPending && <RecommendSkeleton />}
 
@@ -112,10 +127,13 @@ function RecommendBody({ query }: { query: string }) {
             */}
           {matchedData.length > 0 && perfumes.length > 0 && (
             <p className="border-line text-ink-muted text-caption mb-3.75 border-l-2 pl-2.5 leading-relaxed">
+              {t('nlr.narrowedBefore')}
               <strong className="text-ink font-medium">
-                {matchedData.map((data) => data.label).join(' · ')}
-              </strong>{' '}
-              조건으로 좁혔습니다.
+                {matchedData
+                  .map((data) => conditionLabel(data.label))
+                  .join(' · ')}
+              </strong>
+              {t('nlr.narrowedAfter')}
             </p>
           )}
 
@@ -127,8 +145,8 @@ function RecommendBody({ query }: { query: string }) {
                       NOTE: 향으로 고른 것이 아닌 경우를 "조건이 넓다" 로 묶으면 거짓말이 됩니다.
                       향 조건을 하나도 못 뽑았고 순서를 정한 것은 평가자 수입니다.
                     */
-                  '향을 말씀하신 것으로 읽지 못해, 위 조건에 맞는 향수를 평가가 많은 순으로 골랐습니다. 냄새로 풀어서 한 줄 덧붙이면 향으로 골라 드릴 수 있습니다.'
-                : '조건이 넓어 비슷한 향까지 함께 골랐습니다. 상황이나 계절을 덧붙이면 더 좁혀 드릴 수 있습니다.'}
+                  t('nlr.relaxedWithoutScent')
+                : t('nlr.relaxed')}
             </p>
           )}
 
@@ -148,13 +166,13 @@ function RecommendBody({ query }: { query: string }) {
             <EmptyState
               title={
                 result.data.status === 'NO_CONDITION'
-                  ? '어떤 향인지 아직 못 알아들었습니다'
-                  : '말씀하신 향에 맞는 향수를 찾지 못했습니다'
+                  ? t('nlr.empty.noConditionTitle')
+                  : t('nlr.empty.noResultTitle')
               }
               description={
                 result.data.status === 'NO_CONDITION'
-                  ? '냄새로 풀어서 적어 보세요 — ‘비누 냄새 나는 향’, ‘비 온 뒤 흙냄새’ 처럼요.'
-                  : '조건을 조금 줄이면 찾을 수 있습니다. 계절이나 상황 하나를 빼고 다시 적어 보세요.'
+                  ? t('nlr.empty.noConditionDescription')
+                  : t('nlr.empty.noResultDescription')
               }
             />
           )}
@@ -169,13 +187,14 @@ function RecommendBody({ query }: { query: string }) {
  * 둘을 "잠시 후 다시" 로 묶으면 안 됩니다.
  */
 function RecommendError({ error }: { error: unknown }) {
+  const { t } = useTranslation('recommend')
   const status = isApiError(error) ? error.status : null
 
   if (status === 429) {
     return (
       <EmptyState
-        title="조금 쉬었다 찾아 주세요"
-        description="짧은 시간에 여러 번 찾으셨습니다. 잠시 뒤에 다시 됩니다."
+        title={t('nlr.error.rateLimitedTitle')}
+        description={t('nlr.error.rateLimitedDescription')}
       />
     )
   }
@@ -183,16 +202,16 @@ function RecommendError({ error }: { error: unknown }) {
   if (status === 503) {
     return (
       <EmptyState
-        title="추천 서버가 지금 답하지 않습니다"
-        description="향수 찾기 · 진열대 같은 다른 기능은 그대로 쓰실 수 있습니다."
+        title={t('nlr.error.unavailableTitle')}
+        description={t('nlr.error.unavailableDescription')}
       />
     )
   }
 
   return (
     <EmptyState
-      title="추천을 불러오지 못했습니다"
-      description="잠시 후 다시 시도해 주세요."
+      title={t('nlr.error.failedTitle')}
+      description={t('nlr.error.failedDescription')}
     />
   )
 }

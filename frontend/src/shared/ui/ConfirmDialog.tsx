@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 import { Button } from '@/shared/ui/Button'
 import { Modal } from '@/shared/ui/Modal'
 
@@ -16,31 +18,35 @@ export function ConfirmDialog({
   open,
   onClose,
   onConfirm,
-  title = '삭제할까요?',
-  description = '삭제하면 되돌릴 수 없습니다.',
-  confirmLabel = '삭제',
+  title,
+  description,
+  confirmLabel,
   isLoading = false,
   className,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation(['layout', 'common'])
+
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={title}
+      title={title ?? t('confirmDialog.title')}
       className={className}
       notice
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
-            취소
+            {t('common:actions.cancel')}
           </Button>
           <Button variant="danger" isLoading={isLoading} onClick={onConfirm}>
-            {confirmLabel}
+            {confirmLabel ?? t('common:actions.delete')}
           </Button>
         </>
       }
     >
-      <p className="text-ink text-heading text-center">{description}</p>
+      <p className="text-ink text-heading text-center">
+        {description ?? t('confirmDialog.description')}
+      </p>
     </Modal>
   )
 }

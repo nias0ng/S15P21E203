@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/shared/lib/cn'
 import { EmptyState } from '@/shared/ui/EmptyState'
@@ -41,6 +42,7 @@ export function PerfumePicker({
   onSearch,
   className,
 }: PerfumePickerProps) {
+  const { t } = useTranslation(['layout', 'common'])
   const [searched, setSearched] = useState(false)
 
   const search = (keyword: string) => {
@@ -51,8 +53,8 @@ export function PerfumePicker({
   return (
     <div className={cn('space-y-2.5', className)}>
       <SearchField
-        label="향수명 또는 브랜드명으로 검색"
-        placeholder="향수명 · 브랜드 검색"
+        label={t('perfumePicker.searchLabel')}
+        placeholder={t('perfumePicker.placeholder')}
         onSearch={search}
       />
 
@@ -66,11 +68,15 @@ export function PerfumePicker({
         </ul>
       ) : options.length === 0 ? (
         <EmptyState
-          title={searched ? '향수를 찾지 못했습니다' : '향수를 검색해 주세요'}
+          title={
+            searched
+              ? t('perfumePicker.notFoundTitle')
+              : t('perfumePicker.emptyTitle')
+          }
           description={
             searched
-              ? '검색어를 바꿔 보세요.'
-              : '향수명이나 브랜드명을 입력하면 고를 수 있는 향수가 나옵니다.'
+              ? t('perfumePicker.notFoundDescription')
+              : t('perfumePicker.emptyDescription')
           }
         />
       ) : (
@@ -103,7 +109,7 @@ export function PerfumePicker({
                 >
                   <Thumbnail
                     src={option.thumbnailUrl}
-                    fallback="이미지"
+                    fallback={t('common:image')}
                     className="text-caption mb-2.5 aspect-3/4 w-full"
                   />
                   <span className="text-ink text-body block truncate font-medium">

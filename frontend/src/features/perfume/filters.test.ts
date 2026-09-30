@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { readGenderFilter, readRankingFilter } from './types'
+import { i18n } from '@/shared/i18n'
+import { useLocaleStore } from '@/shared/store/localeStore'
+
+import { readGenderFilter, readRankingFilter, SEASONS } from './types'
 
 /* 필터 값은 주소에서 오므로 바깥에서 들어옵니다 — 모르는 값을 그대로 API 에 실으면 400 이라 목록이 통째로 빕니다 */
 describe('readRankingFilter', () => {
@@ -39,5 +42,26 @@ describe('readGenderFilter', () => {
 
   it('쿼리가 아예 없으면 안 걸린 것이다', () => {
     expect(readGenderFilter(null)).toBeNull()
+  })
+})
+
+describe('SEASONS', () => {
+  it('이름표를 읽는 때의 화면 언어로 푼다', async () => {
+    expect(SEASONS.map((season) => season.label)).toEqual([
+      '봄',
+      '여름',
+      '가을',
+      '겨울',
+    ])
+
+    useLocaleStore.getState().setLocale('en')
+    await i18n.changeLanguage('en')
+
+    expect(SEASONS.map((season) => season.label)).toEqual([
+      'Spring',
+      'Summer',
+      'Fall',
+      'Winter',
+    ])
   })
 })

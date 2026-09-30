@@ -1,6 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
+import { i18n } from '@/shared/i18n'
+import { useLocaleStore } from '@/shared/store/localeStore'
+
 import type { PerfumeNote } from '../types'
 
 import { PerfumeNotes } from './PerfumeNotes'
@@ -97,5 +100,18 @@ describe('PerfumeNotes', () => {
 
     expect(screen.getByText('기타')).toBeInTheDocument()
     expect(screen.getByText('앰버')).toBeInTheDocument()
+  })
+})
+
+describe('PerfumeNotes (영어 화면)', () => {
+  it('제목과 단계를 모르는 묶음을 영어로 적는다', async () => {
+    useLocaleStore.getState().setLocale('en')
+    await i18n.changeLanguage('en')
+
+    render(<PerfumeNotes notes={[note(1, 'Amber', null)]} />)
+
+    expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument()
+    expect(screen.getByText('Other')).toBeInTheDocument()
+    expect(screen.queryByText('기타')).not.toBeInTheDocument()
   })
 })

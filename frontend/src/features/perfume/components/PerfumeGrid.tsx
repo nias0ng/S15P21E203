@@ -1,9 +1,12 @@
+import { useTranslation } from 'react-i18next'
+
 import {
   perfumeViewState,
   type PerfumeViewSource,
 } from '@/shared/config/perfumeViewSource'
 import { toPerfumeDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
+import { useLocale } from '@/shared/store/localeStore'
 import { CARD_GRID } from '@/shared/ui/cardGrid'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { PerfumeCard } from '@/shared/ui/PerfumeCard'
@@ -34,6 +37,8 @@ export function PerfumeGrid({
   skeletonCount = columns * 2,
   emptyAction,
 }: PerfumeGridProps) {
+  const { t } = useTranslation('perfume')
+  const locale = useLocale()
   const gridClass = columns === 6 ? cn(CARD_GRID, 'lg:grid-cols-6') : CARD_GRID
 
   if (isPending) {
@@ -50,8 +55,8 @@ export function PerfumeGrid({
     return (
       empty ?? (
         <EmptyState
-          title="조건에 맞는 향수가 없습니다"
-          description="검색어를 바꾸거나 필터를 해제해 보세요."
+          title={t('grid.emptyTitle')}
+          description={t('grid.emptyDescription')}
           action={emptyAction}
         />
       )
@@ -66,7 +71,8 @@ export function PerfumeGrid({
             /* NOTE: 쪽 넘김이 붙으면 2쪽도 1번부터 시작합니다 — 그때는 쪽 번호를 곱해야 합니다 */
             rank={rankable ? index + 1 : undefined}
             name={perfume.name}
-            subName={perfume.nameKo}
+            // 영어 화면은 원래 이름만 둡니다 — 한국어 이름을 받쳐 적을 까닭이 없습니다
+            subName={locale === 'en' ? null : perfume.nameKo}
             thumbnailUrl={perfume.imageUrl}
             to={toPerfumeDetail(perfume.perfumeId)}
             state={perfumeViewState(source, fromPerfumeId)}

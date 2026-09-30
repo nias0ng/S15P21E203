@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useLocation } from 'react-router'
 
 import { cn } from '@/shared/lib/cn'
@@ -37,6 +38,7 @@ function PaperBoatIcon() {
  * 어느 방에서든 검정 동그라미 · 흰 종이배여야 합니다.
  */
 export function FeedbackButton() {
+  const { t } = useTranslation('layout')
   const { pathname } = useLocation()
   const diving = useIsDiving()
   // 말풍선을 다 보여 준 화면. 주소가 바뀌면 이 값과 달라져 다시 뜹니다
@@ -57,7 +59,7 @@ export function FeedbackButton() {
         href={FEEDBACK_FORM_URL}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="피드백 보내기 (새 탭)"
+        aria-label={t('feedback.link')}
         className={cn(
           'flex size-20 items-center justify-center rounded-full',
           'bg-charcoal text-ivory shadow-overlay',
@@ -84,7 +86,7 @@ export function FeedbackButton() {
       >
         {/* 단추 쪽을 가리키는 꼬리 */}
         <span className="bg-ivory absolute top-1/2 -left-1.5 size-3.75 -translate-y-1/2 rotate-45" />
-        <span className="relative">버튼을 눌러 피드백을 전해보세요!</span>
+        <span className="relative">{t('feedback.greeting')}</span>
       </p>
     </div>
   )

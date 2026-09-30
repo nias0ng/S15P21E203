@@ -2,6 +2,9 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
+import { i18n } from '@/shared/i18n'
+import { useLocaleStore } from '@/shared/store/localeStore'
+
 import type { PerfumeDetail } from '../types'
 
 import { PerfumeOverview } from './PerfumeOverview'
@@ -96,5 +99,29 @@ describe('PerfumeOverview', () => {
     )
 
     expect(screen.getByRole('button', { name: '진열대 저장' })).toBeDisabled()
+  })
+})
+
+describe('PerfumeOverview (영어 화면)', () => {
+  it('원래 이름을 제목으로 두고 한국어 이름은 적지 않는다', async () => {
+    useLocaleStore.getState().setLocale('en')
+    await i18n.changeLanguage('en')
+
+    render(
+      <PerfumeOverview
+        perfume={{ ...PERFUME, gender: 'MALE' }}
+        inShelf={false}
+        onShelfAction={vi.fn()}
+      />,
+    )
+
+    expect(
+      screen.getByRole('heading', { name: 'Allure Homme Sport' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('male')).toBeInTheDocument()
+    expect(screen.queryByText('알뤼르 옴므 스포츠')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Save to Shelf' }),
+    ).toBeInTheDocument()
   })
 })

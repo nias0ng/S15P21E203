@@ -1,41 +1,43 @@
 import { toPostDetail, toReviewDetail } from '@/shared/config/routes'
+import { i18n } from '@/shared/i18n'
 
 export type PostCategory = 'COLLECTION' | 'RECOMMEND' | 'CHAT'
 
+// 이름표는 여기 두지 않습니다. 모듈을 읽을 때 한 번 정해지면 화면 언어가 바뀌어도 안 바뀝니다 —
+// 부르는 쪽이 community 묶음의 `categories.*` · `sorts.*` 를 t() 로 풉니다.
 export const POST_CATEGORIES = [
-  { value: 'COLLECTION', label: '컬렉션 공유' },
-  { value: 'RECOMMEND', label: '추천' },
-  { value: 'CHAT', label: '잡담' },
-] as const satisfies readonly { value: PostCategory; label: string }[]
+  { value: 'COLLECTION' },
+  { value: 'RECOMMEND' },
+  { value: 'CHAT' },
+] as const satisfies readonly { value: PostCategory }[]
 
 export type PostSort = 'RECENT' | 'VIEWS' | 'LIKES' | 'COMMENTS'
 
 export type ReviewSort = 'RECENT' | 'VIEWS' | 'LIKES'
 
 export const REVIEW_SORTS = [
-  { value: 'RECENT', label: '최근' },
-  { value: 'VIEWS', label: '조회 순' },
-  { value: 'LIKES', label: '좋아요 순' },
-] as const satisfies readonly { value: ReviewSort; label: string }[]
+  { value: 'RECENT' },
+  { value: 'VIEWS' },
+  { value: 'LIKES' },
+] as const satisfies readonly { value: ReviewSort }[]
 
 export const FREE_SORTS = [
   ...REVIEW_SORTS,
-  { value: 'COMMENTS', label: '댓글 많은 순' },
-] as const satisfies readonly { value: PostSort; label: string }[]
+  { value: 'COMMENTS' },
+] as const satisfies readonly { value: PostSort }[]
 
-const SORT_TITLES = {
-  RECENT: '최근',
-  VIEWS: '많이 본',
-  LIKES: '좋아요 많은',
-  COMMENTS: '댓글 많은',
-} as const satisfies Record<PostSort, string>
-
+/**
+ * 게시판 제목. 정렬을 수식어로 앞에 붙이고, 분류가 있으면 그 사이에 끼웁니다.
+ * 부를 때마다 지금 화면 언어로 풉니다.
+ */
 export function boardTitle(
   sort: PostSort,
   noun: string,
   categoryLabel?: string,
 ) {
-  return [SORT_TITLES[sort], categoryLabel, noun].filter(Boolean).join(' ')
+  return [i18n.t(`community:board.sortTitles.${sort}`), categoryLabel, noun]
+    .filter(Boolean)
+    .join(' ')
 }
 
 export interface LinkedPerfume {

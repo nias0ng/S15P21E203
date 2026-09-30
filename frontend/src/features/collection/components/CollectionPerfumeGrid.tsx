@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
@@ -30,6 +31,7 @@ type Props = {
  * 두 칸으로 못 박습니다 — 최소 폭으로 세면 한 칸이 되어 병 하나가 화면 한 장을 차지합니다.
  */
 export function CollectionPerfumeGrid({ perfumes, onRemove, onAdd }: Props) {
+  const { t } = useTranslation('collection')
   return (
     <ul className="grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-[repeat(auto-fill,minmax(calc(var(--spacing)*50),1fr))] sm:gap-x-7.5">
       {perfumes.map((perfume) => (
@@ -55,7 +57,7 @@ export function CollectionPerfumeGrid({ perfumes, onRemove, onAdd }: Props) {
           */}
           <button
             type="button"
-            aria-label={`${perfume.name} 컬렉션에서 제거`}
+            aria-label={t('grid.remove', { name: perfume.name })}
             onClick={() => onRemove(perfume)}
             className="collection-remove"
           >
@@ -88,7 +90,9 @@ export function CollectionPerfumeGrid({ perfumes, onRemove, onAdd }: Props) {
             // 향수 칸의 브랜드 자리 — 자간을 넓힌 영문 대문자라 한글을 적으면 글자가 흩어지고, 길면 좁은
             // 명판(휴대폰 · 1440 아래에서 글 폭 100 남짓)에서 잘립니다
             kicker={<span lang="en">From shelf</span>}
-            title={perfumes.length === 0 ? '첫 향수 담기' : '향수 더 담기'}
+            title={
+              perfumes.length === 0 ? t('grid.addFirst') : t('grid.addMore')
+            }
           />
         </button>
       </li>

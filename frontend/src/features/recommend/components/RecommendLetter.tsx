@@ -9,12 +9,14 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { prefersReducedMotion } from '@/shared/lib/prefersReducedMotion'
+import { useLocale } from '@/shared/store/localeStore'
 import { LinkButton } from '@/shared/ui/LinkButton'
 
 import { recordPersonalExposure } from '../api'
@@ -71,21 +73,18 @@ const ACCORD_CHIPS = 4
  * 근거의 갈래마다 편지 머리말. 근거 문장이 "왜" 를 말하므로 머리말은 **어떤 편지인지**만 말합니다.
  * 모르는 틀(null)이면 갈래 없이 인사만 합니다.
  */
-const HEADLINE: Record<PersonalReasonSource | 'unknown', string> = {
-  FIT: '마음에 든 향과 닮은 향수를 찾았어요',
-  RECENT: '요즘 자주 들여다본 결을 담은 향수예요',
-  TASTE: '취향 테스트가 고른 향수가 도착했어요',
-  unknown: '당신을 위한 향수가 도착했어요',
-}
+const HEADLINE = {
+  FIT: 'fit',
+  RECENT: 'recent',
+  TASTE: 'taste',
+  unknown: 'unknown',
+} as const satisfies Record<PersonalReasonSource | 'unknown', string>
 
 /**
  * "다른 향수 추천받기" 가 새 편지를 못 받았을 때 편지 아래에 적는 한 줄. 누르고도 아무 일이 없으면 버튼이
  * 고장 난 것처럼 보입니다 — 서버가 줄 향수가 없다고 답했는지(404 · 503), 묻다 실패했는지를 가립니다.
  */
-const NEXT_NOTE = {
-  none: '지금은 새로 보낼 향수가 없어요',
-  failed: '새 편지를 받지 못했어요. 다시 눌러 주세요',
-} as const
+type NextNote = 'none' | 'failed'
 
 /**
  * 한 칸씩 펼치기의 시간(ms, 아래 RecommendLetter 의 "펼치기"). 봉투에서 나온 편지가 윗칸만 보이는
@@ -199,6 +198,8 @@ export function RecommendLetter({
   const middleRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const sheetId = useId()
+  const { t } = useTranslation('recommend')
+  const locale = useLocale()
   const [open, setOpen] = useState(false)
   const openRef = useRef(false)
   /** 한 칸씩 펼치는 중 — 아래 두 칸의 사본이 서 있고 진짜 편지는 윗칸만 보입니다 */
@@ -220,7 +221,8 @@ export function RecommendLetter({
    * "다른 향수 추천받기" 가 새 편지를 못 받았을 때의 한 줄(NEXT_NOTE). 새 편지가 오거나, 앞 · 뒤 편지로
    * 넘기거나, 편지를 펼치고 접으면 지웁니다.
    */
-  const [nextNote, setNextNote] = useState<string | null>(null)
+  // 문구가 아니라 갈래를 들고 있습니다 — 문구를 담아 두면 언어를 바꿔도 앞 언어로 남습니다
+  const [nextNote, setNextNote] = useState<NextNote | null>(null)
   const latest = result?.status === 'ready' ? result.recommendation : null
   if (
     latest !== null &&
@@ -266,7 +268,7 @@ export function RecommendLetter({
     ) {
       return
     }
-    setNextNote(next === undefined ? NEXT_NOTE.failed : NEXT_NOTE.none)
+    setNextNote(next === undefined ? 'failed' : 'none')
   }
 
   /*
@@ -425,6 +427,12 @@ export function RecommendLetter({
       ? facts
       : null
   const detailHref = letter ? toPerfumeDetail(letter.perfumeId) : null
+  /*
+    영어 화면은 원래(영어) 이름을 이름 자리에 씁니다 — 그때 위에 작게 다는 영문 이름은 같은 말이라
+    빼냅니다. 상세를 받기 전에는 추천 응답의 이름(한국어 이름이 있으면 한국어)뿐입니다.
+  */
+  const englishName = locale === 'en' ? (shownFacts?.nameEn ?? null) : null
+  const smallName = locale === 'en' ? null : (shownFacts?.nameEn ?? null)
 
   /**
    * 편지 글 한 벌. 진짜 편지와, 한 칸씩 펼치는 동안 내려오는 두 칸의 사본이 같은 글을 그립니다
@@ -439,7 +447,7 @@ export function RecommendLetter({
         <button
           ref={copy ? undefined : closeRef}
           type="button"
-          aria-label="편지 접기"
+          aria-label={t('letter.fold')}
           className="rec-close"
           onClick={() => toggle(false)}
         >
@@ -458,7 +466,9 @@ export function RecommendLetter({
       </div>
 
       {recipient && (
-        <p className="rec-salutation font-serif">{recipient}님께</p>
+        <p className="rec-salutation font-serif">
+          {t('letter.salutation', { name: recipient })}
+        </p>
       )}
 
       {invitation ? (
@@ -472,7 +482,7 @@ export function RecommendLetter({
           */
           <div key={letter.recommendationToken} className="rec-body">
             <h3 className="rec-headline font-serif">
-              {HEADLINE[reason.source ?? 'unknown']}
+              {t(`letter.headline.${HEADLINE[reason.source ?? 'unknown']}`)}
             </h3>
 
             <Link
@@ -485,26 +495,30 @@ export function RecommendLetter({
                 {letter.imageUrl ? (
                   <img src={letter.imageUrl} alt="" />
                 ) : (
-                  <span className="rec-bottle-empty">사진 준비 중</span>
+                  <span className="rec-bottle-empty">
+                    {t('letter.photoPending')}
+                  </span>
                 )}
               </span>
               <span className="rec-perfume-name">
                 {shownFacts?.brand && (
                   <span className="rec-brand">{shownFacts.brand}</span>
                 )}
-                {shownFacts?.nameEn && (
+                {smallName && (
                   <span aria-hidden className="rec-name-en" lang="en">
-                    {shownFacts.nameEn}
+                    {smallName}
                   </span>
                 )}
-                <span className="rec-name font-serif">{letter.name}</span>
+                <span className="rec-name font-serif">
+                  {englishName ?? letter.name}
+                </span>
               </span>
             </Link>
 
             <ReasonLine reason={reason} />
 
             {shownFacts && shownFacts.accords.length > 0 && (
-              <ul className="rec-accords" aria-label="이 향수의 향 특성">
+              <ul className="rec-accords" aria-label={t('letter.accords')}>
                 {shownFacts.accords.slice(0, ACCORD_CHIPS).map((accord) => (
                   <li
                     key={accord}
@@ -524,7 +538,7 @@ export function RecommendLetter({
                 size="sm"
                 className="rec-action"
               >
-                자세히 보기
+                {t('letter.viewDetails')}
               </LinkButton>
               {renderSave?.(letter.perfumeId)}
             </div>
@@ -539,7 +553,7 @@ export function RecommendLetter({
               <div className="rec-pager">
                 <button
                   type="button"
-                  aria-label="앞 편지"
+                  aria-label={t('letter.previous')}
                   disabled={at <= 0}
                   onClick={() => {
                     setAt(at - 1)
@@ -553,7 +567,7 @@ export function RecommendLetter({
                 </span>
                 <button
                   type="button"
-                  aria-label="다음 편지"
+                  aria-label={t('letter.next')}
                   disabled={at >= letters.length - 1}
                   onClick={() => {
                     setAt(at + 1)
@@ -578,7 +592,7 @@ export function RecommendLetter({
               >
                 ↻
               </span>
-              {isRefreshing ? '새 편지를 봉하는 중' : '다른 향수 추천받기'}
+              {isRefreshing ? t('letter.refreshing') : t('letter.another')}
             </button>
           </div>
           {/*
@@ -586,13 +600,15 @@ export function RecommendLetter({
             생기면 낭독기가 알리지 않습니다. 비어 있으면 높이가 없습니다.
           */}
           <p role="status" className="rec-note">
-            {nextNote && <span key={nextNote}>{nextNote}</span>}
+            {nextNote && (
+              <span key={nextNote}>{t(`letter.nextNote.${nextNote}`)}</span>
+            )}
           </p>
         </>
       )}
 
       <p aria-hidden className="rec-sign font-serif">
-        향해 드림
+        {t('letter.sign')}
       </p>
     </div>
   )
@@ -621,13 +637,13 @@ export function RecommendLetter({
         className="rec-envelope"
         aria-expanded={open}
         aria-controls={sheetId}
-        aria-label={
+        aria-label={t(
           invitation
-            ? '맞춤 향수 편지 받는 법 보기 — 취향 테스트를 마치면 편지가 도착해요'
+            ? 'letter.envelope.invitation'
             : unread
-              ? '새로 온 향수 편지 열기'
-              : '향수 편지 다시 열기'
-        }
+              ? 'letter.envelope.unread'
+              : 'letter.envelope.read',
+        )}
         inert={open}
         onClick={() => toggle(true)}
       >
@@ -655,7 +671,7 @@ export function RecommendLetter({
       */}
       <section
         id={sheetId}
-        aria-label="당신을 위한 향수 편지"
+        aria-label={t('letter.sheet')}
         className="rec-sheet"
         data-folded={folding ? '' : undefined}
         inert={!open}
@@ -714,18 +730,16 @@ function ReasonLine({ reason }: { reason: PersonalReason }) {
  * 편지를 받는 법을 적습니다 — 진열대가 비어 있어도 테스트만으로 편지가 옵니다.
  */
 function TasteTestInvitation() {
+  const { t } = useTranslation('recommend')
   return (
     <div className="rec-body">
       <h3 className="rec-headline font-serif">
-        아직 당신의 취향을 몰라서 편지를 못 썼어요
+        {t('letter.invitation.headline')}
       </h3>
-      <p className="rec-reason">
-        좋아하는 향 계열 몇 개만 고르면, 진열대에 매긴 적합도와 요즘 살펴본
-        향수까지 함께 읽어 맞춤 향수를 골라 보내 드려요.
-      </p>
+      <p className="rec-reason">{t('letter.invitation.body')}</p>
       <div className="rec-actions">
         <LinkButton to={ROUTES.TASTE_TEST} size="sm" className="rec-action">
-          취향 테스트 하러 가기
+          {t('letter.invitation.action')}
         </LinkButton>
       </div>
     </div>

@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { toNoteDetail } from '@/shared/config/routes'
+import { useLocale } from '@/shared/store/localeStore'
 import { CARD_GRID } from '@/shared/ui/cardGrid'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { GLASS_PANEL } from '@/shared/ui/panel'
@@ -8,7 +10,7 @@ import { Skeleton } from '@/shared/ui/Skeleton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 import { TileCard } from '@/shared/ui/TileCard'
 
-import { groupByAccordFamily } from '../grouping'
+import { groupByAccordFamily, UNCATEGORIZED } from '../grouping'
 import type { Note } from '../types'
 
 type Props = {
@@ -22,6 +24,8 @@ export function NoteCategorySections({
   isPending = false,
   emptyAction,
 }: Props) {
+  const { t } = useTranslation('note')
+  const locale = useLocale()
   const sections = useMemo(() => groupByAccordFamily(notes), [notes])
 
   if (isPending) {
@@ -51,8 +55,8 @@ export function NoteCategorySections({
   if (notes.length === 0) {
     return (
       <EmptyState
-        title="노트를 찾지 못했습니다"
-        description="다른 이름으로 검색해보세요."
+        title={t('sections.emptyTitle')}
+        description={t('sections.emptyDescription')}
         action={emptyAction}
       />
     )
@@ -63,9 +67,13 @@ export function NoteCategorySections({
       {sections.map((section) => (
         <section key={section.family} className={GLASS_PANEL}>
           <div className="mb-6.25 flex items-baseline gap-2.5">
-            <h2 className="text-ink font-serif text-2xl">{section.family}</h2>
+            <h2 className="text-ink font-serif text-2xl">
+              {section.family === UNCATEGORIZED
+                ? t('sections.uncategorized')
+                : section.family}
+            </h2>
             <span className="text-ink-muted text-caption">
-              {section.notes.length}개
+              {t('sections.count', { count: section.notes.length })}
             </span>
           </div>
 
@@ -77,12 +85,16 @@ export function NoteCategorySections({
                   media={
                     <Thumbnail
                       src={note.imageUrl}
-                      fallback="이미지"
+                      fallback={t('sections.imageFallback')}
                       className="rounded-image aspect-7/5 w-full"
                     />
                   }
                   title={note.name}
-                  caption={note.nameKo !== note.name ? note.nameKo : undefined}
+                  caption={
+                    locale === 'en' || note.nameKo === note.name
+                      ? undefined
+                      : note.nameKo
+                  }
                 />
               </li>
             ))}

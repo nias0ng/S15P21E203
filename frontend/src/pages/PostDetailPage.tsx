@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router'
 
 import {
@@ -10,7 +11,6 @@ import {
   deleteComment,
   deletePost,
   likePost,
-  POST_CATEGORIES,
   postDetailQuery,
   unlikePost,
   updateComment,
@@ -43,6 +43,7 @@ import { Toast } from '@/shared/ui/Toast'
 const COMMENT_PAGE_SIZE = 20
 
 export default function PostDetailPage() {
+  const { t } = useTranslation('community')
   const { postId } = useParams<{ postId: string }>()
   const parsedId = parseId(postId)
   const enabled = parsedId !== null
@@ -70,7 +71,7 @@ export default function PostDetailPage() {
   const addComment = useMutation({
     mutationFn: (content: string) => createComment(numericId, content),
     onSuccess: refreshComments,
-    onError: () => showToast('댓글을 남기지 못했습니다'),
+    onError: () => showToast(t('postDetail.commentCreateFailed')),
   })
 
   const editComment = useMutation({
@@ -82,13 +83,13 @@ export default function PostDetailPage() {
       content: string
     }) => updateComment(commentId, content),
     onSuccess: refreshComments,
-    onError: () => showToast('댓글을 수정하지 못했습니다'),
+    onError: () => showToast(t('postDetail.commentUpdateFailed')),
   })
 
   const removeComment = useMutation({
     mutationFn: (commentId: number) => deleteComment(commentId),
     onSuccess: refreshComments,
-    onError: () => showToast('댓글을 삭제하지 못했습니다'),
+    onError: () => showToast(t('postDetail.commentDeleteFailed')),
   })
 
   const removePost = useMutation({
@@ -99,7 +100,7 @@ export default function PostDetailPage() {
     },
     onError: () => {
       setDeleteOpen(false)
-      showToast('게시글을 삭제하지 못했습니다')
+      showToast(t('postDetail.deleteFailed'))
     },
   })
 
@@ -121,8 +122,8 @@ export default function PostDetailPage() {
   if (post.isError || !post.data) {
     return (
       <EmptyState
-        title="게시글 상세 정보를 불러오지 못했습니다"
-        description="다시 시도해주세요."
+        title={t('postDetail.loadFailedTitle')}
+        description={t('postDetail.loadFailedDescription')}
         onRetry={enabled ? () => post.refetch() : undefined}
       />
     )
@@ -133,17 +134,12 @@ export default function PostDetailPage() {
   return (
     <div className="space-y-6.25">
       <LinkButton to={ROUTES.COMMUNITY_FREE} variant="outline" size="sm">
-        ← 자유 게시판
+        {t('postDetail.backToFree')}
       </LinkButton>
 
       <article className="space-y-3.75">
         <header className="space-y-2.5">
-          <Badge tone="neutral">
-            {
-              POST_CATEGORIES.find((item) => item.value === data.category)
-                ?.label
-            }
-          </Badge>
+          <Badge tone="neutral">{t(`categories.${data.category}`)}</Badge>
           <h1 className="text-ink text-display font-serif font-bold">
             {data.title}
           </h1>
@@ -155,7 +151,8 @@ export default function PostDetailPage() {
             />
             <span className="text-ink">{authorName(data.nickname)}</span>
             <span className="text-ink-muted">
-              · {formatRelativeTime(data.createdAt)} · 조회 {data.viewCount}
+              · {formatRelativeTime(data.createdAt)} ·{' '}
+              {t('board.views', { count: data.viewCount })}
             </span>
 
             <span className="ml-auto flex items-center gap-2.5">
@@ -166,14 +163,14 @@ export default function PostDetailPage() {
                     variant="outline"
                     size="sm"
                   >
-                    수정
+                    {t('postDetail.edit')}
                   </LinkButton>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setDeleteOpen(true)}
                   >
-                    삭제
+                    {t('postDetail.delete')}
                   </Button>
                 </>
               )}
@@ -181,7 +178,7 @@ export default function PostDetailPage() {
               <button
                 type="button"
                 aria-pressed={data.liked}
-                aria-label={`좋아요 ${data.likeCount}`}
+                aria-label={t('board.likes', { count: data.likeCount })}
                 disabled={likeToggle.isPending}
                 onClick={() =>
                   likeToggle.toggle({ id: numericId, liked: data.liked })
@@ -214,7 +211,7 @@ export default function PostDetailPage() {
           {data.imageUrls.length > 0 && (
             <section className="space-y-2.5">
               <h2 className="text-ink-muted text-caption font-medium">
-                첨부 이미지
+                {t('postDetail.images')}
               </h2>
               <ul className="flex flex-wrap gap-2.5">
                 {data.imageUrls.map((url) => (
@@ -229,7 +226,7 @@ export default function PostDetailPage() {
           {data.collectionTitle && (
             <section className="space-y-2.5">
               <h2 className="text-ink-muted text-caption font-medium">
-                첨부 컬렉션
+                {t('postDetail.collection')}
               </h2>
               <p className="border-line-soft bg-surface-sunken text-ink text-body rounded-card inline-flex w-fit max-w-full border px-2.5 py-2.5">
                 {data.collectionTitle}
@@ -240,7 +237,7 @@ export default function PostDetailPage() {
           {data.relatedPerfumes.length > 0 && (
             <section className="space-y-2.5">
               <h2 className="text-ink-muted text-caption font-medium">
-                연결된 향수
+                {t('postDetail.perfumes')}
               </h2>
               <ul className="space-y-2.5">
                 {data.relatedPerfumes.map((perfume) => (
@@ -265,7 +262,7 @@ export default function PostDetailPage() {
                         </span>
                       )}
                       <span className="text-ink-muted text-caption ml-auto">
-                        향수 상세 →
+                        {t('postDetail.perfumeDetail')}
                       </span>
                     </Link>
                   </li>
@@ -277,7 +274,7 @@ export default function PostDetailPage() {
 
         {likeToggle.error !== null && (
           <p className="text-danger text-caption" role="alert">
-            좋아요를 누르지 못했습니다. 잠시 후 다시 시도해주세요.
+            {t('postDetail.likeFailed')}
           </p>
         )}
       </article>
@@ -305,7 +302,7 @@ export default function PostDetailPage() {
       <ConfirmDialog
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
-        title={`'${data.title}' 게시글을 삭제할까요?`}
+        title={t('postDetail.deleteConfirm', { title: data.title })}
         onConfirm={() => removePost.mutate()}
       />
 
@@ -313,14 +310,14 @@ export default function PostDetailPage() {
         open={loginOpen}
         onClose={() => setLoginOpen(false)}
         redirectTo={toPostDetail(numericId)}
-        description="댓글은 로그인한 뒤에 쓸 수 있습니다."
+        description={t('postDetail.commentLoginRequired')}
       />
 
       <LoginRequiredDialog
         open={likeToggle.loginRequired}
         onClose={likeToggle.closeLoginRequired}
         redirectTo={toPostDetail(numericId)}
-        description="좋아요는 로그인한 뒤에 누를 수 있습니다. 글은 로그인 없이도 읽을 수 있습니다."
+        description={t('board.likeLoginRequired')}
       />
 
       <Toast {...toastProps} />

@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
+import type { Locale } from '@/shared/i18n/locale'
 import { cn } from '@/shared/lib/cn'
 import { useDiveStore } from '@/shared/store/diveStore'
 import type { GraphicsMode, SceneQuality } from '@/shared/store/graphicsStore'
+import { useLocale } from '@/shared/store/localeStore'
 
 import { setBoatAnchorSource, type BoatAnchor } from '../lib/boatAnchor'
 import {
@@ -124,6 +127,13 @@ interface EngineHandle {
    * NOTE: 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다. 그때는 설정 단추만 남고 엔진은 늘 같은 화면입니다.
    */
   quality?: { get: () => unknown; set: (mode: GraphicsMode) => boolean }
+  /**
+   * 엔진 안의 글자(설명문구 · 카드 · 해도) 언어를 바꿉니다. 처음 언어는 주소의 `?lang=` 으로 읽고,
+   * 뜬 뒤에 헤더에서 바꾸면 이것으로 겁니다.
+   *
+   * NOTE: 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다. 그때는 엔진 글자만 처음 언어로 남습니다.
+   */
+  setLang?: (lang: Locale) => void
 }
 
 type Props = {
@@ -257,9 +267,13 @@ export function ScentScene({
   onQuality,
   className,
 }: Props) {
+  const { t } = useTranslation('map')
+  const locale = useLocale()
   const frame = useRef<HTMLIFrameElement>(null)
   /** 엔진 주소에 싣는 처음 설정 — 주소는 한 번만 넣으므로 그때의 값만 씁니다 (그 뒤는 아래 effect 가 겁니다) */
   const initialQuality = useRef(quality)
+  /** 엔진 주소에 싣는 처음 언어 — 품질과 같은 사정으로 그 뒤는 아래 effect 가 `setLang` 으로 겁니다 */
+  const initialLocale = useRef(locale)
   const probe = useRef<HTMLDivElement>(null)
   /** 붙어 있는 엔진 (`window.PB`). 아래 두 효과가 나눠 쓰므로 ref 에 둡니다 */
   const handle = useRef<EngineHandle | null>(null)
@@ -536,7 +550,11 @@ export function ScentScene({
     // 메인 스레드를 1~3초 막는 동안에도 커튼이 움직입니다. 늦어지는 건 30ms 남짓입니다 (2026-09-17 실측)
     let raf = requestAnimationFrame(() => {
       raf = requestAnimationFrame(() => {
-        el.src = engineSrc(ENGINE_SRC, initialQuality.current)
+        el.src = engineSrc(
+          ENGINE_SRC,
+          initialQuality.current,
+          initialLocale.current,
+        )
       })
     })
     return () => {
@@ -598,6 +616,15 @@ export function ScentScene({
     engine.set(quality)
   }, [ready, quality])
 
+  /*
+   * 헤더에서 언어를 바꾸면 엔진 글자도 따라가게 겁니다. 엔진이 붙는 순간에도 한 번 부릅니다 —
+   * 주소에 실은 처음 언어와 지금 언어가 다를 수 있습니다(엔진이 뜨는 동안 바꾼 경우).
+   */
+  useEffect(() => {
+    if (!ready) return
+    handle.current?.setLang?.(locale)
+  }, [ready, locale])
+
   return (
     <>
       {/*
@@ -616,7 +643,7 @@ export function ScentScene({
       {/* 주소(src)는 위 effect 가 두 장 뒤에 넣습니다 */}
       <iframe
         ref={frame}
-        title="향 지도"
+        title={t('scene.title')}
         className={cn(
           'block size-full border-0 transition-opacity duration-300',
           ready ? 'opacity-100' : 'opacity-0',

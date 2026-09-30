@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { useLocaleStore } from '@/shared/store/localeStore'
+
 import type { RecommendResult } from '../types'
 
 import { RecommendModal } from './RecommendModal'
@@ -135,5 +137,22 @@ describe('RecommendModal', () => {
       .closest('dialog')!
     fireEvent(dialog, new Event('cancel', { cancelable: true }))
     expect(onClose).toHaveBeenCalledTimes(2)
+  })
+
+  it('영어 화면은 영어로 쓰고, 한국어로 적으면 잘 알아듣는다고 알린다', async () => {
+    useLocaleStore.getState().setLocale('en')
+    api.getRecommendation.mockResolvedValue(result())
+
+    renderModal()
+
+    expect(
+      await screen.findByRole('heading', { name: 'Recommendations' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Works best when you type in Korean'),
+    ).toBeInTheDocument()
+    // AI 가 영어 이름을 주지 않는 노트는 한국어 그대로 둡니다
+    expect(await screen.findByText('미모사 · 장미 · 밤')).toBeInTheDocument()
+    expect(screen.getByText(/Narrowed down by/)).toBeInTheDocument()
   })
 })

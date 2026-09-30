@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { useResetOnOpen } from '@/shared/hooks/useResetOnOpen'
 import { Button } from '@/shared/ui/Button'
@@ -43,6 +44,7 @@ type Props = {
  * 향수를 두 번 담을 수도 없습니다 — 다른 향수로 옮기려면 빼고 다시 담습니다.
  */
 export function ShelfEditModal({ open, onClose, item, ready, onSave }: Props) {
+  const { t } = useTranslation('shelf')
   /*
    * 열릴 때의 값으로 칸을 되돌립니다. Modal 이 <dialog> 라 닫아도 언마운트되지
    * 않아서, 이렇게 하지 않으면 다른 향수를 열었을 때 앞 향수의 메모가 남습니다.
@@ -63,11 +65,11 @@ export function ShelfEditModal({ open, onClose, item, ready, onSave }: Props) {
     <Modal
       open={open}
       onClose={onClose}
-      title="변경하기"
+      title={t('editModal.title')}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
-            취소
+            {t('actions.cancel')}
           </Button>
           <Button
             /*
@@ -80,7 +82,7 @@ export function ShelfEditModal({ open, onClose, item, ready, onSave }: Props) {
               onSave({ category, rating, memo: memo.trim() || null })
             }
           >
-            변경
+            {t('editModal.save')}
           </Button>
         </>
       }
@@ -100,7 +102,7 @@ export function ShelfEditModal({ open, onClose, item, ready, onSave }: Props) {
           onRatingChange={setRating}
           memo={memo}
           onMemoChange={setMemo}
-          hint="메모와 적합도는 비울 수 있습니다."
+          hint={t('editModal.hint')}
         />
       </div>
     </Modal>

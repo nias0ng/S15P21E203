@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/shared/lib/cn'
+import { useLocale } from '@/shared/store/localeStore'
 import { AuthLinkButton } from '@/shared/ui/AuthLinkButton'
 import { Pagination } from '@/shared/ui/Pagination'
 import { GLASS_PANEL } from '@/shared/ui/panel'
@@ -41,6 +43,8 @@ export function BoardShell({
   paginationLabel,
   children,
 }: Props) {
+  const { t } = useTranslation('community')
+  const locale = useLocale()
   const trending = useQuery(trendingPerfumesQuery())
 
   const showTrending =
@@ -73,7 +77,9 @@ export function BoardShell({
             <h2 className="text-ink font-serif text-2xl">{title}</h2>
             {!isPending && !!totalElements && (
               <span className="text-ink-muted text-caption">
-                {totalElements.toLocaleString()}개
+                {t('board.total', {
+                  total: totalElements.toLocaleString(locale),
+                })}
               </span>
             )}
           </div>

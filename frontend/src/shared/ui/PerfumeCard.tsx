@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Link, type LinkProps } from 'react-router'
 
 import { cn } from '@/shared/lib/cn'
@@ -24,6 +25,7 @@ export function PerfumeCard({
   to,
   state,
 }: PerfumeCardProps) {
+  const { t } = useTranslation('layout')
   const body = (
     <>
       <div className={cn(PLATE, 'relative w-full')}>
@@ -51,7 +53,7 @@ export function PerfumeCard({
             )}
           >
             <span aria-hidden>{rank}</span>
-            <span className="sr-only">인기 {rank}위</span>
+            <span className="sr-only">{t('perfumeCard.rank', { rank })}</span>
           </span>
         )}
       </div>

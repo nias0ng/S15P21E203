@@ -6,6 +6,7 @@ import {
   useGraphicsStore,
   type SceneQuality,
 } from '@/shared/store/graphicsStore'
+import { useLocaleStore } from '@/shared/store/localeStore'
 
 import { GraphicsMenu } from './GraphicsMenu'
 import { inkOf } from './tone'
@@ -105,5 +106,22 @@ describe('GraphicsMenu', () => {
     fireEvent.blur(window)
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('영어 화면은 영어로 적습니다', async () => {
+    const user = userEvent.setup()
+    useLocaleStore.getState().setLocale('en')
+    useGraphicsStore.setState({ mode: 'auto', quality: integratedLow })
+    renderMenu()
+
+    await user.click(screen.getByRole('button', { name: 'Graphics settings' }))
+
+    expect(
+      screen.getByRole('dialog', { name: 'Graphics quality' }),
+    ).toBeVisible()
+    expect(screen.getByRole('radio', { name: /^Auto/ })).toBeChecked()
+    expect(screen.getByText('(recommended)')).toBeVisible()
+    expect(screen.getByText('Now Low · integrated graphics')).toBeVisible()
+    expect(screen.getByText(/High performance/)).toBeVisible()
   })
 })

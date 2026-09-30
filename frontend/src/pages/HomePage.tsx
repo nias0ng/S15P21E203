@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router'
 
 import {
@@ -42,6 +43,7 @@ import {
 } from '@/shared/config/routes'
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { useToast } from '@/shared/hooks/useToast'
+import { localizedName } from '@/shared/i18n/locale'
 import { cn } from '@/shared/lib/cn'
 import { useIsLoggedIn } from '@/shared/store/authStore'
 import {
@@ -49,6 +51,7 @@ import {
   useIsDiving,
   useIsRising,
 } from '@/shared/store/diveStore'
+import { useLocale } from '@/shared/store/localeStore'
 import { useSceneSkyStore } from '@/shared/store/sceneSkyStore'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { Toast } from '@/shared/ui/Toast'
@@ -99,6 +102,8 @@ const DIVE_FADE = 'transition-[opacity,visibility] duration-300 ease-out'
  */
 
 export default function HomePage() {
+  const { t } = useTranslation('map')
+  const locale = useLocale()
   const navigate = useNavigate()
   const location = useLocation()
   const diving = useIsDiving()
@@ -304,7 +309,7 @@ export default function HomePage() {
       className="bg-surface-night relative h-dvh min-h-120"
       aria-busy={!boot.done}
     >
-      <h1 className="sr-only">향 지도</h1>
+      <h1 className="sr-only">{t('scene.title')}</h1>
 
       <ScentScene
         className="absolute inset-0"
@@ -344,7 +349,9 @@ export default function HomePage() {
 
           navigate(
             perfumeId === null
-              ? toPerfumeSearch(perfume.nameKo)
+              ? toPerfumeSearch(
+                  localizedName(locale, perfume.name, perfume.nameKo),
+                )
               : toPerfumeDetail(perfumeId),
             // 검색으로 돌려보내는 쪽은 향수 상세가 아니라 기록할 것이 없습니다
             perfumeId === null
@@ -364,7 +371,7 @@ export default function HomePage() {
               분류까지 고르게 한 뒤 실패시키면 한 일이 버려집니다.
             */
             if (perfumeId === null) {
-              showToast('이 향수는 아직 진열대에 담을 수 없습니다')
+              showToast(t('home.cannotSave'))
               resolve()
               releaseSave.current = null
               return
@@ -482,7 +489,11 @@ export default function HomePage() {
             이름으로 향수 검색(A09)에 보냅니다. 엔진 카드의 [자세히 보기]가 번호 없는
             향수를 보내는 길과 **같은 곳**입니다(위 onOpenDetail).
           */
-          navigate(toPerfumeSearch(perfume.name))
+          navigate(
+            toPerfumeSearch(
+              localizedName(locale, perfume.nameEn, perfume.name),
+            ),
+          )
         }}
       />
 
@@ -501,14 +512,14 @@ export default function HomePage() {
             ? undefined
             : {
                 perfumeId: saving.perfumeId,
-                name: saving.nameKo,
-                brand: saving.brandKo,
+                name: localizedName(locale, saving.name, saving.nameKo),
+                brand: localizedName(locale, saving.brand, saving.brandKo),
               }
         }
         onSubmit={(input) => {
           closeShelfSave()
           actions.register.mutate(input, {
-            onSuccess: () => showToast('진열대에 저장했습니다'),
+            onSuccess: () => showToast(t('home.saved')),
             onError: (error) => showToast(shelfRegisterErrorMessage(error)),
           })
         }}

@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { Modal } from '@/shared/ui/Modal'
@@ -23,24 +25,25 @@ export function AddToCollectionModal({
   candidates,
   onSubmit,
 }: Props) {
+  const { t } = useTranslation('collection')
   const { picked, toggle, keyword, setKeyword } = useShelfItemPick(open)
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title="향수 담기"
+      title={t('add.title')}
       className={cn(COLLECTION_SHEET, PICK_SHEET_WIDTH)}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
-            취소
+            {t('actions.cancel')}
           </Button>
           <Button
             disabled={picked.length === 0}
             onClick={() => onSubmit(picked)}
           >
-            담기
+            {t('add.submit')}
           </Button>
         </>
       }
@@ -51,7 +54,7 @@ export function AddToCollectionModal({
         onToggle={toggle}
         keyword={keyword}
         onKeywordChange={setKeyword}
-        emptyTitle="더 담을 향수가 없습니다"
+        emptyTitle={t('add.empty')}
       />
     </Modal>
   )

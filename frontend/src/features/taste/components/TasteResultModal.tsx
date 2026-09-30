@@ -1,8 +1,11 @@
+import { useTranslation } from 'react-i18next'
+
+import { i18n } from '@/shared/i18n'
 import { Button } from '@/shared/ui/Button'
 import { Modal } from '@/shared/ui/Modal'
 
 import { familyAdjective } from '../families'
-import type { TasteMatch } from '../types'
+import type { ScentFamilyKey, TasteMatch } from '../types'
 
 type TasteResultModalProps = {
   match: TasteMatch | null
@@ -12,38 +15,39 @@ type TasteResultModalProps = {
   saveError: string | null
 }
 
-const CLOSING = '향 지도에서 내 출발점을 확인해 보세요.'
-
 function headlineOf(match: TasteMatch): string {
   switch (match.mode) {
     case 'RARE':
-      return '흔치 않은 조합을 고르셨네요'
+      return i18n.t('taste:result.headline.rare')
     case 'NO_OVERLAP':
-      return '1순위 향으로 출발점을 잡았어요'
+      return i18n.t('taste:result.headline.noOverlap')
     default:
-      return '출발점을 찾았어요'
+      return i18n.t('taste:result.headline.normal')
   }
 }
+
+/** 문장 가운데에 끼우는 형용사 — 영어는 타일의 첫 대문자를 내립니다(한국어는 그대로입니다) */
+const inline = (key: ScentFamilyKey) => familyAdjective(key).toLowerCase()
 
 function leadOf(match: TasteMatch): string {
   const [first, second] = match.picks
 
   if (match.mode === 'RARE') {
-    return '두 향을 함께 담은 향수는 향 지도에 하나뿐이에요. 그 한 병이 지금 취향을 대표해요.'
+    return i18n.t('taste:result.lead.rare')
   }
 
   if (match.mode === 'NO_OVERLAP' && first && second) {
-    return (
-      `1순위로 고르신 ${familyAdjective(first)} 향에 맞춰 출발점을 잡았어요. ` +
-      `2순위로 고르신 ${familyAdjective(second)} 향은 이번 결과에는 반영되지 않았어요.`
-    )
+    return i18n.t('taste:result.lead.noOverlap', {
+      first: inline(first),
+      second: inline(second),
+    })
   }
 
   if (!first) return ''
 
   return second
-    ? `1순위로 고르신 ${familyAdjective(first)} 향이 더 진하게 살아 있는 향수를 찾았어요.`
-    : `고르신 ${familyAdjective(first)} 향이 가장 진하게 살아 있는 향수를 찾았어요.`
+    ? i18n.t('taste:result.lead.two', { first: inline(first) })
+    : i18n.t('taste:result.lead.one', { first: inline(first) })
 }
 
 export function TasteResultModal({
@@ -53,6 +57,8 @@ export function TasteResultModal({
   saving,
   saveError,
 }: TasteResultModalProps) {
+  // 문구를 부를 때 읽으므로, 언어를 바꾸면 이 판이 다시 그려져야 합니다
+  const { t } = useTranslation('taste')
   if (!match) return null
 
   return (
@@ -63,16 +69,16 @@ export function TasteResultModal({
       footer={
         <>
           <Button variant="outline" onClick={onRetry} disabled={saving}>
-            다시 하기
+            {t('result.retry')}
           </Button>
           <Button onClick={onConfirm} isLoading={saving}>
-            {saveError === null ? '향 지도로 가기' : '다시 시도'}
+            {saveError === null ? t('result.confirm') : t('result.retrySave')}
           </Button>
         </>
       }
     >
       <p className="text-ink">{leadOf(match)}</p>
-      <p className="text-ink-muted mt-4">{CLOSING}</p>
+      <p className="text-ink-muted mt-4">{t('result.closing')}</p>
       {saveError !== null && (
         <p role="alert" className="text-danger mt-4">
           {saveError}

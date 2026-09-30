@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router'
 
 import { BRAND_PLATE, brandDetailQuery } from '@/features/brand'
@@ -6,6 +7,7 @@ import { PerfumeGrid, perfumeListQuery } from '@/features/perfume'
 import { ROUTES, toPerfumeSearch } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { parseId } from '@/shared/lib/parseId'
+import { useLocale } from '@/shared/store/localeStore'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { PageFallback } from '@/shared/ui/PageFallback'
@@ -15,6 +17,8 @@ import { Thumbnail } from '@/shared/ui/Thumbnail'
 const PERFUME_PAGE_SIZE = 30
 
 export default function BrandDetailPage() {
+  const { t } = useTranslation('brand')
+  const locale = useLocale()
   const { brandId } = useParams<{ brandId: string }>()
   const numericId = parseId(brandId)
   const valid = numericId !== null
@@ -37,11 +41,11 @@ export default function BrandDetailPage() {
   if (!valid || brand.isError || !brand.data) {
     return (
       <EmptyState
-        title="브랜드를 찾을 수 없습니다"
-        description="주소가 잘못되었거나 삭제된 브랜드입니다."
+        title={t('detail.notFoundTitle')}
+        description={t('detail.notFoundDescription')}
         action={
           <LinkButton to={ROUTES.BRANDS} variant="outline" size="sm">
-            브랜드 목록으로
+            {t('detail.backToList')}
           </LinkButton>
         }
         onRetry={valid ? () => brand.refetch() : undefined}
@@ -55,7 +59,7 @@ export default function BrandDetailPage() {
   return (
     <div className="space-y-6.25">
       <LinkButton to={ROUTES.BRANDS} variant="outline" size="sm">
-        ← 브랜드 목록
+        ← {t('detail.back')}
       </LinkButton>
 
       <header className="flex flex-col items-center gap-3.75 text-center">
@@ -69,24 +73,28 @@ export default function BrandDetailPage() {
             >
               {name}
             </h1>
-            {nameKo && (
+            {nameKo && locale !== 'en' && (
               <p aria-hidden className="text-ink-muted text-heading">
                 {nameKo}
               </p>
             )}
           </div>
 
-          <p className="text-ink-muted text-caption">향수 {perfumeCount}개</p>
+          <p className="text-ink-muted text-caption">
+            {t('detail.perfumeCount', { count: perfumeCount })}
+          </p>
         </div>
       </header>
 
       <section className={GLASS_PANEL}>
-        <h2 className="text-ink mb-6.25 font-serif text-2xl">{name}의 향수</h2>
+        <h2 className="text-ink mb-6.25 font-serif text-2xl">
+          {t('detail.perfumesHeading', { name })}
+        </h2>
 
         {perfumes.isError ? (
           <EmptyState
-            title="향수 목록을 불러오지 못했습니다"
-            description="잠시 후 다시 시도해 주세요."
+            title={t('detail.loadErrorTitle')}
+            description={t('detail.loadErrorDescription')}
             onRetry={() => perfumes.refetch()}
           />
         ) : (
@@ -97,8 +105,8 @@ export default function BrandDetailPage() {
               columns={6}
               empty={
                 <EmptyState
-                  title="등록된 향수가 없습니다"
-                  description="이 브랜드의 향수가 등록되면 여기에 표시됩니다."
+                  title={t('detail.emptyTitle')}
+                  description={t('detail.emptyDescription')}
                 />
               }
             />
@@ -110,7 +118,7 @@ export default function BrandDetailPage() {
                   variant="outline"
                   size="sm"
                 >
-                  향수 전체 보기
+                  {t('detail.viewAll')}
                 </LinkButton>
               </div>
             )}

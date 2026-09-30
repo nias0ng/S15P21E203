@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
@@ -13,12 +14,14 @@ type Props = {
 }
 
 export function TrendingPerfumes({ data, className }: Props) {
+  const { t } = useTranslation('community')
+
   if (!data || data.perfumes.length === 0) return null
 
   return (
     <aside className={cn(GLASS_PANEL_ASIDE, 'self-start', className)}>
       <h2 className="text-ink text-heading font-serif font-bold break-keep">
-        지금 많이 언급되는 향수
+        {t('trending.title')}
       </h2>
 
       <ol className="mt-2.5 space-y-1.25">
@@ -48,7 +51,7 @@ export function TrendingPerfumes({ data, className }: Props) {
       </ol>
 
       <p className="text-ink-muted text-caption border-line-soft mt-2.5 border-t pt-2.5 break-keep">
-        최근 {data.days}일 동안 언급된 글 수
+        {t('trending.caption', { count: data.days })}
       </p>
     </aside>
   )

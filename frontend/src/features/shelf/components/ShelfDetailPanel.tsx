@@ -1,23 +1,23 @@
 import { Fragment } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { toPerfumeDetail } from '@/shared/config/routes'
+import { localizedName } from '@/shared/i18n/locale'
 import { cn } from '@/shared/lib/cn'
 import {
   groupNoteStages,
   NOTE_FLAT,
+  NOTE_OTHER,
   NOTE_STAGES,
 } from '@/shared/lib/noteStages'
+import { useLocale } from '@/shared/store/localeStore'
 import { Button } from '@/shared/ui/Button'
 import { StarRating } from '@/shared/ui/StarRating'
 
 import { formatShelfDate } from '../lib'
-import {
-  SHELF_CATEGORIES,
-  SHELF_CATEGORY_CAPTION,
-  type ShelfItemDetail,
-} from '../types'
+import { SHELF_CATEGORY_CAPTION, type ShelfItemDetail } from '../types'
 
 type Props = {
   /**
@@ -122,29 +122,32 @@ export function ShelfDetailPanel({
   onChangeRating,
   onEdit,
   onRemove,
-  placeholder = '진열대에서 향수를 선택하면 여기에 정보가 표시됩니다',
+  placeholder,
   className,
 }: Props) {
+  const { t } = useTranslation('shelf')
+  const locale = useLocale()
+
   if (!item) {
     return (
       <aside
-        aria-label="선택한 향수 정보"
+        aria-label={t('detail.region')}
         className={cn(CARD, 'flex items-center justify-center', className)}
       >
         <p className="shelf-muted text-body px-5 text-center break-keep">
-          {placeholder}
+          {placeholder ?? t('detail.placeholder')}
         </p>
       </aside>
     )
   }
 
-  const category = SHELF_CATEGORIES.find(
-    (entry) => entry.value === item.category,
-  )
+  // 영어 화면은 원래 이름 한 줄만 크게 적습니다 — 위에 작게 다는 영문 이름이 되풀이가 됩니다
+  const shownName = localizedName(locale, item.name, item.nameKo)
+  const original = shownName !== item.name
 
   return (
     <aside
-      aria-label="선택한 향수 정보"
+      aria-label={t('detail.region')}
       className={cn(CARD, '@container flex flex-col', className)}
     >
       {/*
@@ -155,7 +158,7 @@ export function ShelfDetailPanel({
         <span aria-hidden lang="en">
           {SHELF_CATEGORY_CAPTION[item.category]}
         </span>
-        <span className="sr-only">{category?.label}</span>
+        <span className="sr-only">{t(`category.${item.category}`)}</span>
       </p>
 
       {/*
@@ -218,16 +221,16 @@ export function ShelfDetailPanel({
                 FOCUS_RING,
               )}
             >
-              {item.nameKo && (
+              {original && (
                 <span className="shelf-muted text-body" aria-hidden lang="en">
                   {item.name}
                 </span>
               )}
               <span
                 className="shelf-sheet-name font-serif"
-                lang={item.nameKo ? undefined : 'en'}
+                lang={original ? undefined : 'en'}
               >
-                {item.nameKo ?? item.name}
+                {shownName}
               </span>
             </Link>
           </div>
@@ -242,10 +245,10 @@ export function ShelfDetailPanel({
           */}
           <div className="flex items-center gap-2.5">
             <span aria-hidden className="shelf-muted text-caption">
-              내 취향 적합도
+              {t('detail.rating')}
             </span>
             <StarRating
-              label="내 취향 적합도"
+              label={t('detail.rating')}
               value={item.rating}
               onChange={onChangeRating}
               showValue={false}
@@ -278,7 +281,7 @@ export function ShelfDetailPanel({
                 onClick={onRemove}
                 className={cn('h-10 rounded-md', FOCUS_RING)}
               >
-                저장 해제
+                {t('detail.remove')}
               </Button>
               <Button
                 size="sm"
@@ -286,7 +289,7 @@ export function ShelfDetailPanel({
                 onClick={onEdit}
                 className={cn('h-10 rounded-md', FOCUS_RING)}
               >
-                변경하기
+                {t('detail.edit')}
               </Button>
             </div>
 
@@ -315,6 +318,7 @@ function ScentNotes({
   item: ShelfItemDetail
   pending: boolean
 }) {
+  const { t } = useTranslation('shelf')
   const rows = groupNoteStages(item.scentNotes)
 
   return (
@@ -334,9 +338,7 @@ function ScentNotes({
           ))}
         </dl>
       ) : rows.length === 0 ? (
-        <p className="shelf-muted text-body">
-          향조 정보가 아직 등록되지 않았어요
-        </p>
+        <p className="shelf-muted text-body">{t('detail.notesEmpty')}</p>
       ) : (
         <dl className="shelf-sheet-notes">
           {rows.map(({ stage, notes }) => {
@@ -346,10 +348,20 @@ function ScentNotes({
             const flat = stage === NOTE_FLAT
             return (
               <Fragment key={stage}>
-                {!flat && <dt>{stage}</dt>}
+                {/* 단계를 모르는 묶음(NOTE_OTHER)은 묶는 열쇠라 한국어 값이고, 보일 때만 화면 언어로 바꿉니다 */}
+                {!flat && (
+                  <dt>
+                    {stage === NOTE_OTHER ? t('detail.notesOther') : stage}
+                  </dt>
+                )}
                 <dd data-wide={flat ? '' : undefined} title={names.join(', ')}>
                   {shown.join(' · ')}
-                  {more > 0 && <span className="shelf-muted"> 외 {more}</span>}
+                  {more > 0 && (
+                    <span className="shelf-muted">
+                      {' '}
+                      {t('detail.notesMore', { n: more })}
+                    </span>
+                  )}
                 </dd>
               </Fragment>
             )
@@ -389,6 +401,7 @@ function MemoField({
   item: ShelfItemDetail
   pending: boolean
 }) {
+  const { t } = useTranslation('shelf')
   const memo = item.memo ?? ''
   const writtenAt = formatShelfDate(item.memoUpdatedAt)
 
@@ -420,7 +433,7 @@ function MemoField({
               !memo && 'shelf-muted',
             )}
           >
-            {memo || '이 향을 어디서 언제 맡았는지 적어두세요.'}
+            {memo || t('detail.memoPlaceholder')}
           </p>
         )}
       </div>

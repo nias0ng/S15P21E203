@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 
 import {
@@ -26,6 +27,7 @@ import { PillFilter } from '@/shared/ui/PillFilter'
 const PAGE_SIZE = 10
 
 export default function ReviewBoardPage() {
+  const { t } = useTranslation('community')
   const [searchParams, setSearchParams] = useSearchParams()
   const sort = readOption(searchParams.get('sort'), REVIEW_SORTS) ?? 'RECENT'
   const page = readPage(searchParams)
@@ -74,20 +76,23 @@ export default function ReviewBoardPage() {
     <BoardShell
       write={{
         to: ROUTES.REVIEW_WRITE,
-        label: '후기 쓰기',
-        description: '후기는 로그인한 뒤에 쓸 수 있습니다.',
+        label: t('reviewBoard.write'),
+        description: t('reviewBoard.writeLoginRequired'),
       }}
       filters={
         <PillFilter
-          label="정렬"
-          options={REVIEW_SORTS}
+          label={t('board.sortLabel')}
+          options={REVIEW_SORTS.map((option) => ({
+            value: option.value,
+            label: t(`sorts.${option.value}`),
+          }))}
           value={sort}
           onChange={(next) => updateParams({ sort: next ?? 'RECENT' })}
           required
           className="flex-wrap justify-center"
         />
       }
-      title={boardTitle(sort, '후기')}
+      title={boardTitle(sort, t('reviewBoard.noun'))}
       items={(reviews.data?.reviews ?? []).map(reviewToBoardItem)}
       isPending={reviews.isPending}
       totalElements={reviews.data?.totalElements}
@@ -97,13 +102,13 @@ export default function ReviewBoardPage() {
       page={page}
       size={PAGE_SIZE}
       onPageChange={(next) => updateParams({ page: next })}
-      paginationLabel="후기 게시판 페이지"
+      paginationLabel={t('reviewBoard.pagination')}
     >
       <LoginRequiredDialog
         open={likeToggle.loginRequired}
         onClose={likeToggle.closeLoginRequired}
         redirectTo={ROUTES.COMMUNITY_REVIEWS}
-        description="좋아요는 로그인한 뒤에 누를 수 있습니다. 글은 로그인 없이도 읽을 수 있습니다."
+        description={t('board.likeLoginRequired')}
       />
     </BoardShell>
   )

@@ -24,21 +24,27 @@ import type {
  * 트랜잭션**이라, 담기는 성공했는데 뒤가 실패할 수 있습니다. 담긴 것은 사실이므로
  * 되돌리지 않고, 무엇이 안 들어갔는지 알려줍니다.
  */
-export class ShelfEditPartialError extends Error {
-  readonly missing: ('분류' | '적합도' | '메모')[]
+/**
+ * 빠진 칸. 화면에 적는 이름은 번역 묶음(`shelf:part.<값>`)이 정합니다 — 오류가 만들어질 때의
+ * 언어로 굳혀 두면 토스트가 뜰 때 화면 언어와 어긋날 수 있습니다.
+ */
+export type ShelfPart = 'category' | 'rating' | 'memo'
 
-  constructor(missing: ('분류' | '적합도' | '메모')[]) {
-    super(`${missing.join(' · ')}을(를) 바꾸지 못했습니다`)
+export class ShelfEditPartialError extends Error {
+  readonly missing: ShelfPart[]
+
+  constructor(missing: ShelfPart[]) {
+    super(`Shelf edit partially failed: ${missing.join(', ')}`)
     this.name = 'ShelfEditPartialError'
     this.missing = missing
   }
 }
 
 export class ShelfRegisterPartialError extends Error {
-  readonly missing: ('적합도' | '메모')[]
+  readonly missing: Exclude<ShelfPart, 'category'>[]
 
-  constructor(missing: ('적합도' | '메모')[]) {
-    super(`${missing.join(' · ')}을(를) 저장하지 못했습니다`)
+  constructor(missing: Exclude<ShelfPart, 'category'>[]) {
+    super(`Shelf register partially failed: ${missing.join(', ')}`)
     this.name = 'ShelfRegisterPartialError'
     this.missing = missing
   }
@@ -131,13 +137,13 @@ export function useShelfActions() {
   const register = useMutation({
     mutationFn: async (input: ShelfRegisterInput) => {
       const created = await createShelfItem(input.perfumeId, input.category)
-      const missing: ('적합도' | '메모')[] = []
+      const missing: Exclude<ShelfPart, 'category'>[] = []
 
       if (input.rating !== null) {
         try {
           await setShelfFitRating(created.shelfItemId, input.rating)
         } catch {
-          missing.push('적합도')
+          missing.push('rating')
         }
       }
 
@@ -146,7 +152,7 @@ export function useShelfActions() {
         try {
           await createShelfMemo(created.shelfItemId, memo)
         } catch {
-          missing.push('메모')
+          missing.push('memo')
         }
       }
 
@@ -201,13 +207,13 @@ export function useShelfActions() {
         memo: string | null
       }
     }) => {
-      const missing: ('분류' | '적합도' | '메모')[] = []
+      const missing: ShelfPart[] = []
 
       if (next.category !== before.category) {
         try {
           await changeShelfCategory(shelfItemId, next.category)
         } catch {
-          missing.push('분류')
+          missing.push('category')
         }
       }
 
@@ -217,7 +223,7 @@ export function useShelfActions() {
           if (next.rating === null) await removeShelfFitRating(shelfItemId)
           else await setShelfFitRating(shelfItemId, next.rating)
         } catch {
-          missing.push('적합도')
+          missing.push('rating')
         }
       }
 
@@ -237,7 +243,7 @@ export function useShelfActions() {
             await createShelfMemo(shelfItemId, next.memo)
           else await updateShelfMemo(shelfItemId, next.memo)
         } catch {
-          missing.push('메모')
+          missing.push('memo')
         }
       }
 

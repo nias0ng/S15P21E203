@@ -1,5 +1,6 @@
 import type { Note } from './types'
 
+// 묶음 열쇠이자 주소(`?family=`)에 실리는 값이라 한국어로 두고, 화면에 보일 때만 바꿉니다
 export const UNCATEGORIZED = '기타'
 
 type NoteSection = {

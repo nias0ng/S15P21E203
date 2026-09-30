@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { useResetOnOpen } from '@/shared/hooks/useResetOnOpen'
 import { cn } from '@/shared/lib/cn'
@@ -38,6 +39,7 @@ export function CollectionFormModal({
   initial,
   candidates = [],
 }: Props) {
+  const { t } = useTranslation('collection')
   const editing = initial !== undefined
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -56,12 +58,12 @@ export function CollectionFormModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={editing ? '컬렉션 수정' : '컬렉션 만들기'}
+      title={editing ? t('form.editTitle') : t('form.createTitle')}
       className={cn(COLLECTION_SHEET, !editing && PICK_SHEET_WIDTH)}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
-            취소
+            {t('actions.cancel')}
           </Button>
           <Button
             disabled={
@@ -77,7 +79,7 @@ export function CollectionFormModal({
               )
             }
           >
-            {editing ? '저장' : '만들기'}
+            {editing ? t('form.save') : t('form.create')}
           </Button>
         </>
       }
@@ -85,16 +87,16 @@ export function CollectionFormModal({
       {/* 남는 높이를 고르는 칸까지 이어 줍니다(COLLECTION_SHEET 의 본문 흐름) — 낮은 창에서 칸만 줄어듭니다 */}
       <div className="flex min-h-0 flex-1 flex-col gap-5 py-1.25">
         <Input
-          label="이름"
-          placeholder="예: 출근할 때"
+          label={t('form.name')}
+          placeholder={t('form.namePlaceholder')}
           required
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           className="text-heading border-[var(--hairline)] bg-[var(--tag-paper-active)] px-3.75 font-serif font-semibold"
         />
         <Textarea
-          label="설명 (선택)"
-          placeholder="어떤 때 꺼내는 향들인지 적어 두세요"
+          label={t('form.description')}
+          placeholder={t('form.descriptionPlaceholder')}
           rows={3}
           value={description}
           onChange={(event) => setDescription(event.target.value)}
@@ -103,24 +105,25 @@ export function CollectionFormModal({
 
         {editing ? (
           <p className="shelf-muted text-body leading-relaxed">
-            이름 · 설명만 고칩니다. 향수는 진열함 칸에서 담고 뺍니다.
+            {t('form.editHint')}
           </p>
         ) : (
           <section className="flex min-h-0 flex-1 flex-col gap-3.75">
-            <h3 className="collection-sheet-heading">담을 향수</h3>
+            <h3 className="collection-sheet-heading">
+              {t('form.pickHeading')}
+            </h3>
             <ShelfItemPickList
               candidates={candidates}
               picked={picked}
               onToggle={toggle}
               keyword={keyword}
               onKeywordChange={setKeyword}
-              emptyTitle="진열대에 담은 향수가 없습니다"
+              emptyTitle={t('form.pickEmpty')}
               // 위에 이름 · 설명 칸이 있어 고르는 칸의 윗한도를 낮춥니다(1920 에서 380). 창이 낮으면 더 줄어듭니다
               listClassName="max-h-[calc(var(--spacing)*95)]"
             />
             <p className="shelf-muted text-caption leading-relaxed">
-              컬렉션이 남에게 보이는 길은 자유 게시판의 컬렉션 공유 글뿐입니다.
-              향수는 나중에 더 담을 수 있습니다.
+              {t('form.visibility')}
             </p>
           </section>
         )}

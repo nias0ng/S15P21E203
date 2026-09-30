@@ -1,4 +1,5 @@
 import { SCENT_FAMILY_NAMES } from '@/shared/config/scentFamilies'
+import { i18n } from '@/shared/i18n'
 
 import {
   SCENT_FAMILY_KEYS,
@@ -6,33 +7,24 @@ import {
   type ScentFamilyLabel,
 } from './types'
 
-const ADJECTIVES: Record<ScentFamilyKey, string> = {
-  FLORAL: '화사한',
-  GREEN: '싱그러운',
-  CITRUS: '상큼한',
-  FRUITY: '발랄한',
-  AQUATIC: '시원한',
-  MUSK: '포근한',
-  GOURMAND: '달콤한',
-  WOODY: '차분한',
-  AMBER: '따뜻한',
-}
-
-export const SCENT_FAMILIES: readonly ScentFamilyLabel[] =
-  SCENT_FAMILY_KEYS.map((key) => ({
-    key,
-    adjective: ADJECTIVES[key],
-    name: SCENT_FAMILY_NAMES[key],
-  }))
-
-const BY_KEY = new Map(SCENT_FAMILIES.map((family) => [family.key, family]))
-
 export const MAX_PICKS = 2
 
+const messageKey = (key: ScentFamilyKey) =>
+  key.toLowerCase() as Lowercase<ScentFamilyKey>
+
+/**
+ * 향 계열의 형용사 · 이름. **부를 때** 화면 언어로 읽습니다 — 모듈 상수에 담아 두면 언어를
+ * 바꿔도 앞 언어로 남습니다.
+ */
 export function scentFamilyLabel(key: ScentFamilyKey): ScentFamilyLabel {
-  const found = BY_KEY.get(key)
-  if (!found) throw new Error(`알 수 없는 향 계열입니다: ${key}`)
-  return found
+  if (!SCENT_FAMILY_KEYS.includes(key)) {
+    throw new Error(`알 수 없는 향 계열입니다: ${key}`)
+  }
+  return {
+    key,
+    adjective: i18n.t(`taste:families.${messageKey(key)}`),
+    name: SCENT_FAMILY_NAMES[key],
+  }
 }
 
 export function familyAdjective(key: ScentFamilyKey): string {

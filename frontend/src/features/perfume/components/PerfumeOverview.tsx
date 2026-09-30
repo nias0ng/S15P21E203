@@ -1,3 +1,7 @@
+import { useTranslation } from 'react-i18next'
+
+import { localizedName } from '@/shared/i18n/locale'
+import { useLocale } from '@/shared/store/localeStore'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
@@ -20,10 +24,13 @@ export function PerfumeOverview({
   onShelfAction,
   aside,
 }: Props) {
-  const hasKoreanName = perfume.nameKo !== null
+  const { t } = useTranslation('perfume')
+  const locale = useLocale()
+  const title = localizedName(locale, perfume.name, perfume.nameKo)
 
+  // 제목이 한국어 이름일 때만 원래 이름을 받쳐 적습니다
   const meta = [
-    hasKoreanName ? perfume.name : null,
+    title !== perfume.name ? perfume.name : null,
     perfume.gender ? GENDER_TEXT[perfume.gender] : null,
   ].filter((part): part is string => typeof part === 'string')
 
@@ -31,7 +38,7 @@ export function PerfumeOverview({
     <section className="flex flex-col gap-7.5 sm:flex-row">
       <Thumbnail
         src={perfume.images[0] ?? null}
-        fallback="대표 이미지"
+        fallback={t('overview.imageFallback')}
         fit="contain"
         className="h-100 w-75 shrink-0 bg-white"
       />
@@ -47,7 +54,7 @@ export function PerfumeOverview({
           </div>
 
           <h1 className="text-ink text-display font-serif font-semibold">
-            {perfume.nameKo ?? perfume.name}
+            {title}
           </h1>
 
           {perfume.concentration && (
@@ -61,7 +68,7 @@ export function PerfumeOverview({
             isLoading={shelfPending}
             onClick={onShelfAction}
           >
-            {inShelf ? '진열대 해제' : '진열대 저장'}
+            {inShelf ? t('overview.shelfRemove') : t('overview.shelfSave')}
           </Button>
         </div>
 
