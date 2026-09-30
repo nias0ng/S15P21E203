@@ -10,10 +10,22 @@ const recommendKeys = {
   personal: () => [...recommendKeys.all, 'personal'] as const,
 }
 
+/**
+ * 자연어 추천 한 번 (NLR-01). **결과창이 닫히면 담아 두지 않습니다**(`gcTime: 0`).
+ *
+ * 부를 때마다 서버가 새 기록과 설문 손잡이(`recommendationToken`)를 냅니다. 같은 말로 다시 찾을 때
+ * 담아 둔 답을 꺼내면 이미 답했거나 닫은 손잡이가 와서 **만족도 설문이 걸리지 않습니다.** 담아 둔
+ * 지 1분이 지났으면 옛 결과가 먼저 섰다가 뒤에서 받은 새 결과로 바뀌고, 그 사이에 창을 닫으면 새
+ * 손잡이는 버려집니다.
+ *
+ * 열려 있는 동안은 다시 묻지 않습니다(`staleTime: Infinity`) — 보는 중에 카드가 바뀌면 안 됩니다.
+ */
 export const recommendationQuery = (query: string) =>
   queryOptions({
     queryKey: recommendKeys.byQuery(query),
     queryFn: () => getRecommendation(query),
+    staleTime: Infinity,
+    gcTime: 0,
   })
 
 /** 같은 사람의 후보를 서버가 다시 셈하는 중이라는 409 — 잠깐 뒤에 다시 물으면 됩니다 */
