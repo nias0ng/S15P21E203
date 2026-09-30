@@ -127,12 +127,19 @@ data/
   domain_lexicon_v1_15.csv    31KB  한국어 향 표현 63행 -> accord
   accord_dictionary.csv        7KB  accord 92개 마스터 (적재 시 검증용)
   note_accord_bridge.csv      95KB  노트(향 원료) 이름 -> accord 2,925행
+  note_alias_ko.csv            4KB  한국어 노트 이름 -> 영어 노트 이름
+  note_alias_blocklist.csv     1KB  별칭을 품었지만 그 노트가 아닌 낱말 (미르토 -> 미르 아님)
   stage1_prompt_v1.txt        2KB   ①단계 구조화 프롬프트 (sha256 앞자리 4f0a368d)
 docs/
   search_rules.md            검색 규칙 명세
   nlr_api_contract.md        프론트·백엔드와 주고받을 형식
+tests/                       회귀 테스트. `python -m unittest discover -s ai/tests`
 logs/                        미매칭 로그가 쌓입니다. .gitignore 대상입니다
 ```
+
+향수·브랜드 이름에 노트 별칭이 박혀 엉뚱한 조건이 생기면(`다이아몬드` -> 아몬드)
+`note_alias_blocklist.csv` 에 그 낱말을 더합니다. 실제 노트인 긴 이름(`허니서클`)은
+차단하지 말고 `note_alias_ko.csv` 에 별칭으로 더합니다 — 최장 일치가 이깁니다.
 
 ---
 
