@@ -669,9 +669,13 @@ const lookRsp = (aspect) =>
 
 // ⭐ `out.hW` 를 같이 낸다 (2026-09-16) — look 점 거리에서의 **화면 반폭(월드)**. 배를 화면 비율로 옮길 때 쓴다 (틱의 배 등장).
 //   ⚠ 카메라 식은 안 바뀌었다 — 값 하나를 더 실어 보낼 뿐이다.
+// ⭐ 속도가 카메라를 미는 몫을 거리 · 화각으로 따로 줄인다 (2026-09-30 — params.camSpeedPos · camSpeedFov). 1 = 예전.
+//   ⚠ 향수 고르기 슬롯 · 존 구도는 s = 0 으로 부르므로 이 두 값과 무관하다
 function cameraPose(cl, s, aspect, out) {
-  const camZ = lerp(CONFIG.cam.zNear, CONFIG.cam.zFar, s);
-  const camY = lerp(CONFIG.cam.yNear, CONFIG.cam.yFar, s);
+  const sP = s * (PARAMS.camSpeedPos === undefined ? 1 : PARAMS.camSpeedPos);
+  const sF = s * (PARAMS.camSpeedFov === undefined ? 1 : PARAMS.camSpeedFov);
+  const camZ = lerp(CONFIG.cam.zNear, CONFIG.cam.zFar, sP);
+  const camY = lerp(CONFIG.cam.yNear, CONFIG.cam.yFar, sP);
   const kD = Math.max(0.2, lerp(PARAMS.camDist, PARAMS.zoneDist, cl));
   const L = CONFIG.cam.look;
   const yaw = lerp(PARAMS.camYaw, PARAMS.zoneYaw, cl) * Math.PI / 180;
@@ -681,7 +685,7 @@ function cameraPose(cl, s, aspect, out) {
   out.pos.set(L[0] + baseDist * cpit * Math.sin(yaw),
               L[1] + baseDist * Math.sin(pitch),
               L[2] + baseDist * cpit * Math.cos(yaw));
-  out.fov = lerp(CONFIG.cam.fovNear, CONFIG.cam.fovFar, s);
+  out.fov = lerp(CONFIG.cam.fovNear, CONFIG.cam.fovFar, sF);
   out.kD = kD;
   _dir.set(L[0] - out.pos.x, L[1] - out.pos.y, L[2] - out.pos.z).normalize();
   out.rgt.crossVectors(_dir, UP_Y).normalize();
@@ -701,6 +705,24 @@ function cameraPose(cl, s, aspect, out) {
     out.tgt.addScaledVector(out.rgt, lx * out.hW).addScaledVector(out.upv, ly * hH);
   }
   return out;
+}
+
+// ⭐⭐ **카메라가 배의 속도를 따라가는 스프링** (2026-09-30 — params.camFollow 주석). 배(nav.speed)는 예전처럼 빨리 출발하고
+//   카메라의 후퇴 · 상승 · 화각만 임계 감쇠로 늦게 따라간다 — 속도 0 에서 출발해 가운데서 가장 빠르고 끝에서 멎는다 (튕김 없음).
+//   ⚠ 정확한 해로 민다 (dt 가 커도 안 튄다 · 주사율과 무관). x(t) = g + (d + (v + ωd)t)·e^(−ωt) · 95% 는 ωt = 4.744
+//   ⚠ OS '동작 줄이기' 면 목표를 0 으로 — 카메라가 속도를 아예 안 탄다 (camCalm)
+let _camS = 0, _camSV = 0;
+const _calmMQ = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+function camSpeedFollow(s, dt) {
+  const calm = (P.camCalm === undefined ? 1 : P.camCalm) >= 0.5 && !!(_calmMQ && _calmMQ.matches);
+  const g = calm ? 0 : s;
+  const T = P.camFollow === undefined ? 0 : P.camFollow;
+  if (!(T > 0)) { _camS = g; _camSV = 0; return g; }   // 0 = 예전 (nav.speed 그대로)
+  const w = 4.744 / T;
+  const d = _camS - g, e = Math.exp(-w * dt), q = (_camSV + w * d) * dt;
+  _camS = g + (d + q) * e;
+  _camSV = (_camSV - w * q) * e;
+  return _camS;
 }
 
 // ── 먼 곳 이동 · 미니맵 · 향수 고르기 (2026-09-11, v0.32.0)
@@ -1876,7 +1898,9 @@ function tick() {
   const cl = Math.max(phase.cue.look, EASE.inOutCubic(focusT));
   // ⭐ 향수 고르기 동안 카메라는 **속도를 안 탄다** (2026-09-15, v0.65.0 — focusCamStill · pickSail 주석). 12개의 자리는 속도 0 카메라(focusCamera)로 잡았으므로
   //   섞임(focusT)만큼 속도의 몫(후퇴 · 상승 · 화각)을 뺀다 — 배는 일반 속도로 가도 화면이 선다. 존 연출은 그대로 · 0 = v0.64.0
-  const sCam = (P.focusCamStill === undefined ? 1 : P.focusCamStill) >= 0.5 ? s * (1 - EASE.inOutCubic(focusT)) : s;
+  // ⭐ 카메라는 nav.speed 가 아니라 그걸 천천히 따라간 값을 탄다 (camSpeedFollow · 2026-09-30)
+  const sFol = camSpeedFollow(s, dt);
+  const sCam = (P.focusCamStill === undefined ? 1 : P.focusCamStill) >= 0.5 ? sFol * (1 - EASE.inOutCubic(focusT)) : sFol;
   cameraPose(cl, sCam, cam.aspect, _pose);
   // ⭐⭐ **잠수** (2026-09-18, dive.js) — 카메라가 고개를 숙이며 수면으로 다가간다.
   //   ⚠⚠ **여기 한 곳에서만 건다.** `cameraPose()` 안에 넣으면 존 구도 카메라(`_poseZ`)와 향수 고르기 슬롯(focusCamera)도
