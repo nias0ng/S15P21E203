@@ -127,10 +127,12 @@
    * 유리판. 흰색 0.82 로 깔았다가 되돌렸습니다 — 뒤가 안 비쳐 흰 판때기였습니다.
    *
    * 모달도 같은 판입니다. 클래스가 아니라 `dialog` 태그로 거는 이유: prop 으로
-   * 만들면 새로 만드는 모달에서 반드시 빠집니다.
+   * 만들면 새로 만드는 모달에서 반드시 빠집니다. 3D 향 지도 위의 반투명 판
+   * (`.scent-map-glass`)도 같은 판입니다.
    */
   .scent-glass,
-  .scent-night dialog {
+  .scent-night dialog,
+  .scent-map-glass {
     background: linear-gradient(
       135deg,
       rgb(255 255 255 / 0.3) 0%,
@@ -182,7 +184,8 @@
   }
 
   /* 판 위의 카드 — 판보다 한 단 밝은 유리이고, 안쪽만 글자가 먹색으로 돌아옵니다 */
-  .scent-glass [data-slot='card'] {
+  .scent-glass [data-slot='card'],
+  .scent-map-glass [data-slot='card'] {
     background: linear-gradient(
       180deg,
       rgb(255 255 255 / 0.6) 0%,
@@ -210,7 +213,8 @@
     color: var(--color-ink);
   }
 
-  .scent-glass [data-slot='card']:hover {
+  .scent-glass [data-slot='card']:hover,
+  .scent-map-glass [data-slot='card']:hover {
     background: linear-gradient(
       180deg,
       rgb(255 255 255 / 0.72) 0%,
@@ -273,7 +277,8 @@
    * 떠 있었습니다. 가운데는 여전히 비우되 가장자리로 갈수록 뼛빛이 짙어지게 해
    * 흰 판 위에 테두리가 남게 합니다.
    */
-  .scent-glass [data-slot='rank'] {
+  .scent-glass [data-slot='rank'],
+  .scent-map-glass [data-slot='rank'] {
     background: radial-gradient(
       circle at 50% 38%,
       rgb(255 255 255 / 0.9) 0%,
@@ -377,13 +382,15 @@
  * 둡니다. 안에 뒀다가 `border-radius` · `background-color` 가 조용히 밀렸습니다.
  */
 
-.scent-glass [data-slot='card'] {
+.scent-glass [data-slot='card'],
+.scent-map-glass [data-slot='card'] {
   border-radius: 18px;
   /* 유리 그러데이션만 보이게 — 바탕색이 깔리면 뒤가 안 비칩니다 */
   background-color: transparent;
 }
 
-.scent-glass [data-slot='rank'] {
+.scent-glass [data-slot='rank'],
+.scent-map-glass [data-slot='rank'] {
   background-color: transparent;
 }
 
@@ -541,6 +548,26 @@
       scrollbar-color: rgb(251 243 234 / 0.3) transparent;
     }
   }
+
+  /*
+   * 3D 향 지도 위의 반투명 유리판 — 자연어 추천 결과와 그 뒤의 만족도 설문. 향수 · 노트 화면의 판(`.scent-glass`)과
+   * 같은 결이라 판과 카드는 위의 유리판 규칙이 같이 칠합니다. 여기서는 어두운 방이 대신 깔아
+   * 주던 것(흰 글자 · 테두리색 · 경고색)만 채웁니다.
+   *
+   * NOTE: 흰 글자가 저녁 하늘 위에서 읽히는 것은 뒷막(아래 `::backdrop`)이 바다를 눌러서입니다.
+   *   뒷막을 옅게 하면 판 뒤가 밝아져 글자가 먼저 묻힙니다.
+   */
+  .scent-map-glass {
+    --glass-edge: rgb(255 255 255 / 0.55);
+    --color-ink: #ffffff;
+    /*
+     * 밝은 채움 위의 글자가 이 값을 씁니다(`text-surface` — 고른 칩 · 경고 단추). 메인의 값(상아색)을
+     * 그대로 두면 흰 칩에 상아색 글자가 되어 사라집니다. 어두운 방과 같은 남색입니다.
+     */
+    --color-surface: #1a2b4d;
+    --color-danger: #f2b7a2;
+    color: var(--color-ink);
+  }
 }
 
 /*
@@ -551,4 +578,9 @@
  */
 .scent-map-panel::backdrop {
   background: rgb(16 10 28 / 0.38);
+}
+
+/* 반투명 유리판 뒤는 더 눌러 둡니다 — 판이 비치는 만큼, 바다가 밝으면 판 위 흰 글자가 묻힙니다 */
+.scent-map-glass::backdrop {
+  background: rgb(16 10 28 / 0.62);
 }
