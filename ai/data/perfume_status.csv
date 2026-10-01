@@ -913,7 +913,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 16034,Guerlain,Aqua Allegoria Bouquet de Mai,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 16035,Guerlain,Mon Precieux Nectar,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/guerlain-mon-precieux-nectar-parfum,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시. 프랑스(fr-fr) 공식 사이트 향수 목록에 없음
 16730,Guerlain,Shalimar Ode a la Vanille Sur la route de Madagascar,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
-16990,Guerlain,L'Heure de Nuit,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
+16990,Guerlain,L'Heure de Nuit,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/guerlain-attrape-coeur-vaulted-eau-de-parfum,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시('Guerlain L’HEURE DE NUIT vaulted eau de parfum'). 프랑스(fr-fr) 공식 사이트 향수 목록에 없음
 17119,Guerlain,Derby,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 17355,Guerlain,Guerlain Shalimar Parfum Initial L'Eau Si Sensuelle,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 17512,Guerlain,Aqua Allegoria Nerolia Bianca,DISCONTINUED,CONFIRMED,https://theperfumedcourt.com/products/guerlain-aqua-allegoria-nerolia-bianca-edt-discontinued-decant-sample,2026-10-01,판매처(The Perfumed Court)가 상품명에 'Discontinued' 표기. 프랑스(fr-fr) 공식 사이트 향수 목록에 없음
@@ -1057,7 +1057,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 216,Dior,Dior Addict Eau Fraiche 2004,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
 217,Dior,Dior Addict 2,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/christian-dior-addict-2-eau-de-toilette,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시. 프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음
 220,Dior,Tendre Poison,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
-697,Dior,Midnight Charm,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
+697,Dior,Midnight Charm,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/christian-dior-dolce-vita-eau-de-toilette-1,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시('Christian Dior MIDNIGHT CHARM vaulted eau de parfum'). 프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음
 987,Dior,Fahrenheit 32,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/christian-dior-fahrenheit-32-vaulted-eau-de-toilette,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시. 프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음
 1242,Dior,Eau Sauvage Fraicheur Cuir,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
 1246,Dior,Dior Addict 2 Summer Peonies,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
@@ -1103,7 +1103,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 10633,Dior,La Collection Couturier Parfumeur Milly-la-Foret,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
 11388,Dior,Aqua Fahrenheit,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
 11399,Dior,Miss Dior Cherie Extrait de Parfum,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
-11401,Dior,Midnight Poison Extrait de Parfum,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
+11401,Dior,Midnight Poison Extrait de Parfum,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/christian-dior-midnight-poison-vintage-parfum,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시('Christian Dior MIDNIGHT POISON vintage parfum'). 프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음
 12109,Dior,Addict To Life,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
 13143,Dior,Miss Dior Cherie Blooming Bouquet 2011,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
 13292,Dior,La Collection Couturier Parfumeur Patchouli Imperial,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
@@ -1113,7 +1113,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 14833,Dior,Cruise Collection Escale a Parati,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
 14984,Dior,Dior Grand Bal,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
 15268,Dior,Dior Addict Eau Fraiche 2012,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
-15269,Dior,Dior Addict Eau Sensuelle,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
+15269,Dior,Dior Addict Eau Sensuelle,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/christian-dior-addict-2-vaulted-eau-de-toilette-copy,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시('Christian Dior ADDICT EAU SENSUELLE vaulted eau de toilette'). 프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음
 15703,Dior,Eau Svelte,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
 17148,Dior,J'Adore L'Absolu,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
 17218,Dior,Hypnotic Poison Eau Secrete,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
@@ -1129,7 +1129,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 29770,Dior,Miss Dior Parfum pour Cheveux,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
 30164,Dior,Fève Délicieuse,DISCONTINUED,CONFIRMED,https://www.annasluxe.com/christian-dior-feve-delicieuse-250ml-discontinued-rare-2017-batch/,2026-10-01,"판매처(Anna's Luxe)가 'Discontinued & Vintage Perfumes' 로 분류, 상품명에 'Discontinued'. 프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음"
 31714,Dior,J’adore Touche de Parfum,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
-34811,Dior,Poison Esprit de Parfum,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
+34811,Dior,Poison Esprit de Parfum,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/poison-by-christian-dior-100ml-eau-de-toilette,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시('Christian Dior POISON vintage esprit de parfum'). 프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음
 36495,Dior,J'adore Lumiere Eau de Toilette,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
 37572,Dior,Miss Dior Brume Soyeuse pour le Corps,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
 39070,Dior,Miss Dior Absolutely Blooming,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
@@ -1576,20 +1576,13 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 27702,Armaf,Shades Wood,DISCONTINUED,LIKELY,https://armaf.com/sitemap.xml,2026-10-01,공식 사이트(armaf.com) 사이트맵에 없음. 두 번째 근거 미확인
 50318,Armaf,Signature Night,DISCONTINUED,LIKELY,https://armaf.com/sitemap.xml,2026-10-01,공식 사이트(armaf.com) 사이트맵에 없음. 두 번째 근거 미확인
 50319,Armaf,Signature True,DISCONTINUED,LIKELY,https://armaf.com/sitemap.xml,2026-10-01,공식 사이트(armaf.com) 사이트맵에 없음. 두 번째 근거 미확인
-50321,Armaf,El Cielo Pour Homme,DISCONTINUED,LIKELY,https://armaf.com/sitemap.xml,2026-10-01,공식 사이트(armaf.com) 사이트맵에 없음. 두 번째 근거 미확인
 50324,Armaf,Peridot,DISCONTINUED,LIKELY,https://armaf.com/sitemap.xml,2026-10-01,공식 사이트(armaf.com) 사이트맵에 없음. 두 번째 근거 미확인
 50325,Armaf,Sapphire,DISCONTINUED,LIKELY,https://armaf.com/sitemap.xml,2026-10-01,공식 사이트(armaf.com) 사이트맵에 없음. 두 번째 근거 미확인
 50329,Armaf,Eternia Women,DISCONTINUED,LIKELY,https://armaf.com/sitemap.xml,2026-10-01,공식 사이트(armaf.com) 사이트맵에 없음. 두 번째 근거 미확인
 50334,Armaf,Just For You Pour Homme,DISCONTINUED,LIKELY,https://armaf.com/sitemap.xml,2026-10-01,공식 사이트(armaf.com) 사이트맵에 없음. 두 번째 근거 미확인
-52255,Armaf,The Pride of Armaf For Men,DISCONTINUED,LIKELY,https://armaf.com/sitemap.xml,2026-10-01,공식 사이트(armaf.com) 사이트맵에 없음. 두 번째 근거 미확인
-52265,Armaf,Legesi Homme,DISCONTINUED,LIKELY,https://armaf.com/sitemap.xml,2026-10-01,공식 사이트(armaf.com) 사이트맵에 없음. 두 번째 근거 미확인
-68064,Armaf,Shades Blue,DISCONTINUED,LIKELY,https://armaf.com/sitemap.xml,2026-10-01,공식 사이트(armaf.com) 사이트맵에 없음. 두 번째 근거 미확인
 78474,Armaf,Club de Nuit White Imperiale,DISCONTINUED,LIKELY,https://armaf.com/sitemap.xml,2026-10-01,공식 사이트(armaf.com) 사이트맵에 없음. 두 번째 근거 미확인
 83137,Armaf,Odyssey Wild One Gold Edition,DISCONTINUED,LIKELY,https://armaf.com/sitemap.xml,2026-10-01,공식 사이트(armaf.com) 사이트맵에 없음. 두 번째 근거 미확인
 88209,Armaf,Club De Nuit Intense Woman Perfume Oil,DISCONTINUED,LIKELY,https://armaf.com/sitemap.xml,2026-10-01,공식 사이트(armaf.com) 사이트맵에 없음. 두 번째 근거 미확인
-102026,Armaf,Club De Nuit Lionheart Man,DISCONTINUED,LIKELY,https://armaf.com/sitemap.xml,2026-10-01,공식 사이트(armaf.com) 사이트맵에 없음. 두 번째 근거 미확인
-102027,Armaf,Club De Nuit Lionheart Woman,DISCONTINUED,LIKELY,https://armaf.com/sitemap.xml,2026-10-01,공식 사이트(armaf.com) 사이트맵에 없음. 두 번째 근거 미확인
-109771,Armaf,Ombre d'Or,DISCONTINUED,LIKELY,https://armaf.com/sitemap.xml,2026-10-01,공식 사이트(armaf.com) 사이트맵에 없음. 두 번째 근거 미확인
 92,Yves Saint Laurent,Cinéma,DISCONTINUED,CONFIRMED,https://www.yslbeautyus.com/cinema-eau-de-parfum-spray/401YSL.html,2026-10-01,브랜드 미국 공식 사이트 상품 페이지에 'DISCONTINUED' 안내. 프랑스(yslbeauty.fr) 공식 사이트맵 향수 목록에 없음
 34,Givenchy,Very Irresistible for men,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/givenchy-very-irresistible-men-eau-de-toilette,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시. 프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음
 35,Givenchy,Hot Couture,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
@@ -1629,7 +1622,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 2065,Givenchy,Very Irresistible Eau d'Ete Summer Fragrance,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
 2066,Givenchy,Very Irresistible Sensual,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
 2089,Givenchy,Ange ou Demon Tendre,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
-2090,Givenchy,My Givenchy Dream,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
+2090,Givenchy,My Givenchy Dream,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/givenchy-my-givenchy-dream-vaulted-eau-de-toilette,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시('Givenchy MY GIVENCHY DREAM vaulted eau de toilette'). 프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음
 2454,Givenchy,Absolutely Givenchy,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
 2748,Givenchy,Givenchy Harvest 2007 Amarige Mimosa,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
 2749,Givenchy,Givenchy Harvest 2007 Very Irresistible Damascena Rose,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
@@ -1892,7 +1885,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 26776,Lancôme,Oud Bouquet Eau de Parfum,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
 31319,Lancôme,Tresor Midnight Rose Elixir D’Orient,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
 32364,Lancôme,Climat L'Edition Mythique,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
-33615,Lancôme,Sikkim Parfum,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
+33615,Lancôme,Sikkim Parfum,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/copy-lancome-sikkim-vintage-parfum,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시('Lancôme SIKKIM vintage parfum'). 미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함
 33616,Lancôme,Climat Parfum Extrait,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
 35493,Lancôme,La Vie Est Belle L’Eau de Toilette Florale,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
 39662,Lancôme,Miracle Blossom,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
@@ -2095,7 +2088,6 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 25154,Dolce&Gabbana,Velvet Bergamot,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/copy-dolce-gabbana-velvet-bergamot-eau-de-parfum,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시. 영국 · 미국 · 이탈리아 공식 사이트맵에 없음
 27418,Dolce&Gabbana,The One Collector For Women,DISCONTINUED,LIKELY,https://www.dolcegabbana.com/en-gb/sitemap-product_0.xml,2026-10-01,영국 · 미국 · 이탈리아 공식 사이트맵에 없음. 두 번째 근거 미확인
 27419,Dolce&Gabbana,The One Collector For Men,DISCONTINUED,LIKELY,https://www.dolcegabbana.com/en-gb/sitemap-product_0.xml,2026-10-01,영국 · 미국 · 이탈리아 공식 사이트맵에 없음. 두 번째 근거 미확인
-28935,Dolce&Gabbana,Dolce&Gabbana Pour Homme Intenso,DISCONTINUED,LIKELY,https://www.dolcegabbana.com/en-gb/sitemap-product_0.xml,2026-10-01,영국 · 미국 · 이탈리아 공식 사이트맵에 없음. 두 번째 근거 미확인
 29524,Dolce&Gabbana,Dolce Floral Drops,DISCONTINUED,LIKELY,https://www.dolcegabbana.com/en-gb/sitemap-product_0.xml,2026-10-01,영국 · 미국 · 이탈리아 공식 사이트맵에 없음. 두 번째 근거 미확인
 29959,Dolce&Gabbana,Light Blue Sunset in Salina,DISCONTINUED,LIKELY,https://www.dolcegabbana.com/en-gb/sitemap-product_0.xml,2026-10-01,영국 · 미국 · 이탈리아 공식 사이트맵에 없음. 두 번째 근거 미확인
 29960,Dolce&Gabbana,Light Blue Swimming in Lipari,DISCONTINUED,LIKELY,https://www.dolcegabbana.com/en-gb/sitemap-product_0.xml,2026-10-01,영국 · 미국 · 이탈리아 공식 사이트맵에 없음. 두 번째 근거 미확인
