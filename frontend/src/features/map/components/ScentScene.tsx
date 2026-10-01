@@ -189,6 +189,11 @@ type Props = {
    */
   onChartChange?: (open: boolean) => void
   /**
+   * 엔진의 **향수 카드가 떠 있는지** (2026-10-01 · 엔진 `<html data-card>` · v0.87.0). 좁은 화면에서 3D 위에 얹은
+   * 앱 UI(향해 일지 · 의견 단추)가 카드 아랫단을 덮어, 그동안 비키려고 듣습니다.
+   */
+  onCardChange?: (open: boolean) => void
+  /**
    * 엔진의 부팅 단계 (host.js `bootReport` — html → script → frame → boat-bytes → boat).
    * 로딩 커튼(SceneBootCurtain)이 퍼센트를 미는 데 씁니다. 배 GLB 진행은 초당 수십 번 옵니다.
    */
@@ -275,6 +280,7 @@ export function ScentScene({
   coveredTop = '0px',
   onNightChange,
   onChartChange,
+  onCardChange,
   onBoot,
   onMove,
   start,
@@ -323,6 +329,7 @@ export function ScentScene({
     covered,
     onNightChange,
     onChartChange,
+    onCardChange,
     onBoot,
     onMove,
     onLeave,
@@ -338,6 +345,7 @@ export function ScentScene({
       covered,
       onNightChange,
       onChartChange,
+      onCardChange,
       onBoot,
       onMove,
       onLeave,
@@ -506,6 +514,7 @@ export function ScentScene({
         엔진이 iframe 문서의 <html> 속성으로 알리는 것들을 지켜봅니다.
           data-time   시간대 (밤이면 헤더가 남색 유리)
           data-chart  전체 화면 해도가 열렸는가 (2026-09-21 — 위 onChartChange 머리말)
+          data-card   향수 카드가 떠 있는가 (2026-10-01 — 위 onCardChange 머리말)
         ⚠️ 관찰자는 하나입니다 — 둘 다 같은 요소의 속성이라 나눌 이유가 없습니다.
       */
       timeWatch?.disconnect()
@@ -514,12 +523,13 @@ export function ScentScene({
         const report = () => {
           latest.current.onNightChange?.(html.dataset.time === 'night')
           latest.current.onChartChange?.(html.dataset.chart !== undefined)
+          latest.current.onCardChange?.(html.dataset.card !== undefined)
         }
         report()
         timeWatch = new MutationObserver(report)
         timeWatch.observe(html, {
           attributes: true,
-          attributeFilter: ['data-time', 'data-chart'],
+          attributeFilter: ['data-time', 'data-chart', 'data-card'],
         })
       }
       /*

@@ -50,6 +50,7 @@ import {
   useIsDiving,
   useIsRising,
 } from '@/shared/store/diveStore'
+import { useSceneCardStore } from '@/shared/store/sceneCardStore'
 import { useSceneSkyStore } from '@/shared/store/sceneSkyStore'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { Toast } from '@/shared/ui/Toast'
@@ -105,6 +106,17 @@ export default function HomePage() {
   const diving = useIsDiving()
   /** 엔진의 전체 화면 해도가 열려 있는가 — 3D 위에 얹은 앱 UI 가 비킵니다 (위 DIVE_FADE 머리말) */
   const [chartOpen, setChartOpen] = useState(false)
+  /*
+   * 엔진의 향수 카드가 떠 있는가 (2026-10-01). 좁은 화면(940 아래)에서는 향해 일지가 왼쪽 아래로 내려가
+   * 카드 아랫단('이 향의 해역으로')을 덮었습니다 — 카드가 떠 있는 동안은 비킵니다. 의견 단추(껍데기)는
+   * `sceneCardStore` 로 같은 값을 받습니다. 메인을 떠나면 false 로 되돌립니다.
+   */
+  const [cardOpen, setCardOpen] = useState(false)
+  const setSceneCard = useSceneCardStore((state) => state.setOpen)
+  useEffect(() => {
+    setSceneCard(cardOpen)
+  }, [cardOpen, setSceneCard])
+  useEffect(() => () => setSceneCard(false), [setSceneCard])
   /*
    * 진열대에서 **떠올라** 들어오는 중인가. 그동안 화면은 잠수 커튼(물)이 덮고 있으므로
    * 이 화면의 아이보리 로딩 커튼은 비킵니다 — 물 밑에서 구름이 갈라지면 걷히는 겹이 둘이 됩니다.
@@ -353,6 +365,7 @@ export default function HomePage() {
         coveredTop="var(--header-h)"
         onNightChange={(night) => setSky(night ? 'dark' : 'light')}
         onChartChange={setChartOpen}
+        onCardChange={setCardOpen}
         onBoot={boot.report}
         onMove={reportMove}
         quality={graphics.mode}
@@ -512,6 +525,8 @@ export default function HomePage() {
           'absolute top-30 left-7.5 max-[940px]:top-auto max-[940px]:bottom-15',
           DIVE_FADE,
           (diving || chartOpen) && 'invisible opacity-0',
+          // 좁은 화면에서 카드가 떠 있으면 비킵니다 (위 cardOpen 머리말) — 넓은 화면은 왼쪽 위라 카드와 안 겹칩니다
+          cardOpen && 'max-[940px]:invisible max-[940px]:opacity-0',
         )}
       >
         <VoyageLog entries={logEntries} status={logStatus} />

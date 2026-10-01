@@ -517,14 +517,32 @@ export function createMinimap({ onPick, onBlocked } = {}) {
     last = '';   // 다시 그린다
   };
   const onLeave = () => { hover = null; idleHint(); last = ''; };
+  // ⭐⭐ **손가락이면 두 번 누른다** (2026-10-01, v0.87.0 — 메인 사용성 테스트 · 모바일). 마우스는 올리기만 해도 어느 해역인지
+  //   머리말(hint)이 먼저 말하지만, 손가락에는 올리기가 없어 "한 번만 스쳐도 즉시 다른 해역으로 순간이동한다" 였다.
+  //   첫 탭은 **미리보기**(호버와 같은 강조 · 머리말 + '한 번 더 누르면 출발') · 같은 해역을 3초 안에 다시 누르면 떠난다.
+  //   ⚠ 마우스는 예전 그대로 한 번이다 — 호버가 이미 미리보기를 한다
+  let tapType = 'mouse', tapArm = null;
+  const onDown = (e) => { tapType = e.pointerType || 'mouse'; };
   const onClick = (e) => {
     if (!map) return;
     const h = hitAt(e);
     if (h.out) { onBlocked && onBlocked(); return; }
+    if (tapType !== 'mouse') {
+      const key = h.label ? 'L:' + h.label.key : h.reg ? 'R:' + h.reg.key : null;
+      const now = performance.now();
+      if (key && (!tapArm || tapArm.key !== key || now - tapArm.t > 3000)) {
+        tapArm = { key, t: now };
+        onMove(e);
+        if (hint && !h.out) hint.textContent += ' · 한 번 더 누르면 출발';
+        return;
+      }
+      tapArm = null;
+    }
     if (h.label) onPick && onPick({ key: h.label.key, name: h.label.name, x: h.label.a.x, z: h.label.a.z, custom: true });
     else if (h.reg) onPick && onPick({ key: h.reg.key, name: h.reg.name, x: h.x, z: h.z, custom: true, spot: true });
   };
   // ⚠ 방향키가 조타로 새지 않게 — 캔버스에 초점이 가도 키를 가두지는 않는다 (버튼이 아니다)
+  cv.addEventListener('pointerdown', onDown);
   cv.addEventListener('pointermove', onMove);
   cv.addEventListener('pointerleave', onLeave);
   cv.addEventListener('click', onClick);
@@ -597,6 +615,7 @@ export function createMinimap({ onPick, onBlocked } = {}) {
       cv.removeEventListener('pointermove', onMove);
       cv.removeEventListener('pointerleave', onLeave);
       cv.removeEventListener('click', onClick);
+      cv.removeEventListener('pointerdown', onDown);
       window.removeEventListener('resize', onResize);
       window.removeEventListener('pagehide', onHide);
       box.style.visibility = 'hidden';
