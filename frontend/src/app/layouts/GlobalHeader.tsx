@@ -5,6 +5,7 @@ import { AccountMenu } from './header/AccountMenu'
 import { BrandMark } from './header/BrandMark'
 import { GraphicsMenu } from './header/GraphicsMenu'
 import { LoginButton } from './header/LoginButton'
+import { MobileMenu } from './header/MobileMenu'
 import { PrimaryNav } from './header/PrimaryNav'
 import { GLASS, inkOf, isGlass, type HeaderTone } from './header/tone'
 
@@ -42,14 +43,18 @@ export function GlobalHeader({ tone = 'surface' }: { tone?: HeaderTone }) {
         {/*
           NOTE: 톱니바퀴(아이콘 5 + 사이 5)가 서면 로고 쪽에도 같은 폭(10)을 비웁니다. 가운데 메뉴는
           양옆 칸 사이의 가운데라, 오른쪽만 넓어지면 메인에서만 메뉴가 20px 왼쪽으로 섭니다 (1920 실측).
+          가운데 메뉴를 접는 768 아래에서는 비울 까닭이 없어 비우지 않습니다.
         */}
-        <BrandMark ink={ink} className={cn(onGlass && 'mr-10')} />
+        <BrandMark ink={ink} className={cn(onGlass && 'md:mr-10')} />
         <PrimaryNav isLoggedIn={isLoggedIn} ink={ink} />
 
-        <div className="flex shrink-0 items-center gap-5">
+        {/* ⚠️ 셋째 칸에 못 박습니다 — 768 아래에서 가운데 메뉴가 빠지면 이 묶음이 가운데 칸으로 당겨 와 왼쪽에 붙습니다 */}
+        <div className="col-start-3 flex shrink-0 items-center gap-5">
           {/* 그래픽 설정은 3D 향 지도(유리판 헤더)에서만 섭니다 — 다른 화면에는 바꿀 3D 가 없습니다 */}
           {onGlass && <GraphicsMenu ink={ink} />}
           {isLoggedIn ? <AccountMenu ink={ink} /> : <LoginButton ink={ink} />}
+          {/* 768 아래에서만 섭니다 — 가운데 메뉴를 여기로 접습니다 */}
+          <MobileMenu isLoggedIn={isLoggedIn} ink={ink} />
         </div>
       </div>
     </header>
