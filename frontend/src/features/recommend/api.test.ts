@@ -33,6 +33,10 @@ describe('getPersonalRecommendation', () => {
           name: '아티산 블랙',
           imageUrl: null,
           reason: '취향 테스트에서 선택한 시트러스 계열과 잘 맞아요.',
+          originalName: 'Artisan Black',
+          nameKo: '아티산 블랙',
+          evidenceSource: 'TASTE_TEST',
+          evidenceKey: 'CITRUS',
         },
       },
     })
@@ -45,6 +49,10 @@ describe('getPersonalRecommendation', () => {
         name: '아티산 블랙',
         imageUrl: null,
         reason: '취향 테스트에서 선택한 시트러스 계열과 잘 맞아요.',
+        originalName: 'Artisan Black',
+        nameKo: '아티산 블랙',
+        evidenceSource: 'TASTE_TEST',
+        evidenceKey: 'CITRUS',
       },
     })
     expect(http.get).toHaveBeenCalledWith('/recommendations/personalized')

@@ -1,4 +1,5 @@
 import type { ScentFamilyKey } from '@/shared/config/scentFamilies'
+import { i18n } from '@/shared/i18n'
 import { readOption } from '@/shared/lib/queryParams'
 
 export interface PerfumeSummary {
@@ -74,17 +75,18 @@ export type RankingFilter = 'OWNED' | 'WISH' | 'VIEWED'
 
 export type GenderFilter = 'FEMALE' | 'MALE' | 'UNISEX'
 
+// 이름표는 화면 언어를 따라야 해 그리는 쪽이 `perfume:filters.*` 로 풉니다
 export const RANKING_FILTERS = [
-  { value: 'OWNED', label: '보유' },
-  { value: 'WISH', label: '희망' },
-  { value: 'VIEWED', label: '조회' },
-] as const satisfies readonly { value: RankingFilter; label: string }[]
+  { value: 'OWNED' },
+  { value: 'WISH' },
+  { value: 'VIEWED' },
+] as const satisfies readonly { value: RankingFilter }[]
 
 export const GENDER_FILTERS = [
-  { value: 'FEMALE', label: '여성' },
-  { value: 'MALE', label: '남성' },
-  { value: 'UNISEX', label: '중성' },
-] as const satisfies readonly { value: GenderFilter; label: string }[]
+  { value: 'FEMALE' },
+  { value: 'MALE' },
+  { value: 'UNISEX' },
+] as const satisfies readonly { value: GenderFilter }[]
 
 export const readRankingFilter = (value: string | null): RankingFilter | null =>
   readOption(value, RANKING_FILTERS)
@@ -101,11 +103,20 @@ export const GENDER_TEXT: Record<GenderFilter, string> = {
 
 export type Season = 'SPRING' | 'SUMMER' | 'AUTUMN' | 'WINTER'
 
+const seasonOption = <T extends Season>(value: T) => ({
+  value,
+  // NOTE: 읽을 때마다 지금 화면 언어로 풉니다 — 모듈을 읽을 때 한 번 정하면 언어를 바꿔도
+  //   글자가 그대로 남습니다. 후기 쓰기 화면이 이 목록을 그대로 칩에 넘깁니다
+  get label(): string {
+    return i18n.t(`perfume:season.${value}`)
+  },
+})
+
 export const SEASONS = [
-  { value: 'SPRING', label: '봄' },
-  { value: 'SUMMER', label: '여름' },
-  { value: 'AUTUMN', label: '가을' },
-  { value: 'WINTER', label: '겨울' },
+  seasonOption('SPRING'),
+  seasonOption('SUMMER'),
+  seasonOption('AUTUMN'),
+  seasonOption('WINTER'),
 ] as const satisfies readonly { value: Season; label: string }[]
 
 // 진열대 분류(ShelfCategory)는 진열대 도메인의 어휘라 features/shelf 에 있습니다.
@@ -113,7 +124,10 @@ export const SEASONS = [
 /** `noteType` 은 값 제약이 없어 그대로 내려옵니다 — **묶는 일은 화면이 합니다** */
 export interface PerfumeNote {
   noteId: number
+  /** 원래(영어) 이름 */
   name: string
+  /** 한국어 이름. 없으면 null — 한국어 화면도 원래 이름을 씁니다 */
+  nameKo?: string | null
   noteType: string | null
 }
 
@@ -191,7 +205,14 @@ export interface ReviewDetail {
   profileImageUrl: string | null
   title: string
   content: string
-  perfume: { perfumeId: number; name: string; brand: string | null }
+  /** 이름 · 브랜드는 원래(영어) 이름이고, 한국어 이름은 따로 옵니다(없으면 null) */
+  perfume: {
+    perfumeId: number
+    name: string
+    nameKo?: string | null
+    brand: string | null
+    brandKo?: string | null
+  }
   seasons: ReviewSeason[]
   likeCount: number
   /** **이번 조회를 포함한** 수입니다 */

@@ -36,6 +36,9 @@ export {
   useShelfActions,
 } from './hooks/useShelfActions'
 export { useShelfBrowser } from './hooks/useShelfBrowser'
-export { shelfRegisterErrorMessage } from './registerErrorMessage'
+export {
+  shelfPartNames,
+  shelfRegisterErrorMessage,
+} from './registerErrorMessage'
 export { shelfItemDetailQuery, shelfItemsQuery } from './queries'
 export type { ShelfCategory, ShelfItemDetail } from './types'

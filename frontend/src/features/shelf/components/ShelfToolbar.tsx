@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/shared/lib/cn'
 
@@ -54,6 +55,7 @@ export function ShelfToolbar({
   action,
   stacked = false,
 }: Props) {
+  const { t } = useTranslation('shelf')
   const searchInputId = useId()
 
   return (
@@ -83,15 +85,13 @@ export function ShelfToolbar({
         )}
       >
         <SearchIcon />
-        <span className="sr-only">향수 검색</span>
+        <span className="sr-only">{t('toolbar.search')}</span>
         <input
           id={searchInputId}
           type="search"
           value={keyword}
           onChange={(event) => onKeywordChange(event.target.value)}
-          placeholder={
-            stacked ? '향수 검색' : '향수 이름, 브랜드, 노트를 검색해보세요.'
-          }
+          placeholder={stacked ? t('toolbar.search') : t('toolbar.placeholder')}
           // 알약이 바탕을 이미 그리고 있어 input 은 투명하게 얹습니다.
           // min-w-0 이 없으면 placeholder 길이만큼 폭을 우겨서 줄이 넘칩니다.
           className="text-body w-full min-w-0 bg-transparent outline-none placeholder:text-[var(--shelf-ink-soft)]"

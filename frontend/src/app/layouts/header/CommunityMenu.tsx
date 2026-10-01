@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router'
 
 import { cn } from '@/shared/lib/cn'
@@ -9,6 +10,7 @@ import { useDiveOut } from './useDiveOut'
 import { useWarm } from './useWarm'
 
 export function CommunityMenu({ ink }: { ink: Ink }) {
+  const { t } = useTranslation('layout')
   const { open, setOpen, containerRef } = useDismissable()
   const diveOut = useDiveOut()
   const warm = useWarm()
@@ -54,7 +56,7 @@ export function CommunityMenu({ ink }: { ink: Ink }) {
                     cn('border-b', ink.itemRule),
                 )}
               >
-                {item.label}
+                {t(item.labelKey)}
               </NavLink>
             </li>
           ))}

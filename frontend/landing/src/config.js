@@ -344,13 +344,13 @@ export const CONFIG = {
   // ⚠ 그리고 배경(#F6F5F2 · 246)보다 확실히 어두워야 한다 — 불변식 14. 밝기(평균 RGB)는
   //   floral 121 · woody 92 · fresh 132 · amber 105 로, 예전 단색 #7A8496(135) 언저리다.
   areas: [
-    { key: 'floral', name: 'FLORAL', color: '#D9738F', x: -22, z: -30, ly: 1.0, kw: ['플로럴', '꽃', '장미', '로즈', 'floral', 'rose'],
+    { key: 'floral', name: 'FLORAL', color: '#D9738F', x: -22, z: -30, ly: 1.0, kw: ['플로럴', '꽃', '장미', '로즈', 'floral', 'rose', 'flower', 'jasmine'],
       desc: ['피어나는 꽃잎이 건네는', '부드럽고 환한 인상.'], notes: ['ROSE', 'JASMINE', 'VIOLET', 'PEONY'], titleColor: '#9E5A72' },
-    { key: 'woody',  name: 'WOODY',  color: '#5A8B6A', x:  14, z: -42, ly: 2.0, kw: ['우디', '나무', '숲', '시더', 'woody', 'wood'],
+    { key: 'woody',  name: 'WOODY',  color: '#5A8B6A', x:  14, z: -42, ly: 2.0, kw: ['우디', '나무', '숲', '시더', 'woody', 'wood', 'cedar', 'forest'],
       desc: ['고요한 나무의 숨결이 전하는', '깊고 단단한 아름다움.'], notes: ['CEDAR', 'SANDALWOOD', 'VETIVER', 'EARTH'], titleColor: '#4A7358' },
-    { key: 'fresh',  name: 'FRESH',  color: '#7BA8C4', x: -10, z: -56, ly: 2.7, kw: ['프레시', '상쾌', '시트러스', '바다', 'fresh', 'citrus'],
+    { key: 'fresh',  name: 'FRESH',  color: '#7BA8C4', x: -10, z: -56, ly: 2.7, kw: ['프레시', '상쾌', '시트러스', '바다', 'fresh', 'citrus', 'ocean', 'marine'],
       desc: ['물빛을 스치는 바람이 남기는', '맑고 가벼운 여운.'], notes: ['BERGAMOT', 'MARINE', 'MINT', 'CITRUS'], titleColor: '#5B8AA6' },
-    { key: 'amber',  name: 'AMBER',  color: '#C9A227', x:  30, z: -68, ly: 3.4, kw: ['앰버', '호박', '달콤', '바닐라', 'amber', 'sweet', 'vanilla'],
+    { key: 'amber',  name: 'AMBER',  color: '#C9A227', x:  30, z: -68, ly: 3.4, kw: ['앰버', '호박', '달콤', '바닐라', 'amber', 'sweet', 'vanilla', 'warm', 'resin'],
       desc: ['수지의 온기가 천천히 번지는', '포근하고 긴 잔향.'], notes: ['AMBER', 'VANILLA', 'BENZOIN', 'MUSK'], titleColor: '#98782A' }
   ],
 
@@ -396,33 +396,35 @@ export const CONFIG = {
   //   **나머지 다섯(FRUITY · GREEN · CITRUS · GOURMAND · MUSK)은 형식만 맞춘 임시 카피다** — 기획이 정하면 갈아 끼운다.
   // ⚠ `titleColor` 는 수면 타이포 전용이다 (부표 색보다 **어둡게** — 불변식 14 · 배경 246 대비).
   //   WOODY 가 갈색이 되면서 예전 WOODY 의 초록(#4A7358)은 GREEN 이 가져갔다.
+  // ⭐ 2026-09-30 : `kw` 에 영어 낱말을 더했다 — 영어 화면(?lang=en)의 검색도 해역을 찾게. 한국어 낱말은 그대로 둔다 (kw[0] 은 해도 범례의 둘째 줄이라 한국어 그대로).
+  //   ⚠ 영어 desc 는 여기가 아니라 i18n.js 의 ZONE_DESC_EN 이다 (키가 이 표의 key)
   families: [
     { key: 'FLORAL',   name: 'FLORAL',   color: '#CBA0AA', titleColor: '#9E5A72',
-      kw: ['플로럴', '꽃', '장미', '로즈', '자스민', 'floral', 'rose'],
+      kw: ['플로럴', '꽃', '장미', '로즈', '자스민', 'floral', 'rose', 'flower', 'jasmine', 'violet', 'peony'],
       desc: ['피어나는 꽃잎이 건네는', '부드럽고 환한 인상.'], notes: ['ROSE', 'JASMINE', 'VIOLET', 'PEONY'] },
     { key: 'FRUITY',   name: 'FRUITY',   color: '#D4A48F', titleColor: '#A0604A',
-      kw: ['프루티', '과일', '복숭아', '베리', 'fruity', 'fruit'],
+      kw: ['프루티', '과일', '복숭아', '베리', 'fruity', 'fruit', 'peach', 'berry', 'pear', 'apple'],
       desc: ['잘 익은 과즙이 번지는', '생기 있고 달콤한 인상.'], notes: ['PEAR', 'PEACH', 'BERRY', 'APPLE'] },
     { key: 'WOODY',    name: 'WOODY',    color: '#A38F7C', titleColor: '#6E5A48',
-      kw: ['우디', '나무', '숲', '시더', '샌달우드', 'woody', 'wood'],
+      kw: ['우디', '나무', '숲', '시더', '샌달우드', 'woody', 'wood', 'cedar', 'vetiver', 'forest'],
       desc: ['고요한 나무의 숨결이 전하는', '깊고 단단한 아름다움.'], notes: ['CEDAR', 'SANDALWOOD', 'VETIVER', 'EARTH'] },
     { key: 'GREEN',    name: 'GREEN',    color: '#94A38C', titleColor: '#4A7358',
-      kw: ['그린', '풀', '잎', '녹차', '허브', 'green', 'leaf', 'tea'],
+      kw: ['그린', '풀', '잎', '녹차', '허브', 'green', 'leaf', 'tea', 'herb', 'grass', 'basil'],
       desc: ['막 꺾은 잎이 풀어놓는', '싱그럽고 곧은 숨.'], notes: ['FIG LEAF', 'GREEN TEA', 'BASIL', 'GALBANUM'] },
     { key: 'CITRUS',   name: 'CITRUS',   color: '#C2B36A', titleColor: '#857633',
-      kw: ['시트러스', '레몬', '귤', '상큼', '베르가못', 'citrus', 'lemon'],
+      kw: ['시트러스', '레몬', '귤', '상큼', '베르가못', 'citrus', 'lemon', 'bergamot', 'mandarin', 'orange', 'neroli', 'zesty'],
       desc: ['햇살을 머금은 껍질이 터지는', '밝고 산뜻한 첫인상.'], notes: ['BERGAMOT', 'LEMON', 'MANDARIN', 'NEROLI'] },
     { key: 'AQUATIC',  name: 'AQUATIC',  color: '#95B4C0', titleColor: '#5B8AA6',
-      kw: ['아쿠아', '바다', '물', '프레시', '마린', 'aquatic', 'marine', 'fresh'],
+      kw: ['아쿠아', '바다', '물', '프레시', '마린', 'aquatic', 'marine', 'fresh', 'ocean', 'water', 'aqua', 'ozone'],
       desc: ['물빛을 스치는 바람이 남기는', '맑고 가벼운 여운.'], notes: ['SEA SALT', 'MARINE', 'OZONE', 'WATER LILY'] },
     { key: 'AMBER',    name: 'AMBER',    color: '#CBAC82', titleColor: '#98782A',
-      kw: ['앰버', '호박', '레진', '따뜻', 'amber', 'resin'],
+      kw: ['앰버', '호박', '레진', '따뜻', 'amber', 'resin', 'warm', 'incense', 'labdanum', 'benzoin'],
       desc: ['수지의 온기가 천천히 번지는', '포근하고 긴 잔향.'], notes: ['AMBER', 'LABDANUM', 'BENZOIN', 'INCENSE'] },
     { key: 'GOURMAND', name: 'GOURMAND', color: '#BF9B7A', titleColor: '#8A6440',
-      kw: ['구르망', '달콤', '바닐라', '디저트', '캐러멜', 'gourmand', 'sweet', 'vanilla'],
+      kw: ['구르망', '달콤', '바닐라', '디저트', '캐러멜', 'gourmand', 'sweet', 'vanilla', 'dessert', 'caramel', 'tonka', 'praline'],
       desc: ['달콤한 온기가 천천히 녹아드는', '부드럽고 포근한 여운.'], notes: ['VANILLA', 'CARAMEL', 'TONKA', 'PRALINE'] },
     { key: 'MUSK',     name: 'MUSK',     color: '#B3AABF', titleColor: '#6E6682',
-      kw: ['머스크', '비누', '코튼', '포근', 'musk', 'soap', 'clean'],
+      kw: ['머스크', '비누', '코튼', '포근', 'musk', 'soap', 'clean', 'cotton', 'powdery'],
       desc: ['깨끗한 살결에 스며드는', '은은하고 포근한 잔향.'], notes: ['WHITE MUSK', 'IRIS', 'COTTON', 'AMBRETTE'] }
   ],
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { authorName } from '@/shared/lib/authorName'
 import { cn } from '@/shared/lib/cn'
@@ -35,6 +36,7 @@ export function CommentSection({
   onUpdate,
   onDelete,
 }: Props) {
+  const { t } = useTranslation('community')
   const [draft, setDraft] = useState('')
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editDraft, setEditDraft] = useState('')
@@ -43,7 +45,7 @@ export function CommentSection({
   return (
     <section className={cn(PAPER_PANEL, 'space-y-3.75')}>
       <h2 className="text-ink text-title font-serif font-bold">
-        댓글 {totalElements}
+        {t('comments.heading', { count: totalElements })}
       </h2>
 
       <form
@@ -58,21 +60,21 @@ export function CommentSection({
       >
         <div className="flex-1">
           <Textarea
-            label="댓글 내용"
+            label={t('comments.inputLabel')}
             hideLabel
-            placeholder="댓글을 입력하세요"
+            placeholder={t('comments.placeholder')}
             rows={2}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
           />
         </div>
         <Button type="submit" disabled={draft.trim().length === 0}>
-          등록
+          {t('comments.submit')}
         </Button>
       </form>
 
       {isPending && (
-        <p className="text-ink-muted text-caption">댓글을 불러오는 중입니다.</p>
+        <p className="text-ink-muted text-caption">{t('comments.loading')}</p>
       )}
 
       <ul className="divide-line-soft border-line-soft divide-y border-t">
@@ -98,14 +100,14 @@ export function CommentSection({
                       setEditDraft(comment.content)
                     }}
                   >
-                    수정
+                    {t('comments.edit')}
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setDeleteTarget(comment.commentId)}
                   >
-                    삭제
+                    {t('comments.delete')}
                   </Button>
                 </span>
               )}
@@ -121,7 +123,7 @@ export function CommentSection({
                 }}
               >
                 <Textarea
-                  label="댓글 수정"
+                  label={t('comments.editLabel')}
                   hideLabel
                   rows={3}
                   value={editDraft}
@@ -133,14 +135,14 @@ export function CommentSection({
                     size="sm"
                     onClick={() => setEditingId(null)}
                   >
-                    취소
+                    {t('comments.cancel')}
                   </Button>
                   <Button
                     type="submit"
                     size="sm"
                     disabled={editDraft.trim().length === 0}
                   >
-                    저장
+                    {t('comments.save')}
                   </Button>
                 </div>
               </form>
@@ -154,7 +156,7 @@ export function CommentSection({
       </ul>
 
       <Pagination
-        label="댓글 페이지"
+        label={t('comments.pagination')}
         page={page}
         size={size}
         totalElements={totalElements}
@@ -164,7 +166,7 @@ export function CommentSection({
       <ConfirmDialog
         open={deleteTarget !== null}
         onClose={() => setDeleteTarget(null)}
-        title="댓글을 삭제할까요?"
+        title={t('comments.deleteConfirm')}
         onConfirm={() => {
           if (deleteTarget !== null) onDelete(deleteTarget)
           setDeleteTarget(null)

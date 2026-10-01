@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 
 import {
@@ -31,6 +32,7 @@ type CategoryFilter = PostCategory | 'ALL'
 const PAGE_SIZE = 20
 
 export default function FreeBoardPage() {
+  const { t } = useTranslation('community')
   const [searchParams, setSearchParams] = useSearchParams()
   const sort = readOption(searchParams.get('sort'), FREE_SORTS) ?? 'RECENT'
   const category: CategoryFilter =
@@ -49,9 +51,7 @@ export default function FreeBoardPage() {
   useDiveReady(!posts.isPending)
 
   const categoryLabel =
-    category === 'ALL'
-      ? undefined
-      : POST_CATEGORIES.find((entry) => entry.value === category)?.label
+    category === 'ALL' ? undefined : t(`board.categoryInTitle.${category}`)
 
   const queryClient = useQueryClient()
 
@@ -103,33 +103,39 @@ export default function FreeBoardPage() {
     <BoardShell
       write={{
         to: ROUTES.POST_WRITE,
-        label: '글쓰기',
-        description: '글은 로그인한 뒤에 쓸 수 있습니다.',
+        label: t('freeBoard.write'),
+        description: t('freeBoard.writeLoginRequired'),
       }}
       filters={
         <div
           role="group"
-          aria-label="글 거르기"
+          aria-label={t('freeBoard.filtersLabel')}
           className="flex flex-col gap-2.5"
         >
           <PillFilter
-            label="정렬"
-            options={FREE_SORTS}
+            label={t('board.sortLabel')}
+            options={FREE_SORTS.map((option) => ({
+              value: option.value,
+              label: t(`sorts.${option.value}`),
+            }))}
             value={sort}
             onChange={(next) => updateParams({ sort: next ?? 'RECENT' })}
             required
             className="flex-wrap justify-center"
           />
           <PillFilter
-            label="분류"
-            options={POST_CATEGORIES}
+            label={t('board.categoryLabel')}
+            options={POST_CATEGORIES.map((option) => ({
+              value: option.value,
+              label: t(`categories.${option.value}`),
+            }))}
             value={category === 'ALL' ? null : category}
             onChange={(next) => updateParams({ category: next ?? 'ALL' })}
             className="flex-wrap justify-center"
           />
         </div>
       }
-      title={boardTitle(sort, '글', categoryLabel)}
+      title={boardTitle(sort, t('freeBoard.noun'), categoryLabel)}
       items={(posts.data?.posts ?? []).map(postToBoardItem)}
       isPending={posts.isPending}
       totalElements={posts.data?.totalElements}
@@ -139,13 +145,13 @@ export default function FreeBoardPage() {
       page={page}
       size={PAGE_SIZE}
       onPageChange={(next) => updateParams({ page: next })}
-      paginationLabel="자유 게시판 페이지"
+      paginationLabel={t('freeBoard.pagination')}
     >
       <LoginRequiredDialog
         open={likeToggle.loginRequired}
         onClose={likeToggle.closeLoginRequired}
         redirectTo={ROUTES.COMMUNITY_FREE}
-        description="좋아요는 로그인한 뒤에 누를 수 있습니다. 글은 로그인 없이도 읽을 수 있습니다."
+        description={t('board.likeLoginRequired')}
       />
     </BoardShell>
   )

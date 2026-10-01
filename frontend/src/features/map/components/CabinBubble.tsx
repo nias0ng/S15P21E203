@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { ROUTES, toMyShelfCollection } from '@/shared/config/routes'
@@ -115,6 +116,7 @@ function RowFace({ icon, label }: { icon: React.ReactNode; label: string }) {
  * Esc 가 이 문서까지 오지 않고 키보드로는 두 줄에 닿을 길이 없습니다.
  */
 export function CabinBubble({ open, onClose, isLoggedIn, onEnter }: Props) {
+  const { t } = useTranslation('map')
   const box = useRef<HTMLDivElement>(null)
 
   /*
@@ -246,7 +248,7 @@ export function CabinBubble({ open, onClose, isLoggedIn, onEnter }: Props) {
       ref={box}
       data-side="right"
       role="dialog"
-      aria-label="선실"
+      aria-label={t('cabin.label')}
       tabIndex={-1}
       /*
         ⚠️ **안 보이는 채로 태어납니다.** 이 칸은 `top-0 left-0` 이라 자리를 쓰기 전에는 화면
@@ -275,7 +277,7 @@ export function CabinBubble({ open, onClose, isLoggedIn, onEnter }: Props) {
                   'cabin-row-open focus-visible:ring-dusk-gold outline-none focus-visible:ring-2',
                 )}
               >
-                <RowFace icon={SHELF_ICON} label="진열대" />
+                <RowFace icon={SHELF_ICON} label={t('cabin.shelf')} />
               </Link>
 
               {/* 아래 줄이 한 단 가라앉습니다 — "컬렉션은 진열대 아래 칸" 을 말 대신 깊이로 */}
@@ -287,7 +289,7 @@ export function CabinBubble({ open, onClose, isLoggedIn, onEnter }: Props) {
                   'cabin-row-open cabin-row-lower focus-visible:ring-dusk-gold outline-none focus-visible:ring-2',
                 )}
               >
-                <RowFace icon={COLLECTION_ICON} label="컬렉션" />
+                <RowFace icon={COLLECTION_ICON} label={t('cabin.collection')} />
               </Link>
             </>
           ) : (
@@ -297,13 +299,13 @@ export function CabinBubble({ open, onClose, isLoggedIn, onEnter }: Props) {
                 두면 낭독기에서 '링크' 로 읽히고, 새 탭으로 열면 로그인 화면이 아니라 빈 진열대가 뜹니다
               */}
               <span className={cn(ROW, 'opacity-50')}>
-                <RowFace icon={SHELF_ICON} label="진열대" />
+                <RowFace icon={SHELF_ICON} label={t('cabin.shelf')} />
                 <span aria-hidden className="text-surface/85 shrink-0">
                   {LOCK}
                 </span>
               </span>
               <span className={cn(ROW, 'cabin-row-lower opacity-50')}>
-                <RowFace icon={COLLECTION_ICON} label="컬렉션" />
+                <RowFace icon={COLLECTION_ICON} label={t('cabin.collection')} />
                 <span aria-hidden className="text-surface/85 shrink-0">
                   {LOCK}
                 </span>
@@ -314,7 +316,7 @@ export function CabinBubble({ open, onClose, isLoggedIn, onEnter }: Props) {
                 onClick={onClose}
                 className="text-caption text-dusk-gold focus-visible:ring-dusk-gold rounded-card px-2 py-0.5 underline underline-offset-2 outline-none focus-visible:ring-2"
               >
-                로그인이 필요합니다
+                {t('cabin.loginRequired')}
               </Link>
             </>
           )}

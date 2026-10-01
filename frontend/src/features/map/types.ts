@@ -53,17 +53,25 @@ export interface VoyageLogEntry {
 /**
  * 향해 일지에 들른 향수 한 병.
  *
- * API 는 번호와 이름(DB 원명)만 주고, 나머지는 화면이 3D 지도 데이터로 채웁니다
+ * API 는 번호와 이름(DB 원명 · 한국어 이름)만 주고, 나머지는 화면이 3D 지도 데이터로 채웁니다
  * (`lib/mapPerfumeLookup` 의 `withMapPerfumes`). 지도에서 못 찾은 향수는 API 값 그대로라
  * 채우는 칸은 모두 비어 있을 수 있습니다.
  */
 interface VoyageLogPerfume {
   perfumeId: number
-  /** 일지에 적는 이름. 지도에서 찾았으면 3D 부표 위의 짧은 한글 이름입니다 */
+  /**
+   * 일지에 적는 이름. 지도에서 찾았으면 3D 부표 위의 짧은 한글 이름이고, 못 찾았으면 API 의 DB 원명
+   * (대개 영문)입니다
+   */
   name: string
+  /** API 의 한국어 이름(없으면 null). 지도에서 못 찾은 향수의 한국어 화면이 씁니다 */
+  nameKo?: string | null
   /** 줄이지 않은 한글 이름 — 마우스를 올리면 보입니다 */
   fullName?: string
   brand?: string
+  /** 영문 원명 · 브랜드 — 영어 화면은 짧은 한글 이름 대신 이것을 씁니다 */
+  nameEn?: string
+  brandEn?: string
   /** 대표 향 계열 — 아이콘 색을 정합니다 */
   family?: ScentFamilyKey | null
 }

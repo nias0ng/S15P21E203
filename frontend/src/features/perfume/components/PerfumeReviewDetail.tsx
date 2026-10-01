@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { apiErrorMessage } from '@/shared/api/http'
@@ -11,9 +12,11 @@ import {
   toReviewEdit,
 } from '@/shared/config/routes'
 import { useLikeToggle } from '@/shared/hooks/useLikeToggle'
+import { localizedBrand, localizedName } from '@/shared/i18n/locale'
 import { authorName } from '@/shared/lib/authorName'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
+import { useLocale } from '@/shared/store/localeStore'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
@@ -33,13 +36,27 @@ type Props = {
 }
 
 export function PerfumeReviewDetail({ review, onDeleted }: Props) {
+  const { t } = useTranslation('perfume')
+  const locale = useLocale()
   const queryClient = useQueryClient()
   const [deleteOpen, setDeleteOpen] = useState(false)
 
   const perfume = useQuery(perfumeDetailQuery(review.perfume.perfumeId))
-  const brandName = perfume.data?.brand?.name ?? review.perfume.brand
+  const brandName =
+    localizedBrand(locale, review.perfume.brand, review.perfume.brandKo) ??
+    perfume.data?.brand?.name ??
+    null
+  /*
+    이름 줄은 화면 언어의 이름이고, 한국어 화면에서 한국어 이름을 썼으면 원래 이름을 아래에 답니다.
+    한국어 이름을 모르는 서버면 향수 상세의 한국어 이름으로 채웁니다.
+  */
+  const title = localizedName(
+    locale,
+    review.perfume.name,
+    review.perfume.nameKo ?? perfume.data?.nameKo,
+  )
   const sub = [
-    perfume.data?.nameKo,
+    title !== review.perfume.name ? review.perfume.name : null,
     perfume.data?.gender ? GENDER_TEXT[perfume.data.gender] : null,
   ]
     .filter((part): part is string => typeof part === 'string')
@@ -78,7 +95,7 @@ export function PerfumeReviewDetail({ review, onDeleted }: Props) {
     <article className={PAPER_PANEL}>
       <div className="space-y-3.75">
         <LinkButton to={ROUTES.COMMUNITY_REVIEWS} variant="outline" size="sm">
-          ← 후기 게시판
+          ← {t('reviewDetail.backToBoard')}
         </LinkButton>
 
         <h1 className="text-ink text-title font-serif font-semibold">
@@ -109,14 +126,14 @@ export function PerfumeReviewDetail({ review, onDeleted }: Props) {
                   variant="outline"
                   size="sm"
                 >
-                  수정
+                  {t('reviewDetail.edit')}
                 </LinkButton>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setDeleteOpen(true)}
                 >
-                  삭제
+                  {t('reviewDetail.delete')}
                 </Button>
               </>
             )}
@@ -124,7 +141,9 @@ export function PerfumeReviewDetail({ review, onDeleted }: Props) {
             <button
               type="button"
               aria-pressed={review.liked}
-              aria-label={`좋아요 ${review.likeCount}`}
+              aria-label={t('reviewDetail.likeLabel', {
+                count: review.likeCount,
+              })}
               disabled={likeToggle.isPending}
               onClick={() =>
                 likeToggle.toggle({
@@ -153,8 +172,9 @@ export function PerfumeReviewDetail({ review, onDeleted }: Props) {
         {review.seasons.length > 0 && (
           <div className="flex flex-wrap gap-1.25">
             {review.seasons.map((season) => (
+              // 서버의 계절 이름은 한국어뿐이라 코드로 풉니다
               <Badge key={season.seasonId} tone="outline">
-                {season.name}
+                {t(`season.${season.code}`)}
               </Badge>
             ))}
           </div>
@@ -181,35 +201,33 @@ export function PerfumeReviewDetail({ review, onDeleted }: Props) {
             {brandName && (
               <p className="text-ink-muted text-caption">{brandName}</p>
             )}
-            <p className="text-ink text-body font-medium">
-              {review.perfume.name}
-            </p>
+            <p className="text-ink text-body font-medium">{title}</p>
             {sub && <p className="text-ink-muted text-caption">{sub}</p>}
           </div>
 
           <span className="text-ink-muted text-caption ml-auto shrink-0">
-            향수 상세 →
+            {t('reviewDetail.toPerfume')}
           </span>
         </Link>
 
         <hr className="border-line" />
 
         <p className="text-ink-muted text-caption">
-          좋아요 {review.likeCount} · 조회 {review.viewCount}
+          {t('reviewDetail.stats', {
+            likes: review.likeCount,
+            views: review.viewCount,
+          })}
         </p>
 
         {removal.error !== null && (
           <p className="text-danger text-caption" role="alert">
-            {apiErrorMessage(
-              removal.error,
-              '삭제하지 못했습니다. 잠시 후 다시 시도해주세요.',
-            )}
+            {apiErrorMessage(removal.error, t('reviewDetail.deleteFailed'))}
           </p>
         )}
 
         {likeToggle.error !== null && (
           <p className="text-danger text-caption" role="alert">
-            좋아요를 누르지 못했습니다. 잠시 후 다시 시도해주세요.
+            {t('reviewDetail.likeFailed')}
           </p>
         )}
       </div>
@@ -225,7 +243,7 @@ export function PerfumeReviewDetail({ review, onDeleted }: Props) {
         open={likeToggle.loginRequired}
         onClose={likeToggle.closeLoginRequired}
         redirectTo={toReviewDetail(review.reviewId)}
-        description="좋아요는 로그인한 뒤에 누를 수 있습니다. 후기는 로그인 없이도 읽을 수 있습니다."
+        description={t('reviewDetail.likeLoginDescription')}
       />
     </article>
   )

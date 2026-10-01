@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+import { useLocaleStore } from '@/shared/store/localeStore'
+
 import {
   SCENT_FAMILY_KEYS,
   SCENT_FAMILY_NAMES,
@@ -33,5 +35,15 @@ describe('향 계열 공용 어휘', () => {
   it('모르는 값의 이름은 undefined 가 아니라 null 이다', () => {
     expect(scentFamilyName('FOUGERE')).toBeNull()
     expect(scentFamilyName('FLORAL')).toBe('플로럴')
+  })
+
+  it('이름은 읽을 때의 화면 언어를 따른다', () => {
+    const names = SCENT_FAMILY_NAMES
+    expect(names.MUSK).toBe('머스크')
+
+    useLocaleStore.getState().setLocale('en')
+
+    expect(names.MUSK).toBe('Musky')
+    expect(scentFamilyName('FLORAL')).toBe('Floral')
   })
 })

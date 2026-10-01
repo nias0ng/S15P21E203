@@ -8,6 +8,7 @@
 
 import { areasNow } from './areas.js';
 import { PARAMS as P } from './params.js';
+import { koNames, onLang, t, waters, zoneDesc } from './i18n.js';
 
 export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin, onVisiblePick }) {
   const $ = (id) => document.getElementById(id);
@@ -202,7 +203,7 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin,
   const buildCabin = () => {
     cabinEl = document.createElement('button');
     cabinEl.type = 'button';
-    cabinEl.setAttribute('aria-label', '선실 열기');
+    cabinEl.setAttribute('aria-label', t('cabin.open'));
     cabinEl.style.cssText = 'position:absolute;left:0;top:0;z-index:18;box-sizing:border-box;'
       + 'width:' + CABIN_W + 'px;height:' + CABIN_H + 'px;padding:0;border:0;background:none;'
       + 'cursor:pointer;will-change:transform;visibility:hidden;opacity:0;';
@@ -263,6 +264,52 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin,
   const measureCtx = document.createElement('canvas').getContext('2d');
   const labelW = new Map();   // 글자 → 폭 (한 번 재고 기억한다)
 
+  // 카드의 글자 (이름 · 원명 · 브랜드 · 어코드 · 사진 대체 글). showScent 가 부르고, 언어가 바뀌면 떠 있는 카드에 다시 부른다
+  //   ⚠ 튀어나오기 · 자리 잡기는 여기 없다 — 글자만 바꿀 때 카드가 다시 뿜어져 나오면 안 된다
+  function fillScent(m) {
+    // ⭐ 한글 판매명 (2026-09-12, markNameKo) — 제목은 한글, 그 밑에 **영문 원명**을 작게 (같은 향수를 해외 이름으로도 찾을 수 있게).
+    //   브랜드도 한글이다. 끄면 예전처럼 영문 제목 · 영문 브랜드 (원명 줄은 숨긴다)
+    //   ⭐ 2026-09-30 : 영어 화면(i18n.js)이면 markNameKo 와 상관없이 영문이다
+    const ko = koNames() && !!m.nameKo;
+    cName.textContent = (ko ? m.nameKo : m.name) || '—';
+    if (cEn) { cEn.textContent = ko && m.name !== m.nameKo ? m.name : ''; cEn.style.display = cEn.textContent ? '' : 'none'; }
+    cSub.textContent = (ko ? m.subKo : m.sub) || '—';
+    // ⭐ 어코드 상위 3개 (2026-09-17, v0.75.3 — 사용자 : *"어코드로 진행해줘 상위 3개만"*). 지도 향수의 이 줄은 **어코드**다 — 노트는 데이터가 없다 (marks.js).
+    //   이름마다 nowrap 칸에 담고 가운뎃점은 앞 이름에 붙인다 — 줄은 점 뒤에서만 바뀐다 ('화이트 플로럴' 이 둘로 쪼개지지 않는다).
+    //   markNameKo 0 이면 영문 이름. 어코드가 없는 부표(예전 더미)는 notes 글자 그대로 · 라벨 NOTES
+    // ⭐⭐ 2026-09-18 (v0.75.8) : 어코드마다 **앞에 제 향조 색 동그라미**(accordColor — 같은 향조라도 어코드마다 조금씩 다르다) · 글자는 카드 글자색 · 보통 굵기.
+    //   사용자 : *"폰트 굵기 색상 바꾸니까 너무 촌스러워서 차라리 앞에 O 동그라미 아이콘에 색상을 넣어줘"* (v0.75.7 은 글자를 칠하고 굵게 했다).
+    //   동그라미가 이름을 가르므로 가운뎃점은 뺐다 — 사이는 #scent-notes 의 column-gap. 한 칸(동그라미 + 이름)은 안 쪼개지고 줄은 칸 사이에서만 바뀐다
+    const acc = m.accords;
+    if (acc && acc.length) {
+      const koA = koNames();
+      cNotes.replaceChildren(...acc.map(a => {
+        const item = document.createElement('span');
+        // 동그라미 9px (v0.75.9 — 사용자 : *"동그라미 조금만 더 크게"* · 예전 7px 은 위 향조 라벨 점과 같은 크기였다) · 동그라미와 이름 사이 4px (v0.75.11 에 5 → 4 — 모든 카드를 한 줄로).
+        //   칸들은 #scent-notes 가 한 줄 안에 고르게 벌린다 (space-evenly — index.html 주석)
+        item.style.cssText = 'display:inline-flex;align-items:center;gap:var(--pb-card-accord-dot-gap,4px);white-space:nowrap;';
+        const dot = document.createElement('span');
+        dot.setAttribute('aria-hidden', 'true');
+        dot.style.cssText = 'flex:none;width:var(--pb-card-accord-dot,9px);height:var(--pb-card-accord-dot,9px);border-radius:50%;';
+        dot.style.background = accordColor(a.fam, a.en, 3) || 'var(--pb-card-ink-3, #8A8A8A)';
+        const word = document.createElement('span');
+        word.textContent = (koA ? a.ko : a.en) || a.en;
+        item.append(dot, word);
+        return item;
+      }));
+    } else cNotes.textContent = m.notes || '—';
+    if (cNotesLabel) cNotesLabel.textContent = acc && acc.length ? 'ACCORDS' : 'NOTES';
+    // 이미지 자리 (v0.64.0) — 주소가 있으면 그림, 없거나 못 불러온 주소면 자리표시. ⚠ 자리 높이는 CSS 가 고정한다 (그림이 늦게 떠도 카드 높이가 안 튄다)
+    if (cImg) {
+      const src = m.img || '';
+      if (src && cImg.dataset.bad !== src) {
+        if (cImg.getAttribute('src') !== src) { showImg(false); cImg.src = src; }
+        else if (cImg.complete && cImg.naturalWidth > 0) showImg(true);
+        cImg.alt = cName.textContent;
+      } else { cImg.removeAttribute('src'); cImg.alt = ''; showImg(false); }
+    }
+  }
+
   const fire = () => onSearch(input.value);
   const onKey = e => {
     if (e.key === 'Enter') fire();
@@ -282,6 +329,15 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin,
   // 한 줄에 처리기 하나 — 누른 단추의 data-act 만 main.js 로 넘긴다 (무엇을 할지는 main.js cardAction · host.js 가 정한다)
   const act = (e) => { const b = e.target.closest ? e.target.closest('button[data-act]') : null; if (b && !b.disabled && onCardAction) onCardAction(b.dataset.act); };
   if (cActs) cActs.addEventListener('click', act);
+  // ⭐ 언어가 바뀌면 (PB.setLang) — 떠 있는 카드 · 존 정보 블록 · 선실 단추의 글자를 다시 쓴다.
+  //   ⚠ 존 블록은 존이 바뀔 때만 쓰므로(showZone 의 zKey) 기억을 비워 다음 프레임에 다시 쓰게 한다
+  //   경고 · 해역 알림은 다음에 뜰 때 새 글자로 뜬다 (지나가는 한 줄이라 바꿔 쓰지 않는다)
+  const offLang = onLang(() => {
+    if (bub.on && bub.m) { fillScent(bub.m); measureAvoid(); bub.key = ''; bub.tailKey = ''; }
+    zKey = '';
+    vKey = null;   // 지금 보이는 향수 — 같은 목록이어도 다음 틱(0.5초)에 새 글자로 다시 쓴다
+    if (cabinEl) cabinEl.setAttribute('aria-label', t('cabin.open'));
+  });
 
   return {
     stage, mount,
@@ -318,46 +374,7 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin,
     showScent(m) {
       if (!m) return;
       if (hideTimer) { clearTimeout(hideTimer); hideTimer = 0; }
-      // ⭐ 한글 판매명 (2026-09-12, markNameKo) — 제목은 한글, 그 밑에 **영문 원명**을 작게 (같은 향수를 해외 이름으로도 찾을 수 있게).
-      //   브랜드도 한글이다. 끄면 예전처럼 영문 제목 · 영문 브랜드 (원명 줄은 숨긴다)
-      const ko = (P.markNameKo === undefined ? 1 : P.markNameKo) >= 0.5 && !!m.nameKo;
-      cName.textContent = (ko ? m.nameKo : m.name) || '—';
-      if (cEn) { cEn.textContent = ko && m.name !== m.nameKo ? m.name : ''; cEn.style.display = cEn.textContent ? '' : 'none'; }
-      cSub.textContent = (ko ? m.subKo : m.sub) || '—';
-      // ⭐ 어코드 상위 3개 (2026-09-17, v0.75.3 — 사용자 : *"어코드로 진행해줘 상위 3개만"*). 지도 향수의 이 줄은 **어코드**다 — 노트는 데이터가 없다 (marks.js).
-      //   이름마다 nowrap 칸에 담고 가운뎃점은 앞 이름에 붙인다 — 줄은 점 뒤에서만 바뀐다 ('화이트 플로럴' 이 둘로 쪼개지지 않는다).
-      //   markNameKo 0 이면 영문 이름. 어코드가 없는 부표(예전 더미)는 notes 글자 그대로 · 라벨 NOTES
-      // ⭐⭐ 2026-09-18 (v0.75.8) : 어코드마다 **앞에 제 향조 색 동그라미**(accordColor — 같은 향조라도 어코드마다 조금씩 다르다) · 글자는 카드 글자색 · 보통 굵기.
-      //   사용자 : *"폰트 굵기 색상 바꾸니까 너무 촌스러워서 차라리 앞에 O 동그라미 아이콘에 색상을 넣어줘"* (v0.75.7 은 글자를 칠하고 굵게 했다).
-      //   동그라미가 이름을 가르므로 가운뎃점은 뺐다 — 사이는 #scent-notes 의 column-gap. 한 칸(동그라미 + 이름)은 안 쪼개지고 줄은 칸 사이에서만 바뀐다
-      const acc = m.accords;
-      if (acc && acc.length) {
-        const koA = (P.markNameKo === undefined ? 1 : P.markNameKo) >= 0.5;
-        cNotes.replaceChildren(...acc.map(a => {
-          const item = document.createElement('span');
-          // 동그라미 9px (v0.75.9 — 사용자 : *"동그라미 조금만 더 크게"* · 예전 7px 은 위 향조 라벨 점과 같은 크기였다) · 동그라미와 이름 사이 4px (v0.75.11 에 5 → 4 — 모든 카드를 한 줄로).
-          //   칸들은 #scent-notes 가 한 줄 안에 고르게 벌린다 (space-evenly — index.html 주석)
-          item.style.cssText = 'display:inline-flex;align-items:center;gap:var(--pb-card-accord-dot-gap,4px);white-space:nowrap;';
-          const dot = document.createElement('span');
-          dot.setAttribute('aria-hidden', 'true');
-          dot.style.cssText = 'flex:none;width:var(--pb-card-accord-dot,9px);height:var(--pb-card-accord-dot,9px);border-radius:50%;';
-          dot.style.background = accordColor(a.fam, a.en, 3) || 'var(--pb-card-ink-3, #8A8A8A)';
-          const word = document.createElement('span');
-          word.textContent = (koA ? a.ko : a.en) || a.en;
-          item.append(dot, word);
-          return item;
-        }));
-      } else cNotes.textContent = m.notes || '—';
-      if (cNotesLabel) cNotesLabel.textContent = acc && acc.length ? 'ACCORDS' : 'NOTES';
-      // 이미지 자리 (v0.64.0) — 주소가 있으면 그림, 없거나 못 불러온 주소면 자리표시. ⚠ 자리 높이는 CSS 가 고정한다 (그림이 늦게 떠도 카드 높이가 안 튄다)
-      if (cImg) {
-        const src = m.img || '';
-        if (src && cImg.dataset.bad !== src) {
-          if (cImg.getAttribute('src') !== src) { showImg(false); cImg.src = src; }
-          else if (cImg.complete && cImg.naturalWidth > 0) showImg(true);
-          cImg.alt = cName.textContent;
-        } else { cImg.removeAttribute('src'); cImg.alt = ''; showImg(false); }
-      }
+      fillScent(m);
       cZone.textContent = m.zone.name;
       // ⭐ 저녁 카드 (2026-09-13 저녁) — 어두운 유리 위에서는 먹 쪽으로 누른 글자색(marks.js inkOf)이 가라앉는다.
       //   향조의 **제 색**(부표 색)을 상아색 쪽으로 25% 밝혀 쓴다 (가장 어두운 WOODY #A38F7C 도 작은 대문자로 읽히게)
@@ -665,13 +682,13 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin,
         stage.appendChild(zNoteEl);
       }
 
-      const t = zNoteEl.querySelector('[data-z="t"]');
+      const tt = zNoteEl.querySelector('[data-z="t"]');
       const sub = zNoteEl.querySelector('[data-z="s"]');
       // ⚠ 색은 그 향조의 제목색이다 — 3D 수면 타이포 · 부표와 같은 색을 쓴다 (config.families[].titleColor)
-      t.textContent = z.name + ' 해역';
-      t.style.color = z.titleColor || 'var(--pb-ink,#1A1A1A)';
+      tt.textContent = waters(z.name);
+      tt.style.color = z.titleColor || 'var(--pb-ink,#1A1A1A)';
       // ⚠ desc 는 두 줄짜리 배열이다 — 알림은 한 줄이라 붙여 쓴다
-      sub.textContent = (z.desc || []).join(' ');
+      sub.textContent = zoneDesc(z).join(' ');
       zNoteEl.style.visibility = 'visible';
 
       if (zNoteAnim) zNoteAnim.cancel();
@@ -719,7 +736,7 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin,
         if (z) {
           zTitle.textContent = z.name;
           // ⚠ desc 는 배열이다 — 줄 나눔은 여기서 정한다 (CSS `white-space:pre-line`)
-          zDesc.textContent = (z.desc || []).join(String.fromCharCode(10));
+          zDesc.textContent = zoneDesc(z).join(String.fromCharCode(10));
           zNotes.textContent = (z.notes || []).join('  /  ');
           // ⚠ 번호는 **배열 순서에서 파생**시킨다. config 에 또 적으면 갈라진다
           zNo.textContent = String(i + 1).padStart(2, '0');
@@ -769,7 +786,7 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin,
         li.appendChild(b);
         vList.appendChild(li);
       });
-      if (vHead) vHead.textContent = list.length ? '지금 보이는 향수 ' + list.length + '개 · 고르면 카드가 열립니다' : '지금 보이는 향수가 없습니다 — 바다를 누르면 그쪽으로 갑니다';
+      if (vHead) vHead.textContent = list.length ? t('visible.head', { n: list.length }) : t('visible.empty');
     },
     // 카드가 열리면 [자세히 보기] 로 초점을 넘긴다 — 키보드로 고른 사람이 다음에 누를 곳이다
     //   돌려주는 값 = 넘겼는가. 카드가 아직 안 섰으면(부표가 잠겼다 솟는 동안 · cardFollowFade) false — 부르는 쪽이 다시 묻는다
@@ -922,6 +939,7 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin,
     cabinHovered() { return cabinOn && cabinHot; },
 
     dispose() {
+      offLang();
       window.removeEventListener('resize', onWinResize);
       window.removeEventListener('resize', onZResize);
       if (zRO) zRO.disconnect();

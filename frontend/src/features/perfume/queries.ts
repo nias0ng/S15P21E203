@@ -90,11 +90,15 @@ export const perfumeNotesQuery = (perfumeId: number) =>
     queryFn: () => getPerfumeNotes(perfumeId),
   })
 
-/** 요약 · 키워드 · 후기 수 · 계절을 한 요청으로 받습니다 */
+/**
+ * 요약 · 키워드 · 후기 수 · 계절을 한 요청으로 받습니다. AI 후기 요약이 요청 언어로 옵니다 — 화면
+ * 언어를 바꾸면 다시 받습니다
+ */
 export const perfumeReviewAggregatesQuery = (perfumeId: number) =>
   queryOptions({
     queryKey: perfumeKeys.reviewAggregates(perfumeId),
     queryFn: () => getPerfumeReviewAggregates(perfumeId),
+    meta: { localeDependent: true },
   })
 
 export const perfumeReviewsQuery = (

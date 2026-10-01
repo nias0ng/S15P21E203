@@ -8,8 +8,11 @@ export const NAV_ITEMS = [
   { to: ROUTES.MY_SHELF, label: 'SHELF', requiresAuth: true },
 ]
 
-/** 커뮤니티 갈래. `CommunityMenu` 와 `MobileMenu` 가 같이 씁니다 */
+/**
+ * 커뮤니티 갈래. `CommunityMenu` 와 `MobileMenu` 가 같이 씁니다.
+ * 이름은 키로 두고 그릴 때 풉니다 — 모듈이 읽힐 때 풀면 언어를 바꿔도 그대로입니다
+ */
 export const COMMUNITY_ITEMS = [
-  { to: ROUTES.COMMUNITY_REVIEWS, label: '후기' },
-  { to: ROUTES.COMMUNITY_FREE, label: '자유' },
-]
+  { to: ROUTES.COMMUNITY_REVIEWS, labelKey: 'header.community.reviews' },
+  { to: ROUTES.COMMUNITY_FREE, labelKey: 'header.community.free' },
+] as const

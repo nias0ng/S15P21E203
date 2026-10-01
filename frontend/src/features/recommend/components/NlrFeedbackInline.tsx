@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { isApiError } from '@/shared/api/http'
 import { Button } from '@/shared/ui/Button'
@@ -10,11 +11,12 @@ import { useAnsweredFeedbackStore } from '../answeredFeedbackStore'
 import { sendRecommendFeedback } from '../api'
 import { FEEDBACK_COMMENT_MAX, type Satisfaction } from '../types'
 
+// 저장 값(영문)과 화면 문구(번역 키)를 떼어 두어, 문구를 손봐도 쌓인 데이터는 그대로입니다
 const OPTIONS = [
-  { value: 'SATISFIED', label: '마음에 들어요' },
-  { value: 'NEUTRAL', label: '보통이에요' },
-  { value: 'DISSATISFIED', label: '아쉬워요' },
-] as const satisfies readonly { value: Satisfaction; label: string }[]
+  { value: 'SATISFIED', key: 'satisfied' },
+  { value: 'NEUTRAL', key: 'neutral' },
+  { value: 'DISSATISFIED', key: 'dissatisfied' },
+] as const satisfies readonly { value: Satisfaction; key: string }[]
 
 type Props = {
   /** 만족도를 보낼 추천의 손잡이 */
@@ -35,6 +37,7 @@ type Props = {
  * 것이라 답할 것이 없고, 손잡이가 없으면 서버가 기록에 실패해 보낼 곳이 없습니다.
  */
 export function NlrFeedbackInline({ token }: Props) {
+  const { t } = useTranslation('recommend')
   const answered = useAnsweredFeedbackStore((state) =>
     state.answered.includes(token),
   )
@@ -62,7 +65,7 @@ export function NlrFeedbackInline({ token }: Props) {
         role="status"
         className="border-line text-ink-muted text-caption mt-5 border-t pt-3.75"
       >
-        고맙습니다. 남겨 주신 답은 추천을 넓히는 데만 씁니다.
+        {t('feedback.thanks')}
       </p>
     )
   }
@@ -76,11 +79,14 @@ export function NlrFeedbackInline({ token }: Props) {
     >
       <div className="flex flex-wrap items-center gap-x-3.75 gap-y-2.5">
         <h3 id="nlr-feedback-title" className="text-body text-ink font-medium">
-          이 추천은 어떠셨나요?
+          {t('feedback.title')}
         </h3>
         <ChipToggle
-          label="추천 만족도"
-          options={OPTIONS}
+          label={t('feedback.satisfaction')}
+          options={OPTIONS.map((option) => ({
+            value: option.value,
+            label: t(`feedback.options.${option.key}`),
+          }))}
           value={satisfaction}
           onChange={setSatisfaction}
         />
@@ -90,14 +96,14 @@ export function NlrFeedbackInline({ token }: Props) {
       {satisfaction !== null && (
         <div className="mt-3.75">
           <Textarea
-            label="한마디 (선택)"
+            label={t('feedback.comment')}
             rows={2}
             value={comment}
             onChange={(event) => setComment(event.target.value)}
-            placeholder="어떤 점이 좋았는지, 무엇이 아쉬웠는지 적어 주세요"
+            placeholder={t('feedback.placeholder')}
             error={
               tooLong
-                ? `${FEEDBACK_COMMENT_MAX}자까지 쓸 수 있습니다`
+                ? t('feedback.tooLong', { max: FEEDBACK_COMMENT_MAX })
                 : undefined
             }
           />
@@ -116,7 +122,7 @@ export function NlrFeedbackInline({ token }: Props) {
               disabled={tooLong}
               isLoading={mutation.isPending}
             >
-              보내기
+              {t('feedback.send')}
             </Button>
           </div>
         </div>
@@ -127,12 +133,11 @@ export function NlrFeedbackInline({ token }: Props) {
 
 /** 429 는 기다리면 풀리고 404 는 그 추천이 이미 지워진 것이라, 한 문장으로 묶지 않습니다 */
 function FeedbackErrorText({ error }: { error: unknown }) {
+  const { t } = useTranslation('recommend')
   const status = isApiError(error) ? error.status : null
 
-  if (status === 429)
-    return <>짧은 시간에 여러 번 보내셨습니다. 잠시 뒤에 다시 됩니다.</>
-  if (status === 404)
-    return <>이 추천의 기록이 남아 있지 않아 보내지 못했습니다.</>
+  if (status === 429) return <>{t('feedback.error.rateLimited')}</>
+  if (status === 404) return <>{t('feedback.error.gone')}</>
 
-  return <>답을 보내지 못했습니다. 잠시 후 다시 시도해 주세요.</>
+  return <>{t('feedback.error.failed')}</>
 }

@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 import { cn } from '@/shared/lib/cn'
 import { GLASS_PANEL } from '@/shared/ui/panel'
 
@@ -17,12 +19,14 @@ export function PerfumeRelated({
   perfumes,
   isPending = false,
 }: Props) {
+  const { t } = useTranslation('perfume')
+
   if (!isPending && perfumes.length === 0) return null
 
   return (
     <section className={cn(GLASS_PANEL, 'space-y-3.75')}>
       <h2 className="text-ink text-title font-serif font-semibold">
-        비슷한 향수
+        {t('related.title')}
       </h2>
 
       <PerfumeGrid

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 
 import {
@@ -35,10 +36,10 @@ import {
   ShelfEditModal,
   ShelfEditPartialError,
   ShelfRegisterPartialError,
+  shelfPartNames,
   useShelfActions,
   useShelfArrangement,
   useShelfBrowser,
-  type ShelfCategory,
   type ShelfItemDetail,
   type ShelfWallHandle,
 } from '@/features/shelf'
@@ -46,8 +47,10 @@ import { apiErrorMessage } from '@/shared/api/http'
 import { ROUTES } from '@/shared/config/routes'
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { useToast } from '@/shared/hooks/useToast'
+import { localizedName } from '@/shared/i18n/locale'
 import { READY_GRACE_MS } from '@/shared/lib/diveTrack'
 import { useAuthStore, useIsLoggedIn } from '@/shared/store/authStore'
+import { useLocale } from '@/shared/store/localeStore'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { EmptyState } from '@/shared/ui/EmptyState'
@@ -106,30 +109,6 @@ const STAGE_TITLE =
   'font-serif text-display font-semibold md:text-[36px] md:leading-[1.2]'
 
 /**
- * 빈 분류의 안내 (S15P21E203-431). 벽감 한가운데에 섭니다(ShelfWall).
- *
- * 분류마다 **비어 있는 까닭과 채우는 길**이 달라서 말도 다릅니다 — "아직 담은 향수가 없습니다" 한 줄을
- * 셋이 같이 쓰던 때는 어느 칸이 왜 비었는지 말하지 않았습니다.
- */
-const EMPTY_COPY: Record<
-  ShelfCategory,
-  { title: string; description: string }
-> = {
-  OWNED: {
-    title: '아직 보유 중인 향수가 없어요',
-    description: '가지고 있는 향수를 올려 두면 이 벽감에 섭니다.',
-  },
-  TRIED: {
-    title: '아직 시향해 본 향수가 없어요',
-    description: '매장에서 맡아 본 향수를 적어 두면 이 벽감에 모입니다.',
-  },
-  WISH: {
-    title: '아직 갖고 싶은 향수가 없어요',
-    description: '마음에 둔 향수를 담아 두면 이 벽감에서 기다립니다.',
-  },
-}
-
-/**
  * 나의 진열대 (A13 재디자인 시안)
  *
  * 화면 폭에 따라 **배치가 둘**입니다(features/shelf 의 useShelfArrangement).
@@ -160,6 +139,9 @@ const EMPTY_COPY: Record<
  * 이 화면에서 두 도메인을 조합합니다.
  */
 export default function MyShelfPage() {
+  const { t } = useTranslation('shelf')
+  const { t: tc } = useTranslation('collection')
+  const locale = useLocale()
   const shelf = useQuery(shelfItemsQuery())
   const collections = useQuery(myCollectionsQuery())
   /*
@@ -266,8 +248,8 @@ export default function MyShelfPage() {
   const recipient = useAuthStore((state) => state.user?.nickname ?? null)
 
   /*
-   * 편지 속 향수의 브랜드 · 영문 이름 · 향 특성. 추천 응답에는 이름 · 사진 · 근거 한 문장뿐이라 향수
-   * 상세 · 향조로 채웁니다. 편지가 알려 주는 번호(onShow)로 부르고, 캐시가 향수 상세 화면과 같은 키라
+   * 편지 속 향수의 브랜드 · 향 특성. 추천 응답에는 이름 · 사진 · 근거뿐이라 향수 상세 · 향조로
+   * 채웁니다. 편지가 알려 주는 번호(onShow)로 부르고, 캐시가 향수 상세 화면과 같은 키라
    * 편지에서 "자세히 보기" 로 넘어가면 다시 부르지 않습니다.
    */
   const [letterPerfumeId, setLetterPerfumeId] = useState<number | null>(null)
@@ -284,8 +266,6 @@ export default function MyShelfPage() {
       ? {
           perfumeId: letterPerfumeId,
           brand: letterDetail.data.brand?.name ?? null,
-          // 한국어 이름이 있을 때만 영문을 작게 답니다 — 편지의 큰 이름이 이미 영어면 되풀이입니다
-          nameEn: letterDetail.data.nameKo ? letterDetail.data.name : null,
           // 두드러진 순서(rank 가 작을수록)로, 3D 향 지도 카드와 같은 표로 한국어로 옮겨 적습니다
           accords: [...(letterNotes.data?.accords ?? [])]
             .sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity))
@@ -309,12 +289,12 @@ export default function MyShelfPage() {
     }) => createCollection(input, shelfItemIds),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: collectionKeys.mine() })
-      showToast('컬렉션을 만들었습니다')
+      showToast(tc('toast.created'))
     },
     onError: (error) =>
       showToast(
         // 이름이 겹치면 409 입니다
-        apiErrorMessage(error, '컬렉션을 만들지 못했습니다'),
+        apiErrorMessage(error, tc('toast.createFailed')),
       ),
   })
 
@@ -337,11 +317,11 @@ export default function MyShelfPage() {
     if (!isLoggedIn) {
       return (
         <EmptyState
-          title="로그인하면 진열대를 볼 수 있습니다"
-          description="담아 둔 향수와 메모는 계정에 저장됩니다."
+          title={t('page.loginRequired.title')}
+          description={t('page.loginRequired.description')}
           action={
             <LinkButton to={ROUTES.LOGIN} variant="outline" size="sm">
-              로그인하러 가기
+              {t('page.loginRequired.action')}
             </LinkButton>
           }
         />
@@ -350,8 +330,11 @@ export default function MyShelfPage() {
 
     return (
       <EmptyState
-        title="진열대를 불러오지 못했습니다"
-        description={apiErrorMessage(shelf.error, '잠시 후 다시 시도해주세요.')}
+        title={t('page.loadError.title')}
+        description={apiErrorMessage(
+          shelf.error,
+          t('page.loadError.description'),
+        )}
         onRetry={() => void shelf.refetch()}
         retrySize="sm"
       />
@@ -387,7 +370,7 @@ export default function MyShelfPage() {
       */
       onClick={() => (isLoggedIn ? setRegisterOpen(true) : setLoginOpen(true))}
     >
-      + 향수 등록
+      {t('page.register')}
     </Button>
   )
 
@@ -418,9 +401,10 @@ export default function MyShelfPage() {
       empty={(category) =>
         browser.keyword
           ? {
-              title: `'${browser.keyword.trim()}' 에 맞는 향수가 이 칸에는 없어요`,
-              description:
-                '메뉴판의 숫자로 다른 칸을 보거나 검색어를 바꿔 보세요.',
+              title: t('page.searchEmpty.title', {
+                keyword: browser.keyword.trim(),
+              }),
+              description: t('page.searchEmpty.description'),
               action: (
                 <Button
                   variant="outline"
@@ -428,11 +412,19 @@ export default function MyShelfPage() {
                   className="focus-visible:ring-[var(--shelf-ink)] focus-visible:ring-offset-[var(--paper)]"
                   onClick={() => browser.changeKeyword('')}
                 >
-                  검색어 지우기
+                  {t('page.searchEmpty.clear')}
                 </Button>
               ),
             }
-          : { ...EMPTY_COPY[category], action: registerButton }
+          : /*
+              분류마다 **비어 있는 까닭과 채우는 길**이 달라서 말도 다릅니다 — "아직 담은 향수가
+              없습니다" 한 줄을 셋이 같이 쓰던 때는 어느 칸이 왜 비었는지 말하지 않았습니다.
+            */
+            {
+              title: t(`page.empty.${category}.title`),
+              description: t(`page.empty.${category}.description`),
+              action: registerButton,
+            }
       }
       className={className}
       aside={aside}
@@ -465,14 +457,14 @@ export default function MyShelfPage() {
         */
         actions.rating.mutate(
           { shelfItemId: selectedId, rating },
-          { onError: () => showToast('적합도를 저장하지 못했습니다') },
+          { onError: () => showToast(t('toast.ratingFailed')) },
         )
       }}
       onEdit={() => setEditOpen(true)}
       onRemove={() => setRemoveOpen(true)}
       placeholder={
         browser.selected !== null && !selectedOnWall
-          ? '이 칸에 향수를 담으면 여기에서 자세히 볼 수 있어요'
+          ? t('page.categoryEmptyPanel')
           : undefined
       }
       className={className}
@@ -486,9 +478,9 @@ export default function MyShelfPage() {
   const collectionHeader = (
     <div className="flex min-h-12.5 items-center">
       <div className="flex items-baseline gap-5">
-        <h2 className={STAGE_TITLE}>내 컬렉션</h2>
+        <h2 className={STAGE_TITLE}>{t('page.collectionTitle')}</h2>
         <span className="shelf-muted text-body tabular-nums">
-          {collectionCount}개
+          {t('page.collectionCount', { count: collectionCount })}
         </span>
       </div>
     </div>
@@ -521,7 +513,7 @@ export default function MyShelfPage() {
         */
         options={(candidates.data?.perfumes ?? []).map((perfume) => ({
           perfumeId: perfume.perfumeId,
-          name: perfume.nameKo ?? perfume.name,
+          name: localizedName(locale, perfume.name, perfume.nameKo),
           brand: perfume.brandName,
           thumbnailUrl: perfume.imageUrl,
           alreadyInShelf: inShelf.has(perfume.perfumeId),
@@ -531,7 +523,7 @@ export default function MyShelfPage() {
         onSubmit={(input) => {
           setRegisterOpen(false)
           actions.register.mutate(input, {
-            onSuccess: () => showToast('진열대에 등록했습니다'),
+            onSuccess: () => showToast(t('toast.registered')),
             /*
               담기는 됐는데 적합도 · 메모만 실패할 수 있습니다(요청이 셋으로
               갈립니다). 그때는 무엇이 빠졌는지 말해 줍니다 — "등록 실패" 라고만
@@ -540,8 +532,10 @@ export default function MyShelfPage() {
             onError: (error) =>
               showToast(
                 error instanceof ShelfRegisterPartialError
-                  ? `진열대에 등록했지만 ${error.missing.join(' · ')}은(는) 저장하지 못했습니다`
-                  : '진열대에 등록하지 못했습니다',
+                  ? t('toast.registerPartial', {
+                      parts: shelfPartNames(error.missing),
+                    })
+                  : t('toast.registerFailed'),
               ),
           })
         }}
@@ -575,12 +569,14 @@ export default function MyShelfPage() {
           actions.edit.mutate(
             { shelfItemId: selectedId, before: panelItem, next },
             {
-              onSuccess: () => showToast('변경했습니다'),
+              onSuccess: () => showToast(t('toast.edited')),
               onError: (error) =>
                 showToast(
                   error instanceof ShelfEditPartialError
-                    ? `${error.missing.join(' · ')}은(는) 바꾸지 못했습니다`
-                    : '변경하지 못했습니다',
+                    ? t('toast.editPartial', {
+                        parts: shelfPartNames(error.missing),
+                      })
+                    : t('toast.editFailed'),
                 ),
             },
           )
@@ -591,17 +587,19 @@ export default function MyShelfPage() {
       <ConfirmDialog
         open={removeOpen}
         onClose={() => setRemoveOpen(false)}
-        title={`'${browser.selected?.name ?? '향수'}' 를 진열대에서 뺄까요?`}
-        description="적어둔 메모와 적합도도 함께 사라지고, 되돌릴 수 없습니다."
-        confirmLabel="저장 해제"
+        title={t('page.removeConfirm.title', {
+          name: browser.selected?.name ?? t('page.removeConfirm.fallbackName'),
+        })}
+        description={t('page.removeConfirm.description')}
+        confirmLabel={t('page.removeConfirm.confirm')}
         onConfirm={() => {
           if (selectedId === undefined) return
           setRemoveOpen(false)
           actions.remove.mutate(
             { shelfItemId: selectedId },
             {
-              onSuccess: () => showToast('진열대에서 뺐습니다'),
-              onError: () => showToast('진열대에서 빼지 못했습니다'),
+              onSuccess: () => showToast(t('toast.removed')),
+              onError: () => showToast(t('toast.removeFailed')),
             },
           )
         }}
@@ -626,7 +624,7 @@ export default function MyShelfPage() {
   const saveFromLetter = (perfumeId: number) =>
     inShelf.has(perfumeId) ? (
       <Button variant="outline" size="sm" disabled className="rec-action">
-        진열대에 있어요
+        {t('page.letter.inShelf')}
       </Button>
     ) : (
       <Button
@@ -640,13 +638,13 @@ export default function MyShelfPage() {
           actions.register.mutate(
             { perfumeId, category: 'WISH', rating: null, memo: null },
             {
-              onSuccess: () => showToast('보유 희망에 담았습니다'),
-              onError: () => showToast('진열대에 담지 못했습니다'),
+              onSuccess: () => showToast(t('toast.wishAdded')),
+              onError: () => showToast(t('toast.wishFailed')),
             },
           )
         }
       >
-        보유 희망에 담기
+        {t('page.letter.addWish')}
       </Button>
     )
 
@@ -680,7 +678,7 @@ export default function MyShelfPage() {
         {paper}
 
         <div className="flex flex-col gap-5">
-          <h1 className={STAGE_TITLE}>나의 진열대</h1>
+          <h1 className={STAGE_TITLE}>{t('page.title')}</h1>
           {toolbar()}
         </div>
 
@@ -714,7 +712,10 @@ export default function MyShelfPage() {
           {letter('left')}
         </div>
 
-        <section aria-label="내 컬렉션" className="mt-15 flex flex-col gap-7.5">
+        <section
+          aria-label={t('page.collectionTitle')}
+          className="mt-15 flex flex-col gap-7.5"
+        >
           {collectionHeader}
           {collectionStrip}
         </section>
@@ -759,7 +760,7 @@ export default function MyShelfPage() {
             */}
             <div className="flex min-h-12.5 items-center">
               <h1 className="shrink-0 font-serif text-[36px] leading-[1.2] font-semibold">
-                나의 진열대
+                {t('page.title')}
               </h1>
             </div>
 

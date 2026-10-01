@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
+import { i18n } from '@/shared/i18n'
 import type { SceneQuality } from '@/shared/store/graphicsStore'
 
-import { engineSrc, parseSceneQuality, qualityNotice } from './sceneQuality'
+import {
+  engineSrc,
+  noticeMessage,
+  parseSceneQuality,
+  qualityNotice,
+} from './sceneQuality'
 
 const quality = (over: Partial<SceneQuality> = {}): SceneQuality => ({
   mode: 'auto',
@@ -65,6 +71,28 @@ describe('engineSrc', () => {
     expect(engineSrc('/landing/index.html', 'auto')).toBe('/landing/index.html')
     expect(engineSrc('/landing/index.html', 'mid')).toBe(
       '/landing/index.html?quality=mid',
+    )
+  })
+
+  it('언어를 주면 품질과 함께 싣습니다', () => {
+    expect(engineSrc('/landing/index.html', 'auto', 'en')).toBe(
+      '/landing/index.html?lang=en',
+    )
+    expect(engineSrc('/landing/index.html', 'low', 'ko')).toBe(
+      '/landing/index.html?quality=low&lang=ko',
+    )
+  })
+})
+
+describe('noticeMessage', () => {
+  // 표로 굳혀 두면 모듈을 읽을 때의 언어로 남습니다 — 부를 때의 언어를 따라야 합니다
+  it('부르는 순간의 화면 언어로 고릅니다', async () => {
+    expect(noticeMessage('down')).toBe(
+      '화면이 끊겨 그래픽을 한 단계 낮췄습니다',
+    )
+    await i18n.changeLanguage('en')
+    expect(noticeMessage('down')).toBe(
+      'The scene was stuttering, so graphics were lowered one step.',
     )
   })
 })

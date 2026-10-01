@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it } from 'vitest'
 
+import { useLocaleStore } from '@/shared/store/localeStore'
+
 import type { ScentFamilyKey } from '../types'
 
 import { FamilyPicker } from './FamilyPicker'
@@ -59,5 +61,19 @@ describe('FamilyPicker', () => {
       'aria-pressed',
       'true',
     )
+  })
+
+  it('영어 화면은 영어 형용사 · 이름과 순위를 쓴다', async () => {
+    useLocaleStore.getState().setLocale('en')
+    render(<Harness />)
+
+    expect(
+      screen.getByRole('group', { name: 'Pick scent families' }),
+    ).toBeInTheDocument()
+    const floral = screen.getByRole('button', { name: 'Radiant · Floral' })
+    await userEvent.click(floral)
+
+    expect(floral).toHaveTextContent('Floral')
+    expect(floral).toHaveTextContent('#1')
   })
 })

@@ -2,6 +2,8 @@
  * 그래픽 설정의 낱말(모드 · 단계 · GPU 부류)은 `shared/store/graphicsStore` 에 있습니다 — 고르는 자리가
  * 헤더의 톱니바퀴라 헤더도 읽어야 합니다. 여기에는 엔진과 주고받는 일(모양 좁히기 · 주소 · 안내 판정)만 둡니다.
  */
+import { i18n } from '@/shared/i18n'
+import type { Locale } from '@/shared/i18n/locale'
 import {
   isGraphicsMode,
   type GpuClass,
@@ -57,20 +59,29 @@ export function parseSceneQuality(raw: unknown): SceneQuality | null {
 }
 
 /**
- * 엔진 페이지 주소. 고정 단계면 `?quality=` 를 붙입니다.
+ * 엔진 페이지 주소. 고정 단계면 `?quality=` 를, 언어를 주면 `lang=` 을 붙입니다.
  *
  * 엔진은 렌더러를 만들 때 이 값을 읽습니다 — `window.PB` 가 열리기 전이라 처리기로는
- * 늦습니다. `auto` 는 붙이지 않습니다(엔진의 기본값입니다).
+ * 늦습니다. `auto` 는 붙이지 않습니다(엔진의 기본값입니다). 언어도 첫 글자를 그리기 전에
+ * 정해져야 해서 주소에 싣습니다 — 뜬 뒤에 바뀐 언어는 `PB.setLang` 으로 겁니다.
  */
-export function engineSrc(base: string, mode: GraphicsMode): string {
-  return mode === 'auto' ? base : `${base}?quality=${mode}`
+export function engineSrc(
+  base: string,
+  mode: GraphicsMode,
+  lang?: Locale,
+): string {
+  const params = new URLSearchParams()
+  if (mode !== 'auto') params.set('quality', mode)
+  if (lang) params.set('lang', lang)
+  const query = params.toString()
+  return query ? `${base}?${query}` : base
 }
 
-export const NOTICE_MESSAGE: Record<QualityNotice, string> = {
-  startLow:
-    '내장 그래픽이라 가벼운 화면으로 시작했습니다. 오른쪽 위 톱니바퀴에서 바꿀 수 있습니다',
-  down: '화면이 끊겨 그래픽을 한 단계 낮췄습니다',
-  slow: '전원을 연결하거나 Windows 그래픽 설정에서 브라우저를 고성능으로 두면 더 부드럽습니다',
+/**
+ * 알릴 것의 문구 — 지금 화면 언어로 **부를 때** 고릅니다. 표로 두면 모듈을 읽을 때의 언어로 굳습니다.
+ */
+export function noticeMessage(notice: QualityNotice): string {
+  return i18n.t(`map:quality.${notice}`)
 }
 
 /**

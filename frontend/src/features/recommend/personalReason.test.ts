@@ -1,15 +1,21 @@
 import { describe, expect, it } from 'vitest'
 
+import { useLocaleStore } from '@/shared/store/localeStore'
+
 import { readPersonalReason } from './personalReason'
 
 /*
- * 틀 셋은 서버 `PersonalizedRecommendationService.reasonOf` 의 문장 그대로입니다. 서버 통합 테스트가
- * `"높게 평가한 향수와 woody 어코드가 비슷해요."` 를 그대로 기대하고 있어, 같은 말로 적습니다.
+ * 한국어 문장은 서버 `PersonalizedRecommendationReasons` 의 한국어 틀과 같은 말입니다 — 예전에 화면이
+ * 서버 문장을 읽어 향 특성만 한국어로 바꿔 적던 것과 같은 글이 나와야 합니다.
  */
 describe('readPersonalReason', () => {
-  it('적합도 틀 — 영어 향 특성을 한국어로 바꿔 다시 짓는다', () => {
+  it('적합도 — 영어 향 특성을 한국어로 옮겨 문장을 짓는다', () => {
     expect(
-      readPersonalReason('높게 평가한 향수와 woody 어코드가 비슷해요.'),
+      readPersonalReason({
+        reason: '높게 평가한 향수와 woody 어코드가 비슷해요.',
+        evidenceSource: 'FIT',
+        evidenceKey: 'woody',
+      }),
     ).toEqual({
       source: 'FIT',
       keyword: '우디',
@@ -17,11 +23,14 @@ describe('readPersonalReason', () => {
     })
   })
 
-  it('최근 본 향수 틀 — 두 낱말 향 특성도 한 덩이로 읽는다', () => {
+  it('최근 본 향수 — 두 낱말 향 특성도 한 덩이로 옮긴다', () => {
     expect(
-      readPersonalReason(
-        '최근 살펴본 향수에서 자주 만난 white floral 어코드를 담고 있어요.',
-      ),
+      readPersonalReason({
+        reason:
+          '최근 살펴본 향수에서 자주 만난 white floral 어코드를 담고 있어요.',
+        evidenceSource: 'RECENT',
+        evidenceKey: 'white floral',
+      }),
     ).toEqual({
       source: 'RECENT',
       keyword: '화이트 플로럴',
@@ -30,28 +39,133 @@ describe('readPersonalReason', () => {
     })
   })
 
-  it('취향 테스트 틀 — 향 계열은 이미 한국어라 그대로 둔다', () => {
+  it('취향 테스트 — 향 계열 코드를 계열 이름으로 옮긴다', () => {
     expect(
-      readPersonalReason('취향 테스트에서 선택한 시트러스 계열과 잘 맞아요.'),
+      readPersonalReason({
+        reason: '취향 테스트에서 선택한 시트러스 계열과 잘 맞아요.',
+        evidenceSource: 'TASTE_TEST',
+        evidenceKey: 'CITRUS',
+      }),
     ).toEqual({
-      source: 'TASTE',
+      source: 'TASTE_TEST',
       keyword: '시트러스',
       sentence: '취향 테스트에서 선택한 시트러스 계열과 잘 맞아요.',
     })
   })
 
-  it('표에 없는 향 특성은 영어 그대로 흘려보낸다', () => {
+  it('표에 없는 향 특성은 영어 그대로 넣는다', () => {
     expect(
-      readPersonalReason('높게 평가한 향수와 moonlight 어코드가 비슷해요.')
-        .keyword,
-    ).toBe('moonlight')
+      readPersonalReason({
+        reason: '높게 평가한 향수와 moonlight 어코드가 비슷해요.',
+        evidenceSource: 'FIT',
+        evidenceKey: 'moonlight',
+      }).sentence,
+    ).toBe('높게 평가한 향수와 moonlight 어코드가 비슷해요.')
   })
 
-  it('모르는 틀이면 갈래 없이 문장만 그대로 — 틀이 바뀌어도 화면이 깨지지 않는다', () => {
-    expect(readPersonalReason('  새로 생긴 근거 문장이에요.  ')).toEqual({
+  it('근거 칸이 없으면 서버 문장을 그대로 쓴다 — 이 칸을 모르는 서버', () => {
+    expect(
+      readPersonalReason({ reason: '  새로 생긴 근거 문장이에요.  ' }),
+    ).toEqual({
       source: null,
       keyword: null,
       sentence: '새로 생긴 근거 문장이에요.',
+    })
+  })
+
+  it('모르는 갈래면 서버 문장을 그대로 쓴다', () => {
+    expect(
+      readPersonalReason({
+        reason: '새 신호의 문장이에요.',
+        // 서버가 새 갈래를 더했을 때 — 타입 밖의 값이 옵니다
+        evidenceSource: 'SEASON' as never,
+        evidenceKey: 'autumn',
+      }),
+    ).toEqual({
+      source: null,
+      keyword: null,
+      sentence: '새 신호의 문장이에요.',
+    })
+  })
+
+  it('갈래만 알고 근거 값이 비었거나 모르는 계열 코드면 문장은 서버 그대로, 갈래는 남긴다', () => {
+    expect(
+      readPersonalReason({
+        reason: '높게 평가한 향수와 woody 어코드가 비슷해요.',
+        evidenceSource: 'FIT',
+        evidenceKey: null,
+      }),
+    ).toEqual({
+      source: 'FIT',
+      keyword: null,
+      sentence: '높게 평가한 향수와 woody 어코드가 비슷해요.',
+    })
+    expect(
+      readPersonalReason({
+        reason: '취향 테스트에서 선택한 달빛 계열과 잘 맞아요.',
+        evidenceSource: 'TASTE_TEST',
+        evidenceKey: 'MOONLIGHT',
+      }),
+    ).toEqual({
+      source: 'TASTE_TEST',
+      keyword: null,
+      sentence: '취향 테스트에서 선택한 달빛 계열과 잘 맞아요.',
+    })
+  })
+
+  describe('영어 화면', () => {
+    it('근거 값으로 영어 문장을 짓는다 — 서버 문장이 한국어로 받아 둔 것이어도', () => {
+      useLocaleStore.getState().setLocale('en')
+
+      expect(
+        readPersonalReason({
+          reason: '높게 평가한 향수와 woody 어코드가 비슷해요.',
+          evidenceSource: 'FIT',
+          evidenceKey: 'woody',
+        }),
+      ).toEqual({
+        source: 'FIT',
+        keyword: 'Woody',
+        sentence: 'Its Woody accord is close to the perfumes you rated highly.',
+      })
+      expect(
+        readPersonalReason({
+          reason: 'x',
+          evidenceSource: 'RECENT',
+          evidenceKey: 'fresh spicy',
+        }).sentence,
+      ).toBe(
+        "It carries the Fresh spicy accord you've often met in perfumes you viewed recently.",
+      )
+    })
+
+    it('취향 테스트의 계열 코드는 영어 계열 이름이 된다 — MUSK 는 Musky', () => {
+      useLocaleStore.getState().setLocale('en')
+
+      expect(
+        readPersonalReason({
+          reason: '취향 테스트에서 선택한 머스크 계열과 잘 맞아요.',
+          evidenceSource: 'TASTE_TEST',
+          evidenceKey: 'MUSK',
+        }),
+      ).toEqual({
+        source: 'TASTE_TEST',
+        keyword: 'Musky',
+        sentence:
+          'It suits the Musky scent family you picked in the Taste Test.',
+      })
+    })
+
+    it('근거 값이 없으면 서버가 영어로 준 문장을 그대로 쓴다', () => {
+      useLocaleStore.getState().setLocale('en')
+
+      expect(
+        readPersonalReason({
+          reason: 'Its woody accord is close to the perfumes you rated highly.',
+          evidenceSource: 'FIT',
+          evidenceKey: null,
+        }).sentence,
+      ).toBe('Its woody accord is close to the perfumes you rated highly.')
     })
   })
 })

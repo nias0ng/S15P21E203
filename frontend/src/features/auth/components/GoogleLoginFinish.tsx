@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 
 import { apiErrorMessage } from '@/shared/api/http'
@@ -21,6 +22,7 @@ type Props = {
  * 그 쿠키로 Access Token 을 받고 내 정보를 채웁니다.
  */
 export function GoogleLoginFinish({ onLoggedIn }: Props) {
+  const { t } = useTranslation('auth')
   const [searchParams] = useSearchParams()
   const returnTo = safeReturnPath(searchParams.get(RETURN_PATH_PARAM))
   const setAuth = useAuthStore((state) => state.setAuth)
@@ -52,16 +54,18 @@ export function GoogleLoginFinish({ onLoggedIn }: Props) {
   if (error !== null) {
     return (
       <AuthCard
-        title="Google 로그인"
-        description={apiErrorMessage(
-          error,
-          'Google 로그인을 마치지 못했습니다. 처음부터 다시 해주세요.',
-        )}
+        title={t('google.finishTitle')}
+        description={apiErrorMessage(error, t('google.errors.fallback'))}
       >
         <BackToLogin returnTo={returnTo} />
       </AuthCard>
     )
   }
 
-  return <AuthCard title="Google 로그인" description="로그인하고 있습니다." />
+  return (
+    <AuthCard
+      title={t('google.finishTitle')}
+      description={t('google.finishing')}
+    />
+  )
 }

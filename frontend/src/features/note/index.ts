@@ -1,5 +1,5 @@
 export { NoteCategorySections } from './components/NoteCategorySections'
-export { filterByFamily } from './grouping'
+export { filterByFamily, UNCATEGORIZED } from './grouping'
 export {
   noteDetailQuery,
   noteFamiliesQuery,

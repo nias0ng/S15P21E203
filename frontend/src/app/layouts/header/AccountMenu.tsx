@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 
 import { logout, meQuery } from '@/features/auth'
@@ -29,6 +30,7 @@ function AccountIcon() {
 }
 
 export function AccountMenu({ ink }: { ink: Ink }) {
+  const { t } = useTranslation(['layout', 'common'])
   const navigate = useNavigate()
   const endSession = useEndSession()
   const { open, setOpen, containerRef } = useDismissable()
@@ -53,7 +55,7 @@ export function AccountMenu({ ink }: { ink: Ink }) {
         type="button"
         aria-expanded={open}
         aria-haspopup="menu"
-        aria-label="내 계정"
+        aria-label={t('header.account')}
         onClick={() => setOpen(!open)}
         className={cn('block', inkLink(ink), open && ink.open)}
       >
@@ -61,7 +63,7 @@ export function AccountMenu({ ink }: { ink: Ink }) {
         {me?.profileImageUrl != null ? (
           <Thumbnail
             src={me.profileImageUrl}
-            alt="내 프로필 사진"
+            alt={t('header.profilePhoto')}
             bare
             className="size-5 rounded-full object-cover"
           />
@@ -89,7 +91,7 @@ export function AccountMenu({ ink }: { ink: Ink }) {
                 ink.itemRule,
               )}
             >
-              개인 정보 수정
+              {t('header.editProfile')}
             </Link>
           </li>
           <li role="none">
@@ -106,7 +108,7 @@ export function AccountMenu({ ink }: { ink: Ink }) {
                 ink.item,
               )}
             >
-              로그아웃
+              {t('common:actions.logOut')}
             </button>
           </li>
         </ul>

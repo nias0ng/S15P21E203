@@ -1,3 +1,5 @@
+import { i18n } from '@/shared/i18n'
+
 import { accordLabel, EVIDENCE_SEPARATOR } from './accordNames'
 import type { RecommendReason } from './types'
 
@@ -18,6 +20,54 @@ export type ReasonSentence = {
 }
 
 type Term = { name: string; strength: number | null }
+
+type SentenceKey =
+  | 'conditionStart'
+  | 'conditionEnd'
+  | 'start'
+  | 'joiner'
+  | 'phraseBefore'
+  | 'phraseAfter'
+  | 'requestedBefore'
+  | 'requestedAfter'
+  | 'end'
+
+type ConditionKey =
+  | 'masculine'
+  | 'feminine'
+  | 'unisex'
+  | 'spring'
+  | 'summer'
+  | 'fall'
+  | 'winter'
+  | 'day'
+  | 'night'
+
+/** AI 가 향이 아닌 조건에 붙이는 한국어(`ai/nlr_engine.py` 의 표) → 번역 키 */
+const CONDITION_KEYS: Record<string, ConditionKey> = {
+  남성적인: 'masculine',
+  여성적인: 'feminine',
+  중성적인: 'unisex',
+  '봄에 어울리는': 'spring',
+  '여름에 어울리는': 'summer',
+  '가을에 어울리는': 'fall',
+  '겨울에 어울리는': 'winter',
+  '낮에 어울리는': 'day',
+  '밤에 어울리는': 'night',
+}
+
+/**
+ * 향이 아닌 조건(성별 · 계절 · 낮밤)의 이름을 화면 언어로 바꿉니다. 조건 이름은 AI 가 한국어로
+ * 주는데, 아홉 개로 정해져 있어 영어 화면에서 영어로 바꿀 수 있습니다.
+ *
+ * NOTE: 노트 이름(`장미`)은 표에 없어 그대로 나갑니다 — 영어 이름이 응답에 오지 않습니다.
+ */
+export function conditionLabel(label: string): string {
+  const key = Object.hasOwn(CONDITION_KEYS, label)
+    ? CONDITION_KEYS[label]
+    : undefined
+  return key === undefined ? label : i18n.t(`recommend:nlr.conditions.${key}`)
+}
 
 /** 향수마다가 아니라 응답 전체에 한 번 오는 값들 */
 export type ReasonContext = {
@@ -72,22 +122,32 @@ export function nlrReasonSentence(
     향이 아닌 조건은 표현을 붙이지 않습니다. 성별 · 계절 · 낮밤은 표현이 늘 비어 있고, 노트는
     표현과 이름이 같은 말이라(`‘미모사’가 가리키는 미모사`) 붙이면 한 말을 두 번 합니다.
   */
+  /*
+    문장 틀은 화면 언어를 따릅니다. 말의 차례가 달라(‘빨래’가 가리키는 비누 ↔ the Soapy scent
+    ‘laundry’ suggests) 향 이름 앞 · 뒤 토막을 따로 받아 그 사이에 향을 끼웁니다.
+  */
+  const sayKey = (key: SentenceKey, values?: Record<string, string>) => {
+    const text = i18n.t(`recommend:nlr.sentence.${key}`, values)
+    if (text !== '') say(text)
+  }
+
   if (groups.every((group) => group.byCondition)) {
-    say('요청하신 ')
+    sayKey('conditionStart')
     list(groups.flatMap((group) => group.terms))
-    say(' 조건에 맞는 향수입니다.')
+    sayKey('conditionEnd')
   } else {
-    say('이 향수는 ')
+    sayKey('start')
     groups.forEach((group, index) => {
-      if (index > 0) say(', ')
-      say(
-        group.phrase
-          ? `‘${group.phrase}’${subjectParticle(group.phrase)} 가리키는 `
-          : '요청하신 ',
-      )
+      if (index > 0) sayKey('joiner')
+      const phrase = group.phrase
+      const values = phrase
+        ? { phrase, particle: subjectParticle(phrase) }
+        : undefined
+      sayKey(phrase ? 'phraseBefore' : 'requestedBefore', values)
       list(group.terms)
+      sayKey(phrase ? 'phraseAfter' : 'requestedAfter', values)
     })
-    say(' 향을 가지고 있습니다.')
+    sayKey('end')
   }
 
   return {
@@ -114,7 +174,7 @@ function usersPhrase(phrase: string | null, query: string): string | null {
 }
 
 /**
- * 근거 칸을 조각으로 잘라 조각마다 한국어 이름과 강도를 붙입니다.
+ * 근거 칸을 조각으로 잘라 조각마다 화면 언어의 이름과 강도를 붙입니다.
  *
  * NOTE: 강도는 **개수가 맞을 때만** 짝짓습니다. 두 목록은 순서로만 이어져 있어 하나라도 어긋나면
  * 엉뚱한 향에 엉뚱한 숫자가 붙습니다 — 틀린 숫자보다 없는 쪽이 낫습니다.
@@ -126,7 +186,7 @@ function termsOf(reason: RecommendReason): Term[] {
 
   return names
     .map((name, index) => ({
-      name: accordLabel(name.trim()),
+      name: conditionLabel(accordLabel(name.trim())),
       strength: readStrength(strengths[index]),
     }))
     .filter((term) => term.name !== '')

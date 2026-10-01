@@ -1,4 +1,5 @@
 import { PARAMS as P } from './params.js';
+import { t } from './i18n.js';
 
 // ───────── 품질 단계 (2026-09-25, S15P21E203-435) ─────────
 // 사용자 : *"이 프로젝트 서비스를 경험하는 사람들은 대부분 노트북 … 옵티머스로 인해 강제적으로 CPU 내장 그래픽 카드만 사용해서
@@ -26,18 +27,19 @@ const ORDER = ['min', 'low', 'mid', 'high'];
 //     정점 : 512 26.3만 → 12.5만 · 384 14.8만 → 7.7만 · 256 6.6만 → 3.9만. 위 ms 는 균일 격자 때의 실측이다 (보이는 창에서 다시 잴 것)
 // ⚠ sunShadow (2026-09-27) — 물이 해 쪽 주광의 그림자 맵을 읽는 '배 그림자 ②' (water.js). 화면의 14~36% 에서 4~16탭을 짚는다.
 //   유니폼으로만 끈다(세기 0 → 블록이 통째로 안 돈다) — define 이 아니라 전환에 셰이더를 다시 안 만든다. low 에서는 선체 발자국(①)만 남는다
+// 단계 이름(높음 · 보통 · 낮음 · 최저)은 화면 글자라 사전에 있다 (i18n.js quality.*) — info().label 이 부를 때 지금 언어로 푼다
 // ⭐ min (2026-09-30) — 손잡이 셋이 더 있다. 다른 단계는 전부 기본값(0 · 0 · 1)이라 예전 그대로다
 //   lite  : 가벼운 물 (params waterLite → water.js uLite). 무엇을 건너뛸지는 params 의 lite* 두 칸이 정한다 (잔결 · 반사의 구름)
 //   fps   : 그리기 상한 (0 = 화면 주사율 그대로). main.js 의 tick 이 그 간격보다 이른 장을 건너뛴다 — 시뮬 게이트(30Hz)와 같은 박자라 물은 안 느려진다
 //   probe : 0 이면 부력이 시뮬 높이를 동기로 읽지 않는다 (params buoyProbe → boat.js). 읽기는 GPU 가 밀린 만큼 CPU 를 세운다
 export const TIERS = {
-  high: { label: '높음', prMax: 2,    prScale: 1,    msaa: 4, mesh: 512,
+  high: { prMax: 2,    prScale: 1,    msaa: 4, mesh: 512,
           bloom: 1, reflect: 1, sub: 1, glint: 1,   glitOct2: 1, detailK: 1,   sunShadow: 1, spark: 1 },
-  mid:  { label: '보통', prMax: 1.5,  prScale: 1,    msaa: 2, mesh: 384,
+  mid:  { prMax: 1.5,  prScale: 1,    msaa: 2, mesh: 384,
           bloom: 1, reflect: 1, sub: 1, glint: 1,   glitOct2: 1, detailK: 1,   sunShadow: 1, spark: 1 },
-  low:  { label: '낮음', prMax: 1,    prScale: 0.75, msaa: 0, mesh: 256,
+  low:  { prMax: 1,    prScale: 0.75, msaa: 0, mesh: 256,
           bloom: 0, reflect: 0, sub: 0, glint: 0.6, glitOct2: 0, detailK: 0.6, sunShadow: 0, spark: 1 },
-  min:  { label: '최저', prMax: 0.75, prScale: 0.6,  prMin: 0.5, msaa: 0, mesh: 256,
+  min:  { prMax: 0.75, prScale: 0.6,  prMin: 0.5, msaa: 0, mesh: 256,
           bloom: 0, reflect: 0, sub: 0, glint: 0.6, glitOct2: 0, detailK: 0.6, sunShadow: 0, spark: 0,
           lite: 1, fps: 30, probe: 0 }
 };
@@ -175,7 +177,7 @@ export function createQuality({ gl, busy }) {
   const hold = (ms) => { holdUntil = Math.max(holdUntil, performance.now() + ms); iv.length = 0; winStart = 0; if (timer) timer.take(); };
 
   function info() {
-    return { mode, tier, auto: mode === 'auto', reason, gpu: { name: gpu.name, cls: gpu.cls }, label: TIERS[tier].label, timer: !!timer };
+    return { mode, tier, auto: mode === 'auto', reason, gpu: { name: gpu.name, cls: gpu.cls }, label: t('quality.' + tier), timer: !!timer };
   }
   function emit() { const i = info(); listeners.forEach(fn => { try { fn(i); } catch (e) { console.warn('[quality]', e); } }); }
 

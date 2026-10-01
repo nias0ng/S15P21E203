@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 
 import { apiErrorMessage } from '@/shared/api/http'
 import { cn } from '@/shared/lib/cn'
@@ -13,6 +14,7 @@ type Props = {
 }
 
 export function ImageAttachField({ value, onChange }: Props) {
+  const { t } = useTranslation('community')
   const upload = useMutation({
     mutationFn: uploadPostImage,
     onSuccess: (url) => onChange([...value, url]),
@@ -21,7 +23,8 @@ export function ImageAttachField({ value, onChange }: Props) {
   return (
     <fieldset className="space-y-2.5">
       <legend className="text-ink text-caption font-medium">
-        이미지 첨부 <span className="text-ink-muted">(선택)</span>
+        {t('imageAttach.legend')}{' '}
+        <span className="text-ink-muted">{t('imageAttach.optional')}</span>
       </legend>
 
       {value.length > 0 && (
@@ -31,7 +34,7 @@ export function ImageAttachField({ value, onChange }: Props) {
               <Thumbnail src={url} className="size-20" />
               <button
                 type="button"
-                aria-label={`사진 ${index + 1} 지우기`}
+                aria-label={t('imageAttach.remove', { index: index + 1 })}
                 onClick={() => onChange(value.filter((item) => item !== url))}
                 className={cn(
                   'border-line bg-surface-card text-ink absolute -top-1.25 -right-1.25',
@@ -48,19 +51,18 @@ export function ImageAttachField({ value, onChange }: Props) {
       )}
 
       <FileButton
-        inputLabel="이미지 추가"
+        inputLabel={t('imageAttach.inputLabel')}
         busy={upload.isPending}
         onPick={(file) => upload.mutate(file)}
       >
-        {upload.isPending ? '올리는 중' : '+ 이미지 첨부'}
+        {upload.isPending
+          ? t('imageAttach.uploading')
+          : t('imageAttach.attach')}
       </FileButton>
 
       {upload.error !== null && (
         <p role="alert" className="text-danger text-caption">
-          {apiErrorMessage(
-            upload.error,
-            '사진을 올리지 못했습니다. 잠시 후 다시 시도해주세요.',
-          )}
+          {apiErrorMessage(upload.error, t('imageAttach.uploadFailed'))}
         </p>
       )}
     </fieldset>

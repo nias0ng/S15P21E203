@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useLocation } from 'react-router'
 
 import { ROUTES } from '@/shared/config/routes'
@@ -68,6 +69,7 @@ function FeedbackIcon() {
  * 어느 방에서든 검정 동그라미 · 흰 말풍선이어야 합니다.
  */
 export function FeedbackButton() {
+  const { t } = useTranslation('layout')
   const { pathname } = useLocation()
   const diving = useIsDiving()
   const onScene = pathname === ROUTES.HOME
@@ -101,7 +103,7 @@ export function FeedbackButton() {
         href={FEEDBACK_FORM_URL}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="의견 보내기 (새 탭에서 설문이 열립니다)"
+        aria-label={t('feedback.link')}
         className={cn(
           'flex items-center justify-center rounded-full',
           onScene ? 'size-12' : 'size-20',
@@ -131,9 +133,7 @@ export function FeedbackButton() {
       >
         {/* 단추 쪽을 가리키는 꼬리 */}
         <span className="bg-ivory absolute top-1/2 -left-1.5 size-3.75 -translate-y-1/2 rotate-45" />
-        <span className="relative">
-          의견을 들려주세요 · 새 탭에서 설문이 열립니다
-        </span>
+        <span className="relative">{t('feedback.greeting')}</span>
       </p>
     </div>
   )

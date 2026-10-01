@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { ROUTES, toReviewEdit, toReviewDetail } from '@/shared/config/routes'
@@ -33,12 +34,18 @@ export function PerfumeReviewList({
   myReviewId,
   perfumeId,
 }: Props) {
+  const { t } = useTranslation('perfume')
+
   return (
     <section className={cn(GLASS_PANEL, 'space-y-3.75')}>
       <div className="flex items-center gap-2.5">
-        <h2 className="text-ink text-title font-serif font-semibold">후기</h2>
+        <h2 className="text-ink text-title font-serif font-semibold">
+          {t('reviewList.title')}
+        </h2>
         {!isPending && (
-          <span className="text-ink-muted text-caption">{totalElements}개</span>
+          <span className="text-ink-muted text-caption">
+            {t('reviewList.count', { count: totalElements })}
+          </span>
         )}
         <AuthLinkButton
           to={
@@ -48,9 +55,11 @@ export function PerfumeReviewList({
           }
           size="sm"
           className="ml-auto"
-          description="후기는 로그인한 뒤에 쓸 수 있습니다."
+          description={t('reviewList.loginDescription')}
         >
-          {myReviewId === null ? '후기 쓰기' : '내 후기 수정'}
+          {myReviewId === null
+            ? t('reviewList.write')
+            : t('reviewList.editMine')}
         </AuthLinkButton>
       </div>
 
@@ -62,8 +71,8 @@ export function PerfumeReviewList({
         </div>
       ) : reviews.length === 0 ? (
         <EmptyState
-          title="아직 후기가 없습니다"
-          description="이 향수를 시향했다면 첫 후기를 남겨보세요."
+          title={t('reviewList.emptyTitle')}
+          description={t('reviewList.emptyDescription')}
         />
       ) : (
         <ul className="divide-line divide-y">
@@ -77,7 +86,7 @@ export function PerfumeReviewList({
 
       {!isPending && (
         <Pagination
-          label="후기 페이지"
+          label={t('reviewList.pagination')}
           page={page}
           size={size}
           totalElements={totalElements}
@@ -89,6 +98,8 @@ export function PerfumeReviewList({
 }
 
 function ReviewRow({ review }: { review: Review }) {
+  const { t } = useTranslation('perfume')
+
   return (
     <Link
       to={toReviewDetail(review.reviewId)}
@@ -99,7 +110,9 @@ function ReviewRow({ review }: { review: Review }) {
           {review.title}
         </span>
         {review.mine && (
-          <span className="text-ink-muted text-caption">내 후기</span>
+          <span className="text-ink-muted text-caption">
+            {t('reviewList.mine')}
+          </span>
         )}
       </span>
 

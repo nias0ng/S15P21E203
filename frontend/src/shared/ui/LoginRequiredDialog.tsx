@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { withReturnPath } from '@/shared/lib/returnPath'
@@ -18,24 +20,25 @@ export function LoginRequiredDialog({
   open,
   onClose,
   redirectTo,
-  description = '추천 결과는 로그인 없이도 볼 수 있습니다.',
+  description,
   scene = false,
 }: Props) {
+  const { t } = useTranslation(['layout', 'common'])
   const withRedirect = (path: string) => withReturnPath(path, redirectTo)
 
   const actions = (
     <>
       <Button variant="ghost" onClick={onClose}>
-        취소
+        {t('common:actions.cancel')}
       </Button>
       <LinkButton variant="outline" to={withRedirect(ROUTES.SIGNUP)}>
-        회원가입
+        {t('common:actions.signUp')}
       </LinkButton>
       <LinkButton
         variant={scene ? 'navy' : 'primary'}
         to={withRedirect(ROUTES.LOGIN)}
       >
-        로그인
+        {t('common:actions.logIn')}
       </LinkButton>
     </>
   )
@@ -44,14 +47,14 @@ export function LoginRequiredDialog({
     <Modal
       open={open}
       onClose={onClose}
-      title="로그인이 필요합니다"
+      title={t('loginRequired.title')}
       className={scene ? 'scent-map-panel rounded-glass w-95' : undefined}
       initialFocus={scene ? 'panel' : 'first'}
       titleSize={scene ? 'heading' : 'title'}
       footer={scene ? undefined : actions}
     >
       <p className={cn('text-body', scene ? 'text-ink-muted' : 'text-ink')}>
-        {description}
+        {description ?? t('loginRequired.description')}
       </p>
       {scene && (
         <div className="mt-3.75 flex justify-end gap-2.5">{actions}</div>

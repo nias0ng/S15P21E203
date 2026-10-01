@@ -480,14 +480,14 @@
     <span style="font-size:var(--pb-header-logo,30px);font-weight:600;letter-spacing:0.06em;line-height:1.05;">향해</span>
     <span style="font-size:10.5px;letter-spacing:0.34em;line-height:1;color:#6A6A6E;white-space:nowrap;">SCENT JOURNEY</span>
   </div>
-  <nav aria-label="사이트 메뉴 (자리표시)" style="grid-column:2;display:var(--pb-header-nav-d,flex);align-items:center;gap:clamp(36px,5vw,96px);font-size:15px;letter-spacing:0.02em;white-space:nowrap;">
-    <span>향수</span><span>브랜드</span><span>노트</span><span>커뮤니티<span aria-hidden="true" style="margin-left:8px;font-size:10px;vertical-align:1px;">▾</span></span>
+  <nav aria-label="사이트 메뉴 (자리표시)" data-i18n-attr="aria-label:header.menu" style="grid-column:2;display:var(--pb-header-nav-d,flex);align-items:center;gap:clamp(36px,5vw,96px);font-size:15px;letter-spacing:0.02em;white-space:nowrap;">
+    <span data-i18n="header.perfume">향수</span><span data-i18n="header.brand">브랜드</span><span data-i18n="header.note">노트</span><span><span data-i18n="header.community">커뮤니티</span><span aria-hidden="true" style="margin-left:8px;font-size:10px;vertical-align:1px;">▾</span></span>
   </nav>
   <div style="grid-column:3;justify-self:end;display:flex;align-items:center;gap:26px;">
-    <svg role="img" aria-label="찾기 (자리표시)" width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="9.5" cy="9.5" r="6.5"/><path d="M14.4 14.4 20 20"/></svg>
-    <span style="display:inline-flex;align-items:center;height:36px;padding:0 14px;border:1px solid #D6D1C7;border-radius:8px;background:#F2EFE9;font-size:14px;white-space:nowrap;">로그인</span>
+    <svg role="img" aria-label="찾기 (자리표시)" data-i18n-attr="aria-label:header.search" width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="9.5" cy="9.5" r="6.5"/><path d="M14.4 14.4 20 20"/></svg>
+    <span style="display:inline-flex;align-items:center;height:36px;padding:0 14px;border:1px solid #D6D1C7;border-radius:8px;background:#F2EFE9;font-size:14px;white-space:nowrap;" data-i18n="header.login">로그인</span>
     <span aria-hidden="true" style="display:var(--pb-header-tag-d,block);width:1px;height:40px;margin:0 10px;background:#D6D1C7;"></span>
-    <span style="display:var(--pb-header-tag-d,block);font-size:13px;line-height:1.7;color:#5C5C60;white-space:nowrap;">오늘도,<br>좋은 향과 함께.</span>
+    <span style="display:var(--pb-header-tag-d,block);font-size:13px;line-height:1.7;color:#5C5C60;white-space:nowrap;" data-i18n-html="header.greet">오늘도,<br>좋은 향과 함께.</span>
   </div>
 </header>
 
@@ -497,8 +497,8 @@
        이름표가 붙은 부표(main.js 의 이름표 줄)를 화면 왼쪽부터 단추로 세운다 — 누르면 부표를 누른 것과 같다.
        ⚠ #stage 의 **맨 앞**이다 — 키보드로 들어오면 가장 먼저 닿는다 (예전 첫 Tab 은 오른쪽 아래 '해도 열기' 였다).
        ⚠ 초점이 안에 있는 동안은 목록을 바꾸지 않는다 (ui.setVisiblePerfumes) — 고르는 사이에 단추가 바뀌면 엉뚱한 향수가 눌린다 -->
-  <nav id="visible-perfumes" aria-label="지금 보이는 향수" style="position:absolute;left:var(--pb-edge,56px);top:56%;transform:translateY(-50%);z-index:40;width:240px;max-height:60%;overflow:auto;padding:10px;border-radius:10px;background:var(--pb-glass,rgba(26,26,26,0.62));backdrop-filter:blur(8px);color:var(--pb-ink,#F6F5F2);text-shadow:0 0 3px var(--pb-halo,transparent);">
-    <p id="visible-perfumes-head" style="margin:0 0 6px;font-size:11px;letter-spacing:0.04em;opacity:0.85;">지금 보이는 향수</p>
+  <nav id="visible-perfumes" aria-label="지금 보이는 향수" data-i18n-attr="aria-label:visible.label" style="position:absolute;left:var(--pb-edge,56px);top:56%;transform:translateY(-50%);z-index:40;width:240px;max-height:60%;overflow:auto;padding:10px;border-radius:10px;background:var(--pb-glass,rgba(26,26,26,0.62));backdrop-filter:blur(8px);color:var(--pb-ink,#F6F5F2);text-shadow:0 0 3px var(--pb-halo,transparent);">
+    <p id="visible-perfumes-head" data-i18n="visible.label" style="margin:0 0 6px;font-size:11px;letter-spacing:0.04em;opacity:0.85;">지금 보이는 향수</p>
     <ul id="visible-perfumes-list" style="list-style:none;margin:0;padding:0;"></ul>
   </nav>
 
@@ -538,8 +538,8 @@
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" style="color:var(--pb-on-surface-2,rgba(47,47,50,0.62));flex:none;margin-right:12px;">
         <circle cx="10.5" cy="10.5" r="6.8"/><line x1="15.6" y1="15.6" x2="20.5" y2="20.5"/>
       </svg>
-      <input id="search-input" placeholder="어떤 향을 찾고 계신가요?" style="flex:1;min-width:0;height:100%;padding:0;border:none;background:none;outline:none;font-family:inherit;font-size:var(--pb-search-fs,15px);color:var(--pb-on-surface,#2F2F32);">
-      <button id="search-button" aria-label="찾기" style="flex:none;display:flex;align-items:center;justify-content:center;width:var(--pb-search-btn,42px);height:var(--pb-search-btn,42px);padding:0;border:none;border-radius:50%;background:linear-gradient(140deg,var(--pb-search-btn-a,#1E2947),var(--pb-search-btn-b,#E2833C));color:#F9F6EF;cursor:pointer;box-shadow:0 2px 8px rgba(24,18,34,0.18);">
+      <input id="search-input" placeholder="어떤 향을 찾고 계신가요?" data-i18n-attr="placeholder:search.placeholder" style="flex:1;min-width:0;height:100%;padding:0;border:none;background:none;outline:none;font-family:inherit;font-size:var(--pb-search-fs,15px);color:var(--pb-on-surface,#2F2F32);">
+      <button id="search-button" aria-label="찾기" data-i18n-attr="aria-label:search.button" style="flex:none;display:flex;align-items:center;justify-content:center;width:var(--pb-search-btn,42px);height:var(--pb-search-btn,42px);padding:0;border:none;border-radius:50%;background:linear-gradient(140deg,var(--pb-search-btn-a,#1E2947),var(--pb-search-btn-b,#E2833C));color:#F9F6EF;cursor:pointer;box-shadow:0 2px 8px rgba(24,18,34,0.18);">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="4.5" y1="12" x2="18.5" y2="12"/><polyline points="13,6.5 18.5,12 13,17.5"/>
         </svg>
@@ -604,7 +604,7 @@
            밝은 글자가 되어 제목이 통째로 안 읽혔다. 불변식 25 가 *"카드·미니맵은 자기 바탕이 있어
            그대로다"* 라고 적어 두었지만 상속을 막는 줄이 없었다. -->
       <div style="position:relative;padding:var(--pb-card-pad,22px 24px 22px);border:var(--pb-card-border,1px solid #1A1A1A);border-radius:var(--pb-card-radius,5px);background:var(--pb-card-bg,rgba(246,245,242,0.95));color:var(--pb-card-ink,#1A1A1A);backdrop-filter:var(--pb-card-blur,blur(3px));box-shadow:var(--pb-card-shadow,0 10px 28px rgba(26,26,26,0.10));pointer-events:auto;transition:background-color var(--pb-card-peek-ms,200ms) ease, backdrop-filter var(--pb-card-peek-ms,200ms) ease;">
-        <button id="scent-close" aria-label="닫기" style="position:absolute;top:10px;right:12px;width:24px;height:24px;padding:0;border:none;background:none;font-family:inherit;font-size:17px;line-height:1;color:var(--pb-card-ink-2,#555555);cursor:pointer;">×</button>
+        <button id="scent-close" aria-label="닫기" data-i18n-attr="aria-label:card.close" style="position:absolute;top:10px;right:12px;width:24px;height:24px;padding:0;border:none;background:none;font-family:inherit;font-size:17px;line-height:1;color:var(--pb-card-ink-2,#555555);cursor:pointer;">×</button>
         <div data-row style="display:flex;align-items:center;gap:8px;">
           <span id="scent-zone-dot" style="width:7px;height:7px;border-radius:50%;background:#D9738F;"></span>
           <span id="scent-zone" style="font-size:10px;font-weight:600;letter-spacing:0.2em;color:#D9738F;">FLORAL</span>
@@ -647,13 +647,13 @@
              ui.js 는 data-act 만 넘긴다 (main.js cardAction · host.js)
              ⭐ 2026-09-16 : 밑줄 글자 → **테두리 단추** · [주변 향 탐색]을 뺐다 (부표 누르기가 곧 그 동작이다). 값 · 까닭은 위 <style> 의 #scent-actions 주석 -->
         <div data-row id="scent-actions" style="display:var(--pb-card-actions-d,none);margin-top:10px;flex-wrap:wrap;gap:10px;">
-          <button type="button" data-act="detail" style="flex:1 1 0;padding:0 10px;height:30px;border:1px solid var(--pb-act-line,#1A1A1A);border-radius:var(--pb-card-btn-radius,var(--pb-card-radius,5px));background:var(--pb-act-bg,transparent);font-family:inherit;font-size:12px;color:var(--pb-act-ink,#555555);white-space:nowrap;cursor:pointer;transition:color 140ms ease, border-color 140ms ease, background-color 140ms ease;">자세히 보기</button>
-          <button type="button" data-act="save" style="flex:1 1 0;padding:0 10px;height:30px;border:1px solid var(--pb-act-line,#1A1A1A);border-radius:var(--pb-card-btn-radius,var(--pb-card-radius,5px));background:var(--pb-act-bg,transparent);font-family:inherit;font-size:12px;color:var(--pb-act-ink,#555555);white-space:nowrap;cursor:pointer;transition:color 140ms ease, border-color 140ms ease, background-color 140ms ease;">진열대에 저장</button>
+          <button type="button" data-act="detail" data-i18n="card.detail" style="flex:1 1 0;padding:0 10px;height:30px;border:1px solid var(--pb-act-line,#1A1A1A);border-radius:var(--pb-card-btn-radius,var(--pb-card-radius,5px));background:var(--pb-act-bg,transparent);font-family:inherit;font-size:12px;color:var(--pb-act-ink,#555555);white-space:nowrap;cursor:pointer;transition:color 140ms ease, border-color 140ms ease, background-color 140ms ease;">자세히 보기</button>
+          <button type="button" data-act="save" data-i18n="card.save" style="flex:1 1 0;padding:0 10px;height:30px;border:1px solid var(--pb-act-line,#1A1A1A);border-radius:var(--pb-card-btn-radius,var(--pb-card-radius,5px));background:var(--pb-act-bg,transparent);font-family:inherit;font-size:12px;color:var(--pb-act-ink,#555555);white-space:nowrap;cursor:pointer;transition:color 140ms ease, border-color 140ms ease, background-color 140ms ease;">진열대에 저장</button>
         </div>
         <!-- ⭐⭐ [이 향의 해역으로] — 호버하면 아래에서 **흰 파도 두 겹**이 차오른다 (v0.75.12).
              흰 글자(#scent-sail-label) 위로 흰 파도 두 겹이 차오른다 — 속이 반투명이라 글자가 그대로 비친다.
              값 · 까닭은 위 <style> 의 #scent-sail 주석 -->
-        <button data-row id="scent-sail" class="pb-wave-host" style="position:relative;overflow:hidden;margin-top:10px;width:100%;height:40px;border:1px solid var(--pb-sail-line,#1A1A1A);border-radius:var(--pb-card-btn-radius,var(--pb-card-radius,5px));background:var(--pb-sail-bg,#1A1A1A);color:var(--pb-sail-ink,#F6F5F2);font-family:inherit;font-size:13px;font-weight:600;letter-spacing:0.02em;cursor:pointer;"><span id="scent-sail-label">이 향의 해역으로</span><span class="pb-wave" data-wave="back" aria-hidden="true"></span><span class="pb-wave" data-wave="front" aria-hidden="true"></span></button>
+        <button data-row id="scent-sail" class="pb-wave-host" style="position:relative;overflow:hidden;margin-top:10px;width:100%;height:40px;border:1px solid var(--pb-sail-line,#1A1A1A);border-radius:var(--pb-card-btn-radius,var(--pb-card-radius,5px));background:var(--pb-sail-bg,#1A1A1A);color:var(--pb-sail-ink,#F6F5F2);font-family:inherit;font-size:13px;font-weight:600;letter-spacing:0.02em;cursor:pointer;"><span id="scent-sail-label" data-i18n="card.sail">이 향의 해역으로</span><span class="pb-wave" data-wave="back" aria-hidden="true"></span><span class="pb-wave" data-wave="front" aria-hidden="true"></span></button>
       </div>
       <!-- 꼬리 : 45° 돌린 정사각형의 **바깥 두 변**만 긋는다. 상자 **위에** 얹어 안쪽 절반이 상자 테두리를 덮는다 -->
       <span id="scent-tail" aria-hidden="true" style="position:absolute;left:-7px;top:50%;width:13px;height:13px;margin-top:-6.5px;background:var(--pb-card-bg,rgba(246,245,242,0.95));backdrop-filter:var(--pb-card-tail-blur,none);border-left:1px solid #1A1A1A;border-bottom:1px solid #1A1A1A;transform:rotate(45deg);pointer-events:none;transition:background-color var(--pb-card-peek-ms,200ms) ease, backdrop-filter var(--pb-card-peek-ms,200ms) ease;"></span>
@@ -676,7 +676,7 @@
         <!-- ⭐ 해도 열기 (2026-09-12 저녁, v0.48.0 — chart.js 가 붙잡는다).
              ⚠ 판을 누르면 '그리로 간다' 는 뜻이 이미 있다 (minimap.js onClick) — 그래서 **머리말 옆의 작은 버튼**이
                확대를 맡는다 (사용자 지시). 아이콘은 네 귀퉁임쇠 하나짜리 인라인 SVG 다 — 이미지를 받지 않는다 -->
-        <button id="minimap-zoom" title="해도 열기" aria-label="해도 열기" style="flex:none;display:flex;align-items:center;justify-content:center;width:18px;height:18px;padding:0;border:1px solid var(--pb-mini-line,var(--pb-line-soft,#C9C4BB));border-radius:4px;background:none;color:var(--pb-mini-accent,var(--pb-accent,#A68F5B));cursor:pointer;">
+        <button id="minimap-zoom" title="해도 열기" aria-label="해도 열기" data-i18n-attr="title:mini.open;aria-label:mini.open" style="flex:none;display:flex;align-items:center;justify-content:center;width:18px;height:18px;padding:0;border:1px solid var(--pb-mini-line,var(--pb-line-soft,#C9C4BB));border-radius:4px;background:none;color:var(--pb-mini-accent,var(--pb-accent,#A68F5B));cursor:pointer;">
           <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 4.3V1h3.3M7.7 1H11v3.3M11 7.7V11H7.7M4.3 11H1V7.7"/></svg>
         </button>
       </span>
@@ -703,12 +703,12 @@
         <div style="min-width:0;">
           <div style="font-size:10px;font-weight:600;letter-spacing:0.22em;color:var(--pb-chart-ink-2,rgba(47,47,50,0.62));">SCENT CHART</div>
           <!-- ⚠ 2026-09-21 : '해도' → '향해 지도' (사용자). 엔진 안의 다른 '해도' 글귀(경고 · 머리말)는 그대로다 -->
-          <div style="margin-top:4px;font-size:var(--pb-chart-title,23px);line-height:1.1;color:var(--pb-chart-ink,#2F2F32);">향해 지도</div>
+          <div style="margin-top:4px;font-size:var(--pb-chart-title,23px);line-height:1.1;color:var(--pb-chart-ink,#2F2F32);" data-i18n="chart.title">향해 지도</div>
         </div>
         <div style="flex:none;display:flex;align-items:center;gap:9px;">
           <span id="chart-hint" style="font-size:11px;letter-spacing:0.04em;color:var(--pb-chart-ink-2,rgba(47,47,50,0.62));">—</span>
-          <button id="chart-reset" style="display:none;height:24px;padding:0 10px;border:1px solid var(--pb-chart-line,#C9C4BB);border-radius:999px;background:none;font-family:inherit;font-size:10.5px;letter-spacing:0.1em;color:var(--pb-chart-ink-2,rgba(47,47,50,0.62));cursor:pointer;">처음 배율</button>
-          <button id="chart-close" title="닫기 (ESC)" aria-label="닫기" style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--pb-chart-line,#C9C4BB);border-radius:50%;background:none;font-family:inherit;font-size:16px;line-height:1;color:var(--pb-chart-ink,#2F2F32);cursor:pointer;">×</button>
+          <button id="chart-reset" data-i18n="chart.reset" style="display:none;height:24px;padding:0 10px;border:1px solid var(--pb-chart-line,#C9C4BB);border-radius:999px;background:none;font-family:inherit;font-size:10.5px;letter-spacing:0.1em;color:var(--pb-chart-ink-2,rgba(47,47,50,0.62));cursor:pointer;">처음 배율</button>
+          <button id="chart-close" title="닫기 (ESC)" aria-label="닫기" data-i18n-attr="title:chart.closeTitle;aria-label:chart.close" style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:1px solid var(--pb-chart-line,#C9C4BB);border-radius:50%;background:none;font-family:inherit;font-size:16px;line-height:1;color:var(--pb-chart-ink,#2F2F32);cursor:pointer;">×</button>
         </div>
       </div>
       <div style="flex:1;min-height:0;display:flex;gap:var(--pb-chart-gap,18px);">
@@ -725,7 +725,7 @@
     <div style="display:flex;align-items:center;gap:16px;">
       <!-- ⭐ 2026-10-01 : 이름 DRIFT → **속도** · 손잡이(동그라미)를 뺐다 · 숫자는 0.00 → **%** (메인 사용성 테스트 7명 중 5명 —
            "끌 수 있는 슬라이더처럼 생겼는데 안 움직인다" · "0.00 이 무엇인지 모른다"). 배의 속도(nav.speed)를 보여 주는 **계기**일 뿐이라 끌 것이 없다 -->
-      <div style="font-size:11px;letter-spacing:0.12em;color:var(--pb-ink-3,#555555);text-shadow:0 0 3px var(--pb-halo,rgba(246,245,242,0.95));">속도</div>
+      <div style="font-size:11px;letter-spacing:0.12em;color:var(--pb-ink-3,#555555);text-shadow:0 0 3px var(--pb-halo,rgba(246,245,242,0.95));" data-i18n="drift.speed">속도</div>
       <div style="position:relative;width:var(--pb-drift-w,260px);height:2px;border-radius:1px;overflow:hidden;">
         <div style="position:absolute;inset:0;background:var(--pb-ink-3,#555555);opacity:0.3;"></div>
         <div id="drift-fill" style="position:absolute;left:0;top:0;height:2px;width:15%;background:var(--pb-ink,#1A1A1A);"></div>
@@ -735,8 +735,9 @@
     <!-- ⭐ 2026-10-01 (v0.84.0) : 해역 연출 중에는 **닫는 법**을 말한다 (data-help="zone" · ui.setHelpZone) — 연출은 바다를 누르거나 Esc 로 닫히는데(zoneSeaEnds)
          화면 어디에도 그 말이 없어, 사용성 테스트에서 "6~8초 연출을 건너뛸 수 없다" 고 했다 -->
     <!-- ⭐ 2026-10-01 : 가장 쉬운 조작(바다 · 부표 누르기)을 먼저 말한다 — 사용성 테스트에서 그 둘을 다들 우연히 알았다. 방향키는 마우스 · 키보드가 있을 때만 붙인다.
-         글자도 키웠다 (11 → 12 · 옅기 0.65 → 0.85 · 둘레 빛) — 반짝이는 물 위에서 묻혔다 -->
-    <div id="drift-help" style="display:var(--pb-help,block);font-size:12px;letter-spacing:0.02em;color:var(--pb-ink-3,#555555);opacity:0.85;text-shadow:0 0 3px var(--pb-halo,rgba(246,245,242,0.95)),0 0 6px var(--pb-halo-2,rgba(246,245,242,0.8));"><span data-help="sail">바다를 누르면 그쪽으로 &nbsp;·&nbsp; 부표를 누르면 향수<span class="pb-help-keys"> &nbsp;·&nbsp; ← → ↑ 로 직접 몰기</span></span><span data-help="zone" hidden>바다를 누르면 연출이 닫힙니다<span class="pb-help-keys"> &nbsp;·&nbsp; Esc</span></span></div>
+         글자도 키웠다 (11 → 12 · 옅기 0.65 → 0.85 · 둘레 빛) — 반짝이는 물 위에서 묻혔다
+         ⚠ 글자는 사전 키 칸(data-i18n)에만 둔다 — 방향키 몫(.pb-help-keys)과 두 벌(data-help sail · zone)이 따로 숨으므로, 그 칸에 사전 키를 달면 textContent 가 안쪽 칸을 지운다 -->
+    <div id="drift-help" style="display:var(--pb-help,block);font-size:12px;letter-spacing:0.02em;color:var(--pb-ink-3,#555555);opacity:0.85;text-shadow:0 0 3px var(--pb-halo,rgba(246,245,242,0.95)),0 0 6px var(--pb-halo-2,rgba(246,245,242,0.8));"><span data-help="sail"><span data-i18n="drift.help">바다를 누르면 그쪽으로 &nbsp;·&nbsp; 부표를 누르면 향수</span><span class="pb-help-keys" data-i18n="drift.keys"> &nbsp;·&nbsp; ← → ↑ 로 직접 몰기</span></span><span data-help="zone" hidden><span data-i18n="drift.zone">바다를 누르면 연출이 닫힙니다</span><span class="pb-help-keys"> &nbsp;·&nbsp; Esc</span></span></div>
   </div>
 
 </div>

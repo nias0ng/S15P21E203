@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/shared/lib/cn'
 
@@ -37,6 +38,7 @@ export function Modal({
   titleSize = 'title',
   className,
 }: ModalProps) {
+  const { t } = useTranslation()
   const dialogRef = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
@@ -91,7 +93,7 @@ export function Modal({
           <button
             type="button"
             onClick={onClose}
-            aria-label="닫기"
+            aria-label={t('actions.close')}
             className="text-ink-muted hover:text-ink rounded p-1.25 text-lg leading-none"
           >
             ×

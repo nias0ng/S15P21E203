@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
+import { useLocaleStore } from '@/shared/store/localeStore'
+
 import type { CollectionSummary } from '../types'
 
 import { CollectionStrip } from './CollectionStrip'
@@ -85,5 +87,21 @@ describe('CollectionStrip 받는 중 · 실패', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '다시 시도' }))
     expect(onRetry).toHaveBeenCalledOnce()
+  })
+})
+
+describe('CollectionStrip 영어 화면', () => {
+  it('개수를 복수형으로 적고 새 컬렉션 칸도 영어로 적는다', () => {
+    useLocaleStore.getState().setLocale('en')
+    renderStrip({
+      items: [COMMUTE, { ...COMMUTE, collectionId: 8, perfumeCount: 1 }],
+    })
+
+    const [four, one] = screen.getAllByRole('link')
+    expect(four).toHaveTextContent('4 perfumes · 아침에 한 번 뿌리는 향')
+    expect(one).toHaveTextContent('1 perfume · 아침에 한 번 뿌리는 향')
+    expect(
+      screen.getByRole('button', { name: /New collection/ }),
+    ).toBeInTheDocument()
   })
 })

@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 
 import { apiErrorMessage, isApiError } from '@/shared/api/http'
@@ -29,6 +30,7 @@ type Props = {
 }
 
 export function WithdrawModal({ open, onClose, googleReauth = null }: Props) {
+  const { t } = useTranslation('auth')
   const navigate = useNavigate()
   const endSession = useEndSession()
   const isLoggedIn = useIsLoggedIn()
@@ -90,30 +92,32 @@ export function WithdrawModal({ open, onClose, googleReauth = null }: Props) {
     <Modal
       open={open}
       onClose={close}
-      title="회원 탈퇴"
+      title={t('withdraw.title')}
       footer={
         <>
           <Button variant="outline" onClick={close}>
-            취소
+            {t('actions.cancel')}
           </Button>
           <Button
             variant="danger"
             disabled={!canWithdraw}
             onClick={() => mutation.mutate()}
           >
-            {mutation.isPending ? '탈퇴 중' : '탈퇴'}
+            {mutation.isPending
+              ? t('withdraw.submitting')
+              : t('withdraw.submit')}
           </Button>
         </>
       }
     >
       <div className="space-y-2.5">
         <div className="border-line bg-line-soft text-ink text-caption space-y-1.25 border p-2.5 leading-relaxed">
-          <p>진열대 · 컬렉션 · 메모가 함께 삭제됩니다.</p>
+          <p>{t('withdraw.noticeDeleted')}</p>
           <p>
-            작성한 게시글 · 댓글 · 후기는{' '}
-            <b>작성자 표시만 지워지고 남습니다.</b>
+            {t('withdraw.noticePostsLead')}{' '}
+            <b>{t('withdraw.noticePostsKept')}</b>
           </p>
-          <p>계정은 바로 삭제되며 되돌릴 수 없습니다.</p>
+          <p>{t('withdraw.noticeFinal')}</p>
         </div>
 
         <label className="flex cursor-pointer items-center gap-2.5">
@@ -121,13 +125,11 @@ export function WithdrawModal({ open, onClose, googleReauth = null }: Props) {
             checked={confirmed}
             onChange={(event) => setConfirmed(event.target.checked)}
           />
-          <span className="text-ink text-xs">위 내용을 확인했습니다</span>
+          <span className="text-ink text-xs">{t('withdraw.agree')}</span>
         </label>
 
         {kind === 'loading' ? (
-          <p className="text-ink-muted text-caption">
-            계정 정보를 확인하고 있습니다.
-          </p>
+          <p className="text-ink-muted text-caption">{t('withdraw.loading')}</p>
         ) : kind === 'google' ? (
           <GoogleConfirm
             confirmed={googleConfirmed}
@@ -139,11 +141,11 @@ export function WithdrawModal({ open, onClose, googleReauth = null }: Props) {
           />
         ) : (
           <Input
-            label="현재 비밀번호"
+            label={t('password.current')}
             type="password"
             autoComplete="current-password"
-            placeholder="현재 비밀번호"
-            hint="본인 확인을 위해 한 번 더 입력해주세요."
+            placeholder={t('password.current')}
+            hint={t('withdraw.passwordHint')}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
@@ -153,7 +155,7 @@ export function WithdrawModal({ open, onClose, googleReauth = null }: Props) {
           <p className="text-danger text-caption" role="alert">
             {apiErrorMessage(
               mutation.error ?? reauth.error,
-              '탈퇴하지 못했습니다. 잠시 후 다시 시도해주세요.',
+              t('withdraw.failed'),
             )}
           </p>
         )}
@@ -173,24 +175,27 @@ function GoogleConfirm({
   pending: boolean
   onStart: () => void
 }) {
+  const { t } = useTranslation('auth')
   if (!env.googleLoginEnabled) {
     return (
       <p className="text-danger text-caption" role="alert">
-        지금은 Google 로 본인 확인을 할 수 없어 탈퇴할 수 없습니다.
+        {t('withdraw.googleUnavailable')}
       </p>
     )
   }
   if (confirmed) {
-    return <p className="text-ink text-caption">Google 계정을 확인했습니다.</p>
+    return (
+      <p className="text-ink text-caption">{t('withdraw.googleConfirmed')}</p>
+    )
   }
 
   return (
     <div className="space-y-1.25">
       <p className="text-ink-muted text-caption">
-        본인 확인을 위해 가입한 Google 계정으로 한 번 더 로그인해주세요.
+        {t('withdraw.googlePrompt')}
       </p>
       <GoogleLoginButton onClick={onStart} disabled={pending}>
-        Google 계정으로 확인
+        {t('withdraw.googleButton')}
       </GoogleLoginButton>
       {failure !== null && (
         <p className="text-danger text-caption" role="alert">

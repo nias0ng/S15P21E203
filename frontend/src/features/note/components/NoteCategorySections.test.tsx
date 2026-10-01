@@ -2,6 +2,9 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
 
+import { i18n } from '@/shared/i18n'
+import { useLocaleStore } from '@/shared/store/localeStore'
+
 import type { Note } from '../types'
 
 import { NoteCategorySections } from './NoteCategorySections'
@@ -61,5 +64,19 @@ describe('NoteCategorySections', () => {
     renderSections([])
 
     expect(screen.getByText('노트를 찾지 못했습니다')).toBeInTheDocument()
+  })
+})
+
+describe('NoteCategorySections (영어 화면)', () => {
+  it('원래 이름만 적고 대분류 없는 묶음은 Other 로 부른다', async () => {
+    useLocaleStore.getState().setLocale('en')
+    await i18n.changeLanguage('en')
+
+    renderSections(NOTES)
+
+    expect(screen.getByText('Bergamot')).toBeInTheDocument()
+    expect(screen.queryByText('베르가못')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Other' })).toBeInTheDocument()
+    expect(screen.getByText('2 notes')).toBeInTheDocument()
   })
 })

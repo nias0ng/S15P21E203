@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 import { cn } from '@/shared/lib/cn'
 
 import { ShelfPager } from './ShelfPager'
@@ -42,6 +44,7 @@ export function ShelfFooterStrip({
   onPrev,
   onNext,
 }: Props) {
+  const { t } = useTranslation('shelf')
   const onShelf = view === 'shelf'
 
   return (
@@ -63,11 +66,11 @@ export function ShelfFooterStrip({
       >
         {onShelf ? (
           <>
-            <span className="font-medium">내 컬렉션</span>
+            <span className="font-medium">{t('footer.collection')}</span>
             <span className="shelf-muted tabular-nums">{collectionCount}</span>
           </>
         ) : (
-          <span className="font-medium">진열대로</span>
+          <span className="font-medium">{t('footer.backToShelf')}</span>
         )}
         <Chevron up={!onShelf} />
       </button>

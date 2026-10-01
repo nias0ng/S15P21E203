@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Link, type LinkProps } from 'react-router'
 
 import { cn } from '@/shared/lib/cn'
@@ -8,7 +9,7 @@ type PerfumeCardProps = {
   name: string
   subName?: string | null
   rank?: number
-  /** 순위 딱지를 읽을 때 앞에 붙는 말 — `인기 1위` · `추천 1위` */
+  /** 순위 딱지를 읽을 때 앞에 붙는 말 — `인기 1위` · `추천 1위`. 부르는 쪽이 지금 언어로 넘깁니다 */
   rankLabel?: string
   thumbnailUrl?: string | null
 } & (
@@ -35,7 +36,14 @@ const CARD =
   'border-line bg-surface-card rounded-card flex h-full flex-1 flex-col gap-1.25 border p-2.5 transition-[transform,box-shadow] duration-200 ease-out hover:shadow-raised hover:-translate-y-1.25'
 
 export function PerfumeCard(props: PerfumeCardProps) {
-  const { name, subName, rank, rankLabel = '인기', thumbnailUrl } = props
+  const { t } = useTranslation('layout')
+  const {
+    name,
+    subName,
+    rank,
+    rankLabel = t('perfumeCard.popular'),
+    thumbnailUrl,
+  } = props
 
   /*
     NOTE: 안쪽은 전부 `span` 입니다 — 단추(`<button>`) 안에는 `div` · `p` 를 둘 수 없습니다.
@@ -69,7 +77,7 @@ export function PerfumeCard(props: PerfumeCardProps) {
           >
             <span aria-hidden>{rank}</span>
             <span className="sr-only">
-              {rankLabel} {rank}위
+              {t('perfumeCard.rank', { label: rankLabel, rank })}
             </span>
           </span>
         )}

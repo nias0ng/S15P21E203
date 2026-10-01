@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useSearchParams } from 'react-router'
 
 import { apiErrorMessage } from '@/shared/api/http'
@@ -29,6 +30,7 @@ type LoginFormProps = {
 }
 
 export function LoginForm({ onLoggedIn }: LoginFormProps) {
+  const { t } = useTranslation('auth')
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const setAuth = useAuthStore((state) => state.setAuth)
@@ -43,9 +45,9 @@ export function LoginForm({ onLoggedIn }: LoginFormProps) {
 
   const notice =
     state?.passwordChanged === true
-      ? '비밀번호가 변경됐습니다. 새 비밀번호로 다시 로그인해주세요.'
+      ? t('login.passwordChanged')
       : state?.signedUp === true
-        ? '가입이 완료됐습니다. 로그인해주세요.'
+        ? t('login.signedUp')
         : null
 
   const { mutate, isPending, error } = useMutation({
@@ -63,7 +65,7 @@ export function LoginForm({ onLoggedIn }: LoginFormProps) {
   })
 
   return (
-    <AuthCard title="로그인" large>
+    <AuthCard title={t('login.title')} large>
       {notice !== null && (
         <p className="border-line bg-line-soft text-ink text-caption border p-2.5">
           {notice}
@@ -78,21 +80,21 @@ export function LoginForm({ onLoggedIn }: LoginFormProps) {
         }}
       >
         <Input
-          label="이메일"
+          label={t('email.label')}
           hideLabel
           type="email"
           autoComplete="email"
-          placeholder="이메일"
+          placeholder={t('email.label')}
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
         />
         <Input
-          label="비밀번호"
+          label={t('password.label')}
           hideLabel
           type="password"
           autoComplete="current-password"
-          placeholder="비밀번호"
+          placeholder={t('password.label')}
           required
           value={password}
           onChange={(event) => setPassword(event.target.value)}
@@ -100,10 +102,7 @@ export function LoginForm({ onLoggedIn }: LoginFormProps) {
 
         {error !== null && (
           <p className="text-danger text-caption" role="alert">
-            {apiErrorMessage(
-              error,
-              '로그인하지 못했습니다. 잠시 후 다시 시도해주세요.',
-            )}
+            {apiErrorMessage(error, t('login.failed'))}
           </p>
         )}
 
@@ -113,24 +112,24 @@ export function LoginForm({ onLoggedIn }: LoginFormProps) {
           className={AUTH_SUBMIT}
           disabled={isPending}
         >
-          {isPending ? '로그인 중' : '로그인'}
+          {isPending ? t('login.submitting') : t('login.submit')}
         </Button>
       </form>
 
-      <GoogleLoginSection label="Google 계정으로 로그인" returnTo={returnTo} />
+      <GoogleLoginSection label={t('google.loginButton')} returnTo={returnTo} />
 
       <div className="text-caption flex items-center justify-between px-1.25">
         <Link
           to={withReturnPath(ROUTES.SIGNUP, returnTo)}
           className="text-ink-muted hover:text-ink"
         >
-          회원가입 →
+          {t('login.toSignup')}
         </Link>
         <Link
           to={ROUTES.PASSWORD_RESET}
           className="text-ink-muted hover:text-ink"
         >
-          비밀번호 찾기
+          {t('login.findPassword')}
         </Link>
       </div>
     </AuthCard>

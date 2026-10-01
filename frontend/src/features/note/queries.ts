@@ -44,6 +44,8 @@ export const noteDetailQuery = (noteId: number) =>
     queryKey: noteKeys.detail(noteId),
     queryFn: () => getNote(noteId),
     staleTime: CATALOG_STALE_TIME,
+    // 설명이 요청 언어로 옵니다 — 화면 언어를 바꾸면 다시 받습니다
+    meta: { localeDependent: true },
   })
 
 export const notePerfumesQuery = (noteId: number, page: number) =>

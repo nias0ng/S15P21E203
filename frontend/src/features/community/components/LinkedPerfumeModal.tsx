@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/shared/ui/Button'
 import { Modal } from '@/shared/ui/Modal'
@@ -25,6 +26,7 @@ export function LinkedPerfumeModal({
   single = false,
   isPending = false,
 }: Props) {
+  const { t } = useTranslation('community')
   const [picked, setPicked] = useState<LinkedPerfume[]>([])
 
   const toggle = (perfume: LinkedPerfume) => {
@@ -52,11 +54,11 @@ export function LinkedPerfumeModal({
     <Modal
       open={open}
       onClose={close}
-      title="향수 선택"
+      title={t('perfumeModal.title')}
       footer={
         <>
           <Button variant="outline" onClick={close}>
-            취소
+            {t('perfumeModal.cancel')}
           </Button>
           <Button
             disabled={picked.length === 0}
@@ -65,7 +67,7 @@ export function LinkedPerfumeModal({
               setPicked([])
             }}
           >
-            선택
+            {t('perfumeModal.submit')}
           </Button>
         </>
       }
@@ -91,8 +93,8 @@ export function LinkedPerfumeModal({
 
         <p className="text-ink-muted text-caption">
           {single
-            ? (picked[0]?.name ?? '고른 향수가 없습니다')
-            : `${picked.length}개 선택됨`}
+            ? (picked[0]?.name ?? t('perfumeModal.nonePicked'))
+            : t('perfumeModal.pickedCount', { count: picked.length })}
         </p>
       </div>
     </Modal>

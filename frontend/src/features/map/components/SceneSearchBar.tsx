@@ -1,4 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/shared/lib/cn'
 import { prefersReducedMotion } from '@/shared/lib/prefersReducedMotion'
@@ -35,35 +36,28 @@ function otherMode(item: SceneSearchMode): SceneSearchMode {
   return MODES[(MODES.indexOf(item) + 1) % MODES.length]!
 }
 
-const PLACEHOLDER: Record<SceneSearchMode, string> = {
-  // 엔진 검색창(`landing/index.html`)이 쓰던 문구 그대로입니다 — 화면에서 바뀐 것은 자리가 아니라 누가 그리는가입니다
-  nl: '어떤 향을 찾고 계신가요?',
-  normal: '향수 · 브랜드 이름으로 찾기',
-}
-
-const MODE_LABEL: Record<SceneSearchMode, string> = {
-  nl: '자연어',
-  normal: '이름',
-}
+/*
+ * 검색창 자리표시 · 방식 이름 · 설명줄은 `map` 묶음의 `search.placeholder` · `search.mode` · `search.hint` 에
+ * 방식 이름을 키로 둡니다. 자연어 자리표시는 엔진 검색창(`landing/index.html`)이 쓰던 문구 그대로입니다 —
+ * 화면에서 바뀐 것은 자리가 아니라 누가 그리는가입니다.
+ */
 
 /**
- * 빈 검색창을 누르면 펼쳐지는 **시작 문장** (2026-10-01 · 메인 사용성 테스트).
+ * 빈 검색창을 누르면 펼쳐지는 **시작 문장** (2026-10-01 · 메인 사용성 테스트). 문장은 `map` 묶음의
+ * `search.starters` 에 있고 여기는 방식별 차례만 둡니다.
  *
  * 처음 온 사람은 무엇을 적어야 할지 몰랐고("향수 처음 사보는데 뭐가 좋아요?" 처럼 묻다 막혔습니다),
  * 실패 화면이 예로 든 문장은 눌러지지도 않았습니다. 여기 있는 것은 **눌러서 바로 찾는** 문장입니다.
  * ⚠️ 자연어 문장은 추천 서버가 다섯 개를 돌려주는 것을 확인한 것만 둡니다(2026-10-01 로컬 · GMS) —
  *   누르자마자 '못 알아들었습니다' 가 나오면 시작 칸이 함정이 됩니다. 문장을 바꾸면 다시 확인합니다.
+ *   영어 문장도 같은 날 로컬에서 다섯 개씩 돌아오는 것을 봤습니다.
  * ⚠️ 이름 쪽은 지도 200개에 많이 떠 있는 브랜드입니다(조 말론 런던 9 · 샤넬 7 · 바이레도 6 · 딥티크 5).
+ *   이름 검색은 영문 이름 · 브랜드도 보므로(`mapPerfumes`) 영어 화면은 영문 브랜드명입니다.
  */
-const STARTERS: Record<SceneSearchMode, readonly string[]> = {
-  nl: [
-    '비 온 뒤 흙냄새',
-    '출근할 때 은은한 비누 향',
-    '달콤한 바닐라 향',
-    '꽃향기 나는 향수',
-  ],
-  normal: ['샤넬', '조 말론', '바이레도', '딥티크'],
-}
+const STARTER_KEYS = {
+  nl: ['rain', 'soap', 'vanilla', 'floral'],
+  normal: ['chanel', 'joMalone', 'byredo', 'diptyque'],
+} as const satisfies Record<SceneSearchMode, readonly string[]>
 
 /** 이 브라우저에서 첫 소개를 이미 보였다는 표시 (`localStorage`) — 두 번째 방문부터는 마우스를 올릴 때만 나옵니다 */
 const INTRO_KEY = 'hyanghae-search-intro'
@@ -77,12 +71,6 @@ const introSeen = () => {
     // 저장소를 못 읽는 창이면 소개하지 않습니다 — 매번 새로 뜰 수 있어 차라리 안 하는 쪽입니다
     return true
   }
-}
-
-/** 지금 방식이 **무엇을 해 주는가**. 알약에 마우스를 올렸을 때만 아래로 나옵니다 */
-const MODE_HINT: Record<SceneSearchMode, string> = {
-  nl: '느낌 · 상황을 말로 적으면 어울리는 향수를 추천해 드립니다',
-  normal: '지도에 있는 향수 200개를 이름 · 브랜드로 찾습니다',
 }
 
 /**
@@ -110,6 +98,7 @@ export function SceneSearchBar({
   // 방식을 바꿔도 치던 글은 남깁니다 — 같은 말을 두 방식으로 해보는 것이 이 칸의 쓸모입니다
   const [keyword, setKeyword] = useState('')
   const hintId = useId()
+  const { t } = useTranslation('map')
 
   /*
     ⭐ **첫 방문 한 번만 설명줄을 펴 보입니다** (2026-10-01). 설명줄은 평소 알약 뒤에 숨어 있다가
@@ -133,7 +122,7 @@ export function SceneSearchBar({
   }, [intro])
 
   /*
-    ⭐ **빈 검색창에 초점이 오면 시작 문장을 펼칩니다** (위 STARTERS). 초점이 **입력칸이나 시작 문장**에
+    ⭐ **빈 검색창에 초점이 오면 시작 문장을 펼칩니다** (위 STARTER_KEYS). 초점이 **입력칸이나 시작 문장**에
     있을 때만입니다 — 방식 단추를 마우스로 누른 것은 아닙니다(그 단추에 남는 초점으로 줄이 붙박였던
     2026-09-20 의 그 함정입니다 · 아래 `focus-visible` 머리말). 무엇을 적기 시작하면 접습니다.
   */
@@ -163,8 +152,8 @@ export function SceneSearchBar({
       }}
     >
       <SearchField
-        label={mode === 'nl' ? '자연어로 향수 추천받기' : '향수 이름으로 찾기'}
-        placeholder={PLACEHOLDER[mode]}
+        label={t(`search.fieldLabel.${mode}`)}
+        placeholder={t(`search.placeholder.${mode}`)}
         value={keyword}
         onChange={(event) => setKeyword(event.target.value)}
         aria-describedby={hintId}
@@ -237,7 +226,7 @@ export function SceneSearchBar({
               'text-charcoal-soft text-center text-[11.5px]',
             )}
           >
-            {MODE_HINT[mode]}
+            {t(`search.hint.${mode}`)}
           </p>
 
           {/*
@@ -250,21 +239,24 @@ export function SceneSearchBar({
           {startersOpen && (
             <div
               role="group"
-              aria-label="이렇게 찾아 보세요"
+              aria-label={t('search.starters.label')}
               className="pointer-events-auto mx-auto mt-2 flex w-fit max-w-[min(100%,calc(var(--spacing)*150))] flex-wrap justify-center gap-1.5 px-2"
             >
-              {STARTERS[mode].map((text) => (
-                <button
-                  key={text}
-                  type="button"
-                  data-starter
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => pick(text)}
-                  className={STARTER_CHIP}
-                >
-                  {text}
-                </button>
-              ))}
+              {STARTER_KEYS[mode].map((key) => {
+                const text = t(`search.starters.${key}`)
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    data-starter
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => pick(text)}
+                    className={STARTER_CHIP}
+                  >
+                    {text}
+                  </button>
+                )
+              })}
               {mode === 'nl' && onBrowsePopular && (
                 <button
                   type="button"
@@ -273,7 +265,7 @@ export function SceneSearchBar({
                   onClick={onBrowsePopular}
                   className={cn(STARTER_CHIP, 'text-charcoal font-medium')}
                 >
-                  요즘 인기 향수 보기 →
+                  {t('search.starters.popular')}
                 </button>
               )}
             </div>
@@ -388,6 +380,7 @@ function ModeSwitch({
   mode,
   onModeChange,
 }: Pick<Props, 'mode' | 'onModeChange'>) {
+  const { t } = useTranslation('map')
   const trackRef = useRef<HTMLDivElement>(null)
   const pillRef = useRef<HTMLSpanElement>(null)
   const tabRefs = useRef<Partial<Record<SceneSearchMode, HTMLButtonElement>>>(
@@ -603,7 +596,7 @@ function ModeSwitch({
     <div
       ref={trackRef}
       role="group"
-      aria-label="검색 방식"
+      aria-label={t('search.group')}
       /*
         ⚠️ 모서리는 **감싼 검색창에서 따옵니다** — 알약은 높이의 반(50 ÷ 2 = 25)이 모서리인
         스타디움이고, 이 칸은 위아래로 9px 안쪽에 있으므로 같은 중심을 쓰면 25 − 9 = 16,
@@ -636,7 +629,9 @@ function ModeSwitch({
           // 든 칸에는 눌렀을 때 무엇이 되는지를 적어 둡니다 — 글자만 보면 '이미 이건데 왜 누르나' 가 됩니다
           title={
             item === mode
-              ? `${MODE_LABEL[otherMode(item)]} 검색으로 바꾸기`
+              ? t('search.switchTo', {
+                  mode: t(`search.mode.${otherMode(item)}`),
+                })
               : undefined
           }
           className={cn(
@@ -646,7 +641,7 @@ function ModeSwitch({
             'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
           )}
         >
-          {MODE_LABEL[item]}
+          {t(`search.mode.${item}`)}
         </button>
       ))}
     </div>

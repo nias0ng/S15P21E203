@@ -1,0 +1,90 @@
+export const collection = {
+  actions: {
+    cancel: '취소',
+    retry: '다시 시도',
+  },
+  perfumeCount_one: '향수 {{count}}개',
+  perfumeCount_other: '향수 {{count}}개',
+  loadError: {
+    title: '컬렉션을 불러오지 못했습니다',
+    description: '잠시 후 다시 시도해 주세요.',
+  },
+  add: {
+    title: '향수 담기',
+    submit: '담기',
+    empty: '더 담을 향수가 없습니다',
+  },
+  form: {
+    createTitle: '컬렉션 만들기',
+    editTitle: '컬렉션 수정',
+    create: '만들기',
+    save: '저장',
+    name: '이름',
+    namePlaceholder: '예: 출근할 때',
+    description: '설명 (선택)',
+    descriptionPlaceholder: '어떤 때 꺼내는 향들인지 적어 두세요',
+    editHint: '이름 · 설명만 고칩니다. 향수는 진열함 칸에서 담고 뺍니다.',
+    pickHeading: '담을 향수',
+    pickEmpty: '진열대에 담은 향수가 없습니다',
+    visibility:
+      '컬렉션이 남에게 보이는 길은 자유 게시판의 컬렉션 공유 글뿐입니다. 향수는 나중에 더 담을 수 있습니다.',
+  },
+  pick: {
+    searchLabel: '향수명 또는 브랜드명으로 검색',
+    searchPlaceholder: '향수명 · 브랜드 검색',
+    noCandidatesDescription:
+      '진열대에 저장한 향수만 컬렉션에 넣을 수 있습니다.',
+    noMatchTitle: '조건에 맞는 향수가 없습니다',
+    noMatchDescription: '다른 향수명이나 브랜드명으로 검색해 보세요.',
+    selected_one: '{{count}}개 선택됨',
+    selected_other: '{{count}}개 선택됨',
+    notOnShelf: '· 진열대에 없는 향수는 담을 수 없습니다.',
+  },
+  strip: {
+    createFirst: '첫 컬렉션 만들기',
+    createNew: '새 컬렉션',
+    createMeta: '진열대의 향수를 골라 한 상자에 묶어 둡니다',
+    empty: '아직 담긴 향수가 없어요',
+  },
+  grid: {
+    remove: '{{name}} 컬렉션에서 제거',
+    addFirst: '첫 향수 담기',
+    addMore: '향수 더 담기',
+  },
+  detail: {
+    back: '내 컬렉션',
+    notFoundTitle: '컬렉션을 찾을 수 없습니다',
+    notFoundDescription: '지워졌거나 주소가 바뀌었을 수 있어요.',
+    backToList: '내 컬렉션으로',
+    noDescription:
+      '아직 설명이 없어요. [수정]에서 어떤 때 꺼내는 향들인지 적어 둘 수 있어요.',
+    edit: '수정',
+    delete: '삭제',
+    perfumesRegion: '담긴 향수',
+    removeConfirm: {
+      title: "'{{name}}' 를 컬렉션에서 제거할까요?",
+      fallbackName: '향수',
+      description: '진열대 저장은 그대로 유지됩니다.',
+      confirm: '제거',
+    },
+    deleteConfirm: {
+      title: "'{{title}}' 컬렉션을 삭제할까요?",
+      description:
+        '삭제하면 되돌릴 수 없습니다. 담긴 향수의 진열대 저장은 유지됩니다.',
+      confirm: '삭제',
+    },
+  },
+  toast: {
+    created: '컬렉션을 만들었습니다',
+    createFailed: '컬렉션을 만들지 못했습니다',
+    updated: '컬렉션을 수정했습니다',
+    updateFailed: '컬렉션을 수정하지 못했습니다',
+    deleteFailed: '컬렉션을 삭제하지 못했습니다',
+    added: '향수를 담았습니다',
+    addPartial_one: '{{count}}개는 담지 못했습니다',
+    addPartial_other: '{{count}}개는 담지 못했습니다',
+    addFailed: '향수를 담지 못했습니다',
+    removed: '컬렉션에서 제거했습니다',
+    removeFailed: '컬렉션에서 제거하지 못했습니다',
+  },
+}

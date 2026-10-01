@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 
 import {
@@ -20,6 +21,7 @@ const PAGE_SIZE = 30
 
 // NOTE: 쪽 넘김은 검색할 때만이고, 검색어가 없으면 첫 30개가 전부입니다
 export default function PerfumeListPage() {
+  const { t } = useTranslation('perfume')
   const [searchParams, setSearchParams] = useSearchParams()
 
   // NOTE: 필터는 `useState` 가 아니라 주소에 둡니다
@@ -65,29 +67,29 @@ export default function PerfumeListPage() {
         )
       }}
     >
-      초기화
+      {t('list.reset')}
     </Button>
   )
 
   const searchEmpty =
     !searching || !data ? undefined : data.totalElements > 0 ? (
       <EmptyState
-        title="이 쪽에는 결과가 없습니다"
-        description="앞쪽으로 돌아가 주세요."
+        title={t('list.pageEmptyTitle')}
+        description={t('list.pageEmptyDescription')}
       />
     ) : (
       <EmptyState
-        title="검색 결과가 없습니다"
-        description={`'${keyword}' 와 일치하는 향수를 찾지 못했습니다.`}
+        title={t('list.searchEmptyTitle')}
+        description={t('list.searchEmptyDescription', { keyword })}
         action={resetButton}
       />
     )
 
   const heading = searching
-    ? '검색 결과'
+    ? t('list.headingSearch')
     : filtered
-      ? '조건에 맞는 향수'
-      : '최근 인기 향수'
+      ? t('list.headingFiltered')
+      : t('list.headingPopular')
 
   const count = searching
     ? (data?.totalElements ?? null)
@@ -97,12 +99,12 @@ export default function PerfumeListPage() {
 
   return (
     <div className="space-y-3.75">
-      <h1 className="sr-only">향수</h1>
+      <h1 className="sr-only">{t('list.heading')}</h1>
 
       <SearchField
         className={SEARCH_FIELD_LIST_WIDTH}
-        label="향수명 또는 브랜드명으로 검색"
-        placeholder="향수명 · 브랜드로 검색해주세요."
+        label={t('list.searchLabel')}
+        placeholder={t('list.searchPlaceholder')}
         defaultValue={keyword}
         key={keyword}
         onSearch={(next) => {
@@ -126,14 +128,16 @@ export default function PerfumeListPage() {
         <div className="mb-6.25 flex items-baseline gap-2.5">
           <h2 className="text-ink font-serif text-2xl">{heading}</h2>
           {count !== null && (
-            <span className="text-ink-muted text-caption">{count}개</span>
+            <span className="text-ink-muted text-caption">
+              {t('list.count', { count })}
+            </span>
           )}
         </div>
 
         {isError ? (
           <EmptyState
-            title="향수를 불러오지 못했습니다"
-            description="다시 시도해주세요."
+            title={t('list.loadErrorTitle')}
+            description={t('list.loadErrorDescription')}
             onRetry={() => refetch()}
           />
         ) : (
@@ -150,7 +154,7 @@ export default function PerfumeListPage() {
         {searching && data && (
           <Pagination
             className="mt-6.25"
-            label="검색 결과 페이지"
+            label={t('list.pagination')}
             page={page}
             size={PAGE_SIZE}
             totalElements={data.totalElements}

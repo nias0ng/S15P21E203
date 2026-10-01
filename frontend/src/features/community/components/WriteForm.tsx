@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 import { LinkButton } from '@/shared/ui/LinkButton'
@@ -22,6 +24,8 @@ export function WriteForm({
   onSubmit,
   children,
 }: Props) {
+  const { t } = useTranslation('community')
+
   return (
     <div className="space-y-6.25">
       <header className="space-y-2.5">
@@ -40,7 +44,7 @@ export function WriteForm({
 
         <div className="border-line flex justify-end gap-2.5 border-t pt-6.25">
           <LinkButton to={cancelTo} variant="outline">
-            취소
+            {t('writeForm.cancel')}
           </LinkButton>
           <Button type="submit" disabled={submitDisabled}>
             {submitLabel}

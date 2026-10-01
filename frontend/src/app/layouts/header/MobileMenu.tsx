@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router'
 
 import { cn } from '@/shared/lib/cn'
@@ -42,14 +43,15 @@ export function MobileMenu({
   isLoggedIn: boolean
   ink: Ink
 }) {
+  const { t } = useTranslation('layout')
   const { open, setOpen, containerRef } = useDismissable()
   const diveOut = useDiveOut()
   const warm = useWarm()
   const items = [
     ...NAV_ITEMS.filter((item) => isLoggedIn || !item.requiresAuth),
     ...COMMUNITY_ITEMS.map((item) => ({
-      ...item,
-      label: `커뮤니티 · ${item.label}`,
+      to: item.to,
+      label: t('header.mobileMenu.community', { label: t(item.labelKey) }),
     })),
   ]
 
@@ -59,7 +61,7 @@ export function MobileMenu({
         type="button"
         aria-expanded={open}
         aria-haspopup="menu"
-        aria-label="메뉴"
+        aria-label={t('header.mobileMenu.label')}
         onClick={() => setOpen(!open)}
         className={cn(
           // 아이콘은 20 이지만 누르는 자리는 손가락 크기(44)로 둡니다
@@ -76,11 +78,12 @@ export function MobileMenu({
       {open && (
         <ul
           className={cn(
-            'absolute top-full right-0 z-30 mt-2.5 w-45 border',
+            // 폭은 글자를 따라 늘어납니다 — 영어의 'Community · Free board' 가 45 칸에서 두 줄로 꺾였습니다
+            'absolute top-full right-0 z-30 mt-2.5 w-max min-w-45 border',
             ink.menu,
           )}
           role="menu"
-          aria-label="메뉴"
+          aria-label={t('header.mobileMenu.label')}
         >
           {items.map((item, index) => (
             <li key={item.to} role="none">
@@ -96,7 +99,7 @@ export function MobileMenu({
                   diveOut(item.to)?.(event)
                 }}
                 className={cn(
-                  'text-body block px-3.75 py-3',
+                  'text-body block px-3.75 py-3 whitespace-nowrap',
                   ink.item,
                   index < items.length - 1 && cn('border-b', ink.itemRule),
                 )}

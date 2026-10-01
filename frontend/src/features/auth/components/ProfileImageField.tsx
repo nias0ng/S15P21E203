@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 
 import { apiErrorMessage } from '@/shared/api/http'
 import { cn } from '@/shared/lib/cn'
@@ -14,6 +15,7 @@ type Props = {
 }
 
 export function ProfileImageField({ value, onChange }: Props) {
+  const { t } = useTranslation('auth')
   const upload = useMutation({
     mutationFn: uploadProfileImage,
     onSuccess: (url) => onChange(url),
@@ -31,8 +33,8 @@ export function ProfileImageField({ value, onChange }: Props) {
     <div className="flex items-start gap-5">
       <Thumbnail
         src={value}
-        fallback="프로필"
-        alt="내 프로필 사진"
+        fallback={t('profileImage.fallback')}
+        alt={t('profileImage.alt')}
         className={cn(
           'rounded-card size-25 shrink-0',
           value === null && 'bg-line-soft',
@@ -43,10 +45,12 @@ export function ProfileImageField({ value, onChange }: Props) {
         <FileButton
           className="w-fit"
           busy={busy}
-          inputLabel="프로필 사진 고르기"
+          inputLabel={t('profileImage.pick')}
           onPick={(file) => upload.mutate(file)}
         >
-          {upload.isPending ? '올리는 중' : '이미지 변경'}
+          {upload.isPending
+            ? t('profileImage.uploading')
+            : t('profileImage.change')}
         </FileButton>
 
         <Button
@@ -57,20 +61,18 @@ export function ProfileImageField({ value, onChange }: Props) {
           isLoading={remove.isPending}
           onClick={() => remove.mutate()}
         >
-          이미지 삭제
+          {t('profileImage.remove')}
         </Button>
 
         <p className="text-ink-muted text-caption leading-relaxed">
           JPG · PNG · GIF · WEBP
-          <br />한 장당 최대 1MB
+          <br />
+          {t('profileImage.sizeLimit')}
         </p>
 
         {error != null && (
           <p role="alert" className="text-danger text-caption">
-            {apiErrorMessage(
-              error,
-              '프로필 사진을 바꾸지 못했습니다. 잠시 후 다시 시도해주세요.',
-            )}
+            {apiErrorMessage(error, t('profileImage.failed'))}
           </p>
         )}
       </div>
