@@ -28,6 +28,7 @@ import com.hyanghae.backend.perfume.dto.response.PerfumePriceResponse;
 import com.hyanghae.backend.perfume.repository.PerfumeAccordRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
 import com.hyanghae.backend.perfume.repository.PerfumeNeighborRepository;
+import com.hyanghae.backend.perfume.repository.PerfumeSimilarRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeNoteRepository;
 import com.hyanghae.backend.perfume.repository.PerfumePostRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeReviewKeywordRepository;
@@ -87,6 +88,7 @@ public class PerfumeService {
     private final PerfumeReviewSummaryRepository perfumeReviewSummaryRepository;
     private final PerfumePostRepository perfumePostRepository;
     private final PerfumeNeighborRepository perfumeNeighborRepository;
+    private final PerfumeSimilarRepository perfumeSimilarRepository;
     private final CurrentUser currentUser;
 
     public PerfumeService(
@@ -102,6 +104,7 @@ public class PerfumeService {
             PerfumeReviewSummaryRepository perfumeReviewSummaryRepository,
             PerfumePostRepository perfumePostRepository,
             PerfumeNeighborRepository perfumeNeighborRepository,
+            PerfumeSimilarRepository perfumeSimilarRepository,
             CurrentUser currentUser
     ) {
         this.perfumeRepository = perfumeRepository;
@@ -116,6 +119,7 @@ public class PerfumeService {
         this.perfumeReviewSummaryRepository = perfumeReviewSummaryRepository;
         this.perfumePostRepository = perfumePostRepository;
         this.perfumeNeighborRepository = perfumeNeighborRepository;
+        this.perfumeSimilarRepository = perfumeSimilarRepository;
         this.currentUser = currentUser;
     }
 
@@ -412,26 +416,53 @@ public class PerfumeService {
     }
 
     /**
-     * 기준 향수와 이어진 향수들을 가져옵니다. 주변 향수와 유사 향수가 이 메서드를 함께 씁니다.
+     * 기준 향수의 주변 향수를 가져옵니다. 향 지도의 이웃({@code perfume_neighbors})만 읽습니다.
      *
-     * <p>두 API 는 같은 {@code perfume_neighbors} 데이터를 읽습니다. 화면에서 놓이는 자리만
-     * 다릅니다. 나중에 근거가 갈리면 그때 메서드를 나누면 됩니다.
-     *
-     * <p>연관 관계는 계산하지 않습니다. 향수 데이터를 넣을 때 미리 정해진 쌍을 읽을 뿐입니다.
+     * <p>지도 200개끼리 미리 정해 둔 쌍이라 3D 지도가 그리는 선과 같은 목록입니다. 지도 밖
+     * 향수는 빈 목록입니다 — 비슷한 향수({@link #getSimilarPerfumes})와 달리 13만 개 전체 목록으로
+     * 채우지 않습니다. 채우면 지도에 없는 향수가 '주변' 으로 나옵니다.
      *
      * <p>{@code size} 는 페이지 크기가 아니라 앞에서 몇 개까지 줄지입니다. 응답에 전체 개수와
      * 페이지 번호가 없어 나머지를 이어서 볼 방법이 없기 때문입니다. 0 이하거나 지나치게 큰 값이
      * 와도 예외 대신 허용 범위로 맞춥니다. 목록 길이는 요청이 틀렸다고 거절할 만한 값이 아닙니다.
      *
-     * <p>이웃이 없는 향수는 빈 목록입니다. 없는 향수와 구분해야 하므로 존재하지 않는 향수에만
-     * 404 를 반환합니다.
+     * <p>없는 향수와 이웃이 없는 향수를 구분해야 하므로 존재하지 않는 향수에만 404 를 반환합니다.
      */
     @Transactional(readOnly = true)
     public RelatedPerfumesResponse getRelatedPerfumes(Long perfumeId, int size) {
         requireExistingPerfume(perfumeId);
 
-        List<RelatedPerfumeResponse> related = perfumeNeighborRepository.findNeighborsByPerfumeId(
-                perfumeId, PageRequest.of(0, Math.clamp(size, 1, MAX_PAGE_SIZE)));
+        return withThumbnails(perfumeNeighborRepository.findNeighborsByPerfumeId(
+                perfumeId, PageRequest.of(0, Math.clamp(size, 1, MAX_PAGE_SIZE))));
+    }
+
+    /**
+     * 기준 향수와 비슷한 향수를 가져옵니다. 향수 상세의 '비슷한 향수' 가 씁니다.
+     *
+     * <p><b>향 지도 이웃이 있으면 그것을, 없으면 13만 개 전체에서 미리 계산한 목록을 줍니다.</b>
+     * 이웃만 읽던 때는 지도 밖 12.9만 개의 상세에서 이 구역이 통째로 비어, 아는 향수와 닮은
+     * 향수를 찾을 길이 없었습니다(지인 피드백 F3 · F16).
+     *
+     * <p>지도 향수에 이웃을 먼저 주는 이유는 3D 지도의 선과 화면의 목록이 같아야 해서입니다.
+     * 두 목록은 같은 공식으로 계산했지만 후보가 달라(200개 대 13만 개) 순서가 다릅니다.
+     * 계산과 걸러 내는 규칙은 {@code ai/build_similars.py} 에 있습니다.
+     *
+     * <p>{@code size} 와 404 규칙은 {@link #getRelatedPerfumes} 와 같습니다.
+     */
+    @Transactional(readOnly = true)
+    public RelatedPerfumesResponse getSimilarPerfumes(Long perfumeId, int size) {
+        requireExistingPerfume(perfumeId);
+
+        Pageable limit = PageRequest.of(0, Math.clamp(size, 1, MAX_PAGE_SIZE));
+        List<RelatedPerfumeResponse> related =
+                perfumeNeighborRepository.findNeighborsByPerfumeId(perfumeId, limit);
+        if (related.isEmpty()) {
+            related = perfumeSimilarRepository.findSimilarsByPerfumeId(perfumeId, limit);
+        }
+        return withThumbnails(related);
+    }
+
+    private RelatedPerfumesResponse withThumbnails(List<RelatedPerfumeResponse> related) {
         Map<Long, String> images = loadThumbnails(
                 related.stream().map(RelatedPerfumeResponse::perfumeId).toList()
         );

@@ -32,7 +32,8 @@ public final class PresentationSeed {
     static final Set<String> CATALOG = Set.of(
             "flyway_schema_history", "brands", "notes", "accords", "seasons", "scent_regions",
             "post_categories", "map_interaction_types", "perfumes", "perfume_prices", "perfume_images",
-            "perfume_notes", "perfume_accords", "perfume_neighbors", "perfume_map_points", "perfume_scent_families");
+            "perfume_notes", "perfume_accords", "perfume_neighbors", "perfume_similars", "perfume_map_points",
+            "perfume_scent_families");
 
     private final Connection db;
     private final PresentationData data;

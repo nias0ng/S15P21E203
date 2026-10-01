@@ -241,8 +241,11 @@ export async function exitPerfumeView(
 export const RELATED_PERFUME_LIMIT = 5
 
 /**
- * `/similar` 과 `/neighbors` 가 같은 데이터를 주어 하나만 씁니다. `size` 는 쪽 크기가
- * 아니라 **최대 개수**이고, 향 지도 밖 향수는 빈 배열입니다.
+ * 향수 상세의 '비슷한 향수'. `size` 는 쪽 크기가 아니라 **최대 개수**입니다.
+ *
+ * `/similar` 를 씁니다 — 향 지도 향수는 `/neighbors` 와 같은 목록이고, 지도 밖 향수는 13만 개
+ * 전체에서 미리 계산한 목록입니다(`ai/build_similars.py`). `/neighbors` 는 지도 밖 향수에 빈
+ * 배열이라 상세에 쓰면 12.9만 개의 상세에서 이 구역이 사라집니다.
  */
 export async function getRelatedPerfumes(
   perfumeId: number,

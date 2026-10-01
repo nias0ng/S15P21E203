@@ -21,8 +21,11 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * 주변 향수와 유사 향수 조회를 실제 PostgreSQL 위에서 검증합니다.
  *
- * <p>두 API 는 같은 {@code perfume_neighbors} 데이터를 같은 형태로 내려줍니다. 그래서 동작
- * 검증을 두 URL 에 대해 함께 돌립니다. 한쪽만 고치면 바로 실패합니다.
+ * <p>향 지도 향수에서 두 API 는 같은 {@code perfume_neighbors} 데이터를 같은 형태로 내려줍니다.
+ * 그래서 동작 검증을 두 URL 에 대해 함께 돌립니다. 한쪽만 고치면 바로 실패합니다.
+ *
+ * <p>지도 밖 향수(이웃이 없는 향수)에서만 갈립니다. 유사 향수는 {@code perfume_similars} 를 읽고
+ * 주변 향수는 빈 목록입니다. 아래 '지도 밖' 테스트들이 그 갈림을 봅니다.
  *
  * <p>기준 향수 1 의 연관 향수로 2, 3, 4, 6 을 넣어 두었고 4 는 비활성입니다. 따라서 정상 응답은
  * 2, 3, 6 세 건입니다.
@@ -172,6 +175,57 @@ class PerfumeRelatedPerfumesIntegrationTest {
                 .andExpect(jsonPath("$.perfumes", Matchers.hasSize(0)));
     }
 
+    /**
+     * 지도 밖 향수는 유사 향수가 미리 계산한 목록을 줍니다. 이웃만 읽던 때는 지도 밖 12.9만 개의
+     * 상세에서 '비슷한 향수' 가 통째로 비었습니다(지인 피드백 F3 · F16).
+     */
+    @Test
+    void similarFallsBackToPrecomputedListOutsideMap() throws Exception {
+        insertSimilar(5, 3, "0.7000", 1);
+        insertSimilar(5, 4, "0.6500", 2);
+        insertSimilar(5, 6, "0.6000", 3);
+
+        mockMvc.perform(get(SIMILAR_URL, 5))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(2)))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(3))
+                .andExpect(jsonPath("$.perfumes[1].perfumeId").value(6));
+    }
+
+    /** 주변 향수는 지도의 이웃만 봅니다. 지도에 없는 향수가 '주변' 으로 나오면 안 됩니다. */
+    @Test
+    void neighborsIgnorePrecomputedListOutsideMap() throws Exception {
+        insertSimilar(5, 3, "0.7000", 1);
+
+        mockMvc.perform(get(NEIGHBORS_URL, 5))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes", Matchers.hasSize(0)));
+    }
+
+    /**
+     * 지도 향수는 미리 계산한 목록이 있어도 이웃을 줍니다. 3D 지도가 그리는 선과 화면의 목록이
+     * 같아야 합니다.
+     */
+    @Test
+    void similarPrefersMapNeighbors() throws Exception {
+        insertSimilar(1, 5, "0.9000", 1);
+
+        mockMvc.perform(get(SIMILAR_URL, 1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes[*].perfumeId", Matchers.contains(6, 3, 2)));
+    }
+
+    /** 미리 계산한 목록도 size 로 앞에서부터 자릅니다. */
+    @Test
+    void limitsPrecomputedListToRequestedSize() throws Exception {
+        insertSimilar(5, 3, "0.7000", 1);
+        insertSimilar(5, 6, "0.6000", 2);
+
+        mockMvc.perform(get(SIMILAR_URL, 5).param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes[*].perfumeId", Matchers.contains(3)));
+    }
+
     /** 연관 관계는 방향이 있습니다. 1 의 목록에 2 가 있어도 2 의 목록에 1 이 있는 것은 아닙니다. */
     @ParameterizedTest
     @ValueSource(strings = {NEIGHBORS_URL, SIMILAR_URL})
@@ -239,7 +293,15 @@ class PerfumeRelatedPerfumesIntegrationTest {
                 perfumeId, neighborPerfumeId, rank);
     }
 
+    private void insertSimilar(long perfumeId, long similarPerfumeId, String similarity, int rank) {
+        jdbcTemplate.update(
+                "INSERT INTO perfume_similars (perfume_id, similar_perfume_id, similarity, rank)"
+                        + " VALUES (?, ?, ?::numeric, ?)",
+                perfumeId, similarPerfumeId, similarity, rank);
+    }
+
     private void clearData() {
+        jdbcTemplate.update("DELETE FROM perfume_similars");
         jdbcTemplate.update("DELETE FROM perfume_neighbors");
         jdbcTemplate.update("DELETE FROM perfume_images");
         jdbcTemplate.update("DELETE FROM perfumes");

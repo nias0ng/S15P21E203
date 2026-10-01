@@ -122,6 +122,7 @@ llm_stage1.py      문장 -> 향 조건 구조화. **네트워크를 아는 유�
 server.py          HTTP 서버 (아래 참고)
 unmatched_log.py   사전이 못 받은 표현을 기록합니다 (아래 참고)
 build_data.py      원본 덤프에서 data/perfumes_nlr.csv.gz 를 다시 만듭니다
+build_similars.py  향수마다 비슷한 향수 10개를 계산해 backend/db/seed/perfume_similars.csv.gz 로 씁니다
 data/
   perfumes_nlr.csv.gz        5.0MB  원본 향수 129,161개 (추천 시 중복 9110 제외)
   domain_lexicon_v1_15.csv    31KB  한국어 향 표현 63행 -> accord
@@ -129,6 +130,7 @@ data/
   note_accord_bridge.csv      95KB  노트(향 원료) 이름 -> accord 2,925행
   note_alias_ko.csv            4KB  한국어 노트 이름 -> 영어 노트 이름
   note_alias_blocklist.csv     1KB  별칭을 품었지만 그 노트가 아닌 낱말 (미르토 -> 미르 아님)
+  similar_exclude_brands.csv   1KB  비슷한 향수 후보에서 빼는 'inspired by' 주력 브랜드
   stage1_prompt_v1.txt        2KB   ①단계 구조화 프롬프트 (sha256 앞자리 4f0a368d)
 docs/
   search_rules.md            검색 규칙 명세
