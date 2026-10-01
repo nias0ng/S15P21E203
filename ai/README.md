@@ -495,6 +495,8 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 - 다시 출시되면 그 줄을 지웁니다. 적재가 표시를 모두 지우고 파일대로 다시 걸어서 함께 풀립니다.
 
 Fragrantica 페이지는 약관상 긁어 오지 않습니다. 사람이 읽고 출처를 적습니다.
+Parfumo 는 근거로 쓰지 않습니다 — 같은 향수 페이지가 열 때마다 출시 연도와 단종 여부를 다르게
+보여 줘(2026-10-01 확인) 그 표기를 믿을 수 없습니다.
 
 ---
 

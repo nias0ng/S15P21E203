@@ -1,9 +1,9 @@
 fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
-142,Bvlgari,Bvlgari Pour Femme,DISCONTINUED,CONFIRMED,https://www.parfumo.com/Perfumes/Bvlgari/Bvlgari_pour_Femme,2026-10-01,Parfumo 단종 표기. 판매처(nostaligastore) DISCONTINUED 표기. 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
+142,Bvlgari,Bvlgari Pour Femme,DISCONTINUED,CONFIRMED,https://nostaligastore.com/products/bvlgari-pour-femme-by-bvlgari-edp-50-ml-spray-discontinued-sealed,2026-10-01,판매처(nostaligastore)가 상품명에 DISCONTINUED 표기. 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
 148,Bvlgari,BLV Pour Homme,DISCONTINUED,CONFIRMED,https://www.fragrantica.com/news/BLV-Pour-Homme-Bvlgari-Is-Leaving-14612.html,2026-10-01,Fragrantica 뉴스(2021-02-01) 단종 정리 기사. 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
-151,Bvlgari,Omnia,DISCONTINUED,CONFIRMED,https://www.parfumo.com/Perfumes/Bvlgari/Omnia,2026-10-01,Parfumo 단종 표기(2003 원작). 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
+151,Bvlgari,Omnia,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 153,Bvlgari,Aqva Pour Homme,DISCONTINUED,CONFIRMED,https://amourfragrances.com/products/aqva-pour-homme-by-bvlgari-edt-for-men,2026-10-01,판매처가 상품명에 DISCONTINUED 표기. 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
-154,Bvlgari,Black,DISCONTINUED,CONFIRMED,https://cafleurebon.com/saturday-night-classic-bulgari-black-review-annick-menardo-1998-2020-s-test-drive/,2026-10-01,2017년 단종 언급. Parfumo 단종 표기. 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
+154,Bvlgari,Black,DISCONTINUED,CONFIRMED,https://cafleurebon.com/saturday-night-classic-bulgari-black-review-annick-menardo-1998-2020-s-test-drive/,2026-10-01,2017년 단종 언급. 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
 665,Bvlgari,Rose Essentielle,DISCONTINUED,CONFIRMED,https://scentsandsensibilities.co/2020/05/08/roses-de-mai-marathon-rose-essentielle/,2026-10-01,리뷰(2020-05-08) 단종 명시. 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
 3750,Bvlgari,Jasmin Noir,DISCONTINUED,CONFIRMED,https://www.alinjazperfumes.com/product/bvlgari-jasmin-noir-eau-de-parfum-100ml-discontinued/,2026-10-01,판매처가 상품명에 discontinued 표기. 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
 11512,Bvlgari,Mon Jasmin Noir,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/bulgari-mon-jasmin-noir-edp,2026-10-01,판매처가 단종 명시. 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
@@ -75,12 +75,12 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 64745,Bvlgari,Allegra Magnifying Vanilla Essence,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 66356,Bvlgari,Omnia by Mary Katrantzou,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 68293,Bvlgari,Bvlgari Man Terrae Essence,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
-8705,Guerlain,Tonka Imperiale,DISCONTINUED,CONFIRMED,https://www.parfumo.com/Perfumes/Guerlain/Tonka_Imperiale,2026-10-01,Parfumo 단종 표기. 프랑스(fr-fr) 공식 사이트 향수 목록에 없음
-14178,Guerlain,Guerlain Shalimar Parfum Initial L'Eau,DISCONTINUED,CONFIRMED,https://www.parfumo.com/Perfumes/Guerlain/Shalimar_Parfum_Initial_L_Eau,2026-10-01,Parfumo 단종 표기. 프랑스(fr-fr) 공식 사이트 향수 목록에 없음
+8705,Guerlain,Tonka Imperiale,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
+14178,Guerlain,Guerlain Shalimar Parfum Initial L'Eau,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 213,Dior,Miss Dior Cherie,DISCONTINUED,CONFIRMED,https://escentual.com/blogs/editorial/miss-dior-cherie-is-becoming-miss-dior,2026-10-01,판매처(Escentual) 정리 글: 2012년 'Miss Dior' 로 이름이 바뀌며 매장에서 사라짐. 프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음
 1282,Dior,Midnight Poison,DISCONTINUED,CONFIRMED,https://www.coucoushop.com/dior-midnight-poison-elixir-edp-50ml-no-box.html,2026-10-01,판매처(Coucou)가 'Sold out and Discontinued Fragrances' 로 분류. 프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음
 11588,Dior,Miss Dior Cherie Eau de Parfum,DISCONTINUED,CONFIRMED,https://escentual.com/blogs/editorial/miss-dior-cherie-is-becoming-miss-dior,2026-10-01,판매처(Escentual) 정리 글: 2012년 'Miss Dior' 로 이름이 바뀌며 매장에서 사라짐. 프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음
-10105,Oriflame,Mirage,DISCONTINUED,CONFIRMED,https://www.parfumo.com/Perfumes/Oriflame/Mirage,2026-10-01,Parfumo 단종 표기. 영국 · 폴란드 공식 사이트 향수 목록에 없음
+10105,Oriflame,Mirage,DISCONTINUED,LIKELY,https://uk.oriflame.com/fragrance,2026-10-01,영국 · 폴란드 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 12687,Zara,White Jasmine,DISCONTINUED,LIKELY,https://www.zara.com/sitemaps/sitemap-index.xml.gz,2026-10-01,미국(us-en) 공식 사이트맵 향수 목록에 없음. 두 번째 근거 미확인
 14436,Zara,Black Peony,DISCONTINUED,LIKELY,https://www.zara.com/sitemaps/sitemap-index.xml.gz,2026-10-01,미국(us-en) 공식 사이트맵 향수 목록에 없음. 두 번째 근거 미확인
 16574,Zara,Oriental,DISCONTINUED,LIKELY,https://www.zara.com/sitemaps/sitemap-index.xml.gz,2026-10-01,미국(us-en) 공식 사이트맵 향수 목록에 없음. 두 번째 근거 미확인
