@@ -41,7 +41,7 @@ const MODE_LABEL: Record<SceneSearchMode, string> = {
 
 /** 지금 방식이 **무엇을 해 주는가**. 알약에 마우스를 올렸을 때만 아래로 나옵니다 */
 const MODE_HINT: Record<SceneSearchMode, string> = {
-  nl: '느낌 · 상황을 말로 적으면 어울리는 향수를 추천 해드립니다',
+  nl: '느낌 · 상황을 말로 적으면 어울리는 향수를 추천해 드립니다',
   normal: '지도에 있는 향수 200개를 이름 · 브랜드로 찾습니다',
 }
 
