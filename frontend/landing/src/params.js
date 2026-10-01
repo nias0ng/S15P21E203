@@ -778,6 +778,9 @@ export const PARAMS = {
   camSpeedPos: 1.0,
   // 1 = OS '동작 줄이기(prefers-reduced-motion)' 를 켠 사람에게는 속도에 따른 카메라 변화를 끈다 (배는 그대로 간다) · 0 = 무시
   camCalm: 1,
+  // ⭐ 앱의 '움직임 줄이기' (2026-10-01, v0.85.0 — 그래픽 설정 · PB.motion.set). 1 이면 OS 설정과 상관없이 calm 이다 (main.js applyCalm)
+  //   ⚠ 호스트가 쥐는 값이다 — 손으로 바꿀 자리가 아니다 (hostTop 과 같다)
+  motionCalm: 0,
 
   // 움직임 / 항적
   driftSpeed: 0.12,     // ⚠ clockUnified = 0 일 때만 쓰인다 (롤백 경로)

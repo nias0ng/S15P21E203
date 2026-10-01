@@ -4,6 +4,7 @@ import { useLocation } from 'react-router'
 import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 import { useIsDiving } from '@/shared/store/diveStore'
+import { useSceneCardStore } from '@/shared/store/sceneCardStore'
 import { FOCUS_RING } from '@/shared/ui/focusRing'
 
 /** 팀이 만든 피드백 구글 폼(응답자 주소) */
@@ -70,6 +71,8 @@ export function FeedbackButton() {
   const { pathname } = useLocation()
   const diving = useIsDiving()
   const onScene = pathname === ROUTES.HOME
+  // 좁은 화면에서는 카드 아랫단('이 향의 해역으로')을 덮었습니다 — 카드가 떠 있는 동안 비킵니다 (sceneCardStore)
+  const cardOpen = useSceneCardStore((state) => state.open)
   // 이 탭에서 처음 한 번만 혼자 뜹니다 (위 머리말)
   const [greeted, setGreeted] = useState(readGreeted)
   // 잠수 커튼이 덮는 동안은 띄우지 않고, 걷힌 뒤부터 시간을 잽니다 — 커튼 밑에서 사라지면 못 봅니다
@@ -90,6 +93,8 @@ export function FeedbackButton() {
       className={cn(
         'group fixed z-40',
         onScene ? 'bottom-5 left-5' : 'bottom-7.5 left-7.5',
+        'transition-[opacity,visibility] duration-200 ease-out',
+        onScene && cardOpen && 'max-[940px]:invisible max-[940px]:opacity-0',
       )}
     >
       <a

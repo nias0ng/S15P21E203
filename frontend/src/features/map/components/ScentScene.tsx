@@ -125,6 +125,12 @@ interface EngineHandle {
    */
   quality?: { get: () => unknown; set: (mode: GraphicsMode) => boolean }
   /**
+   * 움직임 줄이기 (엔진 `main.js` 의 `applyCalm` · v0.85.0). `set(true)` 면 패럴랙스 · 돌고래 · 새 · 속도에 따른
+   * 카메라를 거둡니다 — OS 의 '동작 줄이기' 가 켜져 있으면 엔진이 이미 그렇게 합니다.
+   * NOTE: 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다.
+   */
+  motion?: { get: () => unknown; set: (calm: boolean) => boolean }
+  /**
    * 그 향수의 부표로 배를 몰고 가서, 닿으면 **그 부표를 누른 것처럼** 고릅니다 (엔진 `main.js` 의
    * `goPerfume` · v0.82.0). 먼 곳이면 해도 · 미니맵과 같은 안개 전환을 탑니다.
    * 돌려주는 값은 '떠났는가' 입니다 — 지도에 없는 향수이거나 안개 전환 중이면 false 입니다.
@@ -183,6 +189,11 @@ type Props = {
    */
   onChartChange?: (open: boolean) => void
   /**
+   * 엔진의 **향수 카드가 떠 있는지** (2026-10-01 · 엔진 `<html data-card>` · v0.87.0). 좁은 화면에서 3D 위에 얹은
+   * 앱 UI(향해 일지 · 의견 단추)가 카드 아랫단을 덮어, 그동안 비키려고 듣습니다.
+   */
+  onCardChange?: (open: boolean) => void
+  /**
    * 엔진의 부팅 단계 (host.js `bootReport` — html → script → frame → boat-bytes → boat).
    * 로딩 커튼(SceneBootCurtain)이 퍼센트를 미는 데 씁니다. 배 GLB 진행은 초당 수십 번 옵니다.
    */
@@ -226,6 +237,8 @@ type Props = {
   quality?: GraphicsMode
   /** 엔진의 지금 품질 단계 — 붙을 때 한 번, 단계가 바뀔 때마다 옵니다 (자동으로 내렸을 때도) */
   onQuality?: (quality: SceneQuality) => void
+  /** 그래픽 설정의 '움직임 줄이기' — 엔진이 붙는 순간과 바뀔 때마다 겁니다 (`motion` 손잡이) */
+  calm?: boolean
   /**
    * **이 향수의 부표로 가서 고릅니다** — 이름 검색(`MapSearchModal`)에서 향수를 골랐을 때입니다.
    * 엔진이 붙어 있지 않으면 붙는 대로 갑니다.
@@ -267,6 +280,7 @@ export function ScentScene({
   coveredTop = '0px',
   onNightChange,
   onChartChange,
+  onCardChange,
   onBoot,
   onMove,
   start,
@@ -274,6 +288,7 @@ export function ScentScene({
   onLeave,
   quality = 'auto',
   onQuality,
+  calm = false,
   seek,
   onSeekMiss,
   className,
@@ -314,6 +329,7 @@ export function ScentScene({
     covered,
     onNightChange,
     onChartChange,
+    onCardChange,
     onBoot,
     onMove,
     onLeave,
@@ -329,6 +345,7 @@ export function ScentScene({
       covered,
       onNightChange,
       onChartChange,
+      onCardChange,
       onBoot,
       onMove,
       onLeave,
@@ -497,6 +514,7 @@ export function ScentScene({
         엔진이 iframe 문서의 <html> 속성으로 알리는 것들을 지켜봅니다.
           data-time   시간대 (밤이면 헤더가 남색 유리)
           data-chart  전체 화면 해도가 열렸는가 (2026-09-21 — 위 onChartChange 머리말)
+          data-card   향수 카드가 떠 있는가 (2026-10-01 — 위 onCardChange 머리말)
         ⚠️ 관찰자는 하나입니다 — 둘 다 같은 요소의 속성이라 나눌 이유가 없습니다.
       */
       timeWatch?.disconnect()
@@ -505,12 +523,13 @@ export function ScentScene({
         const report = () => {
           latest.current.onNightChange?.(html.dataset.time === 'night')
           latest.current.onChartChange?.(html.dataset.chart !== undefined)
+          latest.current.onCardChange?.(html.dataset.card !== undefined)
         }
         report()
         timeWatch = new MutationObserver(report)
         timeWatch.observe(html, {
           attributes: true,
-          attributeFilter: ['data-time', 'data-chart'],
+          attributeFilter: ['data-time', 'data-chart', 'data-card'],
         })
       }
       /*
@@ -620,6 +639,13 @@ export function ScentScene({
     if (parseSceneQuality(engine.get())?.mode === quality) return
     engine.set(quality)
   }, [ready, quality])
+
+  // 움직임 줄이기 — 그래픽 설정과 같은 길입니다. 엔진이 다시 붙어도(ready) 다시 겁니다
+  useEffect(() => {
+    const engine = handle.current?.motion
+    if (!ready || !engine) return
+    engine.set(calm)
+  }, [ready, calm])
 
   /*
    * 이름 검색에서 고른 향수로 갑니다 (위 `seek` 머리말). 한 번 간 `seq` 는 다시 안 갑니다 —

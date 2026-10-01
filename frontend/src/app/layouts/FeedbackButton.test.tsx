@@ -2,6 +2,8 @@ import { act, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { useSceneCardStore } from '@/shared/store/sceneCardStore'
+
 import { FeedbackButton } from './FeedbackButton'
 
 const NAME = '의견 보내기 (새 탭에서 설문이 열립니다)'
@@ -16,7 +18,10 @@ const renderAt = (path: string) =>
 
 const bubble = () => screen.getByText(GREETING).closest('p')
 
-beforeEach(() => sessionStorage.clear())
+beforeEach(() => {
+  sessionStorage.clear()
+  useSceneCardStore.setState({ open: false })
+})
 afterEach(() => vi.useRealTimers())
 
 describe('FeedbackButton', () => {
@@ -50,5 +55,24 @@ describe('FeedbackButton', () => {
     renderAt('/')
 
     expect(screen.getByRole('link', { name: NAME })).toHaveClass('size-12')
+  })
+
+  // 좁은 화면에서 카드 아랫단('이 향의 해역으로')을 덮었습니다 (사용성 테스트 · 모바일)
+  it('메인에서 향수 카드가 떠 있으면 좁은 화면에서 비킨다', () => {
+    useSceneCardStore.setState({ open: true })
+    renderAt('/')
+
+    expect(screen.getByRole('link', { name: NAME }).parentElement).toHaveClass(
+      'max-[940px]:invisible',
+    )
+  })
+
+  it('다른 화면에서는 카드와 상관없이 그대로 선다', () => {
+    useSceneCardStore.setState({ open: true })
+    renderAt('/perfumes')
+
+    expect(
+      screen.getByRole('link', { name: NAME }).parentElement,
+    ).not.toHaveClass('max-[940px]:invisible')
   })
 })
