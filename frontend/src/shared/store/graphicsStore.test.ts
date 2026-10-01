@@ -32,7 +32,7 @@ describe('useGraphicsStore', () => {
     const saved = JSON.parse(localStorage.getItem(KEY) ?? '{}') as {
       state?: Record<string, unknown>
     }
-    expect(saved.state).toEqual({ mode: 'low', told: [] })
+    expect(saved.state).toEqual({ mode: 'low', told: [], calm: false })
   })
 
   it('저장소의 모드를 모르면 자동으로 돌아갑니다', async () => {

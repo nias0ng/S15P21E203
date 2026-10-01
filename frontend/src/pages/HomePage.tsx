@@ -370,6 +370,7 @@ export default function HomePage() {
         onMove={reportMove}
         quality={graphics.mode}
         onQuality={graphics.onQuality}
+        calm={graphics.calm}
         start={lastBoatAt}
         landing={landing}
         onLeave={saveBoatAt}
