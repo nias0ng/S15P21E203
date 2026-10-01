@@ -25,6 +25,12 @@
   html, body { margin: 0; padding: 0; background: var(--pb-paper, #F6F5F2); }
   /* 하단 조작 안내의 방향키 몫 — 손가락으로만 쓰는 기기에는 누를 방향키가 없다 (2026-10-01) */
   @media (pointer: coarse) { .pb-help-keys { display: none; } }
+  /* ⭐ 지금 보이는 향수 (2026-10-01, v0.86.0 — #visible-perfumes · 키보드 · 화면 읽기). 초점이 들어오기 전에는 **화면에서만** 숨긴다 —
+     화면 읽기 프로그램은 늘 읽는다 (display:none 이 아니라 잘라 둔다). Tab 으로 들어오면 판이 보인다 */
+  #visible-perfumes:not(:focus-within) { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+  #visible-perfumes button { display: block; width: 100%; padding: 6px 10px; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+  #visible-perfumes button:hover, #visible-perfumes button:focus-visible { background: rgba(246,245,242,0.18); }
+  #visible-perfumes button:focus-visible { outline: 2px solid currentColor; outline-offset: -2px; }
   /* 한국어는 낱말 단위로 줄을 바꾼다 (2026-10-01 — 앱 src/styles/index.css 의 body 와 같은 규칙). 띄어쓰기 없는 긴 글자만 넘칠 때 쪼갠다 */
   body { word-break: keep-all; overflow-wrap: break-word; }
   * { box-sizing: border-box; }
@@ -481,6 +487,15 @@
 </header>
 
 <div id="stage" style="position:relative;width:100%;height:calc(var(--pb-stage-h,100vh) - var(--pb-header-h,0px));min-height:var(--pb-stage-min,560px);overflow:hidden;background:var(--pb-paper,#F6F5F2);color:var(--pb-ink,#1A1A1A);font-family:'Noto Serif KR',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,serif;cursor:default;user-select:none;">
+  <!-- ⭐ 지금 보이는 향수 (2026-10-01, v0.86.0). 부표는 캔버스 안이라 키보드로 고를 길도, 화면 읽기가 읽을 이름도 없었다
+       (사용성 테스트 · 키보드 : "부표가 Tab 에 안 잡히고, 배를 몰아 부표 위에 가도 Enter 가 안 먹는다").
+       이름표가 붙은 부표(main.js 의 이름표 줄)를 화면 왼쪽부터 단추로 세운다 — 누르면 부표를 누른 것과 같다.
+       ⚠ #stage 의 **맨 앞**이다 — 키보드로 들어오면 가장 먼저 닿는다 (예전 첫 Tab 은 오른쪽 아래 '해도 열기' 였다).
+       ⚠ 초점이 안에 있는 동안은 목록을 바꾸지 않는다 (ui.setVisiblePerfumes) — 고르는 사이에 단추가 바뀌면 엉뚱한 향수가 눌린다 -->
+  <nav id="visible-perfumes" aria-label="지금 보이는 향수" style="position:absolute;left:var(--pb-edge,56px);top:56%;transform:translateY(-50%);z-index:40;width:240px;max-height:60%;overflow:auto;padding:10px;border-radius:10px;background:var(--pb-glass,rgba(26,26,26,0.62));backdrop-filter:blur(8px);color:var(--pb-ink,#F6F5F2);text-shadow:0 0 3px var(--pb-halo,transparent);">
+    <p id="visible-perfumes-head" style="margin:0 0 6px;font-size:11px;letter-spacing:0.04em;opacity:0.85;">지금 보이는 향수</p>
+    <ul id="visible-perfumes-list" style="list-style:none;margin:0;padding:0;"></ul>
+  </nav>
 
   <div id="mount" style="position:absolute;inset:0;"></div>
 

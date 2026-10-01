@@ -72,6 +72,8 @@ const ui = createUI({
   // ⭐ 배 옆 방울을 눌렀다 (2026-09-21) — 배를 누른 것과 **같은 문**이다.
   //   ⚠ 방울은 #mount 밖이라 이 누름은 input.js 의 onPick 으로 안 간다 — 그래서 따로 받는다
   onCabin: () => { if (cabinOpen) closeCabin(); else openCabin(); },
+  // ⭐ 지금 보이는 향수에서 골랐다 (2026-10-01, v0.86.0 — 키보드 · 화면 읽기). 부표를 누른 것과 같다 (pickVisible)
+  onVisiblePick: (m) => pickVisible(m),
   onCloseCard: () => {
     marks.clearSelect();
     // ⚠ 돌아갈 곳도 같이 지운다 (2026-09-12 저녁) — 안 지우면 호버가 벗어날 때
@@ -753,6 +755,8 @@ let pendingSea = null;
 let pendingTravel = null;
 // 이름 검색으로 찾아가 닿은 부표 { m, at } — 안개가 걷히고 부표가 떠오르면 틱이 고른다 (goPerfume). 직접 조타 · 누르기 · 다른 떠나기가 오면 버린다
 let pendingPick = null;
+// 지금 보이는 향수 목록을 마지막으로 채운 시각 (틱의 t · 이름표 줄)
+let visibleAt = -1;
 // ⭐ 클릭 항해의 **일반 속도** (스로틀 0..1) — 자동 조타가 가속이 아닐 때의 값. 예전 틱의 숫자 0.72 를 이름으로 뺐다 (2026-09-15, v0.65.0 · 값은 그대로)
 const SAIL_NORMAL = 1.0;
 // 지금 속도가 일반(0) ~ 최대 가속(1) 사이 어디인가. 일반보다 느리면 음수. ⚠ 2026-09-22 : cruise = boost = 1.0 인 지금 분모가 0 이고 nav.speed 는 목표에 아래에서 수렴하므로 **k 는 늘 0 이하다** — sailBoostKeys 를 0 으로 꺼 둔 까닭이다
@@ -1052,6 +1056,26 @@ function goPerfume(fid) {
   if (!m) return false;
   // ⚠ 목표에 부표를 싣는다 — 연출이 걷히길 기다리는 길(pendingTravel)로 미뤄져도 같이 간다
   return startTravel({ key: m.zone, name: m.nameKo || m.name, x: m.x, z: m.z, custom: true, pickMark: m });
+}
+// ⭐ 지금 보이는 향수(#visible-perfumes)에서 고른 부표 (2026-10-01, v0.86.0). 누르기와 같은 문을 지난다 —
+//   앱 창이 떠 있거나(hostHold) 전환 중(busy · 안개)이면 쉰다 (onPick 의 첫 줄들과 같다). 고르면 카드의 [자세히 보기] 로 초점을 넘긴다
+function pickVisible(m) {
+  if (hostHold || zoneBlocks() || travel.busy || !m) return;
+  if (cabinOpen) closeCabin();
+  pendingPick = null;
+  // ⚠ 초점이 머무는 동안 목록은 안 바뀌어서, 그새 화면 밖으로 간 부표가 남아 있을 수 있다 — 그때는 이름 검색처럼 그 부표로 간다 (goPerfume)
+  if (!m.on || m.fade < 0.3) { if (!(m.perfume && goPerfume(m.perfume.id))) return; }
+  else pickArrived(m);
+  // ⚠⚠ 카드는 한 번에 안 선다 — 고르는 순간 섰다가, 부표가 잠겼다 새 자리에서 솟는 동안 숨었다 다시 뜬다 (cardFollowFade · 약 1.4초).
+  //   처음 섰을 때 초점을 넘기면 숨는 순간 초점이 body 로 떨어진다 (실측). 그래서 **0.4초 내리 떠 있을 때** 넘긴다 (0.1초마다 · 8초에서 그친다 — 먼 부표로 떠나는 길은 안개 전환까지 걸린다)
+  let tries = 0, steady = 0;
+  const pass = () => {
+    if (!ui.focusInVisible()) return;
+    steady = ui.cardShown() ? steady + 1 : 0;
+    if (steady >= 4 && ui.focusCard()) return;
+    if (++tries < 80) setTimeout(pass, 100);
+  };
+  setTimeout(pass, 100);
 }
 // 닿은 부표를 고른다 — onPick 의 부표 갈래와 **같은 일**이다 (고르기 · 12개 · 앱 알림 · 향해 일지).
 //   ⚠ pickSail 은 안 건다 — 이미 곁에 와 있다. 커서 자리를 지금 호버로 맞춰 두어야 다음 프레임에 카드가 안 깜빡인다 (onPick 의 hoverX 주석)
@@ -2311,6 +2335,12 @@ function tick(ts) {
     }
     ui.showMarkLabels(items);
     focusLabelsOn = true;
+    // ⭐ 지금 보이는 향수 — **이름표가 보이는** 지도 부표를 화면 왼쪽부터 (v0.86.0). 0.5초마다 · 바뀔 때만 DOM 을 쓴다 (ui.setVisiblePerfumes)
+    if (t - visibleAt > 0.5) {
+      visibleAt = t;
+      const vis = items.filter(L => L.a > 0.3 && L.m && L.m.src === 'map' && L.m.perfume).sort((p, q) => p.x - q.x).slice(0, 12);
+      ui.setVisiblePerfumes(vis.map(L => ({ key: L.m.perfume.id, text: (L.m.nameKo || L.m.name) + ' · ' + (L.m.perfume.brandKo || L.m.perfume.brand || ''), m: L.m })));
+    }
   } else if (!allLabels && marks.focusActive) {
     // 예전 (markLabels 0) — 향수 고르기의 12개 **밑**에만. 부표 반지름만큼 내려 투영한다
     const ko = (P.markNameKo === undefined ? 1 : P.markNameKo) >= 0.5;
@@ -2657,7 +2687,8 @@ const onKeyExit = (e) => {
   //     그래도 둔다 : 사용자가 3D 를 다시 누르지 않고 탭으로 포커스를 되돌린 경우가 남는다
   if (cabinOpen) { closeCabin(); return; }
   // 향수 고르기가 먼저다 — 떠 있는 12개를 거두고 끝낸다 (연출까지 한 번에 나가지 않는다)
-  if (marks.focusing) { marks.focusOff(); marks.clearSelect(); clickMark = null; return; }
+  // ⚠ 카드 안(키보드로 고른 [자세히 보기] 등)에서 닫았으면 초점을 목록으로 돌려준다 — 안 돌리면 숨은 카드와 함께 초점이 사라진다 (v0.86.0)
+  if (marks.focusing) { const back = ui.cardHasFocus(); marks.focusOff(); marks.clearSelect(); clickMark = null; if (back) ui.focusVisiblePerfumes(); return; }
   if (phase.cue.zone) { if (!phase.cue.busy) phase.leave(); return; }
   // ⭐ 그다음이 클릭 항해의 가속 끄기 (v0.65.0 — sailBoostKey) — 고르기도 존 연출도 없을 때만. 최대 가속에 닿기 전이면 아무 일도 없다
   sailBoostKey(false);
