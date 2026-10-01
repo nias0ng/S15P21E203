@@ -7,7 +7,6 @@
  */
 import './recommend-letter.css'
 
-export { NlrFeedbackModal } from './components/NlrFeedbackModal'
 export { RecommendModal } from './components/RecommendModal'
 export { RecommendLetter, type LetterFacts } from './components/RecommendLetter'
 export { accordLabel } from './accordNames'
