@@ -23,6 +23,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&display=swap" rel="stylesheet">
 <style>
   html, body { margin: 0; padding: 0; background: var(--pb-paper, #F6F5F2); }
+  /* 한국어는 낱말 단위로 줄을 바꾼다 (2026-10-01 — 앱 src/styles/index.css 의 body 와 같은 규칙). 띄어쓰기 없는 긴 글자만 넘칠 때 쪼갠다 */
+  body { word-break: keep-all; overflow-wrap: break-word; }
   * { box-sizing: border-box; }
   canvas { display: block; }
   a { color: #1A1A1A; text-decoration: none; }

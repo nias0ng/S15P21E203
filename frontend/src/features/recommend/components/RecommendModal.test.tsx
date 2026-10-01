@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { readOpenRecommendation } from '../openRecommendation'
 import type { RecommendResult } from '../types'
 
 import { RecommendModal } from './RecommendModal'
@@ -213,6 +214,64 @@ describe('RecommendModal', () => {
       expect(
         screen.queryByRole('group', { name: '추천 만족도' }),
       ).not.toBeInTheDocument()
+    })
+  })
+
+  /*
+    상세에 다녀오면 이 화면이 처음부터 다시 섭니다. 열려 있던 결과를 그대로 펴야 비교하던 다섯
+    장이 남고, 같은 손잡이라 설문도 한 번만 걸립니다 (`openRecommendation`).
+  */
+  describe('상세에 다녀와 다시 펼치기', () => {
+    beforeEach(() => sessionStorage.clear())
+
+    it('열려 있던 결과를 주면 서버에 다시 묻지 않고 그대로 편다', async () => {
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <MemoryRouter>
+            <RecommendModal
+              query={QUERY}
+              onClose={vi.fn()}
+              restored={{ query: QUERY, result: result() }}
+            />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      )
+
+      expect(await screen.findByText('오 로즈')).toBeInTheDocument()
+      expect(api.getRecommendation).not.toHaveBeenCalled()
+    })
+
+    it('다른 말이면 열려 있던 결과를 쓰지 않는다', async () => {
+      api.getRecommendation.mockResolvedValue(result())
+
+      render(
+        <QueryClientProvider
+          client={
+            new QueryClient({ defaultOptions: { queries: { retry: false } } })
+          }
+        >
+          <MemoryRouter>
+            <RecommendModal
+              query={QUERY}
+              onClose={vi.fn()}
+              restored={{ query: '다른 말', result: result() }}
+            />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      )
+
+      await waitFor(() => expect(api.getRecommendation).toHaveBeenCalledOnce())
+    })
+
+    it('결과가 서면 담아 두고, 사람이 닫으면 버린다', async () => {
+      api.getRecommendation.mockResolvedValue(result())
+
+      renderModal()
+      await screen.findByText('오 로즈')
+      expect(readOpenRecommendation(QUERY)?.result.perfumes).toHaveLength(1)
+
+      await userEvent.click(screen.getByRole('button', { name: '닫기' }))
+      expect(readOpenRecommendation(QUERY)).toBeUndefined()
     })
   })
 })

@@ -311,7 +311,11 @@ const zones = createZones({
   //   ⚠ 연출이 아직 나가는 중(busy)이면 enter 가 거절된다 — 떠날 때 leave() 를 부르고 1.8초 뒤에
   //     도착하는 흐름이 정확히 그 틈에 걸린다. 그래서 거절되면 **미뤄 뒀다가** 틱에서 다시 건다
   // ⚠ Shift 바다 누르기(sea)의 목표는 해역이 아니다 — 닿으면 조용히 선다 (존 연출을 안 건다)
-  onArrive: (a) => { if (a && !a.sea) arriveAt(a.key); },
+  // ⭐ 이름 검색에서 고른 향수(goPerfume)로 간 길이면 **존 연출 대신 그 부표를 고른다** — 연출 중에는 12개가 안 솟는다 (onPick 주석)
+  onArrive: (a) => {
+    if (a && a.pickMark) { pendingPick = { m: a.pickMark, at: t }; return; }
+    if (a && !a.sea) arriveAt(a.key);
+  },
   // ⭐ 향 지도가 켜져 있으면 그 존의 대표 향수 자리로 간다 (scentmap.js 의 메도이드).
   //   미니맵이 찍은 **임의의 자리**(custom)는 그 좌표 그대로 간다.
   //   ⚠ marks 는 아래에서 만들어진다 — 화살표라 **부를 때** 이름이 풀린다 (위 createUI 와 같은 이유)
@@ -358,6 +362,7 @@ const input = createInput(ui.mount, {
     travel.cancel();
     pendingSea = null;   // 연출이 걷히길 기다리던 바다 떠나기도 놓는다 (seaGo)
     pendingTravel = null;   // 먼 곳 이동도 (startTravel)
+    pendingPick = null;   // 이름 검색으로 찾아간 부표를 고르려던 것도 (goPerfume)
     if (marks.focusing) { marks.focusOff(); marks.clearSelect(); clickMark = null; }
   },
   onPick: (nx, ny, e) => {
@@ -370,6 +375,7 @@ const input = createInput(ui.mount, {
     //   찢어지진 않지만, 여기서 막지 않으면 트윈이 도는 동안 카드가 바뀌어 **화면과 카드가
     //   서로 다른 향을 가리킨다.** 안개가 덮여 있는 동안도 같다
     if (zoneBlocks() || travel.busy) return;
+    pendingPick = null;   // 사람이 직접 누른 것이 이긴다 (goPerfume)
     const m = marks.pick(view, nx, ny);
     // ⭐ **빈 바다** → 그 자리로 부스트 자동 조타 (seaGo). 부표 위의 누름은 예전 그대로 고르기다.
     //   2026-09-13 밤 (seaClickGo) : **Shift 없이** 누르기만 해도 간다 — v0.57.0 은 Shift 를 눌러야 갔다 (사용자 요청을 잘못 읽었다 · CHANGELOG v0.58.0).
@@ -745,6 +751,8 @@ let pendingArrive = null;
 let pendingSea = null;
 // 연출 중에 고른 먼 곳 이동 (카드 '이 향의 해역으로' · 검색창 · 해도) — 들어오는 중이면 다 들어온 순간 퇴장을 걸고, 다 걷히면 틱이 travel.start 를 건다 (startTravel 주석 · travelAfterZone)
 let pendingTravel = null;
+// 이름 검색으로 찾아가 닿은 부표 { m, at } — 안개가 걷히고 부표가 떠오르면 틱이 고른다 (goPerfume). 직접 조타 · 누르기 · 다른 떠나기가 오면 버린다
+let pendingPick = null;
 // ⭐ 클릭 항해의 **일반 속도** (스로틀 0..1) — 자동 조타가 가속이 아닐 때의 값. 예전 틱의 숫자 0.72 를 이름으로 뺐다 (2026-09-15, v0.65.0 · 값은 그대로)
 const SAIL_NORMAL = 1.0;
 // 지금 속도가 일반(0) ~ 최대 가속(1) 사이 어디인가. 일반보다 느리면 음수. ⚠ 2026-09-22 : cruise = boost = 1.0 인 지금 분모가 0 이고 nav.speed 는 목표에 아래에서 수렴하므로 **k 는 늘 0 이하다** — sailBoostKeys 를 0 으로 꺼 둔 까닭이다
@@ -935,6 +943,7 @@ function startTravel(target) {
   if (target.key && !target.sea) gate.preload(target.key);
   if (marks.focusing) { marks.focusOff(); marks.clearSelect(); clickMark = null; }
   pendingArrive = null;
+  pendingPick = null;   // 새 떠나기가 이긴다 — 고르려던 부표는 놓는다 (goPerfume 은 목표에 다시 싣는다)
   pendingSea = null;   // 먼 곳 이동이 이긴다 — 연출이 걷히길 기다리던 바다 떠나기는 버린다 (seaGo)
   // ⭐⭐ 연출 중이면 **연출이 다 걷힌 뒤에** 떠난다 (2026-09-14, travelAfterZone) — 카드 '이 향의 해역으로' · 검색창 · 해도가 이 길로 온다.
   //   사용자 : *"카드랑 검색도 연출이 끝나고 출발하게"*. 확인 받은 해석 : 떠나기는 연출을 끝으로 건너뛰지 않는다 — **남은 머묾을 버리고 퇴장 연출(1.9초)을
@@ -992,6 +1001,7 @@ function seaGo(nx, ny) {
   if (phase.cue.zone && !phase.cue.busy) phase.leave();
   travel.cancel();
   pendingArrive = null;
+  pendingPick = null;
   pendingTravel = null;   // 새로 누른 바다가 이긴다 — 연출이 걷히길 기다리던 먼 곳 이동은 버린다 (startTravel)
   seaBlockT = 0;
   if (zoneEnds) {
@@ -1029,6 +1039,31 @@ function goRegion(key) {
   startTravel({ key: a.key, name: a.name, x: an.x, z: an.z, custom: true });
 }
 function goSearch(q) { const a = findArea(q); if (a) goRegion(a.key); }
+
+// ⭐⭐ **이름 검색에서 고른 향수로 간다** (2026-10-01, v0.82.0 — 앱 `MapSearchModal` · `PB.goPerfume`).
+//   사용성 테스트(7명 중 7명) : '지도에서 찾기' 결과를 누르면 지도 속 그 향수가 아니라 향수 목록 화면으로 튕겼고,
+//   거기서 이름으로 다시 찾다 0건이 나왔다. 이제 앱이 fragrantica id 를 넘기면 **그 부표 곁으로 떠나고**
+//   (멀면 안개 전환 — 해도 · 미니맵과 같은 startTravel 길), 닿으면 **그 부표를 누른 것과 같은 일**을 한다 (pickArrived).
+//   ⚠ 도착해도 존 연출을 안 건다 — 해역이 아니라 향수를 찾아 왔고, 연출 중에는 12개가 안 솟는다 (onPick 주석)
+//   ⚠ 돌려주는 값 = 떠났는가. 지도에 없는 향수 · 안개가 덮여 있는 중이면 false — 앱이 상세 화면으로 대신 보낸다
+function goPerfume(fid) {
+  if (!marks.map) return false;
+  const m = marks.list.find(q => q.src === 'map' && q.perfume && q.perfume.id === fid);
+  if (!m) return false;
+  // ⚠ 목표에 부표를 싣는다 — 연출이 걷히길 기다리는 길(pendingTravel)로 미뤄져도 같이 간다
+  return startTravel({ key: m.zone, name: m.nameKo || m.name, x: m.x, z: m.z, custom: true, pickMark: m });
+}
+// 닿은 부표를 고른다 — onPick 의 부표 갈래와 **같은 일**이다 (고르기 · 12개 · 앱 알림 · 향해 일지).
+//   ⚠ pickSail 은 안 건다 — 이미 곁에 와 있다. 커서 자리를 지금 호버로 맞춰 두어야 다음 프레임에 카드가 안 깜빡인다 (onPick 의 hoverX 주석)
+function pickArrived(m) {
+  marks.select(m);
+  hoverMark = m; clickMark = m; hoverX = input.state.mx; hoverY = input.state.my;
+  if ((P.focusOn === undefined ? 1 : P.focusOn) < 0.5 || phase.cue.zone) return;
+  startFocus(m);
+  const exRef = perfumeRef(m);
+  if (exRef) callHost('exploreSimilar', exRef);
+  if (exRef) hostMove({ perfumeId: exRef.perfumeId, x: exRef.mx, y: exRef.my, regionKey: exRef.family });
+}
 
 // 연출 구도(cl = 1)의 **최종** 카메라 — 속도 0 · 패럴랙스 없음. 슬롯은 이 카메라로 잡는다
 //   (marks.js 의 focus 주석 : 지금 카메라로 매 프레임 다시 잡으면 트윈 동안 부표가 미끄러진다)
@@ -1878,6 +1913,14 @@ function tick(ts) {
     if (phase.cue.phase === 'inspecting') phase.leave();
     else if (phase.cue.phase === 'sailing') { travel.start(pendingTravel); pendingTravel = null; }
   }
+  // 이름 검색으로 찾아가 닿은 부표 (goPerfume) — 안개가 다 걷히고 부표가 떠오른 뒤에 고른다.
+  //   ⚠ 닿은 프레임에는 안개가 걷히는 중이고 부표가 아직 페이드 인 전이다 — 그때 고르면 12개를 고를 무리(m.on)가 비어 있다.
+  //   문턱은 카드가 따라 뜨는 값(cardFollowFade)과 같다 · 4초 안에 안 뜨면(가라앉은 채 · 시야 밖) 놓는다 — 배는 이미 곁에 와 있다
+  if (pendingPick && !travel.busy && !phase.cue.busy) {
+    const m = pendingPick.m;
+    if (m.on && m.fade >= (P.cardFollowFade === undefined ? 0.35 : P.cardFollowFade)) { pendingPick = null; pickArrived(m); }
+    else if (t - pendingPick.at > 4) pendingPick = null;
+  }
 
   // ── 향수 고르기의 카메라 섞임. ⚠ 존 연출과 **같은 구도**(cue.look → zoneYaw/Pitch/Dist/LookX/Y)를 쓴다 —
   //   사용자 : *"연출 구도에 맞게 쉽게 클릭할 수 있도록"*. 들어갈 때 1.4초 · 나올 때 1.1초, inOutCubic
@@ -2621,7 +2664,7 @@ const onKeyExit = (e) => {
 };
 window.addEventListener('keydown', onKeyExit);
 
-window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, dive: hostDive, diveReport, cabinIn: hostCabinIn, cabinInReport, goRegion, startTravel, startFocus, startAt, boatAt, zoneReport, setHost, boot: bootNow, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, pod, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
+window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, dive: hostDive, diveReport, cabinIn: hostCabinIn, cabinInReport, goRegion, goPerfume, startTravel, startFocus, startAt, boatAt, zoneReport, setHost, boot: bootNow, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, pod, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
   // ⭐ 품질 단계 (S15P21E203-435) — PB.quality.get() · PB.quality.set('auto' | 'high' | 'mid' | 'low'). 앱의 그래픽 설정이 set 을 부른다
   quality: { get: () => quality.info(), set: (m) => quality.setMode(m) },
   // ⭐ 반응형 검산 (2026-09-11 오후) — 제품 UI 상자들의 자리 · 서로 겹침 · 화면 밖 · 스크롤 · 수면 타이포 꼭대기와 정보 블록의 간격.
