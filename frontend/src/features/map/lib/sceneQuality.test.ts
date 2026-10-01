@@ -37,6 +37,7 @@ describe('parseSceneQuality', () => {
   it('모드나 단계가 모르는 값이면 버립니다', () => {
     expect(parseSceneQuality({ mode: 'ultra', tier: 'high' })).toBeNull()
     expect(parseSceneQuality({ mode: 'auto', tier: 'max' })).toBeNull()
+    expect(parseSceneQuality({ mode: 'min', tier: 'min' })?.tier).toBe('min')
     expect(parseSceneQuality(null)).toBeNull()
     expect(parseSceneQuality('high')).toBeNull()
   })
@@ -72,11 +73,15 @@ describe('qualityNotice', () => {
   it('내장 그래픽이 자동으로 낮게 시작하면 알립니다', () => {
     expect(qualityNotice(quality())).toBe('startLow')
     expect(qualityNotice(quality({ gpuClass: 'software' }))).toBe('startLow')
+    expect(qualityNotice(quality({ gpuClass: 'software', tier: 'min' }))).toBe(
+      'startLow',
+    )
   })
 
   it('외장 그래픽이거나 사람이 고른 낮음이면 시작을 알리지 않습니다', () => {
     expect(qualityNotice(quality({ gpuClass: 'discrete' }))).toBeNull()
     expect(qualityNotice(quality({ mode: 'low' }))).toBeNull()
+    expect(qualityNotice(quality({ mode: 'min', tier: 'min' }))).toBeNull()
     expect(qualityNotice(quality({ tier: 'mid' }))).toBeNull()
   })
 
