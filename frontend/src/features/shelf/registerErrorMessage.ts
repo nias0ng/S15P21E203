@@ -1,6 +1,20 @@
 import { apiErrorMessage } from '@/shared/api/http'
+import { i18n } from '@/shared/i18n'
 
-import { ShelfRegisterPartialError } from './hooks/useShelfActions'
+import {
+  ShelfRegisterPartialError,
+  type ShelfPart,
+} from './hooks/useShelfActions'
+
+/**
+ * 절반만 끝난 저장에서 빠진 칸들을 지금 화면 언어의 이름으로 잇습니다("적합도 · 메모").
+ *
+ * @param parts 오류가 들고 온 빠진 칸
+ * @returns 토스트 문장에 끼울 이름 묶음
+ */
+export function shelfPartNames(parts: readonly ShelfPart[]): string {
+  return parts.map((part) => i18n.t(`shelf:part.${part}`)).join(' · ')
+}
 
 /**
  * 진열대에 담기가 실패했을 때 토스트에 적을 문장. 토스트를 띄우는 일은 화면이 합니다.
@@ -13,7 +27,9 @@ import { ShelfRegisterPartialError } from './hooks/useShelfActions'
  */
 export function shelfRegisterErrorMessage(error: unknown): string {
   if (error instanceof ShelfRegisterPartialError) {
-    return `진열대에 담았지만 ${error.missing.join(' · ')}은(는) 저장하지 못했습니다`
+    return i18n.t('shelf:registerError.partial', {
+      parts: shelfPartNames(error.missing),
+    })
   }
-  return apiErrorMessage(error, '진열대에 저장하지 못했습니다.')
+  return apiErrorMessage(error, i18n.t('shelf:registerError.fallback'))
 }

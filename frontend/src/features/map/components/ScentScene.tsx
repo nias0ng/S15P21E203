@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
+import type { Locale } from '@/shared/i18n/locale'
 import { cn } from '@/shared/lib/cn'
 import { useDiveStore } from '@/shared/store/diveStore'
 import type { GraphicsMode, SceneQuality } from '@/shared/store/graphicsStore'
+import { useLocale } from '@/shared/store/localeStore'
 
 import { setBoatAnchorSource, type BoatAnchor } from '../lib/boatAnchor'
 import {
@@ -124,6 +127,25 @@ interface EngineHandle {
    * NOTE: 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다. 그때는 설정 단추만 남고 엔진은 늘 같은 화면입니다.
    */
   quality?: { get: () => unknown; set: (mode: GraphicsMode) => boolean }
+  /**
+   * 엔진 안의 글자(설명문구 · 카드 · 해도) 언어를 바꿉니다. 처음 언어는 주소의 `?lang=` 으로 읽고,
+   * 뜬 뒤에 헤더에서 바꾸면 이것으로 겁니다.
+   *
+   * NOTE: 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다. 그때는 엔진 글자만 처음 언어로 남습니다.
+   */
+  setLang?: (lang: Locale) => void
+  /**
+   * 움직임 줄이기 (엔진 `main.js` 의 `applyCalm` · v0.85.0). `set(true)` 면 패럴랙스 · 돌고래 · 새 · 속도에 따른
+   * 카메라를 거둡니다 — OS 의 '동작 줄이기' 가 켜져 있으면 엔진이 이미 그렇게 합니다.
+   * NOTE: 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다.
+   */
+  motion?: { get: () => unknown; set: (calm: boolean) => boolean }
+  /**
+   * 그 향수의 부표로 배를 몰고 가서, 닿으면 **그 부표를 누른 것처럼** 고릅니다 (엔진 `main.js` 의
+   * `goPerfume` · v0.82.0). 먼 곳이면 해도 · 미니맵과 같은 안개 전환을 탑니다.
+   * 돌려주는 값은 '떠났는가' 입니다 — 지도에 없는 향수이거나 안개 전환 중이면 false 입니다.
+   */
+  goPerfume?: (fragranticaId: number) => boolean
 }
 
 type Props = {
@@ -177,6 +199,11 @@ type Props = {
    */
   onChartChange?: (open: boolean) => void
   /**
+   * 엔진의 **향수 카드가 떠 있는지** (2026-10-01 · 엔진 `<html data-card>` · v0.87.0). 좁은 화면에서 3D 위에 얹은
+   * 앱 UI(향해 일지 · 의견 단추)가 카드 아랫단을 덮어, 그동안 비키려고 듣습니다.
+   */
+  onCardChange?: (open: boolean) => void
+  /**
    * 엔진의 부팅 단계 (host.js `bootReport` — html → script → frame → boat-bytes → boat).
    * 로딩 커튼(SceneBootCurtain)이 퍼센트를 미는 데 씁니다. 배 GLB 진행은 초당 수십 번 옵니다.
    */
@@ -220,6 +247,21 @@ type Props = {
   quality?: GraphicsMode
   /** 엔진의 지금 품질 단계 — 붙을 때 한 번, 단계가 바뀔 때마다 옵니다 (자동으로 내렸을 때도) */
   onQuality?: (quality: SceneQuality) => void
+  /** 그래픽 설정의 '움직임 줄이기' — 엔진이 붙는 순간과 바뀔 때마다 겁니다 (`motion` 손잡이) */
+  calm?: boolean
+  /**
+   * **이 향수의 부표로 가서 고릅니다** — 이름 검색(`MapSearchModal`)에서 향수를 골랐을 때입니다.
+   * 엔진이 붙어 있지 않으면 붙는 대로 갑니다.
+   *
+   * ⚠️ `seq` 가 바뀔 때마다 한 번 갑니다 — 같은 향수를 두 번 골라도 두 번 가야 해서(그새 배를
+   * 몰았을 수 있습니다) 향수 번호만으로는 못 가립니다.
+   */
+  seek?: { fragranticaId: number; seq: number } | null
+  /**
+   * 엔진이 그 향수로 못 갔습니다 — 지도에 없는 향수이거나, 그 기능 전 엔진 빌드이거나, 안개 전환 중입니다.
+   * 화면이 다른 길(향수 상세)로 보낼 자리입니다.
+   */
+  onSeekMiss?: (fragranticaId: number) => void
   className?: string
 }
 
@@ -248,6 +290,7 @@ export function ScentScene({
   coveredTop = '0px',
   onNightChange,
   onChartChange,
+  onCardChange,
   onBoot,
   onMove,
   start,
@@ -255,11 +298,18 @@ export function ScentScene({
   onLeave,
   quality = 'auto',
   onQuality,
+  calm = false,
+  seek,
+  onSeekMiss,
   className,
 }: Props) {
+  const { t } = useTranslation('map')
+  const locale = useLocale()
   const frame = useRef<HTMLIFrameElement>(null)
   /** 엔진 주소에 싣는 처음 설정 — 주소는 한 번만 넣으므로 그때의 값만 씁니다 (그 뒤는 아래 effect 가 겁니다) */
   const initialQuality = useRef(quality)
+  /** 엔진 주소에 싣는 처음 언어 — 품질과 같은 사정으로 그 뒤는 아래 effect 가 `setLang` 으로 겁니다 */
+  const initialLocale = useRef(locale)
   const probe = useRef<HTMLDivElement>(null)
   /** 붙어 있는 엔진 (`window.PB`). 아래 두 효과가 나눠 쓰므로 ref 에 둡니다 */
   const handle = useRef<EngineHandle | null>(null)
@@ -293,10 +343,12 @@ export function ScentScene({
     covered,
     onNightChange,
     onChartChange,
+    onCardChange,
     onBoot,
     onMove,
     onLeave,
     onQuality,
+    onSeekMiss,
   })
   useEffect(() => {
     latest.current = {
@@ -307,10 +359,12 @@ export function ScentScene({
       covered,
       onNightChange,
       onChartChange,
+      onCardChange,
       onBoot,
       onMove,
       onLeave,
       onQuality,
+      onSeekMiss,
     }
   })
 
@@ -474,6 +528,7 @@ export function ScentScene({
         엔진이 iframe 문서의 <html> 속성으로 알리는 것들을 지켜봅니다.
           data-time   시간대 (밤이면 헤더가 남색 유리)
           data-chart  전체 화면 해도가 열렸는가 (2026-09-21 — 위 onChartChange 머리말)
+          data-card   향수 카드가 떠 있는가 (2026-10-01 — 위 onCardChange 머리말)
         ⚠️ 관찰자는 하나입니다 — 둘 다 같은 요소의 속성이라 나눌 이유가 없습니다.
       */
       timeWatch?.disconnect()
@@ -482,12 +537,13 @@ export function ScentScene({
         const report = () => {
           latest.current.onNightChange?.(html.dataset.time === 'night')
           latest.current.onChartChange?.(html.dataset.chart !== undefined)
+          latest.current.onCardChange?.(html.dataset.card !== undefined)
         }
         report()
         timeWatch = new MutationObserver(report)
         timeWatch.observe(html, {
           attributes: true,
-          attributeFilter: ['data-time', 'data-chart'],
+          attributeFilter: ['data-time', 'data-chart', 'data-card'],
         })
       }
       /*
@@ -536,7 +592,11 @@ export function ScentScene({
     // 메인 스레드를 1~3초 막는 동안에도 커튼이 움직입니다. 늦어지는 건 30ms 남짓입니다 (2026-09-17 실측)
     let raf = requestAnimationFrame(() => {
       raf = requestAnimationFrame(() => {
-        el.src = engineSrc(ENGINE_SRC, initialQuality.current)
+        el.src = engineSrc(
+          ENGINE_SRC,
+          initialQuality.current,
+          initialLocale.current,
+        )
       })
     })
     return () => {
@@ -598,6 +658,35 @@ export function ScentScene({
     engine.set(quality)
   }, [ready, quality])
 
+  // 움직임 줄이기 — 그래픽 설정과 같은 길입니다. 엔진이 다시 붙어도(ready) 다시 겁니다
+  useEffect(() => {
+    const engine = handle.current?.motion
+    if (!ready || !engine) return
+    engine.set(calm)
+  }, [ready, calm])
+
+  /*
+   * 헤더에서 언어를 바꾸면 엔진 글자도 따라가게 겁니다. 엔진이 붙는 순간에도 한 번 부릅니다 —
+   * 주소에 실은 처음 언어와 지금 언어가 다를 수 있습니다(엔진이 뜨는 동안 바꾼 경우).
+   */
+  useEffect(() => {
+    if (!ready) return
+    handle.current?.setLang?.(locale)
+  }, [ready, locale])
+
+  /*
+   * 이름 검색에서 고른 향수로 갑니다 (위 `seek` 머리말). 한 번 간 `seq` 는 다시 안 갑니다 —
+   * 엔진이 다시 붙어 `ready` 가 흔들려도 배가 같은 향수로 또 떠나지 않게.
+   */
+  const sought = useRef<number | null>(null)
+  useEffect(() => {
+    const engine = handle.current
+    if (!ready || !engine || !seek || sought.current === seek.seq) return
+    sought.current = seek.seq
+    const went = engine.goPerfume?.(seek.fragranticaId) ?? false
+    if (!went) latest.current.onSeekMiss?.(seek.fragranticaId)
+  }, [ready, seek])
+
   return (
     <>
       {/*
@@ -616,7 +705,7 @@ export function ScentScene({
       {/* 주소(src)는 위 effect 가 두 장 뒤에 넣습니다 */}
       <iframe
         ref={frame}
-        title="향 지도"
+        title={t('scene.title')}
         className={cn(
           'block size-full border-0 transition-opacity duration-300',
           ready ? 'opacity-100' : 'opacity-0',

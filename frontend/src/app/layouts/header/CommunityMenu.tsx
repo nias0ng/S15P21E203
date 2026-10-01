@@ -1,19 +1,16 @@
+import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router'
 
-import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 
+import { COMMUNITY_ITEMS } from './navItems'
 import { inkLink, type Ink } from './tone'
 import { useDismissable } from './useDismissable'
 import { useDiveOut } from './useDiveOut'
 import { useWarm } from './useWarm'
 
-const COMMUNITY_ITEMS = [
-  { to: ROUTES.COMMUNITY_REVIEWS, label: '후기' },
-  { to: ROUTES.COMMUNITY_FREE, label: '자유' },
-]
-
 export function CommunityMenu({ ink }: { ink: Ink }) {
+  const { t } = useTranslation('layout')
   const { open, setOpen, containerRef } = useDismissable()
   const diveOut = useDiveOut()
   const warm = useWarm()
@@ -59,7 +56,7 @@ export function CommunityMenu({ ink }: { ink: Ink }) {
                     cn('border-b', ink.itemRule),
                 )}
               >
-                {item.label}
+                {t(item.labelKey)}
               </NavLink>
             </li>
           ))}

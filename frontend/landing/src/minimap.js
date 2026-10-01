@@ -1,4 +1,5 @@
 import { PARAMS as P } from './params.js';
+import { onLang, t, waters } from './i18n.js';
 
 // ───────── 미니맵 (2026-09-11, v0.32.0) ─────────
 // 향수 지도(scentmap.js)를 위에서 본 **추상 지도**다. 사용자 : *"미니맵을 만드는데 사실상 미니맵과 화면의
@@ -486,7 +487,7 @@ export function createMinimap({ onPick, onBlocked } = {}) {
     if (!hint) return;
     if (fogOn() && fog.bits) {
       // 탐색률 — 갈 수 있는 바다(범위 안) 기준이 아니라 격자 전체 기준이라 대략이다
-      hint.textContent = '탐색 ' + Math.round(100 * fog.n / Math.max(1, fog.bits.length)) + '%';
+      hint.textContent = t('mini.explored', { pct: Math.round(100 * fog.n / Math.max(1, fog.bits.length)) });
     } else hint.textContent = '—';
   };
 
@@ -513,18 +514,36 @@ export function createMinimap({ onPick, onBlocked } = {}) {
     // ⚠ 글과 실제 동작이 같아야 한다 — 빈 바다는 눌러도 해역 연출이 없으므로 해역 이름을 안 적는다
     //   (판정은 scentmap `inZone` 한 곳이다 — 불변식 21)
     const inZone = !h.out && !!h.reg && map.inZone(h.x, h.z);
-    if (hint) hint.textContent = h.out ? '범위 없음' : h.label ? h.label.name : (inZone ? h.reg.name + ' 해역' : h.reg ? '빈 바다' : '—');
+    if (hint) hint.textContent = h.out ? t('sea.out') : h.label ? h.label.name : (inZone ? waters(h.reg.name) : h.reg ? t('sea.open') : '—');
     last = '';   // 다시 그린다
   };
   const onLeave = () => { hover = null; idleHint(); last = ''; };
+  // ⭐⭐ **손가락이면 두 번 누른다** (2026-10-01, v0.87.0 — 메인 사용성 테스트 · 모바일). 마우스는 올리기만 해도 어느 해역인지
+  //   머리말(hint)이 먼저 말하지만, 손가락에는 올리기가 없어 "한 번만 스쳐도 즉시 다른 해역으로 순간이동한다" 였다.
+  //   첫 탭은 **미리보기**(호버와 같은 강조 · 머리말 + '한 번 더 누르면 출발') · 같은 해역을 3초 안에 다시 누르면 떠난다.
+  //   ⚠ 마우스는 예전 그대로 한 번이다 — 호버가 이미 미리보기를 한다
+  let tapType = 'mouse', tapArm = null;
+  const onDown = (e) => { tapType = e.pointerType || 'mouse'; };
   const onClick = (e) => {
     if (!map) return;
     const h = hitAt(e);
     if (h.out) { onBlocked && onBlocked(); return; }
+    if (tapType !== 'mouse') {
+      const key = h.label ? 'L:' + h.label.key : h.reg ? 'R:' + h.reg.key : null;
+      const now = performance.now();
+      if (key && (!tapArm || tapArm.key !== key || now - tapArm.t > 3000)) {
+        tapArm = { key, t: now };
+        onMove(e);
+        if (hint && !h.out) hint.textContent += t('tap.again');
+        return;
+      }
+      tapArm = null;
+    }
     if (h.label) onPick && onPick({ key: h.label.key, name: h.label.name, x: h.label.a.x, z: h.label.a.z, custom: true });
     else if (h.reg) onPick && onPick({ key: h.reg.key, name: h.reg.name, x: h.x, z: h.z, custom: true, spot: true });
   };
   // ⚠ 방향키가 조타로 새지 않게 — 캔버스에 초점이 가도 키를 가두지는 않는다 (버튼이 아니다)
+  cv.addEventListener('pointerdown', onDown);
   cv.addEventListener('pointermove', onMove);
   cv.addEventListener('pointerleave', onLeave);
   cv.addEventListener('click', onClick);
@@ -533,6 +552,8 @@ export function createMinimap({ onPick, onBlocked } = {}) {
   // 탭을 닫을 때 마지막 기록을 남긴다
   const onHide = () => fogSave(true);
   window.addEventListener('pagehide', onHide);
+  // 언어가 바뀌면 (PB.setLang) 머리말의 탐색률을 다시 쓴다 — 호버 중이면 다음 움직임이 새 글자로 쓴다
+  const offLang = onLang(() => { if (!hover) idleHint(); });
 
   return {
     // map : marks.map (없으면 숨긴다) · boat : {x, z(월드), head} · target : 가는 곳(월드) · sight : 보이는 바다의 반지름(월드)
@@ -593,10 +614,12 @@ export function createMinimap({ onPick, onBlocked } = {}) {
       return `안개 ${fog.cols}×${fog.rows} 칸 (칸 ${FOG_CELL} 월드) · 밝힌 칸 ${fog.n} (${(100 * fog.n / fog.bits.length).toFixed(1)}%) · 키 ${fog.key}`;
     },
     dispose() {
+      offLang();
       fogSave(true);
       cv.removeEventListener('pointermove', onMove);
       cv.removeEventListener('pointerleave', onLeave);
       cv.removeEventListener('click', onClick);
+      cv.removeEventListener('pointerdown', onDown);
       window.removeEventListener('resize', onResize);
       window.removeEventListener('pagehide', onHide);
       box.style.visibility = 'hidden';

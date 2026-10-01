@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useParams } from 'react-router'
 
 import {
@@ -29,8 +30,10 @@ import {
 } from '@/shared/config/perfumeViewSource'
 import { ROUTES, toPerfumeDetail } from '@/shared/config/routes'
 import { useToast } from '@/shared/hooks/useToast'
+import { localizedName } from '@/shared/i18n/locale'
 import { parseId } from '@/shared/lib/parseId'
 import { useIsLoggedIn } from '@/shared/store/authStore'
+import { useLocale } from '@/shared/store/localeStore'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { EmptyState } from '@/shared/ui/EmptyState'
@@ -42,6 +45,8 @@ import { Toast } from '@/shared/ui/Toast'
 const REVIEW_PAGE_SIZE = 10
 
 export default function PerfumeDetailPage() {
+  const { t } = useTranslation('perfume')
+  const locale = useLocale()
   const { perfumeId } = useParams<{ perfumeId: string }>()
   const parsedId = parseId(perfumeId)
   const enabled = parsedId !== null
@@ -92,12 +97,14 @@ export default function PerfumeDetailPage() {
   if (isError || !data) {
     return (
       <EmptyState
-        title="향수 상세 정보를 불러오지 못했습니다"
-        description="다시 시도해주세요."
+        title={t('detail.loadErrorTitle')}
+        description={t('detail.loadErrorDescription')}
         onRetry={enabled ? () => refetch() : undefined}
       />
     )
   }
+
+  const displayName = localizedName(locale, data.name, data.nameKo)
 
   return (
     <div className="space-y-6.25">
@@ -180,14 +187,14 @@ export default function PerfumeDetailPage() {
         onClose={() => setShelfOpen(false)}
         preselected={{
           perfumeId: data.perfumeId,
-          name: data.nameKo ?? data.name,
+          name: displayName,
           brand: data.brand?.name ?? null,
           thumbnailUrl: data.images[0] ?? null,
         }}
         onSubmit={(input) => {
           setShelfOpen(false)
           actions.register.mutate(input, {
-            onSuccess: () => showToast('진열대에 저장했습니다'),
+            onSuccess: () => showToast(t('detail.shelfSaved')),
             onError: (error) => showToast(shelfRegisterErrorMessage(error)),
           })
         }}
@@ -195,9 +202,9 @@ export default function PerfumeDetailPage() {
       <ConfirmDialog
         open={removeOpen}
         onClose={() => setRemoveOpen(false)}
-        title={`'${data.nameKo ?? data.name}' 를 진열대에서 뺄까요?`}
-        description="적어 둔 메모와 취향 적합도가 함께 지워집니다. 되돌릴 수 없습니다."
-        confirmLabel="빼기"
+        title={t('detail.removeTitle', { name: displayName })}
+        description={t('detail.removeDescription')}
+        confirmLabel={t('detail.removeConfirm')}
         isLoading={actions.remove.isPending}
         onConfirm={() => {
           if (!shelfItem) return
@@ -206,11 +213,11 @@ export default function PerfumeDetailPage() {
             {
               onSuccess: () => {
                 setRemoveOpen(false)
-                showToast('진열대에서 뺐습니다')
+                showToast(t('detail.removed'))
               },
               onError: () => {
                 setRemoveOpen(false)
-                showToast('진열대에서 빼지 못했습니다')
+                showToast(t('detail.removeFailed'))
               },
             },
           )

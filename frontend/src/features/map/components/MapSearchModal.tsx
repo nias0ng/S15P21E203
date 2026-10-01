@@ -1,8 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { scentFamilyName } from '@/shared/config/scentFamilies'
+import { localizedName } from '@/shared/i18n/locale'
 import { searchWords } from '@/shared/lib/searchWords'
+import { useLocale } from '@/shared/store/localeStore'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
@@ -49,11 +52,12 @@ export function MapSearchModal({
   onSelect,
   onSearchAll,
 }: Props) {
+  const { t } = useTranslation('map')
   return (
     <Modal
       open={keyword !== null}
       onClose={onClose}
-      title="지도에서 찾기"
+      title={t('searchModal.title')}
       /*
         배경을 눌러도 닫지 않습니다. 판이 3D 바다 위에 떠 있어 배경이 화면의 대부분이고,
         결과를 훑다 옆을 잘못 누르면 찾은 목록이 통째로 사라집니다 (`RecommendModal` 과 같습니다).
@@ -109,6 +113,8 @@ function MapSearchBody({
    * 검색하지 않는 사람에게는 첫 화면만 늦어집니다. (지금은 이 컴포넌트 자체가
    * 열릴 때만 생기므로 그 조건이 마운트로 지켜집니다.)
    */
+  const { t } = useTranslation('map')
+  const locale = useLocale()
   const perfumes = useQuery(mapPerfumesQuery())
 
   // 200개짜리 목록을 훑는 일이라 쿼리로 나누지 않습니다 — 찾는 말이 바뀔 때만 다시 셉니다
@@ -124,7 +130,7 @@ function MapSearchBody({
   const searchAllKeyword = searchWords(keyword).join(' ') || keyword.trim()
   const searchAll = (
     <Button variant="outline" onClick={() => onSearchAll(searchAllKeyword)}>
-      전체 향수 13만 개에서 찾기
+      {t('searchModal.searchAll')}
     </Button>
   )
 
@@ -132,15 +138,18 @@ function MapSearchBody({
     // 향해 일지와 같은 족자 — 모달 머리줄이 위 축이고 그 아래가 풀려 내려옵니다
     <Unroll>
       <p className="text-ink-muted text-caption mb-3.75">
-        찾는 말 ·{' '}
+        {t('searchModal.keyword')} ·{' '}
         <strong className="text-ink font-medium">
           &lsquo;{keyword}&rsquo;
         </strong>{' '}
-        · 지도에 띄운 향수 200개에서
+        · {t('searchModal.scope')}
         {results.length > 0 && (
           <>
             {' '}
-            {results.length}개{results.length === MAP_SEARCH_LIMIT && ' 까지'}
+            ·{' '}
+            {results.length === MAP_SEARCH_LIMIT
+              ? t('searchModal.countCapped', { count: results.length })
+              : t('searchModal.count', { count: results.length })}
           </>
         )}
       </p>
@@ -157,16 +166,16 @@ function MapSearchBody({
 
       {perfumes.isError && (
         <EmptyState
-          title="지도 향수 목록을 불러오지 못했습니다"
-          description="잠시 후 다시 시도해 주세요."
+          title={t('searchModal.loadError.title')}
+          description={t('searchModal.loadError.description')}
         />
       )}
 
       {perfumes.isSuccess &&
         (results.length === 0 ? (
           <EmptyState
-            title="지도 위 200개 중에는 없어요"
-            description="지도에는 향수 200개만 떠 있어요. 전체 향수 13만 개에서 이름으로 찾아볼 수 있어요."
+            title={t('searchModal.empty.title')}
+            description={t('searchModal.empty.description')}
             action={searchAll}
           />
         ) : (
@@ -195,22 +204,23 @@ function MapSearchBody({
                       이름과 구분되지 않습니다
                     */}
                   <span className="bg-ink text-surface text-caption flex h-6.25 min-w-6.25 shrink-0 items-center justify-center rounded-full px-1.5">
-                    <span className="sr-only">지도 순위 </span>
+                    <span className="sr-only">{t('searchModal.rank')} </span>
                     {perfume.rank}
                   </span>
 
                   <span className="min-w-0 flex-1">
                     <span className="text-ink text-body block truncate font-bold">
-                      {perfume.name}
+                      {localizedName(locale, perfume.nameEn, perfume.name)}
                     </span>
                     <span className="text-ink-muted text-caption block truncate">
-                      {perfume.brand}
+                      {localizedName(locale, perfume.brandEn, perfume.brand)}
                       {/*
                           한글 이름으로 찾았어도 영문 원명을 함께 둡니다 — 같은 향수를
                           브랜드마다 다르게 옮겨 적어서, 원명이 있어야 내가 아는 그
                           향수가 맞는지 확인이 됩니다
                         */}
-                      {perfume.nameEn !== perfume.name && (
+                      {/* 영어 화면은 위 이름이 이미 원명이라 되풀이하지 않습니다 */}
+                      {locale === 'ko' && perfume.nameEn !== perfume.name && (
                         <> · {perfume.nameEn}</>
                       )}
                     </span>

@@ -1,10 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ApiError } from '@/shared/api/http'
+import { i18n } from '@/shared/i18n'
+import { useLocaleStore } from '@/shared/store/localeStore'
 
 import {
   checkNicknameAvailability,
@@ -580,5 +582,73 @@ describe('SignupForm 닉네임 중복 확인', () => {
     await screen.findByText('이미 사용 중인 닉네임입니다')
 
     expect(submitButton()).toBeDisabled()
+  })
+})
+
+describe('SignupForm 영어 화면', () => {
+  const toEnglish = async () => {
+    useLocaleStore.getState().setLocale('en')
+    await waitFor(() => expect(i18n.language).toBe('en'))
+  }
+
+  it('칸 · 단추 · 인증 안내가 영어로 나온다', async () => {
+    await toEnglish()
+    renderForm()
+
+    expect(screen.getByRole('heading', { name: 'Sign up' })).toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('Email username'), 'hyanghae')
+    await userEvent.selectOptions(
+      screen.getByLabelText('Email domain'),
+      'naver.com',
+    )
+    await userEvent.type(screen.getByLabelText('Password'), 'short')
+    await userEvent.type(screen.getByLabelText('Re-enter password'), 'other')
+
+    expect(
+      screen.getByText('Password must be at least 8 characters'),
+    ).toBeInTheDocument()
+    expect(screen.getByText("Passwords don't match")).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Verify' }))
+
+    expect(await screen.findByLabelText('Verification code')).toHaveAttribute(
+      'placeholder',
+      '7-digit code',
+    )
+    expect(
+      screen.getByRole('timer', { name: 'Time left 05:00' }),
+    ).toBeInTheDocument()
+  })
+
+  // 서버는 한국어 문구를 보냅니다. 거기에 [재인증] 안내를 이어 붙이면 두 언어가 섞입니다
+  it('번호가 폐기되면 서버 문구가 아니라 코드에 맞는 영어 안내를 띄운다', async () => {
+    rejectWith(
+      confirmCall,
+      429,
+      'AUTH_EMAIL_VERIFICATION_TOO_MANY_ATTEMPTS',
+      '인증번호를 너무 많이 틀렸습니다.',
+    )
+    await toEnglish()
+    renderForm()
+
+    await userEvent.type(screen.getByLabelText('Email username'), 'hyanghae')
+    await userEvent.selectOptions(
+      screen.getByLabelText('Email domain'),
+      'naver.com',
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Verify' }))
+    await userEvent.type(
+      await screen.findByLabelText('Verification code'),
+      '1111111',
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    expect(
+      await screen.findByText(
+        'Too many incorrect attempts. Press [Resend] to get a new code',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Resend' })).toBeDisabled()
+    expect(screen.queryByText(/인증번호/)).toBeNull()
   })
 })

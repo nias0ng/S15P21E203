@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 import { cn } from '@/shared/lib/cn'
 import { FOCUS_RING } from '@/shared/ui/focusRing'
 
@@ -19,6 +21,7 @@ export function FamilyTile({
   order,
   onToggle,
 }: FamilyTileProps) {
+  const { t } = useTranslation('taste')
   const { adjective, name } = scentFamilyLabel(family)
 
   return (
@@ -56,7 +59,7 @@ export function FamilyTile({
 
       {order && (
         <span className="text-caption border-surface/50 text-surface shrink-0 rounded-full border px-2 md:absolute md:top-1/2 md:right-4 md:-translate-y-1/2">
-          {order}순위
+          {t('picker.rank', { order })}
         </span>
       )}
     </button>

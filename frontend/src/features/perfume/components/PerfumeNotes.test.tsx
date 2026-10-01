@@ -2,6 +2,9 @@ import { render as rtlRender, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
 
+import { i18n } from '@/shared/i18n'
+import { useLocaleStore } from '@/shared/store/localeStore'
+
 import type { PerfumeNote } from '../types'
 
 import { PerfumeNotes } from './PerfumeNotes'
@@ -110,5 +113,37 @@ describe('PerfumeNotes', () => {
       'href',
       '/notes/7',
     )
+  })
+})
+
+describe('PerfumeNotes (영어 화면)', () => {
+  it('제목과 단계를 모르는 묶음을 영어로 적는다', async () => {
+    useLocaleStore.getState().setLocale('en')
+    await i18n.changeLanguage('en')
+
+    render(<PerfumeNotes notes={[note(1, 'Amber', null)]} />)
+
+    expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument()
+    expect(screen.getByText('Other')).toBeInTheDocument()
+    expect(screen.queryByText('기타')).not.toBeInTheDocument()
+  })
+
+  it('노트 이름은 원래 이름을 쓴다 — 한국어 화면은 한국어 이름', async () => {
+    const notes: PerfumeNote[] = [
+      { noteId: 1, name: 'Bergamot', nameKo: '베르가못', noteType: 'top' },
+      { noteId: 2, name: 'Oakmoss', nameKo: null, noteType: 'base' },
+    ]
+    const { unmount } = render(<PerfumeNotes notes={notes} />)
+    expect(screen.getByText('베르가못')).toBeInTheDocument()
+    // 한국어 이름이 없으면 원래 이름입니다
+    expect(screen.getByText('Oakmoss')).toBeInTheDocument()
+    unmount()
+
+    useLocaleStore.getState().setLocale('en')
+    await i18n.changeLanguage('en')
+    render(<PerfumeNotes notes={notes} />)
+
+    expect(screen.getByText('Bergamot')).toBeInTheDocument()
+    expect(screen.queryByText('베르가못')).not.toBeInTheDocument()
   })
 })

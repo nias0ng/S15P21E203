@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { ROUTES } from '@/shared/config/routes'
@@ -6,6 +7,8 @@ import { cn } from '@/shared/lib/cn'
 import { FOCUS, type Ink } from './tone'
 
 export function LoginButton({ ink }: { ink: Ink }) {
+  const { t } = useTranslation()
+
   return (
     <Link
       to={ROUTES.LOGIN}
@@ -17,7 +20,7 @@ export function LoginButton({ ink }: { ink: Ink }) {
         ink.ring,
       )}
     >
-      로그인
+      {t('actions.logIn')}
     </Link>
   )
 }

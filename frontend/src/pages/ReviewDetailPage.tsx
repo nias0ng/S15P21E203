@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router'
 
 import { communityKeys } from '@/features/community'
@@ -11,6 +12,7 @@ import { LinkButton } from '@/shared/ui/LinkButton'
 import { PageFallback } from '@/shared/ui/PageFallback'
 
 export default function ReviewDetailPage() {
+  const { t } = useTranslation('community')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { reviewId } = useParams<{ reviewId: string }>()
@@ -27,11 +29,11 @@ export default function ReviewDetailPage() {
   if (!valid || isError || !data) {
     return (
       <EmptyState
-        title="후기를 찾을 수 없습니다"
-        description="주소가 잘못되었거나 삭제된 후기입니다."
+        title={t('reviewDetail.notFoundTitle')}
+        description={t('reviewDetail.notFoundDescription')}
         action={
           <LinkButton to={ROUTES.COMMUNITY_REVIEWS} variant="outline" size="sm">
-            후기 게시판으로
+            {t('reviewDetail.backToReviews')}
           </LinkButton>
         }
         onRetry={valid ? () => refetch() : undefined}

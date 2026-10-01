@@ -20,11 +20,12 @@ export const DEFAULT_BRAND_SORT: BrandSort = 'PERFUME_COUNT'
 //서버가 `sort` 를 못 받았을 때 쓰는 값.
 export const SERVER_DEFAULT_BRAND_SORT: BrandSort = 'NAME_EN'
 
+// 이름표는 화면 언어를 따라야 해 그리는 쪽이 `brand:sort.*` 로 풉니다
 export const BRAND_SORTS = [
-  { value: 'PERFUME_COUNT', label: '향수 많은 순' },
-  { value: 'NAME_EN', label: 'abc 순' },
-  { value: 'NAME_KO', label: '가나다순' },
-] as const satisfies readonly { value: BrandSort; label: string }[]
+  { value: 'PERFUME_COUNT' },
+  { value: 'NAME_EN' },
+  { value: 'NAME_KO' },
+] as const satisfies readonly { value: BrandSort }[]
 
 export interface BrandSearchParams {
   keyword?: string

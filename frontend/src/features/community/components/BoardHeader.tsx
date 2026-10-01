@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router'
 
 import { ROUTES } from '@/shared/config/routes'
@@ -8,21 +9,23 @@ type Props = {
 }
 
 const TABS = [
-  { to: ROUTES.COMMUNITY_REVIEWS, label: '후기 게시판' },
-  { to: ROUTES.COMMUNITY_FREE, label: '자유 게시판' },
-]
+  { to: ROUTES.COMMUNITY_REVIEWS, labelKey: 'board.reviewsTab' },
+  { to: ROUTES.COMMUNITY_FREE, labelKey: 'board.freeTab' },
+] as const
 
 export function BoardHeader({ action }: Props) {
+  const { t } = useTranslation('community')
+
   return (
     <header className="space-y-6.25">
       <h1 className="text-ink text-display text-center font-serif font-bold">
-        커뮤니티
+        {t('board.heading')}
       </h1>
 
       <div className="border-line grid grid-cols-[1fr_auto_1fr] items-end gap-3.75 border-b">
         <div aria-hidden />
 
-        <nav aria-label="게시판" className="flex justify-center">
+        <nav aria-label={t('board.tabsLabel')} className="flex justify-center">
           {TABS.map((tab) => (
             <NavLink
               key={tab.to}
@@ -38,7 +41,7 @@ export function BoardHeader({ action }: Props) {
                 )
               }
             >
-              {tab.label}
+              {t(tab.labelKey)}
             </NavLink>
           ))}
         </nav>

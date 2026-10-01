@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { useResetOnOpen } from '@/shared/hooks/useResetOnOpen'
 import { Button } from '@/shared/ui/Button'
@@ -60,6 +61,7 @@ export function ShelfRegisterModal({
   isPending = false,
   scene = false,
 }: Props) {
+  const { t } = useTranslation('shelf')
   const [picked, setPicked] = useState<PerfumeOption | null>(null)
   const [category, setCategory] = useState<ShelfCategory | null>(null)
   const [rating, setRating] = useState<number | null>(null)
@@ -100,16 +102,16 @@ export function ShelfRegisterModal({
     step === 1 ? (
       <>
         <Button variant={cancelVariant} onClick={onClose}>
-          취소
+          {t('actions.cancel')}
         </Button>
         <Button variant={submitVariant} disabled>
-          다음
+          {t('actions.next')}
         </Button>
       </>
     ) : (
       <>
         <Button variant={cancelVariant} onClick={onClose}>
-          취소
+          {t('actions.cancel')}
         </Button>
         <Button
           variant={submitVariant}
@@ -137,7 +139,7 @@ export function ShelfRegisterModal({
             })
           }}
         >
-          진열대에 담기
+          {t('registerModal.submit')}
         </Button>
       </>
     )
@@ -146,7 +148,7 @@ export function ShelfRegisterModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="향수 등록"
+      title={t('registerModal.title')}
       className={scene ? 'scent-map-panel rounded-glass w-100' : undefined}
       initialFocus={scene ? 'panel' : 'first'}
       titleSize={scene ? 'heading' : 'title'}
@@ -161,7 +163,7 @@ export function ShelfRegisterModal({
             brand: option.brand,
             thumbnailUrl: option.thumbnailUrl,
             disabled: option.alreadyInShelf,
-            disabledLabel: '이미 진열대에 담은 향수입니다',
+            disabledLabel: t('registerModal.alreadyInShelf'),
           }))}
           isPending={isPending}
           onPick={({ id }) =>
@@ -183,7 +185,7 @@ export function ShelfRegisterModal({
                 className="ml-auto"
                 onClick={() => setPicked(null)}
               >
-                변경
+                {t('actions.change')}
               </Button>
             )}
           </div>

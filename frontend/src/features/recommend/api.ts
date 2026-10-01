@@ -2,6 +2,7 @@ import { http, isApiError } from '@/shared/api/http'
 import { withDevFallback } from '@/shared/api/withDevFallback'
 
 import type {
+  PersonalRecommendation,
   PersonalRecommendationResult,
   RecommendResult,
   Satisfaction,
@@ -46,6 +47,8 @@ function placeholderRecommendation(query: string): RecommendResult {
         perfumeId: 1,
         name: '조 말론 우드 세이지',
         brand: '조 말론 런던',
+        originalName: 'Wood Sage & Sea Salt',
+        originalBrand: 'Jo Malone London',
         thumbnailUrl: null,
         reasons: [
           { phrase: '빨래', evidence: 'soapy · fresh', strengths: [100, 93] },
@@ -55,6 +58,8 @@ function placeholderRecommendation(query: string): RecommendResult {
         perfumeId: 2,
         name: '딥디크 오르페옹',
         brand: '딥디크',
+        originalName: 'Orpheon',
+        originalBrand: 'Diptyque',
         thumbnailUrl: null,
         reasons: [{ phrase: null, evidence: 'woody', strengths: [100] }],
       },
@@ -62,6 +67,8 @@ function placeholderRecommendation(query: string): RecommendResult {
         perfumeId: 3,
         name: '르 라보 상탈 33',
         brand: '르 라보',
+        originalName: 'Santal 33',
+        originalBrand: 'Le Labo',
         thumbnailUrl: null,
         reasons: [
           {
@@ -103,12 +110,7 @@ export async function sendRecommendFeedback(
 /** `GET /recommendations/personalized` 의 응답 (`PersonalizedRecommendationResponse`) */
 interface PersonalRecommendationResponse {
   recommendationToken: string
-  recommendation: {
-    perfumeId: number
-    name: string
-    imageUrl: string | null
-    reason: string
-  }
+  recommendation: Omit<PersonalRecommendation, 'recommendationToken'>
 }
 
 /**

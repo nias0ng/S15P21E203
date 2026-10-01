@@ -3,6 +3,8 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
+import { useLocaleStore } from '@/shared/store/localeStore'
+
 import { MapSearchModal } from './MapSearchModal'
 
 /*
@@ -115,5 +117,18 @@ describe('MapSearchModal', () => {
     )
 
     expect(onSearchAll).toHaveBeenCalledWith('미르토 디 파나레아')
+  })
+
+  // 영어 화면은 원명이 곧 이름이라 원명을 한 번 더 붙이지 않습니다
+  it('영어 화면은 원명 · 원래 브랜드로 적는다', async () => {
+    useLocaleStore.getState().setLocale('en')
+    renderModal()
+
+    expect(
+      screen.getByRole('heading', { name: 'Search the map' }),
+    ).toBeInTheDocument()
+    expect(await screen.findByText('Ari')).toBeInTheDocument()
+    expect(screen.getByText('Ariana Grande')).toBeInTheDocument()
+    expect(screen.getByText(/1 result/)).toBeInTheDocument()
   })
 })

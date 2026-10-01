@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { isApiError } from '@/shared/api/http'
 import { searchWords } from '@/shared/lib/searchWords'
+import { useLocale } from '@/shared/store/localeStore'
 import { Button } from '@/shared/ui/Button'
 import { CARD_GRID } from '@/shared/ui/cardGrid'
 import { EmptyState } from '@/shared/ui/EmptyState'
@@ -10,9 +12,16 @@ import { Modal } from '@/shared/ui/Modal'
 import { Skeleton } from '@/shared/ui/Skeleton'
 import { Unroll } from '@/shared/ui/Unroll'
 
-import { usePendingFeedbackStore } from '../pendingFeedbackStore'
+import { conditionLabel } from '../nlrReason'
+import {
+  dropOpenRecommendation,
+  keepOpenRecommendation,
+} from '../openRecommendation'
+import type { OpenRecommendation } from '../openRecommendation'
 import { recommendationQuery } from '../queries'
+import type { RecommendResult } from '../types'
 
+import { NlrFeedbackInline } from './NlrFeedbackInline'
 import { RecommendResultList } from './RecommendResultList'
 
 type Props = {
@@ -23,6 +32,12 @@ type Props = {
   onRequery?: (query: string) => void
   /** 향수 이름으로 전체 향수(A09)에서 찾습니다. 없으면 그 단추를 안 둡니다 */
   onSearchByName?: (keyword: string) => void
+  /**
+   * 상세에 다녀오기 전에 **열려 있던 결과** (`readOpenRecommendation`). 주면 서버에 다시 묻지 않고
+   * 그 결과를 그대로 펼칩니다 — 같은 다섯 장 · 같은 설문 손잡이입니다.
+   * ⚠️ 그 말(`query`)로 연 첫 결과창에만 씁니다. 닫았다 같은 말로 다시 찾으면 새로 받습니다
+   */
+  restored?: OpenRecommendation
 }
 
 /**
@@ -44,12 +59,23 @@ export function RecommendModal({
   onClose,
   onRequery,
   onSearchByName,
+  restored,
 }: Props) {
+  const { t } = useTranslation('recommend')
+  /*
+    사람이 닫으면 **담아 둔 결과도 버립니다** (`openRecommendation` 머리말) — 상세로 넘어가는
+    길은 이 `onClose` 를 안 지나므로(링크라 화면째 언마운트됩니다) 그때는 남습니다.
+  */
+  const close = () => {
+    dropOpenRecommendation()
+    onClose()
+  }
+
   return (
     <Modal
       open={query !== null}
-      onClose={onClose}
-      title="추천 결과"
+      onClose={close}
+      title={t('nlr.title')}
       /*
         배경을 눌러도 닫지 않습니다. 판이 3D 바다 위에 떠 있어 배경이 화면의 대부분이고,
         결과를 읽다 옆을 잘못 누르면 다섯 장이 통째로 사라집니다 — 다시 보려면 검색어를
@@ -68,7 +94,7 @@ export function RecommendModal({
 
         판은 향수 · 노트 화면과 같은 반투명 유리이고(`scent-map-glass`), 결과 카드는 그
         판 위의 한 단 밝은 유리 카드입니다(`PerfumeCard` 의 `data-slot="card"`).
-        위쪽 자리 · 높이 상한 · 재질 · 모서리는 뒤에 뜨는 설문(`NlrFeedbackModal`)과 한 벌입니다.
+        만족도 설문은 따로 뜨지 않고 결과 아래 한 줄로 섭니다(`NlrFeedbackInline`).
       */
       className="scent-map-glass scent-thin-scroll mt-25 mb-auto max-h-[calc(100vh-var(--spacing)*31.25)] w-290 overflow-y-auto rounded-[24px]"
     >
@@ -80,6 +106,7 @@ export function RecommendModal({
           query={query}
           onRequery={onRequery}
           onSearchByName={onSearchByName}
+          restored={restored?.query === query ? restored.result : undefined}
         />
       )}
     </Modal>
@@ -91,15 +118,30 @@ function RecommendBody({
   query,
   onRequery,
   onSearchByName,
+  restored,
 }: {
   query: string
   onRequery?: (query: string) => void
   onSearchByName?: (keyword: string) => void
+  restored?: RecommendResult
 }) {
+  const { t } = useTranslation('recommend')
+  const locale = useLocale()
   const result = useQuery({
     ...recommendationQuery(query),
     enabled: query.trim().length > 0,
+    // 열려 있던 결과로 돌아왔으면 그대로 섭니다 — `staleTime: Infinity` 라 다시 묻지 않습니다
+    initialData: restored,
   })
+
+  /*
+    결과가 서면 **열려 있던 결과**로 담아 둡니다 — 상세에 다녀와 같은 결과를 다시 펼칠 재료입니다
+    (`openRecommendation`). 닫으면 위의 `close` 가 버립니다.
+  */
+  const data = result.data
+  useEffect(() => {
+    if (data) keepOpenRecommendation({ query, result: data })
+  }, [query, data])
 
   const perfumes = result.data?.perfumes ?? []
   /*
@@ -110,29 +152,30 @@ function RecommendBody({
   const matchedData = result.data?.matchedData ?? []
 
   /*
-    결과가 **도착하는 순간** 설문을 걸어 둡니다. 닫을 때 걸면 늦습니다 — 결과에서
-    [자세히 보기]는 링크라, 상세로 넘어갈 때 이 모달의 `onClose` 가 불리지 않고
-    화면째 언마운트됩니다. 그때 걸어 둘 곳이 없으면 답하지 않은 설문이 통째로 사라집니다.
-
-    NOTE: 향수가 0개면 걸지 않습니다. `NO_CONDITION` · `NO_RESULT` 는 추천이 없었던 것이라
-    "추천은 어떠셨나요" 에 답할 것이 없고, 그 답을 만족도로 세면 추천의 품질이 아니라
+    만족도는 결과 아래 한 줄로 묻습니다(`NlrFeedbackInline`) — 닫을 때 따로 뜨던 설문 창은 걷었습니다.
+    NOTE: 향수가 0개면 묻지 않습니다. `NO_CONDITION` · `NO_RESULT` 는 추천이 없었던 것이라
+    "이 추천은 어떠셨나요" 에 답할 것이 없고, 그 답을 만족도로 세면 추천의 품질이 아니라
     입력을 못 알아들은 횟수를 만족도에 섞게 됩니다.
     NOTE: 손잡이가 `null` 인 경우도 있습니다 — 서버가 기록에 실패한 것이라 보낼 곳이 없습니다.
   */
-  const hold = usePendingFeedbackStore((state) => state.hold)
   const token = result.data?.recommendationToken ?? null
-  const hasPerfumes = perfumes.length > 0
-  useEffect(() => {
-    if (token !== null && hasPerfumes) hold({ token, query })
-  }, [token, query, hasPerfumes, hold])
 
   return (
     <Unroll>
       {/* 무엇을 물었는지 결과 위에 남깁니다 — 모달이라 검색창이 뒤에 가려 안 보입니다 */}
       <p className="text-ink-muted text-caption mb-3.75">
-        입력한 말 ·{' '}
+        {t('nlr.asked')}
         <strong className="text-ink font-medium">&lsquo;{query}&rsquo;</strong>
       </p>
+      {/*
+        추천 AI 는 한국어 문장을 기준으로 읽습니다. 영어 화면에서 영어로 적은 사람이 결과가 헐거운
+        까닭을 알 수 있게 한 줄 남깁니다.
+      */}
+      {locale === 'en' && (
+        <p className="text-ink-muted text-caption -mt-2.5 mb-3.75">
+          {t('nlr.koreanHint')}
+        </p>
+      )}
 
       {result.isPending && <RecommendSkeleton />}
 
@@ -148,10 +191,13 @@ function RecommendBody({
             */}
           {matchedData.length > 0 && perfumes.length > 0 && (
             <p className="border-line text-ink-muted text-caption mb-3.75 border-l-2 pl-2.5 leading-relaxed">
+              {t('nlr.narrowedBefore')}
               <strong className="text-ink font-medium">
-                {matchedData.map((data) => data.label).join(' · ')}
-              </strong>{' '}
-              조건으로 좁혔습니다.
+                {matchedData
+                  .map((data) => conditionLabel(data.label))
+                  .join(' · ')}
+              </strong>
+              {t('nlr.narrowedAfter')}
             </p>
           )}
 
@@ -163,19 +209,22 @@ function RecommendBody({
                       NOTE: 향으로 고른 것이 아닌 경우를 "조건이 넓다" 로 묶으면 거짓말이 됩니다.
                       향 조건을 하나도 못 뽑았고 순서를 정한 것은 평가자 수입니다.
                     */
-                  '향을 말씀하신 것으로 읽지 못해, 위 조건에 맞는 향수를 평가가 많은 순으로 골랐습니다. 냄새로 풀어서 한 줄 덧붙이면 향으로 골라 드릴 수 있습니다.'
-                : '조건이 넓어 비슷한 향까지 함께 골랐습니다. 상황이나 계절을 덧붙이면 더 좁혀 드릴 수 있습니다.'}
+                  t('nlr.relaxedWithoutScent')
+                : t('nlr.relaxed')}
             </p>
           )}
 
           {perfumes.length > 0 ? (
-            <RecommendResultList
-              perfumes={perfumes}
-              query={result.data.query}
-              pickedWithoutScentCondition={
-                result.data.pickedWithoutScentCondition
-              }
-            />
+            <>
+              <RecommendResultList
+                perfumes={perfumes}
+                query={result.data.query}
+                pickedWithoutScentCondition={
+                  result.data.pickedWithoutScentCondition
+                }
+              />
+              {token !== null && <NlrFeedbackInline token={token} />}
+            </>
           ) : result.data.status === 'NO_CONDITION' ? (
             /*
                 NOTE: 0개인 두 경우를 한 문장으로 묶지 않습니다 — 조건을 못 뽑은 사람에게
@@ -188,8 +237,8 @@ function RecommendBody({
             />
           ) : (
             <EmptyState
-              title="말씀하신 향에 맞는 향수를 찾지 못했습니다"
-              description="조건을 조금 줄이면 찾을 수 있습니다. 계절이나 상황 하나를 빼고 다시 적어 보세요."
+              title={t('nlr.empty.noResultTitle')}
+              description={t('nlr.empty.noResultDescription')}
             />
           )}
         </>
@@ -217,15 +266,20 @@ function NoConditionState({
   onRequery?: (query: string) => void
   onSearchByName?: (keyword: string) => void
 }) {
+  const { t } = useTranslation('recommend')
   const nameKeyword = searchWords(query).join(' ')
 
   return (
     <EmptyState
-      title="어떤 향인지 아직 못 알아들었습니다"
+      title={t('nlr.empty.noConditionTitle')}
       description={
         onRequery
-          ? '냄새나 느낌으로 적어 보세요. 아래 말로 바로 찾아볼 수도 있습니다.'
-          : `냄새나 느낌으로 적어 보세요 — ${RETRY_EXAMPLES.map((example) => `‘${example}’`).join(', ')} 처럼요.`
+          ? t('nlr.empty.noConditionWithExamples')
+          : t('nlr.empty.noConditionDescription', {
+              examples: RETRY_EXAMPLES.map((example) => `‘${example}’`).join(
+                ', ',
+              ),
+            })
       }
       action={
         <div className="flex flex-col items-center gap-2.5">
@@ -249,7 +303,7 @@ function NoConditionState({
               size="sm"
               onClick={() => onSearchByName(nameKeyword)}
             >
-              향수 이름이었다면 · 전체 향수에서 &lsquo;{nameKeyword}&rsquo; 찾기
+              {t('nlr.empty.searchByName', { keyword: nameKeyword })}
             </Button>
           )}
         </div>
@@ -263,13 +317,14 @@ function NoConditionState({
  * 둘을 "잠시 후 다시" 로 묶으면 안 됩니다.
  */
 function RecommendError({ error }: { error: unknown }) {
+  const { t } = useTranslation('recommend')
   const status = isApiError(error) ? error.status : null
 
   if (status === 429) {
     return (
       <EmptyState
-        title="조금 쉬었다 찾아 주세요"
-        description="짧은 시간에 여러 번 찾으셨습니다. 잠시 뒤에 다시 됩니다."
+        title={t('nlr.error.rateLimitedTitle')}
+        description={t('nlr.error.rateLimitedDescription')}
       />
     )
   }
@@ -277,16 +332,16 @@ function RecommendError({ error }: { error: unknown }) {
   if (status === 503) {
     return (
       <EmptyState
-        title="추천 서버가 지금 답하지 않습니다"
-        description="향수 찾기 · 진열대 같은 다른 기능은 그대로 쓰실 수 있습니다."
+        title={t('nlr.error.unavailableTitle')}
+        description={t('nlr.error.unavailableDescription')}
       />
     )
   }
 
   return (
     <EmptyState
-      title="추천을 불러오지 못했습니다"
-      description="잠시 후 다시 시도해 주세요."
+      title={t('nlr.error.failedTitle')}
+      description={t('nlr.error.failedDescription')}
     />
   )
 }

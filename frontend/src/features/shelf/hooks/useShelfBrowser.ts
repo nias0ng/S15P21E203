@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { keywordMatcher } from '@/shared/lib/keywordMatch'
 
@@ -44,23 +45,25 @@ type ShelfBrowser = {
  * "창 가운데 칸" 만 viewCategory 로 올려 보냅니다.
  */
 export function useShelfBrowser(items: ShelfItem[]): ShelfBrowser {
+  const { t } = useTranslation('shelf')
   const [keyword, setKeyword] = useState('')
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [viewCategory, setViewCategory] = useState<ShelfCategory>('OWNED')
 
   // 검색은 향수명과 브랜드명을 함께 봅니다. 세 칸 모두에 같은 검색어가 걸립니다 —
   // 한 칸에만 걸면 다른 칸에 있는 결과가 조용히 가려집니다.
+  // 칸 이름도 여기서 짓습니다 — 화면 언어가 바뀌면 t 가 바뀌어 다시 짓습니다.
   const sections = useMemo<ShelfSection[]>(() => {
     const matches = keywordMatcher(keyword)
 
-    return SHELF_CATEGORIES.map(({ value, label }) => ({
+    return SHELF_CATEGORIES.map(({ value }) => ({
       category: value,
-      label,
+      label: t(`category.${value}`),
       items: items.filter(
         (item) => item.category === value && matches(item.name, item.brand),
       ),
     }))
-  }, [items, keyword])
+  }, [items, keyword, t])
 
   /** 벽에 선 순서 그대로 이은 목록. 하단 페이저가 이 순서로 넘깁니다 */
   const lined = useMemo(

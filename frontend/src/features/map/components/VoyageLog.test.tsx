@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { useLocaleStore } from '@/shared/store/localeStore'
+
 import type { VoyageLogEntry } from '../types'
 
 import { VoyageLog } from './VoyageLog'
@@ -136,6 +138,65 @@ describe('VoyageLog', () => {
     expect(screen.getByRole('link', { name: '미스 디올' })).toHaveAttribute(
       'title',
       '미스 디올 오 드 퍼퓸 (2021) · 디올',
+    )
+  })
+
+  it('영어 화면은 문구를 영어로, 향수는 원명으로 적는다', () => {
+    useLocaleStore.getState().setLocale('en')
+    renderLog([
+      {
+        entryId: 9,
+        enteredAt: at(9, 23, 9),
+        scentRegionId: 1,
+        region: 'FLORAL',
+        visited: [
+          {
+            perfumeId: 11,
+            name: '미스 디올',
+            fullName: '미스 디올 오 드 퍼퓸 (2021)',
+            brand: '디올',
+            nameEn: 'Miss Dior Eau de Parfum (2021)',
+            brandEn: 'Dior',
+            family: 'FLORAL',
+          },
+          // 지도에서 못 찾은 향수 — API 의 DB 원명 그대로입니다
+          { perfumeId: 12, name: 'Unknown Perfume', nameKo: '모르는 향수' },
+        ],
+      },
+    ])
+
+    expect(
+      screen.getByRole('region', { name: 'Voyage Log' }),
+    ).toBeInTheDocument()
+    expect(dayHeadings()[0]).toHaveAccessibleName('Today')
+    expect(screen.getAllByRole('term').map((term) => term.textContent)).toEqual(
+      ['Waters sailed', 'Perfumes found'],
+    )
+    expect(
+      screen.getByRole('link', { name: 'Miss Dior Eau de Parfum (2021)' }),
+    ).toHaveAttribute('title', 'Miss Dior Eau de Parfum (2021) · Dior')
+    expect(
+      screen.getByRole('link', { name: 'Unknown Perfume' }),
+    ).toBeInTheDocument()
+  })
+
+  it('지도에서 못 찾은 향수는 한국어 화면에서 API 의 한국어 이름을 쓴다', () => {
+    renderLog([
+      {
+        entryId: 9,
+        enteredAt: at(9, 23, 9),
+        scentRegionId: 1,
+        region: 'FLORAL',
+        visited: [
+          // 한국어 이름이 없으면 원명입니다
+          { perfumeId: 13, name: 'Nameless', nameKo: null },
+          { perfumeId: 12, name: 'Unknown Perfume', nameKo: '모르는 향수' },
+        ],
+      },
+    ])
+
+    expect(screen.getAllByRole('link').map((link) => link.textContent)).toEqual(
+      ['모르는 향수', 'Nameless'],
     )
   })
 

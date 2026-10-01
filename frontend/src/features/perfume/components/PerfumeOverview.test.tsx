@@ -3,6 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
+import { i18n } from '@/shared/i18n'
+import { useLocaleStore } from '@/shared/store/localeStore'
+
 import type { PerfumeDetail } from '../types'
 
 import { PerfumeOverview } from './PerfumeOverview'
@@ -150,5 +153,30 @@ describe('PerfumeOverview', () => {
     )
 
     expect(screen.queryByText('단종')).not.toBeInTheDocument()
+  })
+})
+
+describe('PerfumeOverview (영어 화면)', () => {
+  it('원래 이름을 제목으로 두고 한국어 이름은 적지 않는다', async () => {
+    useLocaleStore.getState().setLocale('en')
+    await i18n.changeLanguage('en')
+
+    render(
+      <PerfumeOverview
+        perfume={{ ...PERFUME, gender: 'MALE' }}
+        inShelf={false}
+        onShelfAction={vi.fn()}
+      />,
+    )
+
+    expect(
+      screen.getByRole('heading', { name: 'Allure Homme Sport' }),
+    ).toBeInTheDocument()
+    // 성별은 영어 화면의 성별 필터 칩과 같은 말로 적습니다
+    expect(screen.getByText('Masculine')).toBeInTheDocument()
+    expect(screen.queryByText('알뤼르 옴므 스포츠')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Save to Shelf' }),
+    ).toBeInTheDocument()
   })
 })

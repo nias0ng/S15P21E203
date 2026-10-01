@@ -1,0 +1,53 @@
+export const common = {
+  site: {
+    title: '향해 · 향수 추천 서비스',
+    description: '향을 탐색하고, 발견하고, 기록하는 향수 추천 서비스',
+  },
+  language: {
+    label: '언어',
+    ko: '한국어',
+    en: 'English',
+  },
+  actions: {
+    close: '닫기',
+    cancel: '취소',
+    confirm: '확인',
+    save: '저장',
+    delete: '삭제',
+    edit: '수정',
+    retry: '다시 시도',
+    search: '검색',
+    logIn: '로그인',
+    logOut: '로그아웃',
+    signUp: '회원가입',
+    goHome: '홈으로 돌아가기',
+  },
+  status: {
+    loading: '불러오는 중…',
+  },
+  time: {
+    justNow: '방금',
+  },
+  image: '이미지',
+  withdrawnMember: '탈퇴한 회원',
+  scentFamily: {
+    floral: '플로럴',
+    green: '그린',
+    citrus: '시트러스',
+    fruity: '프루티',
+    aquatic: '아쿠아틱',
+    musk: '머스크',
+    gourmand: '구르망',
+    woody: '우디',
+    amber: '앰버',
+  },
+  perfumeViewBack: {
+    recommendation: '추천 결과',
+    scentMap: '향 지도',
+    community: '커뮤니티',
+    perfumeList: '향수 목록',
+    shelf: '진열대',
+    collection: '컬렉션',
+    previousPerfume: '이전 향수',
+  },
+}

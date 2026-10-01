@@ -1,8 +1,11 @@
 import { useId, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { toPerfumeDetail } from '@/shared/config/routes'
+import type { Locale } from '@/shared/i18n/locale'
 import { cn } from '@/shared/lib/cn'
+import { useLocale } from '@/shared/store/localeStore'
 import { CARD_GRID } from '@/shared/ui/cardGrid'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { PerfumeCard } from '@/shared/ui/PerfumeCard'
@@ -19,6 +22,20 @@ type Props = ReasonContext & {
 }
 
 /**
+ * 영어 화면은 원래 이름 · 브랜드를 씁니다. 서버의 `name` · `brand` 는 한국어 우선이라서입니다.
+ * 원래 이름 칸을 모르는 서버면 한국어 쪽으로 돌아갑니다.
+ */
+function displayNames(locale: Locale, perfume: RecommendedPerfume) {
+  if (locale !== 'en') {
+    return { name: perfume.name, brand: perfume.brand }
+  }
+  return {
+    name: perfume.originalName ?? perfume.name,
+    brand: perfume.originalBrand ?? perfume.brand,
+  }
+}
+
+/**
  * 자연어 추천 결과 (NLR-06 · NLR-07). 향수 목록과 같은 카드를 한 줄로 세우고, 카드를 누르면
  * 그 아래 칸에 그 향수의 추천 이유와 [자세히 보기]가 열립니다. 추천 이유는 입력한 표현과 향을
  * 짝지은 한 문장입니다(`nlrReasonSentence`).
@@ -27,6 +44,8 @@ type Props = ReasonContext & {
  * 줄로 늘어나고, 한 장만 길어져도 같은 줄의 카드가 다 그 높이로 늘어납니다.
  */
 export function RecommendResultList({ perfumes, ...context }: Props) {
+  const { t } = useTranslation('recommend')
+  const locale = useLocale()
   // 처음에는 다 닫혀 있습니다 — 다섯 장을 먼저 훑고 궁금한 것을 엽니다
   const [openId, setOpenId] = useState<number | null>(null)
   const reasonId = useId()
@@ -38,24 +57,27 @@ export function RecommendResultList({ perfumes, ...context }: Props) {
   return (
     <>
       <ul className={CARD_GRID}>
-        {perfumes.map((perfume, index) => (
-          <li key={perfume.perfumeId}>
-            <PerfumeCard
-              name={perfume.name}
-              subName={perfume.brand}
-              rank={index + 1}
-              rankLabel="추천"
-              thumbnailUrl={perfume.thumbnailUrl}
-              expanded={perfume.perfumeId === openId}
-              controls={reasonId}
-              onToggle={() =>
-                setOpenId(
-                  perfume.perfumeId === openId ? null : perfume.perfumeId,
-                )
-              }
-            />
-          </li>
-        ))}
+        {perfumes.map((perfume, index) => {
+          const { name, brand } = displayNames(locale, perfume)
+          return (
+            <li key={perfume.perfumeId}>
+              <PerfumeCard
+                name={name}
+                subName={brand}
+                rank={index + 1}
+                rankLabel={t('nlr.card.rankLabel')}
+                thumbnailUrl={perfume.thumbnailUrl}
+                expanded={perfume.perfumeId === openId}
+                controls={reasonId}
+                onToggle={() =>
+                  setOpenId(
+                    perfume.perfumeId === openId ? null : perfume.perfumeId,
+                  )
+                }
+              />
+            </li>
+          )
+        })}
       </ul>
 
       {/* 닫혀 있어도 자리는 둡니다 — 카드의 `aria-controls` 가 가리키는 칸입니다 */}
@@ -88,21 +110,24 @@ function RecommendReason({
   rank,
   ...context
 }: ReasonContext & { perfume: RecommendedPerfume; rank: number }) {
+  // 언어를 바꾸면 다시 그려야 이유 문장도 그 언어로 다시 짓습니다
+  const { t } = useTranslation('recommend')
+  const { name } = displayNames(useLocale(), perfume)
   const sentence = nlrReasonSentence(perfume.reasons, context)
 
   return (
     <section
-      aria-label={`${perfume.name} 추천 이유`}
+      aria-label={t('nlr.card.reasonLabel', { name })}
       className="border-line bg-surface-sunken space-y-2.5 rounded-[18px] border p-3.75"
     >
       <p className="text-ink text-body font-medium">
-        {rank} · {perfume.name}
+        {rank} · {name}
       </p>
       {sentence && (
         <>
           <p className="text-ink-muted text-caption">
-            추천 이유
-            {sentence.showsStrength && ' · 괄호 안은 향 강도 0~100'}
+            {t('nlr.card.reasonTitle')}
+            {sentence.showsStrength && t('nlr.card.strengthHint')}
           </p>
           <p className="text-ink text-caption leading-relaxed break-keep">
             {sentence.parts.map((part, index) => (
@@ -123,7 +148,7 @@ function RecommendReason({
         variant="navy"
         size="sm"
       >
-        자세히 보기
+        {t('nlr.card.viewDetails')}
       </LinkButton>
     </section>
   )

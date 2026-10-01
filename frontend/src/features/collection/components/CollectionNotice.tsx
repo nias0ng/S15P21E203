@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/shared/ui/Button'
 
@@ -22,6 +23,7 @@ export function CollectionNotice({
   onRetry,
   action,
 }: Props) {
+  const { t } = useTranslation('collection')
   return (
     <div className="flex flex-col items-center py-20 text-center">
       <p className="text-heading font-serif font-semibold text-balance break-keep">
@@ -42,7 +44,7 @@ export function CollectionNotice({
               className="focus-visible:ring-[var(--shelf-ink)] focus-visible:ring-offset-[var(--paper)]"
               onClick={onRetry}
             >
-              다시 시도
+              {t('actions.retry')}
             </Button>
           )}
         </div>

@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 import { ChipToggle } from '@/shared/ui/ChipToggle'
 import { StarRating } from '@/shared/ui/StarRating'
 import { Textarea } from '@/shared/ui/Textarea'
@@ -58,24 +60,34 @@ export function ShelfItemFields({
   hint,
   compact = false,
 }: Props) {
+  const { t } = useTranslation('shelf')
+  const categoryOptions = SHELF_CATEGORIES.map(({ value }) => ({
+    value,
+    label: t(`category.${value}`),
+  }))
+
   return (
     <>
       {/* [필수] 가 마지막 칩 오른쪽에 서도록 한 줄로 묶습니다 */}
       <div className="flex flex-wrap items-center gap-2.5">
         <ChipToggle
-          label="진열대 분류"
-          options={SHELF_CATEGORIES}
+          label={t('fields.categoryLabel')}
+          options={categoryOptions}
           value={category}
           onChange={onCategoryChange}
           className={compact ? 'grid flex-1 grid-cols-3' : undefined}
         />
-        {categoryMissing && <RequiredMark what="진열대 분류를 골라 주세요" />}
+        {categoryMissing && (
+          <RequiredMark what={t('fields.categoryRequired')} />
+        )}
       </div>
 
       <div className="flex items-center gap-2.5">
-        <span className="text-ink-muted text-caption">내 취향 적합도</span>
+        <span className="text-ink-muted text-caption">
+          {t('fields.rating')}
+        </span>
         <StarRating
-          label="내 취향 적합도"
+          label={t('fields.rating')}
           value={rating}
           /*
            * 아직 안 매겼을 때의 "아직 매기지 않음" 은 **글자로 띄우지 않습니다.**
@@ -95,15 +107,15 @@ export function ShelfItemFields({
             onClick={() => onRatingChange(null)}
             className="text-ink-muted hover:text-ink text-caption underline underline-offset-2"
           >
-            해제
+            {t('fields.clearRating')}
           </button>
         )}
       </div>
 
       <Textarea
-        label="메모"
+        label={t('fields.memo')}
         hideLabel
-        placeholder="메모"
+        placeholder={t('fields.memo')}
         rows={compact ? 3 : 5}
         value={memo}
         onChange={(event) => onMemoChange(event.target.value)}
@@ -126,9 +138,11 @@ export function ShelfItemFields({
  * 나타나는 순간 읽어 달라는 표시입니다. 포커스는 방금 누른 단추에 그대로 있습니다.
  */
 function RequiredMark({ what }: { what: string }) {
+  const { t } = useTranslation('shelf')
   return (
     <span role="alert" className="text-danger text-caption font-medium">
-      필수<span className="sr-only"> — {what}</span>
+      {t('fields.required')}
+      <span className="sr-only"> — {what}</span>
     </span>
   )
 }

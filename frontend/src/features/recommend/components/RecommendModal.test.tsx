@@ -4,6 +4,9 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { useLocaleStore } from '@/shared/store/localeStore'
+
+import { readOpenRecommendation } from '../openRecommendation'
 import type { RecommendResult } from '../types'
 
 import { RecommendModal } from './RecommendModal'
@@ -229,6 +232,131 @@ describe('RecommendModal', () => {
       expect(
         screen.queryByRole('button', { name: '풀향' }),
       ).not.toBeInTheDocument()
+    })
+  })
+
+  it('영어 화면은 영어로 쓰고, 한국어로 적으면 잘 알아듣는다고 알린다', async () => {
+    useLocaleStore.getState().setLocale('en')
+    api.getRecommendation.mockResolvedValue(result())
+
+    renderModal()
+
+    expect(
+      await screen.findByRole('heading', { name: 'Recommendations' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Works best when you type in Korean'),
+    ).toBeInTheDocument()
+    // AI 가 영어 이름을 주지 않는 노트는 한국어 그대로 둡니다
+    expect(await screen.findByText('미모사 · 장미 · 밤')).toBeInTheDocument()
+    expect(screen.getByText(/Narrowed down by/)).toBeInTheDocument()
+  })
+
+  /*
+    만족도는 결과 아래 한 줄로 묻습니다 — 닫을 때 따로 뜨던 설문 창은 걷었습니다
+    (사용성 테스트 7명 중 6명이 "닫을 때마다 끼어든다" 고 했습니다).
+  */
+  describe('만족도 한 줄', () => {
+    it('결과 아래에 선다', async () => {
+      api.getRecommendation.mockResolvedValue(
+        result({ recommendationToken: 'token-1' }),
+      )
+
+      renderModal()
+
+      expect(
+        await screen.findByRole('group', { name: '추천 만족도' }),
+      ).toBeInTheDocument()
+    })
+
+    // 0개는 추천이 없었던 것이라 답할 것이 없습니다
+    it('향수가 0개면 묻지 않는다', async () => {
+      api.getRecommendation.mockResolvedValue(
+        result({
+          recommendationToken: 'token-1',
+          status: 'NO_CONDITION',
+          perfumes: [],
+        }),
+      )
+
+      renderModal()
+
+      expect(
+        await screen.findByText('어떤 향인지 아직 못 알아들었습니다'),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('group', { name: '추천 만족도' }),
+      ).not.toBeInTheDocument()
+    })
+
+    // 손잡이가 없으면 서버가 기록에 실패한 것이라 보낼 곳이 없습니다
+    it('손잡이가 없으면 묻지 않는다', async () => {
+      api.getRecommendation.mockResolvedValue(result())
+
+      renderModal()
+
+      expect(await screen.findByText('오 로즈')).toBeInTheDocument()
+      expect(
+        screen.queryByRole('group', { name: '추천 만족도' }),
+      ).not.toBeInTheDocument()
+    })
+  })
+
+  /*
+    상세에 다녀오면 이 화면이 처음부터 다시 섭니다. 열려 있던 결과를 그대로 펴야 비교하던 다섯
+    장이 남고, 같은 손잡이라 설문도 한 번만 걸립니다 (`openRecommendation`).
+  */
+  describe('상세에 다녀와 다시 펼치기', () => {
+    beforeEach(() => sessionStorage.clear())
+
+    it('열려 있던 결과를 주면 서버에 다시 묻지 않고 그대로 편다', async () => {
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <MemoryRouter>
+            <RecommendModal
+              query={QUERY}
+              onClose={vi.fn()}
+              restored={{ query: QUERY, result: result() }}
+            />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      )
+
+      expect(await screen.findByText('오 로즈')).toBeInTheDocument()
+      expect(api.getRecommendation).not.toHaveBeenCalled()
+    })
+
+    it('다른 말이면 열려 있던 결과를 쓰지 않는다', async () => {
+      api.getRecommendation.mockResolvedValue(result())
+
+      render(
+        <QueryClientProvider
+          client={
+            new QueryClient({ defaultOptions: { queries: { retry: false } } })
+          }
+        >
+          <MemoryRouter>
+            <RecommendModal
+              query={QUERY}
+              onClose={vi.fn()}
+              restored={{ query: '다른 말', result: result() }}
+            />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      )
+
+      await waitFor(() => expect(api.getRecommendation).toHaveBeenCalledOnce())
+    })
+
+    it('결과가 서면 담아 두고, 사람이 닫으면 버린다', async () => {
+      api.getRecommendation.mockResolvedValue(result())
+
+      renderModal()
+      await screen.findByText('오 로즈')
+      expect(readOpenRecommendation(QUERY)?.result.perfumes).toHaveLength(1)
+
+      await userEvent.click(screen.getByRole('button', { name: '닫기' }))
+      expect(readOpenRecommendation(QUERY)).toBeUndefined()
     })
   })
 })

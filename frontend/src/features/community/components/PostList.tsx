@@ -1,14 +1,17 @@
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
+import { localizedBrand, localizedName } from '@/shared/i18n/locale'
 import { authorName } from '@/shared/lib/authorName'
 import { cn } from '@/shared/lib/cn'
 import { formatRelativeTime } from '@/shared/lib/formatRelativeTime'
+import { useLocale } from '@/shared/store/localeStore'
 import { Badge } from '@/shared/ui/Badge'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Skeleton } from '@/shared/ui/Skeleton'
 import { Thumbnail } from '@/shared/ui/Thumbnail'
 
-import { POST_CATEGORIES, type BoardItem } from '../types'
+import type { BoardItem } from '../types'
 
 const GRID = 'grid gap-3.75 sm:grid-cols-2'
 
@@ -25,6 +28,9 @@ export function PostList({
   emptyAction,
   onToggleLike,
 }: Props) {
+  const { t } = useTranslation('community')
+  const locale = useLocale()
+
   if (isPending) {
     return (
       <div className={GRID}>
@@ -38,8 +44,8 @@ export function PostList({
   if (items.length === 0) {
     return (
       <EmptyState
-        title="이 게시판에 글이 없습니다"
-        description="첫 글을 남겨보세요."
+        title={t('board.emptyTitle')}
+        description={t('board.emptyDescription')}
         action={emptyAction}
       />
     )
@@ -80,13 +86,7 @@ export function PostList({
                 · {formatRelativeTime(item.createdAt)}
               </span>
               {item.category && (
-                <Badge tone="neutral">
-                  {
-                    POST_CATEGORIES.find(
-                      (entry) => entry.value === item.category,
-                    )?.label
-                  }
-                </Badge>
+                <Badge tone="neutral">{t(`categories.${item.category}`)}</Badge>
               )}
             </div>
           </div>
@@ -100,11 +100,15 @@ export function PostList({
           {item.perfume && (
             <p className="border-line rounded-card inline-flex w-fit max-w-full items-baseline gap-2.5 border px-2.5 py-1.25">
               <span className="text-ink text-body font-medium">
-                {item.perfume.name}
+                {localizedName(locale, item.perfume.name, item.perfume.nameKo)}
               </span>
               {item.perfume.brand && (
                 <span className="text-ink-muted text-caption">
-                  {item.perfume.brand}
+                  {localizedBrand(
+                    locale,
+                    item.perfume.brand,
+                    item.perfume.brandKo,
+                  )}
                 </span>
               )}
             </p>
@@ -114,7 +118,7 @@ export function PostList({
             <button
               type="button"
               aria-pressed={item.liked}
-              aria-label={`좋아요 ${item.likeCount}`}
+              aria-label={t('board.likes', { count: item.likeCount })}
               onClick={() => onToggleLike(item)}
               className={cn(
                 'rounded-card relative transition-colors duration-120 ease-out',
@@ -128,12 +132,12 @@ export function PostList({
               >
                 {item.liked ? '♥' : '♡'}
               </span>{' '}
-              좋아요 {item.likeCount}
+              {t('board.likes', { count: item.likeCount })}
             </button>
             {item.commentCount !== null && (
-              <span>댓글 {item.commentCount}</span>
+              <span>{t('board.comments', { count: item.commentCount })}</span>
             )}
-            <span>조회 {item.viewCount}</span>
+            <span>{t('board.views', { count: item.viewCount })}</span>
           </div>
         </li>
       ))}

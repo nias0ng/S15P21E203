@@ -1,3 +1,5 @@
+import { i18n } from '@/shared/i18n'
+
 /**
  * 향 계열 아홉 개. 배열 순서는 '가벼운 향에서 무거운 향'
 
@@ -18,17 +20,24 @@ export const SCENT_FAMILY_KEYS = [
 
 export type ScentFamilyKey = (typeof SCENT_FAMILY_KEYS)[number]
 
-export const SCENT_FAMILY_NAMES: Record<ScentFamilyKey, string> = {
-  FLORAL: '플로럴',
-  GREEN: '그린',
-  CITRUS: '시트러스',
-  FRUITY: '프루티',
-  AQUATIC: '아쿠아틱',
-  MUSK: '머스크',
-  GOURMAND: '구르망',
-  WOODY: '우디',
-  AMBER: '앰버',
-}
+const nameOf = (key: ScentFamilyKey) =>
+  i18n.t(`common:scentFamily.${key.toLowerCase() as Lowercase<ScentFamilyKey>}`)
+
+/**
+ * 계열 이름표. 값은 **읽을 때의** 화면 언어로 풉니다(번역 묶음 common 의 scentFamily).
+ *
+ * NOTE: 모듈이 읽힐 때 이 값을 옮겨 담아 두면 언어를 바꿔도 그 언어로 남습니다 — 그릴 때 읽으세요.
+ */
+export const SCENT_FAMILY_NAMES: Readonly<Record<ScentFamilyKey, string>> =
+  Object.defineProperties(
+    {} as Record<ScentFamilyKey, string>,
+    Object.fromEntries(
+      SCENT_FAMILY_KEYS.map((key) => [
+        key,
+        { get: () => nameOf(key), enumerable: true },
+      ]),
+    ),
+  )
 
 export function isScentFamilyKey(value: unknown): value is ScentFamilyKey {
   return (
@@ -42,5 +51,5 @@ export function toScentFamilyKey(value: unknown): ScentFamilyKey | null {
 }
 
 export function scentFamilyName(value: unknown): string | null {
-  return isScentFamilyKey(value) ? SCENT_FAMILY_NAMES[value] : null
+  return isScentFamilyKey(value) ? nameOf(value) : null
 }

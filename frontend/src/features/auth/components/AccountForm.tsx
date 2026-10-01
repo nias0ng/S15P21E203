@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 
 import { isApiError } from '@/shared/api/http'
@@ -23,6 +24,7 @@ import { ProfileImageField } from './ProfileImageField'
 import { WithdrawModal } from './WithdrawModal'
 
 export function AccountForm() {
+  const { t } = useTranslation('auth')
   const isLoggedIn = useIsLoggedIn()
   const { data: me } = useQuery({ ...meQuery(), enabled: isLoggedIn })
   const queryClient = useQueryClient()
@@ -56,13 +58,13 @@ export function AccountForm() {
 
       setNicknameDraft(null)
       nicknameCheck.reset()
-      showToast('닉네임을 바꿨습니다')
+      showToast(t('account.nicknameSaved'))
     },
     onError: (error) =>
       showToast(
         isApiError(error) && error.status === 409
-          ? '이미 사용 중인 닉네임입니다'
-          : '닉네임을 바꾸지 못했습니다',
+          ? t('nickname.taken')
+          : t('account.nicknameSaveFailed'),
       ),
   })
 
@@ -72,7 +74,7 @@ export function AccountForm() {
     <>
       <Toast {...toastProps} />
 
-      <AuthCard title="정보 변경">
+      <AuthCard title={t('account.title')}>
         <ProfileImageField
           value={me?.profileImageUrl ?? null}
           onChange={(next) => {
@@ -81,17 +83,17 @@ export function AccountForm() {
             )
             showToast(
               next === null
-                ? '프로필 사진을 지웠습니다'
-                : '프로필 사진을 바꿨습니다',
+                ? t('account.photoRemoved')
+                : t('account.photoChanged'),
             )
           }}
         />
 
         <div className="space-y-2.5">
-          <p className="text-caption font-medium">이메일</p>
+          <p className="text-caption font-medium">{t('email.label')}</p>
           <p className="text-ink text-body">{me?.email ?? '—'}</p>
           <p className="text-ink-muted text-caption">
-            변경할 수 없습니다 — 계정을 가리키는 이름입니다
+            {t('account.emailFixed')}
           </p>
         </div>
 
@@ -104,22 +106,18 @@ export function AccountForm() {
           }}
         >
           <Input
-            label="닉네임"
+            label={t('nickname.label')}
             value={nickname}
             onChange={(event) => {
               setNicknameDraft(event.target.value)
               nicknameCheck.reset()
             }}
             hint={
-              nicknameAvailable === true
-                ? '사용할 수 있는 닉네임입니다'
-                : undefined
+              nicknameAvailable === true ? t('nickname.available') : undefined
             }
             error={
               nicknameError ??
-              (nicknameAvailable === false
-                ? '이미 사용 중인 닉네임입니다'
-                : undefined)
+              (nicknameAvailable === false ? t('nickname.taken') : undefined)
             }
           />
           <Button
@@ -129,7 +127,7 @@ export function AccountForm() {
             disabled={nicknameInvalid || nicknameCheck.isPending}
             onClick={nicknameCheck.check}
           >
-            중복 확인
+            {t('nickname.check')}
           </Button>
         </form>
 
@@ -140,7 +138,7 @@ export function AccountForm() {
             className={AUTH_SUBMIT}
             disabled={!nicknameChanged || nicknameInvalid || save.isPending}
           >
-            저장
+            {t('actions.save')}
           </Button>
           <Button
             variant="outline"
@@ -150,28 +148,28 @@ export function AccountForm() {
               nicknameCheck.reset()
             }}
           >
-            취소
+            {t('actions.cancel')}
           </Button>
         </div>
 
         <hr className="border-line" />
 
         <div className="space-y-2.5">
-          <p className="text-ink-muted text-caption">계정</p>
+          <p className="text-ink-muted text-caption">{t('account.section')}</p>
           {me?.googleConnected === true && (
             <p className="text-ink text-caption">
-              Google 계정으로 로그인합니다
+              {t('account.googleConnected')}
             </p>
           )}
           <div className="flex gap-1.25">
             {/* Google 로 가입한 계정은 바꿀 비밀번호가 없습니다. */}
             {me?.hasPassword !== false && (
               <Button variant="outline" onClick={() => setPasswordOpen(true)}>
-                비밀번호 변경
+                {t('account.changePassword')}
               </Button>
             )}
             <Button variant="outline" onClick={() => setWithdrawOpen(true)}>
-              회원 탈퇴
+              {t('account.withdraw')}
             </Button>
           </div>
         </div>

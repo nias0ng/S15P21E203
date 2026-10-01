@@ -11,6 +11,7 @@ import {
   type Ref,
 } from 'react'
 import { flushSync } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { cn } from '@/shared/lib/cn'
@@ -233,6 +234,7 @@ export function ShelfWall({
   menuHeader,
   className,
 }: Props) {
+  const { t } = useTranslation('shelf')
   const areaRef = useRef<HTMLDivElement>(null)
   const viewportRef = useRef<HTMLElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
@@ -760,7 +762,7 @@ export function ShelfWall({
         </div>
         <section
           ref={viewportRef}
-          aria-label="진열대"
+          aria-label={t('wall.region')}
           // 가로 끌기는 useShelfFlow 가 받고, 세로 끌기는 페이지 스크롤로 넘깁니다
           /*
            * 창은 **패널 왼쪽 끝에서 끊깁니다** — 예전처럼 패널 밑까지 이어지지 않습니다.
@@ -771,7 +773,7 @@ export function ShelfWall({
         >
           {/* 이름표 벽 단추의 설명. 화면에는 보이지 않고 aria-describedby 로만 읽힙니다 */}
           <span id={plaqueHintId} hidden>
-            누르면 이 분류의 향수가 벽에 섭니다
+            {t('wall.plaqueHint')}
           </span>
           {measured && (
             /*
@@ -992,13 +994,14 @@ function PageArrow({
   /** 가로 자리 */
   className: string
 }) {
+  const { t } = useTranslation('shelf')
   const next = direction === 1
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      aria-label={next ? '다음 향수 보기' : '이전 향수 보기'}
+      aria-label={next ? t('wall.next') : t('wall.prev')}
       className={cn(
         'shelf-page-arrow absolute top-[calc(var(--case-h)/2)] z-[3] flex size-8.75 -translate-y-1/2',
         'items-center justify-center rounded-full',

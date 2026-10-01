@@ -1,0 +1,117 @@
+export const perfume = {
+  season: {
+    SPRING: '봄',
+    SUMMER: '여름',
+    AUTUMN: '가을',
+    WINTER: '겨울',
+  },
+  filters: {
+    rankingLabel: '많은 사람이 담은 기준 필터',
+    genderLabel: '향의 성별',
+    ranking: {
+      OWNED: '보유',
+      WISH: '희망',
+      VIEWED: '조회',
+    },
+    gender: {
+      FEMALE: '여성',
+      MALE: '남성',
+      UNISEX: '중성',
+    },
+  },
+  grid: {
+    emptyTitle: '조건에 맞는 향수가 없습니다',
+    emptyDescription: '검색어를 바꾸거나 필터를 해제해 보세요.',
+  },
+  notes: {
+    title: '향조',
+    loading: '향조를 불러오는 중입니다.',
+    empty: '향조 정보가 아직 등록되지 않았습니다.',
+    other: '기타',
+  },
+  overview: {
+    imageFallback: '대표 이미지',
+    shelfSave: '진열대 저장',
+    shelfRemove: '진열대 해제',
+    // 단종은 막지 않고 적기만 합니다 — 이미 가진 사람이 진열대에 담고 후기를 씁니다(지인 피드백 F5)
+    discontinued: '단종',
+    // 원명 옆에 놓여 영문 소문자('unisex')가 이름의 일부처럼 읽혔습니다(지인 피드백 F24)
+    gender: {
+      FEMALE: '여성용',
+      MALE: '남성용',
+      UNISEX: '공용',
+    },
+  },
+  related: {
+    title: '비슷한 향수',
+  },
+  seasonRatings: {
+    title: '계절별 평가',
+  },
+  summary: {
+    title: 'AI 후기 요약',
+    loading: '요약을 불러오는 중입니다.',
+    source_one: '후기 {{count}}개를 바탕으로 요약했습니다.',
+    source_other: '후기 {{count}}개를 바탕으로 요약했습니다.',
+    empty: '후기가 충분히 쌓이면 요약을 보여드립니다.',
+  },
+  keywords: {
+    caption: '향을 언급한 후기에서 자주 나온 표현',
+  },
+  reviewList: {
+    title: '후기',
+    count_one: '{{count}}개',
+    count_other: '{{count}}개',
+    loginDescription: '후기는 로그인한 뒤에 쓸 수 있습니다.',
+    write: '후기 쓰기',
+    editMine: '내 후기 수정',
+    emptyTitle: '아직 후기가 없습니다',
+    emptyDescription: '이 향수를 시향했다면 첫 후기를 남겨보세요.',
+    pagination: '후기 페이지',
+    mine: '내 후기',
+  },
+  reviewDetail: {
+    backToBoard: '후기 게시판',
+    edit: '수정',
+    delete: '삭제',
+    likeLabel: '좋아요 {{count}}',
+    toPerfume: '향수 상세 →',
+    stats: '좋아요 {{likes}} · 조회 {{views}}',
+    deleteFailed: '삭제하지 못했습니다. 잠시 후 다시 시도해주세요.',
+    likeFailed: '좋아요를 누르지 못했습니다. 잠시 후 다시 시도해주세요.',
+    likeLoginDescription:
+      '좋아요는 로그인한 뒤에 누를 수 있습니다. 후기는 로그인 없이도 읽을 수 있습니다.',
+  },
+  list: {
+    heading: '향수',
+    searchLabel: '향수명 또는 브랜드명으로 검색',
+    searchPlaceholder: '향수명 · 브랜드로 검색해주세요.',
+    reset: '초기화',
+    pageEmptyTitle: '이 쪽에는 결과가 없습니다',
+    pageEmptyDescription: '앞쪽으로 돌아가 주세요.',
+    searchEmptyTitle: '검색 결과가 없습니다',
+    searchEmptyDescription: "'{{keyword}}' 와 일치하는 향수를 찾지 못했습니다.",
+    headingSearch: '검색 결과',
+    headingFiltered: '조건에 맞는 향수',
+    headingPopular: '향 지도의 대표 향수',
+    count_one: '{{count}}개',
+    count_other: '{{count}}개',
+    loadErrorTitle: '향수를 불러오지 못했습니다',
+    loadErrorDescription: '다시 시도해주세요.',
+    pagination: '검색 결과 페이지',
+  },
+  detail: {
+    loadErrorTitle: '향수 상세 정보를 불러오지 못했습니다',
+    loadErrorDescription: '다시 시도해주세요.',
+    shelfSaved: '진열대에 저장했습니다',
+    removeTitle: "'{{name}}' 를 진열대에서 뺄까요?",
+    removeDescription:
+      '적어 둔 메모와 취향 적합도가 함께 지워집니다. 되돌릴 수 없습니다.',
+    removeConfirm: '빼기',
+    removed: '진열대에서 뺐습니다',
+    removeFailed: '진열대에서 빼지 못했습니다',
+  },
+  errors: {
+    notFound: '없는 향수입니다',
+  },
+}

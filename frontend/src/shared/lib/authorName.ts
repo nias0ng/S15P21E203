@@ -1,5 +1,5 @@
-const WITHDRAWN_AUTHOR = '탈퇴한 회원'
+import { i18n } from '@/shared/i18n'
 
 export function authorName(nickname: string | null | undefined): string {
-  return nickname ?? WITHDRAWN_AUTHOR
+  return nickname ?? i18n.t('common:withdrawnMember')
 }

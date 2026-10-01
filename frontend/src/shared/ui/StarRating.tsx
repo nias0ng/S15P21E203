@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/shared/lib/cn'
 
@@ -34,6 +35,7 @@ export function StarRating({
   size = 'md',
   className,
 }: StarRatingProps) {
+  const { t } = useTranslation('layout')
   const refs = useRef<(HTMLButtonElement | null)[]>([])
 
   const checkedIndex = VALUES.indexOf(value ?? NaN)
@@ -122,7 +124,7 @@ export function StarRating({
           !showValue && 'sr-only',
         )}
       >
-        {value === null ? '아직 매기지 않음' : `${value} / ${CIRCLES}`}
+        {value === null ? t('starRating.unrated') : `${value} / ${CIRCLES}`}
       </span>
     </span>
   )
@@ -145,13 +147,15 @@ function HitArea({
   onSelect: (next: number) => void
   className?: string
 }) {
+  const { t } = useTranslation('layout')
+
   return (
     <button
       ref={ref}
       type="button"
       role="radio"
       aria-checked={checked}
-      aria-label={`${CIRCLES}점 중 ${score}점`}
+      aria-label={t('starRating.score', { max: CIRCLES, score })}
       tabIndex={checked || (!anyChecked && first) ? 0 : -1}
       onClick={() => onSelect(score)}
       className={cn(

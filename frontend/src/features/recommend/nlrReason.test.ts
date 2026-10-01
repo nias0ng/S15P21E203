@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+import { useLocaleStore } from '@/shared/store/localeStore'
+
 import { nlrReasonSentence, type ReasonContext } from './nlrReason'
 import type { RecommendReason } from './types'
 
@@ -220,5 +222,29 @@ describe('nlrReasonSentence', () => {
   it('지을 이유가 없으면 null 이다', () => {
     expect(build([])).toBeNull()
     expect(build([{ phrase: '빨래', evidence: '', strengths: [] }])).toBeNull()
+  })
+})
+
+describe('nlrReasonSentence — 영어 화면', () => {
+  it('영어 틀로 짓고 향 이름 · 조건 이름을 영어로 쓴다', () => {
+    useLocaleStore.getState().setLocale('en')
+
+    expect(
+      sentenceOf([
+        { phrase: '빨래', evidence: 'soapy · fresh', strengths: [100, 93] },
+        { phrase: null, evidence: 'woody', strengths: [81] },
+      ]),
+    ).toBe(
+      'This perfume has the Soapy(100) · Fresh(93) scent ‘빨래’ suggests, the Woody(81) scent you asked for.',
+    )
+    expect(
+      sentenceOf([
+        {
+          phrase: null,
+          evidence: '남성적인 · 가을에 어울리는',
+          strengths: [null, null],
+        },
+      ]),
+    ).toBe('Fits what you asked for: Masculine · Fall.')
   })
 })

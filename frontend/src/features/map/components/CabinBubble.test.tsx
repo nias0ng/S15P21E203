@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { useLocaleStore } from '@/shared/store/localeStore'
+
 import { setBoatAnchorSource } from '../lib/boatAnchor'
 
 import { CabinBubble } from './CabinBubble'
@@ -142,6 +144,20 @@ describe('CabinBubble', () => {
 
       expect(onEnter).not.toHaveBeenCalled()
     })
+  })
+
+  it('영어 화면은 줄 이름을 영어로 적는다', () => {
+    useLocaleStore.getState().setLocale('en')
+    renderCabin()
+
+    expect(screen.getByRole('dialog', { hidden: true })).toHaveAccessibleName(
+      'Cabin',
+    )
+    expect(screen.getByRole('link', { name: 'Shelf' })).toHaveAttribute(
+      'href',
+      '/shelf',
+    )
+    expect(screen.getByRole('link', { name: 'Collection' })).toBeInTheDocument()
   })
 
   describe('비로그인', () => {
