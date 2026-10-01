@@ -497,6 +497,10 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 Fragrantica 페이지는 약관상 긁어 오지 않습니다. 사람이 읽고 출처를 적습니다.
 Parfumo 는 근거로 쓰지 않습니다 — 같은 향수 페이지가 열 때마다 출시 연도와 단종 여부를 다르게
 보여 줘(2026-10-01 확인) 그 표기를 믿을 수 없습니다.
+판매처 표기는 **그 상품 자신을 두고 한 말**일 때만 셉니다 — 상품명이나 상품 설명의 "discontinued"
+입니다. 품절과 단종을 한데 묶은 분류, 'vaulted' 같은 꼬리표만 있는 것, 관련 상품 칸의 문장은 세지
+않습니다. 이름만 바뀌어 같은 향을 계속 파는 것(예: L'Instant pour Homme Eau Extrême → EDP)도
+단종으로 보지 않습니다. 개인 판매(eBay · Etsy · Mercari)는 근거가 아닙니다.
 
 ---
 
