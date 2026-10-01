@@ -13,10 +13,10 @@ import {
   keepOpenRecommendation,
 } from '../openRecommendation'
 import type { OpenRecommendation } from '../openRecommendation'
-import { usePendingFeedbackStore } from '../pendingFeedbackStore'
 import { recommendationQuery } from '../queries'
 import type { RecommendResult } from '../types'
 
+import { NlrFeedbackInline } from './NlrFeedbackInline'
 import { RecommendResultList } from './RecommendResultList'
 
 type Props = {
@@ -69,7 +69,7 @@ export function RecommendModal({ query, onClose, restored }: Props) {
 
         판은 향수 · 노트 화면과 같은 반투명 유리이고(`scent-map-glass`), 결과 카드는 그
         판 위의 한 단 밝은 유리 카드입니다(`PerfumeCard` 의 `data-slot="card"`).
-        위쪽 자리 · 높이 상한 · 재질 · 모서리는 뒤에 뜨는 설문(`NlrFeedbackModal`)과 한 벌입니다.
+        만족도 설문은 따로 뜨지 않고 결과 아래 한 줄로 섭니다(`NlrFeedbackInline`).
       */
       className="scent-map-glass scent-thin-scroll mt-25 mb-auto max-h-[calc(100vh-var(--spacing)*31.25)] w-290 overflow-y-auto rounded-[24px]"
     >
@@ -117,21 +117,13 @@ function RecommendBody({
   const matchedData = result.data?.matchedData ?? []
 
   /*
-    결과가 **도착하는 순간** 설문을 걸어 둡니다. 닫을 때 걸면 늦습니다 — 결과에서
-    [자세히 보기]는 링크라, 상세로 넘어갈 때 이 모달의 `onClose` 가 불리지 않고
-    화면째 언마운트됩니다. 그때 걸어 둘 곳이 없으면 답하지 않은 설문이 통째로 사라집니다.
-
-    NOTE: 향수가 0개면 걸지 않습니다. `NO_CONDITION` · `NO_RESULT` 는 추천이 없었던 것이라
-    "추천은 어떠셨나요" 에 답할 것이 없고, 그 답을 만족도로 세면 추천의 품질이 아니라
+    만족도는 결과 아래 한 줄로 묻습니다(`NlrFeedbackInline`) — 닫을 때 따로 뜨던 설문 창은 걷었습니다.
+    NOTE: 향수가 0개면 묻지 않습니다. `NO_CONDITION` · `NO_RESULT` 는 추천이 없었던 것이라
+    "이 추천은 어떠셨나요" 에 답할 것이 없고, 그 답을 만족도로 세면 추천의 품질이 아니라
     입력을 못 알아들은 횟수를 만족도에 섞게 됩니다.
     NOTE: 손잡이가 `null` 인 경우도 있습니다 — 서버가 기록에 실패한 것이라 보낼 곳이 없습니다.
   */
-  const hold = usePendingFeedbackStore((state) => state.hold)
   const token = result.data?.recommendationToken ?? null
-  const hasPerfumes = perfumes.length > 0
-  useEffect(() => {
-    if (token !== null && hasPerfumes) hold({ token, query })
-  }, [token, query, hasPerfumes, hold])
 
   return (
     <Unroll>
@@ -176,13 +168,16 @@ function RecommendBody({
           )}
 
           {perfumes.length > 0 ? (
-            <RecommendResultList
-              perfumes={perfumes}
-              query={result.data.query}
-              pickedWithoutScentCondition={
-                result.data.pickedWithoutScentCondition
-              }
-            />
+            <>
+              <RecommendResultList
+                perfumes={perfumes}
+                query={result.data.query}
+                pickedWithoutScentCondition={
+                  result.data.pickedWithoutScentCondition
+                }
+              />
+              {token !== null && <NlrFeedbackInline token={token} />}
+            </>
           ) : (
             /*
                 NOTE: 0개인 두 경우를 한 문장으로 묶지 않습니다 — 조건을 못 뽑은 사람에게

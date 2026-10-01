@@ -168,6 +168,56 @@ describe('RecommendModal', () => {
   })
 
   /*
+    만족도는 결과 아래 한 줄로 묻습니다 — 닫을 때 따로 뜨던 설문 창은 걷었습니다
+    (사용성 테스트 7명 중 6명이 "닫을 때마다 끼어든다" 고 했습니다).
+  */
+  describe('만족도 한 줄', () => {
+    it('결과 아래에 선다', async () => {
+      api.getRecommendation.mockResolvedValue(
+        result({ recommendationToken: 'token-1' }),
+      )
+
+      renderModal()
+
+      expect(
+        await screen.findByRole('group', { name: '추천 만족도' }),
+      ).toBeInTheDocument()
+    })
+
+    // 0개는 추천이 없었던 것이라 답할 것이 없습니다
+    it('향수가 0개면 묻지 않는다', async () => {
+      api.getRecommendation.mockResolvedValue(
+        result({
+          recommendationToken: 'token-1',
+          status: 'NO_CONDITION',
+          perfumes: [],
+        }),
+      )
+
+      renderModal()
+
+      expect(
+        await screen.findByText('어떤 향인지 아직 못 알아들었습니다'),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('group', { name: '추천 만족도' }),
+      ).not.toBeInTheDocument()
+    })
+
+    // 손잡이가 없으면 서버가 기록에 실패한 것이라 보낼 곳이 없습니다
+    it('손잡이가 없으면 묻지 않는다', async () => {
+      api.getRecommendation.mockResolvedValue(result())
+
+      renderModal()
+
+      expect(await screen.findByText('오 로즈')).toBeInTheDocument()
+      expect(
+        screen.queryByRole('group', { name: '추천 만족도' }),
+      ).not.toBeInTheDocument()
+    })
+  })
+
+  /*
     상세에 다녀오면 이 화면이 처음부터 다시 섭니다. 열려 있던 결과를 그대로 펴야 비교하던 다섯
     장이 남고, 같은 손잡이라 설문도 한 번만 걸립니다 (`openRecommendation`).
   */
