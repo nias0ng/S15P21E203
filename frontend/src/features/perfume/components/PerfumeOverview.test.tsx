@@ -117,8 +117,8 @@ describe('PerfumeOverview', () => {
     )
   })
 
-  // 단종이 확인된 향수는 적되, 언제 무엇을 보고 그렇게 판정했는지 함께 보여 줍니다 (지인 피드백 F5)
-  it('단종이 확인된 향수에 단종과 확인일 · 근거를 적는다', () => {
+  // 단종이 확인된 향수는 '단종' 만 적습니다. 확인일 · 근거는 팀이 단종 목록에서 봅니다 (지인 피드백 F5)
+  it('단종이 확인된 향수에 단종을 적고 근거 링크는 두지 않는다', () => {
     render(
       <PerfumeOverview
         perfume={{
@@ -135,9 +135,7 @@ describe('PerfumeOverview', () => {
     )
 
     expect(screen.getByText('단종')).toBeInTheDocument()
-    expect(
-      screen.getByRole('link', { name: /2026\.10\.01 확인/ }),
-    ).toHaveAttribute('href', 'https://example.com/discontinued')
+    expect(screen.queryByRole('link', { name: /근거/ })).not.toBeInTheDocument()
     // 단종이어도 진열대에 담을 수 있습니다 — 이미 가진 사람이 있습니다
     expect(screen.getByRole('button', { name: '진열대 저장' })).toBeEnabled()
   })

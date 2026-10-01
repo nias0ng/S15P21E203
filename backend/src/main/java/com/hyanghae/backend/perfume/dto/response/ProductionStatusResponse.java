@@ -6,8 +6,8 @@ import java.time.LocalDate;
 /**
  * 확인된 생산 상태입니다. 지금은 단종만 담습니다.
  *
- * <p>상태만 주지 않고 확인일과 근거를 함께 줍니다. 화면이 '단종' 옆에 언제 무엇을 보고 그렇게
- * 판정했는지 보여 줘야, 아직 파는 향수를 잘못 적었을 때 사용자가 알아채고 알려 줄 수 있습니다.
+ * <p>상태와 함께 확인일과 근거를 줍니다. 향수 상세는 지금 '단종' 만 그리지만, 언제 무엇을 보고
+ * 그렇게 판정했는지는 다시 확인하거나 잘못 적힌 것을 고칠 때 필요해 응답에서 빼지 않았습니다.
  */
 public record ProductionStatusResponse(
         @Schema(description = "생산 상태. 지금은 DISCONTINUED 만 옵니다.", example = "DISCONTINUED")

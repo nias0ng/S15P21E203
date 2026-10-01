@@ -37,7 +37,7 @@ export interface PerfumeDetail {
   productionStatus?: ProductionStatus | null
 }
 
-/** 확인된 생산 상태. 화면은 '단종' 옆에 확인일과 근거를 함께 보여 줍니다 */
+/** 확인된 생산 상태. 상세는 '단종' 만 그립니다 — 확인일 · 근거는 단종 목록을 고치는 팀이 봅니다 */
 export interface ProductionStatus {
   status: 'DISCONTINUED'
   /** YYYY-MM-DD */
