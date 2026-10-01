@@ -25,6 +25,11 @@
   html, body { margin: 0; padding: 0; background: var(--pb-paper, #F6F5F2); }
   /* 하단 조작 안내의 방향키 몫 — 손가락으로만 쓰는 기기에는 누를 방향키가 없다 (2026-10-01) */
   @media (pointer: coarse) { .pb-help-keys { display: none; } }
+  /* ⭐ 첫 방문 조작 안내 (2026-10-01, v0.87.0 — <html data-help-intro> · main.js). 폰 폭(760 아래)은 미니맵과 겹쳐 하단 안내를 숨기는데,
+     그래서 처음 온 사람이 바다 · 부표를 누를 수 있다는 것을 몰랐다. 처음 한 번은 미니맵 왼쪽 폭 안에서 두 줄로 접어 보인다 */
+  html[data-help-intro] #drift-help { display: block !important; max-width: calc(100vw - var(--pb-mini-w, 150px) - 44px); white-space: normal; line-height: 1.5; }
+  /* ⚠ 폰 폭에서는 앱의 향해 일지 바(왼쪽 아래 60px 위)와 의견 단추가 그 자리를 덮는다 — 안내가 떠 있는 동안만 계기 묶음을 그 위로 올린다 */
+  @media (max-width: 760px) { html[data-help-intro]:not([data-fixed]) { --pb-drift-bottom: 128px; } }
   /* 한국어는 낱말 단위로 줄을 바꾼다 (2026-10-01 — 앱 src/styles/index.css 의 body 와 같은 규칙). 띄어쓰기 없는 긴 글자만 넘칠 때 쪼갠다 */
   body { word-break: keep-all; overflow-wrap: break-word; }
   * { box-sizing: border-box; }

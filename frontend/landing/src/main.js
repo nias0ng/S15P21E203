@@ -381,6 +381,7 @@ const input = createInput(ui.mount, {
     }
     if (zoneBlocks() || travel.busy) return;
     pendingPick = null;   // 사람이 직접 누른 것이 이긴다 (goPerfume)
+    endHelpIntro();       // 처음 누르면 첫 방문 조작 안내는 할 일을 다 했다
     const m = marks.pick(view, nx, ny);
     // ⭐ **빈 바다** → 그 자리로 부스트 자동 조타 (seaGo). 부표 위의 누름은 예전 그대로 고르기다.
     //   2026-09-13 밤 (seaClickGo) : **Shift 없이** 누르기만 해도 간다 — v0.57.0 은 Shift 를 눌러야 갔다 (사용자 요청을 잘못 읽었다 · CHANGELOG v0.58.0).
@@ -764,6 +765,24 @@ let pendingPick = null;
 let leaveAsked = false;
 // ⭐ 클릭 항해의 **일반 속도** (스로틀 0..1) — 자동 조타가 가속이 아닐 때의 값. 예전 틱의 숫자 0.72 를 이름으로 뺐다 (2026-09-15, v0.65.0 · 값은 그대로)
 const SAIL_NORMAL = 1.0;
+// ⭐ 첫 방문 조작 안내 (2026-10-01, v0.87.0 — index.html 의 html[data-help-intro]). **손가락 기기**에서 처음 한 번 — 첫 누름이나 15초에 걷힌다.
+//   ⚠ 앱의 로딩 커튼이 언제 걷히는지 엔진은 모른다 — 그래서 시계가 아니라 **첫 누름**을 끝으로 삼는다 (15초는 아무것도 안 누른 사람의 상한)
+const HELP_INTRO_KEY = 'pb-help-intro';
+let helpIntroTimer = 0;
+function endHelpIntro() {
+  if (!document.documentElement.hasAttribute('data-help-intro')) return;
+  delete document.documentElement.dataset.helpIntro;
+  clearTimeout(helpIntroTimer);
+  try { localStorage.setItem(HELP_INTRO_KEY, '1'); } catch (e) { /* 저장소를 못 쓰면 다음에도 한 번 더 보인다 */ }
+}
+(function startHelpIntro() {
+  const coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  let seen = true;
+  try { seen = localStorage.getItem(HELP_INTRO_KEY) === '1'; } catch (e) { /* 못 읽으면 안 보인다 */ }
+  if (!coarse || seen) return;
+  document.documentElement.dataset.helpIntro = '1';
+  helpIntroTimer = setTimeout(endHelpIntro, 15000);
+})();
 // 지금 속도가 일반(0) ~ 최대 가속(1) 사이 어디인가. 일반보다 느리면 음수. ⚠ 2026-09-22 : cruise = boost = 1.0 인 지금 분모가 0 이고 nav.speed 는 목표에 아래에서 수렴하므로 **k 는 늘 0 이하다** — sailBoostKeys 를 0 으로 꺼 둔 까닭이다
 function sailBoostK() { return (nav.speed - SAIL_NORMAL) / Math.max(1e-4, CONFIG.speed.boost - SAIL_NORMAL); }
 // ⭐⭐ **클릭 항해 중 ESC · 스페이스 — 가속 ↔ 일반 속도** (2026-09-15, v0.65.0 — sailBoostKeys). 사용자 : *"클릭 이동 시에 esc 나 스페이스를 누르면 가속이 멈추고
@@ -2370,6 +2389,9 @@ function tick(ts) {
   if (wantCard !== shownMark) {
     shownMark = wantCard;
     if (shownMark) ui.showScent(shownMark); else ui.hideScent();
+    // ⭐ **앱에 카드가 떠 있다고 알린다** (2026-10-01, v0.87.0 — `<html data-card>` · data-chart 와 같은 규약). 좁은 화면에서 앱이
+    //   3D 위에 얹은 것(향해 일지 · 의견 단추)이 카드 아랫단을 덮었다 (사용성 테스트 · 모바일 : '이 향의 해역으로' 가 그 밑에 깔렸다) — 앱이 그동안 비킨다
+    if (shownMark) document.documentElement.dataset.card = '1'; else delete document.documentElement.dataset.card;
   }
   // 카드의 서비스 동작 단추 (v0.68.0) — 지도 향수가 아니면 둘 다 쉰다. ⚠ ui 가 바뀔 때만 쓴다
   //   ⚠ [주변 향 탐색]이 빠지면서(v0.74.2) 인자가 하나가 됐다 — 남은 둘은 같은 조건이다

@@ -1202,6 +1202,8 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
 
   // ── 누르기 · 끌기 · 휠
   const drag = { on: false, id: null, px: 0, py: 0, moved: 0 };
+  // 손가락 첫 탭의 미리보기 (onUp · v0.87.0)
+  let tapArm = null;
   const onDown = (e) => {
     if (e.button !== 0) return;
     drag.on = true; drag.id = e.pointerId; drag.px = e.clientX; drag.py = e.clientY; drag.moved = 0;
@@ -1250,12 +1252,25 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
     if (wasDrag || !map) return;
     const h = hitAt(e);
     if (h.out) { onBlocked && onBlocked(); return; }
+    // ⭐ 손가락이면 첫 탭은 미리보기 — 머리말 · 커서 옆 이름표가 무엇인지 말하고, 같은 것을 3초 안에 다시 누르면 떠난다 (v0.87.0 · minimap.js 와 같은 규약)
+    if (e.pointerType && e.pointerType !== 'mouse') {
+      const key = h.label ? 'L:' + h.label.f.key : h.pt ? 'P:' + h.pt.x.toFixed(2) + ',' + h.pt.z.toFixed(2) : h.reg ? 'R:' + h.reg.key : null;
+      const now = performance.now();
+      if (key && (!tapArm || tapArm.key !== key || now - tapArm.t > 3000)) {
+        tapArm = { key, t: now };
+        onMove(e);
+        if (hintEl) hintEl.textContent += ' · 한 번 더 누르면 출발';
+        return;
+      }
+      tapArm = null;
+    }
     if (h.label) { const a = h.label.f.a; pick({ key: h.label.f.key, name: h.label.f.name, x: a.x, z: a.z, custom: true }); return; }
     if (h.pt) { pick({ key: h.pt.fam.key, name: h.pt.fam.name, x: h.pt.x, z: h.pt.z, custom: true, spot: true }); return; }
     if (h.reg) pick({ key: h.reg.key, name: h.reg.name, x: h.x, z: h.z, custom: true, spot: true });
   };
   // ⚠ 지도 밖으로 나가면 강조도 같이 푼다 — 안 풀면 마지막 해역이 밝은 채로 굳고 나머지 점이 계속 흐리다
-  const onLeave = () => { hoverPt = null; tip.style.display = 'none'; setFamHover(null); idleHint(); drawLive(); };
+  // ⚠ 손가락은 떼는 순간 pointerleave 가 따라온다 — 첫 탭의 미리보기(tapArm)를 걸어 둔 참이면 지우지 않는다 (v0.87.0)
+  const onLeave = (e) => { if (e && e.pointerType && e.pointerType !== 'mouse' && tapArm) return; hoverPt = null; tip.style.display = 'none'; setFamHover(null); idleHint(); drawLive(); };
   // 휠 — 커서 아래 바다가 제자리에 있도록 배율을 바꾼다
   const onWheel = (e) => {
     e.preventDefault();
