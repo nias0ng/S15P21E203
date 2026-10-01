@@ -1,0 +1,217 @@
+{
+  "_doc": [
+    "perfume_status_check.py 가 읽는 출처. 2026-10-01 에 손으로 대조하며 실제로 쓴 주소입니다.",
+    "brands: 브랜드 공식 판매 목록. sources 가 하나라도 막히거나 비면 그 브랜드는 새 추정을 내지 않습니다.",
+    "  kind sitemap — urls 의 사이트맵(인덱스면 child 정규식에 맞는 하위만), include/exclude 로 거르고 name 정규식 1번 묶음을 이름으로, strip 을 지웁니다",
+    "  kind shopify — base 의 /products.json 상품 제목과 손잡이",
+    "  kind html    — urls 페이지에서 link 정규식 1번 묶음",
+    "  min — 이보다 적게 읽히면 목록 모양이 바뀐 것으로 보고 그 브랜드를 건너뜁니다",
+    "  note · source_url — 새 추정 줄의 근거 문구와 출처",
+    "  unsupported — 자동으로 대조하지 않는 까닭",
+    "retailers: 단종 판매처. evidence title 은 상품명, description 은 상품 설명, page 는 상품 페이지 글에서 그 상품 자신의 단종 문장을 찾습니다",
+    "excluded: 근거로 쓰지 않는 출처와 까닭 (보고서에 그대로 적힙니다)"
+  ],
+  "brands": [
+    {
+      "brand": "Zara",
+      "source_url": "https://www.zara.com/sitemaps/sitemap-index.xml.gz",
+      "note": "미국(us-en) 공식 사이트맵 향수 목록에 없음",
+      "sources": [
+        {"kind": "sitemap", "urls": ["https://www.zara.com/sitemaps/sitemap-index.xml.gz"],
+         "child": "sitemap-product-us-en", "include": "/us/en/[^/]*(perfume|parfum|eau-de|edp|edt|cologne|fragrance)",
+         "name": "/us/en/([^/]+?)-p\\d+\\.html", "min": 200}
+      ]
+    },
+    {
+      "brand": "Avon",
+      "source_url": "https://www.avon.com/sitemap.xml",
+      "note": "미국(avon.com) · 영국(avon.uk.com) 공식 사이트맵에 없음",
+      "sources": [
+        {"kind": "sitemap", "urls": ["https://www.avon.com/sitemap.xml"], "include": "/product/",
+         "name": "/product/([^/?#]+)", "strip": "-\\d+$", "min": 500},
+        {"kind": "shopify", "base": "https://avon.uk.com", "min": 300}
+      ]
+    },
+    {
+      "brand": "Yves Rocher",
+      "source_url": "https://www.yves-rocher.fr/sitemap.xml",
+      "note": "프랑스(yves-rocher.fr) 공식 사이트맵 향수 목록에 없음",
+      "sources": [
+        {"kind": "sitemap", "urls": ["https://www.yves-rocher.fr/sitemap.xml"], "child": "PRODUCT-fr",
+         "include": "/parfum/", "name": "/([^/]+)/p/[^/]+$", "min": 150}
+      ]
+    },
+    {
+      "brand": "Guerlain",
+      "source_url": "https://www.guerlain.com/fr/fr-fr/parfum/",
+      "note": "프랑스(fr-fr) 공식 사이트 향수 목록에 없음",
+      "sources": [
+        {"kind": "html", "link": "href=\"[^\"]*/p/([^\"/]+?)-[A-Z0-9]+\\.html",
+         "collected_name": "/p/([^/]+?)-[A-Z0-9]+\\.html",
+         "urls": [
+           "https://www.guerlain.com/fr/fr-fr/parfum/?sz=1000",
+           "https://www.guerlain.com/fr/fr-fr/parfum/parfum-femme/?sz=1000",
+           "https://www.guerlain.com/fr/fr-fr/parfum/parfum-homme/?sz=1000",
+           "https://www.guerlain.com/fr/fr-fr/parfum/parfum-femme/les-legendaires/?sz=1000",
+           "https://www.guerlain.com/fr/fr-fr/parfum/haute-parfumerie/lart-et-la-matiere/?sz=1000",
+           "https://www.guerlain.com/fr/fr-fr/parfum/haute-parfumerie/lart-et-la-matiere/les-extraits-signature/?sz=1000",
+           "https://www.guerlain.com/fr/fr-fr/parfum/haute-parfumerie/lart-et-la-matiere/les-eaux/?sz=1000",
+           "https://www.guerlain.com/fr/fr-fr/parfum/parfum-femme/aqua-allegoria-perle/?sz=1000",
+           "https://www.guerlain.com/fr/fr-fr/parfum/homme/collections/la-collection-allegoria/absolus-allegoria/?sz=1000",
+           "https://www.guerlain.com/fr/fr-fr/parfum/parfum-homme/les-iconiques-au-masculin/?sz=1000",
+           "https://www.guerlain.com/fr/fr-fr/parfum/parfum-femme/les-colognes/?sz=1000"
+         ], "min": 150}
+      ]
+    },
+    {
+      "brand": "Lattafa Perfumes",
+      "aliases": ["Lattafa"],
+      "source_url": "https://lattafa.com/sitemap_index.xml",
+      "note": "공식 사이트(lattafa.com) 사이트맵에 없음",
+      "sources": [
+        {"kind": "sitemap", "urls": ["https://lattafa.com/sitemap_index.xml"], "child": "product-sitemap",
+         "include": "/product/", "exclude": "/ar/", "name": "/product/([^/]+)/?$", "min": 200}
+      ]
+    },
+    {
+      "brand": "Dior",
+      "aliases": ["Christian Dior"],
+      "source_url": "https://www.dior.com/fr_fr/beauty/sitemap.xml",
+      "note": "프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음",
+      "sources": [
+        {"kind": "sitemap", "urls": ["https://www.dior.com/fr_fr/beauty/sitemap.xml", "https://www.dior.com/en_us/beauty/sitemap.xml"],
+         "include": "/products/", "name": "/products/([^/]+?)-[A-Z]\\d+\\.html", "min": 300}
+      ]
+    },
+    {
+      "brand": "Bath & Body Works",
+      "aliases": ["Bath and Body Works"],
+      "source_url": "https://www.bathandbodyworks.com/sitemap_0.xml",
+      "note": "미국 공식 사이트맵에 없음. 계절 한정 향이 많아 다시 나올 수 있음",
+      "sources": [
+        {"kind": "sitemap", "urls": ["https://www.bathandbodyworks.com/sitemap_index.xml"],
+         "include": "/p/", "name": "/p/([^/]+?)-\\d+\\.html", "min": 500}
+      ]
+    },
+    {
+      "brand": "Oriflame",
+      "unsupported": "향수 목록이 브라우저에서 그려져 사이트맵 · HTML 에 이름이 없음. 본 사이트(oriflame.com)는 robots.txt 가 전체를 막음"
+    },
+    {
+      "brand": "Victoria's Secret",
+      "unsupported": "미스트의 향 이름이 상품 옵션 안에만 있어 주소 · 제목으로 대조할 수 없음"
+    },
+    {
+      "brand": "Armaf",
+      "source_url": "https://armaf.com/sitemap.xml",
+      "note": "공식 사이트(armaf.com) 사이트맵에 없음",
+      "sources": [{"kind": "shopify", "base": "https://armaf.com", "min": 200}]
+    },
+    {
+      "brand": "O Boticário",
+      "unsupported": "공식 사이트가 'Access Denied' 로 막음 (2026-10-01)"
+    },
+    {
+      "brand": "Givenchy",
+      "source_url": "https://www.givenchybeauty.com/int/en/sitemap-global.xml",
+      "note": "프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음",
+      "sources": [
+        {"kind": "sitemap", "urls": ["https://www.givenchybeauty.com/fr/fr/sitemap_0-product.xml",
+                                    "https://www.givenchybeauty.com/us/sitemap_0-product.xml",
+                                    "https://www.givenchybeauty.com/int/en/sitemap_0-product.xml"],
+         "include": "/p/", "name": "/p/([^/]+?)-[A-Z0-9_]+\\.html", "min": 300}
+      ]
+    },
+    {
+      "brand": "Giorgio Armani",
+      "unsupported": "공식 사이트맵이 Cloudflare 확인 페이지에 막힘 (2026-10-01)"
+    },
+    {
+      "brand": "Yves Saint Laurent",
+      "aliases": ["YSL", "Yves St Laurent", "YvesSaintLaurent"],
+      "source_url": "https://www.yslbeauty.fr/sitemap_index.xml",
+      "note": "프랑스(yslbeauty.fr) 공식 사이트맵 향수 목록에 없음",
+      "sources": [
+        {"kind": "sitemap", "urls": ["https://www.yslbeauty.fr/sitemap_index.xml"], "child": "product",
+         "include": "/parfums/", "name": "/parfums/(.+?)/[A-Z0-9-]+YSL\\.html", "strip": "^parfum-(femme|homme)/", "min": 50}
+      ]
+    },
+    {
+      "brand": "Lancôme",
+      "aliases": ["Lancome"],
+      "source_url": "https://www.lancome-usa.com/sitemap_index.xml",
+      "note": "미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함",
+      "sources": [
+        {"kind": "sitemap", "urls": ["https://www.lancome-usa.com/sitemap_index.xml"], "child": "sitemap_1",
+         "include": "/fragrance/|fragrance-gifts", "name": "/([^/]+)/[^/]+\\.html$", "min": 30}
+      ]
+    },
+    {
+      "brand": "Natura",
+      "unsupported": "공식 사이트가 'Access Denied' 로 막음 (2026-10-01)"
+    },
+    {
+      "brand": "Montale",
+      "source_url": "https://www.montaleparfums.com/1_en_0_sitemap.xml",
+      "note": "공식 사이트(montaleparfums.com) 사이트맵에 없음",
+      "sources": [
+        {"kind": "sitemap", "urls": ["https://www.montaleparfums.com/1_en_0_sitemap.xml"], "include": "/en/",
+         "name": "/en/[^/]+/\\d+-([^/]+)\\.html", "min": 100}
+      ]
+    },
+    {
+      "brand": "Demeter Fragrance",
+      "aliases": ["Demeter"],
+      "source_url": "https://demeterfragrance.com/sitemap.xml",
+      "note": "공식 사이트(demeterfragrance.com) 사이트맵에 없음",
+      "sources": [{"kind": "shopify", "base": "https://demeterfragrance.com", "min": 500}]
+    },
+    {
+      "brand": "The Body Shop",
+      "aliases": ["Body Shop"],
+      "source_url": "https://www.thebodyshop.com/sitemap.xml",
+      "note": "공식 사이트(thebodyshop.com) 사이트맵에 없음",
+      "sources": [{"kind": "shopify", "base": "https://www.thebodyshop.com", "min": 200}]
+    },
+    {
+      "brand": "Dolce&Gabbana",
+      "aliases": ["Dolce & Gabbana", "Dolce and Gabbana", "D&G", "dolceandgabbana"],
+      "source_url": "https://www.dolcegabbana.com/en-gb/sitemap-product_0.xml",
+      "note": "영국 · 미국 · 이탈리아 공식 사이트맵에 없음",
+      "sources": [
+        {"kind": "sitemap", "urls": [
+           "https://www.dolcegabbana.com/en-gb/sitemap-product_0.xml", "https://www.dolcegabbana.com/en-gb/sitemap-product_1.xml",
+           "https://www.dolcegabbana.com/en-gb/sitemap-product_2.xml", "https://www.dolcegabbana.com/en-us/sitemap-product_0.xml",
+           "https://www.dolcegabbana.com/en-us/sitemap-product_1.xml", "https://www.dolcegabbana.com/en-us/sitemap-product_2.xml",
+           "https://www.dolcegabbana.com/it-it/sitemap-product_0.xml", "https://www.dolcegabbana.com/it-it/sitemap-product_1.xml",
+           "https://www.dolcegabbana.com/it-it/sitemap-product_2.xml"],
+         "include": "/beauty/", "exclude": "/makeup/|skin-beautifiers", "name": "/([^/]+?)-*[A-Z0-9]+\\.html$", "min": 300}
+      ]
+    },
+    {
+      "brand": "Bvlgari",
+      "aliases": ["Bulgari"],
+      "unsupported": "2026-10-01 에 미국 · 한국 공식 향수 목록을 손으로 대조함. 자동 대조용 목록 주소는 아직 정하지 않음"
+    }
+  ],
+  "retailers": [
+    {"name": "fragrance_vault", "label": "Fragrance Vault", "kind": "shopify", "base": "https://fragrancevault.net", "evidence": "description"},
+    {"name": "annas_luxe", "label": "Anna's Luxe", "kind": "sitemap", "urls": ["https://www.annasluxe.com/sitemap_index.xml"],
+     "child": "product", "include": "discontinu"},
+    {"name": "coucou", "label": "Coucou", "kind": "pages",
+     "list_url": "https://www.coucoushop.com/shop/health-and-beauty/fragrances/?page={page}", "max_pages": 40,
+     "link": "href=\"(https://www\\.coucoushop\\.com/[a-z0-9-]+\\.html)\"", "require_name": true},
+    {"name": "nostaligastore", "label": "nostaligastore", "kind": "shopify", "base": "https://nostaligastore.com", "evidence": "title"},
+    {"name": "the_perfumed_court", "label": "The Perfumed Court", "kind": "shopify", "base": "https://theperfumedcourt.com", "evidence": "title"},
+    {"name": "fragflex", "label": "FragFlex", "kind": "shopify", "base": "https://fragflex.com", "evidence": "description"}
+  ],
+  "excluded": [
+    {"name": "Parfumo", "reason": "같은 향수 페이지가 열 때마다 출시 연도와 단종 여부를 다르게 보여 줌 (2026-10-01)"},
+    {"name": "alinjazperfumes", "reason": "용량 · 포장 단위로 discontinued 를 붙임 — 브랜드가 지금도 파는 Rose Barbare · Habit Rouge EDP 에도 붙어 있음"},
+    {"name": "Fragrantica", "reason": "약관상 긁어 오지 않음 — 사람이 읽고 출처를 적음"},
+    {"name": "Venba", "reason": "robots.txt 가 막고 상품 목록 요청에 403"},
+    {"name": "FragranceNet", "reason": "CAPTCHA 확인 페이지"},
+    {"name": "Wikiparfum", "reason": "접근 신청이 필요함"},
+    {"name": "eBay · Etsy · Mercari", "reason": "개인 판매 — 판매자 문구는 근거가 아님"}
+  ]
+}
