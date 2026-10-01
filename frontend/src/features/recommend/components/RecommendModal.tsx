@@ -8,8 +8,14 @@ import { Modal } from '@/shared/ui/Modal'
 import { Skeleton } from '@/shared/ui/Skeleton'
 import { Unroll } from '@/shared/ui/Unroll'
 
+import {
+  dropOpenRecommendation,
+  keepOpenRecommendation,
+} from '../openRecommendation'
+import type { OpenRecommendation } from '../openRecommendation'
 import { usePendingFeedbackStore } from '../pendingFeedbackStore'
 import { recommendationQuery } from '../queries'
+import type { RecommendResult } from '../types'
 
 import { RecommendResultList } from './RecommendResultList'
 
@@ -17,6 +23,12 @@ type Props = {
   /** 검색한 말. `null` 이면 닫힌 상태입니다 */
   query: string | null
   onClose: () => void
+  /**
+   * 상세에 다녀오기 전에 **열려 있던 결과** (`readOpenRecommendation`). 주면 서버에 다시 묻지 않고
+   * 그 결과를 그대로 펼칩니다 — 같은 다섯 장 · 같은 설문 손잡이입니다.
+   * ⚠️ 그 말(`query`)로 연 첫 결과창에만 씁니다. 닫았다 같은 말로 다시 찾으면 새로 받습니다
+   */
+  restored?: OpenRecommendation
 }
 
 /**
@@ -24,11 +36,20 @@ type Props = {
  * 3D iframe 이 통째로 다시 떠(WebGL 컨텍스트 · 8MB 배 모델) 모달로 둡니다.
  * NOTE: 가운데 정렬이면 족자가 풀릴 때 머리줄이 밀려 올라가 위쪽에 붙입니다(`mt-25 mb-auto`).
  */
-export function RecommendModal({ query, onClose }: Props) {
+export function RecommendModal({ query, onClose, restored }: Props) {
+  /*
+    사람이 닫으면 **담아 둔 결과도 버립니다** (`openRecommendation` 머리말) — 상세로 넘어가는
+    길은 이 `onClose` 를 안 지나므로(링크라 화면째 언마운트됩니다) 그때는 남습니다.
+  */
+  const close = () => {
+    dropOpenRecommendation()
+    onClose()
+  }
+
   return (
     <Modal
       open={query !== null}
-      onClose={onClose}
+      onClose={close}
       title="추천 결과"
       /*
         배경을 눌러도 닫지 않습니다. 판이 3D 바다 위에 떠 있어 배경이 화면의 대부분이고,
@@ -53,17 +74,39 @@ export function RecommendModal({ query, onClose }: Props) {
       className="scent-map-glass scent-thin-scroll mt-25 mb-auto max-h-[calc(100vh-var(--spacing)*31.25)] w-290 overflow-y-auto rounded-[24px]"
     >
       {/* NOTE: `<dialog>` 는 닫혀도 children 이 DOM 에 남아, 그리지 않아야 족자가 다시 풀립니다 */}
-      {query !== null && <RecommendBody query={query} />}
+      {query !== null && (
+        <RecommendBody
+          query={query}
+          restored={restored?.query === query ? restored.result : undefined}
+        />
+      )}
     </Modal>
   )
 }
 
 /** 열릴 때마다 새로 마운트됩니다 — 그래야 족자가 매번 처음부터 풀립니다 */
-function RecommendBody({ query }: { query: string }) {
+function RecommendBody({
+  query,
+  restored,
+}: {
+  query: string
+  restored?: RecommendResult
+}) {
   const result = useQuery({
     ...recommendationQuery(query),
     enabled: query.trim().length > 0,
+    // 열려 있던 결과로 돌아왔으면 그대로 섭니다 — `staleTime: Infinity` 라 다시 묻지 않습니다
+    initialData: restored,
   })
+
+  /*
+    결과가 서면 **열려 있던 결과**로 담아 둡니다 — 상세에 다녀와 같은 결과를 다시 펼칠 재료입니다
+    (`openRecommendation`). 닫으면 위의 `close` 가 버립니다.
+  */
+  const data = result.data
+  useEffect(() => {
+    if (data) keepOpenRecommendation({ query, result: data })
+  }, [query, data])
 
   const perfumes = result.data?.perfumes ?? []
   /*

@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { useLocation, useNavigate, useSearchParams } from 'react-router'
 
 import {
   CabinBubble,
@@ -24,7 +24,11 @@ import {
   type SceneSearchMode,
   type VoyageLogStatus,
 } from '@/features/map'
-import { NlrFeedbackModal, RecommendModal } from '@/features/recommend'
+import {
+  NlrFeedbackModal,
+  RecommendModal,
+  readOpenRecommendation,
+} from '@/features/recommend'
 // 진열대 저장은 진열대 도메인의 어휘입니다. 화면에서 두 도메인을 조합합니다.
 import {
   ShelfRegisterModal,
@@ -127,7 +131,37 @@ export default function HomePage() {
    * 추천이 없어집니다.
    */
   const [searchMode, setSearchMode] = useState<SceneSearchMode>('nl')
-  const [nlQuery, setNlQuery] = useState<string | null>(null)
+  /*
+   * ⭐ **자연어로 찾은 말은 주소에도 남깁니다** (`/?q=` · 2026-10-01). 결과에서 상세로 갔다가 뒤로가기나
+   * 상세의 '← 추천 결과' 로 돌아오면 이 화면이 처음부터 다시 서는데, 주소에 말이 남아 있어야 보던
+   * 결과창을 다시 열 수 있습니다 — 전에는 결과 대신 설문만 떠서 다섯 개를 비교하려면 같은 말로 다시
+   * 찾아야 했습니다(사용성 테스트 7명 중 6명).
+   *   - 열려 있던 결과가 이 탭에 담겨 있으면(`readOpenRecommendation`) 서버에 다시 묻지 않고 그대로 섭니다.
+   *   - 담긴 것이 없으면(다른 탭에서 연 주소 · 새로고침 뒤 저장소를 못 쓴 창) 그 말로 새로 찾습니다.
+   * ⚠️ 주소는 **바꿔 끼웁니다**(replace) — 검색할 때마다 기록이 쌓이면 뒤로가기가 검색어를 하나씩 되돌립니다.
+   * ⚠️ 마운트 때 한 번만 읽습니다 — 아래에서 결과창을 닫으면 주소의 말도 지웁니다.
+   */
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [nlQuery, setNlQuery] = useState<string | null>(() =>
+    searchParams.get('q'),
+  )
+  const [restoredNl, setRestoredNl] = useState(() => {
+    const q = searchParams.get('q')
+    return q === null ? undefined : readOpenRecommendation(q)
+  })
+  const openNl = (query: string | null) => {
+    setNlQuery(query)
+    // ⚠️ 돌아와 다시 편 결과는 **그 한 번만** 씁니다. 닫은 뒤 같은 말로 찾으면 새 추천입니다 (`openRecommendation` 머리말)
+    if (query === null) setRestoredNl(undefined)
+    setSearchParams(
+      (params) => {
+        if (query === null) params.delete('q')
+        else params.set('q', query)
+        return params
+      },
+      { replace: true },
+    )
+  }
   const [mapKeyword, setMapKeyword] = useState<string | null>(null)
 
   /** 지도 카드에서 담으려는 향수. 모달이 이름 · 브랜드를 보여주는 데 씁니다 */
@@ -404,7 +438,7 @@ export default function HomePage() {
         mode={searchMode}
         onModeChange={setSearchMode}
         onSearch={(keyword, mode) => {
-          if (mode === 'nl') setNlQuery(keyword)
+          if (mode === 'nl') openNl(keyword)
           else setMapKeyword(keyword)
         }}
       />
@@ -463,7 +497,11 @@ export default function HomePage() {
       />
 
       {/* 검색창의 두 방식이 내놓는 답. 뒤의 3D 는 그대로 돌아갑니다 */}
-      <RecommendModal query={nlQuery} onClose={() => setNlQuery(null)} />
+      <RecommendModal
+        query={nlQuery}
+        onClose={() => openNl(null)}
+        restored={restoredNl}
+      />
 
       {/*
         결과를 닫으면 뜹니다. 답을 안 하고 상세로 나갔다 돌아와도 여기서 이어받습니다.
