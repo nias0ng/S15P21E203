@@ -43,6 +43,7 @@ import {
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { useToast } from '@/shared/hooks/useToast'
 import { cn } from '@/shared/lib/cn'
+import { diveDepthOf } from '@/shared/lib/diveTrack'
 import { useIsLoggedIn } from '@/shared/store/authStore'
 import {
   useDiveStore,
@@ -464,6 +465,21 @@ export default function HomePage() {
           if (mode === 'nl') openNl(keyword)
           else setMapKeyword(keyword)
         }}
+        /*
+          첫 소개는 화면이 비어 있을 때만 합니다 — 커튼 밑 · 결과창 뒤 · 해도 · 잠수 중에 펴면
+          몇 초 만에 접혀 아무도 못 봅니다 (`SceneSearchBar` 의 introduce 머리말).
+        */
+        introduce={
+          boot.done &&
+          !diving &&
+          !chartOpen &&
+          nlQuery === null &&
+          mapKeyword === null
+        }
+        // 헤더의 PERFUME 과 같은 잠수로 떠납니다 (`header/useDiveOut`)
+        onBrowsePopular={() =>
+          startDive(ROUTES.PERFUMES, 'dive', diveDepthOf(ROUTES.PERFUMES) ?? 0)
+        }
       />
 
       {/*
