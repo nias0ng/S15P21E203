@@ -18,6 +18,7 @@ export const layout = {
   },
   graphics: {
     trigger: 'Graphics settings',
+    panel: 'Graphics settings',
     title: 'Graphics quality',
     recommended: '(recommended)',
     tier: {
@@ -35,6 +36,11 @@ export const layout = {
     },
     live: 'Now {{tier}}',
     liveIntegrated: 'Now {{tier}} · integrated graphics',
+    calm: {
+      label: 'Reduce motion',
+      hint: 'Stops dolphins, birds and screen sway',
+      osOn: 'Already reduced by your device’s Reduce Motion setting',
+    },
     integratedTip:
       'On a laptop with a dedicated GPU, set your browser to ‘High performance’ in Windows Settings › System › Display › Graphics for smoother motion',
   },

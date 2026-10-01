@@ -10,7 +10,7 @@ import { areasNow } from './areas.js';
 import { PARAMS as P } from './params.js';
 import { koNames, onLang, t, waters, zoneDesc } from './i18n.js';
 
-export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin }) {
+export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin, onVisiblePick }) {
   const $ = (id) => document.getElementById(id);
 
   const stage = $('stage');
@@ -24,6 +24,22 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin 
 
   // 향수 카드 — ⭐ 2026-09-11 오후부터 **말풍선**이다 (index.html 의 세 겹 주석)
   const card = $('scent-card');
+  // 지금 보이는 향수 (2026-10-01, v0.86.0 — index.html #visible-perfumes · setVisiblePerfumes)
+  const vNav = $('visible-perfumes'), vList = $('visible-perfumes-list'), vHead = $('visible-perfumes-head');
+  let vItems = [], vKey = '', vLast = -1;
+  const focusVisibleList = () => {
+    if (!vList) return;
+    const bs = vList.querySelectorAll('button[data-vi]');
+    const btn = bs[vLast >= 0 && vLast < bs.length ? vLast : 0];
+    if (btn) btn.focus();
+  };
+  if (vList) vList.addEventListener('click', (e) => {
+    const b = e.target.closest ? e.target.closest('button[data-vi]') : null;
+    if (!b) return;
+    const it = vItems[+b.dataset.vi];
+    vLast = +b.dataset.vi;
+    if (it && onVisiblePick) onVisiblePick(it.m);
+  });
   const bubble = $('scent-bubble'), tail = $('scent-tail');
   const rows = card ? [...card.querySelectorAll('[data-row]')] : [];
   const cName = $('scent-name'), cSub = $('scent-sub'), cNotes = $('scent-notes'), cNotesLabel = $('scent-notes-label');
@@ -319,6 +335,7 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin 
   const offLang = onLang(() => {
     if (bub.on && bub.m) { fillScent(bub.m); measureAvoid(); bub.key = ''; bub.tailKey = ''; }
     zKey = '';
+    vKey = null;   // 지금 보이는 향수 — 같은 목록이어도 다음 틱(0.5초)에 새 글자로 다시 쓴다
     if (cabinEl) cabinEl.setAttribute('aria-label', t('cabin.open'));
   });
 
@@ -417,8 +434,12 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin 
           { duration: calm() ? 120 : (P.cardOpenMs === undefined ? 300 : P.cardOpenMs) * 0.6, easing: EASE_IO, fill: 'forwards' });
       } else card.style.opacity = '0';
       hideTimer = setTimeout(() => {
+        // ⚠ 키보드로 카드 안에 들어와 있었으면(지금 보이는 향수에서 골랐다) 숨는 순간 초점이 body 로 떨어진다 —
+        //   목록으로 돌려준다 (v0.86.0). 카드가 다시 뜨면 main.js 의 pickVisible 이 다시 넘긴다
+        const hadFocus = card.contains(document.activeElement);
         card.style.visibility = 'hidden'; card.style.opacity = '0'; hideTimer = 0;
         if (bub.anim) { bub.anim.cancel(); bub.anim = null; }
+        if (hadFocus) focusVisibleList();
       }, FADE);
     },
 
@@ -747,6 +768,41 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin 
     // ⚠ 텍스트는 DOM 에 둔다 (CLAUDE.md : *"캔버스에 그리면 SEO·스크린리더·복사·번역·확대를 잃는다"*).
     // ⚠ 매 프레임 불리므로 **값이 바뀔 때만** 스타일·글자를 쓴다 (showZone 과 같은 가드)
     // ⚠ 자리는 transform 한 줄로 민다 (left/top 을 매 프레임 바꾸면 레이아웃을 다시 계산한다 — 이름표가 수십 개다)
+    // ── 지금 보이는 향수 (2026-10-01, v0.86.0). list = [{ key, text, m }] — 이름표가 붙은 부표를 화면 왼쪽부터.
+    //   ⚠ 초점이 목록 안에 있으면 **바꾸지 않는다** — 고르는 사이에 단추가 밀리면 엉뚱한 향수가 눌린다
+    //   ⚠ 같은 목록이면 DOM 을 안 건드린다 (틱이 0.5초마다 부른다)
+    setVisiblePerfumes(list) {
+      if (!vList || (vNav && vNav.contains(document.activeElement))) return;
+      const key = list.map(it => it.key).join('|');
+      if (key === vKey) { vItems = list; return; }
+      vKey = key; vItems = list; vLast = -1;
+      vList.textContent = '';
+      list.forEach((it, i) => {
+        const li = document.createElement('li');
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.dataset.vi = String(i);
+        b.textContent = it.text;
+        li.appendChild(b);
+        vList.appendChild(li);
+      });
+      if (vHead) vHead.textContent = list.length ? t('visible.head', { n: list.length }) : t('visible.empty');
+    },
+    // 카드가 열리면 [자세히 보기] 로 초점을 넘긴다 — 키보드로 고른 사람이 다음에 누를 곳이다
+    //   돌려주는 값 = 넘겼는가. 카드가 아직 안 섰으면(부표가 잠겼다 솟는 동안 · cardFollowFade) false — 부르는 쪽이 다시 묻는다
+    focusCard() {
+      const b = card && card.querySelector('button[data-act="detail"]');
+      if (!b || card.style.visibility !== 'visible' || b.offsetParent === null) return false;
+      b.focus();
+      return true;
+    },
+    // 카드가 **서 있는가** — 사라지는 중(페이드 0.18초 · style 은 아직 visible)은 아니다. hideScent 가 bub.on 을 먼저 내린다
+    cardShown() { return !!card && bub.on && card.style.visibility === 'visible'; },
+    // 초점이 아직 목록(또는 아무 데도 없음)에 있는가 — 기다리는 사이 사람이 다른 곳으로 Tab 했으면 카드로 끌어오지 않는다
+    focusInVisible() { const a = document.activeElement; return !a || a === document.body || (!!vNav && vNav.contains(a)); },
+    cardHasFocus() { return !!card && card.contains(document.activeElement); },
+    // 카드를 Esc 로 닫았을 때 — 마지막에 고른 줄로 초점을 돌려준다 (없으면 첫 줄)
+    focusVisiblePerfumes() { focusVisibleList(); },
     showMarkLabels(items) {
       for (let i = 0; i < items.length; i++) {
         let el = focusEls[i];

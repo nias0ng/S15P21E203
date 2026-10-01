@@ -25,6 +25,7 @@ export function useSceneQuality(
   ready: boolean,
 ) {
   const mode = useGraphicsStore((state) => state.mode)
+  const calm = useGraphicsStore((state) => state.calm)
   const told = useGraphicsStore((state) => state.told)
   const [pending, setPending] = useState<QualityNotice | null>(null)
 
@@ -43,5 +44,5 @@ export function useSceneQuality(
     notify(noticeMessage(pending))
   }, [ready, pending, told, notify])
 
-  return { mode, onQuality }
+  return { mode, calm, onQuality }
 }

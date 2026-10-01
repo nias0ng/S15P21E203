@@ -15,6 +15,7 @@ export const layout = {
   },
   graphics: {
     trigger: '그래픽 설정',
+    panel: '그래픽 설정',
     title: '그래픽 품질',
     recommended: '(권장)',
     tier: {
@@ -32,6 +33,11 @@ export const layout = {
     },
     live: '지금 {{tier}}',
     liveIntegrated: '지금 {{tier}} · 내장 그래픽',
+    calm: {
+      label: '움직임 줄이기',
+      hint: '돌고래 · 새 · 화면 흔들림을 멈춥니다',
+      osOn: '기기 설정의 동작 줄이기가 켜져 있어 이미 줄였습니다',
+    },
     integratedTip:
       '외장 그래픽이 있는 노트북이라면 Windows 설정 › 시스템 › 디스플레이 › 그래픽에서 브라우저를 ‘고성능’으로 두면 더 부드럽습니다',
   },

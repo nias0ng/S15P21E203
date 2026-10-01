@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/shared/lib/cn'
+import { prefersReducedMotion } from '@/shared/lib/prefersReducedMotion'
 import {
   useGraphicsStore,
   type GraphicsMode,
@@ -52,6 +53,10 @@ export function GraphicsMenu({ ink }: { ink: Ink }) {
   const mode = useGraphicsStore((state) => state.mode)
   const setMode = useGraphicsStore((state) => state.setMode)
   const quality = useGraphicsStore((state) => state.quality)
+  const calm = useGraphicsStore((state) => state.calm)
+  const setCalm = useGraphicsStore((state) => state.setCalm)
+  // 기기(OS)의 '동작 줄이기' 가 켜져 있으면 이미 줄이고 있습니다 — 여기서 끌 수는 없습니다 (엔진 applyCalm)
+  const osCalm = prefersReducedMotion()
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
@@ -102,7 +107,7 @@ export function GraphicsMenu({ ink }: { ink: Ink }) {
         <div
           id={panelId}
           role="dialog"
-          aria-label={t('graphics.title')}
+          aria-label={t('graphics.panel')}
           // 글자색을 판에 한 번 겁니다 — 제목 · 안내문은 줄(ink.item)이 아니라 헤더 바탕의 색을 따라야 합니다
           className={cn(
             'absolute top-full right-0 z-30 mt-2.5 w-65 border py-1.25',
@@ -164,6 +169,40 @@ export function GraphicsMenu({ ink }: { ink: Ink }) {
               )
             })}
           </fieldset>
+
+          {/*
+            ⭐ 움직임 줄이기 (2026-10-01 · 메인 사용성 테스트). 멀미가 있거나 움직이는 화면이 어지러운 사람이
+            "움직임을 멈추거나 줄이는 설정이 없다" 고 했습니다 — OS 의 '동작 줄이기' 를 모르는 사람도 여기서 켭니다.
+            거두는 것은 저절로 움직이는 몫(패럴랙스 · 돌고래 · 새 · 속도에 따른 카메라)이고 파도와 배는 그대로입니다.
+          */}
+          <label
+            className={cn(
+              'mt-1.25 flex items-start gap-2.5 border-t px-2.5 pt-2.5 pb-1.25',
+              ink.itemRule,
+              osCalm ? 'cursor-default' : cn('cursor-pointer', ink.item),
+              'has-focus-visible:ring-1 has-focus-visible:ring-current has-focus-visible:ring-inset',
+            )}
+          >
+            <input
+              type="checkbox"
+              checked={calm || osCalm}
+              disabled={osCalm}
+              onChange={(event) => setCalm(event.target.checked)}
+              className="peer sr-only"
+            />
+            <span
+              aria-hidden
+              className="mt-1.25 size-2.5 shrink-0 rounded-[2px] border border-current peer-checked:bg-current"
+            />
+            <span>
+              <span className="text-caption block">
+                {t('graphics.calm.label')}
+              </span>
+              <span className="block text-[11px] leading-snug opacity-70">
+                {osCalm ? t('graphics.calm.osOn') : t('graphics.calm.hint')}
+              </span>
+            </span>
+          </label>
 
           {integrated && (
             <p

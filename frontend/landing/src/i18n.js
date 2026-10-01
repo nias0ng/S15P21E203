@@ -24,6 +24,14 @@ const DICT = {
     cabin: { open: '선실 열기' },
     sea: { out: '범위 없음', outSub: '이 너머는 갈 수 없는 해역입니다', open: '빈 바다', waters: '{{name}} 해역' },
     mini: { open: '해도 열기', explored: '탐색 {{pct}}%' },
+    // 손가락의 첫 탭은 미리보기다 (minimap.js · chart.js) — 머리말 끝에 붙는다
+    tap: { again: ' · 한 번 더 누르면 출발' },
+    // 지금 보이는 향수 (#visible-perfumes · 키보드 · 화면 읽기)
+    visible: {
+      label: '지금 보이는 향수',
+      head: '지금 보이는 향수 {{n}}개 · 고르면 카드가 열립니다',
+      empty: '지금 보이는 향수가 없습니다 — 바다를 누르면 그쪽으로 갑니다'
+    },
     chart: {
       title: '향해 지도', reset: '처음 배율', close: '닫기', closeTitle: '닫기 (ESC)',
       count: '향수 {{n}}', explored: ' · 탐색 {{pct}}%', zoom: ' · {{k}}배', unexplored: ' · 미탐색',
@@ -51,6 +59,12 @@ const DICT = {
     // ⚠ 미니맵 머리말의 글자 칸은 좁은 단계(폭 1280 이하 · 판 200px)에서 약 65px 이다 — 'explored' · 'Out of range' 는 두 줄로 꺾였다 (10px · 자간 0.12em 실측)
     sea: { out: 'Off limits', outSub: 'You can’t sail beyond this point', open: 'Open sea', waters: '{{name}} waters' },
     mini: { open: 'Open chart', explored: '{{pct}}% seen' },
+    tap: { again: ' · tap again to sail' },
+    visible: {
+      label: 'Perfumes in view',
+      head: '{{n}} perfumes in view · pick one to open its card', head_one: '{{n}} perfume in view · pick it to open its card',
+      empty: 'No perfumes in view — click the sea to sail there'
+    },
     chart: {
       title: 'Hyanghae Map', reset: 'Reset zoom', close: 'Close', closeTitle: 'Close (Esc)',
       count: '{{n}} perfumes', count_one: '{{n}} perfume', explored: ' · {{pct}}% explored', zoom: ' · {{k}}×', unexplored: ' · unexplored',

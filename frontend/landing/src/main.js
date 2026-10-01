@@ -77,6 +77,8 @@ const ui = createUI({
   // ⭐ 배 옆 방울을 눌렀다 (2026-09-21) — 배를 누른 것과 **같은 문**이다.
   //   ⚠ 방울은 #mount 밖이라 이 누름은 input.js 의 onPick 으로 안 간다 — 그래서 따로 받는다
   onCabin: () => { if (cabinOpen) closeCabin(); else openCabin(); },
+  // ⭐ 지금 보이는 향수에서 골랐다 (2026-10-01, v0.86.0 — 키보드 · 화면 읽기). 부표를 누른 것과 같다 (pickVisible)
+  onVisiblePick: (m) => pickVisible(m),
   onCloseCard: () => {
     marks.clearSelect();
     // ⚠ 돌아갈 곳도 같이 지운다 (2026-09-12 저녁) — 안 지우면 호버가 벗어날 때
@@ -386,6 +388,7 @@ const input = createInput(ui.mount, {
     }
     if (zoneBlocks() || travel.busy) return;
     pendingPick = null;   // 사람이 직접 누른 것이 이긴다 (goPerfume)
+    endHelpIntro();       // 처음 누르면 첫 방문 조작 안내는 할 일을 다 했다
     const m = marks.pick(view, nx, ny);
     // ⭐ **빈 바다** → 그 자리로 부스트 자동 조타 (seaGo). 부표 위의 누름은 예전 그대로 고르기다.
     //   2026-09-13 밤 (seaClickGo) : **Shift 없이** 누르기만 해도 간다 — v0.57.0 은 Shift 를 눌러야 갔다 (사용자 요청을 잘못 읽었다 · CHANGELOG v0.58.0).
@@ -729,8 +732,31 @@ function cameraPose(cl, s, aspect, out) {
 //   ⚠ OS '동작 줄이기' 면 목표를 0 으로 — 카메라가 속도를 아예 안 탄다 (camCalm)
 let _camS = 0, _camSV = 0;
 const _calmMQ = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+// ⭐⭐ **움직임 줄이기** (2026-10-01, v0.85.0). OS '동작 줄이기'(camCalm 이 켜져 있을 때) 또는 앱의 그래픽 설정 '움직임 줄이기'(motionCalm) 면
+//   카메라가 속도를 안 타는 것(아래) 말고도 **장면이 저절로 움직이는 몫**을 거둔다 — 마우스를 따라 미는 패럴랙스 · 뛰는 돌고래 · 헤엄치는 돌고래 · 새.
+//   사용성 테스트(키보드 · 저시력 · 멀미)에서 "동작 줄이기를 켰는데 바다 · 배 · 돌고래 · 반짝임이 계속 크게 움직인다" 고 했다.
+//   ⚠ 파도와 배는 **그대로다** — 장면의 본체라 줄이면 지도가 아니게 된다. 부표를 눌렀을 때의 연출 구도도 그대로다.
+//   ⚠ 값을 P 에 **잠시 덮어쓰고** 풀 때 되돌린다 (calmSaved). 셋 다 매 프레임 P 를 읽어 바로 듣는다 — pod.js · birds.js 의 amount 문 · 틱의 parallax.
+//     처음부터 calm 이면 돌고래 GLB 를 **받지도 않는다** (pod.js 는 podAmount · podSwim 이 둘 다 0 이면 load 하지 않는다)
+const CALM_OFF = { parallaxAmount: 0, parallaxAmountY: 0, podAmount: 0, podSwim: 0, birdAmount: 0 };
+let calmSaved = null;
+function calmWanted() {
+  return (P.motionCalm || 0) >= 0.5 || ((P.camCalm === undefined ? 1 : P.camCalm) >= 0.5 && !!(_calmMQ && _calmMQ.matches));
+}
+function applyCalm() {
+  const on = calmWanted();
+  if (on && !calmSaved) {
+    calmSaved = {};
+    for (const k of Object.keys(CALM_OFF)) { calmSaved[k] = P[k]; P[k] = CALM_OFF[k]; }
+  } else if (!on && calmSaved) {
+    for (const k of Object.keys(calmSaved)) P[k] = calmSaved[k];
+    calmSaved = null;
+  }
+}
+applyCalm();
+if (_calmMQ && _calmMQ.addEventListener) _calmMQ.addEventListener('change', applyCalm);
 function camSpeedFollow(s, dt) {
-  const calm = (P.camCalm === undefined ? 1 : P.camCalm) >= 0.5 && !!(_calmMQ && _calmMQ.matches);
+  const calm = calmWanted();
   const g = calm ? 0 : s;
   const T = P.camFollow === undefined ? 0 : P.camFollow;
   if (!(T > 0)) { _camS = g; _camSV = 0; return g; }   // 0 = 예전 (nav.speed 그대로)
@@ -767,8 +793,28 @@ let pendingPick = null;
 //   그 1~2초의 누름을 그냥 버렸다 — 사용성 테스트에서 "연출을 건너뛸 수 없다" 고 읽혔다. 이제 받아 두었다가 **다 들어온 순간 머묾 없이** 나간다.
 //   ⚠ 먼 곳 이동이 연출을 걷을 때와 같은 규약이다 (startTravel 의 travelAfterZone 주석 : 입장을 끊으면 퇴장 커브가 가득 찬 값에서 시작해 튄다)
 let leaveAsked = false;
+// 지금 보이는 향수 목록을 마지막으로 채운 시각 (틱의 t · 이름표 줄)
+let visibleAt = -1;
 // ⭐ 클릭 항해의 **일반 속도** (스로틀 0..1) — 자동 조타가 가속이 아닐 때의 값. 예전 틱의 숫자 0.72 를 이름으로 뺐다 (2026-09-15, v0.65.0 · 값은 그대로)
 const SAIL_NORMAL = 1.0;
+// ⭐ 첫 방문 조작 안내 (2026-10-01, v0.87.0 — index.html 의 html[data-help-intro]). **손가락 기기**에서 처음 한 번 — 첫 누름이나 15초에 걷힌다.
+//   ⚠ 앱의 로딩 커튼이 언제 걷히는지 엔진은 모른다 — 그래서 시계가 아니라 **첫 누름**을 끝으로 삼는다 (15초는 아무것도 안 누른 사람의 상한)
+const HELP_INTRO_KEY = 'pb-help-intro';
+let helpIntroTimer = 0;
+function endHelpIntro() {
+  if (!document.documentElement.hasAttribute('data-help-intro')) return;
+  delete document.documentElement.dataset.helpIntro;
+  clearTimeout(helpIntroTimer);
+  try { localStorage.setItem(HELP_INTRO_KEY, '1'); } catch (e) { /* 저장소를 못 쓰면 다음에도 한 번 더 보인다 */ }
+}
+(function startHelpIntro() {
+  const coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  let seen = true;
+  try { seen = localStorage.getItem(HELP_INTRO_KEY) === '1'; } catch (e) { /* 못 읽으면 안 보인다 */ }
+  if (!coarse || seen) return;
+  document.documentElement.dataset.helpIntro = '1';
+  helpIntroTimer = setTimeout(endHelpIntro, 15000);
+})();
 // 지금 속도가 일반(0) ~ 최대 가속(1) 사이 어디인가. 일반보다 느리면 음수. ⚠ 2026-09-22 : cruise = boost = 1.0 인 지금 분모가 0 이고 nav.speed 는 목표에 아래에서 수렴하므로 **k 는 늘 0 이하다** — sailBoostKeys 를 0 으로 꺼 둔 까닭이다
 function sailBoostK() { return (nav.speed - SAIL_NORMAL) / Math.max(1e-4, CONFIG.speed.boost - SAIL_NORMAL); }
 // ⭐⭐ **클릭 항해 중 ESC · 스페이스 — 가속 ↔ 일반 속도** (2026-09-15, v0.65.0 — sailBoostKeys). 사용자 : *"클릭 이동 시에 esc 나 스페이스를 누르면 가속이 멈추고
@@ -1066,6 +1112,26 @@ function goPerfume(fid) {
   if (!m) return false;
   // ⚠ 목표에 부표를 싣는다 — 연출이 걷히길 기다리는 길(pendingTravel)로 미뤄져도 같이 간다
   return startTravel({ key: m.zone, name: m.nameKo || m.name, x: m.x, z: m.z, custom: true, pickMark: m });
+}
+// ⭐ 지금 보이는 향수(#visible-perfumes)에서 고른 부표 (2026-10-01, v0.86.0). 누르기와 같은 문을 지난다 —
+//   앱 창이 떠 있거나(hostHold) 전환 중(busy · 안개)이면 쉰다 (onPick 의 첫 줄들과 같다). 고르면 카드의 [자세히 보기] 로 초점을 넘긴다
+function pickVisible(m) {
+  if (hostHold || zoneBlocks() || travel.busy || !m) return;
+  if (cabinOpen) closeCabin();
+  pendingPick = null;
+  // ⚠ 초점이 머무는 동안 목록은 안 바뀌어서, 그새 화면 밖으로 간 부표가 남아 있을 수 있다 — 그때는 이름 검색처럼 그 부표로 간다 (goPerfume)
+  if (!m.on || m.fade < 0.3) { if (!(m.perfume && goPerfume(m.perfume.id))) return; }
+  else pickArrived(m);
+  // ⚠⚠ 카드는 한 번에 안 선다 — 고르는 순간 섰다가, 부표가 잠겼다 새 자리에서 솟는 동안 숨었다 다시 뜬다 (cardFollowFade · 약 1.4초).
+  //   처음 섰을 때 초점을 넘기면 숨는 순간 초점이 body 로 떨어진다 (실측). 그래서 **0.4초 내리 떠 있을 때** 넘긴다 (0.1초마다 · 8초에서 그친다 — 먼 부표로 떠나는 길은 안개 전환까지 걸린다)
+  let tries = 0, steady = 0;
+  const pass = () => {
+    if (!ui.focusInVisible()) return;
+    steady = ui.cardShown() ? steady + 1 : 0;
+    if (steady >= 4 && ui.focusCard()) return;
+    if (++tries < 80) setTimeout(pass, 100);
+  };
+  setTimeout(pass, 100);
 }
 // 닿은 부표를 고른다 — onPick 의 부표 갈래와 **같은 일**이다 (고르기 · 12개 · 앱 알림 · 향해 일지).
 //   ⚠ pickSail 은 안 건다 — 이미 곁에 와 있다. 커서 자리를 지금 호버로 맞춰 두어야 다음 프레임에 카드가 안 깜빡인다 (onPick 의 hoverX 주석)
@@ -2330,6 +2396,13 @@ function tick(ts) {
     }
     ui.showMarkLabels(items);
     focusLabelsOn = true;
+    // ⭐ 지금 보이는 향수 — **이름표가 보이는** 지도 부표를 화면 왼쪽부터 (v0.86.0). 0.5초마다 · 바뀔 때만 DOM 을 쓴다 (ui.setVisiblePerfumes)
+    if (t - visibleAt > 0.5) {
+      visibleAt = t;
+      const vis = items.filter(L => L.a > 0.3 && L.m && L.m.src === 'map' && L.m.perfume).sort((p, q) => p.x - q.x).slice(0, 12);
+      const ko = koNames();   // 영어 화면이면 영문 원명 · 브랜드 (이름표와 같은 규칙)
+      ui.setVisiblePerfumes(vis.map(L => ({ key: L.m.perfume.id, text: ((ko && L.m.nameKo) || L.m.name) + ' · ' + ((ko && L.m.perfume.brandKo) || L.m.perfume.brand || ''), m: L.m })));
+    }
   } else if (!allLabels && marks.focusActive) {
     // 예전 (markLabels 0) — 향수 고르기의 12개 **밑**에만. 부표 반지름만큼 내려 투영한다
     const ko = koNames();
@@ -2375,6 +2448,9 @@ function tick(ts) {
   if (wantCard !== shownMark) {
     shownMark = wantCard;
     if (shownMark) ui.showScent(shownMark); else ui.hideScent();
+    // ⭐ **앱에 카드가 떠 있다고 알린다** (2026-10-01, v0.87.0 — `<html data-card>` · data-chart 와 같은 규약). 좁은 화면에서 앱이
+    //   3D 위에 얹은 것(향해 일지 · 의견 단추)이 카드 아랫단을 덮었다 (사용성 테스트 · 모바일 : '이 향의 해역으로' 가 그 밑에 깔렸다) — 앱이 그동안 비킨다
+    if (shownMark) document.documentElement.dataset.card = '1'; else delete document.documentElement.dataset.card;
   }
   // 카드의 서비스 동작 단추 (v0.68.0) — 지도 향수가 아니면 둘 다 쉰다. ⚠ ui 가 바뀔 때만 쓴다
   //   ⚠ [주변 향 탐색]이 빠지면서(v0.74.2) 인자가 하나가 됐다 — 남은 둘은 같은 조건이다
@@ -2678,7 +2754,8 @@ const onKeyExit = (e) => {
   //     그래도 둔다 : 사용자가 3D 를 다시 누르지 않고 탭으로 포커스를 되돌린 경우가 남는다
   if (cabinOpen) { closeCabin(); return; }
   // 향수 고르기가 먼저다 — 떠 있는 12개를 거두고 끝낸다 (연출까지 한 번에 나가지 않는다)
-  if (marks.focusing) { marks.focusOff(); marks.clearSelect(); clickMark = null; return; }
+  // ⚠ 카드 안(키보드로 고른 [자세히 보기] 등)에서 닫았으면 초점을 목록으로 돌려준다 — 안 돌리면 숨은 카드와 함께 초점이 사라진다 (v0.86.0)
+  if (marks.focusing) { const back = ui.cardHasFocus(); marks.focusOff(); marks.clearSelect(); clickMark = null; if (back) ui.focusVisiblePerfumes(); return; }
   // ⚠ 들어오는 중이면 받아 두었다가 다 들어온 순간 나간다 (leaveAsked) — 예전에는 그 사이의 Esc 를 버렸다
   if (phase.cue.zone) { if (!phase.cue.busy) phase.leave(); else if (phase.cue.phase === 'entering') leaveAsked = true; return; }
   // ⭐ 그다음이 클릭 항해의 가속 끄기 (v0.65.0 — sailBoostKey) — 고르기도 존 연출도 없을 때만. 최대 가속에 닿기 전이면 아무 일도 없다
@@ -2691,6 +2768,8 @@ window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel
   quality: { get: () => quality.info(), set: (m) => quality.setMode(m) },
   // ⭐ 화면 언어 (2026-09-30) — PB.setLang('ko' | 'en'). 앱의 KO · EN 전환이 부른다. 떠 있는 글자는 바로, 다음에 그리는 글자는 새 언어로 (i18n.js)
   setLang, lang: langNow,
+  // ⭐ 움직임 줄이기 (2026-10-01, v0.85.0 — applyCalm 머리말). get → { calm: 지금 줄이는 중인가, os: OS 설정이 켜져 있는가 } · set(true|false) 는 앱 설정 몫만 바꾼다
+  motion: { get: () => ({ calm: calmWanted(), os: !!(_calmMQ && _calmMQ.matches) }), set: (on) => { P.motionCalm = on ? 1 : 0; applyCalm(); return true; } },
   // ⭐ 반응형 검산 (2026-09-11 오후) — 제품 UI 상자들의 자리 · 서로 겹침 · 화면 밖 · 스크롤 · 수면 타이포 꼭대기와 정보 블록의 간격.
   //   ⚠ 창 크기를 바꾼 뒤에는 **스크린샷 한 장으로 먼저 칠하고** 부른다 (숨긴 패널에서는 ResizeObserver 가 안 불린다 — 교훈 ⑧)
   layout: () => layoutReport(),
