@@ -724,8 +724,31 @@ function cameraPose(cl, s, aspect, out) {
 //   ⚠ OS '동작 줄이기' 면 목표를 0 으로 — 카메라가 속도를 아예 안 탄다 (camCalm)
 let _camS = 0, _camSV = 0;
 const _calmMQ = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+// ⭐⭐ **움직임 줄이기** (2026-10-01, v0.85.0). OS '동작 줄이기'(camCalm 이 켜져 있을 때) 또는 앱의 그래픽 설정 '움직임 줄이기'(motionCalm) 면
+//   카메라가 속도를 안 타는 것(아래) 말고도 **장면이 저절로 움직이는 몫**을 거둔다 — 마우스를 따라 미는 패럴랙스 · 뛰는 돌고래 · 헤엄치는 돌고래 · 새.
+//   사용성 테스트(키보드 · 저시력 · 멀미)에서 "동작 줄이기를 켰는데 바다 · 배 · 돌고래 · 반짝임이 계속 크게 움직인다" 고 했다.
+//   ⚠ 파도와 배는 **그대로다** — 장면의 본체라 줄이면 지도가 아니게 된다. 부표를 눌렀을 때의 연출 구도도 그대로다.
+//   ⚠ 값을 P 에 **잠시 덮어쓰고** 풀 때 되돌린다 (calmSaved). 셋 다 매 프레임 P 를 읽어 바로 듣는다 — pod.js · birds.js 의 amount 문 · 틱의 parallax.
+//     처음부터 calm 이면 돌고래 GLB 를 **받지도 않는다** (pod.js 는 podAmount · podSwim 이 둘 다 0 이면 load 하지 않는다)
+const CALM_OFF = { parallaxAmount: 0, parallaxAmountY: 0, podAmount: 0, podSwim: 0, birdAmount: 0 };
+let calmSaved = null;
+function calmWanted() {
+  return (P.motionCalm || 0) >= 0.5 || ((P.camCalm === undefined ? 1 : P.camCalm) >= 0.5 && !!(_calmMQ && _calmMQ.matches));
+}
+function applyCalm() {
+  const on = calmWanted();
+  if (on && !calmSaved) {
+    calmSaved = {};
+    for (const k of Object.keys(CALM_OFF)) { calmSaved[k] = P[k]; P[k] = CALM_OFF[k]; }
+  } else if (!on && calmSaved) {
+    for (const k of Object.keys(calmSaved)) P[k] = calmSaved[k];
+    calmSaved = null;
+  }
+}
+applyCalm();
+if (_calmMQ && _calmMQ.addEventListener) _calmMQ.addEventListener('change', applyCalm);
 function camSpeedFollow(s, dt) {
-  const calm = (P.camCalm === undefined ? 1 : P.camCalm) >= 0.5 && !!(_calmMQ && _calmMQ.matches);
+  const calm = calmWanted();
   const g = calm ? 0 : s;
   const T = P.camFollow === undefined ? 0 : P.camFollow;
   if (!(T > 0)) { _camS = g; _camSV = 0; return g; }   // 0 = 예전 (nav.speed 그대로)
@@ -2684,6 +2707,8 @@ window.addEventListener('keydown', onKeyExit);
 window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, dive: hostDive, diveReport, cabinIn: hostCabinIn, cabinInReport, goRegion, goPerfume, startTravel, startFocus, startAt, boatAt, zoneReport, setHost, boot: bootNow, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, pod, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
   // ⭐ 품질 단계 (S15P21E203-435) — PB.quality.get() · PB.quality.set('auto' | 'high' | 'mid' | 'low'). 앱의 그래픽 설정이 set 을 부른다
   quality: { get: () => quality.info(), set: (m) => quality.setMode(m) },
+  // ⭐ 움직임 줄이기 (2026-10-01, v0.85.0 — applyCalm 머리말). get → { calm: 지금 줄이는 중인가, os: OS 설정이 켜져 있는가 } · set(true|false) 는 앱 설정 몫만 바꾼다
+  motion: { get: () => ({ calm: calmWanted(), os: !!(_calmMQ && _calmMQ.matches) }), set: (on) => { P.motionCalm = on ? 1 : 0; applyCalm(); return true; } },
   // ⭐ 반응형 검산 (2026-09-11 오후) — 제품 UI 상자들의 자리 · 서로 겹침 · 화면 밖 · 스크롤 · 수면 타이포 꼭대기와 정보 블록의 간격.
   //   ⚠ 창 크기를 바꾼 뒤에는 **스크린샷 한 장으로 먼저 칠하고** 부른다 (숨긴 패널에서는 ResizeObserver 가 안 불린다 — 교훈 ⑧)
   layout: () => layoutReport(),
