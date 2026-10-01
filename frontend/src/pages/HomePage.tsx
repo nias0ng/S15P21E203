@@ -67,7 +67,7 @@ import { Toast } from '@/shared/ui/Toast'
  * 모달도 모릅니다.
  *
  *   자연어 → A06 추천 모달 (`RecommendModal`). 전에는 `/recommend?q=` 라는 별도 화면이었습니다
- *   이름   → 지도 향수 200개에서 찾기 (`MapSearchModal`) · 고르면 향수 검색(A09)으로
+ *   이름   → 지도 향수 200개에서 찾기 (`MapSearchModal`) · 고르면 배가 그 부표로 가서 카드를 엽니다
  *
  * 향해 일지(MAP-24)는 다른 화면의 데이터와 맞추기 쉽도록 엔진이 아니라 앱이 3D 위에 얹습니다.
  *
@@ -129,6 +129,11 @@ export default function HomePage() {
   const [searchMode, setSearchMode] = useState<SceneSearchMode>('nl')
   const [nlQuery, setNlQuery] = useState<string | null>(null)
   const [mapKeyword, setMapKeyword] = useState<string | null>(null)
+  /** 이름 검색에서 고른 향수 — 3D 가 그 부표로 갑니다 (`ScentScene` 의 `seek`) */
+  const [seek, setSeek] = useState<{
+    fragranticaId: number
+    seq: number
+  } | null>(null)
 
   /** 지도 카드에서 담으려는 향수. 모달이 이름 · 브랜드를 보여주는 데 씁니다 */
   const [saving, setSaving] = useState<
@@ -394,6 +399,28 @@ export default function HomePage() {
         }
         // 3D 를 눌렀습니다 — 말풍선은 팝오버라 배경을 누르면 닫힙니다 (엔진 host.js `closeCabin`)
         onCloseCabin={closeCabin}
+        seek={seek}
+        /*
+          엔진이 그 부표로 못 갔습니다 (지도에 없거나 안개 전환 중) — 좌표로 DB 번호를 찾아 향수 상세로
+          바로 갑니다. 번호도 못 찾으면 예전처럼 이름으로 향수 검색(A09)에 보냅니다.
+          ⚠️ 향해 일지에는 안 남깁니다 — 일지는 메인에서 [자세히 보기]를 누른 것만 받습니다 (위 onOpenDetail)
+        */
+        onSeekMiss={(fragranticaId) => {
+          const perfume = mapPerfumes.data?.find(
+            (p) => p.fragranticaId === fragranticaId,
+          )
+          if (!perfume) return
+          const perfumeId = perfumeIndex?.at(perfume.mx, perfume.my) ?? null
+          navigate(
+            perfumeId === null
+              ? toPerfumeSearch(perfume.name)
+              : toPerfumeDetail(perfumeId),
+            // 상세의 '← 향 지도' 로 돌아오게 합니다 (지도에서 찾은 향수입니다)
+            perfumeId === null
+              ? undefined
+              : { state: perfumeViewState('SCENT_MAP') },
+          )
+        }}
       />
 
       <SceneSearchBar
@@ -478,11 +505,16 @@ export default function HomePage() {
         onSelect={(perfume) => {
           setMapKeyword(null)
           /*
-            지도 목록에는 DB 향수 번호가 없어(fragrantica_id 뿐) 상세로 바로 못 갑니다 —
-            이름으로 향수 검색(A09)에 보냅니다. 엔진 카드의 [자세히 보기]가 번호 없는
-            향수를 보내는 길과 **같은 곳**입니다(위 onOpenDetail).
+            ⭐ **지도에서 찾았으니 지도에서 보여 줍니다** (2026-10-01). 전에는 이름으로 향수 검색(A09)에
+            보냈는데, 사용성 테스트 7명 모두가 "지도로 안 가고 다른 화면으로 튕긴다" 고 했고 거기서
+            이름 표기가 달라 0건이 나오기도 했습니다. 이제 배가 그 부표 곁으로 가서 부표를 누른 것과
+            같이 카드를 엽니다 — 자세히 보기 · 진열대 저장은 그 카드에서 이어집니다.
+            못 가면 `onSeekMiss` 가 상세로 보냅니다.
           */
-          navigate(toPerfumeSearch(perfume.name))
+          setSeek((prev) => ({
+            fragranticaId: perfume.fragranticaId,
+            seq: (prev?.seq ?? 0) + 1,
+          }))
         }}
       />
 
