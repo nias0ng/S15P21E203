@@ -23,6 +23,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&display=swap" rel="stylesheet">
 <style>
   html, body { margin: 0; padding: 0; background: var(--pb-paper, #F6F5F2); }
+  /* 하단 조작 안내의 방향키 몫 — 손가락으로만 쓰는 기기에는 누를 방향키가 없다 (2026-10-01) */
+  @media (pointer: coarse) { .pb-help-keys { display: none; } }
   /* 한국어는 낱말 단위로 줄을 바꾼다 (2026-10-01 — 앱 src/styles/index.css 의 body 와 같은 규칙). 띄어쓰기 없는 긴 글자만 넘칠 때 쪼갠다 */
   body { word-break: keep-all; overflow-wrap: break-word; }
   * { box-sizing: border-box; }
@@ -346,12 +348,14 @@
     --pb-ink: #FFF4EC; --pb-ink-2: #F2E2DC; --pb-ink-3: #E6D2CE; --pb-ink-4: #DCC6C4; --pb-ink-line: rgba(255,244,236,0.45);
     --pb-paper: #5E5670; --pb-glass: rgba(60,52,84,0.38); --pb-placeholder: #E2CFCB;
     --pb-halo: rgba(60,52,84,0.9); --pb-halo-2: rgba(60,52,84,0.7);
+    --pb-label-bg: rgba(60,52,84,0.46);
     --pb-fog-0: rgba(238,206,196,1); --pb-fog-1: rgba(228,196,190,0.97); --pb-fog-2: rgba(206,178,182,0.9);
   }
   html[data-time="night"] {
     --pb-ink: #EEF1F8; --pb-ink-2: #CDD4E2; --pb-ink-3: #A9B2C6; --pb-ink-4: #98A2B6; --pb-ink-line: rgba(238,241,248,0.38);
     --pb-paper: #141A2C; --pb-glass: rgba(18,24,42,0.55); --pb-placeholder: #8E97AC;
     --pb-halo: rgba(16,22,38,0.92); --pb-halo-2: rgba(16,22,38,0.75);
+    --pb-label-bg: rgba(16,22,38,0.52);
     --pb-fog-0: rgba(52,60,86,1); --pb-fog-1: rgba(44,52,78,0.97); --pb-fog-2: rgba(32,40,62,0.9);
   }
 
@@ -408,8 +412,8 @@
     --pb-chart-edge: 10px; --pb-chart-pad: 9px 12px 12px; --pb-chart-title: 16px;
     --pb-card-pad: 14px 16px 14px; --pb-card-img-h: 84px;
   } }
-  /* 손가락으로 쓰는 기기에는 키보드 안내가 뜻이 없다 */
-  @media (pointer: coarse) { :root:not([data-fixed]) { --pb-help: none; } }
+  /* 손가락으로 쓰는 기기에는 키보드 안내가 뜻이 없다 — ⭐ 2026-10-01 부터 안내의 앞 몫(바다 · 부표 누르기)은 손가락에도 맞아서
+     줄 전체가 아니라 **방향키 몫만** 숨긴다 (위 <style> 첫머리의 .pb-help-keys). 폰 폭(760 아래)은 미니맵과 겹쳐 그대로 숨는다 */
 
   /* ⭐⭐ 향조 정보 블록을 수면 타이포 **위 가운데**로 (2026-09-13 저녁 — params.zoneInfoCenter 가 <html data-info-center> 를 단다). 사용자 :
      *"향 설명이 폰트 위에 나타났다가 사라지게 해야할듯 좀 더 잘보이게? 오른쪽 위에 UI 가 만들어질 것 같아서"*.
@@ -697,15 +701,18 @@
   <!-- ⚠ 휴대폰 폭에서는 **왼쪽으로 붙인다** — 가운데 두면 우하단 미니맵과 겹쳤다 (375×812 에서 83×13px, 실측) -->
   <div style="position:absolute;left:0;right:0;bottom:var(--pb-drift-bottom,34px);display:flex;flex-direction:column;align-items:var(--pb-drift-align,center);padding:var(--pb-drift-pad,0);gap:14px;pointer-events:none;">
     <div style="display:flex;align-items:center;gap:16px;">
-      <div style="font-size:10px;letter-spacing:0.2em;color:var(--pb-ink-3,#555555);">DRIFT</div>
-      <div style="position:relative;width:var(--pb-drift-w,260px);height:1px;background:var(--pb-ink-3,#555555);opacity:1;">
-        <div style="position:absolute;inset:0;background:var(--pb-ink-3,#555555);opacity:0.28;"></div>
-        <div id="drift-fill" style="position:absolute;left:0;top:0;height:1px;width:15%;background:var(--pb-ink,#1A1A1A);"></div>
-        <div id="drift-knob" style="position:absolute;top:-3px;left:15%;width:7px;height:7px;margin-left:-3.5px;border-radius:50%;background:var(--pb-ink,#1A1A1A);"></div>
+      <!-- ⭐ 2026-10-01 : 이름 DRIFT → **속도** · 손잡이(동그라미)를 뺐다 · 숫자는 0.00 → **%** (메인 사용성 테스트 7명 중 5명 —
+           "끌 수 있는 슬라이더처럼 생겼는데 안 움직인다" · "0.00 이 무엇인지 모른다"). 배의 속도(nav.speed)를 보여 주는 **계기**일 뿐이라 끌 것이 없다 -->
+      <div style="font-size:11px;letter-spacing:0.12em;color:var(--pb-ink-3,#555555);text-shadow:0 0 3px var(--pb-halo,rgba(246,245,242,0.95));">속도</div>
+      <div style="position:relative;width:var(--pb-drift-w,260px);height:2px;border-radius:1px;overflow:hidden;">
+        <div style="position:absolute;inset:0;background:var(--pb-ink-3,#555555);opacity:0.3;"></div>
+        <div id="drift-fill" style="position:absolute;left:0;top:0;height:2px;width:15%;background:var(--pb-ink,#1A1A1A);"></div>
       </div>
-      <div id="drift-num" style="width:36px;font-size:11px;letter-spacing:0.06em;color:var(--pb-ink,#1A1A1A);font-variant-numeric:tabular-nums;">0.15</div>
+      <div id="drift-num" style="width:40px;font-size:11px;letter-spacing:0.04em;color:var(--pb-ink,#1A1A1A);font-variant-numeric:tabular-nums;text-shadow:0 0 3px var(--pb-halo,rgba(246,245,242,0.95));">15%</div>
     </div>
-    <div id="drift-help" style="display:var(--pb-help,block);font-size:11px;letter-spacing:0.04em;color:var(--pb-ink-3,#555555);opacity:0.65;">← → 로 방향 &nbsp;·&nbsp; ↑ 또는 휠 ↑ 로 나아가기</div>
+    <!-- ⭐ 2026-10-01 : 가장 쉬운 조작(바다 · 부표 누르기)을 먼저 말한다 — 사용성 테스트에서 그 둘을 다들 우연히 알았다. 방향키는 마우스 · 키보드가 있을 때만 붙인다.
+         글자도 키웠다 (11 → 12 · 옅기 0.65 → 0.85 · 둘레 빛) — 반짝이는 물 위에서 묻혔다 -->
+    <div id="drift-help" style="display:var(--pb-help,block);font-size:12px;letter-spacing:0.02em;color:var(--pb-ink-3,#555555);opacity:0.85;text-shadow:0 0 3px var(--pb-halo,rgba(246,245,242,0.95)),0 0 6px var(--pb-halo-2,rgba(246,245,242,0.8));">바다를 누르면 그쪽으로 &nbsp;·&nbsp; 부표를 누르면 향수<span class="pb-help-keys"> &nbsp;·&nbsp; ← → ↑ 로 직접 몰기</span></div>
   </div>
 
 </div>
