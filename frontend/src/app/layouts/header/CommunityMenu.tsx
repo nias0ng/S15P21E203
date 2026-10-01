@@ -1,17 +1,12 @@
 import { NavLink } from 'react-router'
 
-import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 
+import { COMMUNITY_ITEMS } from './navItems'
 import { inkLink, type Ink } from './tone'
 import { useDismissable } from './useDismissable'
 import { useDiveOut } from './useDiveOut'
 import { useWarm } from './useWarm'
-
-const COMMUNITY_ITEMS = [
-  { to: ROUTES.COMMUNITY_REVIEWS, label: '후기' },
-  { to: ROUTES.COMMUNITY_FREE, label: '자유' },
-]
 
 export function CommunityMenu({ ink }: { ink: Ink }) {
   const { open, setOpen, containerRef } = useDismissable()
