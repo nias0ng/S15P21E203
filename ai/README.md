@@ -546,6 +546,8 @@ discontinued' 처럼 주어가 그 상품이거나 이름이 같은 문장만 �
 **검토하는 방법** — 보고서 폴더(`logs/status_check/날짜/`, Jenkins 는 빌드 산출물)의 `report.md` 부터.
 
 1. 확정 후보의 근거 링크를 열어 문장을 직접 봅니다. 같은 이름의 다른 판(농도 · 연도)이 아닌지도.
+   Fragrance Vault 는 옛 상품 주소를 다른 상품에 다시 씁니다(`attrape-coeur` 주소에 L'Heure de Nuit) —
+   주소가 아니라 페이지의 상품명으로 확인하고, 제안본은 그 상품명을 근거 문구에 함께 적습니다.
 2. `perfume_status.proposed.csv` 는 지금 목록에 `exact` 확정 후보와 새 추정을 반영한 제안본입니다.
    `ai/data/perfume_status.csv` 에 덮어쓰고 `git add -p` 로 맞는 줄만 고른 뒤 나머지는 되돌립니다.
 3. 재출시 의심은 제안본에 반영하지 않습니다. 공식 페이지를 열어 정말 같은 향수면 그 줄을 지웁니다.

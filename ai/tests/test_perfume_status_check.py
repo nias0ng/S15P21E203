@@ -262,6 +262,7 @@ class RunTest(unittest.TestCase):
         self.assertEqual(proposed["4"]["confidence"], "CONFIRMED")
         self.assertEqual(proposed["4"]["source_url"], "https://vault.test/products/acme-amber-night")
         self.assertNotIn("두 번째 근거 미확인", proposed["4"]["note"])
+        self.assertIn("Acme AMBER NIGHT vaulted eau de parfum", proposed["4"]["note"])   # 주소가 바뀌어도 근거를 알게
         self.assertEqual(proposed["2"]["confidence"], "LIKELY")
         self.assertEqual(proposed["5"]["confidence"], "CONFIRMED")
 

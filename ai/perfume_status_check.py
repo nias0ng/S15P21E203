@@ -867,6 +867,14 @@ def run(config, catalog, status_rows, fetcher, today, only=None, skip_official=F
 # --------------------------------------------------------------------------------------------
 
 
+def confirmed_note(candidate, official_note):
+    """확정 줄의 근거 문구. 판매처 상품명을 함께 적습니다 — Fragrance Vault 처럼 옛 상품 주소를 다른
+    상품에 다시 쓰는 판매처가 있어, 주소만으로는 나중에 무엇을 근거로 삼았는지 알 수 없습니다."""
+    base = official_note.replace(f". {NO_SECOND}", "").replace(NO_SECOND, "").strip(". ")
+    title = candidate["retailer_title"][:80].replace("'", "’")
+    return f"판매처({candidate['retailer']}) {candidate['where']}에 단종 명시('{title}'). {base}"
+
+
 def proposal(status_rows, result):
     """지금 목록 + exact 확정 후보(후보가 하나뿐인 것) + 새 추정. 지우는 줄은 없습니다."""
     chosen = {}
@@ -878,17 +886,13 @@ def proposal(status_rows, result):
         r = dict(r)
         c = chosen.get(r["fragrantica_id"])
         if c and r["confidence"] == "LIKELY":
-            base = r["note"].replace(f". {NO_SECOND}", "").replace(NO_SECOND, "").strip(". ")
-            r.update(confidence="CONFIRMED", source_url=c["url"],
-                     note=f"판매처({c['retailer']}) {c['where']}에 단종 명시. {base}")
+            r.update(confidence="CONFIRMED", source_url=c["url"], note=confirmed_note(c, r["note"]))
         rows.append(r)
     for n in result.new_likely:
         r = {k: n[k] for k in STATUS_COLUMNS}
         c = chosen.get(r["fragrantica_id"])
         if c:
-            base = r["note"].replace(f". {NO_SECOND}", "")
-            r.update(confidence="CONFIRMED", source_url=c["url"],
-                     note=f"판매처({c['retailer']}) {c['where']}에 단종 명시. {base}")
+            r.update(confidence="CONFIRMED", source_url=c["url"], note=confirmed_note(c, r["note"]))
         rows.append(r)
     return rows
 
