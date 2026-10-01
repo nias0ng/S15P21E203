@@ -125,6 +125,12 @@ interface EngineHandle {
    */
   quality?: { get: () => unknown; set: (mode: GraphicsMode) => boolean }
   /**
+   * 움직임 줄이기 (엔진 `main.js` 의 `applyCalm` · v0.85.0). `set(true)` 면 패럴랙스 · 돌고래 · 새 · 속도에 따른
+   * 카메라를 거둡니다 — OS 의 '동작 줄이기' 가 켜져 있으면 엔진이 이미 그렇게 합니다.
+   * NOTE: 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다.
+   */
+  motion?: { get: () => unknown; set: (calm: boolean) => boolean }
+  /**
    * 그 향수의 부표로 배를 몰고 가서, 닿으면 **그 부표를 누른 것처럼** 고릅니다 (엔진 `main.js` 의
    * `goPerfume` · v0.82.0). 먼 곳이면 해도 · 미니맵과 같은 안개 전환을 탑니다.
    * 돌려주는 값은 '떠났는가' 입니다 — 지도에 없는 향수이거나 안개 전환 중이면 false 입니다.
@@ -226,6 +232,8 @@ type Props = {
   quality?: GraphicsMode
   /** 엔진의 지금 품질 단계 — 붙을 때 한 번, 단계가 바뀔 때마다 옵니다 (자동으로 내렸을 때도) */
   onQuality?: (quality: SceneQuality) => void
+  /** 그래픽 설정의 '움직임 줄이기' — 엔진이 붙는 순간과 바뀔 때마다 겁니다 (`motion` 손잡이) */
+  calm?: boolean
   /**
    * **이 향수의 부표로 가서 고릅니다** — 이름 검색(`MapSearchModal`)에서 향수를 골랐을 때입니다.
    * 엔진이 붙어 있지 않으면 붙는 대로 갑니다.
@@ -274,6 +282,7 @@ export function ScentScene({
   onLeave,
   quality = 'auto',
   onQuality,
+  calm = false,
   seek,
   onSeekMiss,
   className,
@@ -620,6 +629,13 @@ export function ScentScene({
     if (parseSceneQuality(engine.get())?.mode === quality) return
     engine.set(quality)
   }, [ready, quality])
+
+  // 움직임 줄이기 — 그래픽 설정과 같은 길입니다. 엔진이 다시 붙어도(ready) 다시 겁니다
+  useEffect(() => {
+    const engine = handle.current?.motion
+    if (!ready || !engine) return
+    engine.set(calm)
+  }, [ready, calm])
 
   /*
    * 이름 검색에서 고른 향수로 갑니다 (위 `seek` 머리말). 한 번 간 `seq` 는 다시 안 갑니다 —
