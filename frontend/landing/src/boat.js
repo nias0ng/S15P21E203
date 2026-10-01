@@ -886,10 +886,16 @@ export function createBoat(scene, renderer = null) {
         let hC = 0, hXp = 0, hXm = 0, hZp = 0, hZm = 0;
         // ⚠⚠ 배가 씬 원점을 벗어나 있으면(존 연출의 등장 · 정박) **물을 읽는 자리도 같이 옮긴다** (2026-09-16).
         //   시뮬 프로브 창과 해석적 너울 **둘 다** 옮겨야 한다 — 한쪽만 옮기면 GPU 와 CPU 가 갈라져 배가 잠기거나 뜬다 (불변식 2 의 실패 모양).
-        const at = sim.sampler(offX, offZ);
+        // ⭐ 최저 단계는 읽지 않는다 (params buoyProbe 0 · quality.js) — 동기 읽기는 GPU 가 밀린 만큼 CPU 를 세운다
+        const noProbe = P.buoyProbe === 0;
+        const at = noProbe ? null : sim.sampler(offX, offZ);
         if (at) {
           hC = at(0, 0); hXp = at(aXx, aXz); hXm = at(-aXx, -aXz);
           hZp = at(aZx, aZz); hZm = at(-aZx, -aZz);
+        } else if (noProbe) {
+          // 대신 선수가 물을 붙잡는 깊이를 쓴다 — 선체 곁의 시뮬 높이는 거의 그 값 하나다 (sim.js uBowDepth × 높이 배율).
+          //   2026-09-30 실측 (읽기 다섯 점) : 멈춤 −0.0102 · 항해 −0.083 ~ −0.085 월드, 점끼리 · 시간에 따라 0.002 안 — 식은 −0.0102 · −0.085
+          hC = hXp = hXm = hZp = hZm = P.bowDepth * (0.12 + 0.88 * mv) * CONFIG.sim.height;
         }
         // 부력도 물과 같은 양자화된 시각·위치를 봐야 한다 — 아니면 배가 잠기거나 뜬다
         // gerstner 를 같이 넘겨야 한다 — 켜면 GPU 는 정점을 옆으로도 밀고, CPU 는 그 역을 풀어

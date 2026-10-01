@@ -1,6 +1,7 @@
 package com.hyanghae.backend.recommendation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -94,13 +95,17 @@ class PersonalizedRecommendationIntegrationTest {
                     Map.of("userId", USER_ID, "limit", 10),
                     (rs, rowNum) -> new PersonalizedRecommendationCandidate(
                             rs.getLong("perfume_id"), rs.getString("display_name"),
+                            null, null,
                             rs.getString("image_url"), rs.getDouble("score"),
                             rs.getString("evidence_source"), rs.getString("evidence_name"),
+                            null,
                             rs.getObject("last_recommended_at", java.time.OffsetDateTime.class)));
             var actual = recommendationRepository.findTopCandidates(USER_ID, 10);
             assertThat(actual).hasSize(expected.size());
             for (int i = 0; i < expected.size(); i++) {
+                // 원래 이름 · 근거 키는 기준 SQL 에 없던 값이라 비교에서 뺍니다.
                 assertThat(actual.get(i)).usingRecursiveComparison()
+                        .ignoringFields("originalName", "nameKo", "evidenceKey")
                         .withComparatorForType((a, b) -> Math.abs(a - b) < 1e-12
                                 ? 0 : Double.compare(a, b), Double.class)
                         .isEqualTo(expected.get(i));
@@ -124,6 +129,7 @@ class PersonalizedRecommendationIntegrationTest {
                 .filter(value -> value.perfumeId() == FIRST_CANDIDATE).findFirst().orElseThrow();
         assertThat(candidate.evidenceSource()).isEqualTo("RECENT");
         assertThat(candidate.evidenceName()).isEqualTo("woody");
+        assertThat(candidate.evidenceKey()).isEqualTo("woody");
         // 0.9 / sqrt(0.9² + 0.8²) * 0.15
         double expectedScore = 0.9 / Math.sqrt(0.9 * 0.9 + 0.8 * 0.8) * 0.15;
         assertThat(candidate.score()).isCloseTo(expectedScore,
@@ -194,7 +200,11 @@ class PersonalizedRecommendationIntegrationTest {
                 .andExpect(jsonPath("$.recommendation.imageUrl")
                         .value("https://images.test/first.png"))
                 .andExpect(jsonPath("$.recommendation.reason")
-                        .value("취향 테스트에서 선택한 우디 계열과 잘 맞아요."));
+                        .value("취향 테스트에서 선택한 우디 계열과 잘 맞아요."))
+                .andExpect(jsonPath("$.recommendation.originalName").value("First Candidate"))
+                .andExpect(jsonPath("$.recommendation.nameKo").value(nullValue()))
+                .andExpect(jsonPath("$.recommendation.evidenceSource").value("TASTE_TEST"))
+                .andExpect(jsonPath("$.recommendation.evidenceKey").value("WOODY"));
 
         Integer exposuresBeforeCompletion = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM personalized_recommendation_exposures "
@@ -221,6 +231,76 @@ class PersonalizedRecommendationIntegrationTest {
                 USER_ID,
                 FIRST_CANDIDATE);
         assertThat(exposuresAfterCompletion).isEqualTo(1);
+    }
+
+    /** 영어 요청이면 이유가 영어 문장이고, 이름은 한국어 우선 그대로 두고 원래 이름을 따로 줍니다. */
+    @Test
+    void writesEnglishReasonForEnglishRequest() throws Exception {
+        insertExposure(SECOND_CANDIDATE, Instant.now().minus(1, ChronoUnit.DAYS));
+        jdbcTemplate.update("UPDATE perfumes SET name_ko = '첫 후보' WHERE perfume_id = ?",
+                FIRST_CANDIDATE);
+
+        mockMvc.perform(get(URL).header("Accept-Language", "en"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recommendation.perfumeId").value((int) FIRST_CANDIDATE))
+                .andExpect(jsonPath("$.recommendation.name").value("첫 후보"))
+                .andExpect(jsonPath("$.recommendation.originalName").value("First Candidate"))
+                .andExpect(jsonPath("$.recommendation.nameKo").value("첫 후보"))
+                .andExpect(jsonPath("$.recommendation.evidenceSource").value("TASTE_TEST"))
+                .andExpect(jsonPath("$.recommendation.evidenceKey").value("WOODY"))
+                .andExpect(jsonPath("$.recommendation.reason").value(
+                        "It suits the Woody scent family you picked in the Taste Test."));
+    }
+
+    @Test
+    void writesEnglishFitReasonWithAccordName() throws Exception {
+        jdbcTemplate.update(
+                "UPDATE user_perfumes SET fit_rating = 5.0 "
+                        + "WHERE user_id = ? AND perfume_id = ?",
+                USER_ID,
+                TASTE_PERFUME);
+        insertExposure(SECOND_CANDIDATE, Instant.now().minus(1, ChronoUnit.DAYS));
+
+        mockMvc.perform(get(URL).header("Accept-Language", "en"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recommendation.evidenceSource").value("FIT"))
+                .andExpect(jsonPath("$.recommendation.evidenceKey").value("woody"))
+                .andExpect(jsonPath("$.recommendation.reason").value(
+                        "Its woody accord is close to the perfumes you rated highly."));
+    }
+
+    /** 후보 캐시에 계열 code 를 함께 저장하고, 저장된 후보를 다시 쓸 때도 그 code 가 나갑니다. */
+    @Test
+    void storesScentFamilyCodeInTheCandidateCache() throws Exception {
+        mockMvc.perform(get(URL)).andExpect(status().isOk());
+
+        assertThat(jdbcTemplate.queryForList(
+                "SELECT evidence_key FROM personalized_recommendation_candidates "
+                        + "WHERE user_id = ?",
+                String.class,
+                USER_ID)).isNotEmpty().containsOnly("WOODY");
+        assertThat(recommendationRepository.findCachedCandidates(USER_ID))
+                .extracting(PersonalizedRecommendationCandidate::evidenceKey)
+                .containsOnly("WOODY");
+    }
+
+    /** code 없이 저장된 옛 캐시 행은 계열 이름으로 code 를 찾아 채웁니다. */
+    @Test
+    void resolvesScentFamilyCodeForCachedRowsWithoutKey() throws Exception {
+        mockMvc.perform(get(URL)).andExpect(status().isOk());
+        jdbcTemplate.update(
+                "UPDATE personalized_recommendation_candidates SET evidence_key = NULL "
+                        + "WHERE user_id = ?",
+                USER_ID);
+
+        assertThat(recommendationRepository.findCachedCandidates(USER_ID))
+                .isNotEmpty()
+                .allSatisfy(candidate -> {
+                    assertThat(candidate.evidenceSource()).isEqualTo("TASTE");
+                    assertThat(candidate.evidenceName()).isEqualTo("우디");
+                    assertThat(candidate.evidenceKey()).isEqualTo("WOODY");
+                    assertThat(candidate.originalName()).isNotBlank();
+                });
     }
 
     @Test

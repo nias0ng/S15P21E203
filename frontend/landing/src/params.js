@@ -2939,10 +2939,16 @@ export const PARAMS = {
   glintWhite1: 2.4,      // 이 세기에서 심의 색이 된다
 
   // ══ 품질 단계 (2026-09-25, S15P21E203-435 · quality.js) ═══════════════════════
-  // ⚠ 단계가 쓰는 값(bloomAmount · boatReflect · subAmount · glintHot · glitterOct2 · detailK)은 quality.js 가 **덮어쓴다** — 여기 값이 high 의 값이다
+  // ⚠ 단계가 쓰는 값(bloomAmount · boatReflect · subAmount · glintHot · glitterOct2 · detailK · waterSunShadow · sparkAmount · waterLite · buoyProbe)은 quality.js 가 **덮어쓴다** — 여기 값이 high 의 값이다
   detailK: 1,            // 거리 LOD(잔결 · 반짝임)가 끝나는 거리 배율. low 0.6 — 먼 물이 일찍 잔잔해진다
   qualityDownMs: 26,     // 2초 창의 프레임 간격 p90 이 이걸 두 번 넘으면 한 단계 내린다 (≈ 38fps)
   qualityUpBudget: 0.75, // 올린 단계의 GPU 시간(예측)이 60Hz 한 장(16.7ms)의 이 몫 안일 때만 올린다
+  // ⭐ 최저 단계 (2026-09-30) — 가벼운 물 · 부력 읽기. 두 스위치는 quality.js 가 쓴다 (여기 값이 high 의 값 : 0 · 1)
+  //   waterLite 가 1 이면 아래 lite* 가 1 인 칸만 건너뛴다 (water.js uLite). 두 칸 모두 0 이면 예전 물과 같다
+  waterLite: 0,
+  liteMicro: 1,          // 잔결 다섯 대역 + 워프 (물 전체에서 cos 5회 · 해시 4회) — 가까운 물의 잔물결 결이 사라진다
+  liteSkyCloud: 1,       // 하늘 반사에 구름을 안 비춘다 (하늘 구와 원경 안개는 그대로 구름까지 그린다)
+  buoyProbe: 1,          // 0 = 부력이 시뮬 높이를 GPU 에서 동기로 읽지 않는다 — 선체 곁의 시뮬 높이를 선수 흘수 식(bowDepth)으로 대신한다 (boat.js)
 
   // ══ 반짝임 거품 (2026-09-06, v0.12.1) ═══════════════════════════════════════
   // 사용자 : *"빛·반짝임의 specAmount / glitter / glitterCell 이 오히려 더 파도 거품처럼

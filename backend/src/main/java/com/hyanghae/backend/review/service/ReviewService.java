@@ -387,7 +387,8 @@ public class ReviewService {
         return row.getPerfumeId() == null
                 ? null
                 : new ReviewPerfumeResponse(
-                        row.getPerfumeId(), row.getPerfumeName(), row.getBrand());
+                        row.getPerfumeId(), row.getPerfumeName(), row.getPerfumeNameKo(),
+                        row.getBrand(), row.getBrandKo());
     }
 
     /**

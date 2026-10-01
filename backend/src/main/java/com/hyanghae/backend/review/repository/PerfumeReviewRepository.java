@@ -70,7 +70,9 @@ public interface PerfumeReviewRepository extends JpaRepository<PerfumeReview, Lo
                    u.profile_image_url AS profileImageUrl,
                    p.perfume_id AS perfumeId,
                    p.name AS perfumeName,
+                   p.name_ko AS perfumeNameKo,
                    b.name AS brand,
+                   b.name_ko AS brandKo,
                    r.view_count AS viewCount,
                    (SELECT COUNT(*)
                       FROM review_likes rl

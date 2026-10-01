@@ -10,6 +10,8 @@ import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -90,6 +92,42 @@ class TrendingPerfumeIntegrationTest {
                 .andExpect(jsonPath("$.perfumes[0].mentionCount").value(3))
                 .andExpect(jsonPath("$.perfumes[1].mentionCount").value(1))
                 .andExpect(jsonPath("$.perfumes[2].mentionCount").value(1));
+    }
+
+    /**
+     * 카드는 원래 이름과 한국어 이름을 짝으로 싣습니다. 화면이 언어에 맞춰 고릅니다.
+     *
+     * <p>요청 언어와 관계없이 같은 짝이 옵니다. 한국어 이름이 없는 향수는 한국어 칸이 비고, 브랜드가
+     * 없는 향수는 브랜드 두 칸이 모두 빕니다. 한국어 이름을 묶음 기준에 더해도 향수별로 한 줄씩
+     * 나오는지도 봅니다.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"ko", "en"})
+    void putsBothPerfumeAndBrandNames(String language) throws Exception {
+        jdbcTemplate.update(
+                "UPDATE perfumes SET name = 'Popular Scent', name_ko = '인기 향수' WHERE perfume_id = 1");
+        jdbcTemplate.update("UPDATE brands SET name_ko = '샤넬' WHERE brand_id = 1");
+        long recentA = insertPost(1, "최근 글 하나", 1);
+        long recentB = insertPost(2, "최근 글 둘", 2);
+        mention(recentA, 1);
+        mention(recentB, 1);
+        mention(recentA, 2);
+        mention(recentB, 3);
+
+        mockMvc.perform(get(URL).header("Accept-Language", language))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes.length()").value(3))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
+                .andExpect(jsonPath("$.perfumes[0].name").value("Popular Scent"))
+                .andExpect(jsonPath("$.perfumes[0].nameKo").value("인기 향수"))
+                .andExpect(jsonPath("$.perfumes[0].brand").value("Chanel"))
+                .andExpect(jsonPath("$.perfumes[0].brandKo").value("샤넬"))
+                .andExpect(jsonPath("$.perfumes[0].mentionCount").value(2))
+                .andExpect(jsonPath("$.perfumes[1].perfumeId").value(2))
+                .andExpect(jsonPath("$.perfumes[1].nameKo").doesNotExist())
+                .andExpect(jsonPath("$.perfumes[2].perfumeId").value(3))
+                .andExpect(jsonPath("$.perfumes[2].brand").doesNotExist())
+                .andExpect(jsonPath("$.perfumes[2].brandKo").doesNotExist());
     }
 
     /**

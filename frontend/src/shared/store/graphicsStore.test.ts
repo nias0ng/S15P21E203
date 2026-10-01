@@ -10,8 +10,10 @@ afterEach(() => {
 })
 
 describe('isGraphicsMode', () => {
-  it('네 가지 모드만 받습니다', () => {
-    expect(['auto', 'high', 'mid', 'low'].every(isGraphicsMode)).toBe(true)
+  it('다섯 가지 모드만 받습니다', () => {
+    expect(['auto', 'high', 'mid', 'low', 'min'].every(isGraphicsMode)).toBe(
+      true,
+    )
     expect(isGraphicsMode('ultra')).toBe(false)
     expect(isGraphicsMode(undefined)).toBe(false)
   })

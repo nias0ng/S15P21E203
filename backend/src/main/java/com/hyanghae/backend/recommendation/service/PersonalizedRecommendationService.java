@@ -1,6 +1,7 @@
 package com.hyanghae.backend.recommendation.service;
 
 import com.hyanghae.backend.global.exception.BusinessException;
+import com.hyanghae.backend.global.i18n.Language;
 import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.recommendation.config.PersonalizedRecommendationProperties;
 import com.hyanghae.backend.recommendation.dto.response.PersonalizedPerfumeResponse;
@@ -84,7 +85,11 @@ public class PersonalizedRecommendationService {
                         selected.perfumeId(),
                         selected.name(),
                         selected.imageUrl(),
-                        reasonOf(selected)));
+                        PersonalizedRecommendationReasons.reasonOf(selected, Language.current()),
+                        selected.originalName(),
+                        selected.nameKo(),
+                        PersonalizedRecommendationReasons.sourceOf(selected),
+                        PersonalizedRecommendationReasons.keyOf(selected)));
     }
 
     private CacheSnapshot refreshOrReuseStale(
@@ -115,14 +120,5 @@ public class PersonalizedRecommendationService {
             }
             return new CacheSnapshot(true, false, safeStaleCandidates);
         }
-    }
-
-    private String reasonOf(PersonalizedRecommendationCandidate candidate) {
-        return switch (candidate.evidenceSource()) {
-            case "FIT" -> "높게 평가한 향수와 " + candidate.evidenceName() + " 어코드가 비슷해요.";
-            case "RECENT" -> "최근 살펴본 향수에서 자주 만난 "
-                    + candidate.evidenceName() + " 어코드를 담고 있어요.";
-            default -> "취향 테스트에서 선택한 " + candidate.evidenceName() + " 계열과 잘 맞아요.";
-        };
     }
 }

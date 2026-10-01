@@ -248,7 +248,9 @@ public class NaturalLanguageRecommendationService {
                     displayName(identity.nameKo(), identity.name()),
                     displayName(identity.brandNameKo(), identity.brandName()),
                     thumbnails.get(identity.perfumeId()),
-                    reasonsOf(result, matchedData)));
+                    reasonsOf(result, matchedData),
+                    identity.name(),
+                    identity.brandName()));
         }
         return List.copyOf(perfumes);
     }

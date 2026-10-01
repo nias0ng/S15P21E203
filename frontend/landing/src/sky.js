@@ -270,7 +270,8 @@ float skyCloud(vec3 d){
   return band * smoothstep(uCloudA.y, uCloudA.y + max(1e-4, uCloudA.z), n);
 }
 // 방향(단위벡터) → 하늘 색. ⚠ 텍스처가 아니라 함수다 (sky.js 주석 참고)
-vec3 skyColor(vec3 d, vec3 sunDir){
+// clouds 0 = 구름을 건너뛴다 — 최저 단계의 물 반사만 쓴다 (water.js uLite.y). 하늘 구 · 물의 원경 안개는 늘 구름까지 부른다 (아래 두 인자 판)
+vec3 skyColor(vec3 d, vec3 sunDir, float clouds){
   // 위를 볼수록 천정색. 아래(수평선 밑)로는 지평선색을 유지한다 —
   // ⚠ 물이 아래를 반사하는 일은 거의 없지만, 0 으로 떨어뜨리면 스치는 각에서 검게 샌다
   float up = clamp(d.y, 0.0, 1.0);
@@ -297,7 +298,7 @@ vec3 skyColor(vec3 d, vec3 sunDir){
   //   몸은 천정색(저녁 = 보랏빛 남색) 쪽으로 눕고, 해 쪽 가장자리만 옅게 데워진다.
   //   불변식 14 *"빛은 그늘로만 그린다"* 가 흰 종이가 아니라 **채널 포화** 때문에 다시 나온 자리다.
   // ⚠ 가장자리는 cl * (1 - cl) 이다 — 농도 0.5 에서 최대라 덩어리 **테두리**에만 걸린다.
-  if (uCloudA.x > 0.0) {
+  if (uCloudA.x > 0.0 && clouds > 0.5) {
     float cl = skyCloud(d);
     // ⚠⚠ **위로 갈수록 짙다** (2026-09-20 사용자 : *"내 윗쪽의 구름은 햇빛을 거의 안받으니"*).
     //   올려다보면 구름의 **밑면**이 보이고 그 면은 그늘이다. 수평선 쪽은 햇빛 받는 옆면이 보여 옅다.
@@ -307,7 +308,8 @@ vec3 skyColor(vec3 d, vec3 sunDir){
     col += uSkySun * (uCloudC.z * uCloudA.x * cl * (1.0 - cl) * pow(s, 3.0));
   }
   return col;
-}`;
+}
+vec3 skyColor(vec3 d, vec3 sunDir){ return skyColor(d, sunDir, 1.0); }`;
 
 // ── 구름의 CPU 사본 ──
 // ⚠⚠ 위 GLSL 의 `skyH` · `skyVN` · `skyCloud` 와 **글자 그대로 같은 식**이다.

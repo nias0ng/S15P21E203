@@ -23,7 +23,7 @@ public interface PerfumeNoteRepository extends JpaRepository<PerfumeNote, Perfum
      */
     @Query("""
             SELECT new com.hyanghae.backend.perfume.dto.response.PerfumeNoteResponse(
-                       n.id, n.name, pn.noteType)
+                       n.id, n.name, n.nameKo, pn.noteType)
             FROM PerfumeNote pn, Note n
             WHERE pn.id.noteId = n.id
               AND pn.id.perfumeId = :perfumeId

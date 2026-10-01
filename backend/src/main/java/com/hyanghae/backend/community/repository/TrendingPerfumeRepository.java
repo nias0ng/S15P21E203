@@ -31,7 +31,9 @@ public interface TrendingPerfumeRepository extends JpaRepository<PostPerfume, Po
     @Query(value = """
             SELECT p.perfume_id AS perfumeId,
                    p.name AS name,
+                   p.name_ko AS nameKo,
                    b.name AS brand,
+                   b.name_ko AS brandKo,
                    COUNT(*) AS mentionCount
             FROM post_perfumes pp
             JOIN posts po ON po.post_id = pp.post_id
@@ -39,7 +41,7 @@ public interface TrendingPerfumeRepository extends JpaRepository<PostPerfume, Po
             LEFT JOIN brands b ON b.brand_id = p.brand_id
             WHERE po.created_at >= :since
               AND p.is_active = TRUE
-            GROUP BY p.perfume_id, p.name, b.name
+            GROUP BY p.perfume_id, p.name, p.name_ko, b.name, b.name_ko
             ORDER BY COUNT(*) DESC, p.perfume_id
             LIMIT :limit
             """, nativeQuery = true)

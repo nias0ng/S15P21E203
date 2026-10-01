@@ -38,6 +38,13 @@ public class Note {
     @Column(name = "description")
     private String description;
 
+    /**
+     * 노트 설명의 영어판입니다(V29). 영어 요청의 상세에 나가고, 비어 있으면 한국어
+     * {@link #description} 으로 되돌아갑니다. 목록에 나가지 않는 이유는 한국어 설명과 같습니다.
+     */
+    @Column(name = "description_en")
+    private String descriptionEn;
+
     @Column(name = "popularity_rank")
     private Integer popularityRank;
 
