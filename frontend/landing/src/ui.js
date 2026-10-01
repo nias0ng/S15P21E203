@@ -15,7 +15,7 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin 
 
   const stage = $('stage');
   const mount = $('mount');
-  const fill = $('drift-fill'), knob = $('drift-knob'), num = $('drift-num');
+  const fill = $('drift-fill'), num = $('drift-num');
   const input = $('search-input'), button = $('search-button');
 
   // 향수 카드 — ⭐ 2026-09-11 오후부터 **말풍선**이다 (index.html 의 세 겹 주석)
@@ -237,7 +237,9 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin 
   const focusBox = $('focus-labels');
   const focusEls = [];
   // 부표 이름표의 글자 (showMarkLabels). ⚠ 폭을 재는 캔버스와 **같은 글꼴**이어야 겹침 판정이 맞는다 — #stage 의 font-family 와 같다
-  const LABEL_FS = 10.5, LABEL_FS_TOP = 11.5, LABEL_MAX = 140;
+  // ⭐ 2026-10-01 : 10.5 · 11.5 · 140 → 12.5 · 13.5 · 160 + 알약 바탕(LABEL_PAD) — 메인 사용성 테스트 7명이 모두 "이름표가 안 읽힌다" 고 했다
+  //   (밝은 노을 · 반짝이는 물 위의 흰 글씨 10.5px, 먼 것은 반투명). 겹침 판정은 아래 labelWidth · labelHeight 가 바탕까지 넣어 잰다
+  const LABEL_FS = 12.5, LABEL_FS_TOP = 13.5, LABEL_MAX = 160, LABEL_PAD = 7;
   const LABEL_FONT = 'Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif';
   const measureCtx = document.createElement('canvas').getContext('2d');
   const labelW = new Map();   // 글자 → 폭 (한 번 재고 기억한다)
@@ -328,11 +330,13 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin 
       }
       return zRect;
     },
+    // 하단 속도 계기 (index.html · 2026-10-01 에 DRIFT · 손잡이 · 0.00 을 속도 · 막대 · % 로 바꿨다). s = nav.speed (최고 1)
     setDrift(s) {
-      const pct = (Math.min(1, s) * 100).toFixed(1) + '%';
-      fill.style.width = pct;
-      knob.style.left = pct;
-      num.textContent = s.toFixed(2);
+      const k = Math.min(1, Math.max(0, s));
+      fill.style.width = (k * 100).toFixed(1) + '%';
+      // ⚠ 글자는 바뀔 때만 쓴다 — 매 프레임 부른다
+      const t = Math.round(k * 100) + '%';
+      if (num.textContent !== t) num.textContent = t;
     },
 
     // 명세의 "선택한 향수의 일부 정보가 없는 경우 제공 가능한 정보만 표시한다" —
@@ -742,6 +746,8 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin 
             'text-align:center;line-height:1.35;letter-spacing:0.02em;color:var(--pb-ink,#1A1A1A);' +
             // ⚠ 시간대(index.html data-time)가 글자와 둘레 빛을 같이 뒤집는다 — 낮이면 예전 값 그대로
             'text-shadow:0 0 3px var(--pb-halo,rgba(246,245,242,0.95)),0 0 6px var(--pb-halo-2,rgba(246,245,242,0.8));' +
+            // ⭐ 알약 바탕 (2026-10-01) — 하늘 · 물 · 해역 대형 글자 어느 위에 서도 글자 뒤가 한 톤으로 가라앉는다. 색은 시간대가 바꾼다 (index.html --pb-label-bg)
+            'background:var(--pb-label-bg,rgba(246,245,242,0.62));padding:0 ' + LABEL_PAD + 'px;border-radius:999px;' +
             'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
           focusBox.appendChild(el);
           focusEls[i] = el;
@@ -772,7 +778,9 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin 
         const av = Math.round(it.a * 50);
         if (el._a !== av) {
           el._a = av;
-          el.style.opacity = it.a.toFixed(2);
+          // ⭐ 2026-10-01 : 옅기를 1.5배로 당긴다(위는 1에서 자른다) — 먼 부표의 이름이 0.47 처럼 반투명이라 안 읽혔다.
+          //   페이드는 그대로 0 에서 시작하므로 떠오르고 가라앉는 흐름은 남는다
+          el.style.opacity = Math.min(1, it.a * 1.5).toFixed(2);
           el.style.visibility = it.a > 0.01 ? 'visible' : 'hidden';
         }
       }
@@ -792,7 +800,7 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin 
       if (w === undefined) {
         const fs = top ? LABEL_FS_TOP : LABEL_FS;
         measureCtx.font = (top ? '600 ' : '400 ') + fs + 'px ' + LABEL_FONT;
-        w = Math.min(LABEL_MAX, measureCtx.measureText(text).width + 0.02 * fs * text.length + 2);
+        w = Math.min(LABEL_MAX, measureCtx.measureText(text).width + 0.02 * fs * text.length + 2 + 2 * LABEL_PAD);
         labelW.set(k, w);
       }
       return w;

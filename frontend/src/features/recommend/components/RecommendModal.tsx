@@ -11,15 +11,27 @@ import { Skeleton } from '@/shared/ui/Skeleton'
 import { Unroll } from '@/shared/ui/Unroll'
 
 import { conditionLabel } from '../nlrReason'
-import { usePendingFeedbackStore } from '../pendingFeedbackStore'
+import {
+  dropOpenRecommendation,
+  keepOpenRecommendation,
+} from '../openRecommendation'
+import type { OpenRecommendation } from '../openRecommendation'
 import { recommendationQuery } from '../queries'
+import type { RecommendResult } from '../types'
 
+import { NlrFeedbackInline } from './NlrFeedbackInline'
 import { RecommendResultList } from './RecommendResultList'
 
 type Props = {
   /** 검색한 말. `null` 이면 닫힌 상태입니다 */
   query: string | null
   onClose: () => void
+  /**
+   * 상세에 다녀오기 전에 **열려 있던 결과** (`readOpenRecommendation`). 주면 서버에 다시 묻지 않고
+   * 그 결과를 그대로 펼칩니다 — 같은 다섯 장 · 같은 설문 손잡이입니다.
+   * ⚠️ 그 말(`query`)로 연 첫 결과창에만 씁니다. 닫았다 같은 말로 다시 찾으면 새로 받습니다
+   */
+  restored?: OpenRecommendation
 }
 
 /**
@@ -27,12 +39,21 @@ type Props = {
  * 3D iframe 이 통째로 다시 떠(WebGL 컨텍스트 · 8MB 배 모델) 모달로 둡니다.
  * NOTE: 가운데 정렬이면 족자가 풀릴 때 머리줄이 밀려 올라가 위쪽에 붙입니다(`mt-25 mb-auto`).
  */
-export function RecommendModal({ query, onClose }: Props) {
+export function RecommendModal({ query, onClose, restored }: Props) {
   const { t } = useTranslation('recommend')
+  /*
+    사람이 닫으면 **담아 둔 결과도 버립니다** (`openRecommendation` 머리말) — 상세로 넘어가는
+    길은 이 `onClose` 를 안 지나므로(링크라 화면째 언마운트됩니다) 그때는 남습니다.
+  */
+  const close = () => {
+    dropOpenRecommendation()
+    onClose()
+  }
+
   return (
     <Modal
       open={query !== null}
-      onClose={onClose}
+      onClose={close}
       title={t('nlr.title')}
       /*
         배경을 눌러도 닫지 않습니다. 판이 3D 바다 위에 떠 있어 배경이 화면의 대부분이고,
@@ -52,24 +73,46 @@ export function RecommendModal({ query, onClose }: Props) {
 
         판은 향수 · 노트 화면과 같은 반투명 유리이고(`scent-map-glass`), 결과 카드는 그
         판 위의 한 단 밝은 유리 카드입니다(`PerfumeCard` 의 `data-slot="card"`).
-        위쪽 자리 · 높이 상한 · 재질 · 모서리는 뒤에 뜨는 설문(`NlrFeedbackModal`)과 한 벌입니다.
+        만족도 설문은 따로 뜨지 않고 결과 아래 한 줄로 섭니다(`NlrFeedbackInline`).
       */
       className="scent-map-glass scent-thin-scroll mt-25 mb-auto max-h-[calc(100vh-var(--spacing)*31.25)] w-290 overflow-y-auto rounded-[24px]"
     >
       {/* NOTE: `<dialog>` 는 닫혀도 children 이 DOM 에 남아, 그리지 않아야 족자가 다시 풀립니다 */}
-      {query !== null && <RecommendBody query={query} />}
+      {query !== null && (
+        <RecommendBody
+          query={query}
+          restored={restored?.query === query ? restored.result : undefined}
+        />
+      )}
     </Modal>
   )
 }
 
 /** 열릴 때마다 새로 마운트됩니다 — 그래야 족자가 매번 처음부터 풀립니다 */
-function RecommendBody({ query }: { query: string }) {
+function RecommendBody({
+  query,
+  restored,
+}: {
+  query: string
+  restored?: RecommendResult
+}) {
   const { t } = useTranslation('recommend')
   const locale = useLocale()
   const result = useQuery({
     ...recommendationQuery(query),
     enabled: query.trim().length > 0,
+    // 열려 있던 결과로 돌아왔으면 그대로 섭니다 — `staleTime: Infinity` 라 다시 묻지 않습니다
+    initialData: restored,
   })
+
+  /*
+    결과가 서면 **열려 있던 결과**로 담아 둡니다 — 상세에 다녀와 같은 결과를 다시 펼칠 재료입니다
+    (`openRecommendation`). 닫으면 위의 `close` 가 버립니다.
+  */
+  const data = result.data
+  useEffect(() => {
+    if (data) keepOpenRecommendation({ query, result: data })
+  }, [query, data])
 
   const perfumes = result.data?.perfumes ?? []
   /*
@@ -80,21 +123,13 @@ function RecommendBody({ query }: { query: string }) {
   const matchedData = result.data?.matchedData ?? []
 
   /*
-    결과가 **도착하는 순간** 설문을 걸어 둡니다. 닫을 때 걸면 늦습니다 — 결과에서
-    [자세히 보기]는 링크라, 상세로 넘어갈 때 이 모달의 `onClose` 가 불리지 않고
-    화면째 언마운트됩니다. 그때 걸어 둘 곳이 없으면 답하지 않은 설문이 통째로 사라집니다.
-
-    NOTE: 향수가 0개면 걸지 않습니다. `NO_CONDITION` · `NO_RESULT` 는 추천이 없었던 것이라
-    "추천은 어떠셨나요" 에 답할 것이 없고, 그 답을 만족도로 세면 추천의 품질이 아니라
+    만족도는 결과 아래 한 줄로 묻습니다(`NlrFeedbackInline`) — 닫을 때 따로 뜨던 설문 창은 걷었습니다.
+    NOTE: 향수가 0개면 묻지 않습니다. `NO_CONDITION` · `NO_RESULT` 는 추천이 없었던 것이라
+    "이 추천은 어떠셨나요" 에 답할 것이 없고, 그 답을 만족도로 세면 추천의 품질이 아니라
     입력을 못 알아들은 횟수를 만족도에 섞게 됩니다.
     NOTE: 손잡이가 `null` 인 경우도 있습니다 — 서버가 기록에 실패한 것이라 보낼 곳이 없습니다.
   */
-  const hold = usePendingFeedbackStore((state) => state.hold)
   const token = result.data?.recommendationToken ?? null
-  const hasPerfumes = perfumes.length > 0
-  useEffect(() => {
-    if (token !== null && hasPerfumes) hold({ token, query })
-  }, [token, query, hasPerfumes, hold])
 
   return (
     <Unroll>
@@ -151,13 +186,16 @@ function RecommendBody({ query }: { query: string }) {
           )}
 
           {perfumes.length > 0 ? (
-            <RecommendResultList
-              perfumes={perfumes}
-              query={result.data.query}
-              pickedWithoutScentCondition={
-                result.data.pickedWithoutScentCondition
-              }
-            />
+            <>
+              <RecommendResultList
+                perfumes={perfumes}
+                query={result.data.query}
+                pickedWithoutScentCondition={
+                  result.data.pickedWithoutScentCondition
+                }
+              />
+              {token !== null && <NlrFeedbackInline token={token} />}
+            </>
           ) : (
             /*
                 NOTE: 0개인 두 경우를 한 문장으로 묶지 않습니다 — 조건을 못 뽑은 사람에게

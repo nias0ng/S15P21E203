@@ -29,9 +29,9 @@ const DICT = {
       count: '향수 {{n}}', explored: ' · 탐색 {{pct}}%', zoom: ' · {{k}}배', unexplored: ' · 미탐색',
       tail: '해역을 누르면 그리로 떠납니다\n휠 확대 · 끌어 이동 · ESC 닫기'
     },
-    // ⚠ 공백 · NBSP 는 index.html 의 `방향 &nbsp;·&nbsp; ↑` 그대로다
-    drift: { help: '← → 로 방향  ·  ↑ 또는 휠 ↑ 로 나아가기' },
-    quality: { high: '높음', mid: '보통', low: '낮음' },
+    // ⚠ 공백 · NBSP 는 index.html 의 `그쪽으로 &nbsp;·&nbsp; 부표를` 그대로다 · keys 는 .pb-help-keys 칸이다 (방향키가 없는 기기에서 숨는다)
+    drift: { speed: '속도', help: '바다를 누르면 그쪽으로  ·  부표를 누르면 향수', keys: '  ·  ← → ↑ 로 직접 몰기' },
+    quality: { high: '높음', mid: '보통', low: '낮음', min: '최저' },
     // 앱 없이 단독으로 띄웠을 때의 알림 (host.js DEFAULTS)
     host: {
       detail: '자세히 보기', detailSub: '앱에 붙으면 향수 상세 화면으로 이동합니다',
@@ -56,8 +56,8 @@ const DICT = {
       count: '{{n}} perfumes', count_one: '{{n}} perfume', explored: ' · {{pct}}% explored', zoom: ' · {{k}}×', unexplored: ' · unexplored',
       tail: 'Click waters to sail there\nScroll to zoom · Drag to pan · Esc to close'
     },
-    drift: { help: '← → to steer  ·  ↑ or scroll up to sail' },
-    quality: { high: 'High', mid: 'Medium', low: 'Low' },
+    drift: { speed: 'Speed', help: 'Click the sea to sail there  ·  click a buoy for its perfume', keys: '  ·  ← → ↑ to steer' },
+    quality: { high: 'High', mid: 'Medium', low: 'Low', min: 'Lowest' },
     host: {
       detail: 'View details', detailSub: 'In the app, this opens the perfume page',
       save: 'Save to Shelf', saveSub: 'In the app, this opens the shelf picker',

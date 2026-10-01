@@ -2,10 +2,10 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 /** 그래픽 설정 — 사람이 고르는 값입니다. `auto` 면 엔진이 기기에 맞춰 단계를 고릅니다 */
-export type GraphicsMode = 'auto' | 'high' | 'mid' | 'low'
+export type GraphicsMode = 'auto' | 'high' | 'mid' | 'low' | 'min'
 
 /** 엔진이 실제로 그리고 있는 단계 (엔진 `landing/src/quality.js` 의 `TIERS`) */
-export type GraphicsTier = 'high' | 'mid' | 'low'
+export type GraphicsTier = 'high' | 'mid' | 'low' | 'min'
 
 /** 엔진이 GPU 이름으로 가른 부류 (엔진 `gpuClass`) */
 export type GpuClass =
@@ -33,6 +33,7 @@ export const GRAPHICS_MODES: readonly GraphicsMode[] = [
   'high',
   'mid',
   'low',
+  'min',
 ]
 
 export const isGraphicsMode = (value: unknown): value is GraphicsMode =>

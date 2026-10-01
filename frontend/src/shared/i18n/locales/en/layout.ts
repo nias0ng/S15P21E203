@@ -11,6 +11,10 @@ export const layout = {
       reviews: 'Reviews',
       free: 'Free board',
     },
+    mobileMenu: {
+      label: 'Menu',
+      community: 'Community · {{label}}',
+    },
   },
   graphics: {
     trigger: 'Graphics settings',
@@ -20,12 +24,14 @@ export const layout = {
       high: 'High',
       mid: 'Medium',
       low: 'Low',
+      min: 'Lowest',
     },
     mode: {
       auto: { label: 'Auto', hint: 'Adjusts to your device' },
       high: { label: 'High', hint: 'Sharpest · glow · boat reflections' },
       mid: { label: 'Medium', hint: 'A little softer and smoother' },
-      low: { label: 'Low', hint: 'Lightest · saves battery' },
+      low: { label: 'Low', hint: 'Light · saves battery' },
+      min: { label: 'Lowest', hint: 'Lightest · draws 30 frames a second' },
     },
     live: 'Now {{tier}}',
     liveIntegrated: 'Now {{tier}} · integrated graphics',
@@ -33,8 +39,8 @@ export const layout = {
       'On a laptop with a dedicated GPU, set your browser to ‘High performance’ in Windows Settings › System › Display › Graphics for smoother motion',
   },
   feedback: {
-    link: 'Send feedback (new tab)',
-    greeting: 'Tap the button to send us feedback!',
+    link: 'Send feedback (opens a survey in a new tab)',
+    greeting: 'Tell us what you think · opens a survey in a new tab',
   },
   errorPage: {
     title: 'Something went wrong',

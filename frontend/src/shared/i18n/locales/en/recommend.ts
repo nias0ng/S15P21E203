@@ -102,14 +102,8 @@ export const recommend = {
     },
   },
   feedback: {
-    title: 'How were the recommendations?',
-    exitTitle: 'Leave without sending feedback?',
-    exitDescription:
-      'What you wrote won’t be saved, and this survey won’t appear again.',
-    exit: 'Leave',
+    title: 'How were these picks?',
     thanks: 'Thank you. We only use your answer to improve recommendations.',
-    close: 'Close',
-    asked: 'You asked · ',
     satisfaction: 'Satisfaction',
     options: {
       satisfied: 'I like them',
@@ -119,7 +113,6 @@ export const recommend = {
     comment: 'Comment (optional)',
     placeholder: 'Tell us what you liked or what fell short',
     tooLong: 'Up to {{max}} characters',
-    skip: 'Skip',
     send: 'Send',
     error: {
       rateLimited: 'You sent many times in a short while. Try again shortly.',

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -303,5 +303,68 @@ describe('계정 단추의 프로필 사진', () => {
     renderHeader(ROUTES.PERFUMES)
 
     expect(api.getMe).not.toHaveBeenCalled()
+  })
+})
+
+/*
+  768 아래에서는 가운데 메뉴를 숨기고 이 단추로 접습니다 (2026-10-01). 390 폭에서 COMMUNITY 가 잘리고
+  로그인 · 그래픽 설정이 화면 밖으로 밀렸습니다. 숨기고 보이는 것은 CSS(`md:`)라 여기서는 목록과 동작만 봅니다.
+*/
+describe('좁은 화면의 접은 메뉴', () => {
+  it('누르면 주요 메뉴와 커뮤니티 갈래가 한 목록에 선다', async () => {
+    const user = userEvent.setup()
+    renderHeader(ROUTES.PERFUMES)
+
+    await user.click(screen.getByRole('button', { name: '메뉴' }))
+
+    const menu = screen.getByRole('menu', { name: '메뉴' })
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent),
+    ).toEqual([
+      'PERFUME',
+      'BRAND',
+      'NOTE',
+      '커뮤니티 · 후기',
+      '커뮤니티 · 자유',
+    ])
+  })
+
+  it('로그인하면 SHELF 도 선다', async () => {
+    const user = userEvent.setup()
+    logIn()
+    renderHeader(ROUTES.PERFUMES)
+
+    await user.click(screen.getByRole('button', { name: '메뉴' }))
+
+    expect(
+      within(screen.getByRole('menu', { name: '메뉴' })).getByRole('menuitem', {
+        name: 'SHELF',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('고르면 닫히고 그 화면으로 간다', async () => {
+    const user = userEvent.setup()
+    renderHeader(ROUTES.PERFUMES)
+
+    const trigger = screen.getByRole('button', { name: '메뉴' })
+    await user.click(trigger)
+    await user.click(screen.getByRole('menuitem', { name: 'BRAND' }))
+
+    expect(screen.getByText(`지금: ${ROUTES.BRANDS}`)).toBeInTheDocument()
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('Esc 로 닫힌다', async () => {
+    const user = userEvent.setup()
+    renderHeader(ROUTES.PERFUMES)
+
+    const trigger = screen.getByRole('button', { name: '메뉴' })
+    await user.click(trigger)
+    await user.keyboard('{Escape}')
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
   })
 })

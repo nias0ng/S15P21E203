@@ -49,7 +49,7 @@ npm run preview
 | | `src/vertexao.js` | **배의 주변 차폐** — 96방향 깊이로 정점마다 굽고(`bakeVertexAO`), 재질이 하늘빛만 그만큼 가리게 한다(`ensureVertexAO`). GLB 에 AO 맵이 없어서다. 구운 값은 GLB 에 실려 오고(`_AOFB`) 파일에 없을 때만 불러올 때 굽는다 (v0.80.0 · 불변식 35 · params `boatAO`) |
 | | `src/reflect.js` · `src/submerged.js` | 평면 반사 패스(레이어 2 — 배·부표·타이포) · 물에 잠긴 선체 |
 | | `src/bloom.js` | 장면 타깃(MSAA 는 여기만) → 전역 블룸(문턱 1.40 — 태양 반짝임만 넘는다 · **넘은 만큼만** 번지고 밝은 곳엔 덜 더한다 `bloomKnee` · `bloomKeep`) + **부표만 번지는 `GlowPass`**(레이어 3 원천 · 4 가림, 불변식 22) → **합성 한 장** (v0.80.0 · 불변식 34) |
-| | `src/quality.js` | **품질 단계** high · mid · low — GPU 이름으로 시작 · 프레임 시간(GPU 타이머)으로 한 칸씩 · `?quality=` · `PB.quality` · 앱의 그래픽 설정 (v0.80.0 · 불변식 34) |
+| | `src/quality.js` | **품질 단계** high · mid · low · min(최저 — 가벼운 물 · 30fps, v0.81.0) — GPU 이름으로 시작 · 프레임 시간(GPU 타이머)으로 한 칸씩 · `?quality=` · `PB.quality` · 앱의 그래픽 설정 (v0.80.0 · 불변식 34) |
 | | `src/times.js` | 시간대 표(`CONFIG.times`)를 받는 **한 곳**(`timeNow()`) — 하늘·물·조명·암석·타이포·DOM 글자색이 여기서 받는다. 기본은 저녁(`sceneTime 1`, v0.44.0 · 불변식 25) |
 | 배 | `src/boat.js` · `src/paper.js` | GLB 세일보트 · 부력·자세 · 돛/선체 톤 · 코드로 굽는 종이 결 |
 | | `public/landing/boat_v2.meshopt.glb` | 원본 `data/boat_v2.glb`(8.30MB) + 정점 차폐 `data/boat_v2.ao.*` → **생성물** 2.04MB (손으로 안 고친다. `GLTF_TOOLS=… node scripts/pack-boat.mjs` — 도구 설치 · 차폐 다시 굽기는 그 파일 머리말, v0.80.0) · 개발 중 원본 보기 `?boat=src` |

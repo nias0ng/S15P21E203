@@ -6,6 +6,7 @@ import { BrandMark } from './header/BrandMark'
 import { GraphicsMenu } from './header/GraphicsMenu'
 import { LanguageToggle } from './header/LanguageToggle'
 import { LoginButton } from './header/LoginButton'
+import { MobileMenu } from './header/MobileMenu'
 import { PrimaryNav } from './header/PrimaryNav'
 import { GLASS, inkOf, isGlass, type HeaderTone } from './header/tone'
 
@@ -44,11 +45,14 @@ export function GlobalHeader({ tone = 'surface' }: { tone?: HeaderTone }) {
         <BrandMark ink={ink} className="justify-self-start" />
         <PrimaryNav isLoggedIn={isLoggedIn} ink={ink} />
 
-        <div className="flex shrink-0 items-center gap-5 justify-self-end">
+        {/* NOTE: 셋째 칸에 못 박습니다 — 768 아래에서 가운데 메뉴가 빠지면 이 묶음이 가운데 칸으로 당겨 옵니다 */}
+        <div className="col-start-3 flex shrink-0 items-center gap-5 justify-self-end">
           <LanguageToggle ink={ink} />
           {/* 그래픽 설정은 3D 향 지도(유리판 헤더)에서만 섭니다 — 다른 화면에는 바꿀 3D 가 없습니다 */}
           {onGlass && <GraphicsMenu ink={ink} />}
           {isLoggedIn ? <AccountMenu ink={ink} /> : <LoginButton ink={ink} />}
+          {/* 768 아래에서만 섭니다 — 가운데 메뉴를 여기로 접습니다 */}
+          <MobileMenu isLoggedIn={isLoggedIn} ink={ink} />
         </div>
       </div>
     </header>

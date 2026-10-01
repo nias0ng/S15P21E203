@@ -1,19 +1,13 @@
 import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router'
 
-import { ROUTES } from '@/shared/config/routes'
 import { cn } from '@/shared/lib/cn'
 
+import { COMMUNITY_ITEMS } from './navItems'
 import { inkLink, type Ink } from './tone'
 import { useDismissable } from './useDismissable'
 import { useDiveOut } from './useDiveOut'
 import { useWarm } from './useWarm'
-
-// 이름은 키로 두고 그릴 때 풉니다 — 모듈이 읽힐 때 풀면 언어를 바꿔도 그대로입니다
-const COMMUNITY_ITEMS = [
-  { to: ROUTES.COMMUNITY_REVIEWS, labelKey: 'header.community.reviews' },
-  { to: ROUTES.COMMUNITY_FREE, labelKey: 'header.community.free' },
-] as const
 
 export function CommunityMenu({ ink }: { ink: Ink }) {
   const { t } = useTranslation('layout')

@@ -101,14 +101,8 @@ export const recommend = {
     },
   },
   feedback: {
-    title: '추천은 어떠셨나요',
-    exitTitle: '추천에 대한 후기를 남기지 않고 나가시겠습니까?',
-    exitDescription:
-      '적던 한마디는 저장되지 않고, 이 추천에 대한 설문은 다시 뜨지 않습니다.',
-    exit: '나가기',
+    title: '이 추천은 어떠셨나요?',
     thanks: '고맙습니다. 남겨 주신 답은 추천을 넓히는 데만 씁니다.',
-    close: '닫기',
-    asked: '입력한 말 · ',
     satisfaction: '추천 만족도',
     options: {
       satisfied: '마음에 들어요',
@@ -118,7 +112,6 @@ export const recommend = {
     comment: '한마디 (선택)',
     placeholder: '어떤 점이 좋았는지, 무엇이 아쉬웠는지 적어 주세요',
     tooLong: '{{max}}자까지 쓸 수 있습니다',
-    skip: '건너뛰기',
     send: '보내기',
     error: {
       rateLimited: '짧은 시간에 여러 번 보내셨습니다. 잠시 뒤에 다시 됩니다.',

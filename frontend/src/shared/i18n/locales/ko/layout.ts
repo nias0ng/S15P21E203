@@ -8,6 +8,10 @@ export const layout = {
       reviews: '후기',
       free: '자유',
     },
+    mobileMenu: {
+      label: '메뉴',
+      community: '커뮤니티 · {{label}}',
+    },
   },
   graphics: {
     trigger: '그래픽 설정',
@@ -17,12 +21,14 @@ export const layout = {
       high: '높음',
       mid: '보통',
       low: '낮음',
+      min: '최저',
     },
     mode: {
       auto: { label: '자동', hint: '기기에 맞춰 알아서 맞춥니다' },
       high: { label: '높음', hint: '가장 선명하게 · 빛 번짐 · 배 반사' },
       mid: { label: '보통', hint: '조금 덜 선명하게, 더 부드럽게' },
-      low: { label: '낮음', hint: '가장 가볍게 · 배터리를 아낍니다' },
+      low: { label: '낮음', hint: '가볍게 · 배터리를 아낍니다' },
+      min: { label: '최저', hint: '가장 가볍게 · 초당 30장으로 그립니다' },
     },
     live: '지금 {{tier}}',
     liveIntegrated: '지금 {{tier}} · 내장 그래픽',
@@ -30,8 +36,8 @@ export const layout = {
       '외장 그래픽이 있는 노트북이라면 Windows 설정 › 시스템 › 디스플레이 › 그래픽에서 브라우저를 ‘고성능’으로 두면 더 부드럽습니다',
   },
   feedback: {
-    link: '피드백 보내기 (새 탭)',
-    greeting: '버튼을 눌러 피드백을 전해보세요!',
+    link: '의견 보내기 (새 탭에서 설문이 열립니다)',
+    greeting: '의견을 들려주세요 · 새 탭에서 설문이 열립니다',
   },
   errorPage: {
     title: '문제가 발생했어요',

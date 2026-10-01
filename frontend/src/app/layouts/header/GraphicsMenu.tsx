@@ -10,7 +10,13 @@ import {
 import { inkLink, type Ink } from './tone'
 
 // 이름 · 안내는 번역 묶음(layout 의 graphics.mode)에 두고 그릴 때 풉니다
-const GRAPHICS_MODES: readonly GraphicsMode[] = ['auto', 'high', 'mid', 'low']
+const GRAPHICS_MODES: readonly GraphicsMode[] = [
+  'auto',
+  'high',
+  'mid',
+  'low',
+  'min',
+]
 
 function GearIcon() {
   return (
@@ -31,7 +37,7 @@ function GearIcon() {
 }
 
 /**
- * 메인 3D 의 그래픽 설정 (S15P21E203-435) — 헤더의 톱니바퀴. 자동 · 높음 · 보통 · 낮음.
+ * 메인 3D 의 그래픽 설정 (S15P21E203-435) — 헤더의 톱니바퀴. 자동 · 높음 · 보통 · 낮음 · 최저.
  *
  * 처음은 자동입니다. 엔진이 GPU 를 보고 시작 단계를 고르고(내장 그래픽이면 낮음), 끊기면 한 단계씩
  * 내립니다. 여기서 고르면 그 단계에 **고정**되고 엔진은 더 움직이지 않습니다.

@@ -23,6 +23,18 @@ export const map = {
       nl: 'Describe a mood or moment for perfume picks · works best in Korean',
       normal: 'Search the 200 perfumes on the map by name or brand',
     },
+    starters: {
+      label: 'Try searching for',
+      rain: 'earthy smell after rain',
+      soap: 'soft soap scent for work',
+      vanilla: 'sweet vanilla',
+      floral: 'floral perfume',
+      chanel: 'Chanel',
+      joMalone: 'Jo Malone',
+      byredo: 'Byredo',
+      diptyque: 'Diptyque',
+      popular: 'See popular perfumes →',
+    },
     switchTo: 'Switch to {{mode}} search',
   },
   searchModal: {
