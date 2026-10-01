@@ -374,6 +374,11 @@ const input = createInput(ui.mount, {
     // ⚠⚠ **전환 중에는 고르지 않는다** (§9-4). phase 쪽 가드는 이미 있어서 cue.zone 이
     //   찢어지진 않지만, 여기서 막지 않으면 트윈이 도는 동안 카드가 바뀌어 **화면과 카드가
     //   서로 다른 향을 가리킨다.** 안개가 덮여 있는 동안도 같다
+    // ⭐ 해역 연출이 들어오는 중의 **빈 바다** 누름 = 다 들어오면 닫기 (위 leaveAsked). 부표 위의 누름은 예전처럼 버린다 — 연출 속 향수를 고르려던 것이다
+    if (phase.cue.busy && phase.cue.phase === 'entering' && (P.zoneSeaEnds === undefined ? 1 : P.zoneSeaEnds) >= 0.5) {
+      if (!marks.pick(view, nx, ny)) leaveAsked = true;
+      return;
+    }
     if (zoneBlocks() || travel.busy) return;
     pendingPick = null;   // 사람이 직접 누른 것이 이긴다 (goPerfume)
     const m = marks.pick(view, nx, ny);
@@ -753,6 +758,10 @@ let pendingSea = null;
 let pendingTravel = null;
 // 이름 검색으로 찾아가 닿은 부표 { m, at } — 안개가 걷히고 부표가 떠오르면 틱이 고른다 (goPerfume). 직접 조타 · 누르기 · 다른 떠나기가 오면 버린다
 let pendingPick = null;
+// ⭐ 해역 연출이 **들어오는 중**에 받은 '닫기' (2026-10-01, v0.84.0 — Esc · 빈 바다 누르기). 들어오는 트윈은 끊을 수 없어(busy · §9-4) 예전에는
+//   그 1~2초의 누름을 그냥 버렸다 — 사용성 테스트에서 "연출을 건너뛸 수 없다" 고 읽혔다. 이제 받아 두었다가 **다 들어온 순간 머묾 없이** 나간다.
+//   ⚠ 먼 곳 이동이 연출을 걷을 때와 같은 규약이다 (startTravel 의 travelAfterZone 주석 : 입장을 끊으면 퇴장 커브가 가득 찬 값에서 시작해 튄다)
+let leaveAsked = false;
 // ⭐ 클릭 항해의 **일반 속도** (스로틀 0..1) — 자동 조타가 가속이 아닐 때의 값. 예전 틱의 숫자 0.72 를 이름으로 뺐다 (2026-09-15, v0.65.0 · 값은 그대로)
 const SAIL_NORMAL = 1.0;
 // 지금 속도가 일반(0) ~ 최대 가속(1) 사이 어디인가. 일반보다 느리면 음수. ⚠ 2026-09-22 : cruise = boost = 1.0 인 지금 분모가 0 이고 nav.speed 는 목표에 아래에서 수렴하므로 **k 는 늘 0 이하다** — sailBoostKeys 를 0 으로 꺼 둔 까닭이다
@@ -1916,6 +1925,11 @@ function tick(ts) {
   // 이름 검색으로 찾아가 닿은 부표 (goPerfume) — 안개가 다 걷히고 부표가 떠오른 뒤에 고른다.
   //   ⚠ 닿은 프레임에는 안개가 걷히는 중이고 부표가 아직 페이드 인 전이다 — 그때 고르면 12개를 고를 무리(m.on)가 비어 있다.
   //   문턱은 카드가 따라 뜨는 값(cardFollowFade)과 같다 · 4초 안에 안 뜨면(가라앉은 채 · 시야 밖) 놓는다 — 배는 이미 곁에 와 있다
+  // 들어오는 중에 받은 닫기 (leaveAsked) — 다 들어온 **그 프레임**에 머묾 없이 나간다. 다른 상태로 갔으면(나가는 중 · 항해) 버린다
+  if (leaveAsked && !phase.cue.busy) {
+    if (phase.cue.phase === 'inspecting') phase.leave();
+    leaveAsked = false;
+  }
   if (pendingPick && !travel.busy && !phase.cue.busy) {
     const m = pendingPick.m;
     if (m.on && m.fade >= (P.cardFollowFade === undefined ? 0.35 : P.cardFollowFade)) { pendingPick = null; pickArrived(m); }
@@ -2440,6 +2454,8 @@ function tick(ts) {
     if (ui.mount.style.cursor !== want) ui.mount.style.cursor = want;
   }
   ui.setDrift(s);
+  // 해역 연출 중(들어오는 중 · 머무는 중)이면 하단 안내가 닫는 법을 말한다 — 나가는 중에는 이미 닫히고 있다
+  ui.setHelpZone(!!phase.cue.zone && phase.cue.phase !== 'leaving' && phase.cue.phase !== 'sailing');
   // ⭐ 그림자 맵 — 바뀌었을 때만, 이 프레임의 **처음 불이 켜진 렌더 한 번**이 그린다 (shadowDirty 머리말)
   renderer.shadowMap.needsUpdate = shadowDirty();
   // 반사를 먼저 찍는다 (배와 같은 게이트라 8fps). 본 렌더가 그 그림을 되읽는다
@@ -2658,7 +2674,8 @@ const onKeyExit = (e) => {
   if (cabinOpen) { closeCabin(); return; }
   // 향수 고르기가 먼저다 — 떠 있는 12개를 거두고 끝낸다 (연출까지 한 번에 나가지 않는다)
   if (marks.focusing) { marks.focusOff(); marks.clearSelect(); clickMark = null; return; }
-  if (phase.cue.zone) { if (!phase.cue.busy) phase.leave(); return; }
+  // ⚠ 들어오는 중이면 받아 두었다가 다 들어온 순간 나간다 (leaveAsked) — 예전에는 그 사이의 Esc 를 버렸다
+  if (phase.cue.zone) { if (!phase.cue.busy) phase.leave(); else if (phase.cue.phase === 'entering') leaveAsked = true; return; }
   // ⭐ 그다음이 클릭 항해의 가속 끄기 (v0.65.0 — sailBoostKey) — 고르기도 존 연출도 없을 때만. 최대 가속에 닿기 전이면 아무 일도 없다
   sailBoostKey(false);
 };
