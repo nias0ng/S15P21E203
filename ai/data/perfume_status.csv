@@ -5,7 +5,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 153,Bvlgari,Aqva Pour Homme,DISCONTINUED,CONFIRMED,https://amourfragrances.com/products/aqva-pour-homme-by-bvlgari-edt-for-men,2026-10-01,판매처가 상품명에 DISCONTINUED 표기. 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
 154,Bvlgari,Black,DISCONTINUED,CONFIRMED,https://cafleurebon.com/saturday-night-classic-bulgari-black-review-annick-menardo-1998-2020-s-test-drive/,2026-10-01,2017년 단종 언급. 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
 665,Bvlgari,Rose Essentielle,DISCONTINUED,CONFIRMED,https://scentsandsensibilities.co/2020/05/08/roses-de-mai-marathon-rose-essentielle/,2026-10-01,리뷰(2020-05-08) 단종 명시. 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
-3750,Bvlgari,Jasmin Noir,DISCONTINUED,CONFIRMED,https://www.alinjazperfumes.com/product/bvlgari-jasmin-noir-eau-de-parfum-100ml-discontinued/,2026-10-01,판매처가 상품명에 discontinued 표기. 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
+3750,Bvlgari,Jasmin Noir,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/bvlgari-jasmin-noir-eau-de-parfum-box-set,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시. 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
 11512,Bvlgari,Mon Jasmin Noir,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/bulgari-mon-jasmin-noir-edp,2026-10-01,판매처가 단종 명시. 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
 146,Bvlgari,Eau Parfumée au Thé Rouge,DISCONTINUED,CONFIRMED,https://www.coucoushop.com/bvlgari-eau-parfumee-au-the-rouge-edc-150ml.html,2026-10-01,판매처(Coucou) 상품 설명에 'is a discontinued fragrance'. 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
 149,Bvlgari,BLV Notte Pour Femme,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/bvlgari-blv-notte-femme-vaulted-eau-de-parfum,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시. 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
@@ -22,7 +22,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 3015,Bvlgari,Eau Fraiche,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 4941,Bvlgari,Omnia Green Jade,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 6105,Bvlgari,Jasmin Noir Eau de Toilette,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
-6481,Bvlgari,BLV Eau de Parfum II,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
+6481,Bvlgari,BLV Eau de Parfum II,DISCONTINUED,CONFIRMED,https://nostaligastore.com/products/blv-ii-bvlgari-for-women-edp-spray-75-ml-2-5-oz-very-rare-vintage,2026-10-01,판매처(nostaligastore)가 상품명에 DISCONTINUED 표기. 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
 7220,Bvlgari,BLV Eau d'Ete,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 11288,Bvlgari,Aqva Pour Homme Toniq,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 11289,Bvlgari,Aqva Pour Homme Marine Toniq,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
@@ -42,7 +42,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 31018,Bvlgari,Eau Parfumee au The Bleu,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 31400,Bvlgari,Eau Parfumee au The Noir,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 31538,Bvlgari,Goldea,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/bulgari-goldea-eau-de-parfu,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시. 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
-32093,Bvlgari,Omnia Paraiba,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
+32093,Bvlgari,Omnia Paraiba,DISCONTINUED,CONFIRMED,https://nostaligastore.com/products/bvlgari-omnia-paraiba-eau-de-toilette-65-ml-spray-sealed-discontinued,2026-10-01,판매처(nostaligastore)가 상품명에 DISCONTINUED 표기. 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
 32689,Bvlgari,Zahira,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 33621,Bvlgari,Irina,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 33622,Bvlgari,Desiria,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
@@ -57,7 +57,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 42856,Bvlgari,Aqva Pour Homme Atlantiqve,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 43947,Bvlgari,Splendida Rose Rose,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 43948,Bvlgari,Splendida Jasmin Noir,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
-43950,Bvlgari,Splendida Iris d'Or,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
+43950,Bvlgari,Splendida Iris d'Or,DISCONTINUED,CONFIRMED,https://nostaligastore.com/products/splendida-iris-dor-by-bvlgari-eau-de-parfum-women-100-ml-spray-sealed-discontinued,2026-10-01,판매처(nostaligastore)가 상품명에 DISCONTINUED 표기. 미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음
 45241,Bvlgari,Goldea The Roman Night,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 46312,Bvlgari,Bvlgari Man In Black Essence,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 47820,Bvlgari,Splendida Magnolia Sensuel,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
@@ -916,7 +916,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 16990,Guerlain,L'Heure de Nuit,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 17119,Guerlain,Derby,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 17355,Guerlain,Guerlain Shalimar Parfum Initial L'Eau Si Sensuelle,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
-17512,Guerlain,Aqua Allegoria Nerolia Bianca,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
+17512,Guerlain,Aqua Allegoria Nerolia Bianca,DISCONTINUED,CONFIRMED,https://theperfumedcourt.com/products/guerlain-aqua-allegoria-nerolia-bianca-edt-discontinued-decant-sample,2026-10-01,판매처(The Perfumed Court)가 상품명에 'Discontinued' 표기. 프랑스(fr-fr) 공식 사이트 향수 목록에 없음
 18061,Guerlain,Aqua Allegoria Flora Rosa,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 18414,Guerlain,Shalimar Ode a la Vanille Sur la Route du Mexique,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/guerlain-br-shalimar-ode-a-la-vanille-sur-la-route-du-mexique-br-eau-de-parfum-50ml,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시. 프랑스(fr-fr) 공식 사이트 향수 목록에 없음
 18983,Guerlain,Place Rouge,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
@@ -1605,7 +1605,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 851,Givenchy,Organza Indian Jasmin,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
 852,Givenchy,My Givenchy,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
 856,Givenchy,Jardin d'Interdit,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
-857,Givenchy,Insense,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
+857,Givenchy,Insense,DISCONTINUED,CONFIRMED,https://fragflex.com/products/givenchyinsense-man,2026-10-01,판매처(FragFlex) 상품 설명에 'discontinued and considered rare'. 프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음
 858,Givenchy,Insense Ultramarine,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
 860,Givenchy,Hot Couture Collection No.1,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
 864,Givenchy,Eau Torride,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
@@ -1642,8 +1642,8 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 2979,Givenchy,Oblique Rewind,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
 2980,Givenchy,Hot Couture White Collection,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
 3848,Givenchy,Givenchy Lights,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
-3906,Givenchy,Givenchy Play Eau de Toilette,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
-3907,Givenchy,Givenchy Play Intense,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
+3906,Givenchy,Givenchy Play Eau de Toilette,DISCONTINUED,CONFIRMED,https://nostaligastore.com/products/givenchy-play-for-men-eau-de-toilette-100-ml-spray-discontinued-sealed,2026-10-01,판매처(nostaligastore)가 상품명에 DISCONTINUED 표기. 프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음
+3907,Givenchy,Givenchy Play Intense,DISCONTINUED,CONFIRMED,https://nostaligastore.com/products/givenchy-play-intense-for-men-eau-su-toilette-100ml-spray-vintage-sealed,2026-10-01,판매처(nostaligastore)가 상품명에 DISCONTINUED 표기. 프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음
 4613,Givenchy,Absolutely Irresistible,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
 5112,Givenchy,Be Givenchy,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
 5772,Givenchy,Very Irresistible Summer Sorbet,DISCONTINUED,LIKELY,https://www.givenchybeauty.com/int/en/sitemap-global.xml,2026-10-01,프랑스 · 미국 · 국제(givenchybeauty.com) 공식 사이트맵에 없음. 두 번째 근거 미확인
@@ -1766,7 +1766,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 2957,Yves Saint Laurent,Kouros Fraicheur,DISCONTINUED,LIKELY,https://www.yslbeauty.fr/sitemap_index.xml,2026-10-01,프랑스(yslbeauty.fr) 공식 사이트맵 향수 목록에 없음. 두 번째 근거 미확인
 3085,Yves Saint Laurent,Baiser de Cinéma,DISCONTINUED,LIKELY,https://www.yslbeauty.fr/sitemap_index.xml,2026-10-01,프랑스(yslbeauty.fr) 공식 사이트맵 향수 목록에 없음. 두 번째 근거 미확인
 3165,Yves Saint Laurent,Cinéma Scenario d'Ete,DISCONTINUED,LIKELY,https://www.yslbeauty.fr/sitemap_index.xml,2026-10-01,프랑스(yslbeauty.fr) 공식 사이트맵 향수 목록에 없음. 두 번째 근거 미확인
-3169,Yves Saint Laurent,Nu Eau de Toilette,DISCONTINUED,LIKELY,https://www.yslbeauty.fr/sitemap_index.xml,2026-10-01,프랑스(yslbeauty.fr) 공식 사이트맵 향수 목록에 없음. 두 번째 근거 미확인
+3169,Yves Saint Laurent,Nu Eau de Toilette,DISCONTINUED,CONFIRMED,https://nostaligastore.com/products/yves-saint-laurent-ysl-nu-edt-100-ml-spray-sealed-discontinued,2026-10-01,판매처(nostaligastore)가 상품명에 DISCONTINUED 표기. 프랑스(yslbeauty.fr) 공식 사이트맵 향수 목록에 없음
 4236,Yves Saint Laurent,Vice Versa,DISCONTINUED,LIKELY,https://www.yslbeauty.fr/sitemap_index.xml,2026-10-01,프랑스(yslbeauty.fr) 공식 사이트맵 향수 목록에 없음. 두 번째 근거 미확인
 4246,Yves Saint Laurent,Elle Intense Eau de Parfum,DISCONTINUED,LIKELY,https://www.yslbeauty.fr/sitemap_index.xml,2026-10-01,프랑스(yslbeauty.fr) 공식 사이트맵 향수 목록에 없음. 두 번째 근거 미확인
 4891,Yves Saint Laurent,Jazz Prestige,DISCONTINUED,LIKELY,https://www.yslbeauty.fr/sitemap_index.xml,2026-10-01,프랑스(yslbeauty.fr) 공식 사이트맵 향수 목록에 없음. 두 번째 근거 미확인
@@ -1846,7 +1846,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 179,Lancôme,Mille et Une Roses,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
 180,Lancôme,Climat,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
 182,Lancôme,Sikkim,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/lancome-sikkim-vintage-eau-de-toilette,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시. 미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함
-183,Lancôme,Attraction,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
+183,Lancôme,Attraction,DISCONTINUED,CONFIRMED,https://nostaligastore.com/products/lancome-attraction-eau-de-parfum-women-50-ml-spray-discontinued,2026-10-01,판매처(nostaligastore)가 상품명에 DISCONTINUED 표기. 미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함
 185,Lancôme,Miracle So Magic!,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
 186,Lancôme,O Oui!,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
 187,Lancôme,Ô de Lancôme,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
@@ -2131,3 +2131,4 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 80377,Dolce&Gabbana,Light Blue Pour Homme Summer Vibes,DISCONTINUED,LIKELY,https://www.dolcegabbana.com/en-gb/sitemap-product_0.xml,2026-10-01,영국 · 미국 · 이탈리아 공식 사이트맵에 없음. 두 번째 근거 미확인
 102672,Dolce&Gabbana,L'Imperatrice Royale,DISCONTINUED,LIKELY,https://www.dolcegabbana.com/en-gb/sitemap-product_0.xml,2026-10-01,영국 · 미국 · 이탈리아 공식 사이트맵에 없음. 두 번째 근거 미확인
 181,Lancôme,Magie,DISCONTINUED,CONFIRMED,https://www.annasluxe.com/lancome-magie-mist-vintage-perfume-approx-30ml-rare-discontinued/,2026-10-01,"판매처(Anna's Luxe)가 'Discontinued & Vintage Perfumes' 로 분류, 상품명에 'Discontinued'. 미국(lancome-usa.com) 공식 사이트맵에는 Magie Noire 만 있고 Magie 는 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함"
+47,Guerlain,Parure,DISCONTINUED,CONFIRMED,https://theperfumedcourt.com/products/guerlain-parure-edt-vintage-discontinued-decant-sample,2026-10-01,판매처(The Perfumed Court)가 상품명에 'Discontinued' 표기. 프랑스(fr-fr) 공식 사이트 향수 목록에 없음(같은 이름의 Parure 는 파운데이션)
