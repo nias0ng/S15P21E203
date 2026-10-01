@@ -6,7 +6,9 @@ LLM(①단계) 없이 사전 경로만 돈다. 인덱스를 한 번만 만든다
 테스트마다 만들면 수십 초가 걸린다.
 """
 import logging
+import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -92,6 +94,41 @@ class FeedbackGuardTest(unittest.TestCase):
                 result = nlr_engine.recommend(self.index, query)
                 self.assertNotEqual(result["status"], "NO_CONDITION")
                 self.assertTrue(result["results"])
+
+
+
+class DiscontinuedPerfumeTest(unittest.TestCase):
+    """단종이 확정된 향수는 자연어 추천 후보에서 빠진다 (지인 피드백 F5)."""
+
+    QUERY = "가을에 쓸 남성적인 우드향"
+
+    @classmethod
+    def setUpClass(cls):
+        logging.disable(logging.INFO)
+        first = nlr_engine.recommend(nlr_engine.load_index(), cls.QUERY)["results"]
+        cls.confirmed, cls.likely = first[0], first[1]
+        with tempfile.NamedTemporaryFile(
+                "w", suffix=".csv", delete=False, encoding="utf-8", newline="") as f:
+            f.write("fragrantica_id,brand,name,status,confidence,source_url,checked_at,note\n")
+            for row, confidence in ((cls.confirmed, "CONFIRMED"), (cls.likely, "LIKELY")):
+                f.write(f"{row['perfume_id']},{row['brand']},\"{row['name']}\",DISCONTINUED,"
+                        f"{confidence},https://example.com,2026-10-01,\n")
+            cls.status_csv = f.name
+        cls.index = nlr_engine.load_index(perfume_status=cls.status_csv)
+
+    @classmethod
+    def tearDownClass(cls):
+        os.unlink(cls.status_csv)
+        logging.disable(logging.NOTSET)
+
+    def test_confirmed_discontinued_is_never_recommended(self):
+        names = [r["name"] for r in nlr_engine.recommend(self.index, self.QUERY)["results"]]
+        self.assertNotIn(self.confirmed["name"], names)
+
+    def test_likely_discontinued_stays(self):
+        # 추정은 아직 파는 향수일 수 있어 빼지 않는다
+        names = [r["name"] for r in nlr_engine.recommend(self.index, self.QUERY)["results"]]
+        self.assertIn(self.likely["name"], names)
 
 
 if __name__ == "__main__":

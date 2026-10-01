@@ -215,6 +215,24 @@ class PerfumeRelatedPerfumesIntegrationTest {
                 .andExpect(jsonPath("$.perfumes[*].perfumeId", Matchers.contains(6, 3, 2)));
     }
 
+    /**
+     * 단종이 확인된 향수는 비슷한 향수에서 빠집니다. 대신 살 만한 것을 권하는 자리라 살 수 없는
+     * 향수를 두지 않습니다 (지인 피드백 F5).
+     */
+    @Test
+    void similarSkipsDiscontinuedPerfume() throws Exception {
+        insertSimilar(5, 3, "0.7000", 1);
+        insertSimilar(5, 6, "0.6000", 2);
+        jdbcTemplate.update(
+                "UPDATE perfumes SET production_status = 'DISCONTINUED',"
+                        + " production_status_checked_at = DATE '2026-10-01',"
+                        + " production_status_source = 'https://example.com' WHERE perfume_id = 3");
+
+        mockMvc.perform(get(SIMILAR_URL, 5))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes[*].perfumeId", Matchers.contains(6)));
+    }
+
     /** 미리 계산한 목록도 size 로 앞에서부터 자릅니다. */
     @Test
     void limitsPrecomputedListToRequestedSize() throws Exception {

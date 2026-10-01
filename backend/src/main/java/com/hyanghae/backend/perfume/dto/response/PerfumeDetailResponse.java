@@ -1,6 +1,7 @@
 package com.hyanghae.backend.perfume.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -36,7 +37,11 @@ public record PerfumeDetailResponse(
         @Schema(description = "이 향수에 내가 쓴 후기 번호. 쓰지 않았거나 비로그인이면 비어 있습니다."
                 + " 값이 있으면 화면은 [후기 쓰기] 대신 [후기 수정] 을 띄웁니다.",
                 example = "42")
-        Long myReviewId
+        Long myReviewId,
+
+        @Schema(description = "확인된 생산 상태. 단종이 확인된 향수만 값이 있고, 비어 있으면 모르는 것입니다"
+                + " (판매 중이라는 뜻이 아닙니다).")
+        ProductionStatusResponse productionStatus
 ) {
 
     /**
@@ -52,7 +57,10 @@ public record PerfumeDetailResponse(
             String nameKo,
             String gender,
             String description,
-            String concentration
+            String concentration,
+            String productionStatus,
+            LocalDate productionStatusCheckedAt,
+            String productionStatusSource
     ) {
         this(
                 perfumeId,
@@ -64,7 +72,9 @@ public record PerfumeDetailResponse(
                 concentration,
                 List.of(),
                 List.of(),
-                null
+                null,
+                ProductionStatusResponse.of(
+                        productionStatus, productionStatusCheckedAt, productionStatusSource)
         );
     }
 
@@ -74,7 +84,7 @@ public record PerfumeDetailResponse(
     ) {
         return new PerfumeDetailResponse(
                 perfumeId, brand, name, nameKo, gender, description, concentration,
-                images, prices, myReviewId
+                images, prices, myReviewId, productionStatus
         );
     }
 
@@ -84,7 +94,7 @@ public record PerfumeDetailResponse(
     public PerfumeDetailResponse withMyReviewId(Long myReviewId) {
         return new PerfumeDetailResponse(
                 perfumeId, brand, name, nameKo, gender, description, concentration,
-                images, prices, myReviewId
+                images, prices, myReviewId, productionStatus
         );
     }
 }

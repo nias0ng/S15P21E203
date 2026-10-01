@@ -18,6 +18,9 @@ type Props = {
   aside?: React.ReactNode
 }
 
+/** `2026-10-01` → `2026.10.01` */
+const formatCheckedAt = (date: string) => date.replaceAll('-', '.')
+
 export function PerfumeOverview({
   perfume,
   inShelf,
@@ -72,9 +75,33 @@ export function PerfumeOverview({
             {perfume.nameKo ?? perfume.name}
           </h1>
 
-          {perfume.concentration && (
-            <div className="flex flex-wrap gap-1.25">
-              <Badge tone="outline">{perfume.concentration}</Badge>
+          {(perfume.concentration || perfume.productionStatus) && (
+            <div className="flex flex-wrap items-center gap-1.25">
+              {perfume.concentration && (
+                <Badge tone="outline">{perfume.concentration}</Badge>
+              )}
+              {/*
+                단종은 막지 않고 적기만 합니다 — 이미 가진 사람이 진열대에 담고 후기를 씁니다.
+                확인일과 근거를 같이 둡니다. 아직 파는 향수를 잘못 적었다면 그것을 보고 알려 줄 수
+                있어야 합니다 (지인 피드백 F5).
+              */}
+              {perfume.productionStatus && (
+                <>
+                  <Badge>단종</Badge>
+                  <a
+                    href={perfume.productionStatus.source}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(
+                      'text-ink-muted hover:text-ink text-caption rounded-card underline-offset-4 hover:underline',
+                      FOCUS_RING,
+                    )}
+                  >
+                    {formatCheckedAt(perfume.productionStatus.checkedAt)} 확인 ·
+                    근거 보기
+                  </a>
+                </>
+              )}
             </div>
           )}
 

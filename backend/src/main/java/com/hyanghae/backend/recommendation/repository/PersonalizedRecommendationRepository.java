@@ -175,6 +175,8 @@ public class PersonalizedRecommendationRepository {
                 JOIN perfumes p ON p.perfume_id = s.perfume_id
                 WHERE EXISTS (SELECT 1 FROM taste_profile)
                   AND p.is_active = TRUE
+                  -- 단종이 확인된 향수는 권하지 않습니다 (V33 · 지인 피드백 F5)
+                  AND p.production_status IS NULL
                   AND s.score > 0.0
                   AND COALESCE(NULLIF(p.name_ko, ''), p.name) IS NOT NULL
                   AND NOT EXISTS (
@@ -347,6 +349,8 @@ public class PersonalizedRecommendationRepository {
             ) exposure ON TRUE
             WHERE cached.user_id = :userId
               AND p.is_active = TRUE
+              -- 캐시에 담긴 뒤 단종으로 확인된 향수도 꺼낼 때 거릅니다
+              AND p.production_status IS NULL
               AND COALESCE(NULLIF(p.name_ko, ''), p.name) IS NOT NULL
               AND NOT EXISTS (
                   SELECT 1

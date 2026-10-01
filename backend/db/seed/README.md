@@ -20,6 +20,7 @@
 | 향수 이미지 | 일반 129,153개·종이 질감 200개 | O | O | `load_perfume_images.sh` |
 | 향수-노트 연결 | 906,127건 | O | O | `load_perfume_notes.sh` |
 | 비슷한 향수 | 향수 129,154개·1,291,326쌍 | O | O | `load_perfume_similars.sh` |
+| 단종 표시 | `ai/data/perfume_status.csv` 의 확정 | O | O | `load_perfume_status.sh` |
 | 로컬 화면 테스트 데이터 | 사용자 활동 데이터 | O | X | `seed-local` |
 | 운영 발표용 데모 데이터 | 발표 계정과 활동 데이터 | 선택 | 발표 환경만 | `run_demo_seed.sh` |
 | 440번 시연 재구성 | 계정 34명·후기 85개·글 8개 | 선택 | 승인된 발표 환경만 | `run_presentation_seed.sh` |
@@ -49,6 +50,7 @@
 7. 향수 이미지 메타데이터를 적재합니다.
 8. 향수-노트 연결을 적재합니다.
 9. 비슷한 향수를 적재합니다.
+10. 단종이 확인된 향수를 표시합니다.
 
 각 적재 스크립트는 재실행할 수 있고 자체 트랜잭션으로 처리됩니다. 환경별로 달라지는
 `perfume_id` 대신 `fragrantica_id`로 향수를 연결합니다.
@@ -56,7 +58,7 @@
 ### 로컬 기준 데이터 빠른 실행
 
 프로젝트 루트에서 다음 명령을 실행하면 향 지도·카탈로그·카탈로그 보충·gender·노트·향수 이미지·
-향수-노트 연결·비슷한 향수를 순서대로 적재합니다.
+향수-노트 연결·비슷한 향수·단종 표시를 순서대로 적재합니다.
 
 ```powershell
 docker compose -f compose.manual-test.yaml up -d --build --wait
@@ -330,6 +332,22 @@ cd ai
 pip install scipy   # 서버에는 필요 없는 계산용 의존성입니다
 python build_similars.py
 ```
+
+# 단종 표시 적재
+
+`ai/data/perfume_status.csv` 에서 단종이 **확정**된 향수를 `perfumes.production_status` 에
+표시합니다. 표시된 향수는 추천(자연어 · 비슷한 향수 · 개인화)에서 빠지고 향수 상세에 '단종' 으로
+적힙니다. 검색 · 상세 · 진열대 · 후기는 막지 않습니다. 향수 카탈로그가 먼저 적재돼 있어야 합니다.
+
+```bash
+cd backend/db/seed
+./load_perfume_status.sh
+```
+
+AI 엔진도 같은 파일을 읽으므로 파일은 `ai/data` 에 둡니다. 판정 기준과 칸 설명은
+`ai/README.md` 의 '단종 목록' 에 있습니다. 표시를 모두 지우고 파일대로 다시 걸어 재실행해도 결과가
+같고, 파일에서 지운 향수의 표시도 함께 풀립니다. 번호와 이름이 하나라도 맞지 않으면 아무것도
+바꾸지 않고 어긋난 줄을 알려 줍니다.
 
 # 로컬 화면 테스트 데이터
 

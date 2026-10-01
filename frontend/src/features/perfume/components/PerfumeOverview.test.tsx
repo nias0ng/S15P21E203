@@ -116,4 +116,41 @@ describe('PerfumeOverview', () => {
       '/brands/1',
     )
   })
+
+  // 단종이 확인된 향수는 적되, 언제 무엇을 보고 그렇게 판정했는지 함께 보여 줍니다 (지인 피드백 F5)
+  it('단종이 확인된 향수에 단종과 확인일 · 근거를 적는다', () => {
+    render(
+      <PerfumeOverview
+        perfume={{
+          ...PERFUME,
+          productionStatus: {
+            status: 'DISCONTINUED',
+            checkedAt: '2026-10-01',
+            source: 'https://example.com/discontinued',
+          },
+        }}
+        inShelf={false}
+        onShelfAction={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('단종')).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: /2026\.10\.01 확인/ }),
+    ).toHaveAttribute('href', 'https://example.com/discontinued')
+    // 단종이어도 진열대에 담을 수 있습니다 — 이미 가진 사람이 있습니다
+    expect(screen.getByRole('button', { name: '진열대 저장' })).toBeEnabled()
+  })
+
+  it('단종인지 모르면 아무것도 적지 않는다', () => {
+    render(
+      <PerfumeOverview
+        perfume={PERFUME}
+        inShelf={false}
+        onShelfAction={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByText('단종')).not.toBeInTheDocument()
+  })
 })

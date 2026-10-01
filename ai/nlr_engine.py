@@ -94,6 +94,8 @@ DEFAULT_NOTE_BRIDGE = _DATA_DIR / "note_accord_bridge.csv"
 DEFAULT_NOTE_ALIAS_KO = _DATA_DIR / "note_alias_ko.csv"
 # 별칭을 **품고 있지만 그 노트가 아닌 낱말**. `_longest_alias_ko` 가 찾기 전에 가린다.
 DEFAULT_NOTE_ALIAS_BLOCK = _DATA_DIR / "note_alias_blocklist.csv"
+# 단종이 확인된 향수. 백엔드 적재(load_perfume_status.sh)도 **같은 파일**을 읽는다.
+DEFAULT_PERFUME_STATUS = _DATA_DIR / "perfume_status.csv"
 # 오타 검문소가 **건드리면 안 되는 낱말**. EDA 의 `86_protected_words_v1_18.py` 가 만든다.
 # **사전 버전이 바뀌면 다시 만들어야 한다** — 표면형이 바뀌면 이 집합도 바뀐다.
 DEFAULT_PROTECTED_WORDS = _DATA_DIR / "protected_words_v1_18.txt"
@@ -143,7 +145,7 @@ KOREAN_ACCORD = {
 def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True,
                bridge_csv=None, bridge_p_min=BRIDGE_P_MIN,
                bridge_lift_min=BRIDGE_LIFT_MIN, protected_words=None,
-               note_alias_ko=None, note_alias_block=None):
+               note_alias_ko=None, note_alias_block=None, perfume_status=None):
     """향수 데이터와 사전을 읽어 조회용 인덱스를 만든다.
 
     perfumes_csv : str | Path | None   기본 data/perfumes_nlr.csv.gz
@@ -158,6 +160,8 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
                                        풀리지 않고 ⑤단계로 갈 뿐이다 (측정 기록 34번)
     note_alias_block: str | Path | None 기본 data/note_alias_blocklist.csv (별칭을 품은
                                        다른 낱말). **없어도 엔진은 돈다.** 가리지 않을 뿐이다
+    perfume_status : str | Path | None 기본 data/perfume_status.csv (단종 목록). 확정만 후보에서
+                                       뺀다. **없어도 엔진은 돈다.** 아무것도 안 뺄 뿐이다
     bridge_p_min : float               기본 BRIDGE_P_MIN
     bridge_lift_min : float            기본 BRIDGE_LIFT_MIN
     protected_words : str | Path | None 기본 data/protected_words_v1_18.txt (오타 검문소).
@@ -204,6 +208,11 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
     # 원본 검증은 배포 파일 전체로 수행하되, 알려진 크롤링 중복은 추천 후보에서 제외한다.
     # 9110은 정식 Eclat d’Arpège(988)의 중복 행이므로 API에서 반환되면 안 된다.
     perf = perf[~perf["id"].isin(EXCLUDED_PERFUME_IDS)].reset_index(drop=True)
+    # 단종이 확인된 향수도 뺀다 — 살 수 없는 향수를 권하면 추천 전체를 못 믿게 된다 (지인 피드백 F5).
+    # 검증(위)이 끝난 뒤에 빼야 accord 보유 수 대조가 마스터와 맞는다.
+    discontinued = _load_discontinued(
+        Path(perfume_status) if perfume_status else DEFAULT_PERFUME_STATUS)
+    perf = perf[~perf["id"].isin(discontinued)].reset_index(drop=True)
     pairs = perf["accords"].map(_parse_accords)
 
     strength = np.zeros((len(perf), len(accords)), dtype=np.float32)
@@ -453,6 +462,33 @@ def _add_note_alias_ko(bridge, path):
     LOGGER.info("노트 별칭 %d개를 얹었다 (영어 이름이 브리지에 없어 건너뛴 것 %d) %s",
                 len(added), skipped, Path(path).name)
     return added, target
+
+
+def _load_discontinued(path):
+    """단종이 **확정**된 향수 번호. frozenset[int].
+
+    path : Path   fragrantica_id · confidence 칸을 가진 CSV (data/perfume_status.csv)
+
+    **확정(CONFIRMED)만 뺀다.** 추정(LIKELY)은 브랜드 공식 판매 목록에서만 빠진 것이라 아직 파는
+    향수일 수 있다 — 잘못 빼는 쪽이 더 나쁘다. 판정 기준은 README 의 '단종 목록' 에 있다.
+
+    **백엔드도 같은 파일로 DB 에 표시한다**(load_perfume_status.sh). 백엔드는 AI 가 준 결과에서
+    단종을 한 번 더 거르므로, 두 쪽 배포가 어긋나도 단종 향수가 화면에 나가지는 않는다.
+
+    **파일이 없으면 경고만 남긴다.** 별칭 표와 같은 방침이다.
+    """
+    if not Path(path).exists():
+        LOGGER.warning("단종 목록이 없다: %s. 단종 향수를 추천 후보에서 빼지 않는다", path)
+        return frozenset()
+    table = pd.read_csv(path)
+    missing = [c for c in ("fragrantica_id", "confidence") if c not in table.columns]
+    if missing:
+        raise RuntimeError(f"단종 목록에 필요한 칸이 없다: {missing} ({path})")
+    confirmed = table[table["confidence"].astype(str).str.strip() == "CONFIRMED"]
+    ids = frozenset(int(i) for i in confirmed["fragrantica_id"])
+    LOGGER.info("단종 확정 %d개를 추천 후보에서 뺀다 (추정 %d개는 둔다) %s",
+                len(ids), len(table) - len(confirmed), Path(path).name)
+    return ids
 
 
 def _load_alias_block(path):

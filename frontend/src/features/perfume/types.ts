@@ -30,6 +30,20 @@ export interface PerfumeDetail {
   prices: PerfumePrice[]
   /** 한 사람이 한 향수에 하나만 쓸 수 있어, 값이 있으면 [후기 수정] 입니다 — 또 쓰면 409 */
   myReviewId: number | null
+  /**
+   * 단종이 확인된 향수만 옵니다. **없으면 모르는 것**이지 판매 중이라는 뜻이 아닙니다 — 13만 개를
+   * 다 판정하지 않습니다. 비어 있을 때 응답에서 칸이 빠져 옵니다(`undefined`).
+   */
+  productionStatus?: ProductionStatus | null
+}
+
+/** 확인된 생산 상태. 화면은 '단종' 옆에 확인일과 근거를 함께 보여 줍니다 */
+export interface ProductionStatus {
+  status: 'DISCONTINUED'
+  /** YYYY-MM-DD */
+  checkedAt: string
+  /** 판정 근거 URL */
+  source: string
 }
 
 interface PerfumePrice {

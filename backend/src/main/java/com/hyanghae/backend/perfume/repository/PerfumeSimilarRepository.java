@@ -18,6 +18,10 @@ public interface PerfumeSimilarRepository extends JpaRepository<PerfumeSimilar, 
      * 같아야 화면이 어느 표에서 왔는지 몰라도 됩니다. 비활성 향수를 빼는 까닭도 같습니다. 눌렀을 때
      * 404 가 나는 향수를 화면에 그리지 않습니다.
      *
+     * <p><b>단종이 확인된 향수도 뺍니다.</b> '비슷한 향수' 는 대신 살 만한 것을 권하는 자리라 살 수
+     * 없는 향수를 두면 안 됩니다. 향수마다 10개를 저장해 두어 몇 개 빠져도 화면의 5개는 찹니다.
+     * 지도 이웃({@code perfume_neighbors})에는 걸지 않습니다 — 3D 지도의 선과 같은 목록이어야 합니다.
+     *
      * <p>{@code rank} 가 한 향수 안에서 겹치지 않으므로({@code uk_perfume_similars_rank}) 순서가
      * 하나로 정해집니다.
      */
@@ -28,6 +32,7 @@ public interface PerfumeSimilarRepository extends JpaRepository<PerfumeSimilar, 
             JOIN Perfume p ON p.id = s.id.similarPerfumeId
             WHERE s.id.perfumeId = :perfumeId
               AND p.active = true
+              AND p.productionStatus IS NULL
             ORDER BY s.rank ASC
             """)
     List<RelatedPerfumeResponse> findSimilarsByPerfumeId(

@@ -138,7 +138,8 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
     @Query("""
             SELECT new com.hyanghae.backend.perfume.dto.response.PerfumeDetailResponse(
                        p.id, b.id, b.name, b.nameKo, p.name, p.nameKo, p.gender,
-                       p.description, p.concentration)
+                       p.description, p.concentration,
+                       p.productionStatus, p.productionStatusCheckedAt, p.productionStatusSource)
             FROM Perfume p
             LEFT JOIN p.brand b
             WHERE p.id = :perfumeId
@@ -168,6 +169,10 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
      * <p>비활성 향수는 빠집니다. 검색·상세와 같은 기준입니다. 적재되지 않은 향수도 없는
      * 것으로 나오므로, 보낸 수와 결과 수가 다른 것은 정상입니다.
      *
+     * <p><b>단종이 확인된 향수도 빠집니다</b>({@code production_status}). 이 조회는 자연어 추천만
+     * 씁니다. AI 서버도 같은 목록({@code ai/data/perfume_status.csv})으로 후보에서 빼지만, 두 쪽의
+     * 배포 시점이 어긋나도 살 수 없는 향수를 권하지 않도록 여기서 한 번 더 막습니다.
+     *
      * <p>{@code brand_id} 가 nullable 이라 {@code LEFT JOIN} 입니다. {@code INNER JOIN} 을
      * 쓰면 브랜드가 없는 향수가 추천 결과에서 조용히 사라집니다.
      */
@@ -178,6 +183,7 @@ public interface PerfumeRepository extends JpaRepository<Perfume, Long> {
             LEFT JOIN p.brand b
             WHERE p.fragranticaId IN :fragranticaIds
               AND p.active = true
+              AND p.productionStatus IS NULL
             """)
     List<PerfumeIdentity> findIdentitiesByFragranticaIds(
             @Param("fragranticaIds") Collection<Long> fragranticaIds);

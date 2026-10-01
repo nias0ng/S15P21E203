@@ -131,6 +131,7 @@ data/
   note_alias_ko.csv            4KB  한국어 노트 이름 -> 영어 노트 이름
   note_alias_blocklist.csv     1KB  별칭을 품었지만 그 노트가 아닌 낱말 (미르토 -> 미르 아님)
   similar_exclude_brands.csv   1KB  비슷한 향수 후보에서 빼는 'inspired by' 주력 브랜드
+  perfume_status.csv                단종 목록. 엔진과 백엔드 적재가 같은 파일을 읽습니다 (아래)
   stage1_prompt_v1.txt        2KB   ①단계 구조화 프롬프트 (sha256 앞자리 4f0a368d)
 docs/
   search_rules.md            검색 규칙 명세
@@ -459,6 +460,41 @@ python build_data.py --source /경로/perfumes.csv
 `matched[].rationale` 이 추천 이유의 재료입니다(요구사항 NLR-07). 문장화는 LLM 이 하되
 **이 근거만 주고** 향수의 다른 정보는 주지 마십시오 — 없는 내용을 지어낼 재료를 주지 않는 것이
 막는 방법입니다. `tier` 는 내부 기록이라 사용자에게 노출하지 않습니다.
+
+---
+
+## 단종 목록 — `data/perfume_status.csv`
+
+단종이 **확정**된 향수는 추천(자연어 · 비슷한 향수 · 개인화)에서 빠지고 향수 상세에 '단종' 으로
+적힙니다. 검색 · 상세 · 진열대 · 후기는 그대로입니다 — 이미 가진 사람이 있습니다.
+
+이 파일 하나를 두 곳이 읽습니다. 엔진(`load_index`)은 자연어 추천 후보에서 빼고, 백엔드
+적재(`backend/db/seed/load_perfume_status.sh`)는 `perfumes.production_status` 에 표시합니다.
+파일을 고치면 **AI 이미지를 다시 배포하고 적재도 다시 돌려야** 두 쪽이 맞습니다. 백엔드는 AI 가 준
+결과에서 단종을 한 번 더 거르므로, 한쪽만 반영돼도 단종 향수가 화면에 나가지는 않습니다.
+
+```
+fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
+```
+
+| 칸 | 값 |
+|---|---|
+| `fragrantica_id` | 카탈로그의 원본 번호. 적재가 `name` 과 DB 이름이 같은지 되짚습니다 |
+| `status` | `DISCONTINUED` 만 씁니다 |
+| `confidence` | `CONFIRMED` 또는 `LIKELY` |
+| `source_url` | 가장 강한 근거 한 곳. 나머지 근거는 `note` 에 적습니다 |
+| `checked_at` | 확인한 날 `YYYY-MM-DD` |
+
+**판정 기준.** 아직 파는 향수를 잘못 빼는 쪽이 더 나쁘므로 확정의 문턱을 높게 둡니다.
+
+- `CONFIRMED` — 근거가 **둘 이상**입니다. 브랜드 공식 사이트 판매 목록에서 빠졌고, 그에 더해
+  브랜드 · 공식 유통사의 단종 공지, 대형 리테일러의 단종 표기, 향수 데이터베이스의 단종 표기 중
+  하나가 있습니다.
+- `LIKELY` — 공식 사이트에서 빠진 것만 확인됐습니다. 지역 판매 목록이 달라서일 수 있어 **반영하지
+  않고** 파일에만 둡니다. 근거가 하나 더 나오면 `CONFIRMED` 로 올립니다.
+- 다시 출시되면 그 줄을 지웁니다. 적재가 표시를 모두 지우고 파일대로 다시 걸어서 함께 풀립니다.
+
+Fragrantica 페이지는 약관상 긁어 오지 않습니다. 사람이 읽고 출처를 적습니다.
 
 ---
 

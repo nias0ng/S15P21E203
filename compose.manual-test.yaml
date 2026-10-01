@@ -105,6 +105,8 @@ services:
     volumes:
       - ./backend/db/seed:/workspace/backend/db/seed:ro
       - ./ai/delivery/for_db:/workspace/ai/delivery/for_db:ro
+      # 단종 목록(perfume_status.csv)은 AI 엔진과 같은 파일을 읽습니다
+      - ./ai/data:/workspace/ai/data:ro
     depends_on:
       backend:
         condition: service_healthy
@@ -112,22 +114,24 @@ services:
       - bash
       - -euc
       - |
-        echo "[1/8] 향 지도 데이터를 넣습니다."
+        echo "[1/9] 향 지도 데이터를 넣습니다."
         psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f load_scent_map.sql
-        echo "[2/8] 향수 카탈로그를 넣습니다."
+        echo "[2/9] 향수 카탈로그를 넣습니다."
         bash ./load_perfume_catalog.sh
-        echo "[3/8] 보충 향수 카탈로그를 넣습니다."
+        echo "[3/9] 보충 향수 카탈로그를 넣습니다."
         bash ./load_perfume_catalog_supplement.sh
-        echo "[4/8] 향수 gender를 보강합니다."
+        echo "[4/9] 향수 gender를 보강합니다."
         bash ./load_perfume_genders.sh
-        echo "[5/8] 노트 메타데이터를 넣습니다."
+        echo "[5/9] 노트 메타데이터를 넣습니다."
         bash ./load_notes.sh
-        echo "[6/8] 향수 이미지를 넣습니다."
+        echo "[6/9] 향수 이미지를 넣습니다."
         bash ./load_perfume_images.sh
-        echo "[7/8] 향수-노트 연결을 넣습니다."
+        echo "[7/9] 향수-노트 연결을 넣습니다."
         bash ./load_perfume_notes.sh
-        echo "[8/8] 비슷한 향수를 넣습니다."
+        echo "[8/9] 비슷한 향수를 넣습니다."
         bash ./load_perfume_similars.sh
+        echo "[9/9] 단종이 확인된 향수를 표시합니다."
+        bash ./load_perfume_status.sh
         echo "모든 초기 데이터 적재가 끝났습니다."
 
   seed-local:
