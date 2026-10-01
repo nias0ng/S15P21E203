@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 
 import { cn } from '@/shared/lib/cn'
 import { prefersReducedMotion } from '@/shared/lib/prefersReducedMotion'
@@ -17,6 +17,13 @@ type Props = {
   onModeChange: (mode: SceneSearchMode) => void
   /** 지금 모드로 검색합니다. 빈 문자열은 오지 않습니다 */
   onSearch: (keyword: string, mode: SceneSearchMode) => void
+  /**
+   * **처음 온 사람에게 한 번 소개해도 되는 때인가** — 로딩 커튼이 걷혔고 다른 창 · 잠수 · 해도가 없을 때입니다.
+   * 그때 이 브라우저에서 한 번만 설명줄을 몇 초 펴 보입니다 (아래 `INTRO_KEY`).
+   */
+  introduce?: boolean
+  /** 시작 칸의 '요즘 인기 향수' — 화면이 넘어갈 길을 고릅니다(메인을 떠나는 잠수). 없으면 그 줄을 안 그립니다 */
+  onBrowsePopular?: () => void
   className?: string
 }
 
@@ -37,6 +44,39 @@ const PLACEHOLDER: Record<SceneSearchMode, string> = {
 const MODE_LABEL: Record<SceneSearchMode, string> = {
   nl: '자연어',
   normal: '이름',
+}
+
+/**
+ * 빈 검색창을 누르면 펼쳐지는 **시작 문장** (2026-10-01 · 메인 사용성 테스트).
+ *
+ * 처음 온 사람은 무엇을 적어야 할지 몰랐고("향수 처음 사보는데 뭐가 좋아요?" 처럼 묻다 막혔습니다),
+ * 실패 화면이 예로 든 문장은 눌러지지도 않았습니다. 여기 있는 것은 **눌러서 바로 찾는** 문장입니다.
+ * ⚠️ 자연어 문장은 추천 서버가 다섯 개를 돌려주는 것을 확인한 것만 둡니다(2026-10-01 로컬 · GMS) —
+ *   누르자마자 '못 알아들었습니다' 가 나오면 시작 칸이 함정이 됩니다. 문장을 바꾸면 다시 확인합니다.
+ * ⚠️ 이름 쪽은 지도 200개에 많이 떠 있는 브랜드입니다(조 말론 런던 9 · 샤넬 7 · 바이레도 6 · 딥티크 5).
+ */
+const STARTERS: Record<SceneSearchMode, readonly string[]> = {
+  nl: [
+    '비 온 뒤 흙냄새',
+    '출근할 때 은은한 비누 향',
+    '달콤한 바닐라 향',
+    '꽃향기 나는 향수',
+  ],
+  normal: ['샤넬', '조 말론', '바이레도', '딥티크'],
+}
+
+/** 이 브라우저에서 첫 소개를 이미 보였다는 표시 (`localStorage`) — 두 번째 방문부터는 마우스를 올릴 때만 나옵니다 */
+const INTRO_KEY = 'hyanghae-search-intro'
+/** 첫 소개가 펴져 있는 시간 */
+const INTRO_MS = 5000
+
+const introSeen = () => {
+  try {
+    return localStorage.getItem(INTRO_KEY) === '1'
+  } catch {
+    // 저장소를 못 읽는 창이면 소개하지 않습니다 — 매번 새로 뜰 수 있어 차라리 안 하는 쪽입니다
+    return true
+  }
 }
 
 /** 지금 방식이 **무엇을 해 주는가**. 알약에 마우스를 올렸을 때만 아래로 나옵니다 */
@@ -63,17 +103,65 @@ export function SceneSearchBar({
   mode,
   onModeChange,
   onSearch,
+  introduce = false,
+  onBrowsePopular,
   className,
 }: Props) {
   // 방식을 바꿔도 치던 글은 남깁니다 — 같은 말을 두 방식으로 해보는 것이 이 칸의 쓸모입니다
   const [keyword, setKeyword] = useState('')
   const hintId = useId()
 
+  /*
+    ⭐ **첫 방문 한 번만 설명줄을 펴 보입니다** (2026-10-01). 설명줄은 평소 알약 뒤에 숨어 있다가
+    마우스를 올릴 때 나오는데(2026-09-20 사용자 지시 · 아래 머리말), 처음 온 사람은 손을 올릴 까닭이
+    없어 '이 사이트가 무엇을 해 주는지' 를 끝내 못 봤습니다(사용성 테스트 7명 중 4명).
+    그래서 처음 한 번은 몇 초 펴 두었다가 같은 길로 접고, 그 뒤로는 예전 그대로 둡니다.
+  */
+  // 마운트 때 한 번 읽습니다 — 이번 화면에서 소개를 할 차례인가
+  const [introOwed] = useState(() => !introSeen())
+  const [introDone, setIntroDone] = useState(false)
+  const intro = introOwed && introduce && !introDone
+  useEffect(() => {
+    if (!intro) return
+    try {
+      localStorage.setItem(INTRO_KEY, '1')
+    } catch {
+      // 저장소를 못 쓰는 창이면 다음 방문에도 한 번 더 소개합니다 — 그것이 더 나쁘지는 않습니다
+    }
+    const timer = window.setTimeout(() => setIntroDone(true), INTRO_MS)
+    return () => window.clearTimeout(timer)
+  }, [intro])
+
+  /*
+    ⭐ **빈 검색창에 초점이 오면 시작 문장을 펼칩니다** (위 STARTERS). 초점이 **입력칸이나 시작 문장**에
+    있을 때만입니다 — 방식 단추를 마우스로 누른 것은 아닙니다(그 단추에 남는 초점으로 줄이 붙박였던
+    2026-09-20 의 그 함정입니다 · 아래 `focus-visible` 머리말). 무엇을 적기 시작하면 접습니다.
+  */
+  const [starting, setStarting] = useState(false)
+  const startersOpen = starting && keyword.trim() === ''
+  const pick = (text: string) => {
+    setKeyword(text)
+    onSearch(text, mode)
+  }
+
   return (
     // `group` 은 아래 설명줄이 **알약의 호버**를 보기 위한 것입니다 (`group-has-[form:hover]`).
     // ⚠ 껍데기가 `pointer-events-none` 이어도 됩니다 — `:has()` 는 DOM 상태를 볼 뿐이고,
     //   실제로 호버를 받는 것은 `pointer-events-auto` 인 알약(form) 자신입니다
-    <div className={cn(POSITION, 'group', className)}>
+    <div
+      className={cn(POSITION, 'group', className)}
+      onFocus={(event) => {
+        const target = event.target as HTMLElement
+        setStarting(
+          target.tagName === 'INPUT' || target.dataset.starter !== undefined,
+        )
+      }}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setStarting(false)
+        }
+      }}
+    >
       <SearchField
         label={mode === 'nl' ? '자연어로 향수 추천받기' : '향수 이름으로 찾기'}
         placeholder={PLACEHOLDER[mode]}
@@ -137,6 +225,8 @@ export function SceneSearchBar({
             */
             'group-has-[:focus-visible]:translate-y-0',
             'motion-reduce:transition-none',
+            // 첫 소개 · 시작 문장이 펼쳐진 동안은 마우스와 상관없이 나와 있습니다
+            (intro || startersOpen) && 'translate-y-0',
           )}
         >
           <p
@@ -149,11 +239,59 @@ export function SceneSearchBar({
           >
             {MODE_HINT[mode]}
           </p>
+
+          {/*
+            시작 문장 — 설명줄 바로 밑, 같은 종이로 섭니다. 누르면 그 말로 곧바로 찾습니다.
+            ⚠️ 누르는 순간 입력칸의 초점이 빠지면 칸이 먼저 접혀 누름이 허공에 떨어집니다 —
+              `mousedown` 의 기본 동작(초점 옮기기)을 막습니다. 키보드로 Tab 해 들어온 것은 그대로 받습니다.
+            ⚠️ 해역에 들어선 동안이면 엔진 설명문구(`#zone-info`)를 잠깐 덮습니다 — 사람이 검색창에 손을
+              댄 동안만이라 그쪽을 먼저 보여 줍니다.
+          */}
+          {startersOpen && (
+            <div
+              role="group"
+              aria-label="이렇게 찾아 보세요"
+              className="pointer-events-auto mx-auto mt-2 flex w-fit max-w-[min(100%,calc(var(--spacing)*150))] flex-wrap justify-center gap-1.5 px-2"
+            >
+              {STARTERS[mode].map((text) => (
+                <button
+                  key={text}
+                  type="button"
+                  data-starter
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => pick(text)}
+                  className={STARTER_CHIP}
+                >
+                  {text}
+                </button>
+              ))}
+              {mode === 'nl' && onBrowsePopular && (
+                <button
+                  type="button"
+                  data-starter
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={onBrowsePopular}
+                  className={cn(STARTER_CHIP, 'text-charcoal font-medium')}
+                >
+                  요즘 인기 향수 보기 →
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
   )
 }
+
+/** 시작 문장 한 칸 — 설명줄과 같은 아이보리 종이라 어느 하늘 위에서도 같은 대비로 읽힙니다 */
+const STARTER_CHIP = cn(
+  'rounded-full border px-3 py-1.5',
+  'border-stonegray/60 bg-ivory/85 backdrop-blur-[7px]',
+  'text-charcoal-soft text-[12.5px] hover:bg-ivory hover:text-charcoal',
+  'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
+  'transition-colors duration-120 ease-out',
+)
 
 /**
  * 엔진 검색창과 **같은 자리**.
