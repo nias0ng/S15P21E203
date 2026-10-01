@@ -16,6 +16,10 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin 
   const stage = $('stage');
   const mount = $('mount');
   const fill = $('drift-fill'), num = $('drift-num');
+  // 하단 조작 안내의 두 벌 — 평소(sail) · 해역 연출 중(zone). setHelpZone 이 갈아 끼운다 (2026-10-01, v0.84.0)
+  const helpSail = document.querySelector('#drift-help [data-help="sail"]');
+  const helpZone = document.querySelector('#drift-help [data-help="zone"]');
+  let helpZoneOn = false;
   const input = $('search-input'), button = $('search-button');
 
   // 향수 카드 — ⭐ 2026-09-11 오후부터 **말풍선**이다 (index.html 의 세 겹 주석)
@@ -329,6 +333,14 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin 
         zRect = { x0: zInfo.offsetLeft, x1: zInfo.offsetLeft + zInfo.offsetWidth, y1: zInfo.offsetTop + zInfo.offsetHeight };
       }
       return zRect;
+    },
+    // 해역 연출 중이면 하단 안내를 '닫는 법' 으로 갈아 끼운다. ⚠ 매 프레임 불리므로 바뀔 때만 쓴다
+    setHelpZone(on) {
+      on = !!on;
+      if (on === helpZoneOn || !helpSail || !helpZone) return;
+      helpZoneOn = on;
+      helpSail.hidden = on;
+      helpZone.hidden = !on;
     },
     // 하단 속도 계기 (index.html · 2026-10-01 에 DRIFT · 손잡이 · 0.00 을 속도 · 막대 · % 로 바꿨다). s = nav.speed (최고 1)
     setDrift(s) {

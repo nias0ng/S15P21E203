@@ -482,7 +482,9 @@
 
 <div id="stage" style="position:relative;width:100%;height:calc(var(--pb-stage-h,100vh) - var(--pb-header-h,0px));min-height:var(--pb-stage-min,560px);overflow:hidden;background:var(--pb-paper,#F6F5F2);color:var(--pb-ink,#1A1A1A);font-family:'Noto Serif KR',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,serif;cursor:default;user-select:none;">
 
-  <div id="mount" style="position:absolute;inset:0;"></div>
+  <!-- ⚠ touch-action:none (2026-10-01, v0.84.0) — 두 손가락으로 벌리면 3D 가 아니라 **페이지 전체가 확대돼** 헤더 · 검색창이 화면 밖으로 밀렸다
+       (사용성 테스트 · 모바일). 바다 위의 손가락 몸짓은 브라우저가 아니라 엔진이 받는다 — 누르기 · 끌기 판정(input.js)은 그대로다 -->
+  <div id="mount" style="position:absolute;inset:0;touch-action:none;"></div>
 
   <!-- ── 먼 곳 이동의 흰 안개 (2026-09-11, travel.js). ⚠ #mount 바로 뒤다 — DOM 순서가 곧 쌓임 순서라
        3D 위 · 검색바·카드·미니맵 아래에 깔린다. 안개가 덮여도 UI 는 보인다.
@@ -710,10 +712,12 @@
       </div>
       <div id="drift-num" style="width:40px;font-size:11px;letter-spacing:0.04em;color:var(--pb-ink,#1A1A1A);font-variant-numeric:tabular-nums;text-shadow:0 0 3px var(--pb-halo,rgba(246,245,242,0.95));">15%</div>
     </div>
+    <!-- ⭐ 2026-10-01 (v0.84.0) : 해역 연출 중에는 **닫는 법**을 말한다 (data-help="zone" · ui.setHelpZone) — 연출은 바다를 누르거나 Esc 로 닫히는데(zoneSeaEnds)
+         화면 어디에도 그 말이 없어, 사용성 테스트에서 "6~8초 연출을 건너뛸 수 없다" 고 했다 -->
     <!-- ⭐ 2026-10-01 : 가장 쉬운 조작(바다 · 부표 누르기)을 먼저 말한다 — 사용성 테스트에서 그 둘을 다들 우연히 알았다. 방향키는 마우스 · 키보드가 있을 때만 붙인다.
          글자도 키웠다 (11 → 12 · 옅기 0.65 → 0.85 · 둘레 빛) — 반짝이는 물 위에서 묻혔다
-         ⚠ 사전 키가 두 칸이다 (drift.help · drift.keys) — 방향키 몫은 .pb-help-keys 로 따로 숨으므로 한 칸에 넣으면 textContent 가 그 칸을 지운다 -->
-    <div id="drift-help" style="display:var(--pb-help,block);font-size:12px;letter-spacing:0.02em;color:var(--pb-ink-3,#555555);opacity:0.85;text-shadow:0 0 3px var(--pb-halo,rgba(246,245,242,0.95)),0 0 6px var(--pb-halo-2,rgba(246,245,242,0.8));"><span data-i18n="drift.help">바다를 누르면 그쪽으로 &nbsp;·&nbsp; 부표를 누르면 향수</span><span class="pb-help-keys" data-i18n="drift.keys"> &nbsp;·&nbsp; ← → ↑ 로 직접 몰기</span></div>
+         ⚠ 글자는 사전 키 칸(data-i18n)에만 둔다 — 방향키 몫(.pb-help-keys)과 두 벌(data-help sail · zone)이 따로 숨으므로, 그 칸에 사전 키를 달면 textContent 가 안쪽 칸을 지운다 -->
+    <div id="drift-help" style="display:var(--pb-help,block);font-size:12px;letter-spacing:0.02em;color:var(--pb-ink-3,#555555);opacity:0.85;text-shadow:0 0 3px var(--pb-halo,rgba(246,245,242,0.95)),0 0 6px var(--pb-halo-2,rgba(246,245,242,0.8));"><span data-help="sail"><span data-i18n="drift.help">바다를 누르면 그쪽으로 &nbsp;·&nbsp; 부표를 누르면 향수</span><span class="pb-help-keys" data-i18n="drift.keys"> &nbsp;·&nbsp; ← → ↑ 로 직접 몰기</span></span><span data-help="zone" hidden><span data-i18n="drift.zone">바다를 누르면 연출이 닫힙니다</span><span class="pb-help-keys"> &nbsp;·&nbsp; Esc</span></span></div>
   </div>
 
 </div>

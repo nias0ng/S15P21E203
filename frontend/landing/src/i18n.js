@@ -30,7 +30,7 @@ const DICT = {
       tail: '해역을 누르면 그리로 떠납니다\n휠 확대 · 끌어 이동 · ESC 닫기'
     },
     // ⚠ 공백 · NBSP 는 index.html 의 `그쪽으로 &nbsp;·&nbsp; 부표를` 그대로다 · keys 는 .pb-help-keys 칸이다 (방향키가 없는 기기에서 숨는다)
-    drift: { speed: '속도', help: '바다를 누르면 그쪽으로  ·  부표를 누르면 향수', keys: '  ·  ← → ↑ 로 직접 몰기' },
+    drift: { speed: '속도', help: '바다를 누르면 그쪽으로  ·  부표를 누르면 향수', keys: '  ·  ← → ↑ 로 직접 몰기', zone: '바다를 누르면 연출이 닫힙니다' },
     quality: { high: '높음', mid: '보통', low: '낮음', min: '최저' },
     // 앱 없이 단독으로 띄웠을 때의 알림 (host.js DEFAULTS)
     host: {
@@ -56,7 +56,7 @@ const DICT = {
       count: '{{n}} perfumes', count_one: '{{n}} perfume', explored: ' · {{pct}}% explored', zoom: ' · {{k}}×', unexplored: ' · unexplored',
       tail: 'Click waters to sail there\nScroll to zoom · Drag to pan · Esc to close'
     },
-    drift: { speed: 'Speed', help: 'Click the sea to sail there  ·  click a buoy for its perfume', keys: '  ·  ← → ↑ to steer' },
+    drift: { speed: 'Speed', help: 'Click the sea to sail there  ·  click a buoy for its perfume', keys: '  ·  ← → ↑ to steer', zone: 'Click the sea to close this view' },
     quality: { high: 'High', mid: 'Medium', low: 'Low', min: 'Lowest' },
     host: {
       detail: 'View details', detailSub: 'In the app, this opens the perfume page',
