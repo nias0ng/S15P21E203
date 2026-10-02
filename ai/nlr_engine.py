@@ -137,6 +137,23 @@ KOREAN_ACCORD = {
     "파우더리": "powdery", "프레시": "fresh", "프루티": "fruity", "플로럴": "floral",
     "우디한": "woody", "파우더리한": "powdery", "프레시한": "fresh",
     "플로럴한": "floral", "프루티한": "fruity", "스위트한": "sweet",
+    # [레드팀 2026-10-02 1-6] 애호가·입문자가 쓰는 accord 음차와 표기 변형. 전에는
+    # ①단계가 영어로 옳게 바꿔 `scent_preference` 에 넣어도 `_grounded` 가 "원문에 없다"
+    # 며 버려 `프레쉬한 향` · `아쿠아틱 향` 이 0건이었다. 대상 accord 는 전부 `aidx` 에 있다.
+    # **부분 문자열로 찾고 별칭 차단 목록을 거치지 않는다** — 다른 낱말에 박히면 그대로 걸린다
+    # (`그림을 그린 듯한` -> green · `스모키 메이크업` -> smoky · `마린룩` -> marine).
+    #
+    # **`레더` 는 넣지 않는다.** 노트 별칭 `레더`(note_alias_ko.csv)가 이미 leather 를
+    # 조건으로 만들고, 여기 넣으면 차단 목록이 막아 둔 `인크레더블` 이 이 경로로 다시 leather 가 된다.
+    # **`스파이시` 도 넣지 않는다.** warm spicy · fresh spicy 중 무엇인지 갈리고, 설문에서
+    # 이 낱말이 나온 2문장이 둘 다 `스파이시한 건 싫어` 라 어느 쪽이든 싫다는 향을 조건으로 만든다.
+    "프레쉬": "fresh", "프레쉬한": "fresh", "플로랄": "floral", "플로랄한": "floral",
+    "씨트러스": "citrus", "씨트러스한": "citrus",
+    "스모키": "smoky", "스모키한": "smoky", "그린": "green", "그린한": "green",
+    "아쿠아틱": "aquatic", "마린": "marine", "솔티": "salty", "솔티한": "salty",
+    "얼씨": "earthy", "얼씨한": "earthy", "오존": "ozonic", "오조닉": "ozonic",
+    "애니멀릭": "animalic", "구르망": "gourmand",
+    "화이트 플로럴": "white floral", "화이트플로럴": "white floral",
 }
 
 
