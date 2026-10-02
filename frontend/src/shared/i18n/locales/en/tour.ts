@@ -20,7 +20,7 @@ export const tour = {
   // NOTE: the quoted name must match search.tag in the map bundle (the label left of the search box)
   search:
     "Select 'Mood · Moment' and write the mood or moment you have in mind.",
-  searchExample: 'e.g. a café on a rainy day · something fresh',
+  searchExample: 'e.g. earthy smell after rain · something fresh',
   results: 'Select a card to see why it was picked.',
   // NOTE: the button names must match the engine card (landing/src/i18n.js card.detail · save · sail)
   card: {

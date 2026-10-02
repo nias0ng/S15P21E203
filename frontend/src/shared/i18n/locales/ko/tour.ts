@@ -17,7 +17,7 @@ export const tour = {
     '근처 향수들이 떠올랐어요. 선으로 이어진 향수끼리 닮았어요. 하나를 눌러 비슷한 향을 확인해 보세요.',
   // NOTE: 따옴표 안의 이름은 map 묶음의 search.tag(검색창 왼쪽 이름표)와 같아야 합니다
   search: "'느낌·상황'을 눌러 원하는 느낌이나 상황을 적어 보세요.",
-  searchExample: '예) 비 오는 날 카페에서 · 상큼한 향',
+  searchExample: '예) 비 온 뒤 흙냄새 · 상큼한 향',
   results: '카드를 누르면 왜 골랐는지 아래에 펼쳐져요.',
   // NOTE: 단추 이름은 엔진 카드의 글자(landing/src/i18n.js 의 card.detail · save · sail)와 같아야 합니다
   card: {

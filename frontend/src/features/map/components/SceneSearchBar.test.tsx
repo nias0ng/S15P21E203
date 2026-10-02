@@ -28,7 +28,7 @@ function Bar({
 }
 
 const SEARCH_TIP = "'느낌·상황'을 눌러 원하는 느낌이나 상황을 적어 보세요."
-const SEARCH_EXAMPLE = '예) 비 오는 날 카페에서 · 상큼한 향'
+const SEARCH_EXAMPLE = '예) 비 온 뒤 흙냄새 · 상큼한 향'
 
 /** 항해 줄기의 앞 단계(바다 · 방향키 · 부표)를 끝낸 사람 */
 const sailed = () => useTourStore.setState({ done: ['sea', 'keys', 'buoy'] })
