@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useSceneCardStore } from '@/shared/store/sceneCardStore'
+import { useTourStore } from '@/shared/store/tourStore'
 
 import { FeedbackButton } from './FeedbackButton'
 
@@ -21,6 +22,8 @@ const bubble = () => screen.getByText(GREETING).closest('p')
 beforeEach(() => {
   sessionStorage.clear()
   useSceneCardStore.setState({ open: false })
+  // 다른 테스트는 첫 방문 안내를 다 본 사람으로 둡니다 — 메인의 인사는 안내 뒤에 섭니다 (아래)
+  useTourStore.setState({ done: [], off: true, wanted: [], active: null })
 })
 afterEach(() => vi.useRealTimers())
 
@@ -48,6 +51,28 @@ describe('FeedbackButton', () => {
     first.unmount()
     renderAt('/brands')
     expect(bubble()).toHaveClass('invisible')
+  })
+
+  // 처음 온 사람의 첫 화면에 검색창 아래 안내와 이 말풍선이 같이 떴습니다 — 안내는 한 번에 하나입니다
+  it('메인에서는 첫 방문 안내가 부표까지 끝나고 비었을 때 인사한다', () => {
+    useTourStore.setState({ off: false, done: ['welcome'], active: 'buoy' })
+    renderAt('/')
+    expect(bubble()).toHaveClass('invisible')
+
+    act(() =>
+      useTourStore.setState({ done: ['welcome', 'buoy'], active: 'card' }),
+    )
+    expect(bubble()).toHaveClass('invisible')
+
+    act(() => useTourStore.setState({ active: null }))
+    expect(bubble()).not.toHaveClass('invisible')
+  })
+
+  it('다른 화면에서는 안내와 상관없이 인사한다', () => {
+    useTourStore.setState({ off: false, done: [], active: null })
+    renderAt('/perfumes')
+
+    expect(bubble()).not.toHaveClass('invisible')
   })
 
   // 큰 동그라미가 엔진의 해역 진입 글자('01 … ZONE')를 가렸습니다

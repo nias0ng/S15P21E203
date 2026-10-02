@@ -32,6 +32,10 @@ export const tour = {
     touch:
       'A map of scent families. Tap a name twice to sail there. Bright parts are sea you’ve crossed — that’s the % seen.',
   },
+  log: {
+    member: 'The waters you sail and perfumes you find are written here.',
+    guest: 'Log in to keep the waters you sail and perfumes you find here.',
+  },
   boat: {
     member:
       'Click the boat to step into the cabin — your saved perfumes are on the Shelf.',

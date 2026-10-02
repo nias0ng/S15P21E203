@@ -371,4 +371,22 @@ describe('VoyageLog — 넷 넘는 해역 · 향수', () => {
     expect(moreRegions).toHaveAttribute('aria-expanded', 'false')
     expect(moreRegions).toHaveFocus()
   })
+
+  // 첫 방문 안내(향해 일지)는 판을 접거나 펴면 할 일을 다 했습니다
+  it('접기 단추를 누르면 바뀐 모양을 알린다', async () => {
+    const onToggle = vi.fn()
+    render(
+      <MemoryRouter>
+        <VoyageLog entries={ENTRIES} status="ready" onToggle={onToggle} />
+      </MemoryRouter>,
+    )
+    const toggle = screen.getByRole('button', {
+      name: /향해 일지 (접기|펼치기)/,
+    })
+    const wasOpen = toggle.getAttribute('aria-expanded') === 'true'
+
+    await userEvent.click(toggle)
+
+    expect(onToggle).toHaveBeenCalledExactlyOnceWith(!wasOpen)
+  })
 })
