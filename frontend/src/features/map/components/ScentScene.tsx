@@ -51,9 +51,17 @@ export interface ScenePerfumeRef {
  */
 /**
  * 엔진 안에서만 일어나 앱이 못 보는 행동 — 첫 방문 안내(`tourStore`)가 듣습니다 (엔진 `host.js` 의 `hostTour`).
+ * 이름이 곧 그 행동으로 끝나는 단계입니다.
+ *   sea      바다를 눌러 배가 그리로 떠났다 (범위 밖 · 해역 연출만 닫은 누름은 안 옵니다)
+ *   keys     방향키로 배를 몰았다 — 누르고 있는 동안 되풀이해 옵니다
+ *   similar  떠오른 12개 가운데 누른 향수가 아닌 부표를 눌렀다
  *   minimap  미니맵 · 해도를 눌러 떠났다
  */
-export type SceneTourEvent = 'minimap'
+const SCENE_TOUR_EVENTS = ['sea', 'keys', 'similar', 'minimap'] as const
+export type SceneTourEvent = (typeof SCENE_TOUR_EVENTS)[number]
+
+const isSceneTourEvent = (event: string): event is SceneTourEvent =>
+  (SCENE_TOUR_EVENTS as readonly string[]).includes(event)
 
 export interface SceneMove {
   perfumeId: number | null
@@ -232,6 +240,12 @@ type Props = {
    * 연출이 닫히면 null 입니다. 첫 방문 안내가 해역의 뜻과 닫는 법을 말합니다.
    */
   onZoneChange?: (label: string | null) => void
+  /**
+   * 누른 향수 곁에 **향수 12개가 떠올라 닮은 것끼리 선으로 이어져 있는가** (엔진 `<html data-similar>` · v0.90.0).
+   * 해역 연출 중에 누른 부표는 카드만 서고 12개가 안 솟아, 카드 고정(`onCardPinChange`)만으로는 못 가릅니다.
+   * 첫 방문 안내가 '닮은 향수를 눌러 보라' 고 하는 때입니다.
+   */
+  onSimilarChange?: (open: boolean) => void
   /** 엔진 안에서만 일어난 행동 (위 `SceneTourEvent`) */
   onTourEvent?: (event: SceneTourEvent) => void
   /**
@@ -311,6 +325,7 @@ export function ScentScene({
   onCardChange,
   onCardPinChange,
   onZoneChange,
+  onSimilarChange,
   onTourEvent,
   onBoot,
   onMove,
@@ -365,6 +380,7 @@ export function ScentScene({
     onCardChange,
     onCardPinChange,
     onZoneChange,
+    onSimilarChange,
     onTourEvent,
     onBoot,
     onMove,
@@ -383,6 +399,7 @@ export function ScentScene({
       onCardChange,
       onCardPinChange,
       onZoneChange,
+      onSimilarChange,
       onTourEvent,
       onBoot,
       onMove,
@@ -537,9 +554,9 @@ export function ScentScene({
           const next = parseSceneQuality(info)
           if (next) latest.current.onQuality?.(next)
         },
-        // 첫 방문 안내가 들을 행동 (host.js `hostTour`) — 미니맵 · 해도로 떠났다
+        // 첫 방문 안내가 들을 행동 (host.js `hostTour` · 위 `SceneTourEvent`) — 모르는 이름은 버립니다
         tour: (event) => {
-          if (event === 'minimap') latest.current.onTourEvent?.(event)
+          if (isSceneTourEvent(event)) latest.current.onTourEvent?.(event)
         },
       })
       // 시작 단계는 처리기를 꽂기 **전에** 정해졌으므로 따라잡습니다 (부팅 신호의 `boot()` 와 같은 사정)
@@ -576,6 +593,7 @@ export function ScentScene({
           data-chart  전체 화면 해도가 열렸는가 (2026-09-21 — 위 onChartChange 머리말)
           data-card   향수 카드가 떠 있는가 (2026-10-01 — 위 onCardChange 머리말)
           data-card-pin · data-zone · data-zone-label  누른 카드 · 해역 연출 (첫 방문 안내 — 위 onCardPinChange · onZoneChange 머리말)
+          data-similar  누른 향수 곁에 12개가 떠 있는가 (첫 방문 안내 — 위 onSimilarChange 머리말)
         ⚠️ 관찰자는 하나입니다 — 둘 다 같은 요소의 속성이라 나눌 이유가 없습니다.
       */
       timeWatch?.disconnect()
@@ -591,6 +609,7 @@ export function ScentScene({
               ? null
               : (html.dataset.zoneLabel ?? html.dataset.zone),
           )
+          latest.current.onSimilarChange?.(html.dataset.similar !== undefined)
         }
         report()
         timeWatch = new MutationObserver(report)
@@ -603,6 +622,7 @@ export function ScentScene({
             'data-card-pin',
             'data-zone',
             'data-zone-label',
+            'data-similar',
           ],
         })
       }

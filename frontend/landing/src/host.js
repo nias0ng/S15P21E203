@@ -108,8 +108,12 @@ export function hostQuality(info) {
 }
 
 // ───────── 첫 방문 안내 (2026-10-02, v0.88.0) — 앱의 순서표(tourStore)가 듣는다 ─────────
-// 엔진 안에서만 일어나 앱이 못 보는 행동을 알린다. 지금은 'minimap' 하나 — 미니맵 · 해도를 눌러 떠났다.
-//   카드 · 해역 연출은 `<html data-card-pin>` · `data-zone` 으로 앱이 이미 지켜본다 (data-card 와 같은 규약)
+// 엔진 안에서만 일어나 앱이 못 보는 행동을 알린다 (2026-10-02, v0.90.0 에 셋을 더했다 — 첫 방문 안내가 항해를 차례로 가르친다)
+//   sea      바다를 눌러 배가 그리로 떠났다 (main.js seaGo — 범위 밖 · 연출만 닫은 누름은 안 알린다)
+//   keys     방향키로 배를 몰았다 (input.js onManual — 누르고 있는 동안 되풀이해 온다)
+//   similar  떠오른 12개 가운데 **누른 향수가 아닌** 부표를 눌렀다 (main.js onPick 의 고르기 갈래)
+//   minimap  미니맵 · 해도를 눌러 떠났다
+//   카드 · 해역 연출 · 떠오른 12개는 `<html data-card-pin>` · `data-zone` · `data-similar` 로 앱이 이미 지켜본다 (data-card 와 같은 규약)
 // ⚠ **알림만이다** — 무엇을 끝낼지는 앱이 정한다
 export function hostTour(event) {
   const fn = handlers && handlers.tour;

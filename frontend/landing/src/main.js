@@ -365,6 +365,7 @@ const input = createInput(ui.mount, {
   // 사람이 방향키를 잡으면 자동 조타 · 먼 곳 이동(lead) · 향수 고르기를 놓는다.
   // ⚠ 향수 고르기의 12개는 **배 기준 씬 좌표**에 서 있어 배를 따라다닌다 — 몰고 가면 이상하므로 접는다
   onManual: () => {
+    hostTour('keys');   // 앱의 첫 방문 안내 — 방향키로 몰았다 (v0.90.0)
     zones.clearAuto();
     travel.cancel();
     pendingSea = null;   // 연출이 걷히길 기다리던 바다 떠나기도 놓는다 (seaGo)
@@ -412,7 +413,11 @@ const input = createInput(ui.mount, {
     if (!m && (seaClick || seaShift) && seaGo(nx, ny)) return;
     // ── 향수 고르기 중 : 떠오른 12개만 받는다. 빈 바다를 누르면 접는다
     if (marks.focusing) {
-      if (m && marks.inFocus(m)) { marks.select(m); clickMark = m; hoverMark = m; hoverX = nx; hoverY = ny; }
+      if (m && marks.inFocus(m)) {
+        // 앱의 첫 방문 안내 — 누른 향수 곁에 떠오른 다른 향수를 눌러 견줘 봤다 (v0.90.0). 같은 부표를 다시 누른 것은 아니다
+        if (m !== clickMark) hostTour('similar');
+        marks.select(m); clickMark = m; hoverMark = m; hoverX = nx; hoverY = ny;
+      }
       else if (!m) { marks.focusOff(); marks.clearSelect(); clickMark = null; hoverMark = null; }
       return;
     }
@@ -796,12 +801,14 @@ let leaveAsked = false;
 // 지금 보이는 향수 목록을 마지막으로 채운 시각 (틱의 t · 이름표 줄)
 let visibleAt = -1;
 // ⭐ 첫 방문 안내가 붙을 자리 (2026-10-02, v0.88.0 — measureTour · PB.tour). 앱이 무엇을 보는지(tourWatch) 알리면 틱이 매 프레임 채운다.
-//   tourLabels = 이번 장의 부표 이름표 (부표 안내가 고른다) · tourBuoyKey = 그 안내가 붙은 부표
-const TOUR_WATCH = ['buoy', 'card', 'zone', 'minimap', 'boat'];
+//   tourLabels = 이번 장의 부표 이름표 (부표 · 닮은 향수 안내가 고른다) · tourLabelKey = 그 안내가 붙은 부표
+//   ⭐ v0.90.0 : sea · keys 는 배 옆구리(boat 와 같은 점) · similar 는 떠오른 12개 가운데 하나의 이름표 (measureTour 머리말)
+const TOUR_WATCH = ['sea', 'keys', 'buoy', 'similar', 'card', 'zone', 'minimap', 'boat'];
+const TOUR_AT_BOAT = ['sea', 'keys', 'boat'];
 const tourAnchor = { on: false, x: 0, y: 0, w: 0, h: 0, side: 1 };
-let tourWatch = null, tourBuoyKey = null, tourLabels = null;
-// 앱에 알린 카드 고정 · 해역 연출 (`<html data-card-pin>` · `data-zone`) — 바뀔 때만 쓴다
-let cardPinShown = false, zoneShown = '';
+let tourWatch = null, tourLabelKey = null, tourLabels = null;
+// 앱에 알린 카드 고정 · 해역 연출 · 떠오른 12개 (`<html data-card-pin>` · `data-zone` · `data-similar`) — 바뀔 때만 쓴다
+let cardPinShown = false, zoneShown = '', similarShown = false;
 // 언어가 바뀌면 해역 이름(data-zone-label)을 다시 쓴다 · ⚠ disposeAll 이 끊는다 (HMR 마다 쌓인다)
 const offTourLang = onLang(() => { zoneShown = ''; });
 // ⭐ 클릭 항해의 **일반 속도** (스로틀 0..1) — 자동 조타가 가속이 아닐 때의 값. 예전 틱의 숫자 0.72 를 이름으로 뺐다 (2026-09-15, v0.65.0 · 값은 그대로)
@@ -1080,6 +1087,8 @@ function seaGo(nx, ny) {
   // ⭐ 누른 자리로 빨려 드는 네 줄기 (v0.59.0 — seamark.js) — 떠나기를 미뤄도 **누른 순간** 띄운다 (누름을 받았다는 대답).
   //   ⚠ 범위 밖(위의 경고)에는 안 띄운다 — 가지 않는 곳이다
   seamark.show(wx, wz);
+  // 앱의 첫 방문 안내 — 바다를 눌러 배가 떠났다 (v0.90.0). ⚠ 연출만 닫은 누름(zoneEnds) · 범위 밖은 위에서 이미 돌아갔다
+  hostTour('sea');
   return true;
 }
 // 존(= 향조) 이름으로 떠나기. 향수 지도가 꺼져 있으면(토러스) 옛 자동 조타 그대로
@@ -2455,6 +2464,15 @@ function tick(ts) {
       if (pin) document.documentElement.dataset.cardPin = '1'; else delete document.documentElement.dataset.cardPin;
     }
   }
+  // ⭐ **누른 향수 곁에 12개가 떠 있는가** (2026-10-02, v0.90.0 — `<html data-similar>`). 앱의 첫 방문 안내가 '닮은 향수를 눌러 보라' 고 한다 —
+  //   해역 연출 중에 누른 부표는 카드만 서고 12개가 안 솟아(onPick 주석) 카드 고정만으로는 못 가른다. ⚠ 바뀔 때만 쓴다
+  {
+    const up = marks.focusing;
+    if (up !== similarShown) {
+      similarShown = up;
+      if (up) document.documentElement.dataset.similar = '1'; else delete document.documentElement.dataset.similar;
+    }
+  }
   // 카드의 서비스 동작 단추 (v0.68.0) — 지도 향수가 아니면 둘 다 쉰다. ⚠ ui 가 바뀔 때만 쓴다
   //   ⚠ [주변 향 탐색]이 빠지면서(v0.74.2) 인자가 하나가 됐다 — 남은 둘은 같은 조건이다
   if (shownMark) ui.setScentActions(shownMark.src === 'map' && !!shownMark.perfume && !hostHold);
@@ -2498,7 +2516,7 @@ function tick(ts) {
   //   ⚠ 화면 반지름은 카메라의 위 방향으로 배 길이 절반을 투영해 잰다 — fov 를 쓰지 않는다
   //     (항공뷰는 직교 카메라라 fov 가 없다 · reflect.js 의 NaN 교훈)
   //   ⚠ 호버도 아니고 말풍선도 없으면 **안 잰다** — 투영 두 번을 매 프레임 헛돌리지 않는다 (screen.on = false)
-  if (boatHover || cabinOpen || tourWatch === 'boat') {
+  if (boatHover || cabinOpen || TOUR_AT_BOAT.includes(tourWatch)) {
     const bp = boat.pivot.position, hy = bp.y + CONFIG.boat.lengthW * 0.11;
     view.updateMatrixWorld();
     _v3.set(bp.x, hy, bp.z).project(view);
@@ -2786,9 +2804,10 @@ window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel
   setLang, lang: langNow,
   // ⭐ 움직임 줄이기 (2026-10-01, v0.85.0 — applyCalm 머리말). get → { calm: 지금 줄이는 중인가, os: OS 설정이 켜져 있는가 } · set(true|false) 는 앱 설정 몫만 바꾼다
   motion: { get: () => ({ calm: calmWanted(), os: !!(_calmMQ && _calmMQ.matches) }), set: (on) => { P.motionCalm = on ? 1 : 0; applyCalm(); return true; } },
-  // ⭐ 첫 방문 안내 (2026-10-02, v0.88.0 — measureTour 머리말). watch('buoy' | 'card' | 'zone' | 'minimap' | 'boat' | null) · anchor 는 틱이 채운다
+  // ⭐ 첫 방문 안내 (2026-10-02, v0.88.0 — measureTour 머리말). watch(TOUR_WATCH 가운데 하나 | null) · anchor 는 틱이 채운다
+  //   ⚠ 보는 것이 바뀌면 붙어 있던 부표를 놓는다 — 다시 보기 시작하면 그때 빈 자리를 새로 고른다
   tour: {
-    watch: (step) => { tourWatch = TOUR_WATCH.includes(step) ? step : null; if (tourWatch !== 'buoy') tourBuoyKey = null; tourAnchor.on = false; },
+    watch: (step) => { const next = TOUR_WATCH.includes(step) ? step : null; if (next !== tourWatch) tourLabelKey = null; tourWatch = next; tourAnchor.on = false; },
     anchor: tourAnchor
   },
   // ⭐ 반응형 검산 (2026-09-11 오후) — 제품 UI 상자들의 자리 · 서로 겹침 · 화면 밖 · 스크롤 · 수면 타이포 꼭대기와 정보 블록의 간격.
@@ -2802,7 +2821,9 @@ window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel
 
 // ⭐ 첫 방문 안내가 붙을 상자 (2026-10-02, v0.88.0). 앱(`features/map` 의 SceneTourTip)이 `PB.tour.watch(step)` 으로 무엇을 보는지 알리면
 //   틱이 매 프레임 `PB.tour.anchor` 에 채운다 — 배 자리(`boat.screen`)와 같은 규약이다 (값을 나르지 않고 앱이 읽는다).
+//     sea · keys  배 옆구리 (boat 와 같은 점) — 바다를 눌러 · 방향키로 배를 움직여 보라는 안내다 (v0.90.0)
 //     buoy     이름표가 또렷한 지도 부표 하나 — 한 번 고르면 또렷한 동안 같은 부표에 붙는다 (안 그러면 안내가 부표 사이를 뛴다)
+//     similar  떠오른 12개 가운데 누른 향수가 아닌 부표의 이름표 (v0.90.0 — tourSimilarBox). 마땅한 것이 없으면 카드에 붙는다
 //     card     떠 있는 향수 카드 · zone 하단 안내(폰처럼 숨어 있으면 속도 계기) · minimap 미니맵
 //     boat     배 옆구리 — 선실 말풍선이 꼬리를 대는 점과 같다 (side 1 오른쪽 · −1 왼쪽)
 //   ⚠ 좌표는 **iframe 기준** CSS px 다 (#stage 기준이 아니다). ⚠ 안 볼 때(watch null)는 아무것도 안 잰다
@@ -2812,7 +2833,8 @@ function measureTour() {
   if (!tourWatch) return;
   let box = null;
   if (tourWatch === 'buoy') box = tourBuoyBox();
-  else if (tourWatch === 'boat') {
+  else if (tourWatch === 'similar') box = tourSimilarBox();
+  else if (TOUR_AT_BOAT.includes(tourWatch)) {
     const s = boat.screen;
     if (s.on) { box = { x: s.ax, y: s.y - s.r * 0.35, w: 0, h: s.r * 0.7, stage: true }; a.side = s.side; }
   } else box = ui.tourBox(tourWatch);
@@ -2825,13 +2847,34 @@ function measureTour() {
 //   ⚠ 빈 자리를 따지는 까닭 : 처음 화면의 가운데 부표는 대개 돛 밑이라, 거기 서면 안내가 돛과 옆 부표 이름표를 덮었다 (2026-10-02 실측 1920)
 //   ⚠ 한 번 고르면 또렷한 동안 그대로다 — 배가 지나가며 가려도 안내가 다른 부표로 뛰지 않는다
 const TOUR_TIP_W = 380, TOUR_TIP_H = 110;   // 앱 안내 한 장의 어림 (1920 · 세 줄) — 가리는지 셀 때만 쓴다
+// 안내가 설 만한 띠 안에 또렷한 지도 부표 이름표인가 — 부표 · 닮은 향수 안내가 같이 쓴다. 창 크기는 한 번만 읽는다
+function tourBand() {
+  const W0 = W(), H0 = H();
+  return (L) => L.a > 0.5 && L.m && L.m.src === 'map' && L.m.perfume && L.x > 90 && L.x < W0 - 90 && L.y > H0 * 0.3 && L.y < H0 * 0.85;
+}
 function tourBuoyBox() {
+  return tourLabelBox(tourBand(), []);
+}
+// 닮은 향수 안내가 붙을 이름표 (v0.90.0) — 떠오른 12개 가운데 **누른 향수가 아닌** 것. 카드가 설 자리는 비운다 (카드를 덮으면 단추를 못 누른다).
+//   ⚠ 12개는 깊이로 물러나 하늘 · 바다 끝에도 서서(불변식 30) 띠 안에 하나도 없을 수 있다 — 그때는 **카드 위**에 선다.
+//     자리를 못 잰 채 두면 안내가 안 보이는 채로 차례를 쥐고 있어 다음 안내(카드 단추)까지 막는다
+function tourSimilarBox() {
+  if (!marks.focusing) return null;
+  const card = ui.tourBox('card');
+  const o = ui.stageOrigin();
+  const avoid = card ? [{ x0: card.x - o.x, y0: card.y - o.y, x1: card.x - o.x + card.w, y1: card.y - o.y + card.h }] : [];
+  const band = tourBand();
+  const box = tourLabelBox((L) => band(L) && L.m !== clickMark && marks.inFocus(L.m), avoid);
+  return box || card;
+}
+// 안내가 붙을 이름표 하나 — ok 를 통과한 것 가운데 **안내가 설 자리(이름표 위)를 덜 가리는** 것, 그다음 화면 가운데에 가까운 것.
+//   가리는 것 = 또렷한 다른 이름표 · 배(선체 · 돛 중간 — 카드 자리 잡기의 _obs 와 같은 두 점) · avoid 상자 (#stage 기준 CSS px)
+//   ⚠ 한 번 고르면 ok 를 통과하는 동안 그대로다 (tourLabelKey)
+function tourLabelBox(ok, avoid) {
   if (!tourLabels) return null;
   const W0 = W(), H0 = H();
-  const ok = (L) => L.a > 0.5 && L.m && L.m.src === 'map' && L.m.perfume && L.x > 90 && L.x < W0 - 90 && L.y > H0 * 0.3 && L.y < H0 * 0.85;
-  let L = tourBuoyKey !== null ? tourLabels.find(q => ok(q) && q.m.perfume.id === tourBuoyKey) : null;
+  let L = tourLabelKey !== null ? tourLabels.find(q => ok(q) && q.m.perfume.id === tourLabelKey) : null;
   if (!L) {
-    // 안내가 설 자리를 가리는 것 — 또렷한 다른 이름표와 배(선체 · 돛 중간 — 카드 자리 잡기의 _obs 와 같은 두 점)
     const tags = [];
     for (const q of tourLabels) {
       if (q.a <= 0.3) continue;
@@ -2849,6 +2892,7 @@ function tourBuoyBox() {
       let hit = 0;
       for (const g of tags) if (g.q !== q && g.x0 < tx1 && g.x1 > tx0 && g.y0 < ty1 && g.y1 > ty0) hit++;
       for (const p of hull) if (p.x > tx0 - 40 && p.x < tx1 + 40 && p.y > ty0 - 40 && p.y < ty1 + 60) hit += 2;
+      for (const r of avoid) if (r.x0 < tx1 && r.x1 > tx0 && r.y0 < ty1 && r.y1 > ty0) hit += 3;
       return hit * 1000 + Math.hypot(q.x - W0 * 0.5, q.y - H0 * 0.6);
     };
     let best = Infinity;
@@ -2857,7 +2901,7 @@ function tourBuoyBox() {
       const c = cost(q);
       if (c < best) { best = c; L = q; }
     }
-    tourBuoyKey = L ? L.m.perfume.id : null;
+    tourLabelKey = L ? L.m.perfume.id : null;
   }
   if (!L) return null;
   const w = ui.labelWidth(L.text, L.top), h = ui.labelHeight(L.top);
@@ -2935,8 +2979,8 @@ function disposeAll() {
   hostDive(0);         // ⚠ 잠수를 풀어 둔다 — `<html data-dive>` 가 남으면 엔진 UI 가 영영 안 보인다 (불변식 10)
   disposeDive();
   hostCabinIn(0);      // ⚠ 선실로 들어가기도 같다 — `<html data-cabin-in>` 과 입력 잠금을 풀어 둔다
-  // ⚠ 앱에 알리던 카드 고정 · 해역 연출도 걷어 둔다 (v0.88.0) — 남으면 다시 뜬 엔진의 첫 장이 그 값을 바꿀 때까지 앱이 믿는다
-  for (const k of ['cardPin', 'zone', 'zoneLabel']) delete document.documentElement.dataset[k];
+  // ⚠ 앱에 알리던 카드 고정 · 해역 연출 · 떠오른 12개도 걷어 둔다 (v0.88.0 · v0.90.0) — 남으면 다시 뜬 엔진의 첫 장이 그 값을 바꿀 때까지 앱이 믿는다
+  for (const k of ['cardPin', 'zone', 'zoneLabel', 'similar']) delete document.documentElement.dataset[k];
   tourWatch = null;
   offTourLang();
   disposeCabinIn();
