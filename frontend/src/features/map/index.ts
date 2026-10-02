@@ -15,6 +15,7 @@ export { CabinBubble } from './components/CabinBubble'
 export { MapSearchModal } from './components/MapSearchModal'
 export { SceneBootCurtain } from './components/SceneBootCurtain'
 export { ScentScene, type ScenePerfumeRef } from './components/ScentScene'
+export { SceneTourTip } from './components/SceneTourTip'
 export {
   SceneSearchBar,
   type SceneSearchMode,
