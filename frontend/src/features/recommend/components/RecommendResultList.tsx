@@ -3,12 +3,15 @@ import { useTranslation } from 'react-i18next'
 
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
 import { toPerfumeDetail } from '@/shared/config/routes'
+import { useTourStep } from '@/shared/hooks/useTourStep'
 import type { Locale } from '@/shared/i18n/locale'
 import { cn } from '@/shared/lib/cn'
 import { useLocale } from '@/shared/store/localeStore'
+import { useTourStore } from '@/shared/store/tourStore'
 import { CARD_GRID } from '@/shared/ui/cardGrid'
 import { LinkButton } from '@/shared/ui/LinkButton'
 import { PerfumeCard } from '@/shared/ui/PerfumeCard'
+import { TourTip } from '@/shared/ui/TourTip'
 
 import {
   nlrReasonSentence,
@@ -44,7 +47,7 @@ function displayNames(locale: Locale, perfume: RecommendedPerfume) {
  * 줄로 늘어나고, 한 장만 길어져도 같은 줄의 카드가 다 그 높이로 늘어납니다.
  */
 export function RecommendResultList({ perfumes, ...context }: Props) {
-  const { t } = useTranslation('recommend')
+  const { t } = useTranslation(['recommend', 'tour'])
   const locale = useLocale()
   // 처음에는 다 닫혀 있습니다 — 다섯 장을 먼저 훑고 궁금한 것을 엽니다
   const [openId, setOpenId] = useState<number | null>(null)
@@ -53,6 +56,13 @@ export function RecommendResultList({ perfumes, ...context }: Props) {
     (perfume) => perfume.perfumeId === openId,
   )
   const open = perfumes[openIndex]
+  /*
+    첫 방문 안내 — 처음 받은 결과에서 카드를 누르면 이유가 펼쳐진다는 것을 이유가 설 자리에 적습니다
+    (`tourStore` 의 results). 처음 온 사람은 카드가 상세로 가는 링크인 줄 알고 이름만 보고 골랐습니다.
+    카드를 하나 펼치면 끝납니다 · 결과창을 닫는 것은 `RecommendModal` 이 끝냅니다.
+  */
+  const tip = useTourStep('results', true)
+  const stopTour = useTourStore((state) => state.stop)
 
   return (
     <>
@@ -69,11 +79,12 @@ export function RecommendResultList({ perfumes, ...context }: Props) {
                 thumbnailUrl={perfume.thumbnailUrl}
                 expanded={perfume.perfumeId === openId}
                 controls={reasonId}
-                onToggle={() =>
+                onToggle={() => {
+                  tip.finish()
                   setOpenId(
                     perfume.perfumeId === openId ? null : perfume.perfumeId,
                   )
-                }
+                }}
               />
             </li>
           )
@@ -81,9 +92,19 @@ export function RecommendResultList({ perfumes, ...context }: Props) {
       </ul>
 
       {/* 닫혀 있어도 자리는 둡니다 — 카드의 `aria-controls` 가 가리키는 칸입니다 */}
-      <div id={reasonId} className={cn(open && 'mt-5')}>
-        {open && (
+      <div id={reasonId} className={cn((open || tip.showing) && 'mt-5')}>
+        {open ? (
           <RecommendReason perfume={open} rank={openIndex + 1} {...context} />
+        ) : (
+          tip.showing && (
+            <TourTip
+              onClose={tip.finish}
+              onNext={tip.next}
+              onStopAll={stopTour}
+            >
+              {t('tour:results')}
+            </TourTip>
+          )
         )}
       </div>
     </>

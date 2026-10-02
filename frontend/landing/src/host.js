@@ -107,6 +107,15 @@ export function hostQuality(info) {
   if (typeof fn === 'function') fn(info);
 }
 
+// ───────── 첫 방문 안내 (2026-10-02, v0.88.0) — 앱의 순서표(tourStore)가 듣는다 ─────────
+// 엔진 안에서만 일어나 앱이 못 보는 행동을 알린다. 지금은 'minimap' 하나 — 미니맵 · 해도를 눌러 떠났다.
+//   카드 · 해역 연출은 `<html data-card-pin>` · `data-zone` 으로 앱이 이미 지켜본다 (data-card 와 같은 규약)
+// ⚠ **알림만이다** — 무엇을 끝낼지는 앱이 정한다
+export function hostTour(event) {
+  const fn = handlers && handlers.tour;
+  if (typeof fn === 'function') fn(String(event));
+}
+
 /** 검색창 (main.js onSearch). 호스트가 search 를 주면 검색어를 넘기고 true — 엔진은 해역으로 떠나지 않는다. 없으면 false — 예전 그대로 엔진이 찾는다 (goSearch) */
 export function hostSearch(query) {
   const fn = handlers && handlers.search;

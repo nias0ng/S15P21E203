@@ -154,6 +154,37 @@ class ScentVectorsIntegrationTest {
                 .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1));
     }
 
+    /**
+     * 향수마다 <b>그려진 자리의 계열</b>이 실립니다. 취향 테스트가 1순위 계열 구역 안에서만 고를 때
+     * 씁니다.
+     *
+     * <p>대표 계열이 아니라 좌표로 정합니다. 향수 1 은 비중이 가장 큰 계열도 플로럴이라 구분이 안
+     * 되니, 향수 2 를 그린만 가진 채 <b>플로럴의 떨어진 조각</b>에 둡니다. 떨어진 조각은 이름표가
+     * 없어 어느 계열로도 치지 않습니다.
+     */
+    @Test
+    void tellsWhichRegionLabelPieceEachPerfumeIsDrawnIn() throws Exception {
+        jdbcTemplate.update(
+                "UPDATE scent_regions SET anchor_x = 0.05, anchor_y = 0.05, polygon = ?::jsonb"
+                        + " WHERE scent_region_id = ?",
+                "[[[0,0],[0.15,0],[0.15,0.15],[0,0.15]],[[0.15,0.25],[0.25,0.25],[0.25,0.35],[0.15,0.35]]]",
+                FLORAL_ID);
+
+        mockMvc.perform(get(VECTORS_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes[0].labelRegionCode").value("FLORAL"))
+                .andExpect(jsonPath("$.perfumes[1].labelRegionCode").doesNotExist());
+    }
+
+    /** 폴리곤이 적재되기 전에는 모든 향수의 계열이 비어 있습니다. 판정할 경계가 없습니다. */
+    @Test
+    void leavesLabelRegionEmptyBeforeTheMapIsLoaded() throws Exception {
+        mockMvc.perform(get(VECTORS_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes[0].labelRegionCode").doesNotExist())
+                .andExpect(jsonPath("$.perfumes[1].labelRegionCode").doesNotExist());
+    }
+
     /** 로그인 없이 볼 수 있습니다. 취향 테스트는 가입 직후에 도는데 비회원도 지도를 봅니다. */
     @Test
     void allowsAnonymousAccess() throws Exception {
@@ -193,6 +224,8 @@ class ScentVectorsIntegrationTest {
     }
 
     private void clearData() {
+        jdbcTemplate.update("UPDATE scent_regions SET anchor_x = NULL, anchor_y = NULL,"
+                + " polygon = NULL WHERE scent_region_id = ?", FLORAL_ID);
         jdbcTemplate.update("DELETE FROM perfume_scent_families");
         jdbcTemplate.update("DELETE FROM perfume_map_points");
         jdbcTemplate.update("DELETE FROM perfumes");

@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+
+import { useTourStore } from '@/shared/store/tourStore'
 
 import type { RecommendedPerfume } from '../types'
 
@@ -45,6 +47,11 @@ const openReasons = async (
   await userEvent.click(card())
   return screen.getByRole('region', { name: /추천 이유/ })
 }
+
+beforeEach(() => {
+  localStorage.clear()
+  useTourStore.setState({ done: [], off: false, wanted: [], active: null })
+})
 
 describe('RecommendResultList', () => {
   it('카드를 누르면 이유와 상세로 가는 [자세히 보기]가 열리고, 다시 누르면 닫힌다', async () => {
@@ -117,5 +124,22 @@ describe('RecommendResultList', () => {
       '요청하신 남성적인 · 가을에 어울리는 조건에 맞는 향수입니다.',
     )
     expect(reasonsBox).not.toHaveTextContent('향을 가지고 있습니다')
+  })
+
+  // 처음 온 사람은 카드가 상세로 가는 링크인 줄 알고 이유를 펼쳐 보지 않았습니다 (메인 사용성 테스트)
+  it('처음 받은 결과에서는 이유가 설 자리에 카드를 눌러 보라고 적고, 하나를 펼치면 끝난다', async () => {
+    renderList()
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '카드를 누르면 왜 골랐는지 아래에 펼쳐져요.',
+    )
+
+    await userEvent.click(card())
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(useTourStore.getState().done).toContain('results')
+
+    // 접어도 다시 서지 않습니다
+    await userEvent.click(card())
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })

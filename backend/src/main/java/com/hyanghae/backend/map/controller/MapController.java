@@ -63,7 +63,8 @@ public class MapController {
             summary = "계열 벡터 조회",
             description = "취향 테스트가 향수를 고를 때 쓰는 아홉 계열의 비중입니다."
                     + " 고르는 일은 화면이 합니다 — 200개를 한 번에 받아 브라우저에서"
-                    + " 유사도를 잽니다. 로그인이 필요 없습니다."
+                    + " 유사도를 잽니다. 향수마다 그려진 자리의 계열(labelRegionCode)도 실어,"
+                    + " 화면이 1순위 계열 구역 안에서만 고르게 합니다. 로그인이 필요 없습니다."
     )
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/scent-vectors")

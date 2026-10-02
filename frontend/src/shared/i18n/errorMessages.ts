@@ -138,6 +138,8 @@ export const EN_ERROR_MESSAGES: Readonly<Record<string, string>> = {
   TASTE_PICKS_DUPLICATED: "You can't pick the same scent family twice.",
   TASTE_UNKNOWN_SCENT_REGION: "That scent family doesn't exist.",
   TASTE_PERFUME_NOT_ON_MAP: "That perfume isn't on the scent map.",
+  TASTE_PERFUME_OUTSIDE_PRIMARY_REGION:
+    "That perfume isn't in the area of your #1 scent family.",
 
   USER_PROFILE_IMAGE_EMPTY: 'Please choose an image to upload.',
   USER_PROFILE_IMAGE_TOO_LARGE: 'This image is too large.',

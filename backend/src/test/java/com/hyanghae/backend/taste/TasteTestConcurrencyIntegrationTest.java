@@ -86,6 +86,12 @@ class TasteTestConcurrencyIntegrationTest {
                     "INSERT INTO perfume_map_points (perfume_id, map_x, map_y) VALUES (?, ?, ?)",
                     perfumeId, coordinateOf(perfumeId), coordinateOf(perfumeId));
         }
+
+        // 결과 향수가 1순위 계열의 이름표 조각 안이어야 받습니다. 네 향수를 모두 품게 그립니다.
+        jdbcTemplate.update(
+                "UPDATE scent_regions SET anchor_x = 0.25, anchor_y = 0.25, polygon = ?::jsonb"
+                        + " WHERE code = 'FLORAL'",
+                "[[[0,0],[0.5,0],[0.5,0.5],[0,0.5]]]");
     }
 
     @AfterEach
@@ -174,6 +180,8 @@ class TasteTestConcurrencyIntegrationTest {
     }
 
     private void clearData() {
+        jdbcTemplate.update("UPDATE scent_regions SET anchor_x = NULL, anchor_y = NULL,"
+                + " polygon = NULL WHERE code = 'FLORAL'");
         jdbcTemplate.update("DELETE FROM user_taste_test_selections");
         jdbcTemplate.update("DELETE FROM user_taste_tests");
         jdbcTemplate.update("DELETE FROM map_exploration_states");

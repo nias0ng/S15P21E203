@@ -1,9 +1,12 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { useId, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useTourStep } from '@/shared/hooks/useTourStep'
 import { cn } from '@/shared/lib/cn'
 import { prefersReducedMotion } from '@/shared/lib/prefersReducedMotion'
+import { useTourStore } from '@/shared/store/tourStore'
 import { SearchField } from '@/shared/ui/SearchField'
+import { TourTip } from '@/shared/ui/TourTip'
 
 /**
  * 메인 검색이 하는 두 가지 일.
@@ -19,8 +22,8 @@ type Props = {
   /** 지금 모드로 검색합니다. 빈 문자열은 오지 않습니다 */
   onSearch: (keyword: string, mode: SceneSearchMode) => void
   /**
-   * **처음 온 사람에게 한 번 소개해도 되는 때인가** — 로딩 커튼이 걷혔고 다른 창 · 잠수 · 해도가 없을 때입니다.
-   * 그때 이 브라우저에서 한 번만 설명줄을 몇 초 펴 보입니다 (아래 `INTRO_KEY`).
+   * **첫 화면 안내(`welcome`)를 보여도 되는 때인가** — 로딩 커튼이 걷혔고 다른 창 · 잠수 · 해도가 없을 때입니다.
+   * 안내는 검색창 아래 설명줄 자리에 서고, 검색창을 누르거나 [×] 로 닫으면 끝납니다 (`tourStore`).
    */
   introduce?: boolean
   /** 시작 칸의 '요즘 인기 향수' — 화면이 넘어갈 길을 고릅니다(메인을 떠나는 잠수). 없으면 그 줄을 안 그립니다 */
@@ -59,20 +62,6 @@ const STARTER_KEYS = {
   normal: ['chanel', 'joMalone', 'byredo', 'diptyque'],
 } as const satisfies Record<SceneSearchMode, readonly string[]>
 
-/** 이 브라우저에서 첫 소개를 이미 보였다는 표시 (`localStorage`) — 두 번째 방문부터는 마우스를 올릴 때만 나옵니다 */
-const INTRO_KEY = 'hyanghae-search-intro'
-/** 첫 소개가 펴져 있는 시간 */
-const INTRO_MS = 5000
-
-const introSeen = () => {
-  try {
-    return localStorage.getItem(INTRO_KEY) === '1'
-  } catch {
-    // 저장소를 못 읽는 창이면 소개하지 않습니다 — 매번 새로 뜰 수 있어 차라리 안 하는 쪽입니다
-    return true
-  }
-}
-
 /**
  * 3D 향 지도 위의 검색창 (A01 — MAP-01).
  *
@@ -98,28 +87,7 @@ export function SceneSearchBar({
   // 방식을 바꿔도 치던 글은 남깁니다 — 같은 말을 두 방식으로 해보는 것이 이 칸의 쓸모입니다
   const [keyword, setKeyword] = useState('')
   const hintId = useId()
-  const { t } = useTranslation('map')
-
-  /*
-    ⭐ **첫 방문 한 번만 설명줄을 펴 보입니다** (2026-10-01). 설명줄은 평소 알약 뒤에 숨어 있다가
-    마우스를 올릴 때 나오는데(2026-09-20 사용자 지시 · 아래 머리말), 처음 온 사람은 손을 올릴 까닭이
-    없어 '이 사이트가 무엇을 해 주는지' 를 끝내 못 봤습니다(사용성 테스트 7명 중 4명).
-    그래서 처음 한 번은 몇 초 펴 두었다가 같은 길로 접고, 그 뒤로는 예전 그대로 둡니다.
-  */
-  // 마운트 때 한 번 읽습니다 — 이번 화면에서 소개를 할 차례인가
-  const [introOwed] = useState(() => !introSeen())
-  const [introDone, setIntroDone] = useState(false)
-  const intro = introOwed && introduce && !introDone
-  useEffect(() => {
-    if (!intro) return
-    try {
-      localStorage.setItem(INTRO_KEY, '1')
-    } catch {
-      // 저장소를 못 쓰는 창이면 다음 방문에도 한 번 더 소개합니다 — 그것이 더 나쁘지는 않습니다
-    }
-    const timer = window.setTimeout(() => setIntroDone(true), INTRO_MS)
-    return () => window.clearTimeout(timer)
-  }, [intro])
+  const { t } = useTranslation(['map', 'tour'])
 
   /*
     ⭐ **빈 검색창에 초점이 오면 시작 문장을 펼칩니다** (위 STARTER_KEYS). 초점이 **입력칸이나 시작 문장**에
@@ -128,9 +96,40 @@ export function SceneSearchBar({
   */
   const [starting, setStarting] = useState(false)
   const startersOpen = starting && keyword.trim() === ''
+
+  /*
+    첫 방문 안내 두 단계가 설명줄 자리에 섭니다 (`tourStore`). 처음 온 사람은 설명줄을 볼 까닭(마우스 올리기)이
+    없어 이 사이트가 무엇을 해 주는지 못 봤고, 왼쪽 칸이 검색 방식을 바꾸는 단추인 줄도 몰랐습니다(사용성 테스트).
+      welcome  화면이 비었을 때 — 검색창 어디든 초점이 오면 끝납니다 (부표를 누른 것은 화면이 끝냅니다)
+      search   입력칸에 처음 초점이 왔을 때 — 첫 검색으로 끝납니다
+    안내가 서 있는 동안은 설명줄을 화면에서만 걷습니다 — 둘이 같은 자리 · 같은 말을 겹쳐 합니다.
+  */
+  const welcome = useTourStep('welcome', introduce)
+  const searchTip = useTourStep('search', starting)
+  const stopTour = useTourStore((state) => state.stop)
+  const tip = welcome.showing
+    ? {
+        text: t('tour:welcome'),
+        finish: welcome.finish,
+        next: welcome.next,
+        starter: false,
+      }
+    : searchTip.showing
+      ? {
+          text: t('tour:search'),
+          finish: searchTip.finish,
+          next: searchTip.next,
+          starter: true,
+        }
+      : null
+
+  const search = (text: string) => {
+    searchTip.finish()
+    onSearch(text, mode)
+  }
   const pick = (text: string) => {
     setKeyword(text)
-    onSearch(text, mode)
+    search(text)
   }
 
   return (
@@ -141,8 +140,11 @@ export function SceneSearchBar({
       className={cn(POSITION, 'group', className)}
       onFocus={(event) => {
         const target = event.target as HTMLElement
+        welcome.finish()
+        // 시작 칸(시작 문장 · 그 위의 검색 안내) 안에서 옮겨 다니는 초점은 칸을 그대로 둡니다
         setStarting(
-          target.tagName === 'INPUT' || target.dataset.starter !== undefined,
+          target.tagName === 'INPUT' ||
+            target.closest('[data-starter]') !== null,
         )
       }}
       onBlur={(event) => {
@@ -166,7 +168,7 @@ export function SceneSearchBar({
         onSearch={(value) => {
           const trimmed = value.trim()
           if (!trimmed) return
-          onSearch(trimmed, mode)
+          search(trimmed)
         }}
         leading={<ModeSwitch mode={mode} onModeChange={onModeChange} />}
         /*
@@ -214,8 +216,8 @@ export function SceneSearchBar({
             */
             'group-has-[:focus-visible]:translate-y-0',
             'motion-reduce:transition-none',
-            // 첫 소개 · 시작 문장이 펼쳐진 동안은 마우스와 상관없이 나와 있습니다
-            (intro || startersOpen) && 'translate-y-0',
+            // 첫 방문 안내 · 시작 문장이 펼쳐진 동안은 마우스와 상관없이 나와 있습니다
+            (tip || startersOpen) && 'translate-y-0',
           )}
         >
           <p
@@ -224,10 +226,23 @@ export function SceneSearchBar({
               'mx-auto w-fit rounded-full px-3.75 py-1',
               'border-stonegray/60 bg-ivory/80 border backdrop-blur-[7px]',
               'text-charcoal-soft text-center text-[11.5px]',
+              // 화면에서만 걷습니다 — 입력칸의 aria-describedby 가 가리키는 줄입니다
+              tip && 'sr-only',
             )}
           >
             {t(`search.hint.${mode}`)}
           </p>
+
+          {tip && (
+            <TourTip
+              data-starter={tip.starter ? '' : undefined}
+              onClose={tip.finish}
+              onNext={tip.next}
+              onStopAll={stopTour}
+            >
+              {tip.text}
+            </TourTip>
+          )}
 
           {/*
             시작 문장 — 설명줄 바로 밑, 같은 종이로 섭니다. 누르면 그 말로 곧바로 찾습니다.

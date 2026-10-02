@@ -11,6 +11,7 @@ import { perfume as enPerfume } from './locales/en/perfume'
 import { recommend as enRecommend } from './locales/en/recommend'
 import { shelf as enShelf } from './locales/en/shelf'
 import { taste as enTaste } from './locales/en/taste'
+import { tour as enTour } from './locales/en/tour'
 import { auth as koAuth } from './locales/ko/auth'
 import { brand as koBrand } from './locales/ko/brand'
 import { collection as koCollection } from './locales/ko/collection'
@@ -23,6 +24,7 @@ import { perfume as koPerfume } from './locales/ko/perfume'
 import { recommend as koRecommend } from './locales/ko/recommend'
 import { shelf as koShelf } from './locales/ko/shelf'
 import { taste as koTaste } from './locales/ko/taste'
+import { tour as koTour } from './locales/ko/tour'
 import type { Messages } from './types'
 
 /** 한국어 묶음 — 문구의 기준입니다. 이 모양이 곧 번역 키의 타입입니다(`i18next.d.ts`) */
@@ -39,6 +41,7 @@ export const ko = {
   collection: koCollection,
   map: koMap,
   community: koCommunity,
+  tour: koTour,
 }
 
 export const en = {
@@ -54,6 +57,7 @@ export const en = {
   collection: enCollection,
   map: enMap,
   community: enCommunity,
+  tour: enTour,
 } satisfies Messages<typeof ko>
 
 export type Namespace = keyof typeof ko
