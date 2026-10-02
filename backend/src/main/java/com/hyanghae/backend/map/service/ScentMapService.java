@@ -30,10 +30,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class ScentMapService {
 
     private final ScentMapRepository scentMapRepository;
+    private final ScentRegionLocator scentRegionLocator;
     private final ObjectMapper objectMapper;
 
-    public ScentMapService(ScentMapRepository scentMapRepository, ObjectMapper objectMapper) {
+    public ScentMapService(
+            ScentMapRepository scentMapRepository,
+            ScentRegionLocator scentRegionLocator,
+            ObjectMapper objectMapper) {
         this.scentMapRepository = scentMapRepository;
+        this.scentRegionLocator = scentRegionLocator;
         this.objectMapper = objectMapper;
     }
 
@@ -66,15 +71,29 @@ public class ScentMapService {
     @Transactional(readOnly = true)
     public ScentVectorsResponse getScentVectors() {
         Map<Long, ScentVectorResponse> byPerfume = new LinkedHashMap<>();
+        ScentRegions regions = scentRegionLocator.load();
 
         for (ScentVectorRow row : scentMapRepository.findScentVectorRows()) {
             byPerfume.computeIfAbsent(row.perfumeId(), id -> new ScentVectorResponse(
-                            id, row.x(), row.y(), row.rank(), new LinkedHashMap<>()))
+                            id,
+                            row.x(),
+                            row.y(),
+                            labelRegionCodeAt(regions, row.x(), row.y()),
+                            row.rank(),
+                            new LinkedHashMap<>()))
                     .families()
                     .put(row.familyCode(), row.weight());
         }
 
         return new ScentVectorsResponse(List.copyOf(byPerfume.values()));
+    }
+
+    /**
+     * 향수가 그려진 자리의 계열입니다. 화면이 폴리곤을 따로 판정하지 않게 서버가 실어 보냅니다
+     * — 저장할 때 서버가 같은 판정으로 확인하므로, 두 판정이 갈리면 화면이 고른 향수가 거절됩니다.
+     */
+    private String labelRegionCodeAt(ScentRegions regions, double x, double y) {
+        return regions.labelRegionAt(x, y).map(ScentRegionRef::code).orElse(null);
     }
 
     /**

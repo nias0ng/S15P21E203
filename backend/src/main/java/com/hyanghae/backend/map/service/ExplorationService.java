@@ -147,6 +147,24 @@ public class ExplorationService {
     }
 
     /**
+     * 향수를 출발점으로 삼기 전에 그 자리를 봅니다. <b>배는 건드리지 않습니다.</b>
+     *
+     * <p>{@link #placeStartingPoint} 보다 먼저 부릅니다. 부르는 쪽이 자리를 보고 거절할 수 있는데,
+     * 그때 배가 이미 옮겨져 있으면 안 되기 때문입니다. 취향 테스트는 1순위 계열의 이름표 조각 밖이면
+     * 거절합니다.
+     *
+     * @return 지도에 없는 향수면 비어 있습니다
+     */
+    @Transactional(readOnly = true)
+    public Optional<StartingSpot> findStartingSpot(Long perfumeId) {
+        return explorationLogRepository.findMapPoint(perfumeId)
+                .map(point -> new StartingSpot(point, scentRegionLocator.load()
+                        .labelRegionAt(point.x(), point.y())
+                        .map(ScentRegionRef::code)
+                        .orElse(null)));
+    }
+
+    /**
      * 배가 지금 있는 자리입니다. 한 번도 움직인 적이 없으면 세 필드가 모두 {@code null} 입니다.
      */
     @Transactional(readOnly = true)

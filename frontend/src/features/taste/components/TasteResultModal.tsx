@@ -19,8 +19,8 @@ function headlineOf(match: TasteMatch): string {
   switch (match.mode) {
     case 'RARE':
       return i18n.t('taste:result.headline.rare')
-    case 'NO_OVERLAP':
-      return i18n.t('taste:result.headline.noOverlap')
+    case 'PRIMARY_ONLY':
+      return i18n.t('taste:result.headline.primaryOnly')
     default:
       return i18n.t('taste:result.headline.normal')
   }
@@ -36,8 +36,8 @@ function leadOf(match: TasteMatch): string {
     return i18n.t('taste:result.lead.rare')
   }
 
-  if (match.mode === 'NO_OVERLAP' && first && second) {
-    return i18n.t('taste:result.lead.noOverlap', {
+  if (match.mode === 'PRIMARY_ONLY' && first && second) {
+    return i18n.t('taste:result.lead.primaryOnly', {
       first: inline(first),
       second: inline(second),
     })

@@ -37,9 +37,22 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
   }, [picks.length, setCausticsLayers])
   useEffect(() => () => setCausticsLayers(null), [setCausticsLayers])
 
+  /**
+   * NOTE: 결과가 없으면 알립니다 — 1순위 계열 구역 안에 고를 병이 없을 때입니다(구역을 싣지 않는 옛 서버 · 지도를 다시
+   * 만들다 빈 구역). 구역 밖에서 대신 고르지 않습니다. 서버가 그런 병은 400 으로 거절합니다.
+   */
+  const [noStart, setNoStart] = useState(false)
+
   const handleSubmit = () => {
     if (!vectors.data || picks.length === 0) return
-    setMatch(matchStartingPoint(vectors.data, picks))
+    const result = matchStartingPoint(vectors.data, picks)
+    setMatch(result)
+    setNoStart(result === null)
+  }
+
+  const handlePicksChange = (next: ScentFamilyKey[]) => {
+    setPicks(next)
+    setNoStart(false)
   }
 
   /**
@@ -100,7 +113,7 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
 
       {vectors.isSuccess && (
         <section className={cn(GLASS_PANEL, 'rounded-card space-y-8')}>
-          <FamilyPicker value={picks} onChange={setPicks} />
+          <FamilyPicker value={picks} onChange={handlePicksChange} />
 
           <div className="border-line-soft flex items-center justify-between gap-6 border-t pt-6">
             <p
@@ -118,6 +131,11 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
               {t('step.submit')}
             </Button>
           </div>
+          {noStart && (
+            <p role="alert" className="text-danger text-caption">
+              {t('step.noStart')}
+            </p>
+          )}
         </section>
       )}
 

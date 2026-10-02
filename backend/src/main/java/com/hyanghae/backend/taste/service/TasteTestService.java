@@ -4,6 +4,7 @@ import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.map.repository.ExplorationPoint;
 import com.hyanghae.backend.map.service.ExplorationService;
+import com.hyanghae.backend.map.service.StartingSpot;
 import com.hyanghae.backend.recommendation.service.PersonalizedRecommendationInvalidator;
 import com.hyanghae.backend.taste.dto.request.TasteTestCreateRequest;
 import com.hyanghae.backend.taste.dto.response.TasteTestResponse;
@@ -26,7 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p><b>결과 향수를 서버가 다시 계산하지 않습니다.</b> 코사인 유사도 계산이 화면에 있고 테스트도
  * 거기 붙어 있습니다. 같은 규칙을 자바로 한 벌 더 두면 두 결과가 갈렸을 때 어느 쪽이 맞는지
- * 판단할 근거가 없습니다. 서버는 그 향수가 지도에 있는지만 봅니다.
+ * 판단할 근거가 없습니다. 서버는 그 향수가 지도에 있는지와, 1순위 계열의 이름표 조각 안에
+ * 그려져 있는지만 봅니다. 구역 판정은 지도 쪽({@code ScentRegions})에 한 벌뿐이고 화면도 그 답을
+ * 받아 씁니다.
  */
 @Service
 public class TasteTestService {
@@ -77,6 +80,8 @@ public class TasteTestService {
             throw new BusinessException(TasteErrorCode.TASTE_UNKNOWN_SCENT_REGION);
         }
 
+        requireInPrimaryRegion(request.matchedPerfumeId(), picks.getFirst());
+
         ExplorationPoint start =
                 explorationService.placeStartingPoint(userId, request.matchedPerfumeId())
                         .orElseThrow(() -> new BusinessException(
@@ -112,6 +117,24 @@ public class TasteTestService {
                         row.y(),
                         row.completedAt()))
                 .orElseGet(TasteTestResponse::notCompleted);
+    }
+
+    /**
+     * 결과 향수가 1순위 계열의 이름표 조각 안에 그려져 있는지 봅니다. 배를 띄우기 전에 봅니다.
+     *
+     * <p>유사도만으로 고르면 고른 계열과 향 구성은 닮았어도 지도에서는 다른 구역에 그려진 향수가
+     * 뽑힙니다. 머스크만 고른 회원의 배가 우디 구역에 뜨는 식이라, 화면이 고른 결과를 서버가 다시
+     * 계산하지는 않되 이 조건만은 막습니다. 2순위 계열은 보지 않습니다 — 화면은 1순위 구역 안에
+     * 두 계열을 다 가진 향수가 없으면 1순위만 반영합니다.
+     */
+    private void requireInPrimaryRegion(Long perfumeId, String primaryPick) {
+        StartingSpot spot = explorationService.findStartingSpot(perfumeId)
+                .orElseThrow(() -> new BusinessException(
+                        TasteErrorCode.TASTE_PERFUME_NOT_ON_MAP));
+
+        if (!spot.isLabeledAs(primaryPick)) {
+            throw new BusinessException(TasteErrorCode.TASTE_PERFUME_OUTSIDE_PRIMARY_REGION);
+        }
     }
 
     private InsertedTest insertOrConflict(Long userId, Long matchedPerfumeId) {
