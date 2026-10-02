@@ -76,7 +76,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 66356,Bvlgari,Omnia by Mary Katrantzou,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 68293,Bvlgari,Bvlgari Man Terrae Essence,DISCONTINUED,LIKELY,https://www.bulgari.com/en-us/fragrances,2026-10-01,미국(en-us) · 한국(ko-kr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 8705,Guerlain,Tonka Imperiale,DISCONTINUED,CONFIRMED,https://www.annasluxe.com/guerlain-tonka-imperiale-100ml-rare-discontinued/,2026-10-01,"판매처(Anna's Luxe)가 'Discontinued & Vintage Perfumes' 로 분류, 상품명에 'Discontinued'. 프랑스(fr-fr) 공식 사이트 향수 목록에 없음"
-14178,Guerlain,Guerlain Shalimar Parfum Initial L'Eau,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
+14178,Guerlain,Guerlain Shalimar Parfum Initial L'Eau,DISCONTINUED,CONFIRMED,https://basenotes.com/fragrances/shalimar-parfum-initial-leau-by-guerlain.26133671,2026-10-02,향수 DB(Basenotes) 'Shalimar Parfum Initial L'Eau (2012)' 에 Discontinued 표기. 한국(ko-kr) · 프랑스(fr-fr) · 미국(en-us) 공식 사이트 향수 목록에 없음
 213,Dior,Miss Dior Cherie,DISCONTINUED,CONFIRMED,https://escentual.com/blogs/editorial/miss-dior-cherie-is-becoming-miss-dior,2026-10-01,판매처(Escentual) 정리 글: 2012년 'Miss Dior' 로 이름이 바뀌며 매장에서 사라짐. 프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음
 1282,Dior,Midnight Poison,DISCONTINUED,CONFIRMED,https://www.coucoushop.com/dior-midnight-poison-elixir-edp-50ml-no-box.html,2026-10-01,판매처(Coucou)가 'Sold out and Discontinued Fragrances' 로 분류. 프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음
 11588,Dior,Miss Dior Cherie Eau de Parfum,DISCONTINUED,CONFIRMED,https://escentual.com/blogs/editorial/miss-dior-cherie-is-becoming-miss-dior,2026-10-01,판매처(Escentual) 정리 글: 2012년 'Miss Dior' 로 이름이 바뀌며 매장에서 사라짐. 프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음
@@ -154,7 +154,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 61993,Zara,Mimosa Cloud Eau de Toilette,DISCONTINUED,LIKELY,https://www.zara.com/sitemaps/sitemap-index.xml.gz,2026-10-01,미국(us-en) 공식 사이트맵 향수 목록에 없음. 두 번째 근거 미확인
 62354,Zara,A Book Liason In Lisbon,DISCONTINUED,LIKELY,https://www.zara.com/sitemaps/sitemap-index.xml.gz,2026-10-01,미국(us-en) 공식 사이트맵 향수 목록에 없음. 두 번째 근거 미확인
 62355,Zara,A Mochi Atelier In Tokyo,DISCONTINUED,LIKELY,https://www.zara.com/sitemaps/sitemap-index.xml.gz,2026-10-01,미국(us-en) 공식 사이트맵 향수 목록에 없음. 두 번째 근거 미확인
-62356,Zara,A Sweet Pastry In Paris,DISCONTINUED,LIKELY,https://www.zara.com/sitemaps/sitemap-index.xml.gz,2026-10-01,미국(us-en) 공식 사이트맵 향수 목록에 없음. 두 번째 근거 미확인
+62356,Zara,A Sweet Pastry In Paris,DISCONTINUED,CONFIRMED,https://basenotes.com/fragrances/a-sweet-pastry-in-paris-by-zara.26185206,2026-10-02,향수 DB(Basenotes) 'A Sweet Pastry in Paris (2020)' 에 Discontinued · Limited Edition 표기. 한국(kr-ko) · 미국(us-en) 공식 사이트맵 향수 목록에 없음
 62359,Zara,Warm Black,DISCONTINUED,LIKELY,https://www.zara.com/sitemaps/sitemap-index.xml.gz,2026-10-01,미국(us-en) 공식 사이트맵 향수 목록에 없음. 두 번째 근거 미확인
 62365,Zara,Night Pour Homme V,DISCONTINUED,LIKELY,https://www.zara.com/sitemaps/sitemap-index.xml.gz,2026-10-01,미국(us-en) 공식 사이트맵 향수 목록에 없음. 두 번째 근거 미확인
 63080,Zara,Montsouris,DISCONTINUED,LIKELY,https://www.zara.com/sitemaps/sitemap-index.xml.gz,2026-10-01,미국(us-en) 공식 사이트맵 향수 목록에 없음. 두 번째 근거 미확인
@@ -809,12 +809,12 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 45,Guerlain,Love is All,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 54,Guerlain,Shalimar Legere,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 56,Guerlain,Aqua Allegoria Tutti Kiwi,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
-58,Guerlain,Aqua Allegoria Gentiana,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
-59,Guerlain,Aqua Allegoria Grosellina,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
-61,Guerlain,Aqua Allegoria Lavande Velours,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
+58,Guerlain,Aqua Allegoria Gentiana,DISCONTINUED,CONFIRMED,https://basenotes.com/fragrances/aqua-allegoria-gentiana-by-guerlain.10211667,2026-10-02,향수 DB(Basenotes) 'Aqua Allegoria Gentiana (2001)' 에 Discontinued 표기. 한국(ko-kr) · 프랑스(fr-fr) · 미국(en-us) 공식 사이트 향수 목록에 없음
+59,Guerlain,Aqua Allegoria Grosellina,DISCONTINUED,CONFIRMED,https://basenotes.com/fragrances/aqua-allegoria-grosellina-by-guerlain.26125237,2026-10-02,향수 DB(Basenotes) 'Aqua Allegoria Grosellina (2006)' 에 Discontinued 표기. 한국(ko-kr) · 프랑스(fr-fr) · 미국(en-us) 공식 사이트 향수 목록에 없음
+61,Guerlain,Aqua Allegoria Lavande Velours,DISCONTINUED,CONFIRMED,https://basenotes.com/fragrances/aqua-allegoria-lavande-velours-by-guerlain.26120111,2026-10-02,향수 DB(Basenotes) 'Aqua Allegoria Lavande Velours (1999)' 에 Discontinued 표기. 한국(ko-kr) · 프랑스(fr-fr) · 미국(en-us) 공식 사이트 향수 목록에 없음
 62,Guerlain,Aqua Allegoria Lilia Bella,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 63,Guerlain,Aqua Allegoria Rosa Magnifica,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
-64,Guerlain,Aqua Allegoria Ylang & Vanille,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
+64,Guerlain,Aqua Allegoria Ylang & Vanille,DISCONTINUED,CONFIRMED,https://basenotes.com/fragrances/aqua-allegoria-ylang-vanille-by-guerlain.10211648,2026-10-02,향수 DB(Basenotes) 'Aqua Allegoria Ylang & Vanille (1999)' 에 Discontinued 표기. 한국(ko-kr) · 프랑스(fr-fr) · 미국(en-us) 공식 사이트 향수 목록에 없음
 65,Guerlain,Aqua Allegoria Foliflora,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 67,Guerlain,Too Much,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 68,Guerlain,Colours of Love,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
@@ -823,17 +823,17 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 574,Guerlain,Aqua Allegoria Lemon Fresca,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 575,Guerlain,Aqua Allegoria Mentafollia,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 576,Guerlain,Aqua Allegoria Orange Magnifica,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
-577,Guerlain,Aqua Allegoria Pivoine Magnifica,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
+577,Guerlain,Aqua Allegoria Pivoine Magnifica,DISCONTINUED,CONFIRMED,https://basenotes.com/fragrances/aqua-allegoria-pivoine-magnifica-by-guerlain.26123828,2026-10-02,향수 DB(Basenotes) 'Aqua Allegoria Pivoine Magnifica (2005)' 에 Discontinued 표기. 한국(ko-kr) · 프랑스(fr-fr) · 미국(en-us) 공식 사이트 향수 목록에 없음
 578,Guerlain,Aqua Allegoria Winter Delice,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 1010,Guerlain,Vetiver Extreme,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 1628,Guerlain,Vol de Nuit Evasion,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 1657,Guerlain,My Insolence,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/guerlain-my-insolence-vaulted-eau-de-toilette,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시. 프랑스(fr-fr) 공식 사이트 향수 목록에 없음
-2088,Guerlain,Aqua Allegoria Angelique Lilas,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
+2088,Guerlain,Aqua Allegoria Angelique Lilas,DISCONTINUED,CONFIRMED,https://basenotes.com/fragrances/aqua-allegoria-angelique-lilas-by-guerlain.26127341,2026-10-02,향수 DB(Basenotes) 'Aqua Allegoria Angélique Lilas (2007)' 에 Discontinued 표기. 한국(ko-kr) · 프랑스(fr-fr) · 미국(en-us) 공식 사이트 향수 목록에 없음
 2218,Guerlain,Cherry Blossom Edition 1999,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 2222,Guerlain,Eau de Lit,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 2288,Guerlain,Coriolan,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/guerlain-coriolan-edt,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시. 프랑스(fr-fr) 공식 사이트 향수 목록에 없음
 2614,Guerlain,With Love,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
-2615,Guerlain,"Terracotta Voile d'Été (No.25, Quand Vient l'Été)",DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
+2615,Guerlain,"Terracotta Voile d'Été (No.25, Quand Vient l'Été)",DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/guerlain-vol-d-ete-vintage-eau-de-toilette,2026-10-02,판매처(Fragrance Vault) 상품 설명에 단종 명시('Guerlain TERRACOTTA VOILE D’ETE vintage eau de toilette'). 향수 DB(Basenotes) 'Terracotta Voile d'Eté (1999)' 에 Discontinued 표기. 한국(ko-kr) · 프랑스(fr-fr) · 미국(en-us) 공식 사이트 향수 목록에 없음
 2616,Guerlain,Vetiver Pour Elle,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 2617,Guerlain,Vetiver Frozen Fragrance,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 2618,Guerlain,Quand Vient La Pluie,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
@@ -844,14 +844,14 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 2655,Guerlain,Philtre d'Amour,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 2660,Guerlain,Mahora,DISCONTINUED,CONFIRMED,https://www.annasluxe.com/vintage-guerlain-mahora-eau-de-parfum-5ml-discontinued/,2026-10-01,"판매처(Anna's Luxe)가 'Discontinued & Vintage Perfumes' 로 분류, 상품명에 'Discontinued'. 프랑스(fr-fr) 공식 사이트 향수 목록에 없음"
 3347,Guerlain,Secret Intention,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/guerlain-secret-intention-vaulted-eau-de-toilette,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시. 프랑스(fr-fr) 공식 사이트 향수 목록에 없음
-3622,Guerlain,Samsara Shine,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
-3810,Guerlain,Iris Ganache,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
+3622,Guerlain,Samsara Shine,DISCONTINUED,CONFIRMED,https://basenotes.com/fragrances/samsara-shine-by-guerlain.10211664,2026-10-02,향수 DB(Basenotes) 'Samsara Shine (2001)' 에 Discontinued 표기. 한국(ko-kr) · 프랑스(fr-fr) · 미국(en-us) 공식 사이트 향수 목록에 없음
+3810,Guerlain,Iris Ganache,DISCONTINUED,CONFIRMED,https://basenotes.com/fragrances/iris-ganache-by-guerlain.26128192,2026-10-02,향수 DB(Basenotes) 'Iris Ganache (2007)' 에 Discontinued 표기. 한국(ko-kr) · 프랑스(fr-fr) · 미국(en-us) 공식 사이트 향수 목록에 없음
 3811,Guerlain,Bois d'Armenie,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
-3826,Guerlain,Un Air de Samsara,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
+3826,Guerlain,Un Air de Samsara,DISCONTINUED,CONFIRMED,https://basenotes.com/fragrances/un-air-de-samsara-by-guerlain.10211642,2026-10-02,향수 DB(Basenotes) 'Un Air de Samsara (1995)' 에 Discontinued 표기. 한국(ko-kr) · 프랑스(fr-fr) · 미국(en-us) 공식 사이트 향수 목록에 없음
 3827,Guerlain,Vetiver (Vintage Edition),DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 3943,Guerlain,Mouchoir de Monsieur,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 4046,Guerlain,L'Instant de Guerlain Eau de Noel Iris Millesime,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
-4347,Guerlain,Cologne du 68,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
+4347,Guerlain,Cologne du 68,DISCONTINUED,CONFIRMED,https://basenotes.com/fragrances/cologne-du-68-by-guerlain.26132698,2026-10-02,향수 DB(Basenotes) 'Cologne du 68 (2006)' 에 Discontinued 표기. 한국(ko-kr) · 프랑스(fr-fr) · 미국(en-us) 공식 사이트 향수 목록에 없음
 4675,Guerlain,Elixir Charnel Gourmand Coquin,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/guerlain-gourmand-coquin-vaulted-eau-de-parfum,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시. 프랑스(fr-fr) 공식 사이트 향수 목록에 없음
 4676,Guerlain,Elixir Charnel Chypre Fatal,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 4677,Guerlain,Elixir Charnel Oriental Brulant,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/guerlain-les-elixirs-charnel-oriental-brulant-edp,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시. 프랑스(fr-fr) 공식 사이트 향수 목록에 없음
@@ -876,7 +876,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 6758,Guerlain,Shalimar Oiseau de Paradis,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 6957,Guerlain,Elixir Charnel Le Boise Torride,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 7418,Guerlain,Insolence Blooming,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
-7967,Guerlain,Aqua Allegoria Flora Nymphea,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
+7967,Guerlain,Aqua Allegoria Flora Nymphea,DISCONTINUED,CONFIRMED,https://basenotes.com/fragrances/aqua-allegoria-flora-nymphea-by-guerlain.26132847,2026-10-02,향수 DB(Basenotes) 'Aqua Allegoria Flora Nymphéa (2010)' 에 Discontinued 표기. 한국(ko-kr) · 프랑스(fr-fr) · 미국(en-us) 공식 사이트 향수 목록에 없음
 8140,Guerlain,Shalimar Edition Charms Eau de Parfum,DISCONTINUED,CONFIRMED,https://fragrancevault.net/products/guerlain-shalimar-edition-charms-2010-vaulted-eau-de-parfum,2026-10-01,판매처(Fragrance Vault) 상품 설명에 단종 명시. 프랑스(fr-fr) 공식 사이트 향수 목록에 없음
 8470,Guerlain,Aqua Allegoria Bouquet Numero 1,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 9198,Guerlain,Chamade Pour Homme,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
@@ -898,10 +898,10 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 12073,Guerlain,Elixir Charnel Floral Romantique,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 12481,Guerlain,Aqua Allegoria Bouquet Numero 2,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 12575,Guerlain,Aqua Allegoria Rosa Blanca,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
-13065,Guerlain,Idylle Eau Sublime,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
+13065,Guerlain,Idylle Eau Sublime,DISCONTINUED,CONFIRMED,https://basenotes.com/fragrances/idylle-eau-sublime-by-guerlain.26133301,2026-10-02,향수 DB(Basenotes) 'Idylle Eau Sublime (2011)' 에 Discontinued 표기. 한국(ko-kr) · 프랑스(fr-fr) · 미국(en-us) 공식 사이트 향수 목록에 없음
 13600,Guerlain,Shalimar Fourreau du Soir,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 13637,Guerlain,Les Voyages Olfactifs 04 Paris-London,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
-14177,Guerlain,Aqua Allegoria Lys Soleia,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
+14177,Guerlain,Aqua Allegoria Lys Soleia,DISCONTINUED,CONFIRMED,https://basenotes.com/fragrances/aqua-allegoria-lys-soleia-by-guerlain.26132711,2026-10-02,향수 DB(Basenotes) 'Aqua Allegoria Lys Soleia (2012)' 에 Discontinued 표기. 한국(ko-kr) · 프랑스(fr-fr) · 미국(en-us) 공식 사이트 향수 목록에 없음
 14179,Guerlain,Guerlain Idylle Duet Jasmin-Lilas,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 14180,Guerlain,Guerlain Homme L'Eau Boisée,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 14203,Guerlain,Myrrhe & Delires,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
@@ -924,7 +924,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 20168,Guerlain,La Petite Robe Noire Eau de Parfum Collector Edition,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 20814,Guerlain,Metallica (Metalys),DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 21752,Guerlain,Guerlain Le Parfum du 68,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
-22828,Guerlain,La Petite Robe Noire Couture,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
+22828,Guerlain,La Petite Robe Noire Couture,DISCONTINUED,CONFIRMED,https://basenotes.com/fragrances/la-petite-robe-noire-couture-by-guerlain.26140223,2026-10-02,향수 DB(Basenotes) 'La Petite Robe Noire Couture (2014)' 에 Discontinued 표기. 한국(ko-kr) · 프랑스(fr-fr) · 미국(en-us) 공식 사이트 향수 목록에 없음
 23369,Guerlain,Aqua Allegoria Limon Verde,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 23398,Guerlain,Petit Guerlain (In Pink),DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 23401,Guerlain,Idylle Duet Rose-Patchouli,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
@@ -967,10 +967,10 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 50158,Guerlain,Black Perfecto by La Petite Robe Noire Eau de Toilette Florale,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 50253,Guerlain,Les Absolus d'Orient Musc Noble,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 53114,Guerlain,La Petite Robe Noire Velours,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
-53241,Guerlain,Les Absolus d'Orient Bois Mystérieux,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
+53241,Guerlain,Les Absolus d'Orient Bois Mystérieux,DISCONTINUED,CONFIRMED,https://www.annasluxe.com/guerlain-bois-mysterieux-edp-125ml-discontinued/,2026-10-02,"판매처(Anna's Luxe)가 'Discontinued & Vintage Perfumes' 로 분류, 상품명에 'Discontinued'('Guerlain Bois Mysterieux EDP 125ml Discontinued'). 한국(ko-kr) · 프랑스(fr-fr) · 미국(en-us) 공식 사이트 향수 목록(Absolus Allegoria 포함)에 없음"
 53242,Guerlain,Les Absolus d'Orient Encens Mythique,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 53320,Guerlain,Mon Guerlain Bloom of Rose,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
-53805,Guerlain,Aqua Allegoria Ginger Piccante,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
+53805,Guerlain,Aqua Allegoria Ginger Piccante,DISCONTINUED,CONFIRMED,https://www.annasluxe.com/guerlain-aqua-allegoria-ginger-piccante-spray-75ml-discountinued-perfume/,2026-10-02,"판매처(Anna's Luxe)가 'Discontinued & Vintage Perfumes' 로 분류, 상품명에 'Discountinued'(원문 그대로), 상품 설명에 '75ml EDT – Discontinued'. 한국(ko-kr) · 프랑스(fr-fr) · 미국(en-us) 공식 사이트 향수 목록에 없음"
 53806,Guerlain,Aqua Allegoria Coconut Fizz,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 54098,Guerlain,Shalimar Souffle d'Oranger,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
 54452,Guerlain,L’Homme Idéal Cool,DISCONTINUED,LIKELY,https://www.guerlain.com/fr/fr-fr/parfum/,2026-10-01,프랑스(fr-fr) 공식 사이트 향수 목록에 없음. 두 번째 근거 미확인
@@ -1075,7 +1075,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 3178,Dior,J'adore Le Jasmin,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
 3291,Dior,Cruise Collection - Escale a Portofino,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
 3738,Dior,Miss Dior Cherie Blooming Bouquet 2007,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
-3909,Dior,Midnight Poison Elixir,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
+3909,Dior,Midnight Poison Elixir,DISCONTINUED,CONFIRMED,https://basenotes.com/fragrances/midnight-poison-elixir-by-christian-dior.26141008,2026-10-02,향수 DB(Basenotes) 'Midnight Poison Elixir (2008)' 에 Discontinued 표기. 한국(ko_kr) · 프랑스(fr_fr) · 미국(en_us) · 영국(en_gb) 공식 사이트맵에 없음
 4496,Dior,J'Adore L'Absolu,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
 4499,Dior,J'Adore Summer Fragrance,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
 5626,Dior,J'adore L'eau Cologne Florale,DISCONTINUED,LIKELY,https://www.dior.com/fr_fr/beauty/sitemap.xml,2026-10-01,프랑스(fr_fr) · 미국(en_us) 공식 사이트맵에 없음. 두 번째 근거 미확인
@@ -1910,7 +1910,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 52788,Lancôme,La Nuit Trésor Musc Diamant,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
 53345,Lancôme,La Vie est Belle en Rose,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
 54188,Lancôme,Patchouli Aromatique,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
-54191,Lancôme,Figues & Agrumes,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
+54191,Lancôme,Figues & Agrumes,DISCONTINUED,CONFIRMED,https://www.lancome.ca/en/discontinued-products/figues-agrumes-eau-de-parfum/A01628-LAC.html,2026-10-02,브랜드 캐나다 공식 사이트가 'Figues & Agrumes Eau de Parfum' 을 'Discontinued products' 로 분류하고 상품 페이지에 단종 안내. 미국 · 프랑스 · 일본 공식 판매 목록(Absolue Les Parfums 포함)에 없음
 54193,Lancôme,Magnolia Rosae,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
 54194,Lancôme,Pivoines Printemps,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
 54358,Lancôme,Tresor en Or,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
@@ -1926,7 +1926,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 72050,Lancôme,Oui La Vie est Belle,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
 73462,Lancôme,Mille et Une Roses,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
 73903,Lancôme,La Vie Est Belle Domaine de la Rose,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
-74137,Lancôme,Idôle Nectar,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
+74137,Lancôme,Idôle Nectar,DISCONTINUED,CONFIRMED,https://www.lancome-usa.com/discontinued-products/idole-eau-de-parfum-nectar/00639-LAC.html,2026-10-02,브랜드 미국 공식 사이트가 'Idôle Eau de Parfum Nectar' 를 'Discontinued Products' 로 분류하고 상품 페이지에 단종 안내. 캐나다 공식 단종 목록에도 있음. 미국 · 프랑스 · 캐나다 · 일본 공식 판매 목록에 없음
 78579,Lancôme,La Nuit Trésor Fleur de Nuit,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
 79245,Lancôme,La Vie Est Belle Iris Absolu,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
 94911,Lancôme,Absolue 6AM Rose,DISCONTINUED,LIKELY,https://www.lancome-usa.com/sitemap_index.xml,2026-10-01,미국(lancome-usa.com) 공식 사이트맵 향수 목록에 없음. 프랑스 사이트는 접속 확인 페이지에 막혀 대조하지 못함. 두 번째 근거 미확인
@@ -2013,11 +2013,11 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 3328,The Body Shop,Aqua Lily 2008,DISCONTINUED,LIKELY,https://www.thebodyshop.com/sitemap.xml,2026-10-01,공식 사이트(thebodyshop.com) 사이트맵에 없음. 두 번째 근거 미확인
 3330,The Body Shop,Cassis Rose,DISCONTINUED,LIKELY,https://www.thebodyshop.com/sitemap.xml,2026-10-01,공식 사이트(thebodyshop.com) 사이트맵에 없음. 두 번째 근거 미확인
 3334,The Body Shop,Neroli Jasmin,DISCONTINUED,LIKELY,https://www.thebodyshop.com/sitemap.xml,2026-10-01,공식 사이트(thebodyshop.com) 사이트맵에 없음. 두 번째 근거 미확인
-3335,The Body Shop,Oceanus,DISCONTINUED,LIKELY,https://www.thebodyshop.com/sitemap.xml,2026-10-01,공식 사이트(thebodyshop.com) 사이트맵에 없음. 두 번째 근거 미확인
+3335,The Body Shop,Oceanus,DISCONTINUED,CONFIRMED,https://basenotes.com/fragrances/oceanus-by-body-shop.26125205,2026-10-02,향수 DB(Basenotes) 'Oceanus Eau de Toilette (1994)' 에 Discontinued 표기. 한국(thebodyshop.co.kr) · 미국(thebodyshop.com) 공식 사이트맵에 없음
 3336,The Body Shop,The Spirit of Moonflower,DISCONTINUED,LIKELY,https://www.thebodyshop.com/sitemap.xml,2026-10-01,공식 사이트(thebodyshop.com) 사이트맵에 없음. 두 번째 근거 미확인
 3617,The Body Shop,Strawberry Perfume Oil,DISCONTINUED,LIKELY,https://www.thebodyshop.com/sitemap.xml,2026-10-01,공식 사이트(thebodyshop.com) 사이트맵에 없음. 두 번째 근거 미확인
 3620,The Body Shop,Oceanus Perfume Oil,DISCONTINUED,LIKELY,https://www.thebodyshop.com/sitemap.xml,2026-10-01,공식 사이트(thebodyshop.com) 사이트맵에 없음. 두 번째 근거 미확인
-3623,The Body Shop,Ananya Perfume Oil,DISCONTINUED,LIKELY,https://www.thebodyshop.com/sitemap.xml,2026-10-01,공식 사이트(thebodyshop.com) 사이트맵에 없음. 두 번째 근거 미확인
+3623,The Body Shop,Ananya Perfume Oil,DISCONTINUED,CONFIRMED,https://basenotes.com/fragrances/ananya-by-body-shop.10210395,2026-10-02,향수 DB(Basenotes) 'Ananya (1994)' 에 Discontinued 표기(DB 이름엔 Perfume Oil 이 없음). 한국(thebodyshop.co.kr) · 미국(thebodyshop.com) 공식 사이트맵에 없음
 3627,The Body Shop,Satsuma Perfume Oil,DISCONTINUED,LIKELY,https://www.thebodyshop.com/sitemap.xml,2026-10-01,공식 사이트(thebodyshop.com) 사이트맵에 없음. 두 번째 근거 미확인
 3630,The Body Shop,Vanilla Perfume Oil,DISCONTINUED,LIKELY,https://www.thebodyshop.com/sitemap.xml,2026-10-01,공식 사이트(thebodyshop.com) 사이트맵에 없음. 두 번째 근거 미확인
 3631,The Body Shop,Woody Sandalwood Perfume Oil,DISCONTINUED,LIKELY,https://www.thebodyshop.com/sitemap.xml,2026-10-01,공식 사이트(thebodyshop.com) 사이트맵에 없음. 두 번째 근거 미확인
@@ -2060,7 +2060,7 @@ fragrantica_id,brand,name,status,confidence,source_url,checked_at,note
 67045,The Body Shop,White Musk Radical,DISCONTINUED,LIKELY,https://www.thebodyshop.com/sitemap.xml,2026-10-01,공식 사이트(thebodyshop.com) 사이트맵에 없음. 두 번째 근거 미확인
 67318,The Body Shop,Coconut & Yuzu,DISCONTINUED,LIKELY,https://www.thebodyshop.com/sitemap.xml,2026-10-01,공식 사이트(thebodyshop.com) 사이트맵에 없음. 두 번째 근거 미확인
 74742,The Body Shop,Blissful Strawberry,DISCONTINUED,LIKELY,https://www.thebodyshop.com/sitemap.xml,2026-10-01,공식 사이트(thebodyshop.com) 사이트맵에 없음. 두 번째 근거 미확인
-487,Dolce&Gabbana,D&G Feminine,DISCONTINUED,LIKELY,https://www.dolcegabbana.com/en-gb/sitemap-product_0.xml,2026-10-01,영국 · 미국 · 이탈리아 공식 사이트맵에 없음. 두 번째 근거 미확인
+487,Dolce&Gabbana,D&G Feminine,DISCONTINUED,CONFIRMED,https://basenotes.com/fragrances/d-g-feminine-by-dolce-gabbana.10211213,2026-10-02,향수 DB(Basenotes) 'D&G Feminine (1999)' 에 Discontinued 표기. 한국 · 영국 · 미국 · 이탈리아 공식 사이트맵에 없음
 488,Dolce&Gabbana,D&G Masculine,DISCONTINUED,LIKELY,https://www.dolcegabbana.com/en-gb/sitemap-product_0.xml,2026-10-01,영국 · 미국 · 이탈리아 공식 사이트맵에 없음. 두 번째 근거 미확인
 6085,Dolce&Gabbana,D&G Anthology Le Bateleur 1,DISCONTINUED,LIKELY,https://www.dolcegabbana.com/en-gb/sitemap-product_0.xml,2026-10-01,영국 · 미국 · 이탈리아 공식 사이트맵에 없음. 두 번째 근거 미확인
 6086,Dolce&Gabbana,D&G Anthology L'Imperatrice 3,DISCONTINUED,LIKELY,https://www.dolcegabbana.com/en-gb/sitemap-product_0.xml,2026-10-01,영국 · 미국 · 이탈리아 공식 사이트맵에 없음. 두 번째 근거 미확인
