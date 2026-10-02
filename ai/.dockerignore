@@ -31,9 +31,3 @@ Dockerfile
 
 # 회귀 테스트. 서버는 읽지 않습니다.
 tests/
-
-# 단종 점검. Jenkins 가 저장소에서 바로 돌리고 서버는 읽지 않습니다.
-perfume_status_check.py
-status-check.Jenkinsfile
-status_check_collect.js
-data/status_check_sources.json

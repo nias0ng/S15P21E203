@@ -123,9 +123,6 @@ server.py          HTTP 서버 (아래 참고)
 unmatched_log.py   사전이 못 받은 표현을 기록합니다 (아래 참고)
 build_data.py      원본 덤프에서 data/perfumes_nlr.csv.gz 를 다시 만듭니다
 build_similars.py  향수마다 비슷한 향수 10개를 계산해 backend/db/seed/perfume_similars.csv.gz 로 씁니다
-perfume_status_check.py   단종 점검. 후보 보고서만 쓰고 단종 목록은 고치지 않습니다 (아래)
-status-check.Jenkinsfile  단종 점검을 매달 1일 돌리는 Jenkins 작업
-status_check_collect.js   자동으로 막힌 브랜드의 공식 목록을 브라우저에서 받는 조각
 data/
   perfumes_nlr.csv.gz        5.0MB  원본 향수 129,161개 (추천 시 중복 9110 제외)
   domain_lexicon_v1_15.csv    31KB  한국어 향 표현 63행 -> accord
@@ -135,7 +132,6 @@ data/
   note_alias_blocklist.csv     1KB  별칭을 품었지만 그 노트가 아닌 낱말 (미르토 -> 미르 아님)
   similar_exclude_brands.csv   1KB  비슷한 향수 후보에서 빼는 'inspired by' 주력 브랜드
   perfume_status.csv                단종 목록. 엔진과 백엔드 적재가 같은 파일을 읽습니다 (아래)
-  status_check_sources.json         단종 점검이 보는 공식 판매 목록 · 판매처 · 쓰지 않는 출처
   stage1_prompt_v1.txt        2KB   ①단계 구조화 프롬프트 (sha256 앞자리 4f0a368d)
 docs/
   search_rules.md            검색 규칙 명세
@@ -505,73 +501,11 @@ Parfumo 는 근거로 쓰지 않습니다 — 같은 향수 페이지가 열 때
 입니다. 품절과 단종을 한데 묶은 분류, 'vaulted' 같은 꼬리표만 있는 것, 관련 상품 칸의 문장은 세지
 않습니다. 이름만 바뀌어 같은 향을 계속 파는 것(예: L'Instant pour Homme Eau Extrême → EDP)도
 단종으로 보지 않습니다. 개인 판매(eBay · Etsy · Mercari)는 근거가 아닙니다.
+판매처는 옛 상품 주소를 다른 상품에 다시 쓰기도 합니다(Fragrance Vault — `attrape-coeur` 주소에
+L'Heure de Nuit, 2026-10-01). 주소가 아니라 페이지의 상품명으로 확인하고, `note` 에 그 상품명을 함께
+적습니다.
 용량 · 포장 단위로 'discontinued' 를 붙이는 판매처도 근거로 쓰지 않습니다 — alinjazperfumes 는
 브랜드가 지금도 파는 Rose Barbare · Habit Rouge EDP · Samsara EDP 에도 그렇게 적어 둡니다.
-
-### 단종 점검 — 매달 후보를 모으고, 사람이 고릅니다
-
-`perfume_status_check.py` 가 위 판정을 사람 대신 **찾아 오기만** 합니다. 단종 목록은 고치지
-않습니다 — 이름 대조와 판매처 표기가 자주 틀려서입니다(Play 와 Play Intense, Magie 와 Magie
-Noire, 향수 Parure 와 같은 이름의 파운데이션). 틀린 확정은 아직 파는 향수를 추천에서 뺍니다.
-
-```bash
-python perfume_status_check.py                         # ai/ 에서. 막힌 곳이 많으면 10분, 다 열리면 30분 남짓
-python perfume_status_check.py --brands Guerlain Armaf # 일부 브랜드만
-```
-
-Jenkins 가 매달 1일 새벽에 돌립니다(`status-check.Jenkinsfile`, 등록 방법은 그 파일 머리말).
-보는 것은 `data/status_check_sources.json` 에 있습니다.
-
-| 점검 | 나오는 것 |
-|---|---|
-| 브랜드 공식 판매 목록에 평가자 100명 이상인 향수가 없음 | **새 추정 후보** (`new_likely.csv`) |
-| 단종 목록의 향수가 공식 목록에 이름 그대로 다시 보임 | **재출시 의심** (`reappeared.csv`) |
-| 추정 향수를 두고 단종 판매처가 그 상품 자신의 단종을 적음 | **확정 후보** (`confirm_candidates.csv`) |
-
-판매처 대조는 엄격합니다. 용량 · 연도 · 판매처 꼬리말(vintage · vaulted · sealed …)을 걷어 낸 이름이
-**정확히 같고**, 성별 표기가 같고(`Play For Her` ≠ `Play For Men`, 한쪽만 적혀도 부분 일치), 둘 다
-농도를 적었다면 같고(Midnight Poison Extrait ≠ EDP), 그 판매처 상품이 우리 향수 **하나에만** 맞을
-때만 `match=exact` 입니다. `L'Eau` 는 농도가 아니라 이름으로 읽습니다. 근거 문장도 그 상품 이야기여야 합니다 — 'It is now
-discontinued' 처럼 주어가 그 상품이거나 이름이 같은 문장만 셉니다. 용량 · 처방 · 판(version) ·
-대체품 이야기는 버립니다.
-
-공식 목록은 반대로 너그럽게 봅니다 — 헷갈리면 '있음' 으로 기웁니다. 그래서 새 추정 후보가 판매
-중인 향수를 덜 잡는 대신 진짜 단종을 일부 놓칩니다.
-
-**예의.** robots.txt 를 따르고 정직한 User-Agent 로 호스트마다 1.5초씩 쉬어 갑니다. 봇 확인 페이지를
-만나면 그 호스트는 그 회차에 더 묻지 않고 `sources.csv` 에 `blocked` 로 적습니다 — 우회하지
-않습니다. 출처가 하나라도 막히거나 비거나(`too_few`) 브랜드 대부분이 '없음' 으로 나오면 그 브랜드는
-새 추정을 내지 않습니다. 목록이 깨졌을 때 전부 단종으로 잡히지 않게 하려는 것입니다.
-
-**검토하는 방법** — 보고서 폴더(`logs/status_check/날짜/`, Jenkins 는 빌드 산출물)의 `report.md` 부터.
-
-1. 확정 후보의 근거 링크를 열어 문장을 직접 봅니다. 같은 이름의 다른 판(농도 · 연도)이 아닌지도.
-   Fragrance Vault 는 옛 상품 주소를 다른 상품에 다시 씁니다(`attrape-coeur` 주소에 L'Heure de Nuit) —
-   주소가 아니라 페이지의 상품명으로 확인하고, 제안본은 그 상품명을 근거 문구에 함께 적습니다.
-2. `perfume_status.proposed.csv` 는 지금 목록에 `exact` 확정 후보와 새 추정을 반영한 제안본입니다.
-   `ai/data/perfume_status.csv` 에 덮어쓰고 `git add -p` 로 맞는 줄만 고른 뒤 나머지는 되돌립니다.
-3. 재출시 의심은 제안본에 반영하지 않습니다. 공식 페이지를 열어 정말 같은 향수면 그 줄을 지웁니다.
-4. `backend/db/seed/load_perfume_status.sh` 로 이름 대조를 통과하는지 본 뒤 커밋합니다. 운영 반영은
-   지금처럼 AI 이미지 재배포와 적재입니다.
-
-**막히는 브랜드가 많습니다 (2026-10-01 첫 실행).** 서버에서 가는 요청을 Zara · Avon 미국 · Yves
-Rocher · Guerlain · Dior · Givenchy · YSL · Lancôme · Montale 이 403 으로 막았습니다(Akamai ·
-Cloudflare). 같은 주소가 브라우저에서는 열립니다 — User-Agent 글자가 아니라 클라이언트 자체를 보고
-막는 것이라, 브라우저인 척하지 않는 한 넘을 수 없고 넘지 않습니다. 자동으로 되는 것은 Shopify 계열
-(Armaf · Demeter · The Body Shop · Avon 영국)과 Lattafa · D&G, 그리고 단종 판매처 다섯 곳입니다.
-
-막힌 브랜드는 **사람이 브라우저로 목록을 받아** 넘깁니다. 평소처럼 그 사이트를 열고
-`status_check_collect.js` 를 개발자 도구 콘솔에 붙여 넣어 사이트맵을 파일(`<브랜드>.txt`)로 받은 뒤
-`--listings 그폴더` 로 돌립니다. 자동으로 못 읽은 출처만 이 파일로 채우고, 첫 줄 날짜가 45일보다
-오래된 파일은 쓰지 않습니다. 방법은 그 파일 머리말에 있습니다.
-
-```bash
-python perfume_status_check.py --listings ~/Downloads/listings
-```
-
-새 브랜드 · 판매처를 더할 때는 `status_check_sources.json` 에 한 줄을 더하고 `--brands` 로 그 브랜드만
-돌려 `sources.csv` 의 개수가 그럴듯한지 봅니다. 사이트 구조가 바뀌면 그 출처가 `too_few` · `error`
-로 보고서에 나옵니다.
 
 ---
 
