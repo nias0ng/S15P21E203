@@ -41,6 +41,14 @@ class FeedbackGuardTest(unittest.TestCase):
         self.assertNotIn("myrrh", {value for _, value in _notes(result)})
         self.assertNotIn("Galaor", [r["name"] for r in result["results"]])
 
+    def test_diamonds_is_not_read_as_almond(self):
+        # 다이아몬드 안의 아몬드가 almond 로 읽히던 말이다. 낱말 하나(아래)가 아니라 문장째로도 본다.
+        result = nlr_engine.recommend(self.index, "엠포리오 아르마니 다이아몬드랑 비슷한 향수")
+        self.assertNotIn("almond", {value for _, value in _notes(result)})
+        # 아몬드를 말한 문장은 그대로 almond 다
+        result = nlr_engine.recommend(self.index, "아몬드향 향수")
+        self.assertIn("almond", {value for _, value in _notes(result)})
+
     def test_blocked_words_hide_the_alias_inside(self):
         for word in ("미르토", "카스미르", "다이아몬드", "서블라임", "클라우드", "페어리",
                      "니나리치", "타임리스", "인크레더블"):
