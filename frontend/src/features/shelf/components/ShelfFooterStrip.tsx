@@ -28,8 +28,8 @@ type Props = {
  * 넓은 화면(한 장 배치)에서만 씁니다. 쌓는 배치는 페이지가 스크롤되어 컬렉션이 진열대
  * 아래에 이어 서고, 페이저만 벽 아래로 옮겨 갑니다(ShelfPager).
  *
- * 위 테두리 한 줄(border-t)로만 본문과 나눕니다. 상자를 만들면 아래쪽이 또 하나의
- * 카드처럼 보입니다.
+ * 본문과 나누는 선 · 상자를 두지 않습니다. 선을 그으면 벽 앞에 가로줄이 하나 더 지나가고,
+ * 상자를 만들면 아래쪽이 또 하나의 카드처럼 보입니다.
  *
  * `<footer>` 대신 `<div>` 를 쓰는 이유: `<footer>` 는 body 직속일 때
  * contentinfo 랜드마크가 되는데, 이건 페이지 전체의 푸터가 아니라 화면 한 구역의
@@ -48,7 +48,7 @@ export function ShelfFooterStrip({
   const onShelf = view === 'shelf'
 
   return (
-    <div className="grid h-17.5 grid-cols-[1fr_auto_1fr] items-center gap-7.5 border-t border-[var(--hairline)]">
+    <div className="grid h-17.5 grid-cols-[1fr_auto_1fr] items-center gap-7.5">
       <span aria-hidden />
 
       {/*
