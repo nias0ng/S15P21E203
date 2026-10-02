@@ -16,7 +16,6 @@ const perfume = (overrides: Partial<MapPerfume>): MapPerfume => ({
   nameEn: '',
   brandEn: '',
   family: null,
-  rank: 1,
   mx: 0,
   my: 0,
   ...overrides,

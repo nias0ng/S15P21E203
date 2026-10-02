@@ -9,9 +9,8 @@ export const tour = {
   },
   welcome:
     'This sea lays out perfumes by scent family. Describe a feeling, or pick a floating buoy.',
-  // NOTE: the mode names must match search.mode in the map bundle
-  search:
-    "'Describe' finds perfumes from a sentence; 'Name' finds one you already know.",
+  // NOTE: the quoted name must match search.tag in the map bundle (the label left of the search box)
+  search: "In 'Mood · Moment', write the mood or moment you have in mind.",
   results: 'Select a card to see why it was picked.',
   buoy: 'Each glowing buoy is a perfume. Pick one.',
   buoyMove: 'Select the sea to sail there.',

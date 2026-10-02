@@ -9,7 +9,7 @@ import { type ScentFamilyKey } from '@/shared/config/scentFamilies'
  *
  * **엔진이 지금 화면에 띄우고 있는 목록** 그대로입니다
  * (`landing/src/perfumes-data.js` · `data/perfume_map_points.csv` 생성물).
- * 메인의 일반 검색이 찾는 대상이라 엔진과 같은 목록이어야 합니다.
+ * 향해 일지의 이름을 3D 카드 · 부표와 같은 표기로 채우는 재료라 엔진과 같은 목록이어야 합니다.
  *
  * ⚠️ `fragranticaId` 는 **DB 향수 번호가 아닙니다.** 향수 상세(A10)로 보내려면
  * DB 번호가 필요한데 이 데이터에는 없어서, 지금은 이름으로 향수 검색(A09)에
@@ -27,8 +27,6 @@ export interface MapPerfume {
   nameEn: string
   brandEn: string
   family: ScentFamilyKey | null
-  /** 화해 지도 기준 순위 1~200. 검색 결과를 이 순서로 냅니다 */
-  rank: number
   /** 지도 좌표 (정규화 0~1). DB 향수 번호를 찾는 다리입니다 (`lib/perfumeIdAt`) */
   mx: number
   my: number

@@ -28,8 +28,6 @@ declare module '@landing/perfumes-data' {
     /** 정규화 좌표 0~1 (엔진 `scentmap.js` 가 월드로 옮깁니다) */
     mx: number
     my: number
-    /** 화해 지도 기준 순위 1~200 */
-    rank: number
   }
 
   export const PERFUMES: EnginePerfume[]

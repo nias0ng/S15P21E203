@@ -210,7 +210,7 @@ describe('RecommendModal', () => {
       expect(onRequery).toHaveBeenCalledWith('풀향')
     })
 
-    // '자연어' 를 몰라 향수 이름을 넣은 사람에게 다음 할 일을 줍니다 (지인 피드백 F1 · F2)
+    // 메인 검색에 향수 이름을 넣은 사람에게 다음 할 일을 줍니다 (지인 피드백 F1 · F2)
     it('향수 이름이었다면 찾는 말투를 뺀 낱말로 전체 향수에서 찾게 한다', async () => {
       api.getRecommendation.mockResolvedValue(noCondition())
       const onSearchByName = vi.fn()
