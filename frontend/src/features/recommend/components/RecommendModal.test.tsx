@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useLocaleStore } from '@/shared/store/localeStore'
+import { useTourStore } from '@/shared/store/tourStore'
 
 import { readOpenRecommendation } from '../openRecommendation'
 import type { RecommendResult } from '../types'
@@ -62,7 +63,10 @@ const renderModal = (onClose = vi.fn()) => {
   return onClose
 }
 
-beforeEach(() => api.getRecommendation.mockReset())
+beforeEach(() => {
+  api.getRecommendation.mockReset()
+  useTourStore.setState({ done: [], off: false, wanted: [], active: null })
+})
 
 describe('RecommendModal', () => {
   it('향이 아닌 근거를 목록 위에 그린다', async () => {
@@ -167,6 +171,17 @@ describe('RecommendModal', () => {
       .closest('dialog')!
     fireEvent(dialog, new Event('cancel', { cancelable: true }))
     expect(onClose).toHaveBeenCalledTimes(2)
+  })
+
+  // 결과 안내는 결과가 선 뒤에 닫았을 때만 본 것으로 칩니다 — 기다리다 닫았으면 다음 결과에서 다시 섭니다
+  it('결과 안내가 선 채로 닫으면 다음 결과에서 다시 서지 않는다', async () => {
+    api.getRecommendation.mockResolvedValue(result())
+
+    renderModal()
+    await screen.findByText('카드를 누르면 왜 골랐는지 아래에 펼쳐져요.')
+    await userEvent.click(screen.getByRole('button', { name: '닫기' }))
+
+    expect(useTourStore.getState().done).toContain('results')
   })
 
   it('영어 화면은 영어로 쓰고, 한국어로 적으면 잘 알아듣는다고 알린다', async () => {
