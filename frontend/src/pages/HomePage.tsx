@@ -513,8 +513,17 @@ export default function HomePage() {
         /*
           첫 화면 안내는 화면이 비어 있을 때만 섭니다 — 커튼 밑 · 결과창 뒤 · 해도 · 잠수 중에는
           아무도 못 봅니다 (`SceneSearchBar` 의 introduce 머리말). 가려지면 접혔다가 비면 다시 섭니다.
+          누른 카드 · 떠오른 12개가 있는 동안도 기다립니다 — 부표를 누른 순간 이 안내가 먼저 서면 닮은 향수 ·
+          카드 안내가 그 자리를 못 받습니다. 둘이 접히면 섭니다.
         */
-        introduce={boot.done && !diving && !chartOpen && nlQuery === null}
+        introduce={
+          boot.done &&
+          !diving &&
+          !chartOpen &&
+          nlQuery === null &&
+          !cardPinned &&
+          !similarUp
+        }
         // 헤더의 PERFUME 과 같은 잠수로 떠납니다 (`header/useDiveOut`)
         onBrowsePopular={() =>
           startDive(ROUTES.PERFUMES, 'dive', diveDepthOf(ROUTES.PERFUMES) ?? 0)

@@ -174,6 +174,25 @@ describe('앞 단계', () => {
     expect(state().active).toBe('log')
   })
 
+  it('부표를 눌러 카드가 먼저 떠도 닮은 향수 안내가 먼저 서고, 끝나면 카드 안내가 선다', () => {
+    for (const step of SAILED) state().finish(step)
+    state().want('card', true)
+    expect(state().active).toBeNull()
+
+    state().want('similar', true)
+    expect(state().active).toBe('similar')
+
+    state().finish('similar')
+    expect(state().active).toBe('card')
+  })
+
+  it('해역 연출 중에 누른 카드는 해역 안내를 본 뒤에 선다', () => {
+    const base = { active: null, off: false, wanted: ['card' as const] }
+
+    expect(pickActiveStep({ ...base, done: [] })).toBeNull()
+    expect(pickActiveStep({ ...base, done: ['zone'] })).toBe('card')
+  })
+
   it('미니맵은 카드 · 해역 가운데 하나만 끝나도 선다', () => {
     const base = { active: null, off: false, wanted: ['minimap' as const] }
 
@@ -225,6 +244,7 @@ describe('눌러 넘기기', () => {
     expect(state().active).toBe('minimap')
 
     state().finish('minimap')
+    state().finish('similar')
     state().want('card', true)
     expect(state().active).toBe('card')
   })

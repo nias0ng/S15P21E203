@@ -88,6 +88,9 @@ describe('SceneTourTip', () => {
     안내가 뜨자마자 끝났습니다 (2026-10-02 실측).
   */
   describe('닫히는 것이 곧 할 일인 단계 (카드 · 해역)', () => {
+    // 카드는 닮은 향수 안내 뒤에 섭니다
+    beforeEach(() => useTourStore.setState({ done: ['similar'] }))
+
     function Card({ open }: { open: boolean }) {
       return (
         <SceneTourTip

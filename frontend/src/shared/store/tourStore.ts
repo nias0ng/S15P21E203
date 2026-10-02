@@ -51,6 +51,9 @@ const AFTER: Partial<Record<TourStep, { all?: TourStep[]; any?: TourStep[] }>> =
     buoy: { all: ['sea', 'keys'] },
     similar: { all: ['sea', 'keys', 'buoy'] },
     search: { all: ['sea', 'keys', 'buoy'] },
+    // 부표를 누르면 카드가 먼저 서고 12개는 조금 늦게 떠올라, 차례만으로는 카드 안내가 닮은 향수 안내의 자리를 차지합니다.
+    //   그래서 카드는 닮은 향수를 본 뒤에 섭니다. 해역 연출 중에 누른 카드는 12개가 안 떠서 해역 안내를 본 것으로 대신합니다
+    card: { any: ['similar', 'zone'] },
     // 엔진은 배가 처음 든 해역도 알려 와(첫 기록) 들어오자마자 조건이 맞습니다 — 표의 차례(미니맵 → 일지 → 배)대로
     //   부표를 알고 카드나 해역을 한 번 본 뒤에 섭니다
     log: { all: ['buoy'], any: ['card', 'zone'] },
