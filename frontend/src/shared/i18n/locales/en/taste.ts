@@ -26,16 +26,18 @@ export const taste = {
     picked: 'Scents picked ',
     submit: 'Find my start',
     saveFailed: 'Couldn’t save your result. Please try again.',
+    noStart:
+      'We couldn’t find a starting point in the area of your #1 pick. Please try again in a moment.',
   },
   result: {
     headline: {
       rare: 'That’s a rare combination',
-      noOverlap: 'We set your start by your #1 pick',
+      primaryOnly: 'We set your start by your #1 pick',
       normal: 'We found your starting point',
     },
     lead: {
       rare: 'Only one perfume on the Scent Map has both scents. That bottle stands for your taste right now.',
-      noOverlap:
+      primaryOnly:
         'We set your starting point by your #1 pick, the {{first}} scent. Your #2 pick, the {{second}} scent, isn’t reflected this time.',
       two: 'We found a perfume where your #1 pick, the {{first}} scent, comes through stronger.',
       one: 'We found a perfume where the {{first}} scent you picked comes through strongest.',
