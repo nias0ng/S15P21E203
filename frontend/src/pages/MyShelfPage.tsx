@@ -387,6 +387,7 @@ export default function MyShelfPage() {
     className: string,
     aside?: ReactNode,
     menuHeader?: ReactNode,
+    anchorsWainscot?: boolean,
   ) => (
     <ShelfWall
       ref={wall}
@@ -429,6 +430,7 @@ export default function MyShelfPage() {
       className={className}
       aside={aside}
       menuHeader={menuHeader}
+      anchorsWainscot={anchorsWainscot}
     />
   )
 
@@ -613,7 +615,7 @@ export default function MyShelfPage() {
     </>
   )
 
-  // 시안의 종이 바탕과 질감 — 뷰포트를 통째로 덮습니다(ShelfPaper). 컬렉션 상세도 같은 종이를 깝니다
+  // 선실 벽(회벽과 판벽) — 뷰포트를 통째로 덮습니다(ShelfPaper). 컬렉션 상세도 같은 벽을 깝니다
   const paper = <ShelfPaper />
 
   /*
@@ -776,6 +778,8 @@ export default function MyShelfPage() {
               </>,
               // 좁은 기둥 안이라 검색창과 단추를 세로로 세웁니다
               toolbar(true),
+              // 벽 아래 판벽의 띠를 궤짝 아래끝에 맞춥니다 — 쌓는 배치는 판벽 없이 회벽만 섭니다
+              true,
             )}
           </div>,
 

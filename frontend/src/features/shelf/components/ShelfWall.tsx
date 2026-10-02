@@ -20,6 +20,7 @@ import { prefersReducedMotion } from '@/shared/lib/prefersReducedMotion'
 import { useBottlePreload } from '../hooks/useBottlePreload'
 import { useShelfFlow } from '../hooks/useShelfFlow'
 import { useTagSwing } from '../hooks/useTagSwing'
+import { useWainscotAnchor } from '../hooks/useWainscotAnchor'
 import {
   doorMetrics,
   layoutWall,
@@ -108,6 +109,11 @@ type Props = {
   aside?: ReactNode
   /** 분류 메뉴 위에 놓는 줄(검색창 · 등록 단추). 메뉴 기둥 폭 안에 세로로 섭니다 */
   menuHeader?: ReactNode
+  /**
+   * 벽 아래 판벽의 띠를 이 궤짝 아래끝에 맞출지(useWainscotAnchor). 한 장 배치만 켭니다 — 쌓는 배치는
+   * 페이지가 길게 스크롤되어, 화면에 고정된 판벽이 궤짝과 함께 머물 자리가 없습니다.
+   */
+  anchorsWainscot?: boolean
   className?: string
 }
 
@@ -232,6 +238,7 @@ export function ShelfWall({
   empty,
   aside,
   menuHeader,
+  anchorsWainscot = false,
   className,
 }: Props) {
   const { t } = useTranslation('shelf')
@@ -239,6 +246,7 @@ export function ShelfWall({
   const viewportRef = useRef<HTMLElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const nicheRef = useWainscotAnchor(anchorsWainscot)
   const idPrefix = useId()
   const plaqueHintId = `${idPrefix}-plaque-hint`
 
@@ -787,6 +795,7 @@ export function ShelfWall({
                 자리는 창의 안쪽 상자(페이드 여백을 뺀 자리)에 맞춥니다.
               */}
               <div
+                ref={nicheRef}
                 aria-hidden
                 className="shelf-niche absolute top-[var(--fade)] right-[var(--fade-end)] left-[var(--fade-start)] h-[var(--case-h)]"
               >
@@ -951,11 +960,14 @@ export function ShelfWall({
  *
  * 벽감과 같은 상자에 서고(창 안), 떠오르는 것은 한 번뿐입니다(분류가 바뀔 때마다 key 로 새로 섭니다).
  * 글은 상세 패널처럼 1920 크기로 짜고 --panel-scale 로 통째로 줄입니다 — 벽감이 낮아져도 넘치지 않습니다.
+ *
+ * 글은 상세 패널과 같은 크림 종이(.shelf-panel) 위에 섭니다. 벽감이 짙은 나무 궤짝이라 먹색 글자와
+ * 테두리만 있는 단추(Button outline — 바탕이 투명합니다)를 나무에 바로 얹으면 읽히지 않습니다.
  */
 function ShelfWallEmptyNotice({ title, description, action }: ShelfWallEmpty) {
   return (
     <div className="shelf-empty absolute top-[var(--fade)] right-[var(--fade-end)] left-[var(--fade-start)] flex h-[var(--case-h)] items-center justify-center px-15 pt-[calc(var(--bevel)+var(--ceil))] pb-[calc(var(--bevel)+var(--floor))]">
-      <div className="flex max-w-150 [zoom:var(--panel-scale,1)] flex-col items-center text-center">
+      <div className="shelf-panel rounded-card flex max-w-150 [zoom:var(--panel-scale,1)] flex-col items-center px-12.5 py-10 text-center">
         <p className="font-serif text-[32px] leading-[1.3] font-semibold text-balance break-keep">
           {title}
         </p>
