@@ -55,6 +55,7 @@ import {
 import { useLocale } from '@/shared/store/localeStore'
 import { useSceneCardStore } from '@/shared/store/sceneCardStore'
 import { useSceneSkyStore } from '@/shared/store/sceneSkyStore'
+import { useTourStore } from '@/shared/store/tourStore'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { Toast } from '@/shared/ui/Toast'
 
@@ -122,6 +123,11 @@ export default function HomePage() {
     setSceneCard(cardOpen)
   }, [cardOpen, setSceneCard])
   useEffect(() => () => setSceneCard(false), [setSceneCard])
+  // 부표를 눌러 카드를 연 사람에게는 첫 화면 안내('부표를 눌러 보세요')가 할 일을 다 했습니다 (`tourStore`)
+  const finishTour = useTourStore((state) => state.finish)
+  useEffect(() => {
+    if (cardOpen) finishTour('welcome')
+  }, [cardOpen, finishTour])
   /*
    * 진열대에서 **떠올라** 들어오는 중인가. 그동안 화면은 잠수 커튼(물)이 덮고 있으므로
    * 이 화면의 아이보리 로딩 커튼은 비킵니다 — 물 밑에서 구름이 갈라지면 걷히는 겹이 둘이 됩니다.
@@ -489,8 +495,8 @@ export default function HomePage() {
           else setMapKeyword(keyword)
         }}
         /*
-          첫 소개는 화면이 비어 있을 때만 합니다 — 커튼 밑 · 결과창 뒤 · 해도 · 잠수 중에 펴면
-          몇 초 만에 접혀 아무도 못 봅니다 (`SceneSearchBar` 의 introduce 머리말).
+          첫 화면 안내는 화면이 비어 있을 때만 섭니다 — 커튼 밑 · 결과창 뒤 · 해도 · 잠수 중에는
+          아무도 못 봅니다 (`SceneSearchBar` 의 introduce 머리말). 가려지면 접혔다가 비면 다시 섭니다.
         */
         introduce={
           boot.done &&

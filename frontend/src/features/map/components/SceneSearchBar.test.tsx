@@ -1,7 +1,9 @@
-import { act, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { useTourStore } from '@/shared/store/tourStore'
 
 import { SceneSearchBar, type SceneSearchMode } from './SceneSearchBar'
 
@@ -30,11 +32,14 @@ function Bar({
   )
 }
 
-/** 설명줄을 밀어 올리고 내리는 겹 — `translate-y-0` 이 붙으면 나와 있는 것입니다 */
-const hintLayer = () => screen.getByText(HINT).parentElement!
+const WELCOME =
+  '향수를 향 계열별로 펼친 바다예요. 원하는 느낌을 적거나, 떠 있는 부표를 눌러 보세요.'
+const SEARCH_TIP = "'자연어'는 느낌을 문장으로, '이름'은 아는 향수를 찾아요."
 
-beforeEach(() => localStorage.clear())
-afterEach(() => vi.useRealTimers())
+beforeEach(() => {
+  localStorage.clear()
+  useTourStore.setState({ done: [], off: false, wanted: [], active: null })
+})
 
 /*
   처음 온 사람은 무엇을 적어야 할지 몰랐고, 실패 화면의 예시는 눌러지지도 않았습니다
@@ -94,27 +99,66 @@ describe('시작 문장', () => {
 })
 
 /*
-  설명줄은 평소 숨어 있다가 마우스를 올릴 때 나옵니다(2026-09-20). 처음 온 사람은 손을 올릴 까닭이
-  없어 이 사이트가 무엇을 해 주는지 못 봤습니다 — 이 브라우저에서 처음 한 번만 몇 초 펴 보입니다.
+  첫 방문 안내 두 단계가 설명줄 자리에 섭니다. 처음 온 사람은 설명줄을 볼 까닭이 없어 이 사이트가
+  무엇을 해 주는지 못 봤고, 왼쪽 칸이 검색 방식을 바꾸는 단추인 줄도 몰랐습니다 (메인 사용성 테스트).
 */
-describe('첫 소개', () => {
-  it('처음 한 번만 몇 초 펴 두었다가 접는다', () => {
-    vi.useFakeTimers()
-    const first = render(<Bar introduce />)
-
-    expect(hintLayer()).toHaveClass('translate-y-0')
-    act(() => vi.advanceTimersByTime(5000))
-    expect(hintLayer()).not.toHaveClass('translate-y-0')
-
-    first.unmount()
+describe('첫 방문 안내', () => {
+  it('화면이 비면 검색창 아래에 첫 화면 안내가 선다', () => {
     render(<Bar introduce />)
-    expect(hintLayer()).not.toHaveClass('translate-y-0')
+
+    expect(screen.getByRole('status')).toHaveTextContent(WELCOME)
+    // 설명줄은 화면에서만 걷습니다 — 입력칸의 설명으로는 그대로 읽힙니다
+    expect(screen.getByRole('searchbox')).toHaveAccessibleDescription(HINT)
   })
 
-  it('화면이 아직 소개할 때가 아니면 기다린다', () => {
+  it('화면이 아직 비지 않았으면 기다린다', () => {
     render(<Bar introduce={false} />)
 
-    expect(hintLayer()).not.toHaveClass('translate-y-0')
-    expect(localStorage.getItem('hyanghae-search-intro')).toBeNull()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('검색창을 누르면 첫 화면 안내가 끝나고 검색 방식 안내로 바뀐다', async () => {
+    const user = userEvent.setup()
+    render(<Bar introduce />)
+
+    await user.click(screen.getByRole('searchbox'))
+
+    expect(screen.getByRole('status')).toHaveTextContent(SEARCH_TIP)
+    expect(useTourStore.getState().done).toContain('welcome')
+  })
+
+  it('첫 검색으로 검색 방식 안내가 끝난다', async () => {
+    const user = userEvent.setup()
+    render(<Bar />)
+
+    await user.click(screen.getByRole('searchbox'))
+    await user.keyboard('비 오는 날{Enter}')
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(useTourStore.getState().done).toContain('search')
+  })
+
+  it('[×] 를 눌러도 입력칸 초점과 시작 문장은 그대로다', async () => {
+    const user = userEvent.setup()
+    render(<Bar />)
+
+    await user.click(screen.getByRole('searchbox'))
+    await user.click(screen.getByRole('button', { name: '안내 닫기' }))
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.getByRole('searchbox')).toHaveFocus()
+    expect(
+      screen.getByRole('group', { name: '이렇게 찾아 보세요' }),
+    ).toBeInTheDocument()
+  })
+
+  it('끝낸 안내는 다음 방문에 다시 서지 않는다', async () => {
+    const user = userEvent.setup()
+    const first = render(<Bar introduce />)
+    await user.click(screen.getByRole('button', { name: '안내 닫기' }))
+    first.unmount()
+
+    render(<Bar introduce />)
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })
