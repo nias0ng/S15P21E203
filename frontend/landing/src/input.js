@@ -122,8 +122,13 @@ export function createInput(el, { onManual, onPick } = {}) {
 
   const wh = e => { if (!steer || held) return; e.preventDefault(); if (e.deltaY < 0) state.wheel = Math.min(1, state.wheel + 0.22); };
 
+  // ⭐ 창이 초점을 잃으면 누르고 있던 방향키 · Shift · 휠을 놓는다 (2026-10-02, v0.91.0). 그동안 뗀 키는 keyup 이 이 창에 안 온다 —
+  //   ⚠ 앱의 첫 방문 안내가 막을 씌우며 초점을 안내 단추로 옮기면(TourSpotlight) ↑ 를 누른 채였던 배가 혼자 계속 간다 · ← → 면 제자리에서 돈다
+  const blur = () => { state.left = state.right = state.fwd = state.back = state.boost = false; state.wheel = 0; };
+
   window.addEventListener('keydown', dn);
   window.addEventListener('keyup', up);
+  window.addEventListener('blur', blur);
   el.addEventListener('pointerdown', pd);
   window.addEventListener('pointermove', pm);
   window.addEventListener('pointerup', pu);
@@ -141,6 +146,7 @@ export function createInput(el, { onManual, onPick } = {}) {
     dispose() {
       window.removeEventListener('keydown', dn);
       window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', blur);
       el.removeEventListener('pointerdown', pd);
       window.removeEventListener('pointermove', pm);
       window.removeEventListener('pointerup', pu);

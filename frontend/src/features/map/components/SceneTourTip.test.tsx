@@ -17,7 +17,8 @@ beforeEach(() => {
   watch.mockReset()
   setTourAnchorSource({
     watch,
-    read: () => ({ x: 900, y: 500, w: 80, h: 20, side: 1 }),
+    read: () => ({ x: 900, y: 500, w: 80, h: 20, side: 1, hole: null }),
+    freeze: () => {},
   })
 })
 afterEach(() => {

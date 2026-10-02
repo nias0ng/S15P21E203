@@ -164,6 +164,11 @@ interface EngineHandle {
    */
   tour?: {
     watch: (step: TourAnchorStep | null) => void
+    /**
+     * 3D 를 멈춥니다 · 되살립니다 (첫 방문 안내의 스포트라이트). 멈춘 동안에도 `anchor` 는 채웁니다.
+     * NOTE: 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다. 그때는 막만 씌우고 3D 는 그대로 돕니다.
+     */
+    freeze?: (on: boolean) => void
     anchor: {
       on: boolean
       x: number
@@ -171,6 +176,11 @@ interface EngineHandle {
       w: number
       h: number
       side: number
+      /** 스포트라이트가 밝힐 상자 (iframe 기준 CSS px) — `hw` 가 0 이면 위 상자를 밝힙니다 */
+      hx?: number
+      hy?: number
+      hw?: number
+      hh?: number
     }
   }
 }
@@ -584,8 +594,17 @@ export function ScentScene({
             w: anchor.w,
             h: anchor.h,
             side: anchor.side,
+            hole: anchor.hw
+              ? {
+                  x: box.left + (anchor.hx ?? 0),
+                  y: box.top + (anchor.hy ?? 0),
+                  w: anchor.hw,
+                  h: anchor.hh ?? 0,
+                }
+              : null,
           }
         },
+        freeze: (on) => engine.tour?.freeze?.(on),
       })
       /*
         엔진이 iframe 문서의 <html> 속성으로 알리는 것들을 지켜봅니다.

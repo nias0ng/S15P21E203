@@ -19,12 +19,19 @@ export interface TourAnchor {
   h: number
   /** 배만 씁니다 — 1 배의 오른쪽에 · −1 왼쪽에 섭니다 (배가 화면 오른끝에 붙으면 엔진이 뒤집습니다) */
   side: number
+  /**
+   * 스포트라이트(`TourSpotlight`)가 밝힐 상자 — 뷰포트 CSS px. 안내가 붙는 상자와 밝힐 것이 다른 단계만 줍니다
+   * (배는 옆구리 선이 아니라 배 둘레 · 부표는 이름표와 그 밑의 부표까지). 없거나 null 이면 위 상자를 밝힙니다
+   */
+  hole?: { x: number; y: number; w: number; h: number } | null
 }
 
 interface TourAnchorSource {
   /** 엔진에 무엇을 잴지 알립니다. null 이면 재지 않습니다 */
   watch: (step: TourAnchorStep | null) => void
   read: () => TourAnchor | null
+  /** 3D 를 멈춥니다(그리기를 쉽니다) · 되살립니다 — 설명하는 안내가 막을 씌운 동안 */
+  freeze: (on: boolean) => void
 }
 
 let source: TourAnchorSource | null = null
@@ -42,4 +49,12 @@ export function watchTourAnchor(step: TourAnchorStep | null) {
 /** 지금 그 자리. 엔진이 없거나 아직 못 쟀으면(부표가 안 보인다 · 카드가 닫혔다) null 입니다 */
 export function tourAnchor(): TourAnchor | null {
   return source?.read() ?? null
+}
+
+/**
+ * 3D 를 멈춥니다 · 되살립니다 (엔진 `PB.tour.freeze`). 설명하는 안내가 막을 씌운 동안만 겁니다 — 멈춘 동안에도
+ * 엔진은 안내의 자리를 계속 잽니다. 엔진이 없으면 아무 일도 안 합니다
+ */
+export function freezeTourScene(on: boolean) {
+  source?.freeze(on)
 }
