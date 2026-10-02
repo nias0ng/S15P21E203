@@ -1,13 +1,12 @@
 /*
  * 컬렉션 — 진열함 (S15P21E203-431)
  *
- * 컬렉션 하나가 벽에 판 작은 벽감(진열함) 하나입니다. 내 컬렉션 무대(CollectionStrip) · 컬렉션 상세의
- * 향수 칸(CollectionPerfumeGrid) · 향수를 고르는 모달(ShelfItemPickList)이 같은 진열함(CaseNiche)과
- * 명판을 씁니다. 진열대 무대의 큰 벽감과 같은 재료로 읽혀야 해서 **색은 진열대 팔레트를 그대로
- * 빌립니다** — `features/shelf/shelf-display.css` 의 `.shelf-scope` 가 내주는 변수(--niche-* ·
- * --bevel-* · --contact · --cast · --tag-* · --plaque-* · --grain-* …)입니다. 그래서 진열함은 진열대
- * 종이(.shelf-scope) 안에서만 섭니다 — 컬렉션 상세도 그 종이를 깝니다. 진열대 색을 다시 잡으면
- * 진열함도 따라가서 여기는 고칠 것이 없습니다.
+ * 컬렉션 하나가 벽에 건 작은 나무 상자(진열함) 하나입니다. 내 컬렉션 무대(CollectionStrip) · 컬렉션
+ * 상세의 향수 칸(CollectionPerfumeGrid) · 향수를 고르는 모달(ShelfItemPickList)이 같은 진열함(CaseNiche)과
+ * 명판을 씁니다. 그림자 · 명판 · 결은 진열대 팔레트를 그대로 빌립니다 — `features/shelf/shelf-display.css`
+ * 의 `.shelf-scope` 가 내주는 변수(--contact · --cast · --tag-* · --plaque-* · --grain-* …)입니다. 그래서
+ * 진열함은 진열대 벽(.shelf-scope) 안에서만 섭니다 — 컬렉션 상세도 그 벽을 깝니다.
+ * 상자의 나무 색(--niche-* · --bevel-*)만 아래 "회갈색 오크 상자"에서 같은 이름으로 다시 적습니다.
  *
  * 왜 CSS 파일인가 · 왜 @layer components 인가는 진열대 스타일시트 머리말과 같습니다 — 면마다의
  * clip-path 와 겹친 그늘은 유틸리티로 옮기면 읽을 수 없습니다. 모양만 여기 두고 배치 · 활자는
@@ -52,6 +51,51 @@
     isolation: isolate;
   }
 
+  /*
+   * ───────── 회갈색 오크 상자 ─────────
+   *
+   * 벽을 판 벽감이 아니라 **벽에 건 회갈색 오크 상자**입니다. 진열대의 짙은 궤짝과 같은 나무 집안이고
+   * 한 단 밝습니다 — 큰 궤짝(짙음) > 작은 상자(밝음). 노란 원목으로 두면 회벽 위에서 따로 놀아
+   * 채도를 낮췄습니다(2026-10-02).
+   *
+   * 벽감과 상자를 가르는 것은 셋입니다.
+   *   ① 테두리가 판자 두께로 두껍고 벽보다 따뜻합니다(회벽 C 0.015 · 상자 C 0.025)
+   *   ② 상자가 벽에서 나와 있어 **바깥으로** 그림자가 집니다 — 벽감은 안쪽에만 그늘이 고입니다
+   *   ③ 나뭇결
+   *
+   * 색 이름은 진열대 팔레트와 같습니다(--niche-* · --bevel-*). 면 · 접힘선 규칙은 손대지 않고 색만 바꿉니다.
+   */
+  .collection-niche {
+    --cab-bevel: calc(var(--spacing) * 2);
+
+    --niche-back-top: oklch(0.66 0.025 65);
+    --niche-back: oklch(0.72 0.025 67);
+    --niche-back-low: oklch(0.74 0.024 69);
+    --niche-ceiling: oklch(0.63 0.024 65);
+    --niche-ceiling-deep: oklch(0.68 0.025 66);
+    --niche-wall: oklch(0.78 0.025 70);
+    --niche-wall-deep: oklch(0.69 0.025 66);
+    --niche-floor: oklch(0.69 0.025 66);
+    --niche-floor-front: oklch(0.8 0.024 71);
+    --niche-seam: oklch(0.42 0.022 58);
+    --niche-ao: oklch(0.32 0.035 58 / 0.4);
+    --niche-ao-soft: oklch(0.32 0.035 58 / 0.22);
+    --niche-glow: oklch(0.97 0.014 76 / 0.35);
+    /* 판자 단면 — 앞을 보고 있어 네 변이 비슷하고, 빛이 위에서 와 윗변이 조금 밝습니다 */
+    --bevel-top: oklch(0.83 0.023 74);
+    --bevel-side: oklch(0.81 0.023 72);
+    --bevel-bottom: oklch(0.79 0.024 70);
+    --bevel-rim: oklch(0.93 0.007 76 / 0.6);
+    --box-grain-v: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='720'%3E%3Cfilter id='a' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.06 .004' numOctaves='3' seed='5' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .33 0 0 0 0 .26 1.7 0 0 0 -.76'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23a)'/%3E%3C/svg%3E");
+    --box-grain-h: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='720' height='240'%3E%3Cfilter id='a' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.004 .06' numOctaves='3' seed='5' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .33 0 0 0 0 .26 1.7 0 0 0 -.76'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23a)'/%3E%3C/svg%3E");
+
+    /* 벽에서 나온 상자 — 가는 윤곽 · 붙은 그림자 · 아래로 떨어지는 그림자 */
+    box-shadow:
+      0 0 0 1px oklch(0.47 0.03 62 / 0.45),
+      0 2px 3px oklch(0.3 0.03 60 / 0.18),
+      0 16px 24px -12px oklch(0.3 0.03 60 / 0.42);
+  }
+
   /* 한 병이 서는 칸(컬렉션 상세)과 고르는 칸(모달) — 병 하나라 세로가 깁니다 */
   .collection-niche[data-shape='tall'] {
     aspect-ratio: 3 / 4;
@@ -77,12 +121,14 @@
   /* 뒷벽 — 위가 조금 어둡고 가운데~아래가 밝습니다. 접힘선 그늘은 천장 밑이 가장 깊습니다 */
   .collection-niche > .collection-niche-back {
     inset: var(--cab-back);
-    background: linear-gradient(
-      to bottom,
-      var(--niche-back-top),
-      var(--niche-back) 45%,
-      var(--niche-back-low)
-    );
+    background:
+      var(--box-grain-v) 0 0 / 240px 720px,
+      linear-gradient(
+        to bottom,
+        var(--niche-back-top),
+        var(--niche-back) 45%,
+        var(--niche-back-low)
+      );
     box-shadow:
       inset 0 12px 16px -10px var(--niche-ao),
       inset 12px 0 14px -12px var(--niche-ao-soft),
@@ -109,11 +155,13 @@
       calc(100% - var(--cab-wall)) var(--cab-ceil),
       var(--cab-wall) var(--cab-ceil)
     );
-    background: linear-gradient(
-      to bottom,
-      var(--niche-ceiling),
-      var(--niche-ceiling-deep) var(--cab-ceil)
-    );
+    background:
+      var(--box-grain-h) 0 0 / 720px 240px,
+      linear-gradient(
+        to bottom,
+        var(--niche-ceiling),
+        var(--niche-ceiling-deep) var(--cab-ceil)
+      );
   }
 
   .collection-niche > .collection-niche-wall-left {
@@ -125,6 +173,7 @@
     );
     background:
       linear-gradient(to bottom, var(--niche-ao-soft), transparent 45%),
+      var(--box-grain-v) 0 0 / 240px 720px,
       linear-gradient(
         to right,
         var(--niche-wall),
@@ -140,6 +189,7 @@
     );
     background:
       linear-gradient(to bottom, var(--niche-ao-soft), transparent 45%),
+      var(--box-grain-v) 60px 0 / 240px 720px,
       linear-gradient(
         to left,
         var(--niche-wall),
@@ -161,6 +211,7 @@
         var(--niche-ao) calc(100% - var(--cab-floor)),
         transparent calc(100% - var(--cab-floor) + 8px)
       ),
+      var(--box-grain-h) 0 0 / 720px 240px,
       linear-gradient(
         to bottom,
         var(--niche-floor) calc(100% - var(--cab-floor)),
