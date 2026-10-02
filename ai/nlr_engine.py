@@ -789,7 +789,44 @@ def understand(index, text, structured=None):
     # **`avoid` 는 그대로 둔다.** 그 값만 `search()` 의 하드 제외로 나간다.
     # `blocked` 는 조건에서 빼기만 하고 후보를 지우지 않는다 — 브리지가 한 방향으로만
     # 맞아서 하드 제외로 넘기면 `rose` 하나에 `floral` 전체가 지워진다 [측정 기록 40번].
-    blocked = avoid | avoid_accords
+    #
+    # **회피가 직접 가리킨 accord 이름만 그대로 막고, 나머지는 사용자가 직접 원한 것을 못
+    # 지운다** [nlr50 2a-2 · 2a-3].
+    #
+    #     "바닐라 좋은데 통카빈은 빼줘"     전: tonka 의 브리지(sweet·vanilla·amber)가 원한
+    #                                  vanilla 까지 지워 core 가 비고 인기순으로 갔다
+    #     "머스크는 절대 싫어요, 깨끗한 비누 향"  전: 사전 `kr.drift.musk` 가 머스크를
+    #                                  musky + soapy 로 묶어, `비누` 로 원한 soapy 까지 막았다
+    #     "머스크는 싫어 …"  avoid=['musk']  전: 원문의 `머스크` 가 soapy 를 조건으로 남겼다
+    #
+    # 브리지는 "그 노트가 있으면 이 accord 가 흔하다" 일 뿐 "그 노트가 싫으면 이 accord 도
+    # 싫다" 가 아니다 — 40번이 하드 제외를 기각한 것과 같은 이유다. 사전 항목도 한 항목이
+    # 여러 accord 를 묶는다.
+    #
+    #   직접 막음   `_normalize_accord` 가 푼 회피(`sweet` · `musk`->musky). 지금과 같다
+    #   조건부 막음  회피 노트의 브리지 · 회피 문구 안의 사전 표면형 · **회피가 가리키는 말이
+    #              원문에서 만든 사전 조건**(`musk` 회피의 원문 `머스크`)
+    #              -> 아래 "원한 것" 에 없을 때만 막는다
+    #   원한 것     회피가 가리키는 말을 **가린** 문장에서도 남는 사전 조건 +
+    #              그 가린 원문에 근거가 있는 `scent_preference` 의 accord 이름
+    #
+    # 가리지 않으면 `장미는 싫어` 의 `장미` 가 만든 조건을 "원한 것" 으로 셀 수 있다.
+    #
+    # [측정 nlr50] 합성 600 확장 NDCG +0.000432 [+0.000000, +0.001240] · 바뀐 문장 합성 2 ·
+    # 설문 9 · 오탐 156 그대로. 설문에서 나빠진 1문장은 `막 달달한 느낌도 아니고` 의 `달달` 이
+    # "원한 것" 으로 세어져 sweet 이 되살아난 것이다 — 부정이 사전 조건으로 새는 문제가 먼저다.
+    raws =[str(r) for r in ((structured or {}).get("avoid") or [])]
+    masked_text = _mask_avoided(index, text, raws, avoid_notes)
+    lex_full, _ = _extract(index, haystack)
+    wanted, _ = _extract(index, " ".join(_mask_avoided(index, p, raws, avoid_notes)
+                                         for p in parts))
+    m_acc, m_note = _text_support(index, masked_text)
+    spoke_avoided = lex_full - wanted       # 회피가 가리키는 말만이 만든 사전 조건
+    for raw in ((structured or {}).get("scent_preference") or []):
+        accord = _normalize_accord(index, raw)
+        if accord and _grounded(index, masked_text, raw, m_acc, m_note):
+            wanted.add(accord)
+    blocked = avoid | (((avoid_accords | spoke_avoided) - avoid) - wanted)
     final = core - blocked
 
     return {
@@ -1138,6 +1175,45 @@ def _avoid_targets(index, structured):
     return accords, notes
 
 
+def _mask_avoided(index, raw, avoids, avoid_notes):
+    """문장에서 **회피가 가리키는 말**을 공백으로 가린다. str.
+
+    index       : dict           load_index() 결과
+    raw         : str            가릴 문장 (원문 또는 ①단계 조각)
+    avoids      : list[str]      ①단계 `avoid` 칸
+    avoid_notes : set[str]       `_avoid_targets()` 가 푼 회피 노트(영어 이름)
+
+        "바닐라 좋은데 통카빈은 빼줘"  avoid=['Tonka Bean']  ->  "바닐라 좋은데    은 빼줘"
+        "머스크는 싫어, 비누 향"       avoid=['musk']        ->  "   는 싫어, 비누 향"
+
+    가리는 것은 셋이다 — 회피 문구 자체 · 그 문구 안에서 사전이 잡은 표면형 · 회피 노트를
+    가리키는 한국어 별칭(`musk` 회피면 `머스크`). ①단계가 회피를 영어로 내고 원문은
+    한국어인 경우가 있어서 별칭까지 본다(레드팀 2026-10-02 — GMS 기록의 avoid 영어 48 ·
+    한국어 17).
+
+    ⚠ **번역된 회피는 못 가린다.** `달달한 귤 향 말고` 를 ①단계가 `sweet orange` 로 내면
+    원문의 `달달한` 은 남는다. 부정 표현이 사전 조건으로 새는 문제(레드팀 1-3)와 같은 뿌리다.
+
+    공백으로 바꿔 가리므로 앞뒤 낱말은 그대로 찾는다(`_longest_alias_ko` 의 차단 목록과
+    같은 방식).
+    """
+    text = unicodedata.normalize("NFC", str(raw))
+    targets = index.get("note_alias_target") or {}
+    words = set()
+    for avoid in avoids:
+        value = unicodedata.normalize("NFC", str(avoid)).strip()
+        if value:
+            words.add(value)
+        _, evidence = _extract(index, value)
+        for item in evidence:
+            words.update(item.get("matched_forms") or [item["from"]])
+        words.update(_longest_alias_ko(index, value))
+    words.update(a for a, t in targets.items() if t in avoid_notes)
+    for word in sorted(words, key=len, reverse=True):
+        text = re.sub(re.escape(word), " " * len(word), text, flags=re.IGNORECASE)
+    return text
+
+
 def _grounded(index, text, raw, acc_support, note_support):
     """①단계가 낸 향 조각에 **원문 근거가 있나.** bool.
 
@@ -1241,6 +1317,48 @@ def note_rows(index, structured, raw_text=None):
     hit = np.zeros(index["n_perfumes"], dtype=bool)
     for note, rows in where.items():          # 어휘 2,519종만 훑는다
         if any(t in note for t in targets):
+            hit[rows] = True
+    return hit if hit.any() else None
+
+
+def _avoid_note_rows(index, structured):
+    """회피한 노트를 가진 향수. np.ndarray[bool] | None.
+
+    index      : dict         load_index() 결과
+    structured : dict | None  ①단계 구조화 결과. `avoid` 칸만 본다
+
+        avoid=['Tonka Bean']  ->  tonka bean 을 가진 향수 True
+        avoid=['통카빈']       ->  같다 (`_avoid_targets` 가 한국어 별칭도 푼다)
+
+    **노트를 하드 제외한다. 노트의 브리지 accord 는 하드 제외하지 않는다.** 40번이 기각한
+    것은 `rose` 회피를 `floral` accord 전체 삭제로 넘기는 것이다(카탈로그 최대 83.9%).
+    여기서는 `rose` 노트를 가진 향수만 뺀다 — 싫다고 한 것 자체다.
+
+    **노트 이름은 낱말 경계로 견준다. 부분 문자열로 견주지 않는다.** `note_rows()` 처럼
+    `t in note` 로 견주면 `rose` 회피가 tuberose · rosemary · rosewood 까지 지운다
+    [레드팀 2026-10-02 1-2]. 경계로 보면 `bulgarian rose` · `white musk` 는 같은 노트로 뺀다.
+    ⚠ 경계로도 다른 원료가 걸린다 — `baie rose`(핑크페퍼) · `rock rose`(시스투스) ·
+    `musk mallow`(앰브레트) · `lemon verbena`. 반대로 `tonka` 는 `tonka bean` 회피에 안 걸린다.
+
+    [측정 nlr50 · 설문 143 중 회피 노트가 있는 12문장] 카탈로그 대비 제외 — 노트만 중앙 30.8% ·
+    최대 59.0%, accord 하드 제외 위에 **노트 때문에 더 빠지는 몫** 중앙 7.3% · 최대 48.9%
+    (`우드, 머스크는 제외하고` — 사용자가 둘 다 직접 뺐다). 합성 600 은 결과가 한 문장도 안
+    바뀌었다. 정확히 같은 이름만 빼면 `white musk` 가 남고, 부분 문자열이면 tuberose 가 빠진다.
+
+    회피한 노트가 없거나 `notes` 칸이 없으면 `None` 이다 — 부른 쪽이 후보를 안 바꾼다.
+    """
+    where = index.get("notes")
+    if not where:
+        return None
+    _, targets = _avoid_targets(index, structured)
+    if not targets:
+        return None
+    # 복수형(`citruses` · `peaches`)도 같은 노트다. 앞뒤가 영문자면 다른 낱말이다.
+    patterns = [re.compile(r"(?<![a-z])" + re.escape(_note_key(index, t))
+                           + r"(?:e?s)?(?![a-z])") for t in targets]
+    hit = np.zeros(index["n_perfumes"], dtype=bool)
+    for note, rows in where.items():          # 어휘 2,519종만 훑는다
+        if any(p.search(note) for p in patterns):
             hit[rows] = True
     return hit if hit.any() else None
 
@@ -1466,6 +1584,11 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
         col = index["aidx"].get(accord)
         if col is not None:
             base &= ~index["has"][:, col]
+    # 회피한 **노트**를 가진 향수도 뺀다 [nlr50 2a-1]. accord 이름 회피만 빼던 때는
+    # `통카빈은 빼줘` 의 결과 5개 중 4개에 tonka bean 이 있었다.
+    avoid_notes = _avoid_note_rows(index, structured)
+    if avoid_notes is not None:
+        base &= ~avoid_notes
 
     # ①단계가 말한 성별·계절·낮밤으로 후보를 좁힌다. **정렬은 안 건드린다**
     # (DECISIONS.md N9 — 순서는 향 조건이 정하고 인기도가 동점만 푼다).
@@ -1543,6 +1666,8 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
         col = index["aidx"].get(accord)
         if col is not None:
             mask &= ~index["has"][:, col]
+    if avoid_notes is not None:             # 회피는 이 단계에서도 풀지 않는다
+        mask &= ~avoid_notes
     mask &= index["has"][:, cols].any(axis=1)
     picked = _rank(index, mask, score, top_k, brand_cap, notes)
     picked["stage"] = "RELAXED_OR_NO_THRESHOLD" if picked["rows"] else "NOT_ENOUGH"
@@ -1592,6 +1717,9 @@ def _context_only(index, avoid, top_k, people_min, brand_cap, structured, raw_te
         col = index["aidx"].get(accord)
         if col is not None:
             base &= ~index["has"][:, col]
+    avoid_notes = _avoid_note_rows(index, structured)     # search() 와 같은 회피
+    if avoid_notes is not None:
+        base &= ~avoid_notes
     base, applied = context_mask(index, structured, base, raw_text)
     notes = note_rows(index, structured, raw_text)
     base, applied = _note_mask(index, structured, base, applied, notes, raw_text)
