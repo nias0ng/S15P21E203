@@ -170,6 +170,33 @@ describe('첫 방문 안내', () => {
     ).toBeInTheDocument()
   })
 
+  // 메인의 `TourSpotlight` 가 안내 동안 밝혀 두는 자리 — 안내가 말하는 이름표 · 입력칸이 든 알약입니다
+  it('안내가 가리키는 알약(이름표 · 입력칸)에 표시를 단다', () => {
+    sailed()
+    render(<Bar introduce />)
+
+    const target = screen
+      .getByRole('search')
+      .closest<HTMLElement>('[data-tour-target="search"]')
+    expect(target).not.toBeNull()
+    expect(target).toContainElement(screen.getByRole('searchbox'))
+    expect(target).toContainElement(screen.getByText(TAG))
+    expect(target).not.toContainElement(screen.getByRole('status'))
+  })
+
+  it('안내 동안 입력칸을 눌러 펼친 시작 문장에도 표시를 단다 — 막 밑에 깔리지 않게', async () => {
+    const user = userEvent.setup()
+    sailed()
+    render(<Bar introduce />)
+
+    await user.click(screen.getByRole('searchbox'))
+
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(
+      screen.getByRole('group', { name: '이렇게 찾아 보세요' }),
+    ).toHaveAttribute('data-tour-target', 'search')
+  })
+
   it('끝낸 안내는 다음 방문에 다시 서지 않는다', async () => {
     const user = userEvent.setup()
     sailed()

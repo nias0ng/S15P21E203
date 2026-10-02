@@ -9,6 +9,7 @@ import {
   SceneSearchBar,
   SceneTourTip,
   ScentScene,
+  TourSpotlight,
   buildMapPerfumeLookup,
   buildPerfumeIdIndex,
   explorationStateQuery,
@@ -555,6 +556,8 @@ export default function HomePage() {
           (`landing/docs/분할/C-연출UI.md` 의 D 요청).
       */}
       <div
+        // 첫 방문 안내 log 동안 `TourSpotlight` 가 밝히는 자리 — 판만 잡힙니다(안내 종이는 absolute 라 이 상자 크기에 안 듭니다)
+        data-tour-target="log"
         className={cn(
           'absolute top-30 left-7.5 max-[940px]:top-auto max-[940px]:bottom-15',
           DIVE_FADE,
@@ -695,6 +698,12 @@ export default function HomePage() {
       >
         {t(isLoggedIn ? 'tour:boat.member' : 'tour:boat.guest')}
       </SceneTourTip>
+
+      {/*
+        안내가 서 있는 동안 화면을 덮고 안내 · 가리킨 것만 남깁니다 (세기는 `tourStore` 의 TOUR_SPOTLIGHT).
+        헤더 · 토스트 위 · 커튼 아래(z-50)이고, 결과 안내는 결과창 위층으로 옮겨 섭니다 (`TourSpotlight` 머리말)
+      */}
+      <TourSpotlight />
 
       {/* 검색창이 내놓는 답. 뒤의 3D 는 그대로 돌아갑니다 */}
       <RecommendModal

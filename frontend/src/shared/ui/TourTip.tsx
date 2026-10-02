@@ -27,8 +27,12 @@ type Props = Omit<
 const keepFocus = (event: MouseEvent) => event.preventDefault()
 
 /**
- * 첫 방문 안내 한 줄 (`tourStore` · `useTourStep`). 그 요소 곁에 붙는 작은 종이이고 화면을 막지 않습니다 —
- * 어둡게 덮거나 초점을 가져가지 않아, 읽지 않고 하던 일을 이어 가도 됩니다.
+ * 첫 방문 안내 한 줄 (`tourStore` · `useTourStep`). 그 요소 곁에 붙는 작은 종이입니다. 종이 자신은 화면을
+ * 덮지도 초점을 가져가지도 않습니다 — 누를 때도 초점을 그대로 둡니다(위 `keepFocus`).
+ *
+ * NOTE: 메인 화면에서는 `TourSpotlight`(`features/map`)가 안내가 서 있는 동안 그 둘레를 어둡게 덮고
+ *   키보드 초점을 이 안내의 단추로 옮깁니다. 그쪽이 이 종이를 찾는 표시가 뿌리의 `data-tour-tip` 입니다 —
+ *   부르는 쪽의 `...rest` 가 지우지 못하게 그 뒤에 둡니다.
  *
  * 3D 하늘 · 바다 위에도, 추천 결과의 유리판 위에도 같은 대비로 읽히게 상아색 종이 한 장입니다
  * (의견 단추의 인사 말풍선과 같은 종이).
@@ -49,6 +53,7 @@ export function TourTip({
   return (
     <div
       {...rest}
+      data-tour-tip=""
       role="status"
       onMouseDown={keepFocus}
       // 안의 단추([×] · 안내 그만 보기 · 다음)는 제 일을 합니다 — 그 밖을 누른 것만 '다음' 입니다

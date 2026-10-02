@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { pickActiveStep, useTourStore, type TourStep } from './tourStore'
+import {
+  pickActiveStep,
+  TOUR_SPOTLIGHT,
+  TOUR_STEPS,
+  useTourStore,
+  type TourStep,
+} from './tourStore'
 
 const reset = () =>
   useTourStore.setState({
@@ -339,5 +345,30 @@ describe('이 브라우저에 남기기', () => {
     state().finish('sea')
     state().want('keys', true)
     expect(state().active).toBe('keys')
+  })
+})
+
+// 설명하는 단계는 3D 를 멈추고 짙게, 3D 의 그것을 눌러 보는 단계는 옅게, 직접 해 보는 단계는 덮지 않습니다
+describe('스포트라이트 세기', () => {
+  it('모든 단계에 세기가 있다', () => {
+    for (const step of TOUR_STEPS) {
+      expect(['none', 'light', 'dim']).toContain(TOUR_SPOTLIGHT[step])
+    }
+  })
+
+  it('정한 대로 나뉜다 — 설명은 dim · 부표와 닮은 향수는 light · 바다 · 방향키 · 해역은 none', () => {
+    const by = (strength: string) =>
+      TOUR_STEPS.filter((step) => TOUR_SPOTLIGHT[step] === strength)
+
+    expect(by('dim')).toEqual([
+      'search',
+      'card',
+      'minimap',
+      'log',
+      'boat',
+      'results',
+    ])
+    expect(by('light')).toEqual(['buoy', 'similar'])
+    expect(by('none')).toEqual(['sea', 'keys', 'zone'])
   })
 })

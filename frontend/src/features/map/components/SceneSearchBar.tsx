@@ -119,32 +119,35 @@ export function SceneSearchBar({
         }
       }}
     >
-      <SearchField
-        ref={inputRef}
-        label={t('search.fieldLabel')}
-        placeholder={t('search.placeholder')}
-        value={keyword}
-        onChange={(event) => setKeyword(event.target.value)}
-        aria-describedby={hintId}
-        /*
-          ⚠️ 왼쪽 여백을 알약 기본값(20)에서 6 으로 줄입니다 — 왼쪽에 서는 것이 아이콘이
-          아니라 **제 바탕이 있는 이름표**라, 20 을 두면 칸이 알약 한가운데로 밀려 오른쪽
-          보내기 단추와 어긋나 보입니다. 두 단추가 같은 만큼 안으로 들어와야 짝이 맞습니다.
-        */
-        className={cn(SIZE, 'pointer-events-auto mx-auto pl-1.5')}
-        onSearch={(value) => {
-          const trimmed = value.trim()
-          if (!trimmed) return
-          search(trimmed)
-        }}
-        leading={<SearchTag onPick={() => inputRef.current?.focus()} />}
-        /*
-          메인만 모래빛입니다 (`--color-scene-send`). 여기는 판이 아니라 3D 바다 · 하늘
-          위라 뒤의 밝기가 시간대마다 바뀌는데, 방을 따르는 `archive` 의 청동 · 남색은
-          노을 하늘에서 바탕에 잠깁니다.
-        */
-        tone="scene"
-      />
+      {/* 검색 안내 동안 `TourSpotlight` 가 밝히는 자리 — 이름표까지 든 알약째라 겉 상자에 답니다(`SearchField` 의 남는 속성은 입력칸으로 갑니다) */}
+      <div data-tour-target="search" className="mx-auto w-fit">
+        <SearchField
+          ref={inputRef}
+          label={t('search.fieldLabel')}
+          placeholder={t('search.placeholder')}
+          value={keyword}
+          onChange={(event) => setKeyword(event.target.value)}
+          aria-describedby={hintId}
+          /*
+            ⚠️ 왼쪽 여백을 알약 기본값(20)에서 6 으로 줄입니다 — 왼쪽에 서는 것이 아이콘이
+            아니라 **제 바탕이 있는 이름표**라, 20 을 두면 칸이 알약 한가운데로 밀려 오른쪽
+            보내기 단추와 어긋나 보입니다. 두 단추가 같은 만큼 안으로 들어와야 짝이 맞습니다.
+          */
+          className={cn(SIZE, 'pointer-events-auto pl-1.5')}
+          onSearch={(value) => {
+            const trimmed = value.trim()
+            if (!trimmed) return
+            search(trimmed)
+          }}
+          leading={<SearchTag onPick={() => inputRef.current?.focus()} />}
+          /*
+            메인만 모래빛입니다 (`--color-scene-send`). 여기는 판이 아니라 3D 바다 · 하늘
+            위라 뒤의 밝기가 시간대마다 바뀌는데, 방을 따르는 `archive` 의 청동 · 남색은
+            노을 하늘에서 바탕에 잠깁니다.
+          */
+          tone="scene"
+        />
+      </div>
 
       {/*
         ⭐ 설명줄은 **알약 뒤에 숨어 있다가 마우스를 올리면 아래로 빠져나옵니다** (2026-09-20 사용자 지시).
@@ -224,6 +227,8 @@ export function SceneSearchBar({
             <div
               role="group"
               aria-label={t('search.starters.label')}
+              // 검색 안내 동안 입력칸을 누르면 펼쳐지는 줄도 `TourSpotlight` 가 함께 밝힙니다 — 막 밑에 깔리면 못 누릅니다
+              data-tour-target="search"
               className="pointer-events-auto mx-auto mt-2 flex w-fit max-w-[min(100%,calc(var(--spacing)*150))] flex-wrap justify-center gap-1.5 px-2"
             >
               {STARTER_KEYS.map((key) => {

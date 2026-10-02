@@ -36,6 +36,32 @@ export const TOUR_STEPS = [
 
 export type TourStep = (typeof TOUR_STEPS)[number]
 
+/** 스포트라이트(`TourSpotlight`)를 얼마나 세게 씌우는가 — 아래 `TOUR_SPOTLIGHT` */
+export type TourSpotlightStrength = 'none' | 'light' | 'dim'
+
+/**
+ * 안내가 서 있는 동안 화면을 검게 덮고 **안내와 그것이 가리킨 것만** 구멍으로 남기는 세기 (`TourSpotlight`).
+ * 덮인 곳의 누름은 막고, 구멍 안은 그대로 눌립니다 — 가리킨 것을 누르는 것이 곧 그 단계를 끝내는 길입니다.
+ *   dim    설명하는 단계 — 3D 를 멈추고 80% 로 덮습니다. 읽는 동안 배 · 부표가 움직이면 가리킨 것을 놓칩니다
+ *   light  부표 · 닮은 향수 — 40% 로 덮고 3D 는 그대로 둡니다. 3D 안의 그것을 직접 눌러 보는 단계라, 떠 있는
+ *          모습과 둘레의 바다가 보여야 무엇을 누르는지 압니다
+ *   none   직접 해 보는 단계(바다 · 방향키) — 덮지 않습니다. 바다 어디든 눌러 보고 몰아 보는 것이 할 일이라
+ *          막이 그 누름을 막습니다. 해역(zone)도 덮지 않습니다 — 연출 자체가 보여 줄 것입니다
+ */
+export const TOUR_SPOTLIGHT: Record<TourStep, TourSpotlightStrength> = {
+  sea: 'none',
+  keys: 'none',
+  buoy: 'light',
+  similar: 'light',
+  search: 'dim',
+  card: 'dim',
+  zone: 'none',
+  minimap: 'dim',
+  log: 'dim',
+  boat: 'dim',
+  results: 'dim',
+}
+
 /**
  * 앞 단계가 끝나야 서는 단계. `all` 은 모두, `any` 는 하나라도 끝나야 합니다.
  * 적지 않은 단계는 제 조건이 맞는 순간 섭니다 (그 화면에 처음 왔을 때).
