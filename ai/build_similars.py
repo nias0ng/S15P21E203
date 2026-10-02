@@ -38,6 +38,11 @@
 
 numpy · pandas · scipy 가 필요합니다. 서버(server.py)는 이 스크립트를 쓰지 않아
 requirements.txt 에 scipy 를 넣지 않았습니다 — `pip install scipy` 후 돌리십시오.
+
+**메모리는 최고 1.4GB 쯤입니다** (2026-10-02 실측 — 확보 1,356MiB · 실사용 673MiB, 90초).
+유사도는 BLOCK 행씩 후보 2.5만 개와 견주고 상위 POOL 개만 남겨, 13만 x 13만 행렬을 한 번에
+펼치지 않습니다. 메모리가 모자란 곳에서 돌려야 하면 BLOCK 을 줄이십시오 — 계산은 같고 느려지기만
+합니다. CI 와 서버는 이 스크립트를 돌리지 않습니다. 사람이 돌려 나온 CSV 를 커밋합니다.
 """
 import argparse
 import logging
