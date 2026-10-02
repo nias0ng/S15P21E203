@@ -150,12 +150,6 @@ interface EngineHandle {
    */
   motion?: { get: () => unknown; set: (calm: boolean) => boolean }
   /**
-   * 그 향수의 부표로 배를 몰고 가서, 닿으면 **그 부표를 누른 것처럼** 고릅니다 (엔진 `main.js` 의
-   * `goPerfume` · v0.82.0). 먼 곳이면 해도 · 미니맵과 같은 안개 전환을 탑니다.
-   * 돌려주는 값은 '떠났는가' 입니다 — 지도에 없는 향수이거나 안개 전환 중이면 false 입니다.
-   */
-  goPerfume?: (fragranticaId: number) => boolean
-  /**
    * 첫 방문 안내가 붙을 자리 (엔진 `main.js` 의 `measureTour` · v0.88.0). `watch` 로 무엇을 볼지 알리면 엔진이 매 프레임
    * `anchor` 를 채웁니다 — iframe 기준 CSS px 이고 `on` 이 false 면 아직 못 쟀습니다.
    * NOTE: 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다. 그때는 엔진 쪽 안내가 안 보입니다.
@@ -286,19 +280,6 @@ type Props = {
   onQuality?: (quality: SceneQuality) => void
   /** 그래픽 설정의 '움직임 줄이기' — 엔진이 붙는 순간과 바뀔 때마다 겁니다 (`motion` 손잡이) */
   calm?: boolean
-  /**
-   * **이 향수의 부표로 가서 고릅니다** — 이름 검색(`MapSearchModal`)에서 향수를 골랐을 때입니다.
-   * 엔진이 붙어 있지 않으면 붙는 대로 갑니다.
-   *
-   * ⚠️ `seq` 가 바뀔 때마다 한 번 갑니다 — 같은 향수를 두 번 골라도 두 번 가야 해서(그새 배를
-   * 몰았을 수 있습니다) 향수 번호만으로는 못 가립니다.
-   */
-  seek?: { fragranticaId: number; seq: number } | null
-  /**
-   * 엔진이 그 향수로 못 갔습니다 — 지도에 없는 향수이거나, 그 기능 전 엔진 빌드이거나, 안개 전환 중입니다.
-   * 화면이 다른 길(향수 상세)로 보낼 자리입니다.
-   */
-  onSeekMiss?: (fragranticaId: number) => void
   className?: string
 }
 
@@ -339,8 +320,6 @@ export function ScentScene({
   quality = 'auto',
   onQuality,
   calm = false,
-  seek,
-  onSeekMiss,
   className,
 }: Props) {
   const { t } = useTranslation('map')
@@ -391,7 +370,6 @@ export function ScentScene({
     onMove,
     onLeave,
     onQuality,
-    onSeekMiss,
   })
   useEffect(() => {
     latest.current = {
@@ -410,7 +388,6 @@ export function ScentScene({
       onMove,
       onLeave,
       onQuality,
-      onSeekMiss,
     }
   })
 
@@ -438,7 +415,7 @@ export function ScentScene({
   const started = useRef(false)
 
   /*
-   * 엔진 알약 숨기기. 메인 검색은 방식이 둘(자연어 추천 · 지도 향수 찾기)이고 답이 모달인데,
+   * 엔진 알약 숨기기. 메인 검색의 답(자연어 추천)이 모달인데,
    * 엔진은 iframe 안이라 라우터도 모달도 몰라 검색창은 앱이 그립니다(`SceneSearchBar`).
    * 3D · 설명문구 · 해도는 그대로 엔진이 그립니다.
    *
@@ -757,19 +734,6 @@ export function ScentScene({
     if (!ready) return
     handle.current?.setLang?.(locale)
   }, [ready, locale])
-
-  /*
-   * 이름 검색에서 고른 향수로 갑니다 (위 `seek` 머리말). 한 번 간 `seq` 는 다시 안 갑니다 —
-   * 엔진이 다시 붙어 `ready` 가 흔들려도 배가 같은 향수로 또 떠나지 않게.
-   */
-  const sought = useRef<number | null>(null)
-  useEffect(() => {
-    const engine = handle.current
-    if (!ready || !engine || !seek || sought.current === seek.seq) return
-    sought.current = seek.seq
-    const went = engine.goPerfume?.(seek.fragranticaId) ?? false
-    if (!went) latest.current.onSeekMiss?.(seek.fragranticaId)
-  }, [ready, seek])
 
   return (
     <>

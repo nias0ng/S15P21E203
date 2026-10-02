@@ -5,7 +5,6 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router'
 
 import {
   CabinBubble,
-  MapSearchModal,
   SceneBootCurtain,
   SceneSearchBar,
   SceneTourTip,
@@ -23,7 +22,6 @@ import {
   voyageLogQuery,
   withMapPerfumes,
   type ScenePerfumeRef,
-  type SceneSearchMode,
   type VoyageLogStatus,
 } from '@/features/map'
 import { RecommendModal, readOpenRecommendation } from '@/features/recommend'
@@ -73,12 +71,10 @@ import { TourTip } from '@/shared/ui/TourTip'
  *   [진열대에 저장] → 등록 모달 2단계(A15). 카드 · 고른 향수는 그대로 남습니다
  *
  * **검색창만 앱이 그립니다** (`SceneSearchBar` · 엔진 알약은 `ScentScene` 이 숨깁니다).
- * 방식이 둘이고 둘 다 답을 **모달**로 내놓기 때문입니다 — 엔진은 iframe 안이라 라우터도
- * 모달도 모릅니다.
+ * 답을 **모달**로 내놓기 때문입니다 — 엔진은 iframe 안이라 라우터도 모달도 모릅니다.
  *
- *   자연어 → A06 추천 모달 (`RecommendModal`). 전에는 `/recommend?q=` 라는 별도 화면이었습니다
- *   이름   → 지도 향수 200개에서 찾기 (`MapSearchModal`) · 고르면 배가 그 부표로 가서 카드를 엽니다.
- *            없으면 13만 개 검색(A09)으로 넘어갑니다
+ *   검색창 → A06 추천 모달 (`RecommendModal`). 향 조건을 못 뽑았으면(향수 이름을 적은 사람)
+ *            그 낱말로 13만 개 검색(A09)으로 이어 줍니다
  *
  * 향해 일지(MAP-24)는 다른 화면의 데이터와 맞추기 쉽도록 엔진이 아니라 앱이 3D 위에 얹습니다.
  *
@@ -161,17 +157,8 @@ export default function HomePage() {
   const [engineUp, setEngineUp] = useState(false)
   useDiveReady(engineUp)
 
-  /**
-   * 메인 검색 — 방식과, 방식별로 열린 답.
-   *
-   * 답을 하나의 `result` 로 묶지 않고 둘로 나눠 둡니다. 방식을 바꾸면 **뒤 결과가
-   * 사라지는 게 아니라** 다음에 그 방식으로 검색할 때까지 그대로 닫혀 있습니다 —
-   * 같은 말을 두 방식으로 해보는 것이 스왑 단추의 쓸모라, 한쪽을 지우면 방금 본
-   * 추천이 없어집니다.
-   */
-  const [searchMode, setSearchMode] = useState<SceneSearchMode>('nl')
   /*
-   * ⭐ **자연어로 찾은 말은 주소에도 남깁니다** (`/?q=` · 2026-10-01). 결과에서 상세로 갔다가 뒤로가기나
+   * ⭐ **검색창에 적은 말은 주소에도 남깁니다** (`/?q=` · 2026-10-01). 결과에서 상세로 갔다가 뒤로가기나
    * 상세의 '← 추천 결과' 로 돌아오면 이 화면이 처음부터 다시 서는데, 주소에 말이 남아 있어야 보던
    * 결과창을 다시 열 수 있습니다 — 전에는 결과 대신 설문만 떠서 다섯 개를 비교하려면 같은 말로 다시
    * 찾아야 했습니다(사용성 테스트 7명 중 6명).
@@ -201,12 +188,6 @@ export default function HomePage() {
       { replace: true },
     )
   }
-  const [mapKeyword, setMapKeyword] = useState<string | null>(null)
-  /** 이름 검색에서 고른 향수 — 3D 가 그 부표로 갑니다 (`ScentScene` 의 `seek`) */
-  const [seek, setSeek] = useState<{
-    fragranticaId: number
-    seq: number
-  } | null>(null)
 
   /** 지도 카드에서 담으려는 향수. 모달이 이름 · 브랜드를 보여주는 데 씁니다 */
   const [saving, setSaving] = useState<
@@ -387,7 +368,6 @@ export default function HomePage() {
     !diving &&
     !chartOpen &&
     nlQuery === null &&
-    mapKeyword === null &&
     saving === null &&
     !loginOpen &&
     !cabinOpen
@@ -516,30 +496,6 @@ export default function HomePage() {
         }
         // 3D 를 눌렀습니다 — 말풍선은 팝오버라 배경을 누르면 닫힙니다 (엔진 host.js `closeCabin`)
         onCloseCabin={closeCabin}
-        seek={seek}
-        /*
-          엔진이 그 부표로 못 갔습니다 (지도에 없거나 안개 전환 중) — 좌표로 DB 번호를 찾아 향수 상세로
-          바로 갑니다. 번호도 못 찾으면 예전처럼 이름으로 향수 검색(A09)에 보냅니다.
-          ⚠️ 향해 일지에는 안 남깁니다 — 일지는 메인에서 [자세히 보기]를 누른 것만 받습니다 (위 onOpenDetail)
-        */
-        onSeekMiss={(fragranticaId) => {
-          const perfume = mapPerfumes.data?.find(
-            (p) => p.fragranticaId === fragranticaId,
-          )
-          if (!perfume) return
-          const perfumeId = perfumeIndex?.at(perfume.mx, perfume.my) ?? null
-          navigate(
-            perfumeId === null
-              ? toPerfumeSearch(
-                  localizedName(locale, perfume.nameEn, perfume.name),
-                )
-              : toPerfumeDetail(perfumeId),
-            // 상세의 '← 향 지도' 로 돌아오게 합니다 (지도에서 찾은 향수입니다)
-            perfumeId === null
-              ? undefined
-              : { state: perfumeViewState('SCENT_MAP') },
-          )
-        }}
       />
 
       <SceneSearchBar
@@ -547,23 +503,12 @@ export default function HomePage() {
           DIVE_FADE,
           (diving || chartOpen) && 'invisible opacity-0',
         )}
-        mode={searchMode}
-        onModeChange={setSearchMode}
-        onSearch={(keyword, mode) => {
-          if (mode === 'nl') openNl(keyword)
-          else setMapKeyword(keyword)
-        }}
+        onSearch={openNl}
         /*
           첫 화면 안내는 화면이 비어 있을 때만 섭니다 — 커튼 밑 · 결과창 뒤 · 해도 · 잠수 중에는
           아무도 못 봅니다 (`SceneSearchBar` 의 introduce 머리말). 가려지면 접혔다가 비면 다시 섭니다.
         */
-        introduce={
-          boot.done &&
-          !diving &&
-          !chartOpen &&
-          nlQuery === null &&
-          mapKeyword === null
-        }
+        introduce={boot.done && !diving && !chartOpen && nlQuery === null}
         // 헤더의 PERFUME 과 같은 잠수로 떠납니다 (`header/useDiveOut`)
         onBrowsePopular={() =>
           startDive(ROUTES.PERFUMES, 'dive', diveDepthOf(ROUTES.PERFUMES) ?? 0)
@@ -705,7 +650,7 @@ export default function HomePage() {
         {t(isLoggedIn ? 'tour:boat.member' : 'tour:boat.guest')}
       </SceneTourTip>
 
-      {/* 검색창의 두 방식이 내놓는 답. 뒤의 3D 는 그대로 돌아갑니다 */}
+      {/* 검색창이 내놓는 답. 뒤의 3D 는 그대로 돌아갑니다 */}
       <RecommendModal
         query={nlQuery}
         onClose={() => openNl(null)}
@@ -715,30 +660,6 @@ export default function HomePage() {
           navigate(toPerfumeSearch(keyword))
         }}
         restored={restoredNl}
-      />
-
-      <MapSearchModal
-        keyword={mapKeyword}
-        onClose={() => setMapKeyword(null)}
-        onSelect={(perfume) => {
-          setMapKeyword(null)
-          /*
-            ⭐ **지도에서 찾았으니 지도에서 보여 줍니다** (2026-10-01). 전에는 이름으로 향수 검색(A09)에
-            보냈는데, 사용성 테스트 7명 모두가 "지도로 안 가고 다른 화면으로 튕긴다" 고 했고 거기서
-            이름 표기가 달라 0건이 나오기도 했습니다. 이제 배가 그 부표 곁으로 가서 부표를 누른 것과
-            같이 카드를 엽니다 — 자세히 보기 · 진열대 저장은 그 카드에서 이어집니다.
-            못 가면 `onSeekMiss` 가 상세로 보냅니다.
-          */
-          setSeek((prev) => ({
-            fragranticaId: perfume.fragranticaId,
-            seq: (prev?.seq ?? 0) + 1,
-          }))
-        }}
-        // 지도 200개에 없으면 13만 개 검색(A09)으로 — 지도 목록을 다 본 사람의 다음 길입니다 (F1 · F2)
-        onSearchAll={(keyword) => {
-          setMapKeyword(null)
-          navigate(toPerfumeSearch(keyword))
-        }}
       />
 
       {/*

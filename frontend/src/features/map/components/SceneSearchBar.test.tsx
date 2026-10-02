@@ -1,30 +1,25 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useTourStore } from '@/shared/store/tourStore'
 
-import { SceneSearchBar, type SceneSearchMode } from './SceneSearchBar'
+import { SceneSearchBar } from './SceneSearchBar'
 
 const HINT = '느낌 · 상황을 말로 적으면 어울리는 향수를 추천해 드립니다'
+const TAG = '느낌으로'
 
 function Bar({
   onSearch = vi.fn(),
   onBrowsePopular,
   introduce = false,
-  startMode = 'nl',
 }: {
-  onSearch?: (keyword: string, mode: SceneSearchMode) => void
+  onSearch?: (keyword: string) => void
   onBrowsePopular?: () => void
   introduce?: boolean
-  startMode?: SceneSearchMode
 }) {
-  const [mode, setMode] = useState<SceneSearchMode>(startMode)
   return (
     <SceneSearchBar
-      mode={mode}
-      onModeChange={setMode}
       onSearch={onSearch}
       onBrowsePopular={onBrowsePopular}
       introduce={introduce}
@@ -57,7 +52,7 @@ describe('시작 문장', () => {
 
     await user.click(screen.getByRole('button', { name: '비 온 뒤 흙냄새' }))
 
-    expect(onSearch).toHaveBeenCalledWith('비 온 뒤 흙냄새', 'nl')
+    expect(onSearch).toHaveBeenCalledWith('비 온 뒤 흙냄새')
     expect(screen.getByRole('searchbox')).toHaveValue('비 온 뒤 흙냄새')
   })
 
@@ -71,17 +66,6 @@ describe('시작 문장', () => {
     expect(
       screen.queryByRole('group', { name: '이렇게 찾아 보세요' }),
     ).not.toBeInTheDocument()
-  })
-
-  it('이름 방식이면 지도에 많은 브랜드를 내놓는다', async () => {
-    const user = userEvent.setup()
-    const onSearch = vi.fn()
-    render(<Bar onSearch={onSearch} startMode="normal" />)
-
-    await user.click(screen.getByRole('searchbox'))
-    await user.click(screen.getByRole('button', { name: '샤넬' }))
-
-    expect(onSearch).toHaveBeenCalledWith('샤넬', 'normal')
   })
 
   it('[요즘 인기 향수 보기] 는 화면이 고른 길로 보낸다', async () => {
@@ -100,7 +84,7 @@ describe('시작 문장', () => {
 
 /*
   첫 방문 안내 두 단계가 설명줄 자리에 섭니다. 처음 온 사람은 설명줄을 볼 까닭이 없어 이 사이트가
-  무엇을 해 주는지 못 봤고, 왼쪽 칸이 검색 방식을 바꾸는 단추인 줄도 몰랐습니다 (메인 사용성 테스트).
+  무엇을 해 주는지 못 봤고, 이 칸에 무엇을 적어야 하는지도 몰랐습니다 (메인 사용성 테스트).
 */
 describe('첫 방문 안내', () => {
   it('화면이 비면 검색창 아래에 첫 화면 안내가 선다', () => {
@@ -164,19 +148,27 @@ describe('첫 방문 안내', () => {
 })
 
 // '자연어' 는 만든 사람의 말이라 처음 온 사람이 아는 향수 이름을 넣었습니다 (지인 피드백 F1)
-describe('방식 이름', () => {
-  it('무엇으로 찾는지를 말한다', () => {
+describe('이름표', () => {
+  it('무엇을 적는 칸인지 말하고, 방식을 바꾸는 단추는 없다', () => {
     render(<Bar />)
 
-    expect(screen.getByRole('button', { name: '느낌으로' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
-    expect(screen.getByRole('button', { name: '이름으로' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    )
+    expect(screen.getByText(TAG)).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: '이름으로' }),
+    ).not.toBeInTheDocument()
     expect(screen.queryByText('자연어')).not.toBeInTheDocument()
+  })
+
+  it('누르면 입력칸에 초점이 가고 시작 문장이 펼쳐진다', async () => {
+    const user = userEvent.setup()
+    render(<Bar />)
+
+    await user.click(screen.getByText(TAG))
+
+    expect(screen.getByRole('searchbox')).toHaveFocus()
+    expect(
+      screen.getByRole('group', { name: '이렇게 찾아 보세요' }),
+    ).toBeInTheDocument()
   })
 
   it('입력 전에 적을 말의 예시를 보여 준다', () => {
@@ -185,20 +177,5 @@ describe('방식 이름', () => {
     expect(
       screen.getByPlaceholderText('예) 상큼한 향, 풀향'),
     ).toBeInTheDocument()
-  })
-
-  it('다른 방식을 누르면 그 방식으로 바꾼다', async () => {
-    const onModeChange = vi.fn()
-    render(
-      <SceneSearchBar
-        mode="nl"
-        onModeChange={onModeChange}
-        onSearch={vi.fn()}
-      />,
-    )
-
-    await userEvent.click(screen.getByRole('button', { name: '이름으로' }))
-
-    expect(onModeChange).toHaveBeenCalledWith('normal')
   })
 })

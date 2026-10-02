@@ -6,55 +6,17 @@ export const map = {
     title: 'Scent Map',
   },
   search: {
-    group: 'Search mode',
-    fieldLabel: {
-      nl: 'Get perfume picks in your own words',
-      normal: 'Search by perfume name',
-    },
-    placeholder: {
-      nl: 'What scent are you looking for?',
-      normal: 'Search perfumes or brands',
-    },
-    mode: {
-      nl: 'Describe',
-      normal: 'Name',
-    },
-    hint: {
-      nl: 'Describe a mood or moment for perfume picks · works best in Korean',
-      normal: 'Search the 200 perfumes on the map by name or brand',
-    },
+    fieldLabel: 'Get perfume picks in your own words',
+    placeholder: 'What scent are you looking for?',
+    tag: 'Describe',
+    hint: 'Describe a mood or moment for perfume picks · works best in Korean',
     starters: {
       label: 'Try searching for',
       rain: 'earthy smell after rain',
       soap: 'soft soap scent for work',
       vanilla: 'sweet vanilla',
       floral: 'floral perfume',
-      chanel: 'Chanel',
-      joMalone: 'Jo Malone',
-      byredo: 'Byredo',
-      diptyque: 'Diptyque',
       popular: 'See popular perfumes →',
-    },
-    switchTo: 'Switch to {{mode}} search',
-  },
-  searchModal: {
-    title: 'Search the map',
-    keyword: 'Searching for',
-    count_one: '{{count}} result',
-    count_other: '{{count}} results',
-    countCapped_one: 'Top {{count}} result',
-    countCapped_other: 'Top {{count}} results',
-    rank: 'Map rank',
-    scope: 'among the 200 perfumes on the map',
-    searchAll: 'Search all 130,000 perfumes',
-    loadError: {
-      title: 'Couldn’t load the perfumes on the map',
-      description: 'Please try again in a moment.',
-    },
-    empty: {
-      title: 'Not among the 200 perfumes on the map',
-      description:
-        'The map shows only 200 perfumes. You can search all 130,000 perfumes by name.',
     },
   },
   cabin: {
