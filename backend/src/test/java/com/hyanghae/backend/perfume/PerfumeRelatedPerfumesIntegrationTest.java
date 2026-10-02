@@ -233,6 +233,23 @@ class PerfumeRelatedPerfumesIntegrationTest {
                 .andExpect(jsonPath("$.perfumes[*].perfumeId", Matchers.contains(6)));
     }
 
+    /**
+     * 지도 이웃은 단종이어도 그대로 둡니다. 3D 지도가 그리는 선과 화면의 목록이 같아야 해서
+     * 단종은 미리 계산한 목록에만 겁니다({@code PerfumeSimilarRepository}). 한쪽에도 걸면 지도의
+     * 선은 있는데 목록에서는 빠진 향수가 생깁니다.
+     */
+    @Test
+    void similarKeepsDiscontinuedMapNeighbor() throws Exception {
+        jdbcTemplate.update(
+                "UPDATE perfumes SET production_status = 'DISCONTINUED',"
+                        + " production_status_checked_at = DATE '2026-10-01',"
+                        + " production_status_source = 'https://example.com' WHERE perfume_id = 3");
+
+        mockMvc.perform(get(SIMILAR_URL, 1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes[*].perfumeId", Matchers.contains(6, 3, 2)));
+    }
+
     /** 미리 계산한 목록도 size 로 앞에서부터 자릅니다. */
     @Test
     void limitsPrecomputedListToRequestedSize() throws Exception {
