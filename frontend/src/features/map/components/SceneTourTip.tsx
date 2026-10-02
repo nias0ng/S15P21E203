@@ -23,6 +23,11 @@ type Props = {
    * 한 번 접혔다 다시 뜨고, 해역은 이웃 해역으로 건너갈 때 연출이 잠깐 끊깁니다.
    */
   holdMs?: number
+  /**
+   * 차례는 그대로 두고 잠깐 그리지 않습니다 — 해도 · 결과창 · 잠수처럼 3D 가 가려진 동안. 눌러 넘겨 선 안내(`forced`)는
+   * 제 조건이 안 맞아도 서 있어서, 가려진 3D 위에 혼자 뜨지 않게 화면이 알려 줍니다.
+   */
+  paused?: boolean
   placement: TourPlacement
   children: ReactNode
 }
@@ -43,6 +48,7 @@ export function SceneTourTip({
   ready,
   finishOnLeave,
   holdMs = 0,
+  paused = false,
   placement,
   children,
 }: Props) {
@@ -51,9 +57,10 @@ export function SceneTourTip({
   const stopTour = useTourStore((state) => state.stop)
   const area = useRef<HTMLDivElement>(null)
   const box = useRef<HTMLDivElement>(null)
+  const visible = tour.showing && !paused
 
   useEffect(() => {
-    if (!tour.showing) return
+    if (!visible) return
     watchTourAnchor(step)
 
     let raf = 0
@@ -93,9 +100,9 @@ export function SceneTourTip({
       cancelAnimationFrame(raf)
       watchTourAnchor(null)
     }
-  }, [tour.showing, step, placement])
+  }, [visible, step, placement])
 
-  if (!tour.showing) return null
+  if (!visible) return null
 
   return (
     <div
@@ -109,7 +116,12 @@ export function SceneTourTip({
         style={{ visibility: 'hidden' }}
         className="absolute top-0 left-0"
       >
-        <TourTip onClose={tour.finish} onStopAll={stopTour} className="mx-0">
+        <TourTip
+          onClose={tour.finish}
+          onNext={tour.next}
+          onStopAll={stopTour}
+          className="mx-0"
+        >
           {children}
         </TourTip>
       </div>

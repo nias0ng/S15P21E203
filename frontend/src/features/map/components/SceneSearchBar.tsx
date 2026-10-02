@@ -108,9 +108,19 @@ export function SceneSearchBar({
   const searchTip = useTourStep('search', starting)
   const stopTour = useTourStore((state) => state.stop)
   const tip = welcome.showing
-    ? { text: t('tour:welcome'), finish: welcome.finish, starter: false }
+    ? {
+        text: t('tour:welcome'),
+        finish: welcome.finish,
+        next: welcome.next,
+        starter: false,
+      }
     : searchTip.showing
-      ? { text: t('tour:search'), finish: searchTip.finish, starter: true }
+      ? {
+          text: t('tour:search'),
+          finish: searchTip.finish,
+          next: searchTip.next,
+          starter: true,
+        }
       : null
 
   const search = (text: string) => {
@@ -227,6 +237,7 @@ export function SceneSearchBar({
             <TourTip
               data-starter={tip.starter ? '' : undefined}
               onClose={tip.finish}
+              onNext={tip.next}
               onStopAll={stopTour}
             >
               {tip.text}

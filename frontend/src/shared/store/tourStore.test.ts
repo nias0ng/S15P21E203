@@ -3,7 +3,13 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { pickActiveStep, useTourStore } from './tourStore'
 
 const reset = () =>
-  useTourStore.setState({ done: [], off: false, wanted: [], active: null })
+  useTourStore.setState({
+    done: [],
+    off: false,
+    wanted: [],
+    active: null,
+    forced: null,
+  })
 
 const state = () => useTourStore.getState()
 
@@ -91,6 +97,42 @@ describe('앞 단계', () => {
 
     expect(pickActiveStep({ ...base, done: ['minimap'] })).toBeNull()
     expect(pickActiveStep({ ...base, done: ['minimap', 'log'] })).toBe('boat')
+  })
+})
+
+// 그 행동을 하기 전에 안내부터 다 읽어 보고 싶은 사람이 있습니다 — 안내를 누르면 다음 안내로 넘어갑니다
+describe('눌러 넘기기', () => {
+  it('다음 안내가 제 조건 · 앞 단계와 상관없이 곧바로 선다', () => {
+    state().want('welcome', true)
+    state().next('welcome')
+
+    expect(state().done).toEqual(['welcome'])
+    expect(state().active).toBe('search')
+  })
+
+  it('가리킬 창이 있어야 하는 카드 · 해역 · 추천 결과는 건너뛰고, 그 창이 뜨면 제 조건대로 선다', () => {
+    state().next('buoy')
+    expect(state().active).toBe('minimap')
+
+    state().finish('minimap')
+    state().want('card', true)
+    expect(state().active).toBe('card')
+  })
+
+  it('넘겨 세운 안내도 [×] · 그 행동으로 끝나고, 마지막을 넘기면 아무것도 안 선다', () => {
+    state().next('log')
+    expect(state().active).toBe('boat')
+
+    state().next('boat')
+    expect(state().active).toBeNull()
+    expect(state().forced).toBeNull()
+  })
+
+  it('[안내 그만 보기] 는 넘겨 세운 안내도 끈다', () => {
+    state().next('welcome')
+    state().stop()
+
+    expect(state().active).toBeNull()
   })
 })
 

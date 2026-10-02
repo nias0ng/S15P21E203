@@ -3,12 +3,20 @@ import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/shared/lib/cn'
 
-type Props = Omit<ComponentPropsWithoutRef<'div'>, 'children' | 'role'> & {
+type Props = Omit<
+  ComponentPropsWithoutRef<'div'>,
+  'children' | 'role' | 'onClick'
+> & {
   children: ReactNode
   /** [×] — 이 단계만 끝냅니다 */
   onClose: () => void
   /** [안내 그만 보기] — 남은 단계를 한꺼번에 끕니다 */
   onStopAll: () => void
+  /**
+   * 안내를 눌렀습니다 — 그 행동을 안 해도 다음 안내로 넘깁니다. 안내 어디를 눌러도 되고, 키보드는 [다음 →] 으로 옵니다.
+   * 안 주면 누를 수 없는 한 줄입니다.
+   */
+  onNext?: () => void
 }
 
 /*
@@ -32,6 +40,7 @@ export function TourTip({
   children,
   onClose,
   onStopAll,
+  onNext,
   className,
   ...rest
 }: Props) {
@@ -41,11 +50,19 @@ export function TourTip({
     <div
       {...rest}
       role="status"
+      onMouseDown={keepFocus}
+      // 안의 단추([×] · 안내 그만 보기 · 다음)는 제 일을 합니다 — 그 밖을 누른 것만 '다음' 입니다
+      onClick={(event) => {
+        if (!onNext) return
+        if ((event.target as HTMLElement).closest('button')) return
+        onNext()
+      }}
       className={cn(
         'pointer-events-auto mx-auto w-fit max-w-[min(calc(100vw-var(--spacing)*10),calc(var(--spacing)*95))]',
         'bg-ivory/95 text-charcoal shadow-overlay rounded-[14px] py-2.5 pr-2.5 pl-3.75 backdrop-blur-[7px]',
-        'transition-[opacity,translate] duration-200 ease-out motion-reduce:transition-none',
+        'transition-[opacity,translate,background-color] duration-200 ease-out motion-reduce:transition-none',
         'starting:-translate-y-1 starting:opacity-0',
+        onNext && 'hover:bg-ivory cursor-pointer',
         className,
       )}
     >
@@ -60,7 +77,6 @@ export function TourTip({
         <button
           type="button"
           aria-label={t('tip.close')}
-          onMouseDown={keepFocus}
           onClick={onClose}
           className={cn(
             '-mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full',
@@ -80,18 +96,32 @@ export function TourTip({
           </svg>
         </button>
       </div>
-      <button
-        type="button"
-        onMouseDown={keepFocus}
-        onClick={onStopAll}
-        className={cn(
-          'text-charcoal-soft mt-0.5 ml-4 block rounded-sm text-[11px] underline-offset-2',
-          'hover:text-charcoal hover:underline',
-          'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
+      <div className="mt-0.5 ml-4 flex items-center justify-between gap-5">
+        <button
+          type="button"
+          onClick={onStopAll}
+          className={cn(
+            'text-charcoal-soft rounded-sm text-[11px] underline-offset-2',
+            'hover:text-charcoal hover:underline',
+            'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
+          )}
+        >
+          {t('tip.stopAll')}
+        </button>
+        {onNext && (
+          <button
+            type="button"
+            onClick={onNext}
+            className={cn(
+              'text-charcoal rounded-sm text-[11.5px] font-medium',
+              'hover:text-accent-deep',
+              'focus-visible:ring-accent-deep outline-none focus-visible:ring-2',
+            )}
+          >
+            {t('tip.next')} →
+          </button>
         )}
-      >
-        {t('tip.stopAll')}
-      </button>
+      </div>
     </div>
   )
 }
