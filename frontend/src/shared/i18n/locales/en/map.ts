@@ -8,7 +8,7 @@ export const map = {
   search: {
     fieldLabel: 'Get perfume picks in your own words',
     placeholder: 'What scent are you looking for?',
-    tag: 'Describe',
+    tag: 'Mood · Moment',
     hint: 'Describe a mood or moment for perfume picks · works best in Korean',
     starters: {
       label: 'Try searching for',

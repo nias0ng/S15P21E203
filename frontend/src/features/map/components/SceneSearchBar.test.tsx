@@ -7,7 +7,7 @@ import { useTourStore } from '@/shared/store/tourStore'
 import { SceneSearchBar } from './SceneSearchBar'
 
 const HINT = '느낌 · 상황을 말로 적으면 어울리는 향수를 추천해 드립니다'
-const TAG = '느낌으로'
+const TAG = '느낌·상황'
 
 function Bar({
   onSearch = vi.fn(),
