@@ -2,6 +2,7 @@ export const tour = {
   tip: {
     close: '안내 닫기',
     stopAll: '안내 그만 보기',
+    next: '다음',
   },
   welcome:
     '향수를 향 계열별로 펼친 바다예요. 원하는 느낌을 적거나, 떠 있는 부표를 눌러 보세요.',

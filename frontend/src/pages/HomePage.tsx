@@ -607,9 +607,10 @@ export default function HomePage() {
           status={logStatus}
           onToggle={logTip.finish}
         />
-        {logTip.showing && (
+        {logTip.showing && sceneIdle && (
           <TourTip
             onClose={logTip.finish}
+            onNext={logTip.next}
             onStopAll={stopTour}
             className={cn(
               'absolute top-full left-0 mx-0 mt-2.5 w-75',
@@ -649,6 +650,7 @@ export default function HomePage() {
           boat     배 옆 — 배를 누르면 끝납니다 (선실 말풍선이 그 자리에 뜹니다)
       */}
       <SceneTourTip
+        paused={!sceneIdle}
         step="buoy"
         ready={sceneIdle && !cardOpen}
         placement="above"
@@ -658,6 +660,7 @@ export default function HomePage() {
         {!touch && <span className="block">{t('tour:buoyKeys')}</span>}
       </SceneTourTip>
       <SceneTourTip
+        paused={!sceneIdle}
         step="card"
         ready={sceneIdle && cardPinned}
         finishOnLeave
@@ -675,6 +678,7 @@ export default function HomePage() {
         ))}
       </SceneTourTip>
       <SceneTourTip
+        paused={!sceneIdle}
         step="zone"
         ready={sceneIdle && zoneLabel !== null}
         finishOnLeave
@@ -684,13 +688,19 @@ export default function HomePage() {
         {t('tour:zone', { zone: zoneLabel ?? '' })}
       </SceneTourTip>
       <SceneTourTip
+        paused={!sceneIdle}
         step="minimap"
         ready={sceneIdle && !cardOpen}
         placement="aboveEnd"
       >
         {t(touch ? 'tour:minimap.touch' : 'tour:minimap.pointer')}
       </SceneTourTip>
-      <SceneTourTip step="boat" ready={sceneIdle && !cardOpen} placement="side">
+      <SceneTourTip
+        paused={!sceneIdle}
+        step="boat"
+        ready={sceneIdle && !cardOpen}
+        placement="side"
+      >
         {t(isLoggedIn ? 'tour:boat.member' : 'tour:boat.guest')}
       </SceneTourTip>
 

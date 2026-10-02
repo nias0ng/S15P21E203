@@ -42,6 +42,20 @@ const AFTER: Partial<Record<TourStep, { all?: TourStep[]; any?: TourStep[] }>> =
     boat: { all: ['minimap', 'log'] },
   }
 
+/**
+ * 안내를 눌러 **다음으로 넘길 때** 곧바로 세울 수 있는 단계 — 가리킬 것(검색창 · 부표 · 미니맵 · 향해 일지 · 배)이
+ * 늘 화면에 있습니다. 카드 · 해역 · 추천 결과는 그 창이 떠 있어야 가리킬 수 있어 넘기며 건너뛰고,
+ * 그 창이 처음 뜰 때 제 조건대로 섭니다.
+ */
+const STANDALONE: readonly TourStep[] = [
+  'welcome',
+  'search',
+  'buoy',
+  'minimap',
+  'log',
+  'boat',
+]
+
 type TourProgress = {
   /** 끝낸 단계 — 그 행동을 했거나 [×] 로 닫은 것 */
   done: TourStep[]
@@ -54,10 +68,17 @@ type TourState = TourProgress & {
   wanted: TourStep[]
   /** 지금 떠 있는 단계 — 한 번에 하나뿐입니다 (저장하지 않습니다) */
   active: TourStep | null
+  /**
+   * 안내를 눌러 넘긴 다음 단계 — 제 조건이 안 맞아도 끝날 때까지 섭니다 (저장하지 않습니다).
+   * 넘긴 사람은 그 행동을 하기 전에 먼저 다 읽어 보고 싶은 것입니다.
+   */
+  forced: TourStep | null
 
   /** 그 단계의 조건이 맞았는가 · 더는 안 맞는가(화면이 비켰을 때) */
   want: (step: TourStep, on: boolean) => void
   finish: (step: TourStep) => void
+  /** 안내를 눌렀습니다 — 이 단계를 끝내고 다음 단계(`STANDALONE` 가운데 남은 첫째)를 곧바로 세웁니다 */
+  next: (step: TourStep) => void
   /** 지금 떠 있을 때만 끝냅니다 — 결과창을 닫는 것처럼 '봤다' 는 뜻이 그때만 있는 길 */
   finishIfActive: (step: TourStep) => void
   stop: () => void
@@ -74,16 +95,19 @@ function isReady(step: TourStep, done: readonly TourStep[]) {
 }
 
 /**
- * 지금 떠 있어야 할 단계를 고릅니다.
+ * 지금 떠 있어야 할 단계를 고릅니다. 눌러 넘긴 단계(`forced`)가 있으면 그것이 먼저입니다.
  *
  * 떠 있는 단계는 **끝나거나 조건이 풀릴 때까지 그대로 둡니다** — 차례가 앞선 단계의 조건이
  * 뒤늦게 맞아도 그 사이에 끼어들지 않습니다. 읽던 한 줄이 바뀌면 둘 다 못 읽습니다.
  */
 export function pickActiveStep(
-  state: Pick<TourState, 'active' | 'wanted' | 'done' | 'off'>,
+  state: Pick<TourState, 'active' | 'wanted' | 'done' | 'off'> & {
+    forced?: TourStep | null
+  },
 ): TourStep | null {
   if (state.off) return null
-  const { active, wanted, done } = state
+  const { active, wanted, done, forced } = state
+  if (forced && !done.includes(forced)) return forced
   if (active && wanted.includes(active) && !done.includes(active)) return active
   return (
     TOUR_STEPS.find(
@@ -118,6 +142,7 @@ export const useTourStore = create<TourState>()(
         ...INITIAL,
         wanted: [],
         active: null,
+        forced: null,
 
         want: (step, on) =>
           set((state) => {
@@ -131,16 +156,42 @@ export const useTourStore = create<TourState>()(
           set((state) => {
             if (state.done.includes(step)) return state
             const done = [...state.done, step]
-            return { done, active: pickActiveStep({ ...state, done }) }
+            const forced = state.forced === step ? null : state.forced
+            return {
+              done,
+              forced,
+              active: pickActiveStep({ ...state, done, forced }),
+            }
+          }),
+        next: (step) =>
+          set((state) => {
+            const done = state.done.includes(step)
+              ? state.done
+              : [...state.done, step]
+            const after = TOUR_STEPS.slice(TOUR_STEPS.indexOf(step) + 1)
+            const forced =
+              after.find(
+                (later) => STANDALONE.includes(later) && !done.includes(later),
+              ) ?? null
+            return {
+              done,
+              forced,
+              active: pickActiveStep({ ...state, done, forced }),
+            }
           }),
         finishIfActive: (step) =>
           set((state) => {
             if (state.active !== step) return state
             const done = [...state.done, step]
-            return { done, active: pickActiveStep({ ...state, done }) }
+            const forced = state.forced === step ? null : state.forced
+            return {
+              done,
+              forced,
+              active: pickActiveStep({ ...state, done, forced }),
+            }
           }),
-        stop: () => settle({ off: true }),
-        restart: () => settle({ ...INITIAL, active: null }),
+        stop: () => settle({ off: true, forced: null }),
+        restart: () => settle({ ...INITIAL, active: null, forced: null }),
       }
     },
     {

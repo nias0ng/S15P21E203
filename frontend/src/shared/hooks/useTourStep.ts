@@ -16,7 +16,8 @@ type Options = {
  * @param step 이 자리가 맡은 단계
  * @param ready 그 단계를 보일 때인가 — 그 화면이 처음 섰고 다른 창에 가려 있지 않을 때
  * @param options `finishOnLeave` — 위 머리말
- * @returns `showing` 지금 이 자리의 안내를 그릴 차례인가 · `finish` 그 행동을 했다(또는 [×])
+ * @returns `showing` 지금 이 자리의 안내를 그릴 차례인가 · `finish` 그 행동을 했다(또는 [×]) ·
+ *   `next` 안내를 눌러 넘겼다 — 다음 안내가 제 조건과 상관없이 곧바로 섭니다
  */
 export function useTourStep(
   step: TourStep,
@@ -26,6 +27,7 @@ export function useTourStep(
   const want = useTourStore((state) => state.want)
   const finishStep = useTourStore((state) => state.finish)
   const finishIfActive = useTourStore((state) => state.finishIfActive)
+  const nextStep = useTourStore((state) => state.next)
   const showing = useTourStore((state) => state.active === step)
 
   useEffect(() => {
@@ -38,5 +40,6 @@ export function useTourStep(
   useEffect(() => () => want(step, false), [step, want])
 
   const finish = useCallback(() => finishStep(step), [finishStep, step])
-  return { showing, finish }
+  const next = useCallback(() => nextStep(step), [nextStep, step])
+  return { showing, finish, next }
 }

@@ -97,7 +97,11 @@ export function RecommendResultList({ perfumes, ...context }: Props) {
           <RecommendReason perfume={open} rank={openIndex + 1} {...context} />
         ) : (
           tip.showing && (
-            <TourTip onClose={tip.finish} onStopAll={stopTour}>
+            <TourTip
+              onClose={tip.finish}
+              onNext={tip.next}
+              onStopAll={stopTour}
+            >
               {t('tour:results')}
             </TourTip>
           )

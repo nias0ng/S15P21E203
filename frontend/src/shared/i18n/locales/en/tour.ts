@@ -5,6 +5,7 @@ export const tour = {
   tip: {
     close: 'Close tip',
     stopAll: 'Stop showing tips',
+    next: 'Next',
   },
   welcome:
     'This sea lays out perfumes by scent family. Describe a feeling, or pick a floating buoy.',
