@@ -15,6 +15,7 @@ import {
   type SceneBootSnapshot,
 } from '../lib/bootProgress'
 import { engineSrc, parseSceneQuality } from '../lib/sceneQuality'
+import { setTourAnchorSource, type TourAnchorStep } from '../lib/tourAnchor'
 
 /**
  * 3D 향 지도가 카드 · 검색창에서 앱으로 넘기는 향수 한 개
@@ -48,6 +49,12 @@ export interface ScenePerfumeRef {
  * 와 같은 공간). 월드 좌표가 아닙니다.
  * ⚠️ `perfumeId` 는 DB 번호라 엔진 데이터에 아직 없어 늘 null 입니다 — 그동안은 좌표로 갑니다.
  */
+/**
+ * 엔진 안에서만 일어나 앱이 못 보는 행동 — 첫 방문 안내(`tourStore`)가 듣습니다 (엔진 `host.js` 의 `hostTour`).
+ *   minimap  미니맵 · 해도를 눌러 떠났다
+ */
+export type SceneTourEvent = 'minimap'
+
 export interface SceneMove {
   perfumeId: number | null
   x: number
@@ -69,6 +76,8 @@ interface EngineHost {
   closeCabin: () => void
   /** 품질 단계가 바뀌었습니다 (엔진 `host.js` 의 `hostQuality`) — 모양은 `parseSceneQuality` 가 좁힙니다 */
   quality: (info: unknown) => void
+  /** 첫 방문 안내가 들을 행동 (엔진 `host.js` 의 `hostTour`) — 모르는 이름은 버립니다 */
+  tour: (event: string) => void
 }
 
 /** iframe 안 엔진이 여는 손잡이 — paperboat main.js 의 window.PB 중 여기서 쓰는 것만 */
@@ -146,6 +155,22 @@ interface EngineHandle {
    * 돌려주는 값은 '떠났는가' 입니다 — 지도에 없는 향수이거나 안개 전환 중이면 false 입니다.
    */
   goPerfume?: (fragranticaId: number) => boolean
+  /**
+   * 첫 방문 안내가 붙을 자리 (엔진 `main.js` 의 `measureTour` · v0.88.0). `watch` 로 무엇을 볼지 알리면 엔진이 매 프레임
+   * `anchor` 를 채웁니다 — iframe 기준 CSS px 이고 `on` 이 false 면 아직 못 쟀습니다.
+   * NOTE: 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다. 그때는 엔진 쪽 안내가 안 보입니다.
+   */
+  tour?: {
+    watch: (step: TourAnchorStep | null) => void
+    anchor: {
+      on: boolean
+      x: number
+      y: number
+      w: number
+      h: number
+      side: number
+    }
+  }
 }
 
 type Props = {
@@ -203,6 +228,18 @@ type Props = {
    * 앱 UI(향해 일지 · 의견 단추)가 카드 아랫단을 덮어, 그동안 비키려고 듣습니다.
    */
   onCardChange?: (open: boolean) => void
+  /**
+   * 떠 있는 카드가 **누른 카드인가** (엔진 `<html data-card-pin>` · v0.88.0). 마우스를 올려 뜬 미리보기 카드는 마우스를
+   * 통과시켜 단추를 못 누릅니다 — 첫 방문 안내가 카드 단추를 설명하는 것은 누른 카드일 때만입니다.
+   */
+  onCardPinChange?: (pinned: boolean) => void
+  /**
+   * 해역 연출 중인 해역의 **지금 언어 이름** (엔진 `<html data-zone-label>` · v0.88.0 — 'FLORAL 해역' · 'Floral waters').
+   * 연출이 닫히면 null 입니다. 첫 방문 안내가 해역의 뜻과 닫는 법을 말합니다.
+   */
+  onZoneChange?: (label: string | null) => void
+  /** 엔진 안에서만 일어난 행동 (위 `SceneTourEvent`) */
+  onTourEvent?: (event: SceneTourEvent) => void
   /**
    * 엔진의 부팅 단계 (host.js `bootReport` — html → script → frame → boat-bytes → boat).
    * 로딩 커튼(SceneBootCurtain)이 퍼센트를 미는 데 씁니다. 배 GLB 진행은 초당 수십 번 옵니다.
@@ -291,6 +328,9 @@ export function ScentScene({
   onNightChange,
   onChartChange,
   onCardChange,
+  onCardPinChange,
+  onZoneChange,
+  onTourEvent,
   onBoot,
   onMove,
   start,
@@ -344,6 +384,9 @@ export function ScentScene({
     onNightChange,
     onChartChange,
     onCardChange,
+    onCardPinChange,
+    onZoneChange,
+    onTourEvent,
     onBoot,
     onMove,
     onLeave,
@@ -360,6 +403,9 @@ export function ScentScene({
       onNightChange,
       onChartChange,
       onCardChange,
+      onCardPinChange,
+      onZoneChange,
+      onTourEvent,
       onBoot,
       onMove,
       onLeave,
@@ -514,6 +560,10 @@ export function ScentScene({
           const next = parseSceneQuality(info)
           if (next) latest.current.onQuality?.(next)
         },
+        // 첫 방문 안내가 들을 행동 (host.js `hostTour`) — 미니맵 · 해도로 떠났다
+        tour: (event) => {
+          if (event === 'minimap') latest.current.onTourEvent?.(event)
+        },
       })
       // 시작 단계는 처리기를 꽂기 **전에** 정해졌으므로 따라잡습니다 (부팅 신호의 `boot()` 와 같은 사정)
       const startQuality = parseSceneQuality(engine.quality?.get())
@@ -525,10 +575,30 @@ export function ScentScene({
       */
       setBoatAnchorSource(() => engine.boat?.screen ?? null)
       /*
+        첫 방문 안내도 같은 길입니다 (`lib/tourAnchor`). 엔진은 iframe 기준으로 주므로 iframe 의 자리를 더해
+        뷰포트 기준으로 바꿉니다 — 선실로 들어가기의 `cabinIn` 과 같은 사정입니다.
+      */
+      setTourAnchorSource({
+        watch: (step) => engine.tour?.watch(step),
+        read: () => {
+          const anchor = engine.tour?.anchor
+          if (!anchor?.on) return null
+          const box = el.getBoundingClientRect()
+          return {
+            x: box.left + anchor.x,
+            y: box.top + anchor.y,
+            w: anchor.w,
+            h: anchor.h,
+            side: anchor.side,
+          }
+        },
+      })
+      /*
         엔진이 iframe 문서의 <html> 속성으로 알리는 것들을 지켜봅니다.
           data-time   시간대 (밤이면 헤더가 남색 유리)
           data-chart  전체 화면 해도가 열렸는가 (2026-09-21 — 위 onChartChange 머리말)
           data-card   향수 카드가 떠 있는가 (2026-10-01 — 위 onCardChange 머리말)
+          data-card-pin · data-zone · data-zone-label  누른 카드 · 해역 연출 (첫 방문 안내 — 위 onCardPinChange · onZoneChange 머리말)
         ⚠️ 관찰자는 하나입니다 — 둘 다 같은 요소의 속성이라 나눌 이유가 없습니다.
       */
       timeWatch?.disconnect()
@@ -538,12 +608,25 @@ export function ScentScene({
           latest.current.onNightChange?.(html.dataset.time === 'night')
           latest.current.onChartChange?.(html.dataset.chart !== undefined)
           latest.current.onCardChange?.(html.dataset.card !== undefined)
+          latest.current.onCardPinChange?.(html.dataset.cardPin !== undefined)
+          latest.current.onZoneChange?.(
+            html.dataset.zone === undefined
+              ? null
+              : (html.dataset.zoneLabel ?? html.dataset.zone),
+          )
         }
         report()
         timeWatch = new MutationObserver(report)
         timeWatch.observe(html, {
           attributes: true,
-          attributeFilter: ['data-time', 'data-chart', 'data-card'],
+          attributeFilter: [
+            'data-time',
+            'data-chart',
+            'data-card',
+            'data-card-pin',
+            'data-zone',
+            'data-zone-label',
+          ],
         })
       }
       /*
@@ -620,6 +703,7 @@ export function ScentScene({
       useDiveStore.getState().setEngine(null)
       useDiveStore.getState().setCabinEngine(null)
       setBoatAnchorSource(null)
+      setTourAnchorSource(null)
     }
   }, [])
 

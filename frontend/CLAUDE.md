@@ -259,6 +259,7 @@ import { perfumeDetailQuery } from '@/features/perfume/queries'   // X
 | `shared/ui/cardGrid` | `CARD_GRID` — 향수 · 브랜드 · 노트 카드 격자의 열과 사이. 여섯 열은 `cn(CARD_GRID, 'lg:grid-cols-6')` |
 | `shared/ui/BottleSilhouette` | 사진이 없는 향수병 자리에 세우는 실루엣. 색은 `currentColor` 로 부르는 쪽이 정합니다 |
 | `shared/ui/DiveCurtain` | 메인과 다른 화면 사이의 전환 커튼 — 콘텐츠 다섯은 잠수 · 떠오르기, 진열대는 선실로 들어가기 (진열대 · 메인 담당) |
+| `shared/ui/TourTip` | 첫 방문 안내 한 줄 — 요소 곁에 붙는 상아색 종이 · [×] · [안내 그만 보기]. 뜰 차례는 `useTourStep` 이 정합니다 |
 | `shared/ui/WaterCaustics` | 물결 — 어두운 방 위에 깔리는 수면 빛 그물(three.js 셰이더). 라우트 `handle.caustics` 로 켭니다. `handle.underwater` 를 더하면 `look="underwater"` — 수면을 올려다보는 물속이 내릴수록 가라앉습니다 (docs/어두운-방-유리판.md) |
 
 variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 **variant 를 추가**합니다
@@ -275,6 +276,7 @@ variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 
 | `shared/hooks/useMediaQuery` | 미디어 쿼리가 맞는지. 첫 렌더부터 값이 맞고, `matchMedia` 가 없으면 `fallback` 입니다 |
 | `shared/hooks/useMeasuredHeight` | 요소의 높이를 잽니다(ResizeObserver · 올림). 돌려받은 `ref` · `height` 는 그 자리에서 풀어 씁니다 |
 | `shared/hooks/useEndSession` | 로그아웃 · 탈퇴 뒤 로그인 흔적(인증 상태 · 쿼리 캐시)을 지웁니다 |
+| `shared/hooks/useTourStep` | 메인 첫 방문 안내 한 단계를 겁니다 (`shared/store/tourStore` — 한 번에 하나 · 끝낸 단계는 이 브라우저에 남김). `showing` 이면 `TourTip` 을 그리고 그 행동을 하면 `finish` |
 | `shared/hooks/useResetOnOpen` | 모달이 열릴 때(열쇠가 바뀔 때) 입력칸을 처음 값으로 되돌립니다. 렌더 중에 되돌려 첫 장부터 맞습니다 |
 
 순수 함수는 `shared/lib/` 에 있습니다. 새로 쓰기 전에 봅니다 — `parseId`(주소의 번호) ·

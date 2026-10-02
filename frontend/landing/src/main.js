@@ -5,7 +5,7 @@ import { createBloom } from './bloom.js';
 import { createSubmerged } from './submerged.js';
 import { lerp, clamp, wrapPi } from './util.js';
 import { createUI } from './ui.js';
-import { bootNow, bootReport, callHost, hostCabin, hostMove, hostQuality, hostSearch, perfumeRef, setHost, setHostNotice } from './host.js';   // 카드의 서비스 동작 · 검색창이 앱(호스트)으로 나가는 문 (v0.68.0) · 부팅 신호 (v0.75.0) · 선실 (v0.79.0) · 품질 단계 (S15P21E203-435)
+import { bootNow, bootReport, callHost, hostCabin, hostMove, hostQuality, hostSearch, hostTour, perfumeRef, setHost, setHostNotice } from './host.js';   // 카드의 서비스 동작 · 검색창이 앱(호스트)으로 나가는 문 (v0.68.0) · 부팅 신호 (v0.75.0) · 선실 (v0.79.0) · 품질 단계 (S15P21E203-435)
 import { createQuality } from './quality.js';   // 품질 단계 — GPU 이름 · 프레임 시간으로 high · mid · low 를 고른다 (2026-09-25)
 import { createInput } from './input.js';
 import { createSim } from './sim.js';
@@ -43,7 +43,7 @@ import * as oceanClock from './ocean-clock.js';
 import { bakeEnvironment, syncSky, tickSky } from './sky.js';
 import { timeNow, timeKey } from './times.js';
 // 화면 글자 사전 (2026-09-30) — ⚠ `t` 는 아래에서 시계 이름이라 `tr` 로 받는다
-import { applyStatic, koNames, lang as langNow, setLang, t as tr } from './i18n.js';
+import { applyStatic, koNames, lang as langNow, onLang, setLang, t as tr, waters } from './i18n.js';
 const { groundSpeed, turnRate } = oceanClock;
 
 // ───────── 향을 찾는 종이배 ─────────
@@ -771,13 +771,14 @@ function camSpeedFollow(s, dt) {
 // ⚠⚠ tick() **보다 먼저** 만든다 — 루프가 첫 프레임부터 부른다 (위 campanel 의 TDZ 교훈)
 const travel = createTravel({ nav, zones, pivotOf: () => boat.pivot });
 // ⭐ onBlocked — 미니맵의 바깥(범위 밖 · 2026-09-13 부터 `--pb-void` 한 색)을 누르면 가지 않고 경고만 (2026-09-11 오후)
-const minimap = createMinimap({ onPick: (t) => startTravel(t), onBlocked: () => ui.warn(tr('sea.out'), tr('sea.outSub')) });
+// ⚠ 미니맵 · 해도로 떠나면 앱의 첫 방문 안내에 알린다 (hostTour 'minimap' · v0.88.0) — 그 안내가 할 일을 다 했다
+const minimap = createMinimap({ onPick: (t) => { hostTour('minimap'); startTravel(t); }, onBlocked: () => ui.warn(tr('sea.out'), tr('sea.outSub')) });
 // ⭐⭐ 전체 화면 해도 (2026-09-12 저녁, v0.48.0 — chart.js). 미니맵 머리말의 [확대] 가 연다.
 //   ⚠ 미니맵 **뒤에** 만든다 — 안개 격자를 그쪽에서 읽는다 (기록의 주인은 미니맵이다).
 //   ⚠ 누르는 뜻은 미니맵과 **같다** (해역 이름 · 향수 · 빈 바다 → 그리로 떠난다 · 범위 밖 → 경고).
 //     해도는 거기에 '향수 점을 직접 누르기' 한 갈래를 더한 것뿐이다
 const chart = createChart({
-  onPick: (t) => startTravel(t),
+  onPick: (t) => { hostTour('minimap'); startTravel(t); },
   onBlocked: () => ui.warn(tr('sea.out'), tr('sea.outSub')),
   minimap
 });
@@ -795,6 +796,15 @@ let pendingPick = null;
 let leaveAsked = false;
 // 지금 보이는 향수 목록을 마지막으로 채운 시각 (틱의 t · 이름표 줄)
 let visibleAt = -1;
+// ⭐ 첫 방문 안내가 붙을 자리 (2026-10-02, v0.88.0 — measureTour · PB.tour). 앱이 무엇을 보는지(tourWatch) 알리면 틱이 매 프레임 채운다.
+//   tourLabels = 이번 장의 부표 이름표 (부표 안내가 고른다) · tourBuoyKey = 그 안내가 붙은 부표
+const TOUR_WATCH = ['buoy', 'card', 'zone', 'minimap', 'boat'];
+const tourAnchor = { on: false, x: 0, y: 0, w: 0, h: 0, side: 1 };
+let tourWatch = null, tourBuoyKey = null, tourLabels = null;
+// 앱에 알린 카드 고정 · 해역 연출 (`<html data-card-pin>` · `data-zone`) — 바뀔 때만 쓴다
+let cardPinShown = false, zoneShown = '';
+// 언어가 바뀌면 해역 이름(data-zone-label)을 다시 쓴다 · ⚠ disposeAll 이 끊는다 (HMR 마다 쌓인다)
+const offTourLang = onLang(() => { zoneShown = ''; });
 // ⭐ 클릭 항해의 **일반 속도** (스로틀 0..1) — 자동 조타가 가속이 아닐 때의 값. 예전 틱의 숫자 0.72 를 이름으로 뺐다 (2026-09-15, v0.65.0 · 값은 그대로)
 const SAIL_NORMAL = 1.0;
 // ⭐ 첫 방문 조작 안내 (2026-10-01, v0.87.0 — index.html 의 html[data-help-intro]). **손가락 기기**에서 처음 한 번 — 첫 누름이나 15초에 걷힌다.
@@ -2368,6 +2378,7 @@ function tick(ts) {
   //   ⚠ 개발 시점(항공뷰 · 자유 시점)에서는 끈다 — 본 카메라로 투영하므로 자리가 틀린다
   //   ⚠ 이동 안개가 덮는 동안은 같이 옅어진다 — 이름표는 DOM 에서 안개 **위**에 있다 (travel.fog)
   const allLabels = (P.markLabels === undefined ? 1 : P.markLabels) >= 0.5;
+  tourLabels = null;
   if (allLabels && P.showMarks && !P.topView && !P.freeView) {
     const fogK = 1 - travel.fog, W0 = W(), H0 = H();
     const decl = (P.markLabelDeclutter === undefined ? 1 : P.markLabelDeclutter) >= 0.5;
@@ -2396,6 +2407,7 @@ function tick(ts) {
     }
     ui.showMarkLabels(items);
     focusLabelsOn = true;
+    tourLabels = items;
     // ⭐ 지금 보이는 향수 — **이름표가 보이는** 지도 부표를 화면 왼쪽부터 (v0.86.0). 0.5초마다 · 바뀔 때만 DOM 을 쓴다 (ui.setVisiblePerfumes)
     if (t - visibleAt > 0.5) {
       visibleAt = t;
@@ -2452,6 +2464,15 @@ function tick(ts) {
     //   3D 위에 얹은 것(향해 일지 · 의견 단추)이 카드 아랫단을 덮었다 (사용성 테스트 · 모바일 : '이 향의 해역으로' 가 그 밑에 깔렸다) — 앱이 그동안 비킨다
     if (shownMark) document.documentElement.dataset.card = '1'; else delete document.documentElement.dataset.card;
   }
+  // ⭐ **누른 카드인가** (2026-10-02, v0.88.0 — `<html data-card-pin>`). 마우스를 올려 뜬 미리보기 카드는 아니다 — 앱의 첫 방문 안내가
+  //   카드 단추를 설명하는데, 미리보기는 마우스를 통과시켜(cardPeek) 단추를 못 누른다. ⚠ 바뀔 때만 쓴다
+  {
+    const pin = !!shownMark && shownMark === clickMark;
+    if (pin !== cardPinShown) {
+      cardPinShown = pin;
+      if (pin) document.documentElement.dataset.cardPin = '1'; else delete document.documentElement.dataset.cardPin;
+    }
+  }
   // 카드의 서비스 동작 단추 (v0.68.0) — 지도 향수가 아니면 둘 다 쉰다. ⚠ ui 가 바뀔 때만 쓴다
   //   ⚠ [주변 향 탐색]이 빠지면서(v0.74.2) 인자가 하나가 됐다 — 남은 둘은 같은 조건이다
   if (shownMark) ui.setScentActions(shownMark.src === 'map' && !!shownMark.perfume && !hostHold);
@@ -2495,7 +2516,7 @@ function tick(ts) {
   //   ⚠ 화면 반지름은 카메라의 위 방향으로 배 길이 절반을 투영해 잰다 — fov 를 쓰지 않는다
   //     (항공뷰는 직교 카메라라 fov 가 없다 · reflect.js 의 NaN 교훈)
   //   ⚠ 호버도 아니고 말풍선도 없으면 **안 잰다** — 투영 두 번을 매 프레임 헛돌리지 않는다 (screen.on = false)
-  if (boatHover || cabinOpen) {
+  if (boatHover || cabinOpen || tourWatch === 'boat') {
     const bp = boat.pivot.position, hy = bp.y + CONFIG.boat.lengthW * 0.11;
     view.updateMatrixWorld();
     _v3.set(bp.x, hy, bp.z).project(view);
@@ -2517,6 +2538,7 @@ function tick(ts) {
     boat.screen.on = false;
     ui.setCabin(false, 0, 0, 1, false);
   }
+  measureTour();
   // ⭐ **배 가운데가 화면 어디에 있는가** (2026-09-24 — 선실로 들어가기). 앱 커튼이 이 점에서 구름을 번지게 한다
   //   (`PB.cabinIn` 이 돌려준다). 배 자리(`boat.screen`)와 같은 점 · 같은 카메라다 — **이번 프레임** 카메라로 투영한다.
   //   ⚠ 들어가는 중이 아니면 안 잰다 (값은 hostCabinIn 이 낡았다고 표시한다)
@@ -2536,7 +2558,19 @@ function tick(ts) {
   }
   ui.setDrift(s);
   // 해역 연출 중(들어오는 중 · 머무는 중)이면 하단 안내가 닫는 법을 말한다 — 나가는 중에는 이미 닫히고 있다
-  ui.setHelpZone(!!phase.cue.zone && phase.cue.phase !== 'leaving' && phase.cue.phase !== 'sailing');
+  {
+    const zoneOn = !!phase.cue.zone && phase.cue.phase !== 'leaving' && phase.cue.phase !== 'sailing';
+    ui.setHelpZone(zoneOn);
+    // ⭐ 앱에도 알린다 (2026-10-02, v0.88.0 — `<html data-zone>` 해역 코드 · `data-zone-label` 지금 언어의 이름). 앱의 첫 방문 안내가
+    //   해역의 뜻과 닫는 법을 말한다. ⚠ 바뀔 때만 쓴다 · 이름을 먼저 쓴다 (앱은 data-zone 을 보고 이름을 읽는다)
+    const zk = zoneOn ? String(phase.cue.zone) : '';
+    if (zk !== zoneShown) {
+      zoneShown = zk;
+      const html = document.documentElement;
+      if (zk) { html.dataset.zoneLabel = waters(zk); html.dataset.zone = zk; }
+      else { delete html.dataset.zone; delete html.dataset.zoneLabel; }
+    }
+  }
   // ⭐ 그림자 맵 — 바뀌었을 때만, 이 프레임의 **처음 불이 켜진 렌더 한 번**이 그린다 (shadowDirty 머리말)
   renderer.shadowMap.needsUpdate = shadowDirty();
   // 반사를 먼저 찍는다 (배와 같은 게이트라 8fps). 본 렌더가 그 그림을 되읽는다
@@ -2770,6 +2804,11 @@ window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel
   setLang, lang: langNow,
   // ⭐ 움직임 줄이기 (2026-10-01, v0.85.0 — applyCalm 머리말). get → { calm: 지금 줄이는 중인가, os: OS 설정이 켜져 있는가 } · set(true|false) 는 앱 설정 몫만 바꾼다
   motion: { get: () => ({ calm: calmWanted(), os: !!(_calmMQ && _calmMQ.matches) }), set: (on) => { P.motionCalm = on ? 1 : 0; applyCalm(); return true; } },
+  // ⭐ 첫 방문 안내 (2026-10-02, v0.88.0 — measureTour 머리말). watch('buoy' | 'card' | 'zone' | 'minimap' | 'boat' | null) · anchor 는 틱이 채운다
+  tour: {
+    watch: (step) => { tourWatch = TOUR_WATCH.includes(step) ? step : null; if (tourWatch !== 'buoy') tourBuoyKey = null; tourAnchor.on = false; },
+    anchor: tourAnchor
+  },
   // ⭐ 반응형 검산 (2026-09-11 오후) — 제품 UI 상자들의 자리 · 서로 겹침 · 화면 밖 · 스크롤 · 수면 타이포 꼭대기와 정보 블록의 간격.
   //   ⚠ 창 크기를 바꾼 뒤에는 **스크린샷 한 장으로 먼저 칠하고** 부른다 (숨긴 패널에서는 ResizeObserver 가 안 불린다 — 교훈 ⑧)
   layout: () => layoutReport(),
@@ -2778,6 +2817,70 @@ window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel
     report: () => scentMapReport({ size: P.mapSize, minGap: P.mapMinGap, flipY: P.mapFlipY }),
     get: () => marks.map
   } };
+
+// ⭐ 첫 방문 안내가 붙을 상자 (2026-10-02, v0.88.0). 앱(`features/map` 의 SceneTourTip)이 `PB.tour.watch(step)` 으로 무엇을 보는지 알리면
+//   틱이 매 프레임 `PB.tour.anchor` 에 채운다 — 배 자리(`boat.screen`)와 같은 규약이다 (값을 나르지 않고 앱이 읽는다).
+//     buoy     이름표가 또렷한 지도 부표 하나 — 한 번 고르면 또렷한 동안 같은 부표에 붙는다 (안 그러면 안내가 부표 사이를 뛴다)
+//     card     떠 있는 향수 카드 · zone 하단 안내(폰처럼 숨어 있으면 속도 계기) · minimap 미니맵
+//     boat     배 옆구리 — 선실 말풍선이 꼬리를 대는 점과 같다 (side 1 오른쪽 · −1 왼쪽)
+//   ⚠ 좌표는 **iframe 기준** CSS px 다 (#stage 기준이 아니다). ⚠ 안 볼 때(watch null)는 아무것도 안 잰다
+function measureTour() {
+  const a = tourAnchor;
+  a.on = false;
+  if (!tourWatch) return;
+  let box = null;
+  if (tourWatch === 'buoy') box = tourBuoyBox();
+  else if (tourWatch === 'boat') {
+    const s = boat.screen;
+    if (s.on) { box = { x: s.ax, y: s.y - s.r * 0.35, w: 0, h: s.r * 0.7, stage: true }; a.side = s.side; }
+  } else box = ui.tourBox(tourWatch);
+  if (!box) return;
+  const o = box.stage ? ui.stageOrigin() : { x: 0, y: 0 };
+  a.x = box.x + o.x; a.y = box.y + o.y; a.w = box.w; a.h = box.h; a.on = true;
+}
+// 부표 안내가 붙을 이름표 — 또렷하고(a) 화면 가운데 띠(위 30% 아래 · 아래 15% 위 · 양옆 90px 안)에 있는 지도 부표 가운데
+//   **안내가 설 자리(이름표 위)가 빈** 것, 그다음 화면 가운데에 가까운 것. ⚠ 위는 검색창과 그 밑의 안내, 아래는 계기 · 미니맵 · 향해 일지 자리다
+//   ⚠ 빈 자리를 따지는 까닭 : 처음 화면의 가운데 부표는 대개 돛 밑이라, 거기 서면 안내가 돛과 옆 부표 이름표를 덮었다 (2026-10-02 실측 1920)
+//   ⚠ 한 번 고르면 또렷한 동안 그대로다 — 배가 지나가며 가려도 안내가 다른 부표로 뛰지 않는다
+const TOUR_TIP_W = 380, TOUR_TIP_H = 110;   // 앱 안내 한 장의 어림 (1920 · 세 줄) — 가리는지 셀 때만 쓴다
+function tourBuoyBox() {
+  if (!tourLabels) return null;
+  const W0 = W(), H0 = H();
+  const ok = (L) => L.a > 0.5 && L.m && L.m.src === 'map' && L.m.perfume && L.x > 90 && L.x < W0 - 90 && L.y > H0 * 0.3 && L.y < H0 * 0.85;
+  let L = tourBuoyKey !== null ? tourLabels.find(q => ok(q) && q.m.perfume.id === tourBuoyKey) : null;
+  if (!L) {
+    // 안내가 설 자리를 가리는 것 — 또렷한 다른 이름표와 배(선체 · 돛 중간 — 카드 자리 잡기의 _obs 와 같은 두 점)
+    const tags = [];
+    for (const q of tourLabels) {
+      if (q.a <= 0.3) continue;
+      const w = ui.labelWidth(q.text, q.top), h = ui.labelHeight(q.top);
+      tags.push({ q, x0: q.x - w * 0.5, x1: q.x + w * 0.5, y0: q.y - h - 2, y1: q.y + 2 });
+    }
+    const hull = [];
+    for (const hy of [0.8, 4.0]) {
+      _v3.set(boat.pivot.position.x, hy, boat.pivot.position.z).project(cam);
+      hull.push({ x: (_v3.x * 0.5 + 0.5) * W0, y: (-_v3.y * 0.5 + 0.5) * H0 });
+    }
+    const cost = (q) => {
+      const ty1 = q.y - ui.labelHeight(q.top) - 12, ty0 = ty1 - TOUR_TIP_H;
+      const tx0 = q.x - TOUR_TIP_W * 0.5, tx1 = q.x + TOUR_TIP_W * 0.5;
+      let hit = 0;
+      for (const g of tags) if (g.q !== q && g.x0 < tx1 && g.x1 > tx0 && g.y0 < ty1 && g.y1 > ty0) hit++;
+      for (const p of hull) if (p.x > tx0 - 40 && p.x < tx1 + 40 && p.y > ty0 - 40 && p.y < ty1 + 60) hit += 2;
+      return hit * 1000 + Math.hypot(q.x - W0 * 0.5, q.y - H0 * 0.6);
+    };
+    let best = Infinity;
+    for (const q of tourLabels) {
+      if (!ok(q)) continue;
+      const c = cost(q);
+      if (c < best) { best = c; L = q; }
+    }
+    tourBuoyKey = L ? L.m.perfume.id : null;
+  }
+  if (!L) return null;
+  const w = ui.labelWidth(L.text, L.top), h = ui.labelHeight(L.top);
+  return { x: L.x - w * 0.5, y: L.y - h - 2, w, h, stage: true };
+}
 
 // PB.layout() — 위 주석. 제품 UI 만 본다 (개발 패널은 solo 로 숨기고 잰다)
 function layoutReport() {
@@ -2850,6 +2953,10 @@ function disposeAll() {
   hostDive(0);         // ⚠ 잠수를 풀어 둔다 — `<html data-dive>` 가 남으면 엔진 UI 가 영영 안 보인다 (불변식 10)
   disposeDive();
   hostCabinIn(0);      // ⚠ 선실로 들어가기도 같다 — `<html data-cabin-in>` 과 입력 잠금을 풀어 둔다
+  // ⚠ 앱에 알리던 카드 고정 · 해역 연출도 걷어 둔다 (v0.88.0) — 남으면 다시 뜬 엔진의 첫 장이 그 값을 바꿀 때까지 앱이 믿는다
+  for (const k of ['cardPin', 'zone', 'zoneLabel']) delete document.documentElement.dataset[k];
+  tourWatch = null;
+  offTourLang();
   disposeCabinIn();
   chart.dispose();     // ⚠ 미니맵보다 먼저 — 안개 격자를 그쪽에서 읽는다
   minimap.dispose();   // (향수 고르기 라벨은 ui.dispose() 가 거둔다)

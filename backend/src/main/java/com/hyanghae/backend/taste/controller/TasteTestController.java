@@ -49,7 +49,9 @@ public class TasteTestController {
             description = "고른 향 계열과 결과 향수를 남기고 배를 그 자리에 띄웁니다.")
     @ApiResponse(responseCode = "201", description = "저장했습니다.")
     @ApiResponse(responseCode = "400",
-            description = "고른 계열이 1~2개가 아니거나, 없는 계열이거나, 결과 향수가 지도에 없습니다.")
+            description = "고른 계열이 1~2개가 아니거나, 없는 계열이거나, 결과 향수가 지도에 없거나,"
+                    + " 결과 향수가 1순위 계열의 이름표 조각 밖에 있습니다"
+                    + " (TASTE_PERFUME_OUTSIDE_PRIMARY_REGION).")
     @ApiResponse(responseCode = "401", description = "로그인이 필요합니다.")
     @ApiResponse(responseCode = "409", description = "이미 취향 테스트를 마쳤습니다.")
     @PostMapping

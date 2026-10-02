@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { isApiError } from '@/shared/api/http'
 import { searchWords } from '@/shared/lib/searchWords'
 import { useLocale } from '@/shared/store/localeStore'
+import { useTourStore } from '@/shared/store/tourStore'
 import { Button } from '@/shared/ui/Button'
 import { CARD_GRID } from '@/shared/ui/cardGrid'
 import { EmptyState } from '@/shared/ui/EmptyState'
@@ -62,12 +63,16 @@ export function RecommendModal({
   restored,
 }: Props) {
   const { t } = useTranslation('recommend')
+  const finishTourIfShowing = useTourStore((state) => state.finishIfActive)
   /*
     사람이 닫으면 **담아 둔 결과도 버립니다** (`openRecommendation` 머리말) — 상세로 넘어가는
     길은 이 `onClose` 를 안 지나므로(링크라 화면째 언마운트됩니다) 그때는 남습니다.
+    결과 안내(`RecommendResultList`)가 서 있었으면 그것도 본 것으로 칩니다 — 결과가 서기 전에
+    닫았으면 다음 결과에서 다시 섭니다.
   */
   const close = () => {
     dropOpenRecommendation()
+    finishTourIfShowing('results')
     onClose()
   }
 

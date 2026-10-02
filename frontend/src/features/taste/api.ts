@@ -16,6 +16,9 @@ export async function getScentVectors(): Promise<ScentVector[]> {
     perfumeId: row.perfumeId,
     rank: row.rank,
     families: toScentWeights(row.families),
+    labelRegion: isScentFamilyKey(row.labelRegionCode)
+      ? row.labelRegionCode
+      : null,
   }))
 }
 

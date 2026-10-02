@@ -19,6 +19,11 @@ import java.util.Map;
  * 코사인 유사도는 벡터 크기에 영향을 받지 않아 정규화 없이 그대로 쓸 수 있습니다.
  *
  * <p>{@code rank} 는 국내 선정 순위입니다. 유사도가 같을 때 이 값이 작은 향수를 고릅니다.
+ *
+ * <p>{@code labelRegionCode} 는 그 향수가 <b>그려진 자리</b>의 계열입니다. 지도 조회의
+ * {@code scentRegionId} 는 가장 센 계열이라 그려진 자리와 다를 수 있습니다(인계 데이터 200개 중
+ * 47개). 취향 테스트는 1순위 계열이 이 값과 같은 향수만 결과로 고를 수 있습니다 — 저장할 때
+ * 서버가 같은 판정으로 다시 확인합니다.
  */
 public record ScentVectorResponse(
         @Schema(description = "향수 ID", example = "42")
@@ -30,6 +35,11 @@ public record ScentVectorResponse(
 
         @Schema(description = "지도 y 좌표. 0~0.83056 입니다.", example = "0.04484")
         double y,
+
+        @Schema(description = "좌표가 이름표(anchorX·anchorY)가 있는 조각 안인 계열 코드."
+                + " 떨어져 나온 작은 조각이나 계열 밖 바다면 null 입니다.",
+                example = "WOODY", nullable = true)
+        String labelRegionCode,
 
         @Schema(description = "국내 선정 순위 1~200. 유사도 동점을 가릅니다.", example = "1")
         int rank,

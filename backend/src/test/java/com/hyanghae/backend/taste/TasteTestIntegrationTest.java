@@ -33,12 +33,15 @@ import org.springframework.test.web.servlet.ResultActions;
  * <p>고정 데이터는 이렇습니다.
  *
  * <ul>
- *   <li>향수 1·2: 지도에 점이 있습니다. 결과가 될 수 있습니다.
+ *   <li>향수 1: 플로럴 이름표 조각 안입니다. 플로럴이 1순위면 결과가 될 수 있습니다.
+ *   <li>향수 2: 우디 이름표 조각 안입니다. 우디가 1순위면 결과가 될 수 있습니다.
  *   <li>향수 3: 좌표가 없습니다. 지도 밖이라 결과가 될 수 없습니다.
+ *   <li>향수 4: 플로럴에서 떨어져 나온 작은 조각 안입니다. 플로럴 구역이지만 결과가 될 수 없습니다.
  * </ul>
  *
  * <p>계열은 마이그레이션이 심은 9개를 그대로 씁니다. 프론트의 {@code SCENT_FAMILY_KEYS} 와 같은
- * 코드여야 하므로 테스트용으로 새로 만들지 않습니다.
+ * 코드여야 하므로 테스트용으로 새로 만들지 않습니다. 마이그레이션은 폴리곤과 이름표 자리를 비워
+ * 두므로(적재가 채웁니다) 플로럴과 우디에만 그려 넣고 끝나면 다시 비웁니다.
  */
 @IntegrationTest
 @AutoConfigureMockMvc
@@ -57,8 +60,16 @@ class TasteTestIntegrationTest {
     /** 좌표가 없어 지도 밖인 향수입니다. */
     private static final long OFF_MAP = 3;
 
+    /** 플로럴에서 떨어져 나온 작은 조각 안의 향수입니다. */
+    private static final long IN_DETACHED_PIECE = 4;
+
     private static final double ON_MAP_X = 0.09163;
     private static final double ON_MAP_Y = 0.04484;
+
+    /** 첫 조각이 이름표가 있는 조각(향수 1), 둘째가 떨어져 나온 조각(향수 4)입니다. */
+    private static final String FLORAL_POLYGON =
+            "[[[0,0],[0.3,0],[0.3,0.3],[0,0.3]],[[0.7,0.7],[0.9,0.7],[0.9,0.9],[0.7,0.9]]]";
+    private static final String WOODY_POLYGON = "[[[0.4,0.4],[0.6,0.4],[0.6,0.6],[0.4,0.6]]]";
 
     @Autowired
     private MockMvc mockMvc;
@@ -87,10 +98,15 @@ class TasteTestIntegrationTest {
         insertPerfume(ON_MAP, "On Map Scent");
         insertPerfume(ON_MAP_2, "Another On Map Scent");
         insertPerfume(OFF_MAP, "Off Map Scent");
+        insertPerfume(IN_DETACHED_PIECE, "Detached Piece Scent");
 
         insertMapPoint(ON_MAP, ON_MAP_X, ON_MAP_Y);
         insertMapPoint(ON_MAP_2, 0.5, 0.5);
+        insertMapPoint(IN_DETACHED_PIECE, 0.8, 0.8);
         // 향수 3 은 좌표를 넣지 않습니다.
+
+        drawRegion("FLORAL", 0.15, 0.15, FLORAL_POLYGON);
+        drawRegion("WOODY", 0.45, 0.45, WOODY_POLYGON);
     }
 
     @AfterEach
@@ -106,12 +122,12 @@ class TasteTestIntegrationTest {
      */
     @Test
     void keepsPickOrder() throws Exception {
-        complete("[\"WOODY\", \"FLORAL\"]", ON_MAP)
+        complete("[\"WOODY\", \"FLORAL\"]", ON_MAP_2)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.completed").value(true))
                 .andExpect(jsonPath("$.picks[0]").value("WOODY"))
                 .andExpect(jsonPath("$.picks[1]").value("FLORAL"))
-                .andExpect(jsonPath("$.matchedPerfumeId").value((int) ON_MAP));
+                .andExpect(jsonPath("$.matchedPerfumeId").value((int) ON_MAP_2));
 
         mockMvc.perform(get(URL))
                 .andExpect(status().isOk())
@@ -261,6 +277,46 @@ class TasteTestIntegrationTest {
         assertThat(states).isZero();
     }
 
+    /**
+     * 1순위 계열 구역 밖의 향수는 400 이고 <b>배도 일지도 남지 않습니다.</b>
+     *
+     * <p>향 구성이 닮았어도 지도에서 다른 구역에 그려진 향수면, 고른 계열에서 시작한 것으로 보이지
+     * 않습니다. 2순위 계열 구역 안이어도 같습니다 — 향수 1 은 플로럴 구역인데 플로럴을 2순위로
+     * 골랐습니다.
+     */
+    @Test
+    void rejectsPerfumeOutsideThePrimaryRegion() throws Exception {
+        complete("[\"WOODY\", \"FLORAL\"]", ON_MAP)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("TASTE_PERFUME_OUTSIDE_PRIMARY_REGION"));
+
+        mockMvc.perform(get(URL)).andExpect(jsonPath("$.completed").value(false));
+
+        Integer states = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM map_exploration_states WHERE user_id = ?",
+                Integer.class, USER_ID);
+        assertThat(states).isZero();
+
+        Integer logs = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM map_exploration_logs WHERE user_id = ?",
+                Integer.class, USER_ID);
+        assertThat(logs).isZero();
+    }
+
+    /**
+     * 1순위 계열이어도 <b>떨어져 나온 작은 조각</b> 안이면 400 입니다.
+     *
+     * <p>지도는 계열 이름을 이름표 조각 한 곳에만 적어, 작은 조각은 이웃 계열 사이에 끼어 보입니다.
+     */
+    @Test
+    void rejectsPerfumeInADetachedPieceOfThePrimaryRegion() throws Exception {
+        complete("[\"FLORAL\"]", IN_DETACHED_PIECE)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("TASTE_PERFUME_OUTSIDE_PRIMARY_REGION"));
+
+        mockMvc.perform(get(URL)).andExpect(jsonPath("$.completed").value(false));
+    }
+
     /** 고른 계열이 1~2개가 아니면 400 입니다. 0개는 유사도를 잴 수 없고 3개는 화면에 없습니다. */
     @Test
     void rejectsWrongPickCount() throws Exception {
@@ -390,7 +446,16 @@ class TasteTestIntegrationTest {
                 perfumeId, x, y);
     }
 
+    private void drawRegion(String code, double anchorX, double anchorY, String polygon) {
+        jdbcTemplate.update(
+                "UPDATE scent_regions SET anchor_x = ?, anchor_y = ?, polygon = ?::jsonb"
+                        + " WHERE code = ?",
+                anchorX, anchorY, polygon, code);
+    }
+
     private void clearData() {
+        jdbcTemplate.update("UPDATE scent_regions SET anchor_x = NULL, anchor_y = NULL,"
+                + " polygon = NULL WHERE code IN ('FLORAL', 'WOODY')");
         jdbcTemplate.update("DELETE FROM user_taste_test_selections");
         jdbcTemplate.update("DELETE FROM user_taste_tests");
         jdbcTemplate.update("DELETE FROM map_exploration_states");
