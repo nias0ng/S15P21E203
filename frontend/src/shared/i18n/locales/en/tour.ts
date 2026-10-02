@@ -12,6 +12,32 @@ export const tour = {
   search:
     "'Describe' finds perfumes from a sentence; 'Name' finds one you already know.",
   results: 'Select a card to see why it was picked.',
+  buoy: 'Each glowing buoy is a perfume. Pick one.',
+  buoyMove: 'Select the sea to sail there.',
+  // only on devices with arrow keys
+  buoyKeys: 'You can also steer with ← → ↑.',
+  // NOTE: the button names must match the engine card (landing/src/i18n.js card.detail · save · sail)
+  card: {
+    detail: { name: 'View details', desc: 'the full perfume page' },
+    save: { name: 'Save to Shelf', desc: 'keep the ones you like (log in)' },
+    sail: {
+      name: 'Sail to its waters',
+      desc: 'go where its scent family gathers',
+    },
+  },
+  zone: 'You’re in the {{zone}}, where one scent family gathers. Click the sea to close this view.',
+  minimap: {
+    pointer:
+      'A map of scent families. Click a name to sail there. Bright parts are sea you’ve crossed — that’s the % seen.',
+    touch:
+      'A map of scent families. Tap a name twice to sail there. Bright parts are sea you’ve crossed — that’s the % seen.',
+  },
+  boat: {
+    member:
+      'Click the boat to step into the cabin — your saved perfumes are on the Shelf.',
+    guest:
+      'Click the boat to step into the cabin. Log in to keep the perfumes you like on the Shelf.',
+  },
   guide: {
     trigger: 'How to use',
     title: 'How to use',

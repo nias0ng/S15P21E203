@@ -8,6 +8,7 @@ import {
   MapSearchModal,
   SceneBootCurtain,
   SceneSearchBar,
+  SceneTourTip,
   ScentScene,
   buildMapPerfumeLookup,
   buildPerfumeIdIndex,
@@ -42,6 +43,7 @@ import {
   toPerfumeSearch,
 } from '@/shared/config/routes'
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
+import { useMediaQuery } from '@/shared/hooks/useMediaQuery'
 import { useToast } from '@/shared/hooks/useToast'
 import { localizedName } from '@/shared/i18n/locale'
 import { cn } from '@/shared/lib/cn'
@@ -105,7 +107,7 @@ const DIVE_FADE = 'transition-[opacity,visibility] duration-300 ease-out'
  */
 
 export default function HomePage() {
-  const { t } = useTranslation('map')
+  const { t } = useTranslation(['map', 'tour'])
   const locale = useLocale()
   const navigate = useNavigate()
   const location = useLocation()
@@ -123,11 +125,25 @@ export default function HomePage() {
     setSceneCard(cardOpen)
   }, [cardOpen, setSceneCard])
   useEffect(() => () => setSceneCard(false), [setSceneCard])
-  // 부표를 눌러 카드를 연 사람에게는 첫 화면 안내('부표를 눌러 보세요')가 할 일을 다 했습니다 (`tourStore`)
+  /*
+   * 첫 방문 안내의 엔진 쪽 단계 (`tourStore` · `SceneTourTip`). 부표를 눌러 카드를 연 사람에게는 첫 화면 안내 ·
+   * 부표 안내가 할 일을 다 했습니다. 해도를 연 사람에게는 미니맵 안내가 그렇습니다 (해도는 미니맵의 확대 단추가 엽니다).
+   *   cardPinned  누른 카드 — 마우스를 올려 뜬 미리보기 카드는 단추를 못 누릅니다 (`ScentScene` 의 onCardPinChange)
+   *   zoneLabel   해역 연출 중인 해역의 이름 · 아니면 null
+   */
   const finishTour = useTourStore((state) => state.finish)
   useEffect(() => {
-    if (cardOpen) finishTour('welcome')
+    if (!cardOpen) return
+    finishTour('welcome')
+    finishTour('buoy')
   }, [cardOpen, finishTour])
+  useEffect(() => {
+    if (chartOpen) finishTour('minimap')
+  }, [chartOpen, finishTour])
+  const [cardPinned, setCardPinned] = useState(false)
+  const [zoneLabel, setZoneLabel] = useState<string | null>(null)
+  // 손가락 기기는 미니맵을 두 번 눌러 떠나고 방향키가 없습니다 (엔진 minimap.js · index.html 의 .pb-help-keys)
+  const touch = useMediaQuery('(pointer: coarse)')
   /*
    * 진열대에서 **떠올라** 들어오는 중인가. 그동안 화면은 잠수 커튼(물)이 덮고 있으므로
    * 이 화면의 아이보리 로딩 커튼은 비킵니다 — 물 밑에서 구름이 갈라지면 걷히는 겹이 둘이 됩니다.
@@ -353,6 +369,20 @@ export default function HomePage() {
     releaseCabin.current = null
   }
 
+  /*
+   * 3D 가 비어 있는가 — 커튼 · 잠수 · 해도 · 결과창 · 저장 · 로그인 안내 · 선실 말풍선이 없을 때만 엔진 쪽 안내가 섭니다.
+   * 그 창들 위로 안내가 뜨면 가리킬 것이 가려져 있거나, 그 창의 일과 안 맞는 말을 합니다.
+   */
+  const sceneIdle =
+    boot.done &&
+    !diving &&
+    !chartOpen &&
+    nlQuery === null &&
+    mapKeyword === null &&
+    saving === null &&
+    !loginOpen &&
+    !cabinOpen
+
   return (
     /*
      * 3D 가 화면 맨 위부터 끝까지 채웁니다 — 헤더(GlobalHeader)는 그 위에 유리판으로 뜹니다.
@@ -377,6 +407,11 @@ export default function HomePage() {
         onNightChange={(night) => setSky(night ? 'dark' : 'light')}
         onChartChange={setChartOpen}
         onCardChange={setCardOpen}
+        onCardPinChange={setCardPinned}
+        onZoneChange={setZoneLabel}
+        onTourEvent={(event) => {
+          if (event === 'minimap') finishTour('minimap')
+        }}
         onBoot={boot.report}
         onMove={reportMove}
         quality={graphics.mode}
@@ -402,6 +437,7 @@ export default function HomePage() {
            * ⚠️ 서버는 향수를 고른 이동을 **언제나** 남깁니다. 좌표는 서버가 채우므로 안 보냅니다.
            */
           if (perfumeId !== null) reportMove({ perfumeId })
+          finishTour('card')
 
           navigate(
             perfumeId === null
@@ -453,6 +489,7 @@ export default function HomePage() {
           new Promise<void>((resolve) => {
             releaseCabin.current = resolve
             setCabinOpen(true)
+            finishTour('boat')
           })
         }
         // 3D 를 눌렀습니다 — 말풍선은 팝오버라 배경을 누르면 닫힙니다 (엔진 host.js `closeCabin`)
@@ -565,6 +602,60 @@ export default function HomePage() {
         isLoggedIn={isLoggedIn}
         onEnter={(to) => startDive(to, 'cabin')}
       />
+
+      {/*
+        첫 방문 안내 — 3D 의 그것 곁에 섭니다 (`SceneTourTip` · 차례와 앞 단계는 `tourStore`).
+          buoy     가까운 부표 이름표 위 — 카드가 열리면 끝납니다 (위 cardOpen 효과)
+          card     누른 카드 아래 — 단추를 누르거나 카드가 닫히면 끝납니다
+          zone     하단 안내 위 — 연출이 닫히면 끝납니다
+          minimap  미니맵 위 — 미니맵 · 해도로 떠나거나 해도를 열면 끝납니다
+          boat     배 옆 — 배를 누르면 끝납니다 (선실 말풍선이 그 자리에 뜹니다)
+      */}
+      <SceneTourTip
+        step="buoy"
+        ready={sceneIdle && !cardOpen}
+        placement="above"
+      >
+        {t('tour:buoy')}
+        <span className="block">{t('tour:buoyMove')}</span>
+        {!touch && <span className="block">{t('tour:buoyKeys')}</span>}
+      </SceneTourTip>
+      <SceneTourTip
+        step="card"
+        ready={sceneIdle && cardPinned}
+        finishOnLeave
+        holdMs={800}
+        placement="below"
+      >
+        {(['detail', 'save', 'sail'] as const).map((key) => (
+          <span key={key} className="block">
+            <strong className="font-medium">
+              {t(`tour:card.${key}.name`)}
+            </strong>
+            {' — '}
+            {t(`tour:card.${key}.desc`)}
+          </span>
+        ))}
+      </SceneTourTip>
+      <SceneTourTip
+        step="zone"
+        ready={sceneIdle && zoneLabel !== null}
+        finishOnLeave
+        holdMs={800}
+        placement="above"
+      >
+        {t('tour:zone', { zone: zoneLabel ?? '' })}
+      </SceneTourTip>
+      <SceneTourTip
+        step="minimap"
+        ready={sceneIdle && !cardOpen}
+        placement="aboveEnd"
+      >
+        {t(touch ? 'tour:minimap.touch' : 'tour:minimap.pointer')}
+      </SceneTourTip>
+      <SceneTourTip step="boat" ready={sceneIdle && !cardOpen} placement="side">
+        {t(isLoggedIn ? 'tour:boat.member' : 'tour:boat.guest')}
+      </SceneTourTip>
 
       {/* 검색창의 두 방식이 내놓는 답. 뒤의 3D 는 그대로 돌아갑니다 */}
       <RecommendModal

@@ -120,7 +120,30 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin,
     };
     if (card) { bub.w = card.offsetWidth || 325; bub.h = card.offsetHeight || 280; }   // 325 = #scent-card 폭 대체값 (v0.75.11 — 어코드 한 줄)
   };
-  const onWinResize = () => { if (bub.on) measureAvoid(); bub.key = ''; bub.tailKey = ''; };
+  // ⭐ 첫 방문 안내가 붙을 DOM 상자 (2026-10-02, v0.88.0 — tourBox). **iframe 기준** CSS px · 안 보이면 null.
+  //   ⚠ 매 프레임 재지 않는다 — 0.25초마다. 틱이 스타일을 쓴 뒤에 읽으면 그 장에 레이아웃을 한 번 더 태운다
+  let tourRects = { t: -1, stage: { x: 0, y: 0 }, mini: null, help: null };
+  const tourRect = (el) => {
+    if (!el) return null;
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden') return null;
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 ? { x: r.left, y: r.top, w: r.width, h: r.height } : null;
+  };
+  const tourMeasure = () => {
+    const now = performance.now();
+    if (now - tourRects.t < 250) return tourRects;
+    const sr = stage.getBoundingClientRect();
+    const drift = fill && fill.parentElement ? fill.parentElement.parentElement : null;
+    tourRects = {
+      t: now, stage: { x: sr.left, y: sr.top },
+      mini: tourRect(document.getElementById('minimap')),
+      // 하단 안내는 폰 폭(760 아래)에서 숨는다 — 그때는 바로 위의 속도 계기에 붙는다
+      help: tourRect(document.getElementById('drift-help')) || tourRect(drift)
+    };
+    return tourRects;
+  };
+  const onWinResize = () => { if (bub.on) measureAvoid(); bub.key = ''; bub.tailKey = ''; tourRects.t = -1; };
   window.addEventListener('resize', onWinResize);
   // 꼬리 — dir 은 꼬리가 붙는 **가장자리** (L 왼쪽 · R 오른쪽 · T 위 · B 아래), at 은 그 가장자리를 따라 잰 자리(px).
   //   45° 돌린 정사각형의 **바깥 두 변**만 긋는다 — 그 두 변이 만나는 꼭짓점이 부표를 가리킨다
@@ -350,6 +373,18 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin,
         zRect = { x0: zInfo.offsetLeft, x1: zInfo.offsetLeft + zInfo.offsetWidth, y1: zInfo.offsetTop + zInfo.offsetHeight };
       }
       return zRect;
+    },
+    // #stage 의 왼쪽 위 (iframe 기준) — 부표 · 배처럼 #stage 기준으로 잰 자리를 첫 방문 안내 상자로 옮길 때 더한다 (main.js measureTour)
+    stageOrigin() { return tourMeasure().stage; },
+    // 첫 방문 안내가 붙을 상자 (main.js measureTour) — card 떠 있는 카드 · minimap 미니맵 · zone 하단 안내. iframe 기준 CSS px · 없으면 null
+    tourBox(what) {
+      const m = tourMeasure();
+      if (what === 'minimap') return m.mini;
+      if (what === 'zone') return m.help;
+      if (what !== 'card' || !card || !bub.on) return null;
+      // 좌하단 고정 카드(cardBubble 0)는 자리를 bub 에 안 남긴다 — DOM 상자로 잰다 (scentCardHit 과 같다)
+      if (bub.x === null) return tourRect(card);
+      return { x: bub.x + m.stage.x, y: bub.y + m.stage.y, w: bub.w, h: bub.h };
     },
     // 해역 연출 중이면 하단 안내를 '닫는 법' 으로 갈아 끼운다. ⚠ 매 프레임 불리므로 바뀔 때만 쓴다
     setHelpZone(on) {
