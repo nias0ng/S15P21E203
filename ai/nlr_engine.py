@@ -88,7 +88,7 @@ CONTEXT_MIN = 3
 _DATA_DIR = Path(__file__).resolve().parent / "data"
 DEFAULT_PERFUMES = _DATA_DIR / "perfumes_nlr.csv.gz"
 EXCLUDED_PERFUME_IDS = {9110}
-DEFAULT_LEXICON = _DATA_DIR / "domain_lexicon_v1_18.csv"
+DEFAULT_LEXICON = _DATA_DIR / "domain_lexicon_v1_19.csv"
 DEFAULT_ACCORDS = _DATA_DIR / "accord_dictionary.csv"
 DEFAULT_NOTE_BRIDGE = _DATA_DIR / "note_accord_bridge.csv"
 DEFAULT_NOTE_ALIAS_KO = _DATA_DIR / "note_alias_ko.csv"
@@ -96,9 +96,10 @@ DEFAULT_NOTE_ALIAS_KO = _DATA_DIR / "note_alias_ko.csv"
 DEFAULT_NOTE_ALIAS_BLOCK = _DATA_DIR / "note_alias_blocklist.csv"
 # 단종이 확인된 향수. 백엔드 적재(load_perfume_status.sh)도 **같은 파일**을 읽는다.
 DEFAULT_PERFUME_STATUS = _DATA_DIR / "perfume_status.csv"
-# 오타 검문소가 **건드리면 안 되는 낱말**. EDA 의 `86_protected_words_v1_18.py` 가 만든다.
+# 오타 검문소가 **건드리면 안 되는 낱말**. EDA 의 `86_protected_words_v1_18.py` 를 경로 인자로
+# 바꾼 사본(`protected_words_v1_19.py` · 판정 규칙은 같다)이 만든다.
 # **사전 버전이 바뀌면 다시 만들어야 한다** — 표면형이 바뀌면 이 집합도 바뀐다.
-DEFAULT_PROTECTED_WORDS = _DATA_DIR / "protected_words_v1_18.txt"
+DEFAULT_PROTECTED_WORDS = _DATA_DIR / "protected_words_v1_19.txt"
 
 # 사전 파일 이름에서 버전을 뽑는 규칙. `domain_lexicon_v1_18.csv` -> `v1_18`.
 _LEXICON_VERSION = re.compile(r"_(v\d+(?:_\d+)*)$")
@@ -149,7 +150,7 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
     """향수 데이터와 사전을 읽어 조회용 인덱스를 만든다.
 
     perfumes_csv : str | Path | None   기본 data/perfumes_nlr.csv.gz
-    lexicon_csv  : str | Path | None   기본 data/domain_lexicon_v1_18.csv
+    lexicon_csv  : str | Path | None   기본 data/domain_lexicon_v1_19.csv
     accord_csv   : str | Path | None   기본 data/accord_dictionary.csv (accord 92개 마스터)
     verify       : bool                accord 보유 수를 마스터와 대조해 틀리면 RuntimeError
     bridge_csv   : str | Path | None   기본 data/note_accord_bridge.csv (노트→accord)
@@ -164,7 +165,7 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
                                        뺀다. **없어도 엔진은 돈다.** 아무것도 안 뺄 뿐이다
     bridge_p_min : float               기본 BRIDGE_P_MIN
     bridge_lift_min : float            기본 BRIDGE_LIFT_MIN
-    protected_words : str | Path | None 기본 data/protected_words_v1_18.txt (오타 검문소).
+    protected_words : str | Path | None 기본 data/protected_words_v1_19.txt (오타 검문소).
                                        **없으면 검문소를 끈다.** 경고를 남긴다
 
     무겁다. 13만 x 92 행렬을 만드므로 **기동 시 한 번만 부르고 재사용한다.**
