@@ -4,9 +4,9 @@
  * 컬렉션 하나가 벽에 건 작은 나무 상자(진열함) 하나입니다. 내 컬렉션 무대(CollectionStrip) · 컬렉션
  * 상세의 향수 칸(CollectionPerfumeGrid) · 향수를 고르는 모달(ShelfItemPickList)이 같은 진열함(CaseNiche)과
  * 명판을 씁니다. 그림자 · 명판 · 결은 진열대 팔레트를 그대로 빌립니다 — `features/shelf/shelf-display.css`
- * 의 `.shelf-scope` 가 내주는 변수(--contact · --cast · --tag-* · --plaque-* · --grain-* …)입니다. 그래서
- * 진열함은 진열대 벽(.shelf-scope) 안에서만 섭니다 — 컬렉션 상세도 그 벽을 깝니다.
- * 상자의 나무 색(--niche-* · --bevel-*)만 아래 "회갈색 오크 상자"에서 같은 이름으로 다시 적습니다.
+ * 의 `.shelf-scope` 가 내주는 변수(--contact · --cast · --tag-* · --plaque-* · --grain-* · --wood-* ·
+ * --brass-* …)입니다. 그래서 진열함은 진열대 벽(.shelf-scope) 안에서만 섭니다 — 컬렉션 상세도 그 벽을 깝니다.
+ * 상자 안쪽 면의 색(--niche-*)만 아래 "월넛 상자"에서 같은 이름으로 다시 적습니다.
  *
  * 왜 CSS 파일인가 · 왜 @layer components 인가는 진열대 스타일시트 머리말과 같습니다 — 면마다의
  * clip-path 와 겹친 그늘은 유틸리티로 옮기면 읽을 수 없습니다. 모양만 여기 두고 배치 · 활자는
@@ -45,59 +45,59 @@
     position: relative;
     display: block;
     aspect-ratio: 8 / 5;
-    /* 면 사이 틈으로 페이지가 비치지 않게 접힘선 색을 깔아 둡니다 */
-    background: var(--niche-seam);
+    border-radius: 5px;
+    /*
+     * 테(앞판)의 결 · 새틴 — 입구 테두리가 투명이라 이 바탕이 테로 비칩니다. 안쪽 상자 자리는 접힘선 색이라
+     * 면 사이 틈으로 테 색이 비치지 않습니다
+     */
+    background:
+      linear-gradient(var(--niche-seam), var(--niche-seam)) var(--cab-bevel)
+        var(--cab-bevel) / calc(100% - var(--cab-bevel) * 2)
+        calc(100% - var(--cab-bevel) * 2) no-repeat,
+      var(--wood-sheen),
+      var(--wood-grain-h) 0 0 / 720px 240px,
+      var(--wood-frame);
     /* 결의 multiply 가 진열함 밖 종이까지 곱하지 않게 가둡니다 */
     isolation: isolate;
   }
 
   /*
-   * ───────── 회갈색 오크 상자 ─────────
+   * ───────── 월넛 상자 ─────────
    *
-   * 벽을 판 벽감이 아니라 **벽에 건 회갈색 오크 상자**입니다. 진열대의 짙은 궤짝과 같은 나무 집안이고
-   * 한 단 밝습니다 — 큰 궤짝(짙음) > 작은 상자(밝음). 노란 원목으로 두면 벽 앞에서 따로 놀아
-   * 채도를 낮췄습니다(2026-10-02).
+   * 벽을 판 벽감이 아니라 **벽에 건 월넛 상자**입니다. 진열대 궤짝과 같은 월넛 집안이고 한 단
+   * 밝습니다 — 큰 궤짝(짙음) > 작은 상자(밝음).
    *
    * 벽감과 상자를 가르는 것은 셋입니다.
-   *   ① 테두리가 판자 두께로 두껍습니다(벽감은 3px)
+   *   ① 테두리가 판자 두께로 두껍습니다(벽감은 3px). 테는 맨 색이 아니라 상자 바탕의 결 · 새틴이 비치고,
+   *     가운데에 궤짝 · 메뉴판과 같은 황동 인레이가 돕니다
    *   ② 상자가 벽에서 나와 있어 **바깥으로** 그림자가 집니다 — 벽감은 안쪽에만 그늘이 고입니다
-   *   ③ 나뭇결
+   *   ③ 나뭇결 — 진열대와 같은 결 그림(--wood-grain-*)을 240 x 720 타일에 0.75 배로 깔아, 작은 상자에서
+   *     결이 한 단 곱습니다
    *
-   * 색 이름은 진열대 팔레트와 같습니다(--niche-* · --bevel-*). 면 · 접힘선 규칙은 손대지 않고 색만 바꿉니다.
-   *
-   * ⚠ 벽이 붉은 갈색의 어두운 선실(H 51)이라 밝은 회벽에서 맞춘 값을 그대로 두면 상자가 밝고 노랗게
-   *   보입니다(동시 대비 — 상자가 벽 색에서 먼 쪽으로 밀려 보입니다). 그래서 밝기를 0.08 · 채도를 낮추고
-   *   색상도 10° 붉은 쪽(벽 쪽)으로 당겨, 눈에 보이는 색을 회갈색 오크에 맞춥니다.
+   * 색 이름은 진열대 팔레트와 같습니다(--niche-*). 면 · 접힘선 규칙은 손대지 않고 색만 바꿉니다.
    */
   .collection-niche {
     --cab-bevel: calc(var(--spacing) * 2);
 
-    --niche-back-top: oklch(0.58 0.017 55);
-    --niche-back: oklch(0.64 0.017 57);
-    --niche-back-low: oklch(0.66 0.016 59);
-    --niche-ceiling: oklch(0.55 0.016 55);
-    --niche-ceiling-deep: oklch(0.6 0.017 56);
-    --niche-wall: oklch(0.7 0.017 60);
-    --niche-wall-deep: oklch(0.61 0.017 56);
-    --niche-floor: oklch(0.61 0.017 56);
-    --niche-floor-front: oklch(0.72 0.016 61);
-    --niche-seam: oklch(0.36 0.015 48);
-    --niche-ao: oklch(0.32 0.035 58 / 0.4);
-    --niche-ao-soft: oklch(0.32 0.035 58 / 0.22);
-    --niche-glow: oklch(0.97 0.01 66 / 0.35);
-    /* 판자 단면 — 앞을 보고 있어 네 변이 비슷하고, 빛이 위에서 와 윗변이 조금 밝습니다 */
-    --bevel-top: oklch(0.75 0.015 64);
-    --bevel-side: oklch(0.73 0.015 62);
-    --bevel-bottom: oklch(0.71 0.016 60);
-    --bevel-rim: oklch(0.86 0.005 66 / 0.5);
-    --box-grain-v: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='720'%3E%3Cfilter id='a' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.06 .004' numOctaves='3' seed='5' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .38 0 0 0 0 .32 0 0 0 0 .28 1.7 0 0 0 -.76'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23a)'/%3E%3C/svg%3E");
-    --box-grain-h: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='720' height='240'%3E%3Cfilter id='a' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.004 .06' numOctaves='3' seed='5' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .38 0 0 0 0 .32 0 0 0 0 .28 1.7 0 0 0 -.76'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23a)'/%3E%3C/svg%3E");
+    --niche-back-top: oklch(0.42 0.046 46);
+    --niche-back: oklch(0.48 0.05 48);
+    --niche-back-low: oklch(0.51 0.052 50);
+    --niche-ceiling: oklch(0.45 0.047 46);
+    --niche-ceiling-deep: oklch(0.5 0.05 48);
+    --niche-wall: oklch(0.6 0.06 54);
+    --niche-wall-deep: oklch(0.5 0.05 48);
+    --niche-floor: oklch(0.5 0.05 48);
+    --niche-floor-front: oklch(0.61 0.06 54);
+    --niche-seam: oklch(0.24 0.03 40);
+    --niche-ao: oklch(0.18 0.03 40 / 0.42);
+    --niche-ao-soft: oklch(0.18 0.03 40 / 0.24);
+    --niche-glow: oklch(0.9 0.05 74 / 0.3);
 
     /* 벽에서 나온 상자 — 가는 윤곽 · 붙은 그림자 · 아래로 떨어지는 그림자 */
     box-shadow:
-      0 0 0 1px oklch(0.47 0.03 62 / 0.45),
-      0 2px 3px oklch(0.3 0.03 60 / 0.18),
-      0 16px 24px -12px oklch(0.3 0.03 60 / 0.42);
+      0 0 0 1px var(--wood-outline),
+      0 2px 3px oklch(0.1 0.015 40 / 0.3),
+      0 16px 24px -12px var(--wood-cast);
   }
 
   /* 한 병이 서는 칸(컬렉션 상세)과 고르는 칸(모달) — 병 하나라 세로가 깁니다 */
@@ -126,7 +126,7 @@
   .collection-niche > .collection-niche-back {
     inset: var(--cab-back);
     background:
-      var(--box-grain-v) 0 0 / 240px 720px,
+      var(--wood-grain-v) 0 0 / 240px 720px,
       linear-gradient(
         to bottom,
         var(--niche-back-top),
@@ -160,7 +160,7 @@
       var(--cab-wall) var(--cab-ceil)
     );
     background:
-      var(--box-grain-h) 0 0 / 720px 240px,
+      var(--wood-grain-h) 0 0 / 720px 240px,
       linear-gradient(
         to bottom,
         var(--niche-ceiling),
@@ -177,7 +177,7 @@
     );
     background:
       linear-gradient(to bottom, var(--niche-ao-soft), transparent 45%),
-      var(--box-grain-v) 0 0 / 240px 720px,
+      var(--wood-grain-v) 0 0 / 240px 720px,
       linear-gradient(
         to right,
         var(--niche-wall),
@@ -193,7 +193,7 @@
     );
     background:
       linear-gradient(to bottom, var(--niche-ao-soft), transparent 45%),
-      var(--box-grain-v) 60px 0 / 240px 720px,
+      var(--wood-grain-v) 60px 0 / 240px 720px,
       linear-gradient(
         to left,
         var(--niche-wall),
@@ -215,7 +215,7 @@
         var(--niche-ao) calc(100% - var(--cab-floor)),
         transparent calc(100% - var(--cab-floor) + 8px)
       ),
-      var(--box-grain-h) 0 0 / 720px 240px,
+      var(--wood-grain-h) 0 0 / 720px 240px,
       linear-gradient(
         to bottom,
         var(--niche-floor) calc(100% - var(--cab-floor)),
@@ -223,25 +223,32 @@
       );
   }
 
-  /* 입구 테두리 — 위는 아래를 보고 있어 어둡고, 아래는 빛을 받아 밝습니다 */
+  /*
+   * 입구 테두리 — 판자 두께의 테. 맨 색 대신 상자 바탕의 결 · 새틴이 비치게 투명으로 두고, 테 가운데에
+   * 황동 인레이 · 안쪽 끝에 1px 그늘을 둡니다
+   */
   .collection-niche > .collection-niche-bevel {
     inset: 0;
-    border: var(--cab-bevel) solid;
-    border-color: var(--bevel-top) var(--bevel-side) var(--bevel-bottom);
+    border: var(--cab-bevel) solid transparent;
+    border-radius: 5px;
+    outline: 1px solid var(--brass-inlay);
+    outline-offset: calc(var(--cab-bevel) * -0.5);
     box-shadow:
       inset 0 1px 0 var(--niche-ao),
-      0 1px 0 var(--bevel-rim);
+      inset 0 0 0 1px oklch(0.2 0.03 40 / 0.4);
   }
 
-  /* 종이 결 — 페이지 · 진열대 벽감과 같은 결이라 같은 종이로 읽힙니다. 테두리까지 덮습니다 */
+  /*
+   * 종이 결 — 페이지 · 진열대 벽감과 같은 고운 결을 옅게. 테두리까지 덮습니다. 큰 얼룩(--grain-mottle)은
+   * 기름 먹인 월넛을 낡은 나무로 보이게 해서 얹지 않습니다
+   */
   .collection-niche > .collection-niche-grain {
     inset: 0;
-    background-image: var(--grain-fine), var(--grain-mottle);
-    background-size:
-      180px 180px,
-      700px 700px;
+    border-radius: 5px;
+    background-image: var(--grain-fine);
+    background-size: 180px 180px;
     mix-blend-mode: multiply;
-    opacity: 0.32;
+    opacity: 0.14;
   }
 
   /* 뒷벽 한가운데 — 빈 컬렉션의 글 · 새 컬렉션 표시가 섭니다 */
@@ -252,6 +259,21 @@
     place-items: center;
     padding: 0 calc(var(--spacing) * 5);
     text-align: center;
+  }
+  /*
+   * 빈 컬렉션 안내 — 옅은 먹은 월넛 뒷벽(L .48) 위에서 1:1 로 사라져 크림 글자로 뒤집습니다. 0.96 이면
+   * 뒷벽 가운데 약 5.9:1 이지만, 마우스를 올려 바닥 빛이 밝아지고 결의 밝은 줄이 겹치는 자리에서
+   * 4.6:1(아래쪽 4.2:1)까지 내려갑니다. 그래서 한 단 더 밝게(0.985 · 가장 나쁜 자리 약 5.0:1) 두고
+   * 글자 둘레에 옅은 먹 번짐을 깔아, 결 · 빛이 글자 밑에서 밝아져도 7:1 안팎을 지킵니다.
+   *
+   * NOTE: .shelf-scope 부터 적습니다 — 진열대 스타일시트의 `.shelf-scope .shelf-muted` 와 같은 레이어라,
+   *   두 파일을 불러오는 순서와 상관없이 이 규칙이 이겨야 합니다.
+   */
+  .shelf-scope .collection-case-inside .shelf-muted {
+    color: oklch(0.985 0.008 84);
+    text-shadow:
+      0 0 6px oklch(0.18 0.03 40 / 0.6),
+      0 1px 2px oklch(0.12 0.02 40 / 0.55);
   }
 
   /*
@@ -391,7 +413,7 @@
   /*
    * ───────── 명판 ─────────
    *
-   * 진열함 아래에 다는 크림 종이 판(CasePlate) — 진열대 메뉴판과 같은 종이 · 가장자리 · 안쪽
+   * 진열함 아래에 다는 크림 종이 판(CasePlate) — 진열대 메뉴판과 같은 종이 · 황동 가장자리 · 안쪽
    * 테두리선이고, 진열함보다 양옆 7% 좁게 가운데에 섭니다. 글은 가운데로 모읍니다.
    *
    *   md  컬렉션 진열함 — 명조 16 이름 한 줄 · 13 개수와 설명 한 줄
@@ -418,7 +440,7 @@
       var(--plaque-paper-low)
     );
     box-shadow:
-      0 0 0 1px var(--plaque-edge),
+      0 0 0 1px var(--brass-inlay-soft),
       0 10px 16px -12px var(--plaque-cast),
       inset 0 1px var(--rim-soft);
   }

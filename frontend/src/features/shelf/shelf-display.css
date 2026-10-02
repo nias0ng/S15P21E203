@@ -71,7 +71,6 @@
     --bevel-top: oklch(0.848 0.021 73);
     --bevel-side: oklch(0.894 0.017 76);
     --bevel-bottom: oklch(0.922 0.013 80);
-    --bevel-rim: oklch(0.97 0.006 84 / 0.55);
     --shelf-ink: oklch(0.285 0.014 58);
     --shelf-ink-soft: oklch(0.455 0.014 61);
     --chip: oklch(0.947 0.009 80 / 0.74);
@@ -114,15 +113,13 @@
     --cord-twist: oklch(0.3 0.035 58 / 0.4);
     /*
      * 이름표 벽의 현판. 종이는 태그와 같은 크림색(--tag-paper)이고 아래로 갈수록 한 단
-     * 가라앉습니다. 가장자리는 벽 쪽(오른쪽 아래)이 한 단 짙고, 그림자는 병 그림자보다 짧습니다
+     * 가라앉습니다. 종이 단면 1px 은 황동이고(.shelf-plaque-edge), 그림자는 병 그림자보다 짧습니다
      * — 벽에 붙은 얇은 판이라 멀리 떨어지지 않습니다.
      */
     --plaque-paper-low: oklch(0.928 0.014 80);
-    --plaque-edge: oklch(0.5 0.022 64 / 0.16);
-    --plaque-edge-deep: oklch(0.4 0.026 60 / 0.4);
     --plaque-line: oklch(0.52 0.02 63 / 0.4);
     --plaque-cast: oklch(0.3 0.03 58 / 0.24);
-    /* 황동의 빛 맺힌 점과 짙은 가장자리 — 태그 고리 · 메뉴판의 황동 촉이 --eyelet 과 함께 씁니다 */
+    /* 황동의 빛 맺힌 점과 짙은 가장자리 — 태그 고리 · 메뉴판의 황동 촉 · 종이 단면이 --eyelet 과 함께 씁니다 */
     --brass-hi: oklch(0.93 0.045 88);
     --brass-deep: oklch(0.45 0.05 65);
     /*
@@ -448,13 +445,18 @@
   /*
    * ───────── 나무 궤짝 ─────────
    *
-   * 진열대의 벽감은 벽을 판 모래 자리가 아니라 **벽에 건 낡은 나무 궤짝의 안쪽**입니다. 모양
+   * 진열대의 벽감은 벽을 판 모래 자리가 아니라 **벽에 건 월넛 궤짝의 안쪽**입니다. 모양
    * (면 · 문 · 치수)은 그대로이고 재질만 다릅니다 — 면 사이 대각선 접힘선이 궤짝 모서리의
    * 이음새가 됩니다.
    *
-   * 색은 위 .shelf-scope 의 벽감 값과 **같은 이름으로** 여기서 다시 적습니다. 컬렉션 진열장
-   * (collection-cabinet.css)이 그 이름을 그대로 쓰고 있어, 거기를 고치면 컬렉션까지 나무가
-   * 됩니다. 이름이 같으니 면 · 문 · 접힘선 그늘 규칙은 손대지 않고 나무 색을 따라갑니다.
+   * 오일을 먹인 새틴 광의 적갈색 월넛입니다. 결은 길고 부드럽게 흐르고 옹이 · 판자 틈 · 바랜 얼룩이
+   * 없습니다. 나무와 안쪽(종이 · 궤짝 속) 사이에는 가는 황동 인레이가 돕니다 — 이름표 고리 · 아일릿 ·
+   * 메뉴 촉과 같은 금속이라, 궤짝 · 메뉴판 · 상세 카드 · 컬렉션 상자가 한 벌의 가구로 읽힙니다.
+   *
+   * 색은 위 .shelf-scope 의 벽감 값과 **같은 이름으로** 여기서 다시 적습니다(컬렉션 상자도 같은 이름을
+   * 제 값으로 다시 적습니다 — collection-cabinet.css). 이름이 같으니 면 · 문 · 접힘선 그늘 규칙은 손대지
+   * 않고 나무 색을 따라갑니다. 테 · 결 · 인레이는 .shelf-scope 에 둡니다 — 메뉴판 · 상세 카드 · 바닥
+   * 들보 · 컬렉션 상자가 창(.shelf-window) 밖에서 같은 월넛을 씁니다.
    *
    * 빛은 입구 앞에서 들어와 안쪽 판(천장 · 옆벽 · 바닥)이 밝고 뒷벽이 가장 어둡습니다. 모래
    * 벽감과 반대인데, 짙은 나무는 안으로 들어갈수록 빛이 빨리 죽기 때문입니다.
@@ -466,41 +468,62 @@
    *
    * 병(종이에 오린 사진)은 흰 종이 테가 있어 어두운 나무 위에서 오히려 또렷합니다.
    */
-  .shelf-scope .shelf-window {
-    --niche-back-top: oklch(0.44 0.026 58);
-    --niche-back: oklch(0.51 0.027 60);
-    --niche-back-low: oklch(0.54 0.026 62);
-    --niche-ceiling: oklch(0.6 0.025 62);
-    --niche-ceiling-deep: oklch(0.51 0.027 60);
-    --niche-wall: oklch(0.68 0.024 64);
-    --niche-wall-deep: oklch(0.53 0.027 60);
-    --niche-floor: oklch(0.47 0.027 58);
-    --niche-floor-front: oklch(0.62 0.025 63);
-    /* 면이 맞물리는 틈 — 궤짝 모서리의 이음새라 판자 틈과 거의 같은 먹색입니다 */
-    --niche-seam: oklch(0.2 0.014 50);
-    --niche-ao: oklch(0.14 0.015 50 / 0.55);
-    --niche-ao-soft: oklch(0.14 0.015 50 / 0.3);
-    --niche-glow: oklch(0.78 0.03 72 / 0.22);
-    /* 입구 테 — 판자의 잘린 단면. 안쪽 판보다 한 단 밝습니다 */
-    --bevel-top: oklch(0.64 0.019 63);
-    --bevel-side: oklch(0.72 0.018 66);
-    --bevel-bottom: oklch(0.77 0.017 68);
-    --bevel-rim: oklch(0.9 0.012 75 / 0.6);
-
-    /* 판자 사이 틈 · 틈 왼쪽 판자 끝이 받는 빛 · 옹이와 그 둘레 · 뒷벽 가장자리 그늘 */
-    --wood-seam: oklch(0.17 0.012 50);
-    --wood-edge-lit: oklch(0.72 0.02 65 / 0.35);
-    --wood-knot: oklch(0.26 0.025 50 / 0.75);
-    --wood-knot-ring: oklch(0.34 0.025 52 / 0.35);
-    --wood-vignette: oklch(0.12 0.012 50 / 0.5);
+  .shelf-scope {
     /*
-     * 나뭇결 — 세로 판(뒷벽 · 옆벽)과 가로 판(천장 · 바닥). 잡음을 결 방향으로 길게 늘려 세 겹을
-     * 겹칩니다: 바랜 얼룩(밝음 · 아주 성김) → 굵은 결(짙음) → 잔결(짙음 · 촘촘함).
-     * 한 겹이면 금속을 문지른 헤어라인처럼 보입니다 — 나무로 읽히는 것은 굵기가 다른 결과 얼룩입니다.
-     * 두 장은 축만 바꾼 같은 그림이라, 결을 고칠 때는 둘을 같이 고칩니다.
+     * 나뭇결 — 세로 판(뒷벽 · 옆벽 · 메뉴 받침판)과 가로 판(천장 · 바닥 · 테 · 들보). 잡음을 결 방향으로
+     * 길게 늘려 세 겹을 겹칩니다: 따뜻한 빛결(밝음 · 아주 성김 — 새틴 광이 결을 따라 일렁이는 자리) →
+     * 흐르는 무늬(짙음) → 잔 물관(촘촘함). 한 겹이면 금속을 문지른 헤어라인처럼 보입니다.
+     * 알파 기울기를 1.2~1.6 으로 낮게 두어 짙은 줄이 또렷하게 끊기지 않고 번지듯 흐릅니다.
+     * 두 장은 축과 seed 만 다른 같은 처방이라, 결을 고칠 때는 둘을 같이 고칩니다.
      */
-    --wood-grain-v: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='960'%3E%3Cfilter id='a' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.055 .0035' numOctaves='3' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .09 0 0 0 0 .065 0 0 0 0 .045 2.3 0 0 0 -1.02'/%3E%3C/filter%3E%3Cfilter id='b' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.45 .007' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .08 0 0 0 0 .06 0 0 0 0 .04 2.2 0 0 0 -1.0'/%3E%3C/filter%3E%3Cfilter id='c' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.014 .0028' numOctaves='3' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .93 0 0 0 0 .89 0 0 0 0 .84 2.4 0 0 0 -1.12'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)' opacity='.55'/%3E%3Crect width='100%25' height='100%25' filter='url(%23a)'/%3E%3Crect width='100%25' height='100%25' filter='url(%23b)' opacity='.55'/%3E%3C/svg%3E");
-    --wood-grain-h: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='960' height='320'%3E%3Cfilter id='a' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.0035 .055' numOctaves='3' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .09 0 0 0 0 .065 0 0 0 0 .045 2.3 0 0 0 -1.02'/%3E%3C/filter%3E%3Cfilter id='b' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.007 .45' numOctaves='2' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .08 0 0 0 0 .06 0 0 0 0 .04 2.2 0 0 0 -1.0'/%3E%3C/filter%3E%3Cfilter id='c' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.0028 .014' numOctaves='3' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .93 0 0 0 0 .89 0 0 0 0 .84 2.4 0 0 0 -1.12'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)' opacity='.55'/%3E%3Crect width='100%25' height='100%25' filter='url(%23a)'/%3E%3Crect width='100%25' height='100%25' filter='url(%23b)' opacity='.55'/%3E%3C/svg%3E");
+    --wood-grain-v: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='960'%3E%3Cfilter id='a' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.03 .0021' numOctaves='2' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .16 0 0 0 0 .075 0 0 0 0 .04 1.5 0 0 0 -.6'/%3E%3C/filter%3E%3Cfilter id='b' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.32 .005' numOctaves='1' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .12 0 0 0 0 .055 0 0 0 0 .03 1.2 0 0 0 -.48'/%3E%3C/filter%3E%3Cfilter id='c' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .0013' numOctaves='1' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .9 0 0 0 0 .64 0 0 0 0 .42 1.6 0 0 0 -.84'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)' opacity='.4'/%3E%3Crect width='100%25' height='100%25' filter='url(%23a)' opacity='.85'/%3E%3Crect width='100%25' height='100%25' filter='url(%23b)' opacity='.6'/%3E%3C/svg%3E");
+    --wood-grain-h: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='960' height='320'%3E%3Cfilter id='a' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.0021 .03' numOctaves='2' seed='13' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .16 0 0 0 0 .075 0 0 0 0 .04 1.5 0 0 0 -.6'/%3E%3C/filter%3E%3Cfilter id='b' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.005 .32' numOctaves='1' seed='13' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .12 0 0 0 0 .055 0 0 0 0 .03 1.2 0 0 0 -.48'/%3E%3C/filter%3E%3Cfilter id='c' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.0013 .012' numOctaves='1' seed='6' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .9 0 0 0 0 .64 0 0 0 0 .42 1.6 0 0 0 -.84'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)' opacity='.4'/%3E%3Crect width='100%25' height='100%25' filter='url(%23a)' opacity='.85'/%3E%3Crect width='100%25' height='100%25' filter='url(%23b)' opacity='.6'/%3E%3C/svg%3E");
+    /* 테(앞을 보는 판) — 가운데 · 빛 받는 위 · 가라앉는 아래. 채도 .05~.065 로 선창 벽(C .02)보다 또렷이 따뜻합니다 */
+    --wood-frame: oklch(0.55 0.062 50);
+    --wood-frame-hi: oklch(0.64 0.066 56);
+    --wood-frame-lo: oklch(0.45 0.056 45);
+    /* 테 바깥 1px 윤곽 · 테가 벽에 드리우는 그림자 */
+    --wood-outline: oklch(0.19 0.028 38 / 0.8);
+    --wood-cast: oklch(0.08 0.012 40 / 0.6);
+    /* 위에서 드는 새틴 광 — 테의 결 위에 한 겹 */
+    --wood-sheen: linear-gradient(
+      to bottom,
+      oklch(1 0 0 / 0.14),
+      transparent 24%,
+      transparent 68%,
+      oklch(0 0 0 / 0.18)
+    );
+    /* 궤짝 바깥 테의 두께. 메뉴 받침판도 같은 만큼 나가 두 아랫선이 한 줄로 맞습니다 */
+    --crate-frame: 4px;
+    /* 나무와 안쪽 사이의 황동 인레이 */
+    --brass-inlay: oklch(0.8 0.085 82 / 0.9);
+    --brass-inlay-soft: oklch(0.8 0.085 82 / 0.6);
+  }
+
+  .shelf-scope .shelf-window {
+    --niche-back-top: oklch(0.37 0.045 44);
+    --niche-back: oklch(0.43 0.05 46);
+    --niche-back-low: oklch(0.46 0.052 48);
+    --niche-ceiling: oklch(0.52 0.056 50);
+    --niche-ceiling-deep: oklch(0.43 0.05 46);
+    --niche-wall: oklch(0.58 0.06 53);
+    --niche-wall-deep: oklch(0.45 0.052 47);
+    --niche-floor: oklch(0.41 0.05 45);
+    --niche-floor-front: oklch(0.56 0.06 52);
+    /* 면이 맞물리는 틈 — 궤짝 모서리의 이음새라 먹색입니다. 바깥 테의 안쪽 자리도 이 색으로 칠합니다 */
+    --niche-seam: oklch(0.21 0.03 40);
+    --niche-ao: oklch(0.15 0.025 38 / 0.5);
+    --niche-ao-soft: oklch(0.15 0.025 38 / 0.26);
+    /* 뒷벽 아래 고이는 빛 — 등불색으로 따뜻하게 */
+    --niche-glow: oklch(0.86 0.06 74 / 0.2);
+    /* 입구 립 — 위는 아래를 봐서 어둡고 아래는 빛을 받습니다. 문설주(--door-lip)도 아래 값을 따라갑니다 */
+    --bevel-top: oklch(0.46 0.052 46);
+    --bevel-side: oklch(0.56 0.06 51);
+    --bevel-bottom: oklch(0.64 0.064 56);
+
+    /* 뒷벽 베니어 사이 1px 줄눈 · 뒷벽 가장자리 그늘 */
+    --wood-joint: oklch(0.2 0.03 40 / 0.42);
+    --wood-vignette: oklch(0.14 0.02 40 / 0.22);
 
     /*
      * 병 발치 그림자를 한 단 진하게 — 같은 그림자라도 짙은 나무 위에서는 곱해도 덜 어두워져
@@ -527,13 +550,39 @@
    *
    * 칠하는 순서(DOM 순서)가 곧 겹치는 순서입니다: 뒷벽 → 뒷벽 조명 → 천장·좌우 벽·바닥 →
    * 입구 테두리 → 질감. 조명이 면들보다 먼저라, 조명이 움직여도 벽이 가려 줍니다.
-   * 질감이 맨 마지막인 이유는 아래 .shelf-niche-grain 에 있습니다.
+   * 질감이 맨 마지막인 이유는 아래 .shelf-niche-grain 에 있습니다. 바깥 테(::before)는 그 모두의 밑입니다.
    */
   .shelf-scope .shelf-niche {
     /* 면 사이 틈(안티에일리어싱)으로 페이지가 비치지 않게 접힘선 색을 깔아 둡니다 */
     background: var(--niche-seam);
-    /* 질감 층의 multiply 가 벽감 밖 페이지까지 곱하지 않게 가둡니다 */
+    /* 질감 층의 multiply 가 벽감 밖 페이지까지 곱하지 않게 가둡니다. 바깥 테의 z-index -1 도 이 안에 머뭅니다 */
     isolation: isolate;
+  }
+
+  /*
+   * 궤짝 바깥 월넛 테 — 궤짝 상자 밖으로 --crate-frame 만큼. z-index -1 이라 상자 바탕 위 · 면 밑에 앉습니다.
+   * 안쪽(궤짝 상자 자리)은 접힘선 색으로 칠해, 면 사이 틈으로 테 색이 비치지 않게 합니다. 모서리는 입구
+   * 테두리의 원호(3px)에 테 두께를 더해 나란히 돕니다.
+   * 벽에 걸린 그림자는 가장 바깥 윤곽인 이 테가 드리웁니다.
+   */
+  .shelf-scope .shelf-niche::before {
+    content: '';
+    position: absolute;
+    inset: calc(var(--crate-frame) * -1);
+    z-index: -1;
+    border-radius: calc(var(--crate-frame) + 3px);
+    pointer-events: none;
+    background:
+      linear-gradient(var(--niche-seam), var(--niche-seam)) var(--crate-frame)
+        var(--crate-frame) / calc(100% - var(--crate-frame) * 2)
+        calc(100% - var(--crate-frame) * 2) no-repeat,
+      var(--wood-sheen),
+      var(--wood-grain-h) 0 0 / 960px 320px,
+      var(--wood-frame);
+    box-shadow:
+      0 0 0 1px var(--wood-outline),
+      0 2px 4px oklch(0.1 0.015 40 / 0.35),
+      0 20px 32px -16px var(--wood-cast);
   }
 
   .shelf-scope .shelf-face {
@@ -549,54 +598,36 @@
   }
 
   /*
-   * 뒷벽 — 세로 판자 여섯 장. 위에서부터 겹:
+   * 뒷벽 — 세로로 붙인 월넛 베니어 세 장. 위에서부터 겹:
    *
-   *   가장자리 그늘 → 옹이 셋 → 판자 틈 → 판자마다 다른 명도 → 나뭇결 → 바탕
+   *   가장자리 그늘 → 비스듬한 새틴 빛 → 베니어 줄눈 → 나뭇결 → 바탕
    *
-   * 판자 수를 폭이 아니라 장 수(여섯)로 정합니다 — 틈이 뒷벽 양 끝 접힘선에 늘 맞고, 화면이
-   * 좁아지면 판자가 같이 좁아집니다. 판자 폭으로 정하면 끝 판자가 반쪽으로 잘립니다.
-   * 마지막 틈은 오른쪽 접힘선과 겹쳐 접힘선 그늘처럼 보입니다.
+   * 베니어 수를 폭이 아니라 장 수(셋)로 정합니다 — 줄눈이 뒷벽 양 끝 접힘선에 늘 맞고, 화면이
+   * 좁아지면 베니어가 같이 좁아집니다. 폭으로 정하면 끝 장이 반쪽으로 잘립니다.
+   * 마지막 줄눈은 오른쪽 접힘선과 겹쳐 접힘선 그늘처럼 보입니다.
    *
-   * 판자마다 명도를 조금씩 달리합니다. 고르면 판자가 아니라 줄을 그은 판 한 장으로 보입니다.
+   * 줄눈은 1px 그림자 선 하나이고 장마다 명도를 달리하지 않습니다. 굵은 틈 · 장마다 다른 명도를 두면
+   * 매끈한 베니어가 아니라 낡은 판자로 읽힙니다.
    */
   .shelf-scope .shelf-niche-back {
     background:
       radial-gradient(
-        80% 95% at 50% 62%,
-        transparent 45%,
+        85% 100% at 50% 58%,
+        transparent 50%,
         var(--wood-vignette)
       ),
-      radial-gradient(
-        0.9% 2.8% at 31% 27%,
-        var(--wood-knot) 30%,
-        var(--wood-knot-ring) 55%,
-        transparent
-      ),
-      radial-gradient(
-        0.7% 2.2% at 77% 68%,
-        var(--wood-knot) 30%,
-        var(--wood-knot-ring) 55%,
-        transparent
-      ),
-      radial-gradient(0.6% 1.8% at 55% 84%, var(--wood-knot) 25%, transparent),
-      /* 틈 — 왼쪽 판자 끝은 빛을 받고, 오른쪽 판자 끝은 틈 쪽으로 가라앉습니다 */
-        linear-gradient(
-          to right,
-          var(--wood-edge-lit) 0 1px,
-          transparent 1px calc(100% - 14px),
-          oklch(0.1 0.01 50 / 0.2) calc(100% - 3px),
-          var(--wood-seam) calc(100% - 3px)
-        )
-        0 0 / calc(100% / 6) 100% repeat-x,
       linear-gradient(
-        to right,
-        oklch(0 0 0 / 0.08) 0 16.667%,
-        oklch(1 0 0 / 0.04) 0 33.333%,
-        transparent 0 50%,
-        oklch(0 0 0 / 0.12) 0 66.667%,
-        oklch(1 0 0 / 0.03) 0 83.333%,
-        oklch(0 0 0 / 0.05) 0
+        105deg,
+        transparent 18%,
+        oklch(0.96 0.03 75 / 0.06) 36%,
+        transparent 54%
       ),
+      linear-gradient(
+          to right,
+          transparent calc(100% - 1px),
+          var(--wood-joint) 0
+        )
+        0 0 / calc(100% / 3) 100% repeat-x,
       var(--wood-grain-v) 0 0 / 320px 960px,
       linear-gradient(
         to bottom,
@@ -689,11 +720,10 @@
   }
 
   /*
-   * 바닥 — 병이 실제로 서는 면. 가로 판자 세 장입니다.
+   * 바닥 — 병이 실제로 서는 면. 가로 결의 판입니다.
    *
    * 뒷벽과 만나는 접힘선에 그늘을 먼저 깔아, 뒷벽 아래쪽 그늘과 이어지며 경계가
    * 번지게 합니다. 선으로 딱 끊기면 바닥이 뒷벽 앞에 세운 판처럼 보입니다.
-   * 판자 폭은 뒤에서부터 바닥 깊이의 30% · 34% · 36% 입니다 — 원근으로 먼 판이 좁아 보입니다.
    */
   .shelf-scope .shelf-niche-floor {
     clip-path: polygon(
@@ -708,14 +738,6 @@
         var(--niche-ao) calc(100% - var(--floor)),
         transparent calc(100% - var(--floor) + 10px)
       ),
-      linear-gradient(
-        to bottom,
-        transparent calc(100% - var(--floor) * 0.7 - 1px),
-        var(--wood-seam) 0 calc(100% - var(--floor) * 0.7 + 0.5px),
-        transparent 0 calc(100% - var(--floor) * 0.36 - 1px),
-        var(--wood-seam) 0 calc(100% - var(--floor) * 0.36 + 0.5px),
-        transparent 0
-      ),
       var(--wood-grain-h) 0 0 / 960px 320px,
       linear-gradient(
         to bottom,
@@ -725,26 +747,26 @@
   }
 
   /*
-   * 재질감 — 페이지 바탕과 같은 종이 결을 벽감 안에도 얹습니다.
+   * 재질감 — 페이지 바탕과 같은 고운 종이 결을 벽감 안에도 옅게 얹습니다.
    *
    * 바탕의 질감 층(.shelf-grain)은 본문 **뒤**에 깔려서 벽감을 덮지 못합니다. 이게
    * 없으면 벽감 안만 매끈한 디지털 그러데이션으로 떠 보입니다.
-   * 바탕보다 진하게 둡니다 — 나뭇결 위에 얹히면 큰 얼룩(--grain-mottle)이 낡은 나무의
-   * 바랜 자국으로 읽힙니다. 바탕만큼 옅으면 짙은 나무에 묻혀 안 보입니다.
+   * 큰 얼룩(--grain-mottle)은 얹지 않습니다 — 나뭇결 위에서 바랜 자국으로 읽혀, 기름 먹인 매끈한
+   * 월넛이 낡은 나무가 됩니다.
    *
    * **입구 테두리까지 덮습니다(inset 0 · 테두리보다 나중에 칠함).** 예전에는 테두리 안쪽만
    * 덮고 테두리가 그 위에 칠해져서, 테두리만 결이 없는 맨 색으로 남았습니다. 바깥 페이지
    * 종이는 결(multiply)에 한 단 어두워져 있어서, 종이보다 조금 어둡게 잡은 옆 테두리
    * (--bevel-side)가 오히려 밝게 떠 벽감 양옆에 흰 세로줄로 보였습니다.
+   * 모서리는 입구 테두리와 같이 둥글립니다.
    */
   .shelf-scope .shelf-niche-grain {
     inset: 0;
-    background-image: var(--grain-fine), var(--grain-mottle);
-    background-size:
-      180px 180px,
-      700px 700px;
+    border-radius: 3px;
+    background-image: var(--grain-fine);
+    background-size: 180px 180px;
     mix-blend-mode: multiply;
-    opacity: 0.5;
+    opacity: 0.16;
   }
 
   /*
@@ -753,19 +775,18 @@
    * border 네 변은 모서리에서 대각선으로 맞물리므로, 깎아 낸 모서리 면이 그대로
    * 나옵니다. 위 테두리는 아래를 보고 있어 어둡고, 아래 테두리는 빛을 받아 밝습니다.
    *
-   * 바깥에 짙은 선과 아래로 지는 그림자를 두릅니다. 크림 종이 위의 짙은 나무라 테두리만으로는
-   * 경계가 번지고, 그림자가 있어야 벽을 판 자리가 아니라 **벽에 건 궤짝**으로 읽힙니다.
+   * 모서리를 살짝 둥글리고, 바깥(바깥 테와 이 립 사이)에 1px 황동 인레이를 두릅니다. 벽에 걸린
+   * 그림자는 바깥 테(.shelf-niche::before)가 드리웁니다.
    */
   .shelf-scope .shelf-niche-bevel {
     inset: 0;
     border: var(--bevel) solid;
     border-color: var(--bevel-top) var(--bevel-side) var(--bevel-bottom);
+    border-radius: 3px;
     box-shadow:
       /* 테두리와 천장이 만나는 모서리. 이 선이 선명해야 판자 두께로 읽힙니다 */
       inset 0 1px 0 var(--niche-ao),
-      0 0 0 1px oklch(0.3 0.02 55 / 0.55),
-      /* 입구 아래 가장자리가 빛을 받는 선 */ 0 1px 0 1px var(--bevel-rim),
-      0 18px 30px -16px oklch(0.25 0.025 55 / 0.55);
+      0 0 0 1px var(--brass-inlay);
   }
 
   /*
@@ -1841,7 +1862,8 @@
    * 띠의 그러데이션으로 줍니다 — 병 사진의 종이 두께 선(.shelf-bottle-rim)과 같은 광원입니다.
    *
    * 그림자는 오린 겹들을 감싼 상자(.shelf-plaque-board)에 겁니다. 오린 요소 자신에 걸면
-   * 그림자까지 윤곽에 잘립니다.
+   * 그림자까지 윤곽에 잘립니다. 판 둘레의 월넛 테(::before)도 그 상자에 달아 그림자 · 눌림 · 뜸을
+   * 판과 같이 받습니다.
    *
    * 그림자는 현판 안쪽에만 겁니다. 병 칸(.shelf-slot)이 아니라 쌓임 맥락이 생겨도 병 그림자의
    * 겹침 순서에 끼지 않습니다. 창 끝에 걸쳐도 지우지 않고 병처럼 걸친 채 비칩니다.
@@ -1859,6 +1881,8 @@
   .shelf-scope .shelf-plaque-board {
     position: absolute;
     inset: 0;
+    /* 월넛 테(::before)의 z-index -1 이 종이 뒤 · 판 안에 머뭅니다 */
+    isolation: isolate;
     /* 판 밑에 붙는 짧은 접지 그늘 + 오른쪽 아래로 조금 떨어지는 그림자 */
     filter: drop-shadow(0 0.5px 0.5px var(--contact-soft))
       drop-shadow(
@@ -1870,6 +1894,26 @@
   .shelf-scope .shelf-plaque-board > span {
     position: absolute;
     inset: 0;
+  }
+  /*
+   * 판마다 두른 월넛 테 — 판 밖으로 판 폭의 1.8%(3~4px). 4px 테에 바깥 윤곽 1px 이어도 황동 촉(판 끝
+   * + 7px)과 2px 떨어집니다 — 5px 이면 윤곽까지 6px 라 촉 밑변과 1px 만 남아 붙어 보입니다.
+   * 모서리는 판 원호(메뉴판 크기에서 inset + 2 — lib.ts 의 plaqueMetrics)에 테 두께를 더해 종이 원호와
+   * 나란히 돕니다.
+   */
+  .shelf-scope .shelf-plaque-board::before {
+    --plaque-frame: clamp(3px, calc(var(--plaque-w) * 0.018), 4px);
+    content: '';
+    position: absolute;
+    inset: calc(var(--plaque-frame) * -1);
+    z-index: -1;
+    border-radius: calc(var(--plaque-inset) + 2px + var(--plaque-frame));
+    pointer-events: none;
+    background:
+      var(--wood-sheen),
+      var(--wood-grain-h) 0 0 / 960px 320px,
+      var(--wood-frame);
+    box-shadow: 0 0 0 1px var(--wood-outline);
   }
 
   /* 종이 — 벽보다 한 단 밝은 크림색. 왼쪽 위에서 빛이 들고 아래로 갈수록 한 단 가라앉습니다 */
@@ -1897,13 +1941,17 @@
     opacity: 0.3;
   }
 
-  /* 바깥 가장자리 — 종이 단면의 옅은 그늘. 벽 쪽(오른쪽 아래)으로 갈수록 짙습니다 */
+  /*
+   * 바깥 가장자리 — 종이 단면 1px 을 황동 인레이로. 왼쪽 위가 빛나고 오른쪽 아래로 가라앉습니다(메뉴 촉 ·
+   * 아일릿과 같은 황동). 월넛 테와 크림 종이 사이를 이 선이 가릅니다.
+   */
   .shelf-scope .shelf-plaque-edge {
     clip-path: var(--plaque-edge-ring);
     background: linear-gradient(
       150deg,
-      var(--plaque-edge) 25%,
-      var(--plaque-edge-deep)
+      var(--brass-hi),
+      var(--eyelet) 40%,
+      var(--brass-deep)
     );
   }
   /* 빛 받는 띠 — 광원 쪽(왼쪽 위) 가장자리에만 앉고 오른쪽 아래로 가며 사라집니다 */
@@ -2020,8 +2068,11 @@
    * 값은 출발점입니다 — 깊이(translate) · 줄어듦(scale) · 먹빛(--plaque-well)을 화면에서 봐 가며 고치세요.
    */
   .shelf-scope {
-    /* 눌린 판의 먹빛 — 켜진 칩과 같은 먹입니다 */
-    --plaque-well: var(--chip-active);
+    /*
+     * 눌린 판의 먹빛 — 켜진 칩과 같은 먹에 붉은 기를 조금 얹은 월넛 먹입니다. 크림 글자(0.968) 위 약
+     * 13.7:1 이고, 월넛 테(0.55)와 명도 차가 커 눌린 판이 테와 갈립니다.
+     */
+    --plaque-well: oklch(0.27 0.03 42);
     /* 눌린 판 윗턱이 드리우는 그늘 — 벽 속으로 들어간 판의 위쪽이 가장 어둡습니다(먹 위라 더 짙게) */
     --plaque-well-shade: oklch(0.14 0.02 50 / 0.5);
     /* 먹 판 위의 글자 · 황동 테두리선 */
@@ -2121,8 +2172,12 @@
     translate: 0
       calc(var(--menu-at) * (100% - var(--plaque-h)) / var(--menu-gaps));
     transition: translate 460ms var(--plaque-spring);
-    /* 그림자는 오린 촉(::before)이 아니라 여기에 겁니다 — 오린 요소에 걸면 그림자까지 윤곽에 잘립니다 */
-    filter: drop-shadow(0.5px 1px 0.5px var(--contact));
+    /*
+     * 그림자는 오린 촉(::before)이 아니라 여기에 겁니다 — 오린 요소에 걸면 그림자까지 윤곽에 잘립니다.
+     * 가는 먹 윤곽을 한 겹 먼저 둘러, 어두운 월넛 받침판 위에서도 촉이 또렷합니다.
+     */
+    filter: drop-shadow(0 0 0.6px oklch(0.15 0.03 40 / 0.85))
+      drop-shadow(0.5px 1px 1px oklch(0.1 0.02 40 / 0.5));
   }
   .shelf-scope .shelf-menu-pointer::before {
     content: '';
@@ -2138,6 +2193,58 @@
       var(--eyelet) 45%,
       var(--brass-deep)
     );
+  }
+
+  /*
+   * 메뉴 받침판 — 판 셋 뒤의 세로 홈(플루티드) 월넛. 판마다의 월넛 테 · 황동 인레이는 그대로 두고 셋을
+   * 한 장의 홈 판 위에 끼워, 명판이 홈 판에 박힌 붙박이 메뉴로 읽힙니다. 홈은 이 받침판에만 둡니다 —
+   * 궤짝 · 컬렉션 상자는 매끈한 월넛입니다.
+   *
+   * nav 에 isolation 을 걸어 z-index -1 이 판들 뒤 · nav 안에 머뭅니다. nav 아랫끝은 궤짝 아랫끝과 같은
+   * 줄(둘 다 --case-h)이라, 궤짝 바깥 테와 같은 만큼(--crate-frame) 나가 두 아랫선이 한 줄로 맞습니다.
+   * 받침판은 판 테(L .55)보다 한 단 어둡게(L .42~.48) 둡니다 — 판이 받침판 위에 떠 보이고, 홈 그늘이
+   * 테와 섞이지 않습니다.
+   *
+   * NOTE: 메뉴(ShelfPlaqueMenu 의 nav)에는 따로 단 이름이 없어 황동 촉을 품은 nav 로 고릅니다.
+   */
+  .shelf-scope nav:has(> .shelf-menu-pointer) {
+    /* 홈 하나(16px)의 단면 — 왼쪽 골의 그늘 → 둥근 등의 빛 → 오른쪽 골의 그늘 */
+    --menu-flute: linear-gradient(
+      to right,
+      oklch(0.16 0.03 40 / 0.42) 0,
+      oklch(0.16 0.03 40 / 0.12) 9%,
+      oklch(0.95 0.05 70 / 0.06) 24%,
+      oklch(0.95 0.05 70 / 0.12) 38%,
+      oklch(0.95 0.05 70 / 0) 58%,
+      oklch(0.16 0.03 40 / 0.14) 84%,
+      oklch(0.16 0.03 40 / 0.38) 100%
+    );
+    --menu-board-top: oklch(0.48 0.056 47);
+    --menu-board-low: oklch(0.42 0.05 43);
+    /* 판이 받침판 위에 뜨는 그림자 — 크림 종이 밑 옅은 그림자는 어두운 월넛 위에서 묻혀 한 단 짙게 둡니다 */
+    --plaque-cast: oklch(0.12 0.025 40 / 0.5);
+    --contact-soft: oklch(0.12 0.025 40 / 0.36);
+
+    isolation: isolate;
+  }
+  .shelf-scope nav:has(> .shelf-menu-pointer)::before {
+    content: '';
+    position: absolute;
+    inset: calc(var(--crate-frame) * -1);
+    z-index: -1;
+    border-radius: 3px;
+    pointer-events: none;
+    background:
+      var(--wood-sheen),
+      var(--menu-flute) 0 0 / 16px 100% round no-repeat,
+      var(--wood-grain-v) 0 0 / 320px 960px,
+      linear-gradient(to bottom, var(--menu-board-top), var(--menu-board-low));
+    box-shadow:
+      inset 0 1px 0 oklch(0.85 0.06 75 / 0.28),
+      inset 0 -1px 0 oklch(0.18 0.03 40 / 0.4),
+      0 0 0 1px var(--wood-outline),
+      0 2px 3px oklch(0.1 0.02 40 / 0.32),
+      0 18px 30px -14px var(--wood-cast);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -2286,6 +2393,23 @@
     box-shadow:
       0 18px 32px -20px var(--depth),
       inset 0 1px var(--highlight);
+  }
+  /*
+   * 상세 카드는 궤짝과 같은 월넛 테를 두릅니다. 카드가 @container(레이아웃 격리)라 의사요소의 z-index -1 이
+   * 종이 위로 올라와서, 결 대신 box-shadow 겹으로 둥근 단면(밝은 안쪽 → 가운데 → 가라앉는 바깥 → 윤곽)을
+   * 냅니다 — 안쪽부터 황동 1 · 월넛 5 · 윤곽 1 = 7px. 안쪽 크림 종이는 그대로라 글자 대비가 같습니다.
+   * 한 장 배치에서 바깥 7px 는 궤짝 테(4px)와 합쳐 둘 사이 20px 간격 안에 듭니다.
+   * 빈 분류 안내(div.shelf-panel)는 궤짝 안에 서는 종이라 테를 두르지 않습니다.
+   */
+  .shelf-scope aside.shelf-panel {
+    box-shadow:
+      inset 0 1px var(--highlight),
+      0 0 0 1px var(--brass-inlay-soft),
+      0 0 0 2px var(--wood-frame-hi),
+      0 0 0 5px var(--wood-frame),
+      0 0 0 6px var(--wood-frame-lo),
+      0 0 0 7px var(--wood-outline),
+      0 22px 34px -16px var(--wood-cast);
   }
 
   /* 칩·검색창·드롭다운의 공통 바탕. 위쪽 1px 하이라이트가 살짝 솟은 느낌을 냅니다. */
@@ -2766,7 +2890,11 @@ body:has(.shelf-scope[data-stage])
     --deck-ease: cubic-bezier(0.65, 0, 0.35, 1);
   }
 
-  /* 바닥 들보 — 위에 위층 바닥판, 가운데 굵은 멍에, 아래에 아래층 천장판 */
+  /*
+   * 바닥 들보 — 위에 위층 바닥판, 가운데 굵은 멍에, 아래에 아래층 천장판. 궤짝 · 메뉴판과 같은 월넛
+   * 톤에 가로 결(--wood-grain-h)을 깔고, 먹선은 2px · 세로 이음새는 옅은 1px 로 가늘게 둡니다 — 굵은
+   * 이음새는 매끈한 월넛 옆에서 낡은 판자로 읽힙니다.
+   */
   .shelf-scope .shelf-deck-beam {
     position: relative;
     /* 천장판이 아래 무대 위에 걸치므로 그 무대보다 위에 그립니다 */
@@ -2776,33 +2904,34 @@ body:has(.shelf-scope[data-stage])
     background:
       linear-gradient(
           to bottom,
-          oklch(0.58 0.045 68) 0 2px,
-          oklch(0.42 0.04 62) 2px 13%,
-          oklch(0.12 0.015 48) 13% calc(13% + 3px),
-          transparent calc(13% + 3px)
+          oklch(0.62 0.06 56) 0 2px,
+          oklch(0.45 0.052 47) 2px 13%,
+          oklch(0.15 0.024 40) 13% calc(13% + 2px),
+          transparent calc(13% + 2px)
         )
         0 0 / 100% 100% no-repeat,
       linear-gradient(
           to bottom,
-          transparent calc(100% - var(--deck-board-h) - 3px),
-          oklch(0.1 0.012 48) calc(100% - var(--deck-board-h) - 3px)
+          transparent calc(100% - var(--deck-board-h) - 2px),
+          oklch(0.13 0.02 40) calc(100% - var(--deck-board-h) - 2px)
             calc(100% - var(--deck-board-h)),
-          oklch(0.3 0.035 55) calc(100% - var(--deck-board-h)) calc(100% - 2px),
-          oklch(0.45 0.04 64) calc(100% - 2px)
+          oklch(0.32 0.04 44) calc(100% - var(--deck-board-h)) calc(100% - 2px),
+          oklch(0.48 0.05 50) calc(100% - 2px)
         )
         0 0 / 100% 100% no-repeat,
       repeating-linear-gradient(
         to right,
         transparent 0 calc(var(--spacing) * 38),
-        oklch(0.12 0.015 48 / 0.7) calc(var(--spacing) * 38)
-          calc(var(--spacing) * 38 + 3px),
-        transparent calc(var(--spacing) * 38 + 3px) calc(var(--spacing) * 52)
+        oklch(0.14 0.02 40 / 0.45) calc(var(--spacing) * 38)
+          calc(var(--spacing) * 38 + 1px),
+        transparent calc(var(--spacing) * 38 + 1px) calc(var(--spacing) * 52)
       ),
+      var(--wood-grain-h) 0 0 / 960px 320px,
       linear-gradient(
         to bottom,
-        oklch(0.27 0.032 53),
-        oklch(0.21 0.026 50) 65%,
-        oklch(0.17 0.02 48)
+        oklch(0.28 0.038 44),
+        oklch(0.22 0.03 41) 65%,
+        oklch(0.17 0.024 38)
       );
     /*
      * 아래로만 그림자를 드리웁니다. 위로 지는 그림자는 진열대 무대에 서 있을 때 무대 끝(ShelfDeck 의
