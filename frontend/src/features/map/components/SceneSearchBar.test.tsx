@@ -29,7 +29,7 @@ function Bar({
 
 const WELCOME =
   '향수를 향 계열별로 펼친 바다예요. 원하는 느낌을 적거나, 떠 있는 부표를 눌러 보세요.'
-const SEARCH_TIP = "'자연어'는 느낌을 문장으로, '이름'은 아는 향수를 찾아요."
+const SEARCH_TIP = "'느낌·상황'에 원하는 느낌이나 상황을 적어 보세요."
 
 beforeEach(() => {
   localStorage.clear()
@@ -101,7 +101,7 @@ describe('첫 방문 안내', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
-  it('검색창을 누르면 첫 화면 안내가 끝나고 검색 방식 안내로 바뀐다', async () => {
+  it('검색창을 누르면 첫 화면 안내가 끝나고 검색 안내로 바뀐다', async () => {
     const user = userEvent.setup()
     render(<Bar introduce />)
 
@@ -111,7 +111,7 @@ describe('첫 방문 안내', () => {
     expect(useTourStore.getState().done).toContain('welcome')
   })
 
-  it('첫 검색으로 검색 방식 안내가 끝난다', async () => {
+  it('첫 검색으로 검색 안내가 끝난다', async () => {
     const user = userEvent.setup()
     render(<Bar />)
 
