@@ -168,6 +168,8 @@ export default function MyShelfPage() {
       ? 'collection'
       : 'shelf',
   )
+  // 시안: 무대를 한 번이라도 바꿨는가 — 처음 들어올 때는 등불 관성을 돌리지 않습니다
+  const [moved, setMoved] = useState(false)
   const [registerOpen, setRegisterOpen] = useState(false)
   const [registerKeyword, setRegisterKeyword] = useState('')
   const [loginOpen, setLoginOpen] = useState(false)
@@ -478,7 +480,7 @@ export default function MyShelfPage() {
     개수는 제목 글줄의 기준선에 앉습니다 — 가운데로 맞추면 작은 글자가 제목 위쪽에 떠 보입니다.
   */
   const collectionHeader = (
-    <div className="flex min-h-12.5 items-center">
+    <div className="shelf-hold-title flex min-h-12.5 items-center">
       <div className="flex items-baseline gap-5">
         <h2 className={STAGE_TITLE}>{t('page.collectionTitle')}</h2>
         <span className="shelf-muted text-body tabular-nums">
@@ -739,17 +741,26 @@ export default function MyShelfPage() {
       150% 배율에 창 모드 1280 x 600 등)은 카드가 하단 띠에 겹치는 대신 페이지가 조금 스크롤됩니다.
       NOTE: 상세 카드에 줄을 더하면 445 도 같이 올립니다 — 모자라면 낮은 창에서 MEMO 가 하단 띠에 걸립니다.
     */
-    <div className="shelf-scope -mt-15 -mb-15 flex h-[calc(100dvh_-_var(--header-h))] min-h-[calc(var(--spacing)*54+445px)] flex-col">
+    <div
+      data-stage={stage}
+      data-moved={moved ? '' : undefined}
+      className="shelf-scope -mt-15 -mb-15 flex h-[calc(100dvh_-_var(--header-h))] min-h-[calc(var(--spacing)*54+445px)] flex-col"
+    >
       {paper}
 
       {/*
         무대는 좌우 여백까지 넓혀 둡니다(-mx-[var(--gutter)]). 무대가 위아래로 바뀔 때
         넘친 것을 잘라야 하는데, 본문 폭에서 자르면 벽이 좌우 여백으로 스며 나가는
         페이드가 여백 경계에서 뚝 끊깁니다. 무대 안쪽은 같은 여백을 다시 두어 줄을 맞춥니다.
+
+        시안: 위로는 헤더 뒤(화면 위끝)까지 넓힙니다 — 같은 값을 안쪽 여백(pt)으로 다시 두어 무대 자리는
+        그대로이고, 자르는 선(overflow-clip)만 안쪽 여백의 위끝으로 올라갑니다. 그래서 무대 사이의 들보가
+        헤더 아랫선에서 사라지지 않고 헤더 뒤까지 올라와 멈춥니다 — 컬렉션 무대에서는 헤더가 곧 들보(아래층
+        천장)입니다. 헤더 띠에 들보가 있으니 그 위로 계단이 비칠 자리도 없습니다.
       */}
       <ShelfDeck
         index={stage === 'shelf' ? 0 : 1}
-        className="-mx-[var(--gutter)] min-h-0 flex-1"
+        className="-mx-[var(--gutter)] -mt-[var(--header-h)] min-h-0 flex-1 pt-[var(--header-h)]"
       >
         {[
           <div
@@ -813,6 +824,7 @@ export default function MyShelfPage() {
           // 무대가 바뀌기 직전에 벽의 이름표에 아래에서 바람을 일으킵니다 — 진열대가 위로 빠질 때는 세게,
           // 돌아올 때는 조금 약하게 들렸다 가라앉습니다(ShelfWall 의 gust). 쌓는 배치에는 무대가 없어 부르지 않습니다
           wall.current?.gust(stage === 'shelf' ? 'leave' : 'arrive')
+          setMoved(true)
           setStage(stage === 'shelf' ? 'collection' : 'shelf')
         }}
         collectionCount={collectionCount}

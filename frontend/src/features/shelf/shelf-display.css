@@ -2463,3 +2463,456 @@
     }
   }
 }
+
+/*
+ * ───────── 시안: 선실 계단 ─────────
+ *
+ * 내 컬렉션 무대(아래층)에서만 섭니다. 무대가 바뀌는 450ms(ShelfDeck 의 DECK_MS)에 맞춰 판벽은 위로
+ * 빠지며 옅어지고, 계단은 아래에서 올라오며 짙어집니다.
+ */
+@layer components {
+  /* 계단이 서는 자리 · 시간 · 자르기는 아래층 소품(.shelf-lower)과 "층을 내려가는 전환" 에 있습니다 */
+  .shelf-scope .shelf-wainscot {
+    transition:
+      opacity 450ms cubic-bezier(0.22, 0.61, 0.36, 1),
+      translate 450ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .shelf-scope[data-stage='collection'] .shelf-wainscot {
+    opacity: 0;
+    translate: 0 -8%;
+  }
+}
+
+/*
+ * 시안: 선창의 어둠 — 내 컬렉션 무대에서만. 가장자리 · 아래로 가라앉고, 계단 위쪽에 등불 빛이 고이고,
+ * 회벽에 그을음 얼룩이 앉습니다. 제목이 앉는 왼쪽 위는 밝게 남깁니다.
+ */
+@layer components {
+  .shelf-scope .shelf-hold {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 450ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    /* 방 전체가 고르게 가라앉고, 가장자리 · 아래가 한 단 더 어둡습니다. 밝은 자리는 등불 둘레뿐입니다 */
+    background:
+      radial-gradient(
+        120% 110% at 50% 30%,
+        transparent 40%,
+        oklch(0.13 0.02 48 / 0.42) 100%
+      ),
+      linear-gradient(to bottom, transparent 55%, oklch(0.14 0.02 48 / 0.3)),
+      linear-gradient(oklch(0.17 0.02 50 / 0.55), oklch(0.17 0.02 50 / 0.55));
+  }
+  .shelf-scope .shelf-hold::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: var(--grain-mottle);
+    background-size: 520px 520px;
+    mix-blend-mode: multiply;
+    opacity: 0.55;
+  }
+  .shelf-scope[data-stage='collection'] .shelf-hold {
+    opacity: 1;
+  }
+}
+
+/*
+ * 시안: 아래층 소품 — 계단과 매달린 등불. 컬렉션 무대(아래층)에만 섭니다. 소품마다 화면을 통째로 덮는
+ * 겹(.shelf-lower)에 담아, 들보를 따라 드러나게 자릅니다(시간 · 자르기는 아래 "층을 내려가는 전환").
+ */
+@layer components {
+  .shelf-scope .shelf-lower {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+  }
+  .shelf-scope[data-stage='collection'] .shelf-lower {
+    opacity: 1;
+  }
+
+  .shelf-scope :is(.shelf-lantern, .shelf-lantern-glow) {
+    --lantern-w: calc(var(--spacing) * 15);
+    position: absolute;
+    top: var(--header-h);
+    right: calc(var(--gutter) + 14%);
+    width: var(--lantern-w);
+    aspect-ratio: 60 / 112;
+    pointer-events: none;
+  }
+  /*
+   * 배가 흔들리는 만큼 등불도 천장에서 조금씩 흔들립니다. 헤더가 비쳐 천장이 화면 맨 위라, 쇠사슬을
+   * 맨 위까지 잇고(::before) 흔들리는 축도 거기 둡니다.
+   */
+  .shelf-scope .shelf-lantern {
+    transform-origin: 50% calc(var(--header-h) * -1);
+    animation: shelf-lantern-sway 6.5s ease-in-out infinite alternate;
+  }
+  .shelf-scope .shelf-lantern::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    width: 2px;
+    height: var(--header-h);
+    translate: -50% 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      oklch(0.24 0.01 60) 0 4px,
+      oklch(0.24 0.01 60 / 0.35) 4px 6px
+    );
+  }
+  @keyframes shelf-lantern-sway {
+    from {
+      rotate: -2.2deg;
+    }
+    to {
+      rotate: 2.2deg;
+    }
+  }
+  /*
+   * 빛은 벽과 screen 으로 섞습니다. 빛을 담은 겹(.shelf-lower)이 자르기 때문에 한 덩어리로 그려져서, 빛
+   * 자체에 걸면 겹 안의 빈 바탕과 섞여 효과가 사라집니다 — 그래서 겹에 겁니다.
+   */
+  .shelf-scope .shelf-lantern-light {
+    mix-blend-mode: screen;
+  }
+  .shelf-scope .shelf-lantern-glow::before {
+    content: '';
+    position: absolute;
+    top: 59%;
+    left: 50%;
+    width: calc(var(--spacing) * 150);
+    aspect-ratio: 1;
+    translate: -50% -50%;
+    background: radial-gradient(
+      closest-side,
+      oklch(0.88 0.14 74 / 0.8),
+      oklch(0.82 0.12 68 / 0.32) 35%,
+      oklch(0.8 0.1 66 / 0.1) 62%,
+      transparent
+    );
+    animation: shelf-flicker 3.8s steps(1, end) infinite;
+  }
+  /* 기름 등불의 일렁임 — 고른 숨이 아니라 불규칙하게 툭툭 */
+  @keyframes shelf-flicker {
+    0% {
+      opacity: 1;
+    }
+    13% {
+      opacity: 0.88;
+    }
+    21% {
+      opacity: 0.97;
+    }
+    38% {
+      opacity: 0.84;
+    }
+    44% {
+      opacity: 1;
+    }
+    63% {
+      opacity: 0.91;
+    }
+    79% {
+      opacity: 0.86;
+    }
+    88% {
+      opacity: 0.98;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .shelf-scope :is(.shelf-lantern, .shelf-lantern-glow::before) {
+      animation: none;
+    }
+  }
+}
+
+/*
+ * 시안: 선창의 제목 — 어두운 벽 위라 크림색 글자로. 컬렉션 무대에서만, 무대가 바뀌는 450ms 에 맞춰 바뀝니다.
+ */
+@layer components {
+  .shelf-scope .shelf-hold-title :is(h2, .shelf-muted) {
+    transition: color 450ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .shelf-scope[data-stage='collection'] .shelf-hold-title h2 {
+    color: oklch(0.94 0.014 82);
+  }
+  .shelf-scope[data-stage='collection'] .shelf-hold-title .shelf-muted {
+    color: oklch(0.8 0.018 78);
+  }
+}
+
+/*
+ * 시안: 선창 무대의 헤더 — 투명하게 비쳐 어두운 방이 천장까지 이어지고, 헤더 줄의 글자는 흰색이 됩니다.
+ *
+ * 헤더는 진열대 화면 밖(RootLayout)이라 무대를 모릅니다. 페이지가 컬렉션 무대인지를 :has() 로 봅니다.
+ * 레이어 밖에 둡니다 — 헤더 글자색이 Tailwind 유틸리티(text-ink)라 레이어 안 규칙으로는 덮이지 않습니다.
+ * 펼침 메뉴(커뮤니티 · 계정)는 밝은 카드 위라 건드리지 않고, 헤더 줄에 선 글자만 고릅니다.
+ */
+body:has(.shelf-scope[data-stage]) header.shelf-paper {
+  background: transparent;
+  text-shadow: 0 1px 3px oklch(0.1 0.01 50 / 0.5);
+}
+body:has(.shelf-scope[data-stage]) header.shelf-paper::after {
+  opacity: 0;
+}
+body:has(.shelf-scope[data-stage]) header.shelf-paper > div > a,
+body:has(.shelf-scope[data-stage]) header.shelf-paper nav > ul > li > a,
+body:has(.shelf-scope[data-stage])
+  header.shelf-paper
+  nav
+  > ul
+  > li
+  > div
+  > button,
+body:has(.shelf-scope[data-stage])
+  header.shelf-paper
+  > div
+  > div
+  > div
+  > button {
+  color: oklch(0.98 0.004 85);
+}
+/*
+ * 언어 전환(KO · EN) — 단추가 한 겹 더 안(span)에 있어 위 규칙에 걸리지 않습니다. 고르지 않은 언어를
+ * 흐리게 하는 것은 단추의 opacity 라 색만 바꿉니다.
+ */
+body:has(.shelf-scope[data-stage])
+  header.shelf-paper
+  > div
+  > div
+  > div[role='group']
+  > span
+  > :is(button, span) {
+  color: oklch(0.98 0.004 85);
+}
+body:has(.shelf-scope[data-stage]) header.shelf-paper nav > ul > li > a:hover,
+body:has(.shelf-scope[data-stage])
+  header.shelf-paper
+  nav
+  > ul
+  > li
+  > div
+  > button:hover,
+body:has(.shelf-scope[data-stage])
+  header.shelf-paper
+  > div
+  > div
+  > div
+  > button:hover {
+  color: oklch(0.98 0.004 85 / 0.7);
+}
+
+/*
+ * 시안: 두 무대가 한 방 — 진열대 무대도 컬렉션과 같은 선창(어둠 · 그을음)입니다. 계단과 등불은 컬렉션 무대에만
+ * 남깁니다(.shelf-lower). 판벽은 어느 무대에서도 서지 않습니다.
+ */
+@layer components {
+  .shelf-scope[data-stage] .shelf-hold {
+    opacity: 1;
+  }
+  .shelf-scope[data-stage] .shelf-wainscot {
+    opacity: 0;
+  }
+}
+
+/*
+ * 시안: 어두운 벽 위에 바로 앉는 글자 — 진열대 무대에서. 제목 · 쪽수는 크림색에 옅은 그림자(컬렉션 무대 제목과
+ * 같은 색), 바탕 없는 등록 단추는 검색창과 같은 알약 바탕을 깝니다.
+ */
+@layer components {
+  .shelf-scope[data-stage='shelf'] h1 {
+    color: oklch(0.95 0.012 82);
+    text-shadow: 0 1px 3px oklch(0.15 0.02 50 / 0.55);
+  }
+  .shelf-scope[data-stage='shelf'] div:has(> p[aria-live='polite']) {
+    --shelf-ink: oklch(0.96 0.01 84);
+    --shelf-ink-soft: oklch(0.86 0.016 80);
+    text-shadow: 0 1px 2px oklch(0.15 0.02 50 / 0.6);
+  }
+  .shelf-scope h1 {
+    transition: color 450ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+}
+/* 레이어 밖 — 등록 단추의 바탕 · 글자색이 Tailwind 유틸리티(bg-transparent · text-ink)라 레이어 안에서는 못 덮습니다 */
+.shelf-scope[data-stage='shelf'] .shelf-field + div > button {
+  background: var(--chip);
+  border-color: transparent;
+  color: var(--shelf-ink);
+  box-shadow: inset 0 1px var(--highlight);
+}
+.shelf-scope[data-stage='shelf'] .shelf-field + div > button:hover {
+  background: oklch(0.97 0.008 82 / 0.9);
+}
+
+/*
+ * ───────── 시안: 층을 내려가는 전환 ─────────
+ *
+ *   1. 바닥 들보 — 두 무대 사이의 들보가 화면을 지나갑니다(ShelfDeck)
+ *   2. 시차 — 벽의 그을음 결(.shelf-hold::after)은 무대의 1/4 만 따라 올라가고, 계단은 아래에서 길게 올라옵니다
+ *   3. 등불 관성 — 내려갈 때 위로 들렸다 흔들리며 멎고, 올라올 때는 아래로 처졌다 멎습니다
+ *
+ * 내려갈 때 0.8초(DECK_MS) · 올라올 때 0.65초. 무대 판과 같은 곡선입니다.
+ */
+@layer components {
+  .shelf-scope {
+    --deck-beam-h: calc(var(--spacing) * 34);
+    /* 들보 맨 아래의 연한 천장판 — 아래 무대 윗머리에 걸칩니다(ShelfDeck) */
+    --deck-board-h: calc(var(--deck-beam-h) * 0.13);
+    --deck-ease: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+
+  /* 바닥 들보 — 위에 위층 바닥판, 가운데 굵은 멍에, 아래에 아래층 천장판 */
+  .shelf-scope .shelf-deck-beam {
+    position: relative;
+    /* 천장판이 아래 무대 위에 걸치므로 그 무대보다 위에 그립니다 */
+    z-index: 1;
+    height: var(--deck-beam-h);
+    margin-bottom: calc(var(--deck-board-h) * -1);
+    background:
+      linear-gradient(
+          to bottom,
+          oklch(0.58 0.045 68) 0 2px,
+          oklch(0.42 0.04 62) 2px 13%,
+          oklch(0.12 0.015 48) 13% calc(13% + 3px),
+          transparent calc(13% + 3px)
+        )
+        0 0 / 100% 100% no-repeat,
+      linear-gradient(
+          to bottom,
+          transparent calc(100% - var(--deck-board-h) - 3px),
+          oklch(0.1 0.012 48) calc(100% - var(--deck-board-h) - 3px)
+            calc(100% - var(--deck-board-h)),
+          oklch(0.3 0.035 55) calc(100% - var(--deck-board-h)) calc(100% - 2px),
+          oklch(0.45 0.04 64) calc(100% - 2px)
+        )
+        0 0 / 100% 100% no-repeat,
+      repeating-linear-gradient(
+        to right,
+        transparent 0 calc(var(--spacing) * 38),
+        oklch(0.12 0.015 48 / 0.7) calc(var(--spacing) * 38)
+          calc(var(--spacing) * 38 + 3px),
+        transparent calc(var(--spacing) * 38 + 3px) calc(var(--spacing) * 52)
+      ),
+      linear-gradient(
+        to bottom,
+        oklch(0.27 0.032 53),
+        oklch(0.21 0.026 50) 65%,
+        oklch(0.17 0.02 48)
+      );
+    /*
+     * 아래로만 그림자를 드리웁니다. 위로 지는 그림자는 진열대 무대에 서 있을 때 무대 끝(ShelfDeck 의
+     * overflow-clip)에서 잘려, 무대를 바꾸는 단추 위에 가로줄 한 줄로 남았습니다.
+     */
+    box-shadow: 0 22px 34px -12px oklch(0.08 0.01 48 / 0.7);
+  }
+
+  /* 시차 — 그을음 결은 무대의 1/4 만 따라 올라갑니다. 올라간 만큼 아래가 비지 않게 밑으로 길게 깝니다 */
+  .shelf-scope .shelf-hold::after {
+    inset: 0 0 -32vh 0;
+    transition: translate 650ms var(--deck-ease);
+  }
+  .shelf-scope[data-stage='collection'] .shelf-hold::after {
+    translate: 0 -24vh;
+    transition-duration: 800ms;
+  }
+  /*
+   * 아래층 소품(계단 · 등불)은 들보 아래(아래층)에서만 보입니다. 소품은 화면에 고정된 벽 겹에 있고 위층
+   * 무대는 바탕이 투명해서, 그대로 두면 들보가 지나가기 전의 위층에 비칩니다. 그래서 소품 겹의 윗변을 잘라
+   * 내고, 그 선을 들보와 같은 시간 · 같은 곡선으로 화면 아래끝(100%)에서 위끝(0)까지 올립니다.
+   *
+   * 들보 아랫변은 "무대 아래끝 + 들보 높이" 에서 "헤더 아랫선 + 천장판" 까지 가서 이 선과 꼭 겹치지는
+   * 않지만, 둘의 차이가 처음에는 (하단 띠 높이 - 들보 높이), 끝에는 (- 헤더 높이 - 천장판)이고 그 사이는
+   * 곧게 변합니다. 둘 다 들보보다 낮은 동안은 선이 늘 들보 뒤에 숨습니다(1536 x 864 에서 차이 53 ~ 86 ·
+   * 들보 109). 들보는 헤더 뒤까지 올라와 멈추므로(MyShelfPage 의 무대 넓히기) 끝의 0 도 들보 뒤입니다.
+   *
+   * 올라오는 시차(translate)는 svg 에 둡니다. 자르는 요소에 두면 자르는 선도 같이 밀려 내려가 들보보다
+   * 아래에서 잘립니다.
+   */
+  .shelf-scope .shelf-lower {
+    clip-path: inset(100% 0 0 0);
+    transition:
+      opacity 650ms var(--deck-ease),
+      clip-path 650ms var(--deck-ease);
+  }
+  .shelf-scope[data-stage='collection'] .shelf-lower {
+    clip-path: inset(0);
+    transition-duration: 800ms;
+  }
+  .shelf-scope .shelf-stairs > svg {
+    translate: 0 26%;
+    transition: translate 650ms var(--deck-ease);
+  }
+  .shelf-scope[data-stage='collection'] .shelf-stairs > svg {
+    translate: 0 0;
+    transition-duration: 800ms;
+  }
+
+  /* 등불 관성 — 흔들림(rotate)은 그대로 두고 그 위에 한 번 출렁임(transform)을 얹습니다 */
+  .shelf-scope[data-moved][data-stage='collection'] .shelf-lantern {
+    animation:
+      shelf-lantern-sway 6.5s ease-in-out infinite alternate,
+      shelf-lantern-down 2.2s cubic-bezier(0.2, 0.6, 0.3, 1);
+  }
+  .shelf-scope[data-moved][data-stage='shelf'] .shelf-lantern {
+    animation:
+      shelf-lantern-sway 6.5s ease-in-out infinite alternate,
+      shelf-lantern-up 2s cubic-bezier(0.2, 0.6, 0.3, 1);
+  }
+  @keyframes shelf-lantern-down {
+    0% {
+      transform: none;
+    }
+    14% {
+      transform: translateY(-8px) rotate(8deg);
+    }
+    32% {
+      transform: translateY(-3px) rotate(-5.5deg);
+    }
+    50% {
+      transform: rotate(3.4deg);
+    }
+    67% {
+      transform: rotate(-1.8deg);
+    }
+    84% {
+      transform: rotate(0.8deg);
+    }
+    100% {
+      transform: none;
+    }
+  }
+  @keyframes shelf-lantern-up {
+    0% {
+      transform: none;
+    }
+    14% {
+      transform: translateY(6px) rotate(-6.5deg);
+    }
+    32% {
+      transform: translateY(2px) rotate(4.5deg);
+    }
+    50% {
+      transform: rotate(-2.6deg);
+    }
+    68% {
+      transform: rotate(1.3deg);
+    }
+    100% {
+      transform: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .shelf-scope[data-moved] .shelf-lantern {
+      animation: none;
+    }
+    .shelf-scope[data-stage='collection'] .shelf-hold::after {
+      translate: none;
+    }
+  }
+}
