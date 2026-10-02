@@ -52,8 +52,12 @@ export const recommend = {
       '조건이 넓어 비슷한 향까지 함께 골랐습니다. 상황이나 계절을 덧붙이면 더 좁혀 드릴 수 있습니다.',
     empty: {
       noConditionTitle: '어떤 향인지 아직 못 알아들었습니다',
+      // 예시는 LLM 없이도 알아듣는 사전 말만 씁니다 — 코드의 RETRY_EXAMPLES 가 채웁니다
       noConditionDescription:
-        '냄새로 풀어서 적어 보세요 — ‘비누 냄새 나는 향’, ‘비 온 뒤 흙냄새’ 처럼요.',
+        '냄새나 느낌으로 적어 보세요 — {{examples}} 처럼요.',
+      noConditionWithExamples:
+        '냄새나 느낌으로 적어 보세요. 아래 말로 바로 찾아볼 수도 있습니다.',
+      searchByName: '향수 이름이었다면 · 전체 향수에서 ‘{{keyword}}’ 찾기',
       noResultTitle: '말씀하신 향에 맞는 향수를 찾지 못했습니다',
       noResultDescription:
         '조건을 조금 줄이면 찾을 수 있습니다. 계절이나 상황 하나를 빼고 다시 적어 보세요.',

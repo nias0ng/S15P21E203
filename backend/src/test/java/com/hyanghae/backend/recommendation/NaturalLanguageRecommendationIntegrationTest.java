@@ -13,6 +13,7 @@ import com.hyanghae.backend.recommendation.client.NlrRecommendResponse;
 import com.hyanghae.backend.recommendation.exception.RecommendationErrorCode;
 import com.hyanghae.backend.support.IntegrationTest;
 import java.util.List;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -273,6 +274,22 @@ class NaturalLanguageRecommendationIntegrationTest {
     }
 
     /**
+     * 단종이 확인된 향수는 AI 가 골라도 내보내지 않습니다 (지인 피드백 F5). AI 서버도 같은 목록으로
+     * 거르지만, 두 쪽 배포가 어긋나도 살 수 없는 향수를 권하지 않게 백엔드가 한 번 더 막습니다.
+     */
+    @Test
+    void excludesDiscontinuedPerfume() throws Exception {
+        markDiscontinued(1);
+        given(nlrClient.recommend(anyString())).willReturn(aiResponse("OK",
+                result(73368L, matched("soapy", "빨래")),
+                result(1234L, matched("soapy", "빨래"))));
+
+        mockMvc.perform(request(QUERY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes[*].perfumeId", Matchers.contains(2)));
+    }
+
+    /**
      * 적재가 짝지어 주지 못한 향수는 어떤 번호로도 찾히지 않습니다.
      *
      * <p>{@code fragrantica_id} 가 {@code NULL} 인 행입니다. SQL 에서 {@code NULL} 은 무엇과도
@@ -437,6 +454,14 @@ class NaturalLanguageRecommendationIntegrationTest {
                 "INSERT INTO perfumes (perfume_id, brand_id, fragrantica_id, name, is_active)"
                         + " VALUES (?, ?, ?, ?, ?)",
                 id, brandId, fragranticaId, name, active);
+    }
+
+    private void markDiscontinued(long perfumeId) {
+        jdbcTemplate.update(
+                "UPDATE perfumes SET production_status = 'DISCONTINUED',"
+                        + " production_status_checked_at = DATE '2026-10-01',"
+                        + " production_status_source = 'https://example.com' WHERE perfume_id = ?",
+                perfumeId);
     }
 
     private void insertImage(long id, long perfumeId, String imageUrl, Integer displayOrder) {

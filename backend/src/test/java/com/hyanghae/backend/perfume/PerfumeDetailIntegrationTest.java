@@ -81,6 +81,34 @@ class PerfumeDetailIntegrationTest {
         clearPerfumeData();
     }
 
+    /**
+     * 단종이 확인된 향수는 상세에 그 사실과 확인일 · 근거가 함께 나갑니다 (지인 피드백 F5).
+     * 상세 자체는 막지 않습니다 — 이미 가진 사람이 진열대 · 후기에서 이 화면을 씁니다.
+     */
+    @Test
+    void returnsProductionStatusOfDiscontinuedPerfume() throws Exception {
+        jdbcTemplate.update(
+                "UPDATE perfumes SET production_status = 'DISCONTINUED',"
+                        + " production_status_checked_at = DATE '2026-10-01',"
+                        + " production_status_source = 'https://example.com/discontinued'"
+                        + " WHERE perfume_id = 1");
+
+        mockMvc.perform(get(DETAIL_URL, 1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.productionStatus.status").value("DISCONTINUED"))
+                .andExpect(jsonPath("$.productionStatus.checkedAt").value("2026-10-01"))
+                .andExpect(jsonPath("$.productionStatus.source")
+                        .value("https://example.com/discontinued"));
+    }
+
+    /** 단종인지 모르는 향수는 칸이 비어 있습니다. 판매 중이라고 적지 않습니다. */
+    @Test
+    void omitsProductionStatusWhenUnknown() throws Exception {
+        mockMvc.perform(get(DETAIL_URL, 1))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.productionStatus").doesNotExist());
+    }
+
     @Test
     void returnsBasicInformation() throws Exception {
         mockMvc.perform(get(DETAIL_URL, 1))

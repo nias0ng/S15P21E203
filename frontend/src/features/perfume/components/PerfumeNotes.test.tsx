@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { render as rtlRender, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
 
 import { i18n } from '@/shared/i18n'
@@ -7,6 +8,10 @@ import { useLocaleStore } from '@/shared/store/localeStore'
 import type { PerfumeNote } from '../types'
 
 import { PerfumeNotes } from './PerfumeNotes'
+
+// 브랜드 · 노트가 링크라 라우터 안에서 그립니다
+const render = (ui: React.ReactElement) =>
+  rtlRender(ui, { wrapper: MemoryRouter })
 
 const note = (
   noteId: number,
@@ -100,6 +105,14 @@ describe('PerfumeNotes', () => {
 
     expect(screen.getByText('기타')).toBeInTheDocument()
     expect(screen.getByText('앰버')).toBeInTheDocument()
+  })
+  it('노트를 누르면 그 노트 화면으로 간다', () => {
+    render(<PerfumeNotes notes={[note(7, '베르가못', 'top')]} />)
+
+    expect(screen.getByRole('link', { name: '베르가못' })).toHaveAttribute(
+      'href',
+      '/notes/7',
+    )
   })
 })
 

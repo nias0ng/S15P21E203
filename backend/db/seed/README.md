@@ -19,6 +19,8 @@
 | 노트 메타데이터 | 노트 246개 | O | O | `load_notes.sh` |
 | 향수 이미지 | 일반 129,153개·종이 질감 200개 | O | O | `load_perfume_images.sh` |
 | 향수-노트 연결 | 906,127건 | O | O | `load_perfume_notes.sh` |
+| 비슷한 향수 | 향수 129,154개·1,291,326쌍 | O | O | `load_perfume_similars.sh` |
+| 단종 표시 | `ai/data/perfume_status.csv` 의 확정 | O | O | `load_perfume_status.sh` |
 | 로컬 화면 테스트 데이터 | 사용자 활동 데이터 | O | X | `seed-local` |
 | 운영 발표용 데모 데이터 | 발표 계정과 활동 데이터 | 선택 | 발표 환경만 | `run_demo_seed.sh` |
 | 440번 시연 재구성 | 계정 34명·후기 85개·글 8개 | 선택 | 승인된 발표 환경만 | `run_presentation_seed.sh` |
@@ -47,6 +49,8 @@
 6. 노트 메타데이터를 적재합니다.
 7. 향수 이미지 메타데이터를 적재합니다.
 8. 향수-노트 연결을 적재합니다.
+9. 비슷한 향수를 적재합니다.
+10. 단종이 확인된 향수를 표시합니다.
 
 각 적재 스크립트는 재실행할 수 있고 자체 트랜잭션으로 처리됩니다. 환경별로 달라지는
 `perfume_id` 대신 `fragrantica_id`로 향수를 연결합니다.
@@ -54,7 +58,7 @@
 ### 로컬 기준 데이터 빠른 실행
 
 프로젝트 루트에서 다음 명령을 실행하면 향 지도·카탈로그·카탈로그 보충·gender·노트·향수 이미지·
-향수-노트 연결을 순서대로 적재합니다.
+향수-노트 연결·비슷한 향수·단종 표시를 순서대로 적재합니다.
 
 ```powershell
 docker compose -f compose.manual-test.yaml up -d --build --wait
@@ -290,6 +294,60 @@ NOTICE: 연결 906127건을 반영했습니다. 중복 향수 9110의 연결 6�
 `perfume_notes.csv.gz`의 `perfume_id` 열은 DB PK가 아니라 `fragrantica_id`입니다. 스크립트가
 향수명과 브랜드까지 대조합니다. 주 카탈로그에서 제외됐던 향수 152개는 보충 Seed가 먼저 생성하므로
 591개 연결도 함께 적재됩니다.
+
+# 비슷한 향수 적재
+
+향 지도 밖 향수의 '비슷한 향수' 1,291,326쌍을 적재합니다. 향수 상세의 비슷한 향수
+(`GET /api/v1/perfumes/{id}/similar`)가 `perfume_neighbors`에 없는 향수, 곧 지도 밖 향수에서
+이 표를 읽습니다. 지도 200개는 3D 지도의 선과 같아야 해서 지금처럼 `perfume_neighbors`를 씁니다.
+향수 카탈로그가 먼저 적재돼 있어야 합니다.
+
+```bash
+cd backend/db/seed
+./load_perfume_similars.sh
+```
+
+정상 결과:
+
+```text
+COPY 1291326
+INSERT 0 1291326
+NOTICE: 비슷한 향수 1291326건을 넣었습니다. 카탈로그에 없는 향수를 가리켜 건너뛴 행 0건.
+
+ loaded_pairs | perfumes_with_similars | min_similarity | max_similarity
+--------------+------------------------+----------------+----------------
+      1291326 |                 129154 |         0.3000 |         0.9000
+```
+
+표를 비우고 다시 넣으므로 재실행해도 결과가 같습니다. 검증이 하나라도 실패하면 아무것도 바꾸지
+않아 이전 목록이 그대로 남습니다.
+
+`perfume_similars.csv.gz`는 `ai/build_similars.py`가 만듭니다. 유사도 공식(향 특성 코사인 0.5 +
+노트 IDF 코사인 0.5)은 향 지도와 같고, 무명 향수와 복제품이 목록을 채우지 않도록 거르는 규칙
+(평가자 100명 이상, 유사도 0.9 이상 제외, 같은 브랜드 하나까지, 변형판 제외)은 그 파일 머리말에
+있습니다. 원본(`ai/data/perfumes_nlr.csv.gz`)이나 규칙이 바뀌면 다시 만들어 이 적재를 다시 돌립니다.
+
+```bash
+cd ai
+pip install scipy   # 서버에는 필요 없는 계산용 의존성입니다
+python build_similars.py
+```
+
+# 단종 표시 적재
+
+`ai/data/perfume_status.csv` 에서 단종이 **확정**된 향수를 `perfumes.production_status` 에
+표시합니다. 표시된 향수는 추천(자연어 · 비슷한 향수 · 개인화)에서 빠지고 향수 상세에 '단종' 으로
+적힙니다. 검색 · 상세 · 진열대 · 후기는 막지 않습니다. 향수 카탈로그가 먼저 적재돼 있어야 합니다.
+
+```bash
+cd backend/db/seed
+./load_perfume_status.sh
+```
+
+AI 엔진도 같은 파일을 읽으므로 파일은 `ai/data` 에 둡니다. 판정 기준과 칸 설명은
+`ai/README.md` 의 '단종 목록' 에 있습니다. 표시를 모두 지우고 파일대로 다시 걸어 재실행해도 결과가
+같고, 파일에서 지운 향수의 표시도 함께 풀립니다. 번호와 이름이 하나라도 맞지 않으면 아무것도
+바꾸지 않고 어긋난 줄을 알려 줍니다.
 
 # 로컬 화면 테스트 데이터
 

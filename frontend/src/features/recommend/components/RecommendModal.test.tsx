@@ -48,7 +48,18 @@ const result = (overrides: Partial<RecommendResult> = {}): RecommendResult => ({
   ...overrides,
 })
 
-const renderModal = (onClose = vi.fn()) => {
+const renderModal = (
+  onClose = vi.fn(),
+  {
+    query = QUERY,
+    onRequery,
+    onSearchByName,
+  }: {
+    query?: string
+    onRequery?: (query: string) => void
+    onSearchByName?: (keyword: string) => void
+  } = {},
+) => {
   render(
     <QueryClientProvider
       client={
@@ -56,7 +67,12 @@ const renderModal = (onClose = vi.fn()) => {
       }
     >
       <MemoryRouter>
-        <RecommendModal query={QUERY} onClose={onClose} />
+        <RecommendModal
+          query={query}
+          onClose={onClose}
+          onRequery={onRequery}
+          onSearchByName={onSearchByName}
+        />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -171,6 +187,56 @@ describe('RecommendModal', () => {
       .closest('dialog')!
     fireEvent(dialog, new Event('cancel', { cancelable: true }))
     expect(onClose).toHaveBeenCalledTimes(2)
+  })
+
+  describe('향 조건을 하나도 못 뽑았을 때', () => {
+    const NAME_QUERY = '아쿠아디파르마 미르토 디 파나레아와 비슷한 향수'
+    const noCondition = () =>
+      result({
+        status: 'NO_CONDITION',
+        query: NAME_QUERY,
+        perfumes: [],
+        matchedData: [],
+      })
+
+    // 권한 말을 누르면 곧바로 그 말로 찾습니다 — 따라 적게 하지 않습니다
+    it('예시를 누르면 그 말로 다시 찾는다', async () => {
+      api.getRecommendation.mockResolvedValue(noCondition())
+      const onRequery = vi.fn()
+
+      renderModal(vi.fn(), { query: NAME_QUERY, onRequery })
+      await userEvent.click(await screen.findByRole('button', { name: '풀향' }))
+
+      expect(onRequery).toHaveBeenCalledWith('풀향')
+    })
+
+    // '자연어' 를 몰라 향수 이름을 넣은 사람에게 다음 할 일을 줍니다 (지인 피드백 F1 · F2)
+    it('향수 이름이었다면 찾는 말투를 뺀 낱말로 전체 향수에서 찾게 한다', async () => {
+      api.getRecommendation.mockResolvedValue(noCondition())
+      const onSearchByName = vi.fn()
+
+      renderModal(vi.fn(), { query: NAME_QUERY, onSearchByName })
+      await userEvent.click(
+        await screen.findByRole('button', { name: /전체 향수에서/ }),
+      )
+
+      expect(onSearchByName).toHaveBeenCalledWith(
+        '아쿠아디파르마 미르토 디 파나레아',
+      )
+    })
+
+    it('다시 찾는 길을 안 받았으면 예시를 글로만 보여 준다', async () => {
+      api.getRecommendation.mockResolvedValue(noCondition())
+
+      renderModal(vi.fn(), { query: NAME_QUERY })
+
+      expect(
+        await screen.findByText(/‘상큼한 향’, ‘풀향’ 처럼요/),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: '풀향' }),
+      ).not.toBeInTheDocument()
+    })
   })
 
   // 결과 안내는 결과가 선 뒤에 닫았을 때만 본 것으로 칩니다 — 기다리다 닫았으면 다음 결과에서 다시 섭니다

@@ -55,8 +55,11 @@ export const recommend = {
       'Your request was broad, so we included similar scents too. Add a season or occasion to narrow it down.',
     empty: {
       noConditionTitle: 'We couldn’t tell what scent you meant',
-      noConditionDescription:
-        'Try describing the smell — like ‘smells like soap’ or ‘earth after rain’.',
+      noConditionDescription: 'Try describing the smell — like {{examples}}.',
+      noConditionWithExamples:
+        'Try describing the smell or feeling. You can also try one of these right away.',
+      searchByName:
+        'If that was a perfume name · search all perfumes for ‘{{keyword}}’',
       noResultTitle: 'No perfume matches that scent',
       noResultDescription:
         'Try fewer conditions. Drop a season or occasion and ask again.',

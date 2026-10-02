@@ -45,14 +45,16 @@ export const map = {
     countCapped_one: 'Top {{count}} result',
     countCapped_other: 'Top {{count}} results',
     rank: 'Map rank',
+    scope: 'among the 200 perfumes on the map',
+    searchAll: 'Search all 130,000 perfumes',
     loadError: {
       title: 'Couldn’t load the perfumes on the map',
       description: 'Please try again in a moment.',
     },
     empty: {
-      title: 'No matching perfume on the map',
+      title: 'Not among the 200 perfumes on the map',
       description:
-        'The map shows only 200 perfumes. Try a brand name, or switch to Describe search.',
+        'The map shows only 200 perfumes. You can search all 130,000 perfumes by name.',
     },
   },
   cabin: {

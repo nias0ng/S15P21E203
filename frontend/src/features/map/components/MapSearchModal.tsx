@@ -4,8 +4,10 @@ import { useTranslation } from 'react-i18next'
 
 import { scentFamilyName } from '@/shared/config/scentFamilies'
 import { localizedName } from '@/shared/i18n/locale'
+import { searchWords } from '@/shared/lib/searchWords'
 import { useLocale } from '@/shared/store/localeStore'
 import { Badge } from '@/shared/ui/Badge'
+import { Button } from '@/shared/ui/Button'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Modal } from '@/shared/ui/Modal'
 import { Skeleton } from '@/shared/ui/Skeleton'
@@ -21,6 +23,11 @@ type Props = {
   onClose: () => void
   /** 결과 한 줄을 골랐습니다. 어디로 보낼지는 화면(pages)이 정합니다 */
   onSelect: (perfume: MapPerfume) => void
+  /**
+   * 지도 밖 전체 향수에서 찾습니다. 받는 말은 찾는 말투를 걷어 낸 이름 · 브랜드 낱말입니다
+   * (`searchWords`). 어디로 보낼지는 화면(pages)이 정합니다
+   */
+  onSearchAll: (keyword: string) => void
 }
 
 /**
@@ -31,11 +38,20 @@ type Props = {
  * 기능을 쓴 것처럼 보입니다. 열리는 움직임(족자)도, 위쪽에 붙여 두는 것(`mt-25`)도
  * 같은 이유로 같습니다 — 자세한 사정은 `RecommendModal` 주석에 있습니다.
  *
- * ⚠️ 이 목록에는 **DB 향수 번호가 없습니다**(fragrantica_id 뿐). 그래서 한 줄을
- * 골랐을 때 향수 상세로 바로 못 가고 이름으로 향수 검색(A09)에 보냅니다 — 엔진
- * 카드의 [자세히 보기]와 같은 사정이고, 같은 길입니다(`ScentScene`).
+ * ⚠️ 이 목록에는 **DB 향수 번호가 없습니다**(fragrantica_id 뿐). 한 줄을 골랐을 때
+ * 번호를 찾는 일은 화면(pages)이 좌표 색인으로 합니다 — 엔진 카드의 [자세히 보기]와
+ * 같은 사정이고, 같은 길입니다(`ScentScene`).
+ *
+ * **찾는 범위를 늘 밝힙니다.** 지도에 200개만 떠 있다는 것은 만든 사람만 알아서,
+ * 없는 향수를 찾던 사람은 "이 서비스에 그 향수가 없다" 고 읽었습니다 (지인 피드백 F4).
+ * 못 찾으면 13만 개 전체 검색으로 넘어가는 단추를 둡니다.
  */
-export function MapSearchModal({ keyword, onClose, onSelect }: Props) {
+export function MapSearchModal({
+  keyword,
+  onClose,
+  onSelect,
+  onSearchAll,
+}: Props) {
   const { t } = useTranslation('map')
   return (
     <Modal
@@ -71,7 +87,11 @@ export function MapSearchModal({ keyword, onClose, onSelect }: Props) {
     >
       {/* 닫혀 있으면 내용을 안 그립니다 — 그래야 다음에 열 때 족자가 다시 풀립니다 */}
       {keyword !== null && (
-        <MapSearchBody keyword={keyword} onSelect={onSelect} />
+        <MapSearchBody
+          keyword={keyword}
+          onSelect={onSelect}
+          onSearchAll={onSearchAll}
+        />
       )}
     </Modal>
   )
@@ -81,9 +101,11 @@ export function MapSearchModal({ keyword, onClose, onSelect }: Props) {
 function MapSearchBody({
   keyword,
   onSelect,
+  onSearchAll,
 }: {
   keyword: string
   onSelect: (perfume: MapPerfume) => void
+  onSearchAll: (keyword: string) => void
 }) {
   /*
    * ⚠️ 모달이 열려 있을 때만 받습니다. 닫힌 채로도 받으면 메인에 들어오기만 해도 엔진
@@ -104,6 +126,14 @@ function MapSearchBody({
     [keyword, perfumes.data],
   )
 
+  // 찾는 말투를 걷어 낸 낱말이 하나도 없으면(예: "향수") 원문 그대로 넘깁니다
+  const searchAllKeyword = searchWords(keyword).join(' ') || keyword.trim()
+  const searchAll = (
+    <Button variant="outline" onClick={() => onSearchAll(searchAllKeyword)}>
+      {t('searchModal.searchAll')}
+    </Button>
+  )
+
   return (
     // 향해 일지와 같은 족자 — 모달 머리줄이 위 축이고 그 아래가 풀려 내려옵니다
     <Unroll>
@@ -111,7 +141,8 @@ function MapSearchBody({
         {t('searchModal.keyword')} ·{' '}
         <strong className="text-ink font-medium">
           &lsquo;{keyword}&rsquo;
-        </strong>
+        </strong>{' '}
+        · {t('searchModal.scope')}
         {results.length > 0 && (
           <>
             {' '}
@@ -145,6 +176,7 @@ function MapSearchBody({
           <EmptyState
             title={t('searchModal.empty.title')}
             description={t('searchModal.empty.description')}
+            action={searchAll}
           />
         ) : (
           /*

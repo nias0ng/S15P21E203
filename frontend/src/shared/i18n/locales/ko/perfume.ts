@@ -33,6 +33,14 @@ export const perfume = {
     imageFallback: '대표 이미지',
     shelfSave: '진열대 저장',
     shelfRemove: '진열대 해제',
+    // 단종은 막지 않고 적기만 합니다 — 이미 가진 사람이 진열대에 담고 후기를 씁니다(지인 피드백 F5)
+    discontinued: '단종',
+    // 원명 옆에 놓여 영문 소문자('unisex')가 이름의 일부처럼 읽혔습니다(지인 피드백 F24)
+    gender: {
+      FEMALE: '여성용',
+      MALE: '남성용',
+      UNISEX: '공용',
+    },
   },
   related: {
     title: '비슷한 향수',
@@ -85,7 +93,7 @@ export const perfume = {
     searchEmptyDescription: "'{{keyword}}' 와 일치하는 향수를 찾지 못했습니다.",
     headingSearch: '검색 결과',
     headingFiltered: '조건에 맞는 향수',
-    headingPopular: '최근 인기 향수',
+    headingPopular: '향 지도의 대표 향수',
     count_one: '{{count}}개',
     count_other: '{{count}}개',
     loadErrorTitle: '향수를 불러오지 못했습니다',

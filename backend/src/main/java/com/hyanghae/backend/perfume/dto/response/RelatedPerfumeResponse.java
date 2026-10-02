@@ -3,8 +3,9 @@ package com.hyanghae.backend.perfume.dto.response;
 /**
  * 어떤 향수와 이어져 있는 다른 향수 한 건입니다. 주변 향수와 유사 향수가 함께 씁니다.
  *
- * <p>두 API 는 같은 {@code perfume_neighbors} 데이터를 읽고 응답 형태도 같습니다. 화면에서
- * 놓이는 자리만 다릅니다. 그래서 어느 한쪽 이름을 붙이지 않았습니다.
+ * <p>주변 향수는 {@code perfume_neighbors}, 유사 향수는 거기에 더해 지도 밖 향수에
+ * {@code perfume_similars} 를 읽습니다. 표는 달라도 응답 형태가 같아 어느 한쪽 이름을 붙이지
+ * 않았습니다.
  *
  * <p>검색 결과({@link PerfumeSummaryResponse})와 달리 {@code brandName} 이 없습니다. 두 API 의
  * 명세 응답에 브랜드명이 없어서입니다. 화면에 브랜드가 필요하면 명세부터 고쳐야 합니다.

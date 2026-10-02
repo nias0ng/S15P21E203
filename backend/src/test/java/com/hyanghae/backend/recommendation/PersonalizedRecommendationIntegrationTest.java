@@ -452,6 +452,37 @@ class PersonalizedRecommendationIntegrationTest {
                 .andExpect(jsonPath("$.code").value("RECOMMENDATION_NOT_FOUND"));
     }
 
+    /** 단종이 확인된 향수는 후보로 계산하지 않습니다 (지인 피드백 F5). */
+    @Test
+    void skipsDiscontinuedCandidate() throws Exception {
+        markDiscontinued(FIRST_CANDIDATE);
+
+        mockMvc.perform(get(URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recommendation.perfumeId").value((int) SECOND_CANDIDATE));
+    }
+
+    /**
+     * 캐시에 담긴 뒤 단종으로 확인된 향수도 꺼낼 때 거릅니다. 캐시가 새로 계산될 때까지 기다리지 않습니다.
+     *
+     * <p>첫 추천이 어느 후보인지에 기대지 않습니다 — 받은 향수를 단종으로 바꾸고 다음 추천에서 그
+     * 향수가 빠지는지만 봅니다.
+     */
+    @Test
+    void skipsCachedCandidateThatBecameDiscontinued() throws Exception {
+        String first = mockMvc.perform(get(URL))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        long picked = com.jayway.jsonpath.JsonPath.<Number>read(first, "$.recommendation.perfumeId")
+                .longValue();
+        markDiscontinued(picked);
+
+        long other = picked == FIRST_CANDIDATE ? SECOND_CANDIDATE : FIRST_CANDIDATE;
+        mockMvc.perform(get(URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recommendation.perfumeId").value((int) other));
+    }
+
     @Test
     void refreshesWhenEverySavedCandidateBecomesOwned() throws Exception {
         mockMvc.perform(get(URL)).andExpect(status().isOk());
@@ -580,6 +611,14 @@ class PersonalizedRecommendationIntegrationTest {
                 "INSERT INTO perfumes (perfume_id, name, is_active) VALUES (?, ?, TRUE)",
                 perfumeId,
                 name);
+    }
+
+    private void markDiscontinued(long perfumeId) {
+        jdbcTemplate.update(
+                "UPDATE perfumes SET production_status = 'DISCONTINUED',"
+                        + " production_status_checked_at = DATE '2026-10-01',"
+                        + " production_status_source = 'https://example.com' WHERE perfume_id = ?",
+                perfumeId);
     }
 
     private void insertAccord(long perfumeId, double weight) {

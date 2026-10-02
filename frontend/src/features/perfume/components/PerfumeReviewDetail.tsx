@@ -27,7 +27,7 @@ import { Thumbnail } from '@/shared/ui/Thumbnail'
 
 import { deleteReview, likeReview, unlikeReview } from '../api'
 import { perfumeDetailQuery, perfumeKeys, reviewKeys } from '../queries'
-import { GENDER_TEXT } from '../types'
+import { readGenderFilter } from '../types'
 import type { ReviewDetail } from '../types'
 
 type Props = {
@@ -55,9 +55,10 @@ export function PerfumeReviewDetail({ review, onDeleted }: Props) {
     review.perfume.name,
     review.perfume.nameKo ?? perfume.data?.nameKo,
   )
+  const gender = readGenderFilter(perfume.data?.gender ?? null)
   const sub = [
     title !== review.perfume.name ? review.perfume.name : null,
-    perfume.data?.gender ? GENDER_TEXT[perfume.data.gender] : null,
+    gender ? t(`overview.gender.${gender}`) : null,
   ]
     .filter((part): part is string => typeof part === 'string')
     .join(' · ')

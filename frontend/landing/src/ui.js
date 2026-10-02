@@ -27,6 +27,8 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin,
   // 지금 보이는 향수 (2026-10-01, v0.86.0 — index.html #visible-perfumes · setVisiblePerfumes)
   const vNav = $('visible-perfumes'), vList = $('visible-perfumes-list'), vHead = $('visible-perfumes-head');
   let vItems = [], vKey = '', vLast = -1;
+  // 키보드로 옮겨 온 초점인가 (:focus-visible) — 그 선택자를 모르는 브라우저면 키보드로 친다 (v0.86.0 의 동작 그대로)
+  const keyFocused = (el) => { try { return !!el && el.matches(':focus-visible'); } catch (e) { return true; } };
   const focusVisibleList = () => {
     if (!vList) return;
     const bs = vList.querySelectorAll('button[data-vi]');
@@ -471,10 +473,16 @@ export function createUI({ onSearch, onSail, onCloseCard, onCardAction, onCabin,
       hideTimer = setTimeout(() => {
         // ⚠ 키보드로 카드 안에 들어와 있었으면(지금 보이는 향수에서 골랐다) 숨는 순간 초점이 body 로 떨어진다 —
         //   목록으로 돌려준다 (v0.86.0). 카드가 다시 뜨면 main.js 의 pickVisible 이 다시 넘긴다
-        const hadFocus = card.contains(document.activeElement);
+        // ⚠⚠ **키보드로 들어와 있을 때만이다** (v0.89.1). 마우스 · 손가락으로 [×] 를 눌러도 그 단추에 초점이 남는데, 그때 목록으로
+        //   넘기면 목록이 초점을 받아(:focus-within) **화면에 펼쳐졌다** — 키보드 사용자에게만 보여야 할 판이다.
+        //   마우스로 누른 초점은 :focus-visible 이 아니다. 그때는 초점을 놓아 3D 로 돌려준다 — 숨은 단추에 남으면 다음 Space 가 그 단추를 누른다
+        const a = document.activeElement;
+        const hadFocus = card.contains(a);
+        const byKeys = hadFocus && keyFocused(a);
         card.style.visibility = 'hidden'; card.style.opacity = '0'; hideTimer = 0;
         if (bub.anim) { bub.anim.cancel(); bub.anim = null; }
-        if (hadFocus) focusVisibleList();
+        if (byKeys) focusVisibleList();
+        else if (hadFocus && a && a.blur) a.blur();
       }, FADE);
     },
 

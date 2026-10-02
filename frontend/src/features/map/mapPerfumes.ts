@@ -1,4 +1,5 @@
 import { toScentFamilyKey } from '@/shared/config/scentFamilies'
+import { searchWords } from '@/shared/lib/searchWords'
 
 import type { MapPerfume } from './types'
 
@@ -51,6 +52,10 @@ export const MAP_SEARCH_LIMIT = 20
  * 견줍니다. 형태소 분석이나 초성 검색은 없습니다 — 200개짜리 목록이라 부분 일치로
  * 충분하고, 라이브러리를 하나 붙일 만한 일이 아닙니다.
  *
+ * **통째로 안 걸리면 낱말마다 봅니다.** 사람들은 "딥티크 오르페옹" 처럼 브랜드와 이름을
+ * 같이 치는데, 한 칸씩 견주면 어느 칸에도 그 문장 전체가 없어 200개가 전부 빠졌습니다.
+ * 낱말이 모두 이름 · 브랜드 어딘가에 있으면 걸립니다 (`shared/lib/searchWords` 가 낱말을 고릅니다).
+ *
  * 순서는 **지도 순위**(rank) 그대로입니다. 일치도로 다시 매기면 "디올" 을 쳤을 때
  * 덜 알려진 향수가 위에 올 수 있는데, 이 목록의 순위는 화해 기준이라 그게 곧
  * 사람들이 찾는 순서입니다.
@@ -61,13 +66,24 @@ export function filterMapPerfumes(
 ): MapPerfume[] {
   const needle = squash(keyword)
   if (!needle) return []
+  const words = searchWords(keyword).map(squash)
 
   return perfumes
-    .filter((perfume) =>
-      [perfume.name, perfume.brand, perfume.nameEn, perfume.brandEn].some(
-        (field) => squash(field).includes(needle),
-      ),
-    )
+    .filter((perfume) => {
+      const haystack = [
+        perfume.name,
+        perfume.brand,
+        perfume.nameEn,
+        perfume.brandEn,
+        // 붙여 친 "딥티크오르페옹" 도 걸리게 — 브랜드 + 이름을 이은 것도 봅니다
+        perfume.brand + perfume.name,
+        perfume.brandEn + perfume.nameEn,
+      ]
+        .map(squash)
+        .join('|')
+      if (haystack.includes(needle)) return true
+      return words.length > 0 && words.every((word) => haystack.includes(word))
+    })
     .sort((a, b) => a.rank - b.rank)
     .slice(0, MAP_SEARCH_LIMIT)
 }

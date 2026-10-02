@@ -210,6 +210,14 @@ class PerfumeSearchRankingIntegrationTest {
         // 조건에 걸리는 향수가 없으면 두 경로 모두 빈 목록입니다.
         assertPlainSearchFinds("keyword", "NoSuchPerfume");
         assertRankingFinds("keyword", "NoSuchPerfume");
+
+        // 낱말마다 보는 길: 순서를 바꿔 친 'Three Owned' 는 통째로는 안 걸리고 낱말로 1·9 를 찾습니다.
+        assertPlainSearchFinds("keyword", "Three Owned", 1, 9);
+        assertRankingFinds("keyword", "Three Owned", 1, 9);
+
+        // 브랜드와 이름을 같이 친 말: Chanel 이면서 Owned 가 든 1·5·8, 그중 기준을 넘는 것은 1·5 입니다.
+        assertPlainSearchFinds("keyword", "Chanel Owned", 1, 5, 8);
+        assertRankingFinds("keyword", "Chanel Owned", 1, 5);
     }
 
     /** 전체 개수도 목록과 같은 조건을 봐야 합니다. 어긋나면 마지막 페이지가 빕니다. */
