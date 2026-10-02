@@ -706,6 +706,17 @@ def understand(index, text, structured=None):
     haystack = " ".join(parts)
 
     core, evidence = _extract(index, haystack)
+    # **①단계 조각에서만 잡힌 표면형은 버린다** [레드팀 2026-10-02 1-10].
+    # `아무거나 추천해줘` 에 ①단계가 `additional_requirements=["바닐라 향", "달콤한 향"]`
+    # 을 지어내면 사전이 그것을 잡아 core 가 생기고, 화면은 "요청하신 바닐라" 라고 적는다.
+    # `scent_preference` 는 `_grounded()` 가 막는데 이 칸은 검사가 없었다.
+    #
+    # 버린 근거(`dropped`)도 `_unmatched()` 에는 넘긴다. 안 넘기면 버린 조각이 미매칭으로
+    # 남아 ⑤단계가 그 조각을 다시 해석한다 — 지어낸 향이 그 길로 되살아난다.
+    dropped = []
+    if structured:
+        evidence, dropped = _evidence_in_text(index, text, evidence)
+        core = {e["accord"] for e in evidence}
 
     # **원문만으로 만들 수 있는 조건**과 **회피가 가리키는 것.** 둘 다 ①단계 출력을
     # 안 보거나(앞) 회피 칸만 보므로(뒤) 아래 판정이 회차마다 흔들리지 않는다.
@@ -765,6 +776,8 @@ def understand(index, text, structured=None):
             for alias in _longest_alias_ko(index, raw):
                 if alias_target.get(alias, alias) in avoid_notes:
                     continue
+                if not _form_in_text(index, text, alias):
+                    continue          # 원문에 없는 별칭을 ①단계가 지어낸 것이다 [1-10]
                 core.update(_bridge_lookup(index, alias))
 
     avoid = set()
@@ -785,7 +798,7 @@ def understand(index, text, structured=None):
         "matched_expressions": sorted({e["from"] for e in evidence}),
         "evidence": evidence,
         "source": _source(index, text, structured, final),
-        "unmatched": _unmatched(index, structured, haystack, evidence),
+        "unmatched": _unmatched(index, structured, haystack, evidence + dropped),
     }
 
 
@@ -1157,6 +1170,45 @@ def _grounded(index, text, raw, acc_support, note_support):
         if _note_key(index, target) in {_note_key(index, n) for n in note_support}:
             return True
     return False
+
+
+def _form_in_text(index, text, form):
+    """①단계 조각에서 잡힌 표면형·별칭이 **원문에도 있나.** bool [레드팀 1-10].
+
+    NFC · 공백 무시 · 소문자로 견준다. `화이트머스크` 와 `화이트 머스크` 는 같다.
+    """
+    def key(value):
+        return re.sub(r"\s+", "", unicodedata.normalize("NFC", str(value))).lower()
+    value = key(form)
+    if not value:
+        return False
+    whole = key(text)
+    if value in whole:
+        return True
+    # **끝 글자만 다르면 근거로 본다.** ①단계가 `달콤했으면` 을 `달콤한` 으로, `잔향은` 을
+    # `잔향이` 로 활용형을 바꿔 쓴다. 3글자 이상 한글 표면형만 — 남는 앞부분이 2글자 이상이다.
+    return (len(value) >= 3 and re.fullmatch(r"[가-힣]+", value) is not None
+            and value[:-1] in whole)
+
+
+def _evidence_in_text(index, text, evidence):
+    """사전 근거를 원문에 있는 것과 없는 것으로 가른다. (list, list).
+
+    한 항목에 표면형이 여럿 걸렸으면(`matched_forms`) **하나라도 원문에 있으면 남긴다.**
+    `from` 이 ①단계 조각에만 있는 표면형이면 원문에 있는 것 중 가장 긴 것으로 바꾼다 —
+    화면이 사용자가 쓴 말을 보여 주게.
+    """
+    kept, dropped = [], []
+    for item in evidence:
+        forms = [f for f in (item.get("matched_forms") or [item["from"]])
+                 if _form_in_text(index, text, f)]
+        if not forms:
+            dropped.append(item)
+            continue
+        if item["from"] not in forms:
+            item = dict(item, **{"from": max(forms, key=len)})
+        kept.append(item)
+    return kept, dropped
 
 
 # ---------------------------------------------------------------------------
