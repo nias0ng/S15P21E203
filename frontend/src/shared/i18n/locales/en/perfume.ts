@@ -36,6 +36,12 @@ export const perfume = {
     imageFallback: 'Perfume image',
     shelfSave: 'Save to Shelf',
     shelfRemove: 'Remove from Shelf',
+    discontinued: 'Discontinued',
+    gender: {
+      FEMALE: 'Feminine',
+      MALE: 'Masculine',
+      UNISEX: 'Unisex',
+    },
   },
   related: {
     title: 'Similar perfumes',
@@ -88,7 +94,7 @@ export const perfume = {
     searchEmptyDescription: "No perfumes match '{{keyword}}'.",
     headingSearch: 'Search results',
     headingFiltered: 'Matching perfumes',
-    headingPopular: 'Trending perfumes',
+    headingPopular: 'Featured on the scent map',
     count_one: '{{count}} perfume',
     count_other: '{{count}} perfumes',
     loadErrorTitle: "Couldn't load perfumes",

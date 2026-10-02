@@ -201,5 +201,6 @@ export function placeholderDetail(perfumeId: number): PerfumeDetail {
     images: [],
     prices: [],
     myReviewId: null,
+    productionStatus: null,
   }
 }

@@ -31,6 +31,20 @@ export interface PerfumeDetail {
   prices: PerfumePrice[]
   /** 한 사람이 한 향수에 하나만 쓸 수 있어, 값이 있으면 [후기 수정] 입니다 — 또 쓰면 409 */
   myReviewId: number | null
+  /**
+   * 단종이 확인된 향수만 옵니다. **없으면 모르는 것**이지 판매 중이라는 뜻이 아닙니다 — 13만 개를
+   * 다 판정하지 않습니다. 비어 있을 때 응답에서 칸이 빠져 옵니다(`undefined`).
+   */
+  productionStatus?: ProductionStatus | null
+}
+
+/** 확인된 생산 상태. 상세는 '단종' 만 그립니다 — 확인일 · 근거는 단종 목록을 고치는 팀이 봅니다 */
+export interface ProductionStatus {
+  status: 'DISCONTINUED'
+  /** YYYY-MM-DD */
+  checkedAt: string
+  /** 판정 근거 URL */
+  source: string
 }
 
 interface PerfumePrice {
@@ -44,8 +58,12 @@ interface PerfumePrice {
 export interface PerfumeSearchParams {
   keyword?: string
 
-  /** 전체 사용자 집계라 로그인이 필요 없고, OWNED · WISH 는 세 명 이상 · sort 는 무시됩니다 */
-  ranking?: RankingFilter
+  /**
+   * 전체 사용자 집계라 로그인이 필요 없고, OWNED · WISH 는 세 명 이상 · sort 는 무시됩니다.
+   * `POPULAR` 는 사용자 집계가 아니라 국내 선정 순위(향 지도 200개)입니다 — 필터 칩이 아니라
+   * 목록의 기본 순서로만 씁니다 (`PerfumeListPage`)
+   */
+  ranking?: RankingFilter | 'POPULAR'
 
   /** A33 아래 줄 필터. 정의되지 않은 값을 보내면 400 입니다 */
   gender?: GenderFilter
@@ -93,13 +111,6 @@ export const readRankingFilter = (value: string | null): RankingFilter | null =>
 
 export const readGenderFilter = (value: string | null): GenderFilter | null =>
   readOption(value, GENDER_FILTERS)
-
-/** NOTE: 백엔드 컬럼이 제약 없는 `VARCHAR(30)` 이라 표에 없는 값이 오면 아무것도 안 적습니다 */
-export const GENDER_TEXT: Record<GenderFilter, string> = {
-  FEMALE: 'female',
-  MALE: 'male',
-  UNISEX: 'unisex',
-}
 
 export type Season = 'SPRING' | 'SUMMER' | 'AUTUMN' | 'WINTER'
 

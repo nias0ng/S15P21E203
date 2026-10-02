@@ -28,3 +28,6 @@ delivery/
 .gitignore
 .dockerignore
 Dockerfile
+
+# 회귀 테스트. 서버는 읽지 않습니다.
+tests/

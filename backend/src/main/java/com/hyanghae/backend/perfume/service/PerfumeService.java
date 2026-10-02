@@ -28,6 +28,7 @@ import com.hyanghae.backend.perfume.dto.response.PerfumePriceResponse;
 import com.hyanghae.backend.perfume.repository.PerfumeAccordRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeImageUrl;
 import com.hyanghae.backend.perfume.repository.PerfumeNeighborRepository;
+import com.hyanghae.backend.perfume.repository.PerfumeSimilarRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeNoteRepository;
 import com.hyanghae.backend.perfume.repository.PerfumePostRepository;
 import com.hyanghae.backend.perfume.repository.PerfumeReviewKeywordRepository;
@@ -36,11 +37,13 @@ import com.hyanghae.backend.perfume.repository.PerfumeReviewSummaryRepository;
 import com.hyanghae.backend.perfume.repository.PerfumePriceRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -62,6 +65,17 @@ public class PerfumeService {
     /** 목록 하나에 한 번에 내려주는 최대 개수입니다. 요청이 이보다 크면 여기까지만 줍니다. */
     private static final int MAX_PAGE_SIZE = 100;
 
+    /** 검색어를 낱말로 나눠 볼 때 보는 낱말 수입니다. 쿼리의 {@code :t1} ~ {@code :t4} 와 같습니다. */
+    private static final int MAX_SEARCH_WORDS = 4;
+
+    /** 이름이 아니라 찾는 말투인 낱말입니다. 이름 · 브랜드에 들어갈 일이 드문 것만 둡니다. */
+    private static final Set<String> SEARCH_STOP_WORDS = Set.of(
+            "향수", "향", "비슷한", "비슷한향수", "같은", "같은향수", "느낌",
+            "추천", "추천해줘", "찾아줘", "알려줘");
+
+    private static final Pattern TRAILING_PARTICLE =
+            Pattern.compile("(이랑|하고|처럼|와|과|랑|의|을|를|은|는)$");
+
     private final PerfumeRepository perfumeRepository;
     private final PerfumeImageRepository perfumeImageRepository;
     private final PerfumePriceRepository perfumePriceRepository;
@@ -74,6 +88,7 @@ public class PerfumeService {
     private final PerfumeReviewSummaryRepository perfumeReviewSummaryRepository;
     private final PerfumePostRepository perfumePostRepository;
     private final PerfumeNeighborRepository perfumeNeighborRepository;
+    private final PerfumeSimilarRepository perfumeSimilarRepository;
     private final CurrentUser currentUser;
 
     public PerfumeService(
@@ -89,6 +104,7 @@ public class PerfumeService {
             PerfumeReviewSummaryRepository perfumeReviewSummaryRepository,
             PerfumePostRepository perfumePostRepository,
             PerfumeNeighborRepository perfumeNeighborRepository,
+            PerfumeSimilarRepository perfumeSimilarRepository,
             CurrentUser currentUser
     ) {
         this.perfumeRepository = perfumeRepository;
@@ -103,6 +119,7 @@ public class PerfumeService {
         this.perfumeReviewSummaryRepository = perfumeReviewSummaryRepository;
         this.perfumePostRepository = perfumePostRepository;
         this.perfumeNeighborRepository = perfumeNeighborRepository;
+        this.perfumeSimilarRepository = perfumeSimilarRepository;
         this.currentUser = currentUser;
     }
 
@@ -126,11 +143,12 @@ public class PerfumeService {
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public PerfumeSearchResponse search(PerfumeSearchCondition condition, Pageable pageable) {
         String keyword = normalize(condition.keyword());
+        List<String> words = searchWords(condition.keyword(), keyword);
         String brand = trimToNull(condition.brand());
         String gender = condition.gender() == null ? null : condition.gender().name();
 
-        Page<PerfumeSummaryResponse> found =
-                findPage(condition.ranking(), keyword, brand, condition.brandId(), gender, pageable);
+        Page<PerfumeSummaryResponse> found = findPage(
+                condition.ranking(), keyword, words, brand, condition.brandId(), gender, pageable);
         if (found.isEmpty()) {
             return PerfumeSearchResponse.from(found);
         }
@@ -398,26 +416,53 @@ public class PerfumeService {
     }
 
     /**
-     * 기준 향수와 이어진 향수들을 가져옵니다. 주변 향수와 유사 향수가 이 메서드를 함께 씁니다.
+     * 기준 향수의 주변 향수를 가져옵니다. 향 지도의 이웃({@code perfume_neighbors})만 읽습니다.
      *
-     * <p>두 API 는 같은 {@code perfume_neighbors} 데이터를 읽습니다. 화면에서 놓이는 자리만
-     * 다릅니다. 나중에 근거가 갈리면 그때 메서드를 나누면 됩니다.
-     *
-     * <p>연관 관계는 계산하지 않습니다. 향수 데이터를 넣을 때 미리 정해진 쌍을 읽을 뿐입니다.
+     * <p>지도 200개끼리 미리 정해 둔 쌍이라 3D 지도가 그리는 선과 같은 목록입니다. 지도 밖
+     * 향수는 빈 목록입니다 — 비슷한 향수({@link #getSimilarPerfumes})와 달리 13만 개 전체 목록으로
+     * 채우지 않습니다. 채우면 지도에 없는 향수가 '주변' 으로 나옵니다.
      *
      * <p>{@code size} 는 페이지 크기가 아니라 앞에서 몇 개까지 줄지입니다. 응답에 전체 개수와
      * 페이지 번호가 없어 나머지를 이어서 볼 방법이 없기 때문입니다. 0 이하거나 지나치게 큰 값이
      * 와도 예외 대신 허용 범위로 맞춥니다. 목록 길이는 요청이 틀렸다고 거절할 만한 값이 아닙니다.
      *
-     * <p>이웃이 없는 향수는 빈 목록입니다. 없는 향수와 구분해야 하므로 존재하지 않는 향수에만
-     * 404 를 반환합니다.
+     * <p>없는 향수와 이웃이 없는 향수를 구분해야 하므로 존재하지 않는 향수에만 404 를 반환합니다.
      */
     @Transactional(readOnly = true)
     public RelatedPerfumesResponse getRelatedPerfumes(Long perfumeId, int size) {
         requireExistingPerfume(perfumeId);
 
-        List<RelatedPerfumeResponse> related = perfumeNeighborRepository.findNeighborsByPerfumeId(
-                perfumeId, PageRequest.of(0, Math.clamp(size, 1, MAX_PAGE_SIZE)));
+        return withThumbnails(perfumeNeighborRepository.findNeighborsByPerfumeId(
+                perfumeId, PageRequest.of(0, Math.clamp(size, 1, MAX_PAGE_SIZE))));
+    }
+
+    /**
+     * 기준 향수와 비슷한 향수를 가져옵니다. 향수 상세의 '비슷한 향수' 가 씁니다.
+     *
+     * <p><b>향 지도 이웃이 있으면 그것을, 없으면 13만 개 전체에서 미리 계산한 목록을 줍니다.</b>
+     * 이웃만 읽던 때는 지도 밖 12.9만 개의 상세에서 이 구역이 통째로 비어, 아는 향수와 닮은
+     * 향수를 찾을 길이 없었습니다(지인 피드백 F3 · F16).
+     *
+     * <p>지도 향수에 이웃을 먼저 주는 이유는 3D 지도의 선과 화면의 목록이 같아야 해서입니다.
+     * 두 목록은 같은 공식으로 계산했지만 후보가 달라(200개 대 13만 개) 순서가 다릅니다.
+     * 계산과 걸러 내는 규칙은 {@code ai/build_similars.py} 에 있습니다.
+     *
+     * <p>{@code size} 와 404 규칙은 {@link #getRelatedPerfumes} 와 같습니다.
+     */
+    @Transactional(readOnly = true)
+    public RelatedPerfumesResponse getSimilarPerfumes(Long perfumeId, int size) {
+        requireExistingPerfume(perfumeId);
+
+        Pageable limit = PageRequest.of(0, Math.clamp(size, 1, MAX_PAGE_SIZE));
+        List<RelatedPerfumeResponse> related =
+                perfumeNeighborRepository.findNeighborsByPerfumeId(perfumeId, limit);
+        if (related.isEmpty()) {
+            related = perfumeSimilarRepository.findSimilarsByPerfumeId(perfumeId, limit);
+        }
+        return withThumbnails(related);
+    }
+
+    private RelatedPerfumesResponse withThumbnails(List<RelatedPerfumeResponse> related) {
         Map<Long, String> images = loadThumbnails(
                 related.stream().map(RelatedPerfumeResponse::perfumeId).toList()
         );
@@ -490,16 +535,19 @@ public class PerfumeService {
      * 지금은 한 페이지에 필요한 만큼만 오갑니다.
      */
     private Page<PerfumeSummaryResponse> findPage(
-            RankingType ranking, String keyword, String brand, Long brandId, String gender,
-            Pageable pageable) {
+            RankingType ranking, String keyword, List<String> words, String brand, Long brandId,
+            String gender, Pageable pageable) {
         if (ranking == null) {
-            return perfumeRepository.search(keyword, brand, brandId, gender, pageable);
+            return perfumeRepository.search(
+                    keyword, wordAt(words, 0), wordAt(words, 1), wordAt(words, 2), wordAt(words, 3),
+                    brand, brandId, gender, pageable);
         }
 
         List<PerfumeSummaryResponse> page = perfumeRankingRepository.findPage(
-                ranking, keyword, brand, brandId, gender,
+                ranking, keyword, words, brand, brandId, gender,
                 (int) pageable.getOffset(), pageable.getPageSize());
-        long total = perfumeRankingRepository.count(ranking, keyword, brand, brandId, gender);
+        long total =
+                perfumeRankingRepository.count(ranking, keyword, words, brand, brandId, gender);
 
         return new PageImpl<>(page, pageable, total);
     }
@@ -535,6 +583,45 @@ public class PerfumeService {
             return null;
         }
         return escapeLikeWildcards(keyword.replaceAll("\\s+", ""));
+    }
+
+    /**
+     * 검색어를 통째로 견줘 안 걸릴 때 하나씩 볼 낱말입니다. 넷까지만 보고, 볼 것이 없으면 빈 목록입니다.
+     *
+     * <pre>
+     * "아쿠아디파르마 미르토 디 파나레아와 비슷한 향수" -> [아쿠아디파르마, 미르토, 디, 파나레아]
+     * "딥티크의"                                     -> [딥티크]
+     * "샤넬"                                         -> []   통째 견주기와 같아 볼 필요가 없다
+     * </pre>
+     *
+     * <p>사람들은 이름 검색에도 "…와 비슷한 향수" 처럼 문장으로 칩니다(지인 피드백 F2). 그 말까지
+     * 이름에서 찾으면 아무것도 안 걸려서, 찾는 말투인 낱말을 빼고 낱말 끝의 조사를 뗍니다. 조사는
+     * 낱말이 두 글자보다 길 때만 떼어 '아리' 같은 이름이 잘리지 않게 합니다.
+     *
+     * <p>프론트 {@code shared/lib/searchWords.ts} 와 같은 규칙입니다. 지도 이름 검색이 먼저 걸러
+     * 넘기지만, 이 화면에서 직접 친 검색어도 같게 다뤄야 해서 여기에도 둡니다.
+     *
+     * @param raw        사용자가 친 그대로의 검색어. 낱말을 공백으로 가릅니다
+     * @param normalized {@link #normalize} 를 거친 통째 검색어
+     */
+    private List<String> searchWords(String raw, String normalized) {
+        if (normalized == null) {
+            return List.of();
+        }
+        List<String> words = Arrays.stream(raw.trim().split("\\s+"))
+                .map(word -> word.length() > 2 ? TRAILING_PARTICLE.matcher(word).replaceFirst("") : word)
+                .filter(word -> !word.isEmpty() && !SEARCH_STOP_WORDS.contains(word))
+                .limit(MAX_SEARCH_WORDS)
+                .map(this::escapeLikeWildcards)
+                .toList();
+        if (words.size() == 1 && words.get(0).equals(normalized)) {
+            return List.of();
+        }
+        return words;
+    }
+
+    private static String wordAt(List<String> words, int index) {
+        return index < words.size() ? words.get(index) : null;
     }
 
     /**

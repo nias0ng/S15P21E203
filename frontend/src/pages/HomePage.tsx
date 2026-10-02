@@ -77,7 +77,8 @@ import { TourTip } from '@/shared/ui/TourTip'
  * 모달도 모릅니다.
  *
  *   자연어 → A06 추천 모달 (`RecommendModal`). 전에는 `/recommend?q=` 라는 별도 화면이었습니다
- *   이름   → 지도 향수 200개에서 찾기 (`MapSearchModal`) · 고르면 배가 그 부표로 가서 카드를 엽니다
+ *   이름   → 지도 향수 200개에서 찾기 (`MapSearchModal`) · 고르면 배가 그 부표로 가서 카드를 엽니다.
+ *            없으면 13만 개 검색(A09)으로 넘어갑니다
  *
  * 향해 일지(MAP-24)는 다른 화면의 데이터와 맞추기 쉽도록 엔진이 아니라 앱이 3D 위에 얹습니다.
  *
@@ -708,6 +709,11 @@ export default function HomePage() {
       <RecommendModal
         query={nlQuery}
         onClose={() => openNl(null)}
+        onRequery={openNl}
+        onSearchByName={(keyword) => {
+          openNl(null)
+          navigate(toPerfumeSearch(keyword))
+        }}
         restored={restoredNl}
       />
 
@@ -727,6 +733,11 @@ export default function HomePage() {
             fragranticaId: perfume.fragranticaId,
             seq: (prev?.seq ?? 0) + 1,
           }))
+        }}
+        // 지도 200개에 없으면 13만 개 검색(A09)으로 — 지도 목록을 다 본 사람의 다음 길입니다 (F1 · F2)
+        onSearchAll={(keyword) => {
+          setMapKeyword(null)
+          navigate(toPerfumeSearch(keyword))
         }}
       />
 

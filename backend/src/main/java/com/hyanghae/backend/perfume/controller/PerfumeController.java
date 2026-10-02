@@ -196,14 +196,14 @@ public class PerfumeController {
     }
 
     /**
-     * 유사 향수 조회입니다. 주변 향수와 같은 데이터를 같은 형태로 내려줍니다.
+     * 유사 향수 조회입니다. 주변 향수와 같은 형태로 내려줍니다.
      *
-     * <p>화면에서 놓이는 자리가 달라 명세가 URL 을 두 개로 나눠 두었습니다. 응답이 같으므로
-     * 서비스 메서드도 같은 것을 씁니다. 나중에 근거가 갈리면 그때 나누면 됩니다.
+     * <p>향 지도 향수는 주변 향수와 같은 목록이고, 지도 밖 향수는 13만 개 전체에서 미리 계산한
+     * 목록입니다. 주변 향수는 지도 밖 향수에 빈 목록이라 두 API 의 근거가 여기서 갈립니다.
      */
     @Operation(summary = "유사 향수 조회",
-            description = "주변 향수와 같은 데이터를 같은 형태로 돌려줍니다."
-                    + " 화면에서 놓이는 자리가 달라 경로만 나뉘어 있습니다.")
+            description = "향 지도 향수는 주변 향수와 같은 목록이고,"
+                    + " 지도 밖 향수는 전체 향수에서 미리 계산한 비슷한 향수입니다.")
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @ApiResponse(responseCode = "404", description = "향수 없음")
     @GetMapping("/{perfumeId}/similar")
@@ -212,7 +212,7 @@ public class PerfumeController {
             @Parameter(description = "받을 최대 개수. 페이지 크기가 아니라 상한입니다.")
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size
     ) {
-        return perfumeService.getRelatedPerfumes(perfumeId, size);
+        return perfumeService.getSimilarPerfumes(perfumeId, size);
     }
 
     /**

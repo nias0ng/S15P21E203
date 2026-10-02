@@ -65,7 +65,7 @@ Fragrantica ID는 다르다.** 적재는 외부 ID·브랜드·영문 제품명�
 
 보존: `brands`, `notes`, `accords`, `seasons`, `scent_regions`, `post_categories`,
 `map_interaction_types`, `perfumes`, `perfume_prices`, `perfume_images`, `perfume_notes`,
-`perfume_accords`, `perfume_neighbors`, `perfume_map_points`, `perfume_scent_families`,
+`perfume_accords`, `perfume_neighbors`, `perfume_similars`, `perfume_map_points`, `perfume_scent_families`,
 `flyway_schema_history`.
 
 정리: 사용자·진열대·메모·컬렉션·글·댓글·좋아요·후기·후기 계절·후기 키워드/사전·요약,

@@ -35,14 +35,22 @@ vi.mock('../mapPerfumes', async (importOriginal) => {
 
 const KEYWORD = '아리'
 
-const renderModal = (onClose = vi.fn()) => {
+const renderModal = (
+  onClose = vi.fn(),
+  { keyword = KEYWORD, onSearchAll = vi.fn() } = {},
+) => {
   render(
     <QueryClientProvider
       client={
         new QueryClient({ defaultOptions: { queries: { retry: false } } })
       }
     >
-      <MapSearchModal keyword={KEYWORD} onClose={onClose} onSelect={vi.fn()} />
+      <MapSearchModal
+        keyword={keyword}
+        onClose={onClose}
+        onSelect={vi.fn()}
+        onSearchAll={onSearchAll}
+      />
     </QueryClientProvider>,
   )
   return onClose
@@ -86,6 +94,29 @@ describe('MapSearchModal', () => {
 
     expect(await screen.findByText(`‘${KEYWORD}’`)).toBeInTheDocument()
     expect(await screen.findByText('아리아나 그란데 · Ari')).toBeInTheDocument()
+  })
+
+  // 지도에 200개만 있다는 것은 만든 사람만 알았습니다 — 없으면 이 서비스에 없다고 읽혔습니다
+  it('찾는 범위가 지도 향수 200개라는 것을 밝힌다', async () => {
+    renderModal()
+
+    expect(
+      await screen.findByText(/지도에 띄운 향수 200개에서/),
+    ).toBeInTheDocument()
+  })
+
+  it('지도에 없으면 찾는 말투를 뺀 이름으로 전체 향수 검색에 넘긴다', async () => {
+    const onSearchAll = vi.fn()
+    renderModal(vi.fn(), {
+      keyword: '미르토 디 파나레아와 비슷한 향수',
+      onSearchAll,
+    })
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: '전체 향수 13만 개에서 찾기' }),
+    )
+
+    expect(onSearchAll).toHaveBeenCalledWith('미르토 디 파나레아')
   })
 
   // 영어 화면은 원명이 곧 이름이라 원명을 한 번 더 붙이지 않습니다

@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { render as rtlRender, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
 import { i18n } from '@/shared/i18n'
@@ -8,6 +9,10 @@ import { useLocaleStore } from '@/shared/store/localeStore'
 import type { PerfumeDetail } from '../types'
 
 import { PerfumeOverview } from './PerfumeOverview'
+
+// 브랜드 · 노트가 링크라 라우터 안에서 그립니다
+const render = (ui: React.ReactElement) =>
+  rtlRender(ui, { wrapper: MemoryRouter })
 
 const PERFUME: PerfumeDetail = {
   perfumeId: 1,
@@ -58,7 +63,7 @@ describe('PerfumeOverview', () => {
       />,
     )
 
-    expect(screen.getByText('Allure Homme Sport · male')).toBeInTheDocument()
+    expect(screen.getByText('Allure Homme Sport · 남성용')).toBeInTheDocument()
   })
 
   it('성별을 모르면 영문 이름만 적는다', () => {
@@ -82,7 +87,7 @@ describe('PerfumeOverview', () => {
       />,
     )
 
-    expect(screen.getByText('unisex')).toBeInTheDocument()
+    expect(screen.getByText('공용')).toBeInTheDocument()
     expect(
       screen.getByRole('heading', { name: 'Allure Homme Sport' }),
     ).toBeInTheDocument()
@@ -99,6 +104,55 @@ describe('PerfumeOverview', () => {
     )
 
     expect(screen.getByRole('button', { name: '진열대 저장' })).toBeDisabled()
+  })
+  it('브랜드 이름을 누르면 그 브랜드 화면으로 간다', () => {
+    render(
+      <PerfumeOverview
+        perfume={PERFUME}
+        inShelf={false}
+        onShelfAction={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('link', { name: 'Diptyque' })).toHaveAttribute(
+      'href',
+      '/brands/1',
+    )
+  })
+
+  // 단종이 확인된 향수는 '단종' 만 적습니다. 확인일 · 근거는 팀이 단종 목록에서 봅니다 (지인 피드백 F5)
+  it('단종이 확인된 향수에 단종을 적고 근거 링크는 두지 않는다', () => {
+    render(
+      <PerfumeOverview
+        perfume={{
+          ...PERFUME,
+          productionStatus: {
+            status: 'DISCONTINUED',
+            checkedAt: '2026-10-01',
+            source: 'https://example.com/discontinued',
+          },
+        }}
+        inShelf={false}
+        onShelfAction={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('단종')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /근거/ })).not.toBeInTheDocument()
+    // 단종이어도 진열대에 담을 수 있습니다 — 이미 가진 사람이 있습니다
+    expect(screen.getByRole('button', { name: '진열대 저장' })).toBeEnabled()
+  })
+
+  it('단종인지 모르면 아무것도 적지 않는다', () => {
+    render(
+      <PerfumeOverview
+        perfume={PERFUME}
+        inShelf={false}
+        onShelfAction={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByText('단종')).not.toBeInTheDocument()
   })
 })
 
@@ -118,7 +172,8 @@ describe('PerfumeOverview (영어 화면)', () => {
     expect(
       screen.getByRole('heading', { name: 'Allure Homme Sport' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('male')).toBeInTheDocument()
+    // 성별은 영어 화면의 성별 필터 칩과 같은 말로 적습니다
+    expect(screen.getByText('Masculine')).toBeInTheDocument()
     expect(screen.queryByText('알뤼르 옴므 스포츠')).not.toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'Save to Shelf' }),

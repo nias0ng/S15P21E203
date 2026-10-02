@@ -5,16 +5,18 @@ export const map = {
   search: {
     group: '검색 방식',
     fieldLabel: {
-      nl: '자연어로 향수 추천받기',
+      nl: '느낌으로 향수 추천받기',
       normal: '향수 이름으로 찾기',
     },
     placeholder: {
-      nl: '어떤 향을 찾고 계신가요?',
+      // 물음 대신 예시입니다 — 시작 문장은 눌러야 펼쳐집니다(지인 피드백 F1 · F19, SceneSearchBar 머리말)
+      nl: '예) 상큼한 향, 풀향',
       normal: '향수 · 브랜드 이름으로 찾기',
     },
     mode: {
-      nl: '자연어',
-      normal: '이름',
+      // 무엇으로 찾는가를 말합니다. '자연어' 는 만든 사람의 말이었습니다(지인 피드백 F1)
+      nl: '느낌으로',
+      normal: '이름으로',
     },
     hint: {
       nl: '느낌 · 상황을 말로 적으면 어울리는 향수를 추천해 드립니다',
@@ -32,7 +34,7 @@ export const map = {
       diptyque: '딥티크',
       popular: '요즘 인기 향수 보기 →',
     },
-    switchTo: '{{mode}} 검색으로 바꾸기',
+    switchTo: '‘{{mode}} 찾기’로 바꾸기',
   },
   searchModal: {
     title: '지도에서 찾기',
@@ -42,14 +44,17 @@ export const map = {
     countCapped_one: '{{count}}개 까지',
     countCapped_other: '{{count}}개 까지',
     rank: '지도 순위',
+    // 찾는 범위를 늘 밝힙니다 — 200개만 떠 있는 줄 모르고 "그 향수가 없다" 고 읽었습니다(지인 피드백 F4)
+    scope: '지도에 띄운 향수 200개에서',
+    searchAll: '전체 향수 13만 개에서 찾기',
     loadError: {
       title: '지도 향수 목록을 불러오지 못했습니다',
       description: '잠시 후 다시 시도해 주세요.',
     },
     empty: {
-      title: '지도에 그런 향수가 없습니다',
+      title: '지도 위 200개 중에는 없어요',
       description:
-        '지도에는 향수 200개만 떠 있습니다. 브랜드 이름으로 다시 찾아보거나, 검색 방식을 자연어로 바꿔 보세요.',
+        '지도에는 향수 200개만 떠 있어요. 전체 향수 13만 개에서 이름으로 찾아볼 수 있어요.',
     },
   },
   cabin: {

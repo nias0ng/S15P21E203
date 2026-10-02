@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
 
 /**
  * {@code perfumes} 테이블 매핑입니다.
@@ -61,6 +62,21 @@ public class Perfume {
 
     @Column(name = "is_active", nullable = false)
     private boolean active;
+
+    /**
+     * 확인된 생산 상태입니다. {@code DISCONTINUED} 이면 추천에서 빠지고 상세에 '단종' 으로 적힙니다.
+     *
+     * <p>{@link #active} 와 다릅니다. 단종 향수도 검색 · 상세 · 진열대 · 후기는 그대로입니다 — 이미
+     * 가진 사람이 있습니다. {@code NULL} 은 '모름' 이지 판매 중이 아닙니다.
+     */
+    @Column(name = "production_status", length = 20)
+    private String productionStatus;
+
+    @Column(name = "production_status_checked_at")
+    private LocalDate productionStatusCheckedAt;
+
+    @Column(name = "production_status_source", length = 500)
+    private String productionStatusSource;
 
     protected Perfume() {
         // JPA 가 요구하는 기본 생성자입니다.

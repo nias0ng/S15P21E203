@@ -108,6 +108,47 @@ class PerfumeSearchIntegrationTest {
                 .andExpect(jsonPath("$.perfumes[0].perfumeId").value(3));
     }
 
+    /**
+     * 브랜드와 이름을 같이 친 검색어도 찾습니다. 한 칸씩 견줄 때는 어느 칸에도 그 말 전체가
+     * 없어 0건이었습니다(지인 피드백 F2).
+     */
+    @Test
+    void findsByBrandAndNameTypedTogether() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "Chanel Chance"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(2));
+    }
+
+    /** 통째로 안 걸리면 낱말마다 봅니다. 순서를 바꿔 쳐도 낱말이 모두 있으면 걸립니다. */
+    @Test
+    void findsByEveryWordInAnyOrder() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "chance chanel"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(2));
+    }
+
+    /** 낱말 하나라도 없으면 걸리지 않습니다. 낱말마다 보는 길이 결과를 넓히기만 하지 않게 합니다. */
+    @Test
+    void requiresEveryWord() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "chanel doson"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    /**
+     * 이름 검색에도 문장으로 칩니다 — '…과 비슷한 향수' 는 빼고, 낱말 끝의 조사는 떼고 찾습니다.
+     * 이 말까지 이름에서 찾으면 아무것도 안 걸립니다.
+     */
+    @Test
+    void ignoresSearchPhrasingAroundTheName() throws Exception {
+        mockMvc.perform(get(SEARCH_URL).param("keyword", "Do Son과 비슷한 향수"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(3));
+    }
+
     @Test
     void ignoresCaseOfKeyword() throws Exception {
         mockMvc.perform(get(SEARCH_URL).param("keyword", "CHANEL"))
