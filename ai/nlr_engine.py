@@ -84,6 +84,67 @@ CONTEXT_LABELS = {
 # 완화 사다리(MIN_RESULTS)와 같은 정신이다 — 조건을 지키느라 빈손을 주지 않는다.
 CONTEXT_MIN = 3
 
+# ①단계가 **실패했을 때만**(`structured is None`) 원문에서 성별·계절·낮밤을 읽는 규칙.
+# 키가 없거나 401 · 타임아웃 · 스키마 오류면 서버가 원문만 넘기는데, 그때 `가을에` ·
+# `남성용` · `밤에` 가 **조용히 사라졌다** — `가을에 쓸 남성적인 우드향` 의 1위가 여성 향수
+# (Si)였고 `unmatched` 도 비어 신호가 없었다 [레드팀 2026-10-02 1-5 · 팀7 #5].
+#
+# **출처 — 새로 만들지 않았다.** 노트북 14(`14_stage1_extended_rule_evaluation.ipynb`)의
+# `GENDER_RULES` · `parse_gender`(셀 3·5)와 `parse_existing_rules`(셀 4)가 `11_rule_lexicon.csv`
+# 에서 쓰는 SEASON 9행 · DAYPART 4행 그대로다. `EDA/88_embedding_stage1_context.py` 의
+# `RuleParser` 가 같은 것을 옮겨 쟀다. 값은 ①단계 표기(`neuter`)라 `_context_values` 가
+# 그대로 받는다.
+#
+# [측정 기록 42번] Golden 200 성별 F1 0.919 · 계절 F1 1.000(정답 10문장). 합성 600 엔진에서
+# GMS context 대비 확장 NDCG −0.012 [−0.019, −0.005] — **GMS 보다 못하고 없음(−0.044)보다 낫다.**
+#
+# ⚠ 한계 [측정 기록 46번] — 노트북 14 규칙 그대로의 약점 셋은 아래 6b 상수 셋이 **일부만** 막는다
+#   - 부정을 모른다 — `여름 말고 겨울` 은 여름·겨울 둘 다, `남성적인 향은 싫어` 는 male
+#     -> `CONTEXT_NEGATION` (바로 뒤 부정만. `여름엔 안 쓸` 같은 `안` 은 못 막는다)
+#   - 한국어 표면형에 경계가 없다 — `밤꽃` · `꿀밤` · `립밤` 은 밤, `낮은` 은 낮
+#     -> `CONTEXT_RULES_BLOCK` (본 낱말만. `군밤` · `밤나무` 는 아직 밤이다)
+#   - 관계어도 성별로 읽는다 — `남자친구가 좋아할` 은 male (선물 성별 규칙은 팀 결정 미정 · 1-8)
+#     -> `CONTEXT_RULES_GENDER_BLOCK` (`남자친구` · `여자친구` 만. `남친` · `아빠` 는 원래 안 읽는다)
+#   - 오타에 약하다 — `겨룰에` 는 못 읽는다(30% 오타에서 성별 F1 0.925 -> 0.839)
+#   - 실사용 설문에서 GMS 보다 덜 맞는다 — 성별 5개 중 4.36(GMS 5.00) · 계절 4.96 · 낮밤 3.50
+#   - 영어 표면형은 낱말 경계를 본다. 노트북 14 는 사전 전체(노트 2,523행)로 겹침을 가려
+#     `winter tea` · `night blooming jasmine` 같은 노트 이름을 계절·낮밤으로 안 읽었는데,
+#     여기는 13행만 둬서 그 이름들도 계절·낮밤으로 읽는다
+CONTEXT_RULES_GENDER = (                 # (①단계 값, 정규식) — 노트북 14 셀 3 그대로
+    ("neuter", r"중성적인|유니섹스|남녀\s*공용"),
+    ("male", r"남성용|남성|남자용|남자가\s*쓰(?:기|는)\s*좋은|남자"),
+    ("female", r"여성용|여성|여자용|여자가\s*쓰(?:기|는)\s*좋은|여자"),
+)
+CONTEXT_RULES_SURFACE = (                # (표면형, 칸, ①단계 값) — 11_rule_lexicon.csv 13행
+    ("autumn", "season", "autumn"), ("fall", "season", "autumn"),
+    ("spring", "season", "spring"), ("summer", "season", "summer"),
+    ("winter", "season", "winter"),
+    ("가을", "season", "autumn"), ("겨울", "season", "winter"),
+    ("봄", "season", "spring"), ("여름", "season", "summer"),
+    ("day", "daypart", "day"), ("night", "daypart", "night"),
+    ("낮", "daypart", "day"), ("밤", "daypart", "night"),
+)
+
+# [6b · 오탐] 표면형을 품었지만 계절·낮밤이 아닌 낱말. 계절·낮밤보다 **먼저 자리를 차지해**
+# 가린다 — 노트북 14 가 사전 전체(노트 이름)로 겹침을 가린 것과 같은 방식이다.
+# **근거가 있는 것만 넣었다** — `밤꽃`(측정 기록 46번) · `꿀밤` · `립밤`(오탐 156 의 M001 ·
+# M005 · M010) · 형용사 `낮다` 의 활용(`확산력이 낮은`). `군밤` · `밤나무` 처럼 아직 본 적
+# 없는 낱말은 넣지 않았다.
+CONTEXT_RULES_BLOCK = r"밤꽃|꿀밤|립밤|낮(?=[은게고아춘추음다])"
+
+# [6b · 부정] **바로 뒤에** 부정이 붙은 성별·계절·낮밤은 걸지 않는다 —
+# `여름 말고` · `남성용은 싫고` · `남성적인 향은 싫어` · `남성적이지 않은`.
+# 조사·어미 3글자와 `향…` 한 낱말까지만 본다. 더 멀리 보면 `여름에 쓰기 좋은데 달달한 건
+# 싫어` 의 여름까지 지운다. **부정된 값을 반대로 걸지는 않는다**(`남성 말고` -> 남성이 아닌
+# 향수만) — 엔진에 "이 값이 아닌" 조건이 없어서, 걸지 않는 데서 멈춘다.
+CONTEXT_NEGATION = re.compile(
+    r"[가-힣]{0,3}\s?(?:향[가-힣]{0,2}\s?)?(?:말고|말구|빼고|제외|싫|별로|아니|아닌|않)")
+
+# [6b · 관계어] `남자친구` · `여자친구` 의 남자·여자는 **착용자가 아니라 대상**일 수 있어
+# 성별로 읽지 않는다. ⚠ 선물 성별 규칙은 팀 결정 전이다(레드팀 1-8) — GMS 도 문장마다 다르다
+# (`여자친구 선물용` -> female · `남자친구한테서 났으면` -> []).
+CONTEXT_RULES_GENDER_BLOCK = r"(?:남자|여자)\s*친구"
+
 # 기본 데이터 경로. 인자로 덮어쓸 수 있다.
 _DATA_DIR = Path(__file__).resolve().parent / "data"
 DEFAULT_PERFUMES = _DATA_DIR / "perfumes_nlr.csv.gz"
@@ -1193,12 +1254,13 @@ def note_spoken(index, structured, raw_text=None):
     return spoken
 
 
-def context_mask(index, structured, base):
+def context_mask(index, structured, base, raw_text=None):
     """①단계의 `context` 조건으로 후보를 좁힌다. (np.ndarray[bool], list[str]).
 
     index      : dict            load_index() 결과
     structured : dict | None     ①단계 구조화 결과
     base       : np.ndarray[bool] 좁히기 전 후보
+    raw_text   : str | None      사용자 원문. **`structured is None` 일 때만** 읽는다
 
         "여름에 쓸 남성용 향수" -> season=summer · gender=male 로 두 번 좁힌다
 
@@ -1213,11 +1275,19 @@ def context_mask(index, structured, base):
     **①단계 출력이 스키마를 어겨도 죽지 않는다.** 실측상 98% 만 지킨다 [측정 기록 14번].
     어긴 것은 **경고를 남긴다** — 조용히 무시하면 "왜 여름 조건이 안 걸리지" 를 로그로도
     못 찾는다.
+
+    **①단계가 실패했으면(`structured is None`) 원문에서 규칙으로 읽는다** — `_text_context`.
+    걸린 조건은 `matched_data` 에 ①단계 때와 **같은 모양**으로 나간다(`from=None` ·
+    `tier=DATA`). 어느 쪽이 걸었는지는 `conditions.source == "lexicon_only"` 로 가른다 —
+    그 값은 구조화 결과가 없었을 때만 나온다. 빈 dict(`{}`)는 None 이 아니라 읽지 않는다.
     """
     applied = []
-    if not structured:
+    if structured is None and raw_text:
+        ctx = _text_context(raw_text)
+    elif not structured:
         return base, applied
-    ctx = structured.get("context")
+    else:
+        ctx = structured.get("context")
     if ctx is None:
         return base, applied
     if not isinstance(ctx, dict):
@@ -1276,6 +1346,43 @@ def _context_values(raw, mapping, field):
     return good, bad
 
 
+def _text_context(text):
+    """원문에서 성별·계절·낮밤을 규칙으로 읽는다. dict[str, list[str]] — ①단계 `context` 모양.
+
+        "가을에 쓸 남성적인 우드향" -> {"gender": ["male"], "season": ["autumn"], "daypart": []}
+
+    규칙과 한계는 `CONTEXT_RULES_GENDER` 주석에, 가리는 낱말과 부정은 `CONTEXT_RULES_BLOCK` ·
+    `CONTEXT_NEGATION` · `CONTEXT_RULES_GENDER_BLOCK` 에 있다. 정규화는 노트북 14 셀 4 그대로
+    (NFKC · casefold · 공백 하나로). 계절·낮밤은 **긴 표면형부터 겹치지 않게** 찾고,
+    영어 표면형은 앞뒤가 영숫자가 아닐 때만 받는다(`wintergreen` 은 winter 가 아니다).
+    값은 문장에 나온 순서다.
+    """
+    norm = re.sub(r"\s+", " ", unicodedata.normalize("NFKC", str(text)).casefold()).strip()
+    found = []
+    related = [m.span() for m in re.finditer(CONTEXT_RULES_GENDER_BLOCK, norm)]
+    for value, pattern in CONTEXT_RULES_GENDER:
+        found += [(m.start(), "gender", value) for m in re.finditer(pattern, norm)
+                  if not any(s <= m.start() < e for s, e in related)
+                  and not CONTEXT_NEGATION.match(norm, m.end())]
+    occupied = [m.span() for m in re.finditer(CONTEXT_RULES_BLOCK, norm)]
+    for surface, field, value in sorted(CONTEXT_RULES_SURFACE, key=lambda r: (-len(r[0]), r[0])):
+        escaped = re.escape(surface)
+        pattern = (rf"(?<![a-z0-9]){escaped}(?![a-z0-9])" if re.search(r"[a-z0-9]", surface)
+                   else escaped)
+        for m in re.finditer(pattern, norm):
+            if any(m.start() < end and start < m.end() for start, end in occupied):
+                continue
+            occupied.append(m.span())
+            if CONTEXT_NEGATION.match(norm, m.end()):
+                continue
+            found.append((m.start(), field, value))
+    out = {field: [] for field in CONTEXT_FIELDS}
+    for _, field, value in sorted(found):
+        if value not in out[field]:
+            out[field].append(value)
+    return out
+
+
 def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
            brand_cap=BRAND_CAP, min_results=MIN_RESULTS, structured=None, raw_text=None):
     """조건으로 향수를 찾아 정렬한다.
@@ -1310,7 +1417,7 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
 
     # ①단계가 말한 성별·계절·낮밤으로 후보를 좁힌다. **정렬은 안 건드린다**
     # (DECISIONS.md N9 — 순서는 향 조건이 정하고 인기도가 동점만 푼다).
-    base, context_applied = context_mask(index, structured, base)
+    base, context_applied = context_mask(index, structured, base, raw_text)
 
     # 사용자가 말한 노트를 가진 향수를 앞으로 당긴다 (348). 말한 노트가 없으면 None 이라
     # 정렬이 그대로다 — **노트를 말하지 않은 문장의 순서는 안 바뀐다.**
@@ -1433,7 +1540,7 @@ def _context_only(index, avoid, top_k, people_min, brand_cap, structured, raw_te
         col = index["aidx"].get(accord)
         if col is not None:
             base &= ~index["has"][:, col]
-    base, applied = context_mask(index, structured, base)
+    base, applied = context_mask(index, structured, base, raw_text)
     notes = note_rows(index, structured, raw_text)
     base, applied = _note_mask(index, structured, base, applied, notes, raw_text)
     if not applied:
