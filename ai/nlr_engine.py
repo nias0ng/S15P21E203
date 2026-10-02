@@ -153,7 +153,7 @@ DEFAULT_LEXICON = _DATA_DIR / "domain_lexicon_v1_19.csv"
 DEFAULT_ACCORDS = _DATA_DIR / "accord_dictionary.csv"
 DEFAULT_NOTE_BRIDGE = _DATA_DIR / "note_accord_bridge.csv"
 DEFAULT_NOTE_ALIAS_KO = _DATA_DIR / "note_alias_ko.csv"
-# 별칭을 **품고 있지만 그 노트가 아닌 낱말**. `_longest_alias_ko` 가 찾기 전에 가린다.
+# 별칭을 **품고 있지만 그 노트가 아닌 낱말**. `_longest_alias_ko` 와 `_extract`(사전 경로)가 찾기 전에 가린다.
 DEFAULT_NOTE_ALIAS_BLOCK = _DATA_DIR / "note_alias_blocklist.csv"
 # 단종이 확인된 향수. 백엔드 적재(load_perfume_status.sh)도 **같은 파일**을 읽는다.
 DEFAULT_PERFUME_STATUS = _DATA_DIR / "perfume_status.csv"
@@ -695,6 +695,10 @@ def understand(index, text, structured=None):
     있어야 작동한다.**
     """
     text = unicodedata.normalize("NFC", str(text))
+    # **부정이 붙은 표면형은 지우고 본다** [레드팀 1-3 · 50번 2b]. 아래의 원문 경로가
+    # 전부 이 `text` 를 쓰므로 한 번만 지운다. ①단계가 실패해 `structured=None` 이면
+    # 원문만 보는데, 그때 `담배 냄새 안 나는 향수` 가 tobacco 향수 5개가 됐다.
+    text = _drop_negated(index, text)
     parts = [text]
     if structured:
         missing = [key for key in STRUCTURED_KEYS if key not in structured]
@@ -702,7 +706,9 @@ def understand(index, text, structured=None):
             LOGGER.warning(
                 "structured 에 엔진이 읽는 칸이 없다: %s. ①단계 구조화 결과를 넘겨야 한다 "
                 "— 응답의 conditions(②단계 결과)를 되돌려 넣으면 조건이 0개가 된다", missing)
-        parts += [str(v) for v in (structured.get("additional_requirements") or [])]
+        # 칸마다 따로 지운다 — 이어 붙인 뒤에 지우면 앞 칸의 표면형이 뒤 칸의 부정을 본다
+        parts += [_drop_negated(index, str(v))
+                  for v in (structured.get("additional_requirements") or [])]
     haystack = " ".join(parts)
 
     core, evidence = _extract(index, haystack)
@@ -773,7 +779,7 @@ def understand(index, text, structured=None):
         # 늘리려는 쪽이 **이미 풀린 것을 빈칸으로 본다.** 고치려면 `unmatch_reason`
         # 에 네 번째 값이 필요해 응답 계약이 바뀌므로 **범위에 넣지 않았다.**
         for raw in (structured.get("additional_requirements") or []):
-            for alias in _longest_alias_ko(index, raw):
+            for alias in _longest_alias_ko(index, _drop_negated(index, str(raw))):
                 if alias_target.get(alias, alias) in avoid_notes:
                     continue
                 if not _form_in_text(index, text, alias):
@@ -839,12 +845,89 @@ def understand(index, text, structured=None):
     }
 
 
+# 부정 표현 [레드팀 1-3 · 50번 2b]. 향 표면형 **뒤에서** 이것이 시작하면 그 표면형은 조건이 아니다.
+_NEGATION = re.compile(r"하지 않|않은|안 나는|말고|빼고|없는|싫")
+# 부정이 시작해도 되는 범위 — 표면형이 든 어절의 나머지 + 그 뒤 몇 어절.
+# [측정 50번 2b] 1 이면 `담배 냄새 안 나는` · `달달한 건 싫어` 를 못 잡는다(둘 다 두 번째 어절).
+# 3 이면 합성 600 에서 1문장이 바뀌고(NDCG -0.000157) `머스크 향 호불호 없는 거` 의 머스크까지 지운다.
+NEGATION_SCOPE = 2
+# 범위가 여기서 끊긴다. 문장부호는 절이 끝난 것이고, `-고 · -는데 · -지만` 으로 끝난 어절은
+# 다음 절로 넘어간 것이다 — `장미 좋은데 싫은 건 머스크` 의 `싫은` 은 장미의 것이 아니다.
+# [측정 50번 2b] 합성 600 · 설문 143 · 오탐 156 에서는 이 끊기가 있으나 없으나 결과가 같다.
+_CLAUSE_PUNCT = re.compile(r"[,.!?~;\n]")
+_CLAUSE_LINK = re.compile(r"(고|는데|은데|지만|면서|며)$")
+
+
+def _drop_negated(index, text):
+    """부정이 붙은 향 표면형을 공백으로 가린 문장. str.
+
+    index : dict   load_index() 결과. 사전 표면형 · 한글 accord 표기 · 노트 별칭을 본다
+    text  : str    원문 또는 ①단계가 쓴 문장 하나
+
+        "담배 냄새 안 나는 향수"    ->  "   냄새 안 나는 향수"   (담배 -> tobacco 를 막는다)
+        "너무 달달하지 않은 향"     ->  "너무   하지 않은 향"
+        "담배 향 나는 남자 향수"    ->  그대로
+
+    사전과 별칭은 부분 문자열로 찾으므로 `싫다` 고 한 것도 **원한다** 로 읽는다 [레드팀 1-3].
+    ①단계가 정상이면 그 말은 `avoid` 로 가지만, ①단계가 실패하거나 부정을
+    `additional_requirements` 에 넣으면 원문 경로가 그대로 조건을 만든다.
+
+    **가리기만 하고 회피로 넘기지 않는다.** `안 나는` 이 정말 회피인지는 이 규칙이 모른다 —
+    `avoid` 칸만 하드 제외가 된다. 그 칸(`_avoid_targets`)에는 이 함수를 쓰지 않는다 —
+    `담배 냄새 안 나는 것` 이 회피 칸에 오면 담배를 찾아야 뺄 수 있다.
+
+    **표면형 앞의 부정(`안 달달한` · `덜 달게`)은 보지 않는다.**
+    """
+    forms = (set(index.get("lexicon_surface") or ()) | set(KOREAN_ACCORD)
+             | set(index.get("note_alias_ko") or ()))
+    lowered = text.lower()
+    hay = lowered if len(lowered) == len(text) else text
+    spans = []
+    for form in forms:
+        form = form.lower()
+        if not form:
+            continue
+        start = hay.find(form)
+        while start != -1:
+            end = start + len(form)
+            if _negated_after(text[end:]):
+                spans.append((start, end))
+            start = hay.find(form, start + 1)
+    if not spans:
+        return text
+    chars = list(text)
+    for start, end in spans:
+        chars[start:end] = " " * (end - start)
+    return "".join(chars)
+
+
+def _negated_after(rest):
+    """표면형 바로 뒤 글(`rest`)이 부정으로 이어지나. bool."""
+    rest = _CLAUSE_PUNCT.split(rest, 1)[0]
+    words = list(re.finditer(r"\S+", rest))
+    budget = NEGATION_SCOPE + (1 if rest[:1] and not rest[:1].isspace() else 0)
+    limit = 0
+    for word in words[:budget]:
+        limit = word.end()
+        if _CLAUSE_LINK.search(word.group()):
+            break
+    found = _NEGATION.search(rest)
+    return bool(found) and found.start() < limit
+
+
 def _extract(index, haystack):
     """건초더미에서 core accord 와 근거를 뽑는다. (set, list).
 
     사전 표현과 한글 accord 표기 둘 다 본다. `understand()` 가 두 번 부른다 —
     한 번은 원문+구조화, 한 번은 원문만. 둘을 비교해 `source` 를 정한다.
+
+    **찾기 전에 `note_alias_block` 의 낱말을 가린다** [레드팀 1-2 · 1-9 · 50번 2c-1].
+    별칭 경로(`_longest_alias_ko`)만 가리던 것을 사전 경로에도 쓴다. 인명은 두 경로에
+    다 걸린다 — `일론 머스크` 는 사전의 `머스크`(musky · soapy)와 별칭의 `머스크`(musk)
+    둘 다로 읽혔다. **같은 파일을 쓰므로 한쪽에만 적어 어긋나는 일이 없다.**
     """
+    for word in index.get("note_alias_block") or ():
+        haystack = haystack.replace(word, " " * len(word))
     core, evidence = _lexicon_lookup(index, haystack)
     for korean, accord in KOREAN_ACCORD.items():
         if korean in haystack and accord in index["aidx"]:
@@ -1382,6 +1465,10 @@ def note_spoken(index, structured, raw_text=None):
     alias_target = index.get("note_alias_target") or {}
     _, avoid_notes = _avoid_targets(index, structured)
     spoken = {}
+    # 부정이 붙은 별칭은 지우고 본다 — `understand()` 와 같은 규칙이다 [50번 2b].
+    # 안 지우면 core 는 비어도 `담배 냄새 안 나는` 의 담배가 노트 조건으로 남는다.
+    if raw_text is not None:
+        raw_text = _drop_negated(index, str(raw_text))
 
     # **원문에서도 찾는다** [S15P21E203-391]. ①단계가 원문을 요약하며 한국어를 지워도
     # 노트 조건이 남는다. `understand()` 의 별칭 경로와 같은 가드를 쓴다.
@@ -1401,7 +1488,7 @@ def note_spoken(index, structured, raw_text=None):
     acc_support, note_support = _text_support(index, raw_text or "")
     for field in ("additional_requirements", "scent_preference"):
         for raw in (structured.get(field) or []):
-            text = re.sub(r"\s+", " ", str(raw).strip().lower())
+            text = re.sub(r"\s+", " ", _drop_negated(index, str(raw)).strip().lower())
             for alias in _longest_alias_ko(index, text):
                 target = alias_target.get(alias, alias)
                 if target in avoid_notes:
@@ -1899,7 +1986,12 @@ def typo_gate(index, structured):
     out = []
     for expression in requirements:
         text = str(expression)
-        for word in _HANGUL_WORD.findall(text):
+        # **가린 낱말 안은 고치지 않는다** [50번 2c-1]. 안 그러면 `앰버 허드` 의 `허드` 를
+        # `허브` 로 고쳐 차단 낱말이 깨지고, 다시 돈 사전 경로가 `앰버` 를 amber 로 읽는다.
+        masked = text
+        for blocked in index.get("note_alias_block") or ():
+            masked = masked.replace(blocked, " " * len(blocked))
+        for word in _HANGUL_WORD.findall(masked):
             candidates = _typo_candidates(index, word)
             if len(candidates) > 1:
                 # **고르지 않는다.** 둘 중 하나를 찍으면 절반은 틀린다.
