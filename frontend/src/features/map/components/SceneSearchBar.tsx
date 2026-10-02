@@ -11,8 +11,9 @@ type Props = {
   /** 적은 말로 추천을 찾습니다. 빈 문자열은 오지 않습니다 */
   onSearch: (keyword: string) => void
   /**
-   * **첫 화면 안내(`welcome`)를 보여도 되는 때인가** — 로딩 커튼이 걷혔고 다른 창 · 잠수 · 해도가 없을 때입니다.
-   * 안내는 검색창 아래 설명줄 자리에 서고, 검색창을 누르거나 [×] 로 닫으면 끝납니다 (`tourStore`).
+   * **검색 안내(`search`)를 보여도 되는 때인가** — 로딩 커튼이 걷혔고 다른 창 · 잠수 · 해도가 없을 때입니다.
+   * 안내는 검색창 아래 설명줄 자리에 서고, 첫 검색이나 [×] 로 끝납니다. 언제 서는지(항해 줄기의 앞 단계 뒤)는
+   * `tourStore` 가 정합니다.
    */
   introduce?: boolean
   /** 시작 칸의 '요즘 인기 향수' — 화면이 넘어갈 길을 고릅니다(메인을 떠나는 잠수). 없으면 그 줄을 안 그립니다 */
@@ -80,30 +81,14 @@ export function SceneSearchBar({
   const startersOpen = starting && keyword.trim() === ''
 
   /*
-    첫 방문 안내 두 단계가 설명줄 자리에 섭니다 (`tourStore`). 처음 온 사람은 설명줄을 볼 까닭(마우스 올리기)이
-    없어 이 사이트가 무엇을 해 주는지 못 봤고, 이 칸에 무엇을 적어야 하는지도 몰랐습니다(사용성 테스트).
-      welcome  화면이 비었을 때 — 검색창 어디든 초점이 오면 끝납니다 (부표를 누른 것은 화면이 끝냅니다)
-      search   입력칸에 처음 초점이 왔을 때 — 첫 검색으로 끝납니다
+    첫 방문 안내의 검색 단계가 설명줄 자리에 섭니다 (`tourStore`). 처음 온 사람은 설명줄을 볼 까닭(마우스 올리기)이
+    없어 이 칸에 무엇을 적어야 하는지 몰랐습니다(사용성 테스트). 바다 · 방향키 · 부표를 배운 뒤 화면이 비어 있으면 서고,
+    첫 검색으로 끝납니다.
     안내가 서 있는 동안은 설명줄을 화면에서만 걷습니다 — 둘이 같은 자리 · 같은 말을 겹쳐 합니다.
   */
-  const welcome = useTourStep('welcome', introduce)
-  const searchTip = useTourStep('search', starting)
+  const searchTip = useTourStep('search', introduce)
   const stopTour = useTourStore((state) => state.stop)
-  const tip = welcome.showing
-    ? {
-        text: t('tour:welcome'),
-        finish: welcome.finish,
-        next: welcome.next,
-        starter: false,
-      }
-    : searchTip.showing
-      ? {
-          text: t('tour:search'),
-          finish: searchTip.finish,
-          next: searchTip.next,
-          starter: true,
-        }
-      : null
+  const tip = searchTip.showing
 
   const search = (text: string) => {
     searchTip.finish()
@@ -122,7 +107,6 @@ export function SceneSearchBar({
       className={cn(POSITION, 'group', className)}
       onFocus={(event) => {
         const target = event.target as HTMLElement
-        welcome.finish()
         // 시작 칸(시작 문장 · 그 위의 검색 안내) 안에서 옮겨 다니는 초점은 칸을 그대로 둡니다
         setStarting(
           target.tagName === 'INPUT' ||
@@ -217,12 +201,15 @@ export function SceneSearchBar({
 
           {tip && (
             <TourTip
-              data-starter={tip.starter ? '' : undefined}
-              onClose={tip.finish}
-              onNext={tip.next}
+              data-starter=""
+              onClose={searchTip.finish}
+              onNext={searchTip.next}
               onStopAll={stopTour}
             >
-              {tip.text}
+              {t('tour:search')}
+              <span className="text-charcoal-soft block">
+                {t('tour:searchExample')}
+              </span>
             </TourTip>
           )}
 

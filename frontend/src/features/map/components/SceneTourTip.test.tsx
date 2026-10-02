@@ -59,7 +59,7 @@ describe('SceneTourTip', () => {
     expect(watch).toHaveBeenLastCalledWith(null)
   })
 
-  it('앞 단계가 안 끝났으면 기다린다 — 부표는 첫 화면 안내 뒤', () => {
+  it('앞 단계가 안 끝났으면 기다린다 — 부표는 바다 · 방향키 안내 뒤', () => {
     render(
       <SceneTourTip step="buoy" ready placement="above">
         부표를 눌러 보세요
@@ -68,6 +68,19 @@ describe('SceneTourTip', () => {
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
     expect(watch).not.toHaveBeenCalled()
+  })
+
+  it('첫 안내(바다)는 앞 단계 없이 서고, 엔진에 그 단계의 자리(배 옆)를 재 달라고 한다', async () => {
+    render(
+      <SceneTourTip step="sea" ready placement="side">
+        바다를 눌러 배를 움직여 보세요
+      </SceneTourTip>,
+    )
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '바다를 눌러 배를 움직여 보세요',
+    )
+    expect(watch).toHaveBeenCalledWith('sea')
   })
 
   /*

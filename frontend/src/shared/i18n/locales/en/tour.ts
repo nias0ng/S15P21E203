@@ -7,15 +7,21 @@ export const tour = {
     stopAll: 'Stop showing tips',
     next: 'Next',
   },
-  welcome:
-    'This sea lays out perfumes by scent family. Describe a feeling, or pick a floating buoy.',
-  // NOTE: the quoted name must match search.tag in the map bundle (the label left of the search box)
-  search: "In 'Mood · Moment', write the mood or moment you have in mind.",
-  results: 'Select a card to see why it was picked.',
-  buoy: 'Each glowing buoy is a perfume. Pick one.',
-  buoyMove: 'Select the sea to sail there.',
+  // the five steps that teach sailing — sea · keys · buoy · similar · search (tourStore header)
+  sea: {
+    intro: 'This sea lays out perfumes by scent family.',
+    action: 'Select the sea to sail your boat there.',
+  },
   // only on devices with arrow keys
-  buoyKeys: 'You can also steer with ← → ↑.',
+  keys: 'Steer with the ← → ↑ keys — head wherever you like.',
+  buoy: 'Each glowing buoy is a perfume. Pick one.',
+  similar:
+    'Nearby perfumes have risen. Lines join the ones that smell alike — pick one to compare.',
+  // NOTE: the quoted name must match search.tag in the map bundle (the label left of the search box)
+  search:
+    "Select 'Mood · Moment' and write the mood or moment you have in mind.",
+  searchExample: 'e.g. a café on a rainy day · something fresh',
+  results: 'Select a card to see why it was picked.',
   // NOTE: the button names must match the engine card (landing/src/i18n.js card.detail · save · sail)
   card: {
     detail: { name: 'View details', desc: 'the full perfume page' },

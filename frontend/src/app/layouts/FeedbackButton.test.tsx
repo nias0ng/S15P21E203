@@ -55,12 +55,12 @@ describe('FeedbackButton', () => {
 
   // 처음 온 사람의 첫 화면에 검색창 아래 안내와 이 말풍선이 같이 떴습니다 — 안내는 한 번에 하나입니다
   it('메인에서는 첫 방문 안내가 부표까지 끝나고 비었을 때 인사한다', () => {
-    useTourStore.setState({ off: false, done: ['welcome'], active: 'buoy' })
+    useTourStore.setState({ off: false, done: ['sea', 'keys'], active: 'buoy' })
     renderAt('/')
     expect(bubble()).toHaveClass('invisible')
 
     act(() =>
-      useTourStore.setState({ done: ['welcome', 'buoy'], active: 'card' }),
+      useTourStore.setState({ done: ['sea', 'keys', 'buoy'], active: 'card' }),
     )
     expect(bubble()).toHaveClass('invisible')
 

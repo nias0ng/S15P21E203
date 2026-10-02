@@ -125,24 +125,30 @@ export default function HomePage() {
   }, [cardOpen, setSceneCard])
   useEffect(() => () => setSceneCard(false), [setSceneCard])
   /*
-   * 첫 방문 안내의 엔진 쪽 단계 (`tourStore` · `SceneTourTip`). 부표를 눌러 카드를 연 사람에게는 첫 화면 안내 ·
-   * 부표 안내가 할 일을 다 했습니다. 해도를 연 사람에게는 미니맵 안내가 그렇습니다 (해도는 미니맵의 확대 단추가 엽니다).
+   * 첫 방문 안내의 엔진 쪽 단계 (`tourStore` · `SceneTourTip`). 부표를 눌러 카드를 연 사람에게는 부표 안내가 할 일을
+   * 다 했습니다. 해도를 연 사람에게는 미니맵 안내가 그렇습니다 (해도는 미니맵의 확대 단추가 엽니다).
+   * 바다 누르기 · 방향키 · 닮은 향수 누르기 · 미니맵으로 떠나기는 엔진 안에서만 일어나 엔진이 알립니다 (`onTourEvent`).
    *   cardPinned  누른 카드 — 마우스를 올려 뜬 미리보기 카드는 단추를 못 누릅니다 (`ScentScene` 의 onCardPinChange)
+   *   similarUp   누른 향수 곁에 12개가 떠 있다 — 해역 연출 중에 누른 카드는 아닙니다 (`ScentScene` 의 onSimilarChange)
    *   zoneLabel   해역 연출 중인 해역의 이름 · 아니면 null
    */
   const finishTour = useTourStore((state) => state.finish)
   useEffect(() => {
-    if (!cardOpen) return
-    finishTour('welcome')
-    finishTour('buoy')
+    if (cardOpen) finishTour('buoy')
   }, [cardOpen, finishTour])
   useEffect(() => {
     if (chartOpen) finishTour('minimap')
   }, [chartOpen, finishTour])
   const [cardPinned, setCardPinned] = useState(false)
+  const [similarUp, setSimilarUp] = useState(false)
   const [zoneLabel, setZoneLabel] = useState<string | null>(null)
   // 손가락 기기는 미니맵을 두 번 눌러 떠나고 방향키가 없습니다 (엔진 minimap.js · index.html 의 .pb-help-keys)
   const touch = useMediaQuery('(pointer: coarse)')
+  // 방향키 단계는 방향키가 있는 기기에서만 섭니다 — 순서표가 건너뜁니다
+  const setTourTouch = useTourStore((state) => state.setTouch)
+  useEffect(() => {
+    setTourTouch(touch)
+  }, [touch, setTourTouch])
   /*
    * 진열대에서 **떠올라** 들어오는 중인가. 그동안 화면은 잠수 커튼(물)이 덮고 있으므로
    * 이 화면의 아이보리 로딩 커튼은 비킵니다 — 물 밑에서 구름이 갈라지면 걷히는 겹이 둘이 됩니다.
@@ -407,10 +413,10 @@ export default function HomePage() {
         onChartChange={setChartOpen}
         onCardChange={setCardOpen}
         onCardPinChange={setCardPinned}
+        onSimilarChange={setSimilarUp}
         onZoneChange={setZoneLabel}
-        onTourEvent={(event) => {
-          if (event === 'minimap') finishTour('minimap')
-        }}
+        // 엔진이 알리는 행동은 이름이 곧 그 행동으로 끝나는 단계입니다 (sea · keys · similar · minimap)
+        onTourEvent={finishTour}
         onBoot={boot.report}
         onMove={(move) => {
           reportMove(move)
@@ -589,7 +595,12 @@ export default function HomePage() {
 
       {/*
         첫 방문 안내 — 3D 의 그것 곁에 섭니다 (`SceneTourTip` · 차례와 앞 단계는 `tourStore`).
+        앞 넷은 항해를 가르치는 줄기이고(검색 단계는 검색창이 그립니다), 해역 연출 중에는 기다립니다 — 그동안 바다를
+        누르면 배가 떠나는 대신 연출이 닫혀, 안내와 다른 일이 일어납니다. 연출의 뜻 · 닫는 법은 zone 안내가 말합니다.
+          sea      배 옆 — 바다를 눌러 배가 떠나면 끝납니다 (엔진이 알립니다)
+          keys     배 옆 — 방향키로 몰면 끝납니다 (방향키가 있는 기기에서만 — 순서표가 건너뜁니다)
           buoy     가까운 부표 이름표 위 — 카드가 열리면 끝납니다 (위 cardOpen 효과)
+          similar  떠오른 12개 가운데 하나의 이름표 위 — 그중 하나를 누르거나 그 판이 닫히면 끝납니다
           card     누른 카드 아래 — 단추를 누르거나 카드가 닫히면 끝납니다
           zone     하단 안내 위 — 연출이 닫히면 끝납니다
           minimap  미니맵 위 — 미니맵 · 해도로 떠나거나 해도를 열면 끝납니다
@@ -597,13 +608,39 @@ export default function HomePage() {
       */}
       <SceneTourTip
         paused={!sceneIdle}
+        step="sea"
+        ready={sceneIdle && !cardOpen && zoneLabel === null}
+        placement="side"
+      >
+        {t('tour:sea.intro')}
+        <span className="block">{t('tour:sea.action')}</span>
+      </SceneTourTip>
+      <SceneTourTip
+        paused={!sceneIdle}
+        step="keys"
+        ready={sceneIdle && !cardOpen && zoneLabel === null}
+        placement="side"
+      >
+        {t('tour:keys')}
+      </SceneTourTip>
+      <SceneTourTip
+        paused={!sceneIdle}
         step="buoy"
-        ready={sceneIdle && !cardOpen}
+        ready={sceneIdle && !cardOpen && zoneLabel === null}
         placement="above"
       >
         {t('tour:buoy')}
-        <span className="block">{t('tour:buoyMove')}</span>
-        {!touch && <span className="block">{t('tour:buoyKeys')}</span>}
+      </SceneTourTip>
+      <SceneTourTip
+        paused={!sceneIdle}
+        step="similar"
+        // 카드 고정은 안 봅니다 — 12개 가운데 하나에 마우스를 올려 미리보기 카드가 떠도 견줘 보는 중입니다
+        ready={sceneIdle && similarUp}
+        finishOnLeave
+        holdMs={800}
+        placement="above"
+      >
+        {t('tour:similar')}
       </SceneTourTip>
       <SceneTourTip
         paused={!sceneIdle}
