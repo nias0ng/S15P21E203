@@ -35,6 +35,9 @@ export type TourStep = (typeof TOUR_STEPS)[number]
 const AFTER: Partial<Record<TourStep, { all?: TourStep[]; any?: TourStep[] }>> =
   {
     buoy: { all: ['welcome'] },
+    // 엔진은 배가 처음 든 해역도 알려 와(첫 기록) 들어오자마자 조건이 맞습니다 — 표의 차례(미니맵 → 일지 → 배)대로
+    //   부표를 알고 카드나 해역을 한 번 본 뒤에 섭니다
+    log: { all: ['buoy'], any: ['card', 'zone'] },
     minimap: { any: ['card', 'zone'] },
     boat: { all: ['minimap', 'log'] },
   }

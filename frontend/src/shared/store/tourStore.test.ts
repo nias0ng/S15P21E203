@@ -56,6 +56,29 @@ describe('앞 단계', () => {
     expect(state().active).toBe('buoy')
   })
 
+  it('향해 일지는 부표를 알고 카드나 해역을 본 뒤에 선다', () => {
+    const base = { active: null, off: false, wanted: ['log' as const] }
+
+    expect(pickActiveStep({ ...base, done: ['welcome', 'buoy'] })).toBeNull()
+    expect(pickActiveStep({ ...base, done: ['welcome', 'card'] })).toBeNull()
+    expect(pickActiveStep({ ...base, done: ['welcome', 'buoy', 'card'] })).toBe(
+      'log',
+    )
+  })
+
+  it('카드가 끝나면 미니맵이 먼저, 그다음 향해 일지가 선다', () => {
+    state().finish('welcome')
+    state().finish('buoy')
+    state().want('log', true)
+    state().want('minimap', true)
+    expect(state().active).toBeNull()
+
+    state().finish('card')
+    expect(state().active).toBe('minimap')
+    state().finish('minimap')
+    expect(state().active).toBe('log')
+  })
+
   it('미니맵은 카드 · 해역 가운데 하나만 끝나도 선다', () => {
     const base = { active: null, off: false, wanted: ['minimap' as const] }
 

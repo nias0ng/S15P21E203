@@ -34,6 +34,8 @@ export type VoyageLogStatus = 'loading' | 'ready' | 'guest' | 'error'
 type Props = {
   entries: VoyageLogEntry[]
   status: VoyageLogStatus
+  /** 사람이 접기 단추를 눌렀습니다 — 첫 방문 안내(`tourStore` 의 log)가 할 일을 다 했습니다 */
+  onToggle?: (open: boolean) => void
 }
 
 /*
@@ -138,7 +140,7 @@ const FOLD_SETTLE_MS = 750
  */
 const NARROW_QUERY = '(max-width: 1024px)'
 
-export function VoyageLog({ entries, status }: Props) {
+export function VoyageLog({ entries, status, onToggle }: Props) {
   const { t } = useTranslation('map')
   const narrow = useMediaQuery(NARROW_QUERY)
   // 기본값은 폭이 정하고(좁으면 접힘), 사용자가 누르면 **누른 단계와 함께** 기억합니다.
@@ -201,7 +203,10 @@ export function VoyageLog({ entries, status }: Props) {
         </h2>
         <button
           type="button"
-          onClick={() => setChoice({ narrow, open: !open })}
+          onClick={() => {
+            setChoice({ narrow, open: !open })
+            onToggle?.(!open)
+          }}
           aria-expanded={open}
           aria-label={t(open ? 'voyageLog.collapse' : 'voyageLog.expand')}
           className={cn(

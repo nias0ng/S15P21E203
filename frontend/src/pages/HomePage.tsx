@@ -45,6 +45,7 @@ import {
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
 import { useMediaQuery } from '@/shared/hooks/useMediaQuery'
 import { useToast } from '@/shared/hooks/useToast'
+import { useTourStep } from '@/shared/hooks/useTourStep'
 import { localizedName } from '@/shared/i18n/locale'
 import { cn } from '@/shared/lib/cn'
 import { diveDepthOf } from '@/shared/lib/diveTrack'
@@ -60,6 +61,7 @@ import { useSceneSkyStore } from '@/shared/store/sceneSkyStore'
 import { useTourStore } from '@/shared/store/tourStore'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { Toast } from '@/shared/ui/Toast'
+import { TourTip } from '@/shared/ui/TourTip'
 
 /**
  * 랜딩 · 향 지도 (와이어프레임 A01 · A02 · A03 — MAP-01 · 05 · 06 · 07 · 24)
@@ -256,6 +258,12 @@ export default function HomePage() {
   // 향해 일지(MAP-24) — 배가 든 해역이 바뀌거나 향수를 고르면 서버에 남기고 일지를 다시 읽습니다.
   // 기록할지는 서버가 정합니다 (향수는 늘 · 빈 바다는 향 영역이 바뀐 경우만)
   const reportMove = useExplorationMove()
+  /*
+   * 이번에 해역에 들었거나 향수를 골랐는가 — 향해 일지에 기록이 생기는 때입니다 (첫 방문 안내 log).
+   * 엔진은 배가 처음 든 해역도 알려 와 대개 들어오자마자 참이 됩니다 — 차례는 `tourStore` 가 미룹니다(카드나 해역 뒤).
+   * 비회원은 일지가 안 쌓여 '기록이 생겼다' 를 볼 수 없어 같은 때에 로그인 안내로 섭니다.
+   */
+  const [moved, setMoved] = useState(false)
 
   /*
   /*
@@ -383,6 +391,16 @@ export default function HomePage() {
     !loginOpen &&
     !cabinOpen
 
+  /*
+   * 첫 방문 안내 log — 향해 일지 판 곁에 섭니다(넓은 화면은 아래 · 940 아래는 판이 왼쪽 아래라 위). 판은 앱이 그려
+   * 엔진에 자리를 물을 일이 없습니다. 판을 접거나 펴면 끝납니다.
+   */
+  const logTip = useTourStep(
+    'log',
+    sceneIdle && !cardOpen && (moved || logEntries.length > 0),
+  )
+  const stopTour = useTourStore((state) => state.stop)
+
   return (
     /*
      * 3D 가 화면 맨 위부터 끝까지 채웁니다 — 헤더(GlobalHeader)는 그 위에 유리판으로 뜹니다.
@@ -413,7 +431,10 @@ export default function HomePage() {
           if (event === 'minimap') finishTour('minimap')
         }}
         onBoot={boot.report}
-        onMove={reportMove}
+        onMove={(move) => {
+          reportMove(move)
+          setMoved(true)
+        }}
         quality={graphics.mode}
         onQuality={graphics.onQuality}
         calm={graphics.calm}
@@ -581,7 +602,23 @@ export default function HomePage() {
           cardOpen && 'max-[940px]:invisible max-[940px]:opacity-0',
         )}
       >
-        <VoyageLog entries={logEntries} status={logStatus} />
+        <VoyageLog
+          entries={logEntries}
+          status={logStatus}
+          onToggle={logTip.finish}
+        />
+        {logTip.showing && (
+          <TourTip
+            onClose={logTip.finish}
+            onStopAll={stopTour}
+            className={cn(
+              'absolute top-full left-0 mx-0 mt-2.5 w-75',
+              'max-[940px]:top-auto max-[940px]:bottom-full max-[940px]:mt-0 max-[940px]:mb-2.5',
+            )}
+          >
+            {t(isLoggedIn ? 'tour:log.member' : 'tour:log.guest')}
+          </TourTip>
+        )}
       </div>
 
       {/*
