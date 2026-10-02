@@ -28,8 +28,8 @@ class ScentMapServiceTest {
     private static final long SCENT_REGION_ID = 9L;
 
     private final ScentMapRepository scentMapRepository = mock(ScentMapRepository.class);
-    private final ScentMapService scentMapService =
-            new ScentMapService(scentMapRepository, new ObjectMapper());
+    private final ScentMapService scentMapService = new ScentMapService(
+            scentMapRepository, mock(ScentRegionLocator.class), new ObjectMapper());
 
     /**
      * 읽을 수 없는 폴리곤은 실패로 처리합니다.

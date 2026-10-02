@@ -13,8 +13,9 @@ import java.util.List;
  *
  * <p>{@code matchedPerfumeId} 는 화면이 고른 결과 향수입니다. <b>서버가 다시 계산하지
  * 않습니다.</b> 코사인 유사도 계산이 이미 화면에 있고 테스트도 거기 붙어 있어, 같은 규칙을 자바로
- * 한 벌 더 두면 두 결과가 갈릴 때 어느 쪽이 맞는지 판단할 근거가 없습니다. 대신 그 향수가 지도에
- * 있는지는 서버가 확인합니다 — 지도에 없는 향수는 배를 띄울 자리가 없습니다.
+ * 한 벌 더 두면 두 결과가 갈릴 때 어느 쪽이 맞는지 판단할 근거가 없습니다. 대신 두 가지는 서버가
+ * 확인합니다 — 지도에 있는지(없으면 배를 띄울 자리가 없습니다)와, 1순위 계열의 이름표 조각 안에
+ * 그려져 있는지(밖이면 고른 계열에서 시작한 것으로 보이지 않습니다)입니다.
  */
 public record TasteTestCreateRequest(
 
@@ -22,7 +23,8 @@ public record TasteTestCreateRequest(
                 example = "[\"FLORAL\", \"WOODY\"]")
         List<String> picks,
 
-        @Schema(description = "화면이 고른 결과 향수. 향 지도에 있는 향수여야 합니다.",
+        @Schema(description = "화면이 고른 결과 향수. 향 지도에 있고, 1순위 계열의 이름표 조각 안에"
+                + " 그려진 향수여야 합니다(GET /api/v1/map/scent-vectors 의 labelRegionCode).",
                 example = "42")
         Long matchedPerfumeId
 ) {

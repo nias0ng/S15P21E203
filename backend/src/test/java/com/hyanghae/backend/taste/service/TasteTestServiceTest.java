@@ -14,6 +14,7 @@ import com.hyanghae.backend.global.exception.BusinessException;
 import com.hyanghae.backend.global.security.CurrentUser;
 import com.hyanghae.backend.map.repository.ExplorationPoint;
 import com.hyanghae.backend.map.service.ExplorationService;
+import com.hyanghae.backend.map.service.StartingSpot;
 import com.hyanghae.backend.recommendation.service.PersonalizedRecommendationInvalidator;
 import com.hyanghae.backend.taste.dto.request.TasteTestCreateRequest;
 import com.hyanghae.backend.taste.dto.response.TasteTestResponse;
@@ -30,9 +31,11 @@ import org.junit.jupiter.api.Test;
  *
  * <p>통합 테스트가 좌표 없는 향수·없는 번호·내려간 향수 셋을 이미 끝에서 끝까지 검증합니다.
  * 여기서 따로 보는 것은 <b>그 셋을 묶는 규칙</b>입니다. 서비스가 보는 것은 "왜" 가 아니라
- * {@link ExplorationService#placeStartingPoint} 가 비어 있다는 사실 하나뿐이고, 비면 언제나
- * {@code TASTE_PERFUME_NOT_ON_MAP} 여야 합니다. 지도 조회에 조건이 하나 더 붙는 날에도 그
- * 경우가 어떤 답을 받을지 여기서 정해집니다.
+ * 지도 쪽이 자리를 비워 돌려줬다는 사실 하나뿐이고, 비면 언제나 {@code TASTE_PERFUME_NOT_ON_MAP}
+ * 여야 합니다. 지도 조회에 조건이 하나 더 붙는 날에도 그 경우가 어떤 답을 받을지 여기서 정해집니다.
+ *
+ * <p>자리는 있는데 1순위 계열의 이름표 조각 밖이면 {@code TASTE_PERFUME_OUTSIDE_PRIMARY_REGION}
+ * 이고, 이때도 <b>배를 띄우기 전에</b> 거절합니다.
  *
  * <p>상태가 남지 않는 것까지 봅니다. 응시를 먼저 넣고 배를 나중에 띄웠다면 배를 못 띄운 회원에게
  * 기록만 남아, 다시 치르지도 못하고 배도 뜨지 않는 자리에 갇힙니다. 통합 테스트는 트랜잭션이
@@ -63,10 +66,32 @@ class TasteTestServiceTest {
      * 화면이 받은 후보 밖의 값을 보낸 것이라 답이 같아야 합니다.
      */
     @Test
-    void refusesAndSavesNothingWhenShipCannotBePlaced() {
+    void refusesAndSavesNothingWhenPerfumeIsNotOnMap() {
         // 고른 계열 둘이 모두 번호로 풀립니다. 여기서 모자라면 계열 검증에서 먼저 걸려
-        // 배를 못 띄운 경우를 보지 못합니다.
+        // 지도에 없는 경우를 보지 못합니다.
         when(tasteTestRepository.findScentRegionIds(anyList())).thenReturn(List.of(3L, 1L));
+        when(explorationService.findStartingSpot(PERFUME_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.complete(request()))
+                .isInstanceOf(BusinessException.class)
+                .extracting(thrown -> ((BusinessException) thrown).errorCode())
+                .isEqualTo(TasteErrorCode.TASTE_PERFUME_NOT_ON_MAP);
+
+        verify(explorationService, never()).placeStartingPoint(anyLong(), any());
+        verify(tasteTestRepository, never()).insert(anyLong(), anyLong());
+        verify(tasteTestRepository, never()).insertSelections(anyLong(), anyList());
+    }
+
+    /**
+     * 자리를 본 뒤 배를 띄우는 사이에 지도가 다시 적재돼 자리가 사라져도 같은 답입니다.
+     *
+     * <p>드문 경우지만 응시만 남고 배는 뜨지 않는 상태가 되면 안 됩니다.
+     */
+    @Test
+    void refusesAndSavesNothingWhenShipCannotBePlaced() {
+        when(tasteTestRepository.findScentRegionIds(anyList())).thenReturn(List.of(3L, 1L));
+        when(explorationService.findStartingSpot(PERFUME_ID))
+                .thenReturn(Optional.of(spotLabeledAs("WOODY")));
         when(explorationService.placeStartingPoint(USER_ID, PERFUME_ID))
                 .thenReturn(Optional.empty());
 
@@ -80,6 +105,41 @@ class TasteTestServiceTest {
     }
 
     /**
+     * 1순위 계열의 이름표 조각 밖이면 거절하고 <b>배를 띄우지 않습니다.</b>
+     *
+     * <p>2순위 계열 구역이어도 같습니다. 요청은 우디를 1순위, 플로럴을 2순위로 골랐습니다.
+     */
+    @Test
+    void refusesWithoutTouchingTheShipWhenOutsideThePrimaryRegion() {
+        when(tasteTestRepository.findScentRegionIds(anyList())).thenReturn(List.of(3L, 1L));
+        when(explorationService.findStartingSpot(PERFUME_ID))
+                .thenReturn(Optional.of(spotLabeledAs("FLORAL")));
+
+        assertThatThrownBy(() -> service.complete(request()))
+                .isInstanceOf(BusinessException.class)
+                .extracting(thrown -> ((BusinessException) thrown).errorCode())
+                .isEqualTo(TasteErrorCode.TASTE_PERFUME_OUTSIDE_PRIMARY_REGION);
+
+        verify(explorationService, never()).placeStartingPoint(anyLong(), any());
+        verify(tasteTestRepository, never()).insert(anyLong(), anyLong());
+    }
+
+    /** 떨어져 나온 조각이나 바다처럼 이름표 조각 밖이면 계열이 비어 있고, 역시 거절합니다. */
+    @Test
+    void refusesWhenThePerfumeIsInNoLabelPiece() {
+        when(tasteTestRepository.findScentRegionIds(anyList())).thenReturn(List.of(3L, 1L));
+        when(explorationService.findStartingSpot(PERFUME_ID))
+                .thenReturn(Optional.of(spotLabeledAs(null)));
+
+        assertThatThrownBy(() -> service.complete(request()))
+                .isInstanceOf(BusinessException.class)
+                .extracting(thrown -> ((BusinessException) thrown).errorCode())
+                .isEqualTo(TasteErrorCode.TASTE_PERFUME_OUTSIDE_PRIMARY_REGION);
+
+        verify(explorationService, never()).placeStartingPoint(anyLong(), any());
+    }
+
+    /**
      * 배를 띄웠으면 응시가 남고 그 자리가 응답에 실립니다.
      *
      * <p>짝이 되는 경우입니다. 이것이 없으면 위의 검증이 "원래 부르지 않는 코드" 를 확인한 것인지
@@ -89,6 +149,8 @@ class TasteTestServiceTest {
     void savesAndAnswersWithTheStartingPoint() {
         OffsetDateTime completedAt = OffsetDateTime.now();
         when(tasteTestRepository.findScentRegionIds(anyList())).thenReturn(List.of(3L, 1L));
+        when(explorationService.findStartingSpot(PERFUME_ID))
+                .thenReturn(Optional.of(spotLabeledAs("WOODY")));
         when(explorationService.placeStartingPoint(USER_ID, PERFUME_ID))
                 .thenReturn(Optional.of(new ExplorationPoint(0.09163, 0.04484)));
         when(tasteTestRepository.insert(USER_ID, PERFUME_ID))
@@ -119,6 +181,10 @@ class TasteTestServiceTest {
                 .isInstanceOf(BusinessException.class);
 
         verify(explorationService, never()).placeStartingPoint(anyLong(), any());
+    }
+
+    private StartingSpot spotLabeledAs(String labelRegionCode) {
+        return new StartingSpot(new ExplorationPoint(0.09163, 0.04484), labelRegionCode);
     }
 
     private TasteTestCreateRequest request() {
