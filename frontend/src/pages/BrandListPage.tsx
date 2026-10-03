@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 
 import {
@@ -24,6 +25,7 @@ import { SearchField, SEARCH_FIELD_LIST_WIDTH } from '@/shared/ui/SearchField'
 const PAGE_SIZE = 30
 
 export default function BrandListPage() {
+  const { t } = useTranslation('brand')
   const [searchParams, setSearchParams] = useSearchParams()
   const keyword = searchParams.get('keyword') ?? ''
   const sort =
@@ -57,20 +59,23 @@ export default function BrandListPage() {
 
   return (
     <div className="space-y-3.75">
-      <h1 className="sr-only">브랜드</h1>
+      <h1 className="sr-only">{t('list.heading')}</h1>
 
       <SearchField
         className={SEARCH_FIELD_LIST_WIDTH}
-        label="브랜드명으로 검색"
-        placeholder="브랜드명으로 검색해주세요."
+        label={t('list.searchLabel')}
+        placeholder={t('list.searchPlaceholder')}
         defaultValue={keyword}
         key={keyword}
         onSearch={(next) => setParam('keyword', next.trim() || null)}
       />
 
       <PillFilter
-        label="브랜드 정렬"
-        options={BRAND_SORTS}
+        label={t('list.sortLabel')}
+        options={BRAND_SORTS.map(({ value }) => ({
+          value,
+          label: t(`sort.${value}`),
+        }))}
         value={sort}
         onChange={(next) => setParam('sort', next)}
         required
@@ -80,11 +85,13 @@ export default function BrandListPage() {
       <section className={GLASS_PANEL}>
         <div className="mb-6.25 flex items-baseline gap-2.5">
           <h2 className="text-ink font-serif text-2xl">
-            {keyword ? `'${keyword}' 검색 결과` : '전체 브랜드'}
+            {keyword
+              ? t('list.searchHeading', { keyword })
+              : t('list.allHeading')}
           </h2>
           {!isPending && brands.length > 0 && (
             <span className="text-ink-muted text-caption">
-              {brands.length}개
+              {t('list.count', { count: brands.length })}
             </span>
           )}
         </div>
@@ -96,7 +103,7 @@ export default function BrandListPage() {
           emptyAction={
             hasFilter && (
               <Button variant="outline" onClick={() => setSearchParams({})}>
-                초기화
+                {t('list.reset')}
               </Button>
             )
           }
@@ -104,7 +111,7 @@ export default function BrandListPage() {
 
         <Pagination
           className="mt-6.25"
-          label="브랜드 페이지"
+          label={t('list.pagination')}
           page={safePage}
           size={PAGE_SIZE}
           totalElements={brands.length}

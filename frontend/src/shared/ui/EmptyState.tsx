@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/shared/ui/Button'
 
@@ -16,6 +18,8 @@ export function EmptyState({
   onRetry,
   retrySize = 'md',
 }: EmptyStateProps) {
+  const { t } = useTranslation()
+
   return (
     <div className="flex min-h-47.5 flex-col items-center justify-center gap-2.5 text-center">
       <p className="text-heading font-serif font-semibold">{title}</p>
@@ -27,7 +31,7 @@ export function EmptyState({
           {action}
           {onRetry && (
             <Button variant="outline" size={retrySize} onClick={onRetry}>
-              다시 시도
+              {t('actions.retry')}
             </Button>
           )}
         </div>

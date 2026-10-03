@@ -1,4 +1,5 @@
 import type { ScentFamilyKey } from '@/shared/config/scentFamilies'
+import { i18n } from '@/shared/i18n'
 
 import type { VoyageLogEntry } from '../types'
 
@@ -6,7 +7,7 @@ import type { VoyageLogEntry } from '../types'
 export interface VoyageLogDay {
   /** 보는 사람의 시간대로 읽은 날짜 `YYYY-MM-DD` — 날을 구분하는 데 씁니다 */
   key: string
-  /** 머리말. 오늘이면 '오늘', 아니면 `MM.DD` */
+  /** 머리말. 오늘이면 '오늘'(화면 언어로), 아니면 `MM.DD` */
   label: string
   /** 그날 들어간 해역 — 최근 순 · 같은 해역은 한 번 */
   regions: ScentFamilyKey[]
@@ -62,7 +63,8 @@ export function groupVoyageLogByDay(
     if (!day) {
       day = {
         key,
-        label: key === today ? '오늘' : label,
+        // 부를 때의 화면 언어로 적습니다 — 판이 언어가 바뀔 때마다 다시 묶습니다
+        label: key === today ? i18n.t('map:voyageLog.today') : label,
         regions: [],
         perfumes: [],
       }

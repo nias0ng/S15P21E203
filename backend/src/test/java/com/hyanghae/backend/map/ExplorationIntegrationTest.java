@@ -21,6 +21,8 @@ import java.util.concurrent.Future;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -353,6 +355,35 @@ class ExplorationIntegrationTest {
                 .andExpect(jsonPath("$.entries[1].visited.length()").value(1))
                 .andExpect(jsonPath("$.entries[1].visited[0].perfumeId").value(1))
                 .andExpect(jsonPath("$.entries[1].visited[0].name").value("Base Scent"));
+    }
+
+    /**
+     * 일지에 들른 향수는 원래 이름과 한국어 이름을 짝으로 싣습니다. 화면이 언어에 맞춰 고릅니다.
+     *
+     * <p>요청 언어와 관계없이 같은 짝이 옵니다. 한국어 이름이 없는 향수는 한국어 칸이 비고, 원래
+     * 이름은 그대로입니다.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"ko", "en"})
+    void putsBothNamesOnVisitedPerfumes(String language) throws Exception {
+        jdbcTemplate.update("UPDATE perfumes SET name_ko = '베이스 향' WHERE perfume_id = 1");
+        insertPerfume(4, "Plain Scent", true);
+        insertMapPoint(4, 0.3, 0.3);
+
+        clickSea(0.1, 0.1).andExpect(status().isOk());   // A 진입
+        clickPerfume(1).andExpect(status().isOk());
+        clickPerfume(4).andExpect(status().isOk());
+
+        mockMvc.perform(get(LOGS_URL).header("Accept-Language", language))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries.length()").value(1))
+                .andExpect(jsonPath("$.entries[0].visited.length()").value(2))
+                .andExpect(jsonPath("$.entries[0].visited[0].perfumeId").value(1))
+                .andExpect(jsonPath("$.entries[0].visited[0].name").value("Base Scent"))
+                .andExpect(jsonPath("$.entries[0].visited[0].nameKo").value("베이스 향"))
+                .andExpect(jsonPath("$.entries[0].visited[1].perfumeId").value(4))
+                .andExpect(jsonPath("$.entries[0].visited[1].name").value("Plain Scent"))
+                .andExpect(jsonPath("$.entries[0].visited[1].nameKo").doesNotExist());
     }
 
     /**

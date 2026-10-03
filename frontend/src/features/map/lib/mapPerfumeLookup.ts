@@ -56,6 +56,8 @@ export function withMapPerfumes(
         name: perfume.label,
         fullName: perfume.name,
         brand: perfume.brand,
+        nameEn: perfume.nameEn,
+        brandEn: perfume.brandEn,
         family: perfume.family,
       }
     }),

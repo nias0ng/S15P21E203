@@ -33,8 +33,10 @@ public record NoteDetailResponse(
                 nullable = true)
         Integer popularityRank,
 
-        @Schema(description = "노트 설명. 채워지는 대로 들어오므로 비어 있을 수 있고, 그때 화면은"
-                + " 설명 영역을 그리지 않습니다.",
+        @Schema(description = "노트 설명. 요청 언어(Accept-Language)를 따릅니다 — en 이면 영어"
+                + " 설명이고, 영어 설명이 없는 노트는 한국어 설명으로 되돌아갑니다. 그 밖의 언어나"
+                + " 헤더가 없으면 한국어 설명입니다. 채워지는 대로 들어오므로 비어 있을 수 있고,"
+                + " 그때 화면은 설명 영역을 그리지 않습니다.",
                 example = "포근하고 관능적인 잔향으로, 향수의 베이스를 오래 붙잡아 둡니다.",
                 nullable = true)
         String description

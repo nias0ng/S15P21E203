@@ -16,6 +16,8 @@
 //   데이터를 주입할 때 항목에 perfumeId 를 실어 주면 ref.perfumeId 로 같이 간다 (지금 perfumes-data.js 에는 없다 — null)
 // ⚠ 호스트가 없으면 (이 프로토타입 단독) 기본 동작 — 경고 한 줄(ui.warn) + 콘솔. 화면 이동 · 모달은 앱이 붙은 뒤에 산다
 
+import { t } from './i18n.js';   // 단독일 때의 알림 글자
+
 let handlers = null;
 let notice = null;   // 단독일 때 알릴 곳 — main.js 가 ui.warn 을 넘긴다
 
@@ -41,11 +43,11 @@ export function perfumeRef(m) {
 const DEFAULTS = {
   openDetail(ref) {
     console.info('[paperboat] 자세히 보기 → 앱에서는 향수 상세 /perfumes/{perfumeId} (A10)', ref);
-    if (notice) notice('자세히 보기', '앱에 붙으면 향수 상세 화면으로 이동합니다');
+    if (notice) notice(t('host.detail'), t('host.detailSub'));
   },
   saveToShelf(ref) {
     console.info('[paperboat] 진열대에 저장 → 앱에서는 분류 선택 모달 (A11)', ref);
-    if (notice) notice('진열대에 저장', '앱에 붙으면 분류를 고르는 창이 뜹니다');
+    if (notice) notice(t('host.save'), t('host.saveSub'));
   },
   // 엔진이 이미 12개를 다시 띄웠다 — 단독일 때 더 할 일이 없다
   exploreSimilar() {}
@@ -91,7 +93,7 @@ export function hostCabin(open) {
   if (typeof fn === 'function') return fn();
   if (!open) return undefined;   // 단독일 때는 뜬 것이 없으니 닫을 것도 없다
   console.info('[paperboat] 선실 → 앱에서는 진열대 · 컬렉션으로 가는 작은 말풍선 (A13)');
-  if (notice) notice('선실', '앱에 붙으면 배 옆에 진열대 · 컬렉션 말풍선이 뜹니다');
+  if (notice) notice(t('host.cabin'), t('host.cabinSub'));
   return undefined;
 }
 
@@ -103,6 +105,15 @@ export function hostCabin(open) {
 export function hostQuality(info) {
   const fn = handlers && handlers.quality;
   if (typeof fn === 'function') fn(info);
+}
+
+// ───────── 첫 방문 안내 (2026-10-02, v0.88.0) — 앱의 순서표(tourStore)가 듣는다 ─────────
+// 엔진 안에서만 일어나 앱이 못 보는 행동을 알린다. 지금은 'minimap' 하나 — 미니맵 · 해도를 눌러 떠났다.
+//   카드 · 해역 연출은 `<html data-card-pin>` · `data-zone` 으로 앱이 이미 지켜본다 (data-card 와 같은 규약)
+// ⚠ **알림만이다** — 무엇을 끝낼지는 앱이 정한다
+export function hostTour(event) {
+  const fn = handlers && handlers.tour;
+  if (typeof fn === 'function') fn(String(event));
 }
 
 /** 검색창 (main.js onSearch). 호스트가 search 를 주면 검색어를 넘기고 true — 엔진은 해역으로 떠나지 않는다. 없으면 false — 예전 그대로 엔진이 찾는다 (goSearch) */

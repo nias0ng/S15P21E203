@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+import { useLocaleStore } from '@/shared/store/localeStore'
+
 import accordCsv from '../../../landing/data/accord_names_ko.csv?raw'
 
 import { accordLabel, ACCORD_NAMES_KO } from './accordNames'
@@ -27,6 +29,21 @@ describe('accordLabel', () => {
   // 백엔드가 AccordLabeler 를 채워 한국어를 보내기 시작해도 두 번 바꾸지 않아야 합니다
   it('이미 한국어면 건드리지 않는다', () => {
     expect(accordLabel('시트러스')).toBe('시트러스')
+  })
+
+  describe('영어 화면', () => {
+    it('원래 영어 이름을 첫 글자만 대문자로 쓴다', () => {
+      useLocaleStore.getState().setLocale('en')
+      expect(accordLabel('soapy · fresh spicy')).toBe('Soapy · Fresh spicy')
+      expect(accordLabel('MUSK')).toBe('Musky')
+    })
+
+    // 백엔드가 한국어를 보내기 시작해도 영어 화면에는 영어가 나가야 합니다
+    it('한국어 향 특성 · 향 계열 이름은 영어로 되돌리고, 모르는 값은 그대로 둔다', () => {
+      useLocaleStore.getState().setLocale('en')
+      expect(accordLabel('비누 · 머스크')).toBe('Soapy · Musky')
+      expect(accordLabel('가을 어울림 평가 71%')).toBe('가을 어울림 평가 71%')
+    })
   })
 })
 

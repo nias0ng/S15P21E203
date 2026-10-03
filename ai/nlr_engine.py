@@ -84,17 +84,83 @@ CONTEXT_LABELS = {
 # 완화 사다리(MIN_RESULTS)와 같은 정신이다 — 조건을 지키느라 빈손을 주지 않는다.
 CONTEXT_MIN = 3
 
+# ①단계가 **실패했을 때만**(`structured is None`) 원문에서 성별·계절·낮밤을 읽는 규칙.
+# 키가 없거나 401 · 타임아웃 · 스키마 오류면 서버가 원문만 넘기는데, 그때 `가을에` ·
+# `남성용` · `밤에` 가 **조용히 사라졌다** — `가을에 쓸 남성적인 우드향` 의 1위가 여성 향수
+# (Si)였고 `unmatched` 도 비어 신호가 없었다 [레드팀 2026-10-02 1-5 · 팀7 #5].
+#
+# **출처 — 새로 만들지 않았다.** 노트북 14(`14_stage1_extended_rule_evaluation.ipynb`)의
+# `GENDER_RULES` · `parse_gender`(셀 3·5)와 `parse_existing_rules`(셀 4)가 `11_rule_lexicon.csv`
+# 에서 쓰는 SEASON 9행 · DAYPART 4행 그대로다. `EDA/88_embedding_stage1_context.py` 의
+# `RuleParser` 가 같은 것을 옮겨 쟀다. 값은 ①단계 표기(`neuter`)라 `_context_values` 가
+# 그대로 받는다.
+#
+# [측정 기록 42번] Golden 200 성별 F1 0.919 · 계절 F1 1.000(정답 10문장). 합성 600 엔진에서
+# GMS context 대비 확장 NDCG −0.012 [−0.019, −0.005] — **GMS 보다 못하고 없음(−0.044)보다 낫다.**
+#
+# ⚠ 한계 [측정 기록 46번] — 노트북 14 규칙 그대로의 약점 셋은 아래 6b 상수 셋이 **일부만** 막는다
+#   - 부정을 모른다 — `여름 말고 겨울` 은 여름·겨울 둘 다, `남성적인 향은 싫어` 는 male
+#     -> `CONTEXT_NEGATION` (바로 뒤 부정만. `여름엔 안 쓸` 같은 `안` 은 못 막는다)
+#   - 한국어 표면형에 경계가 없다 — `밤꽃` · `꿀밤` · `립밤` 은 밤, `낮은` 은 낮
+#     -> `CONTEXT_RULES_BLOCK` (본 낱말만. `군밤` · `밤나무` 는 아직 밤이다)
+#   - 관계어도 성별로 읽는다 — `남자친구가 좋아할` 은 male (선물 성별 규칙은 팀 결정 미정 · 1-8)
+#     -> `CONTEXT_RULES_GENDER_BLOCK` (`남자친구` · `여자친구` 만. `남친` · `아빠` 는 원래 안 읽는다)
+#   - 오타에 약하다 — `겨룰에` 는 못 읽는다(30% 오타에서 성별 F1 0.925 -> 0.839)
+#   - 실사용 설문에서 GMS 보다 덜 맞는다 — 성별 5개 중 4.36(GMS 5.00) · 계절 4.96 · 낮밤 3.50
+#   - 영어 표면형은 낱말 경계를 본다. 노트북 14 는 사전 전체(노트 2,523행)로 겹침을 가려
+#     `winter tea` · `night blooming jasmine` 같은 노트 이름을 계절·낮밤으로 안 읽었는데,
+#     여기는 13행만 둬서 그 이름들도 계절·낮밤으로 읽는다
+CONTEXT_RULES_GENDER = (                 # (①단계 값, 정규식) — 노트북 14 셀 3 그대로
+    ("neuter", r"중성적인|유니섹스|남녀\s*공용"),
+    ("male", r"남성용|남성|남자용|남자가\s*쓰(?:기|는)\s*좋은|남자"),
+    ("female", r"여성용|여성|여자용|여자가\s*쓰(?:기|는)\s*좋은|여자"),
+)
+CONTEXT_RULES_SURFACE = (                # (표면형, 칸, ①단계 값) — 11_rule_lexicon.csv 13행
+    ("autumn", "season", "autumn"), ("fall", "season", "autumn"),
+    ("spring", "season", "spring"), ("summer", "season", "summer"),
+    ("winter", "season", "winter"),
+    ("가을", "season", "autumn"), ("겨울", "season", "winter"),
+    ("봄", "season", "spring"), ("여름", "season", "summer"),
+    ("day", "daypart", "day"), ("night", "daypart", "night"),
+    ("낮", "daypart", "day"), ("밤", "daypart", "night"),
+)
+
+# [6b · 오탐] 표면형을 품었지만 계절·낮밤이 아닌 낱말. 계절·낮밤보다 **먼저 자리를 차지해**
+# 가린다 — 노트북 14 가 사전 전체(노트 이름)로 겹침을 가린 것과 같은 방식이다.
+# **근거가 있는 것만 넣었다** — `밤꽃`(측정 기록 46번) · `꿀밤` · `립밤`(오탐 156 의 M001 ·
+# M005 · M010) · 형용사 `낮다` 의 활용(`확산력이 낮은`). `군밤` · `밤나무` 처럼 아직 본 적
+# 없는 낱말은 넣지 않았다.
+CONTEXT_RULES_BLOCK = r"밤꽃|꿀밤|립밤|낮(?=[은게고아춘추음다])"
+
+# [6b · 부정] **바로 뒤에** 부정이 붙은 성별·계절·낮밤은 걸지 않는다 —
+# `여름 말고` · `남성용은 싫고` · `남성적인 향은 싫어` · `남성적이지 않은`.
+# 조사·어미 3글자와 `향…` 한 낱말까지만 본다. 더 멀리 보면 `여름에 쓰기 좋은데 달달한 건
+# 싫어` 의 여름까지 지운다. **부정된 값을 반대로 걸지는 않는다**(`남성 말고` -> 남성이 아닌
+# 향수만) — 엔진에 "이 값이 아닌" 조건이 없어서, 걸지 않는 데서 멈춘다.
+CONTEXT_NEGATION = re.compile(
+    r"[가-힣]{0,3}\s?(?:향[가-힣]{0,2}\s?)?(?:말고|말구|빼고|제외|싫|별로|아니|아닌|않)")
+
+# [6b · 관계어] `남자친구` · `여자친구` 의 남자·여자는 **착용자가 아니라 대상**일 수 있어
+# 성별로 읽지 않는다. ⚠ 선물 성별 규칙은 팀 결정 전이다(레드팀 1-8) — GMS 도 문장마다 다르다
+# (`여자친구 선물용` -> female · `남자친구한테서 났으면` -> []).
+CONTEXT_RULES_GENDER_BLOCK = r"(?:남자|여자)\s*친구"
+
 # 기본 데이터 경로. 인자로 덮어쓸 수 있다.
 _DATA_DIR = Path(__file__).resolve().parent / "data"
 DEFAULT_PERFUMES = _DATA_DIR / "perfumes_nlr.csv.gz"
 EXCLUDED_PERFUME_IDS = {9110}
-DEFAULT_LEXICON = _DATA_DIR / "domain_lexicon_v1_18.csv"
+DEFAULT_LEXICON = _DATA_DIR / "domain_lexicon_v1_19.csv"
 DEFAULT_ACCORDS = _DATA_DIR / "accord_dictionary.csv"
 DEFAULT_NOTE_BRIDGE = _DATA_DIR / "note_accord_bridge.csv"
 DEFAULT_NOTE_ALIAS_KO = _DATA_DIR / "note_alias_ko.csv"
-# 오타 검문소가 **건드리면 안 되는 낱말**. EDA 의 `86_protected_words_v1_18.py` 가 만든다.
+# 별칭을 **품고 있지만 그 노트가 아닌 낱말**. `_longest_alias_ko` 와 `_extract`(사전 경로)가 찾기 전에 가린다.
+DEFAULT_NOTE_ALIAS_BLOCK = _DATA_DIR / "note_alias_blocklist.csv"
+# 단종이 확인된 향수. 백엔드 적재(load_perfume_status.sh)도 **같은 파일**을 읽는다.
+DEFAULT_PERFUME_STATUS = _DATA_DIR / "perfume_status.csv"
+# 오타 검문소가 **건드리면 안 되는 낱말**. EDA 의 `86_protected_words_v1_18.py` 를 경로 인자로
+# 바꾼 사본(`protected_words_v1_19.py` · 판정 규칙은 같다)이 만든다.
 # **사전 버전이 바뀌면 다시 만들어야 한다** — 표면형이 바뀌면 이 집합도 바뀐다.
-DEFAULT_PROTECTED_WORDS = _DATA_DIR / "protected_words_v1_18.txt"
+DEFAULT_PROTECTED_WORDS = _DATA_DIR / "protected_words_v1_19.txt"
 
 # 사전 파일 이름에서 버전을 뽑는 규칙. `domain_lexicon_v1_18.csv` -> `v1_18`.
 _LEXICON_VERSION = re.compile(r"_(v\d+(?:_\d+)*)$")
@@ -132,6 +198,23 @@ KOREAN_ACCORD = {
     "파우더리": "powdery", "프레시": "fresh", "프루티": "fruity", "플로럴": "floral",
     "우디한": "woody", "파우더리한": "powdery", "프레시한": "fresh",
     "플로럴한": "floral", "프루티한": "fruity", "스위트한": "sweet",
+    # [레드팀 2026-10-02 1-6] 애호가·입문자가 쓰는 accord 음차와 표기 변형. 전에는
+    # ①단계가 영어로 옳게 바꿔 `scent_preference` 에 넣어도 `_grounded` 가 "원문에 없다"
+    # 며 버려 `프레쉬한 향` · `아쿠아틱 향` 이 0건이었다. 대상 accord 는 전부 `aidx` 에 있다.
+    # **부분 문자열로 찾고 별칭 차단 목록을 거치지 않는다** — 다른 낱말에 박히면 그대로 걸린다
+    # (`그림을 그린 듯한` -> green · `스모키 메이크업` -> smoky · `마린룩` -> marine).
+    #
+    # **`레더` 는 넣지 않는다.** 노트 별칭 `레더`(note_alias_ko.csv)가 이미 leather 를
+    # 조건으로 만들고, 여기 넣으면 차단 목록이 막아 둔 `인크레더블` 이 이 경로로 다시 leather 가 된다.
+    # **`스파이시` 도 넣지 않는다.** warm spicy · fresh spicy 중 무엇인지 갈리고, 설문에서
+    # 이 낱말이 나온 2문장이 둘 다 `스파이시한 건 싫어` 라 어느 쪽이든 싫다는 향을 조건으로 만든다.
+    "프레쉬": "fresh", "프레쉬한": "fresh", "플로랄": "floral", "플로랄한": "floral",
+    "씨트러스": "citrus", "씨트러스한": "citrus",
+    "스모키": "smoky", "스모키한": "smoky", "그린": "green", "그린한": "green",
+    "아쿠아틱": "aquatic", "마린": "marine", "솔티": "salty", "솔티한": "salty",
+    "얼씨": "earthy", "얼씨한": "earthy", "오존": "ozonic", "오조닉": "ozonic",
+    "애니멀릭": "animalic", "구르망": "gourmand",
+    "화이트 플로럴": "white floral", "화이트플로럴": "white floral",
 }
 
 
@@ -141,11 +224,11 @@ KOREAN_ACCORD = {
 def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True,
                bridge_csv=None, bridge_p_min=BRIDGE_P_MIN,
                bridge_lift_min=BRIDGE_LIFT_MIN, protected_words=None,
-               note_alias_ko=None):
+               note_alias_ko=None, note_alias_block=None, perfume_status=None):
     """향수 데이터와 사전을 읽어 조회용 인덱스를 만든다.
 
     perfumes_csv : str | Path | None   기본 data/perfumes_nlr.csv.gz
-    lexicon_csv  : str | Path | None   기본 data/domain_lexicon_v1_18.csv
+    lexicon_csv  : str | Path | None   기본 data/domain_lexicon_v1_19.csv
     accord_csv   : str | Path | None   기본 data/accord_dictionary.csv (accord 92개 마스터)
     verify       : bool                accord 보유 수를 마스터와 대조해 틀리면 RuntimeError
     bridge_csv   : str | Path | None   기본 data/note_accord_bridge.csv (노트→accord)
@@ -154,9 +237,13 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
     note_alias_ko: str | Path | None   기본 data/note_alias_ko.csv (한국어 별칭→노트)
                                        **없어도 엔진은 돈다.** 한국어 노트 이름이 브리지로
                                        풀리지 않고 ⑤단계로 갈 뿐이다 (측정 기록 34번)
+    note_alias_block: str | Path | None 기본 data/note_alias_blocklist.csv (별칭을 품은
+                                       다른 낱말). **없어도 엔진은 돈다.** 가리지 않을 뿐이다
+    perfume_status : str | Path | None 기본 data/perfume_status.csv (단종 목록). 확정만 후보에서
+                                       뺀다. **없어도 엔진은 돈다.** 아무것도 안 뺄 뿐이다
     bridge_p_min : float               기본 BRIDGE_P_MIN
     bridge_lift_min : float            기본 BRIDGE_LIFT_MIN
-    protected_words : str | Path | None 기본 data/protected_words_v1_18.txt (오타 검문소).
+    protected_words : str | Path | None 기본 data/protected_words_v1_19.txt (오타 검문소).
                                        **없으면 검문소를 끈다.** 경고를 남긴다
 
     무겁다. 13만 x 92 행렬을 만드므로 **기동 시 한 번만 부르고 재사용한다.**
@@ -200,6 +287,11 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
     # 원본 검증은 배포 파일 전체로 수행하되, 알려진 크롤링 중복은 추천 후보에서 제외한다.
     # 9110은 정식 Eclat d’Arpège(988)의 중복 행이므로 API에서 반환되면 안 된다.
     perf = perf[~perf["id"].isin(EXCLUDED_PERFUME_IDS)].reset_index(drop=True)
+    # 단종이 확인된 향수도 뺀다 — 살 수 없는 향수를 권하면 추천 전체를 못 믿게 된다 (지인 피드백 F5).
+    # 검증(위)이 끝난 뒤에 빼야 accord 보유 수 대조가 마스터와 맞는다.
+    discontinued = _load_discontinued(
+        Path(perfume_status) if perfume_status else DEFAULT_PERFUME_STATUS)
+    perf = perf[~perf["id"].isin(discontinued)].reset_index(drop=True)
     pairs = perf["accords"].map(_parse_accords)
 
     strength = np.zeros((len(perf), len(accords)), dtype=np.float32)
@@ -240,6 +332,8 @@ def load_index(perfumes_csv=None, lexicon_csv=None, accord_csv=None, verify=True
         "note_bridge": note_bridge,
         "note_alias_ko": tuple(sorted(alias_ko, key=len, reverse=True)),
         "note_alias_target": alias_target,
+        "note_alias_block": _load_alias_block(
+            Path(note_alias_block) if note_alias_block else DEFAULT_NOTE_ALIAS_BLOCK),
         "context": context,
         "notes": notes,
         "strength": strength,
@@ -449,6 +543,65 @@ def _add_note_alias_ko(bridge, path):
     return added, target
 
 
+def _load_discontinued(path):
+    """단종이 **확정**된 향수 번호. frozenset[int].
+
+    path : Path   fragrantica_id · confidence 칸을 가진 CSV (data/perfume_status.csv)
+
+    **확정(CONFIRMED)만 뺀다.** 추정(LIKELY)은 브랜드 공식 판매 목록에서만 빠진 것이라 아직 파는
+    향수일 수 있다 — 잘못 빼는 쪽이 더 나쁘다. 판정 기준은 README 의 '단종 목록' 에 있다.
+
+    **백엔드도 같은 파일로 DB 에 표시한다**(load_perfume_status.sh). 백엔드는 AI 가 준 결과에서
+    단종을 한 번 더 거르므로, 두 쪽 배포가 어긋나도 단종 향수가 화면에 나가지는 않는다.
+
+    **파일이 없으면 경고만 남긴다.** 별칭 표와 같은 방침이다.
+    """
+    if not Path(path).exists():
+        LOGGER.warning("단종 목록이 없다: %s. 단종 향수를 추천 후보에서 빼지 않는다", path)
+        return frozenset()
+    table = pd.read_csv(path)
+    missing = [c for c in ("fragrantica_id", "confidence") if c not in table.columns]
+    if missing:
+        raise RuntimeError(f"단종 목록에 필요한 칸이 없다: {missing} ({path})")
+    confirmed = table[table["confidence"].astype(str).str.strip() == "CONFIRMED"]
+    ids = frozenset(int(i) for i in confirmed["fragrantica_id"])
+    LOGGER.info("단종 확정 %d개를 추천 후보에서 뺀다 (추정 %d개는 둔다) %s",
+                len(ids), len(table) - len(confirmed), Path(path).name)
+    return ids
+
+
+def _load_alias_block(path):
+    """별칭을 품고 있지만 그 노트가 아닌 낱말. tuple[str, ...] (긴 것부터).
+
+    path : Path   word · reason 두 칸을 가진 CSV
+
+    `_longest_alias_ko` 는 부분 문자열로 찾아서 향수·브랜드 이름에 박힌 별칭을 노트로
+    읽는다. 사용자가 향수 이름을 넣으면 그 이름이 엉뚱한 향 조건이 된다.
+
+        "미르토 디 파나레아와 비슷한 향수"  ->  미르(myrrh)  ->  1위 Lubin Galaor (앰버)
+        "다이아몬드"                     ->  아몬드(almond)
+
+    **경계 규칙(별칭 뒤에 올 글자 제한)을 쓰지 않은 이유.** 한국어는 별칭 뒤에 무엇이든
+    붙어서(`딸기우유` · `레몬청` · `민트초코`) 허용 글자를 정하면 진짜 노트를 잃는데, 그
+    손실을 잴 설문 문장이 이 저장소에 없다. 낱말을 하나씩 적으면 적은 것만 바뀐다.
+
+    **실제 노트인 긴 낱말은 여기 넣지 않는다.** `허니서클`(honeysuckle) · `레몬그라스`
+    (lemongrass) 는 `note_alias_ko.csv` 에 별칭으로 더해 최장 일치가 이기게 한다.
+
+    **파일이 없으면 경고만 남긴다.** 별칭 표와 같은 방침이다.
+    """
+    if not Path(path).exists():
+        LOGGER.warning("별칭 차단 목록이 없다: %s. 향수 이름 안의 별칭을 가리지 않는다", path)
+        return ()
+    table = pd.read_csv(path)
+    if "word" not in table.columns:
+        raise RuntimeError(f"별칭 차단 목록에 word 칸이 없다 ({path})")
+    words = {re.sub(r"\s+", " ", str(w).strip().lower()) for w in table["word"]}
+    words.discard("")
+    words.discard("nan")
+    return tuple(sorted(words, key=len, reverse=True))
+
+
 def _load_note_bridge(path, aidx, p_min, lift_min):
     """노트 이름 -> accord 표를 읽어 조회용 dict 로 만든다. dict[str, list[str]].
 
@@ -542,6 +695,10 @@ def understand(index, text, structured=None):
     있어야 작동한다.**
     """
     text = unicodedata.normalize("NFC", str(text))
+    # **부정이 붙은 표면형은 지우고 본다** [레드팀 1-3 · 50번 2b]. 아래의 원문 경로가
+    # 전부 이 `text` 를 쓰므로 한 번만 지운다. ①단계가 실패해 `structured=None` 이면
+    # 원문만 보는데, 그때 `담배 냄새 안 나는 향수` 가 tobacco 향수 5개가 됐다.
+    text = _drop_negated(index, text)
     parts = [text]
     if structured:
         missing = [key for key in STRUCTURED_KEYS if key not in structured]
@@ -549,10 +706,23 @@ def understand(index, text, structured=None):
             LOGGER.warning(
                 "structured 에 엔진이 읽는 칸이 없다: %s. ①단계 구조화 결과를 넘겨야 한다 "
                 "— 응답의 conditions(②단계 결과)를 되돌려 넣으면 조건이 0개가 된다", missing)
-        parts += [str(v) for v in (structured.get("additional_requirements") or [])]
+        # 칸마다 따로 지운다 — 이어 붙인 뒤에 지우면 앞 칸의 표면형이 뒤 칸의 부정을 본다
+        parts += [_drop_negated(index, str(v))
+                  for v in (structured.get("additional_requirements") or [])]
     haystack = " ".join(parts)
 
     core, evidence = _extract(index, haystack)
+    # **①단계 조각에서만 잡힌 표면형은 버린다** [레드팀 2026-10-02 1-10].
+    # `아무거나 추천해줘` 에 ①단계가 `additional_requirements=["바닐라 향", "달콤한 향"]`
+    # 을 지어내면 사전이 그것을 잡아 core 가 생기고, 화면은 "요청하신 바닐라" 라고 적는다.
+    # `scent_preference` 는 `_grounded()` 가 막는데 이 칸은 검사가 없었다.
+    #
+    # 버린 근거(`dropped`)도 `_unmatched()` 에는 넘긴다. 안 넘기면 버린 조각이 미매칭으로
+    # 남아 ⑤단계가 그 조각을 다시 해석한다 — 지어낸 향이 그 길로 되살아난다.
+    dropped = []
+    if structured:
+        evidence, dropped = _evidence_in_text(index, text, evidence)
+        core = {e["accord"] for e in evidence}
 
     # **원문만으로 만들 수 있는 조건**과 **회피가 가리키는 것.** 둘 다 ①단계 출력을
     # 안 보거나(앞) 회피 칸만 보므로(뒤) 아래 판정이 회차마다 흔들리지 않는다.
@@ -609,9 +779,11 @@ def understand(index, text, structured=None):
         # 늘리려는 쪽이 **이미 풀린 것을 빈칸으로 본다.** 고치려면 `unmatch_reason`
         # 에 네 번째 값이 필요해 응답 계약이 바뀌므로 **범위에 넣지 않았다.**
         for raw in (structured.get("additional_requirements") or []):
-            for alias in _longest_alias_ko(index, raw):
+            for alias in _longest_alias_ko(index, _drop_negated(index, str(raw))):
                 if alias_target.get(alias, alias) in avoid_notes:
                     continue
+                if not _form_in_text(index, text, alias):
+                    continue          # 원문에 없는 별칭을 ①단계가 지어낸 것이다 [1-10]
                 core.update(_bridge_lookup(index, alias))
 
     avoid = set()
@@ -623,7 +795,44 @@ def understand(index, text, structured=None):
     # **`avoid` 는 그대로 둔다.** 그 값만 `search()` 의 하드 제외로 나간다.
     # `blocked` 는 조건에서 빼기만 하고 후보를 지우지 않는다 — 브리지가 한 방향으로만
     # 맞아서 하드 제외로 넘기면 `rose` 하나에 `floral` 전체가 지워진다 [측정 기록 40번].
-    blocked = avoid | avoid_accords
+    #
+    # **회피가 직접 가리킨 accord 이름만 그대로 막고, 나머지는 사용자가 직접 원한 것을 못
+    # 지운다** [nlr50 2a-2 · 2a-3].
+    #
+    #     "바닐라 좋은데 통카빈은 빼줘"     전: tonka 의 브리지(sweet·vanilla·amber)가 원한
+    #                                  vanilla 까지 지워 core 가 비고 인기순으로 갔다
+    #     "머스크는 절대 싫어요, 깨끗한 비누 향"  전: 사전 `kr.drift.musk` 가 머스크를
+    #                                  musky + soapy 로 묶어, `비누` 로 원한 soapy 까지 막았다
+    #     "머스크는 싫어 …"  avoid=['musk']  전: 원문의 `머스크` 가 soapy 를 조건으로 남겼다
+    #
+    # 브리지는 "그 노트가 있으면 이 accord 가 흔하다" 일 뿐 "그 노트가 싫으면 이 accord 도
+    # 싫다" 가 아니다 — 40번이 하드 제외를 기각한 것과 같은 이유다. 사전 항목도 한 항목이
+    # 여러 accord 를 묶는다.
+    #
+    #   직접 막음   `_normalize_accord` 가 푼 회피(`sweet` · `musk`->musky). 지금과 같다
+    #   조건부 막음  회피 노트의 브리지 · 회피 문구 안의 사전 표면형 · **회피가 가리키는 말이
+    #              원문에서 만든 사전 조건**(`musk` 회피의 원문 `머스크`)
+    #              -> 아래 "원한 것" 에 없을 때만 막는다
+    #   원한 것     회피가 가리키는 말을 **가린** 문장에서도 남는 사전 조건 +
+    #              그 가린 원문에 근거가 있는 `scent_preference` 의 accord 이름
+    #
+    # 가리지 않으면 `장미는 싫어` 의 `장미` 가 만든 조건을 "원한 것" 으로 셀 수 있다.
+    #
+    # [측정 nlr50] 합성 600 확장 NDCG +0.000432 [+0.000000, +0.001240] · 바뀐 문장 합성 2 ·
+    # 설문 9 · 오탐 156 그대로. 설문에서 나빠진 1문장은 `막 달달한 느낌도 아니고` 의 `달달` 이
+    # "원한 것" 으로 세어져 sweet 이 되살아난 것이다 — 부정이 사전 조건으로 새는 문제가 먼저다.
+    raws =[str(r) for r in ((structured or {}).get("avoid") or [])]
+    masked_text = _mask_avoided(index, text, raws, avoid_notes)
+    lex_full, _ = _extract(index, haystack)
+    wanted, _ = _extract(index, " ".join(_mask_avoided(index, p, raws, avoid_notes)
+                                         for p in parts))
+    m_acc, m_note = _text_support(index, masked_text)
+    spoke_avoided = lex_full - wanted       # 회피가 가리키는 말만이 만든 사전 조건
+    for raw in ((structured or {}).get("scent_preference") or []):
+        accord = _normalize_accord(index, raw)
+        if accord and _grounded(index, masked_text, raw, m_acc, m_note):
+            wanted.add(accord)
+    blocked = avoid | (((avoid_accords | spoke_avoided) - avoid) - wanted)
     final = core - blocked
 
     return {
@@ -632,8 +841,78 @@ def understand(index, text, structured=None):
         "matched_expressions": sorted({e["from"] for e in evidence}),
         "evidence": evidence,
         "source": _source(index, text, structured, final),
-        "unmatched": _unmatched(index, structured, haystack, evidence),
+        "unmatched": _unmatched(index, structured, haystack, evidence + dropped),
     }
+
+
+# 부정 표현 [레드팀 1-3 · 50번 2b]. 향 표면형 **뒤에서** 이것이 시작하면 그 표면형은 조건이 아니다.
+_NEGATION = re.compile(r"하지 않|않은|안 나는|말고|빼고|없는|싫")
+# 부정이 시작해도 되는 범위 — 표면형이 든 어절의 나머지 + 그 뒤 몇 어절.
+# [측정 50번 2b] 1 이면 `담배 냄새 안 나는` · `달달한 건 싫어` 를 못 잡는다(둘 다 두 번째 어절).
+# 3 이면 합성 600 에서 1문장이 바뀌고(NDCG -0.000157) `머스크 향 호불호 없는 거` 의 머스크까지 지운다.
+NEGATION_SCOPE = 2
+# 범위가 여기서 끊긴다. 문장부호는 절이 끝난 것이고, `-고 · -는데 · -지만` 으로 끝난 어절은
+# 다음 절로 넘어간 것이다 — `장미 좋은데 싫은 건 머스크` 의 `싫은` 은 장미의 것이 아니다.
+# [측정 50번 2b] 합성 600 · 설문 143 · 오탐 156 에서는 이 끊기가 있으나 없으나 결과가 같다.
+_CLAUSE_PUNCT = re.compile(r"[,.!?~;\n]")
+_CLAUSE_LINK = re.compile(r"(고|는데|은데|지만|면서|며)$")
+
+
+def _drop_negated(index, text):
+    """부정이 붙은 향 표면형을 공백으로 가린 문장. str.
+
+    index : dict   load_index() 결과. 사전 표면형 · 한글 accord 표기 · 노트 별칭을 본다
+    text  : str    원문 또는 ①단계가 쓴 문장 하나
+
+        "담배 냄새 안 나는 향수"    ->  "   냄새 안 나는 향수"   (담배 -> tobacco 를 막는다)
+        "너무 달달하지 않은 향"     ->  "너무   하지 않은 향"
+        "담배 향 나는 남자 향수"    ->  그대로
+
+    사전과 별칭은 부분 문자열로 찾으므로 `싫다` 고 한 것도 **원한다** 로 읽는다 [레드팀 1-3].
+    ①단계가 정상이면 그 말은 `avoid` 로 가지만, ①단계가 실패하거나 부정을
+    `additional_requirements` 에 넣으면 원문 경로가 그대로 조건을 만든다.
+
+    **가리기만 하고 회피로 넘기지 않는다.** `안 나는` 이 정말 회피인지는 이 규칙이 모른다 —
+    `avoid` 칸만 하드 제외가 된다. 그 칸(`_avoid_targets`)에는 이 함수를 쓰지 않는다 —
+    `담배 냄새 안 나는 것` 이 회피 칸에 오면 담배를 찾아야 뺄 수 있다.
+
+    **표면형 앞의 부정(`안 달달한` · `덜 달게`)은 보지 않는다.**
+    """
+    forms = (set(index.get("lexicon_surface") or ()) | set(KOREAN_ACCORD)
+             | set(index.get("note_alias_ko") or ()))
+    lowered = text.lower()
+    hay = lowered if len(lowered) == len(text) else text
+    spans = []
+    for form in forms:
+        form = form.lower()
+        if not form:
+            continue
+        start = hay.find(form)
+        while start != -1:
+            end = start + len(form)
+            if _negated_after(text[end:]):
+                spans.append((start, end))
+            start = hay.find(form, start + 1)
+    if not spans:
+        return text
+    chars = list(text)
+    for start, end in spans:
+        chars[start:end] = " " * (end - start)
+    return "".join(chars)
+
+
+def _negated_after(rest):
+    """표면형 바로 뒤 글(`rest`)이 부정으로 이어지나. bool."""
+    rest = _CLAUSE_PUNCT.split(rest, 1)[0]
+    words = list(re.finditer(r"\S+", rest))
+    budget = NEGATION_SCOPE + (1 if rest[:1] and not rest[:1].isspace() else 0)
+    limit = 0
+    for word in words[:budget]:
+        limit = word.end()
+        if _CLAUSE_LINK.search(word.group()):
+            break
+    found = _NEGATION.search(rest)
+    return bool(found) and found.start() < limit
 
 
 def _extract(index, haystack):
@@ -641,7 +920,14 @@ def _extract(index, haystack):
 
     사전 표현과 한글 accord 표기 둘 다 본다. `understand()` 가 두 번 부른다 —
     한 번은 원문+구조화, 한 번은 원문만. 둘을 비교해 `source` 를 정한다.
+
+    **찾기 전에 `note_alias_block` 의 낱말을 가린다** [레드팀 1-2 · 1-9 · 50번 2c-1].
+    별칭 경로(`_longest_alias_ko`)만 가리던 것을 사전 경로에도 쓴다. 인명은 두 경로에
+    다 걸린다 — `일론 머스크` 는 사전의 `머스크`(musky · soapy)와 별칭의 `머스크`(musk)
+    둘 다로 읽혔다. **같은 파일을 쓰므로 한쪽에만 적어 어긋나는 일이 없다.**
     """
+    for word in index.get("note_alias_block") or ():
+        haystack = haystack.replace(word, " " * len(word))
     core, evidence = _lexicon_lookup(index, haystack)
     for korean, accord in KOREAN_ACCORD.items():
         if korean in haystack and accord in index["aidx"]:
@@ -868,9 +1154,15 @@ def _longest_alias_ko(index, raw):
     ⚠ **회피를 `search()` 의 하드 제외로 넘기지는 않는다.** 브리지가 한 방향으로만
     맞아서 `rose` 하나를 싫다고 하면 `floral` 전체가 지워진다 — 실측에서 카탈로그의
     중앙 35% · 최대 **83.9%** 가 날아갔다. 조건에서 빼기만 한다.
+
+    **찾기 전에 `note_alias_block` 의 낱말을 가린다.** `미르토` 안의 `미르` 가 myrrh 로
+    읽혀 아쿠아틱 향수를 찾던 사람에게 앰버 향수를 권했다 (`_load_alias_block` 참고).
+    공백으로 바꿔 가리므로 그 낱말 앞뒤의 별칭은 그대로 찾는다.
     """
     aliases = index.get("note_alias_ko") or ()
     text = re.sub(r"\s+", " ", str(raw).strip().lower())
+    for word in index.get("note_alias_block") or ():
+        text = text.replace(word, " " * len(word))
     hit = [a for a in aliases if a in text]
     return [a for a in hit if not any(a != b and a in b for b in hit)]
 
@@ -966,6 +1258,45 @@ def _avoid_targets(index, structured):
     return accords, notes
 
 
+def _mask_avoided(index, raw, avoids, avoid_notes):
+    """문장에서 **회피가 가리키는 말**을 공백으로 가린다. str.
+
+    index       : dict           load_index() 결과
+    raw         : str            가릴 문장 (원문 또는 ①단계 조각)
+    avoids      : list[str]      ①단계 `avoid` 칸
+    avoid_notes : set[str]       `_avoid_targets()` 가 푼 회피 노트(영어 이름)
+
+        "바닐라 좋은데 통카빈은 빼줘"  avoid=['Tonka Bean']  ->  "바닐라 좋은데    은 빼줘"
+        "머스크는 싫어, 비누 향"       avoid=['musk']        ->  "   는 싫어, 비누 향"
+
+    가리는 것은 셋이다 — 회피 문구 자체 · 그 문구 안에서 사전이 잡은 표면형 · 회피 노트를
+    가리키는 한국어 별칭(`musk` 회피면 `머스크`). ①단계가 회피를 영어로 내고 원문은
+    한국어인 경우가 있어서 별칭까지 본다(레드팀 2026-10-02 — GMS 기록의 avoid 영어 48 ·
+    한국어 17).
+
+    ⚠ **번역된 회피는 못 가린다.** `달달한 귤 향 말고` 를 ①단계가 `sweet orange` 로 내면
+    원문의 `달달한` 은 남는다. 부정 표현이 사전 조건으로 새는 문제(레드팀 1-3)와 같은 뿌리다.
+
+    공백으로 바꿔 가리므로 앞뒤 낱말은 그대로 찾는다(`_longest_alias_ko` 의 차단 목록과
+    같은 방식).
+    """
+    text = unicodedata.normalize("NFC", str(raw))
+    targets = index.get("note_alias_target") or {}
+    words = set()
+    for avoid in avoids:
+        value = unicodedata.normalize("NFC", str(avoid)).strip()
+        if value:
+            words.add(value)
+        _, evidence = _extract(index, value)
+        for item in evidence:
+            words.update(item.get("matched_forms") or [item["from"]])
+        words.update(_longest_alias_ko(index, value))
+    words.update(a for a, t in targets.items() if t in avoid_notes)
+    for word in sorted(words, key=len, reverse=True):
+        text = re.sub(re.escape(word), " " * len(word), text, flags=re.IGNORECASE)
+    return text
+
+
 def _grounded(index, text, raw, acc_support, note_support):
     """①단계가 낸 향 조각에 **원문 근거가 있나.** bool.
 
@@ -998,6 +1329,45 @@ def _grounded(index, text, raw, acc_support, note_support):
         if _note_key(index, target) in {_note_key(index, n) for n in note_support}:
             return True
     return False
+
+
+def _form_in_text(index, text, form):
+    """①단계 조각에서 잡힌 표면형·별칭이 **원문에도 있나.** bool [레드팀 1-10].
+
+    NFC · 공백 무시 · 소문자로 견준다. `화이트머스크` 와 `화이트 머스크` 는 같다.
+    """
+    def key(value):
+        return re.sub(r"\s+", "", unicodedata.normalize("NFC", str(value))).lower()
+    value = key(form)
+    if not value:
+        return False
+    whole = key(text)
+    if value in whole:
+        return True
+    # **끝 글자만 다르면 근거로 본다.** ①단계가 `달콤했으면` 을 `달콤한` 으로, `잔향은` 을
+    # `잔향이` 로 활용형을 바꿔 쓴다. 3글자 이상 한글 표면형만 — 남는 앞부분이 2글자 이상이다.
+    return (len(value) >= 3 and re.fullmatch(r"[가-힣]+", value) is not None
+            and value[:-1] in whole)
+
+
+def _evidence_in_text(index, text, evidence):
+    """사전 근거를 원문에 있는 것과 없는 것으로 가른다. (list, list).
+
+    한 항목에 표면형이 여럿 걸렸으면(`matched_forms`) **하나라도 원문에 있으면 남긴다.**
+    `from` 이 ①단계 조각에만 있는 표면형이면 원문에 있는 것 중 가장 긴 것으로 바꾼다 —
+    화면이 사용자가 쓴 말을 보여 주게.
+    """
+    kept, dropped = [], []
+    for item in evidence:
+        forms = [f for f in (item.get("matched_forms") or [item["from"]])
+                 if _form_in_text(index, text, f)]
+        if not forms:
+            dropped.append(item)
+            continue
+        if item["from"] not in forms:
+            item = dict(item, **{"from": max(forms, key=len)})
+        kept.append(item)
+    return kept, dropped
 
 
 # ---------------------------------------------------------------------------
@@ -1034,6 +1404,48 @@ def note_rows(index, structured, raw_text=None):
     return hit if hit.any() else None
 
 
+def _avoid_note_rows(index, structured):
+    """회피한 노트를 가진 향수. np.ndarray[bool] | None.
+
+    index      : dict         load_index() 결과
+    structured : dict | None  ①단계 구조화 결과. `avoid` 칸만 본다
+
+        avoid=['Tonka Bean']  ->  tonka bean 을 가진 향수 True
+        avoid=['통카빈']       ->  같다 (`_avoid_targets` 가 한국어 별칭도 푼다)
+
+    **노트를 하드 제외한다. 노트의 브리지 accord 는 하드 제외하지 않는다.** 40번이 기각한
+    것은 `rose` 회피를 `floral` accord 전체 삭제로 넘기는 것이다(카탈로그 최대 83.9%).
+    여기서는 `rose` 노트를 가진 향수만 뺀다 — 싫다고 한 것 자체다.
+
+    **노트 이름은 낱말 경계로 견준다. 부분 문자열로 견주지 않는다.** `note_rows()` 처럼
+    `t in note` 로 견주면 `rose` 회피가 tuberose · rosemary · rosewood 까지 지운다
+    [레드팀 2026-10-02 1-2]. 경계로 보면 `bulgarian rose` · `white musk` 는 같은 노트로 뺀다.
+    ⚠ 경계로도 다른 원료가 걸린다 — `baie rose`(핑크페퍼) · `rock rose`(시스투스) ·
+    `musk mallow`(앰브레트) · `lemon verbena`. 반대로 `tonka` 는 `tonka bean` 회피에 안 걸린다.
+
+    [측정 nlr50 · 설문 143 중 회피 노트가 있는 12문장] 카탈로그 대비 제외 — 노트만 중앙 30.8% ·
+    최대 59.0%, accord 하드 제외 위에 **노트 때문에 더 빠지는 몫** 중앙 7.3% · 최대 48.9%
+    (`우드, 머스크는 제외하고` — 사용자가 둘 다 직접 뺐다). 합성 600 은 결과가 한 문장도 안
+    바뀌었다. 정확히 같은 이름만 빼면 `white musk` 가 남고, 부분 문자열이면 tuberose 가 빠진다.
+
+    회피한 노트가 없거나 `notes` 칸이 없으면 `None` 이다 — 부른 쪽이 후보를 안 바꾼다.
+    """
+    where = index.get("notes")
+    if not where:
+        return None
+    _, targets = _avoid_targets(index, structured)
+    if not targets:
+        return None
+    # 복수형(`citruses` · `peaches`)도 같은 노트다. 앞뒤가 영문자면 다른 낱말이다.
+    patterns = [re.compile(r"(?<![a-z])" + re.escape(_note_key(index, t))
+                           + r"(?:e?s)?(?![a-z])") for t in targets]
+    hit = np.zeros(index["n_perfumes"], dtype=bool)
+    for note, rows in where.items():          # 어휘 2,519종만 훑는다
+        if any(p.search(note) for p in patterns):
+            hit[rows] = True
+    return hit if hit.any() else None
+
+
 def note_spoken(index, structured, raw_text=None):
     """사용자가 말한 노트. dict[사용자가 쓴 말, 카탈로그 이름].
 
@@ -1053,6 +1465,10 @@ def note_spoken(index, structured, raw_text=None):
     alias_target = index.get("note_alias_target") or {}
     _, avoid_notes = _avoid_targets(index, structured)
     spoken = {}
+    # 부정이 붙은 별칭은 지우고 본다 — `understand()` 와 같은 규칙이다 [50번 2b].
+    # 안 지우면 core 는 비어도 `담배 냄새 안 나는` 의 담배가 노트 조건으로 남는다.
+    if raw_text is not None:
+        raw_text = _drop_negated(index, str(raw_text))
 
     # **원문에서도 찾는다** [S15P21E203-391]. ①단계가 원문을 요약하며 한국어를 지워도
     # 노트 조건이 남는다. `understand()` 의 별칭 경로와 같은 가드를 쓴다.
@@ -1072,7 +1488,7 @@ def note_spoken(index, structured, raw_text=None):
     acc_support, note_support = _text_support(index, raw_text or "")
     for field in ("additional_requirements", "scent_preference"):
         for raw in (structured.get(field) or []):
-            text = re.sub(r"\s+", " ", str(raw).strip().lower())
+            text = re.sub(r"\s+", " ", _drop_negated(index, str(raw)).strip().lower())
             for alias in _longest_alias_ko(index, text):
                 target = alias_target.get(alias, alias)
                 if target in avoid_notes:
@@ -1095,12 +1511,13 @@ def note_spoken(index, structured, raw_text=None):
     return spoken
 
 
-def context_mask(index, structured, base):
+def context_mask(index, structured, base, raw_text=None):
     """①단계의 `context` 조건으로 후보를 좁힌다. (np.ndarray[bool], list[str]).
 
     index      : dict            load_index() 결과
     structured : dict | None     ①단계 구조화 결과
     base       : np.ndarray[bool] 좁히기 전 후보
+    raw_text   : str | None      사용자 원문. **`structured is None` 일 때만** 읽는다
 
         "여름에 쓸 남성용 향수" -> season=summer · gender=male 로 두 번 좁힌다
 
@@ -1115,11 +1532,19 @@ def context_mask(index, structured, base):
     **①단계 출력이 스키마를 어겨도 죽지 않는다.** 실측상 98% 만 지킨다 [측정 기록 14번].
     어긴 것은 **경고를 남긴다** — 조용히 무시하면 "왜 여름 조건이 안 걸리지" 를 로그로도
     못 찾는다.
+
+    **①단계가 실패했으면(`structured is None`) 원문에서 규칙으로 읽는다** — `_text_context`.
+    걸린 조건은 `matched_data` 에 ①단계 때와 **같은 모양**으로 나간다(`from=None` ·
+    `tier=DATA`). 어느 쪽이 걸었는지는 `conditions.source == "lexicon_only"` 로 가른다 —
+    그 값은 구조화 결과가 없었을 때만 나온다. 빈 dict(`{}`)는 None 이 아니라 읽지 않는다.
     """
     applied = []
-    if not structured:
+    if structured is None and raw_text:
+        ctx = _text_context(raw_text)
+    elif not structured:
         return base, applied
-    ctx = structured.get("context")
+    else:
+        ctx = structured.get("context")
     if ctx is None:
         return base, applied
     if not isinstance(ctx, dict):
@@ -1178,6 +1603,43 @@ def _context_values(raw, mapping, field):
     return good, bad
 
 
+def _text_context(text):
+    """원문에서 성별·계절·낮밤을 규칙으로 읽는다. dict[str, list[str]] — ①단계 `context` 모양.
+
+        "가을에 쓸 남성적인 우드향" -> {"gender": ["male"], "season": ["autumn"], "daypart": []}
+
+    규칙과 한계는 `CONTEXT_RULES_GENDER` 주석에, 가리는 낱말과 부정은 `CONTEXT_RULES_BLOCK` ·
+    `CONTEXT_NEGATION` · `CONTEXT_RULES_GENDER_BLOCK` 에 있다. 정규화는 노트북 14 셀 4 그대로
+    (NFKC · casefold · 공백 하나로). 계절·낮밤은 **긴 표면형부터 겹치지 않게** 찾고,
+    영어 표면형은 앞뒤가 영숫자가 아닐 때만 받는다(`wintergreen` 은 winter 가 아니다).
+    값은 문장에 나온 순서다.
+    """
+    norm = re.sub(r"\s+", " ", unicodedata.normalize("NFKC", str(text)).casefold()).strip()
+    found = []
+    related = [m.span() for m in re.finditer(CONTEXT_RULES_GENDER_BLOCK, norm)]
+    for value, pattern in CONTEXT_RULES_GENDER:
+        found += [(m.start(), "gender", value) for m in re.finditer(pattern, norm)
+                  if not any(s <= m.start() < e for s, e in related)
+                  and not CONTEXT_NEGATION.match(norm, m.end())]
+    occupied = [m.span() for m in re.finditer(CONTEXT_RULES_BLOCK, norm)]
+    for surface, field, value in sorted(CONTEXT_RULES_SURFACE, key=lambda r: (-len(r[0]), r[0])):
+        escaped = re.escape(surface)
+        pattern = (rf"(?<![a-z0-9]){escaped}(?![a-z0-9])" if re.search(r"[a-z0-9]", surface)
+                   else escaped)
+        for m in re.finditer(pattern, norm):
+            if any(m.start() < end and start < m.end() for start, end in occupied):
+                continue
+            occupied.append(m.span())
+            if CONTEXT_NEGATION.match(norm, m.end()):
+                continue
+            found.append((m.start(), field, value))
+    out = {field: [] for field in CONTEXT_FIELDS}
+    for _, field, value in sorted(found):
+        if value not in out[field]:
+            out[field].append(value)
+    return out
+
+
 def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
            brand_cap=BRAND_CAP, min_results=MIN_RESULTS, structured=None, raw_text=None):
     """조건으로 향수를 찾아 정렬한다.
@@ -1209,10 +1671,15 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
         col = index["aidx"].get(accord)
         if col is not None:
             base &= ~index["has"][:, col]
+    # 회피한 **노트**를 가진 향수도 뺀다 [nlr50 2a-1]. accord 이름 회피만 빼던 때는
+    # `통카빈은 빼줘` 의 결과 5개 중 4개에 tonka bean 이 있었다.
+    avoid_notes = _avoid_note_rows(index, structured)
+    if avoid_notes is not None:
+        base &= ~avoid_notes
 
     # ①단계가 말한 성별·계절·낮밤으로 후보를 좁힌다. **정렬은 안 건드린다**
     # (DECISIONS.md N9 — 순서는 향 조건이 정하고 인기도가 동점만 푼다).
-    base, context_applied = context_mask(index, structured, base)
+    base, context_applied = context_mask(index, structured, base, raw_text)
 
     # 사용자가 말한 노트를 가진 향수를 앞으로 당긴다 (348). 말한 노트가 없으면 None 이라
     # 정렬이 그대로다 — **노트를 말하지 않은 문장의 순서는 안 바뀐다.**
@@ -1286,6 +1753,8 @@ def search(index, core, avoid=(), top_k=TOP_K, people_min=PEOPLE_MIN,
         col = index["aidx"].get(accord)
         if col is not None:
             mask &= ~index["has"][:, col]
+    if avoid_notes is not None:             # 회피는 이 단계에서도 풀지 않는다
+        mask &= ~avoid_notes
     mask &= index["has"][:, cols].any(axis=1)
     picked = _rank(index, mask, score, top_k, brand_cap, notes)
     picked["stage"] = "RELAXED_OR_NO_THRESHOLD" if picked["rows"] else "NOT_ENOUGH"
@@ -1335,7 +1804,10 @@ def _context_only(index, avoid, top_k, people_min, brand_cap, structured, raw_te
         col = index["aidx"].get(accord)
         if col is not None:
             base &= ~index["has"][:, col]
-    base, applied = context_mask(index, structured, base)
+    avoid_notes = _avoid_note_rows(index, structured)     # search() 와 같은 회피
+    if avoid_notes is not None:
+        base &= ~avoid_notes
+    base, applied = context_mask(index, structured, base, raw_text)
     notes = note_rows(index, structured, raw_text)
     base, applied = _note_mask(index, structured, base, applied, notes, raw_text)
     if not applied:
@@ -1368,6 +1840,10 @@ def _note_mask(index, structured, base, applied, notes, raw_text=None):
         "field": "note",
         "values": sorted(set(spoken.values())),
         "spoken": sorted(spoken),
+        # **말과 노트를 짝으로 둔다.** 위 두 목록은 따로 정렬해 zip 하면 짝이 어긋나고
+        # (`바다` -> basil), 같은 노트를 두 별칭으로 말하면 values 가 하나로 줄어 한쪽이
+        # 빠진다. `_matched_data` 가 이것을 읽는다.
+        "pairs": sorted(spoken.items()),
     }]
 
 
@@ -1510,7 +1986,12 @@ def typo_gate(index, structured):
     out = []
     for expression in requirements:
         text = str(expression)
-        for word in _HANGUL_WORD.findall(text):
+        # **가린 낱말 안은 고치지 않는다** [50번 2c-1]. 안 그러면 `앰버 허드` 의 `허드` 를
+        # `허브` 로 고쳐 차단 낱말이 깨지고, 다시 돈 사전 경로가 `앰버` 를 amber 로 읽는다.
+        masked = text
+        for blocked in index.get("note_alias_block") or ():
+            masked = masked.replace(blocked, " " * len(blocked))
+        for word in _HANGUL_WORD.findall(masked):
             candidates = _typo_candidates(index, word)
             if len(candidates) > 1:
                 # **고르지 않는다.** 둘 중 하나를 찍으면 절반은 틀린다.
@@ -1727,7 +2208,7 @@ def _matched_data(context_applied):
     for item in context_applied:
         field = item["field"]
         if field == "note":
-            for spoken, value in zip(item["spoken"], item["values"]):
+            for spoken, value in item["pairs"]:
                 out.append({"field": "note", "value": value, "label": spoken,
                             "from": spoken, "tier": "DATA"})
             continue

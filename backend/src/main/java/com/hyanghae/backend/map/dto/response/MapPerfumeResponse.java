@@ -1,5 +1,7 @@
 package com.hyanghae.backend.map.dto.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * 지도에 점으로 찍히는 향수 하나입니다.
  *
@@ -11,10 +13,20 @@ package com.hyanghae.backend.map.dto.response;
  * 배가 움직일 때마다 그 몇 개가 바뀝니다. 이미지 주소를 선택 시점에 따로 불러오면 배를 조금 움직일
  * 때마다 요청이 여러 개 나갑니다. 주소는 문자열이라 목록에 얹어도 크기가 작고, 실제 이미지 파일은
  * 브라우저가 화면에 그리는 것만 내려받습니다. 이미지가 없는 향수는 {@code null} 입니다.
+ *
+ * <p>이름이 둘입니다. 영어 화면은 {@code name} 을, 한국어 화면은 {@code nameKo} 를 적고, 한국어
+ * 이름이 비어 있으면 원래 이름으로 되돌아갑니다. 상세({@code MapPerfumeDetailResponse})와 같은
+ * 짝입니다.
  */
 public record MapPerfumeResponse(
         Long perfumeId,
+        @Schema(description = "향수 원래(영문) 이름", example = "Bleu de Chanel")
         String name,
+
+        @Schema(description = "향수 한국어 이름. 비어 있으면 화면은 원래 이름을 적습니다.",
+                example = "블루 드 샤넬", nullable = true)
+        String nameKo,
+
         String imageUrl,
         double x,
         double y,

@@ -22,7 +22,8 @@ public final class PresentationSeed {
             "users", "user_perfumes", "memos", "collections", "collection_perfumes",
             "posts", "post_images", "post_perfumes", "comments", "post_likes",
             "perfume_reviews", "perfume_review_seasons", "review_likes", "perfume_review_keywords",
-            "review_keywords", "perfume_review_summaries", "map_exploration_states", "map_exploration_logs",
+            "review_keywords", "perfume_review_summaries", "perfume_review_summary_translations",
+            "map_exploration_states", "map_exploration_logs",
             "user_preference_regions", "user_taste_tests", "user_taste_test_selections",
             "user_taste_feature_scores", "user_map_interactions", "user_perfume_views",
             "personalized_recommendation_exposures", "personalized_recommendation_cache_states",
@@ -31,7 +32,8 @@ public final class PresentationSeed {
     static final Set<String> CATALOG = Set.of(
             "flyway_schema_history", "brands", "notes", "accords", "seasons", "scent_regions",
             "post_categories", "map_interaction_types", "perfumes", "perfume_prices", "perfume_images",
-            "perfume_notes", "perfume_accords", "perfume_neighbors", "perfume_map_points", "perfume_scent_families");
+            "perfume_notes", "perfume_accords", "perfume_neighbors", "perfume_similars", "perfume_map_points",
+            "perfume_scent_families");
 
     private final Connection db;
     private final PresentationData data;
@@ -273,6 +275,7 @@ public final class PresentationSeed {
             long id = number(run, role + "_id");
             require(count(db, "SELECT count(*) FROM users WHERE user_id=? AND email=?", id, role + "@demo.hyanghae.test") == 1,
                     "시연 계정 식별: " + role);
+            SeedStore.execute(db, "DELETE FROM perfume_review_summary_translations WHERE perfume_id IN (SELECT perfume_id FROM perfume_reviews WHERE user_id=?)", id);
             SeedStore.execute(db, "DELETE FROM perfume_review_summaries WHERE perfume_id IN (SELECT perfume_id FROM perfume_reviews WHERE user_id=?)", id);
             SeedStore.execute(db, "DELETE FROM perfume_reviews WHERE user_id=?", id);
             SeedStore.execute(db, "DELETE FROM posts WHERE user_id=?", id);

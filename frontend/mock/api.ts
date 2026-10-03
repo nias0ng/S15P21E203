@@ -29,13 +29,15 @@ const originalImageUrl = (perfumeId: number) =>
   `${CDN}/${perfumeId}/original.png`
 
 /**
- * 서버의 종이 질감 이미지(`PAPER_TEXTURE`).
+ * 서버의 종이 질감 이미지(`PAPER_TEXTURE`) — 배포 서버가 진열대 · 컬렉션에 주는 그 주소입니다
+ * (`backend/db/seed/perfume_images.csv`). 로컬 사진이 없을 때 씁니다(plugin.ts).
  *
- * ⚠️ 투명 여백을 자르지 않은 1505×1360 캔버스입니다 — 병이 캔버스 폭의 23~41% 에 앉아 있어
- * 진열대에 세우면 병이 작게 서고 바닥에서 뜹니다. 그래서 로컬 사진이 없을 때만 씁니다(plugin.ts).
+ * ⚠️ `.webp` 입니다. 같은 자리의 `.png` 는 투명 여백을 자르지 않은 1505×1360 캔버스라 병이 캔버스
+ * 폭의 23~41% 에 앉아, 진열대에 세우면 병이 작게 서고 바닥에서 뜹니다. `.webp` 는 병에 맞게 잘려
+ * 있습니다(목데이터 156병 가운데 155병이 위아래 · 좌우 모두 딱 맞습니다).
  */
 export const paperTextureImageUrl = (perfumeId: number) =>
-  `${CDN}/${perfumeId}/paper-texture.png`
+  `${CDN}/${perfumeId}/paper-texture.webp`
 
 interface MockApiOptions {
   /**

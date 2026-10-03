@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/shared/lib/cn'
 import { keywordMatcher } from '@/shared/lib/keywordMatch'
@@ -49,6 +50,7 @@ export function ShelfItemPickList({
   emptyTitle,
   listClassName,
 }: Props) {
+  const { t } = useTranslation('collection')
   const visible = useMemo(() => {
     const matches = keywordMatcher(keyword)
     return candidates.filter((candidate) =>
@@ -63,8 +65,8 @@ export function ShelfItemPickList({
     */
     <div className="flex min-h-0 flex-1 flex-col gap-3.75">
       <SearchField
-        label="향수명 또는 브랜드명으로 검색"
-        placeholder="향수명 · 브랜드 검색"
+        label={t('pick.searchLabel')}
+        placeholder={t('pick.searchPlaceholder')}
         value={keyword}
         onChange={(event) => onKeywordChange(event.target.value)}
         onSearch={onKeywordChange}
@@ -74,12 +76,12 @@ export function ShelfItemPickList({
       {candidates.length === 0 ? (
         <EmptyState
           title={emptyTitle}
-          description="진열대에 저장한 향수만 컬렉션에 넣을 수 있습니다."
+          description={t('pick.noCandidatesDescription')}
         />
       ) : visible.length === 0 ? (
         <EmptyState
-          title="조건에 맞는 향수가 없습니다"
-          description="다른 향수명이나 브랜드명으로 검색해 보세요."
+          title={t('pick.noMatchTitle')}
+          description={t('pick.noMatchDescription')}
         />
       ) : (
         /*
@@ -130,9 +132,9 @@ export function ShelfItemPickList({
       {/* 검색으로 가려진 향수도 고른 채로 셉니다 */}
       <p className="shelf-muted text-body">
         <span className="font-semibold text-[var(--shelf-ink)] tabular-nums">
-          {picked.length}개 선택됨
+          {t('pick.selected', { count: picked.length })}
         </span>{' '}
-        · 진열대에 없는 향수는 담을 수 없습니다.
+        {t('pick.notOnShelf')}
       </p>
     </div>
   )

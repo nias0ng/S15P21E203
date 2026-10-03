@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 
 import { apiErrorMessage } from '@/shared/api/http'
@@ -18,6 +19,7 @@ import { NewPasswordFields } from './NewPasswordFields'
 type Props = { open: boolean; onClose: () => void }
 
 export function PasswordChangeModal({ open, onClose }: Props) {
+  const { t } = useTranslation('auth')
   const navigate = useNavigate()
   const endSession = useEndSession()
 
@@ -56,18 +58,20 @@ export function PasswordChangeModal({ open, onClose }: Props) {
     <Modal
       open={open}
       onClose={close}
-      title="비밀번호 변경"
+      title={t('passwordChange.title')}
       footer={
         <>
           <Button variant="outline" onClick={close}>
-            취소
+            {t('actions.cancel')}
           </Button>
           <Button
             type="submit"
             form="password-change-form"
             disabled={!canSubmit}
           >
-            {mutation.isPending ? '변경 중' : '변경'}
+            {mutation.isPending
+              ? t('passwordChange.submitting')
+              : t('passwordChange.submit')}
           </Button>
         </>
       }
@@ -81,28 +85,25 @@ export function PasswordChangeModal({ open, onClose }: Props) {
         }}
       >
         <Input
-          label="현재 비밀번호"
+          label={t('password.current')}
           hideLabel
           type="password"
           autoComplete="current-password"
-          placeholder="현재 비밀번호"
+          placeholder={t('password.current')}
           required
           value={currentPassword}
           onChange={(event) => setCurrentPassword(event.target.value)}
         />
-        <NewPasswordFields label="새 비밀번호" password={newPassword} />
+        <NewPasswordFields field="newPassword" password={newPassword} />
 
         {mutation.error !== null && (
           <p className="text-danger text-caption" role="alert">
-            {apiErrorMessage(
-              mutation.error,
-              '비밀번호를 바꾸지 못했습니다. 잠시 후 다시 시도해주세요.',
-            )}
+            {apiErrorMessage(mutation.error, t('passwordChange.failed'))}
           </p>
         )}
 
         <p className="text-ink-muted text-caption">
-          비밀번호는 {PASSWORD_MIN_LENGTH}자 이상이어야 합니다.
+          {t('password.rule', { min: PASSWORD_MIN_LENGTH })}
         </p>
       </form>
     </Modal>

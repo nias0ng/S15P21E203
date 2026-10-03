@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
+import { useLocaleStore } from '@/shared/store/localeStore'
+
 import type { ShelfItemDetail } from '../types'
 
 import { ShelfDetailPanel } from './ShelfDetailPanel'
@@ -207,5 +209,24 @@ describe('ShelfDetailPanel 향수 이름 링크', () => {
     expect(
       screen.getByRole('link', { name: 'Wood Sage & Sea Salt' }),
     ).toHaveAttribute('href', '/perfumes/1')
+  })
+})
+
+describe('ShelfDetailPanel 영어 화면', () => {
+  it('원래 영어 이름 한 줄과 영어 분류 · 단추 · 빈 메모 안내를 적는다', () => {
+    useLocaleStore.getState().setLocale('en')
+    renderPanel({ ...WOOD_SAGE, memo: null })
+
+    expect(
+      screen.getByRole('complementary', { name: 'Selected perfume' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link')).toHaveTextContent(/^Wood Sage & Sea Salt$/)
+    expect(screen.queryByText('우드 세이지 앤 씨 솔트')).not.toBeInTheDocument()
+    expect(screen.getByText('Owned')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+    expect(
+      screen.getByText('Jot down where and when you smelled it.'),
+    ).toBeInTheDocument()
   })
 })

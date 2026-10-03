@@ -1,12 +1,13 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router'
+import { useTranslation } from 'react-i18next'
+import { useLocation, useNavigate, useSearchParams } from 'react-router'
 
 import {
   CabinBubble,
-  MapSearchModal,
   SceneBootCurtain,
   SceneSearchBar,
+  SceneTourTip,
   ScentScene,
   buildMapPerfumeLookup,
   buildPerfumeIdIndex,
@@ -21,10 +22,9 @@ import {
   voyageLogQuery,
   withMapPerfumes,
   type ScenePerfumeRef,
-  type SceneSearchMode,
   type VoyageLogStatus,
 } from '@/features/map'
-import { NlrFeedbackModal, RecommendModal } from '@/features/recommend'
+import { RecommendModal, readOpenRecommendation } from '@/features/recommend'
 // 진열대 저장은 진열대 도메인의 어휘입니다. 화면에서 두 도메인을 조합합니다.
 import {
   ShelfRegisterModal,
@@ -41,17 +41,25 @@ import {
   toPerfumeSearch,
 } from '@/shared/config/routes'
 import { useDiveReady } from '@/shared/hooks/useDiveReady'
+import { useMediaQuery } from '@/shared/hooks/useMediaQuery'
 import { useToast } from '@/shared/hooks/useToast'
+import { useTourStep } from '@/shared/hooks/useTourStep'
+import { localizedName } from '@/shared/i18n/locale'
 import { cn } from '@/shared/lib/cn'
+import { diveDepthOf } from '@/shared/lib/diveTrack'
 import { useIsLoggedIn } from '@/shared/store/authStore'
 import {
   useDiveStore,
   useIsDiving,
   useIsRising,
 } from '@/shared/store/diveStore'
+import { useLocale } from '@/shared/store/localeStore'
+import { useSceneCardStore } from '@/shared/store/sceneCardStore'
 import { useSceneSkyStore } from '@/shared/store/sceneSkyStore'
+import { useTourStore } from '@/shared/store/tourStore'
 import { LoginRequiredDialog } from '@/shared/ui/LoginRequiredDialog'
 import { Toast } from '@/shared/ui/Toast'
+import { TourTip } from '@/shared/ui/TourTip'
 
 /**
  * 랜딩 · 향 지도 (와이어프레임 A01 · A02 · A03 — MAP-01 · 05 · 06 · 07 · 24)
@@ -63,11 +71,10 @@ import { Toast } from '@/shared/ui/Toast'
  *   [진열대에 저장] → 등록 모달 2단계(A15). 카드 · 고른 향수는 그대로 남습니다
  *
  * **검색창만 앱이 그립니다** (`SceneSearchBar` · 엔진 알약은 `ScentScene` 이 숨깁니다).
- * 방식이 둘이고 둘 다 답을 **모달**로 내놓기 때문입니다 — 엔진은 iframe 안이라 라우터도
- * 모달도 모릅니다.
+ * 답을 **모달**로 내놓기 때문입니다 — 엔진은 iframe 안이라 라우터도 모달도 모릅니다.
  *
- *   자연어 → A06 추천 모달 (`RecommendModal`). 전에는 `/recommend?q=` 라는 별도 화면이었습니다
- *   이름   → 지도 향수 200개에서 찾기 (`MapSearchModal`) · 고르면 향수 검색(A09)으로
+ *   검색창 → A06 추천 모달 (`RecommendModal`). 향 조건을 못 뽑았으면(향수 이름을 적은 사람)
+ *            그 낱말로 13만 개 검색(A09)으로 이어 줍니다
  *
  * 향해 일지(MAP-24)는 다른 화면의 데이터와 맞추기 쉽도록 엔진이 아니라 앱이 3D 위에 얹습니다.
  *
@@ -99,11 +106,43 @@ const DIVE_FADE = 'transition-[opacity,visibility] duration-300 ease-out'
  */
 
 export default function HomePage() {
+  const { t } = useTranslation(['map', 'tour'])
+  const locale = useLocale()
   const navigate = useNavigate()
   const location = useLocation()
   const diving = useIsDiving()
   /** 엔진의 전체 화면 해도가 열려 있는가 — 3D 위에 얹은 앱 UI 가 비킵니다 (위 DIVE_FADE 머리말) */
   const [chartOpen, setChartOpen] = useState(false)
+  /*
+   * 엔진의 향수 카드가 떠 있는가 (2026-10-01). 좁은 화면(940 아래)에서는 향해 일지가 왼쪽 아래로 내려가
+   * 카드 아랫단('이 향의 해역으로')을 덮었습니다 — 카드가 떠 있는 동안은 비킵니다. 의견 단추(껍데기)는
+   * `sceneCardStore` 로 같은 값을 받습니다. 메인을 떠나면 false 로 되돌립니다.
+   */
+  const [cardOpen, setCardOpen] = useState(false)
+  const setSceneCard = useSceneCardStore((state) => state.setOpen)
+  useEffect(() => {
+    setSceneCard(cardOpen)
+  }, [cardOpen, setSceneCard])
+  useEffect(() => () => setSceneCard(false), [setSceneCard])
+  /*
+   * 첫 방문 안내의 엔진 쪽 단계 (`tourStore` · `SceneTourTip`). 부표를 눌러 카드를 연 사람에게는 첫 화면 안내 ·
+   * 부표 안내가 할 일을 다 했습니다. 해도를 연 사람에게는 미니맵 안내가 그렇습니다 (해도는 미니맵의 확대 단추가 엽니다).
+   *   cardPinned  누른 카드 — 마우스를 올려 뜬 미리보기 카드는 단추를 못 누릅니다 (`ScentScene` 의 onCardPinChange)
+   *   zoneLabel   해역 연출 중인 해역의 이름 · 아니면 null
+   */
+  const finishTour = useTourStore((state) => state.finish)
+  useEffect(() => {
+    if (!cardOpen) return
+    finishTour('welcome')
+    finishTour('buoy')
+  }, [cardOpen, finishTour])
+  useEffect(() => {
+    if (chartOpen) finishTour('minimap')
+  }, [chartOpen, finishTour])
+  const [cardPinned, setCardPinned] = useState(false)
+  const [zoneLabel, setZoneLabel] = useState<string | null>(null)
+  // 손가락 기기는 미니맵을 두 번 눌러 떠나고 방향키가 없습니다 (엔진 minimap.js · index.html 의 .pb-help-keys)
+  const touch = useMediaQuery('(pointer: coarse)')
   /*
    * 진열대에서 **떠올라** 들어오는 중인가. 그동안 화면은 잠수 커튼(물)이 덮고 있으므로
    * 이 화면의 아이보리 로딩 커튼은 비킵니다 — 물 밑에서 구름이 갈라지면 걷히는 겹이 둘이 됩니다.
@@ -118,17 +157,37 @@ export default function HomePage() {
   const [engineUp, setEngineUp] = useState(false)
   useDiveReady(engineUp)
 
-  /**
-   * 메인 검색 — 방식과, 방식별로 열린 답.
-   *
-   * 답을 하나의 `result` 로 묶지 않고 둘로 나눠 둡니다. 방식을 바꾸면 **뒤 결과가
-   * 사라지는 게 아니라** 다음에 그 방식으로 검색할 때까지 그대로 닫혀 있습니다 —
-   * 같은 말을 두 방식으로 해보는 것이 스왑 단추의 쓸모라, 한쪽을 지우면 방금 본
-   * 추천이 없어집니다.
+  /*
+   * ⭐ **검색창에 적은 말은 주소에도 남깁니다** (`/?q=` · 2026-10-01). 결과에서 상세로 갔다가 뒤로가기나
+   * 상세의 '← 추천 결과' 로 돌아오면 이 화면이 처음부터 다시 서는데, 주소에 말이 남아 있어야 보던
+   * 결과창을 다시 열 수 있습니다 — 전에는 결과 대신 설문만 떠서 다섯 개를 비교하려면 같은 말로 다시
+   * 찾아야 했습니다(사용성 테스트 7명 중 6명).
+   *   - 열려 있던 결과가 이 탭에 담겨 있으면(`readOpenRecommendation`) 서버에 다시 묻지 않고 그대로 섭니다.
+   *   - 담긴 것이 없으면(다른 탭에서 연 주소 · 새로고침 뒤 저장소를 못 쓴 창) 그 말로 새로 찾습니다.
+   * ⚠️ 주소는 **바꿔 끼웁니다**(replace) — 검색할 때마다 기록이 쌓이면 뒤로가기가 검색어를 하나씩 되돌립니다.
+   * ⚠️ 마운트 때 한 번만 읽습니다 — 아래에서 결과창을 닫으면 주소의 말도 지웁니다.
    */
-  const [searchMode, setSearchMode] = useState<SceneSearchMode>('nl')
-  const [nlQuery, setNlQuery] = useState<string | null>(null)
-  const [mapKeyword, setMapKeyword] = useState<string | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [nlQuery, setNlQuery] = useState<string | null>(() =>
+    searchParams.get('q'),
+  )
+  const [restoredNl, setRestoredNl] = useState(() => {
+    const q = searchParams.get('q')
+    return q === null ? undefined : readOpenRecommendation(q)
+  })
+  const openNl = (query: string | null) => {
+    setNlQuery(query)
+    // ⚠️ 돌아와 다시 편 결과는 **그 한 번만** 씁니다. 닫은 뒤 같은 말로 찾으면 새 추천입니다 (`openRecommendation` 머리말)
+    if (query === null) setRestoredNl(undefined)
+    setSearchParams(
+      (params) => {
+        if (query === null) params.delete('q')
+        else params.set('q', query)
+        return params
+      },
+      { replace: true },
+    )
+  }
 
   /** 지도 카드에서 담으려는 향수. 모달이 이름 · 브랜드를 보여주는 데 씁니다 */
   const [saving, setSaving] = useState<
@@ -181,6 +240,12 @@ export default function HomePage() {
   // 향해 일지(MAP-24) — 배가 든 해역이 바뀌거나 향수를 고르면 서버에 남기고 일지를 다시 읽습니다.
   // 기록할지는 서버가 정합니다 (향수는 늘 · 빈 바다는 향 영역이 바뀐 경우만)
   const reportMove = useExplorationMove()
+  /*
+   * 이번에 해역에 들었거나 향수를 골랐는가 — 향해 일지에 기록이 생기는 때입니다 (첫 방문 안내 log).
+   * 엔진은 배가 처음 든 해역도 알려 와 대개 들어오자마자 참이 됩니다 — 차례는 `tourStore` 가 미룹니다(카드나 해역 뒤).
+   * 비회원은 일지가 안 쌓여 '기록이 생겼다' 를 볼 수 없어 같은 때에 로그인 안내로 섭니다.
+   */
+  const [moved, setMoved] = useState(false)
 
   /*
   /*
@@ -294,6 +359,29 @@ export default function HomePage() {
     releaseCabin.current = null
   }
 
+  /*
+   * 3D 가 비어 있는가 — 커튼 · 잠수 · 해도 · 결과창 · 저장 · 로그인 안내 · 선실 말풍선이 없을 때만 엔진 쪽 안내가 섭니다.
+   * 그 창들 위로 안내가 뜨면 가리킬 것이 가려져 있거나, 그 창의 일과 안 맞는 말을 합니다.
+   */
+  const sceneIdle =
+    boot.done &&
+    !diving &&
+    !chartOpen &&
+    nlQuery === null &&
+    saving === null &&
+    !loginOpen &&
+    !cabinOpen
+
+  /*
+   * 첫 방문 안내 log — 향해 일지 판 곁에 섭니다(넓은 화면은 아래 · 940 아래는 판이 왼쪽 아래라 위). 판은 앱이 그려
+   * 엔진에 자리를 물을 일이 없습니다. 판을 접거나 펴면 끝납니다.
+   */
+  const logTip = useTourStep(
+    'log',
+    sceneIdle && !cardOpen && (moved || logEntries.length > 0),
+  )
+  const stopTour = useTourStore((state) => state.stop)
+
   return (
     /*
      * 3D 가 화면 맨 위부터 끝까지 채웁니다 — 헤더(GlobalHeader)는 그 위에 유리판으로 뜹니다.
@@ -304,7 +392,7 @@ export default function HomePage() {
       className="bg-surface-night relative h-dvh min-h-120"
       aria-busy={!boot.done}
     >
-      <h1 className="sr-only">향 지도</h1>
+      <h1 className="sr-only">{t('scene.title')}</h1>
 
       <ScentScene
         className="absolute inset-0"
@@ -317,10 +405,20 @@ export default function HomePage() {
         coveredTop="var(--header-h)"
         onNightChange={(night) => setSky(night ? 'dark' : 'light')}
         onChartChange={setChartOpen}
+        onCardChange={setCardOpen}
+        onCardPinChange={setCardPinned}
+        onZoneChange={setZoneLabel}
+        onTourEvent={(event) => {
+          if (event === 'minimap') finishTour('minimap')
+        }}
         onBoot={boot.report}
-        onMove={reportMove}
+        onMove={(move) => {
+          reportMove(move)
+          setMoved(true)
+        }}
         quality={graphics.mode}
         onQuality={graphics.onQuality}
+        calm={graphics.calm}
         start={lastBoatAt}
         landing={landing}
         onLeave={saveBoatAt}
@@ -341,10 +439,13 @@ export default function HomePage() {
            * ⚠️ 서버는 향수를 고른 이동을 **언제나** 남깁니다. 좌표는 서버가 채우므로 안 보냅니다.
            */
           if (perfumeId !== null) reportMove({ perfumeId })
+          finishTour('card')
 
           navigate(
             perfumeId === null
-              ? toPerfumeSearch(perfume.nameKo)
+              ? toPerfumeSearch(
+                  localizedName(locale, perfume.name, perfume.nameKo),
+                )
               : toPerfumeDetail(perfumeId),
             // 검색으로 돌려보내는 쪽은 향수 상세가 아니라 기록할 것이 없습니다
             perfumeId === null
@@ -364,7 +465,7 @@ export default function HomePage() {
               분류까지 고르게 한 뒤 실패시키면 한 일이 버려집니다.
             */
             if (perfumeId === null) {
-              showToast('이 향수는 아직 진열대에 담을 수 없습니다')
+              showToast(t('home.cannotSave'))
               resolve()
               releaseSave.current = null
               return
@@ -390,6 +491,7 @@ export default function HomePage() {
           new Promise<void>((resolve) => {
             releaseCabin.current = resolve
             setCabinOpen(true)
+            finishTour('boat')
           })
         }
         // 3D 를 눌렀습니다 — 말풍선은 팝오버라 배경을 누르면 닫힙니다 (엔진 host.js `closeCabin`)
@@ -401,12 +503,16 @@ export default function HomePage() {
           DIVE_FADE,
           (diving || chartOpen) && 'invisible opacity-0',
         )}
-        mode={searchMode}
-        onModeChange={setSearchMode}
-        onSearch={(keyword, mode) => {
-          if (mode === 'nl') setNlQuery(keyword)
-          else setMapKeyword(keyword)
-        }}
+        onSearch={openNl}
+        /*
+          첫 화면 안내는 화면이 비어 있을 때만 섭니다 — 커튼 밑 · 결과창 뒤 · 해도 · 잠수 중에는
+          아무도 못 봅니다 (`SceneSearchBar` 의 introduce 머리말). 가려지면 접혔다가 비면 다시 섭니다.
+        */
+        introduce={boot.done && !diving && !chartOpen && nlQuery === null}
+        // 헤더의 PERFUME 과 같은 잠수로 떠납니다 (`header/useDiveOut`)
+        onBrowsePopular={() =>
+          startDive(ROUTES.PERFUMES, 'dive', diveDepthOf(ROUTES.PERFUMES) ?? 0)
+        }
       />
 
       {/*
@@ -438,9 +544,28 @@ export default function HomePage() {
           'absolute top-30 left-7.5 max-[940px]:top-auto max-[940px]:bottom-15',
           DIVE_FADE,
           (diving || chartOpen) && 'invisible opacity-0',
+          // 좁은 화면에서 카드가 떠 있으면 비킵니다 (위 cardOpen 머리말) — 넓은 화면은 왼쪽 위라 카드와 안 겹칩니다
+          cardOpen && 'max-[940px]:invisible max-[940px]:opacity-0',
         )}
       >
-        <VoyageLog entries={logEntries} status={logStatus} />
+        <VoyageLog
+          entries={logEntries}
+          status={logStatus}
+          onToggle={logTip.finish}
+        />
+        {logTip.showing && sceneIdle && (
+          <TourTip
+            onClose={logTip.finish}
+            onNext={logTip.next}
+            onStopAll={stopTour}
+            className={cn(
+              'absolute top-full left-0 mx-0 mt-2.5 w-75',
+              'max-[940px]:top-auto max-[940px]:bottom-full max-[940px]:mt-0 max-[940px]:mb-2.5',
+            )}
+          >
+            {t(isLoggedIn ? 'tour:log.member' : 'tour:log.guest')}
+          </TourTip>
+        )}
       </div>
 
       {/*
@@ -462,28 +587,79 @@ export default function HomePage() {
         onEnter={(to) => startDive(to, 'cabin')}
       />
 
-      {/* 검색창의 두 방식이 내놓는 답. 뒤의 3D 는 그대로 돌아갑니다 */}
-      <RecommendModal query={nlQuery} onClose={() => setNlQuery(null)} />
-
       {/*
-        결과를 닫으면 뜹니다. 답을 안 하고 상세로 나갔다 돌아와도 여기서 이어받습니다.
-        NOTE: 결과 모달이 떠 있는 동안에는 묻지 않습니다 — 향수를 보는 중에 답을 물으면
-        그 답은 추천이 아니라 화면에 대한 답입니다.
+        첫 방문 안내 — 3D 의 그것 곁에 섭니다 (`SceneTourTip` · 차례와 앞 단계는 `tourStore`).
+          buoy     가까운 부표 이름표 위 — 카드가 열리면 끝납니다 (위 cardOpen 효과)
+          card     누른 카드 아래 — 단추를 누르거나 카드가 닫히면 끝납니다
+          zone     하단 안내 위 — 연출이 닫히면 끝납니다
+          minimap  미니맵 위 — 미니맵 · 해도로 떠나거나 해도를 열면 끝납니다
+          boat     배 옆 — 배를 누르면 끝납니다 (선실 말풍선이 그 자리에 뜹니다)
       */}
-      <NlrFeedbackModal ready={boot.done && nlQuery === null} />
+      <SceneTourTip
+        paused={!sceneIdle}
+        step="buoy"
+        ready={sceneIdle && !cardOpen}
+        placement="above"
+      >
+        {t('tour:buoy')}
+        <span className="block">{t('tour:buoyMove')}</span>
+        {!touch && <span className="block">{t('tour:buoyKeys')}</span>}
+      </SceneTourTip>
+      <SceneTourTip
+        paused={!sceneIdle}
+        step="card"
+        ready={sceneIdle && cardPinned}
+        finishOnLeave
+        holdMs={800}
+        placement="below"
+      >
+        {(['detail', 'save', 'sail'] as const).map((key) => (
+          <span key={key} className="block">
+            <strong className="font-medium">
+              {t(`tour:card.${key}.name`)}
+            </strong>
+            {' — '}
+            {t(`tour:card.${key}.desc`)}
+          </span>
+        ))}
+      </SceneTourTip>
+      <SceneTourTip
+        paused={!sceneIdle}
+        step="zone"
+        ready={sceneIdle && zoneLabel !== null}
+        finishOnLeave
+        holdMs={800}
+        placement="above"
+      >
+        {t('tour:zone', { zone: zoneLabel ?? '' })}
+      </SceneTourTip>
+      <SceneTourTip
+        paused={!sceneIdle}
+        step="minimap"
+        ready={sceneIdle && !cardOpen}
+        placement="aboveEnd"
+      >
+        {t(touch ? 'tour:minimap.touch' : 'tour:minimap.pointer')}
+      </SceneTourTip>
+      <SceneTourTip
+        paused={!sceneIdle}
+        step="boat"
+        ready={sceneIdle && !cardOpen}
+        placement="side"
+      >
+        {t(isLoggedIn ? 'tour:boat.member' : 'tour:boat.guest')}
+      </SceneTourTip>
 
-      <MapSearchModal
-        keyword={mapKeyword}
-        onClose={() => setMapKeyword(null)}
-        onSelect={(perfume) => {
-          setMapKeyword(null)
-          /*
-            지도 목록에는 DB 향수 번호가 없어(fragrantica_id 뿐) 상세로 바로 못 갑니다 —
-            이름으로 향수 검색(A09)에 보냅니다. 엔진 카드의 [자세히 보기]가 번호 없는
-            향수를 보내는 길과 **같은 곳**입니다(위 onOpenDetail).
-          */
-          navigate(toPerfumeSearch(perfume.name))
+      {/* 검색창이 내놓는 답. 뒤의 3D 는 그대로 돌아갑니다 */}
+      <RecommendModal
+        query={nlQuery}
+        onClose={() => openNl(null)}
+        onRequery={openNl}
+        onSearchByName={(keyword) => {
+          openNl(null)
+          navigate(toPerfumeSearch(keyword))
         }}
+        restored={restoredNl}
       />
 
       {/*
@@ -501,14 +677,14 @@ export default function HomePage() {
             ? undefined
             : {
                 perfumeId: saving.perfumeId,
-                name: saving.nameKo,
-                brand: saving.brandKo,
+                name: localizedName(locale, saving.name, saving.nameKo),
+                brand: localizedName(locale, saving.brand, saving.brandKo),
               }
         }
         onSubmit={(input) => {
           closeShelfSave()
           actions.register.mutate(input, {
-            onSuccess: () => showToast('진열대에 저장했습니다'),
+            onSuccess: () => showToast(t('home.saved')),
             onError: (error) => showToast(shelfRegisterErrorMessage(error)),
           })
         }}

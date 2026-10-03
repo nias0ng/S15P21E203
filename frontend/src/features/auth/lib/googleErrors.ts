@@ -1,3 +1,5 @@
+import { i18n } from '@/shared/i18n'
+
 /*
  * Google 에서 돌아온 뒤 백엔드 콜백이 주소에 붙여 보내는 오류 코드의 문구입니다.
  *
@@ -8,22 +10,25 @@
 export const GOOGLE_ERROR_PARAM = 'googleError'
 export const GOOGLE_REAUTH_PARAM = 'googleReauth'
 
-const MESSAGES: Record<string, string> = {
+const MESSAGE_KEYS = {
   AUTH_EMAIL_REGISTERED_WITH_PASSWORD:
-    '이미 이메일로 가입된 계정입니다. 이메일과 비밀번호로 로그인해주세요.',
-  AUTH_EMAIL_ALREADY_EXISTS: '이미 가입된 이메일입니다.',
-  AUTH_GOOGLE_EMAIL_NOT_VERIFIED:
-    '이메일 인증을 마친 Google 계정만 쓸 수 있습니다.',
-  AUTH_GOOGLE_LOGIN_CANCELLED: 'Google 로그인을 취소했습니다.',
-  AUTH_GOOGLE_LOGIN_UNAVAILABLE: '지금은 Google 로그인을 쓸 수 없습니다.',
-  AUTH_GOOGLE_ACCOUNT_MISMATCH: '가입할 때 쓴 Google 계정으로 확인해주세요.',
-}
+    'auth:google.errors.registeredWithPassword',
+  AUTH_EMAIL_ALREADY_EXISTS: 'auth:google.errors.emailExists',
+  AUTH_GOOGLE_EMAIL_NOT_VERIFIED: 'auth:google.errors.emailNotVerified',
+  AUTH_GOOGLE_LOGIN_CANCELLED: 'auth:google.errors.cancelled',
+  AUTH_GOOGLE_LOGIN_UNAVAILABLE: 'auth:google.errors.unavailable',
+  AUTH_GOOGLE_ACCOUNT_MISMATCH: 'auth:google.errors.accountMismatch',
+} as const
 
-const FALLBACK = 'Google 로그인을 마치지 못했습니다. 처음부터 다시 해주세요.'
+const isKnownCode = (code: string): code is keyof typeof MESSAGE_KEYS =>
+  Object.hasOwn(MESSAGE_KEYS, code)
 
+// 문구는 부를 때 고릅니다 — 모듈을 읽을 때 정해 두면 언어를 바꿔도 처음 언어로 남습니다
 export function googleErrorMessage(code: string | null): string | null {
   if (code === null || code.length === 0) {
     return null
   }
-  return MESSAGES[code] ?? FALLBACK
+  return isKnownCode(code)
+    ? i18n.t(MESSAGE_KEYS[code])
+    : i18n.t('auth:google.errors.fallback')
 }

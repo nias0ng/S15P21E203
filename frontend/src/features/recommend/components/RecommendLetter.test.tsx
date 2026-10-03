@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { useLocaleStore } from '@/shared/store/localeStore'
+
 import type { PersonalRecommendationResult } from '../types'
 
 import { RecommendLetter, type LetterFacts } from './RecommendLetter'
@@ -15,7 +17,7 @@ vi.mock('../api', async (importOriginal) => {
   return { ...actual, ...api }
 })
 
-/** 서버 응답 그대로의 한 통 — 근거는 적합도 틀이라 향 특성이 영어로 옵니다 */
+/** 서버 응답 그대로의 한 통 — 근거는 적합도라 근거 값이 향 특성의 영어 이름입니다 */
 const ready = (
   token = 'token-1',
   perfumeId = 102,
@@ -25,15 +27,18 @@ const ready = (
     recommendationToken: token,
     perfumeId,
     name: '아티산 블랙',
+    originalName: 'Artisan Black',
+    nameKo: '아티산 블랙',
     imageUrl: null,
     reason: '높게 평가한 향수와 woody 어코드가 비슷해요.',
+    evidenceSource: 'FIT',
+    evidenceKey: 'woody',
   },
 })
 
 const FACTS: LetterFacts = {
   perfumeId: 102,
   brand: 'John Varvatos',
-  nameEn: 'Artisan Black',
   accords: ['시트러스', '우디', '아로마틱'],
 }
 
@@ -111,10 +116,33 @@ describe('RecommendLetter', () => {
     )
     expect(screen.getByText('우디', { selector: 'mark' })).toBeInTheDocument()
     expect(screen.getByText('John Varvatos')).toBeInTheDocument()
+    // 한국어 이름을 크게, 원래 이름을 그 위에 작게 답니다
+    expect(screen.getByText('아티산 블랙')).toHaveClass('rec-name')
+    expect(screen.getByText('Artisan Black')).toHaveClass('rec-name-en')
     expect(screen.getByRole('link', { name: '자세히 보기' })).toHaveAttribute(
       'href',
       '/perfumes/102',
     )
+  })
+
+  it('영어 화면은 원래 이름을 크게 쓰고, 근거 값으로 영어 문장을 짓는다', async () => {
+    useLocaleStore.getState().setLocale('en')
+    const user = userEvent.setup()
+    renderLetter()
+
+    await user.click(screen.getByRole('button', { name: /open/i }))
+
+    expect(screen.getByText('Artisan Black')).toHaveClass('rec-name')
+    expect(screen.queryByText('아티산 블랙')).not.toBeInTheDocument()
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.classList.contains('rec-reason') === true &&
+          element.textContent ===
+            'Its Woody accord is close to the perfumes you rated highly.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Woody', { selector: 'mark' })).toBeInTheDocument()
   })
 
   it('펼쳤을 때만 노출을 한 번 남긴다 — 봉투가 보인 것만으로는 남기지 않는다', async () => {
@@ -152,8 +180,12 @@ describe('RecommendLetter', () => {
                 recommendationToken: 'token-2',
                 perfumeId: 7,
                 name: '아티산',
+                originalName: 'Artisan',
+                nameKo: '아티산',
                 imageUrl: null,
                 reason: '취향 테스트에서 선택한 시트러스 계열과 잘 맞아요.',
+                evidenceSource: 'TASTE_TEST',
+                evidenceKey: 'CITRUS',
               },
             }}
             isRefreshing={false}

@@ -93,6 +93,17 @@ EMPTY_STAGE1 = {
     "avoid": [],
     "additional_requirements": [],
 }
+
+# 엔진이 읽는 세 목록의 상한 [레드팀 2026-10-02 1-10 · 팀6 #8 · 팀4 #7].
+# 조각은 미매칭 로그로 DB `VARCHAR(255)` 칸에 들어간다. 그보다 긴 조각 하나가 백엔드 기록
+# 트랜잭션 전체(원문 · 결과 · 미매칭 · 만족도 손잡이)를 롤백시킨다.
+#
+#     [측정] 저장된 ①단계 응답 1,303건(프롬프트 v1 1,043 · 다른 판 260)
+#            목록 하나의 조각 수 최대 8 · 조각 길이 최대 96자 · 상한에 걸리는 응답 0건
+#
+# 실데이터는 상한의 절반 아래다. 넘는 것은 주입으로 만든 응답뿐이었다.
+STAGE1_MAX_ITEMS = 10
+STAGE1_MAX_CHARS = 200
 _CODE_FENCE = re.compile(r"^\s*```(?:json)?\s*(.*?)\s*```\s*$", re.IGNORECASE | re.DOTALL)
 _prompt_cache = {}
 
@@ -196,8 +207,20 @@ def validate(value):
     missing = [field for field in used if field not in value]
     if missing:
         raise Stage1Error("MISSING_KEY", f"엔진이 쓰는 key 가 없다: {missing}")
+    trimmed = {}
     for field in used:
         _check_string_list(value[field], field)
+        # **상한을 넘는 부분만 잘라 낸다** [레드팀 1-10]. 앞의 10개를 남기고 조각마다
+        # 앞 200자를 남긴다. 나머지 칸과 조각은 그대로 쓴다.
+        items = value[field]
+        cut = [item[:STAGE1_MAX_CHARS] for item in items[:STAGE1_MAX_ITEMS]]
+        if cut != items:
+            LOGGER.warning("①단계 출력 %s 가 상한(%d개 · %d자)을 넘어 잘랐다: %d개 · 최장 %d자",
+                           field, STAGE1_MAX_ITEMS, STAGE1_MAX_CHARS, len(items),
+                           max(len(item) for item in items))
+            trimmed[field] = cut
+    if trimmed:
+        value = {**value, **trimmed}       # 받은 dict 는 고치지 않는다
 
     unknown = sorted(set(value) - set(EMPTY_STAGE1))
     if unknown:

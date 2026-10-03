@@ -1,5 +1,7 @@
 package com.hyanghae.backend.recommendation.repository;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -166,11 +168,15 @@ public class PersonalizedRecommendationRepository {
             top_candidates AS (
                 SELECT s.perfume_id,
                        COALESCE(NULLIF(p.name_ko, ''), p.name) AS display_name,
+                       p.name AS original_name,
+                       NULLIF(p.name_ko, '') AS name_ko,
                        s.score
                 FROM scored s
                 JOIN perfumes p ON p.perfume_id = s.perfume_id
                 WHERE EXISTS (SELECT 1 FROM taste_profile)
                   AND p.is_active = TRUE
+                  -- 단종이 확인된 향수는 권하지 않습니다 (V33 · 지인 피드백 F5)
+                  AND p.production_status IS NULL
                   AND s.score > 0.0
                   AND COALESCE(NULLIF(p.name_ko, ''), p.name) IS NOT NULL
                   AND NOT EXISTS (
@@ -185,18 +191,22 @@ public class PersonalizedRecommendationRepository {
             )
             SELECT candidate.perfume_id,
                    candidate.display_name,
+                   candidate.original_name,
+                   candidate.name_ko,
                    image.image_url,
                    candidate.score,
                    evidence.source AS evidence_source,
                    evidence.evidence_name,
+                   evidence.evidence_key,
                    exposure.last_recommended_at
             FROM top_candidates candidate
             JOIN LATERAL (
-                SELECT source, evidence_name
+                SELECT source, evidence_name, evidence_key
                 FROM (
                     -- 상위 후보의 근거만 다시 계산합니다. 전체 contributions를 후보마다
                     -- 재탐색하지 않으며, 정규화 분모에는 해당 향수의 모든 성분을 포함합니다.
                     SELECT 'TASTE' AS source, r.name AS evidence_name,
+                           r.code AS evidence_key,
                            psf.weight::double precision * tp.preference
                            / NULLIF((
                                SELECT SQRT(SUM(f.weight::double precision
@@ -210,7 +220,7 @@ public class PersonalizedRecommendationRepository {
                     JOIN scent_regions r ON r.scent_region_id = psf.scent_region_id
                     WHERE psf.perfume_id = candidate.perfume_id
                     UNION ALL
-                    SELECT 'FIT', a.name,
+                    SELECT 'FIT', a.name, a.name,
                            pa.weight::double precision * rp.preference
                            / NULLIF((
                                SELECT SQRT(SUM(n.weight::double precision
@@ -224,7 +234,7 @@ public class PersonalizedRecommendationRepository {
                     JOIN accords a ON a.accord_id = pa.accord_id
                     WHERE pa.perfume_id = candidate.perfume_id
                     UNION ALL
-                    SELECT 'RECENT', a.name,
+                    SELECT 'RECENT', a.name, a.name,
                            pa.weight::double precision * rp.preference
                            / NULLIF((
                                SELECT SQRT(SUM(n.weight::double precision
@@ -305,13 +315,23 @@ public class PersonalizedRecommendationRepository {
     private static final String SELECT_CACHED_CANDIDATES = """
             SELECT cached.perfume_id,
                    COALESCE(NULLIF(p.name_ko, ''), p.name) AS display_name,
+                   p.name AS original_name,
+                   NULLIF(p.name_ko, '') AS name_ko,
                    image.image_url,
                    cached.score,
                    cached.evidence_source,
                    cached.evidence_name,
+                   -- evidence_key 없이 저장된 행(V31 이전 버전이 쓴 행)은 계열 이름으로 code 를 찾습니다.
+                   COALESCE(cached.evidence_key,
+                            CASE WHEN cached.evidence_source = 'TASTE' THEN region.code
+                                 ELSE cached.evidence_name END) AS evidence_key,
                    exposure.last_recommended_at
             FROM personalized_recommendation_candidates cached
             JOIN perfumes p ON p.perfume_id = cached.perfume_id
+            LEFT JOIN scent_regions region
+                   ON cached.evidence_key IS NULL
+                  AND cached.evidence_source = 'TASTE'
+                  AND region.name = cached.evidence_name
             LEFT JOIN LATERAL (
                 SELECT i.image_url
                 FROM perfume_images i
@@ -329,6 +349,8 @@ public class PersonalizedRecommendationRepository {
             ) exposure ON TRUE
             WHERE cached.user_id = :userId
               AND p.is_active = TRUE
+              -- 캐시에 담긴 뒤 단종으로 확인된 향수도 꺼낼 때 거릅니다
+              AND p.production_status IS NULL
               AND COALESCE(NULLIF(p.name_ko, ''), p.name) IS NOT NULL
               AND NOT EXISTS (
                   SELECT 1
@@ -347,8 +369,10 @@ public class PersonalizedRecommendationRepository {
 
     private static final String INSERT_CACHED_CANDIDATE = """
             INSERT INTO personalized_recommendation_candidates
-                (user_id, perfume_id, candidate_rank, score, evidence_source, evidence_name)
-            VALUES (:userId, :perfumeId, :rank, :score, :evidenceSource, :evidenceName)
+                (user_id, perfume_id, candidate_rank, score,
+                 evidence_source, evidence_name, evidence_key)
+            VALUES (:userId, :perfumeId, :rank, :score,
+                    :evidenceSource, :evidenceName, :evidenceKey)
             """;
 
     private static final String UPDATE_CACHE_STATE = """
@@ -430,15 +454,23 @@ public class PersonalizedRecommendationRepository {
         return jdbcClient.sql(SELECT_TOP_CANDIDATES)
                 .param("userId", userId)
                 .param("limit", limit)
-                .query((rs, rowNum) -> new PersonalizedRecommendationCandidate(
-                        rs.getLong("perfume_id"),
-                        rs.getString("display_name"),
-                        rs.getString("image_url"),
-                        rs.getDouble("score"),
-                        rs.getString("evidence_source"),
-                        rs.getString("evidence_name"),
-                        rs.getObject("last_recommended_at", OffsetDateTime.class)))
+                .query((rs, rowNum) -> toCandidate(rs))
                 .list();
+    }
+
+    private static PersonalizedRecommendationCandidate toCandidate(ResultSet rs)
+            throws SQLException {
+        return new PersonalizedRecommendationCandidate(
+                rs.getLong("perfume_id"),
+                rs.getString("display_name"),
+                rs.getString("original_name"),
+                rs.getString("name_ko"),
+                rs.getString("image_url"),
+                rs.getDouble("score"),
+                rs.getString("evidence_source"),
+                rs.getString("evidence_name"),
+                rs.getString("evidence_key"),
+                rs.getObject("last_recommended_at", OffsetDateTime.class));
     }
 
     public Optional<PersonalizedRecommendationCacheState> findCacheState(Long userId) {
@@ -481,14 +513,7 @@ public class PersonalizedRecommendationRepository {
     public List<PersonalizedRecommendationCandidate> findCachedCandidates(Long userId) {
         return jdbcClient.sql(SELECT_CACHED_CANDIDATES)
                 .param("userId", userId)
-                .query((rs, rowNum) -> new PersonalizedRecommendationCandidate(
-                        rs.getLong("perfume_id"),
-                        rs.getString("display_name"),
-                        rs.getString("image_url"),
-                        rs.getDouble("score"),
-                        rs.getString("evidence_source"),
-                        rs.getString("evidence_name"),
-                        rs.getObject("last_recommended_at", OffsetDateTime.class)))
+                .query((rs, rowNum) -> toCandidate(rs))
                 .list();
     }
 
@@ -509,6 +534,7 @@ public class PersonalizedRecommendationRepository {
                     .param("score", candidate.score())
                     .param("evidenceSource", candidate.evidenceSource())
                     .param("evidenceName", candidate.evidenceName())
+                    .param("evidenceKey", candidate.evidenceKey())
                     .update();
         }
         jdbcClient.sql(UPDATE_CACHE_STATE)

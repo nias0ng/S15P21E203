@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { perfumeViewState } from '@/shared/config/perfumeViewSource'
@@ -13,7 +14,9 @@ import {
 } from '@/shared/hooks/useMeasuredHeight'
 import { useMediaQuery } from '@/shared/hooks/useMediaQuery'
 import { UNROLL, UNROLL_CURVE } from '@/shared/hooks/useUnroll'
+import { localizedName } from '@/shared/i18n/locale'
 import { cn } from '@/shared/lib/cn'
+import { useLocale } from '@/shared/store/localeStore'
 import { BottleSilhouette } from '@/shared/ui/BottleSilhouette'
 
 import { groupVoyageLogByDay, type VoyageLogDay } from '../lib/voyageLogDays'
@@ -31,6 +34,8 @@ export type VoyageLogStatus = 'loading' | 'ready' | 'guest' | 'error'
 type Props = {
   entries: VoyageLogEntry[]
   status: VoyageLogStatus
+  /** 사람이 접기 단추를 눌렀습니다 — 첫 방문 안내(`tourStore` 의 log)가 할 일을 다 했습니다 */
+  onToggle?: (open: boolean) => void
 }
 
 /*
@@ -135,7 +140,8 @@ const FOLD_SETTLE_MS = 750
  */
 const NARROW_QUERY = '(max-width: 1024px)'
 
-export function VoyageLog({ entries, status }: Props) {
+export function VoyageLog({ entries, status, onToggle }: Props) {
+  const { t } = useTranslation('map')
   const narrow = useMediaQuery(NARROW_QUERY)
   // 기본값은 폭이 정하고(좁으면 접힘), 사용자가 누르면 **누른 단계와 함께** 기억합니다.
   // 문턱을 넘으면 기억해 둔 단계가 안 맞으므로 저절로 기본값으로 돌아갑니다 —
@@ -184,7 +190,7 @@ export function VoyageLog({ entries, status }: Props) {
 
   return (
     <section
-      aria-label="향해 일지"
+      aria-label={t('voyageLog.title')}
       /*
         NOTE: `relative` 는 '…' 카드(`VoyageLogMore`)의 기준입니다. 판과 카드 사이의 칸(접기 · 목록)에
         position 을 주면 카드의 기준이 그 칸으로 내려가 넘침에 잘립니다.
@@ -193,13 +199,16 @@ export function VoyageLog({ entries, status }: Props) {
     >
       <div className="flex items-center justify-between">
         <h2 className="text-body text-surface font-serif font-semibold">
-          향해 일지
+          {t('voyageLog.title')}
         </h2>
         <button
           type="button"
-          onClick={() => setChoice({ narrow, open: !open })}
+          onClick={() => {
+            setChoice({ narrow, open: !open })
+            onToggle?.(!open)
+          }}
           aria-expanded={open}
-          aria-label={open ? '향해 일지 접기' : '향해 일지 펼치기'}
+          aria-label={t(open ? 'voyageLog.collapse' : 'voyageLog.expand')}
           className={cn(
             'border-surface/15 text-dusk-gold rounded-card flex size-5 items-center justify-center border text-[10px]',
             'hover:bg-surface/10 transition-colors duration-120 ease-out',
@@ -257,10 +266,12 @@ function VoyageLogBody({
   status,
   onDayFold,
 }: Props & { onDayFold: () => void }) {
+  // 날 머리말의 '오늘' 도 화면 언어를 따르므로, 언어가 바뀌면 여기서 다시 묶습니다
+  const { t } = useTranslation('map')
   if (status === 'loading') {
     return (
       <p>
-        <span className={NOTE}>일지를 불러오는 중입니다</span>
+        <span className={NOTE}>{t('voyageLog.loading')}</span>
       </p>
     )
   }
@@ -268,12 +279,12 @@ function VoyageLogBody({
     return (
       <p>
         <span className={NOTE}>
-          로그인하면 지나온 해역이 쌓입니다.{' '}
+          {t('voyageLog.guest')}{' '}
           <Link
             to={ROUTES.LOGIN}
             className="text-dusk-gold underline underline-offset-2"
           >
-            로그인
+            {t('voyageLog.login')}
           </Link>
         </span>
       </p>
@@ -282,7 +293,7 @@ function VoyageLogBody({
   if (status === 'error') {
     return (
       <p>
-        <span className={NOTE}>일지를 불러오지 못했습니다</span>
+        <span className={NOTE}>{t('voyageLog.error')}</span>
       </p>
     )
   }
@@ -291,7 +302,7 @@ function VoyageLogBody({
   if (days.length === 0) {
     return (
       <p>
-        <span className={NOTE}>아직 들어간 해역이 없습니다</span>
+        <span className={NOTE}>{t('voyageLog.empty')}</span>
       </p>
     )
   }
@@ -337,6 +348,7 @@ function VoyageDay({
   defaultOpen: boolean
   onFold: () => void
 }) {
+  const { t } = useTranslation('map')
   const [open, setOpen] = useState(defaultOpen)
   // 재기 전(null)에는 내용 높이 그대로 둡니다 — 처음 뜰 때 날마다 따로 풀리지 않게
   const { ref: bodyRef, height: bodyHeight } = useMeasuredHeight(null)
@@ -396,10 +408,12 @@ function VoyageDay({
           */}
           <dl className="border-surface/15 ml-2.5 space-y-2.5 border-l pl-3.5">
             <div>
-              <dt className={LABEL}>지나온 해역</dt>
+              <dt className={LABEL}>{t('voyageLog.regions')}</dt>
               <dd className="mt-1.25">
                 <VoyageLogMore
-                  label={`해역 ${moreRegions.length}곳 더 보기`}
+                  label={t('voyageLog.moreRegions', {
+                    count: moreRegions.length,
+                  })}
                   more={
                     moreRegions.length > 0 && (
                       <RegionChips codes={moreRegions} />
@@ -414,10 +428,12 @@ function VoyageDay({
 
             {perfumes.length > 0 && (
               <div>
-                <dt className={LABEL}>발견한 향수</dt>
+                <dt className={LABEL}>{t('voyageLog.perfumes')}</dt>
                 <dd className="mt-1.25">
                   <VoyageLogMore
-                    label={`향수 ${morePerfumes.length}개 더 보기`}
+                    label={t('voyageLog.morePerfumes', {
+                      count: morePerfumes.length,
+                    })}
                     more={
                       morePerfumes.length > 0 && (
                         <PerfumeItems perfumes={morePerfumes} />
@@ -478,30 +494,45 @@ function RegionChips({
  * 줄이지 않은 이름과 브랜드가 보입니다.
  */
 function PerfumeItems({ perfumes }: { perfumes: VoyageLogDay['perfumes'] }) {
+  const locale = useLocale()
   return (
     <ul className="space-y-0.5">
-      {perfumes.map((perfume) => (
-        <li key={perfume.perfumeId}>
-          <Link
-            to={toPerfumeDetail(perfume.perfumeId)}
-            state={perfumeViewState('SCENT_MAP')}
-            title={[perfume.fullName ?? perfume.name, perfume.brand]
-              .filter(Boolean)
-              .join(' · ')}
-            className="text-caption text-surface/95 hover:text-surface flex items-center gap-1.75 transition-colors duration-120 ease-out"
-          >
-            <BottleSilhouette
-              className={cn(
-                'h-3.5 w-1.75',
-                perfume.family
-                  ? FAMILY_ICON[perfume.family]
-                  : 'text-surface/60',
-              )}
-            />
-            <span className="min-w-0 truncate">{perfume.name}</span>
-          </Link>
-        </li>
-      ))}
+      {perfumes.map((perfume) => {
+        /*
+         * 영어 화면은 원명을 씁니다. 원명은 줄인 것이 없어 이름과 전체 이름이 같습니다.
+         * 지도에서 못 찾은 향수는 원명이 비어 있고, 그 이름이 API 의 DB 원명(대개 영문)이라 API 의 한국어
+         * 이름과 짝지어 고릅니다.
+         */
+        const name = perfume.nameEn
+          ? localizedName(locale, perfume.nameEn, perfume.name)
+          : localizedName(locale, perfume.name, perfume.nameKo)
+        const fullName = perfume.nameEn
+          ? localizedName(locale, perfume.nameEn, perfume.fullName)
+          : perfume.fullName
+        const brand = perfume.brandEn
+          ? localizedName(locale, perfume.brandEn, perfume.brand)
+          : perfume.brand
+        return (
+          <li key={perfume.perfumeId}>
+            <Link
+              to={toPerfumeDetail(perfume.perfumeId)}
+              state={perfumeViewState('SCENT_MAP')}
+              title={[fullName ?? name, brand].filter(Boolean).join(' · ')}
+              className="text-caption text-surface/95 hover:text-surface flex items-center gap-1.75 transition-colors duration-120 ease-out"
+            >
+              <BottleSilhouette
+                className={cn(
+                  'h-3.5 w-1.75',
+                  perfume.family
+                    ? FAMILY_ICON[perfume.family]
+                    : 'text-surface/60',
+                )}
+              />
+              <span className="min-w-0 truncate">{name}</span>
+            </Link>
+          </li>
+        )
+      })}
     </ul>
   )
 }

@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 import { cn } from '@/shared/lib/cn'
 
 import type { PlaqueMetrics } from '../lib'
@@ -39,6 +41,7 @@ function PlaqueBoard({
   count: number
   caption: string
 }) {
+  const { t } = useTranslation('shelf')
   return (
     <>
       <span aria-hidden className="shelf-plaque-board">
@@ -57,9 +60,9 @@ function PlaqueBoard({
         </span>
         <span aria-hidden className="shelf-plaque-rule" />
         <span className="shelf-plaque-count font-serif font-semibold tabular-nums">
-          <span className="sr-only">, 향수 </span>
+          <span className="sr-only">{t('plaque.countBefore')}</span>
           {count}
-          <span className="sr-only">개</span>
+          <span className="sr-only">{t('plaque.countAfter', { count })}</span>
         </span>
         <span aria-hidden lang="en" className="shelf-plaque-caption">
           {caption}
@@ -103,13 +106,14 @@ export function ShelfPlaqueMenu({
   onSelect: (category: ShelfCategory) => void
   className?: string
 }) {
+  const { t } = useTranslation('shelf')
   const at = Math.max(
     0,
     items.findIndex((item) => item.category === value),
   )
   return (
     <nav
-      aria-label="진열대 분류"
+      aria-label={t('plaque.menu')}
       className={cn(
         'relative flex flex-col items-center justify-between',
         className,

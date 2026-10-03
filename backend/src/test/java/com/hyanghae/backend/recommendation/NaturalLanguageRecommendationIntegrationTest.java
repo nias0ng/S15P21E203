@@ -13,6 +13,7 @@ import com.hyanghae.backend.recommendation.client.NlrRecommendResponse;
 import com.hyanghae.backend.recommendation.exception.RecommendationErrorCode;
 import com.hyanghae.backend.support.IntegrationTest;
 import java.util.List;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -96,6 +97,9 @@ class NaturalLanguageRecommendationIntegrationTest {
                 .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
                 .andExpect(jsonPath("$.perfumes[0].name").value("Laundry"))
                 .andExpect(jsonPath("$.perfumes[0].brand").value("Ostrikov Beauty Publishing"))
+                .andExpect(jsonPath("$.perfumes[0].originalName").value("Laundry"))
+                .andExpect(jsonPath("$.perfumes[0].originalBrand")
+                        .value("Ostrikov Beauty Publishing"))
                 .andExpect(jsonPath("$.perfumes[0].thumbnailUrl").value(THUMBNAIL))
                 .andExpect(jsonPath("$.perfumes[0].reasons.length()").value(1))
                 .andExpect(jsonPath("$.perfumes[0].reasons[0].phrase").value("빨래"))
@@ -216,6 +220,29 @@ class NaturalLanguageRecommendationIntegrationTest {
                 .andExpect(jsonPath("$.matchedData.length()").value(0));
     }
 
+    /**
+     * 한국어 이름이 있으면 {@code name} · {@code brand} 는 예전처럼 한국어이고, 원래 이름은
+     * {@code originalName} · {@code originalBrand} 로 따로 나갑니다. 영어 요청이어도 같습니다.
+     */
+    @Test
+    void servesOriginalNamesNextToKoreanNames() throws Exception {
+        jdbcTemplate.update("UPDATE perfumes SET name_ko = '런드리' WHERE perfume_id = 1");
+        jdbcTemplate.update("UPDATE brands SET name_ko = '오스트리코프' WHERE brand_id = 1");
+        given(nlrClient.recommend(anyString())).willReturn(aiResponse("OK",
+                result(73368L, matched("soapy", "빨래"))));
+
+        for (String language : new String[]{"ko", "en"}) {
+            clearRateLimit();
+            mockMvc.perform(request(QUERY).header("Accept-Language", language))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.perfumes[0].name").value("런드리"))
+                    .andExpect(jsonPath("$.perfumes[0].brand").value("오스트리코프"))
+                    .andExpect(jsonPath("$.perfumes[0].originalName").value("Laundry"))
+                    .andExpect(jsonPath("$.perfumes[0].originalBrand")
+                            .value("Ostrikov Beauty Publishing"));
+        }
+    }
+
     /** 브랜드가 없는 향수도 나갑니다. {@code brand} 만 {@code null} 입니다. */
     @Test
     void servesPerfumeWithoutBrand() throws Exception {
@@ -226,6 +253,7 @@ class NaturalLanguageRecommendationIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.perfumes[0].perfumeId").value(2))
                 .andExpect(jsonPath("$.perfumes[0].brand").doesNotExist())
+                .andExpect(jsonPath("$.perfumes[0].originalBrand").doesNotExist())
                 .andExpect(jsonPath("$.perfumes[0].thumbnailUrl").doesNotExist());
     }
 
@@ -243,6 +271,22 @@ class NaturalLanguageRecommendationIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("NO_RESULT"))
                 .andExpect(jsonPath("$.perfumes").isEmpty());
+    }
+
+    /**
+     * 단종이 확인된 향수는 AI 가 골라도 내보내지 않습니다 (지인 피드백 F5). AI 서버도 같은 목록으로
+     * 거르지만, 두 쪽 배포가 어긋나도 살 수 없는 향수를 권하지 않게 백엔드가 한 번 더 막습니다.
+     */
+    @Test
+    void excludesDiscontinuedPerfume() throws Exception {
+        markDiscontinued(1);
+        given(nlrClient.recommend(anyString())).willReturn(aiResponse("OK",
+                result(73368L, matched("soapy", "빨래")),
+                result(1234L, matched("soapy", "빨래"))));
+
+        mockMvc.perform(request(QUERY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes[*].perfumeId", Matchers.contains(2)));
     }
 
     /**
@@ -410,6 +454,14 @@ class NaturalLanguageRecommendationIntegrationTest {
                 "INSERT INTO perfumes (perfume_id, brand_id, fragrantica_id, name, is_active)"
                         + " VALUES (?, ?, ?, ?, ?)",
                 id, brandId, fragranticaId, name, active);
+    }
+
+    private void markDiscontinued(long perfumeId) {
+        jdbcTemplate.update(
+                "UPDATE perfumes SET production_status = 'DISCONTINUED',"
+                        + " production_status_checked_at = DATE '2026-10-01',"
+                        + " production_status_source = 'https://example.com' WHERE perfume_id = ?",
+                perfumeId);
     }
 
     private void insertImage(long id, long perfumeId, String imageUrl, Integer displayOrder) {

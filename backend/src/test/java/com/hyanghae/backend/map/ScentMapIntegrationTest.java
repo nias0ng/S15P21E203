@@ -10,6 +10,8 @@ import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -133,6 +135,26 @@ class ScentMapIntegrationTest {
                 .andExpect(jsonPath("$.perfumes[0].name").value("Base Scent"))
                 .andExpect(jsonPath("$.perfumes[0].x").value(0.2))
                 .andExpect(jsonPath("$.perfumes[0].y").value(0.3));
+    }
+
+    /**
+     * 목록의 점도 원래 이름과 한국어 이름을 짝으로 싣습니다. 선택한 향수의 요약과 같은 짝입니다.
+     *
+     * <p>요청 언어와 관계없이 같은 짝이 옵니다. 한국어 이름이 없는 향수는 한국어 칸이 빕니다.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"ko", "en"})
+    void servesBothNamesInTheList(String language) throws Exception {
+        jdbcTemplate.update("UPDATE perfumes SET name_ko = NULL WHERE perfume_id = 6");
+
+        mockMvc.perform(get(MAP_URL).header("Accept-Language", language))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(1))
+                .andExpect(jsonPath("$.perfumes[0].name").value("Base Scent"))
+                .andExpect(jsonPath("$.perfumes[0].nameKo").value("베이스 향수"))
+                .andExpect(jsonPath("$.perfumes[3].perfumeId").value(6))
+                .andExpect(jsonPath("$.perfumes[3].name").value("Bare Scent"))
+                .andExpect(jsonPath("$.perfumes[3].nameKo").doesNotExist());
     }
 
     /**

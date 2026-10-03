@@ -12,13 +12,10 @@ import './scene-boot.css'
 import './cabin.css'
 
 export { CabinBubble } from './components/CabinBubble'
-export { MapSearchModal } from './components/MapSearchModal'
 export { SceneBootCurtain } from './components/SceneBootCurtain'
 export { ScentScene, type ScenePerfumeRef } from './components/ScentScene'
-export {
-  SceneSearchBar,
-  type SceneSearchMode,
-} from './components/SceneSearchBar'
+export { SceneTourTip } from './components/SceneTourTip'
+export { SceneSearchBar } from './components/SceneSearchBar'
 export { VoyageLog, type VoyageLogStatus } from './components/VoyageLog'
 export { useExplorationMove } from './hooks/useExplorationMove'
 export { useSaveBoatPosition } from './hooks/useSaveBoatPosition'

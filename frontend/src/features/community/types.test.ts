@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+import { i18n } from '@/shared/i18n'
+
 import { boardTitle } from './types'
 
 describe('boardTitle', () => {
@@ -19,5 +21,14 @@ describe('boardTitle', () => {
 
   it('분류가 없으면 자리를 비우지 않는다', () => {
     expect(boardTitle('RECENT', '글', undefined)).toBe('최근 글')
+  })
+
+  it('영어 화면은 정렬 수식어를 영어로 붙인다', async () => {
+    await i18n.changeLanguage('en')
+
+    expect(boardTitle('RECENT', 'reviews')).toBe('Recent reviews')
+    expect(boardTitle('LIKES', 'posts', 'collection')).toBe(
+      'Most liked collection posts',
+    )
   })
 })

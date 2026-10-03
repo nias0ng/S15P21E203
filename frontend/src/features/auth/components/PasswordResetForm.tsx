@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
@@ -12,24 +13,24 @@ import { BackToLogin } from './BackToLogin'
 import { NewPasswordFields } from './NewPasswordFields'
 
 export function PasswordFindForm() {
+  const { t } = useTranslation('auth')
   const [sentTo, setSentTo] = useState<string | null>(null)
 
   if (sentTo !== null) {
     return (
       <AuthCard
-        title="메일을 보냈습니다"
-        description="받은 메일함의 링크로 비밀번호를 다시 정하세요"
+        title={t('passwordFind.sentTitle')}
+        description={t('passwordFind.sentDescription')}
       >
         <p
           aria-live="polite"
           className="border-line bg-line-soft text-ink text-caption border p-2.5"
         >
-          {sentTo} 으로 재설정 링크를 보냈습니다. 메일이 안 보이면 스팸함도
-          확인해주세요.
+          {t('passwordFind.sentBody', { email: sentTo })}
         </p>
 
         <Button variant="outline" fullWidth onClick={() => setSentTo(null)}>
-          다른 이메일로 다시 받기
+          {t('passwordFind.retry')}
         </Button>
 
         <BackToLogin />
@@ -39,8 +40,8 @@ export function PasswordFindForm() {
 
   return (
     <AuthCard
-      title="비밀번호 찾기"
-      description="가입한 이메일로 재설정 링크를 보냅니다"
+      title={t('passwordFind.title')}
+      description={t('passwordFind.description')}
     >
       <form
         className="space-y-2.5"
@@ -52,16 +53,16 @@ export function PasswordFindForm() {
         }}
       >
         <Input
-          label="이메일"
+          label={t('email.label')}
           hideLabel
           name="email"
           type="email"
           autoComplete="email"
-          placeholder="이메일"
+          placeholder={t('email.label')}
           required
         />
         <Button type="submit" fullWidth className={AUTH_SUBMIT}>
-          메일 받기
+          {t('passwordFind.submit')}
         </Button>
       </form>
 
@@ -71,12 +72,13 @@ export function PasswordFindForm() {
 }
 
 export function PasswordResetForm() {
+  const { t } = useTranslation('auth')
   const password = useNewPassword()
 
   return (
     <AuthCard
-      title="비밀번호 재설정"
-      description="새로 쓸 비밀번호를 정해주세요"
+      title={t('passwordReset.title')}
+      description={t('passwordReset.description')}
     >
       <form
         className="space-y-2.5"
@@ -85,10 +87,10 @@ export function PasswordResetForm() {
           // NOTE: 서버에 붙이지 않습니다 — 백엔드에 재설정 API 가 없습니다.
         }}
       >
-        <NewPasswordFields label="새 비밀번호" password={password} />
+        <NewPasswordFields field="newPassword" password={password} />
 
         <p className="text-ink-muted text-caption">
-          비밀번호는 {PASSWORD_MIN_LENGTH}자 이상이어야 합니다.
+          {t('password.rule', { min: PASSWORD_MIN_LENGTH })}
         </p>
 
         <Button
@@ -97,7 +99,7 @@ export function PasswordResetForm() {
           className={AUTH_SUBMIT}
           disabled={!password.valid}
         >
-          변경하고 로그인
+          {t('passwordReset.submit')}
         </Button>
       </form>
 

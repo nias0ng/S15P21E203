@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 import { cn } from '@/shared/lib/cn'
 
 type Props = {
@@ -17,6 +19,7 @@ type Props = {
  * 흐릅니다(ShelfWall).
  */
 export function ShelfPager({ index, total, onPrev, onNext, className }: Props) {
+  const { t } = useTranslation('shelf')
   return (
     <div className={cn('flex items-center gap-3.75', className)}>
       {/*
@@ -29,7 +32,7 @@ export function ShelfPager({ index, total, onPrev, onNext, className }: Props) {
         없습니다. polite 라 사용자가 읽던 문장을 끊지 않고 뒤이어 읽어줍니다.
       */}
       <p aria-live="polite" className="shelf-muted text-body tabular-nums">
-        <span className="sr-only">{`${total}개 중 ${index}번째 향수`}</span>
+        <span className="sr-only">{t('pager.position', { total, index })}</span>
         <span aria-hidden>
           <span className="text-[var(--shelf-ink)]">{index}</span> / {total}
         </span>
@@ -37,13 +40,13 @@ export function ShelfPager({ index, total, onPrev, onNext, className }: Props) {
 
       <div className="flex items-center gap-2.5">
         <PagerButton
-          label="이전 향수"
+          label={t('pager.prev')}
           glyph="‹"
           onClick={onPrev}
           disabled={index <= 1}
         />
         <PagerButton
-          label="다음 향수"
+          label={t('pager.next')}
           glyph="›"
           onClick={onNext}
           disabled={index >= total}

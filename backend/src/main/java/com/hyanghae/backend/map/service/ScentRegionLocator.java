@@ -57,6 +57,8 @@ public class ScentRegionLocator {
         try {
             return new ScentRegions.Region(
                     new ScentRegionRef(row.scentRegionId(), row.code()),
+                    row.anchorX(),
+                    row.anchorY(),
                     objectMapper.readValue(row.polygonJson(), POLYGON_TYPE)
             );
         } catch (JsonProcessingException exception) {

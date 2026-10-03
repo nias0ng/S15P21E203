@@ -1,12 +1,14 @@
 import { PARAMS as P } from './params.js';
+import { t } from './i18n.js';
 
 // ───────── 품질 단계 (2026-09-25, S15P21E203-435) ─────────
 // 사용자 : *"이 프로젝트 서비스를 경험하는 사람들은 대부분 노트북 … 옵티머스로 인해 강제적으로 CPU 내장 그래픽 카드만 사용해서
 //   프레임이 40~50 밖에 안나오며 … 내장그래픽 점유율이 80~90 %"* · *"그러한 조건의 사용자라면 … 선택권을 줌과 동시에
 //   낮은 레벨의 설정으로 서비스를 시작"*. 설계 원본은 `docs/고도화-0917/02-노트북-크롬-GPU.md` §4-1 이다 (측정표는 거기 §5).
 //
-// 단계는 셋이다 — high(지금의 기준 그림) · mid · low. 모드는 넷이다 — auto + 셋 중 하나로 **고정**.
-//   auto : GPU 이름으로 시작 단계를 고르고(내장 · 소프트웨어 → low), 달리는 동안 프레임 시간으로 한 단계씩만 움직인다.
+// 단계는 넷이다 — high(지금의 기준 그림) · mid · low · min. 모드는 다섯이다 — auto + 넷 중 하나로 **고정**.
+//   auto : GPU 이름으로 시작 단계를 고르고(내장 → low · 소프트웨어 → min), 달리는 동안 프레임 시간으로 한 단계씩만 움직인다.
+//   ⭐ min(최저, 2026-09-30) 은 low 에서도 끊기는 기기의 바닥이다 — 가벼운 물 · 30fps · 부력 읽기 끔 · 픽셀비 하한 0.5 (아래 표)
 //   고정 : 그 단계에서 안 움직인다 (앱의 그래픽 설정 · 발표용 `?quality=high`).
 //
 // ⚠⚠ 사이트는 GPU 를 못 바꾼다 — `powerPreference: 'high-performance'` 를 줘도 Windows 크롬은 내장 GPU 그대로다
@@ -15,9 +17,9 @@ import { PARAMS as P } from './params.js';
 // ⚠ 단계가 바꾸는 손잡이는 아래 TIERS 한 표다. **새 층을 만들면 제 문턱을 따로 두지 말고 이 표에 한 줄을 더한다** (CLAUDE.md 불변식 34).
 //   params 값은 이 파일이 **만들 때의 값(BASE)에 배율을 곱해** 쓴다 — 콘솔에서 바꾼 값은 다음 단계 전환에서 BASE 로 돌아간다.
 
-const ORDER = ['low', 'mid', 'high'];
+const ORDER = ['min', 'low', 'mid', 'high'];
 
-// 픽셀비 = min(devicePixelRatio × prScale, prMax) · 아래로 0.6.
+// 픽셀비 = min(devicePixelRatio × prScale, prMax) · 아래로 prMin (없으면 0.6).
 //   ⚠ 2026-09-25 실측 (Intel Arc 내장 · 1024×678 CSS · 배율 2 · 한 장 처리량 ms, 새 파이프라인) :
 //     MSAA 4 · 19.1 · MSAA 2 · 16.1 · MSAA 0 · 10.6 (픽셀비 2) — 해상도에 비례하지 않는 바닥이 ~7ms 있다 (수면 메시 정점 ~2.9ms 가 가장 크다)
 //     수면 메시 512 → 384 → 256 : 픽셀비 2 · MSAA 0 에서 12.3 → 10.1 → 8.3
@@ -25,20 +27,28 @@ const ORDER = ['low', 'mid', 'high'];
 //     정점 : 512 26.3만 → 12.5만 · 384 14.8만 → 7.7만 · 256 6.6만 → 3.9만. 위 ms 는 균일 격자 때의 실측이다 (보이는 창에서 다시 잴 것)
 // ⚠ sunShadow (2026-09-27) — 물이 해 쪽 주광의 그림자 맵을 읽는 '배 그림자 ②' (water.js). 화면의 14~36% 에서 4~16탭을 짚는다.
 //   유니폼으로만 끈다(세기 0 → 블록이 통째로 안 돈다) — define 이 아니라 전환에 셰이더를 다시 안 만든다. low 에서는 선체 발자국(①)만 남는다
+// 단계 이름(높음 · 보통 · 낮음 · 최저)은 화면 글자라 사전에 있다 (i18n.js quality.*) — info().label 이 부를 때 지금 언어로 푼다
+// ⭐ min (2026-09-30) — 손잡이 셋이 더 있다. 다른 단계는 전부 기본값(0 · 0 · 1)이라 예전 그대로다
+//   lite  : 가벼운 물 (params waterLite → water.js uLite). 무엇을 건너뛸지는 params 의 lite* 두 칸이 정한다 (잔결 · 반사의 구름)
+//   fps   : 그리기 상한 (0 = 화면 주사율 그대로). main.js 의 tick 이 그 간격보다 이른 장을 건너뛴다 — 시뮬 게이트(30Hz)와 같은 박자라 물은 안 느려진다
+//   probe : 0 이면 부력이 시뮬 높이를 동기로 읽지 않는다 (params buoyProbe → boat.js). 읽기는 GPU 가 밀린 만큼 CPU 를 세운다
 export const TIERS = {
-  high: { label: '높음', prMax: 2,   prScale: 1,    msaa: 4, mesh: 512,
-          bloom: 1, reflect: 1, sub: 1, glint: 1,   glitOct2: 1, detailK: 1,   sunShadow: 1 },
-  mid:  { label: '보통', prMax: 1.5, prScale: 1,    msaa: 2, mesh: 384,
-          bloom: 1, reflect: 1, sub: 1, glint: 1,   glitOct2: 1, detailK: 1,   sunShadow: 1 },
-  low:  { label: '낮음', prMax: 1,   prScale: 0.75, msaa: 0, mesh: 256,
-          bloom: 0, reflect: 0, sub: 0, glint: 0.6, glitOct2: 0, detailK: 0.6, sunShadow: 0 }
+  high: { prMax: 2,    prScale: 1,    msaa: 4, mesh: 512,
+          bloom: 1, reflect: 1, sub: 1, glint: 1,   glitOct2: 1, detailK: 1,   sunShadow: 1, spark: 1 },
+  mid:  { prMax: 1.5,  prScale: 1,    msaa: 2, mesh: 384,
+          bloom: 1, reflect: 1, sub: 1, glint: 1,   glitOct2: 1, detailK: 1,   sunShadow: 1, spark: 1 },
+  low:  { prMax: 1,    prScale: 0.75, msaa: 0, mesh: 256,
+          bloom: 0, reflect: 0, sub: 0, glint: 0.6, glitOct2: 0, detailK: 0.6, sunShadow: 0, spark: 1 },
+  min:  { prMax: 0.75, prScale: 0.6,  prMin: 0.5, msaa: 0, mesh: 256,
+          bloom: 0, reflect: 0, sub: 0, glint: 0.6, glitOct2: 0, detailK: 0.6, sunShadow: 0, spark: 0,
+          lite: 1, fps: 30, probe: 0 }
 };
 
 // 단계를 한 칸 올렸을 때 GPU 시간이 몇 배가 되는가 (위 실측의 보수적인 쪽). 올림은 '지금 GPU 시간 × 이 값' 이 예산 안일 때만 한다
-const UP_COST = { low: 2.6, mid: 2.0 };
+const UP_COST = { min: 2.0, low: 2.6, mid: 2.0 };
 const BUDGET_MS = 1000 / 60;
 
-const MODES = ['auto', 'high', 'mid', 'low'];
+const MODES = ['auto', 'high', 'mid', 'low', 'min'];
 const STORE_KEY = 'pb-quality';
 
 // GPU 이름 → 부류. 렌더러 문자열은 ANGLE 이 감싼다 — 'ANGLE (Intel, Intel(R) Arc(TM) Graphics (0x00007D55) Direct3D11 …)'
@@ -56,8 +66,9 @@ export function gpuClass(name) {
   return 'unknown';
 }
 
-// auto 의 첫 단계. 내장 · 소프트웨어는 낮음에서 시작한다 (사용자 결정) — 여유가 보이면 GPU 타이머가 한 칸씩 올린다
-const START = { discrete: 'high', apple: 'mid', unknown: 'mid', integrated: 'low', software: 'low' };
+// auto 의 첫 단계. 내장은 낮음에서 시작한다 (사용자 결정) — 여유가 보이면 GPU 타이머가 한 칸씩 올린다
+//   소프트웨어(CPU 가 그린다)는 최저에서 시작한다 (2026-09-30 — 낮음도 몇 fps 다)
+const START = { discrete: 'high', apple: 'mid', unknown: 'mid', integrated: 'low', software: 'min' };
 
 function readGpu(gl) {
   let name = '';
@@ -145,7 +156,8 @@ export function createQuality({ gl, busy }) {
   const BASE = {
     bloomAmount: P.bloomAmount, boatReflect: P.boatReflect, subAmount: P.subAmount,
     glintHot: P.glintHot === undefined ? 0 : P.glintHot, glitterOct2: P.glitterOct2,
-    waterSunShadow: P.waterSunShadow === undefined ? 0 : P.waterSunShadow
+    waterSunShadow: P.waterSunShadow === undefined ? 0 : P.waterSunShadow,
+    sparkAmount: P.sparkAmount === undefined ? 0 : P.sparkAmount
   };
   const timer = createGpuTimer(gl);
   const listeners = new Set();
@@ -165,7 +177,7 @@ export function createQuality({ gl, busy }) {
   const hold = (ms) => { holdUntil = Math.max(holdUntil, performance.now() + ms); iv.length = 0; winStart = 0; if (timer) timer.take(); };
 
   function info() {
-    return { mode, tier, auto: mode === 'auto', reason, gpu: { name: gpu.name, cls: gpu.cls }, label: TIERS[tier].label, timer: !!timer };
+    return { mode, tier, auto: mode === 'auto', reason, gpu: { name: gpu.name, cls: gpu.cls }, label: t('quality.' + tier), timer: !!timer };
   }
   function emit() { const i = info(); listeners.forEach(fn => { try { fn(i); } catch (e) { console.warn('[quality]', e); } }); }
 
@@ -194,7 +206,11 @@ export function createQuality({ gl, busy }) {
     const p50 = pct(a, 0.5), p90 = pct(a, 0.9);
     const gpuMs = timer ? timer.take() : [];
     const g50 = gpuMs.length >= 20 ? pct(gpuMs, 0.5) : null;
-    const downMs = P.qualityDownMs === undefined ? 26 : P.qualityDownMs;
+    const downMs0 = P.qualityDownMs === undefined ? 26 : P.qualityDownMs;
+    // ⭐ 그리기 상한이 있는 단계(min 30fps)는 간격이 늘 그 상한에 묶인다 — 상한의 1.5배(50ms)를 넘을 때만 느리다고 보고,
+    //   올림은 간격이 아니라 GPU 시간으로만 판다 (아래 upP90). 없으면 예전 문턱 그대로다
+    const capMs = TIERS[tier].fps ? 1000 / TIERS[tier].fps : 0;
+    const downMs = capMs ? Math.max(downMs0, capMs * 1.5) : downMs0;
     // ⚠⚠ **33ms 에 고르게 묶인 간격만으로는 '에너지 절약 30Hz' 와 'GPU 가 버거운 60Hz 화면' 을 못 가른다** —
     //   수직동기 때문에 한 장이 17~33ms 걸리면 간격이 두 칸(33.3ms)으로 **똑같이 고르게** 묶인다 (2026-09-25 모의 실험 :
     //   설계 §4-1 의 모양 규칙만 두면 GPU 28ms · 33fps 인 외장 GPU 가 한 번도 안 내려왔다).
@@ -224,7 +240,8 @@ export function createQuality({ gl, busy }) {
     const next = ORDER[ORDER.indexOf(tier) + 1];
     const k = UP_COST[tier];
     const budget = BUDGET_MS * (P.qualityUpBudget === undefined ? 0.75 : P.qualityUpBudget);
-    if (!next || upLocked || g50 === null || !k || p90 > 20 || g50 * k > budget) { fastWins = 0; return; }
+    const upP90 = capMs ? capMs + 6 : 20;
+    if (!next || upLocked || g50 === null || !k || p90 > upP90 || g50 * k > budget) { fastWins = 0; return; }
     if (++fastWins >= 3) setTier(next, 'up');
   }
 
@@ -239,10 +256,10 @@ export function createQuality({ gl, busy }) {
     // 지금 단계의 픽셀비
     pixelRatio() {
       const T = TIERS[tier];
-      return Math.max(0.6, Math.min((window.devicePixelRatio || 1) * T.prScale, T.prMax));
+      return Math.max(T.prMin === undefined ? 0.6 : T.prMin, Math.min((window.devicePixelRatio || 1) * T.prScale, T.prMax));
     },
 
-    // 단계의 params 묶음을 쓴다 (나머지 손잡이 — 픽셀비 · MSAA · 메시 — 는 main.js 의 applyQuality 가 건다)
+    // 단계의 params 묶음을 쓴다 (나머지 손잡이 — 픽셀비 · MSAA · 메시 · 그리기 상한 — 는 main.js 가 건다)
     writeParams() {
       const T = TIERS[tier];
       P.bloomAmount = BASE.bloomAmount * T.bloom;
@@ -252,6 +269,10 @@ export function createQuality({ gl, busy }) {
       P.glitterOct2 = BASE.glitterOct2 * T.glitOct2;
       P.detailK = T.detailK;
       P.waterSunShadow = BASE.waterSunShadow * T.sunShadow;
+      P.sparkAmount = BASE.sparkAmount * (T.spark === undefined ? 1 : T.spark);
+      // ⚠ 두 스위치는 배율이 아니라 켜고 끄기다 — 표에 없으면 high 의 값(가벼운 물 끔 · 읽기 켬)
+      P.waterLite = T.lite ? 1 : 0;
+      P.buoyProbe = T.probe === 0 ? 0 : 1;
     },
 
     // 앱의 그래픽 설정 · 콘솔 (PB.quality.set)

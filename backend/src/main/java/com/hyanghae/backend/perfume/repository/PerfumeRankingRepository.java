@@ -60,13 +60,28 @@ public class PerfumeRankingRepository {
      *
      * <p>네 컬럼 모두에 겁니다. 브랜드 이름만 지우면 '블랙 오키드' 같은 향수 이름이 같은 증상으로
      * 남습니다.
+     *
+     * <p>네 칸을 한 줄로 이어 붙여 견주고, 통째로 안 걸리면 낱말({@code :t1} ~ {@code :t4})마다
+     * 봅니다. 까닭은 {@link PerfumeRepository#SEARCH_CONDITION} 에 적었습니다.
      */
+    private static final String NAMES = "LOWER(CONCAT("
+            + "REPLACE(COALESCE(b.name_ko, ''), ' ', ''), REPLACE(COALESCE(p.name_ko, ''), ' ', ''), ' ', "
+            + "REPLACE(COALESCE(b.name, ''), ' ', ''), REPLACE(COALESCE(p.name, ''), ' ', '')))";
+
     private static final String CONDITION = """
               AND (CAST(:keyword AS varchar) IS NULL
-                OR LOWER(REPLACE(p.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:keyword AS varchar), '%')) ESCAPE '!'
-                OR LOWER(REPLACE(p.name_ko, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:keyword AS varchar), '%')) ESCAPE '!'
-                OR LOWER(REPLACE(b.name, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:keyword AS varchar), '%')) ESCAPE '!'
-                OR LOWER(REPLACE(b.name_ko, ' ', '')) LIKE LOWER(CONCAT('%', CAST(:keyword AS varchar), '%')) ESCAPE '!')
+            """
+            + " OR " + NAMES + " LIKE LOWER(CONCAT('%', CAST(:keyword AS varchar), '%')) ESCAPE '!'"
+            + " OR (CAST(:t1 AS varchar) IS NOT NULL"
+            + " AND " + NAMES + " LIKE LOWER(CONCAT('%', CAST(:t1 AS varchar), '%')) ESCAPE '!'"
+            + " AND (CAST(:t2 AS varchar) IS NULL"
+            + " OR " + NAMES + " LIKE LOWER(CONCAT('%', CAST(:t2 AS varchar), '%')) ESCAPE '!')"
+            + " AND (CAST(:t3 AS varchar) IS NULL"
+            + " OR " + NAMES + " LIKE LOWER(CONCAT('%', CAST(:t3 AS varchar), '%')) ESCAPE '!')"
+            + " AND (CAST(:t4 AS varchar) IS NULL"
+            + " OR " + NAMES + " LIKE LOWER(CONCAT('%', CAST(:t4 AS varchar), '%')) ESCAPE '!')))"
+            + """
+
               AND (CAST(:brand AS varchar) IS NULL OR b.name = CAST(:brand AS varchar))
               AND (CAST(:brandId AS bigint) IS NULL OR b.brand_id = CAST(:brandId AS bigint))
               AND (CAST(:gender AS varchar) IS NULL OR p.gender = CAST(:gender AS varchar))
@@ -151,10 +166,10 @@ public class PerfumeRankingRepository {
 
     /** 한 페이지 분량입니다. 기준에 못 미치는 향수는 조인에서 빠집니다. */
     public List<PerfumeSummaryResponse> findPage(
-            RankingType ranking, String keyword, String brand, Long brandId, String gender,
-            int offset, int limit) {
+            RankingType ranking, String keyword, List<String> words, String brand, Long brandId,
+            String gender, int offset, int limit) {
         return bind(SELECT_PAGE.formatted(countSource(ranking), CONDITION),
-                ranking, keyword, brand, brandId, gender)
+                ranking, keyword, words, brand, brandId, gender)
                 .param("limit", limit)
                 .param("offset", offset)
                 .query((rs, rowNum) -> new PerfumeSummaryResponse(
@@ -168,18 +183,23 @@ public class PerfumeRankingRepository {
 
     /** 조건에 맞는 전체 개수입니다. 목록과 같은 조건을 써야 마지막 페이지가 비지 않습니다. */
     public long count(
-            RankingType ranking, String keyword, String brand, Long brandId, String gender) {
+            RankingType ranking, String keyword, List<String> words, String brand, Long brandId,
+            String gender) {
         return bind(SELECT_COUNT.formatted(countSource(ranking), CONDITION),
-                ranking, keyword, brand, brandId, gender)
+                ranking, keyword, words, brand, brandId, gender)
                 .query(Long.class)
                 .single();
     }
 
     private JdbcClient.StatementSpec bind(
-            String sql, RankingType ranking, String keyword, String brand, Long brandId,
-            String gender) {
+            String sql, RankingType ranking, String keyword, List<String> words, String brand,
+            Long brandId, String gender) {
         JdbcClient.StatementSpec spec = jdbcClient.sql(sql)
                 .param("keyword", keyword)
+                .param("t1", wordAt(words, 0))
+                .param("t2", wordAt(words, 1))
+                .param("t3", wordAt(words, 2))
+                .param("t4", wordAt(words, 3))
                 .param("brand", brand)
                 .param("brandId", brandId)
                 .param("gender", gender);
@@ -188,6 +208,11 @@ public class PerfumeRankingRepository {
             spec = spec.param("ownershipStatus", ranking.ownershipStatus());
         }
         return spec;
+    }
+
+    /** 낱말은 넷까지 봅니다. 모자라는 자리는 조건에서 빠지도록 {@code null} 입니다. */
+    private static String wordAt(List<String> words, int index) {
+        return index < words.size() ? words.get(index) : null;
     }
 
     private String countSource(RankingType ranking) {

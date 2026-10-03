@@ -1,5 +1,7 @@
 import { memo } from 'react'
 
+import { localizedName } from '@/shared/i18n/locale'
+import { useLocale } from '@/shared/store/localeStore'
 import { BottleSilhouette } from '@/shared/ui/BottleSilhouette'
 
 import { nameWithoutBrand, slotView } from '../lib'
@@ -86,6 +88,7 @@ export const DisplayCase = memo(function DisplayCase({
   priorityTo,
   priorityId,
 }: Props) {
+  const locale = useLocale()
   return (
     <div
       className="relative h-full shrink-0"
@@ -110,6 +113,7 @@ export const DisplayCase = memo(function DisplayCase({
           {items.map((item, at) => {
             const selected = item.shelfItemId === selectedId
             const { hidden, edge } = slotView(at, winFrom, winTo, edgeFrom)
+            const shownName = localizedName(locale, item.name, item.nameKo)
             const firstScreen =
               (at >= priorityFrom && at <= priorityTo) ||
               item.shelfItemId === priorityId
@@ -267,12 +271,14 @@ export const DisplayCase = memo(function DisplayCase({
                         title 에 남습니다.
                       */}
                       {/*
-                        한국어 이름이 있으면 그것을, 없으면 영문 이름을 적습니다.
-                        브랜드를 떼는 일은 영문 이름에만 뜻이 있습니다 — 한국어 이름은
-                        앞에 브랜드가 붙어 오지 않습니다.
+                        한국어 화면은 한국어 이름을, 영어 화면이거나 한국어 이름이 없으면 영문
+                        이름을 적습니다. 브랜드를 떼는 일은 영문 이름에만 뜻이 있습니다 — 한국어
+                        이름은 앞에 브랜드가 붙어 오지 않습니다.
                       */}
                       <span className="shelf-tag-name font-serif font-semibold">
-                        {item.nameKo ?? nameWithoutBrand(item.name, item.brand)}
+                        {shownName === item.name
+                          ? nameWithoutBrand(item.name, item.brand)
+                          : shownName}
                       </span>
                     </span>
                   </span>

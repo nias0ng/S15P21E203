@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router'
 
 import { apiErrorMessage, isApiError } from '@/shared/api/http'
@@ -28,6 +29,7 @@ import { GoogleLoginSection } from './GoogleLoginSection'
 import { NewPasswordFields } from './NewPasswordFields'
 
 export function SignupForm() {
+  const { t } = useTranslation('auth')
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const returnTo = safeReturnPath(searchParams.get(RETURN_PATH_PARAM))
@@ -94,7 +96,7 @@ export function SignupForm() {
     !signupMutation.isPending
 
   return (
-    <AuthCard title="회원가입" large>
+    <AuthCard title={t('signup.title')} large>
       <form
         className="space-y-2.5"
         onSubmit={(event) => {
@@ -118,11 +120,11 @@ export function SignupForm() {
               error={verification.sendError}
               hint={
                 emailToken !== null
-                  ? '인증되었습니다'
+                  ? t('signup.verified')
                   : verification.sent
                     ? undefined
                     : trimmedEmail.length > 0
-                      ? '[인증하기] 를 눌러주세요'
+                      ? t('signup.sendPrompt')
                       : undefined
               }
             />
@@ -135,7 +137,7 @@ export function SignupForm() {
             isLoading={verification.isSending && !verification.sent}
             onClick={verification.send}
           >
-            인증하기
+            {t('signup.send')}
           </Button>
         </div>
 
@@ -144,9 +146,11 @@ export function SignupForm() {
             <div className="relative min-w-0 flex-1">
               <Input
                 className="pr-15"
-                label="인증번호"
+                label={t('signup.codeLabel')}
                 hideLabel
-                placeholder={`인증번호 ${EMAIL_VERIFICATION_CODE_LENGTH}자리`}
+                placeholder={t('signup.codePlaceholder', {
+                  length: EMAIL_VERIFICATION_CODE_LENGTH,
+                })}
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 maxLength={EMAIL_VERIFICATION_CODE_LENGTH}
@@ -166,13 +170,15 @@ export function SignupForm() {
                   }
                 }}
                 error={verification.codeError}
-                hint="인증번호를 보냈습니다. 메일함을 확인해주세요"
+                hint={t('signup.codeSent')}
               />
               {verification.codeRemaining !== null && (
                 // 번호 칸 오른쪽 끝에 얹습니다. 라벨이 sr-only 라 칸의 윗변이 이 상자의 윗변입니다
                 <span
                   role="timer"
-                  aria-label={`남은 시간 ${formatCountdown(verification.codeRemaining)}`}
+                  aria-label={t('signup.timeLeft', {
+                    time: formatCountdown(verification.codeRemaining),
+                  })}
                   className="text-danger text-caption pointer-events-none absolute top-0 right-2.5 flex h-10 items-center tabular-nums"
                 >
                   {formatCountdown(verification.codeRemaining)}
@@ -188,7 +194,7 @@ export function SignupForm() {
                 isLoading={verification.isSending}
                 onClick={verification.send}
               >
-                재인증
+                {t('signup.resend')}
               </Button>
             ) : (
               <Button
@@ -199,34 +205,32 @@ export function SignupForm() {
                 isLoading={verification.isConfirming}
                 onClick={verification.confirm}
               >
-                확인
+                {t('signup.confirm')}
               </Button>
             )}
           </div>
         )}
 
-        <NewPasswordFields label="비밀번호" password={password} joined />
+        <NewPasswordFields field="password" password={password} joined />
 
         <div className="flex items-start gap-1.25">
           <div className="min-w-0 flex-1">
             <Input
-              label="닉네임"
+              label={t('nickname.label')}
               hideLabel
-              placeholder="닉네임"
+              placeholder={t('nickname.label')}
               required
               value={nickname}
               onChange={(event) => setNickname(event.target.value)}
               error={
                 nicknameError ??
-                (nicknameAvailable === false
-                  ? '이미 사용 중인 닉네임입니다'
-                  : undefined)
+                (nicknameAvailable === false ? t('nickname.taken') : undefined)
               }
               hint={
                 nicknameAvailable === true
-                  ? '사용할 수 있는 닉네임입니다'
+                  ? t('nickname.available')
                   : !nicknameTooShort
-                    ? '[중복 확인] 을 눌러주세요'
+                    ? t('nickname.checkPrompt')
                     : undefined
               }
             />
@@ -242,16 +246,13 @@ export function SignupForm() {
             }
             onClick={nicknameCheck.check}
           >
-            중복 확인
+            {t('nickname.check')}
           </Button>
         </div>
 
         {signupMutation.error !== null && (
           <p className="text-danger text-caption" role="alert">
-            {apiErrorMessage(
-              signupMutation.error,
-              '가입하지 못했습니다. 잠시 후 다시 시도해주세요.',
-            )}
+            {apiErrorMessage(signupMutation.error, t('signup.failed'))}
           </p>
         )}
 
@@ -261,12 +262,14 @@ export function SignupForm() {
           disabled={!canSubmit}
           className={AUTH_SUBMIT}
         >
-          {signupMutation.isPending ? '가입 중' : '가입하기'}
+          {signupMutation.isPending
+            ? t('signup.submitting')
+            : t('signup.submit')}
         </Button>
       </form>
 
       <GoogleLoginSection
-        label="Google 계정으로 가입하기"
+        label={t('google.signupButton')}
         returnTo={returnTo}
       />
 

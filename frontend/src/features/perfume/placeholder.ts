@@ -1,5 +1,6 @@
 /** 개발 중 백엔드가 안 떠 있을 때만 쓰는 대체 데이터입니다 — `withDevFallback` 과 함께 지우세요 */
 import { ApiError } from '@/shared/api/http'
+import { i18n } from '@/shared/i18n'
 
 import type {
   PerfumeDetail,
@@ -183,7 +184,11 @@ export function placeholderSearch(
 export function placeholderDetail(perfumeId: number): PerfumeDetail {
   const perfume = PERFUMES.find((item) => item.perfumeId === perfumeId)
   if (!perfume) {
-    throw new ApiError(404, 'PERFUME_NOT_FOUND', '없는 향수입니다')
+    throw new ApiError(
+      404,
+      'PERFUME_NOT_FOUND',
+      i18n.t('perfume:errors.notFound'),
+    )
   }
 
   return {
@@ -196,5 +201,6 @@ export function placeholderDetail(perfumeId: number): PerfumeDetail {
     images: [],
     prices: [],
     myReviewId: null,
+    productionStatus: null,
   }
 }

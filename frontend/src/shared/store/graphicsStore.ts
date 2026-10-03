@@ -2,10 +2,10 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 /** 그래픽 설정 — 사람이 고르는 값입니다. `auto` 면 엔진이 기기에 맞춰 단계를 고릅니다 */
-export type GraphicsMode = 'auto' | 'high' | 'mid' | 'low'
+export type GraphicsMode = 'auto' | 'high' | 'mid' | 'low' | 'min'
 
 /** 엔진이 실제로 그리고 있는 단계 (엔진 `landing/src/quality.js` 의 `TIERS`) */
-export type GraphicsTier = 'high' | 'mid' | 'low'
+export type GraphicsTier = 'high' | 'mid' | 'low' | 'min'
 
 /** 엔진이 GPU 이름으로 가른 부류 (엔진 `gpuClass`) */
 export type GpuClass =
@@ -33,6 +33,7 @@ export const GRAPHICS_MODES: readonly GraphicsMode[] = [
   'high',
   'mid',
   'low',
+  'min',
 ]
 
 export const isGraphicsMode = (value: unknown): value is GraphicsMode =>
@@ -46,8 +47,14 @@ interface GraphicsState {
   told: QualityNotice[]
   /** 엔진이 지금 그리는 단계 — 엔진이 붙기 전이거나 메인을 떠나 있으면 null. 남기지 않습니다 */
   quality: SceneQuality | null
+  /**
+   * **움직임 줄이기** (2026-10-01) — 켜면 3D 가 저절로 움직이는 몫(마우스 패럴랙스 · 돌고래 · 새 · 속도에 따른 카메라)을
+   * 거둡니다. OS 의 '동작 줄이기' 와 같은 일을 이 사이트에서만 켭니다 (엔진 `PB.motion` · v0.85.0).
+   */
+  calm: boolean
 
   setMode: (mode: GraphicsMode) => void
+  setCalm: (calm: boolean) => void
   markTold: (notice: QualityNotice) => void
   setQuality: (quality: SceneQuality | null) => void
 }
@@ -70,8 +77,10 @@ export const useGraphicsStore = create<GraphicsState>()(
       mode: 'auto',
       told: [],
       quality: null,
+      calm: false,
 
       setMode: (mode) => set({ mode }),
+      setCalm: (calm) => set({ calm }),
       markTold: (notice) =>
         set((state) =>
           state.told.includes(notice)
@@ -83,7 +92,7 @@ export const useGraphicsStore = create<GraphicsState>()(
     {
       name: 'hyanghae-graphics',
       version: 1,
-      partialize: ({ mode, told }) => ({ mode, told }),
+      partialize: ({ mode, told, calm }) => ({ mode, told, calm }),
       // 손으로 고친 저장소 값이 모르는 모드면 자동으로 돌아갑니다
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<GraphicsState>
@@ -91,6 +100,8 @@ export const useGraphicsStore = create<GraphicsState>()(
           ...current,
           mode: isGraphicsMode(saved.mode) ? saved.mode : current.mode,
           told: Array.isArray(saved.told) ? saved.told : current.told,
+          // 예전 판(이 값이 없던 때)은 꺼진 채로 둡니다
+          calm: saved.calm === true,
         }
       },
     },

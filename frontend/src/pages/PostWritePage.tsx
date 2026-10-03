@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router'
 
 import {
@@ -20,9 +21,11 @@ import {
 } from '@/features/community'
 import { perfumePickQuery } from '@/features/perfume'
 import { ROUTES, toPostDetail, toPostEdit } from '@/shared/config/routes'
+import { localizedName } from '@/shared/i18n/locale'
 import { cn } from '@/shared/lib/cn'
 import { parseId } from '@/shared/lib/parseId'
 import { useIsLoggedIn } from '@/shared/store/authStore'
+import { useLocale } from '@/shared/store/localeStore'
 import { Button } from '@/shared/ui/Button'
 import { ChipToggle } from '@/shared/ui/ChipToggle'
 import { EmptyState } from '@/shared/ui/EmptyState'
@@ -34,6 +37,8 @@ import { Skeleton } from '@/shared/ui/Skeleton'
 import { Textarea } from '@/shared/ui/Textarea'
 
 export default function PostWritePage() {
+  const { t } = useTranslation('community')
+  const locale = useLocale()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const isLoggedIn = useIsLoggedIn()
@@ -102,7 +107,9 @@ export default function PostWritePage() {
       post.data.relatedPerfumes.map((perfume) => ({
         perfumeId: perfume.perfumeId,
         name: perfume.name,
+        nameKo: perfume.nameKo,
         brand: perfume.brand,
+        brandKo: perfume.brandKo,
       })),
     )
     setImageUrls(post.data.imageUrls)
@@ -169,7 +176,7 @@ export default function PostWritePage() {
         open
         onClose={() => navigate(ROUTES.COMMUNITY_FREE, { replace: true })}
         redirectTo={editing ? toPostEdit(editingId) : ROUTES.POST_WRITE}
-        description="글은 로그인한 뒤에 쓸 수 있습니다."
+        description={t('freeBoard.writeLoginRequired')}
       />
     )
   }
@@ -179,10 +186,12 @@ export default function PostWritePage() {
   return (
     <>
       <WriteForm
-        title={editing ? '글 수정' : '글쓰기'}
-        description="분류는 필수입니다. 컬렉션 공유 글의 향수는 첨부한 컬렉션이 정하고, 그 밖의 분류에서는 직접 고릅니다. 이미지는 없어도 됩니다."
+        title={editing ? t('postWrite.editTitle') : t('postWrite.newTitle')}
+        description={t('postWrite.description')}
         cancelTo={editing ? toPostDetail(editingId) : ROUTES.COMMUNITY_FREE}
-        submitLabel={editing ? '수정' : '포스팅'}
+        submitLabel={
+          editing ? t('postWrite.submitEdit') : t('postWrite.submitNew')
+        }
         submitDisabled={
           category === null ||
           title.trim().length === 0 ||
@@ -193,18 +202,19 @@ export default function PostWritePage() {
       >
         {save.isError && (
           <p role="alert" className="text-danger text-body">
-            {editing
-              ? '글을 수정하지 못했습니다. 잠시 후 다시 시도해주세요.'
-              : '글을 올리지 못했습니다. 잠시 후 다시 시도해주세요.'}
+            {editing ? t('postWrite.editFailed') : t('postWrite.createFailed')}
           </p>
         )}
         <fieldset className="space-y-2.5">
           <legend className="text-ink text-caption font-medium">
-            분류 <span className="text-danger">*</span>
+            {t('postWrite.category')} <span className="text-danger">*</span>
           </legend>
           <ChipToggle
-            label="게시글 분류"
-            options={POST_CATEGORIES}
+            label={t('postWrite.categoryGroup')}
+            options={POST_CATEGORIES.map((option) => ({
+              value: option.value,
+              label: t(`categories.${option.value}`),
+            }))}
             value={category}
             onChange={(next) => {
               setCategory(next)
@@ -214,16 +224,16 @@ export default function PostWritePage() {
         </fieldset>
 
         <Input
-          label="제목"
-          placeholder="제목을 입력하세요"
+          label={t('postWrite.title')}
+          placeholder={t('postWrite.titlePlaceholder')}
           required
           value={title}
           onChange={(event) => setTitle(event.target.value)}
         />
 
         <Textarea
-          label="본문"
-          placeholder="내용을 입력하세요"
+          label={t('postWrite.content')}
+          placeholder={t('postWrite.contentPlaceholder')}
           rows={12}
           required
           value={content}
@@ -233,14 +243,16 @@ export default function PostWritePage() {
         {category === 'COLLECTION' && (
           <fieldset className="space-y-2.5">
             <legend className="text-ink text-caption font-medium">
-              컬렉션 첨부
+              {t('postWrite.collection')}
             </legend>
             {collection && (
               <p className="border-line-soft bg-surface-sunken text-ink text-body rounded-card inline-flex w-fit max-w-full items-center gap-2.5 border px-2.5 py-2.5">
                 {collection.title}
                 <button
                   type="button"
-                  aria-label={`${collection.title} 첨부 해제`}
+                  aria-label={t('postWrite.releaseCollection', {
+                    title: collection.title,
+                  })}
                   onClick={releaseCollection}
                   className={cn(
                     'text-ink-muted hover:text-ink rounded-card',
@@ -258,24 +270,28 @@ export default function PostWritePage() {
               type="button"
               onClick={() => setCollectionOpen(true)}
             >
-              {collection ? '다른 컬렉션 고르기' : '+ 내 컬렉션에서'}
+              {collection
+                ? t('postWrite.otherCollection')
+                : t('postWrite.fromMyCollections')}
             </Button>
           </fieldset>
         )}
 
         <fieldset className="space-y-2.5">
           <legend className="text-ink text-caption font-medium">
-            관련 향수{' '}
+            {t('postWrite.perfumes')}{' '}
             <span className="text-ink-muted">
-              {fromCollection ? '(컬렉션에 담긴 향수)' : '(선택)'}
+              {fromCollection
+                ? t('postWrite.perfumesFromCollection')
+                : t('postWrite.optional')}
             </span>
           </legend>
 
           {fromCollection && shownPerfumes.length === 0 && (
             <p className="text-ink-muted text-caption">
               {collection
-                ? '이 컬렉션에 담긴 향수가 없습니다.'
-                : '컬렉션을 첨부하면 그 향수가 여기에 나타납니다.'}
+                ? t('postWrite.collectionEmpty')
+                : t('postWrite.collectionHint')}
             </p>
           )}
 
@@ -285,11 +301,13 @@ export default function PostWritePage() {
                 key={perfume.perfumeId}
                 className="border-line-soft bg-surface-sunken text-ink text-caption rounded-card flex items-center gap-2.5 border px-2.5 py-2.5"
               >
-                {perfume.name}
+                {localizedName(locale, perfume.name, perfume.nameKo)}
                 {!fromCollection && (
                   <button
                     type="button"
-                    aria-label={`${perfume.name} 제거`}
+                    aria-label={t('postWrite.removePerfume', {
+                      name: localizedName(locale, perfume.name, perfume.nameKo),
+                    })}
                     onClick={() =>
                       setPerfumes((prev) =>
                         prev.filter(
@@ -315,7 +333,7 @@ export default function PostWritePage() {
                 type="button"
                 onClick={() => setPickOpen(true)}
               >
-                + 향수 선택
+                {t('postWrite.pickPerfume')}
               </Button>
             )}
           </div>
@@ -345,10 +363,10 @@ export default function PostWritePage() {
       <Modal
         open={collectionOpen}
         onClose={() => setCollectionOpen(false)}
-        title="컬렉션 첨부"
+        title={t('postWrite.collection')}
         footer={
           <Button variant="outline" onClick={() => setCollectionOpen(false)}>
-            닫기
+            {t('postWrite.close')}
           </Button>
         }
       >
@@ -362,8 +380,8 @@ export default function PostWritePage() {
           </ul>
         ) : (collections.data?.length ?? 0) === 0 ? (
           <EmptyState
-            title="만든 컬렉션이 없습니다"
-            description="진열대에서 컬렉션을 먼저 만들어 주세요."
+            title={t('postWrite.noCollectionsTitle')}
+            description={t('postWrite.noCollectionsDescription')}
           />
         ) : (
           <ul className="max-h-72.5 space-y-1.25 overflow-y-auto">
@@ -392,7 +410,7 @@ export default function PostWritePage() {
                     {item.title}
                   </span>
                   <span className="text-ink-muted text-caption">
-                    향수 {item.perfumeCount}개
+                    {t('postWrite.perfumeCount', { count: item.perfumeCount })}
                   </span>
                 </button>
               </li>

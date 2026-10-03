@@ -4,6 +4,8 @@ import { areasNow } from './areas.js';
 import { TERRAIN } from './terrain-data.js';
 // 격자 → 부드러운 닫힌 고리 (안개 윤곽 · scentmap.navLoops 와 **같은 함수**다)
 import { traceGrid } from './util.js';
+// 화면 글자 사전 — ⚠ 이 파일은 `t` 를 글자 요소 이름으로 많이 써서 `tr` 로 받는다
+import { famWord, isKo, onLang, t as tr, waters } from './i18n.js';
 
 // ───────── 전체 화면 해도 (2026-09-12 저녁, v0.48.0) ─────────
 // 미니맵 머리말의 [확대] 를 누르면 열리는 **화면 가득한 지도**다. 사용자 : *"미니맵 확대 버전도
@@ -1049,7 +1051,8 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
         if (fm && !seen(fm, p.x, p.z)) continue;
         const x = sx(p.x), y = sy(p.z);
         if (x < -60 || x > W + 60 || y < -30 || y > H + 30) continue;
-        const t = p.labelKo || p.nameKo || p.name;
+        // ⚠ 영어 화면이면 영문 원명 (한글 짧은 이름은 한국어 화면에서만)
+        const t = (isKo() && (p.labelKo || p.nameKo)) || p.name;
         const hw2 = textW(t) * 0.5 + 4.5, top = y - 6 - nameFs - 1.5, bot = y - 6 + 4;   // ⚠ 여백을 좁히면 이름이 서로 닿아 한 덩어리로 읽힌다
         const b = { x0: x - hw2, x1: x + hw2, y0: top, y1: bot };
         if (hit(b)) continue;
@@ -1103,8 +1106,8 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
   function idleHint() {
     if (!hintEl || !map) return;
     const fm = minimap && minimap.fogMask && minimap.fogMask();
-    const ex = fm ? ' · 탐색 ' + Math.round(100 * fm.n / Math.max(1, fm.bits.length)) + '%' : '';
-    hintEl.textContent = '향수 ' + map.points.length + ex + (k > 1.01 ? ' · ' + k.toFixed(1) + '배' : '');
+    const ex = fm ? tr('chart.explored', { pct: Math.round(100 * fm.n / Math.max(1, fm.bits.length)) }) : '';
+    hintEl.textContent = tr('chart.count', { n: map.points.length }) + ex + (k > 1.01 ? tr('chart.zoom', { k: k.toFixed(1) }) : '');
   }
 
   // ── 범례 아홉. 누르면 그 향조의 대표 향수 자리로 떠난다 (미니맵에서 해역 이름을 누른 것과 같은 뜻)
@@ -1133,10 +1136,10 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
         + '<span style="flex:none;width:9px;height:9px;border-radius:50%;background:' + fam.color + ';"></span>'
         + '<span style="flex:1;min-width:0;"><span style="display:block;font-size:11px;font-weight:600;letter-spacing:0.16em;">'
         + fam.name + '</span><span style="display:block;margin-top:1px;font-size:10.5px;color:' + PAL.chartInk2 + ';">'
-        + ((fam.kw && fam.kw[0]) || '') + '</span></span>'
+        + famWord(fam) + '</span></span>'
         + '<span style="flex:none;font-size:10px;color:' + PAL.chartInk2 + ';">' + pts.length + '</span>';
       // ⭐ 2026-09-18 : 지도에서 **그 해역의 경계선이 밝아진다** (setFamHover — 사용자 요청)
-      row.onmouseenter = () => { row.style.background = PAL.chartRow; if (hintEl) hintEl.textContent = fam.name + ' 해역 · 향수 ' + pts.length; setFamHover(key); };
+      row.onmouseenter = () => { row.style.background = PAL.chartRow; if (hintEl) hintEl.textContent = waters(fam.name) + ' · ' + tr('chart.count', { n: pts.length }); setFamHover(key); };
       row.onmouseleave = () => { row.style.background = 'none'; idleHint(); setFamHover(null); };
       row.onclick = () => {
         const a = map.familyAnchors[key];
@@ -1146,7 +1149,7 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
     });
     const tail = document.createElement('div');
     tail.style.cssText = 'flex:none;margin-top:auto;padding-top:10px;font-size:10px;line-height:1.7;color:' + PAL.chartInk2;
-    tail.textContent = '해역을 누르면 그리로 떠납니다\n휠 확대 · 끌어 이동 · ESC 닫기';
+    tail.textContent = tr('chart.tail');
     tail.style.whiteSpace = 'pre-line';
     legend.appendChild(tail);
   }
@@ -1202,6 +1205,8 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
 
   // ── 누르기 · 끌기 · 휠
   const drag = { on: false, id: null, px: 0, py: 0, moved: 0 };
+  // 손가락 첫 탭의 미리보기 (onUp · v0.87.0)
+  let tapArm = null;
   const onDown = (e) => {
     if (e.button !== 0) return;
     drag.on = true; drag.id = e.pointerId; drag.px = e.clientX; drag.py = e.clientY; drag.moved = 0;
@@ -1223,11 +1228,11 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
     const h = hitAt(e);
     hoverPt = h.pt;
     // ⚠ 글은 **한 번만 짓는다** — 머리말과 커서 옆 이름표가 같은 말을 해야 한다 (불변식 2)
-    const say = h.out ? '범위 없음'
-      : h.label ? h.label.f.name + ' 해역'
-      : h.pt ? ((h.pt.labelKo || h.pt.nameKo || h.pt.name) + ' · ' + h.pt.fam.name
-          + (seen(fogGrid(), h.pt.x, h.pt.z) ? '' : ' · 미탐색'))
-      : h.area ? h.area.name + ' 해역' : '빈 바다';
+    const say = h.out ? tr('sea.out')
+      : h.label ? waters(h.label.f.name)
+      : h.pt ? (((isKo() && (h.pt.labelKo || h.pt.nameKo)) || h.pt.name) + ' · ' + h.pt.fam.name
+          + (seen(fogGrid(), h.pt.x, h.pt.z) ? '' : tr('chart.unexplored')))
+      : h.area ? waters(h.area.name) : tr('sea.open');
     if (hintEl) hintEl.textContent = say;
     moveTip(e, say);
     stage.style.cursor = h.out ? 'not-allowed' : (h.label || h.pt) ? 'pointer' : 'crosshair';
@@ -1250,12 +1255,25 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
     if (wasDrag || !map) return;
     const h = hitAt(e);
     if (h.out) { onBlocked && onBlocked(); return; }
+    // ⭐ 손가락이면 첫 탭은 미리보기 — 머리말 · 커서 옆 이름표가 무엇인지 말하고, 같은 것을 3초 안에 다시 누르면 떠난다 (v0.87.0 · minimap.js 와 같은 규약)
+    if (e.pointerType && e.pointerType !== 'mouse') {
+      const key = h.label ? 'L:' + h.label.f.key : h.pt ? 'P:' + h.pt.x.toFixed(2) + ',' + h.pt.z.toFixed(2) : h.reg ? 'R:' + h.reg.key : null;
+      const now = performance.now();
+      if (key && (!tapArm || tapArm.key !== key || now - tapArm.t > 3000)) {
+        tapArm = { key, t: now };
+        onMove(e);
+        if (hintEl) hintEl.textContent += tr('tap.again');
+        return;
+      }
+      tapArm = null;
+    }
     if (h.label) { const a = h.label.f.a; pick({ key: h.label.f.key, name: h.label.f.name, x: a.x, z: a.z, custom: true }); return; }
     if (h.pt) { pick({ key: h.pt.fam.key, name: h.pt.fam.name, x: h.pt.x, z: h.pt.z, custom: true, spot: true }); return; }
     if (h.reg) pick({ key: h.reg.key, name: h.reg.name, x: h.x, z: h.z, custom: true, spot: true });
   };
   // ⚠ 지도 밖으로 나가면 강조도 같이 푼다 — 안 풀면 마지막 해역이 밝은 채로 굳고 나머지 점이 계속 흐리다
-  const onLeave = () => { hoverPt = null; tip.style.display = 'none'; setFamHover(null); idleHint(); drawLive(); };
+  // ⚠ 손가락은 떼는 순간 pointerleave 가 따라온다 — 첫 탭의 미리보기(tapArm)를 걸어 둔 참이면 지우지 않는다 (v0.87.0)
+  const onLeave = (e) => { if (e && e.pointerType && e.pointerType !== 'mouse' && tapArm) return; hoverPt = null; tip.style.display = 'none'; setFamHover(null); idleHint(); drawLive(); };
   // 휠 — 커서 아래 바다가 제자리에 있도록 배율을 바꾼다
   const onWheel = (e) => {
     e.preventDefault();
@@ -1330,6 +1348,8 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
   if (btnClose) btnClose.addEventListener('click', close);
   if (btnReset) btnReset.addEventListener('click', resetZoom);
   if (veil) veil.addEventListener('click', close);
+  // ⭐ 언어가 바뀌면 (PB.setLang) 떠 있는 해도의 범례 · 이름 · 머리말을 다시 짓는다. 닫혀 있으면 다음에 열 때 다시 짓는다 (openIt 이 mapKey 를 비운다)
+  const offLang = onLang(() => { if (open && map) { drawLegend(); drawPts(); idleHint(); } });
 
   return {
     // main.js 의 tick 에서 미니맵과 **같은 값**을 받는다. ⚠ 닫혀 있으면 값만 갈아 두고 그리지 않는다
@@ -1376,6 +1396,7 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
       if (btnClose) btnClose.removeEventListener('click', close);
       if (btnReset) btnReset.removeEventListener('click', resetZoom);
       if (veil) veil.removeEventListener('click', close);
+      offLang();
       // ⚠ 속성을 걷어 둔다 — 남으면 앱의 검색창 · 향해 일지가 영영 비킨 채다 (불변식 10 의 규율)
       tellHost(false);
       box.style.display = 'none';

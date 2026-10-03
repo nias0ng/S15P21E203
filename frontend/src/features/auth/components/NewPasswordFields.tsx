@@ -1,12 +1,16 @@
 import { useId } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/shared/lib/cn'
 import { Input } from '@/shared/ui/Input'
 
 import type { NewPassword } from '../hooks/useNewPassword'
 
+type Field = 'password' | 'newPassword'
+
 type NewPasswordFieldsProps = {
-  label: '비밀번호' | '새 비밀번호'
+  /** 회원가입은 `password`, 바꾸거나 다시 정할 때는 `newPassword` 입니다 */
+  field: Field
   password: NewPassword
   /** 두 칸을 테 하나 안에 선 하나로 나눠 붙입니다 (회원가입) */
   joined?: boolean
@@ -19,14 +23,30 @@ const JOINED_FIELD = cn(
   'outline-none',
 )
 
+const LABEL_KEYS = {
+  password: {
+    label: 'password.label',
+    confirm: 'password.confirm',
+    reenter: 'password.reenter',
+  },
+  newPassword: {
+    label: 'password.newLabel',
+    confirm: 'password.newConfirm',
+    reenter: 'password.newReenter',
+  },
+} as const
+
 export function NewPasswordFields({
-  label,
+  field,
   password,
   joined = false,
 }: NewPasswordFieldsProps) {
+  const { t } = useTranslation('auth')
   if (joined) {
-    return <JoinedPasswordFields label={label} password={password} />
+    return <JoinedPasswordFields field={field} password={password} />
   }
+  const label = t(LABEL_KEYS[field].label)
+  const confirmLabel = t(LABEL_KEYS[field].confirm)
   return (
     <>
       <Input
@@ -41,11 +61,11 @@ export function NewPasswordFields({
         error={password.passwordError}
       />
       <Input
-        label={`${label} 확인`}
+        label={confirmLabel}
         hideLabel
         type="password"
         autoComplete="new-password"
-        placeholder={`${label} 확인`}
+        placeholder={confirmLabel}
         required
         value={password.confirm}
         onChange={(event) => password.setConfirm(event.target.value)}
@@ -56,16 +76,18 @@ export function NewPasswordFields({
 }
 
 function JoinedPasswordFields({
-  label,
+  field,
   password,
 }: Omit<NewPasswordFieldsProps, 'joined'>) {
+  const { t } = useTranslation('auth')
   const id = useId()
   const passwordId = `${id}-password`
   const confirmId = `${id}-confirm`
   const passwordErrorId = `${passwordId}-error`
   const confirmErrorId = `${confirmId}-error`
   const { passwordError, confirmError } = password
-  const confirmLabel = `${label} 재입력`
+  const label = t(LABEL_KEYS[field].label)
+  const confirmLabel = t(LABEL_KEYS[field].reenter)
 
   return (
     <div className="space-y-2.5">

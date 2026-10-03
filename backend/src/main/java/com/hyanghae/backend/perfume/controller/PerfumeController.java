@@ -11,6 +11,7 @@ import com.hyanghae.backend.perfume.dto.response.PerfumeReviewStatisticsResponse
 import com.hyanghae.backend.perfume.dto.response.PerfumeReviewSummaryResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSeasonStatisticsResponse;
 import com.hyanghae.backend.perfume.dto.response.PerfumeSearchResponse;
+import com.hyanghae.backend.perfume.service.PerfumeReviewSummaryTranslationService;
 import com.hyanghae.backend.perfume.service.PerfumeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -33,9 +34,14 @@ public class PerfumeController {
     private static final int DEFAULT_PAGE_SIZE = 20;
 
     private final PerfumeService perfumeService;
+    private final PerfumeReviewSummaryTranslationService reviewSummaryTranslationService;
 
-    public PerfumeController(PerfumeService perfumeService) {
+    public PerfumeController(
+            PerfumeService perfumeService,
+            PerfumeReviewSummaryTranslationService reviewSummaryTranslationService
+    ) {
         this.perfumeService = perfumeService;
+        this.reviewSummaryTranslationService = reviewSummaryTranslationService;
     }
 
     /**
@@ -190,14 +196,14 @@ public class PerfumeController {
     }
 
     /**
-     * 유사 향수 조회입니다. 주변 향수와 같은 데이터를 같은 형태로 내려줍니다.
+     * 유사 향수 조회입니다. 주변 향수와 같은 형태로 내려줍니다.
      *
-     * <p>화면에서 놓이는 자리가 달라 명세가 URL 을 두 개로 나눠 두었습니다. 응답이 같으므로
-     * 서비스 메서드도 같은 것을 씁니다. 나중에 근거가 갈리면 그때 나누면 됩니다.
+     * <p>향 지도 향수는 주변 향수와 같은 목록이고, 지도 밖 향수는 13만 개 전체에서 미리 계산한
+     * 목록입니다. 주변 향수는 지도 밖 향수에 빈 목록이라 두 API 의 근거가 여기서 갈립니다.
      */
     @Operation(summary = "유사 향수 조회",
-            description = "주변 향수와 같은 데이터를 같은 형태로 돌려줍니다."
-                    + " 화면에서 놓이는 자리가 달라 경로만 나뉘어 있습니다.")
+            description = "향 지도 향수는 주변 향수와 같은 목록이고,"
+                    + " 지도 밖 향수는 전체 향수에서 미리 계산한 비슷한 향수입니다.")
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @ApiResponse(responseCode = "404", description = "향수 없음")
     @GetMapping("/{perfumeId}/similar")
@@ -206,17 +212,27 @@ public class PerfumeController {
             @Parameter(description = "받을 최대 개수. 페이지 크기가 아니라 상한입니다.")
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size
     ) {
-        return perfumeService.getRelatedPerfumes(perfumeId, size);
+        return perfumeService.getSimilarPerfumes(perfumeId, size);
     }
 
-    /** AI 후기 요약 조회입니다. 요약이 없으면 필드가 모두 null 입니다. */
+    /**
+     * AI 후기 요약 조회입니다. 요약이 없으면 필드가 모두 null 입니다.
+     *
+     * <p>{@code Accept-Language: en} 이면 {@code summary} 가 영어입니다. 한국어 요약을 읽는 것과
+     * 영어로 옮기는 것을 두 서비스로 나눠 부르는 이유는 트랜잭션입니다. 번역은 몇 초 걸릴 수 있어
+     * 한국어 요약을 읽는 트랜잭션이 끝난 뒤에 합니다.
+     */
     @Operation(summary = "AI 후기 요약 조회",
-            description = "요약이 아직 만들어지지 않았으면 필드가 모두 null 입니다.")
+            description = "요약이 아직 만들어지지 않았으면 필드가 모두 null 입니다."
+                    + " Accept-Language: en 이면 summary 가 한국어 요약을 옮긴 영어입니다."
+                    + " 영어판은 처음 열릴 때 만들어 저장하고, 한국어 요약이 다시 만들어지면 다시 옮깁니다."
+                    + " 옮기지 못하면(번역 꺼짐 · 실패 · 시간 초과) 한국어 요약이 그대로 나갑니다.")
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @ApiResponse(responseCode = "404", description = "향수 없음")
     @GetMapping("/{perfumeId}/review-summary")
     public PerfumeReviewSummaryResponse getReviewSummary(@PathVariable Long perfumeId) {
-        return perfumeService.getReviewSummary(perfumeId);
+        return reviewSummaryTranslationService.localize(
+                perfumeId, perfumeService.getReviewSummary(perfumeId));
     }
 
     /** 향수 계절 통계 조회입니다. 후기가 고른 계절의 분포입니다. */
@@ -242,12 +258,16 @@ public class PerfumeController {
      *
      * <p>{@code size} 는 키워드에만 걸립니다. 나머지 셋은 받을 개수를 정할 것이 없습니다.
      * {@code review-keywords} 의 {@code size} 와 같은 뜻이고 같은 기본값(20)·상한(100)입니다.
+     *
+     * <p>요약 조각의 언어도 {@code review-summary} 와 같은 규칙입니다. 영어 요청이면 영어판이 들어갑니다.
      */
     @Operation(
             summary = "후기 집계 4종 일괄 조회",
             description = "후기 요약·키워드 통계·후기 수·계절 통계를 한 응답에 담습니다."
                     + " 네 조각은 각각의 단건 엔드포인트가 내려주던 응답과 같습니다."
                     + " size 는 키워드 개수 상한이며 나머지 셋에는 영향이 없습니다."
+                    + " Accept-Language: en 이면 reviewSummary.summary 가 review-summary 와 같은 규칙으로"
+                    + " 영어입니다."
     )
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @ApiResponse(responseCode = "404", description = "향수 없음")
@@ -257,6 +277,7 @@ public class PerfumeController {
             @Parameter(description = "키워드를 받을 최대 개수. 페이지 크기가 아니라 상한입니다.")
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size
     ) {
-        return perfumeService.getReviewAggregates(perfumeId, size);
+        return reviewSummaryTranslationService.localize(
+                perfumeId, perfumeService.getReviewAggregates(perfumeId, size));
     }
 }

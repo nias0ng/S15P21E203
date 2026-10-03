@@ -1,8 +1,11 @@
+import { useTranslation } from 'react-i18next'
+
 import { SEASONS, type SeasonStatistic } from '../types'
 
 type Props = { seasons: SeasonStatistic[] }
 
 export function SeasonRatingChart({ seasons }: Props) {
+  const { t } = useTranslation('perfume')
   const bySeason = new Map(seasons.map((item) => [item.code, item.percentage]))
 
   return (
@@ -10,7 +13,9 @@ export function SeasonRatingChart({ seasons }: Props) {
       {SEASONS.map((season) => (
         <li key={season.value} className="flex flex-col items-center gap-2.5">
           <SeasonDonut percentage={bySeason.get(season.value) ?? 0} />
-          <span className="text-ink text-caption">{season.label}</span>
+          <span className="text-ink text-caption">
+            {t(`season.${season.value}`)}
+          </span>
         </li>
       ))}
     </ul>

@@ -1,0 +1,38 @@
+export const brand = {
+  sort: {
+    PERFUME_COUNT: '향수 많은 순',
+    NAME_EN: 'abc 순',
+    NAME_KO: '가나다순',
+  },
+  grid: {
+    emptyTitle: '브랜드를 찾지 못했습니다',
+    emptyDescription: '브랜드명을 다시 확인해 주세요.',
+    logoFallback: '로고',
+  },
+  list: {
+    heading: '브랜드',
+    searchLabel: '브랜드명으로 검색',
+    searchPlaceholder: '브랜드명으로 검색해주세요.',
+    sortLabel: '브랜드 정렬',
+    searchHeading: "'{{keyword}}' 검색 결과",
+    allHeading: '전체 브랜드',
+    count_one: '{{count}}개',
+    count_other: '{{count}}개',
+    reset: '초기화',
+    pagination: '브랜드 페이지',
+  },
+  detail: {
+    notFoundTitle: '브랜드를 찾을 수 없습니다',
+    notFoundDescription: '주소가 잘못되었거나 삭제된 브랜드입니다.',
+    backToList: '브랜드 목록으로',
+    back: '브랜드 목록',
+    perfumeCount_one: '향수 {{count}}개',
+    perfumeCount_other: '향수 {{count}}개',
+    perfumesHeading: '{{name}}의 향수',
+    loadErrorTitle: '향수 목록을 불러오지 못했습니다',
+    loadErrorDescription: '잠시 후 다시 시도해 주세요.',
+    emptyTitle: '등록된 향수가 없습니다',
+    emptyDescription: '이 브랜드의 향수가 등록되면 여기에 표시됩니다.',
+    viewAll: '향수 전체 보기',
+  },
+}

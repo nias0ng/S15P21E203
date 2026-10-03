@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 
 import { env } from '@/shared/config/env'
@@ -20,6 +21,7 @@ type Props = {
  * 실패하면 백엔드가 이 화면으로 `?googleError=코드` 를 붙여 돌려보내므로 그 문구도 여기서 보여 줍니다.
  */
 export function GoogleLoginSection({ label, returnTo }: Props) {
+  const { t } = useTranslation('auth')
   const [searchParams] = useSearchParams()
   const error = googleErrorMessage(searchParams.get(GOOGLE_ERROR_PARAM))
 
@@ -31,7 +33,7 @@ export function GoogleLoginSection({ label, returnTo }: Props) {
     <div className="space-y-2.5">
       <div className="text-ink-muted text-caption flex items-center gap-2.5">
         <hr className="border-line flex-1" />
-        <span>또는</span>
+        <span>{t('google.or')}</span>
         <hr className="border-line flex-1" />
       </div>
 

@@ -1,6 +1,23 @@
 import { describe, expect, it } from 'vitest'
 
-import { perfumeViewState, readPerfumeViewState } from './perfumeViewSource'
+import { useLocaleStore } from '@/shared/store/localeStore'
+
+import {
+  PERFUME_VIEW_BACK_LABEL,
+  perfumeViewState,
+  readPerfumeViewState,
+} from './perfumeViewSource'
+
+describe('PERFUME_VIEW_BACK_LABEL', () => {
+  it('읽을 때의 화면 언어로 적는다', () => {
+    expect(PERFUME_VIEW_BACK_LABEL.SCENT_MAP).toBe('향 지도')
+
+    useLocaleStore.getState().setLocale('en')
+
+    expect(PERFUME_VIEW_BACK_LABEL.SCENT_MAP).toBe('Scent Map')
+    expect(PERFUME_VIEW_BACK_LABEL.DIRECT).toBe('Perfumes')
+  })
+})
 
 describe('perfumeViewState', () => {
   it('들어온 길만 담는다', () => {

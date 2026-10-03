@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
+import type { Locale } from '@/shared/i18n/locale'
 import { cn } from '@/shared/lib/cn'
 import { useDiveStore } from '@/shared/store/diveStore'
 import type { GraphicsMode, SceneQuality } from '@/shared/store/graphicsStore'
+import { useLocale } from '@/shared/store/localeStore'
 
 import { setBoatAnchorSource, type BoatAnchor } from '../lib/boatAnchor'
 import {
@@ -12,6 +15,7 @@ import {
   type SceneBootSnapshot,
 } from '../lib/bootProgress'
 import { engineSrc, parseSceneQuality } from '../lib/sceneQuality'
+import { setTourAnchorSource, type TourAnchorStep } from '../lib/tourAnchor'
 
 /**
  * 3D 향 지도가 카드 · 검색창에서 앱으로 넘기는 향수 한 개
@@ -45,6 +49,12 @@ export interface ScenePerfumeRef {
  * 와 같은 공간). 월드 좌표가 아닙니다.
  * ⚠️ `perfumeId` 는 DB 번호라 엔진 데이터에 아직 없어 늘 null 입니다 — 그동안은 좌표로 갑니다.
  */
+/**
+ * 엔진 안에서만 일어나 앱이 못 보는 행동 — 첫 방문 안내(`tourStore`)가 듣습니다 (엔진 `host.js` 의 `hostTour`).
+ *   minimap  미니맵 · 해도를 눌러 떠났다
+ */
+export type SceneTourEvent = 'minimap'
+
 export interface SceneMove {
   perfumeId: number | null
   x: number
@@ -66,6 +76,8 @@ interface EngineHost {
   closeCabin: () => void
   /** 품질 단계가 바뀌었습니다 (엔진 `host.js` 의 `hostQuality`) — 모양은 `parseSceneQuality` 가 좁힙니다 */
   quality: (info: unknown) => void
+  /** 첫 방문 안내가 들을 행동 (엔진 `host.js` 의 `hostTour`) — 모르는 이름은 버립니다 */
+  tour: (event: string) => void
 }
 
 /** iframe 안 엔진이 여는 손잡이 — paperboat main.js 의 window.PB 중 여기서 쓰는 것만 */
@@ -124,6 +136,35 @@ interface EngineHandle {
    * NOTE: 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다. 그때는 설정 단추만 남고 엔진은 늘 같은 화면입니다.
    */
   quality?: { get: () => unknown; set: (mode: GraphicsMode) => boolean }
+  /**
+   * 엔진 안의 글자(설명문구 · 카드 · 해도) 언어를 바꿉니다. 처음 언어는 주소의 `?lang=` 으로 읽고,
+   * 뜬 뒤에 헤더에서 바꾸면 이것으로 겁니다.
+   *
+   * NOTE: 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다. 그때는 엔진 글자만 처음 언어로 남습니다.
+   */
+  setLang?: (lang: Locale) => void
+  /**
+   * 움직임 줄이기 (엔진 `main.js` 의 `applyCalm` · v0.85.0). `set(true)` 면 패럴랙스 · 돌고래 · 새 · 속도에 따른
+   * 카메라를 거둡니다 — OS 의 '동작 줄이기' 가 켜져 있으면 엔진이 이미 그렇게 합니다.
+   * NOTE: 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다.
+   */
+  motion?: { get: () => unknown; set: (calm: boolean) => boolean }
+  /**
+   * 첫 방문 안내가 붙을 자리 (엔진 `main.js` 의 `measureTour` · v0.88.0). `watch` 로 무엇을 볼지 알리면 엔진이 매 프레임
+   * `anchor` 를 채웁니다 — iframe 기준 CSS px 이고 `on` 이 false 면 아직 못 쟀습니다.
+   * NOTE: 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다. 그때는 엔진 쪽 안내가 안 보입니다.
+   */
+  tour?: {
+    watch: (step: TourAnchorStep | null) => void
+    anchor: {
+      on: boolean
+      x: number
+      y: number
+      w: number
+      h: number
+      side: number
+    }
+  }
 }
 
 type Props = {
@@ -177,6 +218,23 @@ type Props = {
    */
   onChartChange?: (open: boolean) => void
   /**
+   * 엔진의 **향수 카드가 떠 있는지** (2026-10-01 · 엔진 `<html data-card>` · v0.87.0). 좁은 화면에서 3D 위에 얹은
+   * 앱 UI(향해 일지 · 의견 단추)가 카드 아랫단을 덮어, 그동안 비키려고 듣습니다.
+   */
+  onCardChange?: (open: boolean) => void
+  /**
+   * 떠 있는 카드가 **누른 카드인가** (엔진 `<html data-card-pin>` · v0.88.0). 마우스를 올려 뜬 미리보기 카드는 마우스를
+   * 통과시켜 단추를 못 누릅니다 — 첫 방문 안내가 카드 단추를 설명하는 것은 누른 카드일 때만입니다.
+   */
+  onCardPinChange?: (pinned: boolean) => void
+  /**
+   * 해역 연출 중인 해역의 **지금 언어 이름** (엔진 `<html data-zone-label>` · v0.88.0 — 'FLORAL 해역' · 'Floral waters').
+   * 연출이 닫히면 null 입니다. 첫 방문 안내가 해역의 뜻과 닫는 법을 말합니다.
+   */
+  onZoneChange?: (label: string | null) => void
+  /** 엔진 안에서만 일어난 행동 (위 `SceneTourEvent`) */
+  onTourEvent?: (event: SceneTourEvent) => void
+  /**
    * 엔진의 부팅 단계 (host.js `bootReport` — html → script → frame → boat-bytes → boat).
    * 로딩 커튼(SceneBootCurtain)이 퍼센트를 미는 데 씁니다. 배 GLB 진행은 초당 수십 번 옵니다.
    */
@@ -220,6 +278,8 @@ type Props = {
   quality?: GraphicsMode
   /** 엔진의 지금 품질 단계 — 붙을 때 한 번, 단계가 바뀔 때마다 옵니다 (자동으로 내렸을 때도) */
   onQuality?: (quality: SceneQuality) => void
+  /** 그래픽 설정의 '움직임 줄이기' — 엔진이 붙는 순간과 바뀔 때마다 겁니다 (`motion` 손잡이) */
+  calm?: boolean
   className?: string
 }
 
@@ -248,6 +308,10 @@ export function ScentScene({
   coveredTop = '0px',
   onNightChange,
   onChartChange,
+  onCardChange,
+  onCardPinChange,
+  onZoneChange,
+  onTourEvent,
   onBoot,
   onMove,
   start,
@@ -255,11 +319,16 @@ export function ScentScene({
   onLeave,
   quality = 'auto',
   onQuality,
+  calm = false,
   className,
 }: Props) {
+  const { t } = useTranslation('map')
+  const locale = useLocale()
   const frame = useRef<HTMLIFrameElement>(null)
   /** 엔진 주소에 싣는 처음 설정 — 주소는 한 번만 넣으므로 그때의 값만 씁니다 (그 뒤는 아래 effect 가 겁니다) */
   const initialQuality = useRef(quality)
+  /** 엔진 주소에 싣는 처음 언어 — 품질과 같은 사정으로 그 뒤는 아래 effect 가 `setLang` 으로 겁니다 */
+  const initialLocale = useRef(locale)
   const probe = useRef<HTMLDivElement>(null)
   /** 붙어 있는 엔진 (`window.PB`). 아래 두 효과가 나눠 쓰므로 ref 에 둡니다 */
   const handle = useRef<EngineHandle | null>(null)
@@ -293,6 +362,10 @@ export function ScentScene({
     covered,
     onNightChange,
     onChartChange,
+    onCardChange,
+    onCardPinChange,
+    onZoneChange,
+    onTourEvent,
     onBoot,
     onMove,
     onLeave,
@@ -307,6 +380,10 @@ export function ScentScene({
       covered,
       onNightChange,
       onChartChange,
+      onCardChange,
+      onCardPinChange,
+      onZoneChange,
+      onTourEvent,
       onBoot,
       onMove,
       onLeave,
@@ -338,7 +415,7 @@ export function ScentScene({
   const started = useRef(false)
 
   /*
-   * 엔진 알약 숨기기. 메인 검색은 방식이 둘(자연어 추천 · 지도 향수 찾기)이고 답이 모달인데,
+   * 엔진 알약 숨기기. 메인 검색의 답(자연어 추천)이 모달인데,
    * 엔진은 iframe 안이라 라우터도 모달도 몰라 검색창은 앱이 그립니다(`SceneSearchBar`).
    * 3D · 설명문구 · 해도는 그대로 엔진이 그립니다.
    *
@@ -460,6 +537,10 @@ export function ScentScene({
           const next = parseSceneQuality(info)
           if (next) latest.current.onQuality?.(next)
         },
+        // 첫 방문 안내가 들을 행동 (host.js `hostTour`) — 미니맵 · 해도로 떠났다
+        tour: (event) => {
+          if (event === 'minimap') latest.current.onTourEvent?.(event)
+        },
       })
       // 시작 단계는 처리기를 꽂기 **전에** 정해졌으므로 따라잡습니다 (부팅 신호의 `boot()` 와 같은 사정)
       const startQuality = parseSceneQuality(engine.quality?.get())
@@ -471,9 +552,30 @@ export function ScentScene({
       */
       setBoatAnchorSource(() => engine.boat?.screen ?? null)
       /*
+        첫 방문 안내도 같은 길입니다 (`lib/tourAnchor`). 엔진은 iframe 기준으로 주므로 iframe 의 자리를 더해
+        뷰포트 기준으로 바꿉니다 — 선실로 들어가기의 `cabinIn` 과 같은 사정입니다.
+      */
+      setTourAnchorSource({
+        watch: (step) => engine.tour?.watch(step),
+        read: () => {
+          const anchor = engine.tour?.anchor
+          if (!anchor?.on) return null
+          const box = el.getBoundingClientRect()
+          return {
+            x: box.left + anchor.x,
+            y: box.top + anchor.y,
+            w: anchor.w,
+            h: anchor.h,
+            side: anchor.side,
+          }
+        },
+      })
+      /*
         엔진이 iframe 문서의 <html> 속성으로 알리는 것들을 지켜봅니다.
           data-time   시간대 (밤이면 헤더가 남색 유리)
           data-chart  전체 화면 해도가 열렸는가 (2026-09-21 — 위 onChartChange 머리말)
+          data-card   향수 카드가 떠 있는가 (2026-10-01 — 위 onCardChange 머리말)
+          data-card-pin · data-zone · data-zone-label  누른 카드 · 해역 연출 (첫 방문 안내 — 위 onCardPinChange · onZoneChange 머리말)
         ⚠️ 관찰자는 하나입니다 — 둘 다 같은 요소의 속성이라 나눌 이유가 없습니다.
       */
       timeWatch?.disconnect()
@@ -482,12 +584,26 @@ export function ScentScene({
         const report = () => {
           latest.current.onNightChange?.(html.dataset.time === 'night')
           latest.current.onChartChange?.(html.dataset.chart !== undefined)
+          latest.current.onCardChange?.(html.dataset.card !== undefined)
+          latest.current.onCardPinChange?.(html.dataset.cardPin !== undefined)
+          latest.current.onZoneChange?.(
+            html.dataset.zone === undefined
+              ? null
+              : (html.dataset.zoneLabel ?? html.dataset.zone),
+          )
         }
         report()
         timeWatch = new MutationObserver(report)
         timeWatch.observe(html, {
           attributes: true,
-          attributeFilter: ['data-time', 'data-chart'],
+          attributeFilter: [
+            'data-time',
+            'data-chart',
+            'data-card',
+            'data-card-pin',
+            'data-zone',
+            'data-zone-label',
+          ],
         })
       }
       /*
@@ -536,7 +652,11 @@ export function ScentScene({
     // 메인 스레드를 1~3초 막는 동안에도 커튼이 움직입니다. 늦어지는 건 30ms 남짓입니다 (2026-09-17 실측)
     let raf = requestAnimationFrame(() => {
       raf = requestAnimationFrame(() => {
-        el.src = engineSrc(ENGINE_SRC, initialQuality.current)
+        el.src = engineSrc(
+          ENGINE_SRC,
+          initialQuality.current,
+          initialLocale.current,
+        )
       })
     })
     return () => {
@@ -560,6 +680,7 @@ export function ScentScene({
       useDiveStore.getState().setEngine(null)
       useDiveStore.getState().setCabinEngine(null)
       setBoatAnchorSource(null)
+      setTourAnchorSource(null)
     }
   }, [])
 
@@ -598,6 +719,22 @@ export function ScentScene({
     engine.set(quality)
   }, [ready, quality])
 
+  // 움직임 줄이기 — 그래픽 설정과 같은 길입니다. 엔진이 다시 붙어도(ready) 다시 겁니다
+  useEffect(() => {
+    const engine = handle.current?.motion
+    if (!ready || !engine) return
+    engine.set(calm)
+  }, [ready, calm])
+
+  /*
+   * 헤더에서 언어를 바꾸면 엔진 글자도 따라가게 겁니다. 엔진이 붙는 순간에도 한 번 부릅니다 —
+   * 주소에 실은 처음 언어와 지금 언어가 다를 수 있습니다(엔진이 뜨는 동안 바꾼 경우).
+   */
+  useEffect(() => {
+    if (!ready) return
+    handle.current?.setLang?.(locale)
+  }, [ready, locale])
+
   return (
     <>
       {/*
@@ -616,7 +753,7 @@ export function ScentScene({
       {/* 주소(src)는 위 effect 가 두 장 뒤에 넣습니다 */}
       <iframe
         ref={frame}
-        title="향 지도"
+        title={t('scene.title')}
         className={cn(
           'block size-full border-0 transition-opacity duration-300',
           ready ? 'opacity-100' : 'opacity-0',

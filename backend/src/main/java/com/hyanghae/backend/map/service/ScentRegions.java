@@ -41,11 +41,41 @@ public final class ScentRegions {
         return at(x, y).map(ScentRegionRef::scentRegionId);
     }
 
-    /** 계열 하나와 그 영역입니다. 영역은 조각들의 목록입니다. */
-    record Region(ScentRegionRef ref, List<List<List<Double>>> polygon) {
+    /**
+     * 좌표가 <b>이름표가 있는 조각</b> 안인 향 계열 영역입니다.
+     *
+     * <p>{@link #at} 과 달리 떨어져 나온 작은 조각은 그 계열로 치지 않습니다. 지도는 계열 이름을
+     * 이름표 자리({@code anchor_x}·{@code anchor_y}) 한 곳에만 적어, 작은 조각 안의 점은 화면에서
+     * 이웃 계열 사이에 끼어 보입니다. 취향 테스트의 출발점이 그런 자리면 고른 계열에서 시작한
+     * 것으로 보이지 않습니다.
+     *
+     * <p>이름표 자리가 적재되지 않은 계열은 어떤 좌표에도 답하지 않습니다.
+     */
+    public Optional<ScentRegionRef> labelRegionAt(double x, double y) {
+        return regions.stream()
+                .filter(region -> region.labelPieceContains(x, y))
+                .map(Region::ref)
+                .findFirst();
+    }
+
+    /** 계열 하나와 그 영역입니다. 영역은 조각들의 목록입니다. 이름표 자리는 비어 있을 수 있습니다. */
+    record Region(
+            ScentRegionRef ref,
+            Double anchorX,
+            Double anchorY,
+            List<List<List<Double>>> polygon) {
 
         boolean contains(double x, double y) {
             return polygon.stream().anyMatch(piece -> containsInPiece(piece, x, y));
+        }
+
+        boolean labelPieceContains(double x, double y) {
+            if (anchorX == null || anchorY == null) {
+                return false;
+            }
+            return polygon.stream()
+                    .filter(piece -> containsInPiece(piece, anchorX, anchorY))
+                    .anyMatch(piece -> containsInPiece(piece, x, y));
         }
 
         /**

@@ -8,6 +8,7 @@ import { scentMap } from './scentmap.js';
 import { EASE } from './phase.js';
 import { GLOW_LAYER } from './bloom.js';
 import { timeNow } from './times.js';
+import { koNames } from './i18n.js';
 
 // ⭐ **몸통이 스스로 빛나 보이게 하는 한 줄** (2026-09-11 오후, `markSelfLit`). MeshStandardMaterial 의 발광에
 //   **시선 음영**을 곱한다 — 가운데(N·V = 1)가 밝고 가장자리(0)는 uRim 배. 조명 없이도 **구**로 읽힌다.
@@ -561,10 +562,10 @@ export function createMarks(scene) {
     // ⭐ 부표 이름표 (2026-09-12, markLabels) — 지금 보이는 부표 **전부**. main.js 가 몸통 꼭대기를 투영해 ui.showMarkLabels 로 넘긴다.
     //   x·y·z = 몸통 중심(씬) · r = 몸통 월드 반지름 · a = 보이는 정도 · pri = 겹칠 때의 우선(작을수록 먼저 — 고른 부표 →
     //   향수 고르기의 12개 → 인기 순위) · top = TOP 10 (글자를 조금 굵게)
-    //   ⚠ 글자는 markNameKo 를 따른다 — 지도 향수는 한글 짧은 이름(labelKo), 꺼져 있으면 영문 원본
+    //   ⚠ 글자는 markNameKo 를 따른다 — 지도 향수는 한글 짧은 이름(labelKo), 꺼져 있으면 영문 원본 (영어 화면이면 늘 영문 — i18n.js koNames)
     labelItems() {
       const out = [];
-      const ko = (P.markNameKo === undefined ? 1 : P.markNameKo) >= 0.5;
+      const ko = koNames();
       for (const m of list) {
         if (!m.on || !m.root.visible || m.fade < 0.03) continue;
         const inSlot = !!focus && focus.slots.has(m);

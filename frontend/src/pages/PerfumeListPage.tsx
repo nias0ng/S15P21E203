@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 
 import {
@@ -20,6 +21,7 @@ const PAGE_SIZE = 30
 
 // NOTE: 쪽 넘김은 검색할 때만이고, 검색어가 없으면 첫 30개가 전부입니다
 export default function PerfumeListPage() {
+  const { t } = useTranslation('perfume')
   const [searchParams, setSearchParams] = useSearchParams()
 
   // NOTE: 필터는 `useState` 가 아니라 주소에 둡니다
@@ -31,10 +33,18 @@ export default function PerfumeListPage() {
   const searching = keyword.length > 0
   const page = readPage(searchParams)
 
+  /*
+    NOTE: 아무 조건도 없을 때 **국내 선정 순위(POPULAR)** 로 줄 세웁니다. 전에는 기준 없이
+    불러 백엔드 기본 정렬(향수 번호순)이 나왔는데, 제목은 '인기 향수' 라 번호가 빠른 외국
+    향수가 인기 1위처럼 보였습니다(지인 피드백 F7 · F23). 검색할 때는 이름으로 찾은 것이라
+    순위를 걸지 않습니다 — 걸면 순위 밖 13만 개가 결과에서 빠집니다.
+  */
+  const effectiveRanking = ranking ?? (searching ? undefined : 'POPULAR')
+
   const { data, isPending, isError, refetch } = useQuery(
     perfumeListQuery({
       keyword: searching ? keyword : undefined,
-      ranking: ranking ?? undefined,
+      ranking: effectiveRanking,
       gender: gender ?? undefined,
       page: searching ? page : undefined,
       size: PAGE_SIZE,
@@ -65,29 +75,29 @@ export default function PerfumeListPage() {
         )
       }}
     >
-      초기화
+      {t('list.reset')}
     </Button>
   )
 
   const searchEmpty =
     !searching || !data ? undefined : data.totalElements > 0 ? (
       <EmptyState
-        title="이 쪽에는 결과가 없습니다"
-        description="앞쪽으로 돌아가 주세요."
+        title={t('list.pageEmptyTitle')}
+        description={t('list.pageEmptyDescription')}
       />
     ) : (
       <EmptyState
-        title="검색 결과가 없습니다"
-        description={`'${keyword}' 와 일치하는 향수를 찾지 못했습니다.`}
+        title={t('list.searchEmptyTitle')}
+        description={t('list.searchEmptyDescription', { keyword })}
         action={resetButton}
       />
     )
 
   const heading = searching
-    ? '검색 결과'
+    ? t('list.headingSearch')
     : filtered
-      ? '조건에 맞는 향수'
-      : '최근 인기 향수'
+      ? t('list.headingFiltered')
+      : t('list.headingPopular')
 
   const count = searching
     ? (data?.totalElements ?? null)
@@ -97,12 +107,12 @@ export default function PerfumeListPage() {
 
   return (
     <div className="space-y-3.75">
-      <h1 className="sr-only">향수</h1>
+      <h1 className="sr-only">{t('list.heading')}</h1>
 
       <SearchField
         className={SEARCH_FIELD_LIST_WIDTH}
-        label="향수명 또는 브랜드명으로 검색"
-        placeholder="향수명 · 브랜드로 검색해주세요."
+        label={t('list.searchLabel')}
+        placeholder={t('list.searchPlaceholder')}
         defaultValue={keyword}
         key={keyword}
         onSearch={(next) => {
@@ -126,14 +136,16 @@ export default function PerfumeListPage() {
         <div className="mb-6.25 flex items-baseline gap-2.5">
           <h2 className="text-ink font-serif text-2xl">{heading}</h2>
           {count !== null && (
-            <span className="text-ink-muted text-caption">{count}개</span>
+            <span className="text-ink-muted text-caption">
+              {t('list.count', { count })}
+            </span>
           )}
         </div>
 
         {isError ? (
           <EmptyState
-            title="향수를 불러오지 못했습니다"
-            description="다시 시도해주세요."
+            title={t('list.loadErrorTitle')}
+            description={t('list.loadErrorDescription')}
             onRetry={() => refetch()}
           />
         ) : (
@@ -141,7 +153,11 @@ export default function PerfumeListPage() {
             items={items}
             isPending={isPending}
             columns={6}
-            rankable={!searching}
+            /*
+              순위 번호는 줄 세운 기준 그대로일 때만 붙입니다. 성별로 거르면 차례가 건너뛰어
+              3위가 '1위' 로 적힙니다.
+            */
+            rankable={!searching && gender === null}
             empty={searchEmpty}
             emptyAction={resetButton}
           />
@@ -150,7 +166,7 @@ export default function PerfumeListPage() {
         {searching && data && (
           <Pagination
             className="mt-6.25"
-            label="검색 결과 페이지"
+            label={t('list.pagination')}
             page={page}
             size={PAGE_SIZE}
             totalElements={data.totalElements}

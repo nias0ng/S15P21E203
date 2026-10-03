@@ -15,7 +15,9 @@ public enum TasteErrorCode implements ErrorCode {
     TASTE_PICKS_REQUIRED(HttpStatus.BAD_REQUEST, "향 계열을 1개 또는 2개 골라야 합니다."),
     TASTE_PICKS_DUPLICATED(HttpStatus.BAD_REQUEST, "같은 향 계열을 두 번 고를 수 없습니다."),
     TASTE_UNKNOWN_SCENT_REGION(HttpStatus.BAD_REQUEST, "없는 향 계열입니다."),
-    TASTE_PERFUME_NOT_ON_MAP(HttpStatus.BAD_REQUEST, "향 지도에 없는 향수입니다.");
+    TASTE_PERFUME_NOT_ON_MAP(HttpStatus.BAD_REQUEST, "향 지도에 없는 향수입니다."),
+    TASTE_PERFUME_OUTSIDE_PRIMARY_REGION(
+            HttpStatus.BAD_REQUEST, "1순위로 고른 향 계열 구역 밖의 향수입니다.");
 
     private final HttpStatus status;
     private final String message;

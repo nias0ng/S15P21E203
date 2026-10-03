@@ -10,8 +10,10 @@ afterEach(() => {
 })
 
 describe('isGraphicsMode', () => {
-  it('네 가지 모드만 받습니다', () => {
-    expect(['auto', 'high', 'mid', 'low'].every(isGraphicsMode)).toBe(true)
+  it('다섯 가지 모드만 받습니다', () => {
+    expect(['auto', 'high', 'mid', 'low', 'min'].every(isGraphicsMode)).toBe(
+      true,
+    )
     expect(isGraphicsMode('ultra')).toBe(false)
     expect(isGraphicsMode(undefined)).toBe(false)
   })
@@ -30,7 +32,7 @@ describe('useGraphicsStore', () => {
     const saved = JSON.parse(localStorage.getItem(KEY) ?? '{}') as {
       state?: Record<string, unknown>
     }
-    expect(saved.state).toEqual({ mode: 'low', told: [] })
+    expect(saved.state).toEqual({ mode: 'low', told: [], calm: false })
   })
 
   it('저장소의 모드를 모르면 자동으로 돌아갑니다', async () => {

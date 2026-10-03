@@ -70,7 +70,7 @@ public class ExplorationLogRepository {
      * 그대로 남는 것이 맞습니다. 그래서 {@code is_active} 를 보지 않습니다.
      */
     private static final String SELECT_RECENT_LOGS = """
-            SELECT l.log_id, l.perfume_id, p.name AS perfume_name,
+            SELECT l.log_id, l.perfume_id, p.name AS perfume_name, p.name_ko AS perfume_name_ko,
                    l.x_coordinate, l.y_coordinate, l.visited_at
             FROM map_exploration_logs l
             LEFT JOIN perfumes p ON p.perfume_id = l.perfume_id
@@ -94,6 +94,7 @@ public class ExplorationLogRepository {
                         rs.getLong("log_id"),
                         rs.getObject("perfume_id", Long.class),
                         rs.getString("perfume_name"),
+                        rs.getString("perfume_name_ko"),
                         rs.getDouble("x_coordinate"),
                         rs.getDouble("y_coordinate"),
                         rs.getObject("visited_at", OffsetDateTime.class)

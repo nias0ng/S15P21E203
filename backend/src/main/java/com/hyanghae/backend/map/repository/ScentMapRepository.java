@@ -67,7 +67,7 @@ public class ScentMapRepository {
             """;
 
     private static final String SELECT_MAP_PERFUMES = """
-            SELECT p.perfume_id, p.name, mp.map_x, mp.map_y, dominant.scent_region_id,
+            SELECT p.perfume_id, p.name, p.name_ko, mp.map_x, mp.map_y, dominant.scent_region_id,
             """
             + REPRESENTATIVE_IMAGE
             + """
@@ -190,6 +190,7 @@ public class ScentMapRepository {
         return new MapPerfumeResponse(
                 rs.getLong("perfume_id"),
                 rs.getString("name"),
+                rs.getString("name_ko"),
                 rs.getString("image_url"),
                 rs.getDouble("map_x"),
                 rs.getDouble("map_y"),

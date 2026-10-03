@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { isApiError } from '@/shared/api/http'
 import { cn } from '@/shared/lib/cn'
@@ -23,6 +24,7 @@ type TasteTestStepProps = {
 }
 
 export function TasteTestStep({ onComplete }: TasteTestStepProps) {
+  const { t } = useTranslation('taste')
   const vectors = useQuery(scentVectorsQuery())
   const queryClient = useQueryClient()
 
@@ -35,9 +37,22 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
   }, [picks.length, setCausticsLayers])
   useEffect(() => () => setCausticsLayers(null), [setCausticsLayers])
 
+  /**
+   * NOTE: 결과가 없으면 알립니다 — 1순위 계열 구역 안에 고를 병이 없을 때입니다(구역을 싣지 않는 옛 서버 · 지도를 다시
+   * 만들다 빈 구역). 구역 밖에서 대신 고르지 않습니다. 서버가 그런 병은 400 으로 거절합니다.
+   */
+  const [noStart, setNoStart] = useState(false)
+
   const handleSubmit = () => {
     if (!vectors.data || picks.length === 0) return
-    setMatch(matchStartingPoint(vectors.data, picks))
+    const result = matchStartingPoint(vectors.data, picks)
+    setMatch(result)
+    setNoStart(result === null)
+  }
+
+  const handlePicksChange = (next: ScentFamilyKey[]) => {
+    setPicks(next)
+    setNoStart(false)
   }
 
   /**
@@ -67,20 +82,17 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
 
   const saveError =
     save.isError && !(isApiError(save.error) && save.error.status === 409)
-      ? '결과를 저장하지 못했습니다. 다시 시도해주세요.'
+      ? t('step.saveFailed')
       : null
 
   return (
     <div className="space-y-8">
       <header className="space-y-3 break-keep">
-        <p className="text-ink-muted text-caption">취향 테스트</p>
+        <p className="text-ink-muted text-caption">{t('step.kicker')}</p>
         <h1 className="text-display font-serif font-semibold">
-          어떤 향에 마음이 가세요?
+          {t('step.title')}
         </h1>
-        <p className="text-ink-muted text-body">
-          끌리는 향을 최대 두 개까지 골라주세요. 고른 향에 가장 가까운 향수에서
-          향&nbsp;지도를 시작해요.
-        </p>
+        <p className="text-ink-muted text-body">{t('step.lead')}</p>
       </header>
 
       {vectors.isPending && (
@@ -93,22 +105,22 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
 
       {vectors.isError && (
         <EmptyState
-          title="향 지도 데이터를 불러오지 못했습니다"
-          description="다시 시도해주세요."
+          title={t('step.loadFailedTitle')}
+          description={t('step.loadFailedDescription')}
           onRetry={() => vectors.refetch()}
         />
       )}
 
       {vectors.isSuccess && (
         <section className={cn(GLASS_PANEL, 'rounded-card space-y-8')}>
-          <FamilyPicker value={picks} onChange={setPicks} />
+          <FamilyPicker value={picks} onChange={handlePicksChange} />
 
           <div className="border-line-soft flex items-center justify-between gap-6 border-t pt-6">
             <p
               className="text-caption text-ink font-medium tabular-nums"
               aria-live="polite"
             >
-              <span className="sr-only">고른 향 </span>
+              <span className="sr-only">{t('step.picked')}</span>
               {picks.length} / {MAX_PICKS}
             </p>
             <Button
@@ -116,9 +128,14 @@ export function TasteTestStep({ onComplete }: TasteTestStepProps) {
               disabled={picks.length === 0}
               onClick={handleSubmit}
             >
-              출발점 찾기
+              {t('step.submit')}
             </Button>
           </div>
+          {noStart && (
+            <p role="alert" className="text-danger text-caption">
+              {t('step.noStart')}
+            </p>
+          )}
         </section>
       )}
 

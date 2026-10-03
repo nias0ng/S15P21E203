@@ -9,7 +9,7 @@ import { type ScentFamilyKey } from '@/shared/config/scentFamilies'
  *
  * **엔진이 지금 화면에 띄우고 있는 목록** 그대로입니다
  * (`landing/src/perfumes-data.js` · `data/perfume_map_points.csv` 생성물).
- * 메인의 일반 검색이 찾는 대상이라 엔진과 같은 목록이어야 합니다.
+ * 향해 일지의 이름을 3D 카드 · 부표와 같은 표기로 채우는 재료라 엔진과 같은 목록이어야 합니다.
  *
  * ⚠️ `fragranticaId` 는 **DB 향수 번호가 아닙니다.** 향수 상세(A10)로 보내려면
  * DB 번호가 필요한데 이 데이터에는 없어서, 지금은 이름으로 향수 검색(A09)에
@@ -27,8 +27,6 @@ export interface MapPerfume {
   nameEn: string
   brandEn: string
   family: ScentFamilyKey | null
-  /** 화해 지도 기준 순위 1~200. 검색 결과를 이 순서로 냅니다 */
-  rank: number
   /** 지도 좌표 (정규화 0~1). DB 향수 번호를 찾는 다리입니다 (`lib/perfumeIdAt`) */
   mx: number
   my: number
@@ -53,17 +51,25 @@ export interface VoyageLogEntry {
 /**
  * 향해 일지에 들른 향수 한 병.
  *
- * API 는 번호와 이름(DB 원명)만 주고, 나머지는 화면이 3D 지도 데이터로 채웁니다
+ * API 는 번호와 이름(DB 원명 · 한국어 이름)만 주고, 나머지는 화면이 3D 지도 데이터로 채웁니다
  * (`lib/mapPerfumeLookup` 의 `withMapPerfumes`). 지도에서 못 찾은 향수는 API 값 그대로라
  * 채우는 칸은 모두 비어 있을 수 있습니다.
  */
 interface VoyageLogPerfume {
   perfumeId: number
-  /** 일지에 적는 이름. 지도에서 찾았으면 3D 부표 위의 짧은 한글 이름입니다 */
+  /**
+   * 일지에 적는 이름. 지도에서 찾았으면 3D 부표 위의 짧은 한글 이름이고, 못 찾았으면 API 의 DB 원명
+   * (대개 영문)입니다
+   */
   name: string
+  /** API 의 한국어 이름(없으면 null). 지도에서 못 찾은 향수의 한국어 화면이 씁니다 */
+  nameKo?: string | null
   /** 줄이지 않은 한글 이름 — 마우스를 올리면 보입니다 */
   fullName?: string
   brand?: string
+  /** 영문 원명 · 브랜드 — 영어 화면은 짧은 한글 이름 대신 이것을 씁니다 */
+  nameEn?: string
+  brandEn?: string
   /** 대표 향 계열 — 아이콘 색을 정합니다 */
   family?: ScentFamilyKey | null
 }

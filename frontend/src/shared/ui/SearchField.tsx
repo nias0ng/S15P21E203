@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 import { cn } from '@/shared/lib/cn'
 
 import { FOCUS_RING } from './focusRing'
@@ -48,6 +50,8 @@ export function SearchField({
   autoComplete = 'off',
   ...props
 }: SearchFieldProps) {
+  const { t } = useTranslation()
+
   return (
     <form
       role="search"
@@ -89,7 +93,7 @@ export function SearchField({
 
       <button
         type="submit"
-        aria-label="검색"
+        aria-label={t('actions.search')}
         className={cn(
           'relative grid shrink-0 place-items-center rounded-full',
           SUBMIT_SIZE[tone],

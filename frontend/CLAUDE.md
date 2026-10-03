@@ -151,8 +151,8 @@ npm run verify       # format:check + lint + typecheck + test + build — MR 전
 - 로그인: 이메일 · 비밀번호는 아무 값이나 됩니다(폼 검사만 통과하면) → 향해테스터
 - 처음 상태: 진열대 30병(보유 중 · 시향해 봄 · 보유 희망 10병씩) · 컬렉션 6개 · 향해 일지 11줄
   (`mock/seed.ts`). 바꾼 값은 메모리에만 있어 개발 서버를 다시 켜면 처음으로 돌아갑니다.
-- 병 사진: `src/assets/bottles/`(로컬 전용)가 있으면 그 사진을, 없으면 서버의 종이 질감 사진을 씁니다.
-  서버 사진은 투명 여백을 자르지 않아 병이 작게 섭니다.
+- 병 사진: `src/assets/bottles/`(로컬 전용)가 있으면 그 사진을, 없으면 배포 서버와 같은 서버의 종이
+  질감 사진(여백을 자른 `.webp`)을 씁니다. 같은 자리의 `.png` 는 여백을 안 잘라 병이 작게 섭니다.
 - 응답 모양은 백엔드 DTO 를 옮긴 것입니다. 백엔드가 바뀌면 `mock/api.ts` 도 맞춥니다.
 
 ## 코드를 어디에 둘지 — 판단 순서
@@ -238,7 +238,7 @@ import { perfumeDetailQuery } from '@/features/perfume/queries'   // X
 | `shared/ui/Checkbox` | 사각 체크박스(14px). 라벨은 호출하는 쪽에서 `<label>` 로 감싸세요 |
 | `shared/ui/SearchField` | 검색 입력 + 버튼. 헤더에 검색창이 없어 목록 화면마다 반복됩니다 |
 | `shared/ui/Badge` | 향 계열·상태 같은 짧은 라벨. `tone` neutral·outline |
-| `shared/ui/PerfumeCard` | 향수 카드. 도메인 타입을 받지 않고 `name`·`subName`·`thumbnailUrl` 낱개로 받습니다. 늘 상세로 가는 링크라 `to` 는 필수입니다 |
+| `shared/ui/PerfumeCard` | 향수 카드. 도메인 타입을 받지 않고 `name`·`subName`·`thumbnailUrl` 낱개로 받습니다. 보통은 상세로 가는 링크(`to`)이고, `onToggle` · `expanded` 를 주면 아래 칸을 여닫는 단추가 됩니다(자연어 추천 결과). 순위 딱지는 `rankLabel`(기본 `인기`)을 붙여 읽습니다 |
 | `shared/ui/ChipToggle` | 칩 여러 개 중 고르기 (A11 진열대 분류 · 계절 등록, A15) |
 | `shared/ui/StarRating` | 별점. 라디오 그룹이라 키보드 화살표로 움직입니다 |
 | `shared/ui/Modal` | 네이티브 `<dialog>` 기반. 포커스 가두기·Esc·배경 스크롤 잠금 자동. 3D 카드(iframe)에서 여는 모달은 `initialFocus="panel"` — 안 주면 [×] 에 초점 테가 선 채로 뜹니다. 폭을 줄인 좁은 판은 `titleSize="heading"` |
@@ -259,6 +259,7 @@ import { perfumeDetailQuery } from '@/features/perfume/queries'   // X
 | `shared/ui/cardGrid` | `CARD_GRID` — 향수 · 브랜드 · 노트 카드 격자의 열과 사이. 여섯 열은 `cn(CARD_GRID, 'lg:grid-cols-6')` |
 | `shared/ui/BottleSilhouette` | 사진이 없는 향수병 자리에 세우는 실루엣. 색은 `currentColor` 로 부르는 쪽이 정합니다 |
 | `shared/ui/DiveCurtain` | 메인과 다른 화면 사이의 전환 커튼 — 콘텐츠 다섯은 잠수 · 떠오르기, 진열대는 선실로 들어가기 (진열대 · 메인 담당) |
+| `shared/ui/TourTip` | 첫 방문 안내 한 줄 — 요소 곁에 붙는 상아색 종이 · [×] · [안내 그만 보기]. 뜰 차례는 `useTourStep` 이 정합니다 |
 | `shared/ui/WaterCaustics` | 물결 — 어두운 방 위에 깔리는 수면 빛 그물(three.js 셰이더). 라우트 `handle.caustics` 로 켭니다. `handle.underwater` 를 더하면 `look="underwater"` — 수면을 올려다보는 물속이 내릴수록 가라앉습니다 (docs/어두운-방-유리판.md) |
 
 variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 **variant 를 추가**합니다
@@ -275,6 +276,7 @@ variant 로 표현할 수 있는 차이는 새 컴포넌트를 만들지 않고 
 | `shared/hooks/useMediaQuery` | 미디어 쿼리가 맞는지. 첫 렌더부터 값이 맞고, `matchMedia` 가 없으면 `fallback` 입니다 |
 | `shared/hooks/useMeasuredHeight` | 요소의 높이를 잽니다(ResizeObserver · 올림). 돌려받은 `ref` · `height` 는 그 자리에서 풀어 씁니다 |
 | `shared/hooks/useEndSession` | 로그아웃 · 탈퇴 뒤 로그인 흔적(인증 상태 · 쿼리 캐시)을 지웁니다 |
+| `shared/hooks/useTourStep` | 메인 첫 방문 안내 한 단계를 겁니다 (`shared/store/tourStore` — 한 번에 하나 · 끝낸 단계는 이 브라우저에 남김). `showing` 이면 `TourTip` 을 그리고 그 행동을 하면 `finish` |
 | `shared/hooks/useResetOnOpen` | 모달이 열릴 때(열쇠가 바뀔 때) 입력칸을 처음 값으로 되돌립니다. 렌더 중에 되돌려 첫 장부터 맞습니다 |
 
 순수 함수는 `shared/lib/` 에 있습니다. 새로 쓰기 전에 봅니다 — `parseId`(주소의 번호) ·

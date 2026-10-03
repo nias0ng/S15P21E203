@@ -25,9 +25,16 @@ export interface RecommendReason {
 
 export interface RecommendedPerfume {
   perfumeId: number
-  /** 한국어 이름이 없으면 영어입니다 */
+  /** 한국어 이름이 없으면 영어입니다 — 한국어 화면이 씁니다 */
   name: string
+  /** 한국어 브랜드가 없으면 영어입니다 — 한국어 화면이 씁니다 */
   brand: string | null
+  /**
+   * 원래(영어) 이름 · 브랜드 — 영어 화면이 씁니다. 이 칸을 모르는 서버와 만나면 없어서, 그때는
+   * `name` · `brand` 로 돌아갑니다
+   */
+  originalName?: string
+  originalBrand?: string | null
   thumbnailUrl: string | null
   /** 1~3개입니다 */
   reasons: RecommendReason[]
@@ -96,6 +103,15 @@ export type Satisfaction = 'SATISFIED' | 'NEUTRAL' | 'DISSATISFIED'
 export const FEEDBACK_COMMENT_MAX = 500
 
 /**
+ * 개인화 추천의 근거가 어디서 왔는가 — 서버의 세 신호입니다(`PersonalizedRecommendationService`).
+ *
+ *   FIT         진열대에서 적합도를 높게 매긴 향수와 향 특성이 닮음 (가중치 0.50)
+ *   RECENT      최근 30일에 살펴본 향수들에서 자주 만난 향 특성 (0.15)
+ *   TASTE_TEST  취향 테스트에서 고른 향 계열 (0.35)
+ */
+export type PersonalReasonSource = 'FIT' | 'RECENT' | 'TASTE_TEST'
+
+/**
  * 개인화 맞춤 추천 (REC-12 · REC-13, S15P21E203-243 · -419) — `GET /recommendations/personalized`
  * 한 번에 향수 **한 병**입니다.
  *
@@ -104,7 +120,7 @@ export const FEEDBACK_COMMENT_MAX = 500
  * 올 수 있고**, 화면이 실제로 보였다고 알린 병(`recordPersonalExposure`)은 사흘 동안 뽑기에서 빠집니다.
  *
  * NOTE: 브랜드 · 향 특성 · 점수는 오지 않습니다. 브랜드와 향 특성은 화면이 향수 상세로 채웁니다
- * (MyShelfPage). 근거는 **한 문장**이고 틀이 셋이라 화면이 틀을 읽어 갈래를 가립니다(personalReason).
+ * (MyShelfPage). 근거는 갈래 · 근거 값으로 오고 화면이 화면 언어로 문장을 짓습니다(personalReason).
  */
 export interface PersonalRecommendation {
   /**
@@ -115,10 +131,24 @@ export interface PersonalRecommendation {
   perfumeId: number
   /** 한국어 이름이 없으면 영어입니다 */
   name: string
+  /** 원래(영어) 이름 — 영어 화면이 씁니다. 이 칸을 모르는 서버와 만나면 없어서 `name` 으로 돌아갑니다 */
+  originalName?: string
+  /** 한국어 이름. 없으면 null — 한국어 화면도 원래 이름을 씁니다 */
+  nameKo?: string | null
   /** 원본 사진을 먼저, 없으면 종이 질감 사진입니다. 둘 다 없으면 null */
   imageUrl: string | null
-  /** 점수에 가장 크게 든 근거 한 문장 — 서버가 세 틀 중 하나로 짓습니다(readPersonalReason) */
+  /**
+   * 점수에 가장 크게 든 근거 한 문장 — **받을 때의 언어**로 옵니다. 화면은 아래 두 칸으로 문장을 새로
+   * 짓고(readPersonalReason), 두 칸을 못 읽을 때만 이 문장을 그대로 씁니다
+   */
   reason: string
+  /** 근거가 나온 곳. 이 칸을 모르는 서버와 만나면 없습니다 */
+  evidenceSource?: PersonalReasonSource | null
+  /**
+   * 근거를 언어와 상관없이 가리키는 값 — 적합도 · 최근 본 향수는 향 특성의 영어 이름(`woody`),
+   * 취향 테스트는 향 계열 코드(`WOODY`)입니다. 서버가 모아 둔 옛 후보면 null 입니다
+   */
+  evidenceKey?: string | null
 }
 
 /**

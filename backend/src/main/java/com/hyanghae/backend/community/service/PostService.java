@@ -420,7 +420,8 @@ public class PostService {
                 .collect(Collectors.toMap(
                         PostPerfumeRow::getPostId,
                         row -> new PostPerfumeResponse(
-                                row.getPerfumeId(), row.getName(), row.getBrand())
+                                row.getPerfumeId(), row.getName(), row.getNameKo(),
+                                row.getBrand(), row.getBrandKo())
                 ));
     }
 

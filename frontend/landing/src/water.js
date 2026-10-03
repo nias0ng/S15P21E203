@@ -189,6 +189,9 @@ varying vec4 vProj;
 // ⚠ 삼각형 한 변이 0.215 인데 포락선의 최단 파장이 10.5 라, 선형 보간 오차가 0.1% 아래다 —
 //   프래그먼트에서 sin 을 다시 돌 이유가 없다
 varying float vEnv;
+// ⭐ 마루선 판정 전용 기울기 (2026-09-29, S15P21E203-448) — 너울(lo) 대역 + 시뮬. **잔물결이 없다.**
+//   vGradW 는 잔물결까지 담아 한 파장에 정점이 5.6~7.9개뿐이라, 그걸로 잰 fwidth(dirf) 가 삼각형마다 튀었다 (프래그먼트 dirf 주석)
+varying vec2 vGradS;
 void main(){
   vUv = uv;
   // 높이를 얹기 전의 평평한 월드 위치. 여기서 카메라 거리를 먼저 구해야
@@ -208,9 +211,9 @@ void main(){
   //   전부 어긋난 자리에 선다
   vec4 env = swellEnv(sp);
   vEnv = env.x;
-  // ⚠ 높이와 기울기는 swellHG 로 **한 번에** 받는다 (같은 위상을 두 번 안 돈다)
-  float swH; vec2 swG;
-  swellHG(sp, detail, env, swH, swG);
+  // ⚠ 높이와 기울기는 swellHGS 로 **한 번에** 받는다 (같은 위상을 두 번 안 돈다) — 너울만의 기울기 swGS 도 같은 호출에서 나온다
+  float swH; vec2 swG, swGS;
+  swellHGS(sp, detail, env, swH, swG, swGS);
   wp.y += texture2D(uH, uv).x * uHScale + swH;
   // 시뮬 기울기. gr.y 의 부호를 뒤집는 이유는 grid.js 와 같다 (uv.y 가 z 와 반대 방향)
   vec2 gr = vec2(
@@ -218,7 +221,9 @@ void main(){
     texture2D(uH, uv + vec2(0.0, uTexel.y)).x - texture2D(uH, uv - vec2(0.0, uTexel.y)).x
   ) / (2.0 * uCell);
   vGradW = vec2(gr.x, -gr.y) * uHScale + swG;
-  vMat = sp;                            // 횡변위 **전** 좌표를 그대로 넘긴다 (거품이 쓴다)
+  // ⚠ 시뮬 항은 남긴다 — 선체가 밀어낸 물결의 마루선도 이 판정을 탄다 (항적 가장자리)
+  vGradS = vec2(gr.x, -gr.y) * uHScale + swGS;
+  vMat = sp;                           // 횡변위 **전** 좌표를 그대로 넘긴다 (거품이 쓴다)
   wp.xz += swellD(sp, detail, env);     // 그리드와 같은 변위 — 안 맞추면 마스크가 어긋난다
   vW = wp.xyz;
   gl_Position = projectionMatrix * viewMatrix * wp;
@@ -316,6 +321,7 @@ uniform float uSparkFace, uSparkFaceW, uSparkFaceB, uSparkDrift;
 uniform float uSparkClump, uSparkLo, uSparkHi, uSparkCell, uSparkJit, uSparkShine, uSparkDens, uSparkCull;
 uniform float uFoamWarp, uFoamRough, uFoamStretch, uFoamFine, uFoamFineAmt, uFoamAA;
 uniform float uCrestFace, uCrestBias;
+uniform float uCrestEps;   // dirf 분모의 바닥 (params.crestEps) — 기울기 0 인 점의 꼭지점을 푼다
 uniform float uLineAmt, uLineW, uLineHalo, uLineH0, uLineH1;
 uniform float uLineFoam, uLineFoamHi;
 uniform float uSeamAmt, uSeamW, uSeamH0, uSeamH1;
@@ -325,6 +331,10 @@ uniform float uSubAmt, uSubRefract, uSubScatter, uSubCell, uSubScatK, uSubEdge, 
 uniform vec3 uSubTint;
 uniform float uApexAmt, uApexH0, uApexH1, uSunLobe;
 uniform int uDebug;
+// ⭐ 최저 단계의 가벼운 물 (2026-09-30 · quality.js TIERS.min.lite → params lite*). 칸마다 1 이면 그 계산을 건너뛴다 — 0 이면 예전 식 그대로다
+//   x 잔결(microG — 물 전체에서 cos 5회 · 해시 4회) · y 하늘 반사의 구름
+//   ⚠ 반짝임 노이즈(gn) · 흰 거품의 번짐 탭은 넣지 않았다 — 끄면 윤슬이 뭉개진 얼룩이 되고(메시 면이 비친다) 거품이 점박이 띠가 되는데 아끼는 것은 각각 9% · 2% 였다 (CHANGELOG v0.81.0)
+uniform vec2 uLite;
 uniform float uDbgEdge;
 uniform vec2 uSwellDir;
 varying vec2 vUv; varying vec3 vW; varying vec2 vGradW; varying float vDetail;
@@ -333,6 +343,7 @@ varying vec2 vUv; varying vec3 vW; varying vec2 vGradW; varying float vDetail;
 varying vec2 vMat;
 varying vec4 vProj;
 varying float vEnv;          // 군 포락선의 너울 배율 (정점에서 보간)
+varying vec2 vGradS;         // 마루선 판정 전용 기울기 — 너울 + 시뮬, 잔물결 없음 (정점 셰이더 주석 · S15P21E203-448)
 
 // 격자점 하나당 고정 난수 2개 (-0.5 ~ 0.5). 반짝임 노이즈의 재료다
 vec2 hash2(vec2 c){
@@ -415,6 +426,8 @@ void main(){
   // ⚠ ω 는 손대지 않았다 — 원래도 ω = 0.62√(g·k) 였다 (검산 : k 7.3920 → 5.2797 ✓).
   //   시각은 uTime 이 아니라 uTimeQ 다 (컷아웃 질감).
   // ⚠ 여전히 **노멀에만** 얹는다. vW.y · h · 배의 부력에는 영향이 없다.
+  vec2 microG = vec2(0.0);
+  if (uLite.x < 0.5) {
   float calmK = clamp((1.0 - vEnv) / max(1.0 - uEnvLo, 1e-3), 0.0, 1.0);
   vec2 mq = vMat + vnoise2(vMat * 0.30) * uMicroWarp;
   // ⚠ 방향과 파수는 **MICRO_BANDS 표에서 구워 온다** (uMicroDir / uMicroKW). 예전에는 이 자리에
@@ -432,7 +445,8 @@ void main(){
   mg += md * (uMicroB * 0.8269) * cos(mp);   // λ 0.92
   md = uMicroD4.xy;  mp = dot(mq, md) * uMicroD4.z - uMicroD4.w * uWaveSpeed * uTimeQ + 1.52;
   mg += md * (uMicroB * 0.5623) * cos(mp);   // λ 0.70
-  vec2 microG = mg * vDetail * (1.0 + uEnvMicro * calmK);
+  microG = mg * vDetail * (1.0 + uEnvMicro * calmK);
+  }
   // ⚠⚠ **픽셀당 해시 수를 세는 계수기** (2026-09-06). 검증 보기 12 가 이걸 히트맵으로 그린다.
   //   숨겨진 패널에서는 GPU 타이머가 거짓말을 하므로(셰이더를 다 꺼도 같은 ms), **어느 층이
   //   몇 픽셀에서 몇 번 도는가**가 여기서 유일하게 믿을 수 있는 비용 측정이다.
@@ -568,7 +582,14 @@ void main(){
   //
   // ⚠ 배 전체가 비치지 않는다. 스치는 각도에서 물에 남는 것은 아랫도리뿐이라
   // reflect.js 가 일정 높이(reflectSlice) 위를 잘라내고 찍는다.
-  vec2 ruv = (vProj.xy / vProj.w) * 0.5 + 0.5;
+  // ⭐ 배 반사가 꺼진 단계(uReflAmt 0 — 낮음 · 최저)에서는 아래 좌표 계산(해시 4회 포함)을 통째로 건너뛴다 (2026-09-30).
+  //   ruv 는 창 밖(−1) 그대로라 반사 블록도 안 돈다. 켜진 단계는 예전 식 그대로다
+  vec2 ruv = vec2(-1.0);
+  float smFade = 1.0;
+  float dB = length(uBoatPos - vW);
+  float dCam = length(cameraPosition - vW);
+  if (uReflAmt > 0.0) {
+  ruv = (vProj.xy / vProj.w) * 0.5 + 0.5;
   // ⚠⚠ **거울 렌더는 좌우가 뒤집혀 있다** (2026-09-06). 사용자 : *"배 아래에서 바로
   //   반사되는 게 아니라 **전혀 다른 좌표값**을 반사하고 있음."*
   //   reflect.js 가 up 을 (0,−1,0) 으로 두고 lookAt 하는데, 그러면 컬링은 안 깨지지만
@@ -584,7 +605,6 @@ void main(){
   //   ⚠ 아래의 밀기·흩기는 이 뒤집힌 좌표계에서 더해진다. x 방향 흔들림의 부호가
   //     거울상이 되지만, 그건 방향성 없는 잔떨림이라 눈으로 판정할 수 있는 차이가 아니다.
   ruv.x = 1.0 - ruv.x;
-  float dB = length(uBoatPos - vW);
   // ⚠⚠ **거리는 배가 아니라 카메라에서 잰다** (2026-09-06, 평면 패스).
   //   예전에는 셋 다 dB(배까지 거리)를 썼다. 배 하나만 비칠 때는 맞았지만, 레이어에 다른
   //   물체가 들어오는 순간 **배에서 먼 물체는 자기가 카메라 앞에 있어도 페이드로 죽는다.**
@@ -592,7 +612,6 @@ void main(){
   //   ⚠ 물리적으로도 카메라가 맞다 — 반사가 멀수록 흐려지는 것은 시선이 지나온 수면의
   //     거칠기가 쌓이기 때문이지, 배와의 거리와는 아무 상관이 없다.
   //   ⚠ dB 는 그대로 둔다. 선체 거품·잠긴 선체는 **배** 기준이 맞다.
-  float dCam = length(cameraPosition - vW);
   // 파도가 어긋남을 보정한다 (없으면 반사가 화면에 못 박힌다)
   float nearB = 1.0 - smoothstep(uReflFade * 0.35, uReflFade, dCam);
   ruv += (vGradW * uReflSharp + microG * uReflRipple) * uReflPush * nearB;
@@ -635,8 +654,8 @@ void main(){
   //       시작 0.35배 → 0.395 / 0.202 / 0.485 / 0.002  (절벽비 1.00)
   //     0 에서 시작하면 선체에서부터 곧바로 기울어져 **비침 전체가 하나의 그라데이션**이 된다.
   //   ⚠ 실제 물의 반사도 이 모양이다 — 접촉점에서 가장 또렷하고 멀어질수록 흩어져 사라진다.
-  float smFade = uSmearFade <= 0.0 ? 1.0
-               : 1.0 - smoothstep(0.0, uSmearFade, smy);
+  smFade = uSmearFade <= 0.0 ? 1.0
+         : 1.0 - smoothstep(0.0, uSmearFade, smy);
 
   // 난반사 : 월드에 고정된 노이즈로 좌표를 흩는다. 세기는 국소 기울기가 정한다.
   // 흩어진 좌표가 배 밖으로 나가면 알파가 0 이라 그 자리는 비어 버린다 — 그게 '상이
@@ -675,6 +694,7 @@ void main(){
   float fk = smoothstep(max(uScatRamp, 0.1) * 0.30, max(uScatRamp, 0.1), dCam);
   float agit = clamp(slope * uScatK, 0.0, 1.0) * mix(uScatNear, uScatFar, fk);
   ruv += kn * uScatter * agit;
+  }
 
   // ⚠ 경계는 타원이 아니라 **물리**로 잡는다. 이 면의 법선으로 시선을 튕긴 광선이 배를
   // 향하지 않으면 애초에 비칠 수 없다. 이게 없으면 화면 660px 에 조각이 흩어진다 (실측)
@@ -865,7 +885,7 @@ void main(){
     float F = 0.02 + 0.98 * pow(1.0 - ct, 5.0);
     // ⚠ 선체 밑에서는 하늘이 실제로 막혀 있다 (skK). 사용자 지적의 본체가 이 한 줄이다
     float skyLit = 1.0 - skK * uShadowOcc * vDetail;
-    c = mix(c, skyColor(Rr, uLightDir3), clamp(F * uSkyAmt, 0.0, 1.0) * vDetail * skyLit);
+    c = mix(c, skyColor(Rr, uLightDir3, 1.0 - uLite.y), clamp(F * uSkyAmt, 0.0, 1.0) * vDetail * skyLit);
   }
 
   if (uReflAmt > 0.0 && aim > 0.0 && ruv.x > 0.0 && ruv.x < 1.0 && ruv.y > 0.0 && ruv.y < 1.0) {
@@ -1005,8 +1025,21 @@ void main(){
   // 너울 진행 방향으로 투영한 기울기의 **방향**. −1 = 내려가는 면, +1 = 올라가는 면.
   // 0 을 지나는 자리가 능선(또는 골)이다.
   // ⚠ 정규화 **전** 값을 따로 남긴다 — 아래 거품의 앞뒤 창이 이걸 쓴다 (비용 0, 같은 dot).
-  float sdir = dot(vGradW, uSwellDir);
-  float dirf = slope > 1e-4 ? sdir / slope : 0.0;
+  // ⭐⭐ **너울만의 기울기(vGradS)로 잰다** (2026-09-29, S15P21E203-448). 예전에는 잔물결까지 든 vGradW 였다.
+  //   띠 폭은 pw 의 배수다 (무리 135배 · 이음매 21.6배 · 발광 162배). 그런데 기울기는 정점에서만 계산되고
+  //   삼각형 안에서 선형 보간되므로 fwidth(dirf) 가 **삼각형마다 거의 상수이고 모서리에서 뛴다.**
+  //   잔물결(λ 1.2~1.7 · 한 파장에 정점 5.6~7.9개)은 마루 근처에서 기울기 방향을 약 30도씩 흔들어
+  //   그 뜀이 커졌다 — 띠 끝이 삼각형 모서리에 붙어 피라미드 · 쐐기 · 빗살 · 고리가 섰다.
+  //   멈춘 프레임 실험 : dirf 값만 픽셀별 → 그대로 깨짐 · pw 만 픽셀별 → 깨끗 (원인은 폭) · 잔물결 0 → 깨끗 ·
+  //   이 판정만 너울 기울기 → 깨끗. 잔물결은 모양 · 음영(slope · lit) · 반짝임에 그대로 남는다
+  // ⚠ 거품 앞뒤 창(fsig) · 물 오르는 속도(hrise) · 반짝임 면(faceS) · 거품 띠(haloS)도 이 값을 따라간다 —
+  //   모두 '능선이 어디냐' 를 마루선과 **같은 식**으로 봐야 하는 층이다 (불변식 13-2)
+  float slopeS = length(vGradS);
+  float sdir = dot(vGradS, uSwellDir);
+  // ⭐ 분모에 바닥(uCrestEps)을 둔다 (S15P21E203-448) — 방향코사인은 기울기 0 인 점에서 정의되지 않아 두 마루가 만나는 자리에
+  //   선 · 앞뒤 색이 한 점으로 모여 뾰족한 **꼭지점**이 섰다 (params.crestEps 주석). 보통의 마루(기울기 ≫ ε)는 그대로다
+  // ⚠ uCrestEps 0 이면 예전 식 그대로 (0 기울기 가드 포함)
+  float dirf = (uCrestEps > 0.0 || slopeS > 1e-4) ? sdir / sqrt(slopeS * slopeS + uCrestEps * uCrestEps) : 0.0;
   float ad = abs(dirf);
   float pw = max(fwidth(dirf), 1e-5);   // ad / pw 가 곧 '능선에서 몇 픽셀인가' 다
   // 화면 한 픽셀이 재질 좌표에서 몇 인가. 거품 무늬의 안티에일리어싱이 이 값을 쓴다.
@@ -1873,7 +1906,8 @@ void main(){
   if (uDebug > 0) {
     vec3 dc = vec3(0.0);
     float fmD = smoothstep(uFoamLo, uFoamHi2, texture2D(uH, vUv).w);
-    float dirD = slope > 1e-4 ? dot(vGradW, uSwellDir) / slope : 0.0;
+    // ⚠ 본 경로의 dirf 그대로다 (너울 기울기 · 분모 바닥) — 보기가 실제 마루선을 재현해야 한다 (S15P21E203-448)
+    float dirD = dirf;
     if (uDebug == 1) {            // 노멀 : 면이 어디를 향하나
       vec3 Nn = normalize(vec3(-vGradW.x * 6.0, 1.0, -vGradW.y * 6.0));
       dc = Nn * 0.5 + 0.5;
@@ -2072,8 +2106,12 @@ void main(){
   // ⭐ 스카이 스피어와 **같은 함수·같은 방향**이라 구조적으로 이어진다 (stage.js 의 vDir 도
   //   카메라→픽셀 방향이고, 여기 시선도 카메라→이 점이다). 갈라질 방법이 없다.
   // ⚠ uFadeSky 는 stageAmount 를 곱해서 들어온다 — 하늘을 끄면 자동으로 uBg 로 돌아온다.
-  vec3 far = mix(uBg, skyColor(normalize(vW - cameraPosition), uLightDir3), uFadeSky);
-  gl_FragColor = vec4(mix(far, c, vis), 1.0);
+  // ⭐ 다 보이는 물(vis 1 — 물 픽셀의 약 3/4)에서는 하늘색을 부르지 않는다 (2026-09-30). 구름 값 노이즈 두 번이 거기서 빠진다
+  if (vis < 1.0) {
+    vec3 far = mix(uBg, skyColor(normalize(vW - cameraPosition), uLightDir3), uFadeSky);
+    c = mix(far, c, vis);
+  }
+  gl_FragColor = vec4(c, 1.0);
   #include <colorspace_fragment>
 }`;
 
@@ -2302,6 +2340,7 @@ export function createWater(scene, tex, opts = {}) {
     uFoamHi2: { value: P.foamHi },
     uCrestFace: { value: P.crestFace },
     uCrestBias: { value: P.crestBias },
+    uCrestEps: { value: P.crestEps === undefined ? 0 : P.crestEps },
     uApexAmt: { value: P.apexAmount },
     uApexH0: { value: P.apexH0 },
     uApexH1: { value: P.apexH1 },
@@ -2330,6 +2369,7 @@ export function createWater(scene, tex, opts = {}) {
     uLineH0: { value: P.lineH0 },
     uLineH1: { value: P.lineH1 },
     uDebug: { value: 0 },
+    uLite: { value: new THREE.Vector2() },   // update() 가 params waterLite · lite* 로 민다 (quality.js 최저)
     uDbgEdge: { value: P.debugEdge },
     uSwellDir: { value: new THREE.Vector2(...swellMeanDir()) },
     uFoamBlur: { value: P.foamBlur },
@@ -2559,6 +2599,7 @@ export function createWater(scene, tex, opts = {}) {
       uni.uFoamHi2.value = P.foamHi;
       uni.uCrestFace.value = P.crestFace;
       uni.uCrestBias.value = P.crestBias;
+      uni.uCrestEps.value = P.crestEps === undefined ? 0 : P.crestEps;
       uni.uApexAmt.value = P.apexAmount;
       uni.uApexH0.value = P.apexH0;
       uni.uApexH1.value = P.apexH1;
@@ -2721,6 +2762,9 @@ export function createWater(scene, tex, opts = {}) {
                                  CONFIG.boat.lengthW * 0.20 * P.contactSize);
       uni.uSmearK.value = P.reflectSmear;
       uni.uToneAmt.value = P.toneAmount;
+      // ⭐ 최저 단계의 가벼운 물 (quality.js 가 waterLite 를 쓴다) — 무엇을 건너뛸지는 칸마다 params lite* 가 정한다
+      const lt = P.waterLite ? 1 : 0, lk = (v) => lt * (v === undefined ? 1 : v);
+      uni.uLite.value.set(lk(P.liteMicro), lk(P.liteSkyCloud));
       uni.uToneDist.value.set(P.toneNear, P.toneFar);
       // ⚠ 발자국은 배 길이에서 파생시킨다 — CONFIG.boat.lengthW 를 바꾸면 같이 따라온다
       // ⚠⚠ **선체보다 넉넉히 커야 한다.** 처음에 선체 실루엣과 같은 크기(0.5×0.17)로

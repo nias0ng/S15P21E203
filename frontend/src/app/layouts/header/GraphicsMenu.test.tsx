@@ -1,11 +1,12 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   useGraphicsStore,
   type SceneQuality,
 } from '@/shared/store/graphicsStore'
+import { useLocaleStore } from '@/shared/store/localeStore'
 
 import { GraphicsMenu } from './GraphicsMenu'
 import { inkOf } from './tone'
@@ -21,8 +22,14 @@ const renderMenu = () => render(<GraphicsMenu ink={inkOf('glass')} />)
 const gear = () => screen.getByRole('button', { name: '그래픽 설정' })
 
 afterEach(() => {
-  useGraphicsStore.setState({ mode: 'auto', told: [], quality: null })
+  useGraphicsStore.setState({
+    mode: 'auto',
+    told: [],
+    quality: null,
+    calm: false,
+  })
   localStorage.clear()
+  vi.unstubAllGlobals()
 })
 
 describe('GraphicsMenu', () => {
@@ -33,7 +40,7 @@ describe('GraphicsMenu', () => {
 
     await user.click(gear())
     expect(gear()).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('dialog', { name: '그래픽 품질' })).toBeVisible()
+    expect(screen.getByRole('dialog', { name: '그래픽 설정' })).toBeVisible()
 
     await user.click(gear())
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -105,5 +112,55 @@ describe('GraphicsMenu', () => {
     fireEvent.blur(window)
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('영어 화면은 영어로 적습니다', async () => {
+    const user = userEvent.setup()
+    useLocaleStore.getState().setLocale('en')
+    useGraphicsStore.setState({ mode: 'auto', quality: integratedLow })
+    renderMenu()
+
+    await user.click(screen.getByRole('button', { name: 'Graphics settings' }))
+
+    expect(
+      screen.getByRole('dialog', { name: 'Graphics settings' }),
+    ).toBeVisible()
+    expect(screen.getByRole('radio', { name: /^Auto/ })).toBeChecked()
+    expect(screen.getByText('(recommended)')).toBeVisible()
+    expect(screen.getByText('Now Low · integrated graphics')).toBeVisible()
+    expect(screen.getByText(/High performance/)).toBeVisible()
+    expect(
+      screen.getByRole('checkbox', { name: /Reduce motion/ }),
+    ).toBeInTheDocument()
+  })
+
+  /*
+    멀미가 있거나 움직이는 화면이 어지러운 사람이 "움직임을 멈추는 설정이 없다" 고 했습니다
+    (메인 사용성 테스트 2026-10-01). OS 의 '동작 줄이기' 를 모르는 사람도 여기서 켭니다.
+  */
+  it('움직임 줄이기를 켜면 설정에 남깁니다', async () => {
+    const user = userEvent.setup()
+    renderMenu()
+
+    await user.click(gear())
+    await user.click(screen.getByRole('checkbox', { name: /움직임 줄이기/ }))
+
+    expect(useGraphicsStore.getState().calm).toBe(true)
+  })
+
+  it('기기의 동작 줄이기가 켜져 있으면 켜진 채 잠겨 있습니다', async () => {
+    vi.stubGlobal(
+      'matchMedia',
+      (query: string) =>
+        ({ matches: query.includes('reduce'), media: query }) as MediaQueryList,
+    )
+    const user = userEvent.setup()
+    renderMenu()
+
+    await user.click(gear())
+    const box = screen.getByRole('checkbox', { name: /움직임 줄이기/ })
+
+    expect(box).toBeChecked()
+    expect(box).toBeDisabled()
   })
 })

@@ -11,7 +11,7 @@ function Harness({ joined = false }: { joined?: boolean }) {
   return (
     <>
       <NewPasswordFields
-        label={joined ? '비밀번호' : '새 비밀번호'}
+        field={joined ? 'password' : 'newPassword'}
         password={password}
         joined={joined}
       />

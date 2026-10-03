@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { toCollectionDetail } from '@/shared/config/routes'
@@ -51,6 +52,7 @@ export function CollectionStrip({
   fitRows = false,
   className,
 }: Props) {
+  const { t } = useTranslation('collection')
   /*
     칸의 최소 폭은 1920 에서 380 입니다 — 1920 · 1440 에서 네 칸, 1024 둘, 휴대폰 하나.
     400 이면 1440 이 세 칸이 되어 둘째 줄 명판이 하단 띠에 걸립니다. 칸이 적어도 늘이지 않고
@@ -72,8 +74,8 @@ export function CollectionStrip({
   if (isError) {
     return (
       <CollectionNotice
-        title="컬렉션을 불러오지 못했습니다"
-        description="잠시 후 다시 시도해 주세요."
+        title={t('loadError.title')}
+        description={t('loadError.description')}
         onRetry={onRetry}
       />
     )
@@ -117,8 +119,10 @@ export function CollectionStrip({
             </CaseInside>
           </CaseNiche>
           <CasePlate
-            title={items.length === 0 ? '첫 컬렉션 만들기' : '새 컬렉션'}
-            meta="진열대의 향수를 골라 한 상자에 묶어 둡니다"
+            title={
+              items.length === 0 ? t('strip.createFirst') : t('strip.createNew')
+            }
+            meta={t('strip.createMeta')}
           />
         </button>
       </li>
@@ -128,6 +132,7 @@ export function CollectionStrip({
 
 /** 컬렉션 하나 — 진열함 + 명판. 누르면 컬렉션 상세로 갑니다 */
 function CollectionCase({ collection }: { collection: CollectionSummary }) {
+  const { t } = useTranslation('collection')
   const { previewThumbnails: bottles, description } = collection
 
   return (
@@ -145,7 +150,7 @@ function CollectionCase({ collection }: { collection: CollectionSummary }) {
           */
           <CaseInside>
             <span className="shelf-muted text-body font-serif">
-              아직 담긴 향수가 없어요
+              {t('strip.empty')}
             </span>
           </CaseInside>
         )}
@@ -155,7 +160,7 @@ function CollectionCase({ collection }: { collection: CollectionSummary }) {
         meta={
           <>
             <span className="tabular-nums">
-              향수 {collection.perfumeCount}개
+              {t('perfumeCount', { count: collection.perfumeCount })}
             </span>
             {description && <> · {description}</>}
           </>

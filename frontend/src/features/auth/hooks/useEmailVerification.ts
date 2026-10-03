@@ -1,5 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
+import type { TFunction } from 'i18next'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { apiErrorMessage, isApiError } from '@/shared/api/http'
 
@@ -14,36 +16,36 @@ import { useCountdown } from './useCountdown'
 
 type Verified = { email: string; token: string }
 
-/** 번호가 죽어 새로 받아야만 하는 오류 */
-const CODE_GONE = new Set([
-  'AUTH_EMAIL_VERIFICATION_EXPIRED',
-  'AUTH_EMAIL_VERIFICATION_TOO_MANY_ATTEMPTS',
-])
+/**
+ * 번호가 죽어 새로 받아야만 하는 오류. 서버 문구에 [재인증] 안내를 이어 붙이면 영어 화면에서
+ * 두 언어가 섞이므로, 코드마다 안내까지 담은 문구를 따로 둡니다.
+ */
+const CODE_GONE_KEYS = {
+  AUTH_EMAIL_VERIFICATION_EXPIRED: 'verification.codeExpired',
+  AUTH_EMAIL_VERIFICATION_TOO_MANY_ATTEMPTS: 'verification.tooManyAttempts',
+} as const
 
-const EXPIRED_MESSAGE =
-  '인증 시간이 지났습니다. [재인증] 을 눌러 다시 받아주세요'
+const isCodeGone = (code: string): code is keyof typeof CODE_GONE_KEYS =>
+  Object.hasOwn(CODE_GONE_KEYS, code)
 
-function sendErrorMessage(error: unknown): string {
+function sendErrorMessage(error: unknown, t: TFunction<'auth'>): string {
   if (isApiError(error) && error.code === 'AUTH_EMAIL_ALREADY_EXISTS') {
-    return '이미 사용 중인 메일입니다.'
+    return t('verification.emailTaken')
   }
-  return apiErrorMessage(
-    error,
-    '인증번호를 보내지 못했습니다. 잠시 후 다시 시도해주세요.',
-  )
+  return apiErrorMessage(error, t('verification.sendFailed'))
 }
 
-function confirmErrorMessage(error: unknown): string {
+function confirmErrorMessage(error: unknown, t: TFunction<'auth'>): string {
   if (!isApiError(error)) {
-    return '확인하지 못했습니다. 잠시 후 다시 시도해주세요.'
+    return t('verification.confirmFailed')
   }
   if (error.code === 'AUTH_EMAIL_VERIFICATION_CODE_MISMATCH') {
-    return '인증번호가 올바르지 않습니다'
+    return t('verification.codeMismatch')
   }
-  if (CODE_GONE.has(error.code)) {
-    return `${error.message} [재인증] 을 눌러 인증번호를 다시 받아주세요`
+  if (isCodeGone(error.code)) {
+    return t(CODE_GONE_KEYS[error.code])
   }
-  return error.message
+  return apiErrorMessage(error, t('verification.confirmFailed'))
 }
 
 /**
@@ -54,6 +56,7 @@ function confirmErrorMessage(error: unknown): string {
  * 이메일을 고칠 때는 `reset` 으로 번호 · 타이머까지 모두 비웁니다.
  */
 export function useEmailVerification(email: string) {
+  const { t } = useTranslation('auth')
   const [sentTo, setSentTo] = useState<string | null>(null)
   const [code, setCode] = useState('')
   const [verified, setVerified] = useState<Verified | null>(null)
@@ -93,7 +96,7 @@ export function useEmailVerification(email: string) {
           codeTimer.stop()
         },
         onError: (error) => {
-          if (isApiError(error) && CODE_GONE.has(error.code)) {
+          if (isApiError(error) && isCodeGone(error.code)) {
             codeTimer.stop()
           }
         },
@@ -115,9 +118,9 @@ export function useEmailVerification(email: string) {
 
   const codeError =
     confirmMutation.error !== null
-      ? confirmErrorMessage(confirmMutation.error)
+      ? confirmErrorMessage(confirmMutation.error, t)
       : codeRemaining === 0 && token === null
-        ? EXPIRED_MESSAGE
+        ? t('verification.timeUp')
         : undefined
 
   const reset = () => {
@@ -139,7 +142,7 @@ export function useEmailVerification(email: string) {
     codeError,
     sendError:
       sendMutation.error !== null
-        ? sendErrorMessage(sendMutation.error)
+        ? sendErrorMessage(sendMutation.error, t)
         : undefined,
     needsResend,
     /** [인증하기] — 이 주소로 아직 보내지 않았을 때만. 다시 받는 것은 [재인증] 입니다 */

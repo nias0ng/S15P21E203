@@ -21,6 +21,8 @@ import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -207,6 +209,36 @@ class PostIntegrationTest {
                 .andExpect(jsonPath("$.posts[1].perfume.perfumeId").value(2))
                 .andExpect(jsonPath("$.posts[1].perfume.name").value("Second Scent"))
                 .andExpect(jsonPath("$.posts[1].perfume.brand").value("Chanel"));
+    }
+
+    /**
+     * 글에 걸린 향수는 원래 이름과 한국어 이름을 짝으로 싣습니다. 화면이 언어에 맞춰 고릅니다.
+     *
+     * <p>요청 언어와 관계없이 같은 짝이 옵니다. 목록의 대표 향수(네이티브 쿼리)와 상세의 향수 목록
+     * (JPQL 생성자 표현식)을 둘 다 봅니다. 한국어 이름이 없는 향수는 한국어 칸이 빕니다.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"ko", "en"})
+    void putsBothPerfumeAndBrandNames(String language) throws Exception {
+        jdbcTemplate.update("UPDATE perfumes SET name_ko = '두 번째 향' WHERE perfume_id = 2");
+        jdbcTemplate.update("UPDATE brands SET name_ko = '샤넬' WHERE brand_id = 1");
+        long postId = write("COLLECTION", "향수 건 글", "본문", List.of(2L, 1L), null);
+
+        mockMvc.perform(get(POSTS_URL).header("Accept-Language", language))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts[0].perfume.name").value("Second Scent"))
+                .andExpect(jsonPath("$.posts[0].perfume.nameKo").value("두 번째 향"))
+                .andExpect(jsonPath("$.posts[0].perfume.brand").value("Chanel"))
+                .andExpect(jsonPath("$.posts[0].perfume.brandKo").value("샤넬"));
+
+        mockMvc.perform(get(POST_URL, postId).header("Accept-Language", language))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.relatedPerfumes[0].name").value("Second Scent"))
+                .andExpect(jsonPath("$.relatedPerfumes[0].nameKo").value("두 번째 향"))
+                .andExpect(jsonPath("$.relatedPerfumes[0].brand").value("Chanel"))
+                .andExpect(jsonPath("$.relatedPerfumes[0].brandKo").value("샤넬"))
+                .andExpect(jsonPath("$.relatedPerfumes[1].name").value("Base Scent"))
+                .andExpect(jsonPath("$.relatedPerfumes[1].nameKo").doesNotExist());
     }
 
     /**

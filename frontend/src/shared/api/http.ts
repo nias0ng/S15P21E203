@@ -5,7 +5,9 @@ import axios, {
 } from 'axios'
 
 import { env } from '@/shared/config/env'
+import { localizeServerError } from '@/shared/i18n'
 import { useAuthStore } from '@/shared/store/authStore'
+import { useLocaleStore } from '@/shared/store/localeStore'
 
 interface ApiErrorResponse {
   code: string
@@ -28,8 +30,15 @@ export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError
 }
 
+/**
+ * 화면에 띄울 오류 문구. 한국어 화면은 서버 문구를, 영어 화면은 오류 코드에 맞는 영어 문구를 씁니다.
+ *
+ * @param fallback 서버 오류가 아니거나 영어 문구가 없는 코드일 때 쓸 문구 — 지금 화면 언어로 넘깁니다
+ */
 export function apiErrorMessage(error: unknown, fallback: string): string {
-  return isApiError(error) ? error.message : fallback
+  return isApiError(error)
+    ? localizeServerError(error.code, error.message, fallback)
+    : fallback
 }
 
 /**
@@ -72,6 +81,9 @@ http.interceptors.request.use((config) => {
   if (accessToken && !isAuthPath) {
     config.headers.setAuthorization(`Bearer ${accessToken}`)
   }
+
+  // 서버가 언어에 따라 데이터(노트 설명 · AI 요약 · 인증 메일)를 고르는 기준입니다
+  config.headers.set('Accept-Language', useLocaleStore.getState().locale)
 
   return config
 })

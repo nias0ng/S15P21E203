@@ -280,6 +280,34 @@ class PerfumeBrandKoreanNameIntegrationTest {
     }
 
     /**
+     * 한국어 브랜드와 이름을 같이 친 검색어도 찾습니다. 어디서 띄든, 영문 이름을 섞어 치든 같습니다.
+     *
+     * <p>영문으로 같이 친 경우는 {@code PerfumeSearchIntegrationTest} 가 봅니다. 한국어는 브랜드 ·
+     * 이름이 이은 줄의 앞쪽에 공백 없이 붙어 있어 '르 라보 산탈 33' 이 통째로 걸리고, 한국어
+     * 브랜드에 영문 이름을 섞은 말은 이은 줄에서 떨어져 있어 낱말마다 보는 길로 걸립니다.
+     * 순위 검색은 조건이 따로 한 벌이라 같이 봅니다.
+     */
+    @Test
+    void findsKoreanBrandAndNameTypedTogether() throws Exception {
+        for (String keyword : new String[]{"르 라보 산탈 33", "르라보산탈33", "르라보 santal 33"}) {
+            mockMvc.perform(get(SEARCH_URL).param("keyword", keyword))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalElements").value(1))
+                    .andExpect(jsonPath("$.perfumes[0].perfumeId").value(5));
+        }
+
+        insertShelfItem(1, 5);
+        insertShelfItem(2, 5);
+        insertShelfItem(3, 5);
+        mockMvc.perform(get(SEARCH_URL)
+                        .param("ranking", "OWNED")
+                        .param("keyword", "르라보 산탈33"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.perfumes[0].perfumeId").value(5));
+    }
+
+    /**
      * 집계 정렬에서도 띄어쓰기를 가리지 않습니다.
      *
      * <p>검색 조건이 두 벌이라 한쪽만 고치면 정렬 칩을 누르는 순간 같은 검색어가 0건이 됩니다.

@@ -1,29 +1,22 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/shared/lib/cn'
+import { prefersReducedMotion } from '@/shared/lib/prefersReducedMotion'
 import {
   useGraphicsStore,
   type GraphicsMode,
-  type GraphicsTier,
 } from '@/shared/store/graphicsStore'
 
 import { inkLink, type Ink } from './tone'
 
-const TIER_LABEL: Record<GraphicsTier, string> = {
-  high: '높음',
-  mid: '보통',
-  low: '낮음',
-}
-
-const GRAPHICS_OPTIONS: readonly {
-  mode: GraphicsMode
-  label: string
-  hint: string
-}[] = [
-  { mode: 'auto', label: '자동', hint: '기기에 맞춰 알아서 맞춥니다' },
-  { mode: 'high', label: '높음', hint: '가장 선명하게 · 빛 번짐 · 배 반사' },
-  { mode: 'mid', label: '보통', hint: '조금 덜 선명하게, 더 부드럽게' },
-  { mode: 'low', label: '낮음', hint: '가장 가볍게 · 배터리를 아낍니다' },
+// 이름 · 안내는 번역 묶음(layout 의 graphics.mode)에 두고 그릴 때 풉니다
+const GRAPHICS_MODES: readonly GraphicsMode[] = [
+  'auto',
+  'high',
+  'mid',
+  'low',
+  'min',
 ]
 
 function GearIcon() {
@@ -45,7 +38,7 @@ function GearIcon() {
 }
 
 /**
- * 메인 3D 의 그래픽 설정 (S15P21E203-435) — 헤더의 톱니바퀴. 자동 · 높음 · 보통 · 낮음.
+ * 메인 3D 의 그래픽 설정 (S15P21E203-435) — 헤더의 톱니바퀴. 자동 · 높음 · 보통 · 낮음 · 최저.
  *
  * 처음은 자동입니다. 엔진이 GPU 를 보고 시작 단계를 고르고(내장 그래픽이면 낮음), 끊기면 한 단계씩
  * 내립니다. 여기서 고르면 그 단계에 **고정**되고 엔진은 더 움직이지 않습니다.
@@ -56,9 +49,14 @@ function GearIcon() {
  * 다른 헤더 메뉴의 `useDismissable` 을 쓰지 않습니다.
  */
 export function GraphicsMenu({ ink }: { ink: Ink }) {
+  const { t } = useTranslation('layout')
   const mode = useGraphicsStore((state) => state.mode)
   const setMode = useGraphicsStore((state) => state.setMode)
   const quality = useGraphicsStore((state) => state.quality)
+  const calm = useGraphicsStore((state) => state.calm)
+  const setCalm = useGraphicsStore((state) => state.setCalm)
+  // 기기(OS)의 '동작 줄이기' 가 켜져 있으면 이미 줄이고 있습니다 — 여기서 끌 수는 없습니다 (엔진 applyCalm)
+  const osCalm = prefersReducedMotion()
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
@@ -95,7 +93,7 @@ export function GraphicsMenu({ ink }: { ink: Ink }) {
       <button
         ref={trigger}
         type="button"
-        aria-label="그래픽 설정"
+        aria-label={t('graphics.trigger')}
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-controls={panelId}
@@ -109,7 +107,7 @@ export function GraphicsMenu({ ink }: { ink: Ink }) {
         <div
           id={panelId}
           role="dialog"
-          aria-label="그래픽 품질"
+          aria-label={t('graphics.panel')}
           // 글자색을 판에 한 번 겁니다 — 제목 · 안내문은 줄(ink.item)이 아니라 헤더 바탕의 색을 따라야 합니다
           className={cn(
             'absolute top-full right-0 z-30 mt-2.5 w-65 border py-1.25',
@@ -119,16 +117,21 @@ export function GraphicsMenu({ ink }: { ink: Ink }) {
         >
           <fieldset>
             <legend className="text-caption px-2.5 pt-1.25 pb-1.25 opacity-70">
-              그래픽 품질
+              {t('graphics.title')}
             </legend>
-            {GRAPHICS_OPTIONS.map((option) => {
+            {GRAPHICS_MODES.map((optionMode) => {
               const live =
-                option.mode === 'auto' && mode === 'auto' && quality
-                  ? `지금 ${TIER_LABEL[quality.tier]}${integrated ? ' · 내장 그래픽' : ''}`
+                optionMode === 'auto' && mode === 'auto' && quality
+                  ? t(
+                      integrated ? 'graphics.liveIntegrated' : 'graphics.live',
+                      {
+                        tier: t(`graphics.tier.${quality.tier}`),
+                      },
+                    )
                   : null
               return (
                 <label
-                  key={option.mode}
+                  key={optionMode}
                   className={cn(
                     'flex cursor-pointer items-start gap-2.5 px-2.5 py-1.25',
                     ink.item,
@@ -139,9 +142,9 @@ export function GraphicsMenu({ ink }: { ink: Ink }) {
                   <input
                     type="radio"
                     name={panelId}
-                    value={option.mode}
-                    checked={mode === option.mode}
-                    onChange={() => setMode(option.mode)}
+                    value={optionMode}
+                    checked={mode === optionMode}
+                    onChange={() => setMode(optionMode)}
                     className="peer sr-only"
                   />
                   <span
@@ -150,19 +153,56 @@ export function GraphicsMenu({ ink }: { ink: Ink }) {
                   />
                   <span>
                     <span className="text-caption block">
-                      {option.label}
-                      {option.mode === 'auto' && (
-                        <span className="opacity-60"> (권장)</span>
+                      {t(`graphics.mode.${optionMode}.label`)}
+                      {optionMode === 'auto' && (
+                        <span className="opacity-60">
+                          {' '}
+                          {t('graphics.recommended')}
+                        </span>
                       )}
                     </span>
                     <span className="block text-[11px] leading-snug opacity-70">
-                      {live ?? option.hint}
+                      {live ?? t(`graphics.mode.${optionMode}.hint`)}
                     </span>
                   </span>
                 </label>
               )
             })}
           </fieldset>
+
+          {/*
+            ⭐ 움직임 줄이기 (2026-10-01 · 메인 사용성 테스트). 멀미가 있거나 움직이는 화면이 어지러운 사람이
+            "움직임을 멈추거나 줄이는 설정이 없다" 고 했습니다 — OS 의 '동작 줄이기' 를 모르는 사람도 여기서 켭니다.
+            거두는 것은 저절로 움직이는 몫(패럴랙스 · 돌고래 · 새 · 속도에 따른 카메라)이고 파도와 배는 그대로입니다.
+          */}
+          <label
+            className={cn(
+              'mt-1.25 flex items-start gap-2.5 border-t px-2.5 pt-2.5 pb-1.25',
+              ink.itemRule,
+              osCalm ? 'cursor-default' : cn('cursor-pointer', ink.item),
+              'has-focus-visible:ring-1 has-focus-visible:ring-current has-focus-visible:ring-inset',
+            )}
+          >
+            <input
+              type="checkbox"
+              checked={calm || osCalm}
+              disabled={osCalm}
+              onChange={(event) => setCalm(event.target.checked)}
+              className="peer sr-only"
+            />
+            <span
+              aria-hidden
+              className="mt-1.25 size-2.5 shrink-0 rounded-[2px] border border-current peer-checked:bg-current"
+            />
+            <span>
+              <span className="text-caption block">
+                {t('graphics.calm.label')}
+              </span>
+              <span className="block text-[11px] leading-snug opacity-70">
+                {osCalm ? t('graphics.calm.osOn') : t('graphics.calm.hint')}
+              </span>
+            </span>
+          </label>
 
           {integrated && (
             <p
@@ -171,8 +211,7 @@ export function GraphicsMenu({ ink }: { ink: Ink }) {
                 ink.itemRule,
               )}
             >
-              외장 그래픽이 있는 노트북이라면 Windows 설정 › 시스템 › 디스플레이
-              › 그래픽에서 브라우저를 ‘고성능’으로 두면 더 부드럽습니다
+              {t('graphics.integratedTip')}
             </p>
           )}
         </div>

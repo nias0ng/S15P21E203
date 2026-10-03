@@ -1,4 +1,5 @@
 import { useId, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/shared/lib/cn'
 
@@ -26,6 +27,7 @@ type Props = {
 }
 
 export function EmailField({ onChange, error, hint }: Props) {
+  const { t } = useTranslation('auth')
   const [local, setLocal] = useState('')
   const [choice, setChoice] = useState('')
   const [custom, setCustom] = useState('')
@@ -53,12 +55,12 @@ export function EmailField({ onChange, error, hint }: Props) {
     <div className="space-y-2.5">
       <div className="flex items-center gap-1.25">
         <label htmlFor={localId} className="sr-only">
-          이메일 아이디
+          {t('email.localLabel')}
         </label>
         <input
           id={localId}
           className={cn(CONTROL, borderClass, 'min-w-0 flex-1')}
-          placeholder="이메일"
+          placeholder={t('email.label')}
           autoComplete="off"
           required
           value={local}
@@ -75,7 +77,7 @@ export function EmailField({ onChange, error, hint }: Props) {
         </span>
 
         <label htmlFor={choiceId} className="sr-only">
-          이메일 도메인
+          {t('email.domainLabel')}
         </label>
         <select
           id={choiceId}
@@ -88,25 +90,25 @@ export function EmailField({ onChange, error, hint }: Props) {
             report(local, event.target.value, custom)
           }}
         >
-          <option value="">선택</option>
+          <option value="">{t('email.domainChoose')}</option>
           {EMAIL_DOMAINS.map((entry) => (
             <option key={entry} value={entry}>
               {entry}
             </option>
           ))}
-          <option value={DIRECT}>직접입력</option>
+          <option value={DIRECT}>{t('email.domainDirect')}</option>
         </select>
       </div>
 
       {choice === DIRECT && (
         <>
           <label htmlFor={customId} className="sr-only">
-            도메인 직접 입력
+            {t('email.customLabel')}
           </label>
           <input
             id={customId}
             className={cn(CONTROL, borderClass)}
-            placeholder="도메인을 입력하세요 (예: ssafy.com)"
+            placeholder={t('email.customPlaceholder')}
             required
             value={custom}
             aria-invalid={error ? true : undefined}

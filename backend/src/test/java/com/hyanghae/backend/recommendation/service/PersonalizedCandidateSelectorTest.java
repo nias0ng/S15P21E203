@@ -50,10 +50,13 @@ class PersonalizedCandidateSelectorTest {
         return new PersonalizedRecommendationCandidate(
                 perfumeId,
                 "향수 " + perfumeId,
+                "Perfume " + perfumeId,
+                "향수 " + perfumeId,
                 null,
                 score,
                 "TASTE",
-                "woody",
+                "우디",
+                "WOODY",
                 lastRecommendedAt);
     }
 }

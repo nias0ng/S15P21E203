@@ -1,7 +1,18 @@
 import '@testing-library/jest-dom/vitest'
 
 import { cleanup } from '@testing-library/react'
-import { afterEach } from 'vitest'
+import { afterEach, beforeEach } from 'vitest'
+
+import { i18n } from '@/shared/i18n'
+import { useLocaleStore } from '@/shared/store/localeStore'
+
+// 테스트는 한국어 화면으로 돕니다. jsdom 의 브라우저 언어가 en-US 라 그대로 두면 첫 방문
+// 규칙으로 영어가 골라져, 한국어 문구로 찾는 테스트가 모두 실패합니다.
+// 영어 화면을 보는 테스트는 그 안에서 `useLocaleStore.getState().setLocale('en')` 을 부릅니다.
+beforeEach(async () => {
+  useLocaleStore.setState({ locale: 'ko' })
+  await i18n.changeLanguage('ko')
+})
 
 // 각 테스트가 끝나면 렌더한 DOM 을 정리합니다.
 // 안 하면 앞 테스트의 화면이 남아서 getByRole 이 "여러 개 찾았다"로 실패합니다.

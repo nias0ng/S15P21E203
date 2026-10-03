@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 
 import { apiErrorMessage, isApiError } from '@/shared/api/http'
@@ -36,6 +37,7 @@ type Props = {
  * 안내합니다.
  */
 export function GoogleSignupForm({ onSignedUp }: Props) {
+  const { t } = useTranslation('auth')
   const [searchParams] = useSearchParams()
   const returnTo = safeReturnPath(searchParams.get(RETURN_PATH_PARAM))
   // NOTE: 다시 묻지 않습니다. 가입표가 만료되면 다시 물어도 같은 답이고, 창을 오갈 때마다 부르면
@@ -50,7 +52,10 @@ export function GoogleSignupForm({ onSignedUp }: Props) {
 
   if (isPending) {
     return (
-      <AuthCard title="Google 로 가입하기" description="불러오고 있습니다." />
+      <AuthCard
+        title={t('googleSignup.title')}
+        description={t('googleSignup.loading')}
+      />
     )
   }
   if (isError) {
@@ -70,6 +75,7 @@ function NicknameStep({
   returnTo: string | null
   onSignedUp: (from: string) => void
 }) {
+  const { t } = useTranslation('auth')
   const setAuth = useAuthStore((store) => store.setAuth)
   const [nickname, setNickname] = useState(signup.suggestedNickname ?? '')
   const [ticketExpired, setTicketExpired] = useState(false)
@@ -119,8 +125,8 @@ function NicknameStep({
 
   return (
     <AuthCard
-      title="Google 로 가입하기"
-      description="향해에서 쓸 닉네임을 정하면 가입이 끝납니다."
+      title={t('googleSignup.title')}
+      description={t('googleSignup.description')}
     >
       <p className="border-line bg-line-soft text-ink text-caption border p-2.5">
         {signup.email}
@@ -138,23 +144,21 @@ function NicknameStep({
         <div className="flex items-start gap-1.25">
           <div className="min-w-0 flex-1">
             <Input
-              label="닉네임"
+              label={t('nickname.label')}
               hideLabel
-              placeholder="닉네임"
+              placeholder={t('nickname.label')}
               required
               value={nickname}
               onChange={(event) => setNickname(event.target.value)}
               error={
                 nicknameError ??
-                (nicknameAvailable === false
-                  ? '이미 사용 중인 닉네임입니다'
-                  : undefined)
+                (nicknameAvailable === false ? t('nickname.taken') : undefined)
               }
               hint={
                 nicknameAvailable === true
-                  ? '사용할 수 있는 닉네임입니다'
+                  ? t('nickname.available')
                   : !nicknameTooShort
-                    ? '[중복 확인] 을 눌러주세요'
+                    ? t('nickname.checkPrompt')
                     : undefined
               }
             />
@@ -170,16 +174,13 @@ function NicknameStep({
             }
             onClick={nicknameCheck.check}
           >
-            중복 확인
+            {t('nickname.check')}
           </Button>
         </div>
 
         {mutation.error !== null && (
           <p className="text-danger text-caption" role="alert">
-            {apiErrorMessage(
-              mutation.error,
-              '가입하지 못했습니다. 잠시 후 다시 시도해주세요.',
-            )}
+            {apiErrorMessage(mutation.error, t('signup.failed'))}
           </p>
         )}
 
@@ -189,7 +190,7 @@ function NicknameStep({
           disabled={!canSubmit}
           className={AUTH_SUBMIT}
         >
-          {mutation.isPending ? '가입 중' : '가입하기'}
+          {mutation.isPending ? t('signup.submitting') : t('signup.submit')}
         </Button>
       </form>
     </AuthCard>
@@ -203,13 +204,14 @@ function MissingTicket({
   returnTo: string | null
   expired?: boolean
 }) {
+  const { t } = useTranslation('auth')
   return (
     <AuthCard
-      title="Google 로 가입하기"
+      title={t('googleSignup.title')}
       description={
         expired
-          ? '가입 시간이 지났습니다. Google 로그인부터 다시 해주세요.'
-          : 'Google 계정 확인 정보가 없습니다. Google 로그인부터 다시 해주세요.'
+          ? t('googleSignup.ticketExpired')
+          : t('googleSignup.ticketMissing')
       }
     >
       <BackToLogin returnTo={returnTo} />
