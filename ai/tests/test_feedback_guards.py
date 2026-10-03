@@ -86,8 +86,12 @@ class FeedbackGuardTest(unittest.TestCase):
     def test_demo_queries_keep_their_first_result(self):
         # exec/04_시연_시나리오.md 의 두 질의. 사전 경로의 1위를 고정한다 —
         # 운영은 ①단계가 더해져 1위가 다르지만, 사전 경로가 흔들리면 그쪽도 흔들린다.
+        # **`가을에 쓸 남성적인 우드향` 의 1위를 Si 에서 바꿨다** [2026-10-02 · 레드팀 1-5].
+        # Si 는 gender_lead 가 female 인 향수다 — 사전 경로가 원문의 `가을` · `남성적인` 을 읽지
+        # 못해 성별·계절이 빠진 결과였다. ①단계 실패 시 원문에서 성별·계절·낮밤을 읽게 한 뒤
+        # (`_text_context`) 상위 5개가 모두 male · autumn 향수가 됐다.
         cases = {
-            "가을에 쓸 남성적인 우드향": "Si",
+            "가을에 쓸 남성적인 우드향": "Cypress & Grapevine Cologne Intense",
             "상큼한 오렌지향이 나는 여성용 향수": "Coco Mademoiselle",
         }
         for query, first in cases.items():
