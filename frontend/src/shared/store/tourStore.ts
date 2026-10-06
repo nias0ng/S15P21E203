@@ -127,6 +127,11 @@ type TourState = TourProgress & {
    * 메인 화면이 `(pointer: coarse)` 로 알립니다 — 태블릿에 키보드를 끼우듯 바뀔 수 있어 그때마다 다시 받습니다.
    */
   touch: boolean
+  /**
+   * 안내를 눌러 넘긴 횟수 (저장하지 않습니다). 넘기는 순간에 할 일이 있는 쪽이 이 값이 바뀌는 것을 듣습니다 —
+   * 3D 는 해역 연출을 닫습니다(`ScentScene`). 연출의 좌우 그림이 다음 안내가 가리킬 미니맵을 덮고 있어서입니다.
+   */
+  advanced: number
 
   /** 그 단계의 조건이 맞았는가 · 더는 안 맞는가(화면이 비켰을 때) */
   want: (step: TourStep, on: boolean) => void
@@ -212,6 +217,7 @@ export const useTourStore = create<TourState>()(
         active: null,
         forced: null,
         touch: false,
+        advanced: 0,
 
         want: (step, on) =>
           set((state) => {
@@ -249,6 +255,7 @@ export const useTourStore = create<TourState>()(
               done,
               forced,
               active: pickActiveStep({ ...state, done, forced }),
+              advanced: state.advanced + 1,
             }
           }),
         finishIfActive: (step) =>

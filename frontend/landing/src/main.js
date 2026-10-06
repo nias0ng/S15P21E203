@@ -58,7 +58,8 @@ bootReport('script');
 let hostHold = 0;
 // 앱의 첫 방문 안내가 3D 를 멈췄는가 (2026-10-02, v0.91.0 — setTourFrozen 머리말) · frozenRedraw = 멈춘 채로 한 장만 다시 그린다 (창 크기 · 탭 복귀)
 //   ⚠ 품질 판정(busy)이 읽으므로 hostHold 곁에 선언한다 (TDZ)
-let tourFrozen = false, frozenRedraw = false;
+//   tourFreezeWant = 앱이 멈춰 달라고 했다 — 해역 연출이 움직이는 동안은 기다렸다가 다 닫힌 틱에 멈춘다 (v0.91.1 — setTourFrozen 머리말)
+let tourFrozen = false, frozenRedraw = false, tourFreezeWant = false;
 
 // ⭐ 주소의 ?lang= 이 en 이면 index.html 의 고정 글자를 영어로 다시 쓴다 (ko 면 같은 글자라 그대로다). UI 를 만들기 전에 한 번
 applyStatic();
@@ -1847,6 +1848,8 @@ function tick(ts) {
   //   ⚠ 한 장 다시 그리기(frozenRedraw)는 상한 없이 그리고, 멈춘 시간을 버린 채 **물 · 배 게이트 한 칸만큼만** 흐른다 (아래 dt) —
   //     반사 · 잠긴 선체 패스는 배 게이트(boat.stepped)에서만 다시 찍혀, dt 0 이면 새 크기로 지워진 그 타깃이 빈 채로 남는다
   let redraw = false;
+  // 미뤄 둔 멈춤 (v0.91.1) — 연출이 다 들어왔거나 다 닫힌 틱에 건다 (setTourFrozen 머리말)
+  if (tourFreezeWant && !tourFrozen && !phase.cue.busy) setTourFrozen(true);
   if (tourFrozen) {
     if (!frozenRedraw) {
       if (TOUR_AT_BOAT.includes(tourWatch)) measureBoatScreen();
@@ -2821,12 +2824,18 @@ const onKeyExit = (e) => {
   // 향수 고르기가 먼저다 — 떠 있는 12개를 거두고 끝낸다 (연출까지 한 번에 나가지 않는다)
   // ⚠ 카드 안(키보드로 고른 [자세히 보기] 등)에서 닫았으면 초점을 목록으로 돌려준다 — 안 돌리면 숨은 카드와 함께 초점이 사라진다 (v0.86.0)
   if (marks.focusing) { const back = ui.cardHasFocus(); marks.focusOff(); marks.clearSelect(); clickMark = null; if (back) ui.focusVisiblePerfumes(); return; }
-  // ⚠ 들어오는 중이면 받아 두었다가 다 들어온 순간 나간다 (leaveAsked) — 예전에는 그 사이의 Esc 를 버렸다
-  if (phase.cue.zone) { if (!phase.cue.busy) phase.leave(); else if (phase.cue.phase === 'entering') leaveAsked = true; return; }
+  if (leaveZone()) return;
   // ⭐ 그다음이 클릭 항해의 가속 끄기 (v0.65.0 — sailBoostKey) — 고르기도 존 연출도 없을 때만. 최대 가속에 닿기 전이면 아무 일도 없다
   sailBoostKey(false);
 };
 window.addEventListener('keydown', onKeyExit);
+// 해역 연출을 닫는다 — Esc 와 앱의 첫 방문 안내 [다음](PB.tour.leaveZone · v0.91.1)이 같이 쓴다. 연출이 없으면 false
+// ⚠ 들어오는 중이면 받아 두었다가 다 들어온 순간 나간다 (leaveAsked) — 예전에는 그 사이의 Esc 를 버렸다
+function leaveZone() {
+  if (!phase.cue.zone) return false;
+  if (!phase.cue.busy) phase.leave(); else if (phase.cue.phase === 'entering') leaveAsked = true;
+  return true;
+}
 
 window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, dive: hostDive, diveReport, cabinIn: hostCabinIn, cabinInReport, goRegion, goPerfume, startTravel, startFocus, startAt, boatAt, zoneReport, setHost, boot: bootNow, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, pod, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
   // ⭐ 품질 단계 (S15P21E203-435) — PB.quality.get() · PB.quality.set('auto' | 'high' | 'mid' | 'low'). 앱의 그래픽 설정이 set 을 부른다
@@ -2843,6 +2852,8 @@ window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel
     watch: (step) => { const next = TOUR_WATCH.includes(step) ? step : null; if (next !== tourWatch) tourLabelKey = null; tourWatch = next; tourAnchor.on = false; },
     freeze: (on) => setTourFrozen(on),
     frozen: () => tourFrozen,
+    // ⭐ v0.91.1 : leaveZone() 해역 연출을 닫는다 (Esc 와 같은 닫기 · 연출이 없으면 false). 앱은 안내의 [다음] 을 누를 때 부른다
+    leaveZone: () => leaveZone(),
     anchor: tourAnchor
   },
   // ⭐ 반응형 검산 (2026-09-11 오후) — 제품 UI 상자들의 자리 · 서로 겹침 · 화면 밖 · 스크롤 · 수면 타이포 꼭대기와 정보 블록의 간격.
@@ -2864,14 +2875,19 @@ window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel
 //     구멍 너머로 한 일이 멈춘 화면에서 일어나 안 보이는 일이 없게. 앱은 막이 걷힐 때 freeze(false) 를 부르므로 그 사이에 먼저 녹아도 된다
 //   ⚠ 녹일 때 멈춘 시간을 버린다 (onVisibility 와 같은 규약 — clock.getDelta) · 품질 판정은 멈춘 동안(busy) · 녹은 직후 1초(hold) 쉰다
 //   ⚠ 같은 값이면 아무 일도 없다 (앱이 단계마다 불러도 된다)
+//   ⭐ v0.91.1 : **해역 연출이 들어오거나 닫히는 동안(phase.cue.busy)은 멈추지 않고 미룬다** (tourFreezeWant — 틱 머리가 다 끝난 장에 건다).
+//     안내의 [다음] 이 연출을 닫자마자 다음 설명 안내가 서면, 닫히던 좌우 그림(에셋)이 반쯤 걷힌 채 멈춰 그 안내가 가리킨 미니맵을 덮었다.
+//     녹이기(false)는 미룬 멈춤도 같이 거둔다
 function setTourFrozen(on) {
   on = !!on;
+  tourFreezeWant = on;
+  if (on && phase.cue.busy) return;
   if (on === tourFrozen) return;
   tourFrozen = on;
   frozenRedraw = false;
   if (!on) { clock.getDelta(); quality.hold(1000); }
 }
-const onFrozenInput = () => { if (tourFrozen) setTourFrozen(false); };
+const onFrozenInput = () => { if (tourFrozen || tourFreezeWant) setTourFrozen(false); };
 const FROZEN_THAW = ['pointerdown', 'wheel', 'keydown'];
 for (const k of FROZEN_THAW) document.addEventListener(k, onFrozenInput, { capture: true, passive: true });
 
@@ -3106,7 +3122,7 @@ function disposeAll() {
   tourWatch = null;
   offTourLang();
   // ⚠ 멈춤도 풀고 녹이는 귀를 뗀다 (v0.91.0) — 문서에 잡기 단계로 붙어 HMR 마다 쌓인다
-  tourFrozen = false; frozenRedraw = false;
+  tourFrozen = false; frozenRedraw = false; tourFreezeWant = false;
   for (const k of FROZEN_THAW) document.removeEventListener(k, onFrozenInput, { capture: true });
   disposeCabinIn();
   chart.dispose();     // ⚠ 미니맵보다 먼저 — 안개 격자를 그쪽에서 읽는다

@@ -616,7 +616,9 @@ export default function HomePage() {
           card     누른 카드 아래 — 단추를 누르거나 카드가 닫히면 끝납니다
           zone     하단 안내 위 — 연출이 닫히면 끝납니다
           minimap  미니맵 위 — 미니맵 · 해도로 떠나거나 해도를 열면 끝납니다
+                   해역 연출 동안은 기다립니다 — 엔진이 미니맵을 숨겨 그 자리에 연출의 그림이 섭니다
           boat     배 옆 — 배를 누르면 끝납니다 (선실 말풍선이 그 자리에 뜹니다)
+        어느 안내든 [다음] 으로 넘기면 해역 연출이 닫힙니다 (`ScentScene` 이 `tourStore` 의 advanced 를 듣습니다).
       */}
       <SceneTourTip
         paused={!sceneIdle}
@@ -683,12 +685,16 @@ export default function HomePage() {
         {t('tour:zone', { zone: zoneLabel ?? '' })}
       </SceneTourTip>
       <SceneTourTip
-        paused={!sceneIdle}
+        paused={!sceneIdle || zoneLabel !== null}
         step="minimap"
         ready={sceneIdle && !cardOpen}
         placement="aboveEnd"
       >
-        {t(touch ? 'tour:minimap.touch' : 'tour:minimap.pointer')}
+        {t('tour:minimap.intro')}
+        <span className="block">
+          {t(touch ? 'tour:minimap.touch' : 'tour:minimap.pointer')}
+        </span>
+        <span className="block">{t('tour:minimap.seen')}</span>
       </SceneTourTip>
       <SceneTourTip
         paused={!sceneIdle}

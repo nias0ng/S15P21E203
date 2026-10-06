@@ -6,6 +6,7 @@ import { cn } from '@/shared/lib/cn'
 import { useDiveStore } from '@/shared/store/diveStore'
 import type { GraphicsMode, SceneQuality } from '@/shared/store/graphicsStore'
 import { useLocale } from '@/shared/store/localeStore'
+import { useTourStore } from '@/shared/store/tourStore'
 
 import { setBoatAnchorSource, type BoatAnchor } from '../lib/boatAnchor'
 import {
@@ -169,6 +170,11 @@ interface EngineHandle {
      * NOTE: 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다. 그때는 막만 씌우고 3D 는 그대로 돕니다.
      */
     freeze?: (on: boolean) => void
+    /**
+     * 해역 연출을 닫습니다 — Esc 와 같은 닫기이고, 연출이 없으면 false 입니다.
+     * NOTE: 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다. 그때는 [다음] 을 눌러도 연출이 그대로 남습니다.
+     */
+    leaveZone?: () => boolean
     anchor: {
       on: boolean
       x: number
@@ -773,6 +779,19 @@ export function ScentScene({
     if (!ready) return
     handle.current?.setLang?.(locale)
   }, [ready, locale])
+
+  /*
+    첫 방문 안내를 [다음] 으로 넘기면 해역 연출을 닫습니다 — 연출의 좌우 그림이 미니맵 자리를 덮고 있어,
+    다음 안내가 미니맵을 가리켜도 그림만 밝혀졌습니다. 연출이 없으면 엔진이 아무 일도 안 합니다.
+  */
+  useEffect(
+    () =>
+      useTourStore.subscribe((state, prev) => {
+        if (state.advanced !== prev.advanced)
+          handle.current?.tour?.leaveZone?.()
+      }),
+    [],
+  )
 
   return (
     <>

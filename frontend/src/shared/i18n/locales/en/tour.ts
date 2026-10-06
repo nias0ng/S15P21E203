@@ -32,11 +32,12 @@ export const tour = {
     },
   },
   zone: 'You’re in the {{zone}}, where one scent family gathers. Click the sea to close this view.',
+  // Three lines — what it is · what a press does · the bright parts and the % seen
   minimap: {
-    pointer:
-      'A map of scent families. Click a name to sail there. Bright parts are sea you’ve crossed — that’s the % seen.',
-    touch:
-      'A map of scent families. Tap a name twice to sail there. Bright parts are sea you’ve crossed — that’s the % seen.',
+    intro: 'This is a map of scent families.',
+    pointer: 'Click a name to sail to those waters.',
+    touch: 'Tap a name twice to sail to those waters.',
+    seen: 'Bright parts are sea you’ve crossed; the % seen is how much you’ve explored so far.',
   },
   log: {
     member: 'The waters you sail and perfumes you find are written here.',

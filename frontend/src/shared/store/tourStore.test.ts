@@ -16,6 +16,7 @@ const reset = () =>
     active: null,
     forced: null,
     touch: false,
+    advanced: 0,
   })
 
 const state = () => useTourStore.getState()
@@ -222,6 +223,16 @@ describe('눌러 넘기기', () => {
 
     expect(state().done).toEqual(['sea'])
     expect(state().active).toBe('keys')
+  })
+
+  // 3D 는 이 값이 바뀌는 것을 듣고 해역 연출을 닫습니다 — 그 행동을 해서 끝낸 것은 넘긴 것이 아닙니다
+  it('넘길 때마다 advanced 가 하나씩 늘고, 끝내기 · [×] 는 세지 않는다', () => {
+    state().want('sea', true)
+    state().next('sea')
+    state().finish('keys')
+    state().next('buoy')
+
+    expect(state().advanced).toBe(2)
   })
 
   it('항해 줄기를 눌러 넘기면 차례로 선다 — 닮은 향수는 그 판이 떠야 서서 건너뛴다', () => {
