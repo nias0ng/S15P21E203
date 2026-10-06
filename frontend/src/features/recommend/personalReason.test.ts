@@ -124,9 +124,10 @@ describe('readPersonalReason', () => {
           evidenceKey: 'woody',
         }),
       ).toEqual({
+        // 근거 말은 칩과 같은 꼴, 문장 안에서는 소문자입니다
         source: 'FIT',
         keyword: 'Woody',
-        sentence: 'Its Woody accord is close to the perfumes you rated highly.',
+        sentence: 'It shares a woody accord with perfumes you rated highly.',
       })
       expect(
         readPersonalReason({
@@ -135,11 +136,11 @@ describe('readPersonalReason', () => {
           evidenceKey: 'fresh spicy',
         }).sentence,
       ).toBe(
-        "It carries the Fresh spicy accord you've often met in perfumes you viewed recently.",
+        "It has the fresh spicy accord that often appears in perfumes you've viewed recently.",
       )
     })
 
-    it('취향 테스트의 계열 코드는 영어 계열 이름이 된다 — MUSK 는 Musky', () => {
+    it('취향 테스트의 계열 코드는 영어 계열 이름이 된다 — MUSK 는 Musk', () => {
       useLocaleStore.getState().setLocale('en')
 
       expect(
@@ -150,9 +151,9 @@ describe('readPersonalReason', () => {
         }),
       ).toEqual({
         source: 'TASTE_TEST',
-        keyword: 'Musky',
+        keyword: 'Musk',
         sentence:
-          'It suits the Musky scent family you picked in the Taste Test.',
+          'It suits the Musk scent family you picked in the Taste Test.',
       })
     })
 

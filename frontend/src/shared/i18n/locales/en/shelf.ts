@@ -10,7 +10,7 @@ export const shelf = {
   part: {
     category: 'category',
     rating: 'match rating',
-    memo: 'note',
+    memo: 'memo',
   },
   actions: {
     cancel: 'Cancel',
@@ -23,16 +23,16 @@ export const shelf = {
     required: 'Required',
     rating: 'My match rating',
     clearRating: 'Clear',
-    memo: 'Note',
+    memo: 'Memo',
   },
   editModal: {
     title: 'Edit',
     save: 'Save',
-    hint: 'Note and match rating can be left empty.',
+    hint: 'Memo and match rating can be left empty.',
   },
   registerModal: {
     title: 'Add perfume',
-    submit: 'Add to shelf',
+    submit: 'Add to Shelf',
     alreadyInShelf: 'Already on your shelf',
   },
   registerError: {
@@ -40,8 +40,8 @@ export const shelf = {
     fallback: "Couldn't save to your shelf.",
   },
   footer: {
-    collection: 'My collections',
-    backToShelf: 'Back to shelf',
+    collection: 'My Collections',
+    backToShelf: 'Back to Shelf',
   },
   pager: {
     position: 'Perfume {{index}} of {{total}}',
@@ -81,7 +81,8 @@ export const shelf = {
     collectionCount_one: '{{count}} collection',
     collectionCount_other: '{{count}} collections',
     register: '+ Add perfume',
-    categoryEmptyPanel: 'Add a perfume here to see its details',
+    categoryEmptyPanel:
+      'Add perfumes to this category to see their details here',
     empty: {
       OWNED: {
         title: 'No owned perfumes yet',
@@ -93,19 +94,19 @@ export const shelf = {
           "Log perfumes you've tried in stores and they'll gather here.",
       },
       WISH: {
-        title: 'Your wishlist is empty',
+        title: 'Your Wishlist is empty',
         description: "Add perfumes you have your eye on and they'll wait here.",
       },
     },
     searchEmpty: {
-      title: "No perfumes matching '{{keyword}}' here",
+      title: "No perfumes matching '{{keyword}}' in this category",
       description:
         'Check the counts on the menu for other categories, or try another search.',
       clear: 'Clear search',
     },
     loginRequired: {
       title: 'Log in to see your shelf',
-      description: 'Your perfumes and notes are saved to your account.',
+      description: 'Your perfumes and memos are saved to your account.',
       action: 'Log in',
     },
     loadError: {
@@ -114,9 +115,9 @@ export const shelf = {
     },
     removeConfirm: {
       title: "Remove '{{name}}' from your shelf?",
-      fallbackName: 'this perfume',
+      titleUnnamed: 'Remove this perfume from your shelf?',
       description:
-        "Its note and match rating will be deleted too. This can't be undone.",
+        "Its memo and match rating will be deleted too. This can't be undone.",
       confirm: 'Remove',
     },
     letter: {

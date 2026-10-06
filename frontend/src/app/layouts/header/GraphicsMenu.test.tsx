@@ -127,7 +127,9 @@ describe('GraphicsMenu', () => {
     ).toBeVisible()
     expect(screen.getByRole('radio', { name: /^Auto/ })).toBeChecked()
     expect(screen.getByText('(recommended)')).toBeVisible()
-    expect(screen.getByText('Now Low · integrated graphics')).toBeVisible()
+    expect(
+      screen.getByText('Currently: Low · integrated graphics'),
+    ).toBeVisible()
     expect(screen.getByText(/High performance/)).toBeVisible()
     expect(
       screen.getByRole('checkbox', { name: /Reduce motion/ }),

@@ -705,16 +705,21 @@ export function RecommendLetter({
 
 /**
  * 근거 문장 — 근거가 된 향 특성 · 향 계열 말에 형광펜을 긋습니다. 모르는 틀이면 문장만 적습니다.
+ *
+ * NOTE: 대소문자를 가리지 않고 찾습니다. `keyword` 는 칩과 같은 꼴(`Woody`)이고 영어 문장 안에서는
+ * 소문자(`woody`)로 적혀 있습니다 — 형광펜은 문장에 적힌 그대로를 칠합니다.
  */
 function ReasonLine({ reason }: { reason: PersonalReason }) {
   const { keyword, sentence } = reason
-  const at = keyword ? sentence.indexOf(keyword) : -1
+  const at = keyword
+    ? sentence.toLowerCase().indexOf(keyword.toLowerCase())
+    : -1
   return (
     <p className="rec-reason">
       {keyword && at >= 0 ? (
         <>
           {sentence.slice(0, at)}
-          <mark>{keyword}</mark>
+          <mark>{sentence.slice(at, at + keyword.length)}</mark>
           {sentence.slice(at + keyword.length)}
         </>
       ) : (

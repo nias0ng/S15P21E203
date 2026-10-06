@@ -7,13 +7,19 @@ import {
 } from './hooks/useShelfActions'
 
 /**
- * 절반만 끝난 저장에서 빠진 칸들을 지금 화면 언어의 이름으로 잇습니다("적합도 · 메모").
+ * 절반만 끝난 저장에서 빠진 칸들을 지금 화면 언어의 이름으로 잇습니다.
+ * 한국어는 가운뎃점으로 늘어놓고("적합도 · 메모"), 영어는 문장 안에 들어가므로
+ * 접속사로 잇습니다("match rating and memo").
  *
  * @param parts 오류가 들고 온 빠진 칸
  * @returns 토스트 문장에 끼울 이름 묶음
  */
 export function shelfPartNames(parts: readonly ShelfPart[]): string {
-  return parts.map((part) => i18n.t(`shelf:part.${part}`)).join(' · ')
+  const names = parts.map((part) => i18n.t(`shelf:part.${part}`))
+  if (i18n.language !== 'en') return names.join(' · ')
+  return new Intl.ListFormat(i18n.language, { type: 'conjunction' }).format(
+    names,
+  )
 }
 
 /**

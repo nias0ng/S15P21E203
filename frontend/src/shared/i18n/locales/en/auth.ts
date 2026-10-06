@@ -11,7 +11,7 @@ export const auth = {
     label: 'Email',
     localLabel: 'Email username',
     domainLabel: 'Email domain',
-    domainChoose: 'Choose',
+    domainChoose: 'Select a domain',
     domainDirect: 'Other',
     customLabel: 'Enter a domain',
     customPlaceholder: 'Enter a domain (e.g. example.com)',
@@ -33,7 +33,7 @@ export const auth = {
     lengthRule:
       'Nicknames must be {{min}}–{{max}} characters, not counting spaces',
     check: 'Check',
-    checkPrompt: 'Press [Check] to see if it’s available',
+    checkPrompt: "Press [Check] to see if it's available",
     available: 'This nickname is available',
     taken: 'This nickname is already taken',
   },
@@ -42,7 +42,7 @@ export const auth = {
     passwordChanged:
       'Your password has been changed. Please log in with your new password.',
     signedUp: "You're signed up. Please log in.",
-    failed: "We couldn't log you in. Please try again shortly.",
+    failed: "We couldn't log you in. Please try again later.",
     submit: 'Log in',
     submitting: 'Logging in',
     toSignup: 'Sign up →',
@@ -51,27 +51,27 @@ export const auth = {
   signup: {
     title: 'Sign up',
     verified: 'Email verified',
-    sendPrompt: 'Press [Verify] to get a code',
-    send: 'Verify',
+    sendPrompt: 'Press [Send code] to get a verification code',
+    send: 'Send code',
     codeLabel: 'Verification code',
     codePlaceholder: '{{length}}-digit code',
     codeSent: 'We sent you a code. Please check your inbox',
-    timeLeft: 'Time left {{time}}',
+    timeLeft: 'Time left: {{time}}',
     resend: 'Resend',
-    confirm: 'Confirm',
-    failed: "We couldn't sign you up. Please try again shortly.",
+    confirm: 'Verify',
+    failed: "We couldn't sign you up. Please try again later.",
     submit: 'Sign up',
     submitting: 'Signing up',
   },
   verification: {
     emailTaken: 'This email is already in use.',
-    sendFailed: "We couldn't send the code. Please try again shortly.",
-    confirmFailed: "We couldn't check the code. Please try again shortly.",
+    sendFailed: "We couldn't send the code. Please try again later.",
+    confirmFailed: "We couldn't verify the code. Please try again later.",
     codeMismatch: 'That code is incorrect',
     codeExpired: 'Your code has expired. Press [Resend] to get a new one',
     tooManyAttempts:
       'Too many incorrect attempts. Press [Resend] to get a new code',
-    timeUp: 'Time’s up. Press [Resend] to get a new code',
+    timeUp: "Time's up. Press [Resend] to get a new code",
   },
   google: {
     or: 'or',
@@ -87,8 +87,7 @@ export const auth = {
         'Only Google accounts with a verified email can be used.',
       cancelled: 'Google sign-in was cancelled.',
       unavailable: 'Google sign-in is unavailable right now.',
-      accountMismatch:
-        'Please confirm with the Google account you signed up with.',
+      accountMismatch: 'Please use the Google account you signed up with.',
       fallback:
         "We couldn't finish signing you in with Google. Please start over.",
     },
@@ -96,7 +95,8 @@ export const auth = {
   googleSignup: {
     title: 'Sign up with Google',
     loading: 'Loading…',
-    description: 'Choose a nickname for Hyanghae to finish signing up.',
+    description:
+      "Choose the nickname you'll use on Hyanghae to finish signing up.",
     ticketExpired:
       'Your sign-up session has expired. Please sign in with Google again.',
     ticketMissing:
@@ -121,7 +121,7 @@ export const auth = {
     title: 'Change password',
     submit: 'Change',
     submitting: 'Changing',
-    failed: "We couldn't change your password. Please try again shortly.",
+    failed: "We couldn't change your password. Please try again later.",
   },
   account: {
     title: 'Account settings',
@@ -131,7 +131,7 @@ export const auth = {
     photoRemoved: 'Profile photo removed',
     photoChanged: 'Profile photo updated',
     section: 'Account',
-    googleConnected: 'You log in with Google',
+    googleConnected: 'This account uses Google sign-in',
     changePassword: 'Change password',
     withdraw: 'Delete account',
   },
@@ -143,25 +143,25 @@ export const auth = {
     change: 'Change photo',
     remove: 'Remove photo',
     sizeLimit: 'Up to 1MB',
-    failed: "We couldn't update your profile photo. Please try again shortly.",
+    failed: "We couldn't update your profile photo. Please try again later.",
   },
   withdraw: {
     title: 'Delete account',
     submit: 'Delete',
     submitting: 'Deleting',
-    noticeDeleted: 'Your shelf, collections and notes will be deleted.',
+    noticeDeleted: 'Your shelf, collections and memos will be deleted.',
     noticePostsLead: 'Your posts, comments and reviews',
     noticePostsKept: 'will stay, with your name removed.',
-    noticeFinal: 'Your account is deleted right away and can’t be restored.',
+    noticeFinal: "Your account is deleted right away and can't be restored.",
     agree: 'I understand',
     loading: 'Checking your account…',
-    passwordHint: 'Enter it once more to confirm it’s you.',
-    failed: "We couldn't delete your account. Please try again shortly.",
+    passwordHint: "Enter it once more to confirm it's you.",
+    failed: "We couldn't delete your account. Please try again later.",
     googleUnavailable:
       "Google verification is unavailable right now, so your account can't be deleted.",
     googleConfirmed: 'Your Google account is confirmed.',
     googlePrompt:
-      'To confirm it’s you, sign in once more with the Google account you signed up with.',
+      "To confirm it's you, sign in once more with the Google account you signed up with.",
     googleButton: 'Continue with Google',
   },
 } satisfies Messages<typeof ko>

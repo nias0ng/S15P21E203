@@ -110,7 +110,7 @@ export const shelf = {
     },
     removeConfirm: {
       title: "'{{name}}' 를 진열대에서 뺄까요?",
-      fallbackName: '향수',
+      titleUnnamed: '이 향수를 진열대에서 뺄까요?',
       description: '적어둔 메모와 적합도도 함께 사라지고, 되돌릴 수 없습니다.',
       confirm: '저장 해제',
     },

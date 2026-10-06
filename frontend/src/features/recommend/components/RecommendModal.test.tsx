@@ -34,7 +34,8 @@ const result = (overrides: Partial<RecommendResult> = {}): RecommendResult => ({
   matchedData: [
     { field: 'note', label: '미모사' },
     { field: 'note', label: '장미' },
-    { field: 'daypart', label: '밤' },
+    // 성별 · 계절 · 낮밤은 AI 의 정해진 한국어(`nlr_engine.py` 의 CONTEXT_LABELS)로 옵니다
+    { field: 'daypart', label: '밤에 어울리는' },
   ],
   perfumes: [
     {
@@ -262,9 +263,51 @@ describe('RecommendModal', () => {
     expect(
       screen.getByText('Works best when you type in Korean'),
     ).toBeInTheDocument()
-    // AI 가 영어 이름을 주지 않는 노트는 한국어 그대로 둡니다
-    expect(await screen.findByText('미모사 · 장미 · 밤')).toBeInTheDocument()
+    /*
+      AI 가 영어 이름을 주지 않는 노트는 사용자가 쓴 한국어 그대로 두고 따옴표로 감쌉니다.
+      낮밤 같은 정해진 조건은 영어로 바꿉니다.
+    */
+    expect(
+      await screen.findByText("'미모사' · '장미' · Night"),
+    ).toBeInTheDocument()
     expect(screen.getByText(/Narrowed down by/)).toBeInTheDocument()
+  })
+
+  describe('영어 화면에서 향 조건을 하나도 못 뽑았을 때', () => {
+    const noCondition = () =>
+      result({
+        status: 'NO_CONDITION',
+        query: 'something',
+        perfumes: [],
+        matchedData: [],
+      })
+
+    // 예시는 AI 가 가장 잘 알아듣는 한국어 그대로 두고 뜻을 곁들입니다
+    it('예시 단추에 뜻풀이를 곁들이고, 누르면 한국어 예시로 다시 찾는다', async () => {
+      useLocaleStore.getState().setLocale('en')
+      api.getRecommendation.mockResolvedValue(noCondition())
+      const onRequery = vi.fn()
+
+      renderModal(vi.fn(), { query: 'something', onRequery })
+      await userEvent.click(
+        await screen.findByRole('button', { name: '풀향 (grassy)' }),
+      )
+
+      expect(onRequery).toHaveBeenCalledWith('풀향')
+    })
+
+    it('다시 찾는 길이 없으면 예시를 뜻풀이와 함께 글로 보여 준다', async () => {
+      useLocaleStore.getState().setLocale('en')
+      api.getRecommendation.mockResolvedValue(noCondition())
+
+      renderModal(vi.fn(), { query: 'something' })
+
+      expect(
+        await screen.findByText(
+          "Try describing the smell or feeling — like '상큼한 향' (zesty), '풀향' (grassy).",
+        ),
+      ).toBeInTheDocument()
+    })
   })
 
   /*

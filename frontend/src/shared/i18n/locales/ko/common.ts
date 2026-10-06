@@ -1,5 +1,6 @@
 export const common = {
   site: {
+    name: '향해',
     title: '향해 · 향수 추천 서비스',
     description: '향을 탐색하고, 발견하고, 기록하는 향수 추천 서비스',
   },
