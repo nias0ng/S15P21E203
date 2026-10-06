@@ -58,6 +58,18 @@ v0.11 까지 이 바다는 **아름다웠지만 축척이 없었다.** 1 월드 
 
 ---
 
+## v0.91.3 — 영어 화면의 엔진 글자를 앱의 말에 맞춘다 <span>2026-10-06</span>
+
+영어 화면(`PB.setLang('en')`)의 해도 · 해역 설명 · 자리표시 헤더 글자를 앱의 영어 용어(해도 = Chart · 탐색 % = % seen)에 맞췄다. 한국어 화면은 한 글자도 안 바뀐다.
+
+- 해도 제목 `Hyanghae Map` → **`Hyanghae Chart`** · 머리말 `% explored` → `% seen` · `unexplored` → `not yet seen` (미니맵의 `% seen` 과 같은 말) · 안내 `Click waters to sail there` → `Click any waters to sail there`.
+- 해도 범례의 **둘째 줄을 영어에서 뺀다** — 첫 줄의 향조 이름을 소문자로 되풀이할 뿐이었다 (`FLORAL / floral` · `MUSK / musky`). `famWord` 가 영어면 '' 를 돌려주고 chart.js 가 그 줄을 안 그린다 (`FAM_WORD_EN` 은 걷었다). 한국어는 그대로 둘째 줄이 선다.
+- FLORAL 해역 설명 `Offered by opening petals,` → `Offered by blooming petals,`.
+- 하단 안내 · 연출 닫기(`drift.help` · `drift.zone`) · 보이는 향수 목록의 빈 줄을 `Click or tap the sea …` 로 — 휴대폰 · 태블릿에서도 서는 줄이라 기기를 가리지 않는 말로 (앱의 첫 방문 안내와 같은 말). `click a buoy` → `pick a buoy`.
+- 범위 밖 안내(`sea.outSub` — `You can't sail beyond this point`)의 굽은 따옴표를 곧은 따옴표(`'`)로.
+- 자리표시 헤더의 로고 `향해` 에 `data-i18n="header.logo"` 를 달았다 — 영어면 `Hyanghae`. 앱에 붙으면 앱 헤더가 대신하므로 엔진만 따로 띄울 때 보인다.
+- `i18n.test.js` 가 해도 머리말 · 안내 · 제목 · 로고 · 범례 둘째 줄을 본다.
+
 ## v0.91.2 — 배 단계의 구멍은 선체만 밝힌다 <span>2026-10-06</span>
 
 사용자 : 배 안내의 구멍이 *"왜 자꾸 칸이 바뀌는거야"* · *"돛 말고 배 위치에만 네모가 뚫려 있었으면"*.

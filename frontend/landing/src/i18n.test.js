@@ -106,9 +106,11 @@ describe('index.html 고정 글자', () => {
     expect(q('#chart-close').getAttribute('title')).toBe('Close (Esc)');
     expect(q('#search-input').getAttribute('placeholder')).toBe('What scent are you looking for?');
     expect(q('#drift-help').textContent).toContain('to steer');
+    expect(q('[data-i18n="chart.title"]').textContent).toBe('Hyanghae Chart');
+    expect(q('[data-i18n="header.logo"]').textContent).toBe('Hyanghae');
     // 단추 안의 물결 겹은 글자를 바꿔도 남는다 (글자는 제 칸 #scent-sail-label 에만 쓴다)
     expect(q('#scent-sail').querySelectorAll('[data-wave]').length).toBe(2);
-    // 고정 글자 가운데 한글이 남은 것이 없다 (로고 '향해' 는 사전 밖이라 뺀다)
+    // 고정 글자 가운데 한글이 남은 것이 없다 (자리표시 헤더의 로고 '향해' 도 사전에 있다)
     const left = [...doc.querySelectorAll('[data-i18n],[data-i18n-html]')].filter((el) => /[가-힣]/.test(el.textContent));
     expect(left).toEqual([]);
   });
@@ -133,7 +135,17 @@ describe('다음에 그리는 글자', () => {
     expect(lang()).toBe('en');
     expect(waters('FLORAL')).toBe('Floral waters');
     expect(zoneDesc(floral).join(' ')).not.toMatch(/[가-힣]/);
-    expect(famWord(CONFIG.families.find((f) => f.key === 'MUSK'))).toBe('musky');
+    // 영어 범례는 둘째 줄이 없다 — 첫 줄의 향조 이름을 되풀이할 뿐이다 (FLORAL / floral)
+    expect(famWord(floral)).toBe('');
+    expect(famWord(CONFIG.families.find((f) => f.key === 'MUSK'))).toBe('');
+  });
+
+  it('해도의 영어 머리말 · 안내', () => {
+    setLang('en');
+    expect(t('chart.explored', { pct: 34 })).toBe(' · 34% seen');
+    expect(t('chart.unexplored')).toBe(' · not yet seen');
+    expect(t('chart.tail').split('\n')[0]).toBe('Click any waters to sail there');
+    expect(t('sea.outSub')).toBe("You can't sail beyond this point");
   });
 
   it('해역 아홉과 예전 존 넷 모두 영어 설명이 두 줄로 있다', () => {

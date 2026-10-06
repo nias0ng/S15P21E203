@@ -16,6 +16,7 @@ const DICT = {
     doc: { title: '향을 찾는 종이배' },
     // 자리표시 사이트 헤더 (params.siteHeader — 앱에 붙으면 앱 헤더가 대신한다)
     header: {
+      logo: '향해',
       menu: '사이트 메뉴 (자리표시)', perfume: '향수', brand: '브랜드', note: '노트', community: '커뮤니티',
       search: '찾기 (자리표시)', login: '로그인', greet: '오늘도,<br>좋은 향과 함께.'
     },
@@ -50,6 +51,7 @@ const DICT = {
   en: {
     doc: { title: 'Paper Boat Scent Voyage' },
     header: {
+      logo: 'Hyanghae',
       menu: 'Site menu (placeholder)', perfume: 'Perfume', brand: 'Brand', note: 'Note', community: 'Community',
       search: 'Search (placeholder)', login: 'Log in', greet: 'Every day,<br>with a good scent.'
     },
@@ -57,20 +59,21 @@ const DICT = {
     card: { close: 'Close', detail: 'View details', save: 'Save to Shelf', sail: 'Sail to its waters' },
     cabin: { open: 'Open cabin' },
     // ⚠ 미니맵 머리말의 글자 칸은 좁은 단계(폭 1280 이하 · 판 200px)에서 약 65px 이다 — 'explored' · 'Out of range' 는 두 줄로 꺾였다 (10px · 자간 0.12em 실측)
-    sea: { out: 'Off limits', outSub: 'You can’t sail beyond this point', open: 'Open sea', waters: '{{name}} waters' },
+    sea: { out: 'Off limits', outSub: "You can't sail beyond this point", open: 'Open sea', waters: '{{name}} waters' },
     mini: { open: 'Open chart', explored: '{{pct}}% seen' },
     tap: { again: ' · tap again to sail' },
     visible: {
       label: 'Perfumes in view',
       head: '{{n}} perfumes in view · pick one to open its card', head_one: '{{n}} perfume in view · pick it to open its card',
-      empty: 'No perfumes in view — click the sea to sail there'
+      empty: 'No perfumes in view — click or tap the sea to sail there'
     },
     chart: {
-      title: 'Hyanghae Map', reset: 'Reset zoom', close: 'Close', closeTitle: 'Close (Esc)',
-      count: '{{n}} perfumes', count_one: '{{n}} perfume', explored: ' · {{pct}}% explored', zoom: ' · {{k}}×', unexplored: ' · unexplored',
-      tail: 'Click waters to sail there\nScroll to zoom · Drag to pan · Esc to close'
+      title: 'Hyanghae Chart', reset: 'Reset zoom', close: 'Close', closeTitle: 'Close (Esc)',
+      count: '{{n}} perfumes', count_one: '{{n}} perfume', explored: ' · {{pct}}% seen', zoom: ' · {{k}}×', unexplored: ' · not yet seen',
+      tail: 'Click any waters to sail there\nScroll to zoom · Drag to pan · Esc to close'
     },
-    drift: { speed: 'Speed', help: 'Click the sea to sail there  ·  click a buoy for its perfume', keys: '  ·  ← → ↑ to steer', zone: 'Click the sea to close this view' },
+    // 휴대폰 · 태블릿에서도 서는 줄이라 '누르다' 를 기기를 가리지 않는 말로 옮긴다 (앱의 첫 방문 안내 en/tour.ts 와 같은 말)
+    drift: { speed: 'Speed', help: 'Click or tap the sea to sail there  ·  pick a buoy for its perfume', keys: '  ·  ← → ↑ to steer', zone: 'Click or tap the sea to close this view' },
     quality: { high: 'High', mid: 'Medium', low: 'Low', min: 'Lowest' },
     host: {
       detail: 'View details', detailSub: 'In the app, this opens the perfume page',
@@ -83,7 +86,7 @@ const DICT = {
 // 해역 설명 두 줄 (config.js 의 desc) — 영어판만 여기 둔다. 한국어는 config 가 원본이다.
 //   키는 향조 키(대문자)다. 예전 존 넷(markMap 0)의 fresh 는 AQUATIC 과 같은 문구라 FRESH 로 같이 둔다
 const ZONE_DESC_EN = {
-  FLORAL:   ['Offered by opening petals,', 'a soft and radiant impression.'],
+  FLORAL:   ['Offered by blooming petals,', 'a soft and radiant impression.'],
   FRUITY:   ['Ripe juice spreading out,', 'a lively, sweet impression.'],
   WOODY:    ['Carried on the breath of quiet trees,', 'a deep and steady beauty.'],
   GREEN:    ['Released by freshly picked leaves,', 'a crisp, upright breath.'],
@@ -93,11 +96,6 @@ const ZONE_DESC_EN = {
   AMBER:    ['Warm resin slowly spreading,', 'a cozy, lingering drydown.'],
   GOURMAND: ['Sweet warmth slowly melting in,', 'a soft, cozy trail.'],
   MUSK:     ['Sinking into clean skin,', 'a subtle, cozy drydown.']
-};
-// 해도 범례의 둘째 줄 — 한국어는 검색 키워드의 첫 낱말(kw[0])이고, 영어는 용어집의 향 표현이다
-const FAM_WORD_EN = {
-  FLORAL: 'floral', FRUITY: 'fruity', WOODY: 'woody', GREEN: 'green', CITRUS: 'citrus',
-  AQUATIC: 'aquatic', FRESH: 'fresh', AMBER: 'amber', GOURMAND: 'gourmand', MUSK: 'musky'
 };
 
 // 두 벌의 모양이 같은지는 i18n.test.js 가 본다 (한쪽에만 키를 더하면 그 언어에서 키 이름이 화면에 뜬다)
@@ -144,10 +142,12 @@ export function zoneDesc(z) {
   return z.desc || [];
 }
 
-/** 해도 범례의 향조 둘째 줄 */
+/**
+ * 해도 범례의 향조 둘째 줄 — 한국어는 검색 키워드의 첫 낱말(kw[0])이다.
+ *   ⚠ 영어는 '' 다 — 첫 줄의 향조 이름을 소문자로 되풀이할 뿐이라(FLORAL / floral · MUSK / musky) chart.js 가 줄째 뺀다
+ */
 export function famWord(f) {
-  if (!f) return '';
-  if (cur !== 'ko') return FAM_WORD_EN[String(f.key || '').toUpperCase()] || String(f.name || '').toLowerCase();
+  if (!f || cur !== 'ko') return '';
   return (f.kw && f.kw[0]) || '';
 }
 
