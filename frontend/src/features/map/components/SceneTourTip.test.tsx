@@ -17,7 +17,8 @@ beforeEach(() => {
   watch.mockReset()
   setTourAnchorSource({
     watch,
-    read: () => ({ x: 900, y: 500, w: 80, h: 20, side: 1 }),
+    read: () => ({ x: 900, y: 500, w: 80, h: 20, side: 1, hole: null }),
+    freeze: () => {},
   })
 })
 afterEach(() => {
@@ -59,7 +60,7 @@ describe('SceneTourTip', () => {
     expect(watch).toHaveBeenLastCalledWith(null)
   })
 
-  it('앞 단계가 안 끝났으면 기다린다 — 부표는 첫 화면 안내 뒤', () => {
+  it('앞 단계가 안 끝났으면 기다린다 — 부표는 바다 · 방향키 안내 뒤', () => {
     render(
       <SceneTourTip step="buoy" ready placement="above">
         부표를 눌러 보세요
@@ -70,11 +71,27 @@ describe('SceneTourTip', () => {
     expect(watch).not.toHaveBeenCalled()
   })
 
+  it('첫 안내(바다)는 앞 단계 없이 서고, 엔진에 그 단계의 자리(배 옆)를 재 달라고 한다', async () => {
+    render(
+      <SceneTourTip step="sea" ready placement="side">
+        바다를 눌러 배를 움직여 보세요
+      </SceneTourTip>,
+    )
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '바다를 눌러 배를 움직여 보세요',
+    )
+    expect(watch).toHaveBeenCalledWith('sea')
+  })
+
   /*
     카드는 부표를 누르면 향수 고르기로 넘어가며 0.3초 남짓 접혔다 다시 뜹니다 — 그 틈을 닫힘으로 읽으면
     안내가 뜨자마자 끝났습니다 (2026-10-02 실측).
   */
   describe('닫히는 것이 곧 할 일인 단계 (카드 · 해역)', () => {
+    // 카드는 닮은 향수 안내 뒤에 섭니다
+    beforeEach(() => useTourStore.setState({ done: ['similar'] }))
+
     function Card({ open }: { open: boolean }) {
       return (
         <SceneTourTip

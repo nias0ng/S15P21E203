@@ -58,7 +58,7 @@ describe('PostList', () => {
     await toEnglish()
     renderList([item])
 
-    expect(screen.getByText('Chat')).toBeInTheDocument()
+    expect(screen.getByText('Chit-chat')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '1 like' })).toBeInTheDocument()
     expect(screen.getByText('3 comments')).toBeInTheDocument()
     expect(screen.getByText('12 views')).toBeInTheDocument()

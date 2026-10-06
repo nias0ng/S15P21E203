@@ -56,6 +56,10 @@ bootReport('script');
 // 앱(호스트)이 띄운 창이 열려 있는 수 (2026-09-15, v0.68.0 — holdWhile). 0 보다 크면 누르기 · 호버 · ESC · 스페이스를 안 받는다.
 //   ⚠ 입력을 만들기 전인 여기에 선언한다 — onPick · updateHover · onKeyExit 가 읽는다 (TDZ)
 let hostHold = 0;
+// 앱의 첫 방문 안내가 3D 를 멈췄는가 (2026-10-02, v0.91.0 — setTourFrozen 머리말) · frozenRedraw = 멈춘 채로 한 장만 다시 그린다 (창 크기 · 탭 복귀)
+//   ⚠ 품질 판정(busy)이 읽으므로 hostHold 곁에 선언한다 (TDZ)
+//   tourFreezeWant = 앱이 멈춰 달라고 했다 — 해역 연출이 움직이는 동안은 기다렸다가 다 닫힌 틱에 멈춘다 (v0.91.1 — setTourFrozen 머리말)
+let tourFrozen = false, frozenRedraw = false, tourFreezeWant = false;
 
 // ⭐ 주소의 ?lang= 이 en 이면 index.html 의 고정 글자를 영어로 다시 쓴다 (ko 면 같은 글자라 그대로다). UI 를 만들기 전에 한 번
 applyStatic();
@@ -98,7 +102,7 @@ const H = () => el.clientHeight || 1;
 //   ⚠ 품질 단계 low 는 MSAA 0 이라 계단이 보인다 (의도 — quality.js)
 const renderer = new THREE.WebGLRenderer({ antialias: false });
 // ⭐ 품질 단계 (quality.js). ⚠ 렌더러 바로 뒤에서 만든다 — GPU 이름을 읽고, 모듈들이 params 를 읽기 **전에** 단계의 값 묶음을 써 둔다
-const quality = createQuality({ gl: renderer.getContext(), busy: () => hostHold > 0 || !!diveNow() || !!cabinInNow() });
+const quality = createQuality({ gl: renderer.getContext(), busy: () => hostHold > 0 || !!diveNow() || !!cabinInNow() || tourFrozen });
 quality.writeParams();
 // ⚠⚠ **배가 드리우는 그림자** (2026-09-09). 물에는 안 드리운다 — 수면은 커스텀 셰이더라
 //   three 의 그림자를 안 받고, 그쪽은 이미 shadowAmount/contactAmount 세 겹이 따로 있다.
@@ -365,6 +369,7 @@ const input = createInput(ui.mount, {
   // 사람이 방향키를 잡으면 자동 조타 · 먼 곳 이동(lead) · 향수 고르기를 놓는다.
   // ⚠ 향수 고르기의 12개는 **배 기준 씬 좌표**에 서 있어 배를 따라다닌다 — 몰고 가면 이상하므로 접는다
   onManual: () => {
+    hostTour('keys');   // 앱의 첫 방문 안내 — 방향키로 몰았다 (v0.90.0)
     zones.clearAuto();
     travel.cancel();
     pendingSea = null;   // 연출이 걷히길 기다리던 바다 떠나기도 놓는다 (seaGo)
@@ -412,7 +417,11 @@ const input = createInput(ui.mount, {
     if (!m && (seaClick || seaShift) && seaGo(nx, ny)) return;
     // ── 향수 고르기 중 : 떠오른 12개만 받는다. 빈 바다를 누르면 접는다
     if (marks.focusing) {
-      if (m && marks.inFocus(m)) { marks.select(m); clickMark = m; hoverMark = m; hoverX = nx; hoverY = ny; }
+      if (m && marks.inFocus(m)) {
+        // 앱의 첫 방문 안내 — 누른 향수 곁에 떠오른 다른 향수를 눌러 견줘 봤다 (v0.90.0). 같은 부표를 다시 누른 것은 아니다
+        if (m !== clickMark) hostTour('similar');
+        marks.select(m); clickMark = m; hoverMark = m; hoverX = nx; hoverY = ny;
+      }
       else if (!m) { marks.focusOff(); marks.clearSelect(); clickMark = null; hoverMark = null; }
       return;
     }
@@ -796,12 +805,15 @@ let leaveAsked = false;
 // 지금 보이는 향수 목록을 마지막으로 채운 시각 (틱의 t · 이름표 줄)
 let visibleAt = -1;
 // ⭐ 첫 방문 안내가 붙을 자리 (2026-10-02, v0.88.0 — measureTour · PB.tour). 앱이 무엇을 보는지(tourWatch) 알리면 틱이 매 프레임 채운다.
-//   tourLabels = 이번 장의 부표 이름표 (부표 안내가 고른다) · tourBuoyKey = 그 안내가 붙은 부표
-const TOUR_WATCH = ['buoy', 'card', 'zone', 'minimap', 'boat'];
-const tourAnchor = { on: false, x: 0, y: 0, w: 0, h: 0, side: 1 };
-let tourWatch = null, tourBuoyKey = null, tourLabels = null;
-// 앱에 알린 카드 고정 · 해역 연출 (`<html data-card-pin>` · `data-zone`) — 바뀔 때만 쓴다
-let cardPinShown = false, zoneShown = '';
+//   tourLabels = 이번 장의 부표 이름표 (부표 · 닮은 향수 안내가 고른다) · tourLabelKey = 그 안내가 붙은 부표
+//   ⭐ v0.90.0 : sea · keys 는 배 옆구리(boat 와 같은 점) · similar 는 떠오른 12개 가운데 하나의 이름표 (measureTour 머리말)
+//   ⭐ v0.91.0 : hx · hy · hw · hh = 스포트라이트가 밝힐 상자 (배 둘레 · 이름표와 그 밑의 부표). hw 0 이면 안내가 붙는 상자 그대로다
+const TOUR_WATCH = ['sea', 'keys', 'buoy', 'similar', 'card', 'zone', 'minimap', 'boat'];
+const TOUR_AT_BOAT = ['sea', 'keys', 'boat'];
+const tourAnchor = { on: false, x: 0, y: 0, w: 0, h: 0, side: 1, hx: 0, hy: 0, hw: 0, hh: 0 };
+let tourWatch = null, tourLabelKey = null, tourLabels = null;
+// 앱에 알린 카드 고정 · 해역 연출 · 떠오른 12개 (`<html data-card-pin>` · `data-zone` · `data-similar`) — 바뀔 때만 쓴다
+let cardPinShown = false, zoneShown = '', similarShown = false;
 // 언어가 바뀌면 해역 이름(data-zone-label)을 다시 쓴다 · ⚠ disposeAll 이 끊는다 (HMR 마다 쌓인다)
 const offTourLang = onLang(() => { zoneShown = ''; });
 // ⭐ 클릭 항해의 **일반 속도** (스로틀 0..1) — 자동 조타가 가속이 아닐 때의 값. 예전 틱의 숫자 0.72 를 이름으로 뺐다 (2026-09-15, v0.65.0 · 값은 그대로)
@@ -1080,6 +1092,8 @@ function seaGo(nx, ny) {
   // ⭐ 누른 자리로 빨려 드는 네 줄기 (v0.59.0 — seamark.js) — 떠나기를 미뤄도 **누른 순간** 띄운다 (누름을 받았다는 대답).
   //   ⚠ 범위 밖(위의 경고)에는 안 띄운다 — 가지 않는 곳이다
   seamark.show(wx, wz);
+  // 앱의 첫 방문 안내 — 바다를 눌러 배가 떠났다 (v0.90.0). ⚠ 연출만 닫은 누름(zoneEnds) · 범위 밖은 위에서 이미 돌아갔다
+  hostTour('sea');
   return true;
 }
 // 존(= 향조) 이름으로 떠나기. 향수 지도가 꺼져 있으면(토러스) 옛 자동 조타 그대로
@@ -1796,6 +1810,26 @@ function hostCabinIn(k) {
 //   **반지름 하나짜리 원**이 되면서 부르는 곳이 없어졌다 (아래 tick 의 `mmArg` 머리말).
 //   화면 테두리 16점을 매 장 unproject 하던 일도 같이 없어졌다. 되살릴 일이 생기면 v0.78 이전을 본다.
 
+// 배 자리(`boat.screen`)를 이번 카메라로 채운다 — tick 의 '배가 화면 어디에 있는가' 머리말 (v0.79.0).
+//   ⚠ v0.91.0 에 틱 밖으로 뺐다 — 3D 가 멈춘 틱(tourFrozen)도 첫 방문 안내의 배 단계를 이 식으로 잰다
+function measureBoatScreen() {
+  const bp = boat.pivot.position, hy = bp.y + CONFIG.boat.lengthW * 0.11;
+  view.updateMatrixWorld();
+  _v3.set(bp.x, hy, bp.z).project(view);
+  const x = (_v3.x * 0.5 + 0.5) * W(), y = (-_v3.y * 0.5 + 0.5) * H();
+  const e = view.matrixWorld.elements, R = CONFIG.boat.lengthW * 0.5;
+  _v3.set(bp.x + e[4] * R, hy + e[5] * R, bp.z + e[6] * R).project(view);
+  const r = Math.abs((-_v3.y * 0.5 + 0.5) * H() - y);
+  // 꼬리를 대는 점 = 배 **옆구리**. 선체 반폭이 r 의 0.34 배라 그 밖이다 (boat.js 의 좌표 규약).
+  //   ⚠ 오른쪽이 기본이고, 그쪽에 말풍선이 안 들어가면 왼쪽으로 뒤집는다 (앱 말풍선 폭 160 + 꼬리 + 여백)
+  const gap = r * (P.cabinGap === undefined ? 0.55 : P.cabinGap);
+  let side = 1, ax = x + gap;
+  if (ax + 190 > W() - 20) { side = -1; ax = x - gap; }
+  const s = boat.screen;
+  s.x = x; s.y = y; s.r = r; s.ax = ax; s.ay = y; s.side = side; s.on = true;
+  return s;
+}
+
 let raf = 0;
 // 마지막 '범위 없음' 경고의 앱 시각 (tick 의 범위 블록이 3초에 한 번만 띄운다)
 let boundWarnT = -1e9;
@@ -1809,14 +1843,31 @@ let t = 0;
 let _capAt = 0;
 function tick(ts) {
   raf = requestAnimationFrame(tick);
-  const cap = quality.bundle().fps;
+  // ⭐ 멈춤 (v0.91.0 — setTourFrozen 머리말). rAF 는 살려 두고 안내의 자리만 잰다 — 시뮬 · 갱신 · 그리기 · 품질 재기(frameBegin · frameEnd)를 쉰다.
+  //   ⚠ 배 자리는 여기서도 잰다 — 멈춘 뒤에 watch 가 배 단계로 바뀌면 마지막 장이 boat.screen 을 안 채웠을 수 있다 (카메라 · 배가 그대로라 같은 값이다)
+  //   ⚠ 한 장 다시 그리기(frozenRedraw)는 상한 없이 그리고, 멈춘 시간을 버린 채 **물 · 배 게이트 한 칸만큼만** 흐른다 (아래 dt) —
+  //     반사 · 잠긴 선체 패스는 배 게이트(boat.stepped)에서만 다시 찍혀, dt 0 이면 새 크기로 지워진 그 타깃이 빈 채로 남는다
+  let redraw = false;
+  // 미뤄 둔 멈춤 (v0.91.1) — 연출이 다 들어왔거나 다 닫힌 틱에 건다 (setTourFrozen 머리말)
+  if (tourFreezeWant && !tourFrozen && !phase.cue.busy) setTourFrozen(true);
+  if (tourFrozen) {
+    if (!frozenRedraw) {
+      if (TOUR_AT_BOAT.includes(tourWatch)) measureBoatScreen();
+      measureTour();
+      return;
+    }
+    frozenRedraw = false;
+    redraw = true;
+  }
+  const cap = tourFrozen ? 0 : quality.bundle().fps;
   if (cap) {
     const now = ts === undefined ? performance.now() : ts, iv = 1000 / cap;
     if (now - _capAt < iv - 2) return;   // 2ms 는 rAF 시각의 흔들림 몫
     _capAt = now - _capAt > 2 * iv ? now : _capAt + iv;
   }
   quality.frameBegin();   // GPU 시간 재기 시작 (auto 일 때만 · 틱 끝의 frameEnd 와 짝)
-  const dt = Math.min(0.05, clock.getDelta());
+  const dtClock = Math.min(0.05, clock.getDelta());
+  const dt = redraw ? Math.min(0.05, 1.01 / Math.max(1, Math.min(P.boatFps, P.simFps))) : dtClock;   // ⚠ 멈춘 채 다시 그리는 장 (위 frozenRedraw) — 게이트 한 칸 (30Hz 면 34ms)
   t += dt;
   const M = CONFIG.move;
 
@@ -2455,6 +2506,15 @@ function tick(ts) {
       if (pin) document.documentElement.dataset.cardPin = '1'; else delete document.documentElement.dataset.cardPin;
     }
   }
+  // ⭐ **누른 향수 곁에 12개가 떠 있는가** (2026-10-02, v0.90.0 — `<html data-similar>`). 앱의 첫 방문 안내가 '닮은 향수를 눌러 보라' 고 한다 —
+  //   해역 연출 중에 누른 부표는 카드만 서고 12개가 안 솟아(onPick 주석) 카드 고정만으로는 못 가른다. ⚠ 바뀔 때만 쓴다
+  {
+    const up = marks.focusing;
+    if (up !== similarShown) {
+      similarShown = up;
+      if (up) document.documentElement.dataset.similar = '1'; else delete document.documentElement.dataset.similar;
+    }
+  }
   // 카드의 서비스 동작 단추 (v0.68.0) — 지도 향수가 아니면 둘 다 쉰다. ⚠ ui 가 바뀔 때만 쓴다
   //   ⚠ [주변 향 탐색]이 빠지면서(v0.74.2) 인자가 하나가 됐다 — 남은 둘은 같은 조건이다
   if (shownMark) ui.setScentActions(shownMark.src === 'map' && !!shownMark.perfume && !hostHold);
@@ -2498,24 +2558,12 @@ function tick(ts) {
   //   ⚠ 화면 반지름은 카메라의 위 방향으로 배 길이 절반을 투영해 잰다 — fov 를 쓰지 않는다
   //     (항공뷰는 직교 카메라라 fov 가 없다 · reflect.js 의 NaN 교훈)
   //   ⚠ 호버도 아니고 말풍선도 없으면 **안 잰다** — 투영 두 번을 매 프레임 헛돌리지 않는다 (screen.on = false)
-  if (boatHover || cabinOpen || tourWatch === 'boat') {
-    const bp = boat.pivot.position, hy = bp.y + CONFIG.boat.lengthW * 0.11;
-    view.updateMatrixWorld();
-    _v3.set(bp.x, hy, bp.z).project(view);
-    const x = (_v3.x * 0.5 + 0.5) * W(), y = (-_v3.y * 0.5 + 0.5) * H();
-    const e = view.matrixWorld.elements, R = CONFIG.boat.lengthW * 0.5;
-    _v3.set(bp.x + e[4] * R, hy + e[5] * R, bp.z + e[6] * R).project(view);
-    const r = Math.abs((-_v3.y * 0.5 + 0.5) * H() - y);
-    // 꼬리를 대는 점 = 배 **옆구리**. 선체 반폭이 r 의 0.34 배라 그 밖이다 (boat.js 의 좌표 규약).
-    //   ⚠ 오른쪽이 기본이고, 그쪽에 말풍선이 안 들어가면 왼쪽으로 뒤집는다 (앱 말풍선 폭 160 + 꼬리 + 여백)
-    const gap = r * (P.cabinGap === undefined ? 0.55 : P.cabinGap);
-    let side = 1, ax = x + gap;
-    if (ax + 190 > W() - 20) { side = -1; ax = x - gap; }
-    const s = boat.screen;
-    s.x = x; s.y = y; s.r = r; s.ax = ax; s.ay = y; s.side = side; s.on = true;
+  //   ⚠ 재는 식은 measureBoatScreen 하나다 (v0.91.0 — 멈춘 틱도 같은 식으로 잰다)
+  if (boatHover || cabinOpen || TOUR_AT_BOAT.includes(tourWatch)) {
+    const s = measureBoatScreen();
     // ⚠ 다섯째 인자 = **앱 말풍선이 이 방울에서 자라기 시작했다** — 옅어지며 사라지게 두면
     //   자라는 말풍선과 두 겹이 겹쳐 유리가 한 번 짙어진다 (ui.setCabin 의 ⚠⚠)
-    ui.setCabin(boatHover, ax, y, side, cabinOpen);
+    ui.setCabin(boatHover, s.ax, s.y, s.side, cabinOpen);
   } else {
     boat.screen.on = false;
     ui.setCabin(false, 0, 0, 1, false);
@@ -2578,6 +2626,8 @@ function applyResize() {
   cam.updateProjectionMatrix();
   resizeCbs.forEach(fn => fn(w, h));
   quality.hold(1500);   // 백버퍼 재할당 · 새 크기의 첫 장은 판정 표본이 아니다
+  // ⚠ 3D 가 멈춰 있으면 한 장만 다시 그린다 (v0.91.0) — setSize 가 캔버스를 지워, 안 그리면 스포트라이트의 구멍 너머가 빈 화면이다
+  if (tourFrozen) frozenRedraw = true;
 }
 const ro = new ResizeObserver(() => {
   if (!resizeRaf) resizeRaf = requestAnimationFrame(applyResize);
@@ -2609,6 +2659,8 @@ function onVisibility() {
   } else if (!raf) {
     clock.getDelta();
     quality.hold(2000);   // 돌아온 직후 몇 장은 합성기 · 드라이버가 몰아서 그린다 — 판정 표본이 아니다
+    // ⚠ 3D 가 멈춰 있으면(v0.91.0) 멈춘 채로 돌아오되 한 장은 다시 그린다 — 숨은 동안 캔버스를 잃었어도 구멍 너머가 비지 않게
+    if (tourFrozen) frozenRedraw = true;
     raf = requestAnimationFrame(tick);
   }
 }
@@ -2772,12 +2824,18 @@ const onKeyExit = (e) => {
   // 향수 고르기가 먼저다 — 떠 있는 12개를 거두고 끝낸다 (연출까지 한 번에 나가지 않는다)
   // ⚠ 카드 안(키보드로 고른 [자세히 보기] 등)에서 닫았으면 초점을 목록으로 돌려준다 — 안 돌리면 숨은 카드와 함께 초점이 사라진다 (v0.86.0)
   if (marks.focusing) { const back = ui.cardHasFocus(); marks.focusOff(); marks.clearSelect(); clickMark = null; if (back) ui.focusVisiblePerfumes(); return; }
-  // ⚠ 들어오는 중이면 받아 두었다가 다 들어온 순간 나간다 (leaveAsked) — 예전에는 그 사이의 Esc 를 버렸다
-  if (phase.cue.zone) { if (!phase.cue.busy) phase.leave(); else if (phase.cue.phase === 'entering') leaveAsked = true; return; }
+  if (leaveZone()) return;
   // ⭐ 그다음이 클릭 항해의 가속 끄기 (v0.65.0 — sailBoostKey) — 고르기도 존 연출도 없을 때만. 최대 가속에 닿기 전이면 아무 일도 없다
   sailBoostKey(false);
 };
 window.addEventListener('keydown', onKeyExit);
+// 해역 연출을 닫는다 — Esc 와 앱의 첫 방문 안내 [다음](PB.tour.leaveZone · v0.91.1)이 같이 쓴다. 연출이 없으면 false
+// ⚠ 들어오는 중이면 받아 두었다가 다 들어온 순간 나간다 (leaveAsked) — 예전에는 그 사이의 Esc 를 버렸다
+function leaveZone() {
+  if (!phase.cue.zone) return false;
+  if (!phase.cue.busy) phase.leave(); else if (phase.cue.phase === 'entering') leaveAsked = true;
+  return true;
+}
 
 window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel, minimap, chart, dive: hostDive, diveReport, cabinIn: hostCabinIn, cabinInReport, goRegion, goPerfume, startTravel, startFocus, startAt, boatAt, zoneReport, setHost, boot: bootNow, focusPlan: () => lastFocusPlan, params: P, ranges: PARAM_RANGES, apply, onResize, dispose: disposeAll, reflect, swellCPU, sim, water, grids, spray, boat, pod, zones, marks, scene, cam, renderer, nav, swellEnvCPU, swellAmplitude, gerstnerLoopLimit, clock: oceanClock, links, seamark, seaPending: () => pendingSea, travelPending: () => pendingTravel,
   // ⭐ 품질 단계 (S15P21E203-435) — PB.quality.get() · PB.quality.set('auto' | 'high' | 'mid' | 'low'). 앱의 그래픽 설정이 set 을 부른다
@@ -2786,9 +2844,16 @@ window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel
   setLang, lang: langNow,
   // ⭐ 움직임 줄이기 (2026-10-01, v0.85.0 — applyCalm 머리말). get → { calm: 지금 줄이는 중인가, os: OS 설정이 켜져 있는가 } · set(true|false) 는 앱 설정 몫만 바꾼다
   motion: { get: () => ({ calm: calmWanted(), os: !!(_calmMQ && _calmMQ.matches) }), set: (on) => { P.motionCalm = on ? 1 : 0; applyCalm(); return true; } },
-  // ⭐ 첫 방문 안내 (2026-10-02, v0.88.0 — measureTour 머리말). watch('buoy' | 'card' | 'zone' | 'minimap' | 'boat' | null) · anchor 는 틱이 채운다
+  // ⭐ 첫 방문 안내 (2026-10-02, v0.88.0 — measureTour 머리말). watch(TOUR_WATCH 가운데 하나 | null) · anchor 는 틱이 채운다
+  //   ⚠ 보는 것이 바뀌면 붙어 있던 부표를 놓는다 — 다시 보기 시작하면 그때 빈 자리를 새로 고른다
+  //   ⭐ v0.91.0 (스포트라이트 — setTourFrozen 머리말) : freeze(true | false) 3D 를 멈춘다 · 되살린다 (같은 값이면 아무 일도 없다) · frozen() 지금 멈췄는가.
+  //     멈춘 동안에도 anchor 는 채운다 · 엔진 문서에 닿은 누름 · 휠 · 키가 스스로 녹인다. anchor.hx · hy · hw · hh = 밝힐 상자 (hw 0 이면 anchor 상자 그대로)
   tour: {
-    watch: (step) => { tourWatch = TOUR_WATCH.includes(step) ? step : null; if (tourWatch !== 'buoy') tourBuoyKey = null; tourAnchor.on = false; },
+    watch: (step) => { const next = TOUR_WATCH.includes(step) ? step : null; if (next !== tourWatch) tourLabelKey = null; tourWatch = next; tourAnchor.on = false; },
+    freeze: (on) => setTourFrozen(on),
+    frozen: () => tourFrozen,
+    // ⭐ v0.91.1 : leaveZone() 해역 연출을 닫는다 (Esc 와 같은 닫기 · 연출이 없으면 false). 앱은 안내의 [다음] 을 누를 때 부른다
+    leaveZone: () => leaveZone(),
     anchor: tourAnchor
   },
   // ⭐ 반응형 검산 (2026-09-11 오후) — 제품 UI 상자들의 자리 · 서로 겹침 · 화면 밖 · 스크롤 · 수면 타이포 꼭대기와 정보 블록의 간격.
@@ -2800,38 +2865,163 @@ window.PB = { submerged, bloom, topCam, stage, phase, title, gate, input, travel
     get: () => marks.map
   } };
 
+// ⭐⭐ **첫 방문 안내의 스포트라이트가 설명하는 동안 3D 를 멈춘다** (2026-10-02, v0.91.0 — PB.tour.freeze). 사용자 결정 : 안내가 서면 화면 전체에 검은 막을 씌우고
+//   안내가 가리키는 자리만 뚫는다. 설명하는 단계(카드 · 미니맵 · 향해 일지 · 배 · 검색 결과 · 검색창)는 막이 짙고 **3D 도 멈춰** 구멍 밖이 흐르지 않는다 —
+//   막을 씌우고 멈추고 푸는 것은 앱 몫이다 (TourSpotlight · `features/map` 의 `freezeTourScene`). 엔진은 멈추기 · 녹이기 · 자리 재기만 한다.
+//   ⚠ 멈춘 동안 틱은 rAF 를 살려 두고 **measureTour 만** 돌린다 — 시뮬 · 갱신 · 그리기 · 품질 재기를 쉰다. 캔버스는 안 그리면 마지막 장이 그대로 남는다.
+//     안 쉬는 것 둘 : 창 크기가 바뀌거나(setSize 가 캔버스를 지운다) 탭이 돌아오면 **한 장만** 그린다 (frozenRedraw — 멈춘 시간은 버리고 게이트 한 칸만 흐른다 · tick 머리)
+//   ⚠⚠ **입력 잠금(hostHold)은 안 건다** — 막 밖의 누름은 앱의 막이 막고, 구멍 안의 누름은 엔진에 닿아야 한다 (카드 단추 · 미니맵 · 배).
+//     대신 엔진 문서에 닿은 첫 누름 · 휠 · 키가 **스스로 녹인다** (onFrozenInput · 잡기 단계라 카드 단추 · 캔버스의 처리보다 먼저다) —
+//     구멍 너머로 한 일이 멈춘 화면에서 일어나 안 보이는 일이 없게. 앱은 막이 걷힐 때 freeze(false) 를 부르므로 그 사이에 먼저 녹아도 된다
+//   ⚠ 녹일 때 멈춘 시간을 버린다 (onVisibility 와 같은 규약 — clock.getDelta) · 품질 판정은 멈춘 동안(busy) · 녹은 직후 1초(hold) 쉰다
+//   ⚠ 같은 값이면 아무 일도 없다 (앱이 단계마다 불러도 된다)
+//   ⭐ v0.91.1 : **해역 연출이 들어오거나 닫히는 동안(phase.cue.busy)은 멈추지 않고 미룬다** (tourFreezeWant — 틱 머리가 다 끝난 장에 건다).
+//     안내의 [다음] 이 연출을 닫자마자 다음 설명 안내가 서면, 닫히던 좌우 그림(에셋)이 반쯤 걷힌 채 멈춰 그 안내가 가리킨 미니맵을 덮었다.
+//     녹이기(false)는 미룬 멈춤도 같이 거둔다
+function setTourFrozen(on) {
+  on = !!on;
+  tourFreezeWant = on;
+  if (on && phase.cue.busy) return;
+  if (on === tourFrozen) return;
+  tourFrozen = on;
+  frozenRedraw = false;
+  if (!on) { clock.getDelta(); quality.hold(1000); }
+}
+const onFrozenInput = () => { if (tourFrozen || tourFreezeWant) setTourFrozen(false); };
+const FROZEN_THAW = ['pointerdown', 'wheel', 'keydown'];
+for (const k of FROZEN_THAW) document.addEventListener(k, onFrozenInput, { capture: true, passive: true });
+
 // ⭐ 첫 방문 안내가 붙을 상자 (2026-10-02, v0.88.0). 앱(`features/map` 의 SceneTourTip)이 `PB.tour.watch(step)` 으로 무엇을 보는지 알리면
 //   틱이 매 프레임 `PB.tour.anchor` 에 채운다 — 배 자리(`boat.screen`)와 같은 규약이다 (값을 나르지 않고 앱이 읽는다).
+//     sea · keys  배 옆구리 (boat 와 같은 점) — 바다를 눌러 · 방향키로 배를 움직여 보라는 안내다 (v0.90.0)
 //     buoy     이름표가 또렷한 지도 부표 하나 — 한 번 고르면 또렷한 동안 같은 부표에 붙는다 (안 그러면 안내가 부표 사이를 뛴다)
+//     similar  떠오른 12개 가운데 누른 향수가 아닌 부표의 이름표 (v0.90.0 — tourSimilarBox). 마땅한 것이 없으면 카드에 붙는다
 //     card     떠 있는 향수 카드 · zone 하단 안내(폰처럼 숨어 있으면 속도 계기) · minimap 미니맵
 //     boat     배 옆구리 — 선실 말풍선이 꼬리를 대는 점과 같다 (side 1 오른쪽 · −1 왼쪽)
+//   ⭐ 밝힐 상자 (v0.91.0 — `hx · hy · hw · hh`, 앱의 스포트라이트가 막에 뚫는 구멍). 안내가 붙는 상자와 밝힐 것이 다른 단계만 채운다 :
+//     sea · keys · boat  배 둘레 (선체 · 선실 — 돛은 뺀다 · tourBoatHole). 안내가 붙는 상자는 옆구리의 폭 0 짜리 선이라 그대로 뚫으면 아무것도 안 보인다
+//     buoy · similar     이름표와 그 밑의 부표 (tourMarkHole). similar 가 카드에 붙으면 카드 그대로다
+//     card · zone · minimap  hw 0 — 안내가 붙는 상자 그대로다
 //   ⚠ 좌표는 **iframe 기준** CSS px 다 (#stage 기준이 아니다). ⚠ 안 볼 때(watch null)는 아무것도 안 잰다
+//   ⚠ 3D 가 멈춘 틱(tourFrozen)도 이것은 돈다 — 마지막 장의 이름표(tourLabels) · 배 자리 · 카드 상자로 잰다 (값이 그대로라 자리도 그대로다)
 function measureTour() {
   const a = tourAnchor;
   a.on = false;
+  a.hw = 0;
   if (!tourWatch) return;
-  let box = null;
+  let box = null, hole = null;
   if (tourWatch === 'buoy') box = tourBuoyBox();
-  else if (tourWatch === 'boat') {
+  else if (tourWatch === 'similar') box = tourSimilarBox();
+  else if (TOUR_AT_BOAT.includes(tourWatch)) {
     const s = boat.screen;
-    if (s.on) { box = { x: s.ax, y: s.y - s.r * 0.35, w: 0, h: s.r * 0.7, stage: true }; a.side = s.side; }
+    if (s.on) { box = { x: s.ax, y: s.y - s.r * 0.35, w: 0, h: s.r * 0.7, stage: true }; a.side = s.side; hole = tourBoatHole(); }
   } else box = ui.tourBox(tourWatch);
   if (!box) return;
+  if (box.m) hole = tourMarkHole(box);
   const o = box.stage ? ui.stageOrigin() : { x: 0, y: 0 };
   a.x = box.x + o.x; a.y = box.y + o.y; a.w = box.w; a.h = box.h; a.on = true;
+  // ⚠ 밝힐 상자는 늘 #stage 기준으로 잰다 (배 · 부표의 투영) — 그것이 서는 단계는 안내가 붙는 상자도 #stage 기준이다
+  if (hole) { a.hx = hole.x + o.x; a.hy = hole.y + o.y; a.hw = hole.w; a.hh = hole.h; }
+}
+// 밝힐 상자를 여백만큼 키우고 #stage 안으로 자른다 — 다 잘려 나가면 null (hw 0 · 안내가 붙는 상자 그대로)
+function tourHole(x0, y0, x1, y1, pad) {
+  x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad);
+  x1 = Math.min(W(), x1 + pad); y1 = Math.min(H(), y1 + pad);
+  return x1 - x0 > 1 && y1 - y0 > 1 ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
+}
+// 배 둘레 (v0.91.0) — 배의 **pivot 로컬 상자**(선체 · 선실 외벽 — 아래 v0.91.2)의 여덟 모서리를 배 자리와 같은 카메라(view)로 투영한 화면 상자다 (#stage 기준 CSS px).
+//   ⚠ 로컬 상자는 1초마다만 다시 잰다 — 종이배 ↔ GLB 가 바뀌거나 GLB 가 늦게 와도 따라오고, 매 프레임 메시를 돌지 않는다.
+//     히트박스(재질 visible false — boat.js 의 boatHit)는 뺀다 · 로컬 y 0(용골 바닥 언저리) 밑은 물속이라 자른다
+//   ⚠ 뱃머리가 어디를 보든 맞는다 — 배 길이를 화면 반지름(boat.screen.r)으로 어림하면 옆으로 돈 배와 뒤에서 본 배가 같은 폭이 된다.
+//     메시를 못 쟀으면(로드 전 · 빈 상자) 그 어림으로 둔다
+//   ⭐ v0.91.2 : **선체 · 선실 외벽만** 잰다 (사용자 : *"돛 말고 배 위치에만 네모가"*). 돛 · 돛대 · 밧줄까지 넣으면 돛이 바람에 돌 때마다(1초마다 다시 재므로)
+//     또 카드를 연 가까운 카메라에서 상자가 세로로 길어졌다 줄었다 했다. 부품 이름은 boat.js 의 OCCLUDE_KEEP 과 같은 표다 — GLB 를 갈면 같이 본다.
+//     이름 있는 선체가 없으면(종이배) 보이는 메시 전부에서 아래 TOUR_HULL_H 만큼만 쓴다 (돛대 끝까지 가는 상자를 선체 높이로 자른다)
+const TOUR_HULL = /^(boat|closed[ _]?off)$/i, TOUR_HULL_H = 0.2;
+const _tourBoatLocal = new THREE.Box3(), _tourBoatAll = new THREE.Box3(), _tourBoatPart = new THREE.Box3(), _tourBoatInv = new THREE.Matrix4(), _tourBoatM = new THREE.Matrix4();
+let _tourBoatAt = -1e9;
+function tourBoatHole() {
+  const pv = boat.pivot, b = _tourBoatLocal, all = _tourBoatAll, now = performance.now();
+  if (now - _tourBoatAt > 1000) {
+    _tourBoatAt = now;
+    b.makeEmpty(); all.makeEmpty();
+    _tourBoatInv.copy(pv.matrixWorld).invert();
+    pv.traverseVisible((n) => {
+      if (!n.isMesh || !n.geometry || (n.material && n.material.visible === false)) return;
+      if (!n.geometry.boundingBox) n.geometry.computeBoundingBox();
+      _tourBoatM.multiplyMatrices(_tourBoatInv, n.matrixWorld);
+      _tourBoatPart.copy(n.geometry.boundingBox).applyMatrix4(_tourBoatM);
+      all.union(_tourBoatPart);
+      if (TOUR_HULL.test(n.name)) b.union(_tourBoatPart);
+    });
+    if (b.isEmpty() && !all.isEmpty()) {
+      b.copy(all);
+      b.max.y = Math.min(b.max.y, Math.max(0, b.min.y) + (all.max.y - all.min.y) * TOUR_HULL_H);
+    }
+  }
+  if (b.isEmpty()) {
+    const s = boat.screen;
+    return s.on ? tourHole(s.x - s.r, s.y - s.r * 2, s.x + s.r, s.y + s.r * 0.5, 12) : null;
+  }
+  const W0 = W(), H0 = H(), yLo = Math.min(b.max.y, Math.max(0, b.min.y));
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  pv.updateWorldMatrix(true, false);
+  for (let i = 0; i < 8; i++) {
+    _v3.set(i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : yLo, i & 4 ? b.max.z : b.min.z).applyMatrix4(pv.matrixWorld).project(view);
+    if (_v3.z > 1) continue;
+    const x = (_v3.x * 0.5 + 0.5) * W0, y = (-_v3.y * 0.5 + 0.5) * H0;
+    x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+  }
+  return x1 > x0 ? tourHole(x0, y0, x1, y1, 12) : null;
+}
+// 이름표와 그 밑의 부표를 함께 두른 상자 (v0.91.0). 몸통은 이름표가 올라앉는 그 공이다 — 가운데 (sx · wy · sz) · 반지름 rw (marks.labelItems).
+//   화면 반지름은 카메라의 위 방향으로 rw 올린 점으로 잰다 (marks.js 히트박스 · 배 자리와 같은 식). ⚠ 카메라는 이름표와 같은 cam 이다
+function tourMarkHole(box) {
+  const m = box.m, W0 = W(), H0 = H();
+  let x0 = box.x, y0 = box.y, x1 = box.x + box.w, y1 = box.y + box.h;
+  _v3.set(m.sx, m.wy, m.sz).project(cam);
+  if (_v3.z <= 1) {
+    const cx = (_v3.x * 0.5 + 0.5) * W0, cy = (-_v3.y * 0.5 + 0.5) * H0;
+    const e = cam.matrixWorld.elements, r = m.rw || 0;
+    _v3.set(m.sx + e[4] * r, m.wy + e[5] * r, m.sz + e[6] * r).project(cam);
+    const rp = Math.hypot((_v3.x * 0.5 + 0.5) * W0 - cx, (-_v3.y * 0.5 + 0.5) * H0 - cy);
+    x0 = Math.min(x0, cx - rp); x1 = Math.max(x1, cx + rp); y0 = Math.min(y0, cy - rp); y1 = Math.max(y1, cy + rp);
+  }
+  return tourHole(x0, y0, x1, y1, 8);
 }
 // 부표 안내가 붙을 이름표 — 또렷하고(a) 화면 가운데 띠(위 30% 아래 · 아래 15% 위 · 양옆 90px 안)에 있는 지도 부표 가운데
 //   **안내가 설 자리(이름표 위)가 빈** 것, 그다음 화면 가운데에 가까운 것. ⚠ 위는 검색창과 그 밑의 안내, 아래는 계기 · 미니맵 · 향해 일지 자리다
 //   ⚠ 빈 자리를 따지는 까닭 : 처음 화면의 가운데 부표는 대개 돛 밑이라, 거기 서면 안내가 돛과 옆 부표 이름표를 덮었다 (2026-10-02 실측 1920)
 //   ⚠ 한 번 고르면 또렷한 동안 그대로다 — 배가 지나가며 가려도 안내가 다른 부표로 뛰지 않는다
 const TOUR_TIP_W = 380, TOUR_TIP_H = 110;   // 앱 안내 한 장의 어림 (1920 · 세 줄) — 가리는지 셀 때만 쓴다
+// 안내가 설 만한 띠 안에 또렷한 지도 부표 이름표인가 — 부표 · 닮은 향수 안내가 같이 쓴다. 창 크기는 한 번만 읽는다
+function tourBand() {
+  const W0 = W(), H0 = H();
+  return (L) => L.a > 0.5 && L.m && L.m.src === 'map' && L.m.perfume && L.x > 90 && L.x < W0 - 90 && L.y > H0 * 0.3 && L.y < H0 * 0.85;
+}
 function tourBuoyBox() {
+  return tourLabelBox(tourBand(), []);
+}
+// 닮은 향수 안내가 붙을 이름표 (v0.90.0) — 떠오른 12개 가운데 **누른 향수가 아닌** 것. 카드가 설 자리는 비운다 (카드를 덮으면 단추를 못 누른다).
+//   ⚠ 12개는 깊이로 물러나 하늘 · 바다 끝에도 서서(불변식 30) 띠 안에 하나도 없을 수 있다 — 그때는 **카드 위**에 선다.
+//     자리를 못 잰 채 두면 안내가 안 보이는 채로 차례를 쥐고 있어 다음 안내(카드 단추)까지 막는다
+function tourSimilarBox() {
+  if (!marks.focusing) return null;
+  const card = ui.tourBox('card');
+  const o = ui.stageOrigin();
+  const avoid = card ? [{ x0: card.x - o.x, y0: card.y - o.y, x1: card.x - o.x + card.w, y1: card.y - o.y + card.h }] : [];
+  const band = tourBand();
+  const box = tourLabelBox((L) => band(L) && L.m !== clickMark && marks.inFocus(L.m), avoid);
+  return box || card;
+}
+// 안내가 붙을 이름표 하나 — ok 를 통과한 것 가운데 **안내가 설 자리(이름표 위)를 덜 가리는** 것, 그다음 화면 가운데에 가까운 것.
+//   가리는 것 = 또렷한 다른 이름표 · 배(선체 · 돛 중간 — 카드 자리 잡기의 _obs 와 같은 두 점) · avoid 상자 (#stage 기준 CSS px)
+//   ⚠ 한 번 고르면 ok 를 통과하는 동안 그대로다 (tourLabelKey)
+function tourLabelBox(ok, avoid) {
   if (!tourLabels) return null;
   const W0 = W(), H0 = H();
-  const ok = (L) => L.a > 0.5 && L.m && L.m.src === 'map' && L.m.perfume && L.x > 90 && L.x < W0 - 90 && L.y > H0 * 0.3 && L.y < H0 * 0.85;
-  let L = tourBuoyKey !== null ? tourLabels.find(q => ok(q) && q.m.perfume.id === tourBuoyKey) : null;
+  let L = tourLabelKey !== null ? tourLabels.find(q => ok(q) && q.m.perfume.id === tourLabelKey) : null;
   if (!L) {
-    // 안내가 설 자리를 가리는 것 — 또렷한 다른 이름표와 배(선체 · 돛 중간 — 카드 자리 잡기의 _obs 와 같은 두 점)
     const tags = [];
     for (const q of tourLabels) {
       if (q.a <= 0.3) continue;
@@ -2849,6 +3039,7 @@ function tourBuoyBox() {
       let hit = 0;
       for (const g of tags) if (g.q !== q && g.x0 < tx1 && g.x1 > tx0 && g.y0 < ty1 && g.y1 > ty0) hit++;
       for (const p of hull) if (p.x > tx0 - 40 && p.x < tx1 + 40 && p.y > ty0 - 40 && p.y < ty1 + 60) hit += 2;
+      for (const r of avoid) if (r.x0 < tx1 && r.x1 > tx0 && r.y0 < ty1 && r.y1 > ty0) hit += 3;
       return hit * 1000 + Math.hypot(q.x - W0 * 0.5, q.y - H0 * 0.6);
     };
     let best = Infinity;
@@ -2857,11 +3048,12 @@ function tourBuoyBox() {
       const c = cost(q);
       if (c < best) { best = c; L = q; }
     }
-    tourBuoyKey = L ? L.m.perfume.id : null;
+    tourLabelKey = L ? L.m.perfume.id : null;
   }
   if (!L) return null;
   const w = ui.labelWidth(L.text, L.top), h = ui.labelHeight(L.top);
-  return { x: L.x - w * 0.5, y: L.y - h - 2, w, h, stage: true };
+  // m = 그 부표 — 스포트라이트가 이름표 밑의 몸통까지 밝힌다 (v0.91.0 — tourMarkHole)
+  return { x: L.x - w * 0.5, y: L.y - h - 2, w, h, stage: true, m: L.m };
 }
 
 // PB.layout() — 위 주석. 제품 UI 만 본다 (개발 패널은 solo 로 숨기고 잰다)
@@ -2935,10 +3127,13 @@ function disposeAll() {
   hostDive(0);         // ⚠ 잠수를 풀어 둔다 — `<html data-dive>` 가 남으면 엔진 UI 가 영영 안 보인다 (불변식 10)
   disposeDive();
   hostCabinIn(0);      // ⚠ 선실로 들어가기도 같다 — `<html data-cabin-in>` 과 입력 잠금을 풀어 둔다
-  // ⚠ 앱에 알리던 카드 고정 · 해역 연출도 걷어 둔다 (v0.88.0) — 남으면 다시 뜬 엔진의 첫 장이 그 값을 바꿀 때까지 앱이 믿는다
-  for (const k of ['cardPin', 'zone', 'zoneLabel']) delete document.documentElement.dataset[k];
+  // ⚠ 앱에 알리던 카드 고정 · 해역 연출 · 떠오른 12개도 걷어 둔다 (v0.88.0 · v0.90.0) — 남으면 다시 뜬 엔진의 첫 장이 그 값을 바꿀 때까지 앱이 믿는다
+  for (const k of ['cardPin', 'zone', 'zoneLabel', 'similar']) delete document.documentElement.dataset[k];
   tourWatch = null;
   offTourLang();
+  // ⚠ 멈춤도 풀고 녹이는 귀를 뗀다 (v0.91.0) — 문서에 잡기 단계로 붙어 HMR 마다 쌓인다
+  tourFrozen = false; frozenRedraw = false; tourFreezeWant = false;
+  for (const k of FROZEN_THAW) document.removeEventListener(k, onFrozenInput, { capture: true });
   disposeCabinIn();
   chart.dispose();     // ⚠ 미니맵보다 먼저 — 안개 격자를 그쪽에서 읽는다
   minimap.dispose();   // (향수 고르기 라벨은 ui.dispose() 가 거둔다)

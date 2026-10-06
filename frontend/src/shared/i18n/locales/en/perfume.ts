@@ -9,7 +9,7 @@ export const perfume = {
     WINTER: 'Winter',
   },
   filters: {
-    rankingLabel: 'Most-saved filter',
+    rankingLabel: 'Filter by popularity',
     genderLabel: 'Scent gender',
     ranking: {
       OWNED: 'Owned',
@@ -57,12 +57,12 @@ export const perfume = {
     empty: "We'll show a summary once there are enough reviews.",
   },
   keywords: {
-    caption: 'Words that come up often in scent reviews',
+    caption: 'Words often used in reviews that describe the scent',
   },
   reviewList: {
     title: 'Reviews',
-    count_one: '{{count}} review',
-    count_other: '{{count}} reviews',
+    count_one: '{{count}}',
+    count_other: '{{count}}',
     loginDescription: 'Log in to write a review.',
     write: 'Write a review',
     editMine: 'Edit my review',
@@ -75,9 +75,9 @@ export const perfume = {
     backToBoard: 'Reviews',
     edit: 'Edit',
     delete: 'Delete',
-    likeLabel: 'Like {{count}}',
+    likeLabel: 'Like ({{count}})',
     toPerfume: 'View perfume →',
-    stats: '{{likes}} likes · {{views}} views',
+    stats: 'Likes {{likes}} · Views {{views}}',
     deleteFailed: "Couldn't delete. Please try again later.",
     likeFailed: "Couldn't like this review. Please try again later.",
     likeLoginDescription:
@@ -94,7 +94,7 @@ export const perfume = {
     searchEmptyDescription: "No perfumes match '{{keyword}}'.",
     headingSearch: 'Search results',
     headingFiltered: 'Matching perfumes',
-    headingPopular: 'Featured on the scent map',
+    headingPopular: 'Featured perfumes on the Scent Map',
     count_one: '{{count}} perfume',
     count_other: '{{count}} perfumes',
     loadErrorTitle: "Couldn't load perfumes",
@@ -107,7 +107,7 @@ export const perfume = {
     shelfSaved: 'Saved to your shelf',
     removeTitle: "Remove '{{name}}' from your shelf?",
     removeDescription:
-      "Your note and match rating will be deleted too. This can't be undone.",
+      "Your memo and match rating will be deleted too. This can't be undone.",
     removeConfirm: 'Remove',
     removed: 'Removed from your shelf',
     removeFailed: "Couldn't remove it from your shelf",

@@ -63,7 +63,7 @@ export const collection = {
     perfumesRegion: '담긴 향수',
     removeConfirm: {
       title: "'{{name}}' 를 컬렉션에서 제거할까요?",
-      fallbackName: '향수',
+      titleUnnamed: '이 향수를 컬렉션에서 제거할까요?',
       description: '진열대 저장은 그대로 유지됩니다.',
       confirm: '제거',
     },

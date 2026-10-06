@@ -3,8 +3,10 @@ import type { common as ko } from '../ko/common'
 
 export const common = {
   site: {
+    name: 'Hyanghae',
     title: 'Hyanghae · Perfume Recommendations',
-    description: 'Explore, discover and keep a record of the scents you love',
+    description:
+      'A perfume recommendation service to explore, discover and keep a record of scents',
   },
   language: {
     label: 'Language',
@@ -39,7 +41,7 @@ export const common = {
     citrus: 'Citrus',
     fruity: 'Fruity',
     aquatic: 'Aquatic',
-    musk: 'Musky',
+    musk: 'Musk',
     gourmand: 'Gourmand',
     woody: 'Woody',
     amber: 'Amber',

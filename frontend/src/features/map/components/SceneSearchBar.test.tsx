@@ -27,13 +27,22 @@ function Bar({
   )
 }
 
-const WELCOME =
-  '향수를 향 계열별로 펼친 바다예요. 원하는 느낌을 적거나, 떠 있는 부표를 눌러 보세요.'
-const SEARCH_TIP = "'느낌·상황'에 원하는 느낌이나 상황을 적어 보세요."
+const SEARCH_TIP = "'느낌·상황'을 눌러 원하는 느낌이나 상황을 적어 보세요."
+const SEARCH_EXAMPLE = '예) 비 온 뒤 흙냄새 · 상큼한 향'
+
+/** 항해 줄기의 앞 단계(바다 · 방향키 · 부표)를 끝낸 사람 */
+const sailed = () => useTourStore.setState({ done: ['sea', 'keys', 'buoy'] })
 
 beforeEach(() => {
   localStorage.clear()
-  useTourStore.setState({ done: [], off: false, wanted: [], active: null })
+  useTourStore.setState({
+    done: [],
+    off: false,
+    wanted: [],
+    active: null,
+    forced: null,
+    touch: false,
+  })
 })
 
 /*
@@ -83,37 +92,45 @@ describe('시작 문장', () => {
 })
 
 /*
-  첫 방문 안내 두 단계가 설명줄 자리에 섭니다. 처음 온 사람은 설명줄을 볼 까닭이 없어 이 사이트가
-  무엇을 해 주는지 못 봤고, 이 칸에 무엇을 적어야 하는지도 몰랐습니다 (메인 사용성 테스트).
+  첫 방문 안내의 검색 단계가 설명줄 자리에 섭니다. 처음 온 사람은 설명줄을 볼 까닭이 없어 이 칸에 무엇을
+  적어야 하는지 몰랐습니다 (메인 사용성 테스트). 항해 줄기(바다 → 방향키 → 부표 → 닮은 향수)를 배운 뒤에 섭니다.
 */
 describe('첫 방문 안내', () => {
-  it('화면이 비면 검색창 아래에 첫 화면 안내가 선다', () => {
+  it('앞 단계를 배운 뒤 화면이 비면 검색창 아래에 예시와 함께 선다', () => {
+    sailed()
     render(<Bar introduce />)
 
-    expect(screen.getByRole('status')).toHaveTextContent(WELCOME)
+    const tip = screen.getByRole('status')
+    expect(tip).toHaveTextContent(SEARCH_TIP)
+    expect(tip).toHaveTextContent(SEARCH_EXAMPLE)
     // 설명줄은 화면에서만 걷습니다 — 입력칸의 설명으로는 그대로 읽힙니다
     expect(screen.getByRole('searchbox')).toHaveAccessibleDescription(HINT)
   })
 
+  it('바다 누르기부터 배우기 전에는 기다린다', async () => {
+    const user = userEvent.setup()
+    render(<Bar introduce />)
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+
+    // 먼저 검색창을 누른 사람에게도 차례를 건너뛰어 서지 않습니다 — 시작 문장은 그대로 펼쳐집니다
+    await user.click(screen.getByRole('searchbox'))
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('group', { name: '이렇게 찾아 보세요' }),
+    ).toBeInTheDocument()
+  })
+
   it('화면이 아직 비지 않았으면 기다린다', () => {
+    sailed()
     render(<Bar introduce={false} />)
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
-  it('검색창을 누르면 첫 화면 안내가 끝나고 검색 안내로 바뀐다', async () => {
-    const user = userEvent.setup()
-    render(<Bar introduce />)
-
-    await user.click(screen.getByRole('searchbox'))
-
-    expect(screen.getByRole('status')).toHaveTextContent(SEARCH_TIP)
-    expect(useTourStore.getState().done).toContain('welcome')
-  })
-
   it('첫 검색으로 검색 안내가 끝난다', async () => {
     const user = userEvent.setup()
-    render(<Bar />)
+    sailed()
+    render(<Bar introduce />)
 
     await user.click(screen.getByRole('searchbox'))
     await user.keyboard('비 오는 날{Enter}')
@@ -122,9 +139,26 @@ describe('첫 방문 안내', () => {
     expect(useTourStore.getState().done).toContain('search')
   })
 
+  it('차례 전에 먼저 찾아 본 사람에게는 검색 안내가 서지 않는다', async () => {
+    const user = userEvent.setup()
+    const first = render(<Bar introduce />)
+    await user.click(screen.getByRole('searchbox'))
+    await user.keyboard('비 오는 날{Enter}')
+    first.unmount()
+    expect(useTourStore.getState().done).toContain('search')
+
+    // 그 뒤에 바다 · 방향키 · 부표를 배워도 검색 안내는 다시 서지 않습니다
+    useTourStore.setState((state) => ({
+      done: [...state.done, 'sea', 'keys', 'buoy'],
+    }))
+    render(<Bar introduce />)
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
   it('[×] 를 눌러도 입력칸 초점과 시작 문장은 그대로다', async () => {
     const user = userEvent.setup()
-    render(<Bar />)
+    sailed()
+    render(<Bar introduce />)
 
     await user.click(screen.getByRole('searchbox'))
     await user.click(screen.getByRole('button', { name: '안내 닫기' }))
@@ -136,8 +170,36 @@ describe('첫 방문 안내', () => {
     ).toBeInTheDocument()
   })
 
+  // 메인의 `TourSpotlight` 가 안내 동안 밝혀 두는 자리 — 안내가 말하는 이름표 · 입력칸이 든 알약입니다
+  it('안내가 가리키는 알약(이름표 · 입력칸)에 표시를 단다', () => {
+    sailed()
+    render(<Bar introduce />)
+
+    const target = screen
+      .getByRole('search')
+      .closest<HTMLElement>('[data-tour-target="search"]')
+    expect(target).not.toBeNull()
+    expect(target).toContainElement(screen.getByRole('searchbox'))
+    expect(target).toContainElement(screen.getByText(TAG))
+    expect(target).not.toContainElement(screen.getByRole('status'))
+  })
+
+  it('안내 동안 입력칸을 눌러 펼친 시작 문장에도 표시를 단다 — 막 밑에 깔리지 않게', async () => {
+    const user = userEvent.setup()
+    sailed()
+    render(<Bar introduce />)
+
+    await user.click(screen.getByRole('searchbox'))
+
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(
+      screen.getByRole('group', { name: '이렇게 찾아 보세요' }),
+    ).toHaveAttribute('data-tour-target', 'search')
+  })
+
   it('끝낸 안내는 다음 방문에 다시 서지 않는다', async () => {
     const user = userEvent.setup()
+    sailed()
     const first = render(<Bar introduce />)
     await user.click(screen.getByRole('button', { name: '안내 닫기' }))
     first.unmount()

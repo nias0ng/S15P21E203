@@ -1131,12 +1131,15 @@ export function createChart({ onPick, onBlocked, minimap } = {}) {
       const row = document.createElement('button');
       row.style.cssText = 'display:flex;align-items:center;gap:9px;width:100%;padding:7px 6px;border:none;border-radius:6px;'
         + 'background:none;font-family:inherit;text-align:left;cursor:pointer;color:' + PAL.chartInk + ';';
+      // 둘째 줄(한국어 향조 이름)은 영어에서 비어 줄째 뺀다 — 첫 줄과 같은 말이다 (i18n.js famWord)
+      const word = famWord(fam);
       row.innerHTML = '<span style="flex:none;width:15px;font-size:9.5px;letter-spacing:0.06em;color:' + PAL.chartInk2 + ';">'
         + String(no).padStart(2, '0') + '</span>'
         + '<span style="flex:none;width:9px;height:9px;border-radius:50%;background:' + fam.color + ';"></span>'
         + '<span style="flex:1;min-width:0;"><span style="display:block;font-size:11px;font-weight:600;letter-spacing:0.16em;">'
-        + fam.name + '</span><span style="display:block;margin-top:1px;font-size:10.5px;color:' + PAL.chartInk2 + ';">'
-        + famWord(fam) + '</span></span>'
+        + fam.name + '</span>'
+        + (word ? '<span style="display:block;margin-top:1px;font-size:10.5px;color:' + PAL.chartInk2 + ';">' + word + '</span>' : '')
+        + '</span>'
         + '<span style="flex:none;font-size:10px;color:' + PAL.chartInk2 + ';">' + pts.length + '</span>';
       // ⭐ 2026-09-18 : 지도에서 **그 해역의 경계선이 밝아진다** (setFamHover — 사용자 요청)
       row.onmouseenter = () => { row.style.background = PAL.chartRow; if (hintEl) hintEl.textContent = waters(fam.name) + ' · ' + tr('chart.count', { n: pts.length }); setFamHover(key); };

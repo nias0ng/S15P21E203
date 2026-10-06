@@ -5,7 +5,7 @@ export const brand = {
   sort: {
     PERFUME_COUNT: 'Most perfumes',
     NAME_EN: 'A–Z',
-    NAME_KO: 'Korean name',
+    NAME_KO: 'Korean name (ㄱ–ㅎ)',
   },
   grid: {
     emptyTitle: 'No brands found',

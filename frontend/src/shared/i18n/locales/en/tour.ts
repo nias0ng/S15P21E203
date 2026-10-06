@@ -7,58 +7,73 @@ export const tour = {
     stopAll: 'Stop showing tips',
     next: 'Next',
   },
-  welcome:
-    'This sea lays out perfumes by scent family. Describe a feeling, or pick a floating buoy.',
-  // NOTE: the quoted name must match search.tag in the map bundle (the label left of the search box)
-  search: "In 'Mood · Moment', write the mood or moment you have in mind.",
-  results: 'Select a card to see why it was picked.',
-  buoy: 'Each glowing buoy is a perfume. Pick one.',
-  buoyMove: 'Select the sea to sail there.',
+  // the five steps that teach sailing — sea · keys · buoy · similar · search (tourStore header)
+  sea: {
+    intro: 'This sea lays out perfumes by scent family.',
+    action: 'Click or tap the sea to sail your boat there.',
+  },
   // only on devices with arrow keys
-  buoyKeys: 'You can also steer with ← → ↑.',
+  keys: 'Steer with the ← → ↑ keys — head wherever you like.',
+  buoy: {
+    intro: 'Each glowing buoy is a perfume.',
+    action: 'Pick one to see which perfume it is.',
+  },
+  similar:
+    'Nearby perfumes have surfaced. Lines join the ones that smell alike — pick one to explore a similar scent.',
+  // NOTE: the quoted name must match search.tag in the map bundle (the label left of the search box)
+  search:
+    "Choose 'Mood · Moment' and write the mood or moment you have in mind.",
+  searchExample: 'e.g. earthy smell after rain · something fresh',
+  results: 'Click or tap a card to see why it was picked.',
   // NOTE: the button names must match the engine card (landing/src/i18n.js card.detail · save · sail)
   card: {
     detail: { name: 'View details', desc: 'the full perfume page' },
-    save: { name: 'Save to Shelf', desc: 'keep the ones you like (log in)' },
+    save: {
+      name: 'Save to Shelf',
+      desc: 'keep the ones you like (login required)',
+    },
     sail: {
       name: 'Sail to its waters',
-      desc: 'go where its scent family gathers',
+      desc: 'go where perfumes of its scent family gather',
     },
   },
-  zone: 'You’re in the {{zone}}, where one scent family gathers. Click the sea to close this view.',
+  zone: "You're in the {{zone}}, where perfumes of one scent family gather. Click or tap the sea to close this view.",
+  // Three lines — what it is · what a press does · the bright parts and the % seen
   minimap: {
-    pointer:
-      'A map of scent families. Click a name to sail there. Bright parts are sea you’ve crossed — that’s the % seen.',
-    touch:
-      'A map of scent families. Tap a name twice to sail there. Bright parts are sea you’ve crossed — that’s the % seen.',
+    intro: 'This is a map of scent families.',
+    pointer: 'Click a name to sail to its waters.',
+    touch: 'Tap a name twice to sail to its waters.',
+    seen: "Bright areas show where you've sailed; % seen is how much you've explored so far.",
   },
   log: {
-    member: 'The waters you sail and perfumes you find are written here.',
-    guest: 'Log in to keep the waters you sail and perfumes you find here.',
-  },
-  boat: {
     member:
-      'Click the boat to step into the cabin — your saved perfumes are on the Shelf.',
+      "The waters you've sailed and perfumes you've found are recorded here.",
     guest:
-      'Click the boat to step into the cabin. Log in to keep the perfumes you like on the Shelf.',
+      "Log in and the waters you've sailed and perfumes you've found will be recorded here.",
+  },
+  // Two lines — click the boat · what you find there
+  boat: {
+    intro: 'Click or tap the boat to step into the cabin.',
+    member: 'Your saved perfumes (the Shelf) are there.',
+    guest: 'Log in to keep the perfumes you like on the Shelf.',
   },
   guide: {
     trigger: 'How to use',
     title: 'How to use',
     controlsTitle: 'Getting around',
     controls: {
-      sea: 'Click the sea to sail there',
-      buoy: 'Click a buoy to open its perfume card',
+      sea: 'Click or tap the sea to sail there',
+      buoy: 'Click or tap a buoy to open its perfume card',
       keys: 'Steer the boat with ← → ↑',
-      minimap: 'Click a name on the minimap to sail to those waters',
-      minimapTouch: 'Tap a name on the minimap twice to sail to those waters',
+      minimap: 'Click a name on the minimap to sail to its waters',
+      minimapTouch: 'Tap a name on the minimap twice to sail to its waters',
     },
     termsTitle: 'Words we use',
     terms: {
       buoy: { term: 'Buoy', desc: 'One perfume floating on the sea' },
       zone: {
         term: 'Waters',
-        desc: 'Where one scent family (floral, woody…) gathers',
+        desc: 'Where perfumes of one scent family (floral, woody…) gather',
       },
       explored: {
         term: '% seen',
@@ -66,15 +81,15 @@ export const tour = {
       },
       chart: {
         term: 'Chart',
-        desc: 'The large map opened from the button at the minimap’s top right',
+        desc: "The large map opened from the button at the minimap's top right",
       },
       log: {
         term: 'Voyage Log',
-        desc: 'A record of the waters you sailed and perfumes you found (log in)',
+        desc: 'A record of the waters you sailed and perfumes you found (login required)',
       },
       cabin: {
         term: 'Cabin · Shelf',
-        desc: 'Click the boat to step inside — perfumes you save gather on the Shelf (log in)',
+        desc: 'Click or tap the boat to step inside — perfumes you save gather on the Shelf (login required)',
       },
     },
     restart: 'Show the tips again from the start',

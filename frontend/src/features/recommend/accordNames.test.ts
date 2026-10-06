@@ -35,13 +35,29 @@ describe('accordLabel', () => {
     it('원래 영어 이름을 첫 글자만 대문자로 쓴다', () => {
       useLocaleStore.getState().setLocale('en')
       expect(accordLabel('soapy · fresh spicy')).toBe('Soapy · Fresh spicy')
-      expect(accordLabel('MUSK')).toBe('Musky')
+      expect(accordLabel('MUSK')).toBe('Musk')
+    })
+
+    // 칩 · 이름표는 첫 글자 대문자, 영어 문장 가운데에서는 소문자입니다(the soapy scent)
+    it('문장 안의 꼴은 소문자로 쓰고, 모르는 값 · 한국어 화면은 그대로 둔다', () => {
+      expect(accordLabel('soapy · 비누', { inSentence: true })).toBe(
+        '비누 · 비누',
+      )
+
+      useLocaleStore.getState().setLocale('en')
+      expect(accordLabel('soapy · fresh spicy', { inSentence: true })).toBe(
+        'soapy · fresh spicy',
+      )
+      expect(accordLabel('MUSK · 비누', { inSentence: true })).toBe(
+        'musk · soapy',
+      )
+      expect(accordLabel('BBQ', { inSentence: true })).toBe('BBQ')
     })
 
     // 백엔드가 한국어를 보내기 시작해도 영어 화면에는 영어가 나가야 합니다
     it('한국어 향 특성 · 향 계열 이름은 영어로 되돌리고, 모르는 값은 그대로 둔다', () => {
       useLocaleStore.getState().setLocale('en')
-      expect(accordLabel('비누 · 머스크')).toBe('Soapy · Musky')
+      expect(accordLabel('비누 · 머스크')).toBe('Soapy · Musk')
       expect(accordLabel('가을 어울림 평가 71%')).toBe('가을 어울림 평가 71%')
     })
   })

@@ -10,7 +10,7 @@ export const EN_ERROR_MESSAGES: Readonly<Record<string, string>> = {
   UNKNOWN: 'Something went wrong. Please try again.',
   INTERNAL_ERROR: 'Something went wrong on our side. Please try again later.',
   SERVER_UNREACHABLE:
-    "We can't reach the server right now. Please try again in a moment.",
+    "We can't reach the server right now. Please try again later.",
 
   AUTH_EMAIL_ALREADY_EXISTS: 'This email is already in use.',
   AUTH_NICKNAME_ALREADY_EXISTS: 'This nickname is already taken.',
@@ -75,7 +75,7 @@ export const EN_ERROR_MESSAGES: Readonly<Record<string, string>> = {
   COMMUNITY_COMMENT_NOT_OWNED: 'You can only edit or delete your own comments.',
   COMMUNITY_COLLECTION_NOT_FOUND: "We couldn't find the collection to attach.",
   COMMUNITY_PERFUMES_FROM_COLLECTION:
-    'Posts with a collection take their perfumes from it. You can’t add perfumes separately.',
+    "Posts with a collection take their perfumes from it. You can't add perfumes separately.",
   COMMUNITY_IMAGE_EMPTY: 'Please choose an image to upload.',
   COMMUNITY_IMAGE_TOO_LARGE: 'This image is too large.',
   COMMUNITY_IMAGE_TYPE_NOT_ALLOWED:
@@ -103,12 +103,12 @@ export const EN_ERROR_MESSAGES: Readonly<Record<string, string>> = {
   RECOMMENDATION_NOT_FOUND: 'There are no perfumes to recommend right now.',
   RECOMMENDATION_REFRESH_IN_PROGRESS: "We're preparing your recommendations.",
   RECOMMENDATION_REFRESH_FAILED:
-    "We can't prepare recommendations right now. Please try again shortly.",
+    "We can't prepare recommendations right now. Please try again later.",
   RECOMMENDATION_EXPOSURE_NOT_FOUND: "We couldn't find that recommendation.",
   RECOMMENDATION_AI_UNAVAILABLE:
-    'Recommendations are unavailable right now. Please try again shortly.',
+    'Recommendations are unavailable right now. Please try again later.',
   RECOMMENDATION_RATE_LIMIT_EXCEEDED:
-    "You're asking for recommendations too often. Please try again shortly.",
+    "You're asking for recommendations too often. Please try again later.",
   RECOMMENDATION_RECORD_NOT_FOUND: "We couldn't find that recommendation.",
   RECOMMENDATION_FEEDBACK_ALREADY_ANSWERED:
     "You've already rated this recommendation.",
@@ -125,7 +125,7 @@ export const EN_ERROR_MESSAGES: Readonly<Record<string, string>> = {
   SHELF_ITEM_NOT_FOUND: "We couldn't find that item on your shelf.",
   SHELF_PERFUME_NOT_FOUND: "We couldn't find the perfume to save.",
   SHELF_ITEM_ALREADY_EXISTS: 'This perfume is already on your shelf.',
-  SHELF_MEMO_NOT_FOUND: "We couldn't find that note.",
+  SHELF_MEMO_NOT_FOUND: "We couldn't find your memo for this perfume.",
   SHELF_MEMO_ALREADY_EXISTS: 'You already have a note for this perfume.',
   SHELF_INVALID_FIT_RATING:
     'Your match rating must be between 1.0 and 5.0, in steps of 0.5.',
@@ -137,7 +137,7 @@ export const EN_ERROR_MESSAGES: Readonly<Record<string, string>> = {
   TASTE_PICKS_REQUIRED: 'Please pick one or two scent families.',
   TASTE_PICKS_DUPLICATED: "You can't pick the same scent family twice.",
   TASTE_UNKNOWN_SCENT_REGION: "That scent family doesn't exist.",
-  TASTE_PERFUME_NOT_ON_MAP: "That perfume isn't on the scent map.",
+  TASTE_PERFUME_NOT_ON_MAP: "That perfume isn't on the Scent Map.",
   TASTE_PERFUME_OUTSIDE_PRIMARY_REGION:
     "That perfume isn't in the area of your #1 scent family.",
 

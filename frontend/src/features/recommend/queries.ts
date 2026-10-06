@@ -1,13 +1,16 @@
 import { queryOptions } from '@tanstack/react-query'
 
 import { isApiError } from '@/shared/api/http'
+import type { Locale } from '@/shared/i18n/locale'
+import { useLocaleStore } from '@/shared/store/localeStore'
 
 import { getPersonalRecommendation, getRecommendation } from './api'
 
 const recommendKeys = {
   all: ['recommend'] as const,
   byQuery: (query: string) => [...recommendKeys.all, query] as const,
-  personal: () => [...recommendKeys.all, 'personal'] as const,
+  personal: (locale: Locale) =>
+    [...recommendKeys.all, 'personal', locale] as const,
 }
 
 /**
@@ -40,10 +43,19 @@ const REFRESH_IN_PROGRESS = 'RECOMMENDATION_REFRESH_IN_PROGRESS'
  * 받습니다(열어 본 병은 사흘 동안 빠지므로 대개 다른 병입니다).
  *
  * 다른 오류는 전역 규칙(4xx 는 다시 묻지 않음)을 따르되, 409 만 1.2초 간격으로 세 번까지 다시 묻습니다.
+ *
+ * NOTE: 키에 화면 언어가 있습니다. 근거 칸을 못 읽은 편지는 서버 문장(`reason`)을 그대로 쓰는데, 그 문장은
+ * 받을 때의 언어로 굳어 있어 9분 동안 담아 두면 언어를 바꾼 뒤에도 앞 언어로 남습니다. 언어를 바꾸면 그
+ * 언어의 편지를 새로 받습니다(대개 다른 병입니다 — 서버의 제비뽑기).
+ *
+ * @param locale 화면 언어. 안 주면 부를 때의 언어입니다 — 그때는 부르는 화면이 언어가 바뀔 때 다시
+ *   그려져야(`useLocale`) 키가 따라 바뀝니다
  */
-export const personalRecommendationQuery = () =>
+export const personalRecommendationQuery = (
+  locale: Locale = useLocaleStore.getState().locale,
+) =>
   queryOptions({
-    queryKey: recommendKeys.personal(),
+    queryKey: recommendKeys.personal(locale),
     queryFn: getPersonalRecommendation,
     staleTime: 1000 * 60 * 9,
     retry: (failureCount, error) => {

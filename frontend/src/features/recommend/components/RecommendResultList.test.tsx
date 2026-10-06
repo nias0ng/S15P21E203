@@ -142,4 +142,14 @@ describe('RecommendResultList', () => {
     await userEvent.click(card())
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
+
+  // 메인의 `TourSpotlight` 가 안내 동안 밝혀 두는 자리 — 안내 자신이 아니라 안내가 말하는 카드들입니다
+  it('결과 안내가 가리키는 카드 격자에 표시를 단다', () => {
+    renderList()
+
+    const grid = screen.getByRole('list')
+    expect(grid).toHaveAttribute('data-tour-target', 'results')
+    expect(grid).toContainElement(card())
+    expect(grid).not.toContainElement(screen.getByRole('status'))
+  })
 })

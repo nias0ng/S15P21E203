@@ -3,22 +3,22 @@ import type { recommend as ko } from '../ko/recommend'
 
 export const recommend = {
   personalReason: {
-    fit: 'Its {{keyword}} accord is close to the perfumes you rated highly.',
+    fit: 'It shares a {{keyword}} accord with perfumes you rated highly.',
     recent:
-      "It carries the {{keyword}} accord you've often met in perfumes you viewed recently.",
+      "It has the {{keyword}} accord that often appears in perfumes you've viewed recently.",
     taste:
       'It suits the {{keyword}} scent family you picked in the Taste Test.',
   },
   letter: {
     headline: {
       fit: 'We found a perfume like the ones you loved',
-      recent: 'A perfume in the style you’ve been exploring',
+      recent: "A perfume in the style you've been exploring",
       taste: 'Your Taste Test picked a perfume for you',
       unknown: 'A perfume has arrived for you',
     },
     nextNote: {
       none: 'No new perfume to send right now',
-      failed: 'Couldn’t get a new letter. Try again',
+      failed: "Couldn't get a new letter. Try again",
     },
     fold: 'Fold letter',
     salutation: 'Dear {{name}},',
@@ -28,7 +28,7 @@ export const recommend = {
     previous: 'Previous letter',
     next: 'Next letter',
     refreshing: 'Sealing a new letter',
-    another: 'Recommend another',
+    another: 'Get another recommendation',
     sign: 'From Hyanghae',
     envelope: {
       invitation:
@@ -38,8 +38,8 @@ export const recommend = {
     },
     sheet: 'A scent letter for you',
     invitation: {
-      headline: 'We can’t write your letter until we know your taste',
-      body: 'Pick a few scent families you like. We’ll read them with your match ratings on your shelf and the perfumes you’ve viewed lately, then send you a perfume picked for you.',
+      headline: "We can't write your letter until we know your taste",
+      body: "Pick a few scent families you like. We'll combine them with the match ratings on your shelf and the perfumes you've viewed lately to choose a perfume just for you.",
       action: 'Take the Taste Test',
     },
   },
@@ -49,30 +49,37 @@ export const recommend = {
     asked: 'You asked · ',
     narrowedBefore: 'Narrowed down by ',
     narrowedAfter: '.',
+    spokenLabel: "'{{label}}'",
     relaxedWithoutScent:
-      'We couldn’t read a scent in your words, so we picked perfumes that fit the conditions above, most reviewed first. Describe the smell in one more line and we can pick by scent.',
+      "We couldn't read a scent in your words, so we picked perfumes that fit the conditions above, most-rated first. Describe the smell in one more line and we can pick by scent.",
     relaxed:
       'Your request was broad, so we included similar scents too. Add a season or occasion to narrow it down.',
     empty: {
-      noConditionTitle: 'We couldn’t tell what scent you meant',
-      noConditionDescription: 'Try describing the smell — like {{examples}}.',
+      noConditionTitle: "We couldn't tell what scent you meant",
+      noConditionDescription:
+        'Try describing the smell or feeling — like {{examples}}.',
+      example: "'{{example}}' ({{gloss}})",
+      exampleGloss: {
+        zesty: 'zesty',
+        grassy: 'grassy',
+      },
       noConditionWithExamples:
         'Try describing the smell or feeling. You can also try one of these right away.',
       searchByName:
-        'If that was a perfume name · search all perfumes for ‘{{keyword}}’',
+        "If that was a perfume name · search all perfumes for '{{keyword}}'",
       noResultTitle: 'No perfume matches that scent',
       noResultDescription:
         'Try fewer conditions. Drop a season or occasion and ask again.',
     },
     error: {
-      rateLimitedTitle: 'Take a short break',
+      rateLimitedTitle: 'Please wait a moment',
       rateLimitedDescription:
-        'You searched many times in a short while. Try again in a moment.',
-      unavailableTitle: 'The recommendation server isn’t responding',
+        "You've searched several times in a short time. Try again in a moment.",
+      unavailableTitle: "The recommendation server isn't responding",
       unavailableDescription:
         'Other features like perfume search and the Shelf still work.',
-      failedTitle: 'Couldn’t load recommendations',
-      failedDescription: 'Please try again in a moment.',
+      failedTitle: "Couldn't load recommendations",
+      failedDescription: 'Please try again later.',
     },
     card: {
       rankLabel: 'Recommended',
@@ -86,10 +93,12 @@ export const recommend = {
       conditionEnd: '.',
       start: 'This perfume has ',
       joiner: ', ',
+      lastJoiner: ', and ',
       phraseBefore: 'the ',
-      phraseAfter: ' scent ‘{{phrase}}’ suggests',
+      phraseAfter: " scent that '{{phrase}}' suggests",
       requestedBefore: 'the ',
       requestedAfter: ' scent you asked for',
+      strength: ' ({{value}})',
       end: '.',
     },
     conditions: {
@@ -100,7 +109,7 @@ export const recommend = {
       summer: 'Summer',
       fall: 'Fall',
       winter: 'Winter',
-      day: 'Daytime',
+      day: 'Day',
       night: 'Night',
     },
   },
@@ -110,7 +119,7 @@ export const recommend = {
     satisfaction: 'Satisfaction',
     options: {
       satisfied: 'I like them',
-      neutral: 'They’re okay',
+      neutral: "They're okay",
       dissatisfied: 'Not quite',
     },
     comment: 'Comment (optional)',
@@ -118,9 +127,10 @@ export const recommend = {
     tooLong: 'Up to {{max}} characters',
     send: 'Send',
     error: {
-      rateLimited: 'You sent many times in a short while. Try again shortly.',
-      gone: 'This recommendation is no longer on record, so we couldn’t send it.',
-      failed: 'Couldn’t send your answer. Please try again in a moment.',
+      rateLimited:
+        "You've sent feedback several times in a short time. Please try again in a moment.",
+      gone: "This recommendation is no longer on record, so we couldn't send it.",
+      failed: "Couldn't send your answer. Please try again later.",
     },
   },
 } satisfies Messages<typeof ko>

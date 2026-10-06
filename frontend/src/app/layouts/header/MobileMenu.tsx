@@ -78,7 +78,7 @@ export function MobileMenu({
       {open && (
         <ul
           className={cn(
-            // 폭은 글자를 따라 늘어납니다 — 영어의 'Community · Free board' 가 45 칸에서 두 줄로 꺾였습니다
+            // 폭은 글자를 따라 늘어납니다 — 영어의 'Community · Free board'(지금은 Discussion) 가 45 칸에서 두 줄로 꺾였습니다
             'absolute top-full right-0 z-30 mt-2.5 w-max min-w-45 border',
             ink.menu,
           )}

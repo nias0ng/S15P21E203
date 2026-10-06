@@ -591,9 +591,11 @@ export default function MyShelfPage() {
       <ConfirmDialog
         open={removeOpen}
         onClose={() => setRemoveOpen(false)}
-        title={t('page.removeConfirm.title', {
-          name: browser.selected?.name ?? t('page.removeConfirm.fallbackName'),
-        })}
+        title={
+          browser.selected?.name
+            ? t('page.removeConfirm.title', { name: browser.selected.name })
+            : t('page.removeConfirm.titleUnnamed')
+        }
         description={t('page.removeConfirm.description')}
         confirmLabel={t('page.removeConfirm.confirm')}
         onConfirm={() => {

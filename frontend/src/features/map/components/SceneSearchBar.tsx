@@ -11,8 +11,9 @@ type Props = {
   /** 적은 말로 추천을 찾습니다. 빈 문자열은 오지 않습니다 */
   onSearch: (keyword: string) => void
   /**
-   * **첫 화면 안내(`welcome`)를 보여도 되는 때인가** — 로딩 커튼이 걷혔고 다른 창 · 잠수 · 해도가 없을 때입니다.
-   * 안내는 검색창 아래 설명줄 자리에 서고, 검색창을 누르거나 [×] 로 닫으면 끝납니다 (`tourStore`).
+   * **검색 안내(`search`)를 보여도 되는 때인가** — 로딩 커튼이 걷혔고 다른 창 · 잠수 · 해도가 없을 때입니다.
+   * 안내는 검색창 아래 설명줄 자리에 서고, 첫 검색이나 [×] 로 끝납니다. 언제 서는지(항해 줄기의 앞 단계 뒤)는
+   * `tourStore` 가 정합니다.
    */
   introduce?: boolean
   /** 시작 칸의 '요즘 인기 향수' — 화면이 넘어갈 길을 고릅니다(메인을 떠나는 잠수). 없으면 그 줄을 안 그립니다 */
@@ -80,30 +81,14 @@ export function SceneSearchBar({
   const startersOpen = starting && keyword.trim() === ''
 
   /*
-    첫 방문 안내 두 단계가 설명줄 자리에 섭니다 (`tourStore`). 처음 온 사람은 설명줄을 볼 까닭(마우스 올리기)이
-    없어 이 사이트가 무엇을 해 주는지 못 봤고, 이 칸에 무엇을 적어야 하는지도 몰랐습니다(사용성 테스트).
-      welcome  화면이 비었을 때 — 검색창 어디든 초점이 오면 끝납니다 (부표를 누른 것은 화면이 끝냅니다)
-      search   입력칸에 처음 초점이 왔을 때 — 첫 검색으로 끝납니다
+    첫 방문 안내의 검색 단계가 설명줄 자리에 섭니다 (`tourStore`). 처음 온 사람은 설명줄을 볼 까닭(마우스 올리기)이
+    없어 이 칸에 무엇을 적어야 하는지 몰랐습니다(사용성 테스트). 바다 · 방향키 · 부표를 배운 뒤 화면이 비어 있으면 서고,
+    첫 검색으로 끝납니다.
     안내가 서 있는 동안은 설명줄을 화면에서만 걷습니다 — 둘이 같은 자리 · 같은 말을 겹쳐 합니다.
   */
-  const welcome = useTourStep('welcome', introduce)
-  const searchTip = useTourStep('search', starting)
+  const searchTip = useTourStep('search', introduce)
   const stopTour = useTourStore((state) => state.stop)
-  const tip = welcome.showing
-    ? {
-        text: t('tour:welcome'),
-        finish: welcome.finish,
-        next: welcome.next,
-        starter: false,
-      }
-    : searchTip.showing
-      ? {
-          text: t('tour:search'),
-          finish: searchTip.finish,
-          next: searchTip.next,
-          starter: true,
-        }
-      : null
+  const tip = searchTip.showing
 
   const search = (text: string) => {
     searchTip.finish()
@@ -122,7 +107,6 @@ export function SceneSearchBar({
       className={cn(POSITION, 'group', className)}
       onFocus={(event) => {
         const target = event.target as HTMLElement
-        welcome.finish()
         // 시작 칸(시작 문장 · 그 위의 검색 안내) 안에서 옮겨 다니는 초점은 칸을 그대로 둡니다
         setStarting(
           target.tagName === 'INPUT' ||
@@ -135,32 +119,35 @@ export function SceneSearchBar({
         }
       }}
     >
-      <SearchField
-        ref={inputRef}
-        label={t('search.fieldLabel')}
-        placeholder={t('search.placeholder')}
-        value={keyword}
-        onChange={(event) => setKeyword(event.target.value)}
-        aria-describedby={hintId}
-        /*
-          ⚠️ 왼쪽 여백을 알약 기본값(20)에서 6 으로 줄입니다 — 왼쪽에 서는 것이 아이콘이
-          아니라 **제 바탕이 있는 이름표**라, 20 을 두면 칸이 알약 한가운데로 밀려 오른쪽
-          보내기 단추와 어긋나 보입니다. 두 단추가 같은 만큼 안으로 들어와야 짝이 맞습니다.
-        */
-        className={cn(SIZE, 'pointer-events-auto mx-auto pl-1.5')}
-        onSearch={(value) => {
-          const trimmed = value.trim()
-          if (!trimmed) return
-          search(trimmed)
-        }}
-        leading={<SearchTag onPick={() => inputRef.current?.focus()} />}
-        /*
-          메인만 모래빛입니다 (`--color-scene-send`). 여기는 판이 아니라 3D 바다 · 하늘
-          위라 뒤의 밝기가 시간대마다 바뀌는데, 방을 따르는 `archive` 의 청동 · 남색은
-          노을 하늘에서 바탕에 잠깁니다.
-        */
-        tone="scene"
-      />
+      {/* 검색 안내 동안 `TourSpotlight` 가 밝히는 자리 — 이름표까지 든 알약째라 겉 상자에 답니다(`SearchField` 의 남는 속성은 입력칸으로 갑니다) */}
+      <div data-tour-target="search" className="mx-auto w-fit">
+        <SearchField
+          ref={inputRef}
+          label={t('search.fieldLabel')}
+          placeholder={t('search.placeholder')}
+          value={keyword}
+          onChange={(event) => setKeyword(event.target.value)}
+          aria-describedby={hintId}
+          /*
+            ⚠️ 왼쪽 여백을 알약 기본값(20)에서 6 으로 줄입니다 — 왼쪽에 서는 것이 아이콘이
+            아니라 **제 바탕이 있는 이름표**라, 20 을 두면 칸이 알약 한가운데로 밀려 오른쪽
+            보내기 단추와 어긋나 보입니다. 두 단추가 같은 만큼 안으로 들어와야 짝이 맞습니다.
+          */
+          className={cn(SIZE, 'pointer-events-auto pl-1.5')}
+          onSearch={(value) => {
+            const trimmed = value.trim()
+            if (!trimmed) return
+            search(trimmed)
+          }}
+          leading={<SearchTag onPick={() => inputRef.current?.focus()} />}
+          /*
+            메인만 모래빛입니다 (`--color-scene-send`). 여기는 판이 아니라 3D 바다 · 하늘
+            위라 뒤의 밝기가 시간대마다 바뀌는데, 방을 따르는 `archive` 의 청동 · 남색은
+            노을 하늘에서 바탕에 잠깁니다.
+          */
+          tone="scene"
+        />
+      </div>
 
       {/*
         ⭐ 설명줄은 **알약 뒤에 숨어 있다가 마우스를 올리면 아래로 빠져나옵니다** (2026-09-20 사용자 지시).
@@ -217,12 +204,15 @@ export function SceneSearchBar({
 
           {tip && (
             <TourTip
-              data-starter={tip.starter ? '' : undefined}
-              onClose={tip.finish}
-              onNext={tip.next}
+              data-starter=""
+              onClose={searchTip.finish}
+              onNext={searchTip.next}
               onStopAll={stopTour}
             >
-              {tip.text}
+              {t('tour:search')}
+              <span className="text-charcoal-soft block">
+                {t('tour:searchExample')}
+              </span>
             </TourTip>
           )}
 
@@ -237,6 +227,8 @@ export function SceneSearchBar({
             <div
               role="group"
               aria-label={t('search.starters.label')}
+              // 검색 안내 동안 입력칸을 누르면 펼쳐지는 줄도 `TourSpotlight` 가 함께 밝힙니다 — 막 밑에 깔리면 못 누릅니다
+              data-tour-target="search"
               className="pointer-events-auto mx-auto mt-2 flex w-fit max-w-[min(100%,calc(var(--spacing)*150))] flex-wrap justify-center gap-1.5 px-2"
             >
               {STARTER_KEYS.map((key) => {

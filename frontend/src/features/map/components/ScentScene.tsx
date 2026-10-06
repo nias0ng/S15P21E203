@@ -6,6 +6,7 @@ import { cn } from '@/shared/lib/cn'
 import { useDiveStore } from '@/shared/store/diveStore'
 import type { GraphicsMode, SceneQuality } from '@/shared/store/graphicsStore'
 import { useLocale } from '@/shared/store/localeStore'
+import { useTourStore } from '@/shared/store/tourStore'
 
 import { setBoatAnchorSource, type BoatAnchor } from '../lib/boatAnchor'
 import {
@@ -51,9 +52,17 @@ export interface ScenePerfumeRef {
  */
 /**
  * 엔진 안에서만 일어나 앱이 못 보는 행동 — 첫 방문 안내(`tourStore`)가 듣습니다 (엔진 `host.js` 의 `hostTour`).
+ * 이름이 곧 그 행동으로 끝나는 단계입니다.
+ *   sea      바다를 눌러 배가 그리로 떠났다 (범위 밖 · 해역 연출만 닫은 누름은 안 옵니다)
+ *   keys     방향키로 배를 몰았다 — 누르고 있는 동안 되풀이해 옵니다
+ *   similar  떠오른 12개 가운데 누른 향수가 아닌 부표를 눌렀다
  *   minimap  미니맵 · 해도를 눌러 떠났다
  */
-export type SceneTourEvent = 'minimap'
+const SCENE_TOUR_EVENTS = ['sea', 'keys', 'similar', 'minimap'] as const
+export type SceneTourEvent = (typeof SCENE_TOUR_EVENTS)[number]
+
+const isSceneTourEvent = (event: string): event is SceneTourEvent =>
+  (SCENE_TOUR_EVENTS as readonly string[]).includes(event)
 
 export interface SceneMove {
   perfumeId: number | null
@@ -156,6 +165,16 @@ interface EngineHandle {
    */
   tour?: {
     watch: (step: TourAnchorStep | null) => void
+    /**
+     * 3D 를 멈춥니다 · 되살립니다 (첫 방문 안내의 스포트라이트). 멈춘 동안에도 `anchor` 는 채웁니다.
+     * NOTE: 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다. 그때는 막만 씌우고 3D 는 그대로 돕니다.
+     */
+    freeze?: (on: boolean) => void
+    /**
+     * 해역 연출을 닫습니다 — Esc 와 같은 닫기이고, 연출이 없으면 false 입니다.
+     * NOTE: 없을 수 있습니다 — 그 기능 전 엔진 빌드입니다. 그때는 [다음] 을 눌러도 연출이 그대로 남습니다.
+     */
+    leaveZone?: () => boolean
     anchor: {
       on: boolean
       x: number
@@ -163,6 +182,11 @@ interface EngineHandle {
       w: number
       h: number
       side: number
+      /** 스포트라이트가 밝힐 상자 (iframe 기준 CSS px) — `hw` 가 0 이면 위 상자를 밝힙니다 */
+      hx?: number
+      hy?: number
+      hw?: number
+      hh?: number
     }
   }
 }
@@ -232,6 +256,12 @@ type Props = {
    * 연출이 닫히면 null 입니다. 첫 방문 안내가 해역의 뜻과 닫는 법을 말합니다.
    */
   onZoneChange?: (label: string | null) => void
+  /**
+   * 누른 향수 곁에 **향수 12개가 떠올라 닮은 것끼리 선으로 이어져 있는가** (엔진 `<html data-similar>` · v0.90.0).
+   * 해역 연출 중에 누른 부표는 카드만 서고 12개가 안 솟아, 카드 고정(`onCardPinChange`)만으로는 못 가릅니다.
+   * 첫 방문 안내가 '닮은 향수를 눌러 보라' 고 하는 때입니다.
+   */
+  onSimilarChange?: (open: boolean) => void
   /** 엔진 안에서만 일어난 행동 (위 `SceneTourEvent`) */
   onTourEvent?: (event: SceneTourEvent) => void
   /**
@@ -311,6 +341,7 @@ export function ScentScene({
   onCardChange,
   onCardPinChange,
   onZoneChange,
+  onSimilarChange,
   onTourEvent,
   onBoot,
   onMove,
@@ -365,6 +396,7 @@ export function ScentScene({
     onCardChange,
     onCardPinChange,
     onZoneChange,
+    onSimilarChange,
     onTourEvent,
     onBoot,
     onMove,
@@ -383,6 +415,7 @@ export function ScentScene({
       onCardChange,
       onCardPinChange,
       onZoneChange,
+      onSimilarChange,
       onTourEvent,
       onBoot,
       onMove,
@@ -537,9 +570,9 @@ export function ScentScene({
           const next = parseSceneQuality(info)
           if (next) latest.current.onQuality?.(next)
         },
-        // 첫 방문 안내가 들을 행동 (host.js `hostTour`) — 미니맵 · 해도로 떠났다
+        // 첫 방문 안내가 들을 행동 (host.js `hostTour` · 위 `SceneTourEvent`) — 모르는 이름은 버립니다
         tour: (event) => {
-          if (event === 'minimap') latest.current.onTourEvent?.(event)
+          if (isSceneTourEvent(event)) latest.current.onTourEvent?.(event)
         },
       })
       // 시작 단계는 처리기를 꽂기 **전에** 정해졌으므로 따라잡습니다 (부팅 신호의 `boot()` 와 같은 사정)
@@ -567,8 +600,17 @@ export function ScentScene({
             w: anchor.w,
             h: anchor.h,
             side: anchor.side,
+            hole: anchor.hw
+              ? {
+                  x: box.left + (anchor.hx ?? 0),
+                  y: box.top + (anchor.hy ?? 0),
+                  w: anchor.hw,
+                  h: anchor.hh ?? 0,
+                }
+              : null,
           }
         },
+        freeze: (on) => engine.tour?.freeze?.(on),
       })
       /*
         엔진이 iframe 문서의 <html> 속성으로 알리는 것들을 지켜봅니다.
@@ -576,6 +618,7 @@ export function ScentScene({
           data-chart  전체 화면 해도가 열렸는가 (2026-09-21 — 위 onChartChange 머리말)
           data-card   향수 카드가 떠 있는가 (2026-10-01 — 위 onCardChange 머리말)
           data-card-pin · data-zone · data-zone-label  누른 카드 · 해역 연출 (첫 방문 안내 — 위 onCardPinChange · onZoneChange 머리말)
+          data-similar  누른 향수 곁에 12개가 떠 있는가 (첫 방문 안내 — 위 onSimilarChange 머리말)
         ⚠️ 관찰자는 하나입니다 — 둘 다 같은 요소의 속성이라 나눌 이유가 없습니다.
       */
       timeWatch?.disconnect()
@@ -591,6 +634,7 @@ export function ScentScene({
               ? null
               : (html.dataset.zoneLabel ?? html.dataset.zone),
           )
+          latest.current.onSimilarChange?.(html.dataset.similar !== undefined)
         }
         report()
         timeWatch = new MutationObserver(report)
@@ -603,6 +647,7 @@ export function ScentScene({
             'data-card-pin',
             'data-zone',
             'data-zone-label',
+            'data-similar',
           ],
         })
       }
@@ -734,6 +779,19 @@ export function ScentScene({
     if (!ready) return
     handle.current?.setLang?.(locale)
   }, [ready, locale])
+
+  /*
+    첫 방문 안내를 [다음] 으로 넘기면 해역 연출을 닫습니다 — 연출의 좌우 그림이 미니맵 자리를 덮고 있어,
+    다음 안내가 미니맵을 가리켜도 그림만 밝혀졌습니다. 연출이 없으면 엔진이 아무 일도 안 합니다.
+  */
+  useEffect(
+    () =>
+      useTourStore.subscribe((state, prev) => {
+        if (state.advanced !== prev.advanced)
+          handle.current?.tour?.leaveZone?.()
+      }),
+    [],
+  )
 
   return (
     <>
