@@ -2899,7 +2899,7 @@ for (const k of FROZEN_THAW) document.addEventListener(k, onFrozenInput, { captu
 //     card     떠 있는 향수 카드 · zone 하단 안내(폰처럼 숨어 있으면 속도 계기) · minimap 미니맵
 //     boat     배 옆구리 — 선실 말풍선이 꼬리를 대는 점과 같다 (side 1 오른쪽 · −1 왼쪽)
 //   ⭐ 밝힐 상자 (v0.91.0 — `hx · hy · hw · hh`, 앱의 스포트라이트가 막에 뚫는 구멍). 안내가 붙는 상자와 밝힐 것이 다른 단계만 채운다 :
-//     sea · keys · boat  배 둘레 (선체 + 돛 — tourBoatHole). 안내가 붙는 상자는 옆구리의 폭 0 짜리 선이라 그대로 뚫으면 아무것도 안 보인다
+//     sea · keys · boat  배 둘레 (선체 · 선실 — 돛은 뺀다 · tourBoatHole). 안내가 붙는 상자는 옆구리의 폭 0 짜리 선이라 그대로 뚫으면 아무것도 안 보인다
 //     buoy · similar     이름표와 그 밑의 부표 (tourMarkHole). similar 가 카드에 붙으면 카드 그대로다
 //     card · zone · minimap  hw 0 — 안내가 붙는 상자 그대로다
 //   ⚠ 좌표는 **iframe 기준** CSS px 다 (#stage 기준이 아니다). ⚠ 안 볼 때(watch null)는 아무것도 안 잰다
@@ -2929,25 +2929,35 @@ function tourHole(x0, y0, x1, y1, pad) {
   x1 = Math.min(W(), x1 + pad); y1 = Math.min(H(), y1 + pad);
   return x1 - x0 > 1 && y1 - y0 > 1 ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
 }
-// 배 둘레 (v0.91.0) — 배의 **pivot 로컬 상자**(보이는 메시 전부 : 선체 · 돛대 · 돛)의 여덟 모서리를 배 자리와 같은 카메라(view)로 투영한 화면 상자다 (#stage 기준 CSS px).
+// 배 둘레 (v0.91.0) — 배의 **pivot 로컬 상자**(선체 · 선실 외벽 — 아래 v0.91.2)의 여덟 모서리를 배 자리와 같은 카메라(view)로 투영한 화면 상자다 (#stage 기준 CSS px).
 //   ⚠ 로컬 상자는 1초마다만 다시 잰다 — 종이배 ↔ GLB 가 바뀌거나 GLB 가 늦게 와도 따라오고, 매 프레임 메시를 돌지 않는다.
 //     히트박스(재질 visible false — boat.js 의 boatHit)는 뺀다 · 로컬 y 0(용골 바닥 언저리) 밑은 물속이라 자른다
 //   ⚠ 뱃머리가 어디를 보든 맞는다 — 배 길이를 화면 반지름(boat.screen.r)으로 어림하면 옆으로 돈 배와 뒤에서 본 배가 같은 폭이 된다.
 //     메시를 못 쟀으면(로드 전 · 빈 상자) 그 어림으로 둔다
-const _tourBoatLocal = new THREE.Box3(), _tourBoatPart = new THREE.Box3(), _tourBoatInv = new THREE.Matrix4(), _tourBoatM = new THREE.Matrix4();
+//   ⭐ v0.91.2 : **선체 · 선실 외벽만** 잰다 (사용자 : *"돛 말고 배 위치에만 네모가"*). 돛 · 돛대 · 밧줄까지 넣으면 돛이 바람에 돌 때마다(1초마다 다시 재므로)
+//     또 카드를 연 가까운 카메라에서 상자가 세로로 길어졌다 줄었다 했다. 부품 이름은 boat.js 의 OCCLUDE_KEEP 과 같은 표다 — GLB 를 갈면 같이 본다.
+//     이름 있는 선체가 없으면(종이배) 보이는 메시 전부에서 아래 TOUR_HULL_H 만큼만 쓴다 (돛대 끝까지 가는 상자를 선체 높이로 자른다)
+const TOUR_HULL = /^(boat|closed[ _]?off)$/i, TOUR_HULL_H = 0.2;
+const _tourBoatLocal = new THREE.Box3(), _tourBoatAll = new THREE.Box3(), _tourBoatPart = new THREE.Box3(), _tourBoatInv = new THREE.Matrix4(), _tourBoatM = new THREE.Matrix4();
 let _tourBoatAt = -1e9;
 function tourBoatHole() {
-  const pv = boat.pivot, b = _tourBoatLocal, now = performance.now();
+  const pv = boat.pivot, b = _tourBoatLocal, all = _tourBoatAll, now = performance.now();
   if (now - _tourBoatAt > 1000) {
     _tourBoatAt = now;
-    b.makeEmpty();
+    b.makeEmpty(); all.makeEmpty();
     _tourBoatInv.copy(pv.matrixWorld).invert();
     pv.traverseVisible((n) => {
       if (!n.isMesh || !n.geometry || (n.material && n.material.visible === false)) return;
       if (!n.geometry.boundingBox) n.geometry.computeBoundingBox();
       _tourBoatM.multiplyMatrices(_tourBoatInv, n.matrixWorld);
-      b.union(_tourBoatPart.copy(n.geometry.boundingBox).applyMatrix4(_tourBoatM));
+      _tourBoatPart.copy(n.geometry.boundingBox).applyMatrix4(_tourBoatM);
+      all.union(_tourBoatPart);
+      if (TOUR_HULL.test(n.name)) b.union(_tourBoatPart);
     });
+    if (b.isEmpty() && !all.isEmpty()) {
+      b.copy(all);
+      b.max.y = Math.min(b.max.y, Math.max(0, b.min.y) + (all.max.y - all.min.y) * TOUR_HULL_H);
+    }
   }
   if (b.isEmpty()) {
     const s = boat.screen;
