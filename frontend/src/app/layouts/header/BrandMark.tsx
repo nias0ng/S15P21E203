@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router'
 
 import { ROUTES } from '@/shared/config/routes'
@@ -49,6 +50,7 @@ export function BrandMark({
   // 어디서 왔는지 모르므로 여기서 봅니다
   const depth = riseDepthOf(useLocation().pathname)
   const startDive = useDiveStore((state) => state.start)
+  const { t } = useTranslation()
   return (
     <Link
       to={ROUTES.HOME}
@@ -61,7 +63,7 @@ export function BrandMark({
               startDive(ROUTES.HOME, 'rise', depth)
             }
       }
-      aria-label="향해"
+      aria-label={t('site.name')}
       className={cn('block shrink-0', ink.text, FOCUS, ink.ring, className)}
     >
       <Wordmark />

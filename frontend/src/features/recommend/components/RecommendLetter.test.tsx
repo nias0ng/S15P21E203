@@ -128,21 +128,28 @@ describe('RecommendLetter', () => {
   it('영어 화면은 원래 이름을 크게 쓰고, 근거 값으로 영어 문장을 짓는다', async () => {
     useLocaleStore.getState().setLocale('en')
     const user = userEvent.setup()
-    renderLetter()
+    renderLetter({
+      facts: { ...FACTS, accords: ['Citrus', 'Woody', 'Aromatic'] },
+    })
 
     await user.click(screen.getByRole('button', { name: /open/i }))
 
     expect(screen.getByText('Artisan Black')).toHaveClass('rec-name')
     expect(screen.queryByText('아티산 블랙')).not.toBeInTheDocument()
+    // 문장 안의 향 특성은 소문자입니다 — 형광펜은 문장에 적힌 그대로를 칠합니다
     expect(
       screen.getByText(
         (_, element) =>
           element?.classList.contains('rec-reason') === true &&
           element.textContent ===
-            'Its Woody accord is close to the perfumes you rated highly.',
+            'It shares a woody accord with perfumes you rated highly.',
       ),
     ).toBeInTheDocument()
-    expect(screen.getByText('Woody', { selector: 'mark' })).toBeInTheDocument()
+    expect(screen.getByText('woody', { selector: 'mark' })).toBeInTheDocument()
+    // 칩은 이름표 꼴(첫 글자 대문자) 그대로라, 근거가 된 칩을 같은 말로 알아봅니다
+    expect(screen.getByText('Woody', { selector: 'li' })).toHaveAttribute(
+      'data-match',
+    )
   })
 
   it('펼쳤을 때만 노출을 한 번 남긴다 — 봉투가 보인 것만으로는 남기지 않는다', async () => {

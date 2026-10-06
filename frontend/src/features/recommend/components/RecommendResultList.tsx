@@ -66,7 +66,8 @@ export function RecommendResultList({ perfumes, ...context }: Props) {
 
   return (
     <>
-      <ul className={CARD_GRID}>
+      {/* 메인의 `TourSpotlight` 가 results 안내 동안 밝혀 두는 자리 — 안내가 말하는 카드 격자입니다 */}
+      <ul data-tour-target="results" className={CARD_GRID}>
         {perfumes.map((perfume, index) => {
           const { name, brand } = displayNames(locale, perfume)
           return (

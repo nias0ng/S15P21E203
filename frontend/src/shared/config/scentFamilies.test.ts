@@ -43,7 +43,7 @@ describe('향 계열 공용 어휘', () => {
 
     useLocaleStore.getState().setLocale('en')
 
-    expect(names.MUSK).toBe('Musky')
+    expect(names.MUSK).toBe('Musk')
     expect(scentFamilyName('FLORAL')).toBe('Floral')
   })
 })

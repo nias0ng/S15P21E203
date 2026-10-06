@@ -114,6 +114,14 @@ const familyOfKorean = (name: string): ScentFamilyKey | undefined =>
 const englishAccord = (accord: string) =>
   accord.charAt(0).toUpperCase() + accord.slice(1)
 
+type LabelOptions = {
+  /**
+   * 영어 문장 가운데에 넣을 꼴 — 소문자로 씁니다(`the soapy scent`). 칩 · 이름표처럼 따로 서는
+   * 자리는 첫 글자 대문자 그대로입니다. 한국어에는 대소문자가 없어 영향이 없습니다
+   */
+  inSentence?: boolean
+}
+
 function koreanLabel(key: string): string | undefined {
   const lower = key.toLowerCase()
   if (Object.hasOwn(ACCORD_NAMES_KO, key)) return ACCORD_NAMES_KO[key]
@@ -145,12 +153,22 @@ function englishLabel(key: string): string | undefined {
  * 그 자리는 앞 언어로 남습니다.
  *
  * @param evidence 추천 이유의 근거 칸. 여럿이면 `' · '` 로 이어져 있습니다
+ * @param options `inSentence` 면 영어 이름을 문장 안의 꼴(소문자)로 씁니다
  * @returns 같은 자리에 같은 구분자로 다시 이은 말
  */
-export function accordLabel(evidence: string): string {
-  const label = i18n.language === 'en' ? englishLabel : koreanLabel
+export function accordLabel(
+  evidence: string,
+  { inSentence = false }: LabelOptions = {},
+): string {
+  const english = i18n.language === 'en'
+  const label = english ? englishLabel : koreanLabel
   return evidence
     .split(EVIDENCE_SEPARATOR)
-    .map((part) => label(part.trim()) ?? part)
+    .map((part) => {
+      const known = label(part.trim())
+      if (known === undefined) return part
+      // 모르는 값(그대로 흘려보내는 값)은 대소문자도 손대지 않습니다
+      return english && inSentence ? known.toLowerCase() : known
+    })
     .join(EVIDENCE_SEPARATOR)
 }

@@ -27,11 +27,11 @@ export const collection = {
     description: 'Description (optional)',
     descriptionPlaceholder: 'When do you reach for these scents?',
     editHint:
-      'Only the name and description change here. Add or remove perfumes in the case.',
+      'Only the name and description change here. Add or remove perfumes on the collection page.',
     pickHeading: 'Perfumes to add',
     pickEmpty: 'No perfumes on your shelf yet',
     visibility:
-      'Others only see a collection when you share it on the Free board. You can add more perfumes later.',
+      'Others only see a collection when you share it on the Discussion board. You can add more perfumes later.',
   },
   pick: {
     searchLabel: 'Search by perfume or brand',
@@ -67,7 +67,7 @@ export const collection = {
     perfumesRegion: 'Perfumes in this collection',
     removeConfirm: {
       title: "Remove '{{name}}' from this collection?",
-      fallbackName: 'this perfume',
+      titleUnnamed: 'Remove this perfume from this collection?',
       description: 'It stays on your shelf.',
       confirm: 'Remove',
     },

@@ -48,7 +48,7 @@ describe('GuideMenu', () => {
   })
 
   it('[안내 처음부터 다시 보기] 는 끝낸 안내 · 끄기를 풀고 판을 닫는다', async () => {
-    useTourStore.setState({ done: ['welcome', 'search'], off: true })
+    useTourStore.setState({ done: ['sea', 'search'], off: true })
     renderMenu()
 
     await userEvent.click(trigger())

@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest'
 
 import { useLocaleStore } from '@/shared/store/localeStore'
 
-import { nlrReasonSentence, type ReasonContext } from './nlrReason'
+import {
+  conditionLabel,
+  nlrReasonSentence,
+  type ReasonContext,
+} from './nlrReason'
 import type { RecommendReason } from './types'
 
 /**
@@ -226,6 +230,7 @@ describe('nlrReasonSentence', () => {
 })
 
 describe('nlrReasonSentence — 영어 화면', () => {
+  // 문장 가운데의 향 이름은 소문자로, 강도는 한 칸 띄워 적습니다
   it('영어 틀로 짓고 향 이름 · 조건 이름을 영어로 쓴다', () => {
     useLocaleStore.getState().setLocale('en')
 
@@ -235,7 +240,7 @@ describe('nlrReasonSentence — 영어 화면', () => {
         { phrase: null, evidence: 'woody', strengths: [81] },
       ]),
     ).toBe(
-      'This perfume has the Soapy(100) · Fresh(93) scent ‘빨래’ suggests, the Woody(81) scent you asked for.',
+      "This perfume has the soapy (100) · fresh (93) scent that '빨래' suggests, and the woody (81) scent you asked for.",
     )
     expect(
       sentenceOf([
@@ -246,5 +251,49 @@ describe('nlrReasonSentence — 영어 화면', () => {
         },
       ]),
     ).toBe('Fits what you asked for: Masculine · Fall.')
+  })
+
+  it('묶음이 셋 이상이면 마지막 묶음 앞에만 and 를 붙인다', () => {
+    useLocaleStore.getState().setLocale('en')
+
+    expect(
+      sentenceOf([
+        { phrase: '베이비파우더', evidence: 'powdery', strengths: [100] },
+        { phrase: '나무', evidence: 'woody', strengths: [81] },
+        { phrase: null, evidence: 'fresh spicy', strengths: [45] },
+      ]),
+    ).toBe(
+      "This perfume has the powdery (100) scent that '베이비파우더' suggests, the woody (81) scent that '나무' suggests, and the fresh spicy (45) scent you asked for.",
+    )
+  })
+
+  // 노트 이름은 사용자가 쓴 한국어 그대로라 영어 문장 속에서 인용한 말로 감쌉니다
+  it('표에 없는 조건(사용자가 쓴 노트 이름)은 따옴표로 감싼다', () => {
+    useLocaleStore.getState().setLocale('en')
+
+    expect(
+      sentenceOf([
+        {
+          phrase: null,
+          evidence: '남성적인 · 밤에 어울리는',
+          strengths: [null, null],
+        },
+        { phrase: '미모사', evidence: '미모사', strengths: [null] },
+      ]),
+    ).toBe("Fits what you asked for: Masculine · Night · '미모사'.")
+  })
+})
+
+describe('conditionLabel', () => {
+  it('정해진 조건은 화면 언어로 바꾸고, 노트 이름은 한국어 화면에서 그대로 둔다', () => {
+    expect(conditionLabel('낮에 어울리는')).toBe('낮에 어울리는')
+    expect(conditionLabel('장미')).toBe('장미')
+  })
+
+  it('영어 화면은 조건을 영어로, 노트 이름은 따옴표로 감싼다', () => {
+    useLocaleStore.getState().setLocale('en')
+
+    expect(conditionLabel('낮에 어울리는')).toBe('Day')
+    expect(conditionLabel('장미')).toBe("'장미'")
   })
 })

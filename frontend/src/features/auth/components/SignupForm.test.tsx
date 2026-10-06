@@ -609,14 +609,14 @@ describe('SignupForm 영어 화면', () => {
     ).toBeInTheDocument()
     expect(screen.getByText("Passwords don't match")).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Verify' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Send code' }))
 
     expect(await screen.findByLabelText('Verification code')).toHaveAttribute(
       'placeholder',
       '7-digit code',
     )
     expect(
-      screen.getByRole('timer', { name: 'Time left 05:00' }),
+      screen.getByRole('timer', { name: 'Time left: 05:00' }),
     ).toBeInTheDocument()
   })
 
@@ -636,12 +636,12 @@ describe('SignupForm 영어 화면', () => {
       screen.getByLabelText('Email domain'),
       'naver.com',
     )
-    await userEvent.click(screen.getByRole('button', { name: 'Verify' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Send code' }))
     await userEvent.type(
       await screen.findByLabelText('Verification code'),
       '1111111',
     )
-    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Verify' }))
 
     expect(
       await screen.findByText(

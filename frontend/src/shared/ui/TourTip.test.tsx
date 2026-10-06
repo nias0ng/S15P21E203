@@ -15,6 +15,17 @@ describe('TourTip', () => {
     expect(screen.getByRole('status')).toHaveTextContent('부표를 눌러 보세요')
   })
 
+  // 메인의 `TourSpotlight` 가 이 표시로 안내를 찾아 둘레를 덮고 초점을 옮깁니다
+  it('뿌리에 안내 표시를 달고, 부르는 쪽이 넘긴 속성으로 지워지지 않는다', () => {
+    render(
+      <TourTip data-tour-tip="덮어씀" onClose={vi.fn()} onStopAll={vi.fn()}>
+        안내
+      </TourTip>,
+    )
+
+    expect(screen.getByRole('status')).toHaveAttribute('data-tour-tip', '')
+  })
+
   it('[×] 는 이 안내만, [안내 그만 보기] 는 남은 안내를 끈다', async () => {
     const onClose = vi.fn()
     const onStopAll = vi.fn()

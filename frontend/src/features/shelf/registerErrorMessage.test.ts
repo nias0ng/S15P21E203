@@ -38,6 +38,11 @@ describe('shelfRegisterErrorMessage', () => {
     expect(
       shelfRegisterErrorMessage(new ShelfRegisterPartialError(['rating'])),
     ).toBe("Added to your shelf, but couldn't save match rating")
+    expect(
+      shelfRegisterErrorMessage(
+        new ShelfRegisterPartialError(['rating', 'memo']),
+      ),
+    ).toBe("Added to your shelf, but couldn't save match rating and memo")
     expect(shelfRegisterErrorMessage(new TypeError('엉뚱한 오류'))).toBe(
       "Couldn't save to your shelf.",
     )

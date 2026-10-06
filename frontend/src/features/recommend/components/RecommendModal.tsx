@@ -47,8 +47,14 @@ type Props = {
  * ⚠️ **LLM 없이 사전만으로 결과가 나오는 말만 둡니다** — `ai/tests/test_feedback_guards.py`
  * 가 같은 두 말을 봅니다. 예전 예시('비누 냄새 나는 향' · '비 온 뒤 흙냄새')는 사전 경로에서
  * 다시 '못 알아들었다' 로 끝나, 권한 말을 따라 친 사람이 같은 화면을 또 봤습니다.
+ *
+ * 영어 화면에서도 예시는 한국어 그대로 둡니다 — AI 가 가장 잘 알아듣는 말이라서입니다. 대신 뜻풀이
+ * (`gloss` — 번역 묶음 `nlr.empty.exampleGloss`)를 곁들입니다. 한국어 화면의 뜻풀이는 비어 있습니다.
  */
-const RETRY_EXAMPLES = ['상큼한 향', '풀향'] as const
+const RETRY_EXAMPLES = [
+  { query: '상큼한 향', gloss: 'zesty' },
+  { query: '풀향', gloss: 'grassy' },
+] as const
 
 /**
  * 자연어 추천 결과 (NLR-01 · NLR-06 · NLR-07). 별도 화면으로 두면 한 줄 적을 때마다 메인의
@@ -274,6 +280,10 @@ function NoConditionState({
 }) {
   const { t } = useTranslation('recommend')
   const nameKeyword = searchWords(query).join(' ')
+  const examples = RETRY_EXAMPLES.map((example) => ({
+    query: example.query,
+    gloss: t(`nlr.empty.exampleGloss.${example.gloss}`),
+  }))
 
   return (
     <EmptyState
@@ -282,23 +292,32 @@ function NoConditionState({
         onRequery
           ? t('nlr.empty.noConditionWithExamples')
           : t('nlr.empty.noConditionDescription', {
-              examples: RETRY_EXAMPLES.map((example) => `‘${example}’`).join(
-                ', ',
-              ),
+              examples: examples
+                .map((example) =>
+                  t('nlr.empty.example', {
+                    example: example.query,
+                    gloss: example.gloss,
+                  }),
+                )
+                .join(', '),
             })
       }
       action={
         <div className="flex flex-col items-center gap-2.5">
           {onRequery && (
             <div className="flex flex-wrap justify-center gap-2.5">
-              {RETRY_EXAMPLES.map((example) => (
+              {examples.map((example) => (
                 <Button
-                  key={example}
+                  key={example.query}
                   variant="outline"
                   size="sm"
-                  onClick={() => onRequery(example)}
+                  onClick={() => onRequery(example.query)}
                 >
-                  {example}
+                  {/* 한 덩이로 감싸야 뜻풀이 앞 칸이 단추의 flex 사이로 사라지지 않습니다 */}
+                  <span>
+                    <span lang="ko">{example.query}</span>
+                    {example.gloss && ` (${example.gloss})`}
+                  </span>
                 </Button>
               ))}
             </div>

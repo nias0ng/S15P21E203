@@ -9,7 +9,7 @@ export const layout = {
     editProfile: 'Edit profile',
     community: {
       reviews: 'Reviews',
-      free: 'Free board',
+      free: 'Discussion',
     },
     mobileMenu: {
       label: 'Menu',
@@ -34,15 +34,15 @@ export const layout = {
       low: { label: 'Low', hint: 'Light · saves battery' },
       min: { label: 'Lowest', hint: 'Lightest · draws 30 frames a second' },
     },
-    live: 'Now {{tier}}',
-    liveIntegrated: 'Now {{tier}} · integrated graphics',
+    live: 'Currently: {{tier}}',
+    liveIntegrated: 'Currently: {{tier}} · integrated graphics',
     calm: {
       label: 'Reduce motion',
       hint: 'Stops dolphins, birds and screen sway',
-      osOn: 'Already reduced by your device’s Reduce Motion setting',
+      osOn: "Already reduced by your device's Reduce Motion setting",
     },
     integratedTip:
-      'On a laptop with a dedicated GPU, set your browser to ‘High performance’ in Windows Settings › System › Display › Graphics for smoother motion',
+      "On a laptop with a dedicated GPU, set your browser to 'High performance' in Windows Settings › System › Display › Graphics for smoother motion",
   },
   feedback: {
     link: 'Send feedback (opens a survey in a new tab)',

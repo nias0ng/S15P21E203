@@ -26,6 +26,7 @@ type SentenceKey =
   | 'conditionEnd'
   | 'start'
   | 'joiner'
+  | 'lastJoiner'
   | 'phraseBefore'
   | 'phraseAfter'
   | 'requestedBefore'
@@ -56,17 +57,28 @@ const CONDITION_KEYS: Record<string, ConditionKey> = {
   '밤에 어울리는': 'night',
 }
 
-/**
- * 향이 아닌 조건(성별 · 계절 · 낮밤)의 이름을 화면 언어로 바꿉니다. 조건 이름은 AI 가 한국어로
- * 주는데, 아홉 개로 정해져 있어 영어 화면에서 영어로 바꿀 수 있습니다.
- *
- * NOTE: 노트 이름(`장미`)은 표에 없어 그대로 나갑니다 — 영어 이름이 응답에 오지 않습니다.
- */
-export function conditionLabel(label: string): string {
+/** 표에 있는 조건이면 화면 언어의 이름, 없으면 undefined */
+function translatedCondition(label: string): string | undefined {
   const key = Object.hasOwn(CONDITION_KEYS, label)
     ? CONDITION_KEYS[label]
     : undefined
-  return key === undefined ? label : i18n.t(`recommend:nlr.conditions.${key}`)
+  return key === undefined
+    ? undefined
+    : i18n.t(`recommend:nlr.conditions.${key}`)
+}
+
+/**
+ * 향이 아닌 조건(성별 · 계절 · 낮밤 · 노트)의 이름을 화면 언어로 바꿉니다. 성별 · 계절 · 낮밤은
+ * AI 가 한국어로 주는데, 아홉 개로 정해져 있어 영어 화면에서 영어로 바꿀 수 있습니다.
+ *
+ * NOTE: 노트 이름(`장미`)은 사용자가 쓴 말 그대로라 표에 없고 영어 이름도 응답에 오지 않습니다.
+ * 그대로 두되 `spokenLabel` 틀로 감쌉니다 — 영어 화면에서는 따옴표가 붙어 한국어 낱말이 영어
+ * 문장 속에서 인용한 말로 읽힙니다(`Narrowed down by '장미' · Night.`).
+ */
+export function conditionLabel(label: string): string {
+  return (
+    translatedCondition(label) ?? i18n.t('recommend:nlr.spokenLabel', { label })
+  )
 }
 
 /** 향수마다가 아니라 응답 전체에 한 번 오는 값들 */
@@ -99,11 +111,14 @@ export function nlrReasonSentence(
   { query, pickedWithoutScentCondition }: ReasonContext,
 ): ReasonSentence | null {
   const groups = reasons
-    .map((reason) => ({
-      phrase: usersPhrase(reason.phrase, query),
-      terms: termsOf(reason),
-      byCondition: isConditionReason(reason, pickedWithoutScentCondition),
-    }))
+    .map((reason) => {
+      const byCondition = isConditionReason(reason, pickedWithoutScentCondition)
+      return {
+        phrase: usersPhrase(reason.phrase, query),
+        terms: termsOf(reason, byCondition),
+        byCondition,
+      }
+    })
     .filter((group) => group.terms.length > 0)
   if (groups.length === 0) return null
 
@@ -114,7 +129,12 @@ export function nlrReasonSentence(
       if (index > 0) say(EVIDENCE_SEPARATOR)
       parts.push({ text: term.name, tone: 'term' })
       if (term.strength !== null) {
-        parts.push({ text: `(${term.strength})`, tone: 'strength' })
+        parts.push({
+          text: i18n.t('recommend:nlr.sentence.strength', {
+            value: String(term.strength),
+          }),
+          tone: 'strength',
+        })
       }
     })
 
@@ -123,8 +143,9 @@ export function nlrReasonSentence(
     표현과 이름이 같은 말이라(`‘미모사’가 가리키는 미모사`) 붙이면 한 말을 두 번 합니다.
   */
   /*
-    문장 틀은 화면 언어를 따릅니다. 말의 차례가 달라(‘빨래’가 가리키는 비누 ↔ the Soapy scent
-    ‘laundry’ suggests) 향 이름 앞 · 뒤 토막을 따로 받아 그 사이에 향을 끼웁니다.
+    문장 틀은 화면 언어를 따릅니다. 말의 차례가 달라(‘빨래’가 가리키는 비누 ↔ the soapy scent
+    that '빨래' suggests) 향 이름 앞 · 뒤 토막을 따로 받아 그 사이에 향을 끼웁니다. 마지막 묶음
+    앞만 잇는 말이 따로 있습니다(영어 `, and`).
   */
   const sayKey = (key: SentenceKey, values?: Record<string, string>) => {
     const text = i18n.t(`recommend:nlr.sentence.${key}`, values)
@@ -138,7 +159,9 @@ export function nlrReasonSentence(
   } else {
     sayKey('start')
     groups.forEach((group, index) => {
-      if (index > 0) sayKey('joiner')
+      if (index > 0) {
+        sayKey(index === groups.length - 1 ? 'lastJoiner' : 'joiner')
+      }
       const phrase = group.phrase
       const values = phrase
         ? { phrase, particle: subjectParticle(phrase) }
@@ -176,20 +199,33 @@ function usersPhrase(phrase: string | null, query: string): string | null {
 /**
  * 근거 칸을 조각으로 잘라 조각마다 화면 언어의 이름과 강도를 붙입니다.
  *
+ * 향 이름은 문장 안의 꼴로 적습니다(영어는 소문자 — `the soapy scent`). 조건 묶음은 향 특성 이름이면
+ * 그 이름표 꼴로, 아니면 조건 이름(`conditionLabel`)으로 적습니다.
+ *
  * NOTE: 강도는 **개수가 맞을 때만** 짝짓습니다. 두 목록은 순서로만 이어져 있어 하나라도 어긋나면
  * 엉뚱한 향에 엉뚱한 숫자가 붙습니다 — 틀린 숫자보다 없는 쪽이 낫습니다.
  */
-function termsOf(reason: RecommendReason): Term[] {
+function termsOf(reason: RecommendReason, byCondition: boolean): Term[] {
   const names = reason.evidence.split(EVIDENCE_SEPARATOR)
   const strengths =
     reason.strengths?.length === names.length ? reason.strengths : []
 
   return names
     .map((name, index) => ({
-      name: conditionLabel(accordLabel(name.trim())),
+      name: termName(name.trim(), byCondition),
       strength: readStrength(strengths[index]),
     }))
     .filter((term) => term.name !== '')
+}
+
+function termName(name: string, byCondition: boolean): string {
+  if (name === '') return ''
+  if (byCondition) {
+    const accord = accordLabel(name)
+    return accord === name ? conditionLabel(name) : accord
+  }
+  const accord = accordLabel(name, { inSentence: true })
+  return accord === name ? (translatedCondition(name) ?? name) : accord
 }
 
 /** 0~100 의 수만 적습니다. 범위를 벗어난 값은 뜻을 알 수 없어 그 자리는 이름만 둡니다 */

@@ -3,9 +3,9 @@ import type { community as ko } from '../ko/community'
 
 export const community = {
   categories: {
-    COLLECTION: 'Collections',
+    COLLECTION: 'Shared collections',
     RECOMMEND: 'Recommendations',
-    CHAT: 'Chat',
+    CHAT: 'Chit-chat',
   },
   sorts: {
     RECENT: 'Recent',
@@ -17,7 +17,7 @@ export const community = {
     heading: 'Community',
     tabsLabel: 'Boards',
     reviewsTab: 'Reviews',
-    freeTab: 'Free board',
+    freeTab: 'Discussion',
     sortTitles: {
       RECENT: 'Recent',
       VIEWS: 'Most viewed',
@@ -27,7 +27,7 @@ export const community = {
     categoryInTitle: {
       COLLECTION: 'collection',
       RECOMMEND: 'recommendation',
-      CHAT: 'chat',
+      CHAT: 'chit-chat',
     },
     total: '{{total}} total',
     emptyTitle: 'No posts on this board yet',
@@ -44,9 +44,9 @@ export const community = {
       'Log in to like posts. You can read posts without logging in.',
   },
   trending: {
-    title: 'Most mentioned perfumes',
-    caption_one: 'Posts mentioning each, last {{count}} day',
-    caption_other: 'Posts mentioning each, last {{count}} days',
+    title: 'Trending perfumes',
+    caption_one: 'Number of posts mentioning each in the past day',
+    caption_other: 'Number of posts mentioning each in the past {{count}} days',
   },
   reviewBoard: {
     noun: 'reviews',
@@ -58,7 +58,7 @@ export const community = {
     noun: 'posts',
     write: 'Write a post',
     writeLoginRequired: 'Log in to write a post.',
-    pagination: 'Free board pages',
+    pagination: 'Discussion pages',
     filtersLabel: 'Filter posts',
   },
   comments: {
@@ -79,7 +79,7 @@ export const community = {
     cancel: 'Cancel',
   },
   perfumeModal: {
-    title: 'Choose perfumes',
+    title: 'Choose perfume',
     cancel: 'Cancel',
     submit: 'Choose',
     nonePicked: 'No perfume chosen',
@@ -88,11 +88,11 @@ export const community = {
   imageAttach: {
     legend: 'Images',
     optional: '(optional)',
-    remove: 'Remove photo {{index}}',
+    remove: 'Remove image {{index}}',
     inputLabel: 'Add image',
     uploading: 'Uploading',
     attach: '+ Attach image',
-    uploadFailed: "Couldn't upload the photo. Please try again later.",
+    uploadFailed: "Couldn't upload the image. Please try again later.",
   },
   postDetail: {
     commentCreateFailed: "Couldn't post the comment",
@@ -101,7 +101,7 @@ export const community = {
     deleteFailed: "Couldn't delete the post",
     loadFailedTitle: "Couldn't load this post",
     loadFailedDescription: 'Please try again.',
-    backToFree: '← Free board',
+    backToFree: '← Discussion',
     edit: 'Edit',
     delete: 'Delete',
     images: 'Images',
@@ -116,7 +116,7 @@ export const community = {
     editTitle: 'Edit post',
     newTitle: 'Write a post',
     description:
-      'A category is required. In Collections posts, the attached collection decides the perfumes; in other categories you pick them yourself. Images are optional.',
+      'A category is required. In shared-collection posts, the perfumes come from the attached collection; in other categories you pick them yourself. Images are optional.',
     submitEdit: 'Save',
     submitNew: 'Post',
     editFailed: "Couldn't save the post. Please try again later.",
@@ -173,7 +173,7 @@ export const community = {
     submitNew: 'Post',
     target: 'Perfume',
     targetMissing: 'Choose a perfume to write a review',
-    locked: "Can't change",
+    locked: "Can't be changed",
     change: 'Change',
     pick: 'Choose perfume',
     lockedHint:
@@ -182,7 +182,7 @@ export const community = {
     titlePlaceholder: 'Enter a title',
     content: 'Body',
     contentPlaceholder: 'How did this scent smell to you?',
-    seasons: 'Seasons',
+    seasons: 'Ratings by season',
     seasonsGroup: 'Seasons this scent suits',
     seasonsHint: 'Choose at least one. You can choose several.',
     seasonNames: {

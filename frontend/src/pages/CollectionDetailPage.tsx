@@ -296,9 +296,11 @@ export default function CollectionDetailPage() {
       <ConfirmDialog
         open={removeTarget !== null}
         onClose={() => setRemoveTarget(null)}
-        title={t('detail.removeConfirm.title', {
-          name: removeTargetName ?? t('detail.removeConfirm.fallbackName'),
-        })}
+        title={
+          removeTargetName
+            ? t('detail.removeConfirm.title', { name: removeTargetName })
+            : t('detail.removeConfirm.titleUnnamed')
+        }
         description={t('detail.removeConfirm.description')}
         confirmLabel={t('detail.removeConfirm.confirm')}
         onConfirm={() => {

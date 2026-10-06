@@ -14,7 +14,7 @@ export const note = {
     heading: 'Notes',
     searchLabel: 'Search by note name',
     searchPlaceholder: 'Search notes',
-    familyLabel: 'Note families',
+    familyLabel: 'Note categories',
     reset: 'Reset',
   },
   detail: {

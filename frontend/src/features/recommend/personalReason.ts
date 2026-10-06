@@ -7,7 +7,10 @@ import type { PersonalRecommendation, PersonalReasonSource } from './types'
 export type PersonalReason = {
   /** 근거의 갈래. 서버가 안 줬거나 모르는 값이면 null — 그때는 문장만 그대로 씁니다 */
   source: PersonalReasonSource | null
-  /** 근거가 된 향 특성 · 향 계열(화면 언어). 문장을 서버 그대로 쓸 때는 null */
+  /**
+   * 근거가 된 향 특성 · 향 계열(화면 언어). 칩과 같은 꼴(`Woody`)입니다 — 영어 문장 안에서는 향 특성이
+   * 소문자(`woody`)로 적혀, 문장에서 찾을 때는 대소문자를 가리지 않습니다. 문장을 서버 그대로 쓸 때는 null
+   */
   keyword: string | null
   /** 화면에 적을 문장 */
   sentence: string
@@ -25,10 +28,17 @@ const WRITE: Record<PersonalReasonSource, (keyword: string) => string> = {
  * 근거 값을 화면 언어의 말로 바꿉니다. 적합도 · 최근 본 향수는 향 특성의 영어 이름(`woody`)이라
  * 3D 향 지도 카드와 같은 표(accordNames)로 옮기고, 취향 테스트는 향 계열 코드(`WOODY`)라 계열 이름표로
  * 옮깁니다. 모르는 계열 코드면 null — 코드를 문장에 박으면 `MOONLIGHT 계열` 같은 말이 나갑니다.
+ *
+ * `inSentence` 면 문장 안의 꼴입니다 — 영어 향 특성은 소문자(`a woody accord`). 향 계열은 이름표 그대로
+ * 둡니다(`the Woody scent family`).
  */
-function keywordOf(source: PersonalReasonSource, key: string): string | null {
+function keywordOf(
+  source: PersonalReasonSource,
+  key: string,
+  inSentence = false,
+): string | null {
   if (source === 'TASTE_TEST') return scentFamilyName(key.toUpperCase())
-  return accordLabel(key)
+  return accordLabel(key, { inSentence })
 }
 
 function isSource(value: unknown): value is PersonalReasonSource {
@@ -56,8 +66,9 @@ export function readPersonalReason(
   const source = isSource(evidenceSource) ? evidenceSource : null
   const key = evidenceKey?.trim()
   const keyword = source && key ? keywordOf(source, key) : null
-  if (source === null || keyword === null) {
+  if (source === null || !key || keyword === null) {
     return { source, keyword: null, sentence: reason.trim() }
   }
-  return { source, keyword, sentence: WRITE[source](keyword) }
+  const inSentence = keywordOf(source, key, true) ?? keyword
+  return { source, keyword, sentence: WRITE[source](inSentence) }
 }

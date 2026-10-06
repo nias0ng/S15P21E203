@@ -46,6 +46,11 @@ export const recommend = {
     asked: '입력한 말 · ',
     narrowedBefore: '',
     narrowedAfter: ' 조건으로 좁혔습니다.',
+    /**
+     * 사용자가 쓴 말 그대로인 조건(노트 이름). 영어 화면에서는 한국어 낱말이 문장에 섞여 따옴표로
+     * 감쌉니다 — 한국어 화면은 그대로 둡니다
+     */
+    spokenLabel: '{{label}}',
     relaxedWithoutScent:
       '향을 말씀하신 것으로 읽지 못해, 위 조건에 맞는 향수를 평가가 많은 순으로 골랐습니다. 냄새로 풀어서 한 줄 덧붙이면 향으로 골라 드릴 수 있습니다.',
     relaxed:
@@ -55,6 +60,15 @@ export const recommend = {
       // 예시는 LLM 없이도 알아듣는 사전 말만 씁니다 — 코드의 RETRY_EXAMPLES 가 채웁니다
       noConditionDescription:
         '냄새나 느낌으로 적어 보세요 — {{examples}} 처럼요.',
+      example: '‘{{example}}’',
+      /**
+       * 예시의 뜻풀이. 예시는 AI 가 가장 잘 알아듣는 한국어 그대로 두고 영어 화면에만 뜻을 곁들입니다
+       * — 한국어 화면은 예시가 곧 뜻이라 비웁니다
+       */
+      exampleGloss: {
+        zesty: '',
+        grassy: '',
+      },
       noConditionWithExamples:
         '냄새나 느낌으로 적어 보세요. 아래 말로 바로 찾아볼 수도 있습니다.',
       searchByName: '향수 이름이었다면 · 전체 향수에서 ‘{{keyword}}’ 찾기',
@@ -85,10 +99,14 @@ export const recommend = {
       conditionEnd: ' 조건에 맞는 향수입니다.',
       start: '이 향수는 ',
       joiner: ', ',
+      /** 마지막 묶음 앞 — 영어는 `, and` 로 잇습니다 */
+      lastJoiner: ', ',
       phraseBefore: '‘{{phrase}}’{{particle}} 가리키는 ',
       phraseAfter: '',
       requestedBefore: '요청하신 ',
       requestedAfter: '',
+      /** 향 이름 뒤 괄호 안 강도. 한국어는 붙여 쓰고 영어는 한 칸 띄웁니다 */
+      strength: '({{value}})',
       end: ' 향을 가지고 있습니다.',
     },
     /** AI 가 주는 향이 아닌 조건의 한국어(`nlr_engine.py` 의 표)와 같은 말입니다 */
