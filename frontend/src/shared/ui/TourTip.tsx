@@ -31,8 +31,11 @@ const keepFocus = (event: MouseEvent) => event.preventDefault()
  * 덮지도 초점을 가져가지도 않습니다 — 누를 때도 초점을 그대로 둡니다(위 `keepFocus`).
  *
  * NOTE: 메인 화면에서는 `TourSpotlight`(`features/map`)가 안내가 서 있는 동안 그 둘레를 어둡게 덮고
- *   키보드 초점을 이 안내의 단추로 옮깁니다. 그쪽이 이 종이를 찾는 표시가 뿌리의 `data-tour-tip` 입니다 —
+ *   키보드 초점을 이 종이로 옮깁니다. 그쪽이 이 종이를 찾는 표시가 뿌리의 `data-tour-tip` 입니다 —
  *   부르는 쪽의 `...rest` 가 지우지 못하게 그 뒤에 둡니다.
+ * NOTE: 뿌리가 `tabIndex={-1}` 인 것은 그 초점을 받으려는 것입니다. 단추에 주면 누르지 않아도 [다음] 에
+ *   초점 테가 섰습니다(스크립트가 옮긴 초점에도 브라우저가 테를 그립니다). 종이는 테 없이 받고, Tab 을
+ *   누르면 그다음부터 단추에 테가 섭니다.
  *
  * 3D 하늘 · 바다 위에도, 추천 결과의 유리판 위에도 같은 대비로 읽히게 상아색 종이 한 장입니다
  * (의견 단추의 인사 말풍선과 같은 종이).
@@ -55,6 +58,7 @@ export function TourTip({
       {...rest}
       data-tour-tip=""
       role="status"
+      tabIndex={-1}
       onMouseDown={keepFocus}
       // 안의 단추([×] · 안내 그만 보기 · 다음)는 제 일을 합니다 — 그 밖을 누른 것만 '다음' 입니다
       onClick={(event) => {
@@ -63,7 +67,7 @@ export function TourTip({
         onNext()
       }}
       className={cn(
-        'pointer-events-auto mx-auto w-fit max-w-[min(calc(100vw-var(--spacing)*10),calc(var(--spacing)*95))]',
+        'pointer-events-auto mx-auto w-fit max-w-[min(calc(100vw-var(--spacing)*10),calc(var(--spacing)*95))] outline-none',
         'bg-ivory/95 text-charcoal shadow-overlay rounded-[14px] py-2.5 pr-2.5 pl-3.75 backdrop-blur-[7px]',
         'transition-[opacity,translate,background-color] duration-200 ease-out motion-reduce:transition-none',
         'starting:-translate-y-1 starting:opacity-0',

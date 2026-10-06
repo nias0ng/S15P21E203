@@ -156,7 +156,7 @@ describe('TourSpotlight', () => {
     nextFrame()
     expect(maskShown()).toBe(true)
     expect(freeze.mock.calls).toEqual([[true]])
-    expect(screen.getByRole('button', { name: /다음/ })).toHaveFocus()
+    expect(screen.getByRole('status')).toHaveFocus()
   })
 
   it('오래 숨으면 3D 를 되살리고, 같은 단계에서 돌아와도 다시 멈추지 않는다', () => {
@@ -297,13 +297,15 @@ describe('TourSpotlight', () => {
     expect(maskPath().getAttribute('d')?.match(/M/g)).toHaveLength(3)
   })
 
-  it('덮는 동안 키보드 초점은 안내의 [다음 →] 으로 가고, 걷히면 원래 자리로 돌아온다', () => {
+  // 단추에 주면 누르지 않아도 [다음] 에 초점 테가 섰습니다 — 테가 없는 종이가 받고, Tab 하면 그 안의 단추로 갑니다
+  it('덮는 동안 키보드 초점은 안내 종이로 가고, 걷히면 원래 자리로 돌아온다', () => {
     start('card')
     render(<Screen />)
     screen.getByRole('button', { name: '3D' }).focus()
     nextFrame()
 
-    expect(screen.getByRole('button', { name: /다음/ })).toHaveFocus()
+    expect(screen.getByRole('status')).toHaveFocus()
+    expect(screen.getByRole('button', { name: /다음/ })).not.toHaveFocus()
 
     act(() => useTourStore.setState({ active: null }))
     expect(screen.getByRole('button', { name: '3D' })).toHaveFocus()

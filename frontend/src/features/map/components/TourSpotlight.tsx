@@ -280,25 +280,20 @@ export function TourSpotlight() {
     }
 
     /*
-      키보드로도 안내를 읽고 넘기게 [다음 →](없으면 [×])에 초점을 줍니다.
-      NOTE: `TourTip` 의 단추 차례([×] 가 처음 · [다음 →] 은 화살표로 끝납니다)를 봅니다. 그 마크업을 바꾸면 여기도 봅니다.
-      NOTE: 검색 안내(search)는 초점을 옮기지 않습니다. 그 종이는 검색창의 시작 칸(`data-starter`) 안이라 초점이 그 단추로
+      키보드로도 안내를 읽고 넘기게 안내 종이에 초점을 줍니다 — 스크린리더가 그 말을 읽고, Tab 하면 그 안의 단추로 갑니다.
+      NOTE: 단추가 아니라 종이입니다. [다음 →] 에 주면 누르지 않았는데도 그 단추에 초점 테가 섰습니다 — 스크립트가
+        옮긴 초점에도 브라우저가 테를 그립니다. 종이는 테가 없습니다(`TourTip` 의 `tabIndex={-1}` · `outline-none`).
+      NOTE: 검색 안내(search)는 초점을 옮기지 않습니다. 그 종이는 검색창의 시작 칸(`data-starter`) 안이라 초점이 그 안으로
         가면 검색창이 안내를 읽기도 전에 시작 문장을 펼칩니다(`SceneSearchBar` 의 onFocus — 그 줄도 `data-tour-target`
         으로 같이 밝힙니다). 입력칸에 적고 있던 사람은 초점을 뺏기면 적던 말이 끊깁니다.
     */
-    const focusButton = (tip: HTMLElement) => {
-      const buttons = Array.from(tip.querySelectorAll('button'))
-      const next = buttons.find((button) =>
-        button.textContent?.trim().endsWith('→'),
-      )
-      ;(next ?? buttons[0])?.focus({ preventScroll: true })
-    }
+    const focusPaper = (tip: HTMLElement) => tip.focus({ preventScroll: true })
     const focusTip = (tip: HTMLElement) => {
       if (step === 'search') return
       const now = document.activeElement
       restoreTo =
         now instanceof HTMLElement && now !== document.body ? now : null
-      focusButton(tip)
+      focusPaper(tip)
     }
 
     /*
@@ -359,13 +354,13 @@ export function TourSpotlight() {
       tipEl = tip.el
       paint(true, d)
       if (shown) {
-        // 잠깐 숨은 사이 단추와 함께 초점을 잃었으면(숨은 단추는 초점이 빠집니다) 다시 줍니다
+        // 잠깐 숨은 사이 종이와 함께 초점을 잃었으면(숨은 요소는 초점이 빠집니다) 다시 줍니다
         if (
           hiddenAt !== null &&
           focused &&
           document.activeElement === document.body
         )
-          focusButton(tip.el)
+          focusPaper(tip.el)
         hiddenAt = null
         return
       }
