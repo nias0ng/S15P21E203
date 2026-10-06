@@ -14,7 +14,10 @@ export const tour = {
   },
   // only on devices with arrow keys
   keys: 'Steer with the ← → ↑ keys — head wherever you like.',
-  buoy: 'Each glowing buoy is a perfume. Pick one.',
+  buoy: {
+    intro: 'Each glowing buoy is a perfume.',
+    action: 'Pick one to see the perfume.',
+  },
   similar:
     'Nearby perfumes have risen. Lines join the ones that smell alike — pick one to compare.',
   // NOTE: the quoted name must match search.tag in the map bundle (the label left of the search box)
@@ -43,11 +46,11 @@ export const tour = {
     member: 'The waters you sail and perfumes you find are written here.',
     guest: 'Log in to keep the waters you sail and perfumes you find here.',
   },
+  // Two lines — click the boat · what you find there
   boat: {
-    member:
-      'Click the boat to step into the cabin — your saved perfumes are on the Shelf.',
-    guest:
-      'Click the boat to step into the cabin. Log in to keep the perfumes you like on the Shelf.',
+    intro: 'Click the boat to step into the cabin.',
+    member: 'Your saved perfumes (the Shelf) are there.',
+    guest: 'Log in to keep the perfumes you like on the Shelf.',
   },
   guide: {
     trigger: 'How to use',

@@ -643,7 +643,8 @@ export default function HomePage() {
         ready={sceneIdle && !cardOpen && zoneLabel === null}
         placement="above"
       >
-        {t('tour:buoy')}
+        {t('tour:buoy.intro')}
+        <span className="block">{t('tour:buoy.action')}</span>
       </SceneTourTip>
       <SceneTourTip
         paused={!sceneIdle}
@@ -702,7 +703,10 @@ export default function HomePage() {
         ready={sceneIdle && !cardOpen}
         placement="side"
       >
-        {t(isLoggedIn ? 'tour:boat.member' : 'tour:boat.guest')}
+        {t('tour:boat.intro')}
+        <span className="block">
+          {t(isLoggedIn ? 'tour:boat.member' : 'tour:boat.guest')}
+        </span>
       </SceneTourTip>
 
       {/*
